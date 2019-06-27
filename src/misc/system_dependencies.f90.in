@@ -185,6 +185,8 @@ module system_dependencies
   ! Programs used for event analysis display
   character(*), parameter :: PRG_LATEX  = &
        "@LATEX@"
+  character(*), parameter :: PRG_MPOST  = &
+       "@MPOST@"
   character(*), parameter :: PRG_DVIPS  = &
        "@DVIPS@"
   character(*), parameter :: PRG_PS2PDF = &

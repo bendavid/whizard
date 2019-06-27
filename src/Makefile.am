@@ -8,7 +8,7 @@ SUBDIRS = \
   misc vamp whizard-core prebuilt \
   omega models 
 if MPOST_AVAILABLE
-SUBDIRS += gamelan
+SUBDIRS += gamelan feynmf
 endif
 
 ## -------------------------------------------------------------------
@@ -25,7 +25,7 @@ libomega_la_SOURCES =
 ## Collect the various partial libraries
 libwhizard_la_LIBADD = \
   whizard-core/libwhizard_core.la \
-  vamp/libvamp.la \
+  vamp/src/libvamp.la \
   misc/libaux.la
 
 if HEPMC_AVAILABLE
@@ -76,13 +76,6 @@ whizard_LDADD += $(OPENMP_FCFLAGS)
 libwhizard_la_LIBADD += $(OPENMP_FCFLAGS)
 libomega_la_LIBADD += $(OPENMP_FCFLAGS)
 endif
-
-## -------------------------------------------------------------------
-## Re-create Fortran dependenies
-fc-depend:
-	$(MAKE) -C whizard-core fc-depend
-.PHONY: fc-depend
-
 
 ## -------------------------------------------------------------------
 ## Remove backup files

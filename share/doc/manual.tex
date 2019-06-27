@@ -436,6 +436,10 @@ permissions inside the OS permission environment variables and the AFS
 permission flags which triggered errors during the \ttt{make install}
 procedure. 
 
+For specific problems that might have been encountered in rare
+circumstances for some FORTRAN compilers confer the webpage
+\url{}
+
 It is possible to compile \whizard\ without the \ttt{O'Caml} parts of
 \ttt{O'Mega}, namely by using the \ttt{--disable-omega} option of the
 configure. This will result in a built of \whizard\ with the O'Mega
@@ -700,32 +704,32 @@ interact with the \whizard\ system.
 
 \section{Hello World}
 
-The script is written in SINDARIN.  This is a DSL -- a
-domain-specific scripting language that is designed for the single
-purpose of steering \whizard.  
+The script is written in SINDARIN.  This is a DSL -- a domain-specific
+scripting language that is designed for the single purpose of steering and
+talking to \whizard\footnote{As it is well known, W(h)izards communicate in
+  SINDARIN, Scripting INtegration, Data Analysis, Results display and
+  INterfaces.}.  Now since SINDARIN is a programming language, we honor the old
+tradition of starting with the famous Hello World program.  In SINDARIN this
+reads simply
 
-Previous versions of the program, similar to most high-energy physics
-programs, relied on a bunch of input files that the user had to
-provide in some obfuscated format.  This approach is sufficient for
-straightforward applications.  However, once you get experienced with
-a program, you start thinking about uses that the program's authors
-did not foresee.  In case of a Monte Carlo package, typical abuses are
-parameter scans, complex patterns of cuts and reweighting factors, or
-data analysis without recourse to external packages.  This requires
-more flexibility.
+%% Previous versions of the program, similar to most high-energy physics
+%% programs, relied on a bunch of input files that the user had to
+%% provide in some obfuscated format.  This approach is sufficient for
+%% straightforward applications.  However, once you get experienced with
+%% a program, you start thinking about uses that the program's authors
+%% did not foresee.  In case of a Monte Carlo package, typical abuses are
+%% parameter scans, complex patterns of cuts and reweighting factors, or
+%% data analysis without recourse to external packages.  This requires
+%% more flexibility.
 
-Instead of transferring control over data input to some generic
-scripting language like PERL or PYTHON (or even C++), which come with
-their own peculiarities and learning curves, we decided to unify data
-input and scripting in a dedicated steering language that is
-particularly adapted to the needs of Monte-Carlo integration,
-simulation, and simple analysis of the results.  Thus we discovered
-what everybody knew anyway: that W(h)izards communicate in SINDARIN,
-Scripting INtegration, Data Analysis, Results display and INterfaces.
-
-Now since SINDARIN \emph{is} a programming language, we honor the old
-tradition of starting with the famous Hello World program.  In
-SINDARIN this reads
+%% Instead of transferring control over data input to some generic
+%% scripting language like PERL or PYTHON (or even C++), which come with
+%% their own peculiarities and learning curves, we decided to unify data
+%% input and scripting in a dedicated steering language that is
+%% particularly adapted to the needs of Monte-Carlo integration,
+%% simulation, and simple analysis of the results.  Thus we discovered
+%% what everybody knew anyway: that W(h)izards communicate in SINDARIN,
+%% Scripting INtegration, Data Analysis, Results display and INterfaces.
 \begin{quote}
 \begin{verbatim}
 printf "Hello World!"
@@ -738,14 +742,17 @@ Now we assume that you -- or your kind system administrator -- has
 installed \whizard\ in your executable path.  Then you should open a
 command shell and execute
 \begin{verbatim}
-> whizard -r hello.sin
+/home/user$ whizard -r hello.sin
 \end{verbatim}
 and if everything works well, you get the output
 \begin{footnotesize}
 \begin{verbatim}
 | Writing log to 'whizard.log'
+\end{verbatim}
+\centerline{[... here a banner is displayed]}
+\begin{verbatim}
 |=============================================================================|
-|                               WHIZARD 2.0.0_rc1
+|                               WHIZARD 2.0.1
 |=============================================================================|
 | Initializing process library 'processes'
 | Reading model file 'SM.mdl'
@@ -756,6 +763,10 @@ Hello World!
 |=============================================================================|
 \end{verbatim}
 \end{footnotesize}
+If this has just worked for you, you can be confident that you have a working
+\whizard\ installation, and you have been able to successfully run the
+program.
+
 
 \section{A Simple Calculation}
 You may object that \whizard\ is not exactly designed for printing out
@@ -776,117 +787,113 @@ definite model of high-energy physics.  By default this is the
 Standard Model, dubbed \verb|SM|.
 
 Here is the SINDARIN code for defining a SM physics process, computing
-its cross section, and generating a simulated event sample:
+its cross section, and generating a simulated event sample in Les Houches
+event format:
 \begin{quote}
 \begin{verbatim}
 process ee = e1, E1 => e2, E2
-compile
-
 sqrts = 360 GeV
-integrate (ee)
-
 n_events = 10
 sample_format = lhef
-$sample = "ee"
 simulate (ee)
 \end{verbatim}
 \end{quote}
 As before, you save this text in a file (named, e.g., 
 \verb|ee.sin|) which is run by
 \begin{verbatim}
-> whizard -r ee.sin
+/home/user$ whizard -r ee.sin
 \end{verbatim}
 (We will come to the meaning of the \verb|-r| option later.)
-This produces a lot of output.  We break it down into pieces.
+This produces a lot of output which looks similar to this:
 
-The startup is as before:
-\begin{footnotesize}
-\begin{verbatim}
-| Writing log to 'whizard.log'
-|=============================================================================|
-|                               WHIZARD 2.0.0_rc1
-|=============================================================================|
-| Initializing process library 'processes'
-| Reading model file 'SM.mdl'
-| Using model: SM
-| Reading commands from file 'ee.sin'
-| Added process to library 'processes':
-|  [O] ee = e-, e+ => mu-, mu+
-\end{verbatim}
+ \begin{footnotesize}
+ \begin{verbatim}
+ | Writing log to 'whizard.log'
+ |=============================================================================|
+ |                               WHIZARD 2.0.0_rc1
+ |=============================================================================|
+ | Initializing process library 'processes'
+ | Reading model file 'SM.mdl'
+ | Using model: SM
+ | Reading commands from file 'ee.sin'
+ | Added process to library 'processes':
+ |  [O] ee = e-, e+ => mu-, mu+
+ \end{verbatim}
 
-\begin{verbatim}
-| Generating code for process library 'processes'
-| Calling O'Mega for process 'ee'
-| command:
-| /home/kilian/whizard/build/nagfor/src/omega/bin/omega_SM.opt -o
-| ee.f90 -target:whizard -target:parameter_module parameters_SM
-| -target:module ee -target:md5sum 6ABA33BC2927925D0F073B1C1170780A 
-! -fusion:progress -scatter 'e- e+ => mu- mu+'
-[1/1] e- e+ => mu- mu+ ... done. [time: 0.03 secs, total: 0.03 secs, remaining: 0.00 secs]
-all processes done. [total time: 0.03 secs]
-SUMMARY: 6 fusions, 2 propagators, 2 diagrams
-| Writing interface code for process library 'processes'
-| Compiling process library 'processes'
-\end{verbatim}
-
-
-\begin{verbatim}
-| Loading process library 'processes'
-| Process 'ee': updating previous configuration
-sqrts =    3.6000000000000000E+02
-| Integrating process 'ee'
-| Generating phase space, writing file 'ee.phs' (this may take a while)
-| Found 2 phase space channels.
-Warning: No cuts have been defined.
-\end{verbatim}
+ \begin{verbatim}
+ | Generating code for process library 'processes'
+ | Calling O'Mega for process 'ee'
+ | command:
+ | /home/kilian/whizard/build/nagfor/src/omega/bin/omega_SM.opt -o
+ | ee.f90 -target:whizard -target:parameter_module parameters_SM
+ | -target:module ee -target:md5sum 6ABA33BC2927925D0F073B1C1170780A 
+ ! -fusion:progress -scatter 'e- e+ => mu- mu+'
+ [1/1] e- e+ => mu- mu+ ... done. [time: 0.03 secs, total: 0.03 secs, remaining: 0.00 secs]
+ all processes done. [total time: 0.03 secs]
+ SUMMARY: 6 fusions, 2 propagators, 2 diagrams
+ | Writing interface code for process library 'processes'
+ | Compiling process library 'processes'
+ \end{verbatim}
 
 
-\begin{verbatim}
-| Using partonic energy as event scale.
-| iterations = 3:1000, 3:10000
-| Creating VAMP integration grids:
-| Using phase-space channel equivalences.
-| 1000 calls, 2 channels, 2 dimensions, 20 bins, stratified = T
-|=============================================================================|
-| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
-|=============================================================================|
-   1       1000  8.3366006E+02  1.47E+00    0.18    0.06*  40.12
-   2       1000  8.3357740E+02  8.16E-01    0.10    0.03*  40.11
-   3       1000  8.3214263E+02  1.01E+00    0.12    0.04   57.40
-|-----------------------------------------------------------------------------|
-   3       3000  8.3311382E+02  5.83E-01    0.07    0.04   57.40    0.69   3
-|-----------------------------------------------------------------------------|
-   4      10000  8.3325834E+02  1.10E-01    0.01    0.01*  57.02
-   5      10000  8.3333796E+02  1.11E-01    0.01    0.01   57.03
-   6      10000  8.3323772E+02  1.11E-01    0.01    0.01   57.03
-|=============================================================================|
-   6      30000  8.3327798E+02  6.41E-02    0.01    0.01   57.03    0.23   3
-|=============================================================================|
-\end{verbatim}
+ \begin{verbatim}
+ | Loading process library 'processes'
+ | Process 'ee': updating previous configuration
+ sqrts =    3.6000000000000000E+02
+ | Integrating process 'ee'
+ | Generating phase space, writing file 'ee.phs' (this may take a while)
+ | Found 2 phase space channels.
+ Warning: No cuts have been defined.
+ \end{verbatim}
 
-\begin{verbatim}
-n_events =  10
-$sample => "ee"
-| Initializating simulation for processes ee:
-| Simulation mode = unweighted, event_normalization = '1'
-| No analysis setup has been provided.
-| Writing events in LHEF format to file 'ee.lhef'
-| Generating 10 events ...
-| Writing events in internal format to file 'ee.evx'
-| Event sample corresponds to luminosity [fb-1] =   0.1200E-01
-| ... done
-| Simulation finished.
-| There were no errors and  1 warning(s).
-| WHIZARD run finished.
-|=============================================================================|
-\end{verbatim}
-\end{footnotesize}
 
+ \begin{verbatim}
+ | Using partonic energy as event scale.
+ | iterations = 3:1000, 3:10000
+ | Creating VAMP integration grids:
+ | Using phase-space channel equivalences.
+ | 1000 calls, 2 channels, 2 dimensions, 20 bins, stratified = T
+ |=============================================================================|
+ | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+ |=============================================================================|
+    1       1000  8.3366006E+02  1.47E+00    0.18    0.06*  40.12
+    2       1000  8.3357740E+02  8.16E-01    0.10    0.03*  40.11
+    3       1000  8.3214263E+02  1.01E+00    0.12    0.04   57.40
+ |-----------------------------------------------------------------------------|
+    3       3000  8.3311382E+02  5.83E-01    0.07    0.04   57.40    0.69   3
+ |-----------------------------------------------------------------------------|
+    4      10000  8.3325834E+02  1.10E-01    0.01    0.01*  57.02
+    5      10000  8.3333796E+02  1.11E-01    0.01    0.01   57.03
+    6      10000  8.3323772E+02  1.11E-01    0.01    0.01   57.03
+ |=============================================================================|
+    6      30000  8.3327798E+02  6.41E-02    0.01    0.01   57.03    0.23   3
+ |=============================================================================|
+ \end{verbatim}
+
+ \begin{verbatim}
+ n_events =  10
+ $sample => "ee"
+ | Initializating simulation for processes ee:
+ | Simulation mode = unweighted, event_normalization = '1'
+ | No analysis setup has been provided.
+ | Writing events in LHEF format to file 'ee.lhef'
+ | Generating 10 events ...
+ | Writing events in internal format to file 'ee.evx'
+ | Event sample corresponds to luminosity [fb-1] =   0.1200E-01
+ | ... done
+ | Simulation finished.
+ | There were no errors and  1 warning(s).
+ | WHIZARD run finished.
+ |=============================================================================|
+ \end{verbatim}
+ \end{footnotesize}
+
+The final result is the desired event file, \ttt{ee.lhef}.
 
 
 \chapter[SINDARIN]{SINDARIN: \\ The \whizard\ command language}
 
-\section{Why a specialized language?}
+\section{A specialized command language}
 A conventional physics application program gets its data from a set of input
 files.  Alternatively, it is called as a library, so the user has to write his
 own code to interface ist, or it combines these two approaches.  \whizard~1 was
@@ -936,7 +943,7 @@ features of a generic language that are of no relevance to the application he
 is interested in.
 
 
-\section{Basic concepts}
+\section{Overview: Basic concepts}
 
 \subsection{SINDARIN scripts}
 
@@ -953,9 +960,6 @@ $ whizard script.sin
 \end{footnotesize}
 Alternatively, scripts can be executed line by line interactively; we describe
 this below in Sec.\ref{sec:whish}.
-
-
-\subsubsection{Commands}
 
 A SINDARIN script as a whole is a sequence of \emph{commands}, similar to the
 commands in any imperative language such as Fortran or C.  Examples of
@@ -1002,7 +1006,7 @@ classical numeric types
 SINDARIN contains arithmetic expressions and functions very much similar to
 conventional languages.  In arithmetic expressions, the three numeric types
 can be mixed as appropriate.  The computation essentially follows the rules
-for mixed arithmetic in Fortran or C.  
+for mixed arithmetic in Fortran.  
 
 The names of numerical variables consist of alphanumeric characters and
 underscores.  The first character must not be a digit.  Character case does
@@ -1011,14 +1015,14 @@ of lower-case letters, digits, and underscores only.
 
 Exclusively in the context of particle selections (event analysis), there are
 \emph{observables} as special numeric objects.  They are used like numeric
-variables, but they are never declared or assigned.  They get there value
+variables, but they are never declared or assigned.  They get their value
 assigned dynamically, computed from the particle momentum configuration.
 Observable names begin with a capital letter.
 
 The language also has the following standard types:
 \begin{itemize}
 \item
-   \ttt{logical} (a.k.a. boolean).  Logical variable names are prefixed by a
+   \ttt{logical} (a.k.a.\ boolean).  Logical variable names are prefixed by a
    \ttt{?} (question mark) sign, otherwise the same rules as for numerical
    variables apply.
 \item
@@ -1038,21 +1042,79 @@ Carlo:
   \ttt{subevt} objects denote a collection of particle momenta within an
   event.  Their names are prefixed by a \ttt{@} (at) sign.
 \end{itemize}
-Each variable or object has a well-defined type.  Some variables are
-predefined by the system (\emph{intrinsic variables}).  They are further
-separated into \emph{independent} parameters that can be reset by the user,
-and \emph{derived} parameters that are automatically computed by the program.
-On top of that, the user is free to introduce his own variables (\emph{user
-  variables}).
+Each variable or object has a well-defined type.  
 
-The script can assign new values to intrinsic variables, no value is
-hard-coded.  User variables must be declared with any of the basic types when
-they are introduced.  They retain this type until the end of program
-execution.
+In the current implementation, SINDARIN has no container data types derived
+from basic types, such as lists, arrays, or hashes.  The \ttt{subevt} type is
+a container for particles, but there is no type for an individual particle:
+this is represented as a one-particle \ttt{subevt}.
 
-In the current implementation, SINDARIN has no container data types such as
-lists, arrays, or hashes.  They may be introduced in a future language
-extension.
+Grouping of numerical, logical, string, and alias expressions is done using
+ordinary brackets \ttt{()}.  For subevent expressions, use square brackets
+\ttt{[]}.
+
+
+\subsection{Variables}
+
+SINDARIN supports global variables, variables local to a scoping unit (the
+option body of a command, the body of a \ttt{scan} loop), and variables local
+to an expression.
+
+Some variables are predefined by the system (\emph{intrinsic variables}).
+They are further separated into \emph{independent} variables that can be
+reset by the user, and \emph{derived} variables that are automatically
+computed by the program.  On top of that, the user is free to introduce his
+own variables (\emph{user variables}).
+
+User variables -- global or local -- are declared by their type when they are
+introduced, and acquire an initial value upon declaration.  Examples:
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+  int i = 3
+  real my_cut_value = 10 GeV
+  complex c = 3 - 4 * I
+  logical ?top_decay_allowed = mH > 2 * mtop
+  string $hello = "Hello world!"
+  alias q = d:u:s:c
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+An existing user variable can be assigned a new value without a declaration:
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+  i = i + 1
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+and it may also be redeclared if the new declaration specifies the same type,
+this is equivalent to assigning a new value.
+
+Intrinsic, independent variables can also be assigned a new value, but they
+cannot be redeclared.  Intrinsic dependent variables can never be assigned a
+new value explicitly.  They get a new value automatically when one of the
+variables they depend on is assigned a new value.
+
+Variables local to an expression are introduced by the \ttt{let ... in}
+contruct.  Example:
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+  real a = let int n = 2 in
+           x^n + y^n 
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+The explicit \ttt{int} declaration is necessary only if the variable \ttt{n}
+has not been declared before.  An intrinsic variable must not be declared:
+\ttt{let mtop = 175.3 GeV in \ldots}
+
+\ttt{let} constructs can be concatenated if several local variables need to
+be assigned: \ttt{let a = 3 in let b = 4 in \textit{expression}}.
+
+Variables of type \ttt{subevt} can only be defined in \ttt{let} constructs.
+
 
 
 \subsection{Special objects}
@@ -1066,16 +1128,16 @@ histograms, and more.  These objects are intrinsic.
 
 \subsection{Control structures}
 
-Any computer language has some concept of conditionals and loops.  In
-SINDARIN, conditionals are represented by the usual
-\ttt{if}-\ttt{then}-\ttt{elsif}-\ttt{else}-\ttt{endif} sequence.  Loops are
-labeled according to their main purpose in Monte Carlo context, parameter
-scans.  The loop syntax is therefore \ttt{scan} \emph{variable} \ttt{=}
-\ttt{(}\emph{values}\ttt{)} \ttt{\{}\ldots\ttt{\}}.
+A complete programming language should have some concept of conditionals and
+loops.  In SINDARIN, conditionals are represented by the usual
+\ttt{if}-\ttt{then}-\ttt{elsif}-\ttt{else}-\ttt{endif} sequence.  Since
+parameter scans are the obvious motivation for loops in SINDARIN, the loop
+syntax is \ttt{scan} \emph{variable} \ttt{=} \ttt{(}\emph{values}\ttt{)}
+\ttt{\{}\ldots\ttt{\}}.
 
 
 
-\section{Basic data and expressions}
+\section{Data and expressions}
 
 \subsection{Real-valued objects}
 
@@ -1118,11 +1180,10 @@ The arithmetic operators are
 \begin{center}
   \verb|+| \verb|-| \verb|*| \verb|/| \verb|^|
 \end{center}
-with their obvious meaning and the usual precedence rules.  Grouping is done
-using ordinary brackets \ttt{()}.
+with their obvious meaning and the usual precedence rules.  
 
-SINDARIN supports a bunch of standard functions, mostly equivalent to their
-Fortran counterparts:
+SINDARIN supports a bunch of standard numerical functions, mostly equivalent
+to their Fortran counterparts:
 \begin{center}
   \ttt{abs}\quad \ttt{sgn}\quad \ttt{mod}\quad \ttt{modulo}
 \\
@@ -1141,7 +1202,7 @@ There are two functions with two real arguments:
 \begin{center}
   \ttt{max}\quad \ttt{min}
 \end{center}
-with \ttt{min (mZ, mH)} as an example.
+Example: \verb|real lighter_mass = min (mZ, mH)|
 
 The following functions of a real convert to integer:
 \begin{center}
@@ -1197,7 +1258,8 @@ Standard arithmetics is supported:
   \verb|+| \verb|-| \verb|*| \verb|/| \verb|^|
 \end{center}
 It is important to note that there is no fraction datatype, and pure integer
-arithmetics does not convert to real.  Hence $3/4$ evaluates to $0$.
+arithmetics does not convert to real.  Hence \ttt{3/4} evaluates to \ttt{0},
+but \ttt{3 GeV / 4 GeV} evaluates to \ttt{0.75}.
 
 Since all arithmetics is handled by the underlying Fortran library, integer
 overflow is not detected.  If in doubt, do real arithmetics.
@@ -1220,19 +1282,19 @@ same set of comparison operators as real values.  This includes the operators
 
 \subsection{Complex-valued objects}
 
-Complex values are currently not yet used by the physics models implemented
-in \whizard, so they play no role in most applications.
+\emph{Complex variables and values are currently not yet used by the physics
+  models implemented in \whizard.  They are an experimental feature.}
 
 There is no form for complex literals.  Complex values must be created via an
 arithmetic expression,
 \begin{center}
   \ttt{complex c = 1 + 2 * I}
 \end{center}
-where \ttt{I} is a predefined constant.
+where the imaginary unit \ttt{I} is predefined as a constant.
 
-The standard arithmetic operations are supported (also mixed with real
-and integer).  Support for functions is incomplete, among the supported
-functions there is \ttt{sqrt}, \ttt{log}, \ttt{exp}.
+The standard arithmetic operations are supported (also mixed with real and
+integer).  Support for functions is currently still incomplete, among the
+supported functions there are \ttt{sqrt}, \ttt{log}, \ttt{exp}.
 
 
 
@@ -1244,12 +1306,13 @@ in PERL), but they make up a type of their own.  Only in \verb|printf| output,
 they are treated as strings, that is, they require the \verb|%s| conversion
 specifier.
 
-The names of logical variables begin with a question mark \ttt{?}:
+The names of logical variables begin with a question mark \ttt{?}.  Here is
+the declaration of a logical user variable:
 \begin{quote}
 \begin{footnotesize}
 \begin{footnotesize}
 \begin{verbatim}
-?higgs_decays_into_tt = mH > 2 * mtop  
+logical ?higgs_decays_into_tt = mH > 2 * mtop  
 \end{verbatim}
 \end{footnotesize}
 \end{footnotesize}
@@ -1259,14 +1322,21 @@ Logical expressions use the standard boolean operations
 \begin{center}
   \ttt{or}\quad \ttt{and}\quad \ttt{not}
 \end{center}
-Furthermore, the results of comparisons (see above) are logicals.
+The results of comparisons (see above) are logicals.
 
-A primary use for intrinsic logicals are flags that change the behavior of
+There is also a special logical operator with lower priority, concatenation by
+a semicolon:
+\begin{center}
+  \ttt{\textit{lexpr1} ; \textit{lexpr2}}
+\end{center}
+This evaluates \textit{lexpr1} and throws its result away, then evaluates
+\textit{lexpr2} and returns that result.  This feature is to used with logical
+expressions that have a side effect, namely the \ttt{record} function within
+analysis expressions.
+
+The primary use for intrinsic logicals are flags that change the behavior of
 commands.  For instance, \ttt{?unweighted = true} and \ttt{?unweighted =
   false} switch the unweighting of a simulated event samples on and off.
-
-Logical expressions are furthermore used for specifying cut and analysis
-expressions.
 
 
 \subsection{String-valued objects and string operations}
@@ -1277,15 +1347,15 @@ There is only one string operation, concatenation
 \begin{quote}
 \begin{footnotesize}
 \begin{verbatim}
-$string = "abc" // "def"
+$string = "abc" & "def"
 \end{verbatim}
 \end{footnotesize}
 \end{quote}
 
-However, it is possible to variables and values to a string using the
-\ttt{sprintf} function.  This function is an interface to the system's C
-function \ttt{sprintf} with some restrictions and modifications.  The
-allowed conversion specifiers are
+However, it is possible to transform variables and values to a string using
+the \ttt{sprintf} function.  This function is an interface to the system's C
+function \ttt{sprintf} with some restrictions and modifications.  The allowed
+conversion specifiers are
 \begin{center}
   \verb|%d|\quad \verb|%i| (integer)
 \\
@@ -1297,19 +1367,19 @@ allowed conversion specifiers are
 The conversions can use flag parameter, field width, and precision, but length
 modifiers are not supported since they have no meaning for the application.
 
-The \ttt{sprint} function has the syntax
+The \ttt{sprintf} function has the syntax
 \begin{center}
   \ttt{sprintf} \textit{format-string}
   \ttt{(}\textit{arg-list}\ttt{)}
 \end{center}
-where the format string contains the mentioned conversion specifiers.  The
-argument list is optional.  The arguments are separated by commas.  Allowed
-arguments are integer, real, logical, and string variables, and numeric
-expressions.  Logical and string expressions can also be printed, but they
-have to be dressed as \emph{anonymous variables}.  A logical anonymous
-variable has the form \ttt{?(}\textit{logical-expr}\ttt{)} (example:
-\ttt{?(mH > 115 GeV)}).  A string anonymous variable has the form
-\ttt{\$(}\textit{string-expr}\ttt{)}.
+This is an expression that evaluates to a string.  The format string contains
+the mentioned conversion specifiers.  The argument list is optional.  The
+arguments are separated by commas.  Allowed arguments are integer, real,
+logical, and string variables, and numeric expressions.  Logical and string
+expressions can also be printed, but they have to be dressed as
+\emph{anonymous variables}.  A logical anonymous variable has the form
+\ttt{?(}\textit{logical-expr}\ttt{)} (example: \ttt{?(mH > 115 GeV)}).  A
+string anonymous variable has the form \ttt{\$(}\textit{string-expr}\ttt{)}.
 
 Example:
 \begin{quote}
@@ -1326,32 +1396,627 @@ string to standard output.  There is also a \ttt{sprint} function and a
 arguments in a default format.
 
 
+\section{Particles and (sub)events}
+
 \subsection{Particle aliases}
 
-A particle species is denoted by its name as a string: \verb|W+|.
-Alternatively, it can be addressed by an \ttt{alias}.  The model files
-predefine aliases for all particles.  For instance, the $W^+$ has the alias
-\ttt{Wp}.  Aliases are used like variables, but in contexts where a
-particle species is expected.
+A particle species is denoted by its name as a string: \verb|"W+"|.
+Alternatively, it can be addressed by an \ttt{alias}.  For instance, the $W^+$
+boson has the alias \ttt{Wp}.  Aliases are used like variables in a context
+where a particle species is expected, and the user can specify his own
+aliases.
 
-In particular, aliases can specify \emph{alternatives} for particle species.
-This is done by concatenating particle names or aliases by colons \ttt{:}.
-Example:
+An alias may either denote a single particle species or a class of particles
+species.  A colon \ttt{:} concatenates particle names and aliases to yield
+multi-species aliases:
 \begin{quote}
 \begin{footnotesize}
 \begin{verbatim}
 alias quark = u:d:s
+alias wboson = "W+":"W-"
 \end{verbatim}
 \end{footnotesize}
 \end{quote}
-Aliases are used for defining processes with summation over flavors, and for
-defining classes of particles for analysis.
+Such aliases are used for defining processes with summation over flavors, and
+for defining classes of particles for analysis.
 
-Each model predefines the multi-species alias \verb|colored| and
-\verb|charged|.
+Each model files define both names and (single-particle) aliases for all
+particles it contains.  Furthermore, it defines the class aliases
+\verb|colored| and \verb|charged| which are particularly useful for event
+analysis.
 
+
+\subsection{Subevents}
+
+Subevents are sets of particles, extracted from an event.  The sets are
+unordered by default, but may be ordered by appropriate functions.  Obviously,
+subevents are meaningful only in a context where an event is available.  The
+possible context may be the specification of a cut, weight, scale, or analysis
+expression.
+
+To construct a simple subevent, we put a particle alias or an expression of
+type particle alias into square brackets:
+\begin{quote}
+\begin{footnotesize}
+  \verb|["W+"]|\quad
+  \verb|[u:d:s]|\quad
+  \verb|[colored]|
+\end{footnotesize}
+\end{quote}
+These subevents evaluate to the set of all $W^+$ bosons (to be precise, their
+four-momenta), all $u$, $d$, or $s$ quarks, and all colored particles,
+respectively.
+
+A subevent can contain particle combinations.  That is, the four-momenta of
+distinct particles are combined (added conmponent-wise), and the results
+become subevent elements just like ordinary particles.
+
+Sometimes, variables (actually, named constants) of type subevent are useful.
+Subevent variables are declared by the \texttt{subevt} keyword, and their
+names carry the prefix \verb|@|.  Within expressions, they are assigned via
+the \texttt{let} construct.
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+cuts =
+  let subevt @jets = select if Pt > 10 GeV [colored]
+  in
+  all Theta > 10 degree [@jets, @jets]
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+In this expression, we first define \verb|@jets| to stand for the set of all
+colored partons with $p_T>10\;\mathrm{GeV}$.  This abbreviation is then used
+in a logical expression, which evaluates to true if all relative angles
+between distinct jets are greater than $10$ degree.
+
+We note that the example also introduces pairs of subevents: the square
+bracket with two entries evaluates to the list of all possible pairs which do
+not overlap.  The objects within square brackets can be either subevents or
+alias expressions.  The latter are transformed into subevents before they are
+used.
+
+As a special case, the original event is always available as the predefined
+subevent \verb|@evt|.
+
+\subsection{Subevent functions}
+
+There are several functions that take a subevent (or an alias) as an argument
+and return a new subevent.  Here we describe them:
+
+\subsubsection{collect}
+\begin{quote}
+\begin{footnotesize}
+  \ttt{collect [\textit{particles}]} \\
+  \ttt{collect if \textit{condition} [\textit{particles}]} \\   
+  \ttt{collect if \textit{condition} [\textit{particles}, \textit{ref-particles}]}
+\end{footnotesize}
+\end{quote}
+First version: collect all particle momenta in the argument and combine them
+to a single four-momentum.  The \textit{particles} argument may either be a
+\ttt{subevt} expression or an \ttt{alias} expression.  The result is a
+one-entry \ttt{subevt}.  In the second form, only those particle are collected
+which satisfy the \textit{condition}, a logical expression.  Example:
+\ttt{collect if Pt > 10 GeV [colored]}
+
+The third version is usefule if you want to put binary observables (i.e.,
+observables constructed from two different particles) in the condition.  The
+\textit{ref-particles} provide the second argument for binary observables in
+the \textit{condition}.  A particle is taken into account if the condition is
+true with respect to all reference particles that do not overlap with this
+particle.  Example: \ttt{collect if Theta > 5 degree [photon, charged]}:
+combine all photons that are separated by 5 degrees from all charged
+particles.
+
+
+\subsubsection{combine}
+\begin{quote}
+\begin{footnotesize}
+  \ttt{combine [\textit{particles-1}, \textit{particles-2}]} \\
+  \ttt{combine if \textit{condition}} [\textit{particles-1}, \textit{particles-2}]
+\end{footnotesize}
+\end{quote}
+Make a new subevent of composite particles.  The composites are generated by
+combining all particles from subevent \textit{particles-1} with all particles
+from subevent \textit{particles-2} in all possible combinations.  Overlapping
+combinations are excluded, however: if a (composite) particle in the first
+argument has a constituent in common with a composite particle in the second
+argument, the combination is dropped.  In particular, this applies if the
+particles are identical.
+
+If a \textit{condition} is provided, the combination is done only when the
+logical expression, applied to the particle pair in question, returns true.
+For instance, here we reconstruct intermediate $W^-$ bosons:
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+@W_candidates = combine if 70 GeV < M < 80 GeV ["mu-", "numubar"]
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+Note that the combination may fail, so the resulting subevent could be empty.
+
+
+\subsubsection{select}
+\begin{quote}
+\begin{footnotesize}
+  \ttt{select if \textit{condition} [\textit{particles}]}   \\ 
+  \ttt{select if \textit{condition} [\textit{particles}, \textit{ref-particles}]}
+\end{footnotesize}
+\end{quote}
+One argument: select all particles in the argument that satisfy the
+\textit{condition} and drop the rest.  Two arguments: the
+\textit{ref-particles} provide a second argument for binary observables.
+Select particles if the condition is satisfied for all reference particles.
+
+\subsubsection{extract}
+\begin{quote}
+\begin{footnotesize}
+  \ttt{extract [\textit{particles}]}   \\ 
+  \ttt{extract index \textit{index-value} [\textit{particles}]}
+\end{footnotesize}
+\end{quote}
+Return a single-particle subevent.  In the first version, it contains the
+first particle in the subevent \textit{particles}.  In the second version, the
+particle with index \textit{index-value} is returned, where
+\textit{index-value} is an integer expression.  If its value is negative, the
+index is counted from the end of the subevent.
+
+The order of particles in a event or subevent is not always well-defined, so
+you may wish to sort the subevent before applying the \textit{extract}
+function to it.
+
+\subsubsection{sort}
+\begin{quote}
+\begin{footnotesize}
+   \ttt{sort [\textit{particles}]} \\
+   \ttt{sort by \textit{observable} [\textit{particles}]}   \\ 
+   \ttt{sort by \textit{observable} [\textit{particles}, \textit{ref-particle}]}
+\end{footnotesize}
+\end{quote}
+Sort the subevent according to some criterion.  If no criterion is supplied
+(first version), the subevent is sorted by increasing PDG code (first
+particles, then antiparticles).  In the second version, the
+\textit{observable} is a real expression which is evaluated for each particle
+of the subevent in turn.  The subevent is sorted by increasing value of this
+expression, for instance:
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+@sorted_evt = sort by Pt [@evt]
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+In the third version, a reference particle is provided as second argument, so
+the sorting can be done for binary observables.  It doesn't make much sense to
+have several reference particles at once, so the \ttt{sort} function uses
+only the first entry in the subevent \textit{ref-particle}, if it has more
+than one.
+
+
+\subsubsection{join}
+\begin{quote}
+\begin{footnotesize}
+  \ttt{join [\textit{particles}, \textit{new-particles}]} \\
+  \ttt{join if \textit{condition}} [\textit{particles}, \textit{new-particles}]
+\end{footnotesize}
+\end{quote}
+This commands appends the particles in subevent \textit{new-particles} to the
+subevent \textit{particles}, i.e., it joins the two particle sets.  To be
+precise, a particle from \textit{new-particles} is only appended if it is not
+present in \textit{particles}, so the function will not produce duplicate
+entries unless they had been there in the first place.
+
+In the second version, each particle from \textit{new-particles} is also
+checked with all particles in the first set whether \textit{condition} is
+fulfilled.  If yes, it is appended, otherwise it is dropped.
+
+
+\subsubsection{operator \&}
+
+Subevents can also be concatenated by the operator \verb|&|.  This effectively
+applies \ttt{join} to all operands in turn.  Example:
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+  @visible = 
+    select if Pt > 10 GeV and E > 5 GeV [photon]
+  & select if Pt > 20 GeV and E > 10 GeV [colored]
+  & select if Pt > 10 GeV [lepton]
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+
+
+\subsection{Calculating observables}
+
+Observables (invariant mass \ttt{M}, energy \ttt{E}, \ldots) are used in
+expressions just like ordinary numeric variables.  By convention, their names
+start with a capital letter.  They are computed using a particle momentum (or
+two particle momenta) which are taken from a subsequent subevent argument.
+
+We can extract the value of an observable for an event and make it available
+for computing the \ttt{scale} value, or for histogramming etc.:
+
+\subsubsection{eval}
+\begin{quote}
+\begin{footnotesize}
+  \ttt{eval \textit{expr} [\textit{particles}]} \\
+  \ttt{eval \textit{expr}} [\textit{particles-1}, \textit{particles-2}]
+\end{footnotesize}
+\end{quote}
+
+The function \ttt{eval} takes an expression involving observables and
+evaluates it for the first momentum (or momentum pair) of the subevent (or
+subevent pair) in square brackets that follows the expression.  For example,
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+  eval Pt [colored]
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+evaluates to the transverse momentum of the first colored particle,
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+  eval M [@jets, @jets]
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+evaluates to the invariant mass of the first distinct pair of jets (assuming
+that \verb|@jets| has been defined in \ttt{let} construct), and
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+  eval E - M [combine [e1, N1]]
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+evaluates to the difference of energy and mass of the combination of the first
+electron-neutrino pair in the event.
+
+The last example illustrates why observables are treated like variables, even
+though they are functions of particles: the \ttt{eval} construct with the
+particle reference in square brackets after the expression allows to compute
+derived observables -- observables which are functions of new observables --
+without the need for hard-coding them as new functions.
+
+
+\subsection{Cuts and event selection}
+
+Instead of a numeric value, we can use observables to compute a logical value.
+
+\subsubsection{all}
+\begin{quote}
+\begin{footnotesize}
+  \ttt{all \textit{logical-expr} [\textit{particles}]} \\
+  \ttt{all \textit{logical-expr}} [\textit{particles-1}, \textit{particles-2}]
+\end{footnotesize}
+\end{quote}
+The \ttt{all} construct expects a logical expression and one or two subevent
+arguments in square brackets.
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+  all Pt > 10 GeV [charged]
+  all 80 GeV < M < 100 GeV [lepton, antilepton]
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+In the second example, \ttt{lepton} and \ttt{antilepton} should be aliases
+defined in a \ttt{let} construct.  (Recall that aliases are promoted to
+subevents if they occur within square brackets.)
+
+This construction defines a cut.  The result value is \ttt{true} if the
+logical expression evaluates to \ttt{true} for all particles in the subevent
+in square brackets.  In the two-argument case it must be \ttt{true} for all
+non-overlapping combinations of particles in the two subevents.  If one of the
+arguments is the empty subevent, the result is also \ttt{true}.
+
+\subsubsection{any}
+\begin{quote}
+\begin{footnotesize}
+  \ttt{any \textit{logical-expr} [\textit{particles}]} \\
+  \ttt{any \textit{logical-expr}} [\textit{particles-1}, \textit{particles-2}]
+\end{footnotesize}
+\end{quote}
+The \ttt{any} construct is true if the logical expression is true for at least
+one particle or non-overlapping particle combination:
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+  any E > 100 GeV [photon]
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+This defines a trigger or selection condition.  If a subevent argument is
+empty, it evaluates to \ttt{false}
+
+\subsubsection{no}
+\begin{quote}
+\begin{footnotesize}
+  \ttt{no \textit{logical-expr} [\textit{particles}]} \\
+  \ttt{no \textit{logical-expr}} [\textit{particles-1}, \textit{particles-2}]
+\end{footnotesize}
+\end{quote}
+The \ttt{no} construct is true if the logical expression is true for no single
+one particle or non-overlapping particle combination:
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+  no 5 degree < Theta < 175 degree ["e-":"e+"]
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+This defines a veto condition.  If a subevent argument is empty, it
+evaluates to \ttt{true}.  It is equivalent to \ttt{not any\ldots}, but
+included for notational convenience.
+
+
+\subsection{More particle functions}
+
+\subsubsection{count}
+\begin{quote}
+\begin{footnotesize}
+  \ttt{count [\textit{particles}]} \\
+  \ttt{count [\textit{particles-1}, \textit{particles-2}]} \\
+  \ttt{count if \textit{logical-expr}} [\textit{particles}]
+  \ttt{count if \textit{logical-expr}} [\textit{particles-1}, \textit{ref-particles-2}]
+\end{footnotesize}
+\end{quote}
+This counts the number of events in a subevent, the result is of type
+\ttt{int}.  If there is a conditional expression, it counts the number of
+\ttt{particle} in the subevent that pass the test.   If there are two
+arguments, it counts the number of non-overlapping particle pairs (that pass
+the test, if any).
+
+
+\subsubsection{Predefined observables}
+
+The following real-valued observables are available in SINDARIN for use in
+\ttt{eval}, \ttt{all}, \ttt{any}, \ttt{no}, and \ttt{count} constructs.  The
+argument is always the subevent or alias enclosed in square brackets.
+\begin{itemize}
+\item \ttt{M2}
+  \begin{itemize}
+  \item One argument: Invariant mass squared of the (composite) particle in the
+    argument.
+  \item Two arguments: Invariant mass squared of the sum of the two momenta.
+  \end{itemize}
+\item \ttt{M}
+  \begin{itemize}
+  \item Signed square root of \ttt{M2}: positive if $\ttt{M2}>0$, negative if
+    $\ttt{M2}<0$.
+  \end{itemize}
+\item \ttt{E}
+  \begin{itemize}
+  \item One argument: Energy of the (composite) particle in the argument.
+  \item Two arguments: Sum of the energies of the two momenta.
+  \end{itemize}
+\item \ttt{Px}, \ttt{Py}, \ttt{Pz}
+  \begin{itemize}
+  \item Like \ttt{E}, but returning the spatial momentum components.
+  \end{itemize}
+\item \ttt{P}
+  \begin{itemize}
+  \item Like \ttt{E}, returning the absolute value of the spatial momentum.
+  \end{itemize}
+\item \ttt{Pt}, \ttt{Pl}
+  \begin{itemize}
+  \item Like \ttt{E}, returning the transversal and longitudinal momentum,
+    respectively.
+  \end{itemize}
+\item \ttt{Theta}
+  \begin{itemize}
+  \item One argument: Absolute polar angle in the lab frame
+  \item Two arguments: Angular distance of two particles in the lab frame.
+  \end{itemize}
+\item \ttt{Phi}
+  \begin{itemize}
+  \item One argument: Absolute azimuthal angle in the lab frame
+  \item Two arguments: Azimuthal distance of two particles in the lab frame
+  \end{itemize}
+\item \ttt{Rap}, \ttt{Eta}
+  \begin{itemize}
+  \item One argument: rapidity / pseudorapidity
+  \item Two arguments: rapidity / pseudorapidity difference
+  \end{itemize}
+\item \ttt{Dist}
+  \begin{itemize}
+  \item Two arguments: Distance on the $\eta$-$\phi$ cylinder, i.e.,
+    $\sqrt{\Delta\eta^2 + \Delta\phi^2}$
+  \end{itemize}
+\end{itemize}
+There is also an integer-valued observable:
+\begin{itemize}
+\item \ttt{PDG}
+  \begin{itemize}
+  \item One argument: PDG code of the particle.  For a composite particle, the
+    code is undefined (value 0).
+  \end{itemize}
+\end{itemize}
+
+
+\section{Physics Models}
+
+A physics model is a combination of particles, numerical parameters (masses,
+couplings, widths), and Feynman rules.  Many physics analyses are done in the
+context of the Standard Model (SM).  The SM is also the default model for
+\whizard.  Alternatively, you can choose a subset of the SM (QED or QCD),
+variants of the SM (e.g., with or without nontrivial CKM matrix), or various
+extensions of the SM.  The complete list is displayed in
+Table~\ref{tab:models}.
+
+The model definitions are contained in text files with filename extension
+\ttt{.mdl}, e.g., \ttt{SM.mdl}, which are located in the \ttt{share/models}
+subdirectory of the \whizard\ installation.  These files are easily readable,
+so if you need details of a model implementation, inspect their contents.  The
+model file contains the complete particle and parameter definitions as well as
+their default values.  It also contains a list of vertices.  This is used only
+for phase-space setup; the vertices used for generating amplitudes and the
+corresponding Feynman rules are stored in different files within the
+\oMega\ source tree.
+
+In a SINDARIN script, a model is a special object of type \ttt{model}.  There
+is always a \emph{current} model.  Initially, this is the SM, so on startup
+\whizard\ reads the \ttt{SM.mdl} model file and assigns its content to the
+current model object.  (You can change the default model by the \ttt{--model}
+option on the command line.)  Once the model has been loaded, you can define
+processes for the model, and you have all independent model parameters at your
+disposal.  As noted before, these are intrinsic parameters which need not be
+declared when you assign them a value, for instance:
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+  mW = 80.33 GeV
+  wH = 243.1 MeV  
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+Other parameters are \emph{derived}.  They can be used in expressions like any
+other parameter, they are also intrinsic, but they cannot be modified directly
+at all.  For instance, the electromagnetic coupling \ttt{ee} is a derived
+parameter.  If you change either \ttt{GF} (the Fermi constant), \ttt{mW} (the
+$W$ mass), or \ttt{mZ} (the $Z$ mass), this parameter will reflect the change,
+but setting it directly is an error.  In other words, the SM is defined within
+\whizard\ in the $G_F$-$m_W$-$m_Z$ scheme.  (While this scheme is unusual for
+loop calculations, it is natural for a tree-level event generator where the
+$Z$ and $W$ poles have to be at their experimentally determined location.)
+
+The model also defines the particle names and aliases that you can use for
+defining processes, cuts, or analysis.
+
+If you would like to generate a SUSY process instead, for instance, you can
+assign a different model (cf.\ Table~\ref{tab:models}) to the current model
+object:
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+  model = MSSM  
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+This assignment has the consequence that the list of SM parameters and
+particles is replaced by the corresponding MSSM list (which is much longer).
+The MSSM contains essentially all SM parameters by the same name, but in fact
+they are different parameters.  This is revealed when you say
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+  model = SM  
+  mb = 5.0 GeV  
+  model = MSSM
+  print (mb)  
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+After the model is reassigned, you will see the MSSM value of $m_b$ which
+still has its default value, not the one you have given.  However, if you
+revert to the SM later,
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+  model = SM  
+  print (mb)  
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+you will see that your modification of the SM's $m_b$ value has been
+remembered.  If you want both mass values to agree, you have to set them
+separately in the context of their respective model.  Although this might seem
+cumbersome at first, it is nevertheless a sensible procedure since the
+parameters defined by the user might anyhow not be defined or available for
+all chosen models.
+
+When using two different models which need an SLHA input file, 
+these {\em have} to be provided for both models.
+
+Within a given scope, there is only one current model.  The current model can
+be reset permanently as above.  It can also be temporarily be reset in a local
+scope, i.e., the option body of a command or the body of a \ttt{scan} loop.
+It is thus possible to use several models within the same script.  For
+instance, you may define a SUSY signal process and a pure-SM background
+process. Each process depends only on the respective model's parameter set,
+and a change to a parameter in one of the models affects only the
+corresponding process.
+
+
+\clearpage
+
+\section{Processes}
+
+\subsection{Process definition}
+
+\subsection{Options}
+
+\subsection{Process libraries}
+
+\subsection{Tayloring \whizard}
+
+
+\section{Beams}
+
+\subsection{Beam setup}
+
+\subsection{LHAPDF}
+
+\subsection{ISR structure functions}
+
+\subsection{Beamstrahlung}
+
+\subsection{Effective photon approximation}
+
+
+
+\section{Cross sections}
+
+\subsection{Integration}
+
+\subsection{Cuts}
+
+\subsection{Weight and scale}
+
+
+\section{Events}
+
+\subsection{Simulation}
+
+\subsection{Analysis}
+
+
+
+\section{Analysis}
+
+\subsection{Observables}
+
+\subsection{Histograms}
+
+\subsection{Plots}
+
+
+
+\section{Control structures}
+
+\subsection{Conditionals}
+
+\subsection{Loops}
+
+\subsection{Include files}
+
+\subsection{External programs}
+
+
+\section{Miscellaneous commands}
+
+\subsection{Printing messages}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{User Interfaces for WHIZARD}
+
+\section{Command line and SINDARIN input files}
+
+
 
 \section{WHISH -- The \whizard\ Shell/Interactive mode}
 \label{sec:whish}
@@ -1372,24 +2037,16 @@ The WHISH can be closed by the \texttt{quit} command:
   whish? quit
 \end{verbatim}
 
+
+\section{Graphical user interface}
+
+\emph{This is planned, but not implemented yet.}
+
+
+\section{WHIZARD as a library}
+
+\emph{This is planned, but not implemented yet.}
 %%%%%
-
-\section{Using processes from several different models}
-
-When using two different models which need an SLHA input file, 
-these {\em have} to be provided for both models. Otherwise \whizard\
-will not be performing the phase-space setup for the second process. 
-
-Note that when using more than one models, the setting of parameters 
-{\em after} the last model and process declarations only affects the 
-active -- i.e. the last -- model. If one wants to set a parameter for 
-all models in the input file, one has to repeat the model setting for 
-every defined model. Aöthough this might seem cumbersome at first, 
-it is nevertheless a sensible procedure since the parameters defined
-by the user might anyhow not be defined or available for all chosen
-models. 
-
-\newpage
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -2049,8 +2706,13 @@ Note that this list -- due to the numerical heuristics -- might very
 well depend on the number of calls for the matrix elements per
 iteration, and also on the corresponding random number seed.  
 
-\appendix
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{New Models via FeynRules}
+
+
+
+\appendix
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{SINDARIN Reference}
@@ -2080,6 +2742,7 @@ are -- in alphabetical order -- \ttt{alias}, \ttt{all},
 \ttt{scan}, \ttt{seed}, 
 \ttt{show}, \ttt{simulate}, \ttt{sqrts}, 
 \ttt{then}, \ttt{\$title}, \ttt{tolerance}, \ttt{true}, \ttt{unstable}, 
+\ttt{?vis\_channels},
 \ttt{write\_analysis}, \ttt{write\_slha},
 \ttt{\$xlabel}, and \ttt{\$ylabel}. Also units 
 are fixed, like \ttt{degree}, \ttt{eV}, \ttt{keV}, q 
@@ -2167,6 +2830,11 @@ antiprotons as beam particles are predefined as \ttt{p} and
 \ttt{pbar}, respectively. A structure function, like \ttt{lhapdf},
 \ttt{ISR}, \ttt{EPA} and so on are switched on as e.g. \ttt{beams = p,
 p => lhapdf}. (cf. also \ttt{circe}, \ttt{circe2}, \ttt{lhapdf}).
+%%%%%
+\item
+\ttt{int checkpoint}\\
+Setting this variable to a positive integer $n$ instructs simulate to
+print out a progress summary every $n$ events.
 %%%%%
 \item
 \ttt{cmplx} \newline
@@ -2573,6 +3241,26 @@ file. Strictly speaking, it is a unary function setting the value
 \ttt{cmplx}) 
 %%%%%
 \item
+\ttt{real epsilon}\\
+Predefined real; the relative uncertainty instrinsic to the floating point type
+used by WHIZARD.
+%%%%%
+\item
+\ttt{int real\_precision}\\
+Predefined integer; the decimal precision of the floating point type used
+by WHIZARD.
+%%%%%
+\item
+\ttt{int range}\\
+Predefined integer; the decimal range of the floating point type used
+by WHIZARD.
+%%%%%
+\item
+\ttt{real tiny}\\
+Predefined real; the smallest number which can be represented by the floating
+point type used by WHIZARD.
+%%%%%
+\item
 \ttt{?rebuild} \newline
 The logical variable \ttt{?rebuild = true/false} specifies whether
 the matrix element code for processes is re-generated by the matrix
@@ -2696,10 +3384,11 @@ arbitrary variable.
 \item
 \ttt{simulate} \newline
 This command invokes the generation of events for the process
-\ttt{proc} by means of \ttt{simulate (<proc>)}. It accepts both
-\ttt{\$sample} and \ttt{sample\_format} as optional arguments.
+\ttt{proc} by means of \ttt{simulate (<proc>)}.\\
+Optional arguments:
+\ttt{\$sample}, \ttt{sample\_format}, \ttt{checkpoint}\\
 (cf. also \ttt{integrate}, \ttt{luminosity}, \ttt{n\_events},
-\ttt{\$sample}, \ttt{sample\_format})
+\ttt{\$sample}, \ttt{sample\_format}, \ttt{checkpoint})
 %%%%%
 \item
 \ttt{sqrts} \newline
@@ -2795,6 +3484,15 @@ elements. This obviously allows also for inclusive decays.
 (cf. also \ttt{stable})
 %%%%%
 \item
+\ttt{?vis\_channels} \newline
+Optional logical argument for the \ttt{integrate} command that demands
+\whizard\ to generate a PDF or postscript output showing the
+classification of the found phase space channels according to their
+properties: \ttt{integrate (foo) { iterations=3:10000
+    ?vis\_channels}}.
+(cf. also \ttt{integrate})
+%%%%%
+\item
 \ttt{write\_analysis} \newline
 The \ttt{write\_analysis} statement tells WHIZARD to write the
 analysis setup by the user for the SINDARIN input file under
@@ -2823,1244 +3521,1244 @@ axis label in a plot or histogram in a WHIZARD analysis.
 (cf. also \ttt{label} and \ttt{\$xlabel})
 \end{itemize}
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\chapter{Example files}
+%% \chapter{Example files}
 
-\section{Extended internal event formats}
+%% \section{Extended internal event formats}
 
-{\bf WHIZARD DEFAULT, .evt:}
+%% {\bf WHIZARD DEFAULT, .evt:}
 
-\begin{scriptsize}
-\begin{verbatim}
- ========================================================================
- Event record:
- ========================================================================
- ========================================================================
-|===============================================================================
- Decay tree:
-   tries =            1
-   acceptance probability =    1.0000000000000000     
-|===============================================================================
- Mother process = 'qedtest_eemm'
-|===============================================================================
- Decay chain:
-|===============================================================================
- Decay configuration: [undefined]
-|===============================================================================
- Evaluator: Color-summed including all decays
-Evaluator:
- Interaction:           8
- Virtual:
- Particle 1
- E =    250.00000000000000     
- P =    0.0000000000000000        0.0000000000000000        249.99999999947775     
- mask [fch] = [FTT]
- internal links: X => 3 4
- source: (2)1
- Particle 2
- E =    250.00000000000000     
- P =    0.0000000000000000        0.0000000000000000       -249.99999999947775     
- mask [fch] = [FTT]
- internal links: X => 3 4
- source: (2)2
- Outgoing:
- Particle 3
- E =    250.00000000000000     
- P =    223.64041528426193       -102.79251826657215        43.802416227981048     
- mask [fch] = [FTT]
- internal links: 1 2 => X
- source: (5)3
- Particle 4
- E =    250.00000000000000     
- P =   -223.64041528426193        102.79251826657215       -43.802416227981048     
- mask [fch] = [FTT]
- internal links: 1 2 => X
- source: (5)4
- State matrix:  norm =   8.67160247171198766E-003
- [f(11)]
-   [f(-11)]
-     [f(13)]
-       [f(-13)] => ME(1) =   1.00000000000    
- Matrix-element multiplication
-  Input interaction 1: 2
-  Input interaction 2:           5
-  ME(1) = 
-    + ME1(1) x ME2(1)
-|===============================================================================
- Evaluator: Color flow components including all decays
-Evaluator:
- Interaction:           9
- Virtual:
- Particle 1
- E =    250.00000000000000     
- P =    0.0000000000000000        0.0000000000000000        249.99999999947775     
- mask [fch] = [FFgT]
- internal links: X => 3 4
- source: (7)1
- Particle 2
- E =    250.00000000000000     
- P =    0.0000000000000000        0.0000000000000000       -249.99999999947775     
- mask [fch] = [FFgT]
- internal links: X => 3 4
- source: (7)2
- Outgoing:
- Particle 3
- E =    250.00000000000000     
- P =    223.64041528426193       -102.79251826657215        43.802416227981048     
- mask [fch] = [FFgT]
- internal links: 1 2 => X
- source: (6)3
- Particle 4
- E =    250.00000000000000     
- P =   -223.64041528426193        102.79251826657215       -43.802416227981048     
- mask [fch] = [FFgT]
- internal links: 1 2 => X
- source: (6)4
- State matrix:  norm =    1.0000000000000000     
- [f(11)]
-   [f(-11)]
-     [f(13)]
-       [f(-13)] => ME(1) =  8.671602471712E-03
- Matrix-element multiplication
-  Input interaction 1: 7
-  Input interaction 2:           6
-  ME(1) = 
-    + ME1(1) x ME2(1)
-|===============================================================================
-   [Process: qedtest_eemm]
+%% \begin{scriptsize}
+%% \begin{verbatim}
+%%  ========================================================================
+%%  Event record:
+%%  ========================================================================
+%%  ========================================================================
+%% |===============================================================================
+%%  Decay tree:
+%%    tries =            1
+%%    acceptance probability =    1.0000000000000000     
+%% |===============================================================================
+%%  Mother process = 'qedtest_eemm'
+%% |===============================================================================
+%%  Decay chain:
+%% |===============================================================================
+%%  Decay configuration: [undefined]
+%% |===============================================================================
+%%  Evaluator: Color-summed including all decays
+%% Evaluator:
+%%  Interaction:           8
+%%  Virtual:
+%%  Particle 1
+%%  E =    250.00000000000000     
+%%  P =    0.0000000000000000        0.0000000000000000        249.99999999947775     
+%%  mask [fch] = [FTT]
+%%  internal links: X => 3 4
+%%  source: (2)1
+%%  Particle 2
+%%  E =    250.00000000000000     
+%%  P =    0.0000000000000000        0.0000000000000000       -249.99999999947775     
+%%  mask [fch] = [FTT]
+%%  internal links: X => 3 4
+%%  source: (2)2
+%%  Outgoing:
+%%  Particle 3
+%%  E =    250.00000000000000     
+%%  P =    223.64041528426193       -102.79251826657215        43.802416227981048     
+%%  mask [fch] = [FTT]
+%%  internal links: 1 2 => X
+%%  source: (5)3
+%%  Particle 4
+%%  E =    250.00000000000000     
+%%  P =   -223.64041528426193        102.79251826657215       -43.802416227981048     
+%%  mask [fch] = [FTT]
+%%  internal links: 1 2 => X
+%%  source: (5)4
+%%  State matrix:  norm =   8.67160247171198766E-003
+%%  [f(11)]
+%%    [f(-11)]
+%%      [f(13)]
+%%        [f(-13)] => ME(1) =   1.00000000000    
+%%  Matrix-element multiplication
+%%   Input interaction 1: 2
+%%   Input interaction 2:           5
+%%   ME(1) = 
+%%     + ME1(1) x ME2(1)
+%% |===============================================================================
+%%  Evaluator: Color flow components including all decays
+%% Evaluator:
+%%  Interaction:           9
+%%  Virtual:
+%%  Particle 1
+%%  E =    250.00000000000000     
+%%  P =    0.0000000000000000        0.0000000000000000        249.99999999947775     
+%%  mask [fch] = [FFgT]
+%%  internal links: X => 3 4
+%%  source: (7)1
+%%  Particle 2
+%%  E =    250.00000000000000     
+%%  P =    0.0000000000000000        0.0000000000000000       -249.99999999947775     
+%%  mask [fch] = [FFgT]
+%%  internal links: X => 3 4
+%%  source: (7)2
+%%  Outgoing:
+%%  Particle 3
+%%  E =    250.00000000000000     
+%%  P =    223.64041528426193       -102.79251826657215        43.802416227981048     
+%%  mask [fch] = [FFgT]
+%%  internal links: 1 2 => X
+%%  source: (6)3
+%%  Particle 4
+%%  E =    250.00000000000000     
+%%  P =   -223.64041528426193        102.79251826657215       -43.802416227981048     
+%%  mask [fch] = [FFgT]
+%%  internal links: 1 2 => X
+%%  source: (6)4
+%%  State matrix:  norm =    1.0000000000000000     
+%%  [f(11)]
+%%    [f(-11)]
+%%      [f(13)]
+%%        [f(-13)] => ME(1) =  8.671602471712E-03
+%%  Matrix-element multiplication
+%%   Input interaction 1: 7
+%%   Input interaction 2:           6
+%%   ME(1) = 
+%%     + ME1(1) x ME2(1)
+%% |===============================================================================
+%%    [Process: qedtest_eemm]
 
- Particle set:
- Particle 1 [i] f(11)
- Momentum:
- E =    250.00000000000000     
- P =    0.0000000000000000        0.0000000000000000        249.99999999947775     
- T =   2.61124455391836818E-007
- Children: 3 4
- Particle 2 [i] f(-11)
- Momentum:
- E =    250.00000000000000     
- P =    0.0000000000000000        0.0000000000000000       -249.99999999947775     
- T =   2.61124455391836818E-007
- Children: 3 4
- Particle 3 [o] f(13)
- Momentum:
- E =    250.00000000000000     
- P =    223.64041528426193       -102.79251826657215        43.802416227981048     
- T =   1.11724899955660817E-002
- Parents:  1 2
- Particle 4 [o] f(-13)
- Momentum:
- E =    250.00000000000000     
- P =   -223.64041528426193        102.79251826657215       -43.802416227981048     
- T =   1.11724899955660817E-002
- Parents:  1 2
+%%  Particle set:
+%%  Particle 1 [i] f(11)
+%%  Momentum:
+%%  E =    250.00000000000000     
+%%  P =    0.0000000000000000        0.0000000000000000        249.99999999947775     
+%%  T =   2.61124455391836818E-007
+%%  Children: 3 4
+%%  Particle 2 [i] f(-11)
+%%  Momentum:
+%%  E =    250.00000000000000     
+%%  P =    0.0000000000000000        0.0000000000000000       -249.99999999947775     
+%%  T =   2.61124455391836818E-007
+%%  Children: 3 4
+%%  Particle 3 [o] f(13)
+%%  Momentum:
+%%  E =    250.00000000000000     
+%%  P =    223.64041528426193       -102.79251826657215        43.802416227981048     
+%%  T =   1.11724899955660817E-002
+%%  Parents:  1 2
+%%  Particle 4 [o] f(-13)
+%%  Momentum:
+%%  E =    250.00000000000000     
+%%  P =   -223.64041528426193        102.79251826657215       -43.802416227981048     
+%%  T =   1.11724899955660817E-002
+%%  Parents:  1 2
 
- Event weight  =   1.0000000000000000     
- Excess weight =   0.0000000000000000     
-\end{verbatim}
-\end{scriptsize}
+%%  Event weight  =   1.0000000000000000     
+%%  Excess weight =   0.0000000000000000     
+%% \end{verbatim}
+%% \end{scriptsize}
 
-{\bf DEBUG FORMAT:}
+%% {\bf DEBUG FORMAT:}
 
-\begin{scriptsize}
-\begin{verbatim}
- ========================================================================
- Event record:
-========================================================================
- Process data:           1 (qedtest_eemm)
-   [scattering]
-   use separate beam setup =  T
-Beam data (collision):
- e-  (mass = 5.11000000E-04 GeV)
- Polarization: [spin_type = 2, mult = 2]
- State matrix:  norm =    1.0000000000000000     
- [] => ME(1) =  0.500000000000    
- e+  (mass = 5.11000000E-04 GeV)
- Polarization: [spin_type = 2, mult = 2]
- State matrix:  norm =    1.0000000000000000     
- [] => ME(1) =  0.500000000000    
- sqrts = 500.000000000000 GeV
- C.m. momenta:
- E =    250.00000000000000     
- P =    0.0000000000000000        0.0000000000000000        249.99999999947775     
- E =    250.00000000000000     
- P =    0.0000000000000000        0.0000000000000000       -249.99999999947775     
- Lab momenta:
- E =    250.00000000000000     
- P =    0.0000000000000000        0.0000000000000000        249.99999999947775     
- E =    250.00000000000000     
- P =    0.0000000000000000        0.0000000000000000       -249.99999999947775     
- MD5 sum: 62BCF22F9E526C4368F761805CB3F4FA
-   number of structure functions  =            0
-   number of strfun parameters    =            0
-   number of process parameters   =            2
-   number of parameters total     =            2
-   number of integration channels =            1
-   number of bins per channel     =           20
-   c.m. energy (sqrts)     =    500.00000000000000     
-   c.m. energy (sqrts_hat) =    500.00000000000000     
-   Colliding partons       = f(11) f(-11)
-   Incoming parton masses  =   5.10999999999999953E-004  5.10999999999999953E-004
-   In-state flux factor    =    1213731799.9298604     
-   Strfun mapping factor   =    1.0000000000000000     
-   VAMP phs factor         =   0.99999991062007598     
-   Phase-space volume      =   2.55294034613545786E-005
-   Squared matrix element  =   8.67160247171198766E-003
-   Reweighting factor      =    1.0000000000000000     
-   Sample-function value   =    268.69693914993798     
- ------------------------------------------------------------------------
- Structure function parameters =
+%% \begin{scriptsize}
+%% \begin{verbatim}
+%%  ========================================================================
+%%  Event record:
+%% ========================================================================
+%%  Process data:           1 (qedtest_eemm)
+%%    [scattering]
+%%    use separate beam setup =  T
+%% Beam data (collision):
+%%  e-  (mass = 5.11000000E-04 GeV)
+%%  Polarization: [spin_type = 2, mult = 2]
+%%  State matrix:  norm =    1.0000000000000000     
+%%  [] => ME(1) =  0.500000000000    
+%%  e+  (mass = 5.11000000E-04 GeV)
+%%  Polarization: [spin_type = 2, mult = 2]
+%%  State matrix:  norm =    1.0000000000000000     
+%%  [] => ME(1) =  0.500000000000    
+%%  sqrts = 500.000000000000 GeV
+%%  C.m. momenta:
+%%  E =    250.00000000000000     
+%%  P =    0.0000000000000000        0.0000000000000000        249.99999999947775     
+%%  E =    250.00000000000000     
+%%  P =    0.0000000000000000        0.0000000000000000       -249.99999999947775     
+%%  Lab momenta:
+%%  E =    250.00000000000000     
+%%  P =    0.0000000000000000        0.0000000000000000        249.99999999947775     
+%%  E =    250.00000000000000     
+%%  P =    0.0000000000000000        0.0000000000000000       -249.99999999947775     
+%%  MD5 sum: 62BCF22F9E526C4368F761805CB3F4FA
+%%    number of structure functions  =            0
+%%    number of strfun parameters    =            0
+%%    number of process parameters   =            2
+%%    number of parameters total     =            2
+%%    number of integration channels =            1
+%%    number of bins per channel     =           20
+%%    c.m. energy (sqrts)     =    500.00000000000000     
+%%    c.m. energy (sqrts_hat) =    500.00000000000000     
+%%    Colliding partons       = f(11) f(-11)
+%%    Incoming parton masses  =   5.10999999999999953E-004  5.10999999999999953E-004
+%%    In-state flux factor    =    1213731799.9298604     
+%%    Strfun mapping factor   =    1.0000000000000000     
+%%    VAMP phs factor         =   0.99999991062007598     
+%%    Phase-space volume      =   2.55294034613545786E-005
+%%    Squared matrix element  =   8.67160247171198766E-003
+%%    Reweighting factor      =    1.0000000000000000     
+%%    Sample-function value   =    268.69693914993798     
+%%  ------------------------------------------------------------------------
+%%  Structure function parameters =
 
-   Process energy scale    =    500.00000000000000     
- ------------------------------------------------------------------------
- QCD coupling parameters =
-   alpha-s is fixed =  T
- ------------------------------------------------------------------------
- Phase-space integration parameters (input) =
-  0.93143035192042589       0.58760484028607607     
- Integration channel =           1
- Phase-space integration parameters (complete) =
-  0.93143035192042589       0.58760484028607607     
- Channels: phase-space factors =
-  0.99999991062007598     
-------------------------------------------------------------------------
- Structure function chain:
+%%    Process energy scale    =    500.00000000000000     
+%%  ------------------------------------------------------------------------
+%%  QCD coupling parameters =
+%%    alpha-s is fixed =  T
+%%  ------------------------------------------------------------------------
+%%  Phase-space integration parameters (input) =
+%%   0.93143035192042589       0.58760484028607607     
+%%  Integration channel =           1
+%%  Phase-space integration parameters (complete) =
+%%   0.93143035192042589       0.58760484028607607     
+%%  Channels: phase-space factors =
+%%   0.99999991062007598     
+%% ------------------------------------------------------------------------
+%%  Structure function chain:
 
- Colliding beams:
- Interaction:           2
- Outgoing:
- Particle 1
- E =    250.00000000000000     
- P =    0.0000000000000000        0.0000000000000000        249.99999999947775     
- mask [fch] = [FFgT]
- Particle 2
- E =    250.00000000000000     
- P =    0.0000000000000000        0.0000000000000000       -249.99999999947775     
- mask [fch] = [FFgT]
- State matrix:  norm =    1.0000000000000000     
- [f(11)]
-   [f(-11)] => ME(1) =  0.250000000000    
+%%  Colliding beams:
+%%  Interaction:           2
+%%  Outgoing:
+%%  Particle 1
+%%  E =    250.00000000000000     
+%%  P =    0.0000000000000000        0.0000000000000000        249.99999999947775     
+%%  mask [fch] = [FFgT]
+%%  Particle 2
+%%  E =    250.00000000000000     
+%%  P =    0.0000000000000000        0.0000000000000000       -249.99999999947775     
+%%  mask [fch] = [FFgT]
+%%  State matrix:  norm =    1.0000000000000000     
+%%  [f(11)]
+%%    [f(-11)] => ME(1) =  0.250000000000    
 
- Evaluators:
+%%  Evaluators:
 
- Total number of parameters      =            0
- Last structure function (index) =            0           0
- Outgoing particles (index)      =            1           2
- Colliding particles (index)     =            1           2
-------------------------------------------------------------------------
-Incoming beams with all color contractions
-Evaluator:
- Interaction:           7
- Outgoing:
- Particle 1
- E =    250.00000000000000     
- P =    0.0000000000000000        0.0000000000000000        249.99999999947775     
- mask [fch] = [FFgT]
- source: (2)1
- Particle 2
- E =    250.00000000000000     
- P =    0.0000000000000000        0.0000000000000000       -249.99999999947775     
- mask [fch] = [FFgT]
- source: (2)2
- State matrix:  norm =    1.0000000000000000     
- [f(11)]
-   [f(-11)] => ME(1) =  0.250000000000    
- Matrix-element multiplication
-  Input interaction 1: 2
-  Input interaction 2:  [undefined]
-  ME(1) = 
-    + ME1(1)
-------------------------------------------------------------------------
- Hard interaction:
- Process 'qedtest_eemm'
- n_tot =            4
- n_in  =            2
- n_out =            2
- n_flv =            1
- n_hel =           16
- n_col =            1
- n_cin =            2
- n_cf  =            1
- Model parameters:
-           1  0.30286000000000002     
-           2  5.10999999999999953E-004
-           3  0.10570000000000000     
-           4   1.7769999999999999     
- Flavor states:
-           1 :          11         -11          13         -13
- Helicity states:
-           1 :          -1          -1          -1          -1
-           2 :          -1          -1          -1           1
-           3 :          -1          -1           1          -1
-           4 :          -1          -1           1           1
-           5 :          -1           1          -1          -1
-           6 :          -1           1          -1           1
-           7 :          -1           1           1          -1
-           8 :          -1           1           1           1
-           9 :           1          -1          -1          -1
-          10 :           1          -1          -1           1
-          11 :           1          -1           1          -1
-          12 :           1          -1           1           1
-          13 :           1           1          -1          -1
-          14 :           1           1          -1           1
-          15 :           1           1           1          -1
-          16 :           1           1           1           1
- Color states:
-    1://///
- Color factors:
-    1:   1    1  (  1.0000000000000000     ,  0.0000000000000000     )
+%%  Total number of parameters      =            0
+%%  Last structure function (index) =            0           0
+%%  Outgoing particles (index)      =            1           2
+%%  Colliding particles (index)     =            1           2
+%% ------------------------------------------------------------------------
+%% Incoming beams with all color contractions
+%% Evaluator:
+%%  Interaction:           7
+%%  Outgoing:
+%%  Particle 1
+%%  E =    250.00000000000000     
+%%  P =    0.0000000000000000        0.0000000000000000        249.99999999947775     
+%%  mask [fch] = [FFgT]
+%%  source: (2)1
+%%  Particle 2
+%%  E =    250.00000000000000     
+%%  P =    0.0000000000000000        0.0000000000000000       -249.99999999947775     
+%%  mask [fch] = [FFgT]
+%%  source: (2)2
+%%  State matrix:  norm =    1.0000000000000000     
+%%  [f(11)]
+%%    [f(-11)] => ME(1) =  0.250000000000    
+%%  Matrix-element multiplication
+%%   Input interaction 1: 2
+%%   Input interaction 2:  [undefined]
+%%   ME(1) = 
+%%     + ME1(1)
+%% ------------------------------------------------------------------------
+%%  Hard interaction:
+%%  Process 'qedtest_eemm'
+%%  n_tot =            4
+%%  n_in  =            2
+%%  n_out =            2
+%%  n_flv =            1
+%%  n_hel =           16
+%%  n_col =            1
+%%  n_cin =            2
+%%  n_cf  =            1
+%%  Model parameters:
+%%            1  0.30286000000000002     
+%%            2  5.10999999999999953E-004
+%%            3  0.10570000000000000     
+%%            4   1.7769999999999999     
+%%  Flavor states:
+%%            1 :          11         -11          13         -13
+%%  Helicity states:
+%%            1 :          -1          -1          -1          -1
+%%            2 :          -1          -1          -1           1
+%%            3 :          -1          -1           1          -1
+%%            4 :          -1          -1           1           1
+%%            5 :          -1           1          -1          -1
+%%            6 :          -1           1          -1           1
+%%            7 :          -1           1           1          -1
+%%            8 :          -1           1           1           1
+%%            9 :           1          -1          -1          -1
+%%           10 :           1          -1          -1           1
+%%           11 :           1          -1           1          -1
+%%           12 :           1          -1           1           1
+%%           13 :           1           1          -1          -1
+%%           14 :           1           1          -1           1
+%%           15 :           1           1           1          -1
+%%           16 :           1           1           1           1
+%%  Color states:
+%%     1://///
+%%  Color factors:
+%%     1:   1    1  (  1.0000000000000000     ,  0.0000000000000000     )
 
- Interaction:           1
- Incoming:
- Particle 1
- E =    250.00000000000000     
- P =    0.0000000000000000        0.0000000000000000        249.99999999947775     
- mask [fch] = [FFgF]
- internal links: X => 3 4
- source: (2)1
- Particle 2
- E =    250.00000000000000     
- P =    0.0000000000000000        0.0000000000000000       -249.99999999947775     
- mask [fch] = [FFgF]
- internal links: X => 3 4
- source: (2)2
- Outgoing:
- Particle 3
- E =    250.00000000000000     
- P =    223.64041528426193       -102.79251826657215        43.802416227981048     
- mask [fch] = [FFgF]
- internal links: 1 2 => X
- Particle 4
- E =    250.00000000000000     
- P =   -223.64041528426193        102.79251826657215       -43.802416227981048     
- mask [fch] = [FFgF]
- internal links: 1 2 => X
- State matrix:  norm =    1.0000000000000000     
- [f(11) h(-1)]
-   [f(-11) h(-1)]
-     [f(13) h(-1)]
-       [f(-13) h(-1)] => ME(1) =   0.00000000000    
-       [f(-13) h(1)] => ME(2) =  1.845852774013E-07,-2.960943317340E-24
-     [f(13) h(1)]
-       [f(-13) h(-1)] => ME(3) =  1.845852774013E-07, 7.311291744600E-25
-       [f(-13) h(1)] => ME(4) =   0.00000000000    
-   [f(-11) h(1)]
-     [f(13) h(-1)]
-       [f(-13) h(-1)] => ME(5) = -3.818108556076E-05
-       [f(-13) h(1)] => ME(6) =  9.794450119376E-02, 4.501852634852E-02
-     [f(13) h(1)]
-       [f(-13) h(-1)] => ME(7) = -6.873979831962E-02,-3.159508072559E-02
-       [f(-13) h(1)] => ME(8) =  2.486236753832E-05, 2.897685239959E-05
- [f(11) h(1)]
-   [f(-11) h(-1)]
-     [f(13) h(-1)]
-       [f(-13) h(-1)] => ME(9) = -2.486236753832E-05, 2.897685239959E-05
-       [f(-13) h(1)] => ME(10) = -6.873979831962E-02, 3.159508072559E-02
-     [f(13) h(1)]
-       [f(-13) h(-1)] => ME(11) =  9.794450119376E-02,-4.501852634852E-02
-       [f(-13) h(1)] => ME(12) =  3.818108556076E-05
-   [f(-11) h(1)]
-     [f(13) h(-1)]
-       [f(-13) h(-1)] => ME(13) =   0.00000000000    
-       [f(-13) h(1)] => ME(14) = -1.845852774013E-07, 2.960943317340E-24
-     [f(13) h(1)]
-       [f(-13) h(-1)] => ME(15) = -1.845852774013E-07,-7.311291744600E-25
-       [f(-13) h(1)] => ME(16) =   0.00000000000    
- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-Trace including color factors (hard interaction)
-Evaluator:
- Interaction:           3
- Incoming:
- Particle 1
- E =    250.00000000000000     
- P =    0.0000000000000000        0.0000000000000000        249.99999999947775     
- mask [fch] = [FTT]
- internal links: X => 3 4
- source: (2)1
- Particle 2
- E =    250.00000000000000     
- P =    0.0000000000000000        0.0000000000000000       -249.99999999947775     
- mask [fch] = [FTT]
- internal links: X => 3 4
- source: (2)2
- Outgoing:
- Particle 3
- E =    250.00000000000000     
- P =    223.64041528426193       -102.79251826657215        43.802416227981048     
- mask [fch] = [TTT]
- internal links: 1 2 => X
- source: (1)3
- Particle 4
- E =    250.00000000000000     
- P =   -223.64041528426193        102.79251826657215       -43.802416227981048     
- mask [fch] = [TTT]
- internal links: 1 2 => X
- source: (1)4
- State matrix:  norm =    1.0000000000000000     
- [f(11)]
-   [f(-11)]
-     []
-       [] => ME(1) =  3.468640988685E-02
- Matrix-element multiplication
-  Input interaction 1: 1
-  Input interaction 2:  [undefined]
-  ME(1) = 
-    + ME1(1)* x ME2(1) x (  1.0000000000000000     ,  0.0000000000000000     )
-    + ME1(2)* x ME2(2) x (  1.0000000000000000     ,  0.0000000000000000     )
-    + ME1(3)* x ME2(3) x (  1.0000000000000000     ,  0.0000000000000000     )
-    + ME1(4)* x ME2(4) x (  1.0000000000000000     ,  0.0000000000000000     )
-    + ME1(5)* x ME2(5) x (  1.0000000000000000     ,  0.0000000000000000     )
-    + ME1(6)* x ME2(6) x (  1.0000000000000000     ,  0.0000000000000000     )
-    + ME1(7)* x ME2(7) x (  1.0000000000000000     ,  0.0000000000000000     )
-    + ME1(8)* x ME2(8) x (  1.0000000000000000     ,  0.0000000000000000     )
-    + ME1(9)* x ME2(9) x (  1.0000000000000000     ,  0.0000000000000000     )
-    + ME1(10)* x ME2(10) x (  1.0000000000000000     ,  0.0000000000000000     )
-    + ME1(11)* x ME2(11) x (  1.0000000000000000     ,  0.0000000000000000     )
-    + ME1(12)* x ME2(12) x (  1.0000000000000000     ,  0.0000000000000000     )
-    + ME1(13)* x ME2(13) x (  1.0000000000000000     ,  0.0000000000000000     )
-    + ME1(14)* x ME2(14) x (  1.0000000000000000     ,  0.0000000000000000     )
-    + ME1(15)* x ME2(15) x (  1.0000000000000000     ,  0.0000000000000000     )
-    + ME1(16)* x ME2(16) x (  1.0000000000000000     ,  0.0000000000000000     )
- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-Exclusive sqme including color factors (hard interaction)
-Evaluator:
- Interaction:           5
- Incoming:
- Particle 1
- E =    250.00000000000000     
- P =    0.0000000000000000        0.0000000000000000        249.99999999947775     
- mask [fch] = [FTT]
- internal links: X => 3 4
- source: (2)1
- Particle 2
- E =    250.00000000000000     
- P =    0.0000000000000000        0.0000000000000000       -249.99999999947775     
- mask [fch] = [FTT]
- internal links: X => 3 4
- source: (2)2
- Outgoing:
- Particle 3
- E =    250.00000000000000     
- P =    223.64041528426193       -102.79251826657215        43.802416227981048     
- mask [fch] = [FTT]
- internal links: 1 2 => X
- source: (1)3
- Particle 4
- E =    250.00000000000000     
- P =   -223.64041528426193        102.79251826657215       -43.802416227981048     
- mask [fch] = [FTT]
- internal links: 1 2 => X
- source: (1)4
- State matrix:  norm =    1.0000000000000000     
- [f(11)]
-   [f(-11)]
-     [f(13)]
-       [f(-13)] => ME(1) =  3.468640988685E-02
- Matrix-element multiplication
-  Input interaction 1: 1
-  Input interaction 2:  [undefined]
-  ME(1) = 
-    + ME1(1)* x ME2(1) x (  1.0000000000000000     ,  0.0000000000000000     )
-    + ME1(2)* x ME2(2) x (  1.0000000000000000     ,  0.0000000000000000     )
-    + ME1(3)* x ME2(3) x (  1.0000000000000000     ,  0.0000000000000000     )
-    + ME1(4)* x ME2(4) x (  1.0000000000000000     ,  0.0000000000000000     )
-    + ME1(5)* x ME2(5) x (  1.0000000000000000     ,  0.0000000000000000     )
-    + ME1(6)* x ME2(6) x (  1.0000000000000000     ,  0.0000000000000000     )
-    + ME1(7)* x ME2(7) x (  1.0000000000000000     ,  0.0000000000000000     )
-    + ME1(8)* x ME2(8) x (  1.0000000000000000     ,  0.0000000000000000     )
-    + ME1(9)* x ME2(9) x (  1.0000000000000000     ,  0.0000000000000000     )
-    + ME1(10)* x ME2(10) x (  1.0000000000000000     ,  0.0000000000000000     )
-    + ME1(11)* x ME2(11) x (  1.0000000000000000     ,  0.0000000000000000     )
-    + ME1(12)* x ME2(12) x (  1.0000000000000000     ,  0.0000000000000000     )
-    + ME1(13)* x ME2(13) x (  1.0000000000000000     ,  0.0000000000000000     )
-    + ME1(14)* x ME2(14) x (  1.0000000000000000     ,  0.0000000000000000     )
-    + ME1(15)* x ME2(15) x (  1.0000000000000000     ,  0.0000000000000000     )
-    + ME1(16)* x ME2(16) x (  1.0000000000000000     ,  0.0000000000000000     )
- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-Color flow coefficients (hard interaction)
-Evaluator:
- Interaction:           6
- Incoming:
- Particle 1
- E =    250.00000000000000     
- P =    0.0000000000000000        0.0000000000000000        249.99999999947775     
- mask [fch] = [FFgT]
- internal links: X => 3 4
- source: (7)1
- Particle 2
- E =    250.00000000000000     
- P =    0.0000000000000000        0.0000000000000000       -249.99999999947775     
- mask [fch] = [FFgT]
- internal links: X => 3 4
- source: (7)2
- Outgoing:
- Particle 3
- E =    250.00000000000000     
- P =    223.64041528426193       -102.79251826657215        43.802416227981048     
- mask [fch] = [FFgT]
- internal links: 1 2 => X
- source: (1)3
- Particle 4
- E =    250.00000000000000     
- P =   -223.64041528426193        102.79251826657215       -43.802416227981048     
- mask [fch] = [FFgT]
- internal links: 1 2 => X
- source: (1)4
- State matrix:  norm =    1.0000000000000000     
- [f(11)]
-   [f(-11)]
-     [f(13)]
-       [f(-13)] => ME(1) =  3.468640988685E-02
- Matrix-element multiplication
-  Input interaction 1: 1
-  Input interaction 2:  [undefined]
-  ME(1) = 
-    + |ME1(1)|^2
-    + |ME1(2)|^2
-    + |ME1(3)|^2
-    + |ME1(4)|^2
-    + |ME1(5)|^2
-    + |ME1(6)|^2
-    + |ME1(7)|^2
-    + |ME1(8)|^2
-    + |ME1(9)|^2
-    + |ME1(10)|^2
-    + |ME1(11)|^2
-    + |ME1(12)|^2
-    + |ME1(13)|^2
-    + |ME1(14)|^2
-    + |ME1(15)|^2
-    + |ME1(16)|^2
-------------------------------------------------------------------------
-Trace including color factors (beams + strfun + hard interaction)
-Evaluator:
- Interaction:           4
- Virtual:
- Particle 1
- E =    250.00000000000000     
- P =    0.0000000000000000        0.0000000000000000        249.99999999947775     
- mask [fch] = [TTT]
- internal links: X => 3 4
- source: (2)1
- Particle 2
- E =    250.00000000000000     
- P =    0.0000000000000000        0.0000000000000000       -249.99999999947775     
- mask [fch] = [TTT]
- internal links: X => 3 4
- source: (2)2
- Outgoing:
- Particle 3
- E =    250.00000000000000     
- P =    223.64041528426193       -102.79251826657215        43.802416227981048     
- mask [fch] = [TTT]
- internal links: 1 2 => X
- source: (3)3
- Particle 4
- E =    250.00000000000000     
- P =   -223.64041528426193        102.79251826657215       -43.802416227981048     
- mask [fch] = [TTT]
- internal links: 1 2 => X
- source: (3)4
- State matrix:  norm =    1.0000000000000000     
- []
-   []
-     []
-       [] => ME(1) =  8.671602471712E-03
- Matrix-element multiplication
-  Input interaction 1: 2
-  Input interaction 2:           3
-  ME(1) = 
-    + ME1(1) x ME2(1)
-------------------------------------------------------------------------
-Exclusive sqme including color factors (beams + strfun + hard interaction)
-Evaluator:
- Interaction:           8
- Virtual:
- Particle 1
- E =    250.00000000000000     
- P =    0.0000000000000000        0.0000000000000000        249.99999999947775     
- mask [fch] = [FTT]
- internal links: X => 3 4
- source: (2)1
- Particle 2
- E =    250.00000000000000     
- P =    0.0000000000000000        0.0000000000000000       -249.99999999947775     
- mask [fch] = [FTT]
- internal links: X => 3 4
- source: (2)2
- Outgoing:
- Particle 3
- E =    250.00000000000000     
- P =    223.64041528426193       -102.79251826657215        43.802416227981048     
- mask [fch] = [FTT]
- internal links: 1 2 => X
- source: (5)3
- Particle 4
- E =    250.00000000000000     
- P =   -223.64041528426193        102.79251826657215       -43.802416227981048     
- mask [fch] = [FTT]
- internal links: 1 2 => X
- source: (5)4
- State matrix:  norm =   8.67160247171198766E-003
- [f(11)]
-   [f(-11)]
-     [f(13)]
-       [f(-13)] => ME(1) =   1.00000000000    
- Matrix-element multiplication
-  Input interaction 1: 2
-  Input interaction 2:           5
-  ME(1) = 
-    + ME1(1) x ME2(1)
-------------------------------------------------------------------------
-Color flow coefficients (beams + strfun + hard interaction)
-Evaluator:
- Interaction:           9
- Virtual:
- Particle 1
- E =    250.00000000000000     
- P =    0.0000000000000000        0.0000000000000000        249.99999999947775     
- mask [fch] = [FFgT]
- internal links: X => 3 4
- source: (7)1
- Particle 2
- E =    250.00000000000000     
- P =    0.0000000000000000        0.0000000000000000       -249.99999999947775     
- mask [fch] = [FFgT]
- internal links: X => 3 4
- source: (7)2
- Outgoing:
- Particle 3
- E =    250.00000000000000     
- P =    223.64041528426193       -102.79251826657215        43.802416227981048     
- mask [fch] = [FFgT]
- internal links: 1 2 => X
- source: (6)3
- Particle 4
- E =    250.00000000000000     
- P =   -223.64041528426193        102.79251826657215       -43.802416227981048     
- mask [fch] = [FFgT]
- internal links: 1 2 => X
- source: (6)4
- State matrix:  norm =    1.0000000000000000     
- [f(11)]
-   [f(-11)]
-     [f(13)]
-       [f(-13)] => ME(1) =  8.671602471712E-03
- Matrix-element multiplication
-  Input interaction 1: 7
-  Input interaction 2:           6
-  ME(1) = 
-    + ME1(1) x ME2(1)
-------------------------------------------------------------------------
- Phase space forest:
- n_in  =            2
- n_out =            2
- n_tot =            4
- n_masses =            0
- n_angles =            2
- n_dim    =            2
- n_trees  =            1
- n_equiv  =            1
- flavors  =     11    -11     13    -13
- Groves and trees:
- Grove     1
- Tree      1
- External: 4     Mask: 15
- Incoming: 2     Mask: 12
- Branches: 5
-     8
-     4
- *   3         Daughters:    1    2   +  (axis +)
-     2
-     1
-           1 mass_sum =  0.10570000000000000     
-           2 mass_sum =  0.10570000000000000     
-           3 mass_sum =  0.21140000000000000     
- Equivalence list:
- Equivalence:     1     1     Final state permutation: 1 2
-                     msq permutation:   
-                     angle permutation:  1 2
-                                         + +
- Total number of equivalences:            1
+%%  Interaction:           1
+%%  Incoming:
+%%  Particle 1
+%%  E =    250.00000000000000     
+%%  P =    0.0000000000000000        0.0000000000000000        249.99999999947775     
+%%  mask [fch] = [FFgF]
+%%  internal links: X => 3 4
+%%  source: (2)1
+%%  Particle 2
+%%  E =    250.00000000000000     
+%%  P =    0.0000000000000000        0.0000000000000000       -249.99999999947775     
+%%  mask [fch] = [FFgF]
+%%  internal links: X => 3 4
+%%  source: (2)2
+%%  Outgoing:
+%%  Particle 3
+%%  E =    250.00000000000000     
+%%  P =    223.64041528426193       -102.79251826657215        43.802416227981048     
+%%  mask [fch] = [FFgF]
+%%  internal links: 1 2 => X
+%%  Particle 4
+%%  E =    250.00000000000000     
+%%  P =   -223.64041528426193        102.79251826657215       -43.802416227981048     
+%%  mask [fch] = [FFgF]
+%%  internal links: 1 2 => X
+%%  State matrix:  norm =    1.0000000000000000     
+%%  [f(11) h(-1)]
+%%    [f(-11) h(-1)]
+%%      [f(13) h(-1)]
+%%        [f(-13) h(-1)] => ME(1) =   0.00000000000    
+%%        [f(-13) h(1)] => ME(2) =  1.845852774013E-07,-2.960943317340E-24
+%%      [f(13) h(1)]
+%%        [f(-13) h(-1)] => ME(3) =  1.845852774013E-07, 7.311291744600E-25
+%%        [f(-13) h(1)] => ME(4) =   0.00000000000    
+%%    [f(-11) h(1)]
+%%      [f(13) h(-1)]
+%%        [f(-13) h(-1)] => ME(5) = -3.818108556076E-05
+%%        [f(-13) h(1)] => ME(6) =  9.794450119376E-02, 4.501852634852E-02
+%%      [f(13) h(1)]
+%%        [f(-13) h(-1)] => ME(7) = -6.873979831962E-02,-3.159508072559E-02
+%%        [f(-13) h(1)] => ME(8) =  2.486236753832E-05, 2.897685239959E-05
+%%  [f(11) h(1)]
+%%    [f(-11) h(-1)]
+%%      [f(13) h(-1)]
+%%        [f(-13) h(-1)] => ME(9) = -2.486236753832E-05, 2.897685239959E-05
+%%        [f(-13) h(1)] => ME(10) = -6.873979831962E-02, 3.159508072559E-02
+%%      [f(13) h(1)]
+%%        [f(-13) h(-1)] => ME(11) =  9.794450119376E-02,-4.501852634852E-02
+%%        [f(-13) h(1)] => ME(12) =  3.818108556076E-05
+%%    [f(-11) h(1)]
+%%      [f(13) h(-1)]
+%%        [f(-13) h(-1)] => ME(13) =   0.00000000000    
+%%        [f(-13) h(1)] => ME(14) = -1.845852774013E-07, 2.960943317340E-24
+%%      [f(13) h(1)]
+%%        [f(-13) h(-1)] => ME(15) = -1.845852774013E-07,-7.311291744600E-25
+%%        [f(-13) h(1)] => ME(16) =   0.00000000000    
+%%  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+%% Trace including color factors (hard interaction)
+%% Evaluator:
+%%  Interaction:           3
+%%  Incoming:
+%%  Particle 1
+%%  E =    250.00000000000000     
+%%  P =    0.0000000000000000        0.0000000000000000        249.99999999947775     
+%%  mask [fch] = [FTT]
+%%  internal links: X => 3 4
+%%  source: (2)1
+%%  Particle 2
+%%  E =    250.00000000000000     
+%%  P =    0.0000000000000000        0.0000000000000000       -249.99999999947775     
+%%  mask [fch] = [FTT]
+%%  internal links: X => 3 4
+%%  source: (2)2
+%%  Outgoing:
+%%  Particle 3
+%%  E =    250.00000000000000     
+%%  P =    223.64041528426193       -102.79251826657215        43.802416227981048     
+%%  mask [fch] = [TTT]
+%%  internal links: 1 2 => X
+%%  source: (1)3
+%%  Particle 4
+%%  E =    250.00000000000000     
+%%  P =   -223.64041528426193        102.79251826657215       -43.802416227981048     
+%%  mask [fch] = [TTT]
+%%  internal links: 1 2 => X
+%%  source: (1)4
+%%  State matrix:  norm =    1.0000000000000000     
+%%  [f(11)]
+%%    [f(-11)]
+%%      []
+%%        [] => ME(1) =  3.468640988685E-02
+%%  Matrix-element multiplication
+%%   Input interaction 1: 1
+%%   Input interaction 2:  [undefined]
+%%   ME(1) = 
+%%     + ME1(1)* x ME2(1) x (  1.0000000000000000     ,  0.0000000000000000     )
+%%     + ME1(2)* x ME2(2) x (  1.0000000000000000     ,  0.0000000000000000     )
+%%     + ME1(3)* x ME2(3) x (  1.0000000000000000     ,  0.0000000000000000     )
+%%     + ME1(4)* x ME2(4) x (  1.0000000000000000     ,  0.0000000000000000     )
+%%     + ME1(5)* x ME2(5) x (  1.0000000000000000     ,  0.0000000000000000     )
+%%     + ME1(6)* x ME2(6) x (  1.0000000000000000     ,  0.0000000000000000     )
+%%     + ME1(7)* x ME2(7) x (  1.0000000000000000     ,  0.0000000000000000     )
+%%     + ME1(8)* x ME2(8) x (  1.0000000000000000     ,  0.0000000000000000     )
+%%     + ME1(9)* x ME2(9) x (  1.0000000000000000     ,  0.0000000000000000     )
+%%     + ME1(10)* x ME2(10) x (  1.0000000000000000     ,  0.0000000000000000     )
+%%     + ME1(11)* x ME2(11) x (  1.0000000000000000     ,  0.0000000000000000     )
+%%     + ME1(12)* x ME2(12) x (  1.0000000000000000     ,  0.0000000000000000     )
+%%     + ME1(13)* x ME2(13) x (  1.0000000000000000     ,  0.0000000000000000     )
+%%     + ME1(14)* x ME2(14) x (  1.0000000000000000     ,  0.0000000000000000     )
+%%     + ME1(15)* x ME2(15) x (  1.0000000000000000     ,  0.0000000000000000     )
+%%     + ME1(16)* x ME2(16) x (  1.0000000000000000     ,  0.0000000000000000     )
+%%  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+%% Exclusive sqme including color factors (hard interaction)
+%% Evaluator:
+%%  Interaction:           5
+%%  Incoming:
+%%  Particle 1
+%%  E =    250.00000000000000     
+%%  P =    0.0000000000000000        0.0000000000000000        249.99999999947775     
+%%  mask [fch] = [FTT]
+%%  internal links: X => 3 4
+%%  source: (2)1
+%%  Particle 2
+%%  E =    250.00000000000000     
+%%  P =    0.0000000000000000        0.0000000000000000       -249.99999999947775     
+%%  mask [fch] = [FTT]
+%%  internal links: X => 3 4
+%%  source: (2)2
+%%  Outgoing:
+%%  Particle 3
+%%  E =    250.00000000000000     
+%%  P =    223.64041528426193       -102.79251826657215        43.802416227981048     
+%%  mask [fch] = [FTT]
+%%  internal links: 1 2 => X
+%%  source: (1)3
+%%  Particle 4
+%%  E =    250.00000000000000     
+%%  P =   -223.64041528426193        102.79251826657215       -43.802416227981048     
+%%  mask [fch] = [FTT]
+%%  internal links: 1 2 => X
+%%  source: (1)4
+%%  State matrix:  norm =    1.0000000000000000     
+%%  [f(11)]
+%%    [f(-11)]
+%%      [f(13)]
+%%        [f(-13)] => ME(1) =  3.468640988685E-02
+%%  Matrix-element multiplication
+%%   Input interaction 1: 1
+%%   Input interaction 2:  [undefined]
+%%   ME(1) = 
+%%     + ME1(1)* x ME2(1) x (  1.0000000000000000     ,  0.0000000000000000     )
+%%     + ME1(2)* x ME2(2) x (  1.0000000000000000     ,  0.0000000000000000     )
+%%     + ME1(3)* x ME2(3) x (  1.0000000000000000     ,  0.0000000000000000     )
+%%     + ME1(4)* x ME2(4) x (  1.0000000000000000     ,  0.0000000000000000     )
+%%     + ME1(5)* x ME2(5) x (  1.0000000000000000     ,  0.0000000000000000     )
+%%     + ME1(6)* x ME2(6) x (  1.0000000000000000     ,  0.0000000000000000     )
+%%     + ME1(7)* x ME2(7) x (  1.0000000000000000     ,  0.0000000000000000     )
+%%     + ME1(8)* x ME2(8) x (  1.0000000000000000     ,  0.0000000000000000     )
+%%     + ME1(9)* x ME2(9) x (  1.0000000000000000     ,  0.0000000000000000     )
+%%     + ME1(10)* x ME2(10) x (  1.0000000000000000     ,  0.0000000000000000     )
+%%     + ME1(11)* x ME2(11) x (  1.0000000000000000     ,  0.0000000000000000     )
+%%     + ME1(12)* x ME2(12) x (  1.0000000000000000     ,  0.0000000000000000     )
+%%     + ME1(13)* x ME2(13) x (  1.0000000000000000     ,  0.0000000000000000     )
+%%     + ME1(14)* x ME2(14) x (  1.0000000000000000     ,  0.0000000000000000     )
+%%     + ME1(15)* x ME2(15) x (  1.0000000000000000     ,  0.0000000000000000     )
+%%     + ME1(16)* x ME2(16) x (  1.0000000000000000     ,  0.0000000000000000     )
+%%  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+%% Color flow coefficients (hard interaction)
+%% Evaluator:
+%%  Interaction:           6
+%%  Incoming:
+%%  Particle 1
+%%  E =    250.00000000000000     
+%%  P =    0.0000000000000000        0.0000000000000000        249.99999999947775     
+%%  mask [fch] = [FFgT]
+%%  internal links: X => 3 4
+%%  source: (7)1
+%%  Particle 2
+%%  E =    250.00000000000000     
+%%  P =    0.0000000000000000        0.0000000000000000       -249.99999999947775     
+%%  mask [fch] = [FFgT]
+%%  internal links: X => 3 4
+%%  source: (7)2
+%%  Outgoing:
+%%  Particle 3
+%%  E =    250.00000000000000     
+%%  P =    223.64041528426193       -102.79251826657215        43.802416227981048     
+%%  mask [fch] = [FFgT]
+%%  internal links: 1 2 => X
+%%  source: (1)3
+%%  Particle 4
+%%  E =    250.00000000000000     
+%%  P =   -223.64041528426193        102.79251826657215       -43.802416227981048     
+%%  mask [fch] = [FFgT]
+%%  internal links: 1 2 => X
+%%  source: (1)4
+%%  State matrix:  norm =    1.0000000000000000     
+%%  [f(11)]
+%%    [f(-11)]
+%%      [f(13)]
+%%        [f(-13)] => ME(1) =  3.468640988685E-02
+%%  Matrix-element multiplication
+%%   Input interaction 1: 1
+%%   Input interaction 2:  [undefined]
+%%   ME(1) = 
+%%     + |ME1(1)|^2
+%%     + |ME1(2)|^2
+%%     + |ME1(3)|^2
+%%     + |ME1(4)|^2
+%%     + |ME1(5)|^2
+%%     + |ME1(6)|^2
+%%     + |ME1(7)|^2
+%%     + |ME1(8)|^2
+%%     + |ME1(9)|^2
+%%     + |ME1(10)|^2
+%%     + |ME1(11)|^2
+%%     + |ME1(12)|^2
+%%     + |ME1(13)|^2
+%%     + |ME1(14)|^2
+%%     + |ME1(15)|^2
+%%     + |ME1(16)|^2
+%% ------------------------------------------------------------------------
+%% Trace including color factors (beams + strfun + hard interaction)
+%% Evaluator:
+%%  Interaction:           4
+%%  Virtual:
+%%  Particle 1
+%%  E =    250.00000000000000     
+%%  P =    0.0000000000000000        0.0000000000000000        249.99999999947775     
+%%  mask [fch] = [TTT]
+%%  internal links: X => 3 4
+%%  source: (2)1
+%%  Particle 2
+%%  E =    250.00000000000000     
+%%  P =    0.0000000000000000        0.0000000000000000       -249.99999999947775     
+%%  mask [fch] = [TTT]
+%%  internal links: X => 3 4
+%%  source: (2)2
+%%  Outgoing:
+%%  Particle 3
+%%  E =    250.00000000000000     
+%%  P =    223.64041528426193       -102.79251826657215        43.802416227981048     
+%%  mask [fch] = [TTT]
+%%  internal links: 1 2 => X
+%%  source: (3)3
+%%  Particle 4
+%%  E =    250.00000000000000     
+%%  P =   -223.64041528426193        102.79251826657215       -43.802416227981048     
+%%  mask [fch] = [TTT]
+%%  internal links: 1 2 => X
+%%  source: (3)4
+%%  State matrix:  norm =    1.0000000000000000     
+%%  []
+%%    []
+%%      []
+%%        [] => ME(1) =  8.671602471712E-03
+%%  Matrix-element multiplication
+%%   Input interaction 1: 2
+%%   Input interaction 2:           3
+%%   ME(1) = 
+%%     + ME1(1) x ME2(1)
+%% ------------------------------------------------------------------------
+%% Exclusive sqme including color factors (beams + strfun + hard interaction)
+%% Evaluator:
+%%  Interaction:           8
+%%  Virtual:
+%%  Particle 1
+%%  E =    250.00000000000000     
+%%  P =    0.0000000000000000        0.0000000000000000        249.99999999947775     
+%%  mask [fch] = [FTT]
+%%  internal links: X => 3 4
+%%  source: (2)1
+%%  Particle 2
+%%  E =    250.00000000000000     
+%%  P =    0.0000000000000000        0.0000000000000000       -249.99999999947775     
+%%  mask [fch] = [FTT]
+%%  internal links: X => 3 4
+%%  source: (2)2
+%%  Outgoing:
+%%  Particle 3
+%%  E =    250.00000000000000     
+%%  P =    223.64041528426193       -102.79251826657215        43.802416227981048     
+%%  mask [fch] = [FTT]
+%%  internal links: 1 2 => X
+%%  source: (5)3
+%%  Particle 4
+%%  E =    250.00000000000000     
+%%  P =   -223.64041528426193        102.79251826657215       -43.802416227981048     
+%%  mask [fch] = [FTT]
+%%  internal links: 1 2 => X
+%%  source: (5)4
+%%  State matrix:  norm =   8.67160247171198766E-003
+%%  [f(11)]
+%%    [f(-11)]
+%%      [f(13)]
+%%        [f(-13)] => ME(1) =   1.00000000000    
+%%  Matrix-element multiplication
+%%   Input interaction 1: 2
+%%   Input interaction 2:           5
+%%   ME(1) = 
+%%     + ME1(1) x ME2(1)
+%% ------------------------------------------------------------------------
+%% Color flow coefficients (beams + strfun + hard interaction)
+%% Evaluator:
+%%  Interaction:           9
+%%  Virtual:
+%%  Particle 1
+%%  E =    250.00000000000000     
+%%  P =    0.0000000000000000        0.0000000000000000        249.99999999947775     
+%%  mask [fch] = [FFgT]
+%%  internal links: X => 3 4
+%%  source: (7)1
+%%  Particle 2
+%%  E =    250.00000000000000     
+%%  P =    0.0000000000000000        0.0000000000000000       -249.99999999947775     
+%%  mask [fch] = [FFgT]
+%%  internal links: X => 3 4
+%%  source: (7)2
+%%  Outgoing:
+%%  Particle 3
+%%  E =    250.00000000000000     
+%%  P =    223.64041528426193       -102.79251826657215        43.802416227981048     
+%%  mask [fch] = [FFgT]
+%%  internal links: 1 2 => X
+%%  source: (6)3
+%%  Particle 4
+%%  E =    250.00000000000000     
+%%  P =   -223.64041528426193        102.79251826657215       -43.802416227981048     
+%%  mask [fch] = [FFgT]
+%%  internal links: 1 2 => X
+%%  source: (6)4
+%%  State matrix:  norm =    1.0000000000000000     
+%%  [f(11)]
+%%    [f(-11)]
+%%      [f(13)]
+%%        [f(-13)] => ME(1) =  8.671602471712E-03
+%%  Matrix-element multiplication
+%%   Input interaction 1: 7
+%%   Input interaction 2:           6
+%%   ME(1) = 
+%%     + ME1(1) x ME2(1)
+%% ------------------------------------------------------------------------
+%%  Phase space forest:
+%%  n_in  =            2
+%%  n_out =            2
+%%  n_tot =            4
+%%  n_masses =            0
+%%  n_angles =            2
+%%  n_dim    =            2
+%%  n_trees  =            1
+%%  n_equiv  =            1
+%%  flavors  =     11    -11     13    -13
+%%  Groves and trees:
+%%  Grove     1
+%%  Tree      1
+%%  External: 4     Mask: 15
+%%  Incoming: 2     Mask: 12
+%%  Branches: 5
+%%      8
+%%      4
+%%  *   3         Daughters:    1    2   +  (axis +)
+%%      2
+%%      1
+%%            1 mass_sum =  0.10570000000000000     
+%%            2 mass_sum =  0.10570000000000000     
+%%            3 mass_sum =  0.21140000000000000     
+%%  Equivalence list:
+%%  Equivalence:     1     1     Final state permutation: 1 2
+%%                      msq permutation:   
+%%                      angle permutation:  1 2
+%%                                          + +
+%%  Total number of equivalences:            1
 
- Incoming particles:
- Particle           1
- E =    250.00000000000000     
- P =    0.0000000000000000        0.0000000000000000        249.99999999947775     
- M2 =  2.61120999999999973E-007
- Particle           2
- E =    250.00000000000000     
- P =    0.0000000000000000        0.0000000000000000       -249.99999999947775     
- M2 =  2.61120999999999973E-007
+%%  Incoming particles:
+%%  Particle           1
+%%  E =    250.00000000000000     
+%%  P =    0.0000000000000000        0.0000000000000000        249.99999999947775     
+%%  M2 =  2.61120999999999973E-007
+%%  Particle           2
+%%  E =    250.00000000000000     
+%%  P =    0.0000000000000000        0.0000000000000000       -249.99999999947775     
+%%  M2 =  2.61120999999999973E-007
 
- Outgoing particles:
- Particle           1
- E =    250.00000000000000     
- P =    223.64041528426193       -102.79251826657215        43.802416227981048     
- M2 =  1.11724900000000002E-002
- Particle           2
- E =    250.00000000000000     
- P =   -223.64041528426193        102.79251826657215       -43.802416227981048     
- M2 =  1.11724900000000002E-002
+%%  Outgoing particles:
+%%  Particle           1
+%%  E =    250.00000000000000     
+%%  P =    223.64041528426193       -102.79251826657215        43.802416227981048     
+%%  M2 =  1.11724900000000002E-002
+%%  Particle           2
+%%  E =    250.00000000000000     
+%%  P =   -223.64041528426193        102.79251826657215       -43.802416227981048     
+%%  M2 =  1.11724900000000002E-002
 
- Tree particles:
- Particle           1
- E =    250.00000000000000     
- P =    223.64041528426193       -102.79251826657215        43.802416227981048     
- M2 =  1.11724900000000002E-002
- Particle           2
- E =    250.00000000000000     
- P =   -223.64041528426193        102.79251826657215       -43.802416227981048     
- M2 =  1.11724900000000002E-002
- Particle           3
- E =    500.00000000000000     
- P =    0.0000000000000000        0.0000000000000000        0.0000000000000000     
- M2 =   250000.00000000000     
- Particle           4
- E =    250.00000000000000     
- P =    0.0000000000000000        0.0000000000000000       -249.99999999947775     
- M2 =  2.61120999999999973E-007
- Particle           8
- E =    250.00000000000000     
- P =    0.0000000000000000        0.0000000000000000        249.99999999947775     
- M2 =  2.61120999999999973E-007
-------------------------------------------------------------------------
- Inequivalent channels:
-   Channel           1 :    Mult. =           1     Symm. =           1     Invar.: T F
- Equivalence list:
- Equivalent channels:    1    1
-   Permutation:  1  2
-   Mode:         3  0
-------------------------------------------------------------------------
- Particle list:
- 1 prt(i:11|-2.50000E+02;-0.00000E+00,-0.00000E+00,-2.50000E+02| 2.61121E-07| 1)
- 2 prt(i:-11|-2.50000E+02;-0.00000E+00,-0.00000E+00, 2.50000E+02| 2.61121E-07| 2)
- 3 prt(o:13| 2.50000E+02; 2.23640E+02,-1.02793E+02, 4.38024E+01| 1.11725E-02| 3)
- 4 prt(o:-13| 2.50000E+02;-2.23640E+02, 1.02793E+02,-4.38024E+01| 1.11725E-02| 4)
-------------------------------------------------------------------------
-n_in =            2
-n_out =            2
-n_tot =            4
-sqrts =>    500.00000000000000     
-sqrts_hat =>    500.00000000000000     
-v = [unknown real]
-cw = [unknown real]
-sw = [unknown real]
-ee =   0.30286000000000002     
-alpha_em_i = [unknown real]
-$fc = "/opt/gcc-4.5/bin/gfortran"
-$fcflags = " -g -O2"
-seed_value =   1582518999
-sqrts =    500.00000000000000     
-$model_name = "QED"
-$restrictions = ""
-$method = "omega"
-?read_color_factors = true
-?slha_read_input = true
-?slha_read_spectrum = true
-?slha_read_decays = false
-$library_name = "qedtest"
-cm_momentum =    0.0000000000000000     
-cm_theta =    0.0000000000000000     
-cm_phi =    0.0000000000000000     
-luminosity =    0.0000000000000000     
-$lhapdf_file = [unknown string]
-lhapdf_member =            0
-lhapdf_photon_scheme =            0
-isr_alpha =    0.0000000000000000     
-isr_q_max =    0.0000000000000000     
-isr_mass =    0.0000000000000000     
-isr_order =            3
-epa_alpha =    0.0000000000000000     
-epa_x_min =    0.0000000000000000     
-epa_q_min =    0.0000000000000000     
-epa_e_max =    0.0000000000000000     
-epa_mass =    0.0000000000000000     
-ewa_x_min =    0.0000000000000000     
-ewa_q_min =    0.0000000000000000     
-ewa_pt_max =    0.0000000000000000     
-ewa_mass =    0.0000000000000000     
-[user variable] ?ewa_keep_momentum = false
-[user variable] ?ewa_keep_energy = false
-?alpha_s_is_fixed = true
-?alpha_s_from_lhapdf = false
-alpha_s_order =            0
-alpha_s_nf =            5
-?alpha_s_from_mz = true
-lambda_qcd =   0.20000000000000001     
-?fatal_beam_decay = true
-?helicity_selection_active = true
-helicity_selection_threshold =    10000000000.000000     
-helicity_selection_cutoff =         1000
-threshold_calls =            0
-min_calls_per_channel =           10
-min_calls_per_bin =           10
-min_bins =            3
-max_bins =           20
-?stratified = true
-?use_vamp_equivalences = true
-channel_weights_power =   0.25000000000000000     
-$phs_file = [unknown string]
-?phs_only = false
-phs_threshold_s =    50.000000000000000     
-phs_threshold_t =    100.00000000000000     
-phs_off_shell =            1
-phs_t_channel =            2
-phs_e_scale =    10.000000000000000     
-phs_m_scale =    10.000000000000000     
-phs_q_scale =    10.000000000000000     
-?adapt_final_grids = true
-?adapt_final_weights = false
-?isotropic_decay = false
-?diagonal_decay = false
-n_events =            0
-?unweighted = true
-$event_normalization = "auto"
-?negative_weights = false
-?keep_beams = false
-$sample = ""
-?read_raw = true
-?write_raw = true
-$extension_raw = ".evx"
-$extension_default = ".evt"
-$extension_debug = ".debug"
-$extension_hepevt = ".hepevt"
-$extension_ascii_short = ".short.evt"
-$extension_ascii_long = ".long.evt"
-$extension_athena = ".athena.evt"
-$extension_lhef = ".lhef"
-$extension_lha = ".lha"
-$extension_hepmc = ".hepmc"
-$extension_stdhep = ".stdhep"
-$extension_stdhep_up = ".up.stdhep"
-$analysis_filename = [unknown string]
-$label = ""
-$physical_unit = ""
-$title = ""
-$description = ""
-$xlabel = ""
-$ylabel = ""
-tolerance =    0.0000000000000000     
-$fc = "/opt/gcc-4.5/bin/gfortran"
-$fcflags = " -g -O2"
-?rebuild_library = true
-?rebuild_phase_space = true
-?rebuild_grids = true
-?rebuild_events = true
-?recompile_library = false
-GF =   1.16639000000000003E-005
-mZ =    91.188199999999995     
-mW =    80.418999999999997     
-mH =    200.00000000000000     
-alphas =   0.11780000000000000     
-me =   5.10999999999999953E-004
-mmu =   0.10570000000000000     
-mtau =    1.7769999999999999     
-ms =   9.50000000000000011E-002
-mc =    1.2000000000000000     
-mb =    4.2000000000000002     
-mtop =    173.09999999999999     
-wtop =    1.5229999999999999     
-wZ =    2.4430000000000001     
-wW =    2.0489999999999999     
-wH =    1.4190000000000000     
-khgaz =    0.0000000000000000     
-khgaga =    0.0000000000000000     
-khgg =    0.0000000000000000     
-xi0 =    0.0000000000000000     
-xipm =    0.0000000000000000     
-v* =    246.21845810181634     
-cw* =   0.88190138636358650     
-sw* =   0.47143392403388212     
-ee* =   0.30286000000000002     
-alpha_em_i* =    132.50494581248503     
-particle* = PDG(0)
-D_QUARK* = PDG(1)
-d* = PDG(1)
-down* = PDG(1)
-dbar* = PDG(-1)
-D* = PDG(-1)
-d~* = PDG(-1)
-U_QUARK* = PDG(2)
-u* = PDG(2)
-up* = PDG(2)
-ubar* = PDG(-2)
-U* = PDG(-2)
-u~* = PDG(-2)
-S_QUARK* = PDG(3)
-s* = PDG(3)
-strange* = PDG(3)
-sbar* = PDG(-3)
-S* = PDG(-3)
-s~* = PDG(-3)
-C_QUARK* = PDG(4)
-c* = PDG(4)
-charm* = PDG(4)
-cbar* = PDG(-4)
-C* = PDG(-4)
-c~* = PDG(-4)
-B_QUARK* = PDG(5)
-b* = PDG(5)
-bottom* = PDG(5)
-bbar* = PDG(-5)
-B* = PDG(-5)
-b~* = PDG(-5)
-T_QUARK* = PDG(6)
-t* = PDG(6)
-top* = PDG(6)
-tbar* = PDG(-6)
-T* = PDG(-6)
-t~* = PDG(-6)
-E_LEPTON* = PDG(11)
-e-* = PDG(11)
-e1* = PDG(11)
-electron* = PDG(11)
-e* = PDG(11)
-e+* = PDG(-11)
-E1* = PDG(-11)
-positron* = PDG(-11)
-E_NEUTRINO* = PDG(12)
-nue* = PDG(12)
-n1* = PDG(12)
-nu_e* = PDG(12)
-ve* = PDG(12)
-e-neutrino* = PDG(12)
-nuebar* = PDG(-12)
-N1* = PDG(-12)
-ve~* = PDG(-12)
-MU_LEPTON* = PDG(13)
-mu-* = PDG(13)
-e2* = PDG(13)
-mu* = PDG(13)
-muon* = PDG(13)
-mu+* = PDG(-13)
-E2* = PDG(-13)
-MU_NEUTRINO* = PDG(14)
-numu* = PDG(14)
-nu_mu* = PDG(14)
-n2* = PDG(14)
-vm* = PDG(14)
-mu-neutrino* = PDG(14)
-numubar* = PDG(-14)
-N2* = PDG(-14)
-vm~* = PDG(-14)
-TAU_LEPTON* = PDG(15)
-tau-* = PDG(15)
-e3* = PDG(15)
-tau* = PDG(15)
-ta-* = PDG(15)
-tauon* = PDG(15)
-tau+* = PDG(-15)
-E3* = PDG(-15)
-ta+* = PDG(-15)
-TAU_NEUTRINO* = PDG(16)
-nutau* = PDG(16)
-nu_tau* = PDG(16)
-n3* = PDG(16)
-vt* = PDG(16)
-tau_neutrino* = PDG(16)
-nutaubar* = PDG(-16)
-N3* = PDG(-16)
-vt~* = PDG(-16)
-GLUON* = PDG(21)
-gl* = PDG(21)
-g* = PDG(21)
-G* = PDG(21)
-gluon* = PDG(21)
-PHOTON* = PDG(22)
-A* = PDG(22)
-gamma* = PDG(22)
-photon* = PDG(22)
-Z_BOSON* = PDG(23)
-Z* = PDG(23)
-W_BOSON* = PDG(24)
-W+* = PDG(24)
-Wp* = PDG(24)
-W-* = PDG(-24)
-Wm* = PDG(-24)
-HIGGS* = PDG(25)
-H* = PDG(25)
-h* = PDG(25)
-Higgs* = PDG(25)
-PROTON* = PDG(2212)
-p* = PDG(2212)
-p+* = PDG(2212)
-pbar* = PDG(-2212)
-p-* = PDG(-2212)
-HADRON_REMNANT* = PDG(90)
-HADRON_REMNANT_SINGLET* = PDG(91)
-HADRON_REMNANT_TRIPLET* = PDG(92)
-HADRON_REMNANT_OCTET* = PDG(93)
-charged* = PDG(11, 13, 15)
-colored* = PDG()
-m-* = PDG(13)
-m+* = PDG(-13)
-t-* = PDG(15)
-t+* = PDG(-15)
-n_calls(qedtest_eemm) = [unknown integer]
-integral(qedtest_eemm) = [unknown real]
-error(qedtest_eemm) = [unknown real]
-accuracy(qedtest_eemm) = [unknown real]
-chi2(qedtest_eemm) = [unknown real]
-efficiency(qedtest_eemm) = [unknown real]
-------------------------------------------------------------------------
-Cut expression:
- Evaluation tree:
-   [empty]
-------------------------------------------------------------------------
-Weight expression:
- Evaluation tree:
-   [empty]
-------------------------------------------------------------------------
-Scale expression:
- Evaluation tree:
-   [empty]
-------------------------------------------------------------------------
- begin type(vamp_grids) :: g
- size (g%grids) =                1
-   sum_integral =    0.1739012656355327999336E+05
-    sum_weights =    0.5003828047561890457473E+02
-       sum_chi2 =    0.6043702921481354162097E+07
- begin g%weights
-                 1   0.1000000000000000000000E+01
- end g%weights
- begin g%num_calls
-                 1            2000
- end g%num_calls
- begin g%grids
- begin type(vamp_grid) :: g
-   size (g%div) =                2
-      num_calls =             2000
- calls_per_cell =               71
-     stratified =  T
- all_stratified =  F
-     quadrupole =  F
-          mu(1) =    0.3475364540559422721344E+03
-          mu(2) =    0.1998469952394245005567E-01
-   sum_integral =    0.1739012656355328363134E+05
-    sum_weights =    0.5003828047561891168016E+02
-       sum_chi2 =    0.6043702921481356956065E+07
-          calls =    0.1988000000000000000000E+04
-           dv2g =    0.1428571428571428526821E-01
-         jacobi =    0.5030181086519115111338E-03
-          f_min =    0.2606941812215391678365E+03
-          f_max =    0.5207462045037691495963E+03
-          mu_gi =    0.6379018118552520633102E+02
-      sum_mu_gi =    0.3191950977751858772535E+04
- begin g%num_div
-                 1               1
-                 2              20
- end g%num_div
- begin g%div
- begin type(division) :: d
- ubound(d%x,1) =               1
-         d%ng =                1
- d%stratified =  F
-         d%dx =    0.1000000000000000000000E+01
-        d%dxg =    0.1000000000000000000000E+01
-      d%x_min =    0.0000000000000000000000E+00
-      d%x_max =    0.1000000000000000000000E+01
- d%x_min_true =    0.0000000000000000000000E+00
- d%x_max_true =    0.1000000000000000000000E+01
- begin d%x
-               0   0.0000000000000000000000E+00
-               1   0.1000000000000000000000E+01
- end d%x
- end type(division)
- begin type(division) :: d
- ubound(d%x,1) =              14
-         d%ng =               28
- d%stratified =  T
-         d%dx =    0.1000000000000000000000E+01
-        d%dxg =    0.5000000000000000000000E+00
-      d%x_min =    0.0000000000000000000000E+00
-      d%x_max =    0.1000000000000000000000E+01
- d%x_min_true =    0.0000000000000000000000E+00
- d%x_max_true =    0.1000000000000000000000E+01
- begin d%x
-               0   0.0000000000000000000000E+00
-               1   0.7142857142857142460635E-01
-               2   0.1428571428571428492127E+00
-               3   0.2142857142857142738190E+00
-               4   0.2857142857142856984254E+00
-               5   0.3571428571428571507873E+00
-               6   0.4285714285714285476381E+00
-               7   0.5000000000000000000000E+00
-               8   0.5714285714285713968508E+00
-               9   0.6428571428571429047238E+00
-              10   0.7142857142857143015746E+00
-              11   0.7857142857142856984254E+00
-              12   0.8571428571428570952762E+00
-              13   0.9285714285714286031492E+00
-              14   0.1000000000000000000000E+01
- end d%x
- end type(division)
- end g%div
- empty g%map
- empty g%mu_x
- end type(vamp_grid)
- end g%grids
- end type(vamp_grids)
-------------------------------------------------------------------------
-|  Global history [vamp]:
- ------------------------------------------------------------------------------
- [vamp]   it   #calls     integral                 average           chi2  eff.
- [vamp]    1     1988   0.0000E+00(0.00E+00)  0.347536E+03(0.14E+00)  0.0 0.000
- ------------------------------------------------------------------------------
-------------------------------------------------------------------------
-|  Channel histories [vamp]:
- ==============================================================================
- ------------------------------------------------------------------------------
- chan#001 it   #calls     integral                 average           chi2  eff.
- chan#001  1     1988   0.3475E+03(0.14E+00)  0.347536E+03(0.14E+00)  0.0 0.667
- ------------------------------------------------------------------------------
- ==============================================================================
+%%  Tree particles:
+%%  Particle           1
+%%  E =    250.00000000000000     
+%%  P =    223.64041528426193       -102.79251826657215        43.802416227981048     
+%%  M2 =  1.11724900000000002E-002
+%%  Particle           2
+%%  E =    250.00000000000000     
+%%  P =   -223.64041528426193        102.79251826657215       -43.802416227981048     
+%%  M2 =  1.11724900000000002E-002
+%%  Particle           3
+%%  E =    500.00000000000000     
+%%  P =    0.0000000000000000        0.0000000000000000        0.0000000000000000     
+%%  M2 =   250000.00000000000     
+%%  Particle           4
+%%  E =    250.00000000000000     
+%%  P =    0.0000000000000000        0.0000000000000000       -249.99999999947775     
+%%  M2 =  2.61120999999999973E-007
+%%  Particle           8
+%%  E =    250.00000000000000     
+%%  P =    0.0000000000000000        0.0000000000000000        249.99999999947775     
+%%  M2 =  2.61120999999999973E-007
+%% ------------------------------------------------------------------------
+%%  Inequivalent channels:
+%%    Channel           1 :    Mult. =           1     Symm. =           1     Invar.: T F
+%%  Equivalence list:
+%%  Equivalent channels:    1    1
+%%    Permutation:  1  2
+%%    Mode:         3  0
+%% ------------------------------------------------------------------------
+%%  Particle list:
+%%  1 prt(i:11|-2.50000E+02;-0.00000E+00,-0.00000E+00,-2.50000E+02| 2.61121E-07| 1)
+%%  2 prt(i:-11|-2.50000E+02;-0.00000E+00,-0.00000E+00, 2.50000E+02| 2.61121E-07| 2)
+%%  3 prt(o:13| 2.50000E+02; 2.23640E+02,-1.02793E+02, 4.38024E+01| 1.11725E-02| 3)
+%%  4 prt(o:-13| 2.50000E+02;-2.23640E+02, 1.02793E+02,-4.38024E+01| 1.11725E-02| 4)
+%% ------------------------------------------------------------------------
+%% n_in =            2
+%% n_out =            2
+%% n_tot =            4
+%% sqrts =>    500.00000000000000     
+%% sqrts_hat =>    500.00000000000000     
+%% v = [unknown real]
+%% cw = [unknown real]
+%% sw = [unknown real]
+%% ee =   0.30286000000000002     
+%% alpha_em_i = [unknown real]
+%% $fc = "/opt/gcc-4.5/bin/gfortran"
+%% $fcflags = " -g -O2"
+%% seed_value =   1582518999
+%% sqrts =    500.00000000000000     
+%% $model_name = "QED"
+%% $restrictions = ""
+%% $method = "omega"
+%% ?read_color_factors = true
+%% ?slha_read_input = true
+%% ?slha_read_spectrum = true
+%% ?slha_read_decays = false
+%% $library_name = "qedtest"
+%% cm_momentum =    0.0000000000000000     
+%% cm_theta =    0.0000000000000000     
+%% cm_phi =    0.0000000000000000     
+%% luminosity =    0.0000000000000000     
+%% $lhapdf_file = [unknown string]
+%% lhapdf_member =            0
+%% lhapdf_photon_scheme =            0
+%% isr_alpha =    0.0000000000000000     
+%% isr_q_max =    0.0000000000000000     
+%% isr_mass =    0.0000000000000000     
+%% isr_order =            3
+%% epa_alpha =    0.0000000000000000     
+%% epa_x_min =    0.0000000000000000     
+%% epa_q_min =    0.0000000000000000     
+%% epa_e_max =    0.0000000000000000     
+%% epa_mass =    0.0000000000000000     
+%% ewa_x_min =    0.0000000000000000     
+%% ewa_q_min =    0.0000000000000000     
+%% ewa_pt_max =    0.0000000000000000     
+%% ewa_mass =    0.0000000000000000     
+%% [user variable] ?ewa_keep_momentum = false
+%% [user variable] ?ewa_keep_energy = false
+%% ?alpha_s_is_fixed = true
+%% ?alpha_s_from_lhapdf = false
+%% alpha_s_order =            0
+%% alpha_s_nf =            5
+%% ?alpha_s_from_mz = true
+%% lambda_qcd =   0.20000000000000001     
+%% ?fatal_beam_decay = true
+%% ?helicity_selection_active = true
+%% helicity_selection_threshold =    10000000000.000000     
+%% helicity_selection_cutoff =         1000
+%% threshold_calls =            0
+%% min_calls_per_channel =           10
+%% min_calls_per_bin =           10
+%% min_bins =            3
+%% max_bins =           20
+%% ?stratified = true
+%% ?use_vamp_equivalences = true
+%% channel_weights_power =   0.25000000000000000     
+%% $phs_file = [unknown string]
+%% ?phs_only = false
+%% phs_threshold_s =    50.000000000000000     
+%% phs_threshold_t =    100.00000000000000     
+%% phs_off_shell =            1
+%% phs_t_channel =            2
+%% phs_e_scale =    10.000000000000000     
+%% phs_m_scale =    10.000000000000000     
+%% phs_q_scale =    10.000000000000000     
+%% ?adapt_final_grids = true
+%% ?adapt_final_weights = false
+%% ?isotropic_decay = false
+%% ?diagonal_decay = false
+%% n_events =            0
+%% ?unweighted = true
+%% $event_normalization = "auto"
+%% ?negative_weights = false
+%% ?keep_beams = false
+%% $sample = ""
+%% ?read_raw = true
+%% ?write_raw = true
+%% $extension_raw = ".evx"
+%% $extension_default = ".evt"
+%% $extension_debug = ".debug"
+%% $extension_hepevt = ".hepevt"
+%% $extension_ascii_short = ".short.evt"
+%% $extension_ascii_long = ".long.evt"
+%% $extension_athena = ".athena.evt"
+%% $extension_lhef = ".lhef"
+%% $extension_lha = ".lha"
+%% $extension_hepmc = ".hepmc"
+%% $extension_stdhep = ".stdhep"
+%% $extension_stdhep_up = ".up.stdhep"
+%% $analysis_filename = [unknown string]
+%% $label = ""
+%% $physical_unit = ""
+%% $title = ""
+%% $description = ""
+%% $xlabel = ""
+%% $ylabel = ""
+%% tolerance =    0.0000000000000000     
+%% $fc = "/opt/gcc-4.5/bin/gfortran"
+%% $fcflags = " -g -O2"
+%% ?rebuild_library = true
+%% ?rebuild_phase_space = true
+%% ?rebuild_grids = true
+%% ?rebuild_events = true
+%% ?recompile_library = false
+%% GF =   1.16639000000000003E-005
+%% mZ =    91.188199999999995     
+%% mW =    80.418999999999997     
+%% mH =    200.00000000000000     
+%% alphas =   0.11780000000000000     
+%% me =   5.10999999999999953E-004
+%% mmu =   0.10570000000000000     
+%% mtau =    1.7769999999999999     
+%% ms =   9.50000000000000011E-002
+%% mc =    1.2000000000000000     
+%% mb =    4.2000000000000002     
+%% mtop =    173.09999999999999     
+%% wtop =    1.5229999999999999     
+%% wZ =    2.4430000000000001     
+%% wW =    2.0489999999999999     
+%% wH =    1.4190000000000000     
+%% khgaz =    0.0000000000000000     
+%% khgaga =    0.0000000000000000     
+%% khgg =    0.0000000000000000     
+%% xi0 =    0.0000000000000000     
+%% xipm =    0.0000000000000000     
+%% v* =    246.21845810181634     
+%% cw* =   0.88190138636358650     
+%% sw* =   0.47143392403388212     
+%% ee* =   0.30286000000000002     
+%% alpha_em_i* =    132.50494581248503     
+%% particle* = PDG(0)
+%% D_QUARK* = PDG(1)
+%% d* = PDG(1)
+%% down* = PDG(1)
+%% dbar* = PDG(-1)
+%% D* = PDG(-1)
+%% d~* = PDG(-1)
+%% U_QUARK* = PDG(2)
+%% u* = PDG(2)
+%% up* = PDG(2)
+%% ubar* = PDG(-2)
+%% U* = PDG(-2)
+%% u~* = PDG(-2)
+%% S_QUARK* = PDG(3)
+%% s* = PDG(3)
+%% strange* = PDG(3)
+%% sbar* = PDG(-3)
+%% S* = PDG(-3)
+%% s~* = PDG(-3)
+%% C_QUARK* = PDG(4)
+%% c* = PDG(4)
+%% charm* = PDG(4)
+%% cbar* = PDG(-4)
+%% C* = PDG(-4)
+%% c~* = PDG(-4)
+%% B_QUARK* = PDG(5)
+%% b* = PDG(5)
+%% bottom* = PDG(5)
+%% bbar* = PDG(-5)
+%% B* = PDG(-5)
+%% b~* = PDG(-5)
+%% T_QUARK* = PDG(6)
+%% t* = PDG(6)
+%% top* = PDG(6)
+%% tbar* = PDG(-6)
+%% T* = PDG(-6)
+%% t~* = PDG(-6)
+%% E_LEPTON* = PDG(11)
+%% e-* = PDG(11)
+%% e1* = PDG(11)
+%% electron* = PDG(11)
+%% e* = PDG(11)
+%% e+* = PDG(-11)
+%% E1* = PDG(-11)
+%% positron* = PDG(-11)
+%% E_NEUTRINO* = PDG(12)
+%% nue* = PDG(12)
+%% n1* = PDG(12)
+%% nu_e* = PDG(12)
+%% ve* = PDG(12)
+%% e-neutrino* = PDG(12)
+%% nuebar* = PDG(-12)
+%% N1* = PDG(-12)
+%% ve~* = PDG(-12)
+%% MU_LEPTON* = PDG(13)
+%% mu-* = PDG(13)
+%% e2* = PDG(13)
+%% mu* = PDG(13)
+%% muon* = PDG(13)
+%% mu+* = PDG(-13)
+%% E2* = PDG(-13)
+%% MU_NEUTRINO* = PDG(14)
+%% numu* = PDG(14)
+%% nu_mu* = PDG(14)
+%% n2* = PDG(14)
+%% vm* = PDG(14)
+%% mu-neutrino* = PDG(14)
+%% numubar* = PDG(-14)
+%% N2* = PDG(-14)
+%% vm~* = PDG(-14)
+%% TAU_LEPTON* = PDG(15)
+%% tau-* = PDG(15)
+%% e3* = PDG(15)
+%% tau* = PDG(15)
+%% ta-* = PDG(15)
+%% tauon* = PDG(15)
+%% tau+* = PDG(-15)
+%% E3* = PDG(-15)
+%% ta+* = PDG(-15)
+%% TAU_NEUTRINO* = PDG(16)
+%% nutau* = PDG(16)
+%% nu_tau* = PDG(16)
+%% n3* = PDG(16)
+%% vt* = PDG(16)
+%% tau_neutrino* = PDG(16)
+%% nutaubar* = PDG(-16)
+%% N3* = PDG(-16)
+%% vt~* = PDG(-16)
+%% GLUON* = PDG(21)
+%% gl* = PDG(21)
+%% g* = PDG(21)
+%% G* = PDG(21)
+%% gluon* = PDG(21)
+%% PHOTON* = PDG(22)
+%% A* = PDG(22)
+%% gamma* = PDG(22)
+%% photon* = PDG(22)
+%% Z_BOSON* = PDG(23)
+%% Z* = PDG(23)
+%% W_BOSON* = PDG(24)
+%% W+* = PDG(24)
+%% Wp* = PDG(24)
+%% W-* = PDG(-24)
+%% Wm* = PDG(-24)
+%% HIGGS* = PDG(25)
+%% H* = PDG(25)
+%% h* = PDG(25)
+%% Higgs* = PDG(25)
+%% PROTON* = PDG(2212)
+%% p* = PDG(2212)
+%% p+* = PDG(2212)
+%% pbar* = PDG(-2212)
+%% p-* = PDG(-2212)
+%% HADRON_REMNANT* = PDG(90)
+%% HADRON_REMNANT_SINGLET* = PDG(91)
+%% HADRON_REMNANT_TRIPLET* = PDG(92)
+%% HADRON_REMNANT_OCTET* = PDG(93)
+%% charged* = PDG(11, 13, 15)
+%% colored* = PDG()
+%% m-* = PDG(13)
+%% m+* = PDG(-13)
+%% t-* = PDG(15)
+%% t+* = PDG(-15)
+%% n_calls(qedtest_eemm) = [unknown integer]
+%% integral(qedtest_eemm) = [unknown real]
+%% error(qedtest_eemm) = [unknown real]
+%% accuracy(qedtest_eemm) = [unknown real]
+%% chi2(qedtest_eemm) = [unknown real]
+%% efficiency(qedtest_eemm) = [unknown real]
+%% ------------------------------------------------------------------------
+%% Cut expression:
+%%  Evaluation tree:
+%%    [empty]
+%% ------------------------------------------------------------------------
+%% Weight expression:
+%%  Evaluation tree:
+%%    [empty]
+%% ------------------------------------------------------------------------
+%% Scale expression:
+%%  Evaluation tree:
+%%    [empty]
+%% ------------------------------------------------------------------------
+%%  begin type(vamp_grids) :: g
+%%  size (g%grids) =                1
+%%    sum_integral =    0.1739012656355327999336E+05
+%%     sum_weights =    0.5003828047561890457473E+02
+%%        sum_chi2 =    0.6043702921481354162097E+07
+%%  begin g%weights
+%%                  1   0.1000000000000000000000E+01
+%%  end g%weights
+%%  begin g%num_calls
+%%                  1            2000
+%%  end g%num_calls
+%%  begin g%grids
+%%  begin type(vamp_grid) :: g
+%%    size (g%div) =                2
+%%       num_calls =             2000
+%%  calls_per_cell =               71
+%%      stratified =  T
+%%  all_stratified =  F
+%%      quadrupole =  F
+%%           mu(1) =    0.3475364540559422721344E+03
+%%           mu(2) =    0.1998469952394245005567E-01
+%%    sum_integral =    0.1739012656355328363134E+05
+%%     sum_weights =    0.5003828047561891168016E+02
+%%        sum_chi2 =    0.6043702921481356956065E+07
+%%           calls =    0.1988000000000000000000E+04
+%%            dv2g =    0.1428571428571428526821E-01
+%%          jacobi =    0.5030181086519115111338E-03
+%%           f_min =    0.2606941812215391678365E+03
+%%           f_max =    0.5207462045037691495963E+03
+%%           mu_gi =    0.6379018118552520633102E+02
+%%       sum_mu_gi =    0.3191950977751858772535E+04
+%%  begin g%num_div
+%%                  1               1
+%%                  2              20
+%%  end g%num_div
+%%  begin g%div
+%%  begin type(division) :: d
+%%  ubound(d%x,1) =               1
+%%          d%ng =                1
+%%  d%stratified =  F
+%%          d%dx =    0.1000000000000000000000E+01
+%%         d%dxg =    0.1000000000000000000000E+01
+%%       d%x_min =    0.0000000000000000000000E+00
+%%       d%x_max =    0.1000000000000000000000E+01
+%%  d%x_min_true =    0.0000000000000000000000E+00
+%%  d%x_max_true =    0.1000000000000000000000E+01
+%%  begin d%x
+%%                0   0.0000000000000000000000E+00
+%%                1   0.1000000000000000000000E+01
+%%  end d%x
+%%  end type(division)
+%%  begin type(division) :: d
+%%  ubound(d%x,1) =              14
+%%          d%ng =               28
+%%  d%stratified =  T
+%%          d%dx =    0.1000000000000000000000E+01
+%%         d%dxg =    0.5000000000000000000000E+00
+%%       d%x_min =    0.0000000000000000000000E+00
+%%       d%x_max =    0.1000000000000000000000E+01
+%%  d%x_min_true =    0.0000000000000000000000E+00
+%%  d%x_max_true =    0.1000000000000000000000E+01
+%%  begin d%x
+%%                0   0.0000000000000000000000E+00
+%%                1   0.7142857142857142460635E-01
+%%                2   0.1428571428571428492127E+00
+%%                3   0.2142857142857142738190E+00
+%%                4   0.2857142857142856984254E+00
+%%                5   0.3571428571428571507873E+00
+%%                6   0.4285714285714285476381E+00
+%%                7   0.5000000000000000000000E+00
+%%                8   0.5714285714285713968508E+00
+%%                9   0.6428571428571429047238E+00
+%%               10   0.7142857142857143015746E+00
+%%               11   0.7857142857142856984254E+00
+%%               12   0.8571428571428570952762E+00
+%%               13   0.9285714285714286031492E+00
+%%               14   0.1000000000000000000000E+01
+%%  end d%x
+%%  end type(division)
+%%  end g%div
+%%  empty g%map
+%%  empty g%mu_x
+%%  end type(vamp_grid)
+%%  end g%grids
+%%  end type(vamp_grids)
+%% ------------------------------------------------------------------------
+%% |  Global history [vamp]:
+%%  ------------------------------------------------------------------------------
+%%  [vamp]   it   #calls     integral                 average           chi2  eff.
+%%  [vamp]    1     1988   0.0000E+00(0.00E+00)  0.347536E+03(0.14E+00)  0.0 0.000
+%%  ------------------------------------------------------------------------------
+%% ------------------------------------------------------------------------
+%% |  Channel histories [vamp]:
+%%  ==============================================================================
+%%  ------------------------------------------------------------------------------
+%%  chan#001 it   #calls     integral                 average           chi2  eff.
+%%  chan#001  1     1988   0.3475E+03(0.14E+00)  0.347536E+03(0.14E+00)  0.0 0.667
+%%  ------------------------------------------------------------------------------
+%%  ==============================================================================
 
-|=============================================================================|
-| It      Calls  Integral[GeV] Error[GeV]  Err[%]    Acc  Eff[%]   Chi2 N[It] |
-|=============================================================================|
-   1       2000  3.4753645E+02  1.41E-01    0.04    0.02*  66.74
-|=============================================================================|
-   1       2000  3.4753645E+02  1.41E-01    0.04    0.02   66.74
-|=============================================================================|
-|=============================================================================|
-| Phase-space grove weight history: (numbers in %)
-| grove |   1
-|=============================================================================|
-      1 | 100
-|=============================================================================|
+%% |=============================================================================|
+%% | It      Calls  Integral[GeV] Error[GeV]  Err[%]    Acc  Eff[%]   Chi2 N[It] |
+%% |=============================================================================|
+%%    1       2000  3.4753645E+02  1.41E-01    0.04    0.02*  66.74
+%% |=============================================================================|
+%%    1       2000  3.4753645E+02  1.41E-01    0.04    0.02   66.74
+%% |=============================================================================|
+%% |=============================================================================|
+%% | Phase-space grove weight history: (numbers in %)
+%% | grove |   1
+%% |=============================================================================|
+%%       1 | 100
+%% |=============================================================================|
 
- ========================================================================
- ========================================================================
-|===============================================================================
- Decay tree:
-   tries =            1
-   acceptance probability =    1.0000000000000000     
-|===============================================================================
- Mother process = 'qedtest_eemm'
-|===============================================================================
- Decay chain:
-|===============================================================================
- Decay configuration: [undefined]
-|===============================================================================
- Evaluator: Color-summed including all decays
-Evaluator:
- Interaction:           8
- Virtual:
- Particle 1
- E =    250.00000000000000     
- P =    0.0000000000000000        0.0000000000000000        249.99999999947775     
- mask [fch] = [FTT]
- internal links: X => 3 4
- source: (2)1
- Particle 2
- E =    250.00000000000000     
- P =    0.0000000000000000        0.0000000000000000       -249.99999999947775     
- mask [fch] = [FTT]
- internal links: X => 3 4
- source: (2)2
- Outgoing:
- Particle 3
- E =    250.00000000000000     
- P =    223.64041528426193       -102.79251826657215        43.802416227981048     
- mask [fch] = [FTT]
- internal links: 1 2 => X
- source: (5)3
- Particle 4
- E =    250.00000000000000     
- P =   -223.64041528426193        102.79251826657215       -43.802416227981048     
- mask [fch] = [FTT]
- internal links: 1 2 => X
- source: (5)4
- State matrix:  norm =   8.67160247171198766E-003
- [f(11)]
-   [f(-11)]
-     [f(13)]
-       [f(-13)] => ME(1) =   1.00000000000    
- Matrix-element multiplication
-  Input interaction 1: 2
-  Input interaction 2:           5
-  ME(1) = 
-    + ME1(1) x ME2(1)
-|===============================================================================
- Evaluator: Color flow components including all decays
-Evaluator:
- Interaction:           9
- Virtual:
- Particle 1
- E =    250.00000000000000     
- P =    0.0000000000000000        0.0000000000000000        249.99999999947775     
- mask [fch] = [FFgT]
- internal links: X => 3 4
- source: (7)1
- Particle 2
- E =    250.00000000000000     
- P =    0.0000000000000000        0.0000000000000000       -249.99999999947775     
- mask [fch] = [FFgT]
- internal links: X => 3 4
- source: (7)2
- Outgoing:
- Particle 3
- E =    250.00000000000000     
- P =    223.64041528426193       -102.79251826657215        43.802416227981048     
- mask [fch] = [FFgT]
- internal links: 1 2 => X
- source: (6)3
- Particle 4
- E =    250.00000000000000     
- P =   -223.64041528426193        102.79251826657215       -43.802416227981048     
- mask [fch] = [FFgT]
- internal links: 1 2 => X
- source: (6)4
- State matrix:  norm =    1.0000000000000000     
- [f(11)]
-   [f(-11)]
-     [f(13)]
-       [f(-13)] => ME(1) =  8.671602471712E-03
- Matrix-element multiplication
-  Input interaction 1: 7
-  Input interaction 2:           6
-  ME(1) = 
-    + ME1(1) x ME2(1)
-|===============================================================================
-   [Process: qedtest_eemm]
+%%  ========================================================================
+%%  ========================================================================
+%% |===============================================================================
+%%  Decay tree:
+%%    tries =            1
+%%    acceptance probability =    1.0000000000000000     
+%% |===============================================================================
+%%  Mother process = 'qedtest_eemm'
+%% |===============================================================================
+%%  Decay chain:
+%% |===============================================================================
+%%  Decay configuration: [undefined]
+%% |===============================================================================
+%%  Evaluator: Color-summed including all decays
+%% Evaluator:
+%%  Interaction:           8
+%%  Virtual:
+%%  Particle 1
+%%  E =    250.00000000000000     
+%%  P =    0.0000000000000000        0.0000000000000000        249.99999999947775     
+%%  mask [fch] = [FTT]
+%%  internal links: X => 3 4
+%%  source: (2)1
+%%  Particle 2
+%%  E =    250.00000000000000     
+%%  P =    0.0000000000000000        0.0000000000000000       -249.99999999947775     
+%%  mask [fch] = [FTT]
+%%  internal links: X => 3 4
+%%  source: (2)2
+%%  Outgoing:
+%%  Particle 3
+%%  E =    250.00000000000000     
+%%  P =    223.64041528426193       -102.79251826657215        43.802416227981048     
+%%  mask [fch] = [FTT]
+%%  internal links: 1 2 => X
+%%  source: (5)3
+%%  Particle 4
+%%  E =    250.00000000000000     
+%%  P =   -223.64041528426193        102.79251826657215       -43.802416227981048     
+%%  mask [fch] = [FTT]
+%%  internal links: 1 2 => X
+%%  source: (5)4
+%%  State matrix:  norm =   8.67160247171198766E-003
+%%  [f(11)]
+%%    [f(-11)]
+%%      [f(13)]
+%%        [f(-13)] => ME(1) =   1.00000000000    
+%%  Matrix-element multiplication
+%%   Input interaction 1: 2
+%%   Input interaction 2:           5
+%%   ME(1) = 
+%%     + ME1(1) x ME2(1)
+%% |===============================================================================
+%%  Evaluator: Color flow components including all decays
+%% Evaluator:
+%%  Interaction:           9
+%%  Virtual:
+%%  Particle 1
+%%  E =    250.00000000000000     
+%%  P =    0.0000000000000000        0.0000000000000000        249.99999999947775     
+%%  mask [fch] = [FFgT]
+%%  internal links: X => 3 4
+%%  source: (7)1
+%%  Particle 2
+%%  E =    250.00000000000000     
+%%  P =    0.0000000000000000        0.0000000000000000       -249.99999999947775     
+%%  mask [fch] = [FFgT]
+%%  internal links: X => 3 4
+%%  source: (7)2
+%%  Outgoing:
+%%  Particle 3
+%%  E =    250.00000000000000     
+%%  P =    223.64041528426193       -102.79251826657215        43.802416227981048     
+%%  mask [fch] = [FFgT]
+%%  internal links: 1 2 => X
+%%  source: (6)3
+%%  Particle 4
+%%  E =    250.00000000000000     
+%%  P =   -223.64041528426193        102.79251826657215       -43.802416227981048     
+%%  mask [fch] = [FFgT]
+%%  internal links: 1 2 => X
+%%  source: (6)4
+%%  State matrix:  norm =    1.0000000000000000     
+%%  [f(11)]
+%%    [f(-11)]
+%%      [f(13)]
+%%        [f(-13)] => ME(1) =  8.671602471712E-03
+%%  Matrix-element multiplication
+%%   Input interaction 1: 7
+%%   Input interaction 2:           6
+%%   ME(1) = 
+%%     + ME1(1) x ME2(1)
+%% |===============================================================================
+%%    [Process: qedtest_eemm]
 
- Particle set:
- Particle 1 [i] f(11)
- Momentum:
- E =    250.00000000000000     
- P =    0.0000000000000000        0.0000000000000000        249.99999999947775     
- T =   2.61124455391836818E-007
- Children: 3 4
- Particle 2 [i] f(-11)
- Momentum:
- E =    250.00000000000000     
- P =    0.0000000000000000        0.0000000000000000       -249.99999999947775     
- T =   2.61124455391836818E-007
- Children: 3 4
- Particle 3 [o] f(13)
- Momentum:
- E =    250.00000000000000     
- P =    223.64041528426193       -102.79251826657215        43.802416227981048     
- T =   1.11724899955660817E-002
- Parents:  1 2
- Particle 4 [o] f(-13)
- Momentum:
- E =    250.00000000000000     
- P =   -223.64041528426193        102.79251826657215       -43.802416227981048     
- T =   1.11724899955660817E-002
- Parents:  1 2
+%%  Particle set:
+%%  Particle 1 [i] f(11)
+%%  Momentum:
+%%  E =    250.00000000000000     
+%%  P =    0.0000000000000000        0.0000000000000000        249.99999999947775     
+%%  T =   2.61124455391836818E-007
+%%  Children: 3 4
+%%  Particle 2 [i] f(-11)
+%%  Momentum:
+%%  E =    250.00000000000000     
+%%  P =    0.0000000000000000        0.0000000000000000       -249.99999999947775     
+%%  T =   2.61124455391836818E-007
+%%  Children: 3 4
+%%  Particle 3 [o] f(13)
+%%  Momentum:
+%%  E =    250.00000000000000     
+%%  P =    223.64041528426193       -102.79251826657215        43.802416227981048     
+%%  T =   1.11724899955660817E-002
+%%  Parents:  1 2
+%%  Particle 4 [o] f(-13)
+%%  Momentum:
+%%  E =    250.00000000000000     
+%%  P =   -223.64041528426193        102.79251826657215       -43.802416227981048     
+%%  T =   1.11724899955660817E-002
+%%  Parents:  1 2
 
- Event weight  =   1.0000000000000000     
- Excess weight =   0.0000000000000000     
- ========================================================================
-    \end{verbatim}
-\end{scriptsize}
-
-
+%%  Event weight  =   1.0000000000000000     
+%%  Excess weight =   0.0000000000000000     
+%%  ========================================================================
+%%     \end{verbatim}
+%% \end{scriptsize}
 
 
+
+\clearpage
 \section*{Acknowledgements}
 
 We would like to thank E.~Boos, R.~Chierici, K.~Desch, M.~Kobel,

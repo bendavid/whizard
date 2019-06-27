@@ -1,4 +1,4 @@
-! WHIZARD 2.0.0 Mon Apr 12 2010
+! WHIZARD 2.0.1 Sun Apr 25 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -223,12 +223,14 @@ contains
           iostat = EOF
        else
           call get (stream%unit, string, iostat=iostat)
-          if (iostat == EOR)  iostat = 0
+          if (iostat == EOR) then
+             iostat = 0
+             stream%record = stream%record + 1
+          end if
           if (iostat == EOF) then
              iostat = 0
              stream%eof = .true.
-          else if (iostat == 0) then
-             stream%record = stream%record + 1
+             if (len (string) /= 0) stream%record = stream%record + 1
           end if
        end if
     else if (associated (stream%string)) then

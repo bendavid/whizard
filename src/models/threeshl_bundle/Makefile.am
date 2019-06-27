@@ -27,9 +27,13 @@
 
 noinst_LTLIBRARIES = libthreeshl_bundle.la
 
-libthreeshl_bundle_la_SOURCES= threeshl_bundle.F90
+## We need both in the distribution
 
-## Unfortunately, the NAG compiler requires these to be happy.
+EXTRA_DIST = threeshl_bundle.f90 threeshl_bundle_lt.f90
+
+libthreeshl_bundle_la_SOURCES = threeshl_bundle.f90
+
+## Unfortunately, the NAG and intel compilers requires these to be happy.
 execmoddir = $(pkglibdir)/mod/models
 nodist_execmod_HEADERS = \
 	tdefs.$(FC_MODULE_EXT) \

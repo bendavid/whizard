@@ -1,3 +1,28 @@
+# $Id: casc_dec.sin 2272 2010-04-09 16:43:37Z kilian $
+# Simple complete physics example: SUSY cascade decay 
+########################################################################
+#
+# Copyright (C) 2010-2010 by 
+#     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+#     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
+#     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+#
+# WHIZARD is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by 
+# the Free Software Foundation; either version 2, or (at your option)
+# any later version.
+#
+# WHIZARD is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+#
+########################################################################
+
 model = MSSM
 
 process dec_su_q	= su1 => u, neu2
@@ -19,29 +44,25 @@ beams = p, p => lhapdf
 integrate (susybg) { iterations = 5:10000, 2:10000 }
 integrate (full)
 
-
-
-
-
 n_events = 10000
 
 $title = "Full process"
 $description = 
   "$p + p \to u+ \bar u \to \bar{\tilde u}_1 + u + \tilde e_{12}^+ + e^-$"
 $xlabel = "$M_{\rm inv}(ue^-)$"
-histogram inv_mass1_full (0,600,20)
+histogram inv_mass1_full (0, 600, 20)
 
 $title = "Factorized process with complete spin correlations"
 $description = 
   "$p + p \to u\bar u \to \bar{\tilde u}_1 + 
   (\tilde u_1 \to u + (\tilde\chi_2^0 \to \tilde e_{12}^+ + e^-))$"
-histogram inv_mass1 (0,600,20)
+histogram inv_mass1 (0, 600, 20)
 
 $title = "Factorized process with classical spin correlations"
-histogram inv_mass1_dia (0,600,20)
+histogram inv_mass1_dia (0, 600, 20)
 
 $title = "Factorized process with isotropic decay"
-histogram inv_mass1_iso (0,600,20)
+histogram inv_mass1_iso (0, 600, 20)
 
 simulate (full) {
   $sample = "casc_dec_full"

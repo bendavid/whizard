@@ -34,11 +34,21 @@ where XX is the current version number.
 Prerequisites are:
 
  - Make
- - Objective Caml compiler (version 3.04 or higher)
+ - Objective Caml compiler (version 3.10 or higher)
  - Fortran 95/03 compiler
 
 The Objective Caml (O'Caml) compiler is available from 
 http://pauillac.inria.fr/ocaml/
+
+#-------------------------------------------------------------
+#  Specific problems with some FORTRAN compilers
+#-------------------------------------------------------------
+
+Note for NAG users: For version 5.2 of NAG, the standard debugging
+flag -g is referencing for historical reasons to the upsf90 
+debugger which is no longer supported. If you want to use debugging
+information set the -g90 flag referring to the dbx90 or gdb 
+debuggers.
 
 #-------------------------------------------------------------
 #  External libraries and programs

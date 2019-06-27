@@ -1,4 +1,4 @@
-(* $Id: dAG.ml 2219 2010-04-04 16:05:44Z ohl $
+(* $Id: dAG.ml 2403 2010-04-23 20:28:27Z ohl $
 
    Copyright (C) 1999-2009 by
 
@@ -21,8 +21,8 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 let rcs_file = RCS.parse "DAG" ["Directed Acyclical Graph"]
-    { RCS.revision = "$Revision: 2219 $";
-      RCS.date = "$Date: 2010-04-04 18:05:44 +0200 (Sun, 04 Apr 2010) $";
+    { RCS.revision = "$Revision: 2403 $";
+      RCS.date = "$Date: 2010-04-23 22:28:27 +0200 (Fri, 23 Apr 2010) $";
       RCS.author = "$Author: ohl $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/src/omega/src/dAG.ml $" }
@@ -67,7 +67,7 @@ module type T =
       (node -> edge * children -> edge * children) -> t -> t
     val fold : (node -> edge * children -> 'a -> 'a) -> t -> 'a -> 'a
     val lists : t -> (node * (edge * children) list) list
-    val dependencies : t -> node -> node Tree2.t
+    val dependencies : t -> node -> (node, edge) Tree2.t
     val harvest : t -> node -> t -> t
     val size : t -> int
     val eval : (node -> 'a) -> (node -> edge -> 'b -> 'c) ->
@@ -360,7 +360,9 @@ i*)
           Tree2.cons
             (Offspring.fold 
                (fun o acc ->
-                 (node', F.fold (fun wf acc' -> dependencies' wf :: acc') o []) :: acc)
+                 (fst o,
+                  node',
+                  F.fold (fun wf acc' -> dependencies' wf :: acc') o []) :: acc)
                offspring [])
       in
       dependencies' node

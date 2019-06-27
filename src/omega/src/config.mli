@@ -1,4 +1,4 @@
-(* $Id: config.mli 2276 2010-04-09 17:15:14Z ohl $
+(* $Id: config.mli 2362 2010-04-20 09:21:05Z ohl $
 
    Copyright (C) 1999-2009 by
 

@@ -1,4 +1,4 @@
-%  $Id: omegalib.nw 2276 2010-04-09 17:15:14Z ohl $
+%  $Id: omegalib.nw 2366 2010-04-20 13:30:13Z jr_reuter $
 %
 %  Copyright (C) 1999-2009 by 
 %      Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -9214,9 +9214,9 @@ program test_omega95_bispinors
     end do
   end do
   testv%psi(4)%a(1) = (1.0_default, 0.0_default)
-  testv%psi(4)%a(1) = (0.0_default, 2.0_default)
-  testv%psi(4)%a(1) = (1.0_default, 0.0_default)
-  testv%psi(4)%a(1) = (3.0_default, 0.0_default)
+  testv%psi(4)%a(2) = (0.0_default, 2.0_default)
+  testv%psi(4)%a(3) = (1.0_default, 0.0_default)
+  testv%psi(4)%a(4) = (3.0_default, 0.0_default)
   vp = p
   vq = q
   vt = t
@@ -9710,7 +9710,7 @@ case (OVM_FUSE_PSIBAR_PSIBAR_VECTOR)
         f_fv (sign*env%gc(coupl), vm%psibar(rhs(1)), vm%v(rhs(2)))
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 <<Copyleft>>=
-!  $Id: omegalib.nw 2276 2010-04-09 17:15:14Z ohl $
+!  $Id: omegalib.nw 2366 2010-04-20 13:30:13Z jr_reuter $
 !
 !  Copyright (C) 1999-2009 by 
 !      Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>

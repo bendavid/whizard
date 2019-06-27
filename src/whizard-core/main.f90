@@ -1,4 +1,4 @@
-! WHIZARD 2.0.0 Mon Apr 12 2010
+! WHIZARD 2.0.1 Sun Apr 25 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -249,6 +249,7 @@ program main
 
   ! Overall initialization
   if (logfile /= "")  call logfile_init (logfile)
+  call mask_term_signals ()
   call msg_banner ()
   call whizard_init &
        (preload_model=model, preload_libs=libraries, default_lib=libname, &
@@ -291,6 +292,8 @@ program main
 
   ! Overall finalization
   call whizard_final ()
+  call terminate_now_if_signal ()
+  call release_term_signals ()
   call msg_terminate (quit_code = quit_code)
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

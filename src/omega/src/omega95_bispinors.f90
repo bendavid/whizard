@@ -1,4 +1,4 @@
-!  $Id: omegalib.nw 2276 2010-04-09 17:15:14Z ohl $
+!  $Id: omegalib.nw 2366 2010-04-20 13:30:13Z jr_reuter $
 !
 !  Copyright (C) 1999-2009 by 
 !      Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>

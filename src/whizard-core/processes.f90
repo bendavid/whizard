@@ -1,4 +1,4 @@
-! WHIZARD 2.0.0 Mon Apr 12 2010
+! WHIZARD 2.0.1 Sun Apr 25 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -36,8 +36,9 @@ module processes
   use sm_physics !NODEP!
   use vamp_equivalences !NODEP!
   use vamp !NODEP!
+  use tao_random_numbers !NODEP!
   use md5
-  use clock
+  use cputime
   use os_interface
   use lexers
   use parser
@@ -177,7 +178,6 @@ module processes
      real(default) :: efficiency = 0
      real(default) :: chi2 = 0
      real(default), dimension(:), allocatable :: grove_weight
-     logical :: time_set = .false.
      type(time_t) :: time_start
      type(time_t) :: time_end
   end type integration_entry_t
@@ -362,7 +362,6 @@ contains
     if (present (time_start) .and. present (time_end)) then
        entry%time_start = time_start
        entry%time_end = time_end
-       entry%time_set = .true.
     end if
   end subroutine integration_entry_init
 
@@ -426,13 +425,10 @@ contains
   function integration_entry_get_time_per_event (entry) result (tpe)
     real(default) :: tpe
     type(integration_entry_t), intent(in) :: entry
-    if (entry%time_set) then
-       if (entry%n_calls /= 0 .and. entry%efficiency /= 0) then
-          tpe = time_to_seconds (entry%time_end - entry%time_start) &
-               / entry%n_calls / entry%efficiency
-       else
-          tpe = 0
-       end if
+    real(default) :: time_in_seconds
+    if (entry%n_calls /= 0 .and. entry%efficiency /= 0) then
+       time_in_seconds = entry%time_end - entry%time_start
+       tpe = time_in_seconds / entry%n_calls / entry%efficiency
     else
        tpe = 0
     end if
@@ -479,6 +475,7 @@ contains
     integer :: u
     u = output_unit (unit);  if (u < 0)  return
     write (u, "(A)")  "|" // (repeat ("-", 77)) // "|"
+    flush (u)
   end subroutine write_hline
   
   subroutine write_dline (unit)
@@ -486,6 +483,7 @@ contains
     integer :: u
     u = output_unit (unit);  if (u < 0)  return
     write (u, "(A)")  "|" // (repeat ("=", 77)) // "|"
+    flush (u)
   end subroutine write_dline
   
   subroutine integration_entry_write (entry, unit, verbose)
@@ -546,6 +544,7 @@ contains
           write (u, *)  "    n_groves = 0"
        end if
     end if
+    flush (u)
   end subroutine integration_entry_write
 
   subroutine integration_entry_read (entry, unit)
@@ -694,6 +693,7 @@ contains
        end if
        write (u, *)  "end(integration_results)"
     end if
+    flush (u)
   end subroutine integration_results_write
 
   subroutine integration_results_write_entry (results, it, unit)
@@ -758,6 +758,7 @@ contains
     else
        call msg_message ("Channel weight history: [undefined]", unit)
     end if
+    flush (u)
     call write_dline(unit)
   end subroutine integration_results_write_grove_weights
 
@@ -950,7 +951,7 @@ contains
     real(default) :: s
     type(integration_results_t), intent(in) :: results
     if (results%n_pass /= 0) then
-       s = integration_entry_get_time_per_event (results%entry(results%n_pass))
+       s = integration_entry_get_time_per_event (results%entry(results%n_it))
     else
        s = 0
     end if
@@ -1853,15 +1854,20 @@ contains
     end if
   end subroutine process_check_beam_setup
 
-  subroutine process_setup_phase_space (process, rebuild_phs, &
-       phs_par, mapping_defaults, filename_out, filename_in, ok)
+  subroutine process_setup_phase_space (process, rebuild_phs, &  
+       os_data, phs_par, mapping_defaults, filename_out, &
+       filename_in, filename_vis, vis_channels, ok)
     type(process_t), intent(inout), target :: process
     logical, intent(in) :: rebuild_phs
+    type(os_data_t), intent(in) :: os_data
     type(phs_parameters_t), intent(inout) :: phs_par
     type(mapping_defaults_t), intent(in) :: mapping_defaults
-    type(string_t), intent(in), optional :: filename_out, filename_in
+    type(string_t), intent(in), optional :: &
+       filename_out, filename_in, filename_vis
+    logical, intent(in) :: vis_channels
     logical, intent(out), optional :: ok
-    type(string_t) :: filename
+    type(string_t) :: filename, setenv_tex, setenv_mp, &
+       pipe, pipe_dvi
     logical :: exist, check
     integer :: extra_off_shell
     type(cascade_set_t) :: cascade_set
@@ -1871,7 +1877,7 @@ contains
     integer :: n_par_strfun
     logical, dimension(:), allocatable :: strfun_rigid
     character(32) :: md5sum_process, md5sum_model, md5sum_parameters
-    integer :: unit
+    integer :: unit, unit_tex, unit_dev, status
     logical :: phs_ok, phs_match, wrote_file
     phs_ok = .false.
     phs_match = .false.
@@ -1885,7 +1891,7 @@ contains
          hard_interaction_get_flv_states (process%hi), process%model)
     md5sum_process = process%md5sum
     md5sum_model = model_get_md5sum (process%model)
-    md5sum_parameters = model_get_parameters_md5sum (process%model)
+    md5sum_parameters = model_get_parameters_md5sum (process%model)        
     phs_par%sqrts = process%sqrts
     if (present (filename_in)) then
        filename = filename_in
@@ -1969,6 +1975,66 @@ contains
        write (unit, *) "  md5sum_parameters = ", '"', md5sum_parameters, '"'
        call phs_parameters_write (phs_par, unit)
        call cascade_set_write_file_format (cascade_set, unit)
+       if (vis_channels) then 
+         unit_tex = free_unit ()
+         open (unit=unit_tex, file=char(filename_vis // ".tex"), &
+           action="write", status="replace")      
+         call cascade_set_write_graph_format (cascade_set, &
+            filename_vis // ".graphs", unit_tex)
+         close (unit_tex)      
+         call msg_message ("Writing visualized phase space channels file " & 
+            // char(trim(filename_vis)) // "...")        
+         if (os_data%event_analysis_ps) then
+         BLOCK: do
+            unit_dev = free_unit ()
+            open (file = "/dev/null", unit = unit_dev, &
+                 action = "write", iostat = status)
+            if (status /= 0) then
+               pipe = ""
+               pipe_dvi = ""
+            else
+               pipe = " > /dev/null"
+               pipe_dvi = " 2>/dev/null 1>/dev/null"
+            end if
+            close (unit_dev)
+            if (os_data%whizard_texpath /= "") then
+               setenv_tex = &
+                  "TEXINPUTS=" // os_data%whizard_texpath // ":$TEXINPUTS "
+               setenv_mp = &
+                  "MPINPUTS=" // os_data%whizard_texpath // ":$MPINPUTS "
+            else
+               setenv_tex = ""
+               setenv_mp = ""
+            end if
+            call os_system_call (setenv_tex // os_data%latex // " " // &
+               filename_vis // ".tex " // pipe, status)
+            if (status /= 0)  exit BLOCK
+            if (os_data%mpost /= "") then
+               call os_system_call (setenv_mp // os_data%mpost // " " // &
+                  filename_vis // ".graphs.mp" // pipe, status)
+            else 
+               call msg_fatal ("Could not use MetaPOST.")
+            end if
+            if (status /= 0)  exit BLOCK
+            call os_system_call (setenv_tex // os_data%latex // " " // &
+                filename_vis // ".tex" // pipe, status)
+            if (status /= 0)  exit BLOCK
+            call os_system_call (os_data%dvips // " " // &
+               filename_vis // ".dvi" // pipe_dvi, status)
+            if (status /= 0)  exit BLOCK
+            if (os_data%event_analysis_pdf) then
+               call os_system_call (os_data%ps2pdf // " " // &
+                     filename_vis // ".ps", status)
+               if (status /= 0)  exit BLOCK
+            end if
+            exit BLOCK
+         end do BLOCK
+         if (status /= 0) then
+          call msg_error ("Unable to compile analysis output file")
+         end if
+       end if    
+       end if    
+       call msg_message ("... done.")           
        call cascade_set_final (cascade_set)
        rewind (unit)
        call phs_forest_read (process%forest, unit, &
@@ -2509,26 +2575,13 @@ contains
     type(process_t), intent(in) :: process
     integer, intent(in), optional :: unit
     real(default) :: time_per_event, time_per_10k
-    character(80) :: time_string
-    type(time_t) :: t
     time_per_event = integration_results_get_time_per_event (process%results)
     time_per_10k = 10000 * time_per_event
-    t = time_from_seconds (time_per_10k)
-    if (time_per_10k == 0) then
-       write (time_string, "(A)")  "0"
-    else if (time_per_10k < 100) then
-       call time_write (t, time_string, milliseconds=.true.)
-    else if (time_per_10k < 86400) then
-       call time_write (t, time_string)
-    else if (time_per_10k < 3600) then
-       call time_write (t, time_string, seconds=.false.)
-    else
-       call time_write (t, time_string, days=.true., seconds=.false.)
-    end if
     write (msg_buffer, "(A)")  "Process '" // char (process%id) // "': " 
     call msg_message ()
-    write (msg_buffer, "(A)")  "   time estimate for 10000 unweighted events = " &
-         // trim (adjustl (time_string))
+    write (msg_buffer, "(A)")  "   time estimate for generating " &
+         // "10000 unweighted events: " &
+         // char (time2string (int (time_per_10k)))
     call msg_message (unit=unit)
     call write_hline (unit)
   end subroutine process_write_time_estimate
@@ -3403,9 +3456,11 @@ contains
     type(vamp_grid), dimension(:), intent(in), optional :: grids
     type(process_t), pointer :: process
     logical :: ok
+    call terminate_now_if_signal ()
     process => process_get_working_copy_ptr (store%proc(prc_index)%ptr)
     call process_set_kinematics (process, xi, channel, ok)
     if (ok)  ok = process_passes_cuts (process)
+    call terminate_now_if_signal ()
     if (ok) then
        call process_compute_vamp_phs_factor (process, weights)
        call process_update_alpha_s (process)
@@ -3422,6 +3477,7 @@ contains
        process%sample_function_value = 0
     end if
     f = process%sample_function_value
+    call terminate_now_if_signal ()
   end function sample_function
 
   subroutine process_test ()
@@ -3460,6 +3516,7 @@ contains
     type(model_t), intent(in), target :: model
     type(process_t), pointer :: process
     type(lhapdf_status_t) :: lhapdf_status
+    type(os_data_t) :: os_data
     type(phs_parameters_t) :: phs_par
     type(mapping_defaults_t) :: mapping_defaults
     type(flavor_t), dimension(1) :: flv
@@ -3481,6 +3538,7 @@ contains
     print *
     print *, "*** Beam/strfun setup (unpolarized)"
     print *
+    call os_data_init (os_data)
     call flavor_init (flv, (/ 23 /), model)
     call polarization_init_unpolarized (pol(1), flv(1))
     call beam_data_init_decay (beam_data, flv, pol)
@@ -3489,7 +3547,8 @@ contains
     print *
     print *, "* Phase space setup"
     call process_setup_phase_space (process, rebuild_phs, &
-         phs_par, mapping_defaults, filename_out=var_str("zee.phs"))
+         os_data, phs_par, mapping_defaults, filename_out=var_str("zee.phs"), &
+         vis_channels = .false.)
     print *
     print *, "*** Test integration"
     print *, "* Grids setup"
@@ -3525,7 +3584,8 @@ contains
     print *
     print *, "* Phase space setup"
     call process_setup_phase_space (process, rebuild_phs, &
-         phs_par, mapping_defaults, filename_out=var_str("zee.phs"))
+         os_data, phs_par, mapping_defaults, filename_out=var_str("zee.phs"), &
+         vis_channels = .false.)
     print *
     print *, "*** Test integration"
     print *, "* Grids setup"
@@ -3560,6 +3620,7 @@ contains
     type(model_t), intent(in), target :: model
     type(lhapdf_status_t) :: lhapdf_status
     type(process_t), pointer :: process
+    type(os_data_t) :: os_data
     type(phs_parameters_t) :: phs_par
     type(mapping_defaults_t) :: mapping_defaults
     type(flavor_t), dimension(1) :: flv
@@ -3583,6 +3644,7 @@ contains
     print *
     print *, "*** Beam/strfun setup (unpolarized)"
     print *
+    call os_data_init (os_data)
     call flavor_init (flv, (/ 23 /), model)
     call polarization_init_unpolarized (pol(1), flv(1))
     call beam_data_init_decay (beam_data, flv, pol)
@@ -3591,7 +3653,8 @@ contains
     print *
     print *, "* Phase space setup"
     call process_setup_phase_space (process, rebuild_phs, &
-         phs_par, mapping_defaults, filename_out=var_str("zee.phs"))
+         os_data, phs_par, mapping_defaults, filename_out=var_str("zee.phs"), &
+         vis_channels = .false.)
     print *
     print *, "*** Test integration"
     print *, "* Grids setup"
@@ -3639,6 +3702,7 @@ contains
     type(model_t), intent(in), target :: model
     type(lhapdf_status_t) :: lhapdf_status
     type(process_t), pointer :: process
+    type(os_data_t) :: os_data
     type(phs_parameters_t) :: phs_par
     type(mapping_defaults_t) :: mapping_defaults
     type(flavor_t), dimension(2) :: flv
@@ -3663,6 +3727,7 @@ contains
     print *
     print *, "* Beam/strfun setup"
     print *
+    call os_data_init (os_data)
     call flavor_init (flv, (/ 11, -11 /), model)
     call polarization_init_unpolarized (pol(1), flv(1))
     call polarization_init_unpolarized (pol(2), flv(2))
@@ -3672,7 +3737,8 @@ contains
     print *
     print *, "* Phase space setup"
     call process_setup_phase_space (process, rebuild_phs, &
-         phs_par, mapping_defaults, filename_out=var_str("nnh.phs"))
+         os_data, phs_par, mapping_defaults, filename_out=var_str("nnh.phs"), &
+         vis_channels = .false.)
     print *
     print *, "* Kinematics setup"
     allocate (x (process_get_n_parameters (process)))
@@ -3722,6 +3788,7 @@ contains
     type(model_t), intent(in), target :: model
     type(lhapdf_status_t) :: lhapdf_status
     type(process_t), pointer :: process
+    type(os_data_t) :: os_data
     type(phs_parameters_t) :: phs_par
     type(mapping_defaults_t) :: mapping_defaults
     type(flavor_t), dimension(2) :: flv
@@ -3745,6 +3812,7 @@ contains
     print *
     print *, "* Beam/strfun setup"
     print *
+    call os_data_init (os_data)
 !    call flavor_init (flv, (/ 21, 21 /), model)
     call flavor_init (flv, (/ PROTON, PROTON /), model)
     call polarization_init_unpolarized (pol(1), flv(1))
@@ -3760,7 +3828,8 @@ contains
     print *
     print *, "* Phase space setup"
     call process_setup_phase_space (process, rebuild_phs, &
-         phs_par, mapping_defaults, filename_out=var_str("qq.phs"))
+         os_data, phs_par, mapping_defaults, filename_out=var_str("qq.phs"), &
+         vis_channels = .false.)
     print *
     print *, "* Cuts setup"
     call stream_init (stream, var_str ("all Pt > 50 GeV (outgoing u:d:U:D)"))

@@ -1,4 +1,4 @@
-(* $Id: tree2.ml 2276 2010-04-09 17:15:14Z ohl $
+(* $Id: tree2.ml 2403 2010-04-23 20:28:27Z ohl $
 
    Copyright (C) 1999-2009 by
 
@@ -22,24 +22,26 @@
 
 (* Dependency trees for wavefunctions. *)
 
-type 'n t = 
-  | Node of ('n * 'n t list) list
+type ('n, 'e) t = 
+  | Node of ('e * 'n * ('n, 'e) t list) list
   | Leaf of 'n
 
 let leaf node = Leaf node
 
-let sort_children (node, children) = (node, List.sort compare children)
+let sort_children (edge, node, children) =
+  (edge, node, List.sort compare children)
 
 let cons fusions = Node (List.sort compare (List.map sort_children fusions))
 
-let rec to_string n2s = function
+let rec to_string n2s e2s = function
   | Leaf n -> n2s n
   | Node children ->
       "{" ^
       String.concat ","
         (List.map
-           (fun (n, ch_list) ->
-             n2s n ^ "<(" ^ (String.concat ";" (List.map (to_string n2s) ch_list)) ^ ")")
+           (fun (e, n, ch_list) ->
+             e2s e ^ ":" ^ n2s n ^
+             "<(" ^ (String.concat ";" (List.map (to_string n2s e2s) ch_list)) ^ ")")
            children) ^
       "}"
   

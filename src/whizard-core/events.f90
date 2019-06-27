@@ -1,4 +1,4 @@
-! WHIZARD 2.0.0 Mon Apr 12 2010
+! WHIZARD 2.0.1 Sun Apr 25 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -66,6 +66,7 @@ module events
   public :: event_write
   public :: event_generate
   public :: event_do_analysis
+  public :: md5sum_events_t
   public :: raw_event_file_write_header
   public :: raw_event_file_read_header
   public :: event_write_raw
@@ -82,19 +83,29 @@ module events
      logical :: particle_set_exists = .false.
      type(particle_set_t) :: particle_set
      real(default), pointer :: weight => null ()
+     real(default), pointer :: sqme => null ()
      real(default) :: excess = 0
   end type event_t
+
+  type :: md5sum_events_t
+    character(32), dimension(:), allocatable :: process
+    character(32), dimension(:), allocatable :: parameters
+    character(32), dimension(:), allocatable :: results
+    character(32) :: decays
+    character(32) :: simulation
+  end type md5sum_events_t
 
 
 contains
 
-  subroutine event_init (event, process, event_weight, decay_tree)
+  subroutine event_init (event, process, event_weight, event_sqme, decay_tree)
     type(event_t), intent(out) :: event
     type(process_t), intent(in), target :: process
-    real(default), intent(in), target :: event_weight
+    real(default), intent(in), target :: event_weight, event_sqme
     type(decay_tree_t), intent(in), optional, target :: decay_tree
     event%process => process
     event%weight => event_weight
+    event%sqme => event_sqme
     if (present (decay_tree))  event%decay_tree => decay_tree
   end subroutine event_init
 
@@ -146,7 +157,6 @@ contains
     logical, intent(in) :: unweighted
     integer, intent(in) :: factorization_mode
     logical, intent(in) :: keep_correlations, keep_virtual
-    real(double) :: r
     call event_discard_particle_set (event)
     if (unweighted) then
        call process_generate_unweighted_event (event%process, rng, event%excess)
@@ -154,6 +164,7 @@ contains
     else
        call process_generate_weighted_event (event%process, rng, event%weight)
     end if
+    event%sqme = process_get_sqme (event%process)
     if (associated (event%decay_tree)) then
        call decay_tree_generate_event (event%decay_tree, rng)
        call event_factorize_process (event, rng, &
@@ -168,7 +179,7 @@ contains
     integer, intent(in) :: factorization_mode
     logical, intent(in) :: keep_correlations, keep_virtual
     type(interaction_t), pointer :: int_sqme, int_flows
-    real(double), dimension(2) :: r
+    real(default), dimension(2) :: r
     integer, dimension(:), allocatable :: beam_index
     integer, dimension(:), allocatable :: incoming_parton_index
     int_sqme => evaluator_get_int_ptr &
@@ -218,36 +229,26 @@ contains
     end if
   end subroutine event_discard_particle_set
 
-  subroutine raw_event_file_write_header (unit, &
-       md5sum_process, md5sum_parameters, md5sum_results, &
-       md5sum_decays, md5sum_simulation)
+  subroutine raw_event_file_write_header (unit, md5sum)
     integer, intent(in) :: unit
-    character(32), dimension(:), intent(in) :: md5sum_process
-    character(32), dimension(:), intent(in) :: md5sum_parameters
-    character(32), dimension(:), intent(in) :: md5sum_results
-    character(32), intent(in) :: md5sum_decays, md5sum_simulation
+    type(md5sum_events_t), intent(in) :: md5sum
     write (unit)  RAW_EVENT_FILE_VERSION
-    write (unit)  size (md5sum_process)
-    write (unit)  md5sum_process
-    write (unit)  md5sum_parameters
-    write (unit)  md5sum_results
-    write (unit)  md5sum_decays
-    write (unit)  md5sum_simulation
+    write (unit)  size (md5sum%process)
+    write (unit)  md5sum%process
+    write (unit)  md5sum%parameters
+    write (unit)  md5sum%results
+    write (unit)  md5sum%decays
+    write (unit)  md5sum%simulation
   end subroutine raw_event_file_write_header
 
-  subroutine raw_event_file_read_header (unit, &
-       md5sum_process, md5sum_parameters, md5sum_results, &
-       md5sum_decays, md5sum_simulation, ok, iostat)
+  subroutine raw_event_file_read_header (unit, md5sum, ok, iostat)
     integer, intent(in) :: unit
-    character(32), dimension(:), intent(in) :: md5sum_process
-    character(32), dimension(:), intent(in) :: md5sum_parameters
-    character(32), dimension(:), intent(in) :: md5sum_results
-    character(32), intent(in) :: md5sum_decays, md5sum_simulation
+    type(md5sum_events_t), intent(in) :: md5sum
     logical, intent(out) :: ok
     integer, intent(out), optional :: iostat
     integer :: version, n
     character(32), dimension(:), allocatable :: md5sum_array
-    character(32) :: md5sum
+    character(32) :: md5sum_single
     logical :: unweighted
     ok = .false.
     read (unit, iostat=iostat)  version
@@ -257,38 +258,38 @@ contains
        return
     end if
     read (unit, iostat=iostat)  n
-    if (n /= size (md5sum_process)) then
+    if (n /= size (md5sum%process)) then
        call msg_message &
             ("Process number has changed, discarding old event file")
        return
     end if
     allocate (md5sum_array (n))
     read (unit, iostat=iostat)  md5sum_array
-    if (any (md5sum_process /= md5sum_array)) then
+    if (any (md5sum%process /= md5sum_array)) then
        call msg_message &
             ("Process configuration has changed, discarding old event file")
        return
     end if
     read (unit, iostat=iostat)  md5sum_array
-    if (any (md5sum_parameters /= md5sum_array)) then
+    if (any (md5sum%parameters /= md5sum_array)) then
        call msg_message &
             ("Model parameters have changed, discarding old event file")
        return
     end if
     read (unit, iostat=iostat)  md5sum_array
-    if (any (md5sum_results /= md5sum_array)) then
+    if (any (md5sum%results /= md5sum_array)) then
        call msg_message &
             ("Integration results have changed, skipping event file")
        return
     end if
-    read (unit, iostat=iostat)  md5sum
-    if (md5sum_decays /= md5sum) then
+    read (unit, iostat=iostat)  md5sum_single
+    if (md5sum%decays /= md5sum_single) then
        call msg_message &
             ("Decay configuration has changed, skipping event file")
        return
     end if
-    read (unit, iostat=iostat)  md5sum
-    if (md5sum_simulation /= md5sum) then
+    read (unit, iostat=iostat)  md5sum_single
+    if (md5sum%simulation /= md5sum_single) then
        call msg_message &
             ("Simulation parameters have changed, skipping event file")
        return
@@ -314,19 +315,22 @@ contains
     write (unit)  event%weight, event%excess
   end subroutine event_write_raw
 
-  subroutine event_read_raw (event, unit, event_weight, iostat)
+  subroutine event_read_raw (event, unit, event_weight, event_sqme, iostat)
     type(event_t), intent(out) :: event
     integer, intent(in) :: unit
-    real(default), intent(in), target :: event_weight
+    real(default), intent(inout), target :: event_weight, event_sqme
     integer, intent(out), optional :: iostat
     integer :: index
     real(default) :: scale, alpha_s, sqme
     read (unit, iostat=iostat)  index
     if (iostat /= 0) return
+    event%process => process_store_get_process_ptr (index)
+    event%weight => event_weight
+    event%sqme => event_sqme
     read (unit, iostat=iostat)  scale
     read (unit, iostat=iostat)  alpha_s
     read (unit, iostat=iostat)  sqme
-    event%process => process_store_get_process_ptr (index)
+    event%sqme = sqme
     call particle_set_read_raw (event%particle_set, unit, iostat=iostat)
     event%particle_set_exists = .true.
     if (associated (event%process)) then
@@ -335,7 +339,6 @@ contains
        call process_set_alpha_s (event%process, alpha_s)
        call process_set_sqme (event%process, sqme)
     end if
-    event%weight => event_weight
     read (unit, iostat=iostat)  event%weight, event%excess
   end subroutine event_read_raw
     
@@ -427,6 +430,7 @@ contains
     type(model_t), intent(in), target :: model
     type(lhapdf_status_t) :: lhapdf_status
     type(process_t), pointer :: process
+    type(os_data_t) :: os_data
     type(phs_parameters_t) :: phs_par
     type(mapping_defaults_t) :: mapping_defaults
     type(flavor_t), dimension(2) :: flv
@@ -439,6 +443,7 @@ contains
     type(tao_random_state) :: rng
     type(event_t), target :: event
     real(default), target :: event_weight = 0
+    real(default), target :: event_sqme = 0
     type(decay_tree_t), target :: decay_tree
     logical :: rebuild_phs = .true.
     print *, "*** Test process setup"
@@ -451,6 +456,7 @@ contains
     print *
     print *, "* Beam setup"
     print *
+    call os_data_init (os_data)
     call flavor_init (flv, (/ 21, 21 /), model)
     call polarization_init_unpolarized (pol(1), flv(1))
     call polarization_init_unpolarized (pol(2), flv(2))
@@ -460,7 +466,8 @@ contains
     print *
     print *, "* Phase space setup"
     call process_setup_phase_space (process, rebuild_phs, &
-         phs_par, mapping_defaults, filename_out=var_str("qq.phs"))
+         os_data, phs_par, mapping_defaults, filename_out=var_str("qq.phs"), &
+         vis_channels = .false.)
     print *
     print *, "* Cuts setup"
     call stream_init (stream, var_str ("all Pt > 200 GeV (outgoing u:d:U:D)"))
@@ -488,7 +495,7 @@ contains
     print *, "*** Event generation"
     call process_setup_event_generation (process)
     call decay_tree_init (decay_tree, process)
-    call event_init (event, process, event_weight, decay_tree)
+    call event_init (event, process, event_weight, event_sqme, decay_tree)
     print *
     print *, "* Weighted event"
     call event_generate &

@@ -1,3 +1,28 @@
+# $Id: LEP_higgs.sin 2293 2010-04-11 23:57:50Z jr_reuter $
+# Simple complete physics example: Higgs search at LEP
+########################################################################
+#
+# Copyright (C) 2010-2010 by 
+#     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+#     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
+#     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+#
+# WHIZARD is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by 
+# the Free Software Foundation; either version 2, or (at your option)
+# any later version.
+#
+# WHIZARD is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+#
+########################################################################
+
 model = SM
 
 alias n = n1:n2:n3
@@ -51,7 +76,7 @@ $title = "$bb$ invariant mass distribution in $e^+e^- \to \nu\bar\nu b \bar b$"
 $xlabel = "$M_{b\bar b}$/GeV"
 histogram m_bb (70 GeV, 130 GeV, 0.5 GeV)
 
-analysis = record m_invisible (eval M [n,N]) and
+analysis = record m_invisible (eval M [n,N]);
 	   record m_bb (eval M [b,B])
 
 # To speed things up we use weighted events for demonstration purposes.

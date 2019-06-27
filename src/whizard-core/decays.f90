@@ -1,4 +1,4 @@
-! WHIZARD 2.0.0 Mon Apr 12 2010
+! WHIZARD 2.0.1 Sun Apr 25 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -30,7 +30,7 @@ module decays
   use kinds, only: default !NODEP!
   use kinds, only: double !NODEP!
   use iso_varying_string, string_t => varying_string !NODEP!
-  use limits, only: MAX_TRIES_FOR_DECAY_CHAIN
+  use limits, only: MAX_TRIES_FOR_DECAY_CHAIN !NODEP!
   use file_utils !NODEP!
   use diagnostics !NODEP!
   use lorentz !NODEP!
@@ -293,7 +293,7 @@ contains
     integer :: channel
     type(decay_configuration_t), intent(in) :: conf
     type(tao_random_state), intent(inout) :: rng
-    real(double) :: x
+    real(default) :: x
     real(default) :: x_sum
     call tao_random_number (rng, x)
     x_sum = 0
@@ -609,7 +609,7 @@ contains
     type(decay_tree_t), intent(inout) :: decay_tree
     type(tao_random_state), intent(inout) :: rng
     real(default) :: x_decay
-    real(double) :: x
+    real(default) :: x
     integer :: i
     call evaluator_normalize_by_max (decay_tree%eval_sqme_in)
     REJECTION: do i = 1, MAX_TRIES_FOR_DECAY_CHAIN

@@ -1,28 +1,11 @@
-## Makefile.am -- Makefile for WHIZARD
-##
-## Process this file with automake to produce Makefile.in
+# Makefile.am --
+# $Id: Makefile.am 319 2010-04-18 15:00:54Z ohl $
+########################################################################
 
-## The files in this directory end up in an auxiliary libtool library.
-noinst_LTLIBRARIES = libvamp.la
+SUBDIRS = src share tests
 
-libvamp_la_SOURCES = vamp_bundle.f90
+## Use the same compiler and compiler flags for distcheck
+DISTCHECK_CONFIGURE_FLAGS = FC=$(FC) FCFLAGS="$(FCFLAGS)" LIBS="$(LIBS)"
 
-## Dependency libaux (kinds, strings)
-$(libvamp_la_OBJECTS): ../misc/kinds.$(FC_MODULE_EXT)
-
-AM_FCFLAGS = -I../misc
-
-## OpenMP
-AM_LDFLAGS =
-if WHIZARD_WITH_OPENMP
-AM_FCFLAGS += $(OPENMP_FCFLAGS)
-AM_LDFLAGS += $(OPENMP_FCFLAGS)
-endif
-
-## Non-standard cleanup tasks
-clean-local:
-	-rm -f *.$(FC_MODULE_EXT)
-
-## Remove backup files
-maintainer-clean-local:
-	-rm -f *~
+## Use the m4 directory for local Autoconf macros
+ACLOCAL_AMFLAGS = -I m4

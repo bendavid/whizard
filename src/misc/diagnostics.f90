@@ -1,4 +1,4 @@
-! WHIZARD 2.0.0 Mon Apr 12 2010
+! WHIZARD 2.0.1 Sun Apr 25 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -33,6 +33,8 @@ module diagnostics
   use iso_varying_string, string_t => varying_string !NODEP!
   use limits, only: BUFFER_SIZE, MAX_ERRORS !NODEP!
   use file_utils !NODEP!
+  use iso_fortran_env, only: &
+     stdout => output_unit, stdin => input_unit !NODEP!
 
   implicit none
   private
@@ -47,23 +49,27 @@ module diagnostics
   public :: msg_bug, msg_fatal, msg_error, msg_warning
   public :: msg_message, msg_result, msg_debug
   public :: msg_banner
-  public :: terminate_soon
-  public :: terminate_now_maybe
   public :: logfile_init
   public :: logfile_final
   public :: logfile_unit
   public :: expect_record
   public :: expect_clear
   public :: expect_summary
+  public :: int2string
+  public :: int2char
+  public :: wo_sigint
+  public :: wo_sigterm
+  public :: wo_sigxcpu
+  public :: wo_sigxfsz
+
+  public :: mask_term_signals
+  public :: release_term_signals
+  public :: terminate_now_if_signal
 
   integer, parameter :: &
        & TERMINATE=-2, BUG=-1, &
        & FATAL=1, ERROR=2, WARNING=3, MESSAGE=4, RESULT=5, DEBUG=6
   integer, parameter :: TERM_STOP = 0, TERM_EXIT = 1, TERM_CRASH = 2
-  integer, parameter :: &
-       & CONTINUE=0, KILLED=1, INTERRUPTED=2, &
-       & OS_TIME_EXCEEDED=3, TIME_EXCEEDED=4, &
-       & MAX_FILE_COUNT_EXCEEDED=5
 
   type :: string_list
      character(len=BUFFER_SIZE) :: string
@@ -80,10 +86,14 @@ module diagnostics
   type(string_list_pointer), dimension(TERMINATE:WARNING), save :: &
        & msg_list = string_list_pointer (null(), null())
   character(len=BUFFER_SIZE), save :: msg_buffer = " "
-  integer, save :: terminate_status = CONTINUE
   integer, save :: log_unit = -1
   integer, save :: expect_total = 0
   integer, save :: expect_failures = 0
+
+  integer(c_int), bind(C), volatile :: wo_sigint = 0
+  integer(c_int), bind(C), volatile :: wo_sigterm = 0
+  integer(c_int), bind(C), volatile :: wo_sigxcpu = 0
+  integer(c_int), bind(C), volatile :: wo_sigxfsz = 0
 
 
   interface
@@ -91,6 +101,48 @@ module diagnostics
        use iso_c_binding !NODEP!
        integer(c_int), value :: status
      end subroutine exit
+  end interface
+
+  interface
+     integer(c_int) function wo_mask_sigint () bind(C)
+       import
+     end function wo_mask_sigint
+  end interface
+  interface
+     integer(c_int) function wo_mask_sigterm () bind(C)
+       import
+     end function wo_mask_sigterm
+  end interface
+  interface
+     integer(c_int) function wo_mask_sigxcpu () bind(C)
+       import
+     end function wo_mask_sigxcpu
+  end interface
+  interface
+     integer(c_int) function wo_mask_sigxfsz () bind(C)
+       import
+     end function wo_mask_sigxfsz
+  end interface
+
+  interface
+     integer(c_int) function wo_release_sigint () bind(C)
+       import
+     end function wo_release_sigint
+  end interface
+  interface
+     integer(c_int) function wo_release_sigterm () bind(C)
+       import
+     end function wo_release_sigterm
+  end interface
+  interface
+     integer(c_int) function wo_release_sigxcpu () bind(C)
+       import
+     end function wo_release_sigxcpu
+  end interface
+  interface
+     integer(c_int) function wo_release_sigxfsz () bind(C)
+       import
+     end function wo_release_sigxfsz
   end interface
 
 
@@ -164,6 +216,7 @@ contains
        end if
        message => message%next
     end do
+    flush (u)
   end subroutine msg_listing
 
   subroutine buffer_clear
@@ -213,7 +266,7 @@ subroutine message_print (level, string, str_arr, unit, logfile)
        if (present(string))  msg_buffer = string
        lu = log_unit
        if (present(unit)) then
-          if (unit/=6) then
+          if (unit /= stdout) then
              if (severe) write (unit, "(A)") char(head_footer) 
              if (is_error) write (unit, "(A)") char(head_footer) 
              write (unit, "(A,A)") char(prep_string), trim(msg_buffer)
@@ -223,7 +276,8 @@ subroutine message_print (level, string, str_arr, unit, logfile)
                 end do
              end if
              if (is_error) write (unit, "(A)") char(head_footer) 
-             if (severe) write (unit, "(A)") char(head_footer) 
+             if (severe) write (unit, "(A)") char(head_footer)
+             flush (unit)
              lu = -1
           else if (level <= msg_level) then
              if (severe) print "(A)", char(head_footer) 
@@ -235,7 +289,8 @@ subroutine message_print (level, string, str_arr, unit, logfile)
                 end do                
              end if
              if (is_error) print "(A)", char(head_footer) 
-             if (severe) print "(A)", char(head_footer) 
+             if (severe) print "(A)", char(head_footer)
+             flush (stdout)
              if (unit == log_unit)  lu = -1
           end if
        else if (level <= msg_level) then
@@ -249,6 +304,7 @@ subroutine message_print (level, string, str_arr, unit, logfile)
              end if
           if (is_error) print "(A)", char(head_footer) 
           if (severe) print "(A)", char(head_footer) 
+          flush (stdout)
        end if
        if (present (logfile)) then
           if (.not. logfile)  lu = -1
@@ -276,11 +332,14 @@ subroutine message_print (level, string, str_arr, unit, logfile)
     character(len=*), intent(in), optional :: string
     integer, intent(in), optional :: quit_code
     integer(c_int) :: return_code
+    call release_term_signals ()
     if (present (quit_code)) then
        return_code = quit_code
     else
        return_code = 0
     end if
+    if (present (string)) &
+         call message_print (MESSAGE, string, unit=unit)
     call msg_summary (unit)
     if (return_code == 0 .and. expect_failures /= 0) then
        return_code = 5
@@ -441,36 +500,6 @@ subroutine message_print (level, string, str_arr, unit, logfile)
     call message_print (0, "|=============================================================================|", unit=unit)
   end subroutine msg_banner
 
-  subroutine terminate_soon (reason)
-    integer, intent(in) :: reason
-    terminate_status = reason
-  end subroutine terminate_soon
-
-  subroutine terminate_now_maybe (n_events)
-    integer(i64), intent(in), optional :: n_events
-    if (terminate_status /= CONTINUE) then
-       if (present (n_events)) then
-          write (msg_buffer, "(1x,A,1x,I12,1x,A)")  &
-               & "Generated", n_events, "events."
-          call msg_message
-       end if
-       select case (terminate_status)
-       case (KILLED)
-          call msg_terminate (" *** Process killed by external signal: Terminating.")
-       case (INTERRUPTED)
-          call msg_terminate (" *** Process interrupted by external signal: Terminating.")
-       case (OS_TIME_EXCEEDED)
-          call msg_terminate (" *** Process received signal SIGXCPU (time exceeded):  Terminating.")
-       case (TIME_EXCEEDED)
-          call msg_terminate (" *** User-defined time limit exceeded:  Terminating.")
-       case (MAX_FILE_COUNT_EXCEEDED)
-          call msg_terminate (" *** User-defined limit for event file count exceeded:  Terminating.")
-       case default
-          call msg_bug (" Process terminates for unknown reason")
-       end select
-    end if
-  end subroutine terminate_now_maybe
-
   subroutine logfile_init (filename)
     type(string_t), intent(in) :: filename
     call msg_message ("Writing log to '" // char (filename) // "'")
@@ -491,7 +520,7 @@ subroutine message_print (level, string, str_arr, unit, logfile)
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: logfile
     if (present (unit)) then
-       if (unit == 6) then
+       if (unit == stdout) then
           logfile_unit = log_unit
        else
           logfile_unit = -1
@@ -527,6 +556,67 @@ subroutine message_print (level, string, str_arr, unit, logfile)
        call msg_message (unit=unit)
     end if
   end subroutine expect_summary
+
+  pure function int2fixed (i) result (c)
+    integer, intent(in) :: i
+    character (200) :: c
+    c = ""
+    write (c, *) i
+    c = adjustl (c)
+  end function int2fixed
+
+  pure function int2string (i) result (s)
+    integer, intent(in) :: i
+    type (string_t) :: s
+    s = trim (int2fixed (i))
+  end function int2string
+
+  pure function int2char (i) result (c)
+     integer, intent(in) :: i
+     character(len (trim (int2fixed (i)))) :: c
+     c = int2fixed (i)
+  end function int2char
+  subroutine mask_term_signals ()
+    integer(c_int) :: status
+    logical :: ok
+    wo_sigint = 0
+    ok = wo_mask_sigint () == 0
+    if (.not. ok)  call msg_error ("Masking SIGINT failed")
+    wo_sigterm = 0
+    ok = wo_mask_sigterm () == 0
+    if (.not. ok)  call msg_error ("Masking SIGTERM failed")
+    wo_sigxcpu = 0
+    ok = wo_mask_sigxcpu () == 0
+    if (.not. ok)  call msg_error ("Masking SIGXCPU failed")
+    wo_sigxfsz = 0
+    ok = wo_mask_sigxfsz () == 0
+    if (.not. ok)  call msg_error ("Masking SIGXFSZ failed")
+  end subroutine mask_term_signals
+
+  subroutine release_term_signals ()
+    integer(c_int) :: status
+    logical :: ok
+    ok = wo_release_sigint () == 0
+    if (.not. ok)  call msg_error ("Releasing SIGINT failed")
+    ok = wo_release_sigterm () == 0
+    if (.not. ok)  call msg_error ("Releasing SIGTERM failed")
+    ok = wo_release_sigxcpu () == 0
+    if (.not. ok)  call msg_error ("Releasing SIGXCPU failed")
+    ok = wo_release_sigxfsz () == 0
+    if (.not. ok)  call msg_error ("Releasing SIGXFSZ failed")
+  end subroutine release_term_signals
+
+  subroutine terminate_now_if_signal ()
+    if (wo_sigint /= 0) then
+       call msg_terminate ("Signal SIGINT (keyboard interrupt) received.", quit_code=wo_sigint)
+    else if (wo_sigterm /= 0) then
+       call msg_terminate ("Signal SIGTERM (termination signal) received.", quit_code=wo_sigterm)
+    else if (wo_sigxcpu /= 0) then
+       call msg_terminate ("Signal SIGXCPU (CPU time limit exceeded) received.", quit_code=wo_sigxcpu)
+    else if (wo_sigxfsz /= 0) then
+       call msg_terminate ("Signal SIGXFSZ (file size limit exceeded) received.", quit_code=wo_sigxfsz)
+    end if
+  end subroutine terminate_now_if_signal    
 
 
 end module diagnostics

@@ -1,4 +1,4 @@
-# $Id: helicity.sin 2272 2010-04-09 16:43:37Z kilian $
+# $Id: helicity.sin 2375 2010-04-21 09:22:18Z ohl $
 # Validating the helicity selection rule heuristics
 
 process helicity_ee_mm = e1, E1 =>  e2, E2
@@ -36,7 +36,9 @@ show(without_helicity_selection)
 show(with____helicity_selection)
 expect (with____helicity_selection ==~ without_helicity_selection)
 show(crazy___helicity_selection)
-expect (crazy___helicity_selection <>~ without_helicity_selection)
+if (real_precision < 18) then
+  expect (crazy___helicity_selection <>~ without_helicity_selection)
+endif
 
 ! ----------------------------------------------------------------------
 

@@ -1,4 +1,4 @@
-(* $Id: fusion.mli 2276 2010-04-09 17:15:14Z ohl $
+(* $Id: fusion.mli 2403 2010-04-23 20:28:27Z ohl $
 
    Copyright (C) 1999-2009 by
 
@@ -57,6 +57,7 @@ module type T =
 (* and right hand sides of assignments.  The latter are formed from a sign from
    Fermi statistics, a coupling (constand and Lorentz structure) and wave
    functions. *)
+    type coupling
     type rhs
     type 'a children
     val sign : rhs -> int
@@ -100,7 +101,7 @@ module type T =
     val amplitudes : bool -> selectors ->
       flavor_sans_color list -> flavor_sans_color list -> amplitude list
 
-    val dependencies : amplitude -> wf -> wf Tree2.t
+    val dependencies : amplitude -> wf -> (wf, coupling) Tree2.t
 
 (* We should be precise regarding the semantics of the following functions, since
    modules implementating [Target] must not make any mistakes interpreting the
@@ -178,7 +179,6 @@ module type T =
     val count_propagators : amplitude -> int
     val count_diagrams : amplitude -> int
 
-    type coupling
     val forest : wf -> amplitude -> ((wf * coupling option, wf) Tree.t) list
     val poles : amplitude -> wf list list
     val s_channel : amplitude -> wf list

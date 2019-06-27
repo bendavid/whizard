@@ -1,4 +1,4 @@
-! WHIZARD 2.0.0 Mon Apr 12 2010
+! WHIZARD 2.0.1 Sun Apr 25 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -453,19 +453,29 @@ contains
   subroutine prt_list_join (prt_list, pl1, pl2, mask2)
     type(prt_list_t), intent(inout) :: prt_list
     type(prt_list_t), intent(in) :: pl1, pl2
-    logical, dimension(:), intent(in) :: mask2
+    logical, dimension(:), intent(in), optional :: mask2
     integer :: n1, n2, i, n
     n1 = pl1%n
     n2 = pl2%n
     call prt_list_reset (prt_list, n1 + n2)
     prt_list%prt(:n1)   = pl1%prt(:n1)
     n = n1
-    do i = 1, pl2%n
-       if (mask2(i) .and. .not. any (pl2%prt(i) .match. pl1%prt(:pl1%n))) then
-          n = n + 1
-          prt_list%prt(n) = pl2%prt(i)
-       end if
-    end do
+    if (present (mask2)) then
+       do i = 1, pl2%n
+          if (mask2(i) &
+               .and. .not. any (pl2%prt(i) .match. pl1%prt(:pl1%n))) then
+             n = n + 1
+             prt_list%prt(n) = pl2%prt(i)
+          end if
+       end do
+    else
+       do i = 1, pl2%n
+          if (any (pl2%prt(i) .match. pl1%prt(:pl1%n))) then
+             n = n + 1
+             prt_list%prt(n) = pl2%prt(i)
+          end if
+       end do
+    end if
     prt_list%n = n
   end subroutine prt_list_join
 

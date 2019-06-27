@@ -1,4 +1,4 @@
-! $Id: fa_f.ects 2276 2010-04-09 17:15:14Z ohl $
+! $Id: fa_f.ects 2403 2010-04-23 20:28:27Z ohl $
 !ects:model QCD
 !ects:scatter
 !ects:process u gl -> u

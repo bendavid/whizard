@@ -1,3 +1,28 @@
+# $Id: Zprime.sin 2272 2010-04-09 16:43:37Z kilian $
+# Simple complete physics example: sequential Z' in Drell-Yan
+########################################################################
+#
+# Copyright (C) 2010-2010 by 
+#     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+#     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
+#     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+#
+# WHIZARD is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by 
+# the Free Software Foundation; either version 2, or (at your option)
+# any later version.
+#
+# WHIZARD is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+#
+########################################################################
+
 model = Zprime
 
 alias pr = u:d:s:c:gl:U:D:S:C
@@ -20,7 +45,7 @@ scale = 1500 GeV
 # Beam specification and integration
 sqrts = 14 TeV
 beams = p,p => lhapdf 
-integrate (zp_drell_yan) { iterations = 6:20000 }
+integrate (zp_drell_yan) { iterations = 3:10000,6:20000 }
 
 ?unweighted = false
 
@@ -44,15 +69,17 @@ histogram pt_lepton (100 GeV, 2000 GeV, 100 GeV)
  
 $title = "$Z'$ Drell-Yan: Angular distribution of the $\ell$"
 $xlabel = "$\theta^{\ell}$/rad"
-histogram th_lepton (0, 3.1415, 0.157)
+histogram th_lepton (0, pi)
 
-analysis = record m_lepton (eval M [e1,E1]) and
-	   record pt_lepton (eval Pt [e1]) and
+analysis = record m_lepton (eval M [e1,E1]);
+	   record pt_lepton (eval Pt [e1]);
 	   record th_lepton (eval Theta [e1]) 
 
+# Set the desired numbers of events...
 n_events = 100000
 
-simulate (zp_drell_yan)
+# ... and simulate, requesting status information every 5000 events
+simulate (zp_drell_yan) {checkpoint = 5000}
 
 $analysis_filename = "Zprime"
 write_analysis 

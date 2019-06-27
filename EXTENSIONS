@@ -38,3 +38,7 @@ PROCEDURE declaration statement
 
 GET_COMMAND_ARGUMENT
 GET_ENVIRONMENT_VARIABLE
+
+* Statements
+
+FLUSH

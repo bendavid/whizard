@@ -1,4 +1,4 @@
-! WHIZARD 2.0.0 Mon Apr 12 2010
+! WHIZARD 2.0.1 Sun Apr 25 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -99,6 +99,12 @@ module analysis
      real(default) :: lower_bound = 0
      real(default) :: upper_bound = 0
      real(default) :: width = 0
+     logical :: x_log = .false.
+     logical :: y_log = .false.
+     real(default) :: y_min = 0
+     real(default) :: y_max = 0
+     logical :: y_min_is_known = .false.
+     logical :: y_max_is_known = .false.     
      integer :: n_bins = 0
      type(observable_t) :: obs
      type(observable_t) :: obs_within_bounds
@@ -122,6 +128,12 @@ module analysis
      real(default) :: lower_bound = 0
      real(default) :: upper_bound = 0
      real(default) :: width = 0
+     logical :: x_log = .false.
+     logical :: y_log = .false.
+     real(default) :: y_min = 0
+     real(default) :: y_max = 0
+     logical :: y_min_is_known = .false.
+     logical :: y_max_is_known = .false.     
      type(bin_t) :: underflow
      type(point_t), pointer :: first => null ()
      type(point_t), pointer :: last => null ()
@@ -309,7 +321,7 @@ contains
        if (obs%label /= "") then
           label = obs%label
        else
-          label = "\mathcal{O}"
+          label = "\textrm{Observable}"
        end if
     else
        label = ""
@@ -494,21 +506,35 @@ contains
   end subroutine bin_write
 
   subroutine histogram_init_n_bins (h, &
-       lower_bound, upper_bound, n_bins, obs_label, physical_unit, plot_labels)
+       lower_bound, upper_bound, n_bins, obs_label, &
+       physical_unit, plot_labels, &
+       x_log, y_log, y_min, y_max)
     type(histogram_t), intent(out) :: h
     real(default), intent(in) :: lower_bound, upper_bound
     integer, intent(in) :: n_bins
+    logical, intent(in) :: x_log, y_log
     type(string_t), intent(in), optional :: obs_label, physical_unit
     type(plot_labels_t), intent(in), optional :: plot_labels
     real(default) :: bin_width
+    real(default), intent(in), optional :: y_min, y_max
     integer :: i
     call observable_init (h%obs_within_bounds, obs_label, physical_unit) 
     call observable_init (h%obs, obs_label, physical_unit) 
     h%lower_bound = lower_bound
     h%upper_bound = upper_bound
+    h%x_log = x_log
+    h%y_log = y_log
     h%n_bins = max (n_bins, 1)
-    h%width = h%upper_bound - h%lower_bound
+    h%width = h%upper_bound - h%lower_bound    
     bin_width = h%width / h%n_bins
+    if (present (y_min)) then
+       h%y_min = y_min
+       h%y_min_is_known = .true.
+    end if
+    if (present (y_max)) then
+       h%y_max = y_max
+       h%y_max_is_known = .true. 
+    end if
     allocate (h%bin (h%n_bins))
     call bin_init (h%underflow, h%lower_bound, 0._default)
     do i = 1, h%n_bins
@@ -526,11 +552,14 @@ contains
 
   subroutine histogram_init_bin_width (h, &
        lower_bound, upper_bound, bin_width, &
-       obs_label, physical_unit, plot_labels)
+       obs_label, physical_unit, plot_labels, &
+       x_log, y_log, y_min, y_max)
     type(histogram_t), intent(out) :: h
     real(default), intent(in) :: lower_bound, upper_bound, bin_width
     type(string_t), intent(in), optional :: obs_label, physical_unit
     type(plot_labels_t), intent(in), optional :: plot_labels
+    real(default), intent(in), optional :: y_min, y_max
+    logical, intent(in) :: x_log, y_log
     integer :: n_bins
     if (bin_width /= 0) then
        n_bins = nint ((upper_bound - lower_bound) / bin_width)
@@ -539,7 +568,8 @@ contains
     end if
     call histogram_init_n_bins (h, &
          lower_bound, upper_bound, n_bins, &
-         obs_label, physical_unit, plot_labels)
+         obs_label, physical_unit, plot_labels, &
+         x_log, y_log, y_min, y_max)
   end subroutine histogram_init_bin_width
 
   subroutine histogram_clear (h)
@@ -591,7 +621,7 @@ contains
        call bin_record_value (h%underflow, weight)
        if (present (success))  success = .false.
     else if (i_bin <= h%n_bins) then
-       call observable_record_value (h%obs_within_bounds, weight)
+       call observable_record_value (h%obs_within_bounds, value, weight)
        call bin_record_value (h%bin(i_bin), weight)
        if (present (success))  success = .true.
     else
@@ -720,9 +750,12 @@ contains
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: write_heading
     logical :: heading
-    character(len=32) :: lower_bound_str, upper_bound_str, bin_half_width_str
-    logical, parameter :: log_plot = .false.
+    character(len=32) :: x_lower_bound_str, x_upper_bound_str, &
+       y_lower_bound_str, y_upper_bound_str, bin_half_width_str
+    logical :: x_log, y_log
     integer :: u
+    x_log = h%x_log
+    y_log = h%y_log
     u = output_unit (unit);  if (u < 0)  return
     heading = .true.;  if (present (write_heading))  heading = write_heading
     if (heading) then
@@ -738,15 +771,27 @@ contains
        write (u, *)
        write (u, "(A)")  "\vspace*{\baselineskip}"
     end if
-    lower_bound_str = ""
-    upper_bound_str = ""
+    x_lower_bound_str = ""
+    x_upper_bound_str = ""
     bin_half_width_str = ""
 1   format (G10.3)
-    write (lower_bound_str, 1)  h%lower_bound
-    write (upper_bound_str, 1)  h%upper_bound
+    if (.not.h%y_min_is_known .and. y_log) &
+       y_lower_bound_str = "??"
+    if (.not.h%y_min_is_known .and. .not. y_log) &    
+       y_lower_bound_str = "#0"     
+    if (.not.h%y_max_is_known) &
+       y_upper_bound_str = "??" 
+    if (h%y_min_is_known) write (y_lower_bound_str, 1) h%y_min
+    if (h%y_max_is_known) write (y_upper_bound_str, 1) h%y_max    
+    write (x_lower_bound_str, 1)  h%lower_bound
+    write (x_upper_bound_str, 1)  h%upper_bound
     write (bin_half_width_str,   1)  h%width / h%n_bins / 2
-    lower_bound_str = adjustl (lower_bound_str)
-    upper_bound_str = adjustl (upper_bound_str)
+    x_lower_bound_str = adjustl (x_lower_bound_str)
+    x_upper_bound_str = adjustl (x_upper_bound_str)
+    y_lower_bound_str = adjustl (y_lower_bound_str)    
+    y_upper_bound_str = adjustl (y_upper_bound_str)
+    if (h%y_min_is_known) y_lower_bound_str = "#" // y_lower_bound_str
+    if (h%y_max_is_known) y_upper_bound_str = "#" // y_upper_bound_str    
     bin_half_width_str = adjustl (bin_half_width_str)
     write (u, "(A)")  "\vspace*{\baselineskip}"
     write (u, "(A)")  "\unitlength 1mm"
@@ -754,17 +799,35 @@ contains
          "\begin{gmlgraph*}(", &
          h%plot_labels%width_mm, h%plot_labels%height_mm, &
          ")[dat]"
-    if (log_plot) then
+    if (x_log .and. y_log) then
+       write (u, "(2x,A)")  "setup (log,log); "
+       write (u, "(2x,A)")  &
+            "graphrange (#" // trim (x_lower_bound_str) // ", " &
+             // trim (y_lower_bound_str) // ", " &
+            //         "(#" // trim (x_upper_bound_str) // ", " &
+            // trim (y_upper_bound_str) // ");"
+    else if (x_log .and. .not. y_log) then
+       write (u, "(2x,A)")  "setup (log,linear); "
+       write (u, "(2x,A)")  &
+            "graphrange (#" // trim (x_lower_bound_str) // ", " &
+             // trim (y_lower_bound_str) // "), " &
+            //         "(#" // trim (x_upper_bound_str) // ", "&
+            // trim (y_upper_bound_str) // ");"
+    else if (.not. x_log .and. y_log) then
        write (u, "(2x,A)")  "setup (linear,log); "
        write (u, "(2x,A)")  &
-            "graphrange (#" // trim (lower_bound_str) // ", ??), " &
-            //         "(#" // trim (upper_bound_str) // ", ??);"
+            "graphrange (#" // trim (x_lower_bound_str) // ", " &
+             // trim (y_lower_bound_str) // "), " &
+            //         "(#" // trim (x_upper_bound_str) // ", " &
+            // trim (y_upper_bound_str) // ");"
     else
-       write (u, "(2x,A)")  "setup (linear,linear); "
+           write (u, "(2x,A)")  "setup (linear,linear); "
        write (u, "(2x,A)")  &
-            "graphrange (#" // trim (lower_bound_str) // ", #0), " &
-            //         "(#" // trim (upper_bound_str) // ", ??);"
-    end if
+            "graphrange (#" // trim (x_lower_bound_str) // ", " &
+             // trim (y_lower_bound_str) // "), " &
+            //         "(#" // trim (x_upper_bound_str) // ", " &
+            // trim (y_upper_bound_str) // ");"
+    end if          
     write (u, "(2x,A)")  'fromfile "' // char (filename) // '":'
     write (u, "(4x,A)")  'key "# Histogram:";'
     write (u, "(4x,A)")  'dx := #' // trim (bin_half_width_str) // ';'
@@ -869,13 +932,26 @@ contains
          point_get_yerr (point)
   end subroutine point_write
 
-  subroutine plot_init (plot, lower_bound, upper_bound, plot_labels)
+  subroutine plot_init (plot, lower_bound, upper_bound, &
+       plot_labels, x_log, y_log, y_min, y_max)
     type(plot_t), intent(out) :: plot
     real(default), intent(in) :: lower_bound, upper_bound
     type(plot_labels_t), intent(in), optional :: plot_labels
+    logical, intent(in) :: x_log, y_log
+    real(default), intent(in), optional :: y_min, y_max
     plot%lower_bound = lower_bound
     plot%upper_bound = upper_bound
+    plot%x_log = x_log
+    plot%y_log = y_log   
     plot%width = plot%upper_bound - plot%lower_bound
+    if (present (y_min)) then
+       plot%y_min = y_min
+       plot%y_min_is_known = .true.
+    end if
+    if (present (y_max)) then
+       plot%y_max = y_max
+       plot%y_max_is_known = .true. 
+    end if
     call bin_init (plot%underflow, plot%lower_bound, 0._default)
     call bin_init (plot%overflow, plot%upper_bound, 0._default)
     if (present (plot_labels)) then
@@ -981,9 +1057,12 @@ contains
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: write_heading
     logical :: heading
-    character(len=32) :: lower_bound_str, upper_bound_str
-    logical, parameter :: log_plot = .false.
+    character(len=32) :: x_lower_bound_str, x_upper_bound_str, &
+       y_lower_bound_str, y_upper_bound_str
+    logical :: x_log, y_log
     integer :: u
+    x_log = plot%x_log
+    y_log = plot%y_log
     u = output_unit (unit);  if (u < 0)  return
     heading = .true.;  if (present (write_heading))  heading = write_heading
     if (heading) then
@@ -999,30 +1078,58 @@ contains
        write (u, *)
        write (u, "(A)")  "\vspace*{\baselineskip}"
     end if
-    lower_bound_str = ""
-    upper_bound_str = ""
+    x_lower_bound_str = ""
+    x_upper_bound_str = ""
 1   format (G10.3)
-    write (lower_bound_str, 1)  plot%lower_bound
-    write (upper_bound_str, 1)  plot%upper_bound
-    lower_bound_str = adjustl (lower_bound_str)
-    upper_bound_str = adjustl (upper_bound_str)
+    if (.not.plot%y_min_is_known .and. y_log) &
+       y_lower_bound_str = "??"
+    if (.not.plot%y_min_is_known .and. .not. y_log) &    
+       y_lower_bound_str = "#0"     
+    if (.not.plot%y_max_is_known) &
+       y_upper_bound_str = "??" 
+    if (plot%y_min_is_known) write (y_lower_bound_str, 1) plot%y_min
+    if (plot%y_max_is_known) write (y_upper_bound_str, 1) plot%y_max    
+    write (x_lower_bound_str, 1)  plot%lower_bound
+    write (x_upper_bound_str, 1)  plot%upper_bound
+    x_lower_bound_str = adjustl (x_lower_bound_str)
+    x_upper_bound_str = adjustl (x_upper_bound_str)
+    if (plot%y_min_is_known) y_lower_bound_str = "#" // y_lower_bound_str
+    if (plot%y_max_is_known) y_upper_bound_str = "#" // y_upper_bound_str        
     write (u, "(A)")  "\vspace*{\baselineskip}"
     write (u, "(A)")  "\unitlength 1mm"
     write (u, "(A,I0,',',I0,A)")  &
          "\begin{gmlgraph*}(", &
          plot%plot_labels%width_mm, plot%plot_labels%height_mm, &
          ")[dat]"
-    if (log_plot) then
+   if (x_log .and. y_log) then
+       write (u, "(2x,A)")  "setup (log,log); "
+       write (u, "(2x,A)")  &
+            "graphrange (#" // trim (x_lower_bound_str) // ", " &
+             // trim (y_lower_bound_str) // ", " &
+            //         "(#" // trim (x_upper_bound_str) // ", " &
+            // trim (y_upper_bound_str) // ");"
+    else if (x_log .and. .not. y_log) then
+       write (u, "(2x,A)")  "setup (log,linear); "
+       write (u, "(2x,A)")  &
+            "graphrange (#" // trim (x_lower_bound_str) // ", " &
+             // trim (y_lower_bound_str) // "), " &
+            //         "(#" // trim (x_upper_bound_str) // ", "&
+            // trim (y_upper_bound_str) // ");"
+    else if (.not. x_log .and. y_log) then
        write (u, "(2x,A)")  "setup (linear,log); "
        write (u, "(2x,A)")  &
-            "graphrange (#" // trim (lower_bound_str) // ", ??), " &
-            //         "(#" // trim (upper_bound_str) // ", ??);"
+            "graphrange (#" // trim (x_lower_bound_str) // ", " &
+             // trim (y_lower_bound_str) // "), " &
+            //         "(#" // trim (x_upper_bound_str) // ", " &
+            // trim (y_upper_bound_str) // ");"
     else
-       write (u, "(2x,A)")  "setup (linear,linear); "
+           write (u, "(2x,A)")  "setup (linear,linear); "
        write (u, "(2x,A)")  &
-            "graphrange (#" // trim (lower_bound_str) // ", #0), " &
-            //         "(#" // trim (upper_bound_str) // ", ??);"
-    end if
+            "graphrange (#" // trim (x_lower_bound_str) // ", " &
+             // trim (y_lower_bound_str) // "), " &
+            //         "(#" // trim (x_upper_bound_str) // ", " &
+            // trim (y_upper_bound_str) // ");"
+    end if 
     write (u, "(2x,A)")  'fromfile "' // char (filename) // '":'
     write (u, "(4x,A)")  'key "# Plot:";'
     write (u, "(4x,A)")  'for i withinblock:' 
@@ -1404,47 +1511,59 @@ contains
 
   subroutine analysis_init_histogram_n_bins &
        (id, lower_bound, upper_bound, n_bins, &
-        label, physical_unit, plot_labels)
+        label, physical_unit, plot_labels, &
+        x_log, y_log, y_min, y_max)
     type(string_t), intent(in) :: id
     real(default), intent(in) :: lower_bound, upper_bound
     integer, intent(in) :: n_bins
     type(string_t), intent(in), optional :: label, physical_unit
     type(plot_labels_t), intent(in), optional :: plot_labels
-    type(analysis_object_t), pointer :: obj
+    logical, intent(in) :: x_log, y_log
+    real(default), intent(in), optional :: y_min, y_max
+    type(analysis_object_t), pointer :: obj   
     type(histogram_t), pointer :: h
     call analysis_store_init_object (id, AN_HISTOGRAM, obj)
     h => analysis_object_get_histogram_ptr (obj)
     call histogram_init (h, &
          lower_bound, upper_bound, n_bins, &
-         label, physical_unit, plot_labels)
+         label, physical_unit, plot_labels, &
+         x_log, y_log, y_min, y_max)
   end subroutine analysis_init_histogram_n_bins
 
   subroutine analysis_init_histogram_bin_width &
        (id, lower_bound, upper_bound, bin_width, &
-        label, physical_unit, plot_labels)
+        label, physical_unit, plot_labels, &
+        x_log, y_log, y_min, y_max)
     type(string_t), intent(in) :: id
     real(default), intent(in) :: lower_bound, upper_bound, bin_width
     type(string_t), intent(in), optional :: label, physical_unit
     type(plot_labels_t), intent(in), optional :: plot_labels
+    logical, intent(in) :: x_log, y_log
+    real(default), intent(in), optional :: y_min, y_max    
     type(analysis_object_t), pointer :: obj
     type(histogram_t), pointer :: h
     call analysis_store_init_object (id, AN_HISTOGRAM, obj)
     h => analysis_object_get_histogram_ptr (obj)
     call histogram_init (h, &
          lower_bound, upper_bound, bin_width, &
-         label, physical_unit, plot_labels)
+         label, physical_unit, plot_labels, &
+         x_log, y_log, y_min, y_max)
   end subroutine analysis_init_histogram_bin_width
 
-  subroutine analysis_init_plot (id, lower_bound, upper_bound, plot_labels)
+  subroutine analysis_init_plot (id, lower_bound, &
+       upper_bound, plot_labels, &
+       x_log, y_log, y_min, y_max)
     type(string_t), intent(in) :: id
     real(default), intent(in) :: lower_bound, upper_bound
-    type(plot_labels_t), intent(in), optional :: plot_labels
+    type(plot_labels_t), intent(in), optional :: plot_labels    
+    real(default), intent(in), optional :: y_min, y_max
     type(analysis_object_t), pointer :: obj
+    logical, intent(in) :: x_log, y_log
     type(plot_t), pointer :: plot
     call analysis_store_init_object (id, AN_PLOT, obj)
     plot => analysis_object_get_plot_ptr (obj)
-    call plot_init (plot, &
-         lower_bound, upper_bound, plot_labels)
+    call plot_init (plot, lower_bound, upper_bound, &
+        plot_labels, x_log, y_log, y_min, y_max)
   end subroutine analysis_init_plot
 
   subroutine analysis_store_clear_obj (id)
@@ -1635,8 +1754,10 @@ contains
     call analysis_init_observable (id1)
     call analysis_init_observable (id2)
     call analysis_init_histogram_bin_width &
-         (id3, 0.5_default, 5.5_default, 1._default)
-    call analysis_init_plot (id4, 0.5_default, 5.5_default)
+         (id3, 0.5_default, 5.5_default, 1._default, &
+         x_log = .false., y_log = .false.)
+    call analysis_init_plot &
+       (id4, 0.5_default, 5.5_default, x_log = .false., y_log = .false.)
     do i = 1, 3
        print *, "data = ", real(i,default)
        call analysis_record_data (id1, real(i,default))

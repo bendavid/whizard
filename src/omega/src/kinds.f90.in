@@ -23,7 +23,7 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 module kinds
 
-  use iso_c_binding
+  use iso_c_binding !NODEP!
 
   implicit none
   private

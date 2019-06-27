@@ -82,7 +82,7 @@ endif
 ## Cleanup tasks
 mostlyclean-latex:
 	-rm -f *.aux *.log *.dvi *.toc *.idx *.out \
-	manual.ps manual.pdf manual.tex 
+	manual.ps manual.pdf
 clean-latex:
 maintainer-clean-latex:
 	-rm manual.ps manual.pdf

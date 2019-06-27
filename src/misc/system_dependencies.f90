@@ -33,43 +33,39 @@ module system_dependencies
   public
  
   ! Program version
-  character(*), parameter :: WHIZARD_VERSION = "2.0.0"
-  character(*), parameter :: WHIZARD_DATE = "Apr 12 2010"
+  character(*), parameter :: WHIZARD_VERSION = "2.0.1"
+  character(*), parameter :: WHIZARD_DATE = "Apr 25 2010"
 
   ! System paths
   ! These are used for testing without existing installation
   character(*), parameter :: WHIZARD_TEST_AUX_MODPATH = &
-       "/afs/physik.uni-freiburg.de/home/reuter/Physik/progs/omwhiz/svn/trunk/build/src/misc"
+       "/Users/reuter/Physik/progs/omwhiz/svn/trunk/build/src/misc"
   character(*), parameter :: WHIZARD_TEST_MODELS_MODPATH = &
-       "/afs/physik.uni-freiburg.de/home/reuter/Physik/progs/omwhiz/svn/trunk/build/src/models"
+       "/Users/reuter/Physik/progs/omwhiz/svn/trunk/build/src/models"
   character(*), parameter :: WHIZARD_TEST_OMEGA_MODPATH = &
-       "/afs/physik.uni-freiburg.de/home/reuter/Physik/progs/omwhiz/svn/trunk/build/src/om" // &
-       "ega/src"
+       "/Users/reuter/Physik/progs/omwhiz/svn/trunk/build/src/omega/src"
   character(*), parameter :: WHIZARD_TEST_CORE_MODPATH = &
-       "/afs/physik.uni-freiburg.de/home/reuter/Physik/progs/omwhiz/svn/trunk/build/src/wh" // &
-       "izard-core"
+       "/Users/reuter/Physik/progs/omwhiz/svn/trunk/build/src/whizard-core"
   character(*), parameter :: WHIZARD_TEST_CORE_LIBPATH = &
-       "/afs/physik.uni-freiburg.de/home/reuter/Physik/progs/omwhiz/svn/trunk/build/src/wh" // &
-       "izard-core"
+       "/Users/reuter/Physik/progs/omwhiz/svn/trunk/build/src/whizard-core"
   character(*), parameter :: WHIZARD_TEST_OMEGA_BINPATH = &
-       "/afs/physik.uni-freiburg.de/home/reuter/Physik/progs/omwhiz/svn/trunk/build/src/om" // &
-       "ega/bin"
+       "/Users/reuter/Physik/progs/omwhiz/svn/trunk/build/src/omega/bin"
   character(*), parameter :: WHIZARD_TEST_SRC_LIBPATH = &
-       "/afs/physik.uni-freiburg.de/home/reuter/Physik/progs/omwhiz/svn/trunk/build/src"
+       "/Users/reuter/Physik/progs/omwhiz/svn/trunk/build/src"
   character(*), parameter :: WHIZARD_TEST_HEPMC_LIBPATH = &
-       "/afs/physik.uni-freiburg.de/home/reuter/Physik/progs/omwhiz/svn/trunk/build/src/hepmc"
+       "/Users/reuter/Physik/progs/omwhiz/svn/trunk/build/src/hepmc"
   character(*), parameter :: WHIZARD_TEST_MODELPATH = &
-       "/afs/physik.uni-freiburg.de/home/reuter/Physik/progs/omwhiz/svn/trunk/share/models"
+       "/Users/reuter/Physik/progs/omwhiz/svn/trunk/share/models"
   character(*), parameter :: WHIZARD_TEST_MODELS_LIBPATH = &
-       "/afs/physik.uni-freiburg.de/home/reuter/Physik/progs/omwhiz/svn/trunk/build/src/models"
+       "/Users/reuter/Physik/progs/omwhiz/svn/trunk/build/src/models"
   character(*), parameter :: WHIZARD_TEST_SUSYPATH = &
-       "/afs/physik.uni-freiburg.de/home/reuter/Physik/progs/omwhiz/svn/trunk/share/susy"
+       "/Users/reuter/Physik/progs/omwhiz/svn/trunk/share/susy"
   character(*), parameter :: WHIZARD_TEST_GMLPATH= &
-       "/afs/physik.uni-freiburg.de/home/reuter/Physik/progs/omwhiz/svn/trunk/build/src/gamelan"
+       "/Users/reuter/Physik/progs/omwhiz/svn/trunk/build/src/gamelan"
   character(*), parameter :: WHIZARD_TEST_CUTSPATH = &
-       "/afs/physik.uni-freiburg.de/home/reuter/Physik/progs/omwhiz/svn/trunk/share/cuts"
+       "/Users/reuter/Physik/progs/omwhiz/svn/trunk/share/cuts"
   character(*), parameter :: WHIZARD_TEST_TESTDATAPATH = &
-       "/afs/physik.uni-freiburg.de/home/reuter/Physik/progs/omwhiz/svn/trunk/share/test"
+       "/Users/reuter/Physik/progs/omwhiz/svn/trunk/share/test"
   character(*), parameter :: WHIZARD_TEST_TEXPATH = ""
 
   ! WHIZARD-specific include flags
@@ -84,17 +80,17 @@ module system_dependencies
       "-L" // WHIZARD_TEST_CORE_LIBPATH // " " // &
       "-L" // WHIZARD_TEST_SRC_LIBPATH // " " // &
       "-L" // WHIZARD_TEST_HEPMC_LIBPATH // " " // &
-       "-lwhizard_main -lwhizard -lomega -L/opt/whizard/lib -lHepMC"
+       "-lwhizard_main -lwhizard -lomega -lHepMC"
 
   ! Libtool
   character(*), parameter :: WHIZARD_LIBTOOL_TEST = &
-       "/afs/physik.uni-freiburg.de/home/reuter/Physik/progs/omwhiz/svn/trunk/build/libtool"
+       "/Users/reuter/Physik/progs/omwhiz/svn/trunk/build/libtool"
 
 
   ! System paths
   ! These are used for the installed version
   character(*), parameter :: PREFIX = &
-       "/opt/whizard"
+       "/Users/reuter/local"
   character(*), parameter :: EXEC_PREFIX = &
        "${prefix}"
   character(*), parameter :: BINDIR = &
@@ -147,20 +143,20 @@ module system_dependencies
   ! WHIZARD-specific link flags
   character(*), parameter :: WHIZARD_LDFLAGS = &
       "-L" // WHIZARD_OMEGA_LIBPATH // " " // &
-       "-lwhizard_main -lwhizard -lomega -L/opt/whizard/lib -lHepMC"
+       "-lwhizard_main -lwhizard -lomega -lHepMC"
 
   ! Libtool
   character(*), parameter :: WHIZARD_LIBTOOL = &
-       "/opt/whizard/lib/whizard/libtool"
+       "/Users/reuter/local/lib/whizard/libtool"
 
 
   ! Fortran compiler
   character(*), parameter :: DEFAULT_FC = &
-       "/opt/gcc-4.5/bin/gfortran"
+       "gfortran"
   character(*), parameter :: DEFAULT_FCFLAGS = &
        " -g -O2"
   character(*), parameter :: DEFAULT_FCFLAGS_PIC = &
-       " -fPIC"
+       " -fno-common"
   character(*), parameter :: DEFAULT_FC_SRC_EXT = &
        ".f90"
   character(*), parameter :: DEFAULT_OBJ_EXT = &
@@ -173,12 +169,12 @@ module system_dependencies
        " "
   character(*), parameter :: DEFAULT_LDFLAGS_SO = "-shared"
   character(*), parameter :: DEFAULT_LDFLAGS_STATIC = &
-       "-lwhizard "
+       "-lwhizard -lstdc++-static"
   character(*), parameter :: DEFAULT_SHLIB_EXT = ".so"
 
   ! LHAPDF library
   character(*), parameter :: LHAPDF_PDFSETS_PATH = &
-       "/opt/whizard/share/lhapdf/PDFsets"
+       "/usr/local//share/lhapdf/PDFsets"
 
   ! Available methods for event analysis display
   character(*), parameter :: EVENT_ANALYSIS_PS = &
@@ -189,6 +185,8 @@ module system_dependencies
   ! Programs used for event analysis display
   character(*), parameter :: PRG_LATEX  = &
        "latex"
+  character(*), parameter :: PRG_MPOST  = &
+       "mpost"
   character(*), parameter :: PRG_DVIPS  = &
        "dvips"
   character(*), parameter :: PRG_PS2PDF = &

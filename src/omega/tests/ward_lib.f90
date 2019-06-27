@@ -1,4 +1,4 @@
-! $Id: ward_lib.f90 2276 2010-04-09 17:15:14Z ohl $
+! $Id: ward_lib.f90 2403 2010-04-23 20:28:27Z ohl $
 ! ward_lib.f90 -- check On Shell Ward Identities in O'Mega 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !

@@ -189,29 +189,6 @@ AC_SUBST([FC_MAJOR_VERSION])
 ])
 ### end WO_FC_GET_VENDOR_AND_VERSION
 
-### This is for deviations of the FORTRAN naming convention for modules from
-### .mod
-
-WO_FORTRAN90_MODULE_FILE([FC_MODULE_NAME], [FC_MODULE_EXT], [$FC], [$FC_EXT])
-
-AC_SUBST([FC_MAKE_MODULE_NAME])
-case "$FC_MODULE_NAME" in
-  module_NAME)
-    FC_MAKE_MODULE_NAME='$*.$(FC_MODULE_EXT)'
-    ;;
-  module_name)
-    FC_MAKE_MODULE_NAME='"`echo $* | $(LOWERCASE)`".$(FC_MODULE_EXT)'
-    ;;
-  MODULE_NAME)
-    FC_MAKE_MODULE_NAME='"`echo $* | $(UPPERCASE)`".$(FC_MODULE_EXT)'
-    ;;
-  conftest)
-    FC_MAKE_MODULE_NAME='$*.$(FC_MODULE_EXT)'
-    ;;
-  *)
-    ;;
-esac
-
 ### Determine Fortran flags and file extensions
 AC_DEFUN([WO_FC_PARAMETERS],
 [dnl
@@ -521,12 +498,76 @@ AC_LINK_IFELSE([dnl
 ])
 FC_SUPPORTS_ENVVAR="$wo_cv_fc_envvar"
 AC_SUBST([FC_SUPPORTS_ENVVAR])
-if test "$FC_SUPPORTS_PROCEDURE_ENVVAR" = "no"; then
+if test "$FC_SUPPORTS_ENVVAR" = "no"; then
 AC_MSG_NOTICE([error: ***************************************************************************])
 AC_MSG_NOTICE([error: Fortran compiler does not support get_environment_variable; configure aborted.])
 AC_MSG_ERROR([***************************************************************************])
 fi])
 ### end WO_FC_CHECK_ENVVAR
+
+### Check whether the flush statement is supported
+AC_DEFUN([WO_FC_CHECK_FLUSH],
+[AC_CACHE_CHECK([whether $FC supports the flush statement (F2003)],
+  [wo_cv_fc_flush],
+  [dnl
+AC_REQUIRE([AC_PROG_FC])
+AC_LANG([Fortran])
+AC_COMPILE_IFELSE([dnl
+  program conftest
+  implicit none
+    integer, parameter :: u=50
+    open (u, action="readwrite", status="scratch")
+    write (u, *) "test"
+    flush (u)
+    close (u)
+  end program conftest
+  ],
+  [wo_cv_fc_flush="yes"],
+  [wo_cv_fc_flush="no"])
+])
+FC_SUPPORTS_FLUSH="$wo_cv_fc_flush"
+AC_SUBST([FC_SUPPORTS_FLUSH])
+if test "$FC_SUPPORTS_FLUSH" = "no"; then
+AC_MSG_NOTICE([error: ***************************************************************************])
+AC_MSG_NOTICE([error: Fortran compiler does not support the flush statement; configure aborted.])
+AC_MSG_ERROR([***************************************************************************])
+fi])
+### end WO_FC_CHECK_FLUSH
+
+### Check for iso_fortran_env
+AC_DEFUN([WO_FC_CHECK_ISO_FORTRAN_ENV],
+  [AC_ARG_ENABLE([iso_fortran_env],
+    [AC_HELP_STRING([--disable-iso_fortran_env],
+      [disable use of iso_fortran_env, even if the compiler supports it]
+    )],
+    [], [enable_iso_fortran_env=yes]
+  )
+  if test "$enable_iso_fortran_env" = yes; then
+    AC_CACHE_CHECK([whether $FC supports iso_fortran_env (F2003)],
+      [wo_cv_fc_iso_fortran_env],
+      [AC_LINK_IFELSE(
+        [dnl
+        program conftest
+        use iso_fortran_env
+        implicit none
+          integer :: i
+          i = input_unit
+          i = output_unit
+          i = error_unit
+          i = iostat_end
+          i = iostat_eor
+        end program conftest
+        ], [wo_cv_fc_iso_fortran_env=yes], [wo_cv_fc_iso_fortran_env=no]
+      )]
+    )
+    test "$wo_cv_fc_iso_fortran_env" = no && iso_fortran_env_stub=yes
+  else
+    AC_CHECKING([whether $FC supports iso_fortran_env (F2003)... disabled])
+    iso_fortran_env_stub=yes
+  fi
+  AM_CONDITIONAL([ISO_FORTRAN_ENV_STUB], [test -n "$iso_fortran_env_stub"])
+  ]
+)
 
 ### Check for wrapping of linker flags 
 ### (nagfor 'feature': must be wrapped twice)
@@ -860,33 +901,63 @@ done])
 dnl
 dnl --------------------------------------------------------------------
 dnl
-dnl FC_MODULE_FILE(NAME, EXTENSION, COMPILER, EXTENSION)
+dnl WO_FC_MODULE_FILE(NAME, EXTENSION, FORTRAN_COMPILER, SOURCE_EXTENSION)
 dnl
-AC_DEFUN([FC_MODULE_FILE],
+AC_DEFUN([WO_FC_MODULE_FILE],
 [AC_SUBST([$1])
 AC_SUBST([$2])
 AC_MSG_CHECKING([for Fortran90 module file naming convention])
-COMPILE_FC([tho_result], [$3], [$4],
+COMPILE_FC([wo_result], [$3], [$4],
   [module module_NAME
      implicit none
      integer, parameter, public :: forty_two = 42
    end module module_NAME], [ok], [], [KEEP])
-if test -n "$tho_result"; then
+if test -n "[$]wo_result"; then
   $1=unknown
   $2=unknown
-  for name in module_NAME module_name MODULE_NAME conftest; do
+  for name in module_name module_NAME MODULE_NAME conftest; do
     for ext in m mod M MOD d D; do
-      if test -f "$name.$ext"; then
+      if test -f "[$]name.[$]ext"; then
         $1="$name"
         $2="$ext"
         break 2
       fi
     done
   done
-  AC_MSG_RESULT([name: [$]$1, extension: .[$]$2 ])
+  if test X"[$]$1" = X"module_name"; then
+     AC_MSG_RESULT([name: [$]$1, extension: .[$]$2 ])
+  else
+     AC_MSG_ERROR([unusual unsupported module file name convention: [$]$1.[$]$2])
+  fi
 else
   $1=""
   $2=""
   AC_MSG_RESULT([compiler failed])
 fi
 rm -rf conftest* CONFTEST* module_name* module_NAME* MODULE_NAME*])
+
+dnl
+dnl ## This is an old and currently unused attempt at treating deviations
+dnl ## from "module_name.extension" of the FORTRAN naming convention.
+dnl ## It should be cleaned up, if we ever need it again.
+dnl 
+dnl WO_FC_MODULE_FILE([FC_MODULE_NAME], [FC_MODULE_EXT], [$FC], [$FC_EXT])
+dnl WO_FC_FILENAME_CASE_CONVERSION
+dnl AC_SUBST([FC_MAKE_MODULE_NAME])
+dnl case "$FC_MODULE_NAME" in
+dnl   module_NAME)
+dnl     FC_MAKE_MODULE_NAME='$*.$(FC_MODULE_EXT)'
+dnl     ;;
+dnl   module_name)
+dnl     FC_MAKE_MODULE_NAME='"`echo $* | $(LOWERCASE)`".$(FC_MODULE_EXT)'
+dnl     ;;
+dnl   MODULE_NAME)
+dnl     FC_MAKE_MODULE_NAME='"`echo $* | $(UPPERCASE)`".$(FC_MODULE_EXT)'
+dnl     ;;
+dnl   conftest)
+dnl     FC_MAKE_MODULE_NAME='$*.$(FC_MODULE_EXT)'
+dnl     ;;
+dnl   *)
+dnl     ;;
+dnl esac
+dnl 

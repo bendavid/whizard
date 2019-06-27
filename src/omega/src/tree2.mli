@@ -1,4 +1,4 @@
-(* $Id: tree2.mli 2276 2010-04-09 17:15:14Z ohl $
+(* $Id: tree2.mli 2403 2010-04-23 20:28:27Z ohl $
 
    Copyright (C) 1999-2009 by
 
@@ -23,11 +23,11 @@
 
 (* Dependency trees for wavefunctions. *)
 
-type 'n t
-val cons : ('n * 'n t list) list -> 'n t
-val leaf : 'n -> 'n t
+type ('n, 'e) t
+val cons : ('e * 'n * ('n, 'e) t list) list -> ('n, 'e) t
+val leaf : 'n -> ('n, 'e) t
 
-val to_string : ('n -> string) -> 'n t -> string
+val to_string : ('n -> string) -> ('e -> string) -> ('n, 'e) t -> string
 
 (*i
  *  Local Variables:

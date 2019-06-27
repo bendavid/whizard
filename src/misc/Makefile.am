@@ -29,26 +29,40 @@
 ## The files in this directory end up in an auxiliary libtool library.
 noinst_LTLIBRARIES = libaux.la
 
+## include the iso_fortran_env stub if required and make sure that it is
+## distributed in any case.
+if ISO_FORTRAN_ENV_STUB
+sources_extra = iso_fortran_env_stub.f90
+modules_extra = iso_fortran_env.$(FC_MODULE_EXT)
+iso_fortran_env_depend = iso_fortran_env_stub.lo
+iso_fortran_env.mod: iso_fortran_env_stub.lo
+endif
+EXTRA_DIST = iso_fortran_env_stub.f90
+
 libaux_la_SOURCES = \
   kinds.f90 iso_varying_string.f90 \
   system_dependencies.f90 \
   constants.f90 \
   limits.f90 \
   file_utils.f90 \
-  diagnostics.f90 \
-  lorentz.f90 sm_physics.f90
+  diagnostics.f90 signal_interface.c \
+  lorentz.f90 \
+  sm_physics.f90 \
+  $(sources_extra)
 
 WHIZARD_SRC_FROM_WHIZARD_NW = \
   limits.f90 \
   file_utils.f90 \
-  diagnostics.f90 \
+  diagnostics.f90 signal_interface.c \
   lorentz.f90 sm_physics.f90
 
 ## Explicit dependencies:
+limits.lo: $(iso_fortran_env_depend)
 constants.lo: kinds.lo
-file_utils.lo: kinds.lo iso_varying_string.lo limits.lo
+file_utils.lo: kinds.lo iso_varying_string.lo limits.lo \
+  $(iso_fortran_env_depend)
 diagnostics.lo: kinds.lo iso_varying_string.lo system_dependencies.lo \
-  file_utils.lo limits.lo
+  file_utils.lo limits.lo $(iso_fortran_env_depend)
 lorentz.lo: kinds.lo file_utils.lo constants.lo diagnostics.lo
 sm_physics.lo: kinds.lo file_utils.lo constants.lo lorentz.lo diagnostics.lo
 
@@ -63,7 +77,8 @@ nodist_execmod_HEADERS = \
   file_utils.$(FC_MODULE_EXT) \
   diagnostics.$(FC_MODULE_EXT) \
   lorentz.$(FC_MODULE_EXT) \
-  sm_physics.$(FC_MODULE_EXT)
+  sm_physics.$(FC_MODULE_EXT) \
+  $(modules_extra)
 
 SUFFIXES = .lo .$(FC_MODULE_EXT)
 # Fortran90 module files are generated at the same time as object files

@@ -30,7 +30,7 @@
 noinst_LTLIBRARIES = libwhizard_core.la
 
 libwhizard_core_la_SOURCES = \
-  os_interface.f90 clock.f90 \
+  os_interface.f90 cputime.f90 \
   hashes.f90 sprintf_interface.c formats.f90 bytes.f90 md5.f90 \
   permutations.f90 sorting.f90 ifiles.f90 \
   lexers.f90 syntax_rules.f90 parser.f90 \
@@ -63,6 +63,27 @@ libwhizard_main_la_SOURCES = main.f90
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = whizard.nw
 
+## Fortran module dependencies
+# The following line just says
+#    include Makefile.depend
+# but in a portable fashion (depending on automake's AM_MAKE_INCLUDE
+@am__include@ @am__quote@Makefile.depend@am__quote@
+
+Makefile.depend: $(libwhizard_core_la_SOURCES) $(libwhizard_main_la_SOURCES)
+	@rm -f $@
+	for src in $^; do \
+	  module="`basename $$src | sed 's/\.f[90][0358]//'`"; \
+	  grep '^ *use ' $$src \
+	    | grep -v '!NODEP!' \
+	    | sed -e 's/^ *use */'$$module'.lo: /' \
+	          -e 's/, *only:.*//' \
+	          -e 's/, *&//' \
+	          -e 's/, *.*=>.*//' \
+	          -e 's/$$/.lo/' ; \
+	done > $@
+
+DISTCLEANFILES = Makefile.depend 
+
 ## Dependency libaux (kinds, constants, strings) and VAMP
 $(libwhizard_core_la_OBJECTS): \
   ../misc/kinds.$(FC_MODULE_EXT) \
@@ -74,7 +95,7 @@ $(libwhizard_core_la_OBJECTS): \
   ../misc/diagnostics.$(FC_MODULE_EXT) \
   ../misc/lorentz.$(FC_MODULE_EXT) \
   ../misc/sm_physics.$(FC_MODULE_EXT) \
-  ../vamp/vamp.$(FC_MODULE_EXT)
+  ../vamp/src/vamp.$(FC_MODULE_EXT)
 
 SUFFIXES = .lo .$(FC_MODULE_EXT)
 # Fortran90 module files are generated at the same time as object files
@@ -82,7 +103,7 @@ SUFFIXES = .lo .$(FC_MODULE_EXT)
 	@:
 #	touch $@
 
-AM_FCFLAGS = -I../misc -I../vamp
+AM_FCFLAGS = -I../misc -I../vamp/src
 
 ## OpenMP
 AM_LDFLAGS =
@@ -118,28 +139,6 @@ $(WHIZARD_SRC): whizard.stamp
 	fi
 
 endif
-
-## Re-create dependencies for f90 files from 'use' directives
-## Note: .depend should always exist
-fc-depend: .depend
-
-.depend: $(libwhizard_core_la_SOURCES) main.f90
-	rm -f $@
-	for src in $^; do \
-	  grep -H '^ *use ' $$src \
-	| grep -v '!NODEP!' \
-	| sed -e 's/\..*: *use  */.lo: /' \
-	      -e 's/, *only *:.*//' \
-	      -e 's/, *&//' \
-	      -e 's/, *.*=>.*//' \
-	      -e 's/$$/.lo/' \
-	>> $@; \
-	done
-
-.PHONY: fc-depend
-
-include .depend
-.PRECIOUS: .depend
 
 ## Non-standard cleanup tasks
 ## Remove sources that can be recreated using NOWEB

@@ -1,13 +1,12 @@
 WHIZARD Core
-* Release 2.0.1/2
+* Release 2.0.2
   - 2->1 processes ?
   - reactivate ILC features (CIRCE etc.)
   - profiling/optimization
   - Library API (bind(C))
-  - Signals, behavior in batch environment, large event numbers
+  - Behavior in batch environment, large event numbers
 
 * 2.1
-  - ROOT interface
   - EWA implementation
   - pT for EWA, EPA etc.
   - reconsider structure function mappings for optimization
@@ -37,8 +36,8 @@ O'Mega
   - helicity optimization (numerically done/analytically pending)
 
 Models
-* Release 2.0
-  - self-checks (trivial processes + all kinds of commands)
+* Release 2.0.2
+  - more self-checks (trivial processes + all kinds of commands)
   - Tests for 7, 8 fermions ...
 
 * 2.1
@@ -47,23 +46,21 @@ Models
   - W'
 
 VAMP
-* 2.0
-  - merge extensions w/ documented code
+* 2.0.2
   - unify naming conventions for types with WHIZARD (JR will do, 
 	e.g. type :: division -> division_t
 * 2.1
   - integration of multiple observables
 
 configure
-* Release 2.0
+* Release 2.0.2
   - support for CIRCE 1/2
-  - Optimization flags (partially)
 
 * 2.1
   - Windows support?
 
 Misc
-* Release 2.0
+* Release 2.0.2
   - ATLAS/CMS software environment
   - Manual + Paper
 

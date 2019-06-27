@@ -1,4 +1,4 @@
-printf ("# Test run for" // " variable and loop handling")
+printf ("# Test run for" & " variable and loop handling")
 
 show (real)
 
@@ -45,7 +45,7 @@ logical ?ok = mZ > mW
 show (?)
 
 string $str = "foo"
-$str = $str // "bar"
+$str = $str & "bar"
 show ($)
 
 alias q = if ?ok then u else d endif
@@ -84,7 +84,7 @@ scan int i = (-1,1,2) {
 
 show ((1), (mH + mW))
 show (?(mH > mZ), ?(true))
-show ($("foo"), $("foo" // "bar"))
+show ($("foo"), $("foo" & "bar"))
 
 printf("Testing the complex calculus")
 

@@ -1,4 +1,4 @@
-! WHIZARD 2.0.0 Mon Apr 12 2010
+! WHIZARD 2.0.1 Sun Apr 25 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -28,7 +28,7 @@
 module commands
 
   use kinds, only: default !NODEP!
-  use kinds, only: double !NODEP!
+  use kinds, only: double, i64 !NODEP!
   use iso_varying_string, string_t => varying_string !NODEP!
   use limits, only: ITERATIONS_DEFAULT_LIST_SIZE !NODEP!
   use constants !NODEP!
@@ -38,7 +38,7 @@ module commands
   use tao_random_numbers !NODEP!
   use md5
   use os_interface
- use ifiles
+  use ifiles
   use lexers
   use syntax_rules
   use parser
@@ -69,12 +69,16 @@ module commands
   use decays
   use events
   use slha_interface
+  use cputime
 
   implicit none
   private
 
   public :: rt_data_global_init
   public :: rt_data_global_final
+  public :: simulation_t
+  public :: simulation_setup_analysis
+  public :: simulation_init
   public :: command_list_t
   public :: command_list_final
   public :: command_list_write
@@ -155,6 +159,13 @@ module commands
   integer, parameter :: NORM_N_EVT = 2
   integer, parameter :: NORM_SIGMA = 3
   integer, parameter :: NORM_SIGMA_N_EVT = 4
+
+  character(*), parameter :: &
+     checkpoint_head = &
+        "| % complete | events generated | events remaining | time remaining", &
+     checkpoint_bar = &
+        "|===================================================================|", &
+     checkpoint_fmt = "('   ',F5.1,T16,I9,T35,I9,T56,A)"
 
   integer, parameter :: STEP_NONE = 0
   integer, parameter :: STEP_ADD = 1
@@ -242,6 +253,10 @@ module commands
      type(file_spec_t), pointer :: last => null ()
   end type file_list_t
 
+  type :: process_p
+     type(process_t), pointer :: ptr
+  end type process_p
+
   public :: rt_data_t
   type :: rt_data_t
      type(lexer_t), pointer :: lexer => null ()
@@ -254,7 +269,6 @@ module commands
      type(model_t), pointer :: model => null ()
      type(beam_data_t) :: beam_data
      type(lhapdf_status_t) :: lhapdf_status
-     integer :: n_processes = 0
      logical :: sf_list_allocated = .false.
      type(sf_list_t), pointer  :: sf_list => null ()
      type(parse_node_t), pointer :: pn_cuts_lexpr => null ()
@@ -455,9 +469,6 @@ module commands
      private
      integer :: n_proc = 0
      type(string_t), dimension(:), allocatable :: process_id
-     type(grid_parameters_t) :: grid_parameters
-     type(phs_parameters_t) :: phs_par
-     type(mapping_defaults_t) :: mapping_defaults
      type(command_list_t), pointer :: options => null ()
      type(rt_data_t) :: local
   end type cmd_integrate_t
@@ -555,6 +566,47 @@ module commands
     logical :: negative_weights = .false.
   end type simulation_parameters_t
 
+  type :: checkpointing_t
+    logical :: active = .false.
+    logical :: running = .false.
+    integer :: val = 0
+    real(default) :: tzero = 0
+  end type checkpointing_t
+
+  type :: simulation_t
+    private
+    integer :: n_proc = 0
+    type(string_t), dimension(:), allocatable :: process_id
+    type(process_p), dimension(:), allocatable :: prc_array
+    type(var_list_t) :: var_list
+    logical :: rebuild_events = .false.
+    integer :: n_in = 0
+    type(flavor_t), dimension(:), allocatable :: beam_flv
+    real(default), dimension(:), allocatable :: beam_energy
+    type(string_t) :: basename
+    logical :: read_raw = .false.
+    logical :: write_raw = .false.
+    type(string_t) :: file_raw
+    type(file_list_t) :: file_list
+    integer :: u_raw = -1
+    type(simulation_parameters_t) :: spar
+    real(default), dimension(:), allocatable :: integral
+    real(default) :: integral_sum = 0
+    real(default) :: norm_weight = 0
+    type(md5sum_events_t) :: md5sum
+    integer :: n_events = 0
+    integer :: n_read = 0
+    integer :: i_evt = 0
+    real(default) :: luminosity = 0
+    type(eval_tree_t) :: analysis_expr
+    type(prt_list_t) :: prt_list
+    real(default) :: event_weight = 0
+    real(default) :: event_sqme = 0
+    type(decay_tree_t), dimension(:), allocatable :: decay_tree
+    type(checkpointing_t) :: checkpointing
+    type(event_t) :: event
+  end type simulation_t
+
   type :: cmd_simulate_t
      private
      integer :: n_evt = 0
@@ -621,6 +673,12 @@ module commands
 
 
   type(syntax_t), target, save :: syntax_cmd_list
+
+
+  interface cmd_integrate_init
+     module procedure cmd_integrate_init1
+     module procedure cmd_integrate_init2
+  end interface
 
 
 contains
@@ -1066,6 +1124,7 @@ contains
   subroutine iterations_lists_init_default (it_list)
     type(iterations_list_t), dimension(:), pointer :: it_list
     allocate (it_list (ITERATIONS_DEFAULT_LIST_SIZE))
+    call iterations_list_init (it_list(1), (/  1 /), (/ 100 /))
     call iterations_list_init (it_list(2), (/  3, 3 /), (/   1000,  10000 /))
     call iterations_list_init (it_list(3), (/  5, 3 /), (/   5000,  10000 /))
     call iterations_list_init (it_list(4), (/ 10, 5 /), (/  10000,  20000 /))
@@ -1075,51 +1134,45 @@ contains
   end subroutine iterations_lists_init_default
 
   subroutine file_list_append_file_spec &
-       (file_list, procname, var_list, format, beam_flv, beam_energy, &
-        n_processes) ! unweighted, negative_weights, &
+       (file_list, basename, var_list, format, beam_flv, beam_energy) 
+       ! unweighted, negative_weights, &
     type(file_list_t), intent(inout) :: file_list
+    type(string_t), intent(in) :: basename
     type(var_list_t), intent(in) :: var_list
     integer, intent(in) :: format
     type(flavor_t), dimension(:), intent(in) :: beam_flv
     real(default), dimension(:), intent(in) :: beam_energy
-    integer, intent(in) :: n_processes
 !     logical, intent(in) :: unweighted, negative_weights
-    type(string_t) :: basename
-    type(string_t), intent(in) :: procname
+    integer :: n_processes
     type(file_spec_t), pointer :: current
-    basename = var_list_get_sval (var_list, var_str ("$sample"))
-    if (basename == "") basename = procname
+    n_processes = size (beam_flv)
     allocate (current)
-!     if (name /= "") then
-!        current%name = name
-!     else
-       select case (format)
-       case (FMT_DEFAULT);     current%name = basename // "." // var_list_get_sval &
+    select case (format)
+    case (FMT_DEFAULT);     current%name = basename // "." // var_list_get_sval &
             (var_list, var_str ("$extension_default"))
-       case (FMT_DEBUG);       current%name = basename // "." // var_list_get_sval &
+    case (FMT_DEBUG);       current%name = basename // "." // var_list_get_sval &
             (var_list, var_str ("$extension_debug"))
-       case (FMT_HEPMC);       current%name = basename // "." // var_list_get_sval &
+    case (FMT_HEPMC);       current%name = basename // "." // var_list_get_sval &
             (var_list, var_str ("$extension_hepmc"))
-       case (FMT_LHEF);        current%name = basename // "." // var_list_get_sval &
+    case (FMT_LHEF);        current%name = basename // "." // var_list_get_sval &
             (var_list, var_str ("$extension_lhef"))
-       case (FMT_LHA);         current%name = basename // "." // var_list_get_sval &
+    case (FMT_LHA);         current%name = basename // "." // var_list_get_sval &
             (var_list, var_str ("$extension_lha"))
-       case (FMT_HEPEVT);      current%name = basename // "." // var_list_get_sval &
+    case (FMT_HEPEVT);      current%name = basename // "." // var_list_get_sval &
             (var_list, var_str ("$extension_hepevt"))
-       case (FMT_ASCII_SHORT); current%name = basename // "." // var_list_get_sval &
+    case (FMT_ASCII_SHORT); current%name = basename // "." // var_list_get_sval &
             (var_list, var_str ("$extension_ascii_short"))
-       case (FMT_ASCII_LONG);  current%name = basename // "." // var_list_get_sval &
+    case (FMT_ASCII_LONG);  current%name = basename // "." // var_list_get_sval &
             (var_list, var_str ("$extension_ascii_long"))
-       case (FMT_ATHENA);      current%name = basename // "." // var_list_get_sval &
+    case (FMT_ATHENA);      current%name = basename // "." // var_list_get_sval &
             (var_list, var_str ("$extension_athena"))
-       case (FMT_STDHEP);      current%name = basename // "." // var_list_get_sval &
+    case (FMT_STDHEP);      current%name = basename // "." // var_list_get_sval &
             (var_list, var_str ("$extension_stdhep"))
-       case (FMT_STDHEP_UP);   current%name = basename // "." // var_list_get_sval &
+    case (FMT_STDHEP_UP);   current%name = basename // "." // var_list_get_sval &
             (var_list, var_str ("$extension_stdhep_up"))
-       case default;           current%name = basename // "." // var_list_get_sval &
+    case default;           current%name = basename // "." // var_list_get_sval &
             (var_list, var_str ("$extension_default"))
-       end select          
-!     end if
+    end select          
     current%format = format
     allocate (current%beam_flv (size (beam_flv)))
     current%beam_flv = beam_flv
@@ -1146,28 +1199,29 @@ contains
     file_list%last => null ()
   end subroutine file_list_final
 
-  subroutine file_list_open (file_list, simulate)
+  subroutine file_list_open (file_list, process_id, n_events)
     type(file_list_t), intent(inout), target :: file_list
-    type(cmd_simulate_t), intent(inout), target :: simulate
+    type(string_t), dimension(:), intent(in) :: process_id
+    integer, intent(in) :: n_events
     real(default), dimension(:), allocatable :: integral, error
     type(process_t), pointer :: process 
     type(file_spec_t), pointer :: current
-    integer :: i
+    integer :: i, n_proc
     integer(i64) :: n_events_expected    
+    n_proc = size (process_id)
     current => file_list%first
-    allocate (integral (simulate%n_proc), error (simulate%n_proc))
-    do i = 1, simulate%n_proc
-       process => process_store_get_process_ptr ( &
-            simulate%process_id(i))
+    allocate (integral (n_proc), error (n_proc))
+    do i = 1, n_proc
+       process => process_store_get_process_ptr (process_id(i))
        if (associated (process)) then
           integral(i) = process_get_integral (process)
-          error(i)     = process_get_error (process)
+          error(i) = process_get_error (process)
        else
           integral(i) = 0
           error(i) = 0
        end if
     end do
-    n_events_expected = simulate%n_evt
+    n_events_expected = n_events
     do while (associated (current))
        select case (current%format)
        case (FMT_DEFAULT)
@@ -1229,7 +1283,7 @@ contains
                 n_processes = current%n_processes, &
                 unweighted = current%unweighted, &
                 negative_weights = current%negative_weights)            
-          do i = 1, simulate%n_proc
+          do i = 1, n_proc
              call heprup_set_process_parameters (i = i, process_id = &
                  i, cross_section = integral(i), error = error(i))
           end do
@@ -1246,7 +1300,7 @@ contains
                 n_processes = current%n_processes, &
                 unweighted = current%unweighted, &
                 negative_weights = current%negative_weights)            
-          do i = 1, simulate%n_proc
+          do i = 1, n_proc
              call heprup_set_process_parameters (i = i, process_id = &
                  i, cross_section = integral(i), error = error(i))
           end do
@@ -1264,7 +1318,7 @@ contains
                 n_processes = current%n_processes, &
                 unweighted = current%unweighted, &
                 negative_weights = current%negative_weights)                           
-          do i = 1, simulate%n_proc
+          do i = 1, n_proc
              call heprup_set_process_parameters (i = i, process_id = &
                  i, cross_section = integral(i), error = error(i))
           end do               
@@ -1381,10 +1435,22 @@ contains
     end select
   end function event_format_code
 
+  subroutine process_ptr_array_create (prc_array, process_id)
+    type(process_p), dimension(:), intent(out), allocatable :: prc_array
+    type(string_t), dimension(:), intent(in) :: process_id
+    integer :: proc, n_proc
+    n_proc = size (process_id)
+    allocate (prc_array (n_proc))
+    do proc = 1, n_proc
+       prc_array(proc)%ptr => process_store_get_process_ptr (process_id(proc))
+    end do
+  end subroutine process_ptr_array_create
+
   subroutine rt_data_global_init (global, paths)
     type(rt_data_t), intent(out), target :: global
     type(paths_t), intent(in), optional :: paths
     logical, target, save :: known = .true.
+    real(default), parameter :: real_specimen = 1.
     call os_data_init (global%os_data, paths)
     allocate (global%rng)
     call system_clock (global%seed)
@@ -1540,6 +1606,9 @@ contains
     call var_list_append_real &
          (global%var_list, var_str ("channel_weights_power"), 0.25_default, &
           intrinsic=.true.)
+    call var_list_append_log &
+         (global%var_list, var_str ("?vis_channels"), .false., &
+          intrinsic=.true.)       
     call var_list_append_string &
          (global%var_list, var_str ("$phs_file"), &
           intrinsic=.true.)
@@ -1572,7 +1641,7 @@ contains
           intrinsic=.true.)
     call var_list_append_log &
          (global%var_list, var_str ("?adapt_final_weights"), .false., &
-          intrinsic=.true.)
+          intrinsic=.true.)       
     call var_list_append_log &
          (global%var_list, var_str ("?isotropic_decay"), .false., &
           intrinsic=.true.)
@@ -1642,6 +1711,9 @@ contains
     call var_list_append_string (global%var_list, &
          var_str ("$analysis_filename"), &
           intrinsic=.true.)
+    call var_list_append_int (global%var_list, &
+         var_str ("n_bins"), 20, &
+          intrinsic=.true.)
     call var_list_append_string (global%var_list, &
          var_str ("$label"), var_str (""), &
           intrinsic=.true.)
@@ -1660,9 +1732,31 @@ contains
     call var_list_append_string (global%var_list, &
          var_str ("$ylabel"), var_str (""), &
           intrinsic=.true.)
+    call var_list_append_log &
+         (global%var_list, var_str ("?x_log"), .false., &
+          intrinsic=.true.)
+    call var_list_append_log &
+         (global%var_list, var_str ("?y_log"), .false., &
+          intrinsic=.true.)
+    call var_list_append_real &
+         (global%var_list, var_str ("y_min"),  &
+          intrinsic=.true.)
+    call var_list_append_real &
+         (global%var_list, var_str ("y_max"),  &
+          intrinsic=.true.)
     call var_list_append_real (global%var_list, &
          var_str ("tolerance"), 0._default, &
           intrinsic=.true.)
+    call var_list_append_int (global%var_list, &
+         var_str ("checkpoint"), intrinsic = .true.)
+    call var_list_append_int (global%var_list, var_str ("real_range"), &
+         range (real_specimen), intrinsic = .true., locked = .true.)
+    call var_list_append_int (global%var_list, var_str ("real_precision"), &
+         precision (real_specimen), intrinsic = .true., locked = .true.)
+    call var_list_append_real (global%var_list, var_str ("real_epsilon"), &
+         epsilon (real_specimen), intrinsic = .true., locked = .true.)
+    call var_list_append_real (global%var_list, var_str ("real_tiny"), &
+         tiny (real_specimen), intrinsic = .true., locked = .true.)
     call rt_data_init_pointer_variables (global)
     call iterations_lists_init_default (global%it_list_default)
   end subroutine rt_data_global_init
@@ -3997,6 +4091,26 @@ contains
     end if
   end subroutine cmd_integrate_write
 
+  subroutine cmd_integrate_init1 (integrate, process_id, global)
+    type(cmd_integrate_t), intent(out) :: integrate
+    type(string_t), intent(in) :: process_id
+    type(rt_data_t), intent(inout), target :: global
+    integer :: i
+    integrate%n_proc = 1
+    allocate (integrate%process_id (1))
+    integrate%process_id(1) = process_id
+  end subroutine cmd_integrate_init1
+
+  subroutine cmd_integrate_init2 (integrate, process_id, global)
+    type(cmd_integrate_t), intent(out) :: integrate
+    type(string_t), dimension(:), intent(in) :: process_id
+    type(rt_data_t), intent(inout), target :: global
+    integer :: i
+    integrate%n_proc = size (process_id)
+    allocate (integrate%process_id (integrate%n_proc))
+    integrate%process_id = process_id
+  end subroutine cmd_integrate_init2
+
   subroutine cmd_integrate_compile (integrate, pn, global)
     type(cmd_integrate_t), pointer :: integrate
     type(parse_node_t), intent(in), target :: pn
@@ -4020,7 +4134,6 @@ contains
             integrate%process_id (i))
        pn_proc => parse_node_get_next_ptr (pn_proc)
     end do
-    ! API for setting grid_parameters etc. missing
   end subroutine cmd_integrate_compile
 
   subroutine cmd_integrate_execute (integrate, global)
@@ -4028,12 +4141,15 @@ contains
     type(rt_data_t), intent(inout), target :: global
     logical :: use_beams
     type(process_t), pointer :: process
-    integer :: proc, n_out, pass, i, n_calls
+    integer :: proc, n_in, n_out, pass, i, n_calls
     type(iterations_list_t), dimension(:), allocatable :: it_list
     type(iterations_spec_t) :: it_spec
     logical :: ok, use_default_iterations, rebuild_phs, phs_only, rebuild_grids
+    type(grid_parameters_t) :: grid_parameters
+    type(phs_parameters_t) :: phs_par
+    type(mapping_defaults_t) :: mapping_defaults
     type(string_t) :: phs_filename, grids_filename
-    logical :: hs_active
+    logical :: hs_active, vis_channels
     real(default) :: hs_threshold
     integer :: hs_cutoff
     real(default) :: alpha_s, sqrts
@@ -4049,42 +4165,45 @@ contains
        call command_list_execute (integrate%options, integrate%local)
     end if
     call maybe_cmd_compile_execute (integrate%process_id, integrate%local)
-    integrate%grid_parameters%threshold_calls = &
+    grid_parameters%threshold_calls = &
          var_list_get_ival (integrate%local%var_list, &
                             var_str ("threshold_calls"))
-    integrate%grid_parameters%min_calls_per_channel = &
+    grid_parameters%min_calls_per_channel = &
          var_list_get_ival (integrate%local%var_list, &
                             var_str ("min_calls_per_channel"))
-    integrate%grid_parameters%min_calls_per_bin = &
+    grid_parameters%min_calls_per_bin = &
          var_list_get_ival (integrate%local%var_list, &
                             var_str ("min_calls_per_bin"))
-    integrate%grid_parameters%min_bins = &
+    grid_parameters%min_bins = &
          var_list_get_ival (integrate%local%var_list, &
                             var_str ("min_bins"))
-    integrate%grid_parameters%max_bins = &
+    grid_parameters%max_bins = &
          var_list_get_ival (integrate%local%var_list, &
                             var_str ("max_bins"))
-    integrate%grid_parameters%stratified = &
+    grid_parameters%stratified = &
          var_list_get_lval (integrate%local%var_list, &
                             var_str ("?stratified"))
-    integrate%grid_parameters%use_vamp_equivalences = &
+    grid_parameters%use_vamp_equivalences = &
          var_list_get_lval (integrate%local%var_list, &
                             var_str ("?use_vamp_equivalences"))
-    integrate%grid_parameters%channel_weights_power = &
+    grid_parameters%channel_weights_power = &
          var_list_get_rval (integrate%local%var_list, &
                             var_str ("channel_weights_power"))
-    integrate%phs_par%m_threshold_s = &
+    phs_par%m_threshold_s = &
          var_list_get_rval (integrate%local%var_list, &
                             var_str ("phs_threshold_s"))
-    integrate%phs_par%m_threshold_t = &
+    phs_par%m_threshold_t = &
          var_list_get_rval (integrate%local%var_list, &
                             var_str ("phs_threshold_t"))
-    integrate%phs_par%off_shell = &
+    phs_par%off_shell = &
          var_list_get_ival (integrate%local%var_list, &
                             var_str ("phs_off_shell"))
-    integrate%phs_par%t_channel = &
+    phs_par%t_channel = &
          var_list_get_ival (integrate%local%var_list, &
                             var_str ("phs_t_channel"))
+    vis_channels = &
+         var_list_get_lval (integrate%local%var_list, &
+                            var_str ("?vis_channels"))                      
     use_beams = beam_data_are_valid (integrate%local%beam_data)
     if (use_beams) then
        if (.not. beam_data_masses_are_consistent &
@@ -4161,29 +4280,33 @@ contains
             var_str ("$phs_file"))   ! $ fool the noweb emacs mode
        phs_only = var_list_get_lval (integrate%local%var_list, &
             var_str ("?phs_only"))
-       integrate%mapping_defaults%energy_scale = &
+       mapping_defaults%energy_scale = &
             var_list_get_rval (integrate%local%var_list, &
             var_str ("phs_e_scale"))
-       integrate%mapping_defaults%invariant_mass_scale = &
+       mapping_defaults%invariant_mass_scale = &
             var_list_get_rval (integrate%local%var_list, &
             var_str ("phs_m_scale"))
-       integrate%mapping_defaults%momentum_transfer_scale = &
+       mapping_defaults%momentum_transfer_scale = &
             var_list_get_rval (integrate%local%var_list, &
             var_str ("phs_q_scale"))
        md5sum_mappings = &
-            mapping_defaults_md5sum (integrate%mapping_defaults)
+            mapping_defaults_md5sum (mapping_defaults)
        if (phs_filename == "") then
           call process_setup_phase_space (process, rebuild_phs, &
-               integrate%phs_par, integrate%mapping_defaults, &
+               global%os_data, &
+               phs_par, mapping_defaults, &
                filename_out = integrate%process_id(proc) // ".phs", &
-               ok = ok)
+               filename_vis = integrate%process_id(proc) // "_phs", &
+               vis_channels = vis_channels, ok = ok)
        else
           call process_setup_phase_space (process, rebuild_phs, &
-               integrate%phs_par, integrate%mapping_defaults, &
+               global%os_data, &
+               phs_par, mapping_defaults, &
                filename_in = phs_filename, &
                filename_out = integrate%process_id(proc) // ".phs", &
-               ok = ok)
-       end if
+               filename_vis = integrate%process_id(proc) // "_phs", &
+               vis_channels = vis_channels, ok = ok)
+       end if       
        if (.not. ok) then
           call msg_error ("Process '" // char (integrate%process_id(proc)) &
                // "': phase space setup failed, skipped")
@@ -4232,6 +4355,7 @@ contains
        time_estimate = var_list_get_lval (integrate%local%var_list, &
             var_str ("?time_estimate"))
 
+       n_in  = process_get_n_in  (process)
        n_out = process_get_n_out (process)
        use_default_iterations = it_list(proc)%n_pass == 0
        if (use_default_iterations) then
@@ -4241,7 +4365,7 @@ contains
                   // "must be at least 2")
              cycle LOOP_PROC
           case (2:ITERATIONS_DEFAULT_LIST_SIZE)
-             it_list(proc) = integrate%local%it_list_default(n_out)
+             it_list(proc) = integrate%local%it_list_default(n_out + (n_in-2))
           case default
              it_list(proc) = &
                   integrate%local%it_list_default(ITERATIONS_DEFAULT_LIST_SIZE)
@@ -4251,7 +4375,7 @@ contains
                integrate%local%it_list_default(n_out))
        end if
        call iterations_list_adjust_n_calls (it_list(proc), &
-            process, integrate%grid_parameters)
+            process, grid_parameters)
        call iterations_list_write (it_list(proc))
        call process_init_vamp_history &
             (process, iterations_list_get_n_it (it_list(proc)))
@@ -4267,7 +4391,7 @@ contains
                   grids_filename, &
                   md5sum_beams, md5sum_sf_list, md5sum_mappings, &
                   md5sum_cuts, md5sum_weight, md5sum_scale, &
-                  integrate%grid_parameters, &
+                  grid_parameters, &
                   iterations_list_get_pass_array (it_list(proc)), &
                   iterations_list_get_n_calls_array (it_list(proc)),&
                   ok)
@@ -4275,20 +4399,20 @@ contains
           end if
           if (rebuild_grids) then
              call process_setup_grids &
-                  (process, integrate%grid_parameters, calls=n_calls)
+                  (process, grid_parameters, calls=n_calls)
              write (msg_buffer, "(4(I0,A),A,L1)")  &
                   n_calls, " calls, ", &
                   process_get_n_channels (process), " channels, ", &
                   process_get_n_parameters (process), " dimensions, ", &
                   process_get_n_bins (process), " bins, ", &
-                  "stratified = ", integrate%grid_parameters%stratified
+                  "stratified = ", grid_parameters%stratified
              call msg_message ()
           else
              write (msg_buffer, "(3(I0,A),A,L1)")  &
                   n_calls, " calls, ", &
                   process_get_n_channels (process), " channels, ", &
                   process_get_n_parameters (process), " dimensions, ", &
-                  "stratified = ", integrate%grid_parameters%stratified
+                  "stratified = ", grid_parameters%stratified
              call msg_message ()
           end if
           current_pass = process_get_current_pass (process)
@@ -4325,7 +4449,7 @@ contains
                 flush (u)
              else
                 call process_integrate (process, &
-                     integrate%local%rng, integrate%grid_parameters, &
+                     integrate%local%rng, grid_parameters, &
                      pass, 1, 1, n_calls, &
                      i==1, .true., i>2, .true., &
                      time_estimate, &
@@ -4353,7 +4477,7 @@ contains
              flush (u)
           end do
           call process_integrate (process, &
-               integrate%local%rng, integrate%grid_parameters, &
+               integrate%local%rng, grid_parameters, &
                pass, current_it+1, it_spec%n_it, n_calls, &
                .true., adapt_final_grids, adapt_final_weights, .true., &
                time_estimate, &
@@ -4365,7 +4489,7 @@ contains
        end if
        call process_results_write_footer (process)
        call process_results_write_footer (process, unit=u)
-       if (time_estimate)  call process_write_time_estimate (process)
+       if (time_estimate .and. rebuild_grids)  call process_write_time_estimate (process)
        flush (u)
     end do LOOP_PROC
 
@@ -4507,12 +4631,16 @@ contains
     type(rt_data_t), intent(in), target :: global
     type(parse_node_t), pointer :: pn_tag, pn_args, pn_arg1, pn_arg2, pn_arg3
     type(parse_node_t), pointer :: pn_opt
+    character(*), parameter :: e_illegal_use = &
+       "illegal usage of 'histogram': insufficient number of arguments"
     pn_tag => parse_node_get_sub_ptr (pn, 2)
     pn_args => parse_node_get_next_ptr (pn_tag)
-    pn_arg1 => parse_node_get_sub_ptr (pn_args)
-    pn_arg2 => parse_node_get_next_ptr (pn_arg1)
-    pn_arg3 => parse_node_get_next_ptr (pn_arg2)
     if (associated (pn_args)) then
+       pn_arg1 => parse_node_get_sub_ptr (pn_args)
+       if (.not. associated (pn_arg1)) call msg_fatal (e_illegal_use)
+       pn_arg2 => parse_node_get_next_ptr (pn_arg1)
+       if (.not. associated (pn_arg2)) call msg_fatal (e_illegal_use)
+       pn_arg3 => parse_node_get_next_ptr (pn_arg2)
        pn_opt => parse_node_get_next_ptr (pn_args)
     else
        pn_opt => null ()
@@ -4535,17 +4663,22 @@ contains
          (histogram%expr_lower_bound, pn_arg1, histogram%local%var_list)
     call eval_tree_init_expr &
          (histogram%expr_upper_bound, pn_arg2, histogram%local%var_list)
-    call eval_tree_init_expr &
-         (histogram%expr_bin_width, pn_arg3, histogram%local%var_list)
+    if (associated (pn_arg3)) then
+      call eval_tree_init_expr &
+           (histogram%expr_bin_width, pn_arg3, histogram%local%var_list)
+    end if
   end subroutine cmd_histogram_compile
 
   subroutine cmd_histogram_execute (histogram, global)
     type(cmd_histogram_t), intent(inout), target :: histogram
     type(rt_data_t), intent(inout), target :: global
     real(default) :: lower_bound, upper_bound, bin_width
-    logical :: bounds_are_known
+    integer :: bin_number
+    logical :: bounds_are_known, bin_width_is_used
     type(string_t) :: label, physical_unit
     type(string_t) :: title, description, xlabel, ylabel
+    logical :: x_log, y_log
+    real(default) :: y_min, y_max
     type(plot_labels_t) :: plot_labels
     call rt_data_link (histogram%local, global)
     if (associated (histogram%options)) then
@@ -4575,9 +4708,15 @@ contains
     end if
     if (eval_tree_result_is_known (histogram%expr_bin_width)) then
        bin_width = eval_tree_get_real (histogram%expr_bin_width)
+       bin_width_is_used = .true.
+    else if (var_list_is_known &
+         (histogram%local%var_list, var_str ("n_bins"))) then
+       bin_number = var_list_get_ival &
+            (histogram%local%var_list, var_str ("n_bins"))
+       bin_width_is_used = .false.
     else
        call msg_error ("Histogram '" &
-            // char (histogram%id) // "': bin width is undefined")
+            // char (histogram%id) // "': neither bin width nor number is defined")
        bounds_are_known = .false.
     end if
     label = var_list_get_sval (histogram%local%var_list, var_str ("$label"))
@@ -4588,12 +4727,86 @@ contains
          var_list_get_sval (histogram%local%var_list, var_str ("$description"))
     xlabel = var_list_get_sval (histogram%local%var_list, var_str ("$xlabel"))
     ylabel = var_list_get_sval (histogram%local%var_list, var_str ("$ylabel"))
+    x_log = var_list_get_lval (histogram%local%var_list, var_str ("?x_log"))
+    y_log = var_list_get_lval (histogram%local%var_list, var_str ("?y_log"))    
     call plot_labels_init (plot_labels, title, &
          description, xlabel, ylabel)
     if (bounds_are_known) then
-       call analysis_init_histogram &
-            (histogram%id, lower_bound, upper_bound, bin_width, &
-             label, physical_unit, plot_labels)
+       if (bin_width_is_used) then
+         if (var_list_is_known &
+            (histogram%local%var_list, var_str ("y_min"))) then
+            y_min = var_list_get_rval (histogram%local%var_list, &
+                               var_str ("y_min"))
+            if (var_list_is_known &
+               (histogram%local%var_list, var_str ("y_max"))) then               
+               y_max = var_list_get_rval (histogram%local%var_list, &
+                               var_str ("y_max"))
+               if (y_max <= y_min) then
+                  call msg_fatal ("Please choose y_min smaller as y_max.")               
+               else
+               call analysis_init_histogram &
+                 (histogram%id, lower_bound, upper_bound, &
+                  bin_width, label, physical_unit, &
+                  plot_labels, x_log, y_log, y_min, y_max)
+               end if   
+            else
+               call analysis_init_histogram &
+                 (histogram%id, lower_bound, upper_bound, &
+                  bin_width, label, physical_unit, &
+                  plot_labels, x_log, y_log, y_min)
+            end if
+         else 
+            if (var_list_is_known &
+               (histogram%local%var_list, var_str ("y_max"))) then   
+               y_max = var_list_get_rval (histogram%local%var_list, &
+                            var_str ("y_max"))
+               call analysis_init_histogram &
+                 (histogram%id, lower_bound, upper_bound, &
+                  bin_width, label, physical_unit, &
+                  plot_labels, x_log, y_log, y_max)                
+            else    
+               call analysis_init_histogram &
+                 (histogram%id, lower_bound, upper_bound, &
+                  bin_width, label, physical_unit, &
+                  plot_labels, x_log, y_log)                                   
+            end if
+         end if       
+       else    
+          if (var_list_is_known &
+            (histogram%local%var_list, var_str ("y_min"))) then
+            y_min = var_list_get_rval (histogram%local%var_list, &
+                               var_str ("y_min"))
+            if (var_list_is_known &
+               (histogram%local%var_list, var_str ("y_max"))) then               
+               y_max = var_list_get_rval (histogram%local%var_list, &
+                               var_str ("y_max"))
+               call analysis_init_histogram &
+                 (histogram%id, lower_bound, upper_bound, &
+                  bin_number, label, physical_unit, &
+                  plot_labels, x_log, y_log, y_min, y_max)
+            else
+               call analysis_init_histogram &
+                 (histogram%id, lower_bound, upper_bound, &
+                  bin_number, label, physical_unit, &
+                  plot_labels, x_log, y_log, y_min)
+            end if
+         else 
+            if (var_list_is_known &
+               (histogram%local%var_list, var_str ("y_max"))) then   
+               y_max = var_list_get_rval (histogram%local%var_list, &
+                            var_str ("y_max"))
+               call analysis_init_histogram &
+                 (histogram%id, lower_bound, upper_bound, &
+                  bin_number, label, physical_unit, &
+                  plot_labels, x_log, y_log, y_max)                
+            else    
+               call analysis_init_histogram &
+                 (histogram%id, lower_bound, upper_bound, &
+                  bin_number, label, physical_unit, &
+                  plot_labels, x_log, y_log)                                   
+            end if
+         end if       
+       end if         
     else
        call msg_error ("Histogram '" &
             // char (histogram%id) // "': invalid declaration, skipping")
@@ -4673,6 +4886,8 @@ contains
     real(default) :: lower_bound, upper_bound
     logical :: bounds_are_known
     type(string_t) :: title, description, xlabel, ylabel
+    logical :: x_log, y_log
+    real(default) :: y_min, y_max
     type(plot_labels_t) :: plot_labels
     call rt_data_link (plot%local, global)
     if (associated (plot%options)) then
@@ -4704,11 +4919,45 @@ contains
          var_list_get_sval (plot%local%var_list, var_str ("$description"))
     xlabel = var_list_get_sval (plot%local%var_list, var_str ("$xlabel"))
     ylabel = var_list_get_sval (plot%local%var_list, var_str ("$ylabel"))
+    x_log = var_list_get_lval (plot%local%var_list, var_str ("?x_log"))    
+    y_log = var_list_get_lval (plot%local%var_list, var_str ("?y_log"))        
     call plot_labels_init (plot_labels, title, &
          description, xlabel, ylabel)
     if (bounds_are_known) then
-       call analysis_init_plot &
-            (plot%id, lower_bound, upper_bound, plot_labels)
+         if (var_list_is_known &
+            (plot%local%var_list, var_str ("y_min"))) then
+            y_min = var_list_get_rval (plot%local%var_list, &
+                               var_str ("y_min"))
+            if (var_list_is_known &
+               (plot%local%var_list, var_str ("y_max"))) then               
+               y_max = var_list_get_rval (plot%local%var_list, &
+                               var_str ("y_max"))
+               if (y_max <= y_min) then
+                  call msg_fatal ("Please choose y_min smaller as y_max.")
+               else
+                  call analysis_init_plot &
+                    (plot%id, lower_bound, upper_bound, &
+                     plot_labels, x_log, y_log, y_min, y_max)
+               end if      
+            else
+               call analysis_init_plot &
+                 (plot%id, lower_bound, upper_bound, &
+                  plot_labels, x_log, y_log, y_min)
+            end if
+         else 
+            if (var_list_is_known &
+               (plot%local%var_list, var_str ("y_max"))) then   
+               y_max = var_list_get_rval (plot%local%var_list, &
+                            var_str ("y_max"))
+               call analysis_init_plot &
+                 (plot%id, lower_bound, upper_bound, &
+                  plot_labels, x_log, y_log, y_max)                
+            else    
+               call analysis_init_plot &
+                 (plot%id, lower_bound, upper_bound, &
+                  plot_labels, x_log, y_log)                                   
+            end if    
+         end if   
     else
        call msg_error ("Plot '" &
             // char (plot%id) // "': invalid declaration, skipping")
@@ -4939,12 +5188,15 @@ contains
     type(cmd_record_t), pointer :: record
     type(parse_node_t), intent(in), target :: pn
     type(rt_data_t), intent(in), target :: global
-    type(parse_node_t), pointer :: pn_lexpr, pn_lterm, pn_record
+    type(parse_node_t), pointer :: pn_lexpr, pn_lsinglet, pn_lterm, pn_record
     call parse_node_create_branch (pn_lexpr, &
          syntax_get_rule_ptr (syntax_cmd_list, var_str ("lexpr")))
+    call parse_node_create_branch (pn_lsinglet, &
+         syntax_get_rule_ptr (syntax_cmd_list, var_str ("lsinglet")))
+    call parse_node_append_sub (pn_lexpr, pn_lsinglet)
     call parse_node_create_branch (pn_lterm, &
          syntax_get_rule_ptr (syntax_cmd_list, var_str ("lterm")))
-    call parse_node_append_sub (pn_lexpr, pn_lterm)
+    call parse_node_append_sub (pn_lsinglet, pn_lterm)
     pn_record => parse_node_get_sub_ptr (pn)
     call parse_node_append_sub (pn_lterm, pn_record)
     allocate (record)
@@ -5055,9 +5307,11 @@ contains
     type(pdg_array_t) :: aval
     type(flavor_t), dimension(:), allocatable :: flv_tmp
     type(flavor_t), dimension(:), allocatable :: flv
+    type(cmd_integrate_t) :: integrate
     real(default), dimension(:), allocatable :: integral
     real(default) :: integral_sum
     type(process_t), pointer :: process
+    type(string_t) :: process_id
     integer :: proc
     logical :: isotropic_decay, diagonal_decay
     type(particle_data_t), pointer :: prt_data
@@ -5106,20 +5360,34 @@ contains
        end if
     end do
     do d = 1, size (unstable%decay)
+    end do
+    do d = 1, size (unstable%decay)
        unstable%decay(d)%prt = flavor_get_name (flv(d))
        allocate (integral (unstable%decay(d)%n_proc))
        LOOP_PROC: do proc = 1, unstable%decay(d)%n_proc
-          process => process_store_get_process_ptr &
-                          (unstable%decay(d)%process_id(proc))
+          process_id = unstable%decay(d)%process_id(proc)
+          process => process_store_get_process_ptr (process_id)
+          if (.not. associated (process)) then
+             call msg_message ("Missing integral for decay channel: " &
+                  // char (process_id))
+! This version triggers a bug BOTH in nagfor and gfortran, apparently
+!              call cmd_integrate_init (integrate, (/ process_id /), global)
+! This is ok:
+             call cmd_integrate_init (integrate, process_id, global)
+!
+             call cmd_integrate_execute (integrate, global)
+             call cmd_integrate_final (integrate)
+             call msg_message ("Integration for missing channel complete.")
+             process => process_store_get_process_ptr (process_id)
+          end if
           if (associated (process)) then
              integral(proc) = process_get_integral (process)
              call process_setup_event_generation (process, qn_mask_in = &
                   new_quantum_numbers_mask (.false., .false., isotropic_decay, &
                                             mask_hd = diagonal_decay))
           else
-             call msg_error ("Decay channel process '" // &
-                  char (unstable%decay(d)%process_id(proc)) // "' is undefined")
-             integral(proc) = 0
+             call msg_fatal ("Decay channel '" // char (process_id) &
+                  // "' is undefined")
           end if
        end do LOOP_PROC
        integral_sum = sum (integral)
@@ -5442,6 +5710,571 @@ contains
     close (u)
   end function simulation_parameters_get_md5sum
 
+  subroutine checkpointing_init (checkpointing, var_list)
+    type(checkpointing_t), intent(out) :: checkpointing
+    type(var_list_t), intent(in) :: var_list
+    checkpointing%active = var_list_is_known (var_list, var_str ("checkpoint"))
+    if (checkpointing%active) then
+       checkpointing%val = &
+       var_list_get_ival (var_list, var_str("checkpoint"))
+       if (checkpointing%val <= 0) then
+          call msg_warning ("ignoring nonpositive value of 'checkpoint'")
+          checkpointing%active = .false.
+       end if
+    end if
+  end subroutine checkpointing_init
+
+  subroutine checkpointing_msg_start (checkpointing, n_events, i_evt)
+    type(checkpointing_t), intent(inout) :: checkpointing
+    integer, intent(in) :: n_events, i_evt
+    if (checkpointing%active .and. n_events > i_evt) then
+       call msg_message ("")
+       call msg_message (checkpoint_bar)
+       call msg_message (checkpoint_head)
+       call msg_message (checkpoint_bar)
+       write (msg_buffer, checkpoint_fmt) 0., 0, n_events - i_evt, "???"
+       call msg_message ()
+       checkpointing%running = .true.
+       checkpointing%tzero = time_current ()
+    end if
+  end subroutine checkpointing_msg_start
+
+  subroutine checkpointing_msg_event (checkpointing, n_events, n_read, i_evt)
+    type(checkpointing_t), intent(in) :: checkpointing
+    integer, intent(in) :: n_events, n_read, i_evt
+    real(default) :: tcurrent
+    type(string_t) :: tremain
+    if (checkpointing%active .and. checkpointing%running &
+          .and. mod (i_evt, checkpointing%val) == 0) then
+       tcurrent = time_current ()
+       tremain = time2string ( &
+          int ((tcurrent - checkpointing%tzero) / (i_evt - n_read) &
+             * (n_events - i_evt)))
+       write (msg_buffer, checkpoint_fmt) &
+             100 * (i_evt - n_read) / real (n_events - n_read), &
+             i_evt - n_read, &
+             n_events - i_evt, char (tremain)
+       call msg_message ()
+    end if
+  end subroutine checkpointing_msg_event
+
+  subroutine checkpointing_msg_end (checkpointing, n_read, i_evt)
+    type(checkpointing_t), intent(inout) :: checkpointing
+    integer, intent(in) :: n_read, i_evt
+    if (checkpointing%active .and. checkpointing%running) then
+       if (mod (i_evt, checkpointing%val) /= 0) then
+          write (msg_buffer, checkpoint_fmt) 100., i_evt - n_read, 0, "0s"
+          call msg_message ()
+       end if
+       call msg_message (checkpoint_bar)
+       call msg_message ("")
+       checkpointing%running = .false.
+    end if
+  end subroutine checkpointing_msg_end
+
+  subroutine simulation_basic_init (sim, process_id, var_list, verbose)
+    type(simulation_t), intent(out) :: sim
+    type(string_t), dimension(:), intent(in) :: process_id
+    type(var_list_t), intent(in), target :: var_list
+    logical, intent(in), optional :: verbose
+    type(string_t) :: process_string
+    integer :: proc
+    sim%n_proc = size (process_id)
+    allocate (sim%process_id (sim%n_proc))
+    sim%process_id = process_id
+    allocate (sim%prc_array (sim%n_proc))
+    do proc = 1, sim%n_proc
+       sim%prc_array(proc)%ptr => &
+            process_store_get_process_ptr (sim%process_id(proc))
+    end do
+    if (present (verbose)) then
+       if (verbose) then
+          process_string = ""
+          do proc = 1, size (process_id)
+             if (proc > 1)  process_string = process_string // ", "
+             process_string = process_string // sim%process_id (proc)
+          end do
+          call msg_message ("Initializating simulation for processes " &
+            // char (process_string) // ":")
+       end if
+    end if
+    sim%rebuild_events = &
+         var_list_get_lval (var_list, var_str ("?rebuild_events"))
+    call simulation_parameters_init (sim%spar, &
+         var_list_get_lval &
+              (var_list, var_str ("?unweighted")), &
+         var_list_get_sval &
+              (var_list, var_str ("$event_normalization")), &
+         var_list_get_lval &
+              (var_list, var_str ("?negative_weights")))
+    if (present (verbose)) then
+       if (verbose)  call simulation_parameters_write_message (sim%spar)
+    end if
+    call var_list_init_snapshot (sim%var_list, var_list)
+  end subroutine simulation_basic_init
+
+  subroutine simulation_compute_missing_integrals (sim, global, verbose)
+    type(simulation_t), intent(inout) :: sim
+    type(rt_data_t), intent(inout), target :: global
+    logical, intent(in), optional :: verbose
+    integer :: n_missing
+    type(string_t), dimension(:), allocatable :: process_id
+    type(cmd_integrate_t), target :: integrate
+    logical, dimension(:), allocatable :: missing
+    type(string_t) :: prc_string
+    integer :: proc
+    logical :: verb
+    verb = .false.;  if (present (verbose))  verb = verbose
+    allocate (missing (sim%n_proc))
+    do proc = 1, sim%n_proc
+       missing(proc) = .not. associated (sim%prc_array(proc)%ptr)
+    end do
+    n_missing = count (missing)
+    if (n_missing > 0) then
+       allocate (process_id (n_missing))
+       process_id = pack (sim%process_id, missing)
+       if (verb) then
+          prc_string = process_id(1)
+          do proc = 2, n_missing
+             prc_string = prc_string // ", " // process_id(proc)
+          end do
+          call msg_message ("Integrating missing processes: " &
+               // char (prc_string))
+       end if
+       call cmd_integrate_init (integrate, process_id, global)
+       call cmd_integrate_execute (integrate, global)
+       call cmd_integrate_final (integrate)
+       if (verb) then
+          call msg_message ("Integration of missing processes complete, " &
+               // "resuming simulation.")
+       end if
+    end if
+    do proc = 1, sim%n_proc
+       if (missing(proc)) sim%prc_array(proc)%ptr => &
+            process_store_get_process_ptr (sim%process_id(proc))
+    end do
+  end subroutine simulation_compute_missing_integrals
+
+  subroutine simulation_check (sim, ok)
+    type(simulation_t), intent(inout) :: sim
+    logical, intent(out) :: ok
+    type(process_t), pointer :: process
+    integer :: proc
+    type(flavor_t), dimension(:), allocatable :: beam_flv
+    real(default), dimension(:), allocatable :: beam_energy
+    ok = .false.
+    do proc = 1, sim%n_proc
+       process => sim%prc_array(proc)%ptr
+       if (.not. associated (process)) then
+          call msg_fatal ("Process '" // char (sim%process_id(proc)) &
+               // "' is not available for simulation.")
+          return
+       end if
+       select case (proc)
+       case (1)
+          sim%n_in = process_get_n_in (process)
+          allocate (beam_flv (sim%n_in), beam_energy (sim%n_in))
+          beam_flv = process_get_beam_flv (process)
+          beam_energy = process_get_beam_energy (process)
+       case default
+          if (.not. process_has_matrix_element (process))  cycle
+          if (process_get_n_in (process) /= sim%n_in) then
+             call msg_fatal ("Simulation: " &
+                  // "Mixture of scattering and decays")
+             return
+          else if (any (process_get_beam_flv (process) /= beam_flv)) then
+             call msg_fatal ("Simulation: Mismatch in beam particles")
+             return
+          else if (any (process_get_beam_energy (process) &
+                        /= beam_energy))then
+             call msg_fatal ("Simulation: Mismatch in beam energies")
+             return
+          end if
+       end select
+    end do
+    allocate (sim%beam_flv (sim%n_in), sim%beam_energy (sim%n_in))
+    sim%beam_flv = beam_flv
+    sim%beam_energy = beam_energy
+    ok = .true.
+  end subroutine simulation_check
+
+  subroutine simulation_setup_file_list (sim, event_fmt, basename_default)
+    type(simulation_t), intent(inout) :: sim
+    integer, dimension(:), intent(in), allocatable :: event_fmt
+    type(string_t), intent(in) :: basename_default
+    type(string_t) :: basename, extension_raw
+    integer :: i
+    sim%basename = var_list_get_sval (sim%var_list, var_str ("$sample"))
+    if (basename == "")  sim%basename = basename_default
+    sim%read_raw = var_list_get_lval (sim%var_list, var_str ("?read_raw")) &
+        .and. .not. sim%rebuild_events
+    sim%write_raw = var_list_get_lval (sim%var_list, var_str ("?write_raw"))
+    extension_raw = var_list_get_sval (sim%var_list, var_str ("$extension_raw"))
+    sim%file_raw = sim%basename // "." // extension_raw
+    if (allocated (event_fmt)) then
+       do i = 1, size (event_fmt)
+          call file_list_append_file_spec (sim%file_list, &
+               sim%basename, sim%var_list, event_fmt(i), &
+               sim%beam_flv, sim%beam_energy)
+       end do
+    end if
+  end subroutine simulation_setup_file_list
+
+  subroutine simulation_collect_integrals (sim, ok)
+    type(simulation_t), intent(inout) :: sim
+    logical, intent(out) :: ok
+    integer :: proc
+    type(process_t), pointer :: process
+    allocate (sim%integral (sim%n_proc))
+    do proc = 1, sim%n_proc
+       process => sim%prc_array(proc)%ptr
+       sim%integral(proc) = process_get_integral (process)
+    end do
+    sim%integral_sum = sum (sim%integral)
+    if (sim%integral_sum > 0) then
+       ok = .true.
+    else
+       call msg_error ("Simulation: " &
+            // "sum of process integrals must be positive; skipping")
+       ok = .false.
+    end if
+  end subroutine simulation_collect_integrals
+
+  subroutine simulation_collect_md5sums (sim)
+    type(simulation_t), intent(inout) :: sim
+    integer :: proc
+    type(process_t), pointer :: process
+    allocate (sim%md5sum%process (sim%n_proc))
+    allocate (sim%md5sum%parameters (sim%n_proc))
+    allocate (sim%md5sum%results (sim%n_proc))
+    do proc = 1, sim%n_proc
+       process => sim%prc_array(proc)%ptr
+       sim%md5sum%process(proc) = process_get_md5sum (process)
+       sim%md5sum%parameters(proc) = process_get_md5sum_parameters (process)
+       sim%md5sum%results(proc) = process_get_md5sum_results (process)
+    end do
+    sim%md5sum%decays = decay_store_get_md5sum ()
+    sim%md5sum%simulation = simulation_parameters_get_md5sum (sim%spar)
+  end subroutine simulation_collect_md5sums
+
+  subroutine simulation_setup_n_events (sim, verbose)
+    type(simulation_t), intent(inout) :: sim
+    logical, intent(in), optional :: verbose
+    integer :: n_events
+    real(default) :: luminosity
+    n_events = var_list_get_ival (sim%var_list, var_str ("n_events"))
+    luminosity = var_list_get_rval (sim%var_list, var_str ("luminosity"))
+    sim%n_events = max (nint (luminosity * sim%integral_sum), n_events)
+    sim%luminosity = max (luminosity, sim%n_events / sim%integral_sum)
+    sim%norm_weight = simulation_parameters_get_norm &
+         (sim%spar, sim%integral_sum, sim%n_events)
+    if (present (verbose)) then
+       if (verbose) then
+           write (msg_buffer, "(A,1x,I0)") &
+                 "Requested number of events =", sim%n_events
+           call msg_message ()           
+           write (msg_buffer, "(A,1x,G11.4)") &
+                 "Event sample corresponds to luminosity [fb-1] = ", &
+                 sim%luminosity
+           call msg_message ()           
+       end if
+    end if
+  end subroutine simulation_setup_n_events
+
+  subroutine simulation_prepare_event_generation (sim, verbose)
+    type(simulation_t), intent(inout), target :: sim
+    logical, intent(in), optional :: verbose
+    integer :: proc
+    logical :: ok, verb
+    type(process_t), pointer :: process
+    verb = .false.;  if (present (verbose)) verb = verbose
+    allocate (sim%decay_tree (sim%n_proc))
+    do proc = 1, sim%n_proc
+       process => sim%prc_array(proc)%ptr
+       call process_setup_event_generation (process)
+       call decay_tree_init (sim%decay_tree(proc), process)
+    end do
+    call file_list_open (sim%file_list, sim%process_id, sim%n_events)
+    if (sim%read_raw) then
+       call open_raw_event_file_for_reading &
+            (sim%file_raw, sim%md5sum, sim%u_raw, ok, verbose)
+       if (.not. ok)  sim%read_raw = .false.
+    else
+       if (verb) then
+          write (msg_buffer, "(A,I0,A)") &
+                "Generating ", sim%n_events, " events ..."
+          call msg_message
+       end if
+    end if
+    if (.not. sim%read_raw) then
+       if (sim%write_raw) then
+          call open_raw_event_file_for_writing &
+               (sim%file_raw, sim%md5sum, sim%u_raw, verbose)
+       end if
+    end if
+    call checkpointing_init (sim%checkpointing, sim%var_list)
+    sim%n_read = 0
+    sim%i_evt = 0
+  end subroutine simulation_prepare_event_generation
+
+  subroutine simulation_setup_analysis (sim, pn_analysis_lexpr, verbose)
+    type(simulation_t), intent(inout), target :: sim
+    type(parse_node_t), pointer :: pn_analysis_lexpr
+    logical, intent(in), optional :: verbose
+    logical :: verb
+    verb = .false.;  if (present (verbose)) verb = verbose
+    if (verb) then
+       if (associated (pn_analysis_lexpr)) then
+          call msg_message ("Using user-defined analysis setup.")
+       else
+          call msg_message ("No analysis setup has been provided.")
+       end if
+    end if
+    if (associated (pn_analysis_lexpr)) then
+       call eval_tree_init_lexpr (sim%analysis_expr, &
+            pn_analysis_lexpr, sim%var_list, sim%prt_list, &
+            sim%event_weight, sim%event_sqme)
+    end if
+  end subroutine simulation_setup_analysis
+
+  subroutine simulation_read_event_raw (sim, verbose)
+    type(simulation_t), intent(inout), target :: sim
+    logical, intent(in), optional :: verbose
+    logical :: verb
+    integer :: iostat
+    verb = .false.;  if (present (verbose)) verb = verbose
+    call event_read_raw (sim%event, sim%u_raw, &
+         sim%event_weight, sim%event_sqme, iostat=iostat)
+    if (iostat == 0) then
+       sim%i_evt = sim%i_evt + 1
+       sim%n_read = sim%n_read + 1
+    else
+       if (verb) then
+          write (msg_buffer, "(A,1x,I0,1x,A)")  &
+                "...", sim%n_read, "events read."
+          call msg_message ()
+       end if
+       sim%read_raw = .false.
+       if (verb) then
+          write (msg_buffer, "(A,1x,I0,1x,A)") &
+                "Generating", sim%n_events - sim%n_read, " events ..."
+          call msg_message ()
+       end if
+       if (sim%write_raw) then
+           call reopen_raw_event_file_for_writing &
+                (sim%file_raw, sim%u_raw, verbose)
+       else
+           close (sim%u_raw)
+       end if
+    end if
+  end subroutine simulation_read_event_raw
+
+  subroutine simulation_select_process (sim, rng, process, proc)
+    type(simulation_t), intent(in) :: sim
+    type(tao_random_state), intent(inout) :: rng
+    type(process_t), pointer :: process
+    integer, intent(out) :: proc
+    real(default) :: integral_cmp, x
+    call tao_random_number (rng, x)
+    integral_cmp = 0
+    do proc = 1, sim%n_proc
+       integral_cmp = integral_cmp + sim%integral(proc)
+       if (integral_cmp > x * sim%integral_sum)  exit
+    end do
+    proc = min (proc, sim%n_proc)
+    process => sim%prc_array(proc)%ptr
+  end subroutine simulation_select_process
+
+  subroutine simulation_generate_event (sim, rng, process, proc)
+    type(simulation_t), intent(inout), target :: sim
+    type(tao_random_state), intent(inout) :: rng
+    type(process_t), intent(in), target :: process
+    integer, intent(in) :: proc
+    call event_init (sim%event, process, &
+         sim%event_weight, sim%event_sqme, sim%decay_tree(proc))
+    call event_generate &
+         (sim%event, rng, sim%spar%unweighted, &
+          FM_IGNORE_HELICITY, &
+          keep_correlations=.false., &
+          keep_virtual=.true.)
+    sim%i_evt = sim%i_evt + 1
+    sim%event%weight = sim%event%weight * sim%norm_weight
+  end subroutine simulation_generate_event
+
+  subroutine simulation_handle_event (sim)
+    type(simulation_t), intent(inout), target :: sim
+    call event_do_analysis (sim%event, sim%prt_list, sim%analysis_expr)
+    call file_list_write_event (sim%file_list, sim%event, i_evt=sim%i_evt)
+    if (sim%write_raw .and. .not. sim%read_raw) &
+         call event_write_raw (sim%event, sim%u_raw)
+    call checkpointing_msg_event &
+         (sim%checkpointing, sim%n_events, sim%n_read, sim%i_evt)
+  end subroutine simulation_handle_event
+
+  subroutine simulation_final_event (sim)
+    type(simulation_t), intent(inout), target :: sim
+    call event_final (sim%event)
+  end subroutine simulation_final_event
+
+  subroutine simulation_finish_event_generation (sim, verbose)
+    type(simulation_t), intent(inout) :: sim
+    logical, intent(in), optional :: verbose
+    integer :: proc
+    logical :: verb
+    verb = .false.;  if (present (verbose)) verb = verbose
+    call checkpointing_msg_end &
+         (sim%checkpointing, sim%n_read, sim%i_evt)
+    call file_list_close (sim%file_list)
+    if (sim%read_raw .or. sim%write_raw)  close (sim%u_raw)
+    do proc = 1, sim%n_proc
+       call decay_tree_final (sim%decay_tree(proc))
+    end do
+    call eval_tree_final (sim%analysis_expr)
+    if (verb) then
+       if (sim%read_raw) then
+          write (msg_buffer, "(A,1x,I0,1x,A,1x,I0,1x,A)")  &
+                "...", sim%n_read, "events read,", sim%n_events, "total."
+          call msg_message ()
+       else       
+          write (msg_buffer, "(A,1x,I0,1x,A,1x,I0,1x,A)")  &
+                "...", sim%n_events - sim%n_read, "events generated.", &
+                sim%n_events, "total."
+          call msg_message ()
+       end if
+       call msg_message ("Simulation finished.")
+    end if
+  end subroutine simulation_finish_event_generation
+
+  subroutine simulation_basic_final (sim)
+    type(simulation_t), intent(inout) :: sim
+    call var_list_final (sim%var_list)
+  end subroutine simulation_basic_final
+
+  subroutine open_raw_event_file_for_reading &
+      (file_raw, md5sum, u_raw, ok, verbose)
+    type(string_t), intent(in) :: file_raw
+    type(md5sum_events_t), intent(in) :: md5sum
+    integer, intent(out) :: u_raw
+    logical, intent(out) :: ok
+    logical, intent(in), optional :: verbose
+    logical :: verb
+    integer :: iostat
+    verb = .false.;  if (present (verbose))  verb = verbose
+    inquire (file = char (file_raw), exist = ok)
+    if (ok) then
+       if (verb)  call msg_message ("Reading events from file '" &
+            // char (file_raw) // "' ...")
+       u_raw = free_unit ()
+       open (file = char (file_raw), unit = u_raw, form = "unformatted", &
+             action = "read", status = "old")
+       call raw_event_file_read_header (u_raw, md5sum, ok, iostat)
+       if (iostat /= 0) then
+          call msg_error ("Event file '" & 
+               // char (file_raw) // "' is corrupt, discarding.")
+          close (u_raw)
+          ok = .false.
+       else if (.not. ok) then
+          close (u_raw)
+          ok = .false.
+       else
+          ok = .true.
+       end if
+    end if
+  end subroutine open_raw_event_file_for_reading
+
+  subroutine open_raw_event_file_for_writing (file_raw, md5sum, u_raw, verbose)
+    type(string_t), intent(in) :: file_raw
+    type(md5sum_events_t), intent(in) :: md5sum
+    integer, intent(out) :: u_raw
+    logical, intent(in), optional :: verbose
+    logical :: verb
+    verb = .false.;  if (present (verbose)) verb = verbose
+    if (verb) then
+       call msg_message ("Writing events in internal format to file '" &
+            // char (file_raw) // "'")
+    end if
+    u_raw = free_unit ()
+    open (file = char (file_raw), unit = u_raw, form = "unformatted", &
+          action = "write", status = "replace")
+    call raw_event_file_write_header (u_raw, md5sum)
+  end subroutine open_raw_event_file_for_writing
+
+  subroutine reopen_raw_event_file_for_writing (file_raw, u_raw, verbose)
+    type(string_t), intent(in) :: file_raw
+    integer, intent(in) :: u_raw
+    logical, intent(in), optional :: verbose
+    logical :: verb
+    verb = .false.;  if (present (verbose)) verb = verbose
+    if (verb) then
+       call msg_message ("Appending events in internal format to file '" &
+            // char (file_raw) // "'")
+    end if
+    close (u_raw)
+    open (file = char (file_raw), unit = u_raw, form = "unformatted", &
+          action = "write", status = "old", position = "append")
+  end subroutine reopen_raw_event_file_for_writing
+
+  subroutine simulation_init (sim, process_id, global, ok, verbose)
+    type(simulation_t), intent(out) :: sim
+    type(string_t), dimension(:), intent(in) :: process_id
+    type(rt_data_t), intent(inout), target :: global
+    logical, intent(out) :: ok
+    logical, intent(in), optional :: verbose
+    type(string_t) :: basename_default
+    if (size (process_id) /= 0) then
+       basename_default = process_id(1)
+    else
+       basename_default = "whizard"
+    end if
+    call simulation_basic_init (sim, process_id, global%var_list, verbose)
+    call simulation_compute_missing_integrals (sim, global, verbose)
+    call simulation_check (sim, ok)
+    if (ok) then
+       call simulation_collect_integrals (sim, ok)
+       if (ok) then
+          call simulation_setup_file_list &
+               (sim, global%event_fmt, basename_default)
+          call simulation_collect_md5sums (sim)
+          call simulation_setup_n_events (sim, verbose)
+          call simulation_prepare_event_generation (sim, verbose)
+       end if
+    end if
+    if (.not. ok)  call simulation_basic_final (sim)
+  end subroutine simulation_init
+
+  function simulation_get_n_events (sim) result (n_events)
+    integer :: n_events
+    type(simulation_t), intent(in) :: sim
+    n_events = sim%n_events
+  end function simulation_get_n_events
+
+  subroutine simulation_event (sim, rng, verbose)
+    type(simulation_t), intent(inout), target :: sim
+    type(tao_random_state), intent(inout) :: rng
+    logical, intent(in), optional :: verbose
+    type(process_t), pointer :: process
+    integer :: proc, i
+    if (sim%read_raw) then
+       call simulation_read_event_raw (sim, verbose)
+    end if
+    if (.not. sim%read_raw) then
+       if (sim%checkpointing%active .and. (.not. sim%checkpointing%running)) &
+          call checkpointing_msg_start (sim%checkpointing, sim%n_events, &
+             sim%i_evt)
+       call simulation_select_process (sim, rng, process, proc)
+       call simulation_generate_event (sim, rng, process, proc)
+    end if
+    call simulation_handle_event (sim)
+    call simulation_final_event (sim)
+  end subroutine simulation_event
+
+  subroutine simulation_final (sim, verbose)
+    type(simulation_t), intent(inout) :: sim
+    logical, intent(in), optional :: verbose
+    call simulation_finish_event_generation (sim, verbose)
+    call simulation_basic_final (sim)
+  end subroutine simulation_final
+
   subroutine cmd_simulate_final (simulate)
     type(cmd_simulate_t), intent(inout) :: simulate
     if (associated (simulate%options)) then
@@ -5496,273 +6329,26 @@ contains
   subroutine cmd_simulate_execute (simulate, global)
     type(cmd_simulate_t), intent(inout), target :: simulate
     type(rt_data_t), intent(inout), target :: global
-    type(file_list_t) :: file_list
-    type :: process_p
-       type(process_t), pointer :: ptr
-    end type process_p
-    type(process_p), dimension(:), allocatable :: prc_array
-    real(default), dimension(:), allocatable :: integral
-    real(default) :: integral_sum, integral_cmp
-    real(default) :: luminosity, lumi
-    type(string_t) :: basename, file_raw, extension_raw
-    type(decay_tree_t), dimension(:), allocatable, target :: decay_tree
-    type(prt_list_t), target :: prt_list
-    real(default), target :: event_weight
-    type(eval_tree_t), target :: analysis_expr
-    type(event_t), target :: event
-    integer :: n_events, i_evt
-    logical :: rebuild_events
-    integer :: proc
-    type(process_t), pointer :: process
-    type(string_t) :: process_string
-    integer :: n_in
-    type(flavor_t), dimension(:), allocatable :: beam_flv
-    real(default), dimension(:), allocatable :: beam_energy
-    real(double) :: x
-    character(32), dimension(:), allocatable :: md5sum_process
-    character(32), dimension(:), allocatable :: md5sum_parameters
-    character(32), dimension(:), allocatable :: md5sum_results
-    character(32) :: md5sum_decays, md5sum_simulation
-    logical :: read_raw, write_raw, exist, ok
-    type(simulation_parameters_t) :: spar
-    integer :: i, u_raw, iostat
-    character(30) :: n_events_string
-    real(default) :: norm_weight
+    logical :: ok
+    integer :: i_evt
+    type(simulation_t), target :: sim
     call rt_data_link (simulate%local, global)
-    simulate%local%n_processes = simulate%n_proc
     if (associated (simulate%options)) then
        call command_list_execute (simulate%options, simulate%local)
     end if
-    call simulation_parameters_init (spar, &
-         var_list_get_lval (simulate%local%var_list, &
-                            var_str ("?unweighted")), &
-         var_list_get_sval (simulate%local%var_list, &
-                            var_str ("$event_normalization")), &
-         var_list_get_lval (simulate%local%var_list, &
-                            var_str ("?negative_weights")))
-    do proc = 1, simulate%n_proc
-       process => process_store_get_process_ptr (simulate%process_id(proc))
-       if (.not. associated (process)) then
-          call msg_fatal ("Process '" // char (simulate%process_id(proc)) &
-               // "' must be integrated before simulation.")
-          call rt_data_restore (global, simulate%local)
-          return
-       end if
-       select case (proc)
-       case (1)
-          n_in = process_get_n_in (process)
-          allocate (beam_flv (n_in), beam_energy (n_in))
-          beam_flv = process_get_beam_flv (process)
-          beam_energy = process_get_beam_energy (process)
-       case default
-          if (.not. process_has_matrix_element (process))  cycle
-          if (process_get_n_in (process) /= n_in) then
-             call msg_fatal ("Simulation: " &
-                  // "Mixture of scattering and decays")
-             call rt_data_restore (global, simulate%local)
-             return
-          else if (any (process_get_beam_flv (process) /= beam_flv)) then
-             call msg_fatal ("Simulation: " &
-                  // "Mismatch in beam particles")
-             call rt_data_restore (global, simulate%local)
-             return
-          else if (any (process_get_beam_energy (process) /= beam_energy)) then
-             call msg_fatal ("Simulation: " &
-                  // "Mismatch in beam energies")
-             call rt_data_restore (global, simulate%local)
-             return
-          end if
-       end select
-    end do
-
-    basename = var_list_get_sval &
-        (simulate%local%var_list, var_str ("$sample"))
-    if (basename == "")  basename = simulate%process_id(1)
-    read_raw = var_list_get_lval &
-        (simulate%local%var_list, var_str ("?read_raw")) &
-        .and. .not. rebuild_events
-    write_raw = var_list_get_lval &
-        (simulate%local%var_list, var_str ("?write_raw"))
-    extension_raw = var_list_get_sval &
-        (simulate%local%var_list, var_str ("$extension_raw"))
-    file_raw = basename // "." // extension_raw
-    if (allocated (simulate%local%event_fmt)) then
-       do i = 1, size (simulate%local%event_fmt)
-          call file_list_append_file_spec (file_list, &
-               simulate%process_id(1), &
-               simulate%local%var_list, &
-               simulate%local%event_fmt(i), &
-               beam_flv, beam_energy, simulate%n_proc)
+    call simulation_init (sim, simulate%process_id, simulate%local, &
+         ok, verbose=.true.)
+    if (ok) then
+       call simulation_setup_analysis &
+            (sim, simulate%local%pn_analysis_lexpr, verbose=.true.)
+       do i_evt = 1, simulation_get_n_events (sim)
+          call simulation_event (sim, simulate%local%rng, verbose=.true.)
        end do
+       call simulation_final (sim, verbose=.true.)
     end if
-
-    allocate (prc_array (simulate%n_proc), integral (simulate%n_proc))
-    allocate (decay_tree (simulate%n_proc))
-    allocate (md5sum_process (simulate%n_proc))
-    allocate (md5sum_parameters (simulate%n_proc))
-    allocate (md5sum_results (simulate%n_proc))
-    process_string = ""
-    do proc = 1, simulate%n_proc
-       if (proc > 1)  process_string = process_string // ", "
-       process => process_store_get_process_ptr (simulate%process_id(proc))
-       process_string = process_string // process_get_id (process)
-    end do
-    call msg_message ("Initializating simulation for processes " &
-         // char (process_string) // ":")
-    call simulation_parameters_write_message (spar)
-    if (associated (simulate%local%pn_analysis_lexpr)) then
-       call msg_message ("Using user-defined analysis setup.")
-    else
-       call msg_message ("No analysis setup has been provided.")
-    end if
-    if (associated (simulate%local%pn_analysis_lexpr)) then
-       call eval_tree_init_lexpr (analysis_expr, &
-            simulate%local%pn_analysis_lexpr, simulate%local%var_list, &
-            prt_list, event_weight)
-    end if
-    do proc = 1, simulate%n_proc
-       process => process_store_get_process_ptr (simulate%process_id(proc))
-       call process_setup_event_generation (process)
-       call decay_tree_init (decay_tree(proc), process)
-       prc_array(proc)%ptr => process
-       integral(proc) = process_get_integral (process)
-       md5sum_process(proc) = process_get_md5sum (process)
-       md5sum_parameters(proc) = process_get_md5sum_parameters (process)
-       md5sum_results(proc) = process_get_md5sum_results (process)
-    end do
-    md5sum_decays = decay_store_get_md5sum ()
-    md5sum_simulation = simulation_parameters_get_md5sum (spar)
-    integral_sum = sum (integral)
-    if (integral_sum <= 0) then
-       call msg_error ("Event generation: " &
-            // "sum of process integrals must be positive; skipping")
-       return
-    end if
-    luminosity = var_list_get_rval &
-         (simulate%local%var_list, var_str ("luminosity"))
-    n_events = var_list_get_ival &
-         (simulate%local%var_list, var_str ("n_events"))
-    rebuild_events = var_list_get_lval &
-         (simulate%local%var_list, var_str ("?rebuild_events"))
-    simulate%n_evt = choose_n_evt (luminosity, n_events, integral_sum)
-    if (integral_sum == 0) then    
-       lumi = 0
-    else
-       lumi = max(luminosity, n_events / integral_sum)
-    end if
-    
-    call file_list_open (file_list, simulate)
-    
-    if (read_raw) then
-       inquire (file = char (file_raw), exist = exist)
-       if (exist) then
-          call msg_message ("Reading events from file '" &
-               // char (file_raw) // "' ...")
-          u_raw = free_unit ()
-          open (file = char (file_raw), unit = u_raw, form = "unformatted", &
-                action = "read", status = "old")
-          call raw_event_file_read_header (u_raw, &
-               md5sum_process, md5sum_parameters, md5sum_results, &
-               md5sum_decays, md5sum_simulation, &
-               ok, iostat)
-          if (iostat /= 0) then
-             call msg_error ("Event file '" & 
-                  // char (file_raw) // "' is corrupt, discarding.")
-             close (u_raw)
-             read_raw = .false.
-          else if (.not. ok) then
-             close (u_raw)
-             read_raw = .false.
-          end if
-       else
-          read_raw = .false.
-       end if
-    end if
-    i_evt = 0
-    if (read_raw) then
-       READ_EVENTS: do while (i_evt < simulate%n_evt)
-          call event_read_raw (event, u_raw, event_weight, iostat=iostat)
-          if (iostat /= 0)  exit READ_EVENTS
-          i_evt = i_evt + 1
-          call event_do_analysis (event, prt_list, analysis_expr)
-          call file_list_write_event (file_list, event, proc, i_evt)
-          call event_final (event)
-       end do READ_EVENTS
-       write (msg_buffer, "(A,1x,I0,1x,A)")  "...", i_evt, "events read."
-       call msg_message ()
-    end if
-
-    if (simulate%n_evt > i_evt) then
-       write (n_events_string, "(I0)")  simulate%n_evt - i_evt
-       call msg_message ("Generating " // trim (n_events_string) &
-            // " events ...")
-    else
-       write_raw = .false.
-    end if
-    if (write_raw) then
-       call msg_message ("Writing events in internal format to file '" &
-            // char (file_raw) // "'")
-        write (msg_buffer, "(A,1x,G11.4)") &
-                  & "Event sample corresponds to luminosity [fb-1] = ", lumi
-       call msg_message ()           
-       if (read_raw) then
-          close (u_raw)
-          open (file = char (file_raw), unit = u_raw, form = "unformatted", &
-                action = "write", status = "old", position = "append")
-       else
-          u_raw = free_unit ()
-          open (file = char (file_raw), unit = u_raw, form = "unformatted", &
-                action = "write", status = "replace")
-          call raw_event_file_write_header (u_raw, &
-               md5sum_process, md5sum_parameters, md5sum_results, &
-               md5sum_decays, md5sum_simulation)
-       end if
-    else if (read_raw) then
-       close (u_raw)
-    end if
-    do i = i_evt + 1, simulate%n_evt
-       call tao_random_number (simulate%local%rng, x)
-       integral_cmp = 0
-       do proc = 1, simulate%n_proc
-          integral_cmp = integral_cmp + integral(proc)
-          if (integral_cmp > x * integral_sum)  exit
-       end do
-       if (proc > simulate%n_proc)  proc = simulate%n_proc
-       process => prc_array(proc)%ptr
-       call event_init (event, process, event_weight, decay_tree(proc))
-       call event_generate &
-               (event, simulate%local%rng, spar%unweighted, &
-                FM_IGNORE_HELICITY, &
-                keep_correlations=.false., &
-                keep_virtual=.true.)
-       norm_weight = &
-            simulation_parameters_get_norm (spar, integral_sum, simulate%n_evt)
-       event%weight = event%weight * norm_weight
-       call event_do_analysis (event, prt_list, analysis_expr)
-       call file_list_write_event (file_list, event, proc, i)
-       if (write_raw)  call event_write_raw (event, u_raw)
-       call event_final (event)
-    end do
-    
-    if (write_raw)  close (u_raw)
-    call file_list_close (file_list)
-    do proc = 1, simulate%n_proc
-       call decay_tree_final (decay_tree(proc))
-    end do
-    call eval_tree_final (analysis_expr)
-    if (simulate%n_evt > i_evt)  call msg_message ("... done")
-    call msg_message ("Simulation finished.")
     call rt_data_restore (global, simulate%local)
   end subroutine cmd_simulate_execute
 
-  function choose_n_evt (luminosity, n_evt_in, integral) result (n_evt)
-    integer :: n_evt
-    real(default), intent(in) :: luminosity
-    integer, intent(in) :: n_evt_in
-    real(default), intent(in) :: integral
-    n_evt = max (nint (luminosity * integral), n_evt_in)
-  end function choose_n_evt
-    
   subroutine cmd_seed_final (seed)
     type(cmd_seed_t), intent(inout) :: seed
     call eval_tree_final (seed%expr)
@@ -6781,6 +7367,7 @@ contains
     do i = 1, parse_node_get_n_sub (pn)
        call command_compile (command, pn_cmd, global)
        call command_list_append (cmd_list, command)
+       call terminate_now_if_signal ()
        pn_cmd => parse_node_get_next_ptr (pn_cmd)
     end do
   end subroutine command_list_compile
@@ -6793,6 +7380,7 @@ contains
     command => cmd_list%first
     COMMAND_COND: do while (associated (command))
        call command_execute (command, global, print)
+       call terminate_now_if_signal ()
        if (global%quit)  exit COMMAND_COND
        command => command%next
     end do COMMAND_COND
@@ -6974,9 +7562,17 @@ contains
          // "observable analysis_tag options?")
     call ifile_append (ifile, "KEY observable")
     call ifile_append (ifile, "SEQ cmd_histogram = " &
-         // "histogram analysis_tag histogram_arg options?")
+         // "histogram analysis_tag histogram_arg " & 
+         // "options?")
     call ifile_append (ifile, "KEY histogram")
-    call ifile_append (ifile, "ARG histogram_arg = (expr, expr, expr)")
+    call ifile_append (ifile, "ARG histogram_arg = (expr, expr, expr?)")
+!     call ifile_append (ifile, "ARG histogram_arg = " &
+!          // "(expr, expr, bin_expr) ")
+!     call ifile_append (ifile, "ALT bin_expr = w_bins | n_bins")
+!     call ifile_append (ifile, "SEQ n_bins = nbins '=' expr")
+!     call ifile_append (ifile, "SEQ w_bins = wbins '=' expr")    
+!     call ifile_append (ifile, "KEY nbins")
+!     call ifile_append (ifile, "KEY wbins")
     call ifile_append (ifile, "SEQ cmd_plot = " &
          // "plot analysis_tag plot_arg options?")
     call ifile_append (ifile, "KEY plot")
@@ -7029,7 +7625,7 @@ contains
     call ifile_append (ifile, "KEY '/+'")
     call ifile_append (ifile, "KEY '/-'")
     call ifile_append (ifile, "KEY '/*'")
-!    call ifile_append (ifile, "KEY '//'")
+    call ifile_append (ifile, "KEY '//'")
     call ifile_append (ifile, "ALT cmd_var_list = " &
          // "log_decl_list | log_list | " &
          // "int_list | real_list | complex_list | num_list | " &
@@ -7061,7 +7657,6 @@ contains
          // "if lexpr then command_list elsif_clauses else_clause endif")
     call ifile_append (ifile, "SEQ elsif_clauses = cmd_elsif*")
     call ifile_append (ifile, "SEQ cmd_elsif = elsif lexpr then command_list")
-    call ifile_append (ifile, "KEY elsif")
     call ifile_append (ifile, "SEQ else_clause = cmd_else?")
     call ifile_append (ifile, "SEQ cmd_else = else command_list")
     call ifile_append (ifile, "SEQ cmd_include = include include_arg")
@@ -7082,7 +7677,7 @@ contains
          comment_chars = "#!", &
          quote_chars = '"', &
          quote_match = '"', &
-         single_chars = "()[]{},:&%?$@", &
+         single_chars = "()[]{},;:&%?$@", &
          special_class = (/ "+-*/^", "<>=~ " /) , &
          keyword_list = syntax_get_keyword_list_ptr (syntax_cmd_list), &
          parent = parent_lexer)

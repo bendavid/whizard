@@ -1,4 +1,4 @@
-! WHIZARD 2.0.0 Mon Apr 12 2010
+! WHIZARD 2.0.1 Sun Apr 25 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -46,6 +46,7 @@ module cascades
   public :: cascade_set_is_valid
   public :: cascade_set_final
   public :: cascade_set_write_file_format
+  public :: cascade_set_write_graph_format
   public :: cascade_set_write
   public :: cascade_set_generate
   public :: cascade_test
@@ -1426,6 +1427,7 @@ contains
           if (cascade1 .disjunct. cascade2) then
              call cascade_match_pair (cascade_set, cascade1, cascade2, .true.)
           end if
+          call terminate_now_if_signal ()
           cascade2 => cascade2%next
        end do LOOP2
        cascade1 => cascade1%next
@@ -1457,15 +1459,19 @@ contains
                             call cascade_match_pair &
                                  (cascade_set, cascade1, cascade2, .false.)
                          end if
+                         call terminate_now_if_signal ()
                          cascade2 => cascade2%next
                       end do LOOP_S
                    end if
+                   call terminate_now_if_signal ()
                    cascade1 => cascade1%next
                 end do LOOP_T
              end if
+             call terminate_now_if_signal ()
              cascade_target => cascade_target%next
           end do LOOP_TARGET
        end if
+       call terminate_now_if_signal ()
        cascade_seed => cascade_seed%next
     end do LOOP_SEED
   end subroutine cascade_set_generate_t
@@ -1485,9 +1491,11 @@ contains
                 call cascade_match_triplet (cascade_set, &
                      cascade1, cascade2, cascade_in, .true.)
              end if
+             call terminate_now_if_signal ()
              cascade2 => cascade2%next
           end do
        end if
+       call terminate_now_if_signal ()
        cascade1 => cascade1%next
     end do
   end subroutine cascade_set_generate_decay
@@ -1529,15 +1537,19 @@ contains
                             call cascade_match_triplet (cascade_set, &
                                  cascade1, cascade2, cascade_target, .false.)
                          end if
+                         call terminate_now_if_signal ()
                          cascade2 => cascade2%next
                       end do LOOP_S
                    end if
+                   call terminate_now_if_signal ()
                    cascade1 => cascade1%next
                 end do LOOP_T
              end if
+             call terminate_now_if_signal ()
              cascade_target => cascade_target%next
           end do LOOP_TARGET
        end if
+       call terminate_now_if_signal ()
        cascade_seed => cascade_seed%next
     end do LOOP_SEED
   end subroutine cascade_set_generate_scattering
@@ -1568,9 +1580,11 @@ contains
                    cascade2%grove = grove
                 end if
              end if
+             call terminate_now_if_signal ()
              cascade2 => cascade2%next
           end do
        end if
+       call terminate_now_if_signal ()
        cascade1 => cascade1%next
     end do
     cascade_set%n_groves = grove

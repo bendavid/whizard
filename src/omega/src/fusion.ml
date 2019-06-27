@@ -1,4 +1,4 @@
-(* $Id: fusion.ml 2276 2010-04-09 17:15:14Z ohl $
+(* $Id: fusion.ml 2403 2010-04-23 20:28:27Z ohl $
 
    Copyright (C) 1999-2009 by
 
@@ -21,8 +21,8 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 let rcs_file = RCS.parse "Fusion" ["General Fusions"]
-    { RCS.revision = "$Revision: 2276 $";
-      RCS.date = "$Date: 2010-04-09 19:15:14 +0200 (Fri, 09 Apr 2010) $";
+    { RCS.revision = "$Revision: 2403 $";
+      RCS.date = "$Date: 2010-04-23 22:28:27 +0200 (Fri, 23 Apr 2010) $";
       RCS.author = "$Author: ohl $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/src/omega/src/fusion.ml $" }
@@ -40,6 +40,7 @@ module type T =
     val momentum_list : wf -> int list
     val wf_tag : wf -> string option
     type constant
+    type coupling
     type rhs
     type 'a children
     val sign : rhs -> int
@@ -56,7 +57,7 @@ module type T =
     type selectors
     val amplitudes : bool -> selectors ->
       flavor_sans_color list -> flavor_sans_color list -> amplitude list
-    val dependencies : amplitude -> wf -> wf Tree2.t
+    val dependencies : amplitude -> wf -> (wf, coupling) Tree2.t
     val incoming : amplitude -> flavor list
     val outgoing : amplitude -> flavor list
     val externals : amplitude -> wf list
@@ -73,7 +74,6 @@ module type T =
     val count_fusions : amplitude -> int
     val count_propagators : amplitude -> int
     val count_diagrams : amplitude -> int
-    type coupling
     val forest : wf -> amplitude -> ((wf * coupling option, wf) Tree.t) list
     val poles : amplitude -> wf list list
     val s_channel : amplitude -> wf list
@@ -397,7 +397,7 @@ module Tagged (Tagger : Tagger) (PT : Tuple.Poly)
               outgoing : flavor list;
               externals : wf list;
               symmetry : int;
-              dependencies : (wf -> wf Tree2.t);
+              dependencies : (wf -> (wf, coupling) Tree2.t);
               fusion_tower : D.t;
               fusion_dag : D.t }
 
@@ -411,7 +411,7 @@ module Tagged (Tagger : Tagger) (PT : Tuple.Poly)
         val is_gauss : amplitude -> (wf -> bool)
         val constraints : amplitude -> string option
         val symmetry : amplitude -> int
-        val dependencies : amplitude -> wf -> wf Tree2.t
+        val dependencies : amplitude -> wf -> (wf, coupling) Tree2.t
         val fusion_dag : amplitude -> D.t
 
       end
@@ -540,7 +540,7 @@ module Tagged (Tagger : Tagger) (PT : Tuple.Poly)
               outgoing : flavor list;
               externals : wf list;
               symmetry : int;
-              dependencies : (wf -> wf Tree2.t);
+              dependencies : (wf -> (wf, coupling) Tree2.t);
               fusion_tower : D.t;
               fusion_dag : D.t }
 
@@ -1115,11 +1115,6 @@ i*)
    of incoming and outgoing particles and returns the results in
    conveniently packaged pieces.  *)
 
-(* \begin{dubious}
-     The [ignore_cache] argument is not pretty.  We need a better to avoid
-     collisions among the caches for different models.
-  \end{dubious} *)
-
     let amplitude goldstones selectors fin fout =
 
       (* Set up external lines and match flavors with numbered momenta. *)
@@ -1284,11 +1279,13 @@ i*)
       let find_colored wf' = CWFBundle.inv_pi wf' fibered_dag.bundle in
       Product.fold2
         (fun bra ket acc ->
-          try
-            let c = List.assoc (CM.conjugate bra.CA.flavor) (fuse_c_wf ket) in
-            (bra, (colorize_coupling c coupling, ket)) :: acc
-          with
-          | Not_found -> acc)
+          List.fold_left
+            (fun brakets (f, c) ->
+              if CM.conjugate bra.CA.flavor = f then
+                (bra, (colorize_coupling c coupling, ket)) :: brakets
+              else
+                brakets)
+            acc (fuse_c_wf ket))
         (find_colored wf) (PT.product (PT.map find_colored children)) []
 
     module CWFMap = Map.Make (struct type t = CA.wf let compare = CA.order_wf end)
@@ -1958,10 +1955,13 @@ module Multi (Fusion_Maker : Maker) (P : Momentum.T) (M : Model.T) =
 
     module Proc = Process.Make(M)
 
-    module WFSet2 = Set.Make (struct type t = F.wf * F.wf Tree2.t let compare = compare end)
     module WFMap = Map.Make (struct type t = F.wf let compare = compare end)
-    module WFMap2 = Map.Make (struct type t = F.wf * F.wf Tree2.t let compare = compare end)
-    module WFTSet = Set.Make (struct type t = F.wf Tree2.t let compare = compare end)
+    module WFSet2 =
+      Set.Make (struct type t = F.wf * (F.wf, F.coupling) Tree2.t let compare = compare end)
+    module WFMap2 =
+      Map.Make (struct type t = F.wf * (F.wf, F.coupling) Tree2.t let compare = compare end)
+    module WFTSet =
+      Set.Make (struct type t = (F.wf, F.coupling) Tree2.t let compare = compare end)
 
 (* All wavefunctions are unique per amplitude.  So we can use per-amplitude
    dependency trees without additional \emph{internal} tags to identify identical
@@ -2027,6 +2027,14 @@ module Multi (Fusion_Maker : Maker) (P : Momentum.T) (M : Model.T) =
           eliminate_common_fusions1
           (WFSet2.empty, []) processes in
       List.rev rev_fusions
+
+(*i
+    let eliminate_common_fusions processes =
+      ThoList.flatmap
+        (fun amplitude ->
+          (List.map (fun f -> (f, amplitude)) (F.fusions amplitude)))
+        processes
+i*)
 
 (* \thocwmodulesubsection{Calculate All The Amplitudes} *)
 

@@ -1,5 +1,5 @@
 # Makefile.am -- Makefile for O'Mega within and without WHIZARD
-# $Id: Makefile.am 2034 2010-03-08 18:24:39Z cnspeckn $
+# $Id: Makefile.am 2382 2010-04-21 16:17:28Z ohl $
 ##
 ## Process this file with automake to produce Makefile.in
 ##
@@ -61,7 +61,6 @@ endif
 
 include $(top_srcdir)/src/Makefile.ocaml
 include $(top_srcdir)/src/Makefile.sources
-include $(top_srcdir)/src/Makefile.depend
 
 if OCAML_AVAILABLE 
 omega_core.a: omega_core.cmxa
@@ -108,6 +107,8 @@ SUFFIXES += .lo .$(FC_MODULE_EXT)
 
 ########################################################################
 
+DISTCLEANFILES =
+
 $(OMEGALIB_DERIVED_F90): omegalib.stamp
 
 if NOWEB_AVAILABLE
@@ -120,14 +121,65 @@ omegalib.stamp: $(srcdir)/omegalib.nw
 	done
 	@mv -f omegalib.tmp omegalib.stamp
 
-else
+DISTCLEANFILES += $(OMEGALIB_DERIVED_F90)
+
+else !NOWEB_AVAILABLE
 
 omegalib.stamp:
 
-
-endif
+endif !NOWEB_AVAILABLE
 
 MYPRECIOUS += $(OMEGALIB_DERIVED_F90)
+
+########################################################################
+# The following line just says
+#    include Makefile.depend_fortran
+# but in a portable fashion (depending on automake's AM_MAKE_INCLUDE
+########################################################################
+@am__include@ @am__quote@Makefile.depend_fortran@am__quote@
+
+Makefile.depend_fortran: $(OMEGALIB_F90)
+	@rm -f $@
+	for src in $^; do \
+	  module="`basename $$src | sed 's/\.f[90][0358]//'`"; \
+	  grep '^ *use ' $$src \
+	    | grep -v '!NODEP!' \
+	    | sed -e 's/^ *use */'$$module'.lo: /' \
+	          -e 's/, *only:.*//' \
+	          -e 's/, *&//' \
+	          -e 's/, *.*=>.*//' \
+	          -e 's/ *$$/.lo/' ; \
+	done > $@
+
+DISTCLEANFILES += Makefile.depend_fortran 
+
+if OCAML_AVAILABLE
+
+@am__include@ @am__quote@Makefile.depend_ocaml@am__quote@
+
+PARSERS = cascade comphep vertex model_file
+
+Makefile.depend_ocaml: $(OMEGA_CAML_PRIMARY)
+	@rm -f $@
+	$(OCAMLDEP) -I $(srcdir) $^ $(OMEGA_DERIVED_CAML) \
+	  | sed 's,[^ 	]*/,,g' > $@
+	for parser in $(PARSERS); do \
+	  echo $${parser}.cmi: $${parser}_lexer.cmi; \
+	  echo $${parser}_lexer.cmi: $${parser}_parser.cmi; \
+	  echo $${parser}_parser.cmi: $${parser}_syntax.cmi; \
+	  echo $${parser}_parser.mli: $${parser}_parser.ml; \
+	  echo $${parser}.cmo: $${parser}.cmi; \
+	  echo $${parser}.cmx: $${parser}.cmi $${parser}_lexer.cmx; \
+	  echo $${parser}_lexer.cmo: $${parser}_lexer.cmi; \
+	  echo $${parser}_lexer.cmx: $${parser}_lexer.cmi $${parser}_parser.cmx; \
+	  echo $${parser}_parser.cmo: $${parser}_parser.cmi $${parser}_syntax.cmi; \
+	  echo $${parser}_parser.cmx: $${parser}_parser.cmi \
+	    $${parser}_syntax.cmi $${parser}_syntax.cmx; \
+	done >>$@
+
+DISTCLEANFILES += Makefile.depend_ocaml
+
+endif OCAML_AVAILABLE
 
 ########################################################################
 # Don't trigger remakes by deleting intermediate files.
@@ -135,8 +187,7 @@ MYPRECIOUS += $(OMEGALIB_DERIVED_F90)
 
 clean-local:
 	rm -f *.cm[aiox] *.cmxa *.[ao] *.l[oa] *.$(FC_MODULE_EXT) \
-		$(OMEGA_DERIVED_CAML) \
-		$(OMEGALIB_DERIVED_F90) omegalib.stamp
+		$(OMEGA_DERIVED_CAML) omegalib.stamp
 
 distclean-local:
 	-test "$(srcdir)" != "." && rm -f config.mli

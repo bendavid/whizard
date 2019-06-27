@@ -1,4 +1,4 @@
-(* $Id: config.ml.in 2276 2010-04-09 17:15:14Z ohl $
+(* $Id: config.ml.in 2403 2010-04-23 20:28:27Z ohl $
 
    Copyright (C) 1999-2009 by
 
@@ -20,7 +20,7 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
-let system_cache_dir = "/opt/whizard/var/cache"
+let system_cache_dir = "/Users/reuter/local/var/cache"
 let user_cache_dir = "~/.whizard/var/cache"
 
 (* \begin{dubious}

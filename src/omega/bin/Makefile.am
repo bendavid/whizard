@@ -1,5 +1,5 @@
 # Makefile.am -- Makefile for O'Mega within and without WHIZARD
-# $Id: Makefile.am 1853 2010-02-17 16:52:15Z ohl $
+# $Id: Makefile.am 2387 2010-04-22 09:45:27Z cnspeckn $
 ##
 ## Process this file with automake to produce Makefile.in
 ##
@@ -39,7 +39,6 @@ OMEGA_CMA = $(OMEGA_CMXA:.cmxa=.cma)
 
 include $(top_srcdir)/src/Makefile.ocaml
 include $(top_srcdir)/src/Makefile.sources
-include $(top_srcdir)/src/Makefile.depend
 
 OCAMLFLAGS += -I $(top_builddir)/src
 

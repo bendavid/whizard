@@ -1,4 +1,4 @@
-! WHIZARD 2.0.0 Mon Apr 12 2010
+! WHIZARD 2.0.1 Sun Apr 25 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -75,8 +75,8 @@ module sf_ewa
      real(default) :: mW
      real(default) :: mZ
      real(default) :: coeff
-     logical(default) :: keep_momentum
-     logical(default) :: keep_energy     
+     logical :: keep_momentum
+     logical :: keep_energy     
      integer :: id = 0 
      integer :: error = 0
   end type ewa_data_t

@@ -2,8 +2,36 @@ ChangeLog -- Summary of changes to the WHIZARD package
 
 Use svn log to see detailed changes.
 
-	Version 2.0.0
+	Version 2.0.1
 
+##################################################################
+
+2010-04-25 
+	RELEASE: version 2.0.1
+
+2010-04-23 
+	Automatic compile and integrate if simulate is called
+	Minor bug fixes in O'Mega
+
+2010-04-21 
+	Checkpointing for event generation
+	Flush statements to use WHIZARD inside a pipe
+	
+2010-04-20 
+	Reimplementation of signal handling in WGIZARD 2.0
+		
+2010-04-19 
+	VAMP is now a separately configurable and installable unit of 
+	   WHIZARD, included VAMP self-checks
+	Support again compilation in quadruple precision
+
+2010-04-06 
+	Allow for logarithmic plots in GAMELAN, reimplement the 
+	   possibility to set the number of bins
+	
+2010-04-15 
+	Improvement on time estimates for event generation
+	
 ##################################################################
 
 2010-04-12 
@@ -118,7 +146,7 @@ Use svn log to see detailed changes.
 	NMSSM validated with FeynRules in WHIZARD 1 (Felix Braam)
 	
 2009-12-04 
-	RELEASE: version 2.0.0beta
+	RELEASE: version 2.0.0alpha
 
 ##################################################################
 	
@@ -144,7 +172,7 @@ Use svn log to see detailed changes.
 
 ##################################################################
 	
-2007-03-12 
+2008-03-12 
 	RELEASE: version 1.92
 	LHEF (Les Houches Event File) format added
 	Fortran 2003 command-line interface (if supported by the compiler)
@@ -153,7 +181,7 @@ Use svn log to see detailed changes.
 
 ##################################################################
 	
-2007-03-06 
+2008-03-06 
 	RELEASE: version 1.91
 	New model K-matrix (resonances and anom. couplings in WW scattering)
 	EWA spectrum

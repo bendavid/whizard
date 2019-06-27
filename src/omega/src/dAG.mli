@@ -1,4 +1,4 @@
-(* $Id: dAG.mli 2219 2010-04-04 16:05:44Z ohl $
+(* $Id: dAG.mli 2403 2010-04-23 20:28:27Z ohl $
 
    Copyright (C) 1999-2009 by
 
@@ -219,7 +219,7 @@ module type T =
 
 (* [dependencies dag node] returns a canonically sorted [Tree2.t] of all
    nodes reachable from [node]. *)
-    val dependencies : t -> node -> node Tree2.t
+    val dependencies : t -> node -> (node, edge) Tree2.t
 
 (* [harvest dag n roots] returns the DAG [roots]
    enlarged by all nodes in [dag] reachable from [n].  *)

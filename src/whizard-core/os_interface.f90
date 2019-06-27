@@ -1,4 +1,4 @@
-! WHIZARD 2.0.0 Mon Apr 12 2010
+! WHIZARD 2.0.1 Sun Apr 25 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -103,6 +103,7 @@ module os_interface
      logical :: event_analysis_ps  = .false.
      logical :: event_analysis_pdf = .false.
      type(string_t) :: latex
+     type(string_t) :: mpost
      type(string_t) :: gml
      type(string_t) :: dvips
      type(string_t) :: ps2pdf
@@ -247,6 +248,7 @@ contains
     os_data%event_analysis_ps  = EVENT_ANALYSIS_PS  == "yes"
     os_data%event_analysis_pdf = EVENT_ANALYSIS_PDF == "yes"
     os_data%latex  = PRG_LATEX
+    os_data%mpost  = PRG_MPOST    
     os_data%gml    = os_data%whizard_gmlpath // "/gml"
     os_data%dvips  = PRG_DVIPS
     os_data%ps2pdf = PRG_PS2PDF
@@ -278,6 +280,7 @@ contains
     call expand_paths (os_data%whizard_modelpath_local)
     call expand_paths (os_data%whizard_omega_binpath_local)
     call expand_paths (os_data%latex)
+    call expand_paths (os_data%mpost)    
     call expand_paths (os_data%gml)
     call expand_paths (os_data%dvips)
     call expand_paths (os_data%ps2pdf)
@@ -339,6 +342,7 @@ contains
     write (u, *) "event_analysis_ps  = ", os_data%event_analysis_ps
     write (u, *) "event_analysis_pdf = ", os_data%event_analysis_pdf
     write (u, *) "latex  = ", char (os_data%latex)
+    write (u, *) "mpost  = ", char (os_data%mpost)    
     write (u, *) "gml    = ", char (os_data%gml)
     write (u, *) "dvips  = ", char (os_data%dvips)
     write (u, *) "ps2pdf = ", char (os_data%ps2pdf)

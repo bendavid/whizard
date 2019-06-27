@@ -1,5 +1,5 @@
 # Makefile.am -- Makefile for O'Mega within and without WHIZARD
-# $Id: Makefile.am 1708 2010-02-05 10:33:26Z ohl $
+# $Id: Makefile.am 2392 2010-04-22 14:12:42Z ohl $
 ##
 ## Process this file with automake to produce Makefile.in
 ##
@@ -52,10 +52,12 @@ LATEX_STYLES = \
     noweb.sty ocamlweb.sty \
     feynmp.sty feynmp.mp emp.sty
 
+PDFS = omega.pdf preview.pdf
+
 ### Files needed to be installed with the O'Mega distribution
 modelsdir = $(pkgdatadir)/doc
 if SUPP_PDF_AVAILABLE
-dist_doc_DATA = omega.pdf
+dist_doc_DATA = $(PDFS)
 else
 dist_doc_DATA = 
 endif
@@ -63,8 +65,7 @@ endif
 EXTRA_DIST = $(PICTURES_EPS) $(LATEX_STYLES)
 
 if NOWEB_AVAILABLE
-pdf-local: \
-    omega.pdf
+pdf-local: $(PDFS)
 else
 pdf-local:
 endif
@@ -78,13 +79,13 @@ if PDFLATEX_AVAILABLE
 if MPOST_AVAILABLE
 	MPINPUTS=$(MPINPUTS) $(MPOST) $*pics
 	TEX=$(LATEX) $(MPOST) $*
-endif
+endif MPOST_AVAILABLE
 	echo "skipping -bibtex $*"
 	$(PDFLATEX) $<
 	while $(GREP) -s 'Rerun to get cross-references right.' $*.log; do \
 	  $(PDFLATEX) $<; \
 	done
-else
+else  !PDFLATEX_AVAILABLE
 if LATEX_AVAILABLE
 if DVIPS_AVAILABLE
 if PS2PDF_AVAILABLE
@@ -92,7 +93,7 @@ if PS2PDF_AVAILABLE
 if MPOST_AVAILABLE
 	MPINPUTS=$(MPINPUTS) $(MPOST) $*pics
 	TEX=$(LATEX) MPINPUTS=$(MPINPUTS) $(MPOST) $*
-endif
+endif MPOST_AVAILABLE
 	echo "skipping -bibtex $*"
 	$(LATEX) $<
 	while $(GREP) -s 'Rerun to get cross-references right.' $*.log; do \
@@ -100,9 +101,15 @@ endif
 	done
 	$(DVIPS) $*
 	$(PS2PDF) $*
-endif
-endif
-endif
+endif PS2PDF_AVAILABLE
+endif DVIPS_AVAILABLE
+endif LATEX_AVAILABLE
+endif !PDFLATEX_AVAILABLE
+endif SUPP_PDF_AVAILABLE
+
+if SUPP_PDF_AVAILABLE
+if PDFLATEX_AVAILABLE
+preview.pdf: el_te_ph.pdf modules.pdf
 endif
 endif
 
@@ -168,7 +175,7 @@ endif
 ########################################################################
 
 clean-local:
-	rm -f *.pdf *.log *.aux *.toc *.mp *.mpx *.idx *.out \
+	rm -f *.pdf *.log *.aux *.toc *.mpx *.idx *.out omega*.mp preview*.mp \
 		omegapics.t[0-9]* omegapics.[0-9]* \
 		$(OMEGA_INTERFACES) $(OMEGA_IMPLEMENTATIONS) omegalib.tex \
 		$(PICTURES_PDF) $(PICTURES_PS) \

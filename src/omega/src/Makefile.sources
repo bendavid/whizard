@@ -1,5 +1,5 @@
 # Makefile.sources -- Makefile component for O'Mega
-# $Id: Makefile.sources 2276 2010-04-09 17:15:14Z ohl $
+# $Id: Makefile.sources 2403 2010-04-23 20:28:27Z ohl $
 ##
 ## Process Makefile.am with automake to include this file in Makefile.in
 ##
@@ -53,26 +53,30 @@
 
 CASCADE_MLL = cascade_lexer.mll
 CASCADE_MLY = cascade_parser.mly
-CASCADE_ML = \
-    cascade_syntax.ml cascade_lexer.ml cascade_parser.ml cascade.ml
+CASCADE_MLD = $(CASCADE_MLL:.mll=.ml) $(CASCADE_MLY:.mly=.ml)
+CASCADE_ML_PRIMARY = cascade_syntax.ml cascade.ml
+CASCADE_ML = cascade_syntax.ml $(CASCADE_MLD) cascade.ml
 
 COMPHEP_MLL = comphep_lexer.mll
 COMPHEP_MLY = comphep_parser.mly
-COMPHEP_ML = \
-    comphep_syntax.ml comphep_lexer.ml comphep_parser.ml comphep.ml
+COMPHEP_MLD = $(COMPHEP_MLL:.mll=.ml) $(COMPHEP_MLY:.mly=.ml)
+COMPHEP_ML_PRIMARY = comphep_syntax.ml comphep.ml
+COMPHEP_ML = comphep_syntax.ml $(COMPHEP_MLD) comphep.ml
 
 VERTEX_MLL = @comment_model_file@ vertex_lexer.mll
 VERTEX_MLY = @comment_model_file@ vertex_parser.mly
-VERTEX_ML = \
-    @comment_model_file@ vertex_syntax.ml vertex_lexer.ml vertex_parser.ml vertex.ml
+VERTEX_MLD = $(VERTEX_MLL:.mll=.ml) $(VERTEX_MLY:.mly=.ml)
+VERTEX_ML_PRIMARY = @comment_model_file@ vertex_syntax.ml vertex.ml
+VERTEX_ML = @comment_model_file@ vertex_syntax.ml $(VERTEX_MLD) vertex.ml
 
-MODEL_FILE_MLL = @comment_model_file@ model_lexer.mll
-MODEL_FILE_MLY = @comment_model_file@ model_parser.mly
-MODEL_FILE_ML = \
-    @comment_model_file@ model_syntax.ml model_lexer.ml model_parser.ml model_file.ml
+MODEL_MLL = @comment_model_file@ model_lexer.mll
+MODEL_MLY = @comment_model_file@ model_parser.mly
+MODEL_MLD = $(MODEL_MLL:.mll=.ml) $(MODEL_MLY:.mly=.ml)
+MODEL_ML_PRIMARY = @comment_model_file@ model_syntax.ml model.ml
+MODEL_ML = @comment_model_file@ model_syntax.ml $(MODEL_MLD) model.ml
 
-OMEGA_MLL = $(CASCADE_MLL) $(COMPHEP_MLL) $(VERTEX_MLL) $(MODEL_FILE_MLL)
-OMEGA_MLY = $(CASCADE_MLY) $(COMPHEP_MLY) $(VERTEX_MLY) $(MODEL_FILE_MLY)
+OMEGA_MLL = $(CASCADE_MLL) $(COMPHEP_MLL) $(VERTEX_MLL) $(MODEL_MLL)
+OMEGA_MLY = $(CASCADE_MLY) $(COMPHEP_MLY) $(VERTEX_MLY) $(MODEL_MLY)
 
 OMEGA_DERIVED_CAML = \
     $(OMEGA_MLL:.mll=.mli) $(OMEGA_MLL:.mll=.ml) \
@@ -83,18 +87,37 @@ OMEGA_INTERFACES_MLI = \
     model.mli \
     target.mli 
 
-OMEGA_CORE_ML = \
+########################################################################
+# We need lists of all modules including and excluding derived
+# files (*_PRIMARY). Unfortunately, we need the longer list in
+# proper linking order, so we can't just tack the additional
+# files to the end of the shorter list.
+########################################################################
+
+OMEGA_CORE_ML_PART1 = \
     config.ml pmap.ml thoList.ml thoArray.ml thoString.ml bundle.ml powSet.ml \
     rCS.ml thoFilename.ml cache.ml progress.ml trie.ml linalg.ml tree2.ml \
     algebra.ml options.ml product.ml combinatorics.ml partition.ml tree.ml \
     tuple.ml topology.ml dAG.ml momentum.ml phasespace.ml \
-    complex.ml color.ml modeltools.ml whizard.ml \
-    $(VERTEX_ML) $(MODEL_FILE_ML) $(COMPHEP_ML) $(CASCADE_ML) \
+    complex.ml color.ml modeltools.ml whizard.ml
+
+OMEGA_CORE_ML_PART2 = \
+    $(VERTEX_ML) $(MODEL_ML) $(COMPHEP_ML) $(CASCADE_ML)
+
+OMEGA_CORE_ML_PART2_PRIMARY = \
+    $(VERTEX_ML_PRIMARY) $(MODEL_ML_PRIMARY) $(COMPHEP_ML_PRIMARY) $(CASCADE_ML_PRIMARY)
+
+OMEGA_CORE_ML_PART3 = \
     colorize.ml process.ml fusion.ml omega.ml
 
-OMEGA_CORE_MLI = \
-    $(OMEGA_INTERFACES_MLI) \
-    $(OMEGA_CORE_ML:.ml=.mli) 
+OMEGA_CORE_ML_PRIMARY = \
+    $(OMEGA_CORE_ML_PART1) $(OMEGA_CORE_ML_PART2_PRIMARY) $(OMEGA_CORE_ML_PART3)
+
+OMEGA_CORE_ML = \
+    $(OMEGA_CORE_ML_PART1) $(OMEGA_CORE_ML_PART2) $(OMEGA_CORE_ML_PART3) 
+
+OMEGA_CORE_MLI_PRIMARY = $(OMEGA_INTERFACES_MLI) $(OMEGA_CORE_ML_PRIMARY:.ml=.mli) 
+OMEGA_CORE_MLI = $(OMEGA_INTERFACES_MLI) $(OMEGA_CORE_ML:.ml=.mli) 
 
 OMEGA_MODELLIB_ML = \
     modellib_SM.ml \
@@ -149,8 +172,6 @@ OMEGA_APPLICATIONS_ML = \
     omega_Template.ml \
     omega_SYM.ml
 
-### omega_E6SSM ???
-
 OMEGA_CORE_CMO = $(OMEGA_CORE_ML:.ml=.cmo)
 OMEGA_CORE_CMX = $(OMEGA_CORE_ML:.ml=.cmx)
 OMEGA_TARGETS_CMO = $(OMEGA_TARGETLIB_ML:.ml=.cmo)
@@ -168,6 +189,23 @@ OMEGA_MINIMAL_APPLICATIONS_BYTECODE = $(OMEGA_MINIMAL_APPLICATIONS_ML:.ml=$(OCAM
 OMEGA_MINIMAL_APPLICATIONS_NATIVE = $(OMEGA_MINIMAL_APPLICATIONS_ML:.ml=$(OCAML_NATIVE_EXT))
 OMEGA_MINIMAL_CACHES = $(OMEGA_MINIMAL_APPLICATIONS_ML:.ml=.$(OMEGA_CACHE_SUFFIX))
 
+# Only primary sources, excluding generated parsers and lexers
+# (used for dependency generation)
+OMEGA_ML_PRIMARY = \
+    $(OMEGA_CORE_ML_PRIMARY) \
+    $(OMEGA_MODELLIB_ML) \
+    $(OMEGA_TARGETLIB_ML) \
+    $(OMEGA_APPLICATIONS_ML)
+
+OMEGA_MLI_PRIMARY = \
+    $(OMEGA_CORE_MLI_PRIMARY) \
+    $(OMEGA_MODELLIB_MLI) \
+    $(OMEGA_TARGETLIB_MLI)
+
+OMEGA_CAML_PRIMARY = $(OMEGA_ML_PRIMARY) $(OMEGA_MLI_PRIMARY) $(OMEGA_MLL) $(OMEGA_MLY)
+
+# All sources, including generated parsers and lexers
+# (used for linking and distribution)
 OMEGA_ML = \
     $(OMEGA_CORE_ML) \
     $(OMEGA_MODELLIB_ML) \
@@ -179,7 +217,7 @@ OMEGA_MLI = \
     $(OMEGA_MODELLIB_MLI) \
     $(OMEGA_TARGETLIB_MLI)
 
-OMEGA_CAML = $(OMEGA_ML) $(OMEGA_MLI) $(OMEGA_MLL) $(OMEGA_MLY) # $(OMEGA_DERIVED_CAML)
+OMEGA_CAML = $(OMEGA_ML) $(OMEGA_MLI) $(OMEGA_MLL) $(OMEGA_MLY) $(OMEGA_DERIVED_CAML)
 
 ########################################################################
 #

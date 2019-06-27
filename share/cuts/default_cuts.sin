@@ -1,6 +1,6 @@
-default_M_cut = 10 GeV
-default_E_cut = 10 GeV
-default_Q_cut = 10 GeV
+real default_M_cut = 10 GeV
+real default_E_cut = 10 GeV
+real default_Q_cut = 10 GeV
 alias visible = colored:charged:photon
 
 cuts =

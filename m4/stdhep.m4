@@ -1,7 +1,7 @@
 dnl stdhep.m4 -- checks for STDHEP library
 dnl
 
-include('aux.m4')
+include([aux.m4])
 
 ### Sets LDFLAGS_STDHEP and the conditional STDHEP_AVAILABLE if successful
 ### Also: STDHEP_VERSION 

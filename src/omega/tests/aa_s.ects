@@ -1,4 +1,4 @@
-! $Id: aa_s.ects 2276 2010-04-09 17:15:14Z ohl $
+! $Id: aa_s.ects 2403 2010-04-23 20:28:27Z ohl $
 !ects:model SYM
 !ects:scatter
 !ects:process g1 g1 -> phi

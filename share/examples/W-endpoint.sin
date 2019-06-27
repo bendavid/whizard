@@ -1,4 +1,4 @@
-# $Id: W-endpoint.sin 2293 2010-04-11 23:57:50Z jr_reuter $
+# $Id: W-endpoint.sin 2362 2010-04-20 09:21:05Z ohl $
 # Simple complete physics example: W endpoint in the Standard Model
 ########################################################################
 #
@@ -67,10 +67,10 @@ $title = "Jet Energy in $pp\to \ell\bar\nu j$"
 $xlabel = "$E^j$/GeV"
 histogram e_jet (0 GeV, 80 GeV, 2 GeV)
 
-analysis = record pt_lepton (eval Pt [extract index 1 [sort by Pt [lepton]]])
-       and record pt_jet (eval Pt [extract index 1 [sort by Pt [jet]]])
-       and record e_lepton (eval E [extract index 1 [sort by Pt [lepton]]])
-       and record e_jet (eval E [extract index 1 [sort by Pt [jet]]])
+analysis = record pt_lepton (eval Pt [extract index 1 [sort by Pt [lepton]]]);
+           record pt_jet (eval Pt [extract index 1 [sort by Pt [jet]]]);
+           record e_lepton (eval E [extract index 1 [sort by Pt [lepton]]]);
+           record e_jet (eval E [extract index 1 [sort by Pt [jet]]])
 
 simulate (enj) { n_events = 1000 }
 

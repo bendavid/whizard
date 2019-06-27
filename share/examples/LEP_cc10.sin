@@ -57,7 +57,7 @@ $title = "Muon energy $E_\mu$ in $e^+e^- \to \mu^- \bar\nu_\mu u \bar d$"
 $xlabel = "E_\mu$/GeV"
 histogram e_muon (0 GeV, 209 GeV, 4)
 
-analysis = record m_jets (eval M [u,D]) and
+analysis = record m_jets (eval M [u,D]);
  	   record e_muon (eval E [e2])
 
 simulate (cc10) 

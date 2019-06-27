@@ -1,5 +1,5 @@
 # Makefile.am -- Makefile for O'Mega within and without WHIZARD
-# $Id: Makefile.am 2034 2010-03-08 18:24:39Z cnspeckn $
+# $Id: Makefile.am 2311 2010-04-14 14:17:11Z ohl $
 ##
 ## Process this file with automake to produce Makefile.in
 ##
@@ -46,7 +46,7 @@ DISTCHECK_CONFIGURE_FLAGS = FC=$(FC) FCFLAGS="$(FCFLAGS)" LIBS="$(LIBS)"
 
 EXTRA_DISTCHECK_CONFIGURE_FLAGS = \
     "--disable-noweb" \
-    "--disable-noweb --disable-omega" \
+    "--disable-noweb --disable-ocaml" \
     "--disable-noweb --disable-shared" \
     "--disable-noweb --disable-static" \
     "--disable-noweb --enable-fc-quadruple"

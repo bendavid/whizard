@@ -1,4 +1,4 @@
-(* $Id: targets.ml 2288 2010-04-10 23:06:12Z ohl $
+(* $Id: targets.ml 2409 2010-04-24 13:17:40Z ohl $
 
    Copyright (C) 1999-2009 by
 
@@ -21,8 +21,8 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 let rcs_file = RCS.parse "Targets" ["Code Generation"]
-    { RCS.revision = "$Revision: 2288 $";
-      RCS.date = "$Date: 2010-04-11 01:06:12 +0200 (Sun, 11 Apr 2010) $";
+    { RCS.revision = "$Revision: 2409 $";
+      RCS.date = "$Date: 2010-04-24 15:17:40 +0200 (Sat, 24 Apr 2010) $";
       RCS.author = "$Author: ohl $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/src/omega/src/targets.ml $" }
@@ -416,10 +416,6 @@ module Make_Fortran (Fermions : Fermions)
 
     module PSet = Set.Make (struct type t = int list let compare = compare end)
     module WFSet = Set.Make (struct type t = F.wf let compare = compare end)
-    module WFSet2 = Set.Make (struct type t = F.wf * F.wf Tree2.t let compare = compare end)
-    module WFMap = Map.Make (struct type t = F.wf let compare = compare end)
-    module WFMap2 = Map.Make (struct type t = F.wf * F.wf Tree2.t let compare = compare end)
-    module WFTSet = Set.Make (struct type t = F.wf Tree2.t let compare = compare end)
 
     let add_tag wf name =
       match F.wf_tag wf with
@@ -2466,9 +2462,12 @@ i*)
           0 (CF.processes amplitudes)
       and count_processes = 
         List.length (CF.processes amplitudes) in
-      let num_brakets =
-        max 1 ((num_fusions * count_processes) / count_brakets) in
-      (num_fusions, num_brakets)
+      if count_brakets > 0 then
+        let num_brakets =
+          max 1 ((num_fusions * count_processes) / count_brakets) in
+        (num_fusions, num_brakets)
+      else
+        (num_fusions, 1)
 
     let chop_amplitudes size amplitudes =
       let num_fusions, num_brakets = num_fusions_brakets size amplitudes in

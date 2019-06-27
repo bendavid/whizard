@@ -1,4 +1,4 @@
-! WHIZARD 2.0.0 Mon Apr 12 2010
+! WHIZARD 2.0.1 Sun Apr 25 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -1152,6 +1152,17 @@ contains
 
   integer function div_ii (en1, en2) result (y)
     type(eval_node_t), intent(in) :: en1, en2
+    if (en2%ival == 0) then
+       if (en1%ival >= 0) then
+          call msg_warning ("division by zero: " // int2char (en1%ival) // &
+             " / 0 ; result set to 0")
+       else
+          call msg_warning ("division by zero: (" // int2char (en1%ival) // &
+             ") / 0 ; result set to 0")
+       end if
+       y = 0
+       return
+    end if
     y = en1%ival / en2%ival
   end function div_ii
   real(default) function div_ir (en1, en2) result (y)
@@ -1189,7 +1200,31 @@ contains
 
   integer function pow_ii (en1, en2) result (y)
     type(eval_node_t), intent(in) :: en1, en2
-    y = en1%ival ** en2%ival
+    integer :: a, b
+    real(default) :: rres
+    a = en1%ival
+    b = en2%ival
+    if ((a == 0) .and. (b < 0)) then
+       call msg_warning ("division by zero: " // int2char (a) // &
+          " ^ (" // int2char (b) // ") ; result set to 0")
+       y = 0
+       return
+    end if
+    rres = real(a, default) ** b
+    y = rres
+    if (real(y, default) /= rres) then
+       if (b < 0) then
+          call msg_warning ("result of all-integer operation " // &
+                int2char (a) // " ^ (" // int2char (b) // &
+                ") has been trucated to "// int2char (y), &
+             (/ var_str ("Chances are that you want to use " // &
+                "reals instead of integers at this point.") /))
+       else
+          call msg_warning ("integer overflow in " // int2char (a) // &
+                " ^ " // int2char (b) // " ; result is " // int2char (y), &
+             (/ var_str ("Using reals instead of integers might help.") /))
+       end if
+    end if
   end function pow_ii
   real(default) function pow_ri (en1, en2) result (y)
     type(eval_node_t), intent(in) :: en1, en2
@@ -1449,6 +1484,10 @@ contains
 !     y = atanh (en%rval)
 !   end function atanh_r
   
+  logical function ignore_first_ll (en1, en2) result (y)
+    type(eval_node_t), intent(in) :: en1, en2
+    y = en2%lval
+  end function ignore_first_ll
   logical function or_ll (en1, en2) result (y)
     type(eval_node_t), intent(in) :: en1, en2
     y = en1%lval .or. en2%lval
@@ -2860,7 +2899,7 @@ contains
             var_entry_get_known_ptr (var))
        end select
     else
-       call msg_error ("Result variable '" // char (var_name) &
+       call msg_fatal ("Result variable '" // char (var_name) &
             // "' is undefined (call 'integrate' before use)")
     end if
     if (debug) then
@@ -3167,13 +3206,13 @@ contains
              select case (t2)
              case (V_INT);  call eval_node_init_int  (en, max_ii (en1, en2))
              case (V_REAL); call eval_node_init_real (en, max_ir (en1, en2))
-             case default;  call eval_type_error (pn, char (key), t2)             
+             case default;  call eval_type_error (pn, char (key), t2)      
              end select
           case (V_REAL)
              select case (t2)
              case (V_INT);  call eval_node_init_real (en, max_ri (en1, en2))
              case (V_REAL); call eval_node_init_real (en, max_rr (en1, en2))
-             case default;  call eval_type_error (pn, char (key), t2)             
+             case default;  call eval_type_error (pn, char (key), t2) 
              end select
            case default;  call eval_type_error (pn, char (key), t1)             
          end select
@@ -3438,60 +3477,224 @@ contains
     type(parse_node_t), intent(in) :: pn
     type(var_list_t), intent(in), target :: var_list
     integer, intent(in), optional :: result_type
-    type(parse_node_t), pointer :: pn_condition, pn_expr1, pn_expr2
+    type(parse_node_t), pointer :: pn_condition, pn_expr
+    type(parse_node_t), pointer :: pn_maybe_elsif, pn_elsif_branch
+    type(parse_node_t), pointer :: pn_maybe_else, pn_else_branch, pn_else_expr
     type(eval_node_t), pointer :: en0, en1, en2
-    integer :: t1, t2
+    integer :: restype
     if (debug) then
        print *, "read conditional";  call parse_node_write (pn)
     end if
     pn_condition => parse_node_get_sub_ptr (pn, 2, tag="lexpr")
-    pn_expr1 => parse_node_get_next_ptr (pn_condition, 2)
-    pn_expr2 => parse_node_get_next_ptr (pn_expr1, 2)
+    pn_expr => parse_node_get_next_ptr (pn_condition, 2)
     call eval_node_compile_lexpr (en0, pn_condition, var_list)
-    call eval_node_compile_genexpr (en1, pn_expr1, var_list, result_type)
-    call eval_node_compile_genexpr (en2, pn_expr2, var_list, result_type)
-    t1 = en1%result_type
-    t2 = en2%result_type
-    if (t1 == t2) then
-       if (en0%type == EN_CONSTANT) then
-          if (en0%lval) then
-             en => en1
-             call eval_node_final_rec (en2)
-             deallocate (en2)
-          else
-             en => en2
-             call eval_node_final_rec (en1)
-             deallocate (en1)
-          end if
-          call eval_node_final_rec (en0)
-          deallocate (en0)
-       else
-          allocate (en)
-          call eval_node_init_conditional (en, t1, en0, en1, en2)
-       end if
-    else if (t1 == V_INT) then
-       call insert_conversion_node (en1, V_REAL)
-    else if (t2 == V_INT) then
-       call insert_conversion_node (en2, V_REAL)
+    call eval_node_compile_genexpr (en1, pn_expr, var_list, result_type)
+    if (present (result_type)) then
+       restype = major_result_type (result_type, en1%result_type)
     else
-       call parse_node_write (pn)
-       call msg_bug &
-            (" The 'then' and 'else' expressions have incompatible types")
+       restype = en1%result_type
     end if
+    pn_maybe_elsif => parse_node_get_next_ptr (pn_expr)
+    select case (char (parse_node_get_rule_key (pn_maybe_elsif)))
+    case ("maybe_elsif_expr")
+       pn_elsif_branch => parse_node_get_sub_ptr (pn_maybe_elsif)
+       pn_maybe_else => parse_node_get_next_ptr (pn_maybe_elsif)
+       select case (char (parse_node_get_rule_key (pn_maybe_else)))
+       case ("maybe_else_expr")
+          pn_else_branch => parse_node_get_sub_ptr (pn_maybe_else)
+          pn_else_expr => parse_node_get_sub_ptr (pn_else_branch, 2)
+       case default
+          pn_else_expr => null ()
+       end select
+       call eval_node_compile_elsif &
+            (en2, pn_elsif_branch, pn_else_expr, var_list, restype)
+    case ("maybe_else_expr")
+       pn_maybe_else => pn_maybe_elsif
+       pn_maybe_elsif => null ()
+       pn_else_branch => parse_node_get_sub_ptr (pn_maybe_else)
+       pn_else_expr => parse_node_get_sub_ptr (pn_else_branch, 2)
+       call eval_node_compile_genexpr &
+            (en2, pn_else_expr, var_list, restype)
+    case default
+       call eval_node_compile_default_else (en2, restype)
+    end select
+    call eval_node_create_conditional (en, en0, en1, en2, restype)
+    call conditional_insert_conversion_nodes (en, restype)
     if (debug) then
        call eval_node_write (en)
        print *, "done conditional"
     end if
   end subroutine eval_node_compile_conditional
 
+  recursive subroutine eval_node_compile_elsif &
+       (en, pn, pn_else_expr, var_list, result_type)
+    type(eval_node_t), pointer :: en
+    type(parse_node_t), intent(in), target :: pn
+    type(parse_node_t), pointer :: pn_else_expr
+    type(var_list_t), intent(in), target :: var_list
+    integer, intent(inout) :: result_type
+    type(parse_node_t), pointer :: pn_next, pn_condition, pn_expr
+    type(eval_node_t), pointer :: en0, en1, en2
+    pn_condition => parse_node_get_sub_ptr (pn, 2, tag="lexpr")
+    pn_expr => parse_node_get_next_ptr (pn_condition, 2)
+    call eval_node_compile_lexpr (en0, pn_condition, var_list)
+    call eval_node_compile_genexpr (en1, pn_expr, var_list, result_type)
+    result_type = major_result_type (result_type, en1%result_type)
+    pn_next => parse_node_get_next_ptr (pn)
+    if (associated (pn_next)) then
+       call eval_node_compile_elsif &
+            (en2, pn_next, pn_else_expr, var_list, result_type)
+       result_type = major_result_type (result_type, en2%result_type)
+    else if (associated (pn_else_expr)) then
+       call eval_node_compile_genexpr &
+            (en2, pn_else_expr, var_list, result_type)
+       result_type = major_result_type (result_type, en2%result_type)
+    else
+       call eval_node_compile_default_else (en2, result_type)
+    end if
+    call eval_node_create_conditional (en, en0, en1, en2, result_type)
+  end subroutine eval_node_compile_elsif       
+
+  subroutine eval_node_compile_default_else (en, result_type)
+    type(eval_node_t), pointer :: en
+    integer, intent(in) :: result_type
+    type(prt_list_t) :: pval_empty
+    type(pdg_array_t) :: aval_undefined
+    allocate (en)
+    select case (result_type)
+    case (V_LOG);  call eval_node_init_log (en, .false.)
+    case (V_INT);  call eval_node_init_int (en, 0)
+    case (V_REAL);  call eval_node_init_real (en, 0._default)
+    case (V_CMPLX)
+         call eval_node_init_cmplx (en, (0._default, 0._default))
+    case (V_PTL)
+       call prt_list_init (pval_empty)
+       call eval_node_init_prt_list (en, pval_empty)
+    case (V_PDG)
+       call eval_node_init_pdg_array  (en, aval_undefined)
+    case (V_STR)
+       call eval_node_init_string (en, var_str (""))
+    case default
+       call msg_bug ("Undefined type for 'else' branch in conditional")
+    end select
+  end subroutine eval_node_compile_default_else
+
+  subroutine eval_node_create_conditional (en, en0, en1, en2, result_type)
+    type(eval_node_t), pointer :: en, en0, en1, en2
+    integer, intent(in) :: result_type
+    if (en0%type == EN_CONSTANT) then
+       if (en0%lval) then
+          en => en1
+          call eval_node_final_rec (en2)
+          deallocate (en2)
+       else
+          en => en2
+          call eval_node_final_rec (en1)
+          deallocate (en1)
+       end if
+    else
+       allocate (en)
+       call eval_node_init_conditional (en, result_type, en0, en1, en2)
+    end if
+  end subroutine eval_node_create_conditional
+
+  function major_result_type (t1, t2) result (t)
+    integer :: t
+    integer, intent(in) :: t1, t2
+    select case (t1)
+    case (V_INT)
+       select case (t2)
+       case (V_INT, V_REAL, V_CMPLX)
+          t = t2
+       case default
+          call type_mismatch ()
+       end select
+    case (V_REAL)
+       select case (t2)
+       case (V_INT)
+          t = t1
+       case (V_REAL, V_CMPLX)
+          t = t2
+       case default
+          call type_mismatch ()
+       end select
+    case (V_CMPLX)
+       select case (t2)
+       case (V_INT, V_REAL, V_CMPLX)
+          t = t1
+       case default
+          call type_mismatch ()
+       end select
+    case default
+       if (t1 == t2) then
+          t = t1
+       else
+          call type_mismatch ()
+       end if
+    end select
+  contains
+    subroutine type_mismatch ()
+      call msg_bug ("Type mismatch in branches of a conditional expression")
+    end subroutine type_mismatch
+  end function major_result_type
+
+  recursive subroutine conditional_insert_conversion_nodes (en, result_type)
+    type(eval_node_t), intent(inout), target :: en
+    integer, intent(in) :: result_type
+    select case (result_type)
+    case (V_INT, V_REAL, V_CMPLX)
+       call insert_conversion_node (en%arg1, result_type)
+       if (en%arg2%type == EN_CONDITIONAL) then
+          call conditional_insert_conversion_nodes (en%arg2, result_type)
+       else
+          call insert_conversion_node (en%arg2, result_type)
+       end if
+    end select
+  end subroutine conditional_insert_conversion_nodes
+
   recursive subroutine eval_node_compile_lexpr (en, pn, var_list)
+    type(eval_node_t), pointer :: en
+    type(parse_node_t), intent(in) :: pn
+    type(var_list_t), intent(in), target :: var_list
+    type(parse_node_t), pointer :: pn_term, pn_sequel, pn_arg
+    type(eval_node_t), pointer :: en1, en2
+    if (debug) then
+       print *, "read lexpr";  call parse_node_write (pn)
+    end if
+    pn_term => parse_node_get_sub_ptr (pn, tag="lsinglet")
+    call eval_node_compile_lsinglet (en, pn_term, var_list)
+    pn_sequel => parse_node_get_next_ptr (pn_term, tag="lsequel")
+    do while (associated (pn_sequel))
+       pn_arg => parse_node_get_sub_ptr (pn_sequel, 2, tag="lsinglet")
+       en1 => en
+       call eval_node_compile_lsinglet (en2, pn_arg, var_list)
+       allocate (en)
+       if (en1%type == EN_CONSTANT .and. en2%type == EN_CONSTANT) then
+          call eval_node_init_log (en, ignore_first_ll (en1, en2))
+          call eval_node_final_rec (en1)
+          call eval_node_final_rec (en2)
+          deallocate (en1, en2)
+       else   
+          call eval_node_init_branch &
+               (en, var_str ("lsequel"), V_LOG, en1, en2)
+          call eval_node_set_op2_log (en, ignore_first_ll)
+       end if
+       pn_sequel => parse_node_get_next_ptr (pn_sequel)
+    end do
+    if (debug) then
+       call eval_node_write (en)
+       print *, "done lexpr"
+    end if
+  end subroutine eval_node_compile_lexpr
+
+  recursive subroutine eval_node_compile_lsinglet (en, pn, var_list)
     type(eval_node_t), pointer :: en
     type(parse_node_t), intent(in) :: pn
     type(var_list_t), intent(in), target :: var_list
     type(parse_node_t), pointer :: pn_term, pn_alternative, pn_arg
     type(eval_node_t), pointer :: en1, en2
     if (debug) then
-       print *, "read lexpr";  call parse_node_write (pn)
+       print *, "read lsinglet";  call parse_node_write (pn)
     end if
     pn_term => parse_node_get_sub_ptr (pn, tag="lterm")
     call eval_node_compile_lterm (en, pn_term, var_list)
@@ -3515,9 +3718,9 @@ contains
     end do
     if (debug) then
        call eval_node_write (en)
-       print *, "done lexpr"
+       print *, "done lsinglet"
     end if
-  end subroutine eval_node_compile_lexpr
+  end subroutine eval_node_compile_lsinglet
 
   recursive subroutine eval_node_compile_lterm (en, pn, var_list)
     type(eval_node_t), pointer :: en
@@ -4051,7 +4254,7 @@ contains
     type(eval_node_t), pointer :: en
     type(parse_node_t), intent(in) :: pn
     type(var_list_t), intent(in), target :: var_list
-    type(parse_node_t), pointer :: pn_pvalue, pn_combination, pn_op, pn_arg
+    type(parse_node_t), pointer :: pn_pvalue, pn_concatenation, pn_op, pn_arg
     type(eval_node_t), pointer :: en1, en2
     type(prt_list_t) :: prt_list
     if (debug) then
@@ -4059,15 +4262,16 @@ contains
     end if
     pn_pvalue => parse_node_get_sub_ptr (pn)
     call eval_node_compile_pvalue (en, pn_pvalue, var_list)
-    pn_combination => parse_node_get_next_ptr (pn_pvalue, tag="combination")
-    do while (associated (pn_combination))
-       pn_op => parse_node_get_sub_ptr (pn_combination)
+    pn_concatenation => &
+         parse_node_get_next_ptr (pn_pvalue, tag="pconcatenation")
+    do while (associated (pn_concatenation))
+       pn_op => parse_node_get_sub_ptr (pn_concatenation)
        pn_arg => parse_node_get_next_ptr (pn_op)
        en1 => en
        call eval_node_compile_pvalue (en2, pn_arg, var_list)
        allocate (en)
        if (en1%type == EN_CONSTANT .and. en2%type == EN_CONSTANT) then
-          call prt_list_combine (prt_list, en1%pval, en2%pval)
+          call prt_list_join (prt_list, en1%pval, en2%pval)
           call eval_node_init_prt_list (en, prt_list)
           call eval_node_final_rec (en1)
           call eval_node_final_rec (en2)
@@ -4077,7 +4281,7 @@ contains
                (en, var_str ("combine"), V_PTL, en1, en2)
           call eval_node_set_op2_ptl (en, combine_pp)
        end if
-       pn_combination => parse_node_get_next_ptr (pn_combination)
+       pn_concatenation => parse_node_get_next_ptr (pn_concatenation)
     end do
     if (debug) then
        call eval_node_write (en)
@@ -4875,8 +5079,10 @@ contains
              end if
           end if
        end if
+!       call eval_node_write_rec (en)
     case (EN_RECORD_CMD)
        exist = .true.
+       en%lval = .false.
        call eval_node_evaluate (en%arg0)
        if (en%arg0%value_is_known) then
           if (associated (en%arg1)) then
@@ -4888,29 +5094,32 @@ contains
                       if (associated (en%rval)) then
                          call analysis_record_data (en%arg0%sval, &
                               en%arg1%rval, en%arg2%rval, &
-                              weight=en%rval, exist=exist)
+                              weight=en%rval, exist=exist, &
+                              success=en%lval)
                       else
                          call analysis_record_data (en%arg0%sval, &
-                              en%arg1%rval, en%arg2%rval, exist=exist)
+                              en%arg1%rval, en%arg2%rval, exist=exist, &
+                              success=en%lval)
                       end if
                    end if
                 else
                    if (associated (en%rval)) then
                       call analysis_record_data (en%arg0%sval, &
-                           en%arg1%rval, weight=en%rval, exist=exist)
+                           en%arg1%rval, weight=en%rval, exist=exist, &
+                           success=en%lval)
                    else
                       call analysis_record_data (en%arg0%sval, &
-                           en%arg1%rval, exist=exist)
+                           en%arg1%rval, exist=exist, success=en%lval)
                    end if
                 end if
              end if
           else
              if (associated (en%rval)) then
                 call analysis_record_data (en%arg0%sval, 1._default, &
-                     weight=en%rval, exist=exist)
+                     weight=en%rval, exist=exist, success=en%lval)
              else
                 call analysis_record_data (en%arg0%sval, 1._default, &
-                     exist=exist)
+                     exist=exist, success=en%lval)
              end if
           end if
           if (.not. exist) then
@@ -5225,9 +5434,14 @@ contains
     call ifile_append (ifile, "KEY '='")
     call ifile_append (ifile, "KEY in")
     call ifile_append (ifile, "SEQ conditional_expr = " // &
-         "if lexpr then expr else expr endif")
+         "if lexpr then expr maybe_elsif_expr maybe_else_expr endif")
+    call ifile_append (ifile, "SEQ maybe_elsif_expr = elsif_expr*")
+    call ifile_append (ifile, "SEQ maybe_else_expr = else_expr?")
+    call ifile_append (ifile, "SEQ elsif_expr = elsif lexpr then expr")
+    call ifile_append (ifile, "SEQ else_expr = else expr")
     call ifile_append (ifile, "KEY if")
     call ifile_append (ifile, "KEY then")
+    call ifile_append (ifile, "KEY elsif")
     call ifile_append (ifile, "KEY else")
     call ifile_append (ifile, "KEY endif")
     call define_lexpr_syntax (ifile, particles, analysis)
@@ -5257,10 +5471,13 @@ contains
     else
        record_cmd = ""
     end if
-    call ifile_append (ifile, "SEQ lexpr = lterm alternative*")
+    call ifile_append (ifile, "SEQ lexpr = lsinglet lsequel*")
+    call ifile_append (ifile, "SEQ lsequel = ';' lsinglet")
+    call ifile_append (ifile, "SEQ lsinglet = lterm alternative*")
     call ifile_append (ifile, "SEQ alternative = or lterm")
     call ifile_append (ifile, "SEQ lterm = lvalue coincidence*")
     call ifile_append (ifile, "SEQ coincidence = and lvalue")
+    call ifile_append (ifile, "KEY ';'")
     call ifile_append (ifile, "KEY or")
     call ifile_append (ifile, "KEY and")
     call ifile_append (ifile, "ALT lvalue = " // &
@@ -5283,7 +5500,11 @@ contains
     call ifile_append (ifile, "KEY logical")
     call ifile_append (ifile, "SEQ var_logical_spec = '?' var_name = lexpr")
     call ifile_append (ifile, "SEQ conditional_lexpr = " // &
-         "if lexpr then lexpr else lexpr endif")
+         "if lexpr then lexpr maybe_elsif_lexpr maybe_else_lexpr endif")
+    call ifile_append (ifile, "SEQ maybe_elsif_lexpr = elsif_lexpr*")
+    call ifile_append (ifile, "SEQ maybe_else_lexpr = else_lexpr?")
+    call ifile_append (ifile, "SEQ elsif_lexpr = elsif lexpr then lexpr")
+    call ifile_append (ifile, "SEQ else_lexpr = else lexpr")
     call ifile_append (ifile, "SEQ compared_expr = expr comparison+")
     call ifile_append (ifile, "SEQ comparison = compare expr")
     call ifile_append (ifile, "ALT compare = " // &
@@ -5314,15 +5535,19 @@ contains
   subroutine define_sexpr_syntax (ifile)
     type(ifile_t), intent(inout) :: ifile
     call ifile_append (ifile, "SEQ sexpr = svalue str_concatenation*")
-    call ifile_append (ifile, "SEQ str_concatenation = '//' svalue")
-    call ifile_append (ifile, "KEY '//'")
+    call ifile_append (ifile, "SEQ str_concatenation = '&' svalue")
+    call ifile_append (ifile, "KEY '&'")
     call ifile_append (ifile, "ALT svalue = " // &
          "grouped_sexpr | block_sexpr | conditional_sexpr | " // &
          "svariable | string_function | string_literal")
     call ifile_append (ifile, "GRO grouped_sexpr = ( sexpr )")
     call ifile_append (ifile, "SEQ block_sexpr = let var_spec in sexpr")
     call ifile_append (ifile, "SEQ conditional_sexpr = " // &
-         "if lexpr then sexpr else sexpr endif")
+         "if lexpr then sexpr maybe_elsif_sexpr maybe_else_sexpr endif")
+    call ifile_append (ifile, "SEQ maybe_elsif_sexpr = elsif_sexpr*")
+    call ifile_append (ifile, "SEQ maybe_else_sexpr = else_sexpr?")
+    call ifile_append (ifile, "SEQ elsif_sexpr = elsif lexpr then sexpr")
+    call ifile_append (ifile, "SEQ else_sexpr = else sexpr")
     call ifile_append (ifile, "SEQ svariable = '$' alt_svariable")
     call ifile_append (ifile, "KEY '$'")
     call ifile_append (ifile, "ALT alt_svariable = variable | grouped_sexpr")
@@ -5345,9 +5570,9 @@ contains
 
   subroutine define_pexpr_syntax (ifile)
     type(ifile_t), intent(inout) :: ifile
-    call ifile_append (ifile, "SEQ pexpr = pvalue combination*")
-    call ifile_append (ifile, "SEQ combination = '&' pvalue")
-    call ifile_append (ifile, "KEY '&'")
+    call ifile_append (ifile, "SEQ pexpr = pvalue pconcatenation*")
+    call ifile_append (ifile, "SEQ pconcatenation = '&' pvalue")
+!    call ifile_append (ifile, "KEY '&'")
     call ifile_append (ifile, "ALT pvalue = " // &
          "pexpr_src | pvariable | " // &
          "grouped_pexpr | block_pexpr | conditional_pexpr | " // &
@@ -5364,7 +5589,11 @@ contains
     call ifile_append (ifile, "GRO grouped_pexpr = '[' pexpr ']'")
     call ifile_append (ifile, "SEQ block_pexpr = let var_spec in pexpr")
     call ifile_append (ifile, "SEQ conditional_pexpr = " // &
-         "if lexpr then pexpr else pexpr endif")
+         "if lexpr then pexpr maybe_elsif_pexpr maybe_else_pexpr endif")
+    call ifile_append (ifile, "SEQ maybe_elsif_pexpr = elsif_pexpr*")
+    call ifile_append (ifile, "SEQ maybe_else_pexpr = else_pexpr?")
+    call ifile_append (ifile, "SEQ elsif_pexpr = elsif lexpr then pexpr")
+    call ifile_append (ifile, "SEQ else_pexpr = else pexpr")
     call ifile_append (ifile, "ALT prt_function = " // &
          "join_fun | combine_fun | collect_fun | select_fun | " // &
          "extract_fun | sort_fun")
@@ -5406,7 +5635,11 @@ contains
     call ifile_append (ifile, "GRO grouped_cexpr = ( cexpr )")
     call ifile_append (ifile, "SEQ block_cexpr = let var_spec in cexpr")
     call ifile_append (ifile, "SEQ conditional_cexpr = " // &
-         "if lexpr then cexpr else cexpr endif")
+         "if lexpr then cexpr maybe_elsif_cexpr maybe_else_cexpr endif")
+    call ifile_append (ifile, "SEQ maybe_elsif_cexpr = elsif_cexpr*")
+    call ifile_append (ifile, "SEQ maybe_else_cexpr = else_cexpr?")
+    call ifile_append (ifile, "SEQ elsif_cexpr = elsif lexpr then cexpr")
+    call ifile_append (ifile, "SEQ else_cexpr = else cexpr")
     call ifile_append (ifile, "SEQ pdg_code = pdg pdg_arg")
     call ifile_append (ifile, "KEY pdg")
     call ifile_append (ifile, "ARG pdg_arg = ( expr )")
@@ -5462,7 +5695,7 @@ contains
          comment_chars = "#!", &
          quote_chars = '"', &
          quote_match = '"', &
-         single_chars = "()[],:&%?$@", &
+         single_chars = "()[],;:&%?$@", &
          special_class = (/ "+-*/^", "<>=~ " /) , &
          keyword_list = keyword_list)
   end subroutine lexer_init_eval_tree
@@ -5583,61 +5816,66 @@ contains
   end subroutine eval_tree_init_stream
 
   subroutine eval_tree_init_expr &
-      (eval_tree, parse_node, var_list, prt_list, event_weight)
+      (eval_tree, parse_node, var_list, prt_list, event_weight, event_sqme)
     type(eval_tree_t), intent(out), target :: eval_tree
     type(parse_node_t), intent(in), target :: parse_node
     type(var_list_t), intent(in), target :: var_list
     type(prt_list_t), intent(in), optional, target :: prt_list
-    real(default), intent(in), optional, target :: event_weight
-    call eval_tree_set_var_list (eval_tree, var_list, prt_list, event_weight)
+    real(default), intent(in), optional, target :: event_weight, event_sqme
+    call eval_tree_set_var_list (eval_tree, var_list, prt_list, &
+         event_weight, event_sqme)
     call eval_node_compile_expr &
          (eval_tree%root, parse_node, eval_tree%var_list)
   end subroutine eval_tree_init_expr
     
   subroutine eval_tree_init_lexpr &
-      (eval_tree, parse_node, var_list, prt_list, event_weight)
+      (eval_tree, parse_node, var_list, prt_list, event_weight, event_sqme)
     type(eval_tree_t), intent(out), target :: eval_tree
     type(parse_node_t), intent(in), target :: parse_node
     type(var_list_t), intent(in), target :: var_list
     type(prt_list_t), intent(in), optional, target :: prt_list
-    real(default), intent(in), optional, target :: event_weight
-    call eval_tree_set_var_list (eval_tree, var_list, prt_list, event_weight)
+    real(default), intent(in), optional, target :: event_weight, event_sqme
+    call eval_tree_set_var_list (eval_tree, var_list, prt_list, &
+         event_weight, event_sqme)
     call eval_node_compile_lexpr &
          (eval_tree%root, parse_node, eval_tree%var_list)
   end subroutine eval_tree_init_lexpr
 
   subroutine eval_tree_init_pexpr &
-      (eval_tree, parse_node, var_list, prt_list, event_weight)
+      (eval_tree, parse_node, var_list, prt_list, event_weight, event_sqme)
     type(eval_tree_t), intent(out), target :: eval_tree
     type(parse_node_t), intent(in), target :: parse_node
     type(var_list_t), intent(in), target :: var_list
     type(prt_list_t), intent(in), optional, target :: prt_list
-    real(default), intent(in), optional, target :: event_weight
-    call eval_tree_set_var_list (eval_tree, var_list, prt_list, event_weight)
+    real(default), intent(in), optional, target :: event_weight, event_sqme
+    call eval_tree_set_var_list (eval_tree, var_list, prt_list, &
+         event_weight, event_sqme)
     call eval_node_compile_pexpr &
          (eval_tree%root, parse_node, eval_tree%var_list)
   end subroutine eval_tree_init_pexpr
 
   subroutine eval_tree_init_cexpr &
-      (eval_tree, parse_node, var_list, prt_list, event_weight)
+      (eval_tree, parse_node, var_list, prt_list, event_weight, event_sqme)
     type(eval_tree_t), intent(out), target :: eval_tree
     type(parse_node_t), intent(in), target :: parse_node
     type(var_list_t), intent(in), target :: var_list
     type(prt_list_t), intent(in), optional, target :: prt_list
-    real(default), intent(in), optional, target :: event_weight
-    call eval_tree_set_var_list (eval_tree, var_list, prt_list, event_weight)
+    real(default), intent(in), optional, target :: event_weight, event_sqme
+    call eval_tree_set_var_list (eval_tree, var_list, prt_list, &
+         event_weight, event_sqme)
     call eval_node_compile_cexpr &
          (eval_tree%root, parse_node, eval_tree%var_list)
   end subroutine eval_tree_init_cexpr
 
   subroutine eval_tree_init_sexpr &
-      (eval_tree, parse_node, var_list, prt_list, event_weight)
+      (eval_tree, parse_node, var_list, prt_list, event_weight, event_sqme)
     type(eval_tree_t), intent(out), target :: eval_tree
     type(parse_node_t), intent(in), target :: parse_node
     type(var_list_t), intent(in), target :: var_list
     type(prt_list_t), intent(in), optional, target :: prt_list
-    real(default), intent(in), optional, target :: event_weight
-    call eval_tree_set_var_list (eval_tree, var_list, prt_list, event_weight)
+    real(default), intent(in), optional, target :: event_weight, event_sqme
+    call eval_tree_set_var_list (eval_tree, var_list, prt_list, &
+         event_weight, event_sqme)
     call eval_node_compile_sexpr &
          (eval_tree%root, parse_node, eval_tree%var_list)
   end subroutine eval_tree_init_sexpr
@@ -5649,11 +5887,11 @@ contains
   end subroutine eval_tree_init_numeric_value
 
   subroutine eval_tree_set_var_list &
-      (eval_tree, var_list, prt_list, event_weight)
+      (eval_tree, var_list, prt_list, event_weight, event_sqme)
     type(eval_tree_t), intent(inout), target :: eval_tree
     type(var_list_t), intent(in), target :: var_list
     type(prt_list_t), intent(in), optional, target :: prt_list
-    real(default), intent(in), optional, target :: event_weight
+    real(default), intent(in), optional, target :: event_weight, event_sqme
     logical, save, target :: known = .true.
     call var_list_link (eval_tree%var_list, var_list)
     if (present (prt_list))  call var_list_append_prt_list_ptr &
@@ -5661,6 +5899,9 @@ contains
          intrinsic=.true.)
     if (present (event_weight))  call var_list_append_real_ptr &
          (eval_tree%var_list, var_str ("event_weight"), event_weight, known, &
+          intrinsic=.true.)
+    if (present (event_sqme))  call var_list_append_real_ptr &
+         (eval_tree%var_list, var_str ("event_sqme"), event_sqme, known, &
           intrinsic=.true.)
   end subroutine eval_tree_set_var_list
 

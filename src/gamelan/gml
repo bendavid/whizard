@@ -29,15 +29,15 @@ MPFILE=`expr $1 : '\(.*\)\.mp$' \| $1`
 if test -f ./gamelan.mem; then
   GMLDIR=.
 elif test -f TESTFLAG; then
-  GMLDIR=/afs/physik.uni-freiburg.de/home/reuter/Physik/progs/omwhiz/svn/trunk/build/src/gamelan
+  GMLDIR=/Users/reuter/Physik/progs/omwhiz/svn/trunk/build/src/gamelan
 else 
-  GMLDIR=/opt/whizard/lib/whizard/gamelan
+  GMLDIR=/Users/reuter/local/lib/whizard/gamelan
 fi
 
 export TEX=latex
 export MPINPUTS="$GMLDIR:$MPINPUTS"
 
-/bin/sed \
+/usr/local/bin/sed \
 -e's/<<!/ verbatimtex /g' \
 -e's/<</ btex /g' \
 -e's/>>/ etex /g' \

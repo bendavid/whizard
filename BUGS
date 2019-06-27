@@ -9,10 +9,8 @@ General:
    and ifort.  See the file EXTENSIONS for the list of Fortran 2003 
    features that the compiler must support.]
 
-* WHIZARD 2.0 is still in release candidate (rc) 3 stage.  Although 
-  almost all intended features of the final release are implemented, 
-  there are still regressions and bugs, or things that do not (entirely)
-  work as intended.
+* WHIZARD 2.0 is still in an early release stage. Not that not all features
+  from WHIZARD 1 have as yet been reimplemented in WHIZARD 2.0.
 
 * Please report bugs and problems or performance issues 
   to one of the authors:
@@ -22,5 +20,8 @@ General:
 
 Manual:
 
-* WHIZARD 2.0, the new features, is still undocumented.  The manual
-  is still quite sparse. We are working on that.
+* WHIZARD 2.0, the new features, is still mostly undocumented.  The manual
+  is still quite sparse. We are working on that. Regular updates independent
+  from the subreleases can be found on the Hepforge webpage:
+  http://projects.hepforge.org/whizard/manual.pdf
+

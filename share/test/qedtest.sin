@@ -42,8 +42,7 @@ $physical_unit = ""
 observable a_fb
 
 analysis = 
-  record angular_distribution (eval Theta / 1 degree [e2])
-  and
+  record angular_distribution (eval Theta / 1 degree [e2]);
   record a_fb (eval sgn (cos (Theta)) [e2])
 
 
