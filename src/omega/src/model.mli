@@ -1,4 +1,4 @@
-(* $Id: model.mli 2219 2010-04-04 16:05:44Z ohl $
+(* $Id: model.mli 2640 2010-06-23 22:16:40Z ohl $
 
    Copyright (C) 1999-2009 by
 
@@ -25,9 +25,15 @@
 module type T =
   sig
 
-(* [flavor] encodes all quantum numbers. *) 
+(* [flavor] abstractly encodes all quantum numbers. *) 
     type flavor
+
+(* [Color.t] encodes the ($\textrm{SU}(N)$) color representation. *) 
     val color : flavor -> Color.t
+
+(* The set of conserved charges. *)
+    module Ch : Charges.T
+    val charges : flavor -> Ch.t
 
 (* The PDG particle code for interfacing with Monte Carlos. *)
     val pdg : flavor -> int

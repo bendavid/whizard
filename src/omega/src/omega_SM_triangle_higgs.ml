@@ -1,4 +1,4 @@
-(* $Id: complex.mli 759 2009-06-10 09:38:07Z ohl $
+(* $Id: omega_SM_triangle_higgs.ml 2681 2010-07-07 13:05:12Z cnspeckn $
 
    Copyright (C) 1999-2009 by
 
@@ -20,48 +20,9 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
-module type T =
-    sig
-      type t
-
-      val null : t
-      val one : t
-
-      val real : t -> float
-      val imag : t -> float
-
-      val conj : t -> t
-      val neg : t -> t
-      val inv : t -> t
-
-      val add : t -> t -> t
-      val sub : t -> t -> t
-      val mul : t -> t -> t
-      val div : t -> t -> t
-
-      val abs : t -> float
-      val arg : t -> float
-
-      val sqrt : t -> t
-      val exp : t -> t
-      val log : t -> t
-
-      val of_float2 : float -> float -> t
-      val of_int2 : int -> int -> t
-      val to_float2 : t -> float * float
-      val to_int2 : t -> int * int
-
-      val of_float : float -> t
-      val of_int : int -> t
-      val to_float : t -> float
-      val to_int : t -> int
-
-      val to_string : t -> string
-      val of_string : 'a -> 'b
-    end
-
-module Dense : T
-module Default : T
+module O = Omega.Make(Fusion.Mixed23)(Targets.Fortran)
+    (Modellib_SM.SM(Modellib_SM.SM_Hgg))
+let _ = O.main ()
 
 (*i
  *  Local Variables:

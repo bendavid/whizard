@@ -1,4 +1,4 @@
-! WHIZARD 2.0.2 Tue May 18 2010
+! WHIZARD 2.0.3 Tue Aug 10 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -117,6 +117,8 @@ module models
      real(default) :: value = 0
      type(eval_tree_t) :: eval_tree
   end type parameter_t
+
+  integer, parameter, public :: ELECTRON = 11
 
   integer, parameter, public :: GLUON = 21
   integer, parameter, public :: PHOTON = 22

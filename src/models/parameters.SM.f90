@@ -39,7 +39,7 @@ module parameters_sm
   complex(default), public :: qlep, qup, qdwn, gcc, qw, &
        gzww, gwww, ghww, ghhww, ghzz, ghhzz, &
        ghbb, ghtt, ghcc, ghtautau, gh3, gh4, &
-       ghgaga, ghgaz, ghgg, ghmm, & 		
+       ghgaga, ghgaz, ghgg, ghmm, & 
        iqw, igzww, igwww, gw4, gzzww, gazww, gaaww
   real(default), public :: vev
   complex(default), dimension(2), public :: &

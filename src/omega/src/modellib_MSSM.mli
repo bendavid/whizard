@@ -1,4 +1,4 @@
-(* $Id: modellib_MSSM.mli 1173 2009-09-16 08:56:36Z jr_reuter $
+(* $Id: modellib_MSSM.mli 2699 2010-07-10 10:17:20Z jr_reuter $
 
    Copyright (C) 1999-2009 by
 
@@ -35,7 +35,7 @@ module MSSM_goldstone : MSSM_flags
 module MSSM_no_4 : MSSM_flags
 module MSSM_no_4_ckm : MSSM_flags
 module MSSM_Grav : MSSM_flags
-module MSSM : functor (F: MSSM_flags) -> Model.T
+module MSSM : functor (F: MSSM_flags) -> Model.T with module Ch = Charges.QQ
 
 (*i
  *  Local Variables:

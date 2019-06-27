@@ -1,4 +1,4 @@
-! WHIZARD 2.0.2 Tue May 18 2010
+! WHIZARD 2.0.3 Tue Aug 10 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>

@@ -1,4 +1,4 @@
-! WHIZARD 2.0.2 Tue May 18 2010
+! WHIZARD 2.0.3 Tue Aug 10 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -57,6 +57,7 @@ module events
   use cascades
   use processes
   use decays
+  use shower_interface
 
   implicit none
   private
@@ -77,6 +78,7 @@ module events
   public :: event_renormalize_weight
   public :: event_reweight
   public :: event_do_analysis
+  public :: event_is_valid
   public :: md5sum_events_t
   public :: is_raw_event_file
   public :: raw_event_file_write_header
@@ -101,6 +103,7 @@ module events
      type(event_vars_t), pointer :: vars => null ()
      type(decay_tree_t), pointer :: decay_tree => null ()
      logical :: particle_set_exists = .false.
+     logical :: is_valid = .false.
      type(particle_set_t) :: particle_set
      real(default) :: excess = 0
   end type event_t
@@ -130,6 +133,7 @@ contains
   subroutine event_final (event)
     type(event_t), intent(inout) :: event
     call particle_set_final (event%particle_set)
+    event%is_valid = .false.
   end subroutine event_final
 
   subroutine event_write (event, unit, verbose)
@@ -140,6 +144,7 @@ contains
     u = output_unit (unit);  if (u < 0)  return
     write (u, *) repeat ("=", 72)
     write (u, *) "Event record:"
+    if (.not. event%is_valid)  write (u, *) "  [invalid event record]"
     if (associated (event%vars)) then
        call event_vars_write (event%vars, unit)
     end if
@@ -170,6 +175,7 @@ contains
     logical, intent(in) :: unweighted
     integer, intent(in) :: factorization_mode
     logical, intent(in) :: keep_correlations, keep_virtual
+    integer :: u
     if (unweighted) then
        call process_generate_unweighted_event &
             (event%process, rng, event%vars%excess)
@@ -186,15 +192,22 @@ contains
     end if
     call event_factorize_process (event, rng, &
          factorization_mode, keep_correlations, keep_virtual)
+    if(event%particle_set_exists) then
+       call event_write_to_hepeup(event)
+       call event_apply_shower_particle_set(event%particle_set, & 
+    process_get_shower_settings(event%process),process_get_model_ptr(event%process))
+    end if
   end subroutine event_generate
 
   subroutine event_decay (event, rng, decay_tree)
     type(event_t), intent(inout) :: event
     type(tao_random_state), intent(inout) :: rng
     type(decay_tree_t), intent(in), target :: decay_tree
-    call process_complete_evaluators (event%process)
-    event%decay_tree => decay_tree
-    call decay_tree_generate_event (event%decay_tree, rng)
+    if (event%is_valid) then
+       call process_complete_evaluators (event%process)
+       event%decay_tree => decay_tree
+       call decay_tree_generate_event (event%decay_tree, rng)
+    end if
   end subroutine event_decay
 
   subroutine event_factorize_process (event, rng, &
@@ -220,11 +233,11 @@ contains
     end if
     call tao_random_number (rng, r)
     if (interaction_get_n_in (int_sqme) /= 0) then
-       call particle_set_init (event%particle_set, &
+       call particle_set_init (event%particle_set, event%is_valid, &
             int_sqme, int_flows, factorization_mode, r, &
             keep_correlations, keep_virtual)
     else
-       call particle_set_init (event%particle_set, &
+       call particle_set_init (event%particle_set, event%is_valid, &
             int_sqme, int_flows, factorization_mode, r, &
             keep_correlations, keep_virtual, &
             n_incoming = process_get_n_in (event%process))
@@ -288,7 +301,7 @@ contains
     type(prt_list_t), intent(inout), target :: prt_list
     type(eval_tree_t), intent(inout), target :: reweight_expr
     real(default) :: factor
-    if (eval_tree_is_defined (reweight_expr)) then
+    if (event%is_valid .and. eval_tree_is_defined (reweight_expr)) then
        call particle_set_to_prt_list (event%particle_set, prt_list)
        call eval_tree_evaluate (reweight_expr)
        factor = eval_tree_get_real (reweight_expr)
@@ -300,7 +313,7 @@ contains
     type(event_t), intent(inout), target :: event
     type(prt_list_t), intent(inout), target :: prt_list
     type(eval_tree_t), intent(inout), target :: analysis_expr
-    if (eval_tree_is_defined (analysis_expr)) then
+    if (event%is_valid .and. eval_tree_is_defined (analysis_expr)) then
        call particle_set_to_prt_list (event%particle_set, prt_list)
        call eval_tree_evaluate (analysis_expr)
     end if
@@ -313,6 +326,12 @@ contains
        event%particle_set_exists = .false.
     end if
   end subroutine event_discard_particle_set
+
+  function event_is_valid (event) result (flag)
+    logical :: flag
+    type(event_t), intent(in) :: event
+    flag = event%is_valid
+  end function event_is_valid
 
   function is_raw_event_file (unit) result (flag)
     logical :: flag
@@ -416,14 +435,16 @@ contains
   subroutine event_write_raw (event, unit)
     type(event_t), intent(in) :: event
     integer, intent(in) :: unit
-    if (.not. associated (event%process)) &
-         call msg_bug ("Writing event: process not associated")
-    if (.not. associated (event%vars)) &
-         call msg_bug ("Writing event: event variables not associated")
-    call event_vars_write_raw (event%vars, unit)
-    write (unit)  process_get_scale (event%process)
-    write (unit)  process_get_alpha_s (event%process)
-    call particle_set_write_raw (event%particle_set, unit)
+    if (event%is_valid) then
+       if (.not. associated (event%process)) &
+            call msg_bug ("Writing event: process not associated")
+       if (.not. associated (event%vars)) &
+            call msg_bug ("Writing event: event variables not associated")
+       call event_vars_write_raw (event%vars, unit)
+       write (unit)  process_get_scale (event%process)
+       write (unit)  process_get_alpha_s (event%process)
+       call particle_set_write_raw (event%particle_set, unit)
+    end if
   end subroutine event_write_raw
 
   subroutine event_read_raw &
@@ -452,6 +473,7 @@ contains
        return
     end if
     call event_init (event, process, event_vars)
+    event%is_valid = .true.
     read (unit, iostat=iostat)  scale
     if (iostat /= 0)  return
     read (unit, iostat=iostat)  alpha_s
@@ -501,6 +523,7 @@ contains
     if (proc > 0 .and. proc <= size (prc_array)) then
        process => prc_array(proc)%ptr
        call event_init (event, process, event_vars)
+       event%is_valid = .true.
        scale = hepmc_event_get_scale (hepmc_event)
        if (scale > 0)  call process_set_scale (process, scale)
        alpha_s = hepmc_event_get_alpha_qcd (hepmc_event)
@@ -531,32 +554,36 @@ contains
   subroutine event_write_to_hepmc (event, hepmc_event)
     type(event_t), intent(in) :: event
     type(hepmc_event_t), intent(inout) :: hepmc_event
-    call hepmc_event_set_process_id (hepmc_event, event%vars%process_num_id)
-    call hepmc_event_clear_weights (hepmc_event)
-    call hepmc_event_add_weight (hepmc_event, event%vars%weight)
-    call hepmc_event_add_weight (hepmc_event, event%vars%excess)
-    call hepmc_event_add_weight (hepmc_event, event%vars%sqme)
-    call hepmc_event_add_weight (hepmc_event, event%vars%sqme_ref)
-    call hepmc_event_set_scale (hepmc_event, &
-         process_get_scale (event%process))
-    call hepmc_event_set_alpha_qcd (hepmc_event, &
-         process_get_alpha_s (event%process))
-    call particle_set_fill_hepmc_event (event%particle_set, hepmc_event)
+    if (event%is_valid) then
+       call hepmc_event_set_process_id (hepmc_event, event%vars%process_num_id)
+       call hepmc_event_clear_weights (hepmc_event)
+       call hepmc_event_add_weight (hepmc_event, event%vars%weight)
+       call hepmc_event_add_weight (hepmc_event, event%vars%excess)
+       call hepmc_event_add_weight (hepmc_event, event%vars%sqme)
+       call hepmc_event_add_weight (hepmc_event, event%vars%sqme_ref)
+       call hepmc_event_set_scale (hepmc_event, &
+            process_get_scale (event%process))
+       call hepmc_event_set_alpha_qcd (hepmc_event, &
+            process_get_alpha_s (event%process))
+       call particle_set_fill_hepmc_event (event%particle_set, hepmc_event)
+    end if
   end subroutine event_write_to_hepmc
 
   subroutine event_write_to_hepeup (event)
     type(event_t), intent(in) :: event
     integer :: proc_id
     real(default) :: scale, alpha_qcd
-    call particle_set_fill_hepeup (event%particle_set)
-    if (associated (event%process)) then
-       call hepeup_set_event_parameters (proc_id = event%vars%process_num_id)
-       scale = process_get_scale (event%process)
-       if (scale /= 0)  call hepeup_set_event_parameters (scale = scale)
-       alpha_qcd = process_get_alpha_s (event%process)       
-       if (alpha_qcd /= 0) &
-            call hepeup_set_event_parameters (alpha_qcd = alpha_qcd)
-       call hepeup_set_event_parameters (weight = event%vars%weight)
+    if (event%is_valid) then
+       call particle_set_fill_hepeup (event%particle_set)
+       if (associated (event%process)) then
+          call hepeup_set_event_parameters (proc_id = event%vars%process_num_id)
+          scale = process_get_scale (event%process)
+          if (scale /= 0)  call hepeup_set_event_parameters (scale = scale)
+          alpha_qcd = process_get_alpha_s (event%process)       
+          if (alpha_qcd /= 0) &
+               call hepeup_set_event_parameters (alpha_qcd = alpha_qcd)
+          call hepeup_set_event_parameters (weight = event%vars%weight)
+       end if
     end if
   end subroutine event_write_to_hepeup
 
@@ -566,16 +593,18 @@ contains
     integer :: proc_id, n_tot, n_out, n_remnants
     logical, intent(in), optional :: keep_beams  
     logical :: kb 
-    kb = .false.
-    if (present (keep_beams)) kb = keep_beams
-    call particle_set_fill_hepevt (event%particle_set, kb)
-    call particle_set_reduce (event%particle_set, pset_reduced, kb)
-    n_tot = particle_set_get_n_tot (pset_reduced)
-    n_out = particle_set_get_n_out (pset_reduced)
-    n_remnants = 0 
-    call hepevt_set_event_parameters (n_tot, n_out, &
-       n_remnants, weight = event%vars%weight, &
-       function_value = event%vars%sqme, i_evt = event%vars%event_index)
+    if (event%is_valid) then
+       kb = .false.
+       if (present (keep_beams)) kb = keep_beams
+       call particle_set_fill_hepevt (event%particle_set, kb)
+       call particle_set_reduce (event%particle_set, pset_reduced, kb)
+       n_tot = particle_set_get_n_tot (pset_reduced)
+       n_out = particle_set_get_n_out (pset_reduced)
+       n_remnants = 0 
+       call hepevt_set_event_parameters (n_tot, n_out, &
+          n_remnants, weight = event%vars%weight, &
+          function_value = event%vars%sqme, i_evt = event%vars%event_index)
+    end if
   end subroutine event_write_to_hepevt
 
   function get_process_index (num_id, num_id_array) result (proc)

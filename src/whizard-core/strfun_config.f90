@@ -1,4 +1,4 @@
-! WHIZARD 2.0.2 Tue May 18 2010
+! WHIZARD 2.0.3 Tue Aug 10 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -31,12 +31,15 @@ module strfun_config
   use iso_varying_string, string_t => varying_string !NODEP!
   use file_utils !NODEP!
   use diagnostics !NODEP!
+  use tao_random_numbers !NODEP!
   use md5
   use models
   use flavors
   use sf_isr
   use sf_epa
   use sf_ewa
+  use sf_circe1
+  use sf_circe2
   use sf_lhapdf
   use strfun
   use processes
@@ -49,11 +52,15 @@ module strfun_config
   public :: STRF_ISR
   public :: STRF_EPA
   public :: STRF_EWA
+  public :: STRF_CIRCE1
+  public :: STRF_CIRCE2
   public :: sf_data_t
   public :: sf_data_init_lhapdf
   public :: sf_data_init_isr
   public :: sf_data_init_epa
   public :: sf_data_init_ewa
+  public :: sf_data_init_circe1
+  public :: sf_data_init_circe2
   public :: sf_list_t
   public :: sf_list_append
   public :: sf_list_freeze
@@ -82,6 +89,8 @@ module strfun_config
      type(isr_data_t), dimension(2) :: isr
      type(epa_data_t), dimension(2) :: epa
      type(ewa_data_t), dimension(2) :: ewa     
+     type(circe1_data_t) :: circe1         
+     type(circe2_data_t) :: circe2
      logical :: has_mapping = .false.
      type(sf_mapping_t) :: mapping
      type(sf_data_t), pointer :: next => null ()
@@ -111,7 +120,9 @@ contains
     case (SFM_PDFPAIR);  write (u, "(3x,A)")  "PDF pair mapping"
     case (SFM_ISRPAIR);  write (u, "(3x,A)")  "ISR pair mapping"
     case (SFM_EPAPAIR);  write (u, "(3x,A)")  "EPA pair mapping"
-    case (SFM_EWAPAIR);  write (u, "(3x,A)")  "EWA pair mapping"    
+    case (SFM_EWAPAIR);  write (u, "(3x,A)")  "EWA pair mapping"
+    case (SFM_CIRCE1PAIR);  write (u, "(3x,A)")  "CIRCE1 pair mapping"            
+    case (SFM_CIRCE2PAIR);  write (u, "(3x,A)")  "CIRCE2 pair mapping"            
     end select
     if (allocated (sf_mapping%par)) then
        write (u, "(3x,A)", advance="no")  "Parameters = "
@@ -141,6 +152,12 @@ contains
           end select
        end if
     end do
+    select case (sf_data%type)
+    case (STRF_CIRCE1)
+       call circe1_data_write (sf_data%circe1, unit)
+    case (STRF_CIRCE2)
+!        call circe2_data_write (sf_data%circe2, unit)
+    end select
     write (u, *)  "affects beams = ", sf_data%affects_beam
     write (u, *)  "n_parameters  = ", sf_data%n_parameters
     if (sf_data%has_mapping) then
@@ -260,6 +277,57 @@ contains
     end if 
   end subroutine sf_data_init_ewa
 
+  subroutine sf_data_init_circe1 (sf_data, &
+       model, flv, sqrts, photon, generate, rng, map, ver, rev, acc, chat)
+    type(sf_data_t), intent(inout) :: sf_data
+    type(model_t), intent(in), target :: model
+    type(flavor_t), dimension(2), intent(in) :: flv
+    real(default), intent(in) :: sqrts
+    logical, dimension(2), intent(in) :: photon
+    logical, intent(in) :: generate, map
+    type(tao_random_state), intent(in), target :: rng
+    integer, intent(in) :: ver, rev, acc, chat 
+    if (all (sf_data%affects_beam)) then
+       call circe1_data_init (sf_data%circe1, &
+            model, flv, sqrts, photon, generate, rng, map, ver, rev, acc, chat)
+!        allocate (sf_data%mapping%index (2))
+!        sf_data%mapping%index = (/1, sf_data%n_parameters+1/)
+!        sf_data%mapping%type = SFM_CIRCE1PAIR
+!        allocate (sf_data%mapping%par (1))
+!        sf_data%mapping%par = 1._default
+!        sf_data%has_mapping = .true.
+       call circe1_data_check (sf_data%circe1)
+    else
+       call msg_fatal ("CIRCE1 beamstrahlung " &
+            // "must be turned on/off for both beams simultaneously")
+    end if
+  end subroutine sf_data_init_circe1
+
+  subroutine sf_data_init_circe2 (sf_data, &
+        model, flv, sqrts, photon, generate, rng, map, ver, &
+        file, design)
+    type(sf_data_t), intent(inout) :: sf_data
+    type(model_t), intent(in), target :: model
+    type(flavor_t), dimension(2), intent(in) :: flv
+    real(default), intent(in) :: sqrts
+    logical, dimension(2), intent(in) :: photon
+    logical, intent(in) :: generate, map
+    type(tao_random_state), intent(in), target :: rng
+    type(string_t), intent(in) :: file, design
+    integer, intent(in) :: ver
+    if (all (sf_data%affects_beam)) then
+    call circe2_data_init (sf_data%circe2, &
+         model, flv, photon, rng, sqrts, file, design)
+!       allocate (sf_data%mapping%index (2))
+!       sf_data%mapping%index = (/1, sf_data%n_parameters+1/)
+!       sf_data%mapping%type = SFM_CIRCE1PAIR
+!       allocate (sf_data%mapping%par (1))
+!       sf_data%mapping%par = 1._default
+!       sf_data%has_mapping = .true.
+!       call circe2_data_check (sf_data%circe2)
+    end if
+  end subroutine sf_data_init_circe2
+
   subroutine sf_list_write (sf_list, unit)
     type(sf_list_t), intent(in) :: sf_list
     integer, intent(in), optional :: unit
@@ -294,7 +362,12 @@ contains
        sf_list%first => current
     end if
     sf_list%last => current
-    sf_list%n_strfun = sf_list%n_strfun + count (affects_beam)
+    select case (current%type)
+    case (STRF_CIRCE1, STRF_CIRCE2)
+       sf_list%n_strfun = sf_list%n_strfun + 1
+    case default   
+       sf_list%n_strfun = sf_list%n_strfun + count (affects_beam)
+    end select
   end subroutine sf_list_append
        
   subroutine sf_list_freeze (sf_list)
@@ -367,7 +440,19 @@ contains
                (process, i_map, i_par + current%mapping%index, &
                 current%mapping%type, current%mapping%par)
        end if
-       do j = 1, 2
+       select case (current%type)
+       case (STRF_CIRCE1)
+          i_sf = i_sf + 1
+          call process_set_strfun &
+               (process, i_sf, 0, current%circe1, current%n_parameters)         
+          i_par = i_par + current%n_parameters
+       case (STRF_CIRCE2)
+          i_sf = i_sf + 1
+          call process_set_strfun &
+               (process, i_sf, 0, current%circe2, current%n_parameters)
+          i_par = i_par + current%n_parameters
+       case default
+          do j = 1, 2
           if (current%affects_beam(j)) then
              i_sf = i_sf + 1
              select case (current%type)
@@ -386,7 +471,8 @@ contains
              end select
              i_par = i_par + current%n_parameters
           end if
-       end do
+          end do
+       end select
        current => current%next
     end do
   end subroutine sf_list_transfer_to_process

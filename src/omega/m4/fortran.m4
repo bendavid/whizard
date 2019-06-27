@@ -77,6 +77,9 @@ AC_SUBST([FC_VENDOR])
 AM_CONDITIONAL([FC_IS_GFORTRAN],
   [test "$FC_VENDOR" = gfortran])
 
+AM_CONDITIONAL([FC_IS_NAG],
+  [test "$FC_VENDOR" = NAG])
+
 AC_CACHE_CHECK([the compiler version],
 [wo_cv_fc_version],
 [dnl

@@ -1,6 +1,6 @@
-(* $Id: modellib_BSM.mli 1513 2010-01-15 23:58:16Z cnspeckn $
+(* $Id: modellib_BSM.mli 2700 2010-07-11 19:48:11Z jr_reuter $
 
-   Copyright (C) 1999-2009 by
+   Copyright (C) 1999-2010 by
 
        Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
@@ -32,13 +32,13 @@ module type BSM_flags =
 module BSM_bsm : BSM_flags
 module BSM_ungauged : BSM_flags
 module BSM_anom : BSM_flags
-module Littlest : functor (F: BSM_flags) -> Model.Gauge
-module Littlest_Tpar : functor (F: BSM_flags) -> Model.T
-module Simplest : functor (F: BSM_flags) -> Model.T
-module Xdim : functor (F: BSM_flags) -> Model.Gauge
-module UED : functor (F: BSM_flags) -> Model.Gauge
-module GravTest : functor (F: BSM_flags) -> Model.Gauge
-module Template : functor (F : BSM_flags) -> Model.Gauge
+module Littlest : functor (F: BSM_flags) -> Model.Gauge with module Ch = Charges.QQ
+module Littlest_Tpar : functor (F: BSM_flags) -> Model.T with module Ch = Charges.QQ
+module Simplest : functor (F: BSM_flags) -> Model.T with module Ch = Charges.QQ
+module Xdim : functor (F: BSM_flags) -> Model.Gauge with module Ch = Charges.QQ
+module UED : functor (F: BSM_flags) -> Model.Gauge with module Ch = Charges.QQ
+module GravTest : functor (F: BSM_flags) -> Model.Gauge with module Ch = Charges.QQ
+module Template : functor (F : BSM_flags) -> Model.Gauge with module Ch = Charges.QQ
 
 module type Threeshl_options =
 	sig
@@ -53,7 +53,8 @@ module Threeshl_no_ckm_no_hf: Threeshl_options
 module Threeshl_ckm_no_hf: Threeshl_options
 module Threeshl_diet_no_hf: Threeshl_options 
 module Threeshl_diet: Threeshl_options
-module Threeshl: functor (Module_options: Threeshl_options) -> Model.T
+module Threeshl: functor (Module_options: Threeshl_options) ->
+  Model.T with module Ch = Charges.QQ
 
 
 (*i

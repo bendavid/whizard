@@ -1,4 +1,4 @@
-! WHIZARD 2.0.2 Tue May 18 2010
+! WHIZARD 2.0.3 Tue Aug 10 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -107,6 +107,12 @@ module diagnostics
      end subroutine exit
   end interface
 
+  interface real2string
+     module procedure real2string_list, real2string_fmt
+  end interface
+  interface real2char
+     module procedure real2char_list, real2char_fmt
+  end interface
   interface
      integer(c_int) function wo_mask_sigint () bind(C)
        import
@@ -372,7 +378,6 @@ subroutine message_print (level, string, str_arr, unit, logfile)
     select case (handle_fatal_errors)
     case (TERM_EXIT)
        call message_print (TERMINATE, "WHIZARD run aborted.", unit=unit)
-       ! call flush_all ()
        call exit (-1_c_int)
     case (TERM_CRASH)
        print *, "*** Intentional crash ***"
@@ -394,7 +399,6 @@ subroutine message_print (level, string, str_arr, unit, logfile)
        select case (handle_fatal_errors)
        case (TERM_EXIT)
           call message_print (TERMINATE, "WHIZARD run aborted.", unit=unit)
-          ! call flush_all ()
           call exit (1_c_int)
        case (TERM_CRASH)
           print *, "*** Intentional crash ***"
@@ -581,25 +585,49 @@ subroutine message_print (level, string, str_arr, unit, logfile)
     c = int2fixed (i)
   end function int2char
 
-  pure function real2fixed (x) result (c)
+  pure function real2fixed (x, fmt) result (c)
     real(default), intent(in) :: x
+    character(*), intent(in), optional :: fmt
     character(200) :: c
     c = ""
     write (c, *) x
     c = adjustl (c)
   end function real2fixed
 
-  pure function real2string (x) result (s)
+  pure function real2fixed_fmt (x, fmt) result (c)
+    real(default), intent(in) :: x
+    character(*), intent(in) :: fmt
+    character(200) :: c
+    c = ""
+    write (c, fmt)  x
+    c = adjustl (c)
+  end function real2fixed_fmt
+
+  pure function real2string_list (x) result (s)
     real(default), intent(in) :: x
     type(string_t) :: s
     s = trim (real2fixed (x))
-  end function real2string
+  end function real2string_list
 
-  pure function real2char (x) result (c)
+  pure function real2string_fmt (x, fmt) result (s)
     real(default), intent(in) :: x
-    character(len (trim (real2fixed (x)))) :: c
+    character(*), intent(in) :: fmt
+    type(string_t) :: s
+    s = trim (real2fixed_fmt (x, fmt))
+  end function real2string_fmt
+
+  pure function real2char_list (x) result (c)
+    real(default), intent(in) :: x
+    character(len_trim (real2fixed (x))) :: c
     c = real2fixed (x)
-  end function real2char
+  end function real2char_list
+
+  pure function real2char_fmt (x, fmt) result (c)
+    real(default), intent(in) :: x
+    character(*), intent(in) :: fmt
+    character(len_trim (real2fixed_fmt (x, fmt))) :: c
+    c = real2fixed_fmt (x, fmt)
+  end function real2char_fmt
 
    pure function cmplx2string (x) result (s)
      complex(default), intent(in) :: x

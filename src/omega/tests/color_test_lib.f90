@@ -1,4 +1,4 @@
-! $Id: color_test_lib.f90 2468 2010-05-05 16:37:03Z kilian $
+! $Id: color_test_lib.f90 2695 2010-07-08 22:15:33Z ohl $
 ! color_test_lib.f90 -- O'Mega self test support
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !

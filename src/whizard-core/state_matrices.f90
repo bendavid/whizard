@@ -1,4 +1,4 @@
-! WHIZARD 2.0.2 Tue May 18 2010
+! WHIZARD 2.0.3 Tue Aug 10 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -1104,10 +1104,11 @@ contains
   end subroutine outer_multiply_array
 
   subroutine state_matrix_factorize &
-       (state, mode, x, single_state, correlated_state, qn_in)
+       (state, mode, x, ok, single_state, correlated_state, qn_in)
     type(state_matrix_t), intent(in), target :: state
     integer, intent(in) :: mode
     real(default), intent(in) :: x
+    logical, intent(out) :: ok
     type(state_matrix_t), &
          dimension(:), allocatable, intent(out) :: single_state
     type(state_matrix_t), intent(out), optional :: correlated_state
@@ -1120,6 +1121,7 @@ contains
     type(quantum_numbers_mask_t), dimension(:), allocatable :: qn_mask
     logical, dimension(:), allocatable :: diagonal
     logical, dimension(:,:), allocatable :: mask
+    ok = .true.
     if (x /= 0) then
        xt = x * state_matrix_trace (state, qn_in)
     else
@@ -1139,9 +1141,10 @@ contains
        if (all (quantum_numbers_are_diagonal (qn))) then
           value = state_iterator_get_matrix_element (it)
           if (real (value, default) < 0) then
+             call state_matrix_write (state)
              print *, value
              call msg_bug ("Event generation: " &
-                  // "Negative real part of matrix element value")
+                  // "Negative real part of squared matrix element value")
              value = 0
           end if
           s = s + value
@@ -1150,12 +1153,8 @@ contains
        call state_iterator_advance (it)
     end do
     if (.not. state_iterator_is_valid (it)) then
-       if (s == 0) then
-          call state_matrix_write (state)
-          call msg_bug ("Event factorization called for zero matrix element")
-       else
-          call state_iterator_init (it, state)
-       end if
+       if (s == 0)  ok = .false.
+       call state_iterator_init (it, state)
     end if
     allocate (single_state (depth))
     call state_matrix_init (single_state, store_values=.true.)
@@ -1279,6 +1278,7 @@ contains
     type(color_t), dimension(2) :: col
     type(helicity_t), dimension(2) :: hel
     type(quantum_numbers_t), dimension(2) :: qn
+    logical :: ok
     u = 1 / 2._default
     v(-1) = (0.6_default, 0._default)
     v( 1) = (0._default, 0.8_default)
@@ -1307,7 +1307,7 @@ contains
        print *
        print *, "Mode = ", mode
        call state_matrix_factorize &
-            (state, mode, 0.15_default, single_state, correlated_state)
+            (state, mode, 0.15_default, ok, single_state, correlated_state)
        do i = 1, size (single_state)
           print *
           call state_matrix_write (single_state(i))

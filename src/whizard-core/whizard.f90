@@ -1,4 +1,4 @@
-! WHIZARD 2.0.2 Tue May 18 2010
+! WHIZARD 2.0.3 Tue Aug 10 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -271,13 +271,10 @@ contains
     global%lexer => lexer
     call lexer_assign_stream (lexer, stream)
     call parse_tree_init (parse_tree, syntax_cmd_list, lexer)
-    ! call parse_tree_write (parse_tree)
     if (associated (parse_tree_get_root_ptr (parse_tree))) then
        call command_list_compile &
             (command_list, parse_tree_get_root_ptr (parse_tree), global)
     end if
-    ! call command_list_write (command_list)
-    ! call command_list_execute (command_list, global, print=.true.)
     call command_list_execute (command_list, global)
     call command_list_final (command_list)
     quit = global%quit

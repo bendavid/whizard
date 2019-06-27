@@ -1,4 +1,4 @@
-! WHIZARD 2.0.2 Tue May 18 2010
+! WHIZARD 2.0.3 Tue Aug 10 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -31,6 +31,11 @@ module commands
   use iso_varying_string, string_t => varying_string !NODEP!
   use constants !NODEP!
   use file_utils !NODEP!
+  use limits, only: HISTOGRAM_DATA_FORMAT !NODEP!
+  use limits, only: DEFAULT_ANALYSIS_FILENAME !NODEP!
+  use limits, only: FORBIDDEN_ENDINGS1 !NODEP!
+  use limits, only: FORBIDDEN_ENDINGS2 !NODEP!
+  use limits, only: FORBIDDEN_ENDINGS3 !NODEP!  
   use diagnostics !NODEP!
   use lorentz !NODEP!
   use tao_random_numbers !NODEP!
@@ -63,6 +68,7 @@ module commands
   use iterations
   use strfun_config
   use event_files
+  use user_files
   use rt_data
   use compilations
   use integrations
@@ -73,7 +79,6 @@ module commands
 
   public :: command_list_t
   public :: command_list_final
-  public :: command_list_write
   public :: command_list_compile
   public :: command_list_execute
   public :: syntax_cmd_list
@@ -82,11 +87,6 @@ module commands
   public :: syntax_cmd_list_write
   public :: lexer_init_cmd_list
   public :: command_test
-
-  integer, parameter :: ST_NONE = 0
-  integer, parameter :: ST_SINGLE = 1
-  integer, parameter :: ST_LINEAR = 2
-  integer, parameter :: ST_LOG = 3
 
   integer, parameter :: CMD_NONE = 0
   integer, parameter :: CMD_PROCESS = 1
@@ -109,11 +109,8 @@ module commands
   integer, parameter :: CMD_REWEIGHT = 36
 
   integer, parameter :: CMD_VAR = 41
-  integer, parameter :: CMD_PRINTD = 43
-  integer, parameter :: CMD_PRINTF = 44
   integer, parameter :: CMD_SHOW = 45
   integer, parameter :: CMD_EXPECT = 46
-  integer, parameter :: CMD_ECHO = 47
 
   integer, parameter :: CMD_UNSTABLE = 51
   integer, parameter :: CMD_STABLE = 52
@@ -124,13 +121,23 @@ module commands
   integer, parameter :: CMD_ITERATIONS = 64
   integer, parameter :: CMD_SAMPLE_FORMAT = 65
 
-  integer, parameter :: CMD_ANALYSIS = 70
-  integer, parameter :: CMD_WRITE_ANALYSIS = 71
+  integer, parameter :: CMD_CLEAR = 66
+
+  integer, parameter :: CMD_ANALYSIS = 71
   integer, parameter :: CMD_OBSERVABLE = 72
   integer, parameter :: CMD_HISTOGRAM = 73
   integer, parameter :: CMD_PLOT = 74
-  integer, parameter :: CMD_CLEAR = 75
+  integer, parameter :: CMD_GRAPH = 75
   integer, parameter :: CMD_RECORD = 76
+  integer, parameter :: CMD_WRITE_ANALYSIS = 77
+  integer, parameter :: CMD_COMPILE_ANALYSIS = 78
+  integer, parameter :: CMD_HISTOGRAM_WRITER = 79
+  integer, parameter :: CMD_PLOT_WRITER = 80
+
+  integer, parameter :: CMD_OPEN_OUT = 81
+  integer, parameter :: CMD_CLOSE_OUT = 83
+  integer, parameter :: CMD_PRINTD = 85
+  integer, parameter :: CMD_PRINTF = 86
   
   integer, parameter :: CMD_INCLUDE = 91
   integer, parameter :: CMD_SCAN = 92
@@ -145,21 +152,6 @@ module commands
   integer, parameter :: STEP_MUL = 3
   integer, parameter :: STEP_DIV = 4
 
-  type :: step_spec_t
-     private
-     integer :: type = ST_NONE
-     type(eval_tree_t) :: expr_beg
-     type(eval_tree_t) :: expr_end
-     type(eval_tree_t) :: expr_step
-     type(step_spec_t), pointer :: next => null ()
-  end type step_spec_t
-
-  type :: step_list_t
-     private
-     type(step_spec_t), pointer :: first => null ()
-     type(step_spec_t), pointer :: last => null ()
-  end type step_list_t
-
   type :: command_t
      private
      integer :: type = CMD_NONE
@@ -171,11 +163,8 @@ module commands
      type(cmd_exec_t), pointer :: exec => null ()
      type(cmd_var_t), pointer :: var => null ()
      type(cmd_slha_t), pointer :: slha => null ()
-     type(cmd_printd_t), pointer :: printd => null ()
-     type(cmd_printf_t), pointer :: printf => null ()
      type(cmd_show_t), pointer :: show => null ()
      type(cmd_expect_t), pointer :: expect => null ()
-     type(cmd_echo_t), pointer :: echo => null ()
      type(cmd_beams_t), pointer :: beams => null ()
      type(cmd_beam_polarization_t), pointer :: beam_polarization => null ()
      type(cmd_cuts_t), pointer :: cuts => null ()
@@ -188,16 +177,23 @@ module commands
      type(cmd_observable_t), pointer :: observable => null ()
      type(cmd_histogram_t), pointer :: histogram => null ()
      type(cmd_plot_t), pointer :: plot => null ()
+     type(cmd_graph_t), pointer :: graph => null ()
      type(cmd_clear_t), pointer :: clear => null ()
      type(cmd_record_t), pointer :: record => null ()
      type(cmd_analysis_t), pointer :: analysis => null ()
+     type(cmd_write_analysis_t), pointer :: write_analysis => null ()
+     type(cmd_write_analysis_t), pointer :: compile_analysis => null ()
+     type(cmd_xxx_writer_t), pointer :: xxx_writer => null ()
+     type(cmd_open_t), pointer :: open_out => null ()
+     type(cmd_close_t), pointer :: close_out => null ()
+     type(cmd_printd_t), pointer :: printd => null ()
+     type(cmd_printf_t), pointer :: printf => null ()
      type(cmd_unstable_t), pointer :: unstable => null ()
      type(cmd_stable_t), pointer :: stable => null ()
      type(cmd_un_polarized_t), pointer :: un_polarized => null ()
      type(cmd_sample_format_t), pointer :: events => null ()
      type(cmd_simulate_t), pointer :: simulate => null ()
      type(cmd_rescan_t), pointer :: rescan => null ()
-     type(cmd_write_analysis_t), pointer :: write_analysis => null ()
      type(cmd_scan_t), pointer :: loop => null ()
      type(cmd_if_t), pointer :: cond => null ()
      type(cmd_include_t), pointer :: include => null ()
@@ -220,8 +216,8 @@ module commands
      type(string_t) :: id
      integer :: n_in  = 0
      integer :: n_out = 0
-     type(eval_tree_t), dimension(:), allocatable :: pdg_in
-     type(eval_tree_t), dimension(:), allocatable :: pdg_out
+     type(parse_node_p), dimension(:), allocatable :: pn_pdg_in
+     type(parse_node_p), dimension(:), allocatable :: pn_pdg_out
      type(string_t), dimension(:), allocatable :: prt_in
      type(string_t), dimension(:), allocatable :: prt_out
      type(command_list_t), pointer :: options => null ()
@@ -246,21 +242,14 @@ module commands
 
   type :: cmd_exec_t
      private
-     type(eval_tree_t) :: command
+     type(parse_node_t), pointer :: pn_command => null ()
   end type cmd_exec_t
 
   type :: cmd_var_t
      private
      type(string_t) :: name
      integer :: type = V_NONE
-     type(eval_tree_t) :: value
-     logical, pointer :: is_known => null ()
-     logical, pointer :: lval => null ()
-     integer, pointer :: ival => null ()
-     real(default), pointer :: rval => null ()
-     complex(default), pointer :: cval => null ()
-     type(string_t), pointer :: sval => null ()
-     type(pdg_array_t), pointer :: aval => null ()
+     type(parse_node_t), pointer :: pn_value => null ()
      logical :: is_intrinsic = .false.
      logical :: is_copy = .false.
   end type cmd_var_t
@@ -273,38 +262,19 @@ module commands
      type(rt_data_t) :: local
   end type cmd_slha_t
 
-  type :: cmd_printd_t
-     private
-     type(eval_tree_t) :: sexpr
-     type(command_list_t), pointer :: options => null ()
-     type(rt_data_t) :: local
-  end type cmd_printd_t
-
-  type :: cmd_printf_t
-     private
-     type(eval_tree_t) :: sexpr
-     type(command_list_t), pointer :: options => null ()
-     type(rt_data_t) :: local
-  end type cmd_printf_t
-
   type :: cmd_show_t
      private
      type(string_t), dimension(:), allocatable :: name
-     type(eval_tree_t), dimension(:), allocatable :: expr
+     type(parse_node_p), dimension(:), allocatable :: pn_expr
      type(var_entry_t), dimension(:), allocatable :: value
   end type cmd_show_t
 
   type :: cmd_expect_t
      private
-     type(eval_tree_t) :: lexpr
+     type(parse_node_t), pointer :: pn_lexpr => null ()
      type(command_list_t), pointer :: options => null ()
      type(rt_data_t) :: local
   end type cmd_expect_t
-
-  type :: cmd_echo_t
-     private
-     type(eval_tree_t), dimension(:), allocatable :: expr
-  end type cmd_echo_t
 
   type :: strfun_def_t
      private
@@ -323,7 +293,7 @@ module commands
   type :: cmd_beams_t
      private
      integer :: n_in = 0
-     type(eval_tree_t), dimension(:), allocatable :: pdg
+     type(parse_node_p), dimension(:), allocatable :: pn_pdg
      type(string_t), dimension(:), allocatable :: prt
      type(command_list_t), pointer :: options => null ()
      type(rt_data_t) :: local
@@ -334,38 +304,43 @@ module commands
 
   type :: bp_circ_data_t
      private
-     type(eval_tree_t) :: fraction_expr
+     type(parse_node_t), pointer :: pn_fraction => null ()
      real(default) :: fraction
   end type bp_circ_data_t
 
   type :: bp_trans_data_t
      private
-     type(eval_tree_t) :: fraction_expr, phi_expr
+     type(parse_node_t), pointer :: pn_fraction => null ()
+     type(parse_node_t), pointer :: pn_phi => null ()
      real(default) :: fraction, phi
   end type bp_trans_data_t
 
   type :: bp_long_data_t
      private
-     type(eval_tree_t) :: fraction_expr
+     type(parse_node_t), pointer :: pn_fraction => null ()
      real(default) :: fraction
   end type bp_long_data_t
 
   type :: bp_axis_data_t
      private
-     type(eval_tree_t) :: fraction_expr, theta_expr, phi_expr
+     type(parse_node_t), pointer :: pn_fraction => null ()
+     type(parse_node_t), pointer :: pn_theta => null ()
+     type(parse_node_t), pointer :: pn_phi => null ()
      real(default) :: fraction, theta, phi
   end type bp_axis_data_t
 
   type :: bp_diag_data_t
      private
-     type(eval_tree_t), dimension(:), allocatable :: hels_expr, fractions_expr
-     integer, dimension(:), allocatable :: hels
-     real(default), dimension(:), allocatable :: fractions
+     type(parse_node_p), dimension(:), allocatable :: pn_hel
+     type(parse_node_p), dimension(:), allocatable :: pn_fraction
+     integer, dimension(:), allocatable :: hel
+     real(default), dimension(:), allocatable :: fraction
   end type bp_diag_data_t
 
   type :: bp_density_data_t
      private
-     type(eval_tree_t) :: d_expr, nd_expr
+     type(parse_node_t), pointer :: pn_d => null ()
+     type(parse_node_t), pointer :: pn_nd => null ()
      real(default) :: d
      complex(default) :: nd
   end type bp_density_data_t
@@ -419,7 +394,7 @@ module commands
      private
      logical :: use_id_expr = .false.
      type(string_t) :: id
-     type(eval_tree_t) :: expr_id
+     type(parse_node_t), pointer :: pn_id => null ()
      type(command_list_t), pointer :: options => null ()
      type(rt_data_t) :: local
   end type cmd_observable_t
@@ -428,10 +403,10 @@ module commands
      private
      type(string_t) :: id
      logical :: use_id_expr = .false.
-     type(eval_tree_t) :: expr_id
-     type(eval_tree_t) :: expr_lower_bound
-     type(eval_tree_t) :: expr_upper_bound
-     type(eval_tree_t) :: expr_bin_width
+     type(parse_node_t), pointer :: pn_id => null ()
+     type(parse_node_t), pointer :: pn_lower_bound => null ()
+     type(parse_node_t), pointer :: pn_upper_bound => null ()
+     type(parse_node_t), pointer :: pn_bin_width => null ()
      type(command_list_t), pointer :: options => null ()
      type(rt_data_t) :: local
   end type cmd_histogram_t
@@ -440,41 +415,89 @@ module commands
      private
      type(string_t) :: id
      logical :: use_id_expr = .false.
-     type(eval_tree_t) :: expr_id
-     type(eval_tree_t) :: expr_lower_bound
-     type(eval_tree_t) :: expr_upper_bound
+     type(parse_node_t), pointer :: pn_id => null ()
      type(command_list_t), pointer :: options => null ()
      type(rt_data_t) :: local
   end type cmd_plot_t
      
+  type :: cmd_graph_t
+     private
+     type(string_t) :: id
+     type(parse_node_t), pointer :: pn_id
+     logical :: use_id_expr = .false.
+     integer :: n_elements = 0
+     type(cmd_plot_t), dimension(:), allocatable :: el
+     type(command_list_t), pointer :: options => null ()
+     type(rt_data_t) :: local
+  end type cmd_graph_t
+     
+  type :: analysis_id_t
+    type(string_t) :: tag
+    type(parse_node_t), pointer :: pn_sexpr => null ()
+  end type analysis_id_t
+
   type :: cmd_analysis_t
      private
      type(parse_node_t), pointer :: pn_lexpr => null ()
   end type cmd_analysis_t
 
-  type :: cmd_write_analysis_t
-     private
-     integer :: n_args = 0
-     type(string_t), dimension(:), allocatable :: id
-     logical, dimension(:), allocatable :: use_id_expr
-     type(eval_tree_t), dimension(:), allocatable :: expr_id
-  end type cmd_write_analysis_t
-     
   type :: cmd_clear_t
      private
      integer :: n_args = 0
      type(string_t), dimension(:), allocatable :: id
      logical, dimension(:), allocatable :: use_id_expr
-     type(eval_tree_t), dimension(:), allocatable :: expr_id
+     type(parse_node_p), dimension(:), allocatable :: pn_id
   end type cmd_clear_t
      
+  type :: cmd_write_analysis_t
+    type(analysis_id_t), dimension(:), allocatable :: id
+    type(string_t), dimension(:), allocatable :: tag
+    type(rt_data_t) :: local
+    type(command_list_t), pointer :: options => null ()
+  end type cmd_write_analysis_t
+
+  type :: cmd_xxx_writer_t
+    type(parse_node_t), pointer :: macro => null ()
+    integer :: type = CMD_HISTOGRAM_WRITER
+  end type cmd_xxx_writer_t
+
+  type :: cmd_open_t
+     private
+     type(parse_node_t), pointer :: pn_sexpr => null ()
+     logical :: reading = .false.
+     logical :: writing = .false.
+     type(command_list_t), pointer :: options => null ()
+     type(rt_data_t) :: local
+  end type cmd_open_t
+
+  type :: cmd_close_t
+     private
+     type(parse_node_t), pointer :: pn_sexpr => null ()
+     type(command_list_t), pointer :: options => null ()
+     type(rt_data_t) :: local
+  end type cmd_close_t
+
+  type :: cmd_printd_t
+     private
+     type(parse_node_t), pointer :: pn_sexpr => null ()
+     type(command_list_t), pointer :: options => null ()
+     type(rt_data_t) :: local
+  end type cmd_printd_t
+
+  type :: cmd_printf_t
+     private
+     type(parse_node_t), pointer :: pn_sexpr => null ()
+     type(command_list_t), pointer :: options => null ()
+     type(rt_data_t) :: local
+  end type cmd_printf_t
+
   type :: cmd_record_t
      private
-     type(eval_tree_t) :: lexpr
+     type(parse_node_t), pointer :: pn_lexpr => null ()
   end type cmd_record_t
      
   type :: decay_properties_t
-     type(eval_tree_t) :: pdg
+     type(parse_node_t), pointer :: pn_pdg => null ()
      type(string_t) :: prt
      type(flavor_t) :: flv
      integer :: n_proc = 0
@@ -499,8 +522,8 @@ module commands
      
   type :: cmd_un_polarized_t
      private
-     type(eval_tree_t), dimension(:), allocatable :: pdgs
-     type(string_t), dimension(:), allocatable :: names
+     type(parse_node_p), dimension(:), allocatable :: pn_pdg
+     type(string_t), dimension(:), allocatable :: name
      type(command_list_t), pointer :: options => null ()
      type(rt_data_t) :: local
   end type cmd_un_polarized_t
@@ -523,7 +546,7 @@ module commands
      private
      integer :: n_evt = 0
      integer :: n_proc = 0
-     type(eval_tree_t) :: filename
+     type(parse_node_t), pointer :: pn_filename => null ()
      type(string_t), dimension(:), allocatable :: process_id
      type(command_list_t), pointer :: options => null ()
      type(rt_data_t) :: local
@@ -531,14 +554,14 @@ module commands
 
   type :: cmd_seed_t
      private
-     type(eval_tree_t) :: expr
+     type(parse_node_t), pointer :: pn_expr => null ()
   end type cmd_seed_t
 
   type :: cmd_iterations_t
      private
      integer :: n_pass = 0
-     type(eval_tree_t), dimension(:), allocatable :: expr_n_it
-     type(eval_tree_t), dimension(:), allocatable :: expr_n_calls
+     type(parse_node_p), dimension(:), allocatable :: pn_expr_n_it
+     type(parse_node_p), dimension(:), allocatable :: pn_expr_n_calls
   end type cmd_iterations_t
 
   type :: cmd_scan_t
@@ -549,17 +572,17 @@ module commands
      integer :: n_arg = 0
      type(command_list_t), dimension(:), pointer :: cmd_var => null ()
      logical, dimension(:), allocatable :: has_range
-     type(eval_tree_t), dimension(:), allocatable :: beg_expr
-     type(eval_tree_t), dimension(:), allocatable :: end_expr
+     type(parse_node_p), dimension(:), allocatable :: pn_beg_expr
+     type(parse_node_p), dimension(:), allocatable :: pn_end_expr
      integer, dimension(:), allocatable :: step_type
-     type(eval_tree_t), dimension(:), allocatable :: step_expr
+     type(parse_node_p), dimension(:), allocatable :: pn_step_expr
      type(command_list_t), pointer :: body => null ()
      type(rt_data_t) :: local
   end type cmd_scan_t
 
   type :: cmd_if_t
      private
-     type(eval_tree_t) :: if_lexpr
+     type(parse_node_t), pointer :: pn_if_lexpr => null ()
      type(command_list_t), pointer :: if_body => null ()
      type(cmd_if_t), dimension(:), pointer :: elsif_cond => null ()
      type(command_list_t), pointer :: else_body => null ()
@@ -575,7 +598,7 @@ module commands
   type :: cmd_quit_t
      private
      logical :: has_code = .false.
-     type(eval_tree_t) :: code_expr
+     type(parse_node_t), pointer :: pn_code_expr => null ()
   end type cmd_quit_t
 
   type :: command_list_t
@@ -588,46 +611,7 @@ module commands
   type(syntax_t), target, save :: syntax_cmd_list
 
 
-
-
 contains
-
-  subroutine step_list_append_val (step_list, type, var_list, pn1, pn2, pn3)
-    type(step_list_t), intent(inout) :: step_list
-    integer, intent(in) :: type
-    type(var_list_t), intent(in), target :: var_list
-    type(parse_node_t), intent(in), target :: pn1
-    type(parse_node_t), intent(in), optional, target :: pn2, pn3
-    type(step_spec_t), pointer :: current
-    allocate (current)
-    current%type = type
-    call eval_tree_init_expr (current%expr_beg, pn1, var_list)
-    select case (type)
-    case (ST_LINEAR, ST_LOG)
-       call eval_tree_init_expr (current%expr_end,  pn2, var_list)
-       call eval_tree_init_expr (current%expr_step, pn3, var_list)
-    end select
-    if (associated (step_list%last)) then
-       step_list%last%next => current
-    else
-       step_list%first => current
-    end if
-    step_list%last => current
-  end subroutine step_list_append_val
-
-  subroutine step_list_final (step_list)
-    type(step_list_t), intent(inout) :: step_list
-    type(step_spec_t), pointer :: current
-    do while (associated (step_list%first))
-       current => step_list%first
-       step_list%first => current%next
-       call eval_tree_final (current%expr_beg)
-       call eval_tree_final (current%expr_end)
-       call eval_tree_final (current%expr_step)
-       deallocate (current)
-    end do
-    step_list%last => null ()
-  end subroutine step_list_final
 
   recursive subroutine command_final (command)
     type(command_t), intent(inout) :: command
@@ -655,21 +639,12 @@ contains
     case (CMD_SLHA)
        call cmd_slha_final (command%slha)
        deallocate (command%slha)
-    case (CMD_PRINTD)
-       call cmd_printd_final (command%printd)
-       deallocate (command%printd)
-    case (CMD_PRINTF)
-       call cmd_printf_final (command%printf)
-       deallocate (command%printf)
     case (CMD_SHOW)
        call cmd_show_final (command%show)
        deallocate (command%show)
     case (CMD_EXPECT)
        call cmd_expect_final (command%expect)
        deallocate (command%expect)
-    case (CMD_ECHO)
-       call cmd_echo_final (command%echo)
-       deallocate (command%echo)
     case (CMD_BEAMS)
        call cmd_beams_final (command%beams)
        deallocate (command%beams)
@@ -702,6 +677,9 @@ contains
     case (CMD_PLOT)
        call cmd_plot_final (command%plot)
        deallocate (command%plot)
+    case (CMD_GRAPH)
+       call cmd_graph_final (command%graph)
+       deallocate (command%graph)
     case (CMD_CLEAR)
        call cmd_clear_final (command%clear)
        deallocate (command%clear)
@@ -731,6 +709,21 @@ contains
     case (CMD_WRITE_ANALYSIS)
        call cmd_write_analysis_final (command%write_analysis)
        deallocate (command%write_analysis)
+    case (CMD_COMPILE_ANALYSIS)
+       call cmd_write_analysis_final (command%compile_analysis)
+       deallocate (command%compile_analysis)
+    case (CMD_HISTOGRAM_WRITER, CMD_PLOT_WRITER)
+       call cmd_xxx_writer_final (command%xxx_writer)
+    case (CMD_OPEN_OUT)
+       call cmd_open_final (command%open_out)
+    case (CMD_CLOSE_OUT)
+       call cmd_close_final (command%close_out)
+    case (CMD_PRINTD)
+       call cmd_printd_final (command%printd)
+       deallocate (command%printd)
+    case (CMD_PRINTF)
+       call cmd_printf_final (command%printf)
+       deallocate (command%printf)
     case (CMD_SCAN)
        call cmd_scan_final (command%loop)
        deallocate (command%loop)
@@ -745,79 +738,6 @@ contains
        deallocate (command%quit)
     end select
   end subroutine command_final
-
-  recursive subroutine command_write (command, unit, indent)
-    type(command_t), intent(in) :: command
-    integer, intent(in), optional :: unit, indent
-    integer :: u
-    u = output_unit (unit);  if (u < 0)  return
-    select case (command%type)
-    case (CMD_NONE)
-       write (u, *) "[Empty command]"
-    case (CMD_MODEL)
-       call cmd_model_write (command%model, unit, indent)
-    case (CMD_LIBRARY)
-       call cmd_library_write (command%library, unit, indent)
-    case (CMD_VAR)
-       call cmd_var_write (command%var, unit, indent)
-    case (CMD_SLHA)
-       call cmd_slha_write (command%slha, unit, indent)
-    case (CMD_PROCESS)
-       call cmd_process_write (command%process, unit, indent)
-    case (CMD_COMPILE)
-       call cmd_compile_write (command%compile, unit, indent)
-    case (CMD_EXEC)
-       call cmd_exec_write (command%exec, unit, indent)
-    case (CMD_BEAMS)
-       call cmd_beams_write (command%beams, unit, indent)
-    case (CMD_BEAM_POLARIZATION)
-       call cmd_beam_polarization_write &
-          (command%beam_polarization, unit, indent)
-    case (CMD_CUTS)
-       call cmd_cuts_write (command%cuts, unit, indent)
-    case (CMD_SCALE)
-       call cmd_scale_write (command%scale, unit, indent)
-    case (CMD_WEIGHT)
-       call cmd_weight_write (command%weight, unit, indent)
-    case (CMD_REWEIGHT)
-       call cmd_reweight_write (command%reweight, unit, indent)
-    case (CMD_SEED)
-       call cmd_seed_write (command%seed, unit, indent)
-    case (CMD_ITERATIONS)
-       call cmd_iterations_write (command%iterations, unit, indent)
-    case (CMD_INTEGRATE)
-       call cmd_integrate_write (command%integrate, unit, indent)
-    case (CMD_OBSERVABLE)
-       call cmd_observable_write (command%observable, unit, indent)
-    case (CMD_HISTOGRAM)
-       call cmd_histogram_write (command%histogram, unit, indent)
-    case (CMD_PLOT)
-       call cmd_plot_write (command%plot, unit, indent)
-    case (CMD_ANALYSIS)
-       call cmd_analysis_write (command%analysis, unit, indent)
-    case (CMD_UNSTABLE)
-       call cmd_unstable_write (command%unstable, unit, indent)
-    case (CMD_STABLE)
-       call cmd_stable_write (command%stable, unit, indent)
-    case (CMD_POLARIZED, CMD_UNPOLARIZED)
-       call cmd_un_polarized_write &
-          (command%un_polarized, command%type, unit, indent)
-    case (CMD_SAMPLE_FORMAT)
-       call cmd_sample_format_write (command%events, unit, indent)
-    case (CMD_SIMULATE)
-       call cmd_simulate_write (command%simulate, unit, indent)
-    case (CMD_RESCAN)
-       call cmd_rescan_write (command%rescan, unit, indent)
-    case (CMD_SCAN)
-       call cmd_scan_write (command%loop, unit, indent)
-    case (CMD_IF)
-       call cmd_if_write (command%cond, unit, indent)
-    case (CMD_INCLUDE)
-       call cmd_include_write (command%include, unit, indent)
-    case (CMD_QUIT)
-       call cmd_quit_write (command%quit, unit, indent)
-    end select
-  end subroutine command_write
 
   recursive subroutine command_compile (command, pn, global)
     type(command_t), pointer :: command
@@ -852,21 +772,12 @@ contains
     case ("cmd_slha")
        command%type = CMD_SLHA
        call cmd_slha_compile (command%slha, pn, global)
-    case ("cmd_print")
-       command%type = CMD_PRINTD
-       call cmd_printd_compile (command%printd, pn, global)
-    case ("cmd_printf")
-       command%type = CMD_PRINTF
-       call cmd_printf_compile (command%printf, pn, global)
     case ("cmd_show")
        command%type = CMD_SHOW
        call cmd_show_compile (command%show, pn, global)
     case ("cmd_expect")
        command%type = CMD_EXPECT
        call cmd_expect_compile (command%expect, pn, global)
-    case ("cmd_echo")
-       command%type = CMD_ECHO
-       call cmd_echo_compile (command%echo, pn, global)
     case ("cmd_beams")
        command%type = CMD_BEAMS
        call cmd_beams_compile (command%beams, pn, global)
@@ -904,6 +815,9 @@ contains
     case ("cmd_plot")
        command%type = CMD_PLOT
        call cmd_plot_compile (command%plot, pn, global)
+    case ("cmd_graph")
+       command%type = CMD_GRAPH
+       call cmd_graph_compile (command%graph, pn, global)
     case ("cmd_clear")
        command%type = CMD_CLEAR
        call cmd_clear_compile (command%clear, pn, global)
@@ -936,7 +850,26 @@ contains
        call cmd_rescan_compile (command%rescan, pn, global)
     case ("cmd_write_analysis")
        command%type = CMD_WRITE_ANALYSIS
-       call cmd_write_analysis_compile (command%write_analysis, pn, global)
+       call cmd_write_analysis_compile (command%write_analysis, &
+          pn, global)
+    case ("cmd_compile_analysis")
+       command%type = CMD_COMPILE_ANALYSIS
+       call cmd_write_analysis_compile (command%compile_analysis, pn, global)
+    case ("cmd_histogram_writer", "cmd_plot_writer")
+       command%type = CMD_HISTOGRAM_WRITER
+       call cmd_xxx_writer_compile (command%xxx_writer, pn, global)
+    case ("cmd_open_out")
+       command%type = CMD_OPEN_OUT
+       call cmd_open_out_compile (command%open_out, pn, global)
+    case ("cmd_close_out")
+       command%type = CMD_CLOSE_OUT
+       call cmd_close_out_compile (command%close_out, pn, global)
+    case ("cmd_print")
+       command%type = CMD_PRINTD
+       call cmd_printd_compile (command%printd, pn, global)
+    case ("cmd_printf")
+       command%type = CMD_PRINTF
+       call cmd_printf_compile (command%printf, pn, global)
     case ("cmd_scan")
        command%type = CMD_SCAN
        call cmd_scan_compile (command%loop, pn, global)
@@ -956,10 +889,9 @@ contains
     ! call command_write (command)
   end subroutine command_compile
 
-  recursive subroutine command_execute (command, global, print)
+  recursive subroutine command_execute (command, global)
     type(command_t), intent(inout) :: command
     type(rt_data_t), intent(inout), target :: global
-    logical, intent(in), optional :: print
     select case (command%type)
     case (CMD_MODEL)
        call cmd_model_execute (command%model, global)
@@ -977,16 +909,10 @@ contains
        call cmd_var_execute (command%var, global)
     case (CMD_SLHA)
        call cmd_slha_execute (command%slha, global)
-    case (CMD_PRINTD)
-       call cmd_printd_execute (command%printd, global)
-    case (CMD_PRINTF)
-       call cmd_printf_execute (command%printf, global)
     case (CMD_SHOW)
        call cmd_show_execute (command%show, global)
     case (CMD_EXPECT)
        call cmd_expect_execute (command%expect, global)
-    case (CMD_ECHO)
-       call cmd_echo_execute (command%echo, global)
     case (CMD_BEAMS)
        call cmd_beams_execute (command%beams, global)
     case (CMD_BEAM_POLARIZATION)
@@ -1011,6 +937,8 @@ contains
        call cmd_histogram_execute (command%histogram, global)
     case (CMD_PLOT)
        call cmd_plot_execute (command%plot, global)
+    case (CMD_GRAPH)
+       call cmd_graph_execute (command%graph, global)
     case (CMD_CLEAR)
        call cmd_clear_execute (command%clear, global)
     case (CMD_RECORD)
@@ -1022,7 +950,8 @@ contains
     case (CMD_STABLE)
        call cmd_stable_execute (command%stable, global)
     case (CMD_POLARIZED, CMD_UNPOLARIZED)
-       call cmd_un_polarized_execute (command%un_polarized, command%type, global)
+       call cmd_un_polarized_execute &
+            (command%un_polarized, command%type, global)
     case (CMD_SAMPLE_FORMAT)
        call cmd_sample_format_execute (command%events, global)
     case (CMD_SIMULATE)
@@ -1031,6 +960,18 @@ contains
        call cmd_rescan_execute (command%rescan, global)
     case (CMD_WRITE_ANALYSIS)
        call cmd_write_analysis_execute (command%write_analysis, global)
+    case (CMD_COMPILE_ANALYSIS)
+       call cmd_compile_analysis_execute (command%compile_analysis, global)
+    case (CMD_HISTOGRAM_WRITER, CMD_PLOT_WRITER)
+       call cmd_xxx_writer_execute (command%xxx_writer, global)
+    case (CMD_OPEN_OUT)
+       call cmd_open_execute (command%open_out, global)
+    case (CMD_CLOSE_OUT)
+       call cmd_close_execute (command%close_out, global)
+    case (CMD_PRINTD)
+       call cmd_printd_execute (command%printd, global)
+    case (CMD_PRINTF)
+       call cmd_printf_execute (command%printf, global)
     case (CMD_SCAN)
        call cmd_scan_execute (command%loop, global)
     case (CMD_IF)
@@ -1040,9 +981,6 @@ contains
     case (CMD_QUIT)
        call cmd_quit_execute (command%quit, global)
     end select
-    if (present (print)) then
-       if (print)  call command_write (command)
-    end if
   end subroutine command_execute
   
   subroutine write_indent (unit, indent)
@@ -1148,49 +1086,17 @@ contains
 
   subroutine cmd_process_final (process)
     type(cmd_process_t), intent(inout) :: process
-    integer :: i
-    if (allocated (process%pdg_in)) then
-       do i = 1, size (process%pdg_in)
-          call eval_tree_final (process%pdg_in(i))
-       end do
+    if (allocated (process%pn_pdg_in)) then
+       deallocate (process%pn_pdg_in)
     end if
-    if (allocated (process%pdg_out)) then
-       do i = 1, size (process%pdg_out)
-          call eval_tree_final (process%pdg_out(i))
-       end do
+    if (allocated (process%pn_pdg_out)) then
+       deallocate (process%pn_pdg_out)
     end if
     if (associated (process%options)) then
        call command_list_final (process%options)
        deallocate (process%options)
     end if
   end subroutine cmd_process_final
-
-  subroutine cmd_process_write (process, unit, indent)
-    type(cmd_process_t), intent(in) :: process
-    integer, intent(in), optional :: unit, indent
-    integer :: u, i
-    u = output_unit (unit);  if (u < 0)  return
-    call write_indent (u, indent)
-    write (u, "(1x,A,1x,A,1x,A,1x)", advance="no") &
-         "process", char (process%id), "="
-    do i = 1, process%n_in
-       if (i /= 1)  write (u, "(',')", advance="no")
-       write (u, "(1x,A)", advance="no") char (process%prt_in(i))
-    end do
-    write (u, "(1x,A,1x)", advance="no")  "=>"
-    do i = 1, process%n_out
-       if (i /= 1)  write (u, "(',')", advance="no")
-       write (u, "(1x,A)", advance="no") char (process%prt_out(i))
-    end do
-    if (associated (process%options)) then
-       write (u, "(1x,'{')")
-       call command_list_write (process%options, unit, indent)
-       call write_indent (u, indent)
-       write (u, "(1x,'}')")
-    else
-       write (u, *)
-    end if
-  end subroutine cmd_process_write
 
   subroutine cmd_process_compile (process, pn, global)
     type(cmd_process_t), pointer :: process
@@ -1213,22 +1119,23 @@ contains
     process%n_in  = parse_node_get_n_sub (pn_in)
     process%n_out = parse_node_get_n_sub (pn_out)
     pn_codes => parse_node_get_sub_ptr (pn_in)
-    allocate (process%pdg_in (process%n_in), process%prt_in (process%n_in))
+    allocate (process%pn_pdg_in (process%n_in))
+    allocate (process%prt_in (process%n_in))
     do i = 1, process%n_in
-       call eval_tree_init_cexpr &
-            (process%pdg_in(i), pn_codes, process%local%var_list)
+       process%pn_pdg_in(i)%ptr => pn_codes
        process%prt_in(i) = "?"
        pn_codes => parse_node_get_next_ptr (pn_codes)
     end do
     pn_codes => parse_node_get_sub_ptr (pn_out)
-    allocate (process%pdg_out (process%n_out), process%prt_out (process%n_out))
+    allocate (process%pn_pdg_out (process%n_out))
+    allocate (process%prt_out (process%n_out))
     do i = 1, process%n_out
-       call eval_tree_init_cexpr &
-            (process%pdg_out(i), pn_codes, process%local%var_list)
+       process%pn_pdg_out(i)%ptr => pn_codes
        process%prt_out(i) = "?"
        pn_codes => parse_node_get_next_ptr (pn_codes)
     end do
     call var_list_init_num_id (global%var_list, process%id)
+    call rt_data_local_reset (process%local)
   end subroutine cmd_process_compile
 
   subroutine cmd_process_execute (process, global)
@@ -1248,14 +1155,14 @@ contains
             // "' is static, no processes can be added")
        return
     end if
-    do i = 1, size (process%pdg_in)
-       call eval_tree_evaluate (process%pdg_in(i))
-       pdg_in = eval_tree_get_pdg_array (process%pdg_in(i))
+    do i = 1, size (process%pn_pdg_in)
+       pdg_in = &
+            eval_pdg_array (process%pn_pdg_in(i)%ptr, process%local%var_list)
        process%prt_in(i) = make_flavor_string (pdg_in, process%local%model)
     end do
-    do i = 1, size (process%pdg_out)
-       call eval_tree_evaluate (process%pdg_out(i))
-       pdg_out = eval_tree_get_pdg_array (process%pdg_out(i))
+    do i = 1, size (process%pn_pdg_out)
+       pdg_out = &
+            eval_pdg_array (process%pn_pdg_out(i)%ptr, process%local%var_list)
        process%prt_out(i) = make_flavor_string (pdg_out, process%local%model)
     end do
     restrictions = var_list_get_sval &
@@ -1326,30 +1233,6 @@ contains
     end if
   end subroutine cmd_compile_final
 
-  subroutine cmd_compile_write (compile, unit, indent)
-    type(cmd_compile_t), intent(in) :: compile
-    integer, intent(in), optional :: unit, indent
-    integer :: u, i
-    u = output_unit (unit);  if (u < 0)  return
-    call write_indent (u, indent)
-    write (u, "(1x,A)", advance="no") "compile "
-    if (compile%make_executable) then
-       write (u, "(A)", advance="no") "as " // char (compile%exec_name) // " "
-    end if
-    write (u, "(A)", advance="no") "("
-    do i = 1, size (compile%libname)
-       if (i /= 1)  write (u, "(',',1x)", advance="no")
-       write (u, "(A)", advance="no") '"' // char (compile%libname(i)) // '"'
-    end do
-    write (u, "(A)", advance="no") ")"
-    if (associated (compile%options)) then
-       write (u, "(1x,'{')")
-       call command_list_write (compile%options, unit, indent)
-       call write_indent (u, indent)
-       write (u, "(1x,'}')")
-    end if
-  end subroutine cmd_compile_write
-
   subroutine cmd_compile_compile (compile, pn, global)
     type(cmd_compile_t), pointer :: compile
     type(parse_node_t), intent(in), target :: pn
@@ -1406,6 +1289,7 @@ contains
        compile%make_executable = .true.
        compile%exec_name = parse_node_get_string (pn_exec_name)
     end if
+    call rt_data_local_reset (compile%local)
   end subroutine cmd_compile_compile
 
   subroutine cmd_compile_execute (compile, global)
@@ -1432,20 +1316,6 @@ contains
        deallocate (load%options)
     end if
   end subroutine cmd_load_final
-
-  subroutine cmd_load_write (load, unit, indent)
-    type(cmd_load_t), intent(in) :: load
-    integer, intent(in), optional :: unit, indent
-    integer :: u, i
-    u = output_unit (unit);  if (u < 0)  return
-    call write_indent (u, indent)
-    write (u, "(1x,A)", advance="no") "load ("
-    do i = 1, size (load%libname)
-       if (i /= 1)  write (u, "(',',1x)", advance="no")
-       write (u, "(A)", advance="no") '"' // char (load%libname(i)) // '"'
-    end do
-    write (u, "(A)", advance="no") ")"
-  end subroutine cmd_load_write
 
   subroutine cmd_load_compile (load, pn, global)
     type(cmd_load_t), pointer :: load
@@ -1497,6 +1367,7 @@ contains
           call process_library_advance (prc_lib)
        end do
     end if
+    call rt_data_local_reset (load%local)
   end subroutine cmd_load_compile
 
   subroutine cmd_load_execute (load, global)
@@ -1513,19 +1384,7 @@ contains
 
   subroutine cmd_exec_final (exec)
     type(cmd_exec_t), intent(inout) :: exec
-    call eval_tree_final (exec%command)
   end subroutine cmd_exec_final
-
-  subroutine cmd_exec_write (exec, unit, indent)
-    type(cmd_exec_t), intent(in) :: exec
-    integer, intent(in), optional :: unit, indent
-    integer :: u
-    u = output_unit (unit);  if (u < 0)  return
-    call write_indent (u, indent)
-    write (u, "(1x,A)", advance="no") "exec ("
-    call eval_tree_write (exec%command, unit)
-    write (u, "(A)") ")"
-  end subroutine cmd_exec_write
 
   subroutine cmd_exec_compile (exec, pn, global)
     type(cmd_exec_t), pointer :: exec
@@ -1535,17 +1394,17 @@ contains
     pn_arg => parse_node_get_sub_ptr (pn, 2)
     pn_command => parse_node_get_sub_ptr (pn_arg)
     allocate (exec)
-    call eval_tree_init_sexpr (exec%command, pn_command, global%var_list)
+    exec%pn_command => pn_command
   end subroutine cmd_exec_compile
 
   subroutine cmd_exec_execute (exec, global)
     type(cmd_exec_t), intent(inout) :: exec
     type(rt_data_t), intent(in) :: global
     type(string_t) :: command
+    logical :: is_known
     integer :: status
-    call eval_tree_evaluate (exec%command)
-    if (eval_tree_result_is_known (exec%command)) then
-       command = eval_tree_get_string (exec%command)
+    command = eval_string (exec%pn_command, global%var_list, is_known=is_known)
+    if (is_known) then
        if (command /= "") then
           call os_system_call (command, status, verbose=.true.)
           if (status /= 0) then
@@ -1559,25 +1418,13 @@ contains
 
   subroutine cmd_var_final (var)
     type(cmd_var_t), intent(inout) :: var
-    call eval_tree_final (var%value)
   end subroutine cmd_var_final
-
-  subroutine cmd_var_write (var, unit, indent)
-    type(cmd_var_t), intent(in) :: var
-    integer, intent(in), optional :: unit, indent
-    integer :: u
-    u = output_unit (unit);  if (u < 0)  return
-    call write_indent (u, indent)
-    write (u, "(1x,A)", advance="no")  char (var%name)
-    write (u, "(1x, A)")  "="
-    call eval_tree_write (var%value, unit)
-  end subroutine cmd_var_write
 
   subroutine cmd_var_compile (var, pn, global)
     type(cmd_var_t), pointer :: var
     type(parse_node_t), intent(in), target :: pn
     type(rt_data_t), intent(inout), target :: global
-    type(parse_node_t), pointer :: pn_var, pn_name, pn_expr
+    type(parse_node_t), pointer :: pn_var, pn_name
     type(parse_node_t), pointer :: pn_result, pn_proc
     type(string_t) :: var_name
     type(var_entry_t), pointer :: var_entry
@@ -1645,6 +1492,8 @@ contains
     var%name = var_name
     var_entry => var_list_get_var_ptr &
        (global%var_list, var%name, var%type, follow_link=.false.)
+    var%pn_value => parse_node_get_next_ptr (pn_name, 2)
+    if (.not. associated (var%pn_value))  var%type = V_NONE
     if (associated (var_entry)) then
        var%is_copy = var_entry_is_copy (var_entry)
     else
@@ -1654,60 +1503,31 @@ contains
           var%is_intrinsic = var_entry_is_intrinsic (var_entry)
           if (var_entry_is_copy (var_entry)) then
              var%is_copy = .true.
-             call var_list_init_copy (global%var_list, var_entry)
+             call var_list_init_copy (global%var_list, var_entry, user=.true.)
           end if
        end if
        if (.not. var%is_copy) then
           select case (var%type)
           case (V_LOG)
              call var_list_append_log (global%var_list, var%name, &
-                   intrinsic=var%is_intrinsic)
+                   intrinsic=var%is_intrinsic, user=.true.)
           case (V_INT)
              call var_list_append_int (global%var_list, var%name, &
-                   intrinsic=var%is_intrinsic)
+                   intrinsic=var%is_intrinsic, user=.true.)
           case (V_REAL)
              call var_list_append_real (global%var_list, var%name, &
-                   intrinsic=var%is_intrinsic)
+                   intrinsic=var%is_intrinsic, user=.true.)
           case (V_CMPLX)
              call var_list_append_cmplx (global%var_list, var%name, &
-                   intrinsic=var%is_intrinsic)
+                   intrinsic=var%is_intrinsic, user=.true.)
           case (V_PDG)
              call var_list_append_pdg_array (global%var_list, var%name, &
-                   intrinsic=var%is_intrinsic)
+                   intrinsic=var%is_intrinsic, user=.true.)
           case (V_STR)
              call var_list_append_string (global%var_list, var%name, &
-                   intrinsic=var%is_intrinsic)
+                   intrinsic=var%is_intrinsic, user=.true.)
           end select
        end if
-    end if
-    pn_expr => parse_node_get_next_ptr (pn_name, 2)
-    if (associated (pn_expr)) then
-       select case (var%type)
-       case (V_LOG)
-          call eval_tree_init_lexpr (var%value, pn_expr, global%var_list)
-          var%lval => eval_tree_get_log_ptr (var%value)
-       case (V_INT)
-          call eval_tree_init_expr (var%value, pn_expr, global%var_list)
-          call eval_tree_convert_result (var%value, var%type)
-          var%ival => eval_tree_get_int_ptr (var%value)
-       case (V_REAL)
-          call eval_tree_init_expr (var%value, pn_expr, global%var_list)
-          call eval_tree_convert_result (var%value, var%type)
-          var%rval => eval_tree_get_real_ptr (var%value)
-       case (V_CMPLX)
-          call eval_tree_init_expr (var%value, pn_expr, global%var_list)
-          call eval_tree_convert_result (var%value, var%type)
-          var%cval => eval_tree_get_cmplx_ptr (var%value)
-       case (V_PDG)
-          call eval_tree_init_cexpr (var%value, pn_expr, global%var_list)
-          var%aval => eval_tree_get_pdg_array_ptr (var%value)
-       case (V_STR)
-          call eval_tree_init_sexpr (var%value, pn_expr, global%var_list)
-          var%sval => eval_tree_get_string_ptr (var%value)
-       end select
-       var%is_known => eval_tree_result_is_known_ptr (var%value)
-    else
-       var%type = V_NONE
     end if
   end subroutine cmd_var_compile
 
@@ -1716,67 +1536,64 @@ contains
     type(rt_data_t), intent(inout), target :: global
     type(string_t) :: model_name
     type(var_list_t), pointer :: model_vars
-    if (eval_tree_is_defined (var%value)) then
-       call eval_tree_evaluate (var%value)
-       if (associated (global%model)) then
-          model_name = model_get_name (global%model)
-          model_vars => model_get_var_list_ptr (global%model)
-          if (var%is_copy) then
-             call var_list_set_original_pointer (global%var_list, var%name, &
-                  model_vars)
-          end if
-          select case (var%type)
-          case (V_LOG)
-             call var_list_set_log (global%var_list, var%name, &
-                  var%lval, var%is_known, verbose=.true., model_name=model_name)
-          case (V_INT)
-             call var_list_set_int (global%var_list, var%name, &
-                  var%ival, var%is_known, verbose=.true., model_name=model_name)
-          case (V_REAL)
-             call var_list_set_real (global%var_list, var%name, &
-                  var%rval, var%is_known, verbose=.true., model_name=model_name)
-          case (V_CMPLX)
-             call var_list_set_cmplx (global%var_list, var%name, &
-                  var%cval, var%is_known, verbose=.true., model_name=model_name)
-          case (V_PDG)
-             call var_list_set_pdg_array (global%var_list, var%name, &
-                  var%aval, var%is_known, verbose=.true., model_name=model_name)
-          case (V_STR)
-             call var_list_set_string (global%var_list, var%name, &
-                  var%sval, var%is_known, verbose=.true., model_name=model_name)
-          end select
-          if (var%is_copy) then
-             call model_parameters_update (global%model)
-             call var_list_synchronize (global%var_list, model_vars)
-          end if
-       else
-          select case (var%type)
-          case (V_LOG)
-             call var_list_set_log (global%var_list, var%name, &
-                  var%lval, var%is_known, verbose=.true.)
-          case (V_INT)
-             call var_list_set_int (global%var_list, var%name, &
-                  var%ival, var%is_known, verbose=.true.)
-          case (V_REAL)
-             call var_list_set_real (global%var_list, var%name, &
-                  var%rval, var%is_known, verbose=.true.)
-          case (V_CMPLX)
-             call var_list_set_cmplx (global%var_list, var%name, &
-                  var%cval, var%is_known, verbose=.true.)
-          case (V_PDG)
-             call var_list_set_pdg_array (global%var_list, var%name, &
-                  var%aval, var%is_known, verbose=.true.)
-          case (V_STR)
-             call var_list_set_string (global%var_list, var%name, &
-                  var%sval, var%is_known, verbose=.true.)
-          end select
+    if (associated (global%model)) then
+       model_name = model_get_name (global%model)
+       model_vars => model_get_var_list_ptr (global%model)
+       if (var%is_copy) then
+          call var_list_set_original_pointer (global%var_list, var%name, &
+               model_vars)
+       end if
+       call cmd_var_set_value (var, global%var_list, &
+            verbose=.true., model_name=model_name)
+       if (var%is_copy) then
+          call model_parameters_update (global%model)
+          call var_list_synchronize (global%var_list, model_vars)
        end if
     else
-       call msg_error ("setting variable '" // char (var%name) &
-            // "': right-hand side is undefined")
+       call cmd_var_set_value (var, global%var_list, verbose=.true.)
     end if
   end subroutine cmd_var_execute
 
+  subroutine cmd_var_set_value (var, var_list, verbose, model_name)
+    type(cmd_var_t), intent(inout), target :: var
+    type(var_list_t), intent(inout), target :: var_list
+    logical, intent(in), optional :: verbose
+    type(string_t), intent(in), optional :: model_name
+    logical :: lval
+    integer :: ival
+    real(default) :: rval
+    complex(default) :: cval
+    type(pdg_array_t) :: aval
+    type(string_t) :: sval
+    logical :: is_known
+    select case (var%type)
+    case (V_LOG)
+       lval = eval_log (var%pn_value, var_list, is_known=is_known)
+       call var_list_set_log (var_list, var%name, &
+            lval, is_known, verbose=verbose, model_name=model_name)
+    case (V_INT)
+       ival = eval_int (var%pn_value, var_list, is_known=is_known)
+       call var_list_set_int (var_list, var%name, &
+            ival, is_known, verbose=verbose, model_name=model_name)
+    case (V_REAL)
+       rval = eval_real (var%pn_value, var_list, is_known=is_known)
+       call var_list_set_real (var_list, var%name, &
+            rval, is_known, verbose=verbose, model_name=model_name)
+    case (V_CMPLX)
+       cval = eval_cmplx (var%pn_value, var_list, is_known=is_known)
+       call var_list_set_cmplx (var_list, var%name, &
+            cval, is_known, verbose=verbose, model_name=model_name)
+    case (V_PDG)
+       aval = eval_pdg_array (var%pn_value, var_list, is_known=is_known)
+       call var_list_set_pdg_array (var_list, var%name, &
+            aval, is_known, verbose=verbose, model_name=model_name)
+    case (V_STR)
+       sval = eval_string (var%pn_value, var_list, is_known=is_known)
+       call var_list_set_string (var_list, var%name, &
+            sval, is_known, verbose=verbose, model_name=model_name)
+    end select
+  end subroutine cmd_var_set_value
+  
   subroutine cmd_slha_final (slha)
     type(cmd_slha_t), intent(inout) :: slha
     if (associated (slha%options)) then
@@ -1784,27 +1601,6 @@ contains
        deallocate (slha%options)
     end if
   end subroutine cmd_slha_final
-
-  subroutine cmd_slha_write (slha, unit, indent)
-    type(cmd_slha_t), intent(in) :: slha
-    integer, intent(in), optional :: unit, indent
-    integer :: u
-    u = output_unit (unit);  if (u < 0)  return
-    call write_indent (u, indent)
-    if (slha%write) then
-       write (u, "(A)", advance="no")  "write_"
-    else
-       write (u, "(A)", advance="no")  "read_"
-    end if
-    write (u, "(A)", advance="no")  "slha"
-    write (u, "(1x,A)")  "(" // char (slha%file) // ")"
-    if (associated (slha%options)) then
-       write (u, "(1x,'{')")
-       call command_list_write (slha%options, unit, indent)
-       call write_indent (u, indent)
-       write (u, "(1x,'}')")
-    end if
-  end subroutine cmd_slha_write
 
   subroutine cmd_slha_compile (slha, pn, global)
     type(cmd_slha_t), pointer :: slha
@@ -1831,6 +1627,7 @@ contains
        call parse_node_mismatch ("read_slha|write_slha",  pn)
     end select
     slha%file = parse_node_get_string (pn_file)
+    call rt_data_local_reset (slha%local)
   end subroutine cmd_slha_compile
 
   subroutine cmd_slha_execute (slha, global)
@@ -1862,107 +1659,11 @@ contains
     call rt_data_restore (global, slha%local, keep_model_vars = .true.)
   end subroutine cmd_slha_execute
 
-  subroutine cmd_printd_final (printd)
-    type(cmd_printd_t), intent(inout) :: printd
-    call eval_tree_final (printd%sexpr)
-    if (associated (printd%options)) then
-       call command_list_final (printd%options)
-       deallocate (printd%options)
-    end if
-  end subroutine cmd_printd_final
-
-  subroutine cmd_printd_compile (printd, pn, global)
-    type(cmd_printd_t), pointer :: printd
-    type(parse_node_t), intent(in), target :: pn
-    type(rt_data_t), intent(in), target :: global
-    type(parse_node_t), pointer :: pn_cmd, pn_arg, pn_opt
-    type(parse_node_t), pointer :: pn_sexpr, pn_sprintd
-    pn_cmd => parse_node_get_sub_ptr (pn)
-    pn_opt => parse_node_get_next_ptr (pn_cmd)
-    pn_arg => parse_node_get_sub_ptr (pn_cmd)
-    allocate (printd)
-    call rt_data_local_init (printd%local, global)
-    if (associated (pn_opt)) then
-       allocate (printd%options)
-       call command_list_compile (printd%options, pn_opt, printd%local)
-    end if
-    call parse_node_create_branch (pn_sexpr, &
-         syntax_get_rule_ptr (syntax_cmd_list, var_str ("sexpr")))
-    call parse_node_create_branch (pn_sprintd, &
-         syntax_get_rule_ptr (syntax_cmd_list, var_str ("sprintd_fun")))
-    call parse_node_append_sub (pn_sexpr, pn_sprintd)
-    call parse_node_append_sub (pn_sprintd, pn_arg)
-    call eval_tree_init_sexpr (printd%sexpr, pn_sexpr, printd%local%var_list)
-    call parse_node_final (pn_sprintd, recursive = .false.)
-    call parse_node_final (pn_sexpr, recursive = .false.)
-  end subroutine cmd_printd_compile
-
-  subroutine cmd_printd_execute (printd, global)
-    type(cmd_printd_t), intent(inout) :: printd
-    type(rt_data_t), intent(inout), target :: global
-    call rt_data_link (printd%local, global)
-    if (associated (printd%options)) then
-       call command_list_execute (printd%options, printd%local)
-    end if
-    call eval_tree_evaluate (printd%sexpr)
-    call msg_result (char (eval_tree_get_string (printd%sexpr)))
-    call rt_data_restore (global, printd%local)
-  end subroutine cmd_printd_execute
-
-  subroutine cmd_printf_final (printf)
-    type(cmd_printf_t), intent(inout) :: printf
-    call eval_tree_final (printf%sexpr)
-    if (associated (printf%options)) then
-       call command_list_final (printf%options)
-       deallocate (printf%options)
-    end if
-  end subroutine cmd_printf_final
-
-  subroutine cmd_printf_compile (printf, pn, global)
-    type(cmd_printf_t), pointer :: printf
-    type(parse_node_t), intent(in), target :: pn
-    type(rt_data_t), intent(in), target :: global
-    type(parse_node_t), pointer :: pn_cmd, pn_clause, pn_opt
-    type(parse_node_t), pointer :: pn_sexpr, pn_sprintf
-    pn_cmd => parse_node_get_sub_ptr (pn)
-    pn_opt => parse_node_get_next_ptr (pn_cmd)
-    pn_clause => parse_node_get_sub_ptr (pn_cmd)
-    allocate (printf)
-    call rt_data_local_init (printf%local, global)
-    if (associated (pn_opt)) then
-       allocate (printf%options)
-       call command_list_compile (printf%options, pn_opt, printf%local)
-    end if
-    call parse_node_create_branch (pn_sexpr, &
-         syntax_get_rule_ptr (syntax_cmd_list, var_str ("sexpr")))
-    call parse_node_create_branch (pn_sprintf, &
-         syntax_get_rule_ptr (syntax_cmd_list, var_str ("sprintf_fun")))
-    call parse_node_append_sub (pn_sexpr, pn_sprintf)
-    call parse_node_append_sub (pn_sprintf, pn_clause)
-    call eval_tree_init_sexpr (printf%sexpr, pn_sexpr, printf%local%var_list)
-    call parse_node_final (pn_sprintf, recursive = .false.)
-    call parse_node_final (pn_sexpr, recursive = .false.)
-  end subroutine cmd_printf_compile
-
-  subroutine cmd_printf_execute (printf, global)
-    type(cmd_printf_t), intent(inout) :: printf
-    type(rt_data_t), intent(inout), target :: global
-    call rt_data_link (printf%local, global)
-    if (associated (printf%options)) then
-       call command_list_execute (printf%options, printf%local)
-    end if
-    call eval_tree_evaluate (printf%sexpr)
-    call msg_result (char (eval_tree_get_string (printf%sexpr)))
-    call rt_data_restore (global, printf%local)
-  end subroutine cmd_printf_execute
-
   subroutine cmd_show_final (show)
     type(cmd_show_t), intent(inout) :: show
     integer :: i
-    if (allocated (show%expr)) then
-       do i = 1, size (show%expr)
-          call eval_tree_final (show%expr(i))
-       end do
+    if (allocated (show%pn_expr)) then
+       deallocate (show%pn_expr)
     end if
     if (allocated (show%value)) then
        do i = 1, size (show%value)
@@ -1982,7 +1683,9 @@ contains
     allocate (show)
     if (associated (pn_arg)) then
        n_args = parse_node_get_n_sub (pn_arg)
-       allocate (show%name (n_args), show%expr (n_args), show%value (n_args))
+       allocate (show%name (n_args))
+       allocate (show%pn_expr (n_args))
+       allocate (show%value (n_args))
        pn_var => parse_node_get_sub_ptr (pn_arg)
        i = 0
        do while (associated (pn_var))
@@ -2027,29 +1730,14 @@ contains
                       show%name(i) = "L " // parse_node_get_string (pn_name)
                    end select
                 case ("lexpr")
-                   show%name(i) = "<expr>"
-                   call eval_tree_init_lexpr &
-                        (show%expr(i), pn_name, global%var_list)
-                   call var_entry_init_log_ptr (show%value(i), &
-                        var_str ("logical value"), &
-                        eval_tree_get_log_ptr (show%expr(i)), &
-                        eval_tree_result_is_known_ptr (show%expr(i)))
+                   show%name(i) = "<lexpr>"
+                   show%pn_expr(i)%ptr => pn_name
                 case ("cexpr")
-                   show%name(i) = "<expr>"
-                   call eval_tree_init_cexpr &
-                        (show%expr(i), pn_name, global%var_list)
-                   call var_entry_init_pdg_array_ptr (show%value(i), &
-                        var_str ("PDG-array value"), &
-                        eval_tree_get_pdg_array_ptr (show%expr(i)), &
-                        eval_tree_result_is_known_ptr (show%expr(i)))
+                   show%name(i) = "<cexpr>"
+                   show%pn_expr(i)%ptr => pn_name
                 case ("sexpr")
-                   show%name(i) = "<expr>"
-                   call eval_tree_init_sexpr &
-                        (show%expr(i), pn_name, global%var_list)
-                   call var_entry_init_string_ptr (show%value(i), &
-                        var_str ("string value"), &
-                        eval_tree_get_string_ptr (show%expr(i)), &
-                        eval_tree_result_is_known_ptr (show%expr(i)))
+                   show%name(i) = "<sexpr>"
+                   show%pn_expr(i)%ptr => pn_name
                 case default
                    call parse_node_mismatch &
                         ("variable|expr|lexpr|cexpr|sexpr",  pn_name)
@@ -2065,25 +1753,7 @@ contains
                    show%name(i) = parse_node_get_string (pn_name)
                 case ("expr")
                    show%name(i) = "<expr>"
-                   call eval_tree_init_expr &
-                        (show%expr(i), pn_name, global%var_list)
-                   select case (eval_tree_get_result_type (show%expr(i)))
-                   case (V_INT)
-                      call var_entry_init_int_ptr (show%value(i), &
-                           var_str ("integer value"), &
-                           eval_tree_get_int_ptr (show%expr(i)), &
-                           eval_tree_result_is_known_ptr (show%expr(i)))
-                   case (V_REAL)
-                      call var_entry_init_real_ptr (show%value(i), &
-                           var_str ("real value"), &
-                           eval_tree_get_real_ptr (show%expr(i)), &
-                           eval_tree_result_is_known_ptr (show%expr(i)))
-                   case (V_CMPLX)
-                      call var_entry_init_cmplx_ptr (show%value(i), &
-                           var_str ("complex value"), &
-                           eval_tree_get_cmplx_ptr (show%expr(i)), &
-                           eval_tree_result_is_known_ptr (show%expr(i)))
-                   end select
+                   show%pn_expr(i)%ptr => pn_name
                 case default
                    call parse_node_mismatch &
                         ("variable|expr",  pn_name)
@@ -2112,6 +1782,14 @@ contains
     type(rt_data_t), intent(in), target :: global
     type(string_t) :: name
     type(process_library_t), pointer :: prc_lib
+    logical :: lval
+    integer :: ival
+    real(default) :: rval
+    complex(default) :: cval
+    type(pdg_array_t) :: aval
+    type(string_t) :: sval
+    logical :: is_known
+    integer :: result_type
     integer :: i, u
     u = logfile_unit ()
     if (size (show%name) == 0) then
@@ -2248,8 +1926,72 @@ contains
              call var_list_write (global%var_list, prefix=char(show%name(i)))
              call var_list_write (global%var_list, prefix=char(show%name(i)), &
                   unit=u)
+          case ("<lexpr>")
+             lval = eval_log (show%pn_expr(i)%ptr, global%var_list, &
+                  is_known=is_known)
+             if (is_known) then
+                call var_entry_init_log (show%value(i), &
+                     var_str ("logical value"), lval)
+             else
+                call var_entry_init_log (show%value(i), &
+                     var_str ("logical value"))
+             end if
+             call var_entry_write (show%value(i))
+             call var_entry_write (show%value(i), unit=u)
           case ("<expr>")
-             call eval_tree_evaluate (show%expr(i))
+             call eval_numeric (show%pn_expr(i)%ptr, global%var_list, &
+                  ival=ival, rval=rval, cval=cval, &
+                  is_known=is_known, result_type=result_type)
+             select case (result_type)
+             case (V_INT)
+                if (is_known) then
+                   call var_entry_init_int (show%value(i), &
+                        var_str ("integer value"), ival)
+                else
+                   call var_entry_init_int (show%value(i), &
+                        var_str ("integer value"))
+                end if
+             case (V_REAL)
+                if (is_known) then
+                   call var_entry_init_real (show%value(i), &
+                        var_str ("real value"), rval)
+                else
+                   call var_entry_init_real (show%value(i), &
+                        var_str ("real value"))
+                end if
+             case (V_CMPLX)
+                if (is_known) then
+                   call var_entry_init_cmplx (show%value(i), &
+                        var_str ("complex value"), cval)
+                else
+                   call var_entry_init_cmplx (show%value(i), &
+                        var_str ("complex value"))
+                end if
+             end select
+             call var_entry_write (show%value(i))
+             call var_entry_write (show%value(i), unit=u)
+          case ("<cexpr>")
+             aval = eval_pdg_array (show%pn_expr(i)%ptr, global%var_list, &
+                  is_known=is_known)
+             if (is_known) then
+                call var_entry_init_pdg_array (show%value(i), &
+                     var_str ("alias value"), aval)
+             else
+                call var_entry_init_pdg_array (show%value(i), &
+                     var_str ("alias value"))
+             end if
+             call var_entry_write (show%value(i))
+             call var_entry_write (show%value(i), unit=u)
+          case ("<sexpr>")
+             sval = eval_string (show%pn_expr(i)%ptr, global%var_list, &
+                  is_known=is_known)
+             if (is_known) then
+                call var_entry_init_string (show%value(i), &
+                     var_str ("string value"), sval)
+             else
+                call var_entry_init_string (show%value(i), &
+                     var_str ("string value"))
+             end if
              call var_entry_write (show%value(i))
              call var_entry_write (show%value(i), unit=u)
           case default
@@ -2290,7 +2032,6 @@ contains
 
   subroutine cmd_expect_final (expect)
     type(cmd_expect_t), intent(inout) :: expect
-    call eval_tree_final (expect%lexpr)
     if (associated (expect%options)) then
        call command_list_final (expect%options)
        deallocate (expect%options)
@@ -2301,7 +2042,7 @@ contains
     type(cmd_expect_t), pointer :: expect
     type(parse_node_t), intent(in), target :: pn
     type(rt_data_t), intent(in), target :: global
-    type(parse_node_t), pointer :: pn_arg, pn_expr, pn_opt
+    type(parse_node_t), pointer :: pn_arg, pn_opt
     pn_arg => parse_node_get_sub_ptr (pn, 2)
     pn_opt => parse_node_get_next_ptr (pn_arg)
     allocate (expect)
@@ -2310,30 +2051,26 @@ contains
        allocate (expect%options)
        call command_list_compile (expect%options, pn_opt, expect%local)
     end if
-    pn_expr => parse_node_get_sub_ptr (pn_arg)
-    call eval_tree_init_lexpr (expect%lexpr, pn_expr, expect%local%var_list)
+    expect%pn_lexpr => parse_node_get_sub_ptr (pn_arg)
+    call rt_data_local_reset (expect%local)
   end subroutine cmd_expect_compile
 
   subroutine cmd_expect_execute (expect, global)
     type(cmd_expect_t), intent(inout) :: expect
     type(rt_data_t), intent(inout), target :: global
-    logical :: success
+    logical :: success, is_known
     integer :: u
     u = logfile_unit ()
     call rt_data_link (expect%local, global)
     if (associated (expect%options)) then
        call command_list_execute (expect%options, expect%local)
     end if
-    call eval_tree_evaluate (expect%lexpr)
-    if (eval_tree_result_is_known (expect%lexpr)) then
-       success = eval_tree_get_log (expect%lexpr)
+    success = &
+         eval_log (expect%pn_lexpr, expect%local%var_list, is_known=is_known)
+    if (is_known) then
        if (success) then
           call msg_message ("expect: success")
        else
-          if (u >= 0) then
-             call eval_tree_write (expect%lexpr, unit=u)
-             flush (u)
-          end if
           call msg_error ("expect: failure")
        end if
     else
@@ -2344,130 +2081,16 @@ contains
     call rt_data_restore (global, expect%local)
   end subroutine cmd_expect_execute
 
-  subroutine cmd_echo_final (echo)
-    type(cmd_echo_t), intent(inout) :: echo
-    integer :: i
-    if (allocated (echo%expr)) then
-       do i = 1, size (echo%expr)
-          call eval_tree_final (echo%expr(i))
-       end do
-    end if
-  end subroutine cmd_echo_final
-
-  subroutine cmd_echo_compile (echo, pn, global)
-    type(cmd_echo_t), pointer :: echo
-    type(parse_node_t), intent(in), target :: pn
-    type(rt_data_t), intent(in), target :: global
-    type(parse_node_t), pointer :: pn_arg, pn_sexpr
-    integer :: i, n_args
-    pn_arg => parse_node_get_sub_ptr (pn, 2)
-    allocate (echo)
-    if (associated (pn_arg)) then
-       n_args = parse_node_get_n_sub (pn_arg)
-       allocate (echo%expr (n_args))
-       pn_sexpr => parse_node_get_sub_ptr (pn_arg)
-       i = 0
-       do while (associated (pn_sexpr))
-          i = i + 1
-          call eval_tree_init_sexpr &
-               (echo%expr(i), pn_sexpr, global%var_list)
-          pn_sexpr => parse_node_get_next_ptr (pn_sexpr)
-       end do
-    else
-       allocate (echo%expr (0))
-    end if
-  end subroutine cmd_echo_compile
-
-  subroutine cmd_echo_execute (echo, global)
-    type(cmd_echo_t), intent(inout) :: echo
-    type(rt_data_t), intent(in), target :: global
-    type(string_t) :: string
-    integer :: i, u_out, u_log
-    call msg_warning &
-         ("The 'echo' command is deprecated.  Please use 'print/printf' instead.")
-    u_out = output_unit ()
-    u_log = logfile_unit (u_out)
-    do i = 1, size (echo%expr)
-       call eval_tree_evaluate (echo%expr(i))
-       if (eval_tree_result_is_known (echo%expr(i))) then
-          string = eval_tree_get_string (echo%expr(i))
-          write (u_out, "(A)")  char (string)
-          if (u_log >= 0)  write (u_log, "(A)")  char (string)
-       end if
-    end do
-    if (u_log >= 0) flush (u_log)
-  end subroutine cmd_echo_execute
-
   subroutine cmd_beams_final (beams)
     type(cmd_beams_t), intent(inout) :: beams
-    integer :: i
-    do i = 1, beams%n_in
-       call eval_tree_final (beams%pdg(i))
-    end do
+    if (allocated (beams%pn_pdg)) then
+       deallocate (beams%pn_pdg)
+    end if
     if (associated (beams%options)) then
        call command_list_final (beams%options)
        deallocate (beams%options)
     end if
   end subroutine cmd_beams_final
-
-  subroutine cmd_beams_write (beams, unit, indent)
-    type(cmd_beams_t), intent(in) :: beams
-    integer, intent(in), optional :: unit, indent
-    integer :: u, i, ind
-    u = output_unit (unit);  if (u < 0)  return
-    call write_indent (u, indent)
-    write (u, "(1x,A)", advance="no")  "beams (" 
-    do i = 1, beams%n_in
-       if (i /= 1)  write (u, "(', ')", advance="no")
-       write (u, "(A)", advance="no")  char (beams%prt(i))
-    end do
-    write (u, "(A)", advance="no")  ")" 
-    if (associated (beams%options)) then
-       write (u, "(1x,'{')")
-       call command_list_write (beams%options, unit, indent)
-       call write_indent (u, indent)
-       write (u, "(1x,'}')")
-    end if
-    do i = 1, beams%n_strfun
-       ind = 0;  if (present (indent))  ind = indent
-       call strfun_pair_write (beams%strfun_pair(i), unit, indent=ind+3)
-    end do
-  end subroutine cmd_beams_write
-
-  subroutine strfun_pair_write (strfun_pair, unit, indent)
-    type(strfun_pair_t), intent(in) :: strfun_pair
-    integer, intent(in), optional :: unit, indent
-    integer :: u
-    u = output_unit (unit);  if (u < 0)  return
-    call write_indent (u, indent)
-    write (u, "(1x,A)", advance="no")  "=>"
-    call strfun_def_write (strfun_pair%def(1), unit, indent)
-    if (strfun_pair%n == 2) then
-       write (u, "(1x,A)", advance="no")  ","
-       call strfun_def_write (strfun_pair%def(2), unit, indent)
-    end if
-    write (u, *)
-  end subroutine strfun_pair_write
-
-  subroutine strfun_def_write (strfun_def, unit, indent)
-    type(strfun_def_t), intent(in) :: strfun_def
-    integer, intent(in), optional :: unit, indent
-    integer :: u
-    u = output_unit (unit);  if (u < 0)  return
-    select case (strfun_def%type)
-    case (STRF_NONE);    write (u, "(1x,A)")  "none"
-    case (STRF_LHAPDF);  write (u, "(1x,A)")  "lhapdf"
-    case (STRF_ISR);     write (u, "(1x,A)")  "isr"
-    case (STRF_EPA);     write (u, "(1x,A)")  "epa"
-    case (STRF_EWA);     write (u, "(1x,A)")  "ewa"    
-    end select
-    if (associated (strfun_def%options)) then
-       write (u, "(1x,'{')")
-       call command_list_write (strfun_def%options, unit, indent)
-       call write_indent (u, indent)
-       write (u, "(1x,'}')")
-    end if
-  end subroutine strfun_def_write
 
   subroutine cmd_beams_compile (beams, pn, global)
     type(cmd_beams_t), pointer :: beams
@@ -2499,11 +2122,11 @@ contains
           pn_strfun_seq => null ()
        end if
     end select
-    allocate (beams%pdg (beams%n_in))
+    allocate (beams%pn_pdg (beams%n_in))
     allocate (beams%prt (beams%n_in))
     pn_codes => parse_node_get_sub_ptr (pn_beam_list)
     do i = 1, beams%n_in
-       call eval_tree_init_cexpr (beams%pdg(i), pn_codes, global%var_list)
+       beams%pn_pdg(i)%ptr => pn_codes
        beams%prt(i) = "?"
        pn_codes => parse_node_get_next_ptr (pn_codes)
     end do
@@ -2517,6 +2140,7 @@ contains
           pn_strfun_seq => parse_node_get_next_ptr (pn_strfun_seq)
        end do
     end if
+    call rt_data_local_reset (beams%local)
   end subroutine cmd_beams_compile
 
   subroutine strfun_pair_compile (strfun_pair, pn_strfun_pair, global)
@@ -2551,6 +2175,10 @@ contains
        strfun_def%type = STRF_EPA
     case ("ewa")
        strfun_def%type = STRF_EWA
+    case ("circe1")
+       strfun_def%type = STRF_CIRCE1       
+    case ("circe2")
+       strfun_def%type = STRF_CIRCE2
     end select
     call rt_data_local_init (strfun_def%local, global)
     if (associated (pn_opt)) then
@@ -2558,6 +2186,7 @@ contains
        call command_list_compile &
             (strfun_def%options, pn_opt, strfun_def%local)
     end if
+    call rt_data_local_reset (strfun_def%local)
   end subroutine strfun_def_compile
 
   subroutine cmd_beams_execute (beams, global)
@@ -2578,8 +2207,7 @@ contains
     end if
     polarized = .true.
     do i = 1, beams%n_in
-       call eval_tree_evaluate (beams%pdg(i))
-       aval(i) = eval_tree_get_pdg_array (beams%pdg(i))
+       aval(i) = eval_pdg_array (beams%pn_pdg(i)%ptr, beams%local%var_list)
        call flavor_init (flv_tmp, aval(i), beams%local%model)
        select case (size (flv_tmp))
        case (1);  flv(i) = flv_tmp(1)
@@ -2690,18 +2318,27 @@ contains
     logical, dimension(2), intent(in) :: affects_beam
     type(rt_data_t), intent(inout), target :: global
     type(sf_data_t), pointer :: sf_data
-    type(string_t) :: lhapdf_file
+    type(string_t) :: lhapdf_file, circe2_file, circe2_design
     integer :: lhapdf_member, lhapdf_photon_scheme
     real(default) :: isr_alpha, isr_q_max, isr_mass
     integer :: isr_order
     real(default) :: epa_alpha, epa_x_min, epa_q_min, epa_e_max, epa_mass
     real(default) :: ewa_x_min, ewa_q_min, ewa_pt_max, ewa_mass, ewa_sqrts    
     logical :: ewa_keep_momentum, ewa_keep_energy
+    real(default) :: circe1_sqrts, circe2_sqrts
+    logical, dimension(2) :: circe1_photon, circe2_photon
+    logical :: circe1_generate, circe1_map, circe2_generate, circe2_map
+    integer :: circe1_ver, circe1_rev, circe1_acc, circe1_chat, &
+               circe2_ver              
     call rt_data_link (strfun_def%local, global)
     if (associated (strfun_def%options)) then
        call command_list_execute (strfun_def%options, strfun_def%local)
     end if
     if (strfun_def%type /= STRF_NONE) then
+       select case (strfun_def%type)
+       case (STRF_CIRCE1, STRF_CIRCE2)
+          strfun_def%n_parameters = 2
+       end select
        call sf_list_append (global%sf_list, &
             strfun_def%type, affects_beam, strfun_def%n_parameters, sf_data)
        select case (strfun_def%type)
@@ -2785,125 +2422,140 @@ contains
                var_str ("ewa_mass"))
           ewa_sqrts = var_list_get_rval (strfun_def%local%var_list, &
                var_str ("sqrts"))               
-     ewa_keep_momentum = var_list_get_lval (strfun_def%local%var_list, &
-               var_str ("?ewa_keep_momentum"))
-     ewa_keep_energy = var_list_get_lval (strfun_def%local%var_list, &
-               var_str ("?ewa_keep_energy"))          
-     if (ewa_keep_momentum .and. ewa_keep_energy) &
-        call msg_fatal (" EWA cannot violate both energy " &
-             // "and momentum conservation.") 
-          if (ewa_mass /= 0) then     
-             call sf_data_init_ewa (sf_data, &
-                  global%model, global%beam_data%flv, &
-                  ewa_x_min, ewa_q_min, ewa_pt_max, ewa_sqrts, &
-        ewa_keep_momentum, ewa_keep_energy, ewa_mass)
-          else         
-             call sf_data_init_ewa (sf_data, &
-                  global%model, global%beam_data%flv, &
-                  ewa_x_min, ewa_q_min, ewa_pt_max, ewa_sqrts, &
-        ewa_keep_momentum, ewa_keep_energy)          
-          end if        
+          ewa_keep_momentum = var_list_get_lval (strfun_def%local%var_list, &
+                    var_str ("?ewa_keep_momentum"))
+          ewa_keep_energy = var_list_get_lval (strfun_def%local%var_list, &
+                    var_str ("?ewa_keep_energy"))          
+          if (ewa_keep_momentum .and. ewa_keep_energy) &
+             call msg_fatal (" EWA cannot violate both energy " &
+                  // "and momentum conservation.") 
+               if (ewa_mass /= 0) then     
+                  call sf_data_init_ewa (sf_data, &
+                       global%model, global%beam_data%flv, &
+                       ewa_x_min, ewa_q_min, ewa_pt_max, ewa_sqrts, &
+             ewa_keep_momentum, ewa_keep_energy, ewa_mass)
+               else         
+                  call sf_data_init_ewa (sf_data, &
+                       global%model, global%beam_data%flv, &
+                       ewa_x_min, ewa_q_min, ewa_pt_max, ewa_sqrts, &
+             ewa_keep_momentum, ewa_keep_energy)          
+           end if        
+       case (STRF_CIRCE1)
+          if (var_list_is_known (strfun_def%local%var_list, &
+               var_str ("circe1_sqrts"))) then
+             circe1_sqrts = var_list_get_rval (strfun_def%local%var_list, &
+                  var_str ("circe1_sqrts"))
+          else
+             circe1_sqrts = global%beam_data%sqrts
+          end if
+          circe1_photon(1) = var_list_get_lval (strfun_def%local%var_list, &
+               var_str ("?circe1_photon1"))
+          circe1_photon(2) = var_list_get_lval (strfun_def%local%var_list, &
+               var_str ("?circe1_photon2"))
+          circe1_generate = var_list_get_lval (strfun_def%local%var_list, &
+               var_str ("?circe1_generate"))
+          circe1_map = var_list_get_lval (strfun_def%local%var_list, &
+               var_str ("?circe1_map"))
+          circe1_ver = var_list_get_ival (strfun_def%local%var_list, &
+               var_str ("circe1_ver"))
+          circe1_rev = var_list_get_ival (strfun_def%local%var_list, &
+               var_str ("circe1_rev"))
+          circe1_acc = var_list_get_ival (strfun_def%local%var_list, &
+               var_str ("circe1_acc"))
+          circe1_chat = var_list_get_ival (strfun_def%local%var_list, &
+               var_str ("circe1_chat"))        
+          call sf_data_init_circe1 (sf_data, &
+               global%model, global%beam_data%flv, circe1_sqrts, circe1_photon, &
+               circe1_generate, global%rng, circe1_map, &
+               circe1_ver, circe1_rev, circe1_acc, circe1_chat)
+       case (STRF_CIRCE2)
+          if (var_list_is_known (strfun_def%local%var_list, &
+               var_str ("circe2_sqrts"))) then
+             circe2_sqrts = var_list_get_rval (strfun_def%local%var_list, &
+                  var_str ("circe2_sqrts"))
+          else
+             circe2_sqrts = global%beam_data%sqrts
+          end if       
+          circe2_photon(1) = var_list_get_lval (strfun_def%local%var_list, &
+               var_str ("?circe2_photon1"))
+          circe2_photon(2) = var_list_get_lval (strfun_def%local%var_list, &
+               var_str ("?circe2_photon2"))
+          circe2_generate = var_list_get_lval (strfun_def%local%var_list, &
+               var_str ("?circe2_generate"))
+          circe2_map = var_list_get_lval (strfun_def%local%var_list, &
+               var_str ("?circe2_map"))      
+          circe2_ver = var_list_get_ival (strfun_def%local%var_list, &
+               var_str ("circe2_ver"))         
+          circe2_file = var_list_get_sval (strfun_def%local%var_list, &
+               var_str ("$circe2_file"))  ! $
+          circe2_file = global%os_data%whizard_circe2path // "/" // circe2_file 
+          circe2_design = var_list_get_sval (strfun_def%local%var_list, &
+               var_str ("$circe2_design"))  ! $        
+          if (any ((abs (flavor_get_pdg (global%beam_data%flv)) /= ELECTRON) .and. &
+              (abs (flavor_get_pdg (global%beam_data%flv)) /= PHOTON))) &
+             call msg_fatal ("CIRCE2 for beamstrahlung only applicable for " &
+                // "incoming electrons/positrons and photons.")
+          call sf_data_init_circe2 (sf_data, &
+               global%model, global%beam_data%flv, circe2_sqrts, circe2_photon, &
+               circe2_generate, global%rng, circe2_map, circe2_ver, &
+               circe2_file, circe2_design)
        end select
     end if
     call rt_data_restore (global, strfun_def%local)
   end subroutine strfun_def_register
 
-  subroutine cmd_beam_polarization_write (bp, unit, indent)
-    type(cmd_beam_polarization_t), intent(in) :: bp
-    integer, optional, intent(in) :: unit, indent
-    call msg_message ("cmd_beam_polarization_write: stub")
-  end subroutine cmd_beam_polarization_write
-
-
-  subroutine bp_circ_data_final (d)
+  elemental subroutine bp_circ_data_final (d)
     type(bp_circ_data_t), intent(inout) :: d
-    call eval_tree_final (d%fraction_expr)
   end subroutine bp_circ_data_final
 
-  subroutine bp_trans_data_final (d)
+  elemental subroutine bp_trans_data_final (d)
     type(bp_trans_data_t), intent(inout) :: d
-    call eval_tree_final (d%fraction_expr)
-    call eval_tree_final (d%phi_expr)
   end subroutine bp_trans_data_final
 
-  subroutine bp_long_data_final (d)
+  elemental subroutine bp_long_data_final (d)
     type(bp_long_data_t), intent(inout) :: d
-    call eval_tree_final (d%fraction_expr)
   end subroutine bp_long_data_final
 
-  subroutine bp_axis_data_final (d)
+  elemental subroutine bp_axis_data_final (d)
     type(bp_axis_data_t), intent(inout) :: d
-    call eval_tree_final (d%fraction_expr)
-    call eval_tree_final (d%theta_expr)
-    call eval_tree_final (d%phi_expr)
   end subroutine bp_axis_data_final
 
-  subroutine bp_diag_data_final (d)
+  elemental subroutine bp_diag_data_final (d)
     type(bp_diag_data_t), intent(inout) :: d
-    integer :: i
-    if (allocated (d%hels_expr)) then
-       if (size (d%hels_expr) > 0) then
-          do i = 1, size (d%hels_expr)
-             call eval_tree_final (d%hels_expr(i))
-          end do
-       end if
-       deallocate (d%hels_expr)
-    end if
-    if (allocated (d%fractions_expr)) then
-       if (size (d%fractions_expr) > 0) then
-          do i = 1, size (d%fractions_expr)
-             call eval_tree_final (d%fractions_expr(i))
-          end do
-       end if
-       deallocate (d%fractions_expr)
-    end if
-    if (allocated (d%hels)) deallocate (d%hels)
-    if (allocated (d%fractions)) deallocate (d%fractions)
+    deallocate (d%pn_hel)
+    deallocate (d%pn_fraction)
+    if (allocated (d%hel)) deallocate (d%hel)
+    if (allocated (d%fraction)) deallocate (d%fraction)
   end subroutine bp_diag_data_final
 
-  subroutine bp_density_data_final (d)
+  elemental subroutine bp_density_data_final (d)
     type(bp_density_data_t), intent(inout) :: d
-    call eval_tree_final (d%d_expr)
-    call eval_tree_final (d%nd_expr)
   end subroutine bp_density_data_final
 
   subroutine cmd_beam_polarization_final (bp)
     type(cmd_beam_polarization_t), intent(inout) :: bp
-    integer :: i
     if (associated (bp%circ_data)) then
-       do i = 1, size (bp%circ_data)
-          call bp_circ_data_final (bp%circ_data(i))
-       end do
+       call bp_circ_data_final (bp%circ_data)
        deallocate (bp%circ_data)
     end if
     if (associated (bp%trans_data)) then
-       do i = 1, size (bp%trans_data)
-          call bp_trans_data_final (bp%trans_data(i))
-       end do
+       call bp_trans_data_final (bp%trans_data)
        deallocate (bp%trans_data)
     end if
     if (associated (bp%long_data)) then
-       do i = 1, size (bp%long_data)
-          call bp_long_data_final (bp%long_data(i))
-       end do
+       call bp_long_data_final (bp%long_data)
        deallocate (bp%long_data)
     end if
     if (associated (bp%axis_data)) then
-       do i = 1, size (bp%axis_data)
-          call bp_axis_data_final (bp%axis_data(i))
-       end do
+       call bp_axis_data_final (bp%axis_data)
        deallocate (bp%axis_data)
     end if
     if (associated (bp%diag_data)) then
-       do i = 1, size (bp%diag_data)
-          call bp_diag_data_final (bp%diag_data(i))
-       end do
+       call bp_diag_data_final (bp%diag_data)
        deallocate (bp%diag_data)
     end if
     if (associated (bp%density_data)) then
-       do i = 1, size (bp%density_data)
-          call bp_density_data_final (bp%density_data(i))
-       end do
+       call bp_density_data_final (bp%density_data)
        deallocate (bp%density_data)
     end if
     if (associated (bp%options)) then
@@ -2950,9 +2602,8 @@ contains
              end if
              bp%type(i) = BP_CIRC
              if (.not. associated (bp%circ_data)) &
-                allocate (bp%circ_data(2))
-             call eval_tree_init_expr (bp%circ_data(i)%fraction_expr, &
-                parse_node_get_sub_ptr (pn_args, 1), bp%local%var_list)
+                  allocate (bp%circ_data(2))
+             bp%circ_data(i)%pn_fraction => parse_node_get_sub_ptr (pn_args, 1)
           case ("bp_trans")
              if (parse_node_get_n_sub (pn_args) /= 2) then
                 call cmd_beam_polarization_final (bp)
@@ -2962,11 +2613,9 @@ contains
              end if
              bp%type(i) = BP_TRANS
              if (.not. associated (bp%trans_data)) &
-                allocate (bp%trans_data(2))
-             call eval_tree_init_expr (bp%trans_data(i)%fraction_expr, &
-                parse_node_get_sub_ptr (pn_args, 1), bp%local%var_list)
-             call eval_tree_init_expr (bp%trans_data(i)%phi_expr, &
-                parse_node_get_sub_ptr (pn_args, 2), bp%local%var_list)
+                  allocate (bp%trans_data(2))
+             bp%trans_data(i)%pn_fraction => parse_node_get_sub_ptr (pn_args, 1)
+             bp%trans_data(i)%pn_phi => parse_node_get_sub_ptr (pn_args, 2)
           case ("bp_axis")
              if (parse_node_get_n_sub (pn_args) /= 3) then
                 call cmd_beam_polarization_final (bp)
@@ -2976,13 +2625,10 @@ contains
              end if
              bp%type(i) = BP_AXIS
              if (.not. associated (bp%axis_data)) &
-                allocate (bp%axis_data(2))
-             call eval_tree_init_expr (bp%axis_data(i)%fraction_expr, &
-                parse_node_get_sub_ptr (pn_args, 1), bp%local%var_list)
-             call eval_tree_init_expr (bp%axis_data(i)%theta_expr, &
-                parse_node_get_sub_ptr (pn_args, 2), bp%local%var_list)
-             call eval_tree_init_expr (bp%axis_data(i)%phi_expr, &
-                parse_node_get_sub_ptr (pn_args, 3), bp%local%var_list)
+                  allocate (bp%axis_data(2))
+             bp%axis_data(i)%pn_fraction => parse_node_get_sub_ptr (pn_args, 1)
+             bp%axis_data(i)%pn_theta => parse_node_get_sub_ptr (pn_args, 2)
+             bp%axis_data(i)%pn_phi => parse_node_get_sub_ptr (pn_args, 3)
           case ("bp_long")
              if (parse_node_get_n_sub (pn_args) /= 1) then
                 call cmd_beam_polarization_final (bp)
@@ -2992,9 +2638,8 @@ contains
              end if
              bp%type(i) = BP_LONG
              if (.not. associated (bp%long_data)) &
-                allocate (bp%long_data(2))
-             call eval_tree_init_expr (bp%long_data(i)%fraction_expr, &
-                parse_node_get_sub_ptr (pn_args, 1), bp%local%var_list)
+                  allocate (bp%long_data(2))
+             bp%long_data(i)%pn_fraction => parse_node_get_sub_ptr (pn_args, 1)
           case ("bp_dens")
              if (parse_node_get_n_sub (pn_args) /= 2) then
                 call cmd_beam_polarization_final (bp)
@@ -3004,28 +2649,25 @@ contains
              end if
              bp%type(i) = BP_DENSITY
              if (.not. associated (bp%density_data)) &
-                allocate (bp%density_data (2))
-             call eval_tree_init_expr (bp%density_data(i)%d_expr, &
-                parse_node_get_sub_ptr (pn_args, 1), bp%local%var_list)
-             call eval_tree_init_expr (bp%density_data(i)%nd_expr, &
-                parse_node_get_sub_ptr (pn_args, 2), bp%local%var_list)
+                  allocate (bp%density_data (2))
+             bp%density_data(i)%pn_d => parse_node_get_sub_ptr (pn_args, 1)
+             bp%density_data(i)%pn_nd => parse_node_get_sub_ptr (pn_args, 2)
           case ("bp_diag")
              bp%type(i) = BP_DIAG
              n = parse_node_get_n_sub (pn_args)
              if (.not. associated (bp%diag_data)) &
                 allocate (bp%diag_data(2))
-             allocate (bp%diag_data(i)%hels_expr(n))
-             allocate (bp%diag_data(i)%fractions_expr(n))
-             allocate (bp%diag_data(i)%hels(n))
-             allocate (bp%diag_data(i)%fractions(n))
+             allocate (bp%diag_data(i)%pn_hel (n))
+             allocate (bp%diag_data(i)%pn_fraction (n))
+             allocate (bp%diag_data(i)%hel (n))
+             allocate (bp%diag_data(i)%fraction (n))
              pn_entry => parse_node_get_sub_ptr (pn_args)
              n = 1
              do while (associated (pn_entry))
-                call eval_tree_init_expr (bp%diag_data(i)%hels_expr(n), &
-                   parse_node_get_sub_ptr (pn_entry, 1), bp%local%var_list)
-                call eval_tree_init_expr &
-                   (bp%diag_data(i)%fractions_expr(n), &
-                      parse_node_get_sub_ptr (pn_entry, 3), bp%local%var_list)
+                bp%diag_data(i)%pn_hel(n)%ptr &
+                     => parse_node_get_sub_ptr (pn_entry, 1)
+                bp%diag_data(i)%pn_fraction(n)%ptr &
+                     => parse_node_get_sub_ptr (pn_entry, 3)
                 pn_entry => parse_node_get_next_ptr (pn_entry)
                 n = n + 1
              end do
@@ -3035,7 +2677,8 @@ contains
        end select
        pn_list => parse_node_get_next_ptr (pn_list)
     end do
-  
+
+    call rt_data_local_reset (bp%local)
   end subroutine cmd_beam_polarization_compile
 
   subroutine cmd_beam_polarization_execute (bp, global)
@@ -3068,93 +2711,71 @@ contains
     end if
     do i = 1, bp%n
        select case (bp%type(i))
-          case (BP_NONE, BP_TRIVIAL)
-             if (bp%n == 2) then
-                call beam_polarization_init_none (bp%beam_polarization(i))
-             else
-                call beam_polarization_init_trivial (bp%beam_polarization(i))
+       case (BP_NONE, BP_TRIVIAL)
+          if (bp%n == 2) then
+             call beam_polarization_init_none (bp%beam_polarization(i))
+          else
+             call beam_polarization_init_trivial (bp%beam_polarization(i))
+          end if
+       case (BP_CIRC)
+          bp%circ_data(i)%fraction = &
+               eval_real (bp%circ_data(i)%pn_fraction, bp%local%var_list)
+          call beam_polarization_init_circ (bp%beam_polarization(i), &
+               bp%circ_data(i)%fraction)
+       case (BP_TRANS)
+          bp%trans_data(i)%fraction = &
+               eval_real (bp%trans_data(i)%pn_fraction, bp%local%var_list)
+          bp%trans_data(i)%phi = &
+               eval_real (bp%trans_data(i)%pn_phi, bp%local%var_list)
+          call beam_polarization_init_trans (bp%beam_polarization(i), &
+               bp%trans_data(i)%fraction, bp%trans_data(i)%phi)
+       case (BP_LONG)
+          bp%long_data(i)%fraction = &
+               eval_real (bp%long_data(i)%pn_fraction, bp%local%var_list)
+          call beam_polarization_init_long (bp%beam_polarization(i), &
+               bp%long_data(i)%fraction)
+       case (BP_AXIS)
+          bp%axis_data(i)%fraction = &
+               eval_real (bp%axis_data(i)%pn_fraction, bp%local%var_list)
+          bp%axis_data(i)%theta = &
+               eval_real (bp%axis_data(i)%pn_theta, bp%local%var_list)
+          bp%axis_data(i)%phi = &
+               eval_real (bp%axis_data(i)%pn_phi, bp%local%var_list)
+          call beam_polarization_init_axis (bp%beam_polarization(i), &
+               bp%axis_data(i)%fraction, bp%axis_data(i)%theta, &
+               bp%axis_data(i)%phi)
+       case (BP_DENSITY)
+          bp%density_data(i)%d = &
+               eval_real (bp%density_data(i)%pn_d, bp%local%var_list)
+          bp%density_data(i)%nd = &
+               eval_cmplx (bp%density_data(i)%pn_nd, bp%local%var_list)
+          call beam_polarization_init_density (bp%beam_polarization (i), &
+               bp%density_data(i)%d, bp%density_data(i)%nd)
+       case (BP_DIAG)
+          do j = 1, size (bp%diag_data(i)%hel)
+             bp%diag_data(i)%hel(j) = &
+                  eval_int (bp%diag_data(i)%pn_hel(j)%ptr, bp%local%var_list)
+             bp%diag_data(i)%fraction(j) = &
+                  eval_real (bp%diag_data(i)%pn_fraction(j)%ptr, &
+                  bp%local%var_list)
+             if (j > 1) then
+                do k = 1, j - 1 
+                   if (bp%diag_data(i)%hel(j) == bp%diag_data(i)%hel(k)) then
+                      call msg_error ( &
+                         "'diagonal_density (h1:f1 [, h2:f2, ...])': " &
+                         // "h" // int2char(j) // " and h" // int2char (k) &
+                         // " must not be equal")
+                      call rt_data_restore (global, bp%local)
+                      return
+                   end if
+                end do
              end if
-          case (BP_CIRC)
-             if (.not. evalreal ( &
-                bp%circ_data(i)%fraction, bp%circ_data(i)%fraction_expr, &
-                "'circular (fraction)': real expected for 'fraction'")) return
-             call beam_polarization_init_circ (bp%beam_polarization(i), &
-                bp%circ_data(i)%fraction)
-          case (BP_TRANS)
-             if (.not. evalreal ( &
-                bp%trans_data(i)%fraction, bp%trans_data(i)%fraction_expr, &
-                "'transverse (fraction, phi)': real expected for 'fraction'")) &
-               return
-             if (.not. evalreal ( &
-                bp%trans_data(i)%phi, bp%trans_data(i)%phi_expr, &
-                "'transverse (fraction, phi)': real expected for 'phi'")) return
-             call beam_polarization_init_trans (bp%beam_polarization(i), &
-                bp%trans_data(i)%fraction, bp%trans_data(i)%phi)
-          case (BP_LONG)
-             if (.not. evalreal ( &
-                bp%long_data(i)%fraction, bp%long_data(i)%fraction_expr, &
-                "'longitudinal (fraction)': real expected for 'fraction'")) return
-             call beam_polarization_init_long (bp%beam_polarization(i), &
-                bp%long_data(i)%fraction)
-          case (BP_AXIS)
-             if (.not. evalreal ( &
-                bp%axis_data(i)%fraction, bp%axis_data(i)%fraction_expr, &
-                "'axis (fraction, theta, phi)': real expected for 'fraction'")) &
-               return
-             if (.not. evalreal ( &
-                bp%axis_data(i)%theta, bp%axis_data(i)%theta_expr, &
-                "'axis (fraction, theta, phi)': real expected for 'theta'")) &
-               return
-             if (.not. evalreal ( &
-                bp%axis_data(i)%phi, bp%axis_data(i)%phi_expr, &
-                "'axis (fraction, theta, phi)': real expected for 'phi'")) return
-             call beam_polarization_init_axis (bp%beam_polarization(i), &
-                bp%axis_data(i)%fraction, bp%axis_data(i)%theta, &
-                bp%axis_data(i)%phi)
-          case (BP_DENSITY)
-             if (.not. evalreal ( &
-                bp%density_data(i)%d, bp%density_data(i)%d_expr, &
-                "'density_matrix (a, b): real expected for 'a'")) return
-             if (.not. evalcmplx ( &
-                bp%density_data(i)%nd, bp%density_data(i)%nd_expr, &
-                "'density_matrix (a, b): complex expected for 'b'")) return
-             call beam_polarization_init_density (bp%beam_polarization (i), &
-                bp%density_data(i)%d, bp%density_data(i)%nd)
-          case (BP_DIAG)
-             do j = 1, size (bp%diag_data(i)%hels)
-                if (.not. evalint ( &
-                      bp%diag_data(i)%hels(j), bp%diag_data(i)%hels_expr(j), &
-                      "'diagonal_density (h1:f1 [, h2:f2, ...])': " &
-                         // "helicities must be integer")) then
-                   call rt_data_restore (global, bp%local)
-                   return
-                end if
-                if (.not. evalreal ( &
-                      bp%diag_data(i)%fractions(j), &
-                      bp%diag_data(i)%fractions_expr(j), &
-                      "'diagonal_density (h1:f1 [, h2:f2, ...])': " &
-                         // "fractions must be real")) then
-                   call rt_data_restore (global, bp%local)
-                   return
-                end if
-                if (j > 1) then
-                   do k = 1, j - 1 
-                      if (bp%diag_data(i)%hels(j) == bp%diag_data(i)%hels(k)) then
-                         call msg_error ( &
-                            "'diagonal_density (h1:f1 [, h2:f2, ...])': " &
-                            // "h" // int2char(j) // " and h" // int2char (k) &
-                            // " must not be equal")
-                         call rt_data_restore (global, bp%local)
-                         return
-                      end if
-                   end do
-                end if
-             end do
-             call beam_polarization_init_diag (bp%beam_polarization(i), &
-                bp%diag_data(i)%hels, bp%diag_data(i)%fractions)
-          case default
-             call msg_bug ("cmd_beam_polarization_execute: " &
-                // "unknown polarization type")
+          end do
+          call beam_polarization_init_diag (bp%beam_polarization(i), &
+             bp%diag_data(i)%hel, bp%diag_data(i)%fraction)
+       case default
+          call msg_bug ("cmd_beam_polarization_execute: " &
+             // "unknown polarization type")
        end select
        if (global%environment /= CMD_BEAMS) then
           call msg_message &
@@ -3179,73 +2800,7 @@ contains
           "beam_polarization only works with a beam setup")
     end if
 
-    contains
-
-    function evalint (val, expr, msg) result (success)
-      integer, intent(inout) :: val
-      type(eval_tree_t), intent(inout) :: expr
-      character(*), intent(in) :: msg
-      logical :: success
-      call eval_tree_evaluate (expr)
-      success = .false.
-      select case (eval_tree_get_result_type (expr))
-         case (V_INT, V_REAL, V_CMPLX)
-            val = eval_tree_get_int (expr)
-            success = .true.
-      end select
-      if (.not. success) then
-         call msg_error (msg)
-         call rt_data_restore (global, bp%local)
-      end if
-    end function evalint
-
-     function evalreal (val, expr, msg) result (success)
-      real(default), intent(inout) :: val
-      type(eval_tree_t), intent(inout) :: expr
-      character(*), intent(in) :: msg
-      logical :: success
-      call eval_tree_evaluate (expr)
-      success = .false.
-      select case (eval_tree_get_result_type (expr))
-         case (V_INT, V_REAL, V_CMPLX)
-            val = eval_tree_get_real (expr)
-            success = .true.
-      end select
-      if (.not. success) then
-         call msg_error (msg)
-         call rt_data_restore (global, bp%local)
-      end if
-    end function evalreal
-
-    function evalcmplx (val, expr, msg) result (success)
-      complex(default), intent(inout) :: val
-      type(eval_tree_t), intent(inout) :: expr
-      character(*), intent(in) :: msg
-      logical :: success
-      call eval_tree_evaluate (expr)
-      success = .false.
-      select case (eval_tree_get_result_type (expr))
-         case (V_INT, V_REAL, V_CMPLX)
-            val = eval_tree_get_cmplx (expr)
-            success = .true.
-      end select
-      if (.not. success) then
-         call msg_error (msg)
-         call rt_data_restore (global, bp%local)
-      end if
-    end function evalcmplx
-
   end subroutine cmd_beam_polarization_execute
-
-  subroutine cmd_cuts_write (cuts, unit, indent)
-    type(cmd_cuts_t), intent(in) :: cuts
-    integer, intent(in), optional :: unit, indent
-    integer :: u
-    u = output_unit (unit);  if (u < 0)  return
-    call write_indent (u, indent)
-    write (u, "(1x,A)")  "cuts =" 
-    call parse_node_write_rec (cuts%pn_lexpr, unit)
-  end subroutine cmd_cuts_write
 
   subroutine cmd_cuts_compile (cuts, pn)
     type(cmd_cuts_t), pointer :: cuts
@@ -3260,16 +2815,6 @@ contains
     global%pn_cuts_lexpr => cuts%pn_lexpr
   end subroutine cmd_cuts_execute
 
-  subroutine cmd_scale_write (scale, unit, indent)
-    type(cmd_scale_t), intent(in) :: scale
-    integer, intent(in), optional :: unit, indent
-    integer :: u
-    u = output_unit (unit);  if (u < 0)  return
-    call write_indent (u, indent)
-    write (u, "(1x,A)")  "scale =" 
-    call parse_node_write_rec (scale%pn_expr, unit)
-  end subroutine cmd_scale_write
-
   subroutine cmd_scale_compile (scale, pn)
     type(cmd_scale_t), pointer :: scale
     type(parse_node_t), intent(in), target :: pn
@@ -3283,16 +2828,6 @@ contains
     global%pn_scale_expr => scale%pn_expr
   end subroutine cmd_scale_execute
 
-  subroutine cmd_weight_write (weight, unit, indent)
-    type(cmd_weight_t), intent(in) :: weight
-    integer, intent(in), optional :: unit, indent
-    integer :: u
-    u = output_unit (unit);  if (u < 0)  return
-    call write_indent (u, indent)
-    write (u, "(1x,A)")  "weight =" 
-    call parse_node_write_rec (weight%pn_expr, unit)
-  end subroutine cmd_weight_write
-
   subroutine cmd_weight_compile (weight, pn)
     type(cmd_weight_t), pointer :: weight
     type(parse_node_t), intent(in), target :: pn
@@ -3305,16 +2840,6 @@ contains
     type(rt_data_t), intent(inout), target :: global
     global%pn_weight_expr => weight%pn_expr
   end subroutine cmd_weight_execute
-
-  subroutine cmd_reweight_write (reweight, unit, indent)
-    type(cmd_reweight_t), intent(in) :: reweight
-    integer, intent(in), optional :: unit, indent
-    integer :: u
-    u = output_unit (unit);  if (u < 0)  return
-    call write_indent (u, indent)
-    write (u, "(1x,A)")  "reweight =" 
-    call parse_node_write_rec (reweight%pn_expr, unit)
-  end subroutine cmd_reweight_write
 
   subroutine cmd_reweight_compile (reweight, pn)
     type(cmd_reweight_t), pointer :: reweight
@@ -3336,26 +2861,6 @@ contains
        deallocate (integrate%options)
     end if
   end subroutine cmd_integrate_final
-
-  subroutine cmd_integrate_write (integrate, unit, indent)
-    type(cmd_integrate_t), intent(in) :: integrate
-    integer, intent(in), optional :: unit, indent
-    integer :: u, i
-    u = output_unit (unit);  if (u < 0)  return
-    call write_indent (u, indent)
-    write (u, "(1x,A)", advance="no") "integrate ("
-    do i = 1, integrate%n_proc
-       if (i /= 1)  write (u, "(', ')", advance="no")
-       write (u, "(A)", advance="no")  char (integrate%process_id(i))
-    end do
-    write (u, "(A)") ")"
-    if (associated (integrate%options)) then
-       write (u, "(1x,'{')")
-       call command_list_write (integrate%options, unit, indent)
-       call write_indent (u, indent)
-       write (u, "(1x,'}')")
-    end if
-  end subroutine cmd_integrate_write
 
   subroutine cmd_integrate_compile (integrate, pn, global)
     type(cmd_integrate_t), pointer :: integrate
@@ -3380,6 +2885,7 @@ contains
             integrate%process_id (i))
        pn_proc => parse_node_get_next_ptr (pn_proc)
     end do
+    call rt_data_local_reset (integrate%local)
   end subroutine cmd_integrate_compile
 
   subroutine cmd_integrate_execute (integrate, global)
@@ -3396,27 +2902,11 @@ contains
 
   subroutine cmd_observable_final (observable)
     type(cmd_observable_t), intent(inout) :: observable
-    call eval_tree_final (observable%expr_id)
     if (associated (observable%options)) then
        call command_list_final (observable%options)
        deallocate (observable%options)
     end if
   end subroutine cmd_observable_final
-
-  subroutine cmd_observable_write (observable, unit, indent)
-    type(cmd_observable_t), intent(in) :: observable
-    integer, intent(in), optional :: unit, indent
-    integer :: u
-    u = output_unit (unit);  if (u < 0)  return
-    call write_indent (u, indent)
-    write (u, "(1x,A)", advance="no") "observable"
-    if (observable%use_id_expr) then
-       call eval_tree_write (observable%expr_id, unit)
-    else
-       write (u, "(1x,A)", advance="no")  char (observable%id)
-    end if
-    write (u, *)
-  end subroutine cmd_observable_write
 
   subroutine cmd_observable_compile (observable, pn, global)
     type(cmd_observable_t), pointer :: observable
@@ -3440,69 +2930,41 @@ contains
        observable%id = parse_node_get_string (pn_tag)
     case default
        observable%use_id_expr = .true.
-       call eval_tree_init_sexpr &
-            (observable%expr_id, pn_tag, observable%local%var_list)
+       observable%pn_id => pn_tag
     end select
+    call rt_data_local_reset (observable%local)
   end subroutine cmd_observable_compile
 
   subroutine cmd_observable_execute (observable, global)
     type(cmd_observable_t), intent(inout), target :: observable
     type(rt_data_t), intent(inout), target :: global
-    type(string_t) :: label, physical_unit, title
-    type(plot_labels_t) :: plot_labels
+    type(string_t) :: label, obs_unit, title
+    type(graph_options_t) :: graph_options
     call rt_data_link (observable%local, global)
     if (associated (observable%options)) then
        call command_list_execute (observable%options, observable%local)
     end if
     if (observable%use_id_expr) then
-       call eval_tree_evaluate (observable%expr_id)
-       observable%id = eval_tree_get_string (observable%expr_id)
+       observable%id = eval_string (observable%pn_id, observable%local%var_list)
     end if
-    label = var_list_get_sval (observable%local%var_list, var_str ("$label"))
-    physical_unit = var_list_get_sval &
-         (observable%local%var_list, var_str ("$physical_unit"))
+    label = var_list_get_sval &
+         (observable%local%var_list, var_str ("$obs_label"))
+    obs_unit = var_list_get_sval &
+         (observable%local%var_list, var_str ("$obs_unit"))
     title = var_list_get_sval (observable%local%var_list, var_str ("$title")) 
-    call plot_labels_init (plot_labels, title)
+    call graph_options_init (graph_options)
     call analysis_init_observable &
-         (observable%id, label, physical_unit, plot_labels)
+         (observable%id, label, obs_unit, graph_options)
     call rt_data_restore (global, observable%local)
   end subroutine cmd_observable_execute
 
   subroutine cmd_histogram_final (histogram)
     type(cmd_histogram_t), intent(inout) :: histogram
-    call eval_tree_final (histogram%expr_id)
-    call eval_tree_final (histogram%expr_lower_bound)
-    call eval_tree_final (histogram%expr_upper_bound)
-    call eval_tree_final (histogram%expr_bin_width)
     if (associated (histogram%options)) then
        call command_list_final (histogram%options)
        deallocate (histogram%options)
     end if
   end subroutine cmd_histogram_final
-
-  subroutine cmd_histogram_write (histogram, unit, indent)
-    type(cmd_histogram_t), intent(in) :: histogram
-    integer, intent(in), optional :: unit, indent
-    integer :: u
-    u = output_unit (unit);  if (u < 0)  return
-    call write_indent (u, indent)
-    write (u, "(1x,A)", advance="no") "histogram"
-    if (histogram%use_id_expr) then
-       call eval_tree_write (histogram%expr_id, unit)
-    else
-       write (u, "(1x,A)", advance="no")  char (histogram%id)
-    end if
-    write (u, "(1x,A)") "("
-    call eval_tree_write (histogram%expr_lower_bound, unit)
-    call write_indent (u, indent)
-    write (u, "(1x,A)") ","
-    call eval_tree_write (histogram%expr_upper_bound, unit)
-    call write_indent (u, indent)
-    write (u, "(1x,A)") ","
-    call eval_tree_write (histogram%expr_bin_width, unit)
-    call write_indent (u, indent)
-    write (u, "(1x,A)") ")"
-  end subroutine cmd_histogram_write
 
   subroutine cmd_histogram_compile (histogram, pn, global)
     type(cmd_histogram_t), pointer :: histogram
@@ -3535,17 +2997,12 @@ contains
        histogram%id = parse_node_get_string (pn_tag)
     case default
        histogram%use_id_expr = .true.
-       call eval_tree_init_sexpr &
-            (histogram%expr_id, pn_tag, histogram%local%var_list)
+       histogram%pn_id => pn_tag
     end select
-    call eval_tree_init_expr &
-         (histogram%expr_lower_bound, pn_arg1, histogram%local%var_list)
-    call eval_tree_init_expr &
-         (histogram%expr_upper_bound, pn_arg2, histogram%local%var_list)
-    if (associated (pn_arg3)) then
-      call eval_tree_init_expr &
-           (histogram%expr_bin_width, pn_arg3, histogram%local%var_list)
-    end if
+    histogram%pn_lower_bound => pn_arg1
+    histogram%pn_upper_bound => pn_arg2
+    histogram%pn_bin_width => pn_arg3
+    call rt_data_local_reset (histogram%local)
   end subroutine cmd_histogram_compile
 
   subroutine cmd_histogram_execute (histogram, global)
@@ -3553,40 +3010,24 @@ contains
     type(rt_data_t), intent(inout), target :: global
     real(default) :: lower_bound, upper_bound, bin_width
     integer :: bin_number
-    logical :: bounds_are_known, bin_width_is_used
-    type(string_t) :: label, physical_unit
-    type(string_t) :: title, description, xlabel, ylabel
-    logical :: x_log, y_log
-    real(default) :: y_min, y_max
-    type(plot_labels_t) :: plot_labels
+    logical :: bin_width_is_used, normalize_bins
+    type(string_t) :: obs_label, obs_unit
+    type(graph_options_t) :: graph_options
+    type(drawing_options_t) :: drawing_options
+
     call rt_data_link (histogram%local, global)
     if (associated (histogram%options)) then
        call command_list_execute (histogram%options, histogram%local)
     end if
+
     if (histogram%use_id_expr) then
-       call eval_tree_evaluate (histogram%expr_id)
-       histogram%id = eval_tree_get_string (histogram%expr_id)
+       histogram%id = eval_string (histogram%pn_id, histogram%local%var_list)
     end if
-    bounds_are_known = .true.
-    call eval_tree_evaluate (histogram%expr_lower_bound)
-    call eval_tree_evaluate (histogram%expr_upper_bound)
-    call eval_tree_evaluate (histogram%expr_bin_width)
-    if (eval_tree_result_is_known (histogram%expr_lower_bound)) then
-       lower_bound = eval_tree_get_real (histogram%expr_lower_bound)
-    else
-       call msg_error ("Histogram '" &
-            // char (histogram%id) // "': lower bound is undefined")
-       bounds_are_known = .false.
-    end if
-    if (eval_tree_result_is_known (histogram%expr_upper_bound)) then
-       upper_bound = eval_tree_get_real (histogram%expr_upper_bound)
-    else
-       call msg_error ("Histogram '" &
-            // char (histogram%id) // "': upper bound is undefined")
-       bounds_are_known = .false.
-    end if
-    if (eval_tree_result_is_known (histogram%expr_bin_width)) then
-       bin_width = eval_tree_get_real (histogram%expr_bin_width)
+
+    lower_bound = eval_real (histogram%pn_lower_bound, histogram%local%var_list)
+    upper_bound = eval_real (histogram%pn_upper_bound, histogram%local%var_list)
+    if (associated (histogram%pn_bin_width)) then
+       bin_width = eval_real (histogram%pn_bin_width, histogram%local%var_list)
        bin_width_is_used = .true.
     else if (var_list_is_known &
          (histogram%local%var_list, var_str ("n_bins"))) then
@@ -3594,153 +3035,178 @@ contains
             (histogram%local%var_list, var_str ("n_bins"))
        bin_width_is_used = .false.
     else
-       call msg_error ("Histogram '" &
-            // char (histogram%id) // "': neither bin width nor number is defined")
-       bounds_are_known = .false.
+       call msg_error ("Histogram '" // char (histogram%id) // &
+            "': neither bin width nor number is defined")
     end if
-    label = var_list_get_sval (histogram%local%var_list, var_str ("$label"))
-    physical_unit = var_list_get_sval &
-         (histogram%local%var_list, var_str ("$physical_unit"))
-    title = var_list_get_sval (histogram%local%var_list, var_str ("$title"))
-    description = &
-         var_list_get_sval (histogram%local%var_list, var_str ("$description"))
-    xlabel = var_list_get_sval (histogram%local%var_list, var_str ("$xlabel"))
-    ylabel = var_list_get_sval (histogram%local%var_list, var_str ("$ylabel"))
-    x_log = var_list_get_lval (histogram%local%var_list, var_str ("?x_log"))
-    y_log = var_list_get_lval (histogram%local%var_list, var_str ("?y_log"))    
-    call plot_labels_init (plot_labels, title, &
-         description, xlabel, ylabel)
-    if (bounds_are_known) then
-       if (bin_width_is_used) then
-         if (var_list_is_known &
-            (histogram%local%var_list, var_str ("y_min"))) then
-            y_min = var_list_get_rval (histogram%local%var_list, &
-                               var_str ("y_min"))
-            if (var_list_is_known &
-               (histogram%local%var_list, var_str ("y_max"))) then               
-               y_max = var_list_get_rval (histogram%local%var_list, &
-                               var_str ("y_max"))
-               if (y_max <= y_min) then
-                  call msg_fatal ("Please choose y_min smaller as y_max.")               
-               else
-               call analysis_init_histogram &
-                 (histogram%id, lower_bound, upper_bound, &
-                  bin_width, label, physical_unit, &
-                  plot_labels, x_log, y_log, y_min, y_max)
-               end if   
-            else
-               call analysis_init_histogram &
-                 (histogram%id, lower_bound, upper_bound, &
-                  bin_width, label, physical_unit, &
-                  plot_labels, x_log, y_log, y_min)
-            end if
-         else 
-            if (var_list_is_known &
-               (histogram%local%var_list, var_str ("y_max"))) then   
-               y_max = var_list_get_rval (histogram%local%var_list, &
-                            var_str ("y_max"))
-               call analysis_init_histogram &
-                 (histogram%id, lower_bound, upper_bound, &
-                  bin_width, label, physical_unit, &
-                  plot_labels, x_log, y_log, y_max)                
-            else    
-               call analysis_init_histogram &
-                 (histogram%id, lower_bound, upper_bound, &
-                  bin_width, label, physical_unit, &
-                  plot_labels, x_log, y_log)                                   
-            end if
-         end if       
-       else    
-          if (var_list_is_known &
-            (histogram%local%var_list, var_str ("y_min"))) then
-            y_min = var_list_get_rval (histogram%local%var_list, &
-                               var_str ("y_min"))
-            if (var_list_is_known &
-               (histogram%local%var_list, var_str ("y_max"))) then               
-               y_max = var_list_get_rval (histogram%local%var_list, &
-                               var_str ("y_max"))
-               call analysis_init_histogram &
-                 (histogram%id, lower_bound, upper_bound, &
-                  bin_number, label, physical_unit, &
-                  plot_labels, x_log, y_log, y_min, y_max)
-            else
-               call analysis_init_histogram &
-                 (histogram%id, lower_bound, upper_bound, &
-                  bin_number, label, physical_unit, &
-                  plot_labels, x_log, y_log, y_min)
-            end if
-         else 
-            if (var_list_is_known &
-               (histogram%local%var_list, var_str ("y_max"))) then   
-               y_max = var_list_get_rval (histogram%local%var_list, &
-                            var_str ("y_max"))
-               call analysis_init_histogram &
-                 (histogram%id, lower_bound, upper_bound, &
-                  bin_number, label, physical_unit, &
-                  plot_labels, x_log, y_log, y_max)                
-            else    
-               call analysis_init_histogram &
-                 (histogram%id, lower_bound, upper_bound, &
-                  bin_number, label, physical_unit, &
-                  plot_labels, x_log, y_log)                                   
-            end if
-         end if       
-       end if         
+    normalize_bins = var_list_get_lval &
+         (histogram%local%var_list, var_str ("?normalize_bins"))
+    obs_label = var_list_get_sval &
+         (histogram%local%var_list, var_str ("$obs_label"))
+    obs_unit = var_list_get_sval &
+         (histogram%local%var_list, var_str ("$obs_unit"))
+
+    call graph_options_init (graph_options)
+    call set_graph_options (graph_options, histogram%local%var_list)
+    call drawing_options_init_histogram (drawing_options)
+    call set_drawing_options (drawing_options, histogram%local%var_list)
+
+    if (bin_width_is_used) then
+       call analysis_init_histogram &
+            (histogram%id, lower_bound, upper_bound, bin_width, &
+             normalize_bins, &
+             obs_label, obs_unit, &
+             graph_options, drawing_options)
     else
-       call msg_error ("Histogram '" &
-            // char (histogram%id) // "': invalid declaration, skipping")
+       call analysis_init_histogram &
+            (histogram%id, lower_bound, upper_bound, bin_number, &
+             normalize_bins, &
+             obs_label, obs_unit, &
+             graph_options, drawing_options)
     end if
     call rt_data_restore (global, histogram%local)
+
   end subroutine cmd_histogram_execute
+
+  subroutine set_graph_options (gro, var_list)
+    type(graph_options_t), intent(inout) :: gro
+    type(var_list_t), intent(in) :: var_list
+    call graph_options_set (gro, title = &
+         var_list_get_sval (var_list, var_str ("$title")))
+    call graph_options_set (gro, description = &
+         var_list_get_sval (var_list, var_str ("$description")))
+    call graph_options_set (gro, x_label = &
+         var_list_get_sval (var_list, var_str ("$x_label")))
+    call graph_options_set (gro, y_label = &
+         var_list_get_sval (var_list, var_str ("$y_label")))
+    call graph_options_set (gro, width_mm = &
+         var_list_get_ival (var_list, var_str ("graph_width_mm")))
+    call graph_options_set (gro, height_mm = &
+         var_list_get_ival (var_list, var_str ("graph_height_mm")))
+    call graph_options_set (gro, x_log = &
+         var_list_get_lval (var_list, var_str ("?x_log")))
+    call graph_options_set (gro, y_log = &
+         var_list_get_lval (var_list, var_str ("?y_log")))
+    if (var_list_is_known (var_list, var_str ("x_min"))) &
+         call graph_options_set (gro, x_min = &
+         var_list_get_rval (var_list, var_str ("x_min")))
+    if (var_list_is_known (var_list, var_str ("x_max"))) &
+         call graph_options_set (gro, x_max = &
+         var_list_get_rval (var_list, var_str ("x_max")))
+    if (var_list_is_known (var_list, var_str ("y_min"))) &
+         call graph_options_set (gro, y_min = &
+         var_list_get_rval (var_list, var_str ("y_min")))
+    if (var_list_is_known (var_list, var_str ("y_max"))) &
+         call graph_options_set (gro, y_max = &
+         var_list_get_rval (var_list, var_str ("y_max")))
+    call graph_options_set (gro, gmlcode_bg = &
+         var_list_get_sval (var_list, var_str ("$gmlcode_bg")))
+    call graph_options_set (gro, gmlcode_fg = &
+         var_list_get_sval (var_list, var_str ("$gmlcode_fg")))
+  end subroutine set_graph_options
+
+  subroutine set_drawing_options (dro, var_list)
+    type(drawing_options_t), intent(inout) :: dro
+    type(var_list_t), intent(in) :: var_list
+    if (var_list_is_known (var_list, var_str ("?draw_histogram"))) then
+       if (var_list_get_lval (var_list, var_str ("?draw_histogram"))) then
+          call drawing_options_set (dro, with_hbars = .true.)
+       else
+          call drawing_options_set (dro, with_hbars = .false., &
+               with_base = .false., fill = .false., piecewise = .false.)
+       end if
+    end if
+    if (var_list_is_known (var_list, var_str ("?draw_base"))) then
+       if (var_list_get_lval (var_list, var_str ("?draw_base"))) then
+          call drawing_options_set (dro, with_base = .true.)
+       else
+          call drawing_options_set (dro, with_base = .false., fill = .false.)
+       end if
+    end if
+    if (var_list_is_known (var_list, var_str ("?draw_piecewise"))) then
+       if (var_list_get_lval (var_list, var_str ("?draw_piecewise"))) then
+          call drawing_options_set (dro, piecewise = .true.)
+       else
+          call drawing_options_set (dro, piecewise = .false.)
+       end if
+    end if
+    if (var_list_is_known (var_list, var_str ("?fill_curve"))) then
+       if (var_list_get_lval (var_list, var_str ("?fill_curve"))) then
+          call drawing_options_set (dro, fill = .true., with_base = .true.)
+       else
+          call drawing_options_set (dro, fill = .false.)
+       end if
+    end if
+    if (var_list_is_known (var_list, var_str ("?draw_curve"))) then
+       if (var_list_get_lval (var_list, var_str ("?draw_curve"))) then
+          call drawing_options_set (dro, draw = .true.)
+       else
+          call drawing_options_set (dro, draw = .false.)
+       end if
+    end if
+    if (var_list_is_known (var_list, var_str ("?draw_errors"))) then
+       if (var_list_get_lval (var_list, var_str ("?draw_errors"))) then
+          call drawing_options_set (dro, err = .true.)
+       else
+          call drawing_options_set (dro, err = .false.)
+       end if
+    end if
+    if (var_list_is_known (var_list, var_str ("?draw_symbols"))) then
+       if (var_list_get_lval (var_list, var_str ("?draw_symbols"))) then
+          call drawing_options_set (dro, symbols = .true.)
+       else
+          call drawing_options_set (dro, symbols = .false.)
+       end if
+    end if
+    if (var_list_is_known (var_list, var_str ("$fill_options"))) then
+       call drawing_options_set (dro, fill_options = &
+            var_list_get_sval (var_list, var_str ("$fill_options")))
+    end if
+    if (var_list_is_known (var_list, var_str ("$draw_options"))) then
+       call drawing_options_set (dro, draw_options = &
+            var_list_get_sval (var_list, var_str ("$draw_options")))
+    end if
+    if (var_list_is_known (var_list, var_str ("$err_options"))) then
+       call drawing_options_set (dro, err_options = &
+            var_list_get_sval (var_list, var_str ("$err_options")))
+    end if
+    if (var_list_is_known (var_list, var_str ("$symbol"))) then
+       call drawing_options_set (dro, symbol = &
+            var_list_get_sval (var_list, var_str ("$symbol")))
+    end if
+    if (var_list_is_known (var_list, var_str ("$gmlcode_bg"))) then
+       call drawing_options_set (dro, gmlcode_bg = &
+            var_list_get_sval (var_list, var_str ("$gmlcode_bg")))
+    end if
+    if (var_list_is_known (var_list, var_str ("$gmlcode_fg"))) then
+       call drawing_options_set (dro, gmlcode_fg = &
+            var_list_get_sval (var_list, var_str ("$gmlcode_fg")))
+    end if
+  end subroutine set_drawing_options
 
   subroutine cmd_plot_final (plot)
     type(cmd_plot_t), intent(inout) :: plot
-    call eval_tree_final (plot%expr_id)
-    call eval_tree_final (plot%expr_lower_bound)
-    call eval_tree_final (plot%expr_upper_bound)
     if (associated (plot%options)) then
        call command_list_final (plot%options)
        deallocate (plot%options)
     end if
   end subroutine cmd_plot_final
 
-  subroutine cmd_plot_write (plot, unit, indent)
-    type(cmd_plot_t), intent(in) :: plot
-    integer, intent(in), optional :: unit, indent
-    integer :: u
-    u = output_unit (unit);  if (u < 0)  return
-    call write_indent (u, indent)
-    write (u, "(1x,A)", advance="no") "plot"
-    if (plot%use_id_expr) then
-       call eval_tree_write (plot%expr_id, unit)
-    else
-       write (u, "(1x,A)", advance="no")  char (plot%id)
-    end if
-    write (u, "(1x,A)") "("
-    call eval_tree_write (plot%expr_lower_bound, unit)
-    call write_indent (u, indent)
-    write (u, "(1x,A)") ","
-    call eval_tree_write (plot%expr_upper_bound, unit)
-    call write_indent (u, indent)
-    write (u, "(1x,A)") ")"
-  end subroutine cmd_plot_write
-
   subroutine cmd_plot_compile (plot, pn, global)
     type(cmd_plot_t), pointer :: plot
     type(parse_node_t), intent(in), target :: pn
     type(rt_data_t), intent(in), target :: global
-    type(parse_node_t), pointer :: pn_tag, pn_args, pn_arg1, pn_arg2
+    type(parse_node_t), pointer :: pn_tag
     type(parse_node_t), pointer :: pn_opt
     pn_tag => parse_node_get_sub_ptr (pn, 2)
-    pn_args => parse_node_get_next_ptr (pn_tag)
-    pn_arg1 => parse_node_get_sub_ptr (pn_args)
-    pn_arg2 => parse_node_get_next_ptr (pn_arg1)
-    if (associated (pn_args)) then
-       pn_opt => parse_node_get_next_ptr (pn_args)
-    else
-       pn_opt => null ()
-    end if       
+    pn_opt => parse_node_get_next_ptr (pn_tag)
     allocate (plot)
+    call cmd_plot_init (plot, pn_tag, pn_opt, global)
+  end subroutine cmd_plot_compile
+
+  subroutine cmd_plot_init (plot, pn_tag, pn_opt, global)
+    type(cmd_plot_t), intent(out) :: plot
+    type(parse_node_t), intent(in), pointer :: pn_tag, pn_opt
+    type(rt_data_t), intent(in), target :: global
     call rt_data_local_init (plot%local, global)
     if (associated (pn_opt)) then
        allocate (plot%options)
@@ -3751,108 +3217,142 @@ contains
        plot%id = parse_node_get_string (pn_tag)
     case default
        plot%use_id_expr = .true.
-       call eval_tree_init_sexpr (plot%expr_id, pn_tag, plot%local%var_list)
+       plot%pn_id => pn_tag
     end select
-    call eval_tree_init_expr &
-         (plot%expr_lower_bound, pn_arg1, plot%local%var_list)
-    call eval_tree_init_expr &
-         (plot%expr_upper_bound, pn_arg2, plot%local%var_list)
-  end subroutine cmd_plot_compile
+    call rt_data_local_reset (plot%local)
+  end subroutine cmd_plot_init
 
   subroutine cmd_plot_execute (plot, global)
     type(cmd_plot_t), intent(inout), target :: plot
     type(rt_data_t), intent(inout), target :: global
-    real(default) :: lower_bound, upper_bound
-    logical :: bounds_are_known
-    type(string_t) :: title, description, xlabel, ylabel
-    logical :: x_log, y_log
-    real(default) :: y_min, y_max
-    type(plot_labels_t) :: plot_labels
+    type(graph_options_t) :: graph_options
+    type(drawing_options_t) :: drawing_options
+
     call rt_data_link (plot%local, global)
     if (associated (plot%options)) then
        call command_list_execute (plot%options, plot%local)
     end if
+
     if (plot%use_id_expr) then
-       call eval_tree_evaluate (plot%expr_id)
-       plot%id = eval_tree_get_string (plot%expr_id)
+       plot%id = eval_string (plot%pn_id, plot%local%var_list)
     end if
-    bounds_are_known = .true.
-    call eval_tree_evaluate (plot%expr_lower_bound)
-    call eval_tree_evaluate (plot%expr_upper_bound)
-    if (eval_tree_result_is_known (plot%expr_lower_bound)) then
-       lower_bound = eval_tree_get_real (plot%expr_lower_bound)
-    else
-       call msg_error ("Plot '" &
-            // char (plot%id) // "': lower bound is undefined")
-       bounds_are_known = .false.
-    end if
-    if (eval_tree_result_is_known (plot%expr_upper_bound)) then
-       upper_bound = eval_tree_get_real (plot%expr_upper_bound)
-    else
-       call msg_error ("Plot '" &
-            // char (plot%id) // "': upper bound is undefined")
-       bounds_are_known = .false.
-    end if
-    title = var_list_get_sval (plot%local%var_list, var_str ("$title"))
-    description = &
-         var_list_get_sval (plot%local%var_list, var_str ("$description"))
-    xlabel = var_list_get_sval (plot%local%var_list, var_str ("$xlabel"))
-    ylabel = var_list_get_sval (plot%local%var_list, var_str ("$ylabel"))
-    x_log = var_list_get_lval (plot%local%var_list, var_str ("?x_log"))    
-    y_log = var_list_get_lval (plot%local%var_list, var_str ("?y_log"))        
-    call plot_labels_init (plot_labels, title, &
-         description, xlabel, ylabel)
-    if (bounds_are_known) then
-         if (var_list_is_known &
-            (plot%local%var_list, var_str ("y_min"))) then
-            y_min = var_list_get_rval (plot%local%var_list, &
-                               var_str ("y_min"))
-            if (var_list_is_known &
-               (plot%local%var_list, var_str ("y_max"))) then               
-               y_max = var_list_get_rval (plot%local%var_list, &
-                               var_str ("y_max"))
-               if (y_max <= y_min) then
-                  call msg_fatal ("Please choose y_min smaller as y_max.")
-               else
-                  call analysis_init_plot &
-                    (plot%id, lower_bound, upper_bound, &
-                     plot_labels, x_log, y_log, y_min, y_max)
-               end if      
-            else
-               call analysis_init_plot &
-                 (plot%id, lower_bound, upper_bound, &
-                  plot_labels, x_log, y_log, y_min)
-            end if
-         else 
-            if (var_list_is_known &
-               (plot%local%var_list, var_str ("y_max"))) then   
-               y_max = var_list_get_rval (plot%local%var_list, &
-                            var_str ("y_max"))
-               call analysis_init_plot &
-                 (plot%id, lower_bound, upper_bound, &
-                  plot_labels, x_log, y_log, y_max)                
-            else    
-               call analysis_init_plot &
-                 (plot%id, lower_bound, upper_bound, &
-                  plot_labels, x_log, y_log)                                   
-            end if    
-         end if   
-    else
-       call msg_error ("Plot '" &
-            // char (plot%id) // "': invalid declaration, skipping")
-    end if
+
+    call graph_options_init (graph_options)
+    call set_graph_options (graph_options, plot%local%var_list)
+    call drawing_options_init_plot (drawing_options)
+    call set_drawing_options (drawing_options, plot%local%var_list)
+
+    call analysis_init_plot (plot%id, graph_options, drawing_options)
+
     call rt_data_restore (global, plot%local)
+
   end subroutine cmd_plot_execute
 
-  subroutine cmd_analysis_write (analysis, unit, indent)
-    type(cmd_analysis_t), intent(in) :: analysis
-    integer, intent(in), optional :: unit, indent
-    integer :: u
-    u = output_unit (unit);  if (u < 0)  return
-    call write_indent (u, indent)
-    write (u, "(1x,A)")  "analysis =" 
-    call parse_node_write_rec (analysis%pn_lexpr, unit)
-  end subroutine cmd_analysis_write
+  subroutine cmd_graph_final (graph)
+    type(cmd_graph_t), intent(inout) :: graph
+    integer :: i
+    if (allocated (graph%el)) then
+       do i = 1, size (graph%el)
+          call cmd_plot_final (graph%el(i))
+       end do
+       deallocate (graph%el)
+    end if
+    if (associated (graph%options)) then
+       call command_list_final (graph%options)
+       deallocate (graph%options)
+    end if
+  end subroutine cmd_graph_final
+
+  subroutine cmd_graph_compile (graph, pn, global)
+    type(cmd_graph_t), pointer :: graph
+    type(parse_node_t), intent(in), target :: pn
+    type(rt_data_t), intent(in), target :: global
+    type(parse_node_t), pointer :: pn_term, pn_tag, pn_opt, pn_def, pn_app
+    integer :: i
+
+    pn_term => parse_node_get_sub_ptr (pn, 2)
+    pn_tag => parse_node_get_sub_ptr (pn_term)
+    pn_opt => parse_node_get_next_ptr (pn_tag)
+    allocate (graph)
+    call rt_data_local_init (graph%local, global)
+    if (associated (pn_opt)) then
+       allocate (graph%options)
+       call command_list_compile (graph%options, pn_opt, graph%local)
+    end if
+    select case (char (parse_node_get_rule_key (pn_tag)))
+    case ("analysis_id")
+       graph%id = parse_node_get_string (pn_tag)
+    case default
+       graph%use_id_expr = .true.
+       graph%pn_id => pn_tag
+    end select
+    pn_def => parse_node_get_next_ptr (pn_term, 2)
+    graph%n_elements = parse_node_get_n_sub (pn_def)
+    call rt_data_local_reset (graph%local)
+
+    allocate (graph%el (graph%n_elements))
+    pn_term => parse_node_get_sub_ptr (pn_def)
+    pn_tag => parse_node_get_sub_ptr (pn_term)
+    pn_opt => parse_node_get_next_ptr (pn_tag)
+    call cmd_plot_init (graph%el(1), pn_tag, pn_opt, global)
+    pn_app => parse_node_get_next_ptr (pn_term)
+    do i = 2, graph%n_elements
+       pn_term => parse_node_get_sub_ptr (pn_app, 2)
+       pn_tag => parse_node_get_sub_ptr (pn_term)
+       pn_opt => parse_node_get_next_ptr (pn_tag)
+       call cmd_plot_init (graph%el(i), pn_tag, pn_opt, global)
+       pn_app => parse_node_get_next_ptr (pn_app)
+    end do
+
+  end subroutine cmd_graph_compile
+
+  subroutine cmd_graph_execute (graph, global)
+    type(cmd_graph_t), intent(inout), target :: graph
+    type(rt_data_t), intent(inout), target :: global
+    type(graph_options_t) :: graph_options
+    type(drawing_options_t) :: drawing_options
+    integer :: i, type
+
+    call rt_data_link (graph%local, global)
+    if (associated (graph%options)) then
+       call command_list_execute (graph%options, graph%local)
+    end if
+
+    if (graph%use_id_expr) then
+       graph%id = eval_string (graph%pn_id, graph%local%var_list)
+    end if
+
+    call graph_options_init (graph_options)
+    call set_graph_options (graph_options, graph%local%var_list)
+    call analysis_init_graph (graph%id, graph%n_elements, graph_options)
+
+    do i = 1, graph%n_elements
+       call rt_data_link (graph%el(i)%local, global)
+       if (associated (graph%el(i)%options)) then
+          call command_list_execute (graph%el(i)%options, graph%el(i)%local)
+       end if
+       if (graph%el(i)%use_id_expr) then
+          graph%el(i)%id = &
+               eval_string (graph%el(i)%pn_id, graph%el(i)%local%var_list)
+       end if
+       type = analysis_store_get_object_type (graph%el(i)%id)
+       select case (type)
+       case (AN_HISTOGRAM)
+            call drawing_options_init_histogram (drawing_options)
+       case (AN_PLOT)
+            call drawing_options_init_plot (drawing_options)
+       end select
+       call set_drawing_options (drawing_options, graph%local%var_list)
+       if (associated (graph%el(i)%options)) then
+          call set_drawing_options (drawing_options, graph%el(i)%local%var_list)
+       end if
+       call analysis_fill_graph (graph%id, i, graph%el(i)%id, drawing_options)
+       call rt_data_restore (global, graph%el(i)%local)
+    end do
+
+    call rt_data_restore (global, graph%local)
+
+  end subroutine cmd_graph_execute
 
   subroutine cmd_analysis_compile (analysis, pn)
     type(cmd_analysis_t), pointer :: analysis
@@ -3867,120 +3367,9 @@ contains
     global%pn_analysis_lexpr => analysis%pn_lexpr
   end subroutine cmd_analysis_execute
 
-  subroutine cmd_write_analysis_final (write)
-    type(cmd_write_analysis_t), intent(inout) :: write
-    integer :: i
-    do i = 1, write%n_args
-       call eval_tree_final (write%expr_id(i))
-    end do
-  end subroutine cmd_write_analysis_final
-
-  subroutine cmd_write_analysis_compile (write, pn, global)
-    type(cmd_write_analysis_t), pointer :: write
-    type(parse_node_t), intent(in), target :: pn
-    type(rt_data_t), intent(in), target :: global
-    type(parse_node_t), pointer :: pn_args, pn_tag
-    integer :: i
-    pn_args => parse_node_get_sub_ptr (pn, 2)
-    allocate (write)
-    if (associated (pn_args)) then
-       write%n_args = parse_node_get_n_sub (pn_args)
-       allocate (write%id (write%n_args), write%use_id_expr (write%n_args))
-       write%use_id_expr = .false.
-       allocate (write%expr_id (write%n_args))
-       pn_tag => parse_node_get_sub_ptr (pn_args)
-       i = 1
-       do while (associated (pn_tag))
-          select case (char (parse_node_get_rule_key (pn_tag)))
-          case ("analysis_id")
-             write%id(i) = parse_node_get_string (pn_tag)
-          case default
-             write%use_id_expr(i) = .true.
-             call eval_tree_init_sexpr &
-                  (write%expr_id(i), pn_tag, global%var_list)
-          end select
-          i = i + 1
-          pn_tag => parse_node_get_next_ptr (pn_tag)
-       end do
-    end if
-  end subroutine cmd_write_analysis_compile
-
-  subroutine cmd_write_analysis_execute (write, global)
-    type(cmd_write_analysis_t), intent(inout), target :: write
-    type(rt_data_t), intent(inout), target :: global
-    type(string_t) :: filename, data_file, driver_file
-    integer :: i, u_data, u_driver, u_log
-    logical :: has_gmlcode
-    u_log = logfile_unit ()
-    if (var_list_is_known (global%var_list, &
-                           var_str ("$analysis_filename"))) then
-       filename = var_list_get_sval (global%var_list, &
-                                     var_str ("$analysis_filename"))
-       data_file = filename // ".dat"
-       driver_file = filename // ".tex"
-       call msg_message ("Writing analysis results to '" &
-            // char (data_file) // "'")
-       u_data = free_unit ()
-       open (unit=u_data, file=char(data_file), &
-             action="write", status="replace")
-       call msg_message ("Writing analysis results display to '" &
-            // char (driver_file) // "'")
-       u_driver = free_unit ()
-       open (unit=u_driver, file=char(driver_file), &
-             action="write", status="replace")
-    else
-       u_data = -1
-       u_driver = -1
-    end if
-    if (write%n_args == 0) then
-       if (u_data >= 0) then
-          call analysis_write (unit=u_data)
-       else
-          call analysis_write ()
-          call analysis_write (unit=u_log)
-          if (u_log >= 0) flush (u_log)
-       end if
-       if (u_driver >= 0) then
-          call analysis_write_driver (data_file, unit=u_driver)
-       end if
-    else
-       do i = 1, write%n_args
-          if (write%use_id_expr(i)) then
-             call eval_tree_evaluate (write%expr_id(i))
-             write%id(i) = eval_tree_get_string (write%expr_id(i))
-          end if
-          if (u_data >= 0) then
-             call analysis_write (write%id(i), unit=u_data)
-          else
-             call analysis_write (write%id(i))
-             call analysis_write (write%id(i), unit=u_log)
-             if (u_log >= 0) flush (u_log)
-          end if
-          if (u_driver >= 0) then
-             call analysis_write_driver (data_file, write%id, unit=u_driver)
-          end if
-       end do
-    end if
-    if (u_data >= 0)  close (u_data)
-    if (u_driver >= 0) then
-       close (u_driver)
-       if (write%n_args == 0) then
-          has_gmlcode = analysis_has_plots ()
-       else
-          has_gmlcode = analysis_has_plots (write%id)
-       end if
-       call msg_message ("Compiling analysis results display in '" &
-            // char (driver_file) // "'")
-       call analysis_compile_tex (filename, has_gmlcode, global%os_data)
-    end if
-  end subroutine cmd_write_analysis_execute
-
   subroutine cmd_clear_final (clear)
     type(cmd_clear_t), intent(inout) :: clear
-    integer :: i
-    do i = 1, clear%n_args
-       call eval_tree_final (clear%expr_id(i))
-    end do
+    if (allocated (clear%pn_id))  deallocate (clear%pn_id)
   end subroutine cmd_clear_final
 
   subroutine cmd_clear_compile (clear, pn, global)
@@ -3996,7 +3385,7 @@ contains
        clear%n_args = parse_node_get_n_sub (pn_args)
        allocate (clear%id (clear%n_args), clear%use_id_expr (clear%n_args))
        clear%use_id_expr = .false.
-       allocate (clear%expr_id (clear%n_args))
+       allocate (clear%pn_id (clear%n_args))
        pn_tag => parse_node_get_sub_ptr (pn_args)
        i = 1
        do while (associated (pn_tag))
@@ -4007,9 +3396,7 @@ contains
           case ("analysis_id")
              clear%id(i) = parse_node_get_string (pn_tag)
           case default
-             clear%use_id_expr(i) = .true.
-             call eval_tree_init_sexpr &
-                  (clear%expr_id(i), pn_tag, global%var_list)
+             clear%pn_id(i)%ptr => pn_tag
           end select
           i = i + 1
           pn_tag => parse_node_get_next_ptr (pn_tag)
@@ -4047,8 +3434,7 @@ contains
              call msg_message ("Cleared counters of value checks")
           case default
              if (clear%use_id_expr(i)) then
-                call eval_tree_evaluate (clear%expr_id(i))
-                clear%id(i) = eval_tree_get_string (clear%expr_id(i))
+                clear%id(i) = eval_string (clear%pn_id(i)%ptr, global%var_list)
              end if
              call analysis_clear (clear%id(i))
              call msg_message ("Cleared analysis object '" &
@@ -4058,9 +3444,680 @@ contains
     end if
   end subroutine cmd_clear_execute
 
+  subroutine cmd_write_analysis_final (write_analysis)
+    type(cmd_write_analysis_t), intent(inout) :: write_analysis
+    if (allocated (write_analysis%id))  deallocate (write_analysis%id)
+    if (allocated (write_analysis%tag))  deallocate (write_analysis%tag)
+    if (associated (write_analysis%options)) then
+       call command_list_final (write_analysis%options)
+       deallocate (write_analysis%options)
+    end if
+  end subroutine cmd_write_analysis_final
+
+  subroutine cmd_write_analysis_compile (write_analysis, pn, global)
+    type(cmd_write_analysis_t), intent(inout), pointer :: write_analysis
+    type(parse_node_t), intent(in) :: pn
+    type(rt_data_t), intent(inout), target :: global
+    type(parse_node_t), pointer :: pn_clause, pn_opts, pn_args, pn_id
+    integer :: n, i
+    pn_clause => parse_node_get_sub_ptr (pn)
+    pn_args => parse_node_get_sub_ptr (pn_clause, 2)
+    pn_opts => parse_node_get_next_ptr (pn_clause)
+    allocate (write_analysis)
+    call rt_data_local_init (write_analysis%local, global)
+    if (associated (pn_opts)) then
+       allocate (write_analysis%options)
+       call command_list_compile &
+            (write_analysis%options, pn_opts, write_analysis%local)
+    end if
+    if (associated (pn_args)) then
+       n = parse_node_get_n_sub (pn_args)
+       allocate (write_analysis%id (n))
+       do i = 1, n
+           pn_id => parse_node_get_sub_ptr (pn_args, i)
+           if (char (parse_node_get_rule_key (pn_id)) == "analysis_id") then
+              write_analysis%id(i)%tag = parse_node_get_string (pn_id)
+           else
+              write_analysis%id(i)%pn_sexpr => pn_id
+           end if
+       end do
+    else
+       allocate (write_analysis%id (0))
+    end if
+    call rt_data_local_reset (write_analysis%local)
+  end subroutine cmd_write_analysis_compile
+
+  subroutine cmd_write_analysis_execute &
+       (write_analysis, global, data_file, write_yerr, write_xerr)
+    type(cmd_write_analysis_t), intent(inout), target :: write_analysis
+    type(rt_data_t), intent(inout), target :: global
+    type(string_t), intent(out), optional :: data_file
+    logical, intent(out), optional :: write_yerr, write_xerr
+    type(string_t) :: defaultfile, file
+    logical :: keep_open, custom, header, columns
+    type(string_t) :: comment_prefix, separator, extension
+    integer :: i, type
+    type(ifile_t) :: ifile
+    logical :: one_file, has_writer
+    type(analysis_iterator_t) :: iterator
+    type(rt_data_t), target :: sandbox
+    type(command_list_t) :: writer
+
+    call rt_data_link (write_analysis%local, global)
+    if (associated (write_analysis%options)) then
+       call command_list_execute (write_analysis%options, write_analysis%local)
+    end if
+
+    defaultfile = var_list_get_sval (write_analysis%local%var_list, &
+         var_str ("$out_file"))
+    if (present (data_file)) then
+       if (defaultfile == "" .or. defaultfile == ".") then
+          defaultfile = DEFAULT_ANALYSIS_FILENAME
+       else
+         if (scan (".", defaultfile) > 0) then
+           call split (defaultfile, extension, ".", back=.true.)
+                 if (any (lower_case (char(extension)) == FORBIDDEN_ENDINGS1) .or. &
+                     any (lower_case (char(extension)) == FORBIDDEN_ENDINGS2) .or. &
+                     any (lower_case (char(extension)) == FORBIDDEN_ENDINGS3)) & 
+                    call msg_fatal ("The ending " // char(extension) // &
+                       " is internal and not allowed as data file.")
+                 if (extension /= "") then
+                   if (defaultfile /= "") then
+                     defaultfile = defaultfile // "." // extension
+                   else
+                     defaultfile = "whizard_analysis." // extension
+                   end if  
+                 else
+                   defaultfile = defaultfile // ".dat"
+                 endif
+         else
+           defaultfile = defaultfile // ".dat"
+         end if        
+       end if    
+       data_file = defaultfile
+    end if
+    one_file = defaultfile /= ""
+    if (one_file) then
+       file = defaultfile
+       keep_open = file_list_is_open (global%out_files, file, &
+            action = "write")
+       if (keep_open) then
+          if (present (data_file)) then
+              call msg_fatal ("Compiling analysis: File '" &
+                   // char (data_file) &
+                   // "' can't be used, it is already open.")
+          else
+              call msg_message ("Appending analysis data to file '" &
+                   // char (file) // "'")
+          end if
+       else
+          print *, "calling file_list_open from cmd_write_analysis_execute"
+          call file_list_open (global%out_files, file, &
+               action = "write", status = "replace", position = "asis")
+          call msg_message ("Writing analysis data to file '" &
+               // char (file) // "'")
+       end if
+    end if
+
+    if (present (data_file)) then
+       custom = .false.
+    else
+       custom = var_list_get_lval (write_analysis%local%var_list, &
+           var_str ("?out_custom"))
+    end if
+    comment_prefix = var_list_get_sval (write_analysis%local%var_list, &
+         var_str ("$out_comment"))
+    separator = var_list_get_sval (write_analysis%local%var_list, &
+         var_str ("$out_separator"))
+    columns = var_list_get_lval (write_analysis%local%var_list, &
+         var_str ("?out_columns"))
+    header = var_list_get_lval (write_analysis%local%var_list, &
+         var_str ("?out_header"))
+    call get_analysis_tags (write_analysis%tag, write_analysis%id, &
+         write_analysis%local%var_list)
+    if (present (write_yerr)) then
+       write_yerr = var_list_get_lval (write_analysis%local%var_list, &
+            var_str ("?out_yerr"))
+    end if
+    if (present (write_xerr)) then
+       write_xerr = var_list_get_lval (write_analysis%local%var_list, &
+            var_str ("?out_xerr"))
+    end if
+
+    do i = 1, size (write_analysis%tag)
+       if (custom) then
+          type = analysis_store_get_object_type (write_analysis%tag(i))
+          call compile_writer (writer, type, has_writer)
+          if (has_writer) then
+             call rt_data_link (sandbox, write_analysis%local)
+          end if
+          if (.not. one_file) then
+             file = write_analysis%tag(i) // ".dat"
+             call file_list_open (global%out_files, file, &
+                  action = "write", status = "replace", position = "asis")
+             call msg_message ("Writing analysis data to file '" &
+                  // char (file) // "'")
+          end if
+          if (header) then
+             call analysis_get_header &
+                  (write_analysis%tag(i), ifile, comment_prefix)
+             call file_list_write (global%out_files, file, ifile)
+             call ifile_final (ifile)
+          end if
+          call analysis_init_iterator (write_analysis%tag(i), iterator)
+          do while (analysis_iterator_is_valid (iterator))
+             call write_data (iterator, &
+                  writer, sandbox, file, columns, separator)
+             call analysis_iterator_advance (iterator)
+          end do
+          if (.not. one_file) then
+             call file_list_close (global%out_files, file)
+          end if       
+          if (has_writer) then
+             call rt_data_restore (write_analysis%local, sandbox)
+             call var_list_final (sandbox%var_list)
+             call command_list_final (writer)
+          end if
+       else
+          call file_list_write_analysis &
+               (global%out_files, file, write_analysis%tag(i))
+       end if
+    end do
+
+    if (one_file .and. .not. keep_open) then
+       call file_list_close (global%out_files, file)
+    end if       
+    call rt_data_restore (global, write_analysis%local)
+
+  contains
+
+    subroutine get_analysis_tags (analysis_tag, id, var_list)
+      type(string_t), dimension(:), intent(out), allocatable :: analysis_tag
+      type(analysis_id_t), dimension(:), intent(in) :: id
+      type(var_list_t), intent(in), target :: var_list
+      if (size (id) /= 0) then
+         allocate (analysis_tag (size (id)))
+         do i = 1, size (id)
+            if (associated (id(i)%pn_sexpr)) then
+               analysis_tag(i) = eval_string (id(i)%pn_sexpr, var_list)
+            else
+               analysis_tag(i) = id(i)%tag
+            end if
+         end do
+      else
+         call analysis_store_get_ids (analysis_tag)
+      end if
+    end subroutine get_analysis_tags
+
+    subroutine compile_writer (writer, type, has_writer)
+      type(command_list_t), intent(out) :: writer
+      integer, intent(in) :: type
+      logical, intent(out) :: has_writer
+      select case (type)
+      case (AN_HISTOGRAM)
+         has_writer = associated (write_analysis%local%pn_histogram_writer)
+         if (has_writer) then
+            call histogram_writer_compile (writer, &
+                 write_analysis%local%pn_histogram_writer, sandbox, &
+                 write_analysis%local)
+         end if
+      case (AN_PLOT)
+         has_writer = associated (write_analysis%local%pn_plot_writer)
+         if (has_writer) then
+            call plot_writer_compile (writer, &
+                 write_analysis%local%pn_plot_writer, sandbox, &
+                 write_analysis%local)
+         end if
+      case default
+         has_writer = .false.
+         call msg_error ("Custom output format " &
+              // "is applicable only to elementary histograms and plots")
+      end select
+    end subroutine compile_writer
+
+    subroutine write_data (iterator, writer, sandbox, file, columns, separator)
+      type(analysis_iterator_t), intent(inout) :: iterator
+      type(command_list_t), intent(in) :: writer
+      type(rt_data_t), intent(inout), target :: sandbox
+      type(string_t), intent(in) :: file
+      logical, intent(in) :: columns
+      type(string_t), intent(in) :: separator
+      real(default) :: x, y, yerr, xerr, excess, width
+      integer :: bin_index, n_bins, point_index, n_points
+      character(*), parameter :: &
+           OUT_REAL_FMT = '(' // HISTOGRAM_DATA_FORMAT // ')'
+      select case (analysis_iterator_get_type (iterator))
+      case (AN_HISTOGRAM)
+         call analysis_iterator_get_data (iterator, &
+            x = x, y = y, yerr = yerr, width = width, excess = excess, &
+            index = bin_index, n_total = n_bins)
+         if (has_writer) then
+            call histogram_writer_execute (writer, sandbox, file, &
+                 x, width, y, yerr, excess, bin_index, n_bins)
+         else if (columns) then
+            call file_list_write (global%out_files, file, &
+                 real2string (x, OUT_REAL_FMT) // separator // &
+                 real2string (y, OUT_REAL_FMT) // separator // &
+                 real2string (yerr, OUT_REAL_FMT))
+         else
+            call file_list_write (global%out_files, file, &
+                 real2string (x) // separator // &
+                 real2string (y) // separator // &
+                 real2string (yerr))
+         end if
+      case (AN_PLOT)
+         call analysis_iterator_get_data (iterator, &
+            x = x, y = y, yerr = yerr, xerr = xerr, &
+            index = point_index, n_total = n_points)
+         if (has_writer) then
+            call plot_writer_execute (writer, sandbox, file, &
+                 x, y, yerr, xerr, point_index, n_points)
+         else if (columns) then
+            call file_list_write (global%out_files, file, &
+                 real2string (x, OUT_REAL_FMT) // separator // &
+                 real2string (y, OUT_REAL_FMT) // separator // &
+                 real2string (yerr, OUT_REAL_FMT) // separator // &
+                 real2string (xerr, OUT_REAL_FMT))
+         else
+            call file_list_write (global%out_files, file, &
+                 real2string (x) // separator // &
+                 real2string (y) // separator // &
+                 real2string (yerr) // separator // &
+                 real2string (xerr))
+         end if
+      end select
+    end subroutine write_data
+
+  end subroutine cmd_write_analysis_execute
+
+  subroutine histogram_writer_compile (writer, pn, local, global)
+    type(command_list_t), intent(out) :: writer
+    type(parse_node_t), intent(in) :: pn
+    type(rt_data_t), intent(inout), target :: local
+    type(rt_data_t), intent(in), target :: global
+    call rt_data_local_init (local, global)
+    call var_list_append_real (local%var_list, &
+         var_str ("bin_center"), intrinsic=.true.)
+    call var_list_append_real (local%var_list, &
+         var_str ("bin_width"), intrinsic=.true.)
+    call var_list_append_real (local%var_list, &
+         var_str ("bin_sum"), intrinsic=.true.)
+    call var_list_append_real (local%var_list, &
+         var_str ("bin_error"), intrinsic=.true.)
+    call var_list_append_real (local%var_list, &
+         var_str ("bin_excess"), intrinsic=.true.)
+    call var_list_append_int (local%var_list, &
+         var_str ("bin_index"), intrinsic=.true.)
+    call var_list_append_int (local%var_list, &
+         var_str ("n_bins"), intrinsic=.true.)
+    call var_list_append_string (local%var_list, &
+         var_str ("$out_file"), intrinsic=.true.)
+    call command_list_compile (writer, pn, local)
+    call rt_data_local_reset (local)
+  end subroutine histogram_writer_compile
+
+  subroutine plot_writer_compile (writer, pn, local, global)
+    type(command_list_t), intent(out) :: writer
+    type(parse_node_t), intent(in) :: pn
+    type(rt_data_t), intent(inout), target :: local
+    type(rt_data_t), intent(in), target :: global
+    call rt_data_local_init (local, global)
+    call var_list_append_real (local%var_list, &
+         var_str ("point_x"), intrinsic=.true.)
+    call var_list_append_real (local%var_list, &
+         var_str ("point_y"), intrinsic=.true.)
+    call var_list_append_real (local%var_list, &
+         var_str ("point_yerr"), intrinsic=.true.)
+    call var_list_append_real (local%var_list, &
+         var_str ("point_xerr"), intrinsic=.true.)
+    call var_list_append_int (local%var_list, &
+         var_str ("point_index"), intrinsic=.true.)
+    call var_list_append_int (local%var_list, &
+         var_str ("n_points"), intrinsic=.true.)
+    call var_list_append_string (local%var_list, &
+         var_str ("$out_file"), intrinsic=.true.)
+    call command_list_compile (writer, pn, local)
+    call rt_data_local_reset (local)
+  end subroutine plot_writer_compile
+
+  subroutine histogram_writer_execute (writer, local, filename, &
+      x, width, y, yerr, excess, bin_index, n_bins)
+    type(command_list_t), intent(in) :: writer
+    type(rt_data_t), intent(inout), target :: local
+    type(string_t), intent(in) :: filename
+    real(default), intent(in) :: x, width, y, yerr, excess
+    integer, intent(in) :: bin_index, n_bins
+    call var_list_set_real (local%var_list, &
+         var_str ("bin_center"), x, is_known=.true.)
+    call var_list_set_real (local%var_list, &
+         var_str ("bin_width"), width, is_known=.true.)
+    call var_list_set_real (local%var_list, &
+         var_str ("bin_sum"), y, is_known=.true.)
+    call var_list_set_real (local%var_list, &
+         var_str ("bin_error"), yerr, is_known=.true.)
+    call var_list_set_real (local%var_list, &
+         var_str ("bin_excess"), excess, is_known=.true.)
+    call var_list_set_int (local%var_list, &
+         var_str ("bin_index"), bin_index, is_known=.true.)
+    call var_list_set_int (local%var_list, &
+         var_str ("n_bins"), n_bins, is_known=.true.)
+    call var_list_set_string (local%var_list, &
+         var_str ("$out_file"), filename, is_known=.true.)
+    call command_list_execute (writer, local)
+  end subroutine histogram_writer_execute
+
+  subroutine plot_writer_execute (writer, local, filename, &
+      x, y, yerr, xerr, point_index, n_points)
+    type(command_list_t), intent(in) :: writer
+    type(rt_data_t), intent(inout), target :: local
+    type(string_t), intent(in) :: filename
+    real(default), intent(in) :: x, y, yerr, xerr
+    integer, intent(in) :: point_index, n_points
+    call var_list_set_real (local%var_list, &
+         var_str ("point_x"), x, is_known=.true.)
+    call var_list_set_real (local%var_list, &
+         var_str ("point_y"), y, is_known=.true.)
+    call var_list_set_real (local%var_list, &
+         var_str ("point_yerr"), yerr, is_known=.true.)
+    call var_list_set_real (local%var_list, &
+         var_str ("point_xerr"), xerr, is_known=.true.)
+    call var_list_set_int (local%var_list, &
+         var_str ("point_index"), point_index, is_known=.true.)
+    call var_list_set_int (local%var_list, &
+         var_str ("n_points"), n_points, &
+         is_known=.true.)
+    call var_list_set_string (local%var_list, &
+         var_str ("$out_file"), filename, is_known=.true.)
+    call command_list_execute (writer, local)
+  end subroutine plot_writer_execute
+
+  subroutine cmd_xxx_writer_final (writer)
+    type(cmd_xxx_writer_t), intent(inout) :: writer
+    nullify (writer%macro)
+    writer%type = CMD_HISTOGRAM_WRITER
+  end subroutine cmd_xxx_writer_final
+
+  subroutine cmd_xxx_writer_compile (writer, pn, global)
+    type(cmd_xxx_writer_t), intent(inout), pointer :: writer
+    type(parse_node_t), intent(in), target :: pn
+    type(rt_data_t), intent(in) :: global
+    allocate (writer)
+    select case (char (parse_node_get_rule_key (pn)))
+       case ("cmd_histogram_writer")
+          writer%type = CMD_HISTOGRAM_WRITER
+       case ("cmd_plot_writer")
+          writer%type = CMD_PLOT_WRITER
+       case default
+          call msg_bug ("cmd_xxx_writer_compile: invalid type")
+    end select
+    writer%macro => parse_node_get_sub_ptr (pn, 3)
+  end subroutine cmd_xxx_writer_compile
+
+  subroutine cmd_xxx_writer_execute (writer, global)
+    type(cmd_xxx_writer_t), intent(in), target :: writer
+    type(rt_data_t), intent(inout), target :: global
+    if (.not. associated (writer%macro)) return
+    select case (writer%type)
+       case (CMD_HISTOGRAM_WRITER)
+          global%pn_histogram_writer => writer%macro
+       case (CMD_PLOT_WRITER)
+          global%pn_plot_writer => writer%macro
+       case default
+          call msg_bug ("cmd_xxx_writer_execute: invalid type")
+    end select
+  end subroutine cmd_xxx_writer_execute
+
+  subroutine cmd_compile_analysis_execute (write, global)
+    type(cmd_write_analysis_t), intent(inout), target :: write
+    type(rt_data_t), intent(inout), target :: global
+    type(string_t) :: data_file, basename, extension, driver_file
+    integer :: u_driver, i
+    logical :: has_gmlcode, write_yerr, write_xerr
+    call cmd_write_analysis_execute &
+         (write, global, data_file, write_yerr, write_xerr)
+    basename = data_file    
+    if (scan (".", basename) > 0) then
+      call split (basename, extension, ".", back=.true.)
+    else
+      extension = ""
+    end if
+    driver_file = basename // ".tex"
+    call msg_message ("Compiling analysis results in file '" &
+            // char (driver_file) // "'")
+    u_driver = free_unit ()
+    open (unit=u_driver, file=char(driver_file), &
+          action="write", status="replace")
+    call analysis_write_driver &
+         (data_file, write%tag, unit=u_driver)
+    close (u_driver)
+    if (size (write%tag) == 0) then
+       has_gmlcode = analysis_has_plots ()
+    else
+       has_gmlcode = analysis_has_plots (write%tag)
+    end if
+    call msg_message ("Compiling analysis results display in '" &
+         // char (driver_file) // "'")
+    call analysis_compile_tex (basename, has_gmlcode, global%os_data)
+  end subroutine cmd_compile_analysis_execute
+
+  subroutine cmd_open_final (open)
+    type(cmd_open_t), intent(inout) :: open
+    if (associated (open%options)) then
+       call command_list_final (open%options)
+       deallocate (open%options)
+    end if
+  end subroutine cmd_open_final
+
+  subroutine cmd_open_out_compile (open, pn, global)
+    type(cmd_open_t), intent(out), pointer :: open
+    type(parse_node_t), intent(in) :: pn
+    type(rt_data_t), intent(in) :: global
+    type(parse_node_t), pointer :: pn_arg, pn_opt
+    pn_arg => parse_node_get_sub_ptr (pn, 2)
+    if (associated (pn_arg)) then
+       pn_opt => parse_node_get_next_ptr (pn_arg)
+    else
+       pn_opt => null ()
+    end if       
+    allocate (open)
+    call rt_data_local_init (open%local, global)
+    if (associated (pn_opt)) then
+       allocate (open%options)
+       call command_list_compile (open%options, pn_opt, open%local)
+    end if
+    open%pn_sexpr => pn_arg
+    open%writing = .true.
+    call rt_data_local_reset (open%local)
+  end subroutine cmd_open_out_compile
+
+  subroutine cmd_open_execute (open, global)
+    type(cmd_open_t), intent(inout) :: open
+    type(rt_data_t), intent(inout), target :: global
+    type(string_t) :: name
+    type(string_t) :: action, status, position
+    call rt_data_link (open%local, global)
+    if (associated (open%options)) then
+       call command_list_execute (open%options, open%local)
+    end if
+    name = eval_string (open%pn_sexpr, open%local%var_list)
+    if (open%reading .and. open%writing) then
+       action = "readwrite"
+    else if (open%reading) then
+       action = "read"
+    else if (open%writing) then
+       action = "write"
+    else
+       call msg_bug ("Open command: neither read nor write specified.")
+    end if
+    status = "replace"
+    position = "asis"
+    call file_list_open (global%out_files, name, &
+         char (action), char (status), char (position))
+    call rt_data_restore (global, open%local)
+  end subroutine cmd_open_execute
+
+  subroutine cmd_close_final (close)
+    type(cmd_close_t), intent(inout) :: close
+    if (associated (close%options)) then
+       call command_list_final (close%options)
+       deallocate (close%options)
+    end if
+  end subroutine cmd_close_final
+
+  subroutine cmd_close_out_compile (close, pn, global)
+    type(cmd_close_t), intent(out), pointer :: close
+    type(parse_node_t), intent(in) :: pn
+    type(rt_data_t), intent(in) :: global
+    type(parse_node_t), pointer :: pn_arg, pn_opt
+    pn_arg => parse_node_get_sub_ptr (pn, 2)
+    if (associated (pn_arg)) then
+       pn_opt => parse_node_get_next_ptr (pn_arg)
+    else
+       pn_opt => null ()
+    end if       
+    allocate (close)
+    call rt_data_local_init (close%local, global)
+    if (associated (pn_opt)) then
+       allocate (close%options)
+       call command_list_compile (close%options, pn_opt, close%local)
+    end if
+    close%pn_sexpr => pn_arg
+    call rt_data_local_reset (close%local)
+  end subroutine cmd_close_out_compile
+
+  subroutine cmd_close_execute (close, global)
+    type(cmd_close_t), intent(inout) :: close
+    type(rt_data_t), intent(inout), target :: global
+    type(string_t) :: name
+    call rt_data_link (close%local, global)
+    if (associated (close%options)) then
+       call command_list_execute (close%options, close%local)
+    end if
+    name = eval_string (close%pn_sexpr, close%local%var_list)
+    call file_list_close (global%out_files, name)
+    call rt_data_restore (global, close%local)
+  end subroutine cmd_close_execute
+
+  subroutine cmd_printd_final (printd)
+    type(cmd_printd_t), intent(inout) :: printd
+    if (associated (printd%pn_sexpr)) then
+       call parse_node_final (printd%pn_sexpr)
+       deallocate (printd%pn_sexpr)
+    end if
+    if (associated (printd%options)) then
+       call command_list_final (printd%options)
+       deallocate (printd%options)
+    end if
+  end subroutine cmd_printd_final
+
+  subroutine cmd_printd_compile (printd, pn, global)
+    type(cmd_printd_t), pointer :: printd
+    type(parse_node_t), intent(in), target :: pn
+    type(rt_data_t), intent(in), target :: global
+    type(parse_node_t), pointer :: pn_cmd, pn_arg, pn_opt
+    type(parse_node_t), pointer :: pn_sexpr, pn_sprintd
+    pn_cmd => parse_node_get_sub_ptr (pn)
+    pn_opt => parse_node_get_next_ptr (pn_cmd)
+    pn_arg => parse_node_get_sub_ptr (pn_cmd)
+    allocate (printd)
+    call rt_data_local_init (printd%local, global)
+    if (associated (pn_opt)) then
+       allocate (printd%options)
+       call command_list_compile (printd%options, pn_opt, printd%local)
+    end if
+    call parse_node_create_branch (pn_sexpr, &
+         syntax_get_rule_ptr (syntax_cmd_list, var_str ("sexpr")))
+    call parse_node_create_branch (pn_sprintd, &
+         syntax_get_rule_ptr (syntax_cmd_list, var_str ("sprintd_fun")))
+    call parse_node_append_sub (pn_sexpr, pn_sprintd)
+    call parse_node_append_sub (pn_sprintd, pn_arg)
+    printd%pn_sexpr => pn_sexpr
+    call rt_data_local_reset (printd%local)
+  end subroutine cmd_printd_compile
+
+  subroutine cmd_printd_execute (printd, global)
+    type(cmd_printd_t), intent(inout) :: printd
+    type(rt_data_t), intent(inout), target :: global
+    type(string_t) :: string, file
+    logical :: advance
+    call rt_data_link (printd%local, global)
+    if (associated (printd%options)) then
+       call command_list_execute (printd%options, printd%local)
+    end if
+    string = eval_string (printd%pn_sexpr, printd%local%var_list)
+    file = var_list_get_sval (printd%local%var_list, var_str ("$out_file"))
+    advance = var_list_get_lval (printd%local%var_list, &
+         var_str ("?out_advance"))
+    if (len (file) == 0) then
+       call msg_result (char (string))
+    else
+       call file_list_write (global%out_files, file, string, advance)
+    end if
+    call rt_data_restore (global, printd%local)
+  end subroutine cmd_printd_execute
+
+  subroutine cmd_printf_final (printf)
+    type(cmd_printf_t), intent(inout) :: printf
+    if (associated (printf%pn_sexpr)) then
+       call parse_node_final (printf%pn_sexpr)
+       deallocate (printf%pn_sexpr)
+    end if
+    if (associated (printf%options)) then
+       call command_list_final (printf%options)
+       deallocate (printf%options)
+    end if
+  end subroutine cmd_printf_final
+
+  subroutine cmd_printf_compile (printf, pn, global)
+    type(cmd_printf_t), pointer :: printf
+    type(parse_node_t), intent(in), target :: pn
+    type(rt_data_t), intent(in), target :: global
+    type(parse_node_t), pointer :: pn_cmd, pn_clause, pn_opt
+    type(parse_node_t), pointer :: pn_sexpr, pn_sprintf
+    pn_cmd => parse_node_get_sub_ptr (pn)
+    pn_opt => parse_node_get_next_ptr (pn_cmd)
+    pn_clause => parse_node_get_sub_ptr (pn_cmd)
+    allocate (printf)
+    call rt_data_local_init (printf%local, global)
+    if (associated (pn_opt)) then
+       allocate (printf%options)
+       call command_list_compile (printf%options, pn_opt, printf%local)
+    end if
+    call parse_node_create_branch (pn_sexpr, &
+         syntax_get_rule_ptr (syntax_cmd_list, var_str ("sexpr")))
+    call parse_node_create_branch (pn_sprintf, &
+         syntax_get_rule_ptr (syntax_cmd_list, var_str ("sprintf_fun")))
+    call parse_node_append_sub (pn_sexpr, pn_sprintf)
+    call parse_node_append_sub (pn_sprintf, pn_clause)
+    printf%pn_sexpr => pn_sexpr
+    call parse_node_final (pn_sprintf, recursive = .false.)
+    call parse_node_final (pn_sexpr, recursive = .false.)
+    call rt_data_local_reset (printf%local)
+  end subroutine cmd_printf_compile
+
+  subroutine cmd_printf_execute (printf, global)
+    type(cmd_printf_t), intent(inout) :: printf
+    type(rt_data_t), intent(inout), target :: global
+    type(string_t) :: string, file
+    logical :: advance
+    call rt_data_link (printf%local, global)
+    if (associated (printf%options)) then
+       call command_list_execute (printf%options, printf%local)
+    end if
+    string = eval_string (printf%pn_sexpr, printf%local%var_list)
+    file = var_list_get_sval (printf%local%var_list, var_str ("$out_file"))
+    advance = var_list_get_lval (printf%local%var_list, &
+         var_str ("?out_advance"))
+    if (len (file) == 0) then
+       call msg_result (char (string))
+    else
+       call file_list_write (global%out_files, file, string, advance)
+    end if
+    call rt_data_restore (global, printf%local)
+  end subroutine cmd_printf_execute
+
   subroutine cmd_record_final (record)
     type(cmd_record_t), intent(inout) :: record
-    call eval_tree_final (record%lexpr)
   end subroutine cmd_record_final
 
   subroutine cmd_record_compile (record, pn, global)
@@ -4079,42 +4136,19 @@ contains
     pn_record => parse_node_get_sub_ptr (pn)
     call parse_node_append_sub (pn_lterm, pn_record)
     allocate (record)
-    call eval_tree_init_lexpr (record%lexpr, pn_lexpr, global%var_list)
+    record%pn_lexpr => pn_lexpr
   end subroutine cmd_record_compile
 
   subroutine cmd_record_execute (record, global)
     type(cmd_record_t), intent(inout), target :: record
     type(rt_data_t), intent(inout), target :: global
-    call eval_tree_evaluate (record%lexpr)    
+    logical :: lval
+    lval = eval_log (record%pn_lexpr, global%var_list)
   end subroutine cmd_record_execute
 
   subroutine decay_properties_final (decay)
     type(decay_properties_t), intent(inout) :: decay
-    call eval_tree_final (decay%pdg)
   end subroutine decay_properties_final
-
-  subroutine decay_properties_write (decay, unit, indent)
-    type(decay_properties_t), intent(in) :: decay
-    integer, intent(in), optional :: unit, indent
-    integer :: u, i
-    if (decay%invalid) return
-    u = output_unit (unit);  if (u < 0)  return
-    call write_indent (u, indent)
-    if (decay%n_proc /= 0) then
-       write (u, "(1x,A)", advance="no") "unstable"
-    else
-       write (u, "(1x,A)", advance="no") "stable"
-    end if
-    write (u, "(1x,A)", advance="no")  char (decay%prt)
-    if (decay%n_proc /= 0) then
-       write (u, "(1x,A)", advance="no") "("
-       do i = 1, decay%n_proc
-          if (i /= 1)  write (u, "(', ')", advance="no")
-          write (u, "(A)", advance="no")  char (decay%process_id(i))
-       end do
-       write (u, "(A)") ")"
-    end if
-  end subroutine decay_properties_write
 
   subroutine cmd_unstable_final (unstable)
     type(cmd_unstable_t), intent(inout) :: unstable
@@ -4130,15 +4164,6 @@ contains
        deallocate (unstable%options)
     end if
   end subroutine cmd_unstable_final
-
-  subroutine cmd_unstable_write (unstable, unit, indent)
-    type(cmd_unstable_t), intent(in) :: unstable
-    integer, intent(in), optional :: unit, indent
-    integer :: d
-    do d = 1, size (unstable%decay)
-       call decay_properties_write (unstable%decay(d), unit, indent)
-    end do
-  end subroutine cmd_unstable_write
 
   subroutine cmd_unstable_compile (unstable, pn, global)
     type(cmd_unstable_t), pointer :: unstable
@@ -4166,8 +4191,7 @@ contains
        d = d + 1
        pn_prt => parse_node_get_sub_ptr (pn_decl)
        pn_arg => parse_node_get_next_ptr (pn_prt)
-       call eval_tree_init_cexpr &
-            (unstable%decay(d)%pdg, pn_prt, unstable%local%var_list)
+       unstable%decay(d)%pn_pdg => pn_prt
        unstable%decay(d)%prt = "?"
        unstable%decay(d)%n_proc = parse_node_get_n_sub (pn_arg)
        allocate (unstable%decay(d)%process_id (unstable%decay(d)%n_proc))
@@ -4179,6 +4203,7 @@ contains
        end do
        pn_decl => parse_node_get_next_ptr (pn_decl)
     end do
+    call rt_data_local_reset (unstable%local)
   end subroutine cmd_unstable_compile
 
   subroutine cmd_unstable_execute (unstable, global)
@@ -4207,8 +4232,7 @@ contains
          var_str ("?diagonal_decay"))
     allocate (flv (size (unstable%decay)))
     do d = 1, size (unstable%decay)
-       call eval_tree_evaluate (unstable%decay(d)%pdg)
-       aval = eval_tree_get_pdg_array (unstable%decay(d)%pdg)
+       aval = eval_pdg_array (unstable%decay(d)%pn_pdg, unstable%local%var_list)
        call flavor_init (flv_tmp, aval, unstable%local%model)
        select case (size (flv_tmp))
        case (1);  flv(d) = flv_tmp(1)
@@ -4317,15 +4341,6 @@ contains
     end if
   end subroutine cmd_stable_final
 
-  subroutine cmd_stable_write (stable, unit, indent)
-    type(cmd_stable_t), intent(in) :: stable
-    integer, intent(in), optional :: unit, indent
-    integer :: d
-    do d = 1, size (stable%decay)
-       call decay_properties_write (stable%decay(d), unit, indent)
-    end do
-  end subroutine cmd_stable_write
-
   subroutine cmd_stable_compile (stable, pn, global)
     type(cmd_stable_t), pointer :: stable
     type(parse_node_t), intent(in), target :: pn
@@ -4345,11 +4360,11 @@ contains
     pn_prt => parse_node_get_sub_ptr (pn_list)
     do while (associated (pn_prt))
        d = d + 1
-       call eval_tree_init_cexpr &
-          (stable%decay(d)%pdg, pn_prt, stable%local%var_list)
+       stable%decay(d)%pn_pdg => pn_prt
        stable%decay(d)%prt = "?"
        pn_prt => parse_node_get_next_ptr (pn_prt)
     end do
+    call rt_data_local_reset (stable%local)
   end subroutine cmd_stable_compile
 
   subroutine cmd_stable_execute (stable, global)
@@ -4365,8 +4380,7 @@ contains
        call command_list_execute (stable%options, stable%local)
     end if
     do d = 1, size (stable%decay)
-       call eval_tree_evaluate (stable%decay(d)%pdg)
-       aval = eval_tree_get_pdg_array (stable%decay(d)%pdg)
+       aval = eval_pdg_array (stable%decay(d)%pn_pdg, stable%local%var_list)
        call flavor_init (flv_tmp, aval, stable%local%model)
        select case (size (flv_tmp))
        case (1);  flv = flv_tmp(1)
@@ -4411,8 +4425,8 @@ contains
     pn_list => parse_node_get_sub_ptr (pn, 2)
     call rt_data_local_init (polarized%local, global)
     if (.not. associated (pn_list)) then
-       allocate (polarized%pdgs (0))
-       allocate (polarized%names (0))
+       allocate (polarized%pn_pdg (0))
+       allocate (polarized%name (0))
        return
     end if
     pn_opt => parse_node_get_next_ptr (pn_list)
@@ -4421,40 +4435,19 @@ contains
        call command_list_compile (polarized%options, pn_opt, polarized%local)
     end if
     n = parse_node_get_n_sub (pn_list)
-    allocate (polarized%pdgs(n), polarized%names(n))
-    polarized%names = "?"
+    allocate (polarized%pn_pdg(n), polarized%name(n))
+    polarized%name = "?"
     pn_prt => parse_node_get_sub_ptr (pn_list)
     n = 1
     do while (associated (pn_prt))
-       call eval_tree_init_cexpr &
-          (polarized%pdgs(n), pn_prt, polarized%local%var_list)
+       polarized%pn_pdg(n)%ptr => pn_prt
        pn_prt  => parse_node_get_next_ptr (pn_prt)
        n = n + 1
     end do
     print *, "Processed " // int2char (n - 1) // " particle definitions"
+    call rt_data_local_reset (polarized%local)
   end subroutine cmd_un_polarized_compile
-  subroutine cmd_un_polarized_write (polarized, type, unit, indent)
-    type(cmd_un_polarized_t), intent(in) :: polarized
-    integer, intent(in) :: type
-    integer, optional, intent(in) :: unit, indent
-    integer :: u, i
-    u = output_unit (unit)
-    if (u < 0) return
-    call write_indent (u, indent)
-    if (type == CMD_POLARIZED) then
-       write (u, "(1x,A)", advance = "no") "final state polarization on: "
-    else
-       write (u, "(1x,A)", advance = "no") "final state polarization off: "
-    end if
-    if (size (polarized%names) == 0) then
-       write (u, "(A)", advance = "no") "no particles specified, doing nothing"
-    else
-       do i = 1, size (polarized%names)
-         write (u, "(A)", advance = "no") char (polarized%names(i))
-       end do
-    end if
-    write (u, "('')")
-  end subroutine cmd_un_polarized_write
+
   subroutine cmd_un_polarized_execute (polarized, type, global)
     type(cmd_un_polarized_t), intent(inout) :: polarized
     integer, intent(in) :: type
@@ -4467,10 +4460,9 @@ contains
     call rt_data_link (polarized%local, global)
     if (associated (polarized%options)) &
        call command_list_execute (polarized%options, polarized%local)
-    if (size (polarized%pdgs) == 0) return
-    do i = 1, size (polarized%pdgs)
-       call eval_tree_evaluate (polarized%pdgs(i))
-       aval = eval_tree_get_pdg_array (polarized%pdgs(i))
+    if (size (polarized%pn_pdg) == 0) return
+    do i = 1, size (polarized%pn_pdg)
+       aval = eval_pdg_array (polarized%pn_pdg(i)%ptr, polarized%local%var_list)
        call flavor_init (flv, aval, polarized%local%model)
        if (size (flv) /= 1) then
           call pdg_array_write (aval)
@@ -4481,14 +4473,14 @@ contains
           deallocate (flv)
           cycle
        end if
-       polarized%names(i) = flavor_get_name (flv(1))
+       polarized%name(i) = flavor_get_name (flv(1))
        prt => model_get_particle_ptr (polarized%local%model, &
           flavor_get_pdg (flv(1)))
        if (.not. associated (prt)) then
           call msg_error ("Model '" &
              // char (model_get_name (polarized%local%model)) &
              // "' does not contain particle '" &
-             // char (polarized%names(i)) // "'")
+             // char (polarized%name(i)) // "'")
           deallocate (flv)
           cycle
        end if
@@ -4496,7 +4488,7 @@ contains
        if (.not. particle_data_is_stable (prt, anti) .and. &
              type == CMD_POLARIZED) then
           call msg_error ("particle '" &
-             // char (polarized%names(i)) // "' cannot be marked as unstable " &
+             // char (polarized%name(i)) // "' cannot be marked as unstable " &
              // "and polarized at the same time - skipping")
           deallocate (flv)
           cycle
@@ -4508,12 +4500,12 @@ contains
        end if
        if (type == CMD_POLARIZED) then
           call msg_message ("Polarization of particle '" &
-             // char (polarized%names(i)) // "' in model '" &
+             // char (polarized%name(i)) // "' in model '" &
              // char (model_get_name (polarized%local%model)) &
              // "' will be retained.")
        else
           call msg_message ("Polarization of particle '" &
-             // char (polarized%names(i)) // "' in model '" &
+             // char (polarized%name(i)) // "' in model '" &
              // char (model_get_name (polarized%local%model)) &
              // "' will be discarded.")
        end if
@@ -4523,16 +4515,10 @@ contains
   end subroutine cmd_un_polarized_execute
   subroutine cmd_un_polarized_final (polarized)
     type(cmd_un_polarized_t), intent(inout) :: polarized
-    integer :: i
-    if (allocated (polarized%pdgs)) then
-       if (size (polarized%pdgs) > 0) then
-          do i = 1, size (polarized%pdgs)
-             call eval_tree_final (polarized%pdgs(i))
-          end do
-       end if
-       deallocate (polarized%pdgs)
+    if (allocated (polarized%pn_pdg)) then
+       deallocate (polarized%pn_pdg)
     end if
-    if (allocated (polarized%names)) deallocate (polarized%names)
+    if (allocated (polarized%name)) deallocate (polarized%name)
     if (associated (polarized%options)) then
        call command_list_final (polarized%options)
        deallocate (polarized%options)
@@ -4544,23 +4530,6 @@ contains
        deallocate (sample%format)
     end if
   end subroutine cmd_sample_format_final
-
-  subroutine cmd_sample_format_write (sample, unit, indent)
-    type(cmd_sample_format_t), intent(in) :: sample
-    integer, intent(in), optional :: unit, indent
-    integer :: u, i
-    u = output_unit (unit);  if (u < 0)  return
-    call write_indent (u, indent)
-    write (u, "(1x,A)", advance="no")  "sample ="
-    if (allocated (sample%format)) then
-       do i = 1, size (sample%format)
-          write (u, "(1x,A)", advance="no")  char (sample%format(i))
-       end do
-       write (u, *)
-    else
-       write (u, "(1x,A)")  "[undefined]"
-    end if
-  end subroutine cmd_sample_format_write
 
   subroutine cmd_sample_format_compile (sample, pn)
     type(cmd_sample_format_t), pointer :: sample
@@ -4628,26 +4597,6 @@ contains
     end if
   end subroutine cmd_simulate_final
 
-  subroutine cmd_simulate_write (simulate, unit, indent)
-    type(cmd_simulate_t), intent(in) :: simulate
-    integer, intent(in), optional :: unit, indent
-    integer :: u, i
-    u = output_unit (unit);  if (u < 0)  return
-    call write_indent (u, indent)
-    write (u, "(1x,A)", advance="no") "simulate ("
-    do i = 1, simulate%n_proc
-       if (i /= 1)  write (u, "(', ')", advance="no")
-       write (u, "(A)", advance="no")  char (simulate%process_id(i))
-    end do
-    write (u, "(A)") ")"
-    if (associated (simulate%options)) then
-       write (u, "(1x,'{')")
-       call command_list_write (simulate%options, unit, indent)
-       call write_indent (u, indent)
-       write (u, "(1x,'}')")
-    end if
-  end subroutine cmd_simulate_write
-
   subroutine cmd_simulate_compile (simulate, pn, global)
     type(cmd_simulate_t), pointer :: simulate
     type(parse_node_t), intent(in), target :: pn
@@ -4669,12 +4618,13 @@ contains
        simulate%process_id(i) = parse_node_get_string (pn_proc)
        pn_proc => parse_node_get_next_ptr (pn_proc)
     end do
+    call rt_data_local_reset (simulate%local)
   end subroutine cmd_simulate_compile
 
   subroutine cmd_simulate_execute (simulate, global)
     type(cmd_simulate_t), intent(inout), target :: simulate
     type(rt_data_t), intent(inout), target :: global
-    logical :: ok
+    logical :: ok, mlm_matching
     integer :: i_evt
     type(simulation_t), target :: sim
     call rt_data_link (simulate%local, global)
@@ -4693,38 +4643,30 @@ contains
           if (.not. ok)  exit
        end do
        call simulation_final (sim, verbose=.true.)
+       mlm_matching = simulation_check_matching(sim)
+       if (mlm_matching) then
+            call cmd_matching_execute (simulate%local%os_data)
+       end if
     end if
     call rt_data_restore (global, simulate%local)
   end subroutine cmd_simulate_execute
 
+  subroutine cmd_matching_execute (os_data)
+    type(string_t) :: cmd_string
+    type(os_data_t), intent(in) :: os_data
+    call msg_message ("Starting MLM matching PYTHIA interface...")
+    cmd_string = os_data%prefix // "/bin/interface"
+    call os_system_call (cmd_string)
+    call msg_message ("PYTHIA interface finished.")
+  end subroutine cmd_matching_execute
+
   subroutine cmd_rescan_final (rescan)
     type(cmd_rescan_t), intent(inout) :: rescan
-    call eval_tree_final (rescan%filename)
     if (associated (rescan%options)) then
        call command_list_final (rescan%options)
        deallocate (rescan%options)
     end if
   end subroutine cmd_rescan_final
-
-  subroutine cmd_rescan_write (rescan, unit, indent)
-    type(cmd_rescan_t), intent(in) :: rescan
-    integer, intent(in), optional :: unit, indent
-    integer :: u, i
-    u = output_unit (unit);  if (u < 0)  return
-    call write_indent (u, indent)
-    write (u, "(1x,A)", advance="no") "rescan ("
-    do i = 1, rescan%n_proc
-       if (i /= 1)  write (u, "(', ')", advance="no")
-       write (u, "(A)", advance="no")  char (rescan%process_id(i))
-    end do
-    write (u, "(A)") ")"
-    if (associated (rescan%options)) then
-       write (u, "(1x,'{')")
-       call command_list_write (rescan%options, unit, indent)
-       call write_indent (u, indent)
-       write (u, "(1x,'}')")
-    end if
-  end subroutine cmd_rescan_write
 
   subroutine cmd_rescan_compile (rescan, pn, global)
     type(cmd_rescan_t), pointer :: rescan
@@ -4741,7 +4683,7 @@ contains
        allocate (rescan%options)
        call command_list_compile (rescan%options, pn_opt, rescan%local)
     end if
-    call eval_tree_init_sexpr (rescan%filename, pn_filename, global%var_list)
+    rescan%pn_filename => pn_filename
     rescan%n_proc = parse_node_get_n_sub (pn_proclist)
     allocate (rescan%process_id (rescan%n_proc))
     pn_proc => parse_node_get_sub_ptr (pn_proclist)
@@ -4749,6 +4691,7 @@ contains
        rescan%process_id(i) = parse_node_get_string (pn_proc)
        pn_proc => parse_node_get_next_ptr (pn_proc)
     end do
+    call rt_data_local_reset (rescan%local)
   end subroutine cmd_rescan_compile
 
   subroutine cmd_rescan_execute (rescan, global)
@@ -4762,8 +4705,7 @@ contains
     if (associated (rescan%options)) then
        call command_list_execute (rescan%options, rescan%local)
     end if
-    call eval_tree_evaluate (rescan%filename)
-    filename = eval_tree_get_string (rescan%filename)
+    filename = eval_string (rescan%pn_filename, rescan%local%var_list)
     call simulation_init (sim, &
          rescan%process_id, rescan%local, global%var_list, ok, &
          filename=filename, verbose=.true.)
@@ -4783,41 +4725,22 @@ contains
 
   subroutine cmd_seed_final (seed)
     type(cmd_seed_t), intent(inout) :: seed
-    call eval_tree_final (seed%expr)
   end subroutine cmd_seed_final
-
-  subroutine cmd_seed_write (seed, unit, indent)
-    type(cmd_seed_t), intent(in) :: seed
-    integer, intent(in), optional :: unit, indent
-    integer :: u
-    u = output_unit (unit);  if (u < 0)  return
-    call write_indent (u, indent)
-    write (u, "(1x,A)")  "seed ="
-    call eval_tree_write (seed%expr, unit)
-  end subroutine cmd_seed_write
 
   subroutine cmd_seed_compile (seed, pn, global)
     type(cmd_seed_t), pointer :: seed
     type(parse_node_t), intent(in), target :: pn
     type(rt_data_t), intent(in), target :: global
-    type(parse_node_t), pointer :: pn_expr
     allocate (seed)
-    pn_expr => parse_node_get_sub_ptr (pn, 3)
-    call eval_tree_init_expr (seed%expr, pn_expr, global%var_list)
+    seed%pn_expr => parse_node_get_sub_ptr (pn, 3)
   end subroutine cmd_seed_compile
 
   subroutine cmd_seed_execute (seed, global)
     type(cmd_seed_t), intent(inout) :: seed
     type(rt_data_t), intent(inout) :: global
     integer :: seed_val
-    call eval_tree_evaluate (seed%expr)
-    if (eval_tree_result_is_known (seed%expr)) then
-       seed_val = eval_tree_get_int (seed%expr)
-       call set_rng_seed (global%rng, global%var_list, seed_val, verbose=.true.)
-    else
-       call msg_error ("Setting seed value: " &
-            // "undefined result of integer expression evaluation")
-    end if
+    seed_val = eval_int (seed%pn_expr, global%var_list)
+    call set_rng_seed (global%rng, global%var_list, seed_val, verbose=.true.)
   end subroutine cmd_seed_execute
 
   subroutine set_rng_seed (rng, var_list, seed_val, verbose)
@@ -4839,35 +4762,13 @@ contains
   subroutine cmd_iterations_final (iterations)
     type(cmd_iterations_t), intent(inout) :: iterations
     integer :: i
-    if (allocated (iterations%expr_n_it)) then
-       do i = 1, size (iterations%expr_n_it)
-          call eval_tree_final (iterations%expr_n_it(i))
-       end do
+    if (allocated (iterations%pn_expr_n_it)) then
+       deallocate (iterations%pn_expr_n_it)
     end if
-    if (allocated (iterations%expr_n_calls)) then
-       do i = 1, size (iterations%expr_n_calls)
-          call eval_tree_final (iterations%expr_n_calls(i))
-       end do
+    if (allocated (iterations%pn_expr_n_calls)) then
+       deallocate (iterations%pn_expr_n_calls)
     end if
   end subroutine cmd_iterations_final
-
-  subroutine cmd_iterations_write (iterations, unit, indent)
-    type(cmd_iterations_t), intent(in) :: iterations
-    integer, intent(in), optional :: unit, indent
-    integer :: u, i
-    u = output_unit (unit);  if (u < 0)  return
-    call write_indent (u, indent)
-    write (u, "(1x,A)")  "iterations ="
-    do i = 1, iterations%n_pass
-       call eval_tree_write (iterations%expr_n_it(i), unit)
-       write (u, "(1x,A)") ":"
-       call write_indent (u, indent)
-       call eval_tree_write (iterations%expr_n_calls(i), unit)
-       call write_indent (u, indent)
-       if (i < iterations%n_pass)  write (u, "(1x,A)") ":"
-    end do
-    write (u, "(1x,A)") ")"
-  end subroutine cmd_iterations_write
 
   subroutine cmd_iterations_compile (iterations, pn, global)
     type(cmd_iterations_t), pointer :: iterations
@@ -4880,8 +4781,8 @@ contains
     pn_arg => parse_node_get_sub_ptr (pn, 3)
     if (associated (pn_arg)) then
        iterations%n_pass = parse_node_get_n_sub (pn_arg)
-       allocate (iterations%expr_n_it (iterations%n_pass))
-       allocate (iterations%expr_n_calls (iterations%n_pass))
+       allocate (iterations%pn_expr_n_it (iterations%n_pass))
+       allocate (iterations%pn_expr_n_calls (iterations%n_pass))
        pn_it_spec => parse_node_get_sub_ptr (pn_arg)
        i = 1
        do while (associated (pn_it_spec))
@@ -4898,19 +4799,14 @@ contains
           else
              pn_n_calls => null ()
           end if
-          if (associated (pn_n_it)) then
-             call eval_tree_init_expr (iterations%expr_n_it(i), &
-                  pn_n_it, global%var_list)
-          end if
-          if (associated (pn_n_calls)) then
-             call eval_tree_init_expr (iterations%expr_n_calls(i), &
-                  pn_n_calls, global%var_list)
-          end if
+          iterations%pn_expr_n_it(i)%ptr => pn_n_it
+          iterations%pn_expr_n_calls(i)%ptr => pn_n_calls
           i = i + 1
           pn_it_spec => parse_node_get_next_ptr (pn_it_spec)
        end do
     else
-       allocate (iterations%expr_n_it (0), iterations%expr_n_calls (0))
+       allocate (iterations%pn_expr_n_it (0))
+       allocate (iterations%pn_expr_n_calls (0))
     end if
   end subroutine cmd_iterations_compile
 
@@ -4920,23 +4816,14 @@ contains
     integer, dimension(iterations%n_pass) :: n_it, n_calls
     integer :: i
     do i = 1, iterations%n_pass
-       call eval_tree_evaluate (iterations%expr_n_it(i))
-       call eval_tree_evaluate (iterations%expr_n_calls(i))
-       if (eval_tree_result_is_known (iterations%expr_n_it(i))) then
-          n_it(i) = eval_tree_get_int (iterations%expr_n_it(i))
-       else
-          n_it(i) = 0
-       end if
-       if (eval_tree_result_is_known (iterations%expr_n_calls(i))) then
-          n_calls(i) = eval_tree_get_int (iterations%expr_n_calls(i))
-       else
-          n_calls(i) = 0
-       end if
+       n_it(i) = eval_int (iterations%pn_expr_n_it(i)%ptr, global%var_list)
+       n_calls(i) = &
+            eval_int (iterations%pn_expr_n_calls(i)%ptr, global%var_list)
     end do
     call iterations_list_init (global%it_list, n_it, n_calls)
   end subroutine cmd_iterations_execute
 
-  subroutine cmd_scan_final (loop)
+  recursive subroutine cmd_scan_final (loop)
     type(cmd_scan_t), intent(inout) :: loop
     integer :: i
     if (associated (loop%cmd_var)) then
@@ -4946,47 +4833,21 @@ contains
        deallocate (loop%cmd_var)
     end if
     if (allocated (loop%has_range))  deallocate (loop%has_range)
-    if (allocated (loop%beg_expr)) then
-       do i = 1, size (loop%beg_expr)
-          call eval_tree_final (loop%beg_expr(i))
-       end do
-       deallocate (loop%beg_expr)
+    if (allocated (loop%pn_beg_expr)) then
+       deallocate (loop%pn_beg_expr)
     end if
-    if (allocated (loop%end_expr)) then
-       do i = 1, size (loop%end_expr)
-          call eval_tree_final (loop%end_expr(i))
-       end do
-       deallocate (loop%end_expr)
+    if (allocated (loop%pn_end_expr)) then
+       deallocate (loop%pn_end_expr)
     end if
     if (allocated (loop%step_type))  deallocate (loop%step_type)
-    if (allocated (loop%step_expr)) then
-       do i = 1, size (loop%step_expr)
-          call eval_tree_final (loop%step_expr(i))
-       end do
-       deallocate (loop%step_expr)
+    if (allocated (loop%pn_step_expr)) then
+       deallocate (loop%pn_step_expr)
     end if
     if (associated (loop%body)) then
        call command_list_final (loop%body)
        deallocate (loop%body)
     end if
   end subroutine cmd_scan_final
-
-  subroutine cmd_scan_write (loop, unit, indent)
-    type(cmd_scan_t), intent(in) :: loop
-    integer, intent(in), optional :: unit, indent
-    integer :: u
-    u = output_unit (unit);  if (u < 0)  return
-    call write_indent (u, indent)
-    write (u, "(A)", advance="no") "scan ("
-    if (associated (loop%body)) then
-       write (u, "(1x,'{')")
-       call command_list_write (loop%body, unit, indent)
-       call write_indent (u, indent)
-       write (u, "(1x,'}')")
-    else
-       write (u, *)
-    end if
-  end subroutine cmd_scan_write
 
   recursive subroutine cmd_scan_compile (loop, pn, global)
     type(cmd_scan_t), pointer :: loop
@@ -5112,10 +4973,10 @@ contains
           call lexer_init_cmd_list (lexer)
           allocate (loop%has_range (loop%n_arg)); loop%has_range = .false.
           if (loop%allow_steps) then
-             allocate (loop%beg_expr (loop%n_arg))
-             allocate (loop%end_expr (loop%n_arg))
+             allocate (loop%pn_beg_expr (loop%n_arg))
+             allocate (loop%pn_end_expr (loop%n_arg))
              allocate (loop%step_type (loop%n_arg)); loop%step_type = STEP_NONE
-             allocate (loop%step_expr (loop%n_arg))
+             allocate (loop%pn_step_expr (loop%n_arg))
           end if
           call stream_init (stream, str_init)
           call lexer_assign_stream (lexer, stream)
@@ -5139,10 +5000,8 @@ contains
                 if (associated (pn_range)) then
                    loop%has_range(i) = .true.
                    pn_range_expr => parse_node_get_sub_ptr (pn_range, 2)
-                   call eval_tree_init_expr (loop%beg_expr(i), &
-                        pn_expr, loop%local%var_list)
-                   call eval_tree_init_expr (loop%end_expr(i), &
-                        pn_range_expr, loop%local%var_list)
+                   loop%pn_beg_expr(i)%ptr => pn_expr
+                   loop%pn_end_expr(i)%ptr => pn_range_expr
                    pn_step => parse_node_get_next_ptr (pn_range_expr)
                    if (associated (pn_step)) then
                       pn_step_op => parse_node_get_sub_ptr (pn_step)
@@ -5153,8 +5012,7 @@ contains
                       case ("//");  loop%step_type(i) = STEP_DIV
                       end select
                       pn_step_expr => parse_node_get_next_ptr (pn_step_op)
-                      call eval_tree_init_expr (loop%step_expr(i), &
-                           pn_step_expr, loop%local%var_list)
+                      loop%pn_step_expr(i)%ptr => pn_step_expr
                    end if
                 end if
              case default
@@ -5177,6 +5035,7 @@ contains
     else
        loop%n_arg = 0
     end if
+    call rt_data_local_reset (loop%local)
   end subroutine cmd_scan_compile
 
   recursive subroutine cmd_scan_execute (loop, global)
@@ -5187,6 +5046,7 @@ contains
     integer :: i, j
     integer :: i1, i2, istep, ival
     real(default) :: r1, r2, rstep, rval
+    logical :: is_known
     type(var_entry_t), pointer :: var
     type(var_list_t), pointer :: model_vars
     call rt_data_link (loop%local, global)
@@ -5208,19 +5068,15 @@ contains
              end if
           end if
        else
-          call eval_tree_evaluate (loop%beg_expr(i))
-          if (eval_tree_result_is_known (loop%beg_expr(i))) then
-             r1 = eval_tree_get_real (loop%beg_expr(i))
-             i1 = eval_tree_get_int  (loop%beg_expr(i))
-          else
+          call eval_numeric (loop%pn_beg_expr(i)%ptr, loop%local%var_list, &
+               is_known=is_known, ival=i1, rval=r1)
+          if (.not. is_known) then
              call msg_error ("Scan: undefined lower bound, skipping")
              cycle LOOP_LIST
           end if
-          call eval_tree_evaluate (loop%end_expr(i))
-          if (eval_tree_result_is_known (loop%end_expr(i))) then
-             r2 = eval_tree_get_real (loop%end_expr(i))
-             i2 = eval_tree_get_int  (loop%end_expr(i))
-          else
+          call eval_numeric (loop%pn_end_expr(i)%ptr, loop%local%var_list, &
+               is_known=is_known, ival=i2, rval=r2)
+          if (.not. is_known) then
              call msg_error ("Scan: undefined upper bound, skipping")
              cycle LOOP_LIST
           end if
@@ -5229,11 +5085,9 @@ contains
              rstep = 1
              istep = 1
           case default
-             call eval_tree_evaluate (loop%step_expr(i))
-             if (eval_tree_result_is_known (loop%step_expr(i))) then
-                rstep = eval_tree_get_real (loop%step_expr(i))
-                istep = eval_tree_get_int  (loop%step_expr(i))
-             else
+             call eval_numeric (loop%pn_step_expr(i)%ptr, loop%local%var_list, &
+                  is_known=is_known, ival=istep, rval=rstep)
+             if (.not. is_known) then
                 call msg_error ("Scan: undefined step size, skipping")
                 cycle LOOP_LIST
              end if
@@ -5486,7 +5340,6 @@ contains
   recursive subroutine cmd_if_final (cond)
     type(cmd_if_t), intent(inout) :: cond
     integer :: i
-    call eval_tree_final (cond%if_lexpr)
     if (associated (cond%if_body)) then
        call command_list_final (cond%if_body)
        deallocate (cond%if_body)
@@ -5503,46 +5356,6 @@ contains
     end if
   end subroutine cmd_if_final
 
-  recursive subroutine cmd_if_write (cond, unit, indent)
-    type(cmd_if_t), intent(in) :: cond
-    integer, intent(in), optional :: unit, indent
-    integer :: u, ind, i
-    u = output_unit (unit);  if (u < 0)  return
-    call write_indent (u, indent)
-    write (u, "(A)", advance="no") "if "
-    call eval_tree_write (cond%if_lexpr, unit=unit)
-    call write_indent (u, indent)
-    write (u, "(A)") " then"
-    ind = 2;  if (present (indent))  ind = ind + indent
-    if (associated (cond%if_body)) then
-       call write_indent (u, ind)
-       call command_list_write (cond%if_body, unit, ind)
-    end if
-    if (associated (cond%elsif_cond)) then
-       do i = 1, size (cond%elsif_cond)
-          if (associated (cond%elsif_cond(i)%if_body)) then
-             call write_indent (u, indent)
-             write (u, "(A)", advance="no") "elsif "
-             call eval_tree_write (cond%elsif_cond(i)%if_lexpr, unit=unit)
-             call write_indent (u, indent)
-             write (u, "(A)") " then"
-             call write_indent (u, ind)
-             call command_list_write (cond%elsif_cond(i)%if_body, unit, ind)
-          end if
-       end do
-    end if
-    if (associated (cond%else_body)) then
-       call write_indent (u, indent)
-       write (u, "(A)", advance="no") "else"
-       write (u, "(1x,A,1x)") "else"
-       call write_indent (u, ind)
-       call command_list_write (cond%else_body, unit, ind)
-       call write_indent (u, ind)
-     else
-       write (u, *)
-    end if
-  end subroutine cmd_if_write
-
   recursive subroutine cmd_if_compile (cond, pn, global)
     type(cmd_if_t), pointer :: cond
     type(parse_node_t), intent(in), target :: pn
@@ -5553,7 +5366,7 @@ contains
     integer :: i, n_elsif
     allocate (cond)
     pn_lexpr => parse_node_get_sub_ptr (pn, 2)
-    call eval_tree_init_lexpr (cond%if_lexpr, pn_lexpr, global%var_list)
+    cond%pn_if_lexpr => pn_lexpr
     pn_body => parse_node_get_next_ptr (pn_lexpr, 2)
     select case (char (parse_node_get_rule_key (pn_body)))
     case ("command_list")
@@ -5570,8 +5383,7 @@ contains
        pn_cmd_elsif => parse_node_get_sub_ptr (pn_elsif_clauses)
        do i = 1, n_elsif
           pn_lexpr => parse_node_get_sub_ptr (pn_cmd_elsif, 2)
-          call eval_tree_init_lexpr &
-               (cond%elsif_cond(i)%if_lexpr, pn_lexpr, global%var_list)
+          cond%elsif_cond(i)%pn_if_lexpr => pn_lexpr
           pn_body => parse_node_get_next_ptr (pn_lexpr, 2)
           if (associated (pn_body)) then
              allocate (cond%elsif_cond(i)%if_body)
@@ -5598,10 +5410,11 @@ contains
   recursive subroutine cmd_if_execute (cond, global)
     type(cmd_if_t), intent(inout), target :: cond
     type(rt_data_t), intent(inout), target :: global
+    logical :: lval, is_known
     integer :: i
-    call eval_tree_evaluate (cond%if_lexpr)
-    if (eval_tree_result_is_known (cond%if_lexpr)) then
-       if (eval_tree_get_log (cond%if_lexpr)) then
+    lval = eval_log (cond%pn_if_lexpr, global%var_list, is_known=is_known)
+    if (is_known) then
+       if (lval) then
           if (associated (cond%if_body)) then
              call command_list_execute (cond%if_body, global)
           end if
@@ -5613,9 +5426,10 @@ contains
     end if
     if (associated (cond%elsif_cond)) then
        SCAN_ELSIF: do i = 1, size (cond%elsif_cond)
-          call eval_tree_evaluate (cond%elsif_cond(i)%if_lexpr)
-          if (eval_tree_result_is_known (cond%elsif_cond(i)%if_lexpr)) then
-             if (eval_tree_get_log (cond%elsif_cond(i)%if_lexpr)) then
+          lval = eval_log (cond%elsif_cond(i)%pn_if_lexpr, global%var_list, &
+                is_known=is_known)
+          if (is_known) then
+             if (lval) then
                 if (associated (cond%elsif_cond(i)%if_body)) then
                    call command_list_execute &
                         (cond%elsif_cond(i)%if_body, global)
@@ -5646,20 +5460,6 @@ contains
        deallocate (include%command_list)
     end if
   end subroutine cmd_include_final
-
-  subroutine cmd_include_write (include, unit, indent)
-    type(cmd_include_t), intent(in) :: include
-    integer, intent(in), optional :: unit, indent
-    integer :: u
-    u = output_unit (unit);  if (u < 0)  return
-    call write_indent (u, indent)
-    write (u, "(A)")  "! begin include file " &
-         // '"' // char (include%file) // '"'
-    call command_list_write (include%command_list, unit, indent)
-    call write_indent (u, indent)
-    write (u, "(A)")  "! end include file " &
-         // '"' // char (include%file) // '"'
-  end subroutine cmd_include_write
 
   subroutine cmd_include_compile (include, pn, global)
     type(cmd_include_t), pointer :: include
@@ -5712,28 +5512,17 @@ contains
 
   subroutine cmd_quit_final (quit)
     type(cmd_quit_t), intent(inout) :: quit
-    call eval_tree_final (quit%code_expr)
   end subroutine cmd_quit_final
-
-  subroutine cmd_quit_write (quit, unit, indent)
-    type(cmd_quit_t), intent(in) :: quit
-    integer, intent(in), optional :: unit, indent
-    integer :: u
-    u = output_unit (unit);  if (u < 0)  return
-    call write_indent (u, indent)
-    write (u, "(A)")  "quit"
-  end subroutine cmd_quit_write
 
   subroutine cmd_quit_compile (quit, pn, global)
     type(cmd_quit_t), pointer :: quit
     type(parse_node_t), intent(in), target :: pn
     type(rt_data_t), intent(inout), target :: global
-    type(parse_node_t), pointer :: pn_arg, pn_expr
+    type(parse_node_t), pointer :: pn_arg
     allocate (quit)
     pn_arg => parse_node_get_sub_ptr (pn, 2)
     if (associated (pn_arg)) then
-       pn_expr => parse_node_get_sub_ptr (pn_arg)
-       call eval_tree_init_expr (quit%code_expr, pn_expr, global%var_list)
+       quit%pn_code_expr => parse_node_get_sub_ptr (pn_arg)
        quit%has_code = .true.
     end if
   end subroutine cmd_quit_compile
@@ -5741,11 +5530,11 @@ contains
   subroutine cmd_quit_execute (quit, global)
     type(cmd_quit_t), intent(inout), target :: quit
     type(rt_data_t), intent(inout), target :: global
+    logical :: is_known
     if (quit%has_code) then
-       call eval_tree_evaluate  (quit%code_expr)
-       if (eval_tree_result_is_known (quit%code_expr)) then
-          global%quit_code = eval_tree_get_int (quit%code_expr)
-       else
+       global%quit_code = eval_int (quit%pn_code_expr, global%var_list, &
+            is_known=is_known)
+       if (.not. is_known) then
           call msg_error ("Undefined return code of quit/exit command")
        end if
     end if
@@ -5775,21 +5564,6 @@ contains
     cmd_list%last => null ()
   end subroutine command_list_final
 
-  recursive subroutine command_list_write (cmd_list, unit, indent)
-    type(command_list_t), intent(in) :: cmd_list
-    integer, intent(in), optional :: unit, indent
-    type(command_t), pointer :: command
-    command => cmd_list%first
-    do while (associated (command))
-       if (present (indent)) then
-          call command_write (command, unit, indent + 1)
-       else
-          call command_write (command, unit, 1)
-       end if
-       command => command%next
-    end do
-  end subroutine command_list_write
-
   recursive subroutine command_list_compile (cmd_list, pn, global)
     type(command_list_t), intent(inout), target :: cmd_list
     type(parse_node_t), intent(in), target :: pn
@@ -5806,14 +5580,13 @@ contains
     end do
   end subroutine command_list_compile
 
-  recursive subroutine command_list_execute (cmd_list, global, print)
+  recursive subroutine command_list_execute (cmd_list, global)
     type(command_list_t), intent(in) :: cmd_list
     type(rt_data_t), intent(inout), target :: global
-    logical, intent(in), optional :: print
     type(command_t), pointer :: command
     command => cmd_list%first
     COMMAND_COND: do while (associated (command))
-       call command_execute (command, global, print)
+       call command_execute (command, global)
        call terminate_now_if_signal ()
        if (global%quit)  exit COMMAND_COND
        command => command%next
@@ -5843,32 +5616,38 @@ contains
          // "cmd_model | cmd_library | cmd_iterations | cmd_sample_format | " &
          // "cmd_seed | " &
          // "cmd_var | cmd_slha | " &
-         // "cmd_print | cmd_printf | cmd_show | cmd_echo | " &
+         // "cmd_show | " &
          // "cmd_expect | " &
          // "cmd_cuts | cmd_scale | cmd_weight | cmd_reweight | " &
          // "cmd_beams | cmd_integrate | " &
-         // "cmd_observable | cmd_histogram | cmd_plot | cmd_clear | " &
-         // "cmd_record | " &
-         // "cmd_analysis | cmd_write_analysis | " &
+         // "cmd_observable | cmd_histogram | cmd_plot | cmd_graph | " &
+         // "cmd_clear | cmd_record | " &
+         // "cmd_analysis | " &
          // "cmd_unstable | cmd_stable | cmd_simulate | cmd_rescan| " &
          // "cmd_process | cmd_compile | cmd_load | cmd_exec | " &
          // "cmd_scan | cmd_if | cmd_include | cmd_quit | " &
          // "cmd_polarized | cmd_unpolarized | " &
-         // "cmd_beam_polarization")
+         // "cmd_beam_polarization | " &
+         // "cmd_open_out | cmd_close_out | cmd_print | cmd_printf | " &
+         // "cmd_write_analysis | cmd_compile_analysis | " &
+         // "cmd_histogram_writer | cmd_plot_writer")
     call ifile_append (ifile, "GRO options = '{' local_command_list '}'")
     call ifile_append (ifile, "SEQ local_command_list = local_command*")
     call ifile_append (ifile, "ALT local_command = " &
          // "cmd_model | cmd_library | cmd_iterations | cmd_sample_format | " &
          // "cmd_seed | " &
          // "cmd_var | cmd_slha | " &
-         // "cmd_print | cmd_printf | cmd_show | cmd_echo | " &
+         // "cmd_show | " &
          // "cmd_expect | " &
          // "cmd_cuts | cmd_scale | cmd_weight | cmd_reweight | " &
          // "cmd_beams | " &
-         // "cmd_observable | cmd_histogram | cmd_plot | cmd_clear | " &
-         // "cmd_record | " &
-         // "cmd_analysis | cmd_write_analysis | " &
-         // "cmd_beam_polarization")
+         // "cmd_observable | cmd_histogram | cmd_plot | cmd_graph | " &
+         // "cmd_clear | cmd_record | " &
+         // "cmd_analysis | " &
+         // "cmd_beam_polarization | " &
+         // "cmd_open_out | cmd_close_out | cmd_print | cmd_printf | " &
+         // "cmd_write_analysis | cmd_compile_analysis | " &
+         // "cmd_histogram_writer | cmd_plot_writer")
     call ifile_append (ifile, "SEQ cmd_model = model '=' model_name")
     call ifile_append (ifile, "KEY model")
     call ifile_append (ifile, "ALT model_name = model_id | string_literal")
@@ -5899,13 +5678,6 @@ contains
     call ifile_append (ifile, "KEY read_slha")
     call ifile_append (ifile, "KEY write_slha")
     call ifile_append (ifile, "ARG slha_arg = ( string_literal )")
-    call ifile_append (ifile, "SEQ cmd_print = print_cmd options?")
-    call ifile_append (ifile, "SEQ print_cmd = print sprintf_args?")
-    call ifile_append (ifile, "KEY print")
-    call ifile_append (ifile, "SEQ cmd_printf = printf_cmd options?")
-    call ifile_append (ifile, "SEQ printf_cmd = printf_clause sprintf_args?")
-    call ifile_append (ifile, "SEQ printf_clause = printf sexpr")
-    call ifile_append (ifile, "KEY printf")
     call ifile_append (ifile, "SEQ cmd_show = show show_arg?")
     call ifile_append (ifile, "KEY show")
     call ifile_append (ifile, "ARG show_arg = ( var_generic* )")
@@ -5935,9 +5707,6 @@ contains
     call ifile_append (ifile, "KEY expect")
     call ifile_append (ifile, "ARG expect_arg = ( lexpr )")
     call ifile_append (ifile, "SEQ cmd_cuts = cuts '=' lexpr")
-    call ifile_append (ifile, "SEQ cmd_echo = echo echo_arg?")
-    call ifile_append (ifile, "KEY echo")
-    call ifile_append (ifile, "ARG echo_arg = ( sexpr* )")
     call ifile_append (ifile, "SEQ cmd_scale = scale '=' expr")
     call ifile_append (ifile, "SEQ cmd_weight = weight '=' expr")
     call ifile_append (ifile, "SEQ cmd_reweight = reweight '=' expr")
@@ -5974,12 +5743,14 @@ contains
     call ifile_append (ifile, "LIS strfun_pair = strfun_def, strfun_def?")
     call ifile_append (ifile, "SEQ strfun_def = strfun_id options?")
     call ifile_append (ifile, "ALT strfun_id = " &
-          // "none | lhapdf | isr | epa | ewa")
+          // "none | lhapdf | isr | epa | ewa | circe1 | circe2 ")
     call ifile_append (ifile, "KEY none")
     call ifile_append (ifile, "KEY lhapdf")
     call ifile_append (ifile, "KEY isr")
     call ifile_append (ifile, "KEY epa")
     call ifile_append (ifile, "KEY ewa")    
+    call ifile_append (ifile, "KEY circe1")        
+    call ifile_append (ifile, "KEY circe2")        
     call ifile_append (ifile, "SEQ cmd_integrate = " &
          // "integrate proc_arg options?") 
     call ifile_append (ifile, "KEY integrate")
@@ -6007,23 +5778,27 @@ contains
          // "options?")
     call ifile_append (ifile, "KEY histogram")
     call ifile_append (ifile, "ARG histogram_arg = (expr, expr, expr?)")
-!     call ifile_append (ifile, "ARG histogram_arg = " &
-!          // "(expr, expr, bin_expr) ")
-!     call ifile_append (ifile, "ALT bin_expr = w_bins | n_bins")
-!     call ifile_append (ifile, "SEQ n_bins = nbins '=' expr")
-!     call ifile_append (ifile, "SEQ w_bins = wbins '=' expr")    
-!     call ifile_append (ifile, "KEY nbins")
-!     call ifile_append (ifile, "KEY wbins")
-    call ifile_append (ifile, "SEQ cmd_plot = " &
-         // "plot analysis_tag plot_arg options?")
+    call ifile_append (ifile, "SEQ cmd_plot = plot analysis_tag options?")
     call ifile_append (ifile, "KEY plot")
-    call ifile_append (ifile, "ARG plot_arg = (expr, expr)")
+    call ifile_append (ifile, "SEQ cmd_graph = graph graph_term '=' graph_def")
+    call ifile_append (ifile, "KEY graph")
+    call ifile_append (ifile, "SEQ graph_term = analysis_tag options?")
+    call ifile_append (ifile, "SEQ graph_def = graph_term graph_append*")
+    call ifile_append (ifile, "SEQ graph_append = '&' graph_term")
     call ifile_append (ifile, "SEQ cmd_analysis = analysis '=' lexpr")
     call ifile_append (ifile, "KEY analysis")
-    call ifile_append (ifile, "SEQ cmd_write_analysis = " &
-         // "write_analysis write_analysis_arg?")
-    call ifile_append (ifile, "KEY write_analysis")
-    call ifile_append (ifile, "ARG write_analysis_arg = ( analysis_tag* )")
+    call ifile_append (ifile, "SEQ cmd_open_out = open_out open_arg options?")
+    call ifile_append (ifile, "SEQ cmd_close_out = close_out open_arg options?")
+    call ifile_append (ifile, "KEY open_out")
+    call ifile_append (ifile, "KEY close_out")
+    call ifile_append (ifile, "ARG open_arg = (sexpr)")
+    call ifile_append (ifile, "SEQ cmd_print = print_cmd options?")
+    call ifile_append (ifile, "SEQ print_cmd = print sprintf_args?")
+    call ifile_append (ifile, "KEY print")
+    call ifile_append (ifile, "SEQ cmd_printf = printf_cmd options?")
+    call ifile_append (ifile, "SEQ printf_cmd = printf_clause sprintf_args?")
+    call ifile_append (ifile, "SEQ printf_clause = printf sexpr")
+    call ifile_append (ifile, "KEY printf")
     call ifile_append (ifile, "SEQ cmd_clear = clear clear_arg?")
     call ifile_append (ifile, "KEY clear")
     call ifile_append (ifile, "ARG clear_arg = ( clear_obj* )")
@@ -6144,6 +5919,24 @@ contains
     call ifile_append (ifile, "KEY diagonal_density")
     call ifile_append (ifile, "ARG bp_diag_args = ( bp_diag_entry+ )")
     call ifile_append (ifile, "SEQ bp_diag_entry = expr ':' expr")
+    call ifile_append (ifile, "SEQ cmd_write_analysis = " &
+         // "write_analysis_clause options?")
+    call ifile_append (ifile, "SEQ cmd_compile_analysis = " &
+         // "compile_analysis_clause options?")
+    call ifile_append (ifile, "SEQ write_analysis_clause = " &
+         // "write_analysis write_analysis_arg?")
+    call ifile_append (ifile, "SEQ compile_analysis_clause = " &
+         // "compile_analysis write_analysis_arg?")
+    call ifile_append (ifile, "KEY write_analysis")
+    call ifile_append (ifile, "KEY compile_analysis")
+    call ifile_append (ifile, "ARG write_analysis_arg = ( analysis_tag* )")
+    call ifile_append (ifile, "SEQ cmd_histogram_writer = " &
+         // "histogram_writer '=' writer_macro")
+    call ifile_append (ifile, "KEY histogram_writer")
+    call ifile_append (ifile, "SEQ cmd_plot_writer = " &
+         // "plot_writer '=' writer_macro")
+    call ifile_append (ifile, "KEY plot_writer")
+    call ifile_append (ifile, "GRO writer_macro = '{' command_list '}'")
     call define_expr_syntax (ifile, particles=.true., analysis=.true.)
   end subroutine define_cmd_list_syntax
 
@@ -6193,11 +5986,8 @@ contains
        call command_list_compile &
             (command_list, parse_tree_get_root_ptr (parse_tree), global)
     end if
-    print *, "* Command list:"
-    call command_list_write (command_list)
-    print *
     print *, "* Execute command list"
-    call command_list_execute (command_list, global, print=.true.)
+    call command_list_execute (command_list, global)
     print *
     print *, "* Cleanup"
     call command_list_final (command_list)

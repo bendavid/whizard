@@ -435,11 +435,25 @@ path or a user's home directory is part of an AFS file system. Several
 times problems were encountered connected with conflicts with
 permissions inside the OS permission environment variables and the AFS
 permission flags which triggered errors during the \ttt{make install}
-procedure. 
+procedure. Also please avoid using \ttt{make -j} options of parallel
+execution of \ttt{Makefile} directives as AFS filesystems might not be 
+fast enough to cope with this.
 
 For specific problems that might have been encountered in rare
 circumstances for some FORTRAN compilers confer the webpage
-\url{}
+\url{http://projects.hepforge.org/whizard/compilers.html}.
+
+Note that parts of the program do contain good old \ttt{Fortran77}
+code, e.g. the PYTHIA bundle for showering and hadronization. These
+parts should better be compiled with the very same \ttt{Fortran2003}
+compiler as the \whizard\ core. There is, however, one subtlety: 
+when the \ttt{configure} flag \ttt{FC} gets a full system path as
+argument, \ttt{libtool} is not able to recognize this as a valid (GNU)
+\ttt{Fortran77} compiler. It then searches automatically for binaries 
+like \ttt{f77}, \ttt{g77} etc. or a standard system compiler. This 
+might result in a compilation failure of the \ttt{Fortran77}. A viable
+solution is to define an executable link and use this (not the full
+path!) as \ttt{FC} flag.
 
 It is possible to compile \whizard\ without the \ttt{O'Caml} parts of
 \ttt{O'Mega}, namely by using the \ttt{--disable-omega} option of the
@@ -2174,6 +2188,7 @@ propagation, and this restriction may be eventually removed.)
 
 
 \subsection{Options for processes}
+\label{sec:process options}
 
 The \ttt{process} definition may contain an optional argument:
 \begin{quote}
@@ -2548,7 +2563,7 @@ beams.  For instance, we may look at $ep$ collisions:
 \begin{quote}
 \begin{footnotesize}
 \begin{verbatim}
-  beams = "e-", p => lhapdf, none
+  beams = "e-", p => none, lhapdf
 \end{verbatim}
 \end{footnotesize}
 \end{quote}
@@ -3187,7 +3202,7 @@ the integration, if either less accuracy is needed, or CPU time is to be
 saved.  Otherwise, if convergence is bad, the number of iterations or calls
 might be increased.
 
-The manual setting is done by the \ttt{iterations} command:
+To set iterations manually, there is the \ttt{iterations} command:
 \begin{quote}
 \begin{footnotesize}
 \begin{verbatim}
@@ -3195,39 +3210,1141 @@ The manual setting is done by the \ttt{iterations} command:
 \end{verbatim}
 \end{footnotesize}
 \end{quote}
-This is a comma-separated list.
+This is a comma-separated list.  Each pair of values corresponds to an
+integration pass.  The value before the colon is the number of iterations for
+this pass, the other number is the number of calls per iteration.  
+
+While the default number of passes is two (one for warmup, one for the final
+result), you may specify a single pass
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+  iterations = 5:100000  
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+where the relative channel weights will \emph{not} be adjusted (because this
+is the final pass).  This is appropriate for well-behaved integrands where
+weight adaptation is not necessary.
+
+You can also define more than two passes.  That might be useful when reusing a
+previous grid file with insufficient quality: specify the previous passes
+as-is, so the previous results will be read in, and then a new pass for
+further adaptation.
+
+In the final pass, the default behavior is to further adapt grids, but not
+channel weights.  This can be changed by the parameters
+\verb|?adapt_final_grids| (default \ttt{true}) and 
+\verb|?adapt_final_weights| (default \ttt{false}).
 
 
 \subsection{Phase space}
 
-\ttt{integrate} will look for existing phase-space files for the processes to
-be integrated.  If it doesn't find them, it will create them.
+Before \ttt{integrate} can start its work, it must have a phase-space
+configuration for the process at hand.  This is laid out in an ASCII file
+\ttt{\textit{process-name}.phs}.  Normally, you don't have to deal with this
+file, since \whizard\ will generate one automatically if it doesn't find one.
+(\whizard\ is careful to check for consistency of process definition and
+parameters before using an existing file.)  
+
+Experts might find it useful to generate a phase-space file and inspect and/or
+modify it before proceeding further.  To this end, there is the parameter
+\verb|?phs_only|.  If you set this \ttt{true}, \whizard\ skips the actual
+integration after the phase-space file has been generated.  There is also a
+parameter \verb|?vis_channels| which can be set independently; if this is
+\ttt{true}, \whizard\ will generate a graphical visualization of the
+phase-space parameterizations encoded in the phase-space file.
+
+Things might go wrong with the default phase-space generation, or manual
+intervention might be necessary to improve later performance.  There are a few
+parameters that control the algorithm of phase-space generation.  To
+understand their meaning, you should realize that phase-space
+parameterizations are modeled after (dominant) Feynman graphs for the current
+process.  
+
+The parameter \verb|phs_off_shell| controls the number of off-shell lines in
+those graphs, not counting $s$-channel resonances and logarithmically enhanced
+$s$- and $t$-channel lines.  The default value is $1$.  Setting it to zero
+will drop everything that is not resonant or logarithmically enhanced.
+Increasing it will include more subdominant graphs.  (\whizard\ increases the
+value automatically if the default value does not work.)
+
+There is a similar parameter \verb|phs_t_channel| which controls
+multiperipheral graphs in the parameterizations.  The default value is $2$, so
+graphs with up to $2$ $t/u$-channel lines are considered.  In particular
+cases, such as $e^+e^-\to n\gamma$, all graphs are multiperipheral, and for
+$n>2$ \whizard\ would find no parameterizations in the default setup.
+Increase the value of \verb|phs_t_channel| solves this problem.  (This is
+presently not done automatically.)
+
+There are two numerical parameters that describe whether particles are treated
+like massless particles in particular situations.  The value of
+\verb|phs_threshold_s| has the default value $50\;\GeV$.  Hence, $W$ and $Z$
+are considered massive, while $b$ quarks are considered massless.  This
+categorization is used for deciding whether radiation of $b$ quarks can lead
+to (nearly) singular behavior, i.e., logarithmic enhancement, in the infrared
+and collinear regions.  If yes, logarithmic mappings are applied to phase
+space.  Analogously, \verb|phs_threshold_t| decides about potential
+$t$-channel singularities.  Here, the default value is $100\;\GeV$, so
+amplitudes with $W$ and $Z$ in the $t$-channel are considered as
+logarithmically enhanced.
+
+Such logarithmic mappings need a dimensionful scale as parameter.  There are
+three such scales, all with default value $10\;\GeV$: \verb|phs_e_scale|
+(energy), \verb|phs_m_scale| (invariant mass), and \verb|phs_q_scale|
+(momentum transfer).  If cuts and/or masses are such that energies, invariant
+masses of particle pairs, and momentum transfer values below $10\;\GeV$ are
+excluded or suppressed, the values can be kept.  In special cases they should
+be changed: for instance, if you want to describe $\gamma^*\to\mu^+\mu^-$
+splitting well down to the muon mass, no cuts, you may set
+\verb|phs_m_scale = mmu|.  The convergence of the Monte-Carlo integration
+result will be considerably faster.
 
 
 \subsection{Cuts}
 
-\subsection{Weight and scale}
+\whizard~2 does not apply default cuts to the integrand.  Therefore, processes
+with massless particles in the initial, intermediate, or final states may not
+have a finite cross section.  This fact will manifest itself in an integration
+that does not converge, or is unstable, or does not yield a reasonable error
+or reweighting efficiency even for very larger numbers of iterations or calls
+per iterations.  When doing any calculation, you should verify first that the
+result that you are going to compute is finite on physical grounds.  If not,
+you have to apply cuts that make it finite.
+
+A set of cuts is defined by the \ttt{cuts} statement.  Here is an example
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+cuts = all Pt > 20 GeV [colored]  
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+This implies that events are kept only (for integration and simulation) if the
+transverse momenta of all colored particles are above $20\;\GeV$.
+
+Technically, \ttt{cuts} is a special object, which is unique within a given
+scope, and is defined by the logical expression on the right-hand side of the
+assignment.  It may be defined in global scope, so it is applied to all
+subsequent processes.  It may be redefined by another \ttt{cuts} statement.
+This overrides the first cuts setting: the \ttt{cuts} statement is not
+cumulative.  Multiple cuts should be specified by the logical operators of
+SINDARIN, for instance
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+cuts = all Pt > 20 GeV [colored]  
+  and all E > 5 GeV [photon]
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+Cuts may also be defined local to an \ttt{integrate} command, i.e., in the
+options in braces.   They will apply only to the processes being integrated,
+overriding any global cuts.
+
+The right-hand side expression in the \ttt{cuts} statement is evaluated at the
+point where it is used by an \ttt{integrate} command (which could be an
+implicit one called by \ttt{simulate}).  Hence, if the logical expression
+contains parameters, such as
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+mH = 120 GeV
+cuts = all M > mH [b, bbar]
+mH = 150 GeV
+integrate (myproc)
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+the Higgs mass value that is inserted is the value in place when
+\ttt{integrate} is evaluated, $150\;\GeV$ in this example.  This same value
+will also be used when the process is called by a subsequent \ttt{simulate};
+it is \ttt{integrate} which compiles the cut expression and stores it among
+the process data.  This behavior allows for scanning over parameters without
+redefining the cuts every time.
+
+The user is encouraged to define his own set of cuts, if possible in a
+process-independent manner, even if it is not required.  The \ttt{include}
+command allows for storing a set of cuts in a separate SINDARIN script which
+may be read in anywhere.  As an example, the system directories contain a file
+\verb|default_cuts.sin| which may be invoked by
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+include ("default_cuts.sin")
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
 
 
-\clearpage
+\subsection{QCD scale and coupling}
+
+\whizard\ treats all physical parameters of a model, the coefficients in the
+Lagrangian, as constants.  As a leading-order program, \whizard\ does not make
+use of running parameters as they are described by renormalization theory.
+For electroweak interactions where the perturbative expansion is sufficiently
+well behaved, this is a consistent approach.
+
+As far as QCD is concerned, this approach does not yield numerically
+reliable results, even on the validity scale of the tree approximation.
+In \whizard 2, it is therefore possible to replace the fixed value of
+$\alpha_s$ (which is accessible as the intrinsic model variable
+\verb|alphas|), by a function of an energy scale $\mu$.
+
+This is controlled by the parameter \verb|?alpha_s_is_fixed|, which is
+\ttt{true} by default.  Setting it to \ttt{false} enables running~$\alpha_s$.
+The user has then to decide how $\alpha_s$ is calculated.
+
+One option is to set \verb|?alpha_s_from_lhapdf| (default \ttt{true}).  This
+is recommended if the LHAPDF library is used for including structure
+functions, but it may also be set if LHAPDF is not invoked.  \whizard\ will
+then use the $\alpha_s$ formula and value that matches the active LHAPDF
+structure function set and member.
+
+If this is not appropriate, there are again two possibilities.  If
+\verb|?alpha_s_from_mz| is \ttt{true}, the user input value \verb|alphas| is
+interpreted as the running value $\alpha_s(m_Z)$, and for the particular
+event, the coupling is evolved to the appropriate scale $\mu$.  The formula is
+controlled by the further parameters \verb|alpha_s_order| (default $0$,
+meaning leading-log; maximum $2$) and \verb|alpha_s_nf| (default $5$).
+
+Otherwise (\verb|?alpha_s_from_mz = false|), the scale $\Lambda_{\rm QCD}$,
+represented by the intrinsic variable \verb|lambda_qcd|, is used for fixing
+the reference value.  \verb|alpha_s_order| and \verb|alpha_s_nf| apply
+analogously.
+
+In any case, if $\alpha_s$ is not fixed, each event has to be assigned an
+energy scale.  By default, this is $\sqrt{\hat s}$, the partonic invariant
+mass of the event.  This can be replaced by a user-defined scale, the special
+object \ttt{scale}.  This is assigned and used just like the \ttt{cuts}
+object.  The right-hand side is a real-valued expression.  Here is an example:
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+scale = eval Pt [sort by -Pt [colored]]
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+This selects the $p_T$ value of the first entry in the list of colored
+particles sorted by decreasing $p_T$, i.e., the $p_T$ of the hardest jet.
+
+The \ttt{scale} definition is used not just for running $\alpha_s$ (if
+enabled), but is is also the factorization scale for the LHAPDF structure
+functions.
+
+Just like the \ttt{cuts} expression, the \ttt{scale} expression is evaluated
+at the point where it is read by an explicit or implicit \ttt{integrate}
+command.
+
+
+\subsection{Reweighting factor}
+
+It is possible to reweight the integrand by a user-defined function of the
+event kinematics.  This is done by specifying a \ttt{weight} expression.
+Syntax and usage is exactly analogous to the \ttt{scale} expression.  Example:
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+weight = (1 + cos (Theta) ^ 2) [lepton]
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+We should note that the phase-space setup is not aware of this reweighting, so
+in complicated cases you should not expect adaptation to achieve as accurate
+results as for plain cross sections.
+
+Needless to say, the default \ttt{weight} is unity.
+
+
 \section{Events}
+
+After the cross section integral of a scattering process is known (or the
+partial-width integral of a decay process), \whizard\ can generate event
+samples.  There are two limiting cases or modes of event generation:
+\begin{enumerate}
+\item 
+  For a physics simulation, one needs \emph{unweighted} events, so the
+  probability of a process and a kinematical configuration in the event sample
+  is given by its squared matrix element.
+\item
+  Monte-Carlo integration yields \emph{weighted} events, where the probability
+  (without any grid adaptation) is uniformly distributed over phase space,
+  while the weight of the event is given by its squared matrix element.
+\end{enumerate}
+The choice of parameterizations and the iterative adaptation of the
+integration grids gradually shift the generation mode from option 2 to option
+1, which obviously is preferred since it simulates the actual outcome of an
+experiment.  Unfortunately, this adaptation is perfect only in trivial cases,
+such that the Monte-Carlo integration yields non-uniform probability still
+with weighted events.  Unweighted events are obtained by rejection, i.e.,
+accepting an event with a probability equal to its own weight divided by the
+maximal possible weight.  Furthermore, the maximal weight is never precisely
+known, so this probability can only be estimated.
+
+The default generation mode of \whizard\ is unweighted.  This is controlled by
+the parameter \verb|?unweighted| with default value \ttt{true}.  Unweighted
+events are easy to interpret and can be directly compared with experiment, if
+properly interfaced with detector simulation and analysis.
+
+However, when applying rejection to generate unweighted events, the generator
+discards information, and for a single event it needs, on the average,
+$1/\epsilon$ calls, where the efficiency $\epsilon$ is the ratio of the
+average weight over the maximal weight.  If \verb|?unweighted| is \ttt{false},
+all events are kept and assigned their respective weights in histograms or
+event files.
+
 
 \subsection{Simulation}
 
+The \ttt{simulate} command generates an event sample.  The number of events
+can be set either by specifying the integer variable \verb|n_events|, or by
+the real variable \verb|luminosity|.  (This holds for unweighted events.  If
+weighted events are requested, the luminosity value is ignored.)  The
+luminosity is measured in 
+femtobarns, but other units can be used too.  Since the cross sections for the
+processes are known at that point, the number of events is determined as the
+luminosity multiplied by the cross section.
+
+As usual, both parameters can be set either as global or as local parameters:
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+  n_events = 10000
+  simulate (proc1)
+  simulate (proc2, proc3) { luminosity = 100 / 1 pbarn }
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+In the second example, both \verb|n_events| and \verb|luminosity| are set.  
+In that case, \whizard\ chooses whatever produces the larger number of events.
+
+If more than one process is specified in the argument of \ttt{simulate},
+events are distributed among the processes with fractions proportional to
+their cross section values.  The processes are mixed randomly, as it would be
+the case for real data.
+
+The raw event sample is written to a file which is named after the first process
+int the argument of \ttt{simulate}.  If the process name is \ttt{proc1}, the
+file will be named \ttt{proc1.evx}.  You can choose another basename by the
+string variable \verb|$sample|.  For instance,
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+  simulate (proc1) { n_events = 4000  $sample = "my_events" }
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+will produce an event file \verb|my_events.evx| which contains $4000$ events.
+
+This event file is in a machine-dependent binary format, so it is not of
+immediate use.  Its principal purpose is to serve as a cache: if you re-run
+the same script, before starting simulation, it will look for an existing
+event file that matches the input.  If nothing has changed, it will find the
+file previously generated and read in the events, instead of generating them.
+Thus you can modify the analysis or any further steps without repeating the
+time-consuming task of generating a large event sample.  If you change the
+number of events to generate, the program will make use of the existing event
+sample and generate further events only when it is used up.  If necessary, you
+can suppress the writing/reading of the raw event file by the parameters
+\verb|?write_raw| and \verb|?read_raw|.
+
+There are two things that are usually done with an event sample.  It can be
+analyzed directly when it is generated or read, and it can be written to file
+in a standard format that a human or an external program can understand.  The
+basic analysis features of \whizard\ are described below in
+Sec.~\ref{sec:analysis}.  In Chap.~\ref{sec:events}, you will find a more
+thorough discussion of event generation with \whizard, which also covers in
+detail the available event-file formats.
+
+
 \subsection{Decays}
 
-\subsection{Analysis}
+Normally, the events generated by the \ttt{simulate} command will be identical
+in structure to the events that the \ttt{integrate} command generates.  This
+implies that for a process such as $pp\to W^+W^-$, the final-state particles
+are on-shell and stable, so they appear explicitly in the generated event
+files.  If events are desired where the decay products of the $W$ bosons
+appear, one has to generate another process, e.g., $pp\to u\bar d\bar ud$.  In
+this case, the intermediate vector bosons, if reconstructed, are off-shell as
+dictated by physics, and the process contains all intermediate states that are
+possible.  In this example, the matrix element contains also $ZZ$, photon, and
+non-resonant intermediate states.  (This can be restricted via the
+\verb|$restrictions| option, cf.\ \ref{sec:process options}.
+
+Another approach is to factorize the process in production (of $W$ bosons) and
+decays ($W\to q\bar q$).  This is actually the traditional approach, since it
+is much less computing-intensive.  The factorization neglects all off-shell
+effects and irreducible background diagrams that do not have the decaying
+particles as an intermediate resonance.  While \whizard\ is able to deal with
+multi-particle processes without factorization, the needed computing resources
+rapidly increase with the number of external particles.
 
 
 
 
-\section{Analysis}
+\section{Analysis and Output}
+\label{sec:analysis}
+
+SINDARIN natively supports basic methods of data analysis and visualization
+which are frequently used in high-energy physics studies.  Data generated
+during script execution, in particular simulated event samples, can be
+analyzed to evaluate further observables, fill histograms, and draw
+two-dimensional plots.
+
+In the following sections, we first summarize the available data structures,
+before we consider their graphical display.
 
 \subsection{Observables}
 
+Analyses in high-energy physics often involve averages of quantities other
+than a total cross section.  SINDARIN supports this by its \ttt{observable}
+objects.  An \ttt{observable} is a container that collects a single
+real-valued variable with a statistical distribution.  It is declared by a
+command of the form
+\begin{quote}
+  \begin{footnotesize}
+\ttt{observable \emph{analysis-tag}}
+  \end{footnotesize}
+\end{quote}
+where \ttt{\emph{analysis-tag}} is an identifier that follows the same rules
+as a variable name.  
+
+Once the observable has been declared, it can be filled with values.  This is
+done via the \ttt{record} command:
+\begin{quote}
+  \begin{footnotesize}
+\ttt{record \emph{analysis-tag} (\emph{value})}
+  \end{footnotesize}
+\end{quote}
+To make use of this, after values have been filled, we want to perform the
+actual analysis and display the results.  For an observable, these are the
+mean value and the standard deviation.  There is the command
+\ttt{write\_analysis}:
+\begin{quote}
+  \begin{footnotesize}
+\ttt{write\_analysis (\emph{analysis-tag})}
+  \end{footnotesize}
+\end{quote}
+
+Here is an example:
+\begin{quote}
+  \begin{footnotesize}
+\begin{verbatim}
+observable obs
+record obs (1.2)  record obs (1.3)  record obs (2.1)  record obs (1.4)
+write_analysis (obs)
+\end{verbatim}
+  \end{footnotesize}
+\end{quote}
+The result is displayed on screen:
+\begin{quote}
+  \begin{footnotesize}
+\begin{verbatim}
+###############################################################################
+# Observable: obs
+average     =   1.5000000
+error[abs]  =  0.20412415
+error[rel]  =  0.13608276
+n_entries   =            4
+\end{verbatim}
+  \end{footnotesize}
+\end{quote}
+
+
+\subsection{The analysis expression}
+
+The most common application is the computation of event observables -- for
+instance, a forward-backward asymmetry -- during simulation.  To this end,
+there is an \ttt{analysis} expression, which behaves very similar to the
+\ttt{cuts} expression.  It is defined either globally
+\begin{quote}
+  \begin{footnotesize}
+    \ttt{analysis = \emph{logical-expr}}
+  \end{footnotesize}
+\end{quote}
+or as a local option to the \ttt{simulate} or \ttt{rescan} commands which
+generate and handle event samples.  If this expression is defined, it is not
+evaluated immediately, but it is evaluated once for each event in the sample.
+
+In contrast to the \ttt{cuts} expression, the logical value of the
+\ttt{analysis} expression is discarded; the expression form has been chosen
+just by analogy.  To make this useful, there is a variant of the \ttt{record}
+command, namely a \ttt{record} function with exactly the same syntax.  As an
+example, here is a calculation of the forward-backward symmetry in a process
+\ttt{ee\_mumu} with final state $\mu^+\mu^-$:
+\begin{quote}
+  \begin{footnotesize}
+\begin{verbatim}
+  observable a_fb
+  analysis = record a_fb (eval sgn Pz ["mu-"])
+  simulate (ee_mumu) { luminosity = 1 / 1 fbarn }
+\end{verbatim}
+  \end{footnotesize}
+\end{quote}
+The logical return value of \ttt{record} -- which is discarded here -- is
+\ttt{true} if the recording was successful.  In case of histograms (see below)
+it is true if the value falls within bounds, false otherwise.
+
+Note that the function version of \ttt{record} can be used anywhere in
+expressions, not just in the \ttt{analysis} expression.
+
+When \ttt{record} is called for an observable or histogram in simulation mode,
+the recorded value is weighted appropriately.  If \ttt{?unweighted} is true,
+the weight is unity, otherwise it is the event weight.
+
+The \ttt{analysis} expression can involve further cuts, or any other construct
+that can be expressed as an expression in SINDARIN.  For instance, this
+records the energy of the 4th hardest jet in a histogram \ttt{pt\_dist}, if it
+is in the central region:
+\begin{quote}
+  \begin{footnotesize}
+\begin{verbatim}
+  analysis = 
+    record pt_dist (eval E [extract index 4 
+                             [sort by - Pt 
+                               [select if -2.5 < Eta < 2.5 [colored]]]])
+\end{verbatim}
+  \end{footnotesize}
+\end{quote}
+Here, if there is no 4th jet in the event which satisfies the criterion, the
+result will be an undefined value which is not recorded.  In that case,
+\ttt{record} evaluates to \ttt{false}.
+
+\ttt{record} evaluates to a logical, so several \ttt{record} functions may
+be concatenated by the logical operators \ttt{and} or \ttt{or}.  However,
+since usually the further evaluation should not depend on the return value of
+\ttt{record}, it is more advisable to concatenate them by the semicolon
+(\ttt{;}) operator.  This is an operator (\emph{not} a statement separator or
+terminator) that connects two logical expressions and evaluates both of them
+in order.  The lhs result is discarded, the result is the value of the rhs:
+\begin{quote}
+  \begin{footnotesize}
+\begin{verbatim}
+  analysis = 
+    record hist_pt (eval Pt [lepton]) ; record hist_ct (eval cos (Theta) [lepton])
+\end{verbatim}
+  \end{footnotesize}
+\end{quote}
+
+
 \subsection{Histograms}
 
+In SINDARIN, a histogram is declared by the command
+\begin{quote}
+  \begin{footnotesize}
+\ttt{histogram \emph{analysis-tag} (\emph{lower-bound}, \emph{upper-bound})}
+  \end{footnotesize}
+\end{quote}
+This creates a histogram data structure for an (unspecified) observable.  The
+entries are organized in bins between the real values \ttt{\emph{lower-bound}}
+and \ttt{\emph{upper-bound}}.  The number of bins is given by the value of the
+intrinsic integer variable \ttt{n\_bins}, the default value is 20.
+
+The \ttt{histogram} declaration supports an optional argument, so the number
+of bins can be set locally, for instance
+\begin{quote}
+  \begin{footnotesize}
+\ttt{histogram pt\_distribution (0 GeV, 500 GeV) \{ n\_bins = 50 \}}
+  \end{footnotesize}
+\end{quote}
+Sometimes it is more convenient to set the bin width directly.  This can be
+done in a third argument to the \ttt{histogram} command.  
+\begin{quote}
+  \begin{footnotesize}
+\ttt{histogram pt\_distribution (0 GeV, 500 GeV, 10 GeV)}
+  \end{footnotesize}
+\end{quote}
+If the bin width is specified this way, it overrides the setting of
+\ttt{n\_bins}. 
+
+The \ttt{record} command or function fills histograms.  A single call
+\begin{quote}
+  \begin{footnotesize}
+\ttt{record (\emph{real-expr})}
+  \end{footnotesize}
+\end{quote}
+puts the value of \ttt{\emph{real-expr}} into the appropriate bin.  If
+the call is issued during a simulation where \ttt{unweighted} is false, the
+entry is weighted appropriately.
+
+If the value is outside the range specified in the histogram declaration, it
+is put into one of the special underflow and overflow bins.
+
+The \ttt{write\_analysis} command prints the histogram contents as a table in
+blank-separated fixed columns.  The columns are: $x$ (bin midpoint), $y$ (bin
+contents), $\Delta y$ (error), $n$ (number of entries), and excess weight.
+The output also contains comments initiated by a \verb|#| sign, and following
+the histogram proper, information about underflow and overflow as well as
+overall contents is added.
+
+
 \subsection{Plots}
+
+While a histogram stores only summary information about a data set, a
+\ttt{plot} stores all data as $(x,y)$ pairs, optionally with errors.  A plot
+declaration is as simple as
+\begin{quote}
+  \begin{footnotesize}
+\ttt{plot \emph{analysis-tag}}
+  \end{footnotesize}
+\end{quote}
+Like observables and histograms, plots are filled by the \ttt{record} command
+or expression.  To this end, it can take two arguments,
+\begin{quote}
+  \begin{footnotesize}
+\ttt{record (\emph{x-expr}, \emph{y-expr})}
+  \end{footnotesize}
+\end{quote}
+or up to four:
+\begin{quote}
+  \begin{footnotesize}
+\ttt{record (\emph{x-expr}, \emph{y-expr}, \emph{y-error})}
+\\
+\ttt{record (\emph{x-expr}, \emph{y-expr}, 
+  \emph{y-error-expr}, \emph{x-error-expr})}
+  \end{footnotesize}
+\end{quote}
+Note that the $y$ error comes first.  This is because applications will
+demand errors for the $y$ value much more often that $x$ errors.
+
+The plot output, again written by \ttt{write\_analysis} contains the four
+values for each point, again in the ordering $x,y,\Delta y, \Delta x$.
+
+
+\subsection{Output}
+
+There are three basic methods for retrieving the information stored in
+observables, histograms, and plots.
+
+\begin{enumerate}
+\item
+By default, the \ttt{write\_analysis} command prints all data to standard
+output.  Output is redirected to a file if the variable \ttt{\$out\_file} has
+a nonempty value.  If the file is already open, the output will be appended to
+the file, and it will be kept open.  If the file is not open,
+\ttt{write\_analysis} will open the output file by itself, overwriting any
+previous file with the same name, and close it again after data have been
+written.
+
+The command is able to print more than one dataset, following the syntax
+\begin{quote}
+  \begin{footnotesize}
+  \ttt{write\_analysis (\emph{analysis-tag1}, \emph{analysis-tag2}, \ldots)
+  \{ \emph{options} \}}
+  \end{footnotesize}
+\end{quote}
+The argument in brackets may also be empty or absent; in this case, all
+currently existing datasets are printed.
+
+The default data format is suitable for compiling analysis data by \whizard's
+built-in GAMELAN graphics driver (see below).  Data are written in
+blank-separated fixed columns, headlines and comments are initiated by the
+\verb|#| sign, and each data set is terminated by a blank line.  However,
+external programs often require special formatting.
+
+\item
+Custom formatting (currently available for datasets of \ttt{histogram} and
+\ttt{plot} type) is switched on by \ttt{?out\_custom = true}.  This flag,
+like the other parameters described here, is meaningful only to the
+\ttt{write\_analysis} command.  If no other parameters are set, output in
+custom format will be a variant of a blank-separated column format where only
+data are printed, and metadata are listed in a comment header for each
+dataset.  For histograms, the columns are $x$, $y$, $\Delta y$.  For plots,
+the columns are $x$, $y$, $\Delta y$, $\Delta x$.
+
+The fixed-column format is switched off by \ttt{?out\_columns = false}.  The
+separator character, by default a blank character, is given by the string
+\ttt{\$out\_separator}.  Hence, a comma-separated-value (CSV) format is
+defined by
+\begin{quote}
+  \begin{footnotesize}
+\begin{verbatim}
+write_analysis (tag) { 
+  ?out_custom = true  ?out_columns = false  $out_separator = ","
+}
+\end{verbatim}
+  \end{footnotesize}
+\end{quote}
+The comment initiator is given by the variable \ttt{\$out\_comment}, by default
+equal to \verb|"# "|.
+
+In contrast to default formatting, custom-formatted data are never written to
+standard output.  If \ttt{\$out\_file} is the empty string, each dataset with
+tag \ttt{\emph{analysis-tag}} will be written to its own file named
+\ttt{\emph{analysis-tag}.dat}.
+
+\item
+If these switches and parameters are insufficient, it is possible to define an
+arbitrary output format for each histogram bin or plot point.  For histograms,
+there is a \emph{macro} called \ttt{histogram\_writer}:
+\begin{quote}
+\begin{footnotesize}
+  \ttt{histogram\_writer = \{ \emph{commands} \}}
+\end{footnotesize}
+\end{quote}
+Similar to variables, the macro can be defined either locally as an option to
+\ttt{write\_analysis} or globally.
+
+If \ttt{?out\_custom} is true and this macro is defined, the macro will be
+executed once for each bin.  (The parameters \ttt{?out\_columns} and
+\ttt{\$out\_separator} are ignored.)  Within the \ttt{\emph{commands}} body,
+the following variables are locally available:\\[2ex]
+%
+\centerline{\begin{tabular}{|l|l|}
+\hline\ttt{bin\_center} & bin center\\\hline
+\ttt{bin\_width} & bin width\\\hline
+\ttt{bin\_sum} & summed weights in the bin\\\hline
+\ttt{bin\_error} & standard deviation of the bin sum\\\hline
+\ttt{bin\_excess} & excess weight\\\hline
+\ttt{bin\_index} & bin index\\\hline
+\ttt{n\_bins} & number of bins\\\hline
+\ttt{\$out\_file} & current output file\\\hline
+\end{tabular}}\mbox{}\\[2ex]
+%
+Note that these variables locally override all external variables of the same
+name.
+
+For plots, the corresponding macro is defined in a similar fashion with
+%
+\begin{quote}
+\begin{footnotesize}
+  \ttt{plot\_writer = \{ \emph{commands} \}}
+\end{footnotesize}
+\end{quote}
+%
+and the predefined variables are\\[2ex]
+%
+\centerline{\begin{tabular}{|l|l|}
+\hline\ttt{point\_x} & $x$\\\hline
+\ttt{point\_y} & $y$\\\hline
+\ttt{point\_yerr} & $\sigma_y$\\\hline
+\ttt{point\_xerr} & $\sigma_x$\\\hline
+\ttt{point\_index} & plot point index\\\hline
+\ttt{n\_points} & total number of plot points\\\hline
+\ttt{\$out\_file} & current output file\\\hline
+\end{tabular}}\mbox{}\\[2ex]
+%
+
+If one of the macros is chosen for data output, metadata are still written.
+This can be disabled by setting \ttt{?write\_header = false}.
+%
+
+In order make it a bit clearer how custom formats work, here's a small example
+which outputs all defined histograms and plots in custom format, interleaving
+the actual bins and plot points with comments containing the index.
+%
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+write_analysis_data () {
+   ?out_custom = true
+   histogram_writer = {
+      printf "# bin no. %i" (bin_index)
+      printf "%10.8e   %10.8e   %10.8e"
+         (bin_center, bin_sum, bin_excess)
+   }
+   plot_writer = {
+      printf "# plot point %i" (plot_index)
+      printf "%10.8e   %10.8e" (plot_x, plot_y)
+   }
+}
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+%
+\end{enumerate}
+
+
+
+\section{Data Visualization}
+
+\subsection{GAMELAN}
+
+The data values and tables that we have introduced in the previous section can
+be visualized using built-in features of \whizard.  To be precise,
+\whizard\ can write \LaTeX\ code which incorporates code in the graphics
+language GAMELAN to produce a pretty-printed account of observables,
+histograms, and plots.  GAMELAN is actually a macro package for MetaPost.
+This is a graphics language originally written by John Hobby as a variant of
+Knuth's MetaFont language for designing text fonts for \TeX.
+
+The GAMELAN language exists independent of \whizard.  It requires a working
+\LaTeX\ installation together with MetaPost (which is usually bundled with a
+\TeX\ distribution, but might need a separate switch for installation).  On
+top of that, nothing needs to be installed since the \ttt{src/gamelan}
+subdirectory of the \whizard\ build contains the complete package, including
+an (incomplete) manual.  \whizard\ uses a subset of GAMELAN's graphics macros
+directly, but it allows for access to the full package if desired.
+
+To process analysis output beyond writing tables to file, the
+\ttt{write\_analysis} command described in the previous section should be
+replaced by \ttt{compile\_analysis}, with the same syntax:
+\begin{quote}
+  \begin{footnotesize}
+    \ttt{compile\_analysis (\emph{analysis-tags}) \{ \ttt{\emph{options}} \}}
+  \end{footnotesize}
+\end{quote}
+where \ttt{\emph{analysis-tags}}, a comma-separated list of analysis objects,
+is optional.  If there are no tags, all analysis objects are processed.  The
+\ttt{\emph{options}} script of local commands is also optional, of course.
+
+This command will perform the following actions:
+\begin{enumerate}
+\item
+  It writes a data file in default format, as \ttt{write\_analysis} would do.
+  The file name is given by \ttt{\$out\_file}, if nonempty.  The file must not
+  be already open, since the command needs a self-contained file, but the name
+  is otherwise arbitrary.  If the value of \ttt{\$out\_file} is empty, the
+  default file name is \ttt{whizard\_analysis.dat}.
+\item
+  It writes a driver file for the chosen datasets, whose name is derived from
+  the data file by replacing the file extension of the data file with the
+  extension \ttt{.tex}.  The driver file is a \LaTeX\ source file which
+  contains embedded GAMELAN code that handles the selected graphics data.  In
+  the \LaTeX\ document, there is a separate section for each contained
+  dataset.
+\item
+  The driver file is processed by \LaTeX, which generates an appropriate
+  GAMELAN source file with extension \ttt{.mp}.  This code is executed
+  (calling GAMELAN/MetaPost, and again \LaTeX\ for typesetting embedded
+  labels).  There is a second \LaTeX\ pass which collects the results, and
+  finally conversion to PostScript and PDF formats.
+\end{enumerate}
+
+The resulting PostScript or PDF file -- the file name is the name of the data
+file with the extension replaced by \ttt{.ps} or \ttt{.pdf}, respectively
+-- can be printed or viewed with an appropriate viewer such as \ttt{gv}.  The
+viewing command is not executed automatically by \whizard.
+
+Note that \LaTeX\ will write further files with extensions \ttt{.log},
+\ttt{.aux}, and \ttt{.dvi}, and GAMELAN will produce auxiliary files with
+extensions \ttt{.ltp} and \ttt{.mpx}. The log file in particular, could
+overwrite \whizard's log file if the basename is identical.  Be careful to use
+a value for \ttt{\$out\_file} which is not likely to cause name clashes.
+
+
+\subsection{Graphs}
+
+Graphs are an additional type of analysis object.  In contrast to histograms
+and plots, they do not collect data directly, but they rather act as
+containers for graph elements, which are copies of existing histograms and
+plots.  Their single purpose is to be displayed by the GAMELAN driver.
+
+Graphs are declared by simple assignments such as
+\begin{quote}
+  \begin{footnotesize}
+    \ttt{graph g1 = hist1}
+\\
+    \ttt{graph g2 = hist2 \& hist3 \& plot1}
+  \end{footnotesize}
+\end{quote}
+The first declaration copies a single histogram into the graph, the second one
+copies two histograms and a plot.  The syntax for collecting analysis objects
+uses the \ttt{\&} concatenation operator, analogous to string concatenation.
+In the assignment, the rhs must contain only histograms and plots.  Further
+concatenating previously declared graphs is not supported.
+
+After the graph has been declared, its contents can be written to file
+(\ttt{write\_analysis}) or, usually, compiled by the \LaTeX/GAMELAN driver
+via the \ttt{compile\_analysis} command.
+
+The graph elements on the right-hand side of the graph assignment are copied
+with their current data content.  This implies a well-defined order of
+statements: first, histograms and plots are declared, then they are filled via
+\ttt{record} commands or functions, and finally they can be collected for
+display by graph declarations.
+
+A simple graph declaration without options as above is possible, but usually
+there are option which affect the graph display.  There are two kinds of
+options: graph options and drawing options.  Graph options apply to the graph
+as a whole (title, labels, etc.) and are placed in braces on the lhs of the
+assigment.  Drawing options apply to the individual graph elements
+representing the contained histograms and plots, and are placed together with
+the graph element on the rhs of the assignment.  Thus, the complete syntax for
+assigning multiple graph elements is
+\begin{quote}
+  \begin{footnotesize}
+    \ttt{graph \emph{graph-tag} \{ \emph{graph-options} \}}
+\\
+    \ttt{= \emph{graph-element-tag1} \{ \emph{drawing-options1} \}}
+\\
+    \ttt{\& \emph{graph-element-tag2} \{ \emph{drawing-options2} \}}
+\\
+     \ldots
+  \end{footnotesize}
+\end{quote}
+This form is recommended, but graph and drawing options can also be set as
+global parameters, as usual.
+
+We list the supported graph and drawing options in
+Tables~\ref{tab:graph-options} and \ref{tab:drawing-options}, respectively.
+
+\begin{table}
+  \caption{Graph options.  The content of strings of type \LaTeX\ must be
+    valid \LaTeX\ code (containing typesetting commands such as math mode).
+    The content of strings of type GAMELAN must be valid GAMELAN code.
+    If a graph bound is kept \emph{undefined}, the actual graph bound is
+    determined such as not to crop the graph contents in the selected
+    direction.}
+  \label{tab:graph-options}
+
+  \begin{center}
+    \begin{tabular}{|l|l|l|l|}
+      \hline
+      Variable & Default & Type & Meaning
+      \\
+      \hline\hline
+      \ttt{\$title}  & \ttt{""} & \LaTeX &
+        Title of the graph = subsection headline
+      \\
+      \hline
+      \ttt{\$description}  & \ttt{""} &  \LaTeX &
+        Description text for the graph
+      \\
+      \hline
+      \ttt{\$x\_label} & \ttt{""} & \LaTeX &
+        $x$-axis label
+      \\
+      \hline
+      \ttt{\$y\_label} & \ttt{""} & \LaTeX &
+        $y$-axis label
+      \\
+      \hline
+      \ttt{graph\_width\_mm} & 130 & Integer &
+        graph width (on paper) in mm
+      \\
+      \hline
+      \ttt{graph\_height\_mm} & 90 & Integer &
+        graph height (on paper) in mm
+      \\
+      \hline
+      \ttt{?x\_log} & false & Logical &
+        Whether the $x$-axis scale is linear or logarithmic
+      \\
+      \hline
+      \ttt{?x\_log} & false & Logical &
+        Whether the $y$-axis scale is linear or logarithmic
+      \\
+      \hline
+      \ttt{x\_min} & \emph{undefined} & Real &
+        Lower bound for the $x$ axis
+      \\
+      \hline
+      \ttt{x\_max} & \emph{undefined} & Real &
+        Upper bound for the $x$ axis
+      \\
+      \hline
+      \ttt{y\_min} & \emph{undefined} & Real &
+        Lower bound for the $y$ axis
+      \\
+      \hline
+      \ttt{y\_max} & \emph{undefined} & Real &
+        Upper bound for the $y$ axis
+      \\
+      \hline
+      \ttt{gmlcode\_bg} & \ttt{""} & GAMELAN &
+         Code to be executed before drawing
+      \\
+      \hline
+      \ttt{gmlcode\_fg} & \ttt{""} & GAMELAN &
+         Code to be executed after drawing
+      \\
+      \hline
+    \end{tabular}
+  \end{center}
+\end{table}
+
+\begin{table}
+  \caption{Drawing options.  The content of strings of type GAMELAN must be
+    valid GAMELAN code.  The behavior w.r.t. the flags with \emph{undefined}
+    default value depends on the type of graph element.  Histograms: draw
+    baseline, piecewise, fill area, draw curve, no errors, no symbols;  Plots:
+    no baseline, no fill, draw curve, no errors, no symbols.} 
+  \label{tab:drawing-options}
+
+  \begin{center}
+    \begin{tabular}{|l|l|l|l|}
+      \hline
+      Variable & Default & Type & Meaning
+      \\
+      \hline\hline
+      \ttt{?draw\_base}  & \emph{undefined} & Logical &
+        Whether to draw a baseline for the curve
+      \\
+      \hline
+      \ttt{?draw\_piecewise}  & \emph{undefined} & Logical &
+        Whether to draw bins separately (histogram)
+      \\
+      \hline
+      \ttt{?fill\_curve}  & \emph{undefined} & Logical &
+        Whether to fill area between baseline and curve
+      \\
+      \hline
+      \ttt{\$fill\_options} & \ttt{""} & GAMELAN &
+        Options for filling the area
+      \\
+      \hline
+      \ttt{?draw\_curve} & \emph{undefined} & Logical &
+        Whether to draw the curve as a line
+      \\
+      \hline
+      \ttt{\$draw\_options} & \ttt{""} & GAMELAN &
+        Options for drawing the line
+      \\
+      \hline
+      \ttt{?draw\_errors} & \emph{undefined} & Logical &
+        Whether to draw error bars for data points
+      \\
+      \hline
+      \ttt{\$err\_options} & \ttt{""} & GAMELAN &
+        Options for drawing the error bars
+      \\
+      \hline
+      \ttt{?draw\_symbols} & \emph{undefined} & Logical &
+        Whether to draw symbols at data points 
+      \\
+      \hline
+      \ttt{\$symbol} & Black dot & GAMELAN &
+        Symbol to be drawn
+      \\
+      \hline
+      \ttt{gmlcode\_bg} & \ttt{""} & GAMELAN &
+         Code to be executed before drawing
+      \\
+      \hline
+      \ttt{gmlcode\_fg} & \ttt{""} & GAMELAN &
+         Code to be executed after drawing
+      \\
+      \hline
+    \end{tabular}
+  \end{center}
+\end{table}
+
+
+\subsection{Drawing options}
+
+The options for coloring lines, filling curves, or choosing line styles make
+use of macros in the GAMELAN language.  At this place, we do not intend to
+give a full account of the possiblities, but we rather list a few basic
+features that are likely to be useful for drawing graphs.
+
+
+\subsubsection{Colors}
+
+GAMELAN knows about basic colors identified by name:
+\begin{center}
+  \ttt{black}, \ttt{white}, \ttt{red}, \ttt{green}, \ttt{blue}, \ttt{cyan},
+  \ttt{magenta}, \ttt{yellow}
+\end{center}
+More generically, colors in GAMELAN are RGB triplets of numbers (actually,
+numeric expressions) with values between 0 and 1, enclosed in brackets:
+\begin{center}
+  \ttt{(\emph{r}, \emph{g}, \emph{b})}
+\end{center}
+
+To draw an object in color, one should apply the construct \ttt{withcolor
+  \emph{color}} to its drawing code.  The default color is always black.
+Thus, this will make a plot drawn in blue:
+\begin{quote}
+  \begin{footnotesize}
+    \ttt{\$draw\_options = "withcolor blue"}
+  \end{footnotesize}
+\end{quote}
+and this will fill the drawing area of some histogram with an RGB color:
+\begin{quote}
+  \begin{footnotesize}
+    \ttt{\$fill\_options = "withcolor (0.8, 0.7, 1)"}
+  \end{footnotesize}
+\end{quote}
+
+
+\subsubsection{Dashes}
+
+By default, lines are drawn continuously.  Optionally, they can be drawn using
+a \emph{dash pattern}.  Predefined dash patterns are
+\begin{center}
+  \ttt{evenly}, \ttt{withdots}, \ttt{withdashdots}
+\end{center}
+Going beyond the predefined patterns, a generic dash pattern has the syntax
+\begin{center}
+  \ttt{dashpattern (on \emph{l1} off \emph{l2} on} \ldots \ttt{)}
+\end{center}
+with an arbitrary repetition of \ttt{on} and \ttt{off} clauses.  The numbers
+\ttt{\emph{l1}}, \ttt{\emph{l2}}, \ldots\ are lengths measured in pt.
+
+To apply a dash pattern, the option syntax \ttt{dashed \emph{dash-pattern}}
+should be used.  Options strings can be concatenated.  Here is how to draw in
+color with dashes:
+\begin{quote}
+  \begin{footnotesize}
+    \ttt{\$draw\_options = "withcolor red dashed evenly"}   
+  \end{footnotesize}
+\end{quote}
+and this draws error bars consisting of intermittent dashes and
+dots:
+\begin{quote}
+  \begin{footnotesize}
+    \ttt{\$err\_options = "dashed (withdashdots scaled 0.5)"}
+  \end{footnotesize}
+\end{quote}
+The extra brackets ensure that the scale factor $1/2$ is applied only the dash
+pattern.
+
+
+\subsubsection{Hatching}
+
+Areas (e.g., below a histogram) can be filled with plain colors by the
+\ttt{withcolor} option.  They can also be hatched by stripes, optionally
+rotated by some angle.  The syntax is completely analogous to dashes.  There
+are two predefined \emph{hatch patterns}:
+\begin{center}
+   \ttt{withstripes}, \ttt{withlines}
+\end{center}
+and a generic hatch pattern is written
+\begin{center}
+  \ttt{hatchpattern (on \emph{w1} off \emph{w2} on} \ldots \ttt{)}
+\end{center}
+where the numbers \ttt{\emph{l1}}, \ttt{\emph{l2}}, \ldots\ determine the
+widths of the stripes, measured in pt.
+
+When applying a hatch pattern, the pattern may be rotated by some angle (in
+degrees) and scaled.  This looks like
+\begin{quote}
+  \begin{footnotesize}
+    \ttt{\$fill\_options = "hatched (withstripes scaled 0.8 rotated 60)"}
+  \end{footnotesize}
+\end{quote}
+
+
+\subsubsection{Smooth curves}
+
+Plot points are normally connected by straight lines.  If data are acquired by
+statistical methods, such as Monte Carlo integration, this is usually
+recommended.  However, if a plot is generated using an analytic mathematical
+formula, or with sufficient statistics to remove fluctuations, it might be
+appealing to connect lines by some smooth interpolation.  GAMELAN can switch
+on spline interpolation by the specific drawing option \ttt{linked smoothly}.
+Note that the results can be surprising if the data points do have sizable
+fluctuations or sharp kinks.
+
+
+\subsubsection{Error bars}
+
+Plots and histograms can be drawn with error bars.  For histograms, only
+vertical error bars are supported, while plot points can have error bars in
+$x$ and $y$ direction.  Error bars are switched on by the \ttt{?draw\_errors}
+flag.
+
+There is an option to draw error bars with ticks: \ttt{withticks} and an
+alternative option to draw arrow heads: \ttt{witharrows}.  These can be used
+in the \ttt{\$err\_options} string.
+
+
+\subsubsection{Symbols}
+
+To draw symbols at plot points (or histogram midpoints), the flag
+\ttt{?draw\_symbols} has to be switched on.
+
 
 
 
@@ -3371,6 +4488,7 @@ the help of several examples. These examples can be found in the
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \chapter{Event generation and analysis}
+\label{sec:events}
 
 In order to perform a physics analysis with \whizard\ one has to
 generate events. This seems to be a trivial statement, but as there

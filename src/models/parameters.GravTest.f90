@@ -1,6 +1,6 @@
 ! $Id: parameters.GravTest.f90,v 1.4 2006/06/16 13:31:48 kilian Exp $
 !
-! Copyright (C) 1999-2009 by 
+! Copyright (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
@@ -203,16 +203,8 @@ contains
     gazww = gzww * qw
     gaaww = qw**2
     ghww = mass(24) * g
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    !!! This is for the old SM3:
-    !!! ghhww = (0,1) * g / Sqrt(2.0_default)
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ghhww = g**2 / 2.0_default
     ghzz = mass(23) * g / costhw
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    !!! This is for the old SM3:
-    !!! ghhzz = (0,1) * g / costhw / Sqrt(2.0_default)
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ghhzz = g**2 / 2.0_default / costhw**2
     ghtt = - mass(6) / vev
     ghbb = - mass(5) / vev
@@ -220,7 +212,6 @@ contains
     ghtautau = - mass(15) / vev
     ghmm = - mass(13) / vev
     gh3 = - 3 * mass(25)**2 / vev
-    !!! gh4 = mass(25) / vev !!! Old SM3
     gh4 = - 3 * mass(25)**2 / vev**2
     !!! Color flow basis, divide by sqrt(2)
     gs =  sqrt(2.0_default * PI * par%alphas)

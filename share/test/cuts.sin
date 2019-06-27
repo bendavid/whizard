@@ -30,7 +30,7 @@ integrate (cuts_cc) { iterations = 1: ncalls }
 cuts = all E <= 200 [collect [neutrino]]
 integrate (cuts_cc) { iterations = 1: ncalls }
 
-eta_cut = 5
+real eta_cut = 5
 cuts = any 5 degree < Theta < 175 degree 
          [select if abs (Eta) < eta_cut [lepton]]
 integrate (cuts_cc) { iterations = 1: ncalls }

@@ -43,14 +43,15 @@ libwhizard_core_la_SOURCES = \
   event_formats.f90 hepmc_interface.f90 stdhep_interface.f90 \
   particles.f90 \
   beams.f90 \
-  sf_aux.f90 sf_isr.f90 sf_epa.f90 sf_ewa.f90 sf_lhapdf.f90 strfun.f90 \
+  sf_aux.f90 sf_isr.f90 sf_epa.f90 sf_ewa.f90 sf_circe1.f90 \
+  sf_circe2.f90 sf_lhapdf.f90 strfun.f90 \
   mappings.f90 phs_trees.f90 phs_forests.f90 \
   cascades.f90 \
   prclib_interfaces.f90 \
   process_libraries.f90 hard_interactions.f90 processes.f90 \
-  decays.f90 events.f90 \
+  decays.f90 shower_interface.f90 events.f90 \
   slha_interface.f90 \
-  iterations.f90 strfun_config.f90 event_files.f90 \
+  iterations.f90 strfun_config.f90 event_files.f90 user_files.f90 \
   rt_data.f90 \
   compilations.f90 integrations.f90 simulations.f90 \
   commands.f90 whizard.f90
@@ -87,7 +88,7 @@ Makefile.depend: $(libwhizard_core_la_SOURCES) $(libwhizard_main_la_SOURCES)
 
 DISTCLEANFILES = Makefile.depend 
 
-## Dependency libaux (kinds, constants, strings) and VAMP
+## Dependency libaux (kinds, constants, strings) and VAMP, CIRCE1, CIRCE2
 $(libwhizard_core_la_OBJECTS): \
   ../misc/kinds.$(FC_MODULE_EXT) \
   ../misc/constants.$(FC_MODULE_EXT) \
@@ -99,6 +100,11 @@ $(libwhizard_core_la_OBJECTS): \
   ../misc/lorentz.$(FC_MODULE_EXT) \
   ../misc/sm_physics.$(FC_MODULE_EXT) \
   ../vamp/src/vamp.$(FC_MODULE_EXT)
+## Dependency libshower (kinds, constants, strings) and VAMP
+#$(libwhizard_core_la_OBJECTS): \
+  ../miisr/shower_module.$(FC_MODULE_EXT) \
+  ../miisr/shower_particle.$(FC_MODULE_EXT) \
+  ../miisr/shower_basics.$(FC_MODULE_EXT)
 
 SUFFIXES = .lo .$(FC_MODULE_EXT)
 # Fortran90 module files are generated at the same time as object files
@@ -106,7 +112,7 @@ SUFFIXES = .lo .$(FC_MODULE_EXT)
 	@:
 #	touch $@
 
-AM_FCFLAGS = -I../misc -I../vamp/src
+AM_FCFLAGS = -I../misc -I../vamp/src -I../miisr
 
 ## OpenMP
 AM_LDFLAGS =

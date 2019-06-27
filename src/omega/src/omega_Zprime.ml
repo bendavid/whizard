@@ -1,6 +1,6 @@
-(* $Id: omega_Zprime.ml 2293 2010-04-11 23:57:50Z jr_reuter $
+(* $Id: omega_Zprime.ml 2752 2010-08-10 23:19:35Z jr_reuter $
 
-   Copyright (C) 1999-2009 by
+   Copyright (C) 1999-2010 by
 
        Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
@@ -21,8 +21,8 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 let rcs_file = RCS.parse "omega_Zprime" ["Standard Model with Additional Vectors"]
-    { RCS.revision = "$Revision: 2293 $";
-      RCS.date = "$Date: 2010-04-12 01:57:50 +0200 (Mon, 12 Apr 2010) $";
+    { RCS.revision = "$Revision: 2752 $";
+      RCS.date = "$Date: 2010-08-11 01:19:35 +0200 (Wed, 11 Aug 2010) $";
       RCS.author = "$Author: jr_reuter $";
       RCS.source
         = "$Source: /home/sources/ohl/ml/omega/src/omega_Zprime.ml,v $" }
@@ -103,9 +103,6 @@ module Zprime (Flags : SM_flags) =
         "Goldstone Bosons", List.map other [Phip; Phim; Phi0] ]
 
     let flavors () = ThoList.flatmap snd (external_flavors ())
-
-    let squ = function
-      | x -> Pow (Atom x, 2)
 
     let spinor n =
       if n >= 0 then
@@ -207,6 +204,67 @@ module Zprime (Flags : SM_flags) =
           | Gl | Ga | Z | Wp | Wm | ZH -> 0
           end
       | O _ -> 0
+
+
+    (* Electrical charge, lepton number, baryon number.  We could avoid the
+       rationals altogether by multiplying the first and last by 3 \ldots *)
+
+    module Ch = Charges.QQ
+    let ( // ) = Algebra.Small_Rational.make
+
+    let generation' = function
+      |  1 -> [ 1//1;  0//1;  0//1]
+      |  2 -> [ 0//1;  1//1;  0//1]
+      |  3 -> [ 0//1;  0//1;  1//1]
+      | -1 -> [-1//1;  0//1;  0//1]
+      | -2 -> [ 0//1; -1//1;  0//1]
+      | -3 -> [ 0//1;  0//1; -1//1]
+      |  n -> invalid_arg ("Zprime.generation': " ^ string_of_int n)
+
+    let generation f =
+      match f with
+      | M (L n | N n | U n | D n) -> generation' n
+      | G _ | O _ -> [0//1; 0//1; 0//1]
+
+    let charge = function
+      | M f ->
+          begin match f with
+          | L n -> if n > 0 then -1//1 else  1//1
+          | N n -> 0//1
+          | U n -> if n > 0 then  2//3 else -2//3
+          | D n -> if n > 0 then -1//3 else  1//3
+          end
+      | G f ->
+          begin match f with
+          | Gl | Ga | Z | ZH -> 0//1
+          | Wp ->  1//1
+          | Wm -> -1//1
+          end
+      | O f ->
+          begin match f with
+          | H | Phi0 ->  0//1
+          | Phip ->  1//1
+          | Phim -> -1//1
+          end
+
+    let lepton = function
+      | M f ->
+          begin match f with
+          | L n | N n -> if n > 0 then 1//1 else -1//1
+          | U _ | D _ -> 0//1
+          end
+      | G _ | O _ -> 0//1
+
+    let baryon = function
+      | M f ->
+          begin match f with
+          | L _ | N _ -> 0//1
+          | U n | D n -> if n > 0 then 1//1 else -1//1
+          end
+      | G _ | O _ -> 0//1
+
+    let charges f = 
+      [ charge f; lepton f; baryon f] @ generation f
 
     type constant =
       | Unit | Pi | Alpha_QED | Sin2thw

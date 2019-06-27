@@ -1,4 +1,4 @@
-! WHIZARD 2.0.2 Tue May 18 2010
+! WHIZARD 2.0.3 Tue Aug 10 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -42,6 +42,8 @@ module interactions
   implicit none
   private
 
+  public :: external_link_get_ptr
+  public :: external_link_get_index
   public :: interaction_t
   public :: interaction_init
   public :: interaction_final
@@ -603,16 +605,17 @@ contains
   end function interaction_get_max_color_value
 
   subroutine interaction_factorize &
-       (int, mode, x, single_state, correlated_state, qn_in)
+       (int, mode, x, ok, single_state, correlated_state, qn_in)
     type(interaction_t), intent(in), target :: int
     integer, intent(in) :: mode
     real(default), intent(in) :: x
+    logical, intent(out) :: ok
     type(state_matrix_t), &
          dimension(:), allocatable, intent(out) :: single_state
     type(state_matrix_t), intent(out), optional :: correlated_state
     type(quantum_numbers_t), dimension(:), intent(in), optional :: qn_in
     call state_matrix_factorize &
-         (int%state_matrix, mode, x, single_state, correlated_state, qn_in)
+         (int%state_matrix, mode, x, ok, single_state, correlated_state, qn_in)
   end subroutine interaction_factorize
 
   function interaction_sum (int) result (value)
@@ -1067,6 +1070,26 @@ contains
     i = 0
   end function interaction_find_link
 
+  function interaction_get_ultimate_source (int, i) result (link)
+    type(external_link_t) :: link
+    type(interaction_t), intent(in) :: int
+    integer, intent(in) :: i
+    type(interaction_t), pointer :: int_src
+    integer :: i_src
+    link = int%source(i)
+    if (external_link_is_set (link)) then
+       do
+          int_src => external_link_get_ptr (link)
+          i_src = external_link_get_index (link)
+          if (external_link_is_set (int_src%source(i_src))) then
+             link = int_src%source(i_src)
+          else
+             exit
+          end if
+       end do
+    end if
+  end function interaction_get_ultimate_source
+
   subroutine interaction_exchange_mask (int)
     type(interaction_t), intent(inout) :: int
     integer :: i, index_link
@@ -1102,20 +1125,23 @@ contains
     integer, intent(out) :: n
     integer, dimension(:,:), intent(out), allocatable :: connection_index
     integer :: i, j, k
+    type(external_link_t) :: link2, link1
     type(interaction_t), pointer :: int_link, int_link1
     n = 0
     do i = 1, size (int2%source)
-       if (external_link_is_set (int2%source(i))) then
-          int_link => external_link_get_ptr (int2%source(i))
+       link2 = interaction_get_ultimate_source (int2, i)
+       if (external_link_is_set (link2)) then
+          int_link => external_link_get_ptr (link2)
           if (int_link%tag == int1%tag) then
              n = n + 1
           else
-             k = external_link_get_index (int2%source(i))
+             k = external_link_get_index (link2)
              do j = 1, size (int1%source)
-                if (external_link_is_set (int1%source(j))) then
-                   int_link1 => external_link_get_ptr (int1%source(j))
+                link1 = interaction_get_ultimate_source (int1, j)
+                if (external_link_is_set (link1)) then
+                   int_link1 => external_link_get_ptr (link1)
                    if (int_link1%tag == int_link%tag) then
-                      if (external_link_get_index (int1%source(j)) == k) then
+                      if (external_link_get_index (link1) == k) then
                          n = n + 1
                       end if
                    end if
@@ -1127,19 +1153,21 @@ contains
     allocate (connection_index (n, 2))
     n = 0
     do i = 1, size (int2%source)
-       if (external_link_is_set (int2%source(i))) then
-          int_link => external_link_get_ptr (int2%source(i))
+       link2 = interaction_get_ultimate_source (int2, i)
+       if (external_link_is_set (link2)) then
+          int_link => external_link_get_ptr (link2)
           if (int_link%tag == int1%tag) then
              n = n + 1
              connection_index(n,1) = external_link_get_index (int2%source(i))
              connection_index(n,2) = i
           else
-             k = external_link_get_index (int2%source(i))
+             k = external_link_get_index (link2)
              do j = 1, size (int1%source)
-                if (external_link_is_set (int1%source(j))) then
-                   int_link1 => external_link_get_ptr (int1%source(j))
+                link1 = interaction_get_ultimate_source (int1, j)
+                if (external_link_is_set (link1)) then
+                   int_link1 => external_link_get_ptr (link1)
                    if (int_link1%tag == int_link%tag) then
-                      if (external_link_get_index (int1%source(j)) == k) then
+                      if (external_link_get_index (link1) == k) then
                          n = n + 1
                          connection_index(n,1) = j
                          connection_index(n,2) = i

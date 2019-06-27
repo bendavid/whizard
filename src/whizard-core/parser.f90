@@ -1,4 +1,4 @@
-! WHIZARD 2.0.2 Tue May 18 2010
+! WHIZARD 2.0.3 Tue Aug 10 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -40,6 +40,7 @@ module parser
   private
 
   public :: parse_node_t
+  public :: parse_node_p
   public :: parse_node_write_rec
   public :: parse_node_write
   public :: parse_node_final
@@ -91,6 +92,10 @@ module parser
      type(parse_node_t), pointer :: sub_last => null ()
      type(parse_node_t), pointer :: next => null ()
   end type parse_node_t
+
+  type :: parse_node_p
+    type(parse_node_t), pointer :: ptr => null ()
+  end type parse_node_p
 
   type :: parse_tree_t
      private

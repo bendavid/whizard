@@ -1,4 +1,4 @@
-! WHIZARD 2.0.2 Tue May 18 2010
+! WHIZARD 2.0.3 Tue Aug 10 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -100,6 +100,7 @@ module os_interface
      type(string_t) :: whizard_modelpath_local
      type(string_t) :: whizard_models_libpath_local
      type(string_t) :: whizard_omega_binpath_local
+     type(string_t) :: whizard_circe2path     
      logical :: event_analysis_ps  = .false.
      logical :: event_analysis_pdf = .false.
      type(string_t) :: latex
@@ -227,6 +228,7 @@ contains
        os_data%whizard_cutspath       = WHIZARD_TEST_CUTSPATH
        os_data%whizard_texpath        = WHIZARD_TEST_TEXPATH
        os_data%whizard_testdatapath   = WHIZARD_TEST_TESTDATAPATH
+       os_data%whizard_circe2path     = WHIZARD_TEST_CIRCE2PATH
     else
        if (os_dir_exist (local_includes)) then
           os_data%whizard_includes = "-I" // local_includes // " "// &
@@ -244,6 +246,7 @@ contains
        os_data%whizard_cutspath       = WHIZARD_CUTSPATH
        os_data%whizard_texpath        = WHIZARD_TEXPATH
        os_data%whizard_testdatapath   = WHIZARD_TESTDATAPATH
+       os_data%whizard_circe2path     = WHIZARD_CIRCE2PATH       
     end if
     os_data%event_analysis_ps  = EVENT_ANALYSIS_PS  == "yes"
     os_data%event_analysis_pdf = EVENT_ANALYSIS_PDF == "yes"
@@ -276,6 +279,7 @@ contains
     call expand_paths (os_data%whizard_cutspath)
     call expand_paths (os_data%whizard_texpath)
     call expand_paths (os_data%whizard_testdatapath)
+    call expand_paths (os_data%whizard_circe2path)
     call expand_paths (os_data%whizard_models_libpath_local)
     call expand_paths (os_data%whizard_modelpath_local)
     call expand_paths (os_data%whizard_omega_binpath_local)
@@ -331,6 +335,7 @@ contains
     write (u, *) "whizard_gmlpath        = ", char (os_data%whizard_includes)
     write (u, *) "whizard_cutspath       = ", char (os_data%whizard_includes)
     write (u, *) "whizard_texpath        = ", char (os_data%whizard_includes)
+    write (u, *) "whizard_circe2path     = ", char (os_data%whizard_includes)    
     write (u, *) "whizard_testdatapath  = ", &
          char (os_data%whizard_testdatapath)
     write (u, *) "whizard_modelpath_local      = ", &

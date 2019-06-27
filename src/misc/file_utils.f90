@@ -1,4 +1,4 @@
-! WHIZARD 2.0.2 Tue May 18 2010
+! WHIZARD 2.0.3 Tue Aug 10 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -31,23 +31,17 @@ module file_utils
   use kinds, only: default !NODEP!
   use iso_varying_string, string_t => varying_string !NODEP!
   use limits, only: MIN_UNIT, MAX_UNIT !NODEP!
-  use limits, only: DEFAULT_FILENAME, FILENAME_LEN !NODEP!
 
   implicit none
   private
 
   public :: free_unit
   public :: output_unit
-  public :: flush_all
-  public :: choose_filename
-  public :: file_exists_else_default
   public :: upper_case
   public :: lower_case
+  public :: quote_underscore
   public :: tex_format
 
-  interface concat
-     module procedure concat_two, concat_three
-  end interface
   interface upper_case
      module procedure upper_case_char, upper_case_string
   end interface
@@ -81,54 +75,6 @@ contains
        u = stdout
     end if
   end function output_unit
-
- subroutine flush_all ()
-   integer :: u
-   do u = MIN_UNIT, MAX_UNIT
-      flush (u)
-   end do
- end subroutine flush_all
-
-  function choose_filename (file, default_file) result (chosen_file)
-    character(len=*), intent(in) :: file, default_file
-    character(len=FILENAME_LEN) :: chosen_file
-    if (len_trim (file) == 0) then
-       chosen_file = default_file
-    else
-       chosen_file = file
-    end if
-  end function choose_filename
-
-  function concat_two (prefix, filename, extension) result (file)
-    character(len=*) :: prefix, filename, extension
-    character(len=FILENAME_LEN) :: file
-    file = trim(filename)//"."//trim(extension)
-    if (prefix /= "" .and. filename(1:1) /= "/" .and. filename(1:2) /= "./") &
-         & file = trim(prefix) // "/" // file
-  end function concat_two
-
-  function concat_three (prefix, filename, process_id, extension) result (file)
-    character(len=*) :: prefix, filename, process_id, extension
-    character(len=FILENAME_LEN) :: file
-    file = trim(filename)//"."//trim(process_id)//"."//trim(extension)
-    if (prefix /= "" .and. filename(1:1) /= "/" .and. filename(1:2) /= "./") &
-         & file = trim(prefix) // "/" // file
-  end function concat_three
-
-  function file_exists_else_default (prefix, filename, extension) result (file)
-    character(len=*) :: prefix, filename, extension
-    character(len=FILENAME_LEN) :: file
-    logical :: exist
-    file = concat (prefix, filename, extension)
-    inquire (file=trim(file), exist=exist)
-    if (.not.exist) then
-       file = concat (prefix, DEFAULT_FILENAME, extension)
-       inquire (file=trim(file), exist=exist)
-       if (.not.exist)  then
-          file = ""
-       end if
-    end if
-  end function file_exists_else_default
 
   function upper_case_char (string) result (new_string)
     character(*), intent(in) :: string
@@ -173,6 +119,21 @@ contains
     type(string_t) :: new_string
     new_string = lower_case_char (char (string))
   end function lower_case_string
+
+  function quote_underscore (string) result (quoted)
+    type(string_t) :: quoted
+    type(string_t), intent(in) :: string
+    type(string_t) :: part
+    type(string_t) :: buffer
+    buffer = string
+    quoted = ""
+    do
+      call split (part, buffer, "_")
+      quoted = quoted // part
+      if (buffer == "")  exit
+      quoted = quoted // "\_"
+    end do
+  end function quote_underscore
 
   function tex_format (rval, n_digits) result (string)
     type(string_t) :: string

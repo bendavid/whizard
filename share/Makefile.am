@@ -29,6 +29,7 @@ dist_models_DATA = \
   models/SM_km.mdl \
   models/SM_top.mdl \
   models/SM.mdl \
+  models/SM_triangle_higgs.mdl \
   models/Template.mdl \
   models/UED.mdl \
   models/Xdim.mdl \
@@ -60,4 +61,5 @@ dist_examples_DATA = \
   examples/Zprime.sin \
   examples/LEP_higgs.sin \
   examples/LEP_cc10.sin \
-  examples/eeww_polarized.sin
+  examples/eeww_polarized.sin \
+  examples/LEP_jets.sin

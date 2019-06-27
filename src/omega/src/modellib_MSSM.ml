@@ -1,6 +1,6 @@
-(* $Id: modellib_MSSM.ml 2219 2010-04-04 16:05:44Z ohl $
+(* $Id: modellib_MSSM.ml 2701 2010-07-11 23:04:45Z jr_reuter $
 
-   Copyright (C) 1999-2009 by
+   Copyright (C) 1999-2010 by
 
        Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
@@ -20,12 +20,12 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
-(* $Id: modellib_MSSM.ml 2219 2010-04-04 16:05:44Z ohl $ *)
+(* $Id: modellib_MSSM.ml 2701 2010-07-11 23:04:45Z jr_reuter $ *)
 
 let rcs_file = RCS.parse "Modellib_MSSM" ["MSSM"]
-    { RCS.revision = "$Revision: 2219 $";
-      RCS.date = "$Date: 2010-04-04 18:05:44 +0200 (Sun, 04 Apr 2010) $";
-      RCS.author = "$Author: ohl $";
+    { RCS.revision = "$Revision: 2701 $";
+      RCS.date = "$Date: 2010-07-12 01:04:45 +0200 (Mon, 12 Jul 2010) $";
+      RCS.author = "$Author: jr_reuter $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/src/omega/src/modellib_MSSM.ml $" }
 
@@ -530,6 +530,61 @@ Here we must perhaps allow for complex input parameters. So split them
 into their modulus and their phase. At first, we leave them real; the 
 generalization to complex parameters is obvious. *)
 
+    module Ch = Charges.QQ
+
+    let ( // ) = Algebra.Small_Rational.make
+
+    let generation' = function
+      |  1 -> [ 1//1;  0//1;  0//1]
+      |  2 -> [ 0//1;  1//1;  0//1]
+      |  3 -> [ 0//1;  0//1;  1//1]
+      | -1 -> [-1//1;  0//1;  0//1]
+      | -2 -> [ 0//1; -1//1;  0//1]
+      | -3 -> [ 0//1;  0//1; -1//1]
+      |  n -> invalid_arg ("MSSM.generation': " ^ string_of_int n)
+
+    let generation f =
+      if Flags.ckm_present then
+        []
+      else
+        match f with
+        | L n | N n | U n | D n | Sup (_,n) 
+        | Sdown (_,n) | Slepton (_,n) 
+        | Sneutrino n -> generation' n
+        | _ -> [0//1; 0//1; 0//1]
+
+    let charge = function
+      | L n -> if n > 0 then -1//1 else  1//1
+      | Slepton (_,n) -> if n > 0 then -1//1 else  1//1
+      | N n -> 0//1
+      | Sneutrino n -> 0//1
+      | U n -> if n > 0 then  2//3 else -2//3
+      | Sup (_,n) -> if n > 0 then  2//3 else -2//3
+      | D n -> if n > 0 then -1//3 else  1//3          
+      | Sdown (_,n) -> if n > 0 then -1//3 else  1//3          
+      | Gl | Ga | Z | Neutralino _ | Gluino -> 0//1
+      | Wp ->  1//1
+      | Wm -> -1//1
+      | H_Heavy | H_Light | Phi0 ->  0//1
+      | Hp | Phip ->  1//1
+      | Hm | Phim -> -1//1
+      | Chargino (C1 | C2) -> 1//1 
+      | Chargino (C1c | C2c) -> -1//1 
+      | _ -> 0//1
+
+    let lepton = function
+      | L n | N n -> if n > 0 then 1//1 else -1//1
+      | Slepton (_,n) 
+      | Sneutrino n -> if n > 0 then 1//1 else -1//1
+      | _ -> 0//1
+
+    let baryon = function
+      | U n | D n -> if n > 0 then 1//1 else -1//1
+      | Sup (_,n) | Sdown (_,n) -> if n > 0 then 1//1 else -1//1
+      | _ -> 0//1
+
+    let charges f =
+      [ charge f; lepton f; baryon f] @ generation f
 
     let parameters () =
       { input = [];
@@ -1114,7 +1169,7 @@ generalization to complex parameters is obvious. *)
         ((Z, Z, Sneutrino g, Sneutrino (-g)), Scalar2_Vector2 1, G_ZZSFSF 
            (SN,g,M1,M1)) ]
 
-    let gauge_squark4' g h m1 m2 = 
+    let gauge_squark4'' g h m1 m2 = 
       [ ((Wp, Ga, Sup (m1,-g), Sdown (m2,h)), Scalar2_Vector2 1, G_WPSUSD 
            (false,m1,m2,g,h));
         ((Wm, Ga, Sup (m1,g), Sdown (m2,-h)), Scalar2_Vector2 1, G_WPSUSD 
@@ -1123,16 +1178,26 @@ generalization to complex parameters is obvious. *)
            (false,m1,m2,g,h));
         ((Wm, Z, Sup (m1,g), Sdown (m2,-h)), Scalar2_Vector2 1, G_WZSUSD 
            (true,m1,m2,g,h)) ]
-      let gauge_squark4 g h = List.flatten (Product.list2 (gauge_squark4' g h) 
+    let gauge_squark4' g h = List.flatten (Product.list2 (gauge_squark4'' g h) 
                                               [M1;M2] [M1;M2])
+    let gauge_squark4 =
+      if Flags.ckm_present then
+        List.flatten (Product.list2 gauge_squark4' [1;2;3] [1;2;3]) 
+      else
+        ThoList.flatmap (fun g -> gauge_squark4' g g) [1;2;3]
 
-    let gluon_w_squark' g h m1 m2 =
+    let gluon_w_squark'' g h m1 m2 =
       [ ((Gl, Wp, Sup (m1,-g), Sdown (m2,h)), 
             Scalar2_Vector2 1, G_GlWSUSD (false,m1,m2,g,h));
         ((Gl, Wm, Sup (m1,g), Sdown (m2,-h)), 
             Scalar2_Vector2 1, G_GlWSUSD (true,m1,m2,g,h)) ]
-    let gluon_w_squark g h = 
-      List.flatten (Product.list2 (gluon_w_squark' g h) [M1;M2] [M1;M2])
+    let gluon_w_squark' g h = 
+      List.flatten (Product.list2 (gluon_w_squark'' g h) [M1;M2] [M1;M2])
+    let gluon_w_squark = 
+      if Flags.ckm_present then
+        List.flatten (Product.list2 gluon_w_squark' [1;2;3] [1;2;3]) 
+      else
+        ThoList.flatmap (fun g -> gluon_w_squark' g g) [1;2;3]
 
     let gluon_gauge_squark' g m1 m2 =
       [ ((Gl, Z, Sup (m1,g), Sup (m2,-g)), Scalar2_Vector2 2, G_GlZSFSF (SU,g,m1,m2));
@@ -1337,8 +1402,11 @@ generalization to complex parameters is obvious. *)
     let higgs_squark_b (g,h) = List.flatten (Product.list2 (higgs_squark' g h)
                                              [M1;M2] [M1;M2]) 
     let higgs_squark =          
-         List.flatten (Product.list2 higgs_squark_a [1;2] [1;2]) @ 
-         ThoList.flatmap higgs_squark_b [(1,3);(2,3);(3,3);(3,1);(3,2)] 
+      if Flags.ckm_present then
+        List.flatten (Product.list2 higgs_squark_a [1;2] [1;2]) @ 
+        ThoList.flatmap higgs_squark_b [(1,3);(2,3);(3,3);(3,1);(3,2)] 
+      else
+        higgs_squark_a 1 1 @ higgs_squark_a 2 2 @ higgs_squark_b (3,3)
 
 (*** REVISED: Independent of the sign of CD, compatible with GS+. ***)
     let goldstone_squark' g h m1 m2 =
@@ -1628,8 +1696,8 @@ generalization to complex parameters is obvious. *)
         ((U (-g), Sup (m, g), Gl, Grino), GBBG (1, Psibar, SLRV, Grav), G_Gr4Gl_Suc (g,m));
         ((Grino, Sdown (m, -g), Gl, D g), GBBG (1, Gravbar, SLRV, Psi), G_Gr4Gl_Sd (g,m));
         ((D (-g), Sdown (m, g), Gl, Grino), GBBG (1, Psibar, SLRV, Grav), G_Gr4Gl_Sdc (g,m));
-        ((Grino, Slepton (m, -g), Wp, N g), GBBG (1, Gravbar, SLV, Psi), G_Gr4W_Sl (g,m));
-        ((N (-g), Slepton (m, g), Wm, Grino), GBBG (1, Psibar, SLV, Grav), G_Gr4Z_Slc (g,m));
+        ((Grino, Slepton (m, -g), Wm, N g), GBBG (1, Gravbar, SLV, Psi), G_Gr4W_Sl (g,m));
+        ((N (-g), Slepton (m, g), Wp, Grino), GBBG (1, Psibar, SLV, Grav), G_Gr4Z_Slc (g,m));
         ((Grino, Sup (m, -g), Wp, D g), GBBG (1, Gravbar, SLV, Psi), G_Gr4W_Su (g,m));
         ((D (-g), Sup (m, g), Wm, Grino), GBBG (1, Psibar, SLV, Grav), G_Gr4W_Suc (g,m));
         ((Grino, Sdown (m, -g), Wm, U g), GBBG (1, Gravbar, SLV, Psi), G_Gr4W_Sd (g,m));
@@ -1731,54 +1799,6 @@ generalization to complex parameters is obvious. *)
          ThoList.flatmap col_currents [1;2;3] @ 
          List.flatten (Product.list2 col_sfermion_currents [1;2;3] [M1;M2]))
 
-
-(*i OLD VERSION !!!!!!!!!!!!!!!!!!!!!
-    let vertices3'' = 
-        (ThoList.flatmap electromagnetic_currents_3 [1;2;3] @
-         ThoList.flatmap electromagnetic_currents_2 [C1;C2] @
-         List.flatten (Product.list2 
-                electromagnetic_sfermion_currents [1;2;3] [M1;M2]) @ 
-         ThoList.flatmap neutral_currents [1;2;3] @
-         ThoList.flatmap neutral_sfermion_currents [1;2;3] @  
-         ThoList.flatmap charged_currents [1;2;3] @
-         List.flatten (Product.list2 charged_slepton_currents [1;2;3] 
-                         [M1;M2]) @ 
-         ThoList.flatmap yukawa_higgs_quark [(3,3)] @ 
-         (if Flags.ckm_present then 
-           List.flatten (Product.list2 charged_quark_currents [1;2;3] 
-                           [1;2;3]) @
-           List.flatten (Product.list2 charged_squark_currents [1;2;3] 
-                           [1;2;3]) @ 
-           ThoList.flatmap yukawa_higgs_quark [(1,3);(2,3);(3,3);(3,1);(3,2)]
-         else
-           charged_quark_currents 1 1 @
-           charged_quark_currents 2 2 @
-           charged_quark_currents 3 3 @
-           charged_squark_currents 1 1 @
-           charged_squark_currents 2 2 @
-           charged_squark_currents 3 3 @ 
-           ThoList.flatmap yukawa_higgs_quark [(3,3)]) @ 
-(*i         ThoList.flatmap yukawa_higgs [1;2;3] @  i*)
-         yukawa_higgs 3 @ yukawa_n @ 
-         ThoList.flatmap yukawa_c [C1;C2] @ 
-         ThoList.flatmap yukawa_cq [C1;C2] @ 
-         List.flatten (Product.list2 charged_chargino_currents [N1;N2;N3;N4] 
-                         [C1;C2]) @ triple_gauge @ 
-         ThoList.flatmap neutral_Z_1 [(N1,N2);(N1,N3);(N1,N4);(N2,N3);(N2,N4);
-                                    (N3,N4)] @
-         ThoList.flatmap neutral_Z_2 [N1;N2;N3;N4] @
-         Product.list2 charged_Z [C1;C2] [C1;C2] @ 
-         gauge_higgs @ higgs @ yukawa_higgs_2 @ 
-(*i         List.flatten (Product.list2 yukawa_higgs_quark [1;2;3] [1;2;3]) @  i*)
-         List.flatten (Product.list2 higgs_charg_neutr [N1;N2;N3;N4] [C1;C2]) @ 
-         higgs_neutr @ higgs_sneutrino @ higgs_sfermion @ 
-(*i         ThoList.flatmap higgs_sfermion [1;2;3] @  i*)
-         higgs_squark @ yukawa_v  @
-         ThoList.flatmap col_currents [1;2;3] @ 
-         List.flatten (Product.list2 col_sfermion_currents [1;2;3] [M1;M2]))
-i*)
-
-
     let vertices3' = 
       if Flags.gravitino then (vertices3'' @ triple_gravitino) 
       else vertices3''
@@ -1798,15 +1818,11 @@ i*)
          goldstone_neutr @ goldstone_sfermion @ goldstone_squark)
       else vertices3'
         
-
-(*    let vertices4 = []  *) 
-
     let vertices4''' = 
       (quartic_gauge @ higgs4 @ gauge_higgs4 @ 
        ThoList.flatmap gauge_sfermion4 [1;2;3] @
-       List.flatten (Product.list2 gauge_squark4 [1;2;3] [1;2;3]) @
+       gauge_squark4 @ gluon_w_squark @
        List.flatten (Product.list2 gluon2_squark2  [1;2;3] [M1;M2]) @
-       List.flatten (Product.list2 gluon_w_squark [1;2;3] [1;2;3]) @
        ThoList.flatmap gluon_gauge_squark [1;2;3])
     let vertices4'' =
       if Flags.gravitino then (vertices4''' @ quartic_gravitino)          

@@ -17,7 +17,7 @@ compile
 show (library)
 
 # Now restart, reusing the existing library
-?rebuild = false
+?rebuild_library = false
 load
 
 # Overwrite p1 and confirm p2
@@ -29,12 +29,12 @@ compile
 show (library)
 
 # Recompile everything
-?recompile = true
+?recompile_library = true
 compile
 show (library)
 
 # Recommpile nothing
-?recompile = false
+?recompile_library = false
 compile
 show (library)
 

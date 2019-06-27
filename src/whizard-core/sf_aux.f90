@@ -1,4 +1,4 @@
-! WHIZARD 2.0.2 Tue May 18 2010
+! WHIZARD 2.0.3 Tue Aug 10 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -65,7 +65,7 @@ module sf_aux
 
 contains
 
-  function new_splitting_data (k, mk2, mr2, m) result (d)
+  elemental function new_splitting_data (k, mk2, mr2, m) result (d)
     type(splitting_data_t) :: d
     type(vector4_t), intent(in) :: k
     real(default), intent(in) :: mk2, mr2, m
@@ -107,13 +107,17 @@ contains
     x = (/ d%x0, d%x1 /)
   end function splitting_get_x_bounds
 
-  subroutine splitting_set_t_bounds (d, x, xb)
+  elemental subroutine splitting_set_t_bounds (d, x, xb)
     type(splitting_data_t), intent(inout) :: d
     real(default), intent(in) :: x, xb
     real(default) :: tp, tm
     d%x = x
     d%xb = xb
-    d%pb = sqrt (max (d%E**2 - d%u / xb**2, 0._default))
+    if (d%xb /= 0) then
+       d%pb = sqrt (max (d%E**2 - d%u / d%xb**2, 0._default))
+    else
+       d%pb = 0
+    end if
     tp = -2 * xb * d%E**2 + d%s + d%u
     tm = -2 * xb * d%p * d%pb
     d%t0 = tp + tm
@@ -137,7 +141,7 @@ contains
     d%t = d%m2 + (tt0 - d%m2) * exp (r * log ((tt1 - d%m2) / (tt0 - d%m2)))
   end subroutine splitting_sample_t
 
-  subroutine splitting_set_collinear (d)
+  elemental subroutine splitting_set_collinear (d)
     type(splitting_data_t), intent(inout) :: d
     d%t = d%t1
   end subroutine splitting_set_collinear

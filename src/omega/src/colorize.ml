@@ -1,4 +1,4 @@
-(* $Id: colorize.ml 2219 2010-04-04 16:05:44Z ohl $
+(* $Id: colorize.ml 2640 2010-06-23 22:16:40Z ohl $
 
    Copyright (C) 1999-2010 by
 
@@ -21,8 +21,8 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 let rcs_file = RCS.parse "Colorize" ["Colorizing Monochrome Models"]
-    { RCS.revision = "$Revision: 2219 $";
-      RCS.date = "$Date: 2010-04-04 18:05:44 +0200 (Sun, 04 Apr 2010) $";
+    { RCS.revision = "$Revision: 2640 $";
+      RCS.date = "$Date: 2010-06-24 00:16:40 +0200 (Thu, 24 Jun 2010) $";
       RCS.author = "$Author: ohl $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/src/omega/src/colorize.ml $" }
@@ -97,6 +97,9 @@ module It (M : Model.T) =
     let color = pullback M.color
     let pdg = pullback M.pdg
     let lorentz = pullback M.lorentz
+
+    module Ch = M.Ch
+    let charges = pullback M.charges
 
 (* For the propagator we cannot use pullback because we have to add the case
    of the color singlet propagator by hand. *)
@@ -1389,7 +1392,8 @@ module Gauge (M : Model.Gauge) =
     type flavor_sans_color = CM.flavor_sans_color
     type gauge = CM.gauge
     type constant = CM.constant
-
+    module Ch = CM.Ch
+    let charges = CM.charges
     let flavor_sans_color = CM.flavor_sans_color
     let color = CM.color
     let pdg = CM.pdg

@@ -46,15 +46,15 @@ luminosity = 10
 $description =
   "A WHIZARD 2.0 Example.
    Charged current CC10 process from LEP 2."
-$ylabel = "$N_{\textrm{events}}$"
+$y_label = "$N_{\textrm{events}}$"
 
 # Allocate plots
 $title = "Di-jet invariant mass $M_{jj}$ in $e^+e^- \to \mu^- \bar\nu_\mu u \bar d$"
-$xlabel = "$M_{jj}$/GeV"
+$x_label = "$M_{jj}$/GeV"
 histogram m_jets (70 GeV, 90 GeV, 0.5 GeV)
 
 $title = "Muon energy $E_\mu$ in $e^+e^- \to \mu^- \bar\nu_\mu u \bar d$"
-$xlabel = "E_\mu$/GeV"
+$x_label = "$E_\mu$/GeV"
 histogram e_muon (0 GeV, 209 GeV, 4)
 
 analysis = record m_jets (eval M [u,D]);
@@ -62,5 +62,4 @@ analysis = record m_jets (eval M [u,D]);
 
 simulate (cc10) 
 
-$analysis_filename = "cc10"
-write_analysis
+compile_analysis { $out_file = "cc10.dat" }

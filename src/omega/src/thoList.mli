@@ -1,4 +1,4 @@
-(* $Id: thoList.mli 2276 2010-04-09 17:15:14Z ohl $
+(* $Id: thoList.mli 2695 2010-07-08 22:15:33Z ohl $
 
    Copyright (C) 1999-2009 by
 
@@ -102,6 +102,14 @@ val transpose : 'a list list -> 'a list list
 val partitioned_sort : ('a -> 'a -> int) -> int list list -> 'a list -> 'a list
 exception Overlapping_indices
 exception Out_of_bounds
+
+(* [ariadne_sort cmp list] sorts [list] according to [cmp]
+   (default [Pervasives.compare]) keeping track of the original order
+   by a 0-based list of infices. *)
+val ariadne_sort : ?cmp:('a -> 'a -> int) -> 'a list -> 'a list * int list
+
+(* [ariadne_unsort (ariadne_sort cmp list)] returns [list]. *)
+val ariadne_unsort : 'a list * int list -> 'a list
 
 (*i
  *  Local Variables:

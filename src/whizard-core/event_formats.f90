@@ -1,4 +1,4 @@
-! WHIZARD 2.0.2 Tue May 18 2010
+! WHIZARD 2.0.3 Tue Aug 10 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -45,6 +45,7 @@ module event_formats
 
   public :: les_houches_events_write_header
   public :: les_houches_events_write_footer
+  public :: lhef_write_matching_info
   public :: heprup_init
   public :: heprup_set_lhapdf_id
   public :: heprup_set_process_parameters
@@ -144,7 +145,7 @@ contains
     write (u, *) '<LesHouchesEvents version="1.0">'
     write (u, *) '<header>'
     write (u, *) '  <generator_name>WHIZARD</generator_name>'
-    write (u, *) '  <generator_version>2.0.2</generator_version>'
+    write (u, *) '  <generator_version>2.0.3</generator_version>'
     write (u, *) '</header>'
   end subroutine les_houches_events_write_header
 
@@ -154,6 +155,23 @@ contains
     u = output_unit (unit);  if (u < 0)  return
     write (u, *) '</LesHouchesEvents>'
   end subroutine les_houches_events_write_footer
+
+  subroutine lhef_write_matching_info (unit, ptmin, drmin, ktcut, ktmode, lhefout)
+    integer, intent(in), optional :: unit, ktmode
+    real(default), intent(in), optional :: ptmin, drmin, ktcut
+    logical, intent(in), optional :: lhefout
+    integer :: u
+    u = output_unit (unit);  if (u < 0)  return
+    if (present(ptmin).or.present(drmin).or.present(ktcut)) then
+       write (u, *) '<!-- Matching information for PYTHIA'
+       if (present(ptmin))    write (u, *) "# PTmin: ", ptmin
+       if (present(drmin))    write (u, *) "# DRmin: ", drmin
+       if (present(ktcut))    write (u, *) "# kTcut: ", ktcut
+       if (present(ktmode))   write (u, *) "# kTmode: ", ktmode
+       if (present(lhefout))  write (u, *) "# LHEFout: ", lhefout
+       write (u, *) '-->'
+    endif
+  end subroutine lhef_write_matching_info
 
   subroutine heprup_init &
        (beam_pdg, beam_energy, n_processes, unweighted, negative_weights)

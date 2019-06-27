@@ -1,4 +1,4 @@
-! WHIZARD 2.0.2 Tue May 18 2010
+! WHIZARD 2.0.3 Tue Aug 10 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -295,8 +295,9 @@ contains
     type(lexer_t) :: lexer
     type(lexeme_t) :: lexeme
     type(string_t) :: token
-    newstring = ""
     if (string == "")  return
+    if (extract (string, 1, 1) == "!")  return
+    newstring = "!"
     call lexer_init (lexer, &
          comment_chars = "", &
          quote_chars = "'", &
@@ -877,6 +878,9 @@ contains
     end select
     if (prc_conf%restrictions == "") then
        omega_cascade = ""
+    else if (extract (prc_conf%restrictions, 1, 1) == "!") then
+       omega_cascade = " -cascade '" &
+            // extract (prc_conf%restrictions, 2) // "'"
     else
        omega_cascade = " -cascade '" // prc_conf%restrictions // "'"
     end if

@@ -61,7 +61,8 @@ WHIZARD:
    showering and hadronization can be included in a standard
    way by passing LHEF or HepMC event files to them.
 
--- ROOT and DELPHES will be provided shortly.
+-- ROOT and DELPHES can be interfaced via event file and 
+   ASCII histogram file output
 
 -- A preliminary interface to FeynRules exists and will be
    ready for general use soon.

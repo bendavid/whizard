@@ -1,4 +1,4 @@
-(* $Id: modeltools.ml 2219 2010-04-04 16:05:44Z ohl $
+(* $Id: modeltools.ml 2640 2010-06-23 22:16:40Z ohl $
 
    Copyright (C) 1999-2009 by
 
@@ -21,8 +21,8 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 let rcs_file = RCS.parse "Modeltools" ["Lagragians"]
-    { RCS.revision = "$Revision: 2219 $";
-      RCS.date = "$Date: 2010-04-04 18:05:44 +0200 (Sun, 04 Apr 2010) $";
+    { RCS.revision = "$Revision: 2640 $";
+      RCS.date = "$Date: 2010-06-24 00:16:40 +0200 (Thu, 24 Jun 2010) $";
       RCS.author = "$Author: ohl $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/src/omega/src/modeltools.ml $" }
@@ -249,6 +249,9 @@ module Mutable (FGC : sig type f and g and c end) =
     type constant = FGC.c
 
     let options = Options.empty
+
+    module Ch = Charges.Null
+    let charges _ = ()
 
     exception Uninitialized of string
     let unitialized name =

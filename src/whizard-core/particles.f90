@@ -1,4 +1,4 @@
-! WHIZARD 2.0.2 Tue May 18 2010
+! WHIZARD 2.0.3 Tue Aug 10 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -49,6 +49,17 @@ module particles
   implicit none
   private
 
+  public :: particle_t
+  public :: particle_reset_status
+  public :: particle_set_color
+  public :: particle_set_flavor
+  public :: particle_set_momentum
+  public :: particle_get_status
+  public :: particle_get_pdg
+  public :: particle_get_color
+  public :: particle_get_n_parents
+  public :: particle_get_parents
+  public :: particle_get_momentum
   public :: particle_set_t
   public :: particle_set_init
   public :: particle_set_final
@@ -60,10 +71,12 @@ module particles
   public :: particle_set_fill_hepmc_event
   public :: particle_set_reset_status
   public :: particle_set_get_n_out, particle_set_get_n_in, &
-                particle_set_get_n_tot
+                particle_set_get_n_tot, particle_set_get_n_vir
+  public :: particle_set_get_particle
   public :: particle_set_reduce
   public :: particle_set_extract_interaction
   public :: particle_set_to_prt_list
+  public :: particle_set_replace
   public :: particles_test
 
   integer, parameter :: PRT_UNPOLARIZED = 0
@@ -324,6 +337,18 @@ contains
     prt%status = status
   end subroutine particle_reset_status
 
+  elemental subroutine particle_set_color (prt, col)
+    type(particle_t), intent(inout) :: prt
+    type(color_t), intent(in) :: col
+    prt%col = col
+  end subroutine particle_set_color
+
+  subroutine particle_set_flavor (prt, flv)
+    type(particle_t), intent(inout) :: prt
+    type(flavor_t), intent(in) :: flv
+    prt%flv = flv
+  end subroutine particle_set_flavor
+
   elemental subroutine particle_set_momentum (prt, p)
     type(particle_t), intent(inout) :: prt
     type(vector4_t), intent(in) :: p
@@ -470,9 +495,10 @@ contains
   end function particle_get_p2
 
   subroutine particle_set_init_interaction &
-       (particle_set, int, int_flows, mode, x, &
+       (particle_set, is_valid, int, int_flows, mode, x, &
         keep_correlations, keep_virtual, n_incoming)
     type(particle_set_t), intent(out) :: particle_set
+    logical, intent(out) :: is_valid
     type(interaction_t), intent(in), target :: int, int_flows
     integer, intent(in) :: mode
     real(default), dimension(2), intent(in) :: x
@@ -482,6 +508,7 @@ contains
     type(state_matrix_t), dimension(:), allocatable, target :: single_state
     integer :: n_in, n_vir, n_out, n_tot
     type(quantum_numbers_t), dimension(:,:), allocatable :: qn
+    logical :: ok
     integer :: i, j
     if (present (n_incoming)) then
        n_in  = n_incoming
@@ -501,18 +528,20 @@ contains
        particle_set%n_vir = 0
        particle_set%n_tot = n_in + n_out
     end if
-    call interaction_factorize (int, FM_IGNORE_HELICITY, x(1), flavor_state)
+    call interaction_factorize &
+         (int, FM_IGNORE_HELICITY, x(1), is_valid, flavor_state)
     allocate (qn (n_tot,1))
     do i = 1, n_tot
        qn(i,:) = state_matrix_get_quantum_numbers (flavor_state(i), 1)
     end do
     if (keep_correlations .and. keep_virtual) then
-       call interaction_factorize (int_flows, &
-            mode, x(2), single_state, particle_set%correlated_state, qn(:,1))
+       call interaction_factorize (int_flows, mode, x(2), ok, &
+            single_state, particle_set%correlated_state, qn(:,1))
     else
-       call interaction_factorize (int_flows, &
-            mode, x(2), single_state, qn_in=qn(:,1))
+       call interaction_factorize (int_flows, mode, x(2), ok, &
+            single_state, qn_in=qn(:,1))
     end if
+    is_valid = is_valid .and. ok
     allocate (particle_set%prt (particle_set%n_tot))
     j = 1
     do i = 1, n_tot
@@ -602,6 +631,7 @@ contains
           write (u, "(1x,A,1x,I0)", advance="no") "Particle", i
           call particle_write (particle_set%prt(i), u)
        end do
+       print *, "endif"
        if (state_matrix_is_defined (particle_set%correlated_state)) then
           write (u, *) "Correlated state density matrix:"
           call state_matrix_write (particle_set%correlated_state, u)
@@ -828,11 +858,25 @@ contains
      n_in = pset%n_in
   end function particle_set_get_n_in
 
+  function particle_set_get_n_vir (pset) result (n_vir)
+     type(particle_set_t), intent(in) :: pset
+     integer :: n_vir
+     n_vir = pset%n_in
+   end function particle_set_get_n_vir
+
   function particle_set_get_n_tot (pset) result (n_tot)
      type(particle_set_t), intent(in) :: pset
      integer :: n_tot
      n_tot = pset%n_tot
   end function particle_set_get_n_tot
+
+  function particle_set_get_particle(pset, index) result(particle)
+    type(particle_set_t), intent(in) :: pset
+    integer, intent(in) :: index
+    type(particle_t) :: particle
+
+    particle = pset%prt(index)
+  end function particle_set_get_particle
 
   subroutine particle_set_reduce (pset_in, pset_out, keep_beams)
     type(particle_set_t), intent(in) :: pset_in
@@ -1068,6 +1112,27 @@ contains
     end do
   end subroutine particle_set_to_prt_list
 
+  subroutine particle_set_replace(particle_set, newprt)
+    type(particle_set_t), intent(inout) :: particle_set
+    type(particle_t), intent(in), dimension(:), allocatable :: newprt
+
+    integer :: i
+
+    if(allocated(particle_set%prt)) deallocate(particle_set%prt)
+    allocate(particle_set%prt(1:size(newprt)))
+    
+    particle_set%n_tot = size(newprt)
+    particle_set%n_in = 0
+    particle_set%n_vir = 0
+    particle_set%n_out = 0
+    do i=1, size(newprt)
+       print *, "i=", i
+       particle_set%prt(i) = newprt(i)
+       if(particle_get_status(newprt(i)) == PRT_INCOMING) particle_set%n_in = particle_set%n_in + 1
+       if(particle_get_status(newprt(i)) == PRT_VIRTUAL) particle_set%n_vir = particle_set%n_vir + 1
+       if(particle_get_status(newprt(i)) == PRT_OUTGOING) particle_set%n_out = particle_set%n_out + 1
+    end do
+  end subroutine particle_set_replace
   subroutine particles_test
     use os_interface, only: os_data_t
     type(os_data_t) :: os_data
@@ -1170,7 +1235,7 @@ contains
     print *, "*** Factorize as particle list (complete, polarized) ***"
     int => evaluator_get_int_ptr (eval)
     call particle_set_init &
-         (particle_set1, int, int, FM_FACTOR_HELICITY, &
+         (particle_set1, ok, int, int, FM_FACTOR_HELICITY, &
           (/0.2_default, 0.2_default/), .false., .true.)
     call particle_set_write (particle_set1)
     print *
@@ -1187,7 +1252,7 @@ contains
     print *, "*** Factorize as particle list (in/out only, selected helicity) ***"
     int => evaluator_get_int_ptr (eval)
     call particle_set_init &
-         (particle_set2, int, int, FM_SELECT_HELICITY, &
+         (particle_set2, ok, int, int, FM_SELECT_HELICITY, &
           (/0.9_default, 0.9_default/), .false., .false.)
     call particle_set_write (particle_set2)
     call particle_set_final (particle_set2)
@@ -1195,7 +1260,7 @@ contains
     print *, "*** Factorize as particle list (complete, selected helicity) ***"
     int => evaluator_get_int_ptr (eval)
     call particle_set_init &
-         (particle_set2, int, int, FM_SELECT_HELICITY, &
+         (particle_set2, ok, int, int, FM_SELECT_HELICITY, &
           (/0.7_default, 0.7_default/), .false., .true.)
     call particle_set_write (particle_set2)
     print *
@@ -1223,7 +1288,7 @@ contains
     print *, "*** Factorize (complete, polarized, correlated); write and read again ***"
     int => evaluator_get_int_ptr (eval)
     call particle_set_init &
-         (particle_set3, int, int, FM_FACTOR_HELICITY, &
+         (particle_set3, ok, int, int, FM_FACTOR_HELICITY, &
           (/0.7_default, 0.7_default/), .true., .true.)
     call particle_set_write (particle_set3)
     u = free_unit ()

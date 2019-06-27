@@ -1,4 +1,4 @@
-(* $Id: fusion.mli 2403 2010-04-23 20:28:27Z ohl $
+(* $Id: fusion.mli 2640 2010-06-23 22:16:40Z ohl $
 
    Copyright (C) 1999-2009 by
 
@@ -175,6 +175,7 @@ module type T =
 
 (* \thocwmodulesubsection{Diagnostics} *)
 
+    val check_charges : unit -> flavor_sans_color list list
     val count_fusions : amplitude -> int
     val count_propagators : amplitude -> int
     val count_diagrams : amplitude -> int

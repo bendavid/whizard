@@ -1,4 +1,4 @@
-(* $Id: cascade.ml 2219 2010-04-04 16:05:44Z ohl $
+(* $Id: cascade.ml 2578 2010-05-27 14:50:53Z ohl $
 
    Copyright (C) 1999-2009 by
 
@@ -105,6 +105,12 @@ module Make (M : Model.T) (P : Momentum.T) :
 
     let of_string s = 
       Cascade_parser.main Cascade_lexer.token (Lexing.from_string s)
+
+(* \begin{dubious}
+     If we knew that we're dealing with a scattering, we could apply
+     [P.flip_s_channel_in] to all momenta, so that $1+2$ accepts the particle
+     and not the antiparticle.  Right now, we don't have this information.
+   \end{dubious} *)
 
     let import dim cascades =
       let rec import' = function

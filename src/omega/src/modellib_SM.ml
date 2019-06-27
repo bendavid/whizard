@@ -1,6 +1,6 @@
-(* $Id: modellib_SM.ml 2290 2010-04-11 19:49:44Z ohl $
+(* $Id: modellib_SM.ml 2743 2010-08-08 14:06:26Z ohl $
 
-   Copyright (C) 1999-2009 by
+   Copyright (C) 1999-2010 by
 
        Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
@@ -21,8 +21,8 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 let rcs_file = RCS.parse "Modellib_SM" ["Lagragians"]
-    { RCS.revision = "$Revision: 2290 $";
-      RCS.date = "$Date: 2010-04-11 21:49:44 +0200 (Sun, 11 Apr 2010) $";
+    { RCS.revision = "$Revision: 2743 $";
+      RCS.date = "$Date: 2010-08-08 16:06:26 +0200 (Sun, 08 Aug 2010) $";
       RCS.author = "$Author: ohl $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/src/omega/src/modellib_SM.ml $" }
@@ -52,6 +52,9 @@ module Phi3 =
     let goldstone _ = None
     let conjugate f = f
     let fermion _ = 0
+
+    module Ch = Charges.Null
+    let charges _ = ()
 
     module F = Modeltools.Fusions (struct
       type f = flavor
@@ -113,6 +116,9 @@ module Phi4 =
     let goldstone _ = None
     let conjugate f = f
     let fermion _ = 0
+
+    module Ch = Charges.Null
+    let charges _ = ()
 
     module F = Modeltools.Fusions (struct
       type f = flavor
@@ -208,6 +214,18 @@ module QED =
       | Electron | Muon | Tau -> 1
       | Positron | AntiMuon | AntiTau -> -1
       | Photon -> 0
+
+(* Taking generation numbers makes electric charge redundant. *)
+
+    module Ch = Charges.ZZ
+    let charges = function
+      | Electron -> [1; 0; 0]
+      | Muon -> [0; 1; 0]
+      | Tau -> [0; 0; 1]
+      | Positron -> [-1;0; 0]
+      | AntiMuon -> [0;-1; 0]
+      | AntiTau -> [0; 0;-1]
+      | Photon -> [0; 0; 0]
 
     module F = Modeltools.Fusions (struct
       type f = flavor
@@ -337,6 +355,22 @@ module QCD =
       | U | D | C | S | T | B -> 1
       | Ubar | Dbar | Cbar | Sbar | Tbar | Bbar -> -1
       | Gl -> 0
+
+    module Ch = Charges.ZZ
+    let charges = function
+      | D -> [1; 0; 0; 0; 0; 0]
+      | U -> [0; 1; 0; 0; 0; 0]
+      | S -> [0; 0; 1; 0; 0; 0]
+      | C -> [0; 0; 0; 1; 0; 0]
+      | B -> [0; 0; 0; 0; 1; 0]
+      | T -> [0; 0; 0; 0; 0; 1]
+      | Dbar -> [-1; 0; 0; 0; 0; 0]
+      | Ubar -> [0; -1; 0; 0; 0; 0]
+      | Sbar -> [0; 0; -1; 0; 0; 0]
+      | Cbar -> [0; 0; 0; -1; 0; 0]
+      | Bbar -> [0; 0; 0; 0; -1; 0]
+      | Tbar -> [0; 0; 0; 0; 0; -1]
+      | Gl -> [0; 0; 0; 0; 0; 0]
 
     module F = Modeltools.Fusions (struct
       type f = flavor
@@ -537,1018 +571,7 @@ module SM_Hgg : SM_flags =
     let ckm_present = false
   end
 
-module SM3 (Flags : SM_flags) =
-  struct
-    let rcs = RCS.rename rcs_file "Modellib.SM3"
-        [ "minimal electroweak standard model in unitarity gauge";
-          "with emulation of 4-point vertices; no CKM matrix" ]
-
-    open Coupling
-
-    let default_width = ref Timelike
-    let use_fudged_width = ref false
-
-    let options = Options.create
-      [ "constant_width", Arg.Unit (fun () -> default_width := Constant),
-        "use constant width (also in t-channel)";
-        "fudged_width", Arg.Set use_fudged_width,
-        "use fudge factor for charge particle width";
-        "custom_width", Arg.String (fun f -> default_width := Custom f),
-        "use custom width";
-        "cancel_widths", Arg.Unit (fun () -> default_width := Vanishing),
-        "use vanishing width"]
-
-    type matter_field = L of int | N of int | U of int | D of int
-    type gauge_boson = Ga | Wp | Wm | Z | Gl
-    type other =
-      | XWp | XWm | XW3 | XGl
-      | Phip | Phim | Phi0 | H | XH
-      | XH_W | XH_W' | XH_Z | XH_Z'
-      | XSWm | XSWp | XSWpp | XSWmm
-      | XSWZ0 | XSZW0 | XSW3 | XSZZ
-      | XDH_W | XDH_W' | XDH_Z | XDH_Z'
-      | XDH_Wm | XDH_Wp | XDH_Z''
-      | XDH2
-
-    type flavor = M of matter_field | G of gauge_boson | O of other
-
-    let matter_field f = M f
-    let gauge_boson f = G f
-    let other f = O f
-
-    type field =
-      | Matter of matter_field
-      | Gauge of gauge_boson
-      | Other of other
-
-    let field = function
-      | M f -> Matter f
-      | G f -> Gauge f
-      | O f -> Other f
-
-    type gauge = unit
-
-    let gauge_symbol () =
-      failwith "Modellib.SM3.gauge_symbol: internal error"
-
-(* The auxiliary fields [XH_W] and [XH_W'] are
-   mutual charge conjugates.  This way the vertex $W^+_\mu W^{-,\mu}HH$
-   can be split into $W^+_\mu W^{-,\mu}X_{HW}$ and $X_{HW}^*HH$ without
-   introducing the additional $W^+_\mu W^{-,\mu}W^+_\nu W^{-,\nu}$ and $HHHH$
-   couplings that a neutral auxiliary field would produce. *)
-
-    let family n = List.map matter_field [ L n; N n; U n; D n ]
-
-    let external_flavors () =
-      [ "1st Generation", ThoList.flatmap family [1; -1];
-        "2nd Generation", ThoList.flatmap family [2; -2];
-        "3rd Generation", ThoList.flatmap family [3; -3];
-        "Gauge Bosons", List.map gauge_boson [Ga; Z; Wp; Wm; Gl];
-        "Higgs", List.map other [H];
-        "Goldstone Bosons", List.map other [Phip; Phim; Phi0] ]
-
-    let flavors () = 
-      ThoList.flatmap snd (external_flavors ()) @
-      List.map other 
-        [ XWp; XWm; XW3; XGl; XH; XH_W; XH_W'; XH_Z; XH_Z';
-          XSWm; XSWp; XSWpp; XSWmm; XSWZ0; XSZW0; XSW3; XSZZ;
-          XDH_W; XDH_W'; XDH_Z; XDH_Z';
-          XDH_Wm; XDH_Wp; XDH_Z''; XDH2 ]
-
-    let spinor n =
-      if n >= 0 then
-        Spinor
-      else
-        ConjSpinor
-
-    let lorentz = function
-      | M f ->
-          begin match f with
-          | L n -> spinor n | N n -> spinor n
-          | U n -> spinor n | D n -> spinor n
-          end
-      | G f ->
-          begin match f with
-          | Ga | Gl -> Vector
-          | Wp | Wm | Z -> Massive_Vector
-          end
-      | O f ->
-          begin match f with
-          | XWp | XWm | XW3 | XGl -> Tensor_1
-          | Phip | Phim | Phi0 -> Scalar
-          | H -> Scalar | XH -> Scalar
-          | XH_W | XH_W' -> Scalar
-          | XH_Z | XH_Z' -> Scalar
-          | XSWm | XSWp | XSWpp | XSWmm
-          | XSWZ0 | XSZW0 | XSW3 | XSZZ -> Scalar
-          | XDH_W | XDH_W' | XDH_Z | XDH_Z'
-          | XDH_Wm | XDH_Wp | XDH_Z'' | XDH2 -> Scalar
-          end
-
-    let color = function 
-      | M (U n) -> Color.SUN (if n > 0 then 3 else -3)
-      | M (D n) -> Color.SUN  (if n > 0 then 3 else -3)
-      | G Gl -> Color.AdjSUN 3
-      | _ -> Color.Singlet
-
-    let prop_spinor n =
-      if n >= 0 then
-        Prop_Spinor
-      else
-        Prop_ConjSpinor
-
-    let propagator = function
-      | M f ->
-          begin match f with
-          | L n -> prop_spinor n | N n -> prop_spinor n
-          | U n -> prop_spinor n | D n -> prop_spinor n
-          end
-      | G f ->
-          begin match f with
-          | Ga | Gl -> Prop_Feynman
-          | Wp | Wm | Z -> Prop_Unitarity
-          end
-      | O f ->
-          begin match f with
-          | XWp | XWm | XW3 | XGl -> Aux_Tensor_1
-          | Phip | Phim | Phi0 -> Only_Insertion
-          | H -> Prop_Scalar | XH -> Aux_Scalar
-          | XH_W | XH_W' -> Aux_Scalar
-          | XH_Z | XH_Z' -> Aux_Scalar
-          | XSWm | XSWp | XSWpp | XSWmm
-          | XSWZ0 | XSZW0 | XSW3 | XSZZ -> Aux_Scalar
-          | XDH_W | XDH_W' | XDH_Z | XDH_Z'
-          | XDH_Wm | XDH_Wp | XDH_Z'' | XDH2 -> Aux_Scalar
-          end
-
-(* Optionally, ask for the fudge factor treatment for the widths of
-   charged particles.  Currently, this only applies to $W^\pm$ and top. *)
-
-    let width f =
-      if !use_fudged_width then
-        match f with
-        | G Wp | G Wm | M (U 3) | M (U (-3)) -> Fudged
-        | _ -> !default_width
-      else
-        !default_width
-
-    let goldstone = function
-      | G f ->
-          begin match f with
-          | Wp -> Some (O Phip, Coupling.Const 1)
-          | Wm -> Some (O Phim, Coupling.Const 1)
-          | Z -> Some (O Phi0, Coupling.Const 1)
-          | _ -> None
-          end
-      | _ -> None
-
-    let conjugate = function
-      | M f ->
-          M (begin match f with
-          | L n -> L (-n) | N n -> N (-n)
-          | U n -> U (-n) | D n -> D (-n)
-          end)
-      | G f ->
-          G (begin match f with
-          | Gl -> Gl | Ga -> Ga | Z -> Z
-          | Wp -> Wm | Wm -> Wp
-          end)
-      | O f ->
-          O (begin match f with
-          | XWp -> XWm | XWm -> XWp
-          | XW3 -> XW3 | XGl -> XGl
-          | Phip -> Phim | Phim -> Phip | Phi0 -> Phi0
-          | H -> H | XH -> XH
-          | XH_W -> XH_W' | XH_W' -> XH_W
-          | XH_Z -> XH_Z' | XH_Z' -> XH_Z
-          | XSWm -> XSWp | XSWp -> XSWm 
-          | XSWpp -> XSWmm | XSWmm -> XSWpp
-          | XSWZ0 -> XSZW0 | XSZW0 -> XSWZ0
-          | XSW3 -> XSW3 | XSZZ -> XSZZ
-          | XDH_W -> XDH_W' | XDH_W' -> XDH_W
-          | XDH_Z -> XDH_Z' | XDH_Z' -> XDH_Z
-          | XDH_Wm -> XDH_Wp | XDH_Wp -> XDH_Wm 
-          | XDH_Z'' -> XDH_Z'' | XDH2 -> XDH2
-          end)
-
-    let fermion = function
-      | M f ->
-          begin match f with
-          | L n -> if n > 0 then 1 else -1
-          | N n -> if n > 0 then 1 else -1
-          | U n -> if n > 0 then 1 else -1
-          | D n -> if n > 0 then 1 else -1
-          end
-      | G f ->
-          begin match f with
-          | Gl | Ga | Z | Wp | Wm -> 0
-          end
-      | O f ->
-          begin match f with
-          | XWp | XWm | XW3 | XGl -> 0
-          | Phip | Phim | Phi0 -> 0
-          | H | XH -> 0
-          | XH_W | XH_W' | XH_Z | XH_Z' -> 0
-          | XSWm | XSWp | XSWpp | XSWmm
-          | XSWZ0 | XSZW0 | XSW3 | XSZZ -> 0
-          | XDH_W | XDH_W' | XDH_Z | XDH_Z'
-          | XDH_Wm | XDH_Wp | XDH_Z'' | XDH2 -> 0
-          end
-
-    type constant =
-      | Unit | Pi | Alpha_QED | Sin2thw
-      | Sinthw | Costhw | E | G_weak | Vev
-      | Q_lepton | Q_up | Q_down | G_CC 
-      | G_NC_neutrino | G_NC_lepton | G_NC_up | G_NC_down
-      | I_Q_W | I_G_ZWW | I_G_WWW
-      | I_G1_AWW | I_G1_ZWW
-      | I_G1_plus_kappa_plus_G4_AWW
-      | I_G1_plus_kappa_plus_G4_ZWW
-      | I_G1_plus_kappa_minus_G4_AWW
-      | I_G1_plus_kappa_minus_G4_ZWW
-      | I_G1_minus_kappa_plus_G4_AWW
-      | I_G1_minus_kappa_plus_G4_ZWW
-      | I_G1_minus_kappa_minus_G4_AWW
-      | I_G1_minus_kappa_minus_G4_ZWW
-      | I_lambda_AWW | I_lambda_ZWW
-      | G5_AWW | G5_ZWW
-      | I_kappa5_AWW | I_kappa5_ZWW 
-      | I_lambda5_AWW | I_lambda5_ZWW
-      | I_Alpha_WWWW0 | I_Alpha_ZZWW1 | I_Alpha_WWWW2
-      | I_Alpha_ZZWW0 | I_Alpha_ZZZZ
-      | G_HWW | G_HHWW | G_HZZ | G_HHZZ | G_Hmm
-      | G_Htt | G_Hbb | G_Hcc | G_Htautau | G_H3 | G_H4
-      | G_HGaZ | G_HGaGa | G_Hgg
-      | G_strong
-      | Mass of flavor | Width of flavor
-      | I_G_DH4 | G_DH2W2 | G_DH2Z2 | G_DHW2 | G_DHZ2
-
-(* \begin{dubious}
-     The current abstract syntax for parameter dependencies is admittedly
-     tedious. Later, there will be a parser for a convenient concrete syntax
-     as a part of a concrete syntax for models.  But as these examples show,
-     it should include simple functions.
-   \end{dubious} *)
-
-(* \begin{subequations}
-     \begin{align}
-        \alpha_{\text{QED}} &= \frac{1}{137.0359895} \\
-             \sin^2\theta_w &= 0.23124
-     \end{align}
-   \end{subequations} *)
-    let input_parameters =
-      [ Alpha_QED, 1. /. 137.0359895;
-        Sin2thw, 0.23124;
-        Mass (G Z), 91.187;
-        Mass (M (N 1)), 0.0; Mass (M (L 1)), 0.51099907e-3;
-        Mass (M (N 2)), 0.0; Mass (M (L 2)), 0.105658389;
-        Mass (M (N 3)), 0.0; Mass (M (L 3)), 1.77705;
-        Mass (M (U 1)), 5.0e-3; Mass (M (D 1)), 3.0e-3;
-        Mass (M (U 2)), 1.2; Mass (M (D 2)), 0.1;
-        Mass (M (U 3)), 174.0; Mass (M (D 3)), 4.2 ]
-
-(* \begin{subequations}
-     \begin{align}
-                        e &= \sqrt{4\pi\alpha} \\
-             \sin\theta_w &= \sqrt{\sin^2\theta_w} \\
-             \cos\theta_w &= \sqrt{1-\sin^2\theta_w} \\
-                        g &= \frac{e}{\sin\theta_w} \\
-                      m_W &= \cos\theta_w m_Z \\
-                        v &= \frac{2m_W}{g} \\
-                  g_{CC}   =
-       -\frac{g}{2\sqrt2} &= -\frac{e}{2\sqrt2\sin\theta_w} \\
-       Q_{\text{lepton}}   =
-      -q_{\text{lepton}}e &= e \\
-           Q_{\text{up}}   =
-          -q_{\text{up}}e &= -\frac{2}{3}e \\
-         Q_{\text{down}}   =
-        -q_{\text{down}}e &= \frac{1}{3}e \\
-        \ii q_We           =
-        \ii g_{\gamma WW} &= \ii e \\
-              \ii g_{ZWW} &= \ii g \cos\theta_w \\
-              \ii g_{WWW} &= \ii g
-     \end{align}
-   \end{subequations} *)
-
-(* \begin{dubious}
-   \ldots{} JR leaves this dubious as it is \ldots{}
-   but JR has corrected the errors....
-   \end{dubious} 
-   \begin{subequations}
-     \begin{align}
-                  g_{HWW} &= g m_W = 2 \frac{m_W^2}{v} \\
-                 g_{HHWW} &= \frac{g}{\sqrt{2}} = \frac{\sqrt{2} m_W}{v} \\
-                  g_{HZZ} &= \frac{g}{\cos\theta_w}m_Z \\
-                 g_{HHZZ} &= \frac{g}{\sqrt{2}\cos\theta_w} = \frac{\sqrt{2} m_Z}{v} \\
-                  g_{Htt} &= \lambda_t \\
-                  g_{Hbb} &= \lambda_b=\frac{m_b}{m_t}\lambda_t \\
-                  g_{H^3} &= - \frac{3g}{2} \frac{m_H^2}{m_W} = - 3 \frac{m_H^2}{v} \\
-                  g_{H^4} &= \ii \frac{g}{2} \frac{m_H}{m_W} = \ii \frac{m_H}{v} 
-     \end{align}
-   \end{subequations} *)
-
-    let derived_parameters =
-      [ Real E, Sqrt (Prod [Const 4; Atom Pi; Atom Alpha_QED]);
-        Real Sinthw, Sqrt (Atom Sin2thw);
-        Real Costhw, Sqrt (Diff (Const 1, Atom Sin2thw));
-        Real G_weak, Quot (Atom E, Atom Sinthw);
-        Real (Mass (G Wp)), Prod [Atom Costhw; Atom (Mass (G Z))];
-        Real Vev, Quot (Prod [Const 2; Atom (Mass (G Wp))], Atom G_weak);
-        Real Q_lepton, Atom E;
-        Real Q_up, Prod [Quot (Const (-2), Const 3); Atom E];
-        Real Q_down, Prod [Quot (Const 1, Const 3); Atom E];
-        Real G_CC, Neg (Quot (Atom G_weak, Prod [Const 2; Sqrt (Const 2)]));
-        Complex I_Q_W, Prod [I; Atom E];
-        Complex I_G_ZWW, Prod [I; Atom G_weak; Atom Costhw];
-        Complex I_G_WWW, Prod [I; Atom G_weak] ]
-             
-(* \begin{equation}
-      - \frac{g}{2\cos\theta_w}
-   \end{equation} *)
-    let g_over_2_costh =
-      Quot (Neg (Atom G_weak), Prod [Const 2; Atom Costhw])
-
-(* \begin{subequations}
-     \begin{align}
-           - \frac{g}{2\cos\theta_w} g_V
-        &= - \frac{g}{2\cos\theta_w} (T_3 - 2 q \sin^2\theta_w) \\
-           - \frac{g}{2\cos\theta_w} g_A
-        &= - \frac{g}{2\cos\theta_w} T_3
-     \end{align}
-   \end{subequations} *)
-    let nc_coupling c t3 q =
-      (Real_Array c,
-       [Prod [g_over_2_costh; Diff (t3, Prod [Const 2; q; Atom Sin2thw])];
-        Prod [g_over_2_costh; t3]])
-
-    let half = Quot (Const 1, Const 2)
-
-    let derived_parameter_arrays =
-      [ nc_coupling G_NC_neutrino half (Const 0);
-        nc_coupling G_NC_lepton (Neg half) (Const (-1));
-        nc_coupling G_NC_up half (Quot (Const 2, Const 3));
-        nc_coupling G_NC_down (Neg half) (Quot (Const (-1), Const 3)) ]
-
-    let parameters () =
-      { input = input_parameters;
-        derived = derived_parameters;
-        derived_arrays = derived_parameter_arrays }
-
-    module F = Modeltools.Fusions (struct
-      type f = flavor
-      type c = constant
-      let compare = compare
-      let conjugate = conjugate
-    end)
-
-(* \begin{equation}
-     \mathcal{L}_{\textrm{EM}} =
-        - e \sum_i q_i \bar\psi_i\fmslash{A}\psi_i
-   \end{equation} *)
-
-    let mgm ((m1, g, m2), fbf, c) = ((M m1, G g, M m2), fbf, c)
-
-    let electromagnetic_currents n =
-      List.map mgm
-        [ ((L (-n), Ga, L n), FBF (1, Psibar, V, Psi), Q_lepton);
-          ((U (-n), Ga, U n), FBF (1, Psibar, V, Psi), Q_up);
-          ((D (-n), Ga, D n), FBF (1, Psibar, V, Psi), Q_down) ]
-
-(* \begin{equation}
-     \mathcal{L}_{\textrm{NC}} =
-        - \frac{g}{2\cos\theta_W}
-            \sum_i \bar\psi_i\fmslash{Z}(g_V^i-g_A^i\gamma_5)\psi_i
-   \end{equation} *)
-
-    let neutral_currents n =
-      List.map mgm
-        [ ((L (-n), Z, L n), FBF (1, Psibar, VA, Psi), G_NC_lepton);
-          ((N (-n), Z, N n), FBF (1, Psibar, VA, Psi), G_NC_neutrino);
-          ((U (-n), Z, U n), FBF (1, Psibar, VA, Psi), G_NC_up);
-          ((D (-n), Z, D n), FBF (1, Psibar, VA, Psi), G_NC_down) ] 
-
-(* \begin{equation}
-     \mathcal{L}_{\textrm{CC}} =
-        - \frac{g}{2\sqrt2} \sum_i \bar\psi_i
-               (T^+\fmslash{W}^+ + T^-\fmslash{W}^-)(1-\gamma_5)\psi_i 
-   \end{equation} *)
-
-
-    let charged_currents n =
-      List.map mgm
-        [ ((L (-n), Wm, N n), FBF (1, Psibar, VL, Psi), G_CC);
-          ((N (-n), Wp, L n), FBF (1, Psibar, VL, Psi), G_CC);
-          ((D (-n), Wm, U n), FBF (1, Psibar, VL, Psi), G_CC);
-          ((U (-n), Wp, D n), FBF (1, Psibar, VL, Psi), G_CC) ] 
-
-    let yukawa =
-      [ ((M (U (-3)), O H, M (U 3)), FBF (1, Psibar, S, Psi), G_Htt);
-        ((M (D (-3)), O H, M (D 3)), FBF (1, Psibar, S, Psi), G_Hbb);
-        ((M (U (-2)), O H, M (U 2)), FBF (1, Psibar, S, Psi), G_Hcc);
-        ((M (L (-2)), O H, M (L 2)), FBF (1, Psibar, S, Psi), G_Hmm);
-        ((M (L (-3)), O H, M (L 3)), FBF (1, Psibar, S, Psi), G_Htautau) ]
-      
-(* \begin{equation}
-     \mathcal{L}_{\textrm{TGC}} =
-        - e \partial_\mu A_\nu W_+^\mu W_-^\nu + \ldots
-        - e \cot\theta_w  \partial_\mu Z_\nu W_+^\mu W_-^\nu + \ldots
-   \end{equation} *)
-
-    let tgc ((g1, g2, g3), t, c) = ((G g1, G g2, G g3), t, c)
-
-    let standard_triple_gauge =
-      List.map tgc
-        [ ((Ga, Wm, Wp), Gauge_Gauge_Gauge 1, I_Q_W);
-          ((Z, Wm, Wp), Gauge_Gauge_Gauge 1, I_G_ZWW) ]
-
-(* \begin{multline}
-     \mathcal{L}_{\textrm{TGC}}(g_1,\kappa)
-        =   g_1 \mathcal{L}_T(V,W^+,W^-) \\
-          + \frac{\kappa+g_1}{2} \Bigl(\mathcal{L}_T(W^-,V,W^+)
-                                         - \mathcal{L}_T(W^+,V,W^-)\Bigr)\\
-          + \frac{\kappa-g_1}{2} \Bigl(\mathcal{L}_L(W^-,V,W^+)
-                                         - \mathcal{L}_T(W^+,V,W^-)\Bigr)
-   \end{multline} *)
-
-(* \begin{dubious}
-   The whole thing in the LEP2 workshop notation:
-   \begin{multline}
-     \ii\mathcal{L}_{\textrm{TGC},V} / g_{WWV} = \\
-            g_1^V V^\mu (W^-_{\mu\nu}W^{+,\nu}-W^+_{\mu\nu}W^{-,\nu})
-          + \kappa_V  W^+_\mu W^-_\nu V^{\mu\nu}
-          + \frac{\lambda_V}{m_W^2} V_{\mu\nu}
-               W^-_{\rho\mu} W^{+,\hphantom{\nu}\rho}_{\hphantom{+,}\nu} \\
-          + \ii g_5^V \epsilon_{\mu\nu\rho\sigma}
-              \left(   (\partial^\rho W^{-,\mu}) W^{+,\nu}
-                     -  W^{-,\mu}(\partial^\rho W^{+,\nu}) \right) V^\sigma \\
-          + \ii g_4^V W^-_\mu W^+_\nu (\partial^\mu V^\nu + \partial^\nu V^\mu)
-          - \frac{\tilde\kappa_V}{2}  W^-_\mu W^+_\nu \epsilon^{\mu\nu\rho\sigma}
-              V_{\rho\sigma}
-          - \frac{\tilde\lambda_V}{2m_W^2}
-               W^-_{\rho\mu} W^{+,\mu}_{\hphantom{+,\mu}\nu} \epsilon^{\nu\rho\alpha\beta}
-                V_{\alpha\beta}
-   \end{multline}
-   using the conventions of Itzykson and Zuber with $\epsilon^{0123} = +1$.
-   \end{dubious} *)
-
-(* \begin{dubious}
-   This is equivalent to the notation of Hagiwara et al.~\cite{HPZH87}, if we
-   remember that they have opposite signs for~$g_{WWV}$:
-   \begin{multline}
-     \mathcal{L}_{WWV} / (-g_{WWV})  = \\
-       \ii g_1^V \left( W^\dagger_{\mu\nu} W^\mu 
-                         - W^\dagger_\mu W^\mu_{\hphantom{\mu}\nu} \right) V^\nu
-     + \ii \kappa_V  W^\dagger_\mu W_\nu V^{\mu\nu}
-     + \ii \frac{\lambda_V}{m_W^2}
-          W^\dagger_{\lambda\mu} W^\mu_{\hphantom{\mu}\nu} V^{\nu\lambda} \\
-     - g_4^V  W^\dagger_\mu W_\nu
-          \left(\partial^\mu V^\nu + \partial^\nu V^\mu \right)
-     + g_5^V \epsilon^{\mu\nu\lambda\sigma}
-           \left( W^\dagger_\mu \stackrel{\leftrightarrow}{\partial_\lambda}
-                  W_\nu \right) V_\sigma\\
-     + \ii \tilde\kappa_V  W^\dagger_\mu W_\nu \tilde{V}^{\mu\nu}
-     + \ii\frac{\tilde\lambda_V}{m_W^2}
-           W^\dagger_{\lambda\mu} W^\mu_{\hphantom{\mu}\nu} \tilde{V}^{\nu\lambda}
-   \end{multline}
-   Here $V^\mu$ stands for either the photon or the~$Z$ field, $W^\mu$ is the
-   $W^-$ field, $W_{\mu\nu} = \partial_\mu W_\nu - \partial_\nu W_\mu$,
-   $V_{\mu\nu} = \partial_\mu V_\nu - \partial_\nu V_\mu$, and
-   $\tilde{V}_{\mu\nu} = \frac{1}{2} \epsilon_{\mu\nu\lambda\sigma}
-   V^{\lambda\sigma}$.
-   \end{dubious} *)
-
-    let anomalous_triple_gauge =
-      List.map tgc
-        [ ((Ga, Wm, Wp), Dim4_Vector_Vector_Vector_T (-1),
-           I_G1_AWW);
-          ((Z, Wm, Wp), Dim4_Vector_Vector_Vector_T (-1),
-           I_G1_ZWW);
-          ((Wm, Ga, Wp), Dim4_Vector_Vector_Vector_T 1,
-           I_G1_plus_kappa_minus_G4_AWW);
-          ((Wm, Z, Wp), Dim4_Vector_Vector_Vector_T 1,
-           I_G1_plus_kappa_minus_G4_ZWW);
-          ((Wp, Ga, Wm), Dim4_Vector_Vector_Vector_T (-1),
-           I_G1_plus_kappa_plus_G4_AWW);
-          ((Wp, Z, Wm), Dim4_Vector_Vector_Vector_T (-1),
-           I_G1_plus_kappa_plus_G4_ZWW);
-          ((Wm, Ga, Wp), Dim4_Vector_Vector_Vector_L (-1),
-           I_G1_minus_kappa_plus_G4_AWW);
-          ((Wm, Z, Wp), Dim4_Vector_Vector_Vector_L (-1),
-           I_G1_minus_kappa_plus_G4_ZWW);
-          ((Wp, Ga, Wm), Dim4_Vector_Vector_Vector_L 1,
-           I_G1_minus_kappa_minus_G4_AWW);
-          ((Wp, Z, Wm), Dim4_Vector_Vector_Vector_L 1,
-           I_G1_minus_kappa_minus_G4_ZWW);
-          ((Ga, Wm, Wp), Dim4_Vector_Vector_Vector_T5 (-1),
-           I_kappa5_AWW);
-          ((Z, Wm, Wp), Dim4_Vector_Vector_Vector_T5 (-1),
-           I_kappa5_ZWW);
-          ((Ga, Wm, Wp), Dim4_Vector_Vector_Vector_L5 (-1),
-           G5_AWW);
-          ((Z, Wm, Wp), Dim4_Vector_Vector_Vector_L5 (-1),
-           G5_ZWW);
-          ((Ga, Wp, Wm), Dim6_Gauge_Gauge_Gauge (-1),
-           I_lambda_AWW);
-          ((Z, Wp, Wm), Dim6_Gauge_Gauge_Gauge (-1),
-           I_lambda_ZWW);
-          ((Ga, Wp, Wm), Dim6_Gauge_Gauge_Gauge_5 (-1),
-           I_lambda5_AWW);
-          ((Z, Wp, Wm), Dim6_Gauge_Gauge_Gauge_5 (-1),
-           I_lambda5_ZWW) ]
-
-    let triple_gauge =
-      if Flags.triple_anom then
-        anomalous_triple_gauge
-      else
-        standard_triple_gauge
-
-(* \begin{equation}
-     \mathcal{L}_{\textrm{QGC}} =
-        - g^2 W_{+,\mu} W_{-,\nu} W_+^\mu W_-^\nu + \ldots
-   \end{equation} *)
-
-    let tgc_aux ((aux, g1, g2), t, c) = ((O aux, G g1, G g2), t, c)
-
-    let standard_quartic_gauge =
-      List.map tgc_aux
-        [ ((XW3, Wm, Wp), Aux_Gauge_Gauge 1, I_G_WWW);
-          ((XWm, Wp, Ga), Aux_Gauge_Gauge 1, I_Q_W);
-          ((XWm, Wp, Z), Aux_Gauge_Gauge 1, I_G_ZWW);
-          ((XWp, Ga, Wm), Aux_Gauge_Gauge 1, I_Q_W);
-          ((XWp, Z, Wm), Aux_Gauge_Gauge 1, I_G_ZWW) ]
-
-(* \begin{subequations}
-   \begin{align}
-     \mathcal{L}_4
-       &= \alpha_4 \left(   \frac{g^4}{2}\left(   (W^+_\mu W^{-,\mu})^2
-                                                + W^+_\mu W^{+,\mu} W^-_\mu W^{-,\mu}
-                                               \right)\right.\notag \\
-       &\qquad\qquad\qquad \left.
-                          + \frac{g^4}{\cos^2\theta_w} W^+_\mu Z^\mu W^-_\nu Z^\nu
-                          + \frac{g^4}{4\cos^4\theta_w} (Z_\mu Z^\mu)^2 \right) \\
-     \mathcal{L}_5
-       &= \alpha_5 \left(   g^4 (W^+_\mu W^{-,\mu})^2
-                          + \frac{g^4}{\cos^2\theta_w}  W^+_\mu W^{-,\mu} Z_\nu Z^\nu
-                          + \frac{g^4}{4\cos^4\theta_w} (Z_\mu Z^\mu)^2 \right)
-   \end{align}
-   \end{subequations}
-   or
-   \begin{multline}
-     \mathcal{L}_4 + \mathcal{L}_5
-       =   (\alpha_4+2\alpha_5) g^4 \frac{1}{2} (W^+_\mu W^{-,\mu})^2 \\
-         + 2\alpha_4 g^4 \frac{1}{4} W^+_\mu W^{+,\mu} W^-_\mu W^{-,\mu}
-         + \alpha_4 \frac{g^4}{\cos^2\theta_w} W^+_\mu Z^\mu W^-_\nu Z^\nu \\
-         + 2\alpha_5 \frac{g^4}{\cos^2\theta_w} \frac{1}{2} W^+_\mu W^{-,\mu} Z_\nu Z^\nu
-         + (2\alpha_4 + 2\alpha_5) \frac{g^4}{\cos^4\theta_w} \frac{1}{8} (Z_\mu Z^\mu)^2
-   \end{multline}
-   and therefore
-   \begin{subequations}
-   \begin{align}
-     (\ii\alpha_{(WW)_0})^2 &= (\alpha_4+2\alpha_5) g^4 \\
-     (\ii\alpha_{(WW)_2})^2 &= 2\alpha_4 g^4 \\
-     (\ii\alpha_{(WZ)_\pm})^2 &= \alpha_4 \frac{g^4}{\cos^2\theta_w} \\
-     (\ii\alpha_{(WZ)_0})^2 &= 2\alpha_5 \frac{g^4}{\cos^2\theta_w} \\
-     (\ii\alpha_{ZZ})^2 &= (2\alpha_4 + 2\alpha_5) \frac{g^4}{\cos^4\theta_w}
-   \end{align}
-   \end{subequations}
-   Not that the auxiliary couplings are purely imaginary, because~$\alpha_4$
-   and~$\alpha_5$ are defined with a \emph{positive} sign and we expect
-   quartic couplings to have a \emph{negative} sign for the energy to be
-   bounded from below. *)
-
-    let anomalous_quartic_gauge =
-      List.map tgc_aux
-        [ ((XSW3, Wm, Wp), Aux_Vector_Vector 1, I_Alpha_WWWW0);
-          ((XSWpp, Wm, Wm), Aux_Vector_Vector 1, I_Alpha_WWWW2);
-          ((XSWmm, Wp, Wp), Aux_Vector_Vector 1, I_Alpha_WWWW2);
-          ((XSWm, Wp, Z), Aux_Vector_Vector 1, I_Alpha_ZZWW1);
-          ((XSWp, Wm, Z), Aux_Vector_Vector 1, I_Alpha_ZZWW1);
-          ((XSWZ0, Wp, Wm), Aux_Vector_Vector 1, I_Alpha_ZZWW0);
-          ((XSZW0, Z, Z), Aux_Vector_Vector 1, I_Alpha_ZZWW0);
-          ((XSZZ, Z, Z), Aux_Vector_Vector 1, I_Alpha_ZZZZ) ]
-
-    let quartic_gauge =
-      if Flags.quartic_anom then
-        standard_quartic_gauge @ anomalous_quartic_gauge
-      else
-        standard_quartic_gauge
-
-    let standard_gauge_higgs =
-      [ ((O H, G Wp, G Wm), Scalar_Vector_Vector 1, G_HWW);
-        ((O H, G Z, G Z), Scalar_Vector_Vector 1, G_HZZ);
-        ((O XH_W, G Wp, G Wm), Aux_Vector_Vector 1, G_HHWW);
-        ((O XH_W', O H, O H), Aux_Scalar_Scalar 1, G_HHWW);
-        ((O XH_Z, G Z, G Z), Aux_Vector_Vector 1, G_HHZZ);
-        ((O XH_Z', O H, O H), Aux_Scalar_Scalar 1, G_HHZZ) ]
-
-(* WK's couplings (apparently, he still intends to divide by
-   $\Lambda^2_{\text{EWSB}}=16\pi^2v_{\mathrm{F}}^2$):
-   \begin{subequations}
-   \begin{align}
-     \mathcal{L}^{\tau}_4 &=
-      \left\lbrack (\partial_{\mu}H)(\partial^{\mu}H)
-                     + \frac{g^2v_{\mathrm{F}}^2}{4} V_{\mu} V^{\mu} \right\rbrack^2 \\
-     \mathcal{L}^{\tau}_5 &=
-      \left\lbrack (\partial_{\mu}H)(\partial_{\nu}H)
-                     + \frac{g^2v_{\mathrm{F}}^2}{4} V_{\mu} V_{\nu} \right\rbrack^2
-   \end{align}
-   \end{subequations}
-   with
-   \begin{equation}
-      V_{\mu} V_{\nu} =
-        \frac{1}{2} \left( W^+_{\mu} W^-_{\nu} + W^+_{\nu} W^-_{\mu} \right)
-         + \frac{1}{2\cos^2\theta_{w}} Z_{\mu} Z_{\nu}
-   \end{equation}
-   (note the symmetrization!), i.\,e.
-   \begin{subequations}
-   \begin{align}
-     \mathcal{L}_4 &= \alpha_4 \frac{g^4v_{\mathrm{F}}^4}{16} (V_{\mu} V_{\nu})^2 \\
-     \mathcal{L}_5 &= \alpha_5 \frac{g^4v_{\mathrm{F}}^4}{16} (V_{\mu} V^{\mu})^2
-   \end{align}
-   \end{subequations} *)
-
-(* Breaking thinks up
-   \begin{subequations}
-   \begin{align}
-     \mathcal{L}^{\tau,H^4}_4 &=
-       \left\lbrack (\partial_{\mu}H)(\partial^{\mu}H) \right\rbrack^2 \\
-     \mathcal{L}^{\tau,H^4}_5 &=
-       \left\lbrack (\partial_{\mu}H)(\partial^{\mu}H) \right\rbrack^2
-   \end{align}
-   \end{subequations}
-   and
-   \begin{subequations}
-   \begin{align}
-     \mathcal{L}^{\tau,H^2V^2}_4 &= \frac{g^2v_{\mathrm{F}}^2}{2}
-              (\partial_{\mu}H)(\partial^{\mu}H) V_{\mu}V^{\mu}   \\
-     \mathcal{L}^{\tau,H^2V^2}_5 &= \frac{g^2v_{\mathrm{F}}^2}{2}
-              (\partial_{\mu}H)(\partial_{\nu}H) V_{\mu}V_{\nu}
-   \end{align}
-   \end{subequations}
-   i.\,e.
-   \begin{subequations}
-   \begin{align}
-     \mathcal{L}^{\tau,H^2V^2}_4 &=
-        \frac{g^2v_{\mathrm{F}}^2}{2}
-          \left\lbrack
-              (\partial_{\mu}H)(\partial^{\mu}H) W^+_{\nu}W^{-,\nu}
-            + \frac{1}{2\cos^2\theta_{w}} (\partial_{\mu}H)(\partial^{\mu}H) Z_{\nu} Z^{\nu}
-          \right\rbrack \\
-     \mathcal{L}^{\tau,H^2V^2}_5 &=
-          \frac{g^2v_{\mathrm{F}}^2}{2}
-          \left\lbrack
-              (W^{+,\mu}\partial_{\mu}H) (W^{-,\nu}\partial_{\nu}H)
-            + \frac{1}{2\cos^2\theta_{w}} (Z^{\mu}\partial_{\mu}H)(Z^{\nu}\partial_{\nu}H)
-          \right\rbrack
-   \end{align}
-   \end{subequations} *)
-
-(* \begin{multline}
-     \tau^4_8 \mathcal{L}^{\tau,H^2V^2}_4 + \tau^5_8 \mathcal{L}^{\tau,H^2V^2}_5 = \\
-       - \frac{g^2v_{\mathrm{F}}^2}{2} \Biggl\lbrack
-            2\tau^4_8
-              \frac{1}{2}(\ii\partial_{\mu}H)(\ii\partial^{\mu}H) W^+_{\nu}W^{-,\nu}
-          + \tau^5_8
-              (W^{+,\mu}\ii\partial_{\mu}H) (W^{-,\nu}\ii\partial_{\nu}H) \\
-          + \frac{2\tau^4_8}{\cos^2\theta_{w}}
-              \frac{1}{4} (\ii\partial_{\mu}H)(\ii\partial^{\mu}H) Z_{\nu} Z^{\nu}
-          + \frac{\tau^5_8}{\cos^2\theta_{w}}
-              \frac{1}{2} (Z^{\mu}\ii\partial_{\mu}H)(Z^{\nu}\ii\partial_{\nu}H)
-          \Biggr\rbrack
-   \end{multline}
-   where the two powers of $\ii$ make the sign conveniently negative,
-   i.\,e.
-   \begin{subequations}
-   \begin{align}
-     \alpha_{(\partial H)^2W^2}^2 &= \tau^4_8 g^2v_{\mathrm{F}}^2\\
-     \alpha_{(\partial HW)^2}^2 &= \frac{\tau^5_8 g^2v_{\mathrm{F}}^2}{2}  \\
-     \alpha_{(\partial H)^2Z^2}^2 &= \frac{\tau^4_8 g^2v_{\mathrm{F}}^2}{\cos^2\theta_{w}} \\ 
-     \alpha_{(\partial HZ)^2}^2 &=\frac{\tau^5_8 g^2v_{\mathrm{F}}^2}{2\cos^2\theta_{w}}
-   \end{align}
-   \end{subequations} *)
-
-    let anomalous_gauge_higgs =
-      [ ((O XDH_W, O H, O H), Aux_DScalar_DScalar 1, G_DH2W2);
-        ((O XDH_W', G Wp, G Wm), Aux_Vector_Vector 1, G_DH2W2);
-        ((O XDH_Z, O H, O H), Aux_DScalar_DScalar 1, G_DH2Z2);
-        ((O XDH_Z', G Z, G Z), Aux_Vector_Vector 1, G_DH2Z2);
-        ((O XDH_Wm, G Wp, O H), Aux_Vector_DScalar 1, G_DHW2);
-        ((O XDH_Wp, G Wm, O H), Aux_Vector_DScalar 1, G_DHW2);
-        ((O XDH_Z'', G Z, O H), Aux_Vector_DScalar 1, G_DHZ2) ]
-
-    let gauge_higgs =
-      if Flags.higgs_anom then
-        standard_gauge_higgs @ anomalous_gauge_higgs
-      else
-        standard_gauge_higgs
-
-(* \begin{equation}
-     \mathcal{L}_{\text{Higgs}} =
-       \frac{1}{3!} g_{H,3} H^3 - \frac{1}{4!} g_{H,4}^2 H^4
-   \end{equation}
-   According to~(\ref{eq:quartic-aux}), the required negative sign
-   for the quartic piece is reproduced by any real $g_{H,4}$ in the
-   auxiliary field couplings.
-   \begin{multline}
-     \mathcal{L}_{\text{Higgs}} =
-       - \frac{1}{4!} g_{H,4}^2 \left((\phi^\dagger\phi)^2 - \mu^2\right)^2 \\
-       \to - \frac{1}{4!} g_{H,4}^2 \left((\mu+H)^2 - \mu^2\right)^2
-        =  - \frac{1}{4!} g_{H,4}^2 \left(2\mu H + H^2\right)^2 \\
-        =  - \frac{1}{4!} g_{H,4}^2 H^4
-           - \frac{1}{3!} g_{H,4}^2 \mu H^3
-           - \frac{1}{3!} g_{H,4}^2 \mu^2 H^2
-   \end{multline} *)
-
-    let standard_higgs =
-      [ ((O H, O H, O H), Scalar_Scalar_Scalar 1, G_H3);
-        ((O XH, O H, O H), Aux_Scalar_Scalar 1, G_H4) ]
-
-(* \begin{equation}
-     \tau^4_8 \mathcal{L}^{\tau,H^4}_4 + \tau^5_8 \mathcal{L}^{\tau,H^4}_5
-       = 8 (\tau^4_8+\tau^5_8) \frac{1}{8}
-             \left\lbrack (\ii\partial_{\mu}H)(\ii\partial^{\mu}H) \right\rbrack^2
-   \end{equation}
-   since there are four powers of $\ii$, the sign remains positive,
-   i.\,e.
-   \begin{equation}
-     (\ii\alpha_{(\partial H)^4})^2 = 8 (\tau^4_8+\tau^5_8)
-   \end{equation} *)
-
-    let anomalous_higgs =
-      [ ((O XDH2, O H, O H), Aux_DScalar_DScalar 1, I_G_DH4) ]
-
-    let higgs_triangle_vertices = 
-      if Flags.higgs_triangle then
-        [ (O H, G Ga, G Ga), Dim5_Scalar_Gauge2 1, G_HGaGa;
-          (O H, G Ga, G Z), Dim5_Scalar_Gauge2 1, G_HGaZ;
-          (O H, G Gl, G Gl), Dim5_Scalar_Gauge2 1, G_Hgg ]
-      else
-        []
-
-    let higgs =	
-      if Flags.higgs_anom then
-	  standard_higgs @ anomalous_higgs
-      else
-          standard_higgs
-
-    let goldstone_vertices =
-      [ ((O Phi0, G Wm, G Wp), Scalar_Vector_Vector 1, I_G_ZWW);
-        ((O Phip, G Ga, G Wm), Scalar_Vector_Vector 1, I_Q_W);
-        ((O Phip, G Z, G Wm), Scalar_Vector_Vector 1, I_G_ZWW);
-        ((O Phim, G Wp, G Ga), Scalar_Vector_Vector 1, I_Q_W);
-        ((O Phim, G Wp, G Z), Scalar_Vector_Vector 1, I_G_ZWW) ]
-
-    let vertices3 =
-      (ThoList.flatmap electromagnetic_currents [1;2;3] @
-       ThoList.flatmap neutral_currents [1;2;3] @
-       ThoList.flatmap charged_currents [1;2;3] @
-       yukawa @ triple_gauge @ quartic_gauge @
-       gauge_higgs @ higgs @ higgs_triangle_vertices @ goldstone_vertices)
-
-    let vertices () = (vertices3, [], [])
-
-(* For efficiency, make sure that [F.of_vertices vertices] is
-   evaluated only once. *)
-
-    let table = F.of_vertices (vertices ())
-    let fuse2 = F.fuse2 table
-    let fuse3 = F.fuse3 table
-    let fuse = F.fuse table
-    let max_degree () = 3
-
-    let flavor_of_string = function
-      | "e-" -> M (L 1) | "e+" -> M (L (-1))
-      | "mu-" -> M (L 2) | "mu+" -> M (L (-2))
-      | "tau-" -> M (L 3) | "tau+" -> M (L (-3))
-      | "nue" -> M (N 1) | "nuebar" -> M (N (-1))
-      | "numu" -> M (N 2) | "numubar" -> M (N (-2))
-      | "nutau" -> M (N 3) | "nutaubar" -> M (N (-3))
-      | "u" -> M (U 1) | "ubar" -> M (U (-1))
-      | "c" -> M (U 2) | "cbar" -> M (U (-2))
-      | "t" -> M (U 3) | "tbar" -> M (U (-3))
-      | "d" -> M (D 1) | "dbar" -> M (D (-1))
-      | "s" -> M (D 2) | "sbar" -> M (D (-2))
-      | "b" -> M (D 3) | "bbar" -> M (D (-3))
-      | "g" -> G Gl
-      | "A" -> G Ga | "Z" | "Z0" -> G Z
-      | "W+" -> G Wp | "W-" -> G Wm
-      | "H" -> O H
-      | _ -> invalid_arg "Modellib.SM3.flavor_of_string"
-
-    let flavor_to_string = function
-      | M f ->
-          begin match f with
-          | L 1 -> "e-" | L (-1) -> "e+"
-          | L 2 -> "mu-" | L (-2) -> "mu+"
-          | L 3 -> "tau-" | L (-3) -> "tau+"
-          | L _ -> invalid_arg
-                "Modellib.SM3.flavor_to_string: invalid lepton"
-          | N 1 -> "nue" | N (-1) -> "nuebar"
-          | N 2 -> "numu" | N (-2) -> "numubar"
-          | N 3 -> "nutau" | N (-3) -> "nutaubar"
-          | N _ -> invalid_arg
-                "Modellib.SM3.flavor_to_string: invalid neutrino"
-          | U 1 -> "u" | U (-1) -> "ubar"
-          | U 2 -> "c" | U (-2) -> "cbar"
-          | U 3 -> "t" | U (-3) -> "tbar"
-          | U _ -> invalid_arg
-                "Modellib.SM3.flavor_to_string: invalid up type quark"
-          | D 1 -> "d" | D (-1) -> "dbar"
-          | D 2 -> "s" | D (-2) -> "sbar"
-          | D 3 -> "b" | D (-3) -> "bbar"
-          | D _ -> invalid_arg
-                "Modellib.SM3.flavor_to_string: invalid down type quark"
-          end
-      | G f ->
-          begin match f with
-          | Gl -> "g"
-          | Ga -> "A" | Z -> "Z"
-          | Wp -> "W+" | Wm -> "W-"
-          end
-      | O f ->
-          begin match f with
-          | XWp -> "W+aux" | XWm -> "W-aux"
-          | XW3 -> "W3aux" | XGl -> "gaux"
-          | Phip -> "phi+" | Phim -> "phi-" | Phi0 -> "phi0" 
-          | H -> "H" | XH -> "Haux"
-          | XH_W -> "HW1aux" | XH_W' -> "HW2aux"
-          | XH_Z -> "HZ1aux" | XH_Z' -> "HZ2aux"
-          | XSWm -> "W-Zaux" | XSWp -> "W+Zaux"
-          | XSWpp -> "W+W+aux" | XSWmm -> "W-W-aux"
-          | XSWZ0 -> "W+W-/ZZaux" | XSZW0 -> "ZZ/W+W-aux"
-          | XSW3 -> "W+W-aux" | XSZZ -> "ZZaux"
-          | XDH_W -> "DHDH/W+W-aux" | XDH_W' -> "DHDH/W+W-aux'"
-          | XDH_Z -> "DHDH/ZZaux" | XDH_Z' -> "DHDH/ZZaux'"
-          | XDH_Wm -> "DHW-aux" | XDH_Wp -> "DHW+aux"
-          | XDH_Z'' -> "DHZaux" | XDH2 -> "DHDHaux"
-          end
-
-    let flavor_to_TeX = function
-      | M f ->
-          begin match f with
-          | L 1 -> "e^-" | L (-1) -> "e^+"
-          | L 2 -> "\\mu^-" | L (-2) -> "\\mu^+"
-          | L 3 -> "\\tau^-" | L (-3) -> "\\tau^+"
-          | L _ -> invalid_arg
-                "Modellib.SM3.flavor_to_TeX: invalid lepton"
-          | N 1 -> "\\nu_e" | N (-1) -> "\\bar{\\nu}_e"
-          | N 2 -> "\\nu_\\mu" | N (-2) -> "\\bar{\\nu}_\\mu"
-          | N 3 -> "\\nu_\\tau" | N (-3) -> "\\bar{\\nu}_\\tau"
-          | N _ -> invalid_arg
-                "Modellib.SM3.flavor_to_TeX: invalid neutrino"
-          | U 1 -> "u" | U (-1) -> "\\bar{u}"
-          | U 2 -> "c" | U (-2) -> "\\bar{c}"
-          | U 3 -> "t" | U (-3) -> "\\bar{t}"
-          | U _ -> invalid_arg
-                "Modellib.SM3.flavor_to_TeX: invalid up type quark"
-          | D 1 -> "d" | D (-1) -> "\\bar{d}"
-          | D 2 -> "s" | D (-2) -> "\\bar{s}"
-          | D 3 -> "b" | D (-3) -> "\\bar{b}"
-          | D _ -> invalid_arg
-                "Modellib.SM3.flavor_to_TeX: invalid down type quark"
-          end
-      | G f ->
-          begin match f with
-          | Gl -> "g"
-          | Ga -> "\\gamma" | Z -> "Z"
-          | Wp -> "W^+" | Wm -> "W^-"
-          end
-      | O f ->
-          begin match f with
-          | XWp -> "W+aux" | XWm -> "W-aux"
-          | XW3 -> "W3aux" | XGl -> "gaux"
-          | Phip -> "phi+" | Phim -> "phi-" | Phi0 -> "phi0" 
-          | H -> "H" | XH -> "Haux"
-          | XH_W -> "HW1aux" | XH_W' -> "HW2aux"
-          | XH_Z -> "HZ1aux" | XH_Z' -> "HZ2aux"
-          | XSWm -> "W-Zaux" | XSWp -> "W+Zaux"
-          | XSWpp -> "W+W+aux" | XSWmm -> "W-W-aux"
-          | XSWZ0 -> "W+W-/ZZaux" | XSZW0 -> "ZZ/W+W-aux"
-          | XSW3 -> "W+W-aux" | XSZZ -> "ZZaux"
-          | XDH_W -> "DHDH/W+W-aux" | XDH_W' -> "DHDH/W+W-aux'"
-          | XDH_Z -> "DHDH/ZZaux" | XDH_Z' -> "DHDH/ZZaux'"
-          | XDH_Wm -> "DHW-aux" | XDH_Wp -> "DHW+aux"
-          | XDH_Z'' -> "DHZaux" | XDH2 -> "DHDHaux"
-          end
-
-    let flavor_symbol = function
-      | M f ->
-          begin match f with
-          | L n when n > 0 -> "l" ^ string_of_int n
-          | L n -> "l" ^ string_of_int (abs n) ^ "b"
-          | N n when n > 0 -> "n" ^ string_of_int n
-          | N n -> "n" ^ string_of_int (abs n) ^ "b"
-          | U n when n > 0 -> "u" ^ string_of_int n
-          | U n -> "u" ^ string_of_int (abs n) ^ "b"
-          | D n when n > 0 ->  "d" ^ string_of_int n
-          | D n -> "d" ^ string_of_int (abs n) ^ "b"
-          end
-      | G f ->
-          begin match f with
-          | Gl -> "gl"
-          | Ga -> "a" | Z -> "z"
-          | Wp -> "wp" | Wm -> "wm"
-          end
-      | O f ->
-          begin match f with
-          | XWp -> "xwp" | XWm -> "xwm"
-          | XW3 -> "xw3" | XGl -> "xgl"
-          | Phip -> "pp" | Phim -> "pm" | Phi0 -> "p0" 
-          | H -> "h" | XH -> "xh"
-          | XH_W -> "xhw1" | XH_W' -> "xhw2"
-          | XH_Z -> "xhz1" | XH_Z' -> "xhz2"
-          | XSWm -> "xswm" | XSWp -> "xswp"
-          | XSWpp -> "xswpp" | XSWmm -> "xswmm"
-          | XSWZ0 -> "xswz0" | XSZW0 -> "xszw0"
-          | XSW3 -> "xsww" | XSZZ -> "xszz"
-          | XDH_W -> "xdhw1" | XDH_W' -> "xdhw2"
-          | XDH_Z -> "xdhz1" | XDH_Z' -> "xdhz2"
-          | XDH_Wm -> "xdhwm" | XDH_Wp -> "xdhwp"
-          | XDH_Z'' -> "xdhz" | XDH2 -> "xdh"
-          end
-
-    let pdg = function
-      | M f ->
-          begin match f with
-          | L n when n > 0 -> 9 + 2*n
-          | L n -> - 9 + 2*n
-          | N n when n > 0 -> 10 + 2*n
-          | N n -> - 10 + 2*n
-          | U n when n > 0 -> 2*n
-          | U n -> 2*n
-          | D n when n > 0 -> - 1 + 2*n
-          | D n -> 1 + 2*n
-          end
-      | G f ->
-          begin match f with
-          | Gl -> 21
-          | Ga -> 22 | Z -> 23
-          | Wp -> 24 | Wm -> (-24)
-          end
-      | O f ->
-          begin match f with
-          | XWp | XWm | XW3 | XGl -> 0
-          | Phip | Phim -> 27 | Phi0 -> 26
-          | H -> 25
-          | XH -> 0
-          | XH_W | XH_W' -> 0
-          | XH_Z | XH_Z' -> 0
-          | XSWm | XSWp | XSWpp | XSWmm
-          | XSWZ0 | XSZW0 | XSW3 | XSZZ -> 0
-          | XDH_W | XDH_W' | XDH_Z | XDH_Z'
-          | XDH_Wm | XDH_Wp | XDH_Z'' | XDH2 -> 0
-          end
-
-    let mass_symbol f = 
-      "mass(" ^ string_of_int (abs (pdg f)) ^ ")"
-
-    let width_symbol f =
-      "width(" ^ string_of_int (abs (pdg f)) ^ ")"
-
-    let constant_symbol = function
-      | Unit -> "unit" | Pi -> "PI"
-      | Alpha_QED -> "alpha" | E -> "e" | G_weak -> "g" | Vev -> "vev"
-      | Sin2thw -> "sin2thw" | Sinthw -> "sinthw" | Costhw -> "costhw"
-      | Q_lepton -> "qlep" | Q_up -> "qup" | Q_down -> "qdwn"
-      | G_NC_lepton -> "gnclep" | G_NC_neutrino -> "gncneu"
-      | G_NC_up -> "gncup" | G_NC_down -> "gncdwn"
-      | G_CC -> "gcc"
-      | I_Q_W -> "iqw" | I_G_ZWW -> "igzww" | I_G_WWW -> "igwww"
-      | I_G1_AWW -> "ig1a" | I_G1_ZWW -> "ig1z"
-      | I_G1_plus_kappa_plus_G4_AWW -> "ig1pkpg4a"
-      | I_G1_plus_kappa_plus_G4_ZWW -> "ig1pkpg4z"
-      | I_G1_plus_kappa_minus_G4_AWW -> "ig1pkmg4a"
-      | I_G1_plus_kappa_minus_G4_ZWW -> "ig1pkmg4z"
-      | I_G1_minus_kappa_plus_G4_AWW -> "ig1mkpg4a"
-      | I_G1_minus_kappa_plus_G4_ZWW -> "ig1mkpg4z"
-      | I_G1_minus_kappa_minus_G4_AWW -> "ig1mkmg4a"
-      | I_G1_minus_kappa_minus_G4_ZWW -> "ig1mkmg4z"
-      | I_lambda_AWW -> "ila"
-      | I_lambda_ZWW -> "ilz"
-      | G5_AWW -> "rg5a"
-      | G5_ZWW -> "rg5z"
-      | I_kappa5_AWW -> "ik5a"
-      | I_kappa5_ZWW -> "ik5z"
-      | I_lambda5_AWW -> "il5a" | I_lambda5_ZWW -> "il5z"
-      | I_Alpha_WWWW0 -> "ialww0" | I_Alpha_WWWW2 -> "ialww2"
-      | I_Alpha_ZZWW0 -> "ialzw0" | I_Alpha_ZZWW1 -> "ialzw1"
-      | I_Alpha_ZZZZ  -> "ialzz"
-      | G_HWW -> "ghww" | G_HZZ -> "ghzz"
-      | G_HHWW -> "ghhww" | G_HHZZ -> "ghhzz"
-      | G_Htt -> "ghtt" | G_Hbb -> "ghbb"
-      | G_Htautau -> "ghtautau" | G_Hcc -> "ghcc" | G_Hmm -> "ghmm"
-      | G_H3 -> "gh3" | G_H4 -> "gh4"
-      | G_HGaZ -> "ghgaz" | G_HGaGa -> "ghgaga" | G_Hgg -> "ghgg"
-      | G_strong -> "gs" 
-      | Mass f -> "mass" ^ flavor_symbol f
-      | Width f -> "width" ^ flavor_symbol f
-      | I_G_DH4 -> "igdh4"
-      | G_DH2W2 -> "gdh2w2" | G_DH2Z2 -> "gdh2z2"
-      | G_DHW2 -> "gdhw2" | G_DHZ2 -> "gdhz2"
-
-  end
-
-(* \thocwmodulesection{Complete Minimal Standard Model with Genuine Quartic Couplings} *)
+(* \thocwmodulesection{Complete Minimal Standard Model (including some extensions)} *)
 
 module SM (Flags : SM_flags) =
   struct
@@ -1705,6 +728,69 @@ module SM (Flags : SM_flags) =
           | Gl | Ga | Z | Wp | Wm -> 0
           end
       | O _ -> 0
+
+    (* Electrical charge, lepton number, baryon number.  We could avoid the
+       rationals altogether by multiplying the first and last by 3 \ldots *)
+
+    module Ch = Charges.QQ
+    let ( // ) = Algebra.Small_Rational.make
+
+    let generation' = function
+      |  1 -> [ 1//1;  0//1;  0//1]
+      |  2 -> [ 0//1;  1//1;  0//1]
+      |  3 -> [ 0//1;  0//1;  1//1]
+      | -1 -> [-1//1;  0//1;  0//1]
+      | -2 -> [ 0//1; -1//1;  0//1]
+      | -3 -> [ 0//1;  0//1; -1//1]
+      |  n -> invalid_arg ("SM.generation': " ^ string_of_int n)
+
+    let generation f =
+      if Flags.ckm_present then
+        []
+      else
+        match f with
+        | M (L n | N n | U n | D n) -> generation' n
+        | G _ | O _ -> [0//1; 0//1; 0//1]
+
+    let charge = function
+      | M f ->
+          begin match f with
+          | L n -> if n > 0 then -1//1 else  1//1
+          | N n -> 0//1
+          | U n -> if n > 0 then  2//3 else -2//3
+          | D n -> if n > 0 then -1//3 else  1//3
+          end
+      | G f ->
+          begin match f with
+          | Gl | Ga | Z -> 0//1
+          | Wp ->  1//1
+          | Wm -> -1//1
+          end
+      | O f ->
+          begin match f with
+          | H | Phi0 ->  0//1
+          | Phip ->  1//1
+          | Phim -> -1//1
+          end
+
+    let lepton = function
+      | M f ->
+          begin match f with
+          | L n | N n -> if n > 0 then 1//1 else -1//1
+          | U _ | D _ -> 0//1
+          end
+      | G _ | O _ -> 0//1
+
+    let baryon = function
+      | M f ->
+          begin match f with
+          | L _ | N _ -> 0//1
+          | U n | D n -> if n > 0 then 1//1 else -1//1
+          end
+      | G _ | O _ -> 0//1
+
+    let charges f = 
+      [ charge f; lepton f; baryon f] @ generation f
 
     type constant =
       | Unit | Pi | Alpha_QED | Sin2thw
@@ -1936,6 +1022,62 @@ module SM (Flags : SM_flags) =
           ((Z, Wm, Wp), Gauge_Gauge_Gauge 1, I_G_ZWW);
           ((Gl, Gl, Gl), Gauge_Gauge_Gauge 1, I_Gs)]
 
+(* \begin{multline}
+     \mathcal{L}_{\textrm{TGC}}(g_1,\kappa)
+        =   g_1 \mathcal{L}_T(V,W^+,W^-) \\
+          + \frac{\kappa+g_1}{2} \Bigl(\mathcal{L}_T(W^-,V,W^+)
+                                         - \mathcal{L}_T(W^+,V,W^-)\Bigr)\\
+          + \frac{\kappa-g_1}{2} \Bigl(\mathcal{L}_L(W^-,V,W^+)
+                                         - \mathcal{L}_T(W^+,V,W^-)\Bigr)
+   \end{multline} *)
+
+(* \begin{dubious}
+   The whole thing in the LEP2 workshop notation:
+   \begin{multline}
+     \ii\mathcal{L}_{\textrm{TGC},V} / g_{WWV} = \\
+            g_1^V V^\mu (W^-_{\mu\nu}W^{+,\nu}-W^+_{\mu\nu}W^{-,\nu})
+          + \kappa_V  W^+_\mu W^-_\nu V^{\mu\nu}
+          + \frac{\lambda_V}{m_W^2} V_{\mu\nu}
+               W^-_{\rho\mu} W^{+,\hphantom{\nu}\rho}_{\hphantom{+,}\nu} \\
+          + \ii g_5^V \epsilon_{\mu\nu\rho\sigma}
+              \left(   (\partial^\rho W^{-,\mu}) W^{+,\nu}
+                     -  W^{-,\mu}(\partial^\rho W^{+,\nu}) \right) V^\sigma \\
+          + \ii g_4^V W^-_\mu W^+_\nu (\partial^\mu V^\nu + \partial^\nu V^\mu)
+          - \frac{\tilde\kappa_V}{2}  W^-_\mu W^+_\nu \epsilon^{\mu\nu\rho\sigma}
+              V_{\rho\sigma}
+          - \frac{\tilde\lambda_V}{2m_W^2}
+               W^-_{\rho\mu} W^{+,\mu}_{\hphantom{+,\mu}\nu} \epsilon^{\nu\rho\alpha\beta}
+                V_{\alpha\beta}
+   \end{multline}
+   using the conventions of Itzykson and Zuber with $\epsilon^{0123} = +1$.
+   \end{dubious} *)
+
+(* \begin{dubious}
+   This is equivalent to the notation of Hagiwara et al.~\cite{HPZH87}, if we
+   remember that they have opposite signs for~$g_{WWV}$:
+   \begin{multline}
+     \mathcal{L}_{WWV} / (-g_{WWV})  = \\
+       \ii g_1^V \left( W^\dagger_{\mu\nu} W^\mu 
+                         - W^\dagger_\mu W^\mu_{\hphantom{\mu}\nu} \right) V^\nu
+     + \ii \kappa_V  W^\dagger_\mu W_\nu V^{\mu\nu}
+     + \ii \frac{\lambda_V}{m_W^2}
+          W^\dagger_{\lambda\mu} W^\mu_{\hphantom{\mu}\nu} V^{\nu\lambda} \\
+     - g_4^V  W^\dagger_\mu W_\nu
+          \left(\partial^\mu V^\nu + \partial^\nu V^\mu \right)
+     + g_5^V \epsilon^{\mu\nu\lambda\sigma}
+           \left( W^\dagger_\mu \stackrel{\leftrightarrow}{\partial_\lambda}
+                  W_\nu \right) V_\sigma\\
+     + \ii \tilde\kappa_V  W^\dagger_\mu W_\nu \tilde{V}^{\mu\nu}
+     + \ii\frac{\tilde\lambda_V}{m_W^2}
+           W^\dagger_{\lambda\mu} W^\mu_{\hphantom{\mu}\nu} \tilde{V}^{\nu\lambda}
+   \end{multline}
+   Here $V^\mu$ stands for either the photon or the~$Z$ field, $W^\mu$ is the
+   $W^-$ field, $W_{\mu\nu} = \partial_\mu W_\nu - \partial_\nu W_\mu$,
+   $V_{\mu\nu} = \partial_\mu V_\nu - \partial_\nu V_\mu$, and
+   $\tilde{V}_{\mu\nu} = \frac{1}{2} \epsilon_{\mu\nu\lambda\sigma}
+   V^{\lambda\sigma}$.
+   \end{dubious} *)
+
     let anomalous_triple_gauge =
       List.map tgc
         [ ((Ga, Wm, Wp), Dim4_Vector_Vector_Vector_T (-1),
@@ -1958,13 +1100,13 @@ module SM (Flags : SM_flags) =
            I_G1_minus_kappa_minus_G4_AWW);
           ((Wp, Z, Wm), Dim4_Vector_Vector_Vector_L 1,
            I_G1_minus_kappa_minus_G4_ZWW);
-          ((Ga, Wm, Wp), Dim4_Vector_Vector_Vector_T5 (-1),
-           I_kappa5_AWW);
-          ((Z, Wm, Wp), Dim4_Vector_Vector_Vector_T5 (-1),
-           I_kappa5_ZWW);
           ((Ga, Wm, Wp), Dim4_Vector_Vector_Vector_L5 (-1),
-           G5_AWW);
+           I_kappa5_AWW);
           ((Z, Wm, Wp), Dim4_Vector_Vector_Vector_L5 (-1),
+           I_kappa5_ZWW);
+          ((Ga, Wm, Wp), Dim4_Vector_Vector_Vector_T5 (-1),
+           G5_AWW);
+          ((Z, Wm, Wp), Dim4_Vector_Vector_Vector_T5 (-1),
            G5_ZWW);
           ((Ga, Wp, Wm), Dim6_Gauge_Gauge_Gauge (-1),
            I_lambda_AWW);
@@ -2599,6 +1741,9 @@ module SM_Rxi =
 
     let width = SM.width
 
+    module Ch = Charges.QQ
+    let charges = SM.charges
+
     module F = Modeltools.Fusions (struct
       type f = flavor
       type c = constant
@@ -2628,7 +1773,7 @@ module SM_Rxi =
 
 (* \thocwmodulesection{Groves} *)
 
-module Groves (M : Model.Gauge) : Model.Gauge =
+module Groves (M : Model.Gauge) : Model.Gauge with module Ch = M.Ch =
   struct
     let max_generations = 5
     let rcs = RCS.rename M.rcs
@@ -2731,6 +1876,9 @@ module Groves (M : Model.Gauge) : Model.Gauge =
     let external_flavors () =
       List.map (fun (s, fl) -> (s, ThoList.flatmap (clone generations) fl))
         (M.external_flavors ())
+
+    module Ch = M.Ch
+    let charges f = M.charges (project f)
 
     module F = Modeltools.Fusions (struct
       type f = flavor
@@ -2869,7 +2017,6 @@ module Groves (M : Model.Gauge) : Model.Gauge =
 (* \thocwmodulesection{MSM With Cloned Families} *)
 
 module SM_clones = Groves(SM(SM_no_anomalous))
-module SM3_clones = Groves(SM3(SM_no_anomalous))
 
 (*i
  *  Local Variables:

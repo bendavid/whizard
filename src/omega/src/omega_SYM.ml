@@ -1,4 +1,4 @@
-(* $Id: omega_SYM.ml 2468 2010-05-05 16:37:03Z kilian $
+(* $Id: omega_SYM.ml 2695 2010-07-08 22:15:33Z ohl $
 
    Copyright (C) 1999-2019 by
 
@@ -23,9 +23,9 @@
 
 let rcs_file = RCS.parse "omega_SYM"
     ["Super Yang-Mills (incomplete, just for stress-testing Colorize.It())"]
-    { RCS.revision = "$Revision: 2468 $";
-      RCS.date = "$Date: 2010-05-05 18:37:03 +0200 (Wed, 05 May 2010) $";
-      RCS.author = "$Author: kilian $";
+    { RCS.revision = "$Revision: 2695 $";
+      RCS.date = "$Date: 2010-07-09 00:15:33 +0200 (Fri, 09 Jul 2010) $";
+      RCS.author = "$Author: ohl $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/src/omega/src/omega_SYM.ml $" }
 
@@ -137,6 +137,9 @@ i*)
             invalid_arg "SYM.fermion (Q 0)"
       | SQ _ | G _ | Phi -> 0
       | SG _ -> 2
+
+    module Ch = Charges.Null
+    let charges _ = ()
 
     module F = Modeltools.Fusions (struct
       type f = flavor

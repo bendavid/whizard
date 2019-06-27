@@ -1,4 +1,4 @@
-! WHIZARD 2.0.2 Tue May 18 2010
+! WHIZARD 2.0.3 Tue Aug 10 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -580,6 +580,13 @@ contains
 !     print *
 
     call find_connections (int_in1, int_in2, n_conn, connection_index)
+    if (n_conn == 0) then
+       call msg_message ("First interaction:")
+       call interaction_write (int_in1)
+       call msg_message ("Second interaction:")
+       call interaction_write (int_in2)
+       call msg_fatal ("Evaluator product: no connections found between factors")
+    end if
     call compute_index_bounds_and_mappings &
          (int_in1, int_in2, n_conn, &
           n_in, n_vir, n_out, n_tot, &

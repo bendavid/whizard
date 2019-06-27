@@ -1,4 +1,4 @@
-(* $Id: modellib_SM.mli 1889 2010-02-22 21:09:09Z jr_reuter $
+(* $Id: modellib_SM.mli 2742 2010-08-08 11:31:50Z ohl $
 
    Copyright (C) 1999-2009 by
 
@@ -22,10 +22,10 @@
 
 (* \thocwmodulesection{Hardcoded Models} *)
 
-module Phi3 : Model.T
-module Phi4 : Model.T
-module QED : Model.T
-module QCD : Model.T
+module Phi3 : Model.T with module Ch = Charges.Null
+module Phi4 : Model.T with module Ch = Charges.Null
+module QED : Model.T with module Ch = Charges.ZZ
+module QCD : Model.T with module Ch = Charges.ZZ
 
 module type SM_flags =
   sig
@@ -44,14 +44,12 @@ module SM_no_anomalous_ckm : SM_flags
 module SM_anomalous_ckm : SM_flags
 module SM_Hgg : SM_flags
 
-module SM3 : functor (F : SM_flags) -> Model.Gauge
-module SM : functor (F : SM_flags) -> Model.Gauge
+module SM : functor (F : SM_flags) -> Model.Gauge with module Ch = Charges.QQ
 
-module SM_Rxi : Model.T
+module SM_Rxi : Model.T with module Ch = Charges.QQ
 
-module Groves : functor (M : Model.Gauge) -> Model.Gauge
-module SM_clones : Model.Gauge
-module SM3_clones : Model.Gauge
+module Groves : functor (M : Model.Gauge) -> Model.Gauge with module Ch = M.Ch
+module SM_clones : Model.Gauge with module Ch = Charges.QQ
 
 (*i
  *  Local Variables:

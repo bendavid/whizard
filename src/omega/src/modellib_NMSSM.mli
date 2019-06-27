@@ -1,4 +1,4 @@
-(* $Id: modellib_NMSSM.mli 1173 2009-09-16 08:56:36Z jr_reuter $
+(* $Id: modellib_NMSSM.mli 2699 2010-07-10 10:17:20Z jr_reuter $
 
    Copyright (C) 1999-2009 by
 
@@ -34,7 +34,8 @@ module type NMSSM_flags =
 
 module NMSSM : NMSSM_flags
 module NMSSM_CKM : NMSSM_flags
-module NMSSM_func : functor (F: NMSSM_flags) -> Model.T
+module NMSSM_func : functor (F: NMSSM_flags) -> Model.T with module Ch = Charges.QQ
+
 
 (*i
  *  Local Variables:

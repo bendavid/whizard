@@ -1,4 +1,4 @@
-(* $Id: targets.ml 2496 2010-05-10 11:28:31Z ohl $
+(* $Id: targets.ml 2592 2010-06-01 14:59:26Z ohl $
 
    Copyright (C) 1999-2009 by
 
@@ -21,8 +21,8 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 let rcs_file = RCS.parse "Targets" ["Code Generation"]
-    { RCS.revision = "$Revision: 2496 $";
-      RCS.date = "$Date: 2010-05-10 13:28:31 +0200 (Mon, 10 May 2010) $";
+    { RCS.revision = "$Revision: 2592 $";
+      RCS.date = "$Date: 2010-06-01 16:59:26 +0200 (Tue, 01 Jun 2010) $";
       RCS.author = "$Author: ohl $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/src/omega/src/targets.ml $" }
@@ -294,6 +294,7 @@ module Make_Fortran (Fermions : Fermions)
       | Multi_File of int
 
     let line_length = ref 80
+    let continuation_lines = ref (-1) (* 255 *)
     let kind = ref "default"
     let fortran95 = ref true
     let module_name = ref "omega_amplitude"
@@ -311,7 +312,9 @@ module Make_Fortran (Fermions : Fermions)
         "don't use Fortran95 features that are not in Fortran90";
         "kind", Arg.String (fun s -> kind := s),
         "real and complex kind (default: " ^ !kind ^ ")";
-        "width", Arg.Int (fun w -> line_length := w), "approx. line length";
+        "width", Arg.Int (fun w -> line_length := w), "maximum line length";
+        "continuation", Arg.Int (fun l -> continuation_lines := l),
+        "maximum # of continuation lines";
         "module", Arg.String (fun s -> module_name := s), "module name";
         "single_function", Arg.Unit (fun () -> output_mode := Single_Function),
         "compute the matrix element(s) in a monolithis function";
@@ -334,18 +337,6 @@ module Make_Fortran (Fermions : Fermions)
 
 (* Fortran style line continuation: *)
 
-    let continuing = ref true
-
-(* \begin{dubious}
-     The following is \emph{broken} if we do it more than once.  I don't quite
-     understand why, but below there's a working alternative.
-   \end{dubious} *)
-
-    let broken_wrap_newline () =
-      let out, flush, newline, space = get_all_formatter_output_functions () in
-      let newline' () = if !continuing then out " &" 0 2; newline () in
-      set_all_formatter_output_functions out flush newline' space
-
 (* Default function to output spaces (copied from \texttt{format.ml}). *)
     let blank_line = String.make 80 ' '
     let rec display_blanks oc n =
@@ -361,15 +352,31 @@ module Make_Fortran (Fermions : Fermions)
     let display_newline oc () =
       output oc "\n" 0  1
 
+(* [current_continuation_line]
+   \begin{itemize}
+     \item $\le0$: not continuing: print a straight newline,
+     \item $>0$: continuing: append [" &"] until we run up to [!continuation_lines].
+       NB: [!continuation_lines < 0] means \emph{unlimited} continuation lines.
+   \end{itemize} *)
+
+    let current_continuation_line = ref 1
+    exception Continuation_Lines of int
+
     let fortran_newline oc () =
-      if !continuing then
-        output oc " &" 0 2;
+      if !current_continuation_line > 0 then begin
+        if !continuation_lines >= 0 && !current_continuation_line > !continuation_lines then
+          raise (Continuation_Lines !current_continuation_line)
+        else begin
+          output oc " &" 0 2;
+          incr current_continuation_line
+        end
+      end;
       display_newline oc ()
       
     let nl () =
-      continuing := false;
+      current_continuation_line := 0;
       print_newline ();
-      continuing := true
+      current_continuation_line := 1
 
 (* Make a formatter with default functions to output spaces and new lines. *)
     let setup_fortran_formatter width oc =
@@ -378,7 +385,7 @@ module Make_Fortran (Fermions : Fermions)
         ~flush:(fun () -> flush oc)
         ~newline:(fortran_newline oc)
         ~spaces:(display_blanks oc);
-      set_margin width
+      set_margin (width - 2)
 
     let print_list = function 
       | [] -> ()
@@ -445,11 +452,20 @@ module Make_Fortran (Fermions : Fermions)
       with
       | Not_found -> [variable wf]
 
-    let declare_list multiplicity t = function
+    let declaration_chunk_size = 64
+
+    let declare_list_chunk multiplicity t = function
       | [] -> ()
       | wfs ->
           printf "    @[<2>%s :: " t;
           print_list (ThoList.flatmap (multiple_variables multiplicity) wfs); nl ()
+
+    let declare_list multiplicity t = function
+      | [] -> ()
+      | wfs ->
+          List.iter
+            (declare_list_chunk multiplicity t)
+            (ThoList.chopn declaration_chunk_size wfs)
 
     type declarations =
         { scalars : F.wf list;
@@ -547,6 +563,9 @@ i*)
              complex_arrays = [] }
            (List.map fst params.derived)) params.derived_arrays
 
+(* \begin{dubious}
+     Unify this with the other code using [ThoList.chopn].
+   \end{dubious} *)
 
     let rec schisma n l = 
       if List.length l <= n then
@@ -790,11 +809,18 @@ i*)
 
 (* \thocwmodulesubsection{Amplitude} *)
 
-    let declare_momenta = function
+    let declare_momenta_chunk = function
       | [] -> ()
       | momenta ->
           printf "    @[<2>type(momentum) :: ";
           print_list (List.map format_momentum momenta); nl ()
+
+    let declare_momenta = function
+      | [] -> ()
+      | momenta ->
+          List.iter
+            declare_momenta_chunk
+            (ThoList.chopn declaration_chunk_size momenta)
 
     let declare_wavefunctions multiplicity wfs =
       let wfs' = classify_wfs wfs in
@@ -814,11 +840,18 @@ i*)
 
     let flavors a = F.incoming a @ F.outgoing a
 
-    let declare_brakets = function
+    let declare_brakets_chunk = function
       | [] -> ()
       | amplitudes ->
           printf "    @[<2>complex(kind=%s) :: " !kind;
           print_list (List.map (fun a -> flavors_symbol (flavors a)) amplitudes); nl ()
+
+    let declare_brakets = function
+      | [] -> ()
+      | amplitudes ->
+          List.iter
+            declare_brakets_chunk
+            (ThoList.chopn declaration_chunk_size amplitudes)
 
     let print_variable_declarations amplitudes =
       let multiplicity = CF.multiplicity amplitudes
@@ -1540,7 +1573,7 @@ i*)
     let print_fusion amplitude dictionary fusion =
       let lhs = F.lhs fusion in
       let f = F.flavor lhs in
-      printf "      @[<2>%s = " (multiple_variable amplitude dictionary lhs);
+      printf "      @[<2>%s =@, " (multiple_variable amplitude dictionary lhs);
       if F.on_shell amplitude lhs then
         print_projector f (momentum lhs)
           (CM.mass_symbol f) (CM.width_symbol f)
@@ -1577,7 +1610,7 @@ i*)
     let print_braket amplitude dictionary name braket =
       let bra = F.bra braket
       and ket = F.ket braket in
-      printf "      @[<2>%s = %s + " name name;
+      printf "      @[<2>%s = %s@, + " name name;
       begin match Fermions.reverse_braket (CM.lorentz (F.flavor bra)) with
       | false ->
           printf "%s*(@," (multiple_variable amplitude dictionary bra);
@@ -1606,7 +1639,7 @@ i*)
       List.iter (print_braket amplitude dictionary name) (F.brakets amplitude);
       let n = List.length (F.externals amplitude) in
       if n mod 2 = 0 then begin
-        printf "      %s = - %s ! %d vertices, %d propagators"
+        printf "      @[<2>%s =@, - %s ! %d vertices, %d propagators"
           name name (n - 2) (n - 3); nl ()
       end else begin
         printf "      ! %s = %s ! %d vertices, %d propagators"
@@ -1614,7 +1647,7 @@ i*)
       end;
       let s = F.symmetry amplitude in
       if s > 1 then
-        printf "      %s = %s / sqrt(%d.0_%s) ! symmetry factor" name name s !kind
+        printf "      @[<2>%s =@, %s@, / sqrt(%d.0_%s) ! symmetry factor" name name s !kind
       else
         printf "      ! unit symmetry factor";
       nl ()
@@ -1730,7 +1763,7 @@ i*)
            List.map (fun _ -> false) (F.outgoing amplitude)) in
       List.fold_left (fun seen (wf, incoming) ->
         if not (WFSet.mem wf seen) then begin
-          printf "      %s = " (variable wf);
+          printf "      @[<2>%s =@, " (variable wf);
           (if incoming then print_incoming else print_outgoing) wf; nl ()
         end;
         WFSet.add wf seen) seen_wfs externals

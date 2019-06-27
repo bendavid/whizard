@@ -78,10 +78,38 @@ endif
 endif
 endif
 
-clean-local:
-	rm -f *.pdf *.mpx *.[1-9] *.t[1-9] vamp*.mp preview*.mp \
-	  *.out *.log *.aux *.idx *.ilg *.ind *.data *.rcs *.toc \
+## Cleanup tasks
+mostlyclean-latex:
+	-rm -f *.data *.mpx *.[1-9] *.t[1-9] vamp*.mp preview*.mp \
+	  *.out *.log *.aux *.idx *.ilg *.ind *.rcs *.toc \
 	  tex-comments vamp.tex
+	-test "$(srcdir)" != "." && rm -f vamp.pdf \
+		preview.pdf preview2.pdf
+clean-latex:
+maintainer-clean-latex:
+	-rm -f vamp.pdf preview.pdf preview2.pdf
+if NOWEB_AVAILABLE
+mostlyclean-vamp:
+	-test "$(srcdir)" != "." && rm -f vamp.pdf \
+		preview.pdf preview2.pdf
+maintainer-clean-vamp:
+else
+mostlyclean-vamp:
+maintainer-clean-vamp:
+endif
+.PHONY: mostlyclean-latex clean-latex maintainer-clean-latex
+.PHONY: mostlyclean-vamp maintainer-clean-vamp
+
+## Remove backup files
+maintainer-clean-backup:
+	-rm -f *~
+.PHONY: maintainer-clean-backup
+
+## Register additional clean targets
+mostlyclean-local: mostlyclean-latex mostlyclean-vamp
+clean-local: clean-latex
+maintainer-clean-local: maintainer-clean-latex maintainer-clean-vamp \
+	maintainer-clean-backup
 
 distclean-local:
 	-test "$(srcdir)" != "." && rm -f $(LATEX_STYLES)

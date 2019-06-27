@@ -1,4 +1,4 @@
-(* $Id: powSet.mli 2468 2010-05-05 16:37:03Z kilian $
+(* $Id: powSet.mli 2695 2010-07-08 22:15:33Z ohl $
 
    Copyright (C) 1999-2010 by
 

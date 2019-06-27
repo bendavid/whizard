@@ -877,7 +877,7 @@ elsif (pull > 3) then
 elsif (pull > 2) then
   printf "NOTICE:  pull > 2 in Z,A => Hp,Hm           @ sqrt(s) = 2000 GeV"
 endif
-tolerance = 3 * error_sum
+tolerance = 4 * error_sum
 expect (integral (mssm_ext_za_29) ==~ 6.1849     )
 ! ----------------------------------------------------------------------
 ! Done

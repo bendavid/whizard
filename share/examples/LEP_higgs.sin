@@ -65,15 +65,15 @@ integrate(nnbb,qqbb,bbbb,eebb,
 # Define title etc. as global variables, that will be used by PLOT
 $description =
   "A WHIZARD 2.0 Example. Using weighted events to speed things up."
-$ylabel = "$N_{\textrm{events}}$"
+$y_label = "$N_{\textrm{events}}$"
 
 # Allocate plots
 $title = "Invisible mass distribution in $e^+e^- \to \nu\bar\nu b \bar b$"
-$xlabel = "$M_{\nu\nu}$/GeV"
+$x_label = "$M_{\nu\nu}$/GeV"
 histogram m_invisible (70 GeV, 130 GeV, 0.5 GeV)
 
 $title = "$bb$ invariant mass distribution in $e^+e^- \to \nu\bar\nu b \bar b$"
-$xlabel = "$M_{b\bar b}$/GeV"
+$x_label = "$M_{b\bar b}$/GeV"
 histogram m_bb (70 GeV, 130 GeV, 0.5 GeV)
 
 analysis = record m_invisible (eval M [n,N]);
@@ -87,10 +87,10 @@ luminosity = 100
 simulate (nnbb) 
 
 $title = "Dijet invariant mass distribution in $e^+e^- \to q \bar q b \bar b$"
-$xlabel = "$M_{q\bar q}$/GeV"
+$x_label = "$M_{q\bar q}$/GeV"
 histogram m_jj (70 GeV, 130 GeV, 0.5 GeV)
 
 simulate (qqbb) { analysis = record m_jj (eval M / 1 GeV [combine [q,Q]]) }
 
-$analysis_filename = "lep_higgs"
-write_analysis 
+compile_analysis { $out_file = "lep_higgs.dat" }
+

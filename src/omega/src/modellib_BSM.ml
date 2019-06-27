@@ -1,6 +1,6 @@
-(* $Id: modellib_BSM.ml 2219 2010-04-04 16:05:44Z ohl $
+(* $Id: modellib_BSM.ml 2700 2010-07-11 19:48:11Z jr_reuter $
 
-   Copyright (C) 1999-2009 by
+   Copyright (C) 1999-2010 by
 
        Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
@@ -21,9 +21,9 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 let rcs_file = RCS.parse "Modellib_BSM" ["BSM Models"]
-    { RCS.revision = "$Revision: 2219 $";
-      RCS.date = "$Date: 2010-04-04 18:05:44 +0200 (Sun, 04 Apr 2010) $";
-      RCS.author = "$Author: ohl $";
+    { RCS.revision = "$Revision: 2700 $";
+      RCS.date = "$Date: 2010-07-11 21:48:11 +0200 (Sun, 11 Jul 2010) $";
+      RCS.author = "$Author: jr_reuter $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/src/omega/src/modellib_BSM.ml $" }
 
@@ -246,6 +246,59 @@ module Littlest (Flags : BSM_flags) =
           | Psi0 | Psi1 | Psip | Psim | Psipp | Psimm 
           | Phip | Phim | Phi0 | H | Eta -> 0
           end
+
+(* This model does NOT have a conserved generation charge
+   even in absence of CKM mixing because of the heavy top
+   admixture. *)
+
+    module Ch = Charges.QQ
+    let ( // ) = Algebra.Small_Rational.make
+
+    let charge = function
+      | M f ->
+          begin match f with
+          | L n -> if n > 0 then -1//1 else  1//1
+          | N n -> 0//1
+          | U n -> if n > 0 then  2//3 else -2//3
+          | D n -> if n > 0 then -1//3 else  1//3
+          | TopH -> 2//3
+          | TopHb -> -2//3
+          end
+      | G f ->
+          begin match f with
+          | Gl | Ga | Z | AH | ZH -> 0//1
+          | Wp | WHp ->  1//1
+          | Wm | WHm -> -1//1
+          end
+      | O f ->
+          begin match f with
+          | H | Phi0 | Eta | Psi1 | Psi0 ->  0//1
+          | Phip | Psip ->  1//1
+          | Phim | Psim -> -1//1
+          | Psipp -> 2//1
+          | Psimm -> -2//1
+          end
+
+    let lepton = function
+      | M f ->
+          begin match f with
+          | L n | N n -> if n > 0 then 1//1 else -1//1
+          | U _ | D _ | _ -> 0//1
+          end
+      | G _ | O _ -> 0//1
+
+    let baryon = function
+      | M f ->
+          begin match f with
+          | L _ | N _ -> 0//1
+          | U n | D n -> if n > 0 then 1//1 else -1//1
+          | TopH -> 1//1
+          | TopHb -> -1//1
+          end
+      | G _ | O _ -> 0//1
+
+    let charges f = 
+      [ charge f; lepton f; baryon f]
 
     type constant =
       | Unit | Pi | Alpha_QED | Sin2thw
@@ -530,7 +583,7 @@ module Littlest (Flags : BSM_flags) =
           (Wm, Z, Wp, ZH), minus_gauge4, G_WWZZH;
           (WHm, Ga, WHp, ZH), minus_gauge4, G_WHWHAZH;
           (WHm, Z, WHp, ZH), minus_gauge4, G_WHWHZZH;
-          (WHm, ZH, WHm, ZH), minus_gauge4, G_WH4;
+          (WHm, ZH, WHp, ZH), minus_gauge4, G_WH4;
           (WHm, Z, Wp, Z), minus_gauge4, G_WHWZZ;
           (Wm, Z, WHp, Z), minus_gauge4, G_WHWZZ;
           (WHm, Ga, Wp, Z), minus_gauge4, G_WHWAZ;
@@ -839,9 +892,9 @@ module Littlest (Flags : BSM_flags) =
 
     let top_quartic = 
       [ ((M (U (-3)), O H, O H, M (U 3)), GBBG (1, Psibar, S2, Psi), G_HHtt);
-	((M (TopHb), O H, O H, M TopH), GBBG (1, Psibar, S2, Psi), G_HHthth);
-	((M (U (-3)), O H, O H, M TopH), GBBG (1, Psibar, S2LR, Psi), G_HHtht);
-	((M (TopHb), O H, O H, M (U 3)), GBBG (1, Psibar, S2LR, Psi), G_HHtht)]
+   ((M (TopHb), O H, O H, M TopH), GBBG (1, Psibar, S2, Psi), G_HHthth);
+   ((M (U (-3)), O H, O H, M TopH), GBBG (1, Psibar, S2LR, Psi), G_HHtht);
+   ((M (TopHb), O H, O H, M (U 3)), GBBG (1, Psibar, S2LR, Psi), G_HHtht)]
 
     let goldstone_vertices =
       List.map hgg
@@ -1310,6 +1363,40 @@ module Littlest_Tpar (Flags : BSM_flags) =
       | Gl | Ga | Z | Wp | Wm | WHp | WHm | AH | ZH -> 0
       | _ -> 0
 
+    module Ch = Charges.QQ
+    let ( // ) = Algebra.Small_Rational.make
+
+    let charge = function
+       | L n | Lodd n -> if n > 0 then -1//1 else  1//1
+       | N n | Nodd n -> 0//1
+       | U n | Uodd n -> if n > 0 then  2//3 else -2//3
+       | D n | Dodd n -> if n > 0 then -1//3 else  1//3
+       | Topp -> 2//3
+       | Toppb -> -2//3
+       | Gl | Ga | Z | AH | ZH -> 0//1
+       | Wp | WHp ->  1//1
+       | Wm | WHm -> -1//1
+       | H | Phi0 | Eta | Psi1 | Psi0 ->  0//1
+       | Phip | Psip ->  1//1
+       | Phim | Psim -> -1//1
+       | Psipp -> 2//1
+       | Psimm -> -2//1
+
+    let lepton = function
+       | L n | N n | Lodd n | Nodd n 
+          -> if n > 0 then 1//1 else -1//1
+       | U _ | D _ | _ -> 0//1
+
+    let baryon = function
+       | L _ | N _ -> 0//1
+       | U n | D n | Uodd n | Dodd n 
+          -> if n > 0 then 1//1 else -1//1
+       | Topp -> 1//1
+       | Toppb -> -1//1
+       | _ -> 0//1
+
+    let charges f = 
+      [ charge f; lepton f; baryon f]
 
     type constant =
       | Unit | Pi | Alpha_QED | Sin2thw
@@ -1574,7 +1661,7 @@ module Littlest_Tpar (Flags : BSM_flags) =
         (Wm, Z, Wp, ZH), minus_gauge4, G_WWZZH;
         (WHm, Ga, WHp, ZH), minus_gauge4, G_WHWHAZH;
         (WHm, Z, WHp, ZH), minus_gauge4, G_WHWHZZH;
-        (WHm, ZH, WHm, ZH), minus_gauge4, G_WH4;
+        (WHm, ZH, WHp, ZH), minus_gauge4, G_WH4;
         (WHm, Z, Wp, Z), minus_gauge4, G_WHWZZ;
         (Wm, Z, WHp, Z), minus_gauge4, G_WHWZZ;
         (WHm, Ga, Wp, Z), minus_gauge4, G_WHWAZ;
@@ -1876,9 +1963,9 @@ module Littlest_Tpar (Flags : BSM_flags) =
 
     let top_quartic = 
       [ ((U (-3), H, H, U 3), GBBG (1, Psibar, S2, Psi), G_HHtt);
-	((Toppb, H, H, Topp), GBBG (1, Psibar, S2, Psi), G_HHthth);
-	((U (-3), H, H, Topp), GBBG (1, Psibar, S2LR, Psi), G_HHtht);
-	((Toppb, H, H, U 3), GBBG (1, Psibar, S2LR, Psi), G_HHtht)]
+   ((Toppb, H, H, Topp), GBBG (1, Psibar, S2, Psi), G_HHthth);
+   ((U (-3), H, H, Topp), GBBG (1, Psibar, S2LR, Psi), G_HHtht);
+   ((Toppb, H, H, U 3), GBBG (1, Psibar, S2LR, Psi), G_HHtht)]
 
     let goldstone_vertices =
       [ ((Phi0, Wm, Wp), Scalar_Vector_Vector 1, I_G_ZWW);
@@ -2336,6 +2423,48 @@ module Simplest (Flags : BSM_flags) =
       | NH n -> if n > 0 then 1 else -1
       | Ga | Gl | Z | Wp | Wm | Xp | Xm | X0 | Y0 | ZH -> 0
       | _ -> 0 
+
+
+    module Ch = Charges.QQ
+    let ( // ) = Algebra.Small_Rational.make
+
+    let charge = function
+       | L n -> if n > 0 then -1//1 else  1//1
+       | N n | NH n -> 0//1
+       | U n -> if n > 0 then  2//3 else -2//3
+       | QH 3 -> 2//3 | QH (-3) -> -2//3
+       | QH (1|2) ->
+          if Flags.anom_ferm_ass then
+             2//3
+          else
+             -1//3
+       | QH ((-1)|(-2)) ->
+          if Flags.anom_ferm_ass then
+             -2//3
+          else
+             1//3
+       | QH n -> invalid_arg ("Simplest.charge: QH " ^ string_of_int n)  
+       | D n -> if n > 0 then -1//3 else  1//3
+       | Gl | Ga | Z | ZH | X0 | Y0 -> 0//1
+       | Wp | Xp ->  1//1
+       | Wm | Xm -> -1//1
+       | H | Phi0 | Eta ->  0//1
+       | Phip ->  1//1
+       | Phim -> -1//1
+
+    let lepton = function
+       | L n | N n | NH n 
+          -> if n > 0 then 1//1 else -1//1
+       | U _ | D _ | _ -> 0//1
+
+    let baryon = function
+       | L _ | N _ -> 0//1
+       | U n | D n | QH n 
+          -> if n > 0 then 1//1 else -1//1
+       | _ -> 0//1
+
+    let charges f = 
+      [ charge f; lepton f; baryon f]
 
     type constant =
       | Unit | Pi | Alpha_QED | Sin2thw
@@ -3059,6 +3188,63 @@ module Xdim (Flags : BSM_flags) =
           end
       | O _ -> 0
 
+    module Ch = Charges.QQ
+    let ( // ) = Algebra.Small_Rational.make
+
+    let generation' = function
+      |  1 -> [ 1//1;  0//1;  0//1]
+      |  2 -> [ 0//1;  1//1;  0//1]
+      |  3 -> [ 0//1;  0//1;  1//1]
+      | -1 -> [-1//1;  0//1;  0//1]
+      | -2 -> [ 0//1; -1//1;  0//1]
+      | -3 -> [ 0//1;  0//1; -1//1]
+      |  n -> invalid_arg ("Xdim.generation': " ^ string_of_int n)
+
+    let generation f =
+      match f with
+       | M (L n | N n | U n | D n) -> generation' n
+       | G _ | O _ -> [0//1; 0//1; 0//1]
+
+    let charge = function
+      | M f ->
+          begin match f with
+          | L n -> if n > 0 then -1//1 else  1//1
+          | N n -> 0//1
+          | U n -> if n > 0 then  2//3 else -2//3
+          | D n -> if n > 0 then -1//3 else  1//3
+          end
+      | G f ->
+          begin match f with
+          | Gl | Ga | Z -> 0//1
+          | Wp ->  1//1
+          | Wm -> -1//1
+          end
+      | O f ->
+          begin match f with
+          | H | Phi0 | Grav ->  0//1
+          | Phip ->  1//1
+          | Phim -> -1//1
+          end
+
+    let lepton = function
+      | M f ->
+          begin match f with
+          | L n | N n -> if n > 0 then 1//1 else -1//1
+          | U _ | D _ -> 0//1
+          end
+      | G _ | O _ -> 0//1
+
+    let baryon = function
+      | M f ->
+          begin match f with
+          | L _ | N _ -> 0//1
+          | U n | D n -> if n > 0 then 1//1 else -1//1
+          end
+      | G _ | O _ -> 0//1
+
+    let charges f = 
+      [ charge f; lepton f; baryon f] @ generation f
+
     type constant =
       | Unit | Pi | Alpha_QED | Sin2thw
       | Sinthw | Costhw | E | G_weak | Vev
@@ -3644,6 +3830,74 @@ module UED (Flags : BSM_flags) =
           | Wm2 -> 0
           end
       | O _ -> 0
+
+    module Ch = Charges.QQ
+
+    let ( // ) = Algebra.Small_Rational.make
+
+    let generation' = function
+      |  1 -> [ 1//1;  0//1;  0//1]
+      |  2 -> [ 0//1;  1//1;  0//1]
+      |  3 -> [ 0//1;  0//1;  1//1]
+      | -1 -> [-1//1;  0//1;  0//1]
+      | -2 -> [ 0//1; -1//1;  0//1]
+      | -3 -> [ 0//1;  0//1; -1//1]
+      |  n -> invalid_arg ("SM.generation': " ^ string_of_int n)
+
+    let generation f =
+      match f with
+      | M (L n | N n | U n | D n | L_K1_L n | L_K2_L n
+         | L_K1_R n | L_K2_R n | N_K1 n | N_K2 n | U_K1_L n
+         | U_K2_L n | U_K1_R n | U_K2_R n | D_K1_L n | D_K2_L n
+         | D_K1_R n | D_K2_R n ) -> generation' n
+      | G _ | O _ -> [0//1; 0//1; 0//1]
+
+    let charge = function
+      | M f ->
+          begin match f with
+          | L n | L_K1_L n | L_K2_L n | L_K1_R n 
+          | L_K2_R n -> if n > 0 then -1//1 else  1//1
+          | N n | N_K1 n | N_K2 n -> 0//1
+          | U n | U_K1_L n | U_K2_L n | U_K1_R n 
+          | U_K2_R n -> if n > 0 then  2//3 else -2//3
+          | D n | D_K1_L n | D_K2_L n | D_K1_R n 
+          | D_K2_R n -> if n > 0 then -1//3 else  1//3
+          end
+      | G f ->
+          begin match f with
+          | Gl | Gl_K1 | Gl_K2 | Ga | Z 
+          | B1 | B2 | Z1 | Z2 -> 0//1
+          | Wp | Wp1 | Wp2 ->  1//1
+          | Wm | Wm1 | Wm2 -> -1//1
+          end
+      | O f ->
+          begin match f with
+          | H | Phi0 | Grav ->  0//1
+          | H1up | H1dp | H2up | H2dp | Phip ->  1//1
+          | H1um | H1dm | H2um | H2dm | Phim -> -1//1
+          end
+
+    let lepton = function
+      | M f ->
+          begin match f with
+          | L n | N n | L_K1_L n | L_K1_R n | L_K2_L n 
+          | L_K2_R n | N_K1 n | N_K2 n -> if n > 0 then 1//1 else -1//1
+          | U _ | D _ | _ -> 0//1
+          end
+      | G _ | O _ -> 0//1
+
+    let baryon = function
+      | M f ->
+          begin match f with
+          | U n | D n | U_K1_L n | U_K1_R n | U_K2_L n 
+          | U_K2_R n | D_K1_L n | D_K1_R n | D_K2_L n 
+          | D_K2_R n -> if n > 0 then 1//1 else -1//1
+          | L _ | N _ | _ -> 0//1
+          end
+      | G _ | O _ -> 0//1
+
+    let charges f = 
+      [ charge f; lepton f; baryon f] @ generation f
 
     type constant =
       | Unit | Pi | Alpha_QED | Sin2thw
@@ -4472,6 +4726,65 @@ module GravTest (Flags : BSM_flags) =
           | _ -> 0
           end
 
+    module Ch = Charges.QQ
+
+    let ( // ) = Algebra.Small_Rational.make
+
+    let generation' = function
+      |  1 -> [ 1//1;  0//1;  0//1]
+      |  2 -> [ 0//1;  1//1;  0//1]
+      |  3 -> [ 0//1;  0//1;  1//1]
+      | -1 -> [-1//1;  0//1;  0//1]
+      | -2 -> [ 0//1; -1//1;  0//1]
+      | -3 -> [ 0//1;  0//1; -1//1]
+      |  n -> invalid_arg ("SM3.generation': " ^ string_of_int n)
+
+    let generation f =
+      match f with
+      | M (L n | N n | U n | D n | SL n) -> generation' n
+      | G _ | O _ -> [0//1; 0//1; 0//1]
+
+    let charge = function
+      | M f ->
+          begin match f with
+          | L n -> if n > 0 then -1//1 else  1//1
+          | SL n -> if n > 0 then -1//1 else  1//1
+          | N n -> 0//1
+          | U n -> if n > 0 then  2//3 else -2//3
+          | D n -> if n > 0 then -1//3 else  1//3
+          end
+      | G f ->
+          begin match f with
+          | Gl | Ga | Z | Phino -> 0//1
+          | Wp ->  1//1
+          | Wm -> -1//1
+          end
+      | O f ->
+          begin match f with
+          | H | Phi0 | Grino ->  0//1
+          | Phip ->  1//1
+          | Phim -> -1//1
+          end
+
+    let lepton = function
+      | M f ->
+          begin match f with
+          | L n | N n | SL n -> if n > 0 then 1//1 else -1//1
+          | U _ | D _ -> 0//1
+          end
+      | G _ | O _ -> 0//1
+
+    let baryon = function
+      | M f ->
+          begin match f with
+          | L _ | N _ | SL _ -> 0//1
+          | U n | D n -> if n > 0 then 1//1 else -1//1
+          end
+      | G _ | O _ -> 0//1
+
+    let charges f =
+      [ charge f; lepton f; baryon f] @ generation f
+
     type constant =
       | Unit | Pi | Alpha_QED | Sin2thw
       | Sinthw | Costhw | E | G_weak | Vev
@@ -4990,6 +5303,64 @@ module Template (Flags : BSM_flags) =
           end
       | O _ -> 0
 
+    module Ch = Charges.QQ
+
+    let ( // ) = Algebra.Small_Rational.make
+
+    let generation' = function
+      |  1 -> [ 1//1;  0//1;  0//1]
+      |  2 -> [ 0//1;  1//1;  0//1]
+      |  3 -> [ 0//1;  0//1;  1//1]
+      | -1 -> [-1//1;  0//1;  0//1]
+      | -2 -> [ 0//1; -1//1;  0//1]
+      | -3 -> [ 0//1;  0//1; -1//1]
+      |  n -> invalid_arg ("Template.generation': " ^ string_of_int n)
+
+    let generation f =
+      match f with
+      | M (L n | N n | U n | D n) -> generation' n
+      | G _ | O _ -> [0//1; 0//1; 0//1]
+
+    let charge = function
+      | M f ->
+          begin match f with
+          | L n -> if n > 0 then -1//1 else  1//1
+          | N n -> 0//1
+          | U n -> if n > 0 then  2//3 else -2//3
+          | D n -> if n > 0 then -1//3 else  1//3
+          end
+      | G f ->
+          begin match f with
+          | Gl | Ga | Z -> 0//1
+          | Wp ->  1//1
+          | Wm -> -1//1
+          end
+      | O f ->
+          begin match f with
+          | H | Phi0 ->  0//1
+          | Phip ->  1//1
+          | Phim -> -1//1
+          end
+
+    let lepton = function
+      | M f ->
+          begin match f with
+          | L n | N n -> if n > 0 then 1//1 else -1//1
+          | U _ | D _ -> 0//1
+          end
+      | G _ | O _ -> 0//1
+
+    let baryon = function
+      | M f ->
+          begin match f with
+          | L _ | N _ -> 0//1
+          | U n | D n -> if n > 0 then 1//1 else -1//1
+          end
+      | G _ | O _ -> 0//1
+
+    let charges f =
+      [ charge f; lepton f; baryon f] @ generation f
+
     type constant =
       | Unit | Pi | Alpha_QED | Sin2thw
       | Sinthw | Costhw | E | G_weak | Vev
@@ -5292,686 +5663,729 @@ module Template (Flags : BSM_flags) =
 (* \thocwmodulesection{Three-Site Higgsless Model} *)
 
 module type Threeshl_options =
-	sig
-		val include_ckm: bool
-		val include_hf: bool
-		val diet: bool
-	end
+   sig
+      val include_ckm: bool
+      val include_hf: bool
+      val diet: bool
+   end
 
 module Threeshl_no_ckm: Threeshl_options =
-	struct
-		let include_ckm = false
-		let include_hf = true
-		let diet = false
-	end
+   struct
+      let include_ckm = false
+      let include_hf = true
+      let diet = false
+   end
 
 module Threeshl_ckm: Threeshl_options =
-	struct
-		let include_ckm = true
-		let include_hf = true
-		let diet = false
-	end
+   struct
+      let include_ckm = true
+      let include_hf = true
+      let diet = false
+   end
 
 module Threeshl_no_ckm_no_hf: Threeshl_options =
-	struct
-		let include_ckm = false
-		let include_hf = false
-		let diet = false
-	end
+   struct
+      let include_ckm = false
+      let include_hf = false
+      let diet = false
+   end
 
 module Threeshl_ckm_no_hf: Threeshl_options =
-	struct
-		let include_ckm = true
-		let include_hf = false
-		let diet = false
-	end
+   struct
+      let include_ckm = true
+      let include_hf = false
+      let diet = false
+   end
 
 module Threeshl_diet_no_hf: Threeshl_options = 
-	struct
-		let include_ckm = false
-		let include_hf = false
-		let diet = true
-	end
+   struct
+      let include_ckm = false
+      let include_hf = false
+      let diet = true
+   end
 
 module Threeshl_diet: Threeshl_options =
-	struct
-		let include_ckm = false
-		let include_hf = true
-		let diet = true
-	end
+   struct
+      let include_ckm = false
+      let include_hf = true
+      let diet = true
+   end
 
 (* We use one generic implementation of the model and implement different features via option
 modules given to a functor *)
 module Threeshl (Module_options: Threeshl_options) =
-	struct
-
-		open Coupling
-
-		let modname = "Modellib_BSM.Threeshl"
-
-		let rcs =
-		let renderbool = function true -> "true" | false -> "false"
-		in RCS.rename rcs_file "Modellib_BSM.Threeshl"
-			["Three-Site Higgsless Model, " ^
-				"flavor mixing: " ^ (renderbool Module_options.include_ckm) ^
-				", heavy fermions: " ^ (renderbool Module_options.include_hf) ^
-				", reduced set of couplings: " ^ (renderbool Module_options.diet)
-			]
-
-
-		(* Shamelessly stolen from Modellib.SM3, but with no support for fudged width yet *)
-		let default_width = ref Timelike
-
-		(* If this flag is set true, all gauge bosons are assumed to be massless and are assigned
-		feynman gauge propagators. This in conjunction with the unbroken three site model is intended for
-		checking gauge invariance via the ward identites. *)
-		let all_feynman = ref false
-
-		let options = Options.create [
-			"constant_width", Arg.Unit (fun _ -> default_width := Constant),
-				"use constant width (also in t-channel)";
-			"custom_width", Arg.String (fun x -> default_width := Custom x),
-				"use custom width";
-			"cancel_widths", Arg.Unit (fun _ -> default_width := Vanishing),
-				"use vanishing width";
-			"all_feynman", Arg.Unit (fun _ -> all_feynman := true),
-				"assign feynman gauge propagators to all gauge bosons\n"
-				^ "\t(for checking the ward identities); use only if you *really* know\n"
-				^ "\twhat you are doing"]
-	
-		(* The quantum numbers that are carried by the particles. \verb$csign$ is \emph{not} the charge
-		carried by the particle, but differentiates between particles (\verb$Pos$) and antiparticles
-		(\verb$Neg$) *)
-		type kkmode = Light | Heavy
-		type generation = Gen0 | Gen1 | Gen2
-		type csign = Pos | Neg
-		type isospin = Iso_up | Iso_down
-
-		(* Necessary to represent the indices of the couplings defined in FORTRAN *)
-		type kk2 = Light2 | Heavy2 | Light_Heavy
-
-		(* Map the different types to the constants used in the FORTRAN module *)
-		let fspec_of_kkmode = function Light -> "l_mode" | Heavy -> "h_mode"
-		let fspec_of_kk2 = function
-			Light2 -> "l_mode" | Heavy2 -> "h_mode" | Light_Heavy -> "lh_mode"
-		let fspec_of_gen = function Gen0 -> "gen_0" | Gen1 -> "gen_1" | Gen2 -> "gen_2"
-		let fspec_of_iso = function Iso_up -> "iso_up" | Iso_down -> "iso_down"
-
-		(* Covert the ``charge sign'' into a numeric sign (used e.g. in the determination of the MCID
-		codes) *)
-		let int_of_csign = function Pos -> 1 | Neg -> -1
-
-		(* Convert the generation into an integer (dito) *)
-		let int_of_gen = function Gen0 -> 1 | Gen1 -> 2 | Gen2 -> 3
-
-		(* The type \verb$flavor$ is implemented as a variant. Fermions are implemented as a variant
-		differentating between leptons and quarks (seemed the most natural way as this is also the way
-		in which the FORTRAN code is structured). Bosons are implemented as a variant the
-		differentiates between $W$, $Z$ and $A$. All other quantum numbers that are required for
-		identifying the particles are carried by the variant constructors. *)
-		type fermion = 
-			| Lepton of (kkmode * csign * generation * isospin)
-			| Quark of (kkmode * csign * generation * isospin)
-
-		type boson =
-			| W of (kkmode * csign)
-			| Z of kkmode
-			| A
-			| G
-
-		type flavor = Fermion of fermion | Boson of boson
-	
-		(* Helpers to construct particles from quantum numbers *)
-		let lepton kk cs gen iso = Lepton (kk, cs, gen, iso)
-		let quark kk cs gen iso = Quark (kk, cs, gen, iso)
-		let w kk cs = W (kk, cs)
-		let z kk = Z kk
-		let flavor_of_f x = Fermion x
-		let flavor_of_b x = Boson x
-
-		(* Map a list of functions to the list (partially) applied to a value *)
-		let revmap funs v = List.map (fun x -> x v) funs
-
-		(* The same for a list of values; the result is flattened *)
-		let revmap2 funs vals = ThoList.flatmap (revmap funs) vals
-
-		(* Functions to loop the constructors over quantum numbers for list creation purposes *)
-		let loop_kk flist = revmap2 flist [Light; Heavy]
-		let loop_cs flist = revmap2 flist [Pos; Neg]
-		let loop_gen flist = revmap2 flist [Gen0; Gen1; Gen2]
-		let loop_iso flist = revmap2 flist [Iso_up; Iso_down]
-		let loop_kk2 flist = revmap2 flist [Light2; Heavy2; Light_Heavy]
-
-		(* Conditional looping over kk modes depending on whether to include heavy fermions *)
-		let cloop_kk flist = match Module_options.include_hf with
-			| true -> loop_kk flist
-			| false -> revmap flist Light
-		let cloop_kk2 flist = match Module_options.include_hf with
-			| true -> loop_kk2 flist
-			| false -> revmap flist Light2
-
-		(* Having defined the necessary helpers, the magic of currying makes building lists of
-		particles as easy as nesting the loop functions in the correct order... *)
-		let all_leptons = loop_iso (loop_gen (loop_cs (cloop_kk [lepton] )))
-		let all_quarks = loop_iso( loop_gen (loop_cs (cloop_kk [quark] )))
-		let all_bosons = (loop_cs (loop_kk [w] )) @ [Z Light; Z Heavy; A; G]
-		
-		(* Converts a flavor spec to the BCD identifier defined in the FORTRAN module. Splitting the
-		function into two parts \verb$prefix$ and \verb$rump$ removes a lot of redundancy. *)
-		let bcdi_of_flavor = 
-		let prefix = function
-			| Fermion (Lepton (Heavy, _, _, _)) | Fermion (Quark (Heavy, _, _, _))
-			| Boson (W (Heavy, _)) | Boson (Z Heavy) -> "h"
-			| _ -> ""
-		in let rump = function
-			| Fermion (Lepton spec) -> (match spec with
-				| (_, _, Gen0, Iso_up) -> "nue"
-				| (_, _, Gen0, Iso_down) -> "e"
-				| (_, _, Gen1, Iso_up) -> "numu"
-				| (_, _, Gen1, Iso_down) -> "mu"
-				| (_, _, Gen2, Iso_up) -> "nutau"
-				| (_, _, Gen2, Iso_down) -> "tau")
-			| Fermion (Quark spec) -> (match spec with
-				| (_, _, Gen0, Iso_up) -> "u"
-				| (_, _, Gen0, Iso_down) -> "d"
-				| (_, _, Gen1, Iso_up) -> "c"
-				| (_, _, Gen1, Iso_down) -> "s"
-				| (_, _, Gen2, Iso_up) -> "t"
-				| (_, _, Gen2, Iso_down) -> "b")
-			| Boson (W _) -> "w" | Boson (Z _) -> "z"
-			| Boson A -> invalid_arg (modname ^ ".bcd_of_flavor: no bcd for photon!")
-			| Boson G -> invalid_arg (modname ^ ".bcd_of_flavor: no bcd for gluon!")
-		in function x -> (prefix x) ^ (rump x) ^ "_bcd"
-
-		(* The function defined in the model signature which returns the colour representation of a
-		particle *)
-		let color =
-		let quarkrep = function
-			| (_, Pos, _, _) -> Color.SUN 3
-			| (_, Neg, _, _) -> Color.SUN (-3)
-		in function
-			| Fermion (Quark x) -> quarkrep x
-			| Boson G -> Color.AdjSUN 3
-			| _ -> Color.Singlet
-		
-		(* Function for calculating the MCID code of a particle. Convenctions have been choosen such
-		that the heavy modes are identified by the same numbers as the light ones, prefixed with
-		\verb$99$. This is supposedly in accord with the conventions for adding new particles to the list
-		of MCID codes. This function is required by the signature. *)
-		let pdg =
-		let iso_delta = function Iso_down -> 0 | Iso_up -> 1
-		in let gen_delta = function Gen0 -> 0 | Gen1 -> 2 | Gen2 -> 4
-		in let kk_delta = function Light -> 0 | Heavy -> 9900
-		in function
-			| Fermion ( Lepton (kk, cs, gen, iso)) ->
-				(int_of_csign cs) * (11 + (gen_delta gen) + (iso_delta iso) + (kk_delta kk))
-			| Fermion ( Quark (kk, cs, gen, iso)) -> 
-				(int_of_csign cs) * (1 + (gen_delta gen) + (iso_delta iso)+ (kk_delta kk))
-			| Boson (W (kk, cs)) -> (int_of_csign cs) * (24 + (kk_delta kk))
-			| Boson (Z kk) -> 23 + (kk_delta kk)
-			| Boson A -> 22
-			| Boson G -> 21
-
-		(* Returns the lorentz representation of a particle; required by the signature. *)
-		let lorentz = 
-		let spinor = function
-			| (_, Pos, _, _) -> Spinor
-			| (_, Neg, _, _) -> ConjSpinor
-		in function
-			| Fermion (Lepton x) | Fermion (Quark x) -> spinor x
-			| Boson (W _) | Boson (Z _) -> Massive_Vector
-			| Boson A -> Vector
-			| Boson G -> Vector
-
-		(* O'Mega supports models that allow different gauges; however, we only implement unitary
-		gauge and therefore stub this (SM3 does the same thing). The \verb$gauge$ type as well as
-		\verb$gauge_symbol$ are required by the signature. *)
-		type gauge = unit
-
-		let gauge_symbol () =
-			failwith (modname ^ ".gauge_symbol: internal error")
-
-		(* Returns the propagator for a given particle type. Required by signature. *)
-		let propagator =
-		let spinorprop = function
-			| (_, Pos, _, _) -> Prop_Spinor
-			| (_, Neg, _, _) -> Prop_ConjSpinor
-		in function 
-			| Fermion (Lepton x) | Fermion (Quark x) -> spinorprop x
-			| Boson (W _) | Boson (Z _) ->
-				(match !all_feynman with false -> Prop_Unitarity | true -> Prop_Feynman)
-			| Boson A -> Prop_Feynman
-			| Boson G -> Prop_Feynman
-
-		(* Return the width of a particle, required by signature. \\
-		\emph{TODO:} Refine such that stable particles always are treade via vanishing width, as this
-		might speed up the generated code a bit. *)
-		let width _ = !default_width
-
-		(* Returns the conjugate particle; required by signature. *)
-		let conjugate =
-		let conj_csign = function
-			| Pos -> Neg
-			| Neg -> Pos
-		in function
-			| Fermion (Lepton (kk, cs, gen, iso)) -> Fermion (Lepton (kk, conj_csign cs, gen, iso))
-			| Fermion (Quark (kk, cs, gen, iso)) -> Fermion (Quark (kk, conj_csign cs, gen, iso))
-			| Boson (W (kk, cs)) -> Boson (W (kk, conj_csign cs))
-			|  x -> x
-
-		(* Tells the diagram generator whether a particle is a fermion, a conjugate fermion or a
-		boson. Required by signature *)
-		let fermion = function
-			| Fermion (Lepton (_, cs, _, _)) | Fermion (Quark (_, cs, _, _)) -> int_of_csign cs
-			| Boson _ -> 0
-
-		(* A variant to represent the different coupling constants, choosen to mimic the FORTRAN part.
-		Required by signature. *)
-		type constant =
-			| G_a_lep | G_a_quark of isospin
-			| G_aww | G_aaww
-			| G_w_lep of (kkmode * kkmode * generation * kkmode * generation)
-			| G_w_quark of (kkmode * kkmode * generation * kkmode * generation)
-			| G_z_lep of (kkmode * kk2 * generation * isospin)
-			| G_z_quark of (kkmode * kk2 * generation * isospin)
-			| G_wwz of (kk2 * kkmode)
-			| G_wwzz of (kk2 * kk2)
-			| G_wwza of (kk2 * kkmode)
-			| G_wwww of int
-			| G_s
-			| IG_s
-			| G_s2
-
-		(* Functions for the construction of constants from indices *)
-		let g_a_quark x = G_a_quark x
-		let g_w_lep kk1 kk2 gen1 kk3 gen2 = G_w_lep (kk1, kk2, gen1, kk3, gen2)
-		let g_w_quark kk1 kk2 gen1 kk3 gen2 = G_w_quark (kk1, kk2, gen1, kk3, gen2)
-		let g_z_lep kk1 kk2 gen iso = G_z_lep (kk1, kk2, gen, iso)
-		let g_z_quark kk1 kk2 gen iso = G_z_quark (kk1, kk2, gen, iso)
-		let g_wwz kk1 kk2 = G_wwz (kk1, kk2)
-		let g_wwzz kk1 kk2 = G_wwzz (kk1, kk2)
-		let g_wwza kk1 kk2 = G_wwza (kk1, kk2)
-		let g_wwww nhw = if (nhw >= 0) & (nhw <= 4) then G_wwww nhw
-				else failwith (modname ^ ".g_wwww: invalid integer, very bad")
-
-		(* Build a list of the different constants *)
-		let clist = [G_a_lep; G_aww; G_aaww] @ (loop_iso [g_a_quark]) @
-			(loop_gen (cloop_kk (loop_gen (cloop_kk (loop_kk [g_w_lep] ))))) @
-			(loop_gen (cloop_kk (loop_gen (cloop_kk (loop_kk [g_w_quark] ))))) @
-			(loop_iso (loop_gen (cloop_kk2 (loop_kk [g_z_lep] )))) @
-			(loop_iso (loop_gen (cloop_kk2 (loop_kk [g_z_quark] )))) @
-			(loop_kk (loop_kk2 [g_wwz] )) @ (loop_kk2 (loop_kk2 [g_wwzz] )) @
-			(loop_kk (loop_kk2 [g_wwza] )) @ (List.map g_wwww [0; 1; 2; 3; 4])
-
-		(* Maximum number of lines meeting at a vertex, required by signature. *)
-		let max_degree () = 4
-
-		(* Transform a pair of kk identifiers into a kk2 identifier *)
-		let get_kk2 = function (Light, Light) -> Light2 | (Heavy, Heavy) -> Heavy2
-			| (Light, Heavy) | (Heavy, Light) -> Light_Heavy
-
-		(* Flip isospin *)
-		let conj_iso = function Iso_up -> Iso_down | Iso_down -> Iso_up
-
-		(* Below, lists of couplings are generated which ultimately are joined into a list of all
-		couplings in the model. The generated lists can be viewed using the \verb$dump.ml$ script in the
-		O'Mega toplevel directory. \\
-		The individual couplings are defined as 5-tupels resp. 6-tupels consisting in this
-		order of the particles meeting at the vertex, the coupling type (see \verb$couplings.ml$) and the
-		coupling constant. *)
-
-		(* List of $llA$ type vertices *)
-		let vertices_all =
-		let vgen kk gen =
-			((Fermion (Lepton (kk, Neg, gen, Iso_down)), Boson A, Fermion (Lepton (kk, Pos, gen,
-				Iso_down))), FBF(1, Psibar, V, Psi), G_a_lep)
-		in loop_gen (cloop_kk [vgen])
-
-		(* List of $qqA$ type vertices *)
-		let vertices_aqq =
-		let vgen kk gen iso =
-			((Fermion (Quark (kk, Neg, gen, iso)), Boson A, Fermion (Quark (kk, Pos, gen,
-				iso))), FBF(1, Psibar, V, Psi), G_a_quark iso)
-		in loop_iso (loop_gen (cloop_kk [vgen]))
-
-
-		(* List of $\nu lW$ type vertices *)
-		let vertices_wll =
-		let vgen kkw kk_f kk_fbar iso_f gen =
-			((Fermion (Lepton (kk_fbar, Neg, gen, conj_iso iso_f)),
-				Boson (W (kkw, (match iso_f with Iso_up -> Neg | _ -> Pos))),
-				Fermion (Lepton (kk_f, Pos, gen, iso_f))),
-				FBF (1, Psibar, VA2, Psi),
-				G_w_lep (kkw, (match iso_f with Iso_up -> kk_f | _ -> kk_fbar), gen,
-					(match iso_f with Iso_up -> kk_fbar | _ -> kk_f), gen) )
-		in loop_gen (loop_iso (cloop_kk (cloop_kk (loop_kk [vgen] ))))
-
-		(* The same list, but without couplings between the $W^\prime$ and light fermions *)
-		let vertices_wll_diet =
-		let filter = function
-			| ((Fermion (Lepton (Light, _, _, _)), Boson (W (Heavy, _)),
-				Fermion (Lepton (Light, _, _, _))), _, _) -> false
-			| _ -> true
-		in List.filter filter vertices_wll
-
-		(* List of $udW$ type vertices, flavor-diagonal *)
-		let vertices_wqq_no_ckm =
-		let vgen kkw kk_f kk_fbar iso_f gen =
-			((Fermion (Quark (kk_fbar, Neg, gen, conj_iso iso_f)),
-				Boson (W (kkw, (match iso_f with Iso_up -> Neg | _ -> Pos))),
-				Fermion (Quark (kk_f, Pos, gen, iso_f))),
-				FBF (1, Psibar, VA2, Psi),
-				G_w_quark (kkw, (match iso_f with Iso_up -> kk_f | _ -> kk_fbar), gen,
-					(match iso_f with Iso_up -> kk_fbar | _ -> kk_f), gen) )
-		in loop_gen (loop_iso (cloop_kk (cloop_kk (loop_kk [vgen] ))))
-
-		(* The same list, but without couplings between the $W^\prime$ and the first two generations
-		of quarks *)
-		let vertices_wqq_no_ckm_diet =
-		let filter = function
-			| ((Fermion (Quark (Light, _, gen, _)), Boson (W (Heavy, _)),
-				Fermion (Quark (Light, _, _, _))), _, _) -> 
-					(match gen with Gen2 -> true | _ -> false)
-			| _ -> true
-		in List.filter filter vertices_wqq_no_ckm
-
-		(* List of $udW$ type vertices, including non flavor-diagonal couplings *)
-		let vertices_wqq =
-		let vgen kkw kk_f gen_f kk_fbar gen_fbar iso_f =
-			((Fermion (Quark (kk_fbar, Neg, gen_fbar, conj_iso iso_f)),
-				Boson (W (kkw, (match iso_f with Iso_up -> Neg | _ -> Pos))),
-				Fermion (Quark (kk_f, Pos, gen_f, iso_f))),
-				FBF (1, Psibar, VA2, Psi),
-				G_w_quark (match iso_f with
-					| Iso_up -> (kkw, kk_f, gen_f, kk_fbar, gen_fbar)
-					| Iso_down -> (kkw, kk_fbar, gen_fbar, kk_f, gen_f)))
-		in loop_iso (loop_gen (cloop_kk (loop_gen (cloop_kk (loop_kk [vgen] )))))
-
-
-		(* List of $llZ$ / $\nu\nu Z$ type vertices *)
-		let vertices_zll =
-		let vgen kkz kk_f kk_fbar gen iso =
-			((Fermion (Lepton (kk_fbar, Neg, gen, iso)), Boson (Z kkz),
-				Fermion (Lepton (kk_f, Pos, gen, iso))),
-				FBF (1, Psibar, VA2, Psi),
-				G_z_lep (kkz, get_kk2 (kk_f, kk_fbar), gen, iso))
-		in loop_iso (loop_gen (cloop_kk (cloop_kk (loop_kk [vgen] ))))
-
-		(* List of $qqZ$ type vertices *)
-		let vertices_zqq =
-		let vgen kkz kk_f kk_fbar gen iso =
-			((Fermion (Quark (kk_fbar, Neg, gen, iso)), Boson (Z kkz),
-				Fermion (Quark (kk_f, Pos, gen, iso))),
-				FBF (1, Psibar, VA2, Psi),
-				G_z_quark (kkz, get_kk2 (kk_f, kk_fbar), gen, iso))
-		in loop_iso (loop_gen (cloop_kk (cloop_kk (loop_kk [vgen] ))))
-
-		(* $gq\bar{q}$ *)
-		let vertices_gqq =
-		let vgen kk gen iso =
-			((Fermion (Quark (kk, Neg, gen, iso)), Boson G, Fermion (Quark (kk, Pos, gen, iso))),
-				FBF (1, Psibar, V, Psi), G_s)
-		in loop_iso (loop_gen (cloop_kk [vgen]))
-
-		(* AWW *)
-		let vertices_aww =
-		let vgen kk =
-			( (Boson A, Boson (W (kk, Pos)), Boson (W (kk, Neg))), Gauge_Gauge_Gauge 1, G_aww)
-		in loop_kk [vgen]
-
-		(* ZWW *)
-		let vertices_zww =
-		let vgen kkz kkwp kkwm =
-			((Boson (Z kkz), Boson (W (kkwp, Pos)), Boson (W (kkwm, Neg))), Gauge_Gauge_Gauge 1, 
-				G_wwz (get_kk2 (kkwp, kkwm), kkz))
-		in loop_kk (loop_kk (loop_kk [vgen]))
-
-		(* $ggg$ *)
-		let vertices_ggg = [(Boson G, Boson G, Boson G), Gauge_Gauge_Gauge (-1), IG_s]
-
-		(* Stolen from Modellib.SM; the signs seem to be OK. See \verb$couplings.ml$ for more docs. *)
-		let gauge4 = Vector4 [(2, C_13_42); (-1, C_12_34); (-1, C_14_23)]
-		let minus_gauge4 = Vector4 [(-2, C_13_42); (1, C_12_34); (1, C_14_23)]
-
-		(* AAWW *)
-		let vertices_aaww =
-		let vgen kk =
-			((Boson A, Boson (W (kk, Pos)), Boson A, Boson (W (kk, Neg))), minus_gauge4, G_aaww)
-		in loop_kk [vgen]
-
-		(* WWZZ *)
-		let vertices_wwzz =
-		let vgen kkwp kkwm kk2z =
-			((Boson (Z (match kk2z with Heavy2 -> Heavy | Light2 | Light_Heavy -> Light)),
-				Boson (W (kkwp, Pos)),
-				Boson (Z (match kk2z with Heavy2 | Light_Heavy -> Heavy | Light2 -> Light)),
-				Boson (W (kkwm, Neg))), minus_gauge4, G_wwzz (get_kk2 (kkwp, kkwm), kk2z))
-		in loop_kk2 (loop_kk (loop_kk [vgen]))
-
-		(* WWZA *)
-		let vertices_wwza =
-		let vgen kkwp kkwm kkz =
-			((Boson A, Boson (W (kkwp, Pos)), Boson (Z kkz), Boson (W (kkwm, Neg))),
-				minus_gauge4, G_wwza (get_kk2 (kkwp, kkwm), kkz))
-		in loop_kk (loop_kk (loop_kk [vgen]))
-
-		(* WWWW *)
-		let vertices_wwww =
-		let count = function Light2 -> 0 | Light_Heavy -> 1 | Heavy2 -> 2
-		in let vgen kk2wp kk2wm =
-			((Boson (W ((match kk2wp with Heavy2 -> Heavy | Light2 | Light_Heavy -> Light), Pos)),
-				Boson (W ((match kk2wm with Heavy2 -> Heavy | Light2 | Light_Heavy -> Light), Neg)),
-				Boson (W ((match kk2wp with Heavy2 | Light_Heavy -> Heavy | Light2 -> Light), Pos)),
-				Boson (W ((match kk2wm with Heavy2 | Light_Heavy -> Heavy | Light2 -> Light), Neg))),
-				gauge4, G_wwww ((count kk2wp) + (count kk2wm)))
-		in loop_kk2 (loop_kk2 [vgen])
-
-		(* gggg *)
-		let vertices_gggg = [(Boson G, Boson G, Boson G, Boson G), gauge4, G_s2]
-
-		(* The list of couplings is transformed into the fusion lists required by the generator by
-		the Model.Fusions functor. *)
-
-		(* This is copy\& paste from the other models; check again with Thorsten if it is correct *)
-		module F = Modeltools.Fusions (struct
-			type f = flavor
-			type c = constant
-			let compare = compare
-			let conjugate = conjugate
-		end )
-
-		(* Not sure yet whether F.fusex also creates the conjugate vertices; by looking at the
-		implementation of the other models, I assume it doesn't. Still, better ask Thorsten to be
-		sure!!!\\
-		\emph{Update:} Still didn't get to ask, but since the results are consistent, I suspect my assertion
-		is correct. \\
-		The stuff below is required by the signature. *)
-
-		let vertices () = (vertices_all @ vertices_aqq @ 
-			(match Module_options.diet with
-				| false -> vertices_wll
-				| true -> vertices_wll_diet) @
-			(match (Module_options.include_ckm, Module_options.diet) with
-				| (true, false) -> vertices_wqq
-				| (false, false) -> vertices_wqq_no_ckm
-				| (false, true) -> vertices_wqq_no_ckm_diet
-				| (true, true) -> raise (Failure
-					("Modules4.Threeshl.vertices: CKM matrix together with option diet is not" ^
-					" implemented yet!"))) @
-			vertices_zll @ vertices_zqq @ vertices_aww @ vertices_zww @ vertices_gqq @ vertices_ggg,
-			vertices_aaww @ vertices_wwzz @ vertices_wwza @ vertices_wwww @ vertices_gggg
-			, [])
-		let table = F.of_vertices (vertices ())
-		let fuse2 = F.fuse2 table
-		let fuse3 = F.fuse3 table
-		let fuse = F.fuse table
-
-		(* A function that returns a list of a flavours known to the model, required by the signature.
-		*)
-		let flavors () = (List.map flavor_of_f (all_leptons @ all_quarks)) @
-			(List.map flavor_of_b all_bosons)
-
-		(* dito, external flavours, also required. *)
-		let external_flavors () = [
-			"light leptons", List.map flavor_of_f (loop_iso (loop_gen( loop_cs [lepton Light])));
-			"light quarks", List.map flavor_of_f (loop_iso (loop_gen( loop_cs [quark Light])));
-			"light gauge bosons", List.map flavor_of_b [W (Light, Pos); W (Light, Neg); Z Light; A];
-			"heavy gauge bosons", List.map flavor_of_b [W (Heavy, Pos); W (Heavy, Neg); Z Heavy]] @
-			(match Module_options.include_hf with
-				| true -> [
-					"heavy leptons", List.map flavor_of_f (loop_iso (loop_gen( loop_cs [lepton Heavy])));
-					"heavy quarks", List.map flavor_of_f (loop_iso (loop_gen( loop_cs [quark Heavy])))]
-				| false -> [] ) @ ["gluons", [Boson G]]
-
-		(* Which of the particles are goldstones? $\rightarrow$ none. Required by the signature. *)
-		let goldstone x = None
-
-		(* This is wrong but handy for debugging the constant identifier generation via -params.
-		Usually, this function would return a record consisting of the parameters as well as
-		expression for the dependent quantities that can be used to generate FORTRAN code for
-		calculating them. However, we have a seperate module for the threeshl, so we can abuse this
-		for debugging. Required by signature. *)
-		let parameters () = {input = List.map (fun x -> (x, 0.)) clist;
-			derived = []; derived_arrays = []}
-
-		(* Convert a flavour into a ID string with which it will be referred by the user interface of
-		the compiled generator. Required by signature *)
-		let flavor_to_string =
-		let prefix = function
-			| Fermion (Lepton (Heavy, _, _, _)) | Fermion (Quark (Heavy, _, _, _))
-			| Boson (W (Heavy, _)) | Boson (Z Heavy) -> "H"
-			| _ -> ""
-		in let postfix = function
-			| Fermion (Lepton (_, cs, _, Iso_down)) -> (match cs with Pos -> "-" | Neg -> "+")
-			| Fermion (Quark (_, Neg, _, _)) | Fermion (Lepton (_, Neg, _, Iso_up)) -> "bar"
-			| Boson (W (_, cs)) -> (match cs with Pos -> "+" | Neg -> "-")
-			| _ -> ""
-		in let rump = function
-			| Fermion (Lepton desc) -> (match desc with
-				| (_, _, Gen0, Iso_up) -> "nue"
-				| (_, _, Gen0, Iso_down) -> "e"
-				| (_, _, Gen1, Iso_up) -> "numu"
-				| (_, _, Gen1, Iso_down) -> "mu"
-				| (_, _, Gen2, Iso_up) -> "nutau"
-				| (_, _, Gen2, Iso_down) -> "tau")
-			| Fermion (Quark desc) -> (match desc with
-				| (_, _, Gen0, Iso_up) -> "u"
-				| (_, _, Gen0, Iso_down) -> "d"
-				| (_, _, Gen1, Iso_up) -> "c"
-				| (_, _, Gen1, Iso_down) -> "s"
-				| (_, _, Gen2, Iso_up) -> "t"
-				| (_, _, Gen2, Iso_down) -> "b")
-			| Boson (W _) -> "W" | Boson (Z _) -> "Z" | Boson A -> "A" | Boson G -> "gl"
-		in function x -> (prefix x) ^ (rump x) ^ (postfix x)
-
-		(* Conversion of the ID string into a particle flavor. Instead of going through all cases
-		again, we generate a ``dictionary'' of flavor / ID pairs which we use to identify the correct
-		flavor. Required by signature. *)
-		let flavor_of_string x =
-		let dict = List.map (fun x -> (x, flavor_to_string x)) (flavors ())
-		in let get_ident = function (x, _) -> x
-		in try
-				get_ident (List.find (fun (_, y) -> (x = y)) dict)
-			with
-				Not_found -> (match x with
-					| "g" -> Boson G
-					| _ -> invalid_arg (modname ^ ".flavor_of_string")
-				)
-
-		(* Converts a flavor into a symbol used as identification in the generated FORTRAN code (has
-		to comply to the conventions of valid FORTRAN identifiers therefore). We stick to the same
-		convenctions as SM3, prefixing heavy modes with a \verb$H$. Required by signature. *)
-		let flavor_symbol =
-		let prefix = function
-			| Fermion (Lepton (Heavy, _, _, _)) | Fermion (Quark (Heavy, _, _, _))
-			| Boson (W (Heavy, _)) | Boson (Z Heavy) -> "H"
-			| _ -> ""
-		in let postfix = function
-			| Fermion (Lepton (_, Neg, _, _)) | Fermion (Quark (_, Neg, _, _)) -> "b"
-			| _ -> ""
-		in let rump = function
-			| Fermion spec -> (match spec with
-				| Lepton (_, _, gen, Iso_up) -> "n" ^ (string_of_int (int_of_gen gen))
-				| Lepton (_, _, gen, Iso_down) -> "l" ^ (string_of_int (int_of_gen gen))
-				| Quark (_, _, gen, Iso_up) -> "u" ^ (string_of_int (int_of_gen gen))
-				| Quark (_, _, gen, Iso_down) -> "d"^ (string_of_int (int_of_gen gen)))
-			| Boson spec -> (match spec with
-				| W (_, Pos) -> "wp" | W (_, Neg) -> "wm"
-				| Z _ -> "z" | A -> "a" | G -> "gl" )
-		in function
-			x -> (prefix x) ^ (rump x) ^ (postfix x)
-
-		(* Generate TeX for a flavor *)
-		let flavor_to_TeX =
-		let bar x y = match  x with Neg -> "\\overline{" ^ y ^ "}" | Pos -> y
-		in let pm x y = match x with Neg -> "{" ^ y ^ "}^+" | Pos -> "{" ^ y ^ "}^-"
-		in let prime x y = match x with Light -> y | Heavy -> "{" ^ y ^ "}^\\prime"
-		in function
-			| Fermion (Lepton desc) -> (match desc with
-				| (kk, cs, gen, Iso_up) -> prime kk (bar cs (match gen with
-					| Gen0 -> "\\nu_e"
-					| Gen1 -> "\\nu_\\mu"
-					| Gen2 -> "\\nu_\\tau"))
-				| (kk, cs, gen, Iso_down) -> prime kk (pm cs (match gen with
-					| Gen0 -> "e" | Gen1 -> "\\mu" | Gen2 -> "\\tau")))
-			| Fermion (Quark (kk, cs, gen, iso)) -> prime kk (bar cs (match (gen, iso) with
-				| (Gen0, Iso_up) -> "u"
-				| (Gen0, Iso_down) -> "d"
-				| (Gen1, Iso_up) -> "c"
-				| (Gen1, Iso_down) -> "s"
-				| (Gen2, Iso_up) -> "t"
-				| (Gen2, Iso_down) -> "b"))
-			| Boson spec -> (match spec with
-				| W (kk, cs) -> prime kk (pm (match cs with Pos -> Neg | Neg -> Pos) "W")
-				| Z kk -> prime kk "Z"
-				| A -> "A" | G -> "g")
-			
-		(* Returns the string referring to the particle mass in the generated FORTRAN code. Required
-		by signature. *)
-		let mass_symbol = function
-			| Boson A | Boson G-> "0._default"
-			| x -> "mass_array(" ^ (bcdi_of_flavor x) ^ ")"
-
-		(* Dito, for width. Required by signature. *)
-		let width_symbol = function
-			| Boson A | Boson G -> "0._default"
-			| x -> "width_array(" ^ (bcdi_of_flavor x) ^ ")"
-		
-		(* Determines the string referring to a coupling constant in the generated FORTRAN code.
-		Required by signature. *)
-		let constant_symbol =
-		let c = ", "
-		in let g_w_ferm = function
-			(kk1, kk2, gen1, kk3, gen2) ->
-				":, " ^ (fspec_of_kkmode kk1) ^ c ^ (fspec_of_kkmode kk2) ^ c ^ (fspec_of_gen gen1) ^ c ^
-				(fspec_of_kkmode kk3) ^ c ^ (fspec_of_gen gen2)
-		in let g_z_ferm = function
-			(kk1, kk2, gen, iso) ->
-				":, " ^ (fspec_of_kkmode kk1) ^ c ^ (fspec_of_kk2 kk2) ^ c ^ (fspec_of_gen gen) ^ c ^
-				(fspec_of_iso iso)
-		in function
-			| G_a_lep -> "g_a_lep"
-			| G_s -> "g_s_norm"
-			| IG_s -> "ig_s_norm"
-			| G_s2 -> "g_s_norm2"
-			| G_a_quark iso -> "g_a_quark(" ^ (fspec_of_iso iso) ^ ")"
-			| G_aww -> "ig_aww"
-			| G_aaww -> "g_aaww"
-			| G_w_lep spec -> "g_w_lep_va(" ^ (g_w_ferm spec) ^ ")"
-			| G_w_quark spec -> "g_w_quark_va(" ^ (g_w_ferm spec) ^ ")"
-			| G_z_lep spec -> "g_z_lep_va(" ^ (g_z_ferm spec) ^ ")"
-			| G_z_quark spec -> "g_z_quark_va(" ^ (g_z_ferm spec) ^ ")"
-			| G_wwz (kk1, kk2) -> "ig_wwz(" ^ (fspec_of_kk2 kk1) ^ c ^
-				(fspec_of_kkmode kk2) ^ ")"
-			| G_wwzz (kk1, kk2) -> "g_wwzz(" ^ (fspec_of_kk2 kk1) ^ c ^
-				(fspec_of_kk2 kk2) ^ ")"
-			| G_wwza (kk1, kk2) -> "g_wwza(" ^(fspec_of_kk2 kk1) ^ c ^
-				(fspec_of_kkmode kk2) ^ ")"
-			| G_wwww nhw -> if (0 <= nhw) & (nhw <= 4) then
-				"g_wwww(" ^ (string_of_int nhw) ^ ")"
-				else failwith "Modules4.Threeshl.constant_symbol: invalid int for G_wwww; very bad"
-
-	end
+   struct
+
+      open Coupling
+
+      let modname = "Modellib_BSM.Threeshl"
+
+      let rcs =
+      let renderbool = function true -> "true" | false -> "false"
+      in RCS.rename rcs_file "Modellib_BSM.Threeshl"
+         ["Three-Site Higgsless Model, " ^
+            "flavor mixing: " ^ (renderbool Module_options.include_ckm) ^
+            ", heavy fermions: " ^ (renderbool Module_options.include_hf) ^
+            ", reduced set of couplings: " ^ (renderbool Module_options.diet)
+         ]
+
+
+      (* Shamelessly stolen from Modellib.SM3, but with no support for fudged width yet *)
+      let default_width = ref Timelike
+
+      (* If this flag is set true, all gauge bosons are assumed to be massless and are assigned
+      feynman gauge propagators. This in conjunction with the unbroken three site model is intended for
+      checking gauge invariance via the ward identites. *)
+      let all_feynman = ref false
+
+      let options = Options.create [
+         "constant_width", Arg.Unit (fun _ -> default_width := Constant),
+            "use constant width (also in t-channel)";
+         "custom_width", Arg.String (fun x -> default_width := Custom x),
+            "use custom width";
+         "cancel_widths", Arg.Unit (fun _ -> default_width := Vanishing),
+            "use vanishing width";
+         "all_feynman", Arg.Unit (fun _ -> all_feynman := true),
+            "assign feynman gauge propagators to all gauge bosons\n"
+            ^ "\t(for checking the ward identities); use only if you *really* know\n"
+            ^ "\twhat you are doing"]
+   
+      (* The quantum numbers that are carried by the particles. \verb$csign$ is \emph{not} the charge
+      carried by the particle, but differentiates between particles (\verb$Pos$) and antiparticles
+      (\verb$Neg$) *)
+      type kkmode = Light | Heavy
+      type generation = Gen0 | Gen1 | Gen2
+      type csign = Pos | Neg
+      type isospin = Iso_up | Iso_down
+
+      (* Necessary to represent the indices of the couplings defined in FORTRAN *)
+      type kk2 = Light2 | Heavy2 | Light_Heavy
+
+      (* Map the different types to the constants used in the FORTRAN module *)
+      let fspec_of_kkmode = function Light -> "l_mode" | Heavy -> "h_mode"
+      let fspec_of_kk2 = function
+         Light2 -> "l_mode" | Heavy2 -> "h_mode" | Light_Heavy -> "lh_mode"
+      let fspec_of_gen = function Gen0 -> "gen_0" | Gen1 -> "gen_1" | Gen2 -> "gen_2"
+      let fspec_of_iso = function Iso_up -> "iso_up" | Iso_down -> "iso_down"
+
+      (* Covert the ``charge sign'' into a numeric sign (used e.g. in the determination of the MCID
+      codes) *)
+      let int_of_csign = function Pos -> 1 | Neg -> -1
+
+      (* Convert the generation into an integer (dito) *)
+      let int_of_gen = function Gen0 -> 1 | Gen1 -> 2 | Gen2 -> 3
+
+      (* The type \verb$flavor$ is implemented as a variant. Fermions are implemented as a variant
+      differentating between leptons and quarks (seemed the most natural way as this is also the way
+      in which the FORTRAN code is structured). Bosons are implemented as a variant the
+      differentiates between $W$, $Z$ and $A$. All other quantum numbers that are required for
+      identifying the particles are carried by the variant constructors. *)
+      type fermion = 
+         | Lepton of (kkmode * csign * generation * isospin)
+         | Quark of (kkmode * csign * generation * isospin)
+
+      type boson =
+         | W of (kkmode * csign)
+         | Z of kkmode
+         | A
+         | G
+
+      type flavor = Fermion of fermion | Boson of boson
+   
+      (* Helpers to construct particles from quantum numbers *)
+      let lepton kk cs gen iso = Lepton (kk, cs, gen, iso)
+      let quark kk cs gen iso = Quark (kk, cs, gen, iso)
+      let w kk cs = W (kk, cs)
+      let z kk = Z kk
+      let flavor_of_f x = Fermion x
+      let flavor_of_b x = Boson x
+
+      (* Map a list of functions to the list (partially) applied to a value *)
+      let revmap funs v = List.map (fun x -> x v) funs
+
+      (* The same for a list of values; the result is flattened *)
+      let revmap2 funs vals = ThoList.flatmap (revmap funs) vals
+
+      (* Functions to loop the constructors over quantum numbers for list creation purposes *)
+      let loop_kk flist = revmap2 flist [Light; Heavy]
+      let loop_cs flist = revmap2 flist [Pos; Neg]
+      let loop_gen flist = revmap2 flist [Gen0; Gen1; Gen2]
+      let loop_iso flist = revmap2 flist [Iso_up; Iso_down]
+      let loop_kk2 flist = revmap2 flist [Light2; Heavy2; Light_Heavy]
+
+      (* Conditional looping over kk modes depending on whether to include heavy fermions *)
+      let cloop_kk flist = match Module_options.include_hf with
+         | true -> loop_kk flist
+         | false -> revmap flist Light
+      let cloop_kk2 flist = match Module_options.include_hf with
+         | true -> loop_kk2 flist
+         | false -> revmap flist Light2
+
+      (* Having defined the necessary helpers, the magic of currying makes building lists of
+      particles as easy as nesting the loop functions in the correct order... *)
+      let all_leptons = loop_iso (loop_gen (loop_cs (cloop_kk [lepton] )))
+      let all_quarks = loop_iso( loop_gen (loop_cs (cloop_kk [quark] )))
+      let all_bosons = (loop_cs (loop_kk [w] )) @ [Z Light; Z Heavy; A; G]
+      
+      (* Converts a flavor spec to the BCD identifier defined in the FORTRAN module. Splitting the
+      function into two parts \verb$prefix$ and \verb$rump$ removes a lot of redundancy. *)
+      let bcdi_of_flavor = 
+      let prefix = function
+         | Fermion (Lepton (Heavy, _, _, _)) | Fermion (Quark (Heavy, _, _, _))
+         | Boson (W (Heavy, _)) | Boson (Z Heavy) -> "h"
+         | _ -> ""
+      in let rump = function
+         | Fermion (Lepton spec) -> (match spec with
+            | (_, _, Gen0, Iso_up) -> "nue"
+            | (_, _, Gen0, Iso_down) -> "e"
+            | (_, _, Gen1, Iso_up) -> "numu"
+            | (_, _, Gen1, Iso_down) -> "mu"
+            | (_, _, Gen2, Iso_up) -> "nutau"
+            | (_, _, Gen2, Iso_down) -> "tau")
+         | Fermion (Quark spec) -> (match spec with
+            | (_, _, Gen0, Iso_up) -> "u"
+            | (_, _, Gen0, Iso_down) -> "d"
+            | (_, _, Gen1, Iso_up) -> "c"
+            | (_, _, Gen1, Iso_down) -> "s"
+            | (_, _, Gen2, Iso_up) -> "t"
+            | (_, _, Gen2, Iso_down) -> "b")
+         | Boson (W _) -> "w" | Boson (Z _) -> "z"
+         | Boson A -> invalid_arg (modname ^ ".bcd_of_flavor: no bcd for photon!")
+         | Boson G -> invalid_arg (modname ^ ".bcd_of_flavor: no bcd for gluon!")
+      in function x -> (prefix x) ^ (rump x) ^ "_bcd"
+
+      (* The function defined in the model signature which returns the colour representation of a
+      particle *)
+      let color =
+      let quarkrep = function
+         | (_, Pos, _, _) -> Color.SUN 3
+         | (_, Neg, _, _) -> Color.SUN (-3)
+      in function
+         | Fermion (Quark x) -> quarkrep x
+         | Boson G -> Color.AdjSUN 3
+         | _ -> Color.Singlet
+      
+      (* Function for calculating the MCID code of a particle. Convenctions have been choosen such
+      that the heavy modes are identified by the same numbers as the light ones, prefixed with
+      \verb$99$. This is supposedly in accord with the conventions for adding new particles to the list
+      of MCID codes. This function is required by the signature. *)
+      let pdg =
+      let iso_delta = function Iso_down -> 0 | Iso_up -> 1
+      in let gen_delta = function Gen0 -> 0 | Gen1 -> 2 | Gen2 -> 4
+      in let kk_delta = function Light -> 0 | Heavy -> 9900
+      in function
+         | Fermion ( Lepton (kk, cs, gen, iso)) ->
+            (int_of_csign cs) * (11 + (gen_delta gen) + (iso_delta iso) + (kk_delta kk))
+         | Fermion ( Quark (kk, cs, gen, iso)) -> 
+            (int_of_csign cs) * (1 + (gen_delta gen) + (iso_delta iso)+ (kk_delta kk))
+         | Boson (W (kk, cs)) -> (int_of_csign cs) * (24 + (kk_delta kk))
+         | Boson (Z kk) -> 23 + (kk_delta kk)
+         | Boson A -> 22
+         | Boson G -> 21
+
+      (* Returns the lorentz representation of a particle; required by the signature. *)
+      let lorentz = 
+      let spinor = function
+         | (_, Pos, _, _) -> Spinor
+         | (_, Neg, _, _) -> ConjSpinor
+      in function
+         | Fermion (Lepton x) | Fermion (Quark x) -> spinor x
+         | Boson (W _) | Boson (Z _) -> Massive_Vector
+         | Boson A -> Vector
+         | Boson G -> Vector
+
+      (* O'Mega supports models that allow different gauges; however, we only implement unitary
+      gauge and therefore stub this (SM3 does the same thing). The \verb$gauge$ type as well as
+      \verb$gauge_symbol$ are required by the signature. *)
+      type gauge = unit
+
+      let gauge_symbol () =
+         failwith (modname ^ ".gauge_symbol: internal error")
+
+      (* Returns the propagator for a given particle type. Required by signature. *)
+      let propagator =
+      let spinorprop = function
+         | (_, Pos, _, _) -> Prop_Spinor
+         | (_, Neg, _, _) -> Prop_ConjSpinor
+      in function 
+         | Fermion (Lepton x) | Fermion (Quark x) -> spinorprop x
+         | Boson (W _) | Boson (Z _) ->
+            (match !all_feynman with false -> Prop_Unitarity | true -> Prop_Feynman)
+         | Boson A -> Prop_Feynman
+         | Boson G -> Prop_Feynman
+
+      (* Return the width of a particle, required by signature. \\
+      \emph{TODO:} Refine such that stable particles always are treade via vanishing width, as this
+      might speed up the generated code a bit. *)
+      let width _ = !default_width
+
+      (* Returns the conjugate particle; required by signature. *)
+      let conjugate =
+      let conj_csign = function
+         | Pos -> Neg
+         | Neg -> Pos
+      in function
+         | Fermion (Lepton (kk, cs, gen, iso)) -> Fermion (Lepton (kk, conj_csign cs, gen, iso))
+         | Fermion (Quark (kk, cs, gen, iso)) -> Fermion (Quark (kk, conj_csign cs, gen, iso))
+         | Boson (W (kk, cs)) -> Boson (W (kk, conj_csign cs))
+         |  x -> x
+
+      (* Tells the diagram generator whether a particle is a fermion, a conjugate fermion or a
+      boson. Required by signature *)
+      let fermion = function
+         | Fermion (Lepton (_, cs, _, _)) | Fermion (Quark (_, cs, _, _)) -> int_of_csign cs
+         | Boson _ -> 0
+
+      (* Charges are: charge, lepton number, baryon number, generation. Required by signature *)
+      module Ch = Charges.QQ
+      let ( // ) = Algebra.Small_Rational.make
+
+      let qn_charge = function
+         | Boson b -> (match b with
+            | W (_, c) -> (int_of_csign (c)) // 1
+            | _ -> 0//1)
+         | Fermion f -> (match f with
+            | Lepton (_, c, _, Iso_up) -> 0//1
+            | Lepton (_, c, _, Iso_down) -> (-1 * int_of_csign (c)) // 1
+            | Quark (_, c, _, Iso_up) -> (2 * int_of_csign (c)) // 3
+            | Quark (_, c, _, Iso_down) -> (-1 * int_of_csign (c)) // 3)
+
+      let qn_lepton = function
+         | Fermion (Lepton (_, c, _, _)) -> int_of_csign (c) // 1
+         | _ -> 0//1
+
+      let qn_baryon = function
+         | Fermion (Quark (_, c, _, _)) -> int_of_csign (c) // 1
+         | _ -> 0//1
+
+      (* Generation is conditional: if we enable the nontrivial CKM matrix, all particles carry
+      generation [0; 0; 0] *)
+      let qn_generation x =
+         let qn cs gen =
+            let c = int_of_csign (cs) in
+            match gen with
+               | Gen0 -> [c//1; 0//1; 0//1]
+               | Gen1 -> [0//1; c//1; 0//1]
+               | Gen2 -> [0//1; 0//1; c//1]
+         in
+         if Module_options.include_ckm then
+            [0//1; 0//1; 0//1]
+         else
+            match x with
+               | Fermion (Lepton (_, c, g, _)) -> qn c g
+               | Fermion (Quark (_, c, g, _)) -> qn c g
+               | _ -> [0//1; 0//1; 0//1]
+
+      let charges x =
+         [qn_charge x; qn_lepton x; qn_baryon x] @ (qn_generation x)
+
+      (* A variant to represent the different coupling constants, choosen to mimic the FORTRAN part.
+      Required by signature. *)
+      type constant =
+         | G_a_lep | G_a_quark of isospin
+         | G_aww | G_aaww
+         | G_w_lep of (kkmode * kkmode * generation * kkmode * generation)
+         | G_w_quark of (kkmode * kkmode * generation * kkmode * generation)
+         | G_z_lep of (kkmode * kk2 * generation * isospin)
+         | G_z_quark of (kkmode * kk2 * generation * isospin)
+         | G_wwz of (kk2 * kkmode)
+         | G_wwzz of (kk2 * kk2)
+         | G_wwza of (kk2 * kkmode)
+         | G_wwww of int
+         | G_s
+         | IG_s
+         | G_s2
+
+      (* Functions for the construction of constants from indices *)
+      let g_a_quark x = G_a_quark x
+      let g_w_lep kk1 kk2 gen1 kk3 gen2 = G_w_lep (kk1, kk2, gen1, kk3, gen2)
+      let g_w_quark kk1 kk2 gen1 kk3 gen2 = G_w_quark (kk1, kk2, gen1, kk3, gen2)
+      let g_z_lep kk1 kk2 gen iso = G_z_lep (kk1, kk2, gen, iso)
+      let g_z_quark kk1 kk2 gen iso = G_z_quark (kk1, kk2, gen, iso)
+      let g_wwz kk1 kk2 = G_wwz (kk1, kk2)
+      let g_wwzz kk1 kk2 = G_wwzz (kk1, kk2)
+      let g_wwza kk1 kk2 = G_wwza (kk1, kk2)
+      let g_wwww nhw = if (nhw >= 0) & (nhw <= 4) then G_wwww nhw
+            else failwith (modname ^ ".g_wwww: invalid integer, very bad")
+
+      (* Build a list of the different constants *)
+      let clist = [G_a_lep; G_aww; G_aaww] @ (loop_iso [g_a_quark]) @
+         (loop_gen (cloop_kk (loop_gen (cloop_kk (loop_kk [g_w_lep] ))))) @
+         (loop_gen (cloop_kk (loop_gen (cloop_kk (loop_kk [g_w_quark] ))))) @
+         (loop_iso (loop_gen (cloop_kk2 (loop_kk [g_z_lep] )))) @
+         (loop_iso (loop_gen (cloop_kk2 (loop_kk [g_z_quark] )))) @
+         (loop_kk (loop_kk2 [g_wwz] )) @ (loop_kk2 (loop_kk2 [g_wwzz] )) @
+         (loop_kk (loop_kk2 [g_wwza] )) @ (List.map g_wwww [0; 1; 2; 3; 4])
+
+      (* Maximum number of lines meeting at a vertex, required by signature. *)
+      let max_degree () = 4
+
+      (* Transform a pair of kk identifiers into a kk2 identifier *)
+      let get_kk2 = function (Light, Light) -> Light2 | (Heavy, Heavy) -> Heavy2
+         | (Light, Heavy) | (Heavy, Light) -> Light_Heavy
+
+      (* Flip isospin *)
+      let conj_iso = function Iso_up -> Iso_down | Iso_down -> Iso_up
+
+      (* Below, lists of couplings are generated which ultimately are joined into a list of all
+      couplings in the model. The generated lists can be viewed using the \verb$dump.ml$ script in the
+      O'Mega toplevel directory. \\
+      The individual couplings are defined as 5-tupels resp. 6-tupels consisting in this
+      order of the particles meeting at the vertex, the coupling type (see \verb$couplings.ml$) and the
+      coupling constant. *)
+
+      (* List of $llA$ type vertices *)
+      let vertices_all =
+      let vgen kk gen =
+         ((Fermion (Lepton (kk, Neg, gen, Iso_down)), Boson A, Fermion (Lepton (kk, Pos, gen,
+            Iso_down))), FBF(1, Psibar, V, Psi), G_a_lep)
+      in loop_gen (cloop_kk [vgen])
+
+      (* List of $qqA$ type vertices *)
+      let vertices_aqq =
+      let vgen kk gen iso =
+         ((Fermion (Quark (kk, Neg, gen, iso)), Boson A, Fermion (Quark (kk, Pos, gen,
+            iso))), FBF(1, Psibar, V, Psi), G_a_quark iso)
+      in loop_iso (loop_gen (cloop_kk [vgen]))
+
+
+      (* List of $\nu lW$ type vertices *)
+      let vertices_wll =
+      let vgen kkw kk_f kk_fbar iso_f gen =
+         ((Fermion (Lepton (kk_fbar, Neg, gen, conj_iso iso_f)),
+            Boson (W (kkw, (match iso_f with Iso_up -> Neg | _ -> Pos))),
+            Fermion (Lepton (kk_f, Pos, gen, iso_f))),
+            FBF (1, Psibar, VA2, Psi),
+            G_w_lep (kkw, (match iso_f with Iso_up -> kk_f | _ -> kk_fbar), gen,
+               (match iso_f with Iso_up -> kk_fbar | _ -> kk_f), gen) )
+      in loop_gen (loop_iso (cloop_kk (cloop_kk (loop_kk [vgen] ))))
+
+      (* The same list, but without couplings between the $W^\prime$ and light fermions *)
+      let vertices_wll_diet =
+      let filter = function
+         | ((Fermion (Lepton (Light, _, _, _)), Boson (W (Heavy, _)),
+            Fermion (Lepton (Light, _, _, _))), _, _) -> false
+         | _ -> true
+      in List.filter filter vertices_wll
+
+      (* List of $udW$ type vertices, flavor-diagonal *)
+      let vertices_wqq_no_ckm =
+      let vgen kkw kk_f kk_fbar iso_f gen =
+         ((Fermion (Quark (kk_fbar, Neg, gen, conj_iso iso_f)),
+            Boson (W (kkw, (match iso_f with Iso_up -> Neg | _ -> Pos))),
+            Fermion (Quark (kk_f, Pos, gen, iso_f))),
+            FBF (1, Psibar, VA2, Psi),
+            G_w_quark (kkw, (match iso_f with Iso_up -> kk_f | _ -> kk_fbar), gen,
+               (match iso_f with Iso_up -> kk_fbar | _ -> kk_f), gen) )
+      in loop_gen (loop_iso (cloop_kk (cloop_kk (loop_kk [vgen] ))))
+
+      (* The same list, but without couplings between the $W^\prime$ and the first two generations
+      of quarks *)
+      let vertices_wqq_no_ckm_diet =
+      let filter = function
+         | ((Fermion (Quark (Light, _, gen, _)), Boson (W (Heavy, _)),
+            Fermion (Quark (Light, _, _, _))), _, _) -> 
+               (match gen with Gen2 -> true | _ -> false)
+         | _ -> true
+      in List.filter filter vertices_wqq_no_ckm
+
+      (* List of $udW$ type vertices, including non flavor-diagonal couplings *)
+      let vertices_wqq =
+      let vgen kkw kk_f gen_f kk_fbar gen_fbar iso_f =
+         ((Fermion (Quark (kk_fbar, Neg, gen_fbar, conj_iso iso_f)),
+            Boson (W (kkw, (match iso_f with Iso_up -> Neg | _ -> Pos))),
+            Fermion (Quark (kk_f, Pos, gen_f, iso_f))),
+            FBF (1, Psibar, VA2, Psi),
+            G_w_quark (match iso_f with
+               | Iso_up -> (kkw, kk_f, gen_f, kk_fbar, gen_fbar)
+               | Iso_down -> (kkw, kk_fbar, gen_fbar, kk_f, gen_f)))
+      in loop_iso (loop_gen (cloop_kk (loop_gen (cloop_kk (loop_kk [vgen] )))))
+
+
+      (* List of $llZ$ / $\nu\nu Z$ type vertices *)
+      let vertices_zll =
+      let vgen kkz kk_f kk_fbar gen iso =
+         ((Fermion (Lepton (kk_fbar, Neg, gen, iso)), Boson (Z kkz),
+            Fermion (Lepton (kk_f, Pos, gen, iso))),
+            FBF (1, Psibar, VA2, Psi),
+            G_z_lep (kkz, get_kk2 (kk_f, kk_fbar), gen, iso))
+      in loop_iso (loop_gen (cloop_kk (cloop_kk (loop_kk [vgen] ))))
+
+      (* List of $qqZ$ type vertices *)
+      let vertices_zqq =
+      let vgen kkz kk_f kk_fbar gen iso =
+         ((Fermion (Quark (kk_fbar, Neg, gen, iso)), Boson (Z kkz),
+            Fermion (Quark (kk_f, Pos, gen, iso))),
+            FBF (1, Psibar, VA2, Psi),
+            G_z_quark (kkz, get_kk2 (kk_f, kk_fbar), gen, iso))
+      in loop_iso (loop_gen (cloop_kk (cloop_kk (loop_kk [vgen] ))))
+
+      (* $gq\bar{q}$ *)
+      let vertices_gqq =
+      let vgen kk gen iso =
+         ((Fermion (Quark (kk, Neg, gen, iso)), Boson G, Fermion (Quark (kk, Pos, gen, iso))),
+            FBF (1, Psibar, V, Psi), G_s)
+      in loop_iso (loop_gen (cloop_kk [vgen]))
+
+      (* AWW *)
+      let vertices_aww =
+      let vgen kk =
+         ( (Boson A, Boson (W (kk, Pos)), Boson (W (kk, Neg))), Gauge_Gauge_Gauge 1, G_aww)
+      in loop_kk [vgen]
+
+      (* ZWW *)
+      let vertices_zww =
+      let vgen kkz kkwp kkwm =
+         ((Boson (Z kkz), Boson (W (kkwp, Pos)), Boson (W (kkwm, Neg))), Gauge_Gauge_Gauge 1, 
+            G_wwz (get_kk2 (kkwp, kkwm), kkz))
+      in loop_kk (loop_kk (loop_kk [vgen]))
+
+      (* $ggg$ *)
+      let vertices_ggg = [(Boson G, Boson G, Boson G), Gauge_Gauge_Gauge (-1), IG_s]
+
+      (* Stolen from Modellib.SM; the signs seem to be OK. See \verb$couplings.ml$ for more docs. *)
+      let gauge4 = Vector4 [(2, C_13_42); (-1, C_12_34); (-1, C_14_23)]
+      let minus_gauge4 = Vector4 [(-2, C_13_42); (1, C_12_34); (1, C_14_23)]
+
+      (* AAWW *)
+      let vertices_aaww =
+      let vgen kk =
+         ((Boson A, Boson (W (kk, Pos)), Boson A, Boson (W (kk, Neg))), minus_gauge4, G_aaww)
+      in loop_kk [vgen]
+
+      (* WWZZ *)
+      let vertices_wwzz =
+      let vgen kkwp kkwm kk2z =
+         ((Boson (Z (match kk2z with Heavy2 -> Heavy | Light2 | Light_Heavy -> Light)),
+            Boson (W (kkwp, Pos)),
+            Boson (Z (match kk2z with Heavy2 | Light_Heavy -> Heavy | Light2 -> Light)),
+            Boson (W (kkwm, Neg))), minus_gauge4, G_wwzz (get_kk2 (kkwp, kkwm), kk2z))
+      in loop_kk2 (loop_kk (loop_kk [vgen]))
+
+      (* WWZA *)
+      let vertices_wwza =
+      let vgen kkwp kkwm kkz =
+         ((Boson A, Boson (W (kkwp, Pos)), Boson (Z kkz), Boson (W (kkwm, Neg))),
+            minus_gauge4, G_wwza (get_kk2 (kkwp, kkwm), kkz))
+      in loop_kk (loop_kk (loop_kk [vgen]))
+
+      (* WWWW *)
+      let vertices_wwww =
+      let count = function Light2 -> 0 | Light_Heavy -> 1 | Heavy2 -> 2
+      in let vgen kk2wp kk2wm =
+         ((Boson (W ((match kk2wp with Heavy2 -> Heavy | Light2 | Light_Heavy -> Light), Pos)),
+            Boson (W ((match kk2wm with Heavy2 -> Heavy | Light2 | Light_Heavy -> Light), Neg)),
+            Boson (W ((match kk2wp with Heavy2 | Light_Heavy -> Heavy | Light2 -> Light), Pos)),
+            Boson (W ((match kk2wm with Heavy2 | Light_Heavy -> Heavy | Light2 -> Light), Neg))),
+            gauge4, G_wwww ((count kk2wp) + (count kk2wm)))
+      in loop_kk2 (loop_kk2 [vgen])
+
+      (* gggg *)
+      let vertices_gggg = [(Boson G, Boson G, Boson G, Boson G), gauge4, G_s2]
+
+      (* The list of couplings is transformed into the fusion lists required by the generator by
+      the Model.Fusions functor. *)
+
+      (* This is copy\& paste from the other models; check again with Thorsten if it is correct *)
+      module F = Modeltools.Fusions (struct
+         type f = flavor
+         type c = constant
+         let compare = compare
+         let conjugate = conjugate
+      end )
+
+      (* Not sure yet whether F.fusex also creates the conjugate vertices; by looking at the
+      implementation of the other models, I assume it doesn't. Still, better ask Thorsten to be
+      sure!!!\\
+      \emph{Update:} Still didn't get to ask, but since the results are consistent, I suspect my assertion
+      is correct. \\
+      The stuff below is required by the signature. *)
+
+      let vertices () = (vertices_all @ vertices_aqq @ 
+         (match Module_options.diet with
+            | false -> vertices_wll
+            | true -> vertices_wll_diet) @
+         (match (Module_options.include_ckm, Module_options.diet) with
+            | (true, false) -> vertices_wqq
+            | (false, false) -> vertices_wqq_no_ckm
+            | (false, true) -> vertices_wqq_no_ckm_diet
+            | (true, true) -> raise (Failure
+               ("Modules4.Threeshl.vertices: CKM matrix together with option diet is not" ^
+               " implemented yet!"))) @
+         vertices_zll @ vertices_zqq @ vertices_aww @ vertices_zww @ vertices_gqq @ vertices_ggg,
+         vertices_aaww @ vertices_wwzz @ vertices_wwza @ vertices_wwww @ vertices_gggg
+         , [])
+      let table = F.of_vertices (vertices ())
+      let fuse2 = F.fuse2 table
+      let fuse3 = F.fuse3 table
+      let fuse = F.fuse table
+
+      (* A function that returns a list of a flavours known to the model, required by the signature.
+      *)
+      let flavors () = (List.map flavor_of_f (all_leptons @ all_quarks)) @
+         (List.map flavor_of_b all_bosons)
+
+      (* dito, external flavours, also required. *)
+      let external_flavors () = [
+         "light leptons", List.map flavor_of_f (loop_iso (loop_gen( loop_cs [lepton Light])));
+         "light quarks", List.map flavor_of_f (loop_iso (loop_gen( loop_cs [quark Light])));
+         "light gauge bosons", List.map flavor_of_b [W (Light, Pos); W (Light, Neg); Z Light; A];
+         "heavy gauge bosons", List.map flavor_of_b [W (Heavy, Pos); W (Heavy, Neg); Z Heavy]] @
+         (match Module_options.include_hf with
+            | true -> [
+               "heavy leptons", List.map flavor_of_f (loop_iso (loop_gen( loop_cs [lepton Heavy])));
+               "heavy quarks", List.map flavor_of_f (loop_iso (loop_gen( loop_cs [quark Heavy])))]
+            | false -> [] ) @ ["gluons", [Boson G]]
+
+      (* Which of the particles are goldstones? $\rightarrow$ none. Required by the signature. *)
+      let goldstone x = None
+
+      (* This is wrong but handy for debugging the constant identifier generation via -params.
+      Usually, this function would return a record consisting of the parameters as well as
+      expression for the dependent quantities that can be used to generate FORTRAN code for
+      calculating them. However, we have a seperate module for the threeshl, so we can abuse this
+      for debugging. Required by signature. *)
+      let parameters () = {input = List.map (fun x -> (x, 0.)) clist;
+         derived = []; derived_arrays = []}
+
+      (* Convert a flavour into a ID string with which it will be referred by the user interface of
+      the compiled generator. Required by signature *)
+      let flavor_to_string =
+      let prefix = function
+         | Fermion (Lepton (Heavy, _, _, _)) | Fermion (Quark (Heavy, _, _, _))
+         | Boson (W (Heavy, _)) | Boson (Z Heavy) -> "H"
+         | _ -> ""
+      in let postfix = function
+         | Fermion (Lepton (_, cs, _, Iso_down)) -> (match cs with Pos -> "-" | Neg -> "+")
+         | Fermion (Quark (_, Neg, _, _)) | Fermion (Lepton (_, Neg, _, Iso_up)) -> "bar"
+         | Boson (W (_, cs)) -> (match cs with Pos -> "+" | Neg -> "-")
+         | _ -> ""
+      in let rump = function
+         | Fermion (Lepton desc) -> (match desc with
+            | (_, _, Gen0, Iso_up) -> "nue"
+            | (_, _, Gen0, Iso_down) -> "e"
+            | (_, _, Gen1, Iso_up) -> "numu"
+            | (_, _, Gen1, Iso_down) -> "mu"
+            | (_, _, Gen2, Iso_up) -> "nutau"
+            | (_, _, Gen2, Iso_down) -> "tau")
+         | Fermion (Quark desc) -> (match desc with
+            | (_, _, Gen0, Iso_up) -> "u"
+            | (_, _, Gen0, Iso_down) -> "d"
+            | (_, _, Gen1, Iso_up) -> "c"
+            | (_, _, Gen1, Iso_down) -> "s"
+            | (_, _, Gen2, Iso_up) -> "t"
+            | (_, _, Gen2, Iso_down) -> "b")
+         | Boson (W _) -> "W" | Boson (Z _) -> "Z" | Boson A -> "A" | Boson G -> "gl"
+      in function x -> (prefix x) ^ (rump x) ^ (postfix x)
+
+      (* Conversion of the ID string into a particle flavor. Instead of going through all cases
+      again, we generate a ``dictionary'' of flavor / ID pairs which we use to identify the correct
+      flavor. Required by signature. *)
+      let flavor_of_string x =
+      let dict = List.map (fun x -> (x, flavor_to_string x)) (flavors ())
+      in let get_ident = function (x, _) -> x
+      in try
+            get_ident (List.find (fun (_, y) -> (x = y)) dict)
+         with
+            Not_found -> (match x with
+               | "g" -> Boson G
+               | _ -> invalid_arg (modname ^ ".flavor_of_string")
+            )
+
+      (* Converts a flavor into a symbol used as identification in the generated FORTRAN code (has
+      to comply to the conventions of valid FORTRAN identifiers therefore). We stick to the same
+      convenctions as SM3, prefixing heavy modes with a \verb$H$. Required by signature. *)
+      let flavor_symbol =
+      let prefix = function
+         | Fermion (Lepton (Heavy, _, _, _)) | Fermion (Quark (Heavy, _, _, _))
+         | Boson (W (Heavy, _)) | Boson (Z Heavy) -> "H"
+         | _ -> ""
+      in let postfix = function
+         | Fermion (Lepton (_, Neg, _, _)) | Fermion (Quark (_, Neg, _, _)) -> "b"
+         | _ -> ""
+      in let rump = function
+         | Fermion spec -> (match spec with
+            | Lepton (_, _, gen, Iso_up) -> "n" ^ (string_of_int (int_of_gen gen))
+            | Lepton (_, _, gen, Iso_down) -> "l" ^ (string_of_int (int_of_gen gen))
+            | Quark (_, _, gen, Iso_up) -> "u" ^ (string_of_int (int_of_gen gen))
+            | Quark (_, _, gen, Iso_down) -> "d"^ (string_of_int (int_of_gen gen)))
+         | Boson spec -> (match spec with
+            | W (_, Pos) -> "wp" | W (_, Neg) -> "wm"
+            | Z _ -> "z" | A -> "a" | G -> "gl" )
+      in function
+         x -> (prefix x) ^ (rump x) ^ (postfix x)
+
+      (* Generate TeX for a flavor *)
+      let flavor_to_TeX =
+      let bar x y = match  x with Neg -> "\\overline{" ^ y ^ "}" | Pos -> y
+      in let pm x y = match x with Neg -> "{" ^ y ^ "}^+" | Pos -> "{" ^ y ^ "}^-"
+      in let prime x y = match x with Light -> y | Heavy -> "{" ^ y ^ "}^\\prime"
+      in function
+         | Fermion (Lepton desc) -> (match desc with
+            | (kk, cs, gen, Iso_up) -> prime kk (bar cs (match gen with
+               | Gen0 -> "\\nu_e"
+               | Gen1 -> "\\nu_\\mu"
+               | Gen2 -> "\\nu_\\tau"))
+            | (kk, cs, gen, Iso_down) -> prime kk (pm cs (match gen with
+               | Gen0 -> "e" | Gen1 -> "\\mu" | Gen2 -> "\\tau")))
+         | Fermion (Quark (kk, cs, gen, iso)) -> prime kk (bar cs (match (gen, iso) with
+            | (Gen0, Iso_up) -> "u"
+            | (Gen0, Iso_down) -> "d"
+            | (Gen1, Iso_up) -> "c"
+            | (Gen1, Iso_down) -> "s"
+            | (Gen2, Iso_up) -> "t"
+            | (Gen2, Iso_down) -> "b"))
+         | Boson spec -> (match spec with
+            | W (kk, cs) -> prime kk (pm (match cs with Pos -> Neg | Neg -> Pos) "W")
+            | Z kk -> prime kk "Z"
+            | A -> "A" | G -> "g")
+         
+      (* Returns the string referring to the particle mass in the generated FORTRAN code. Required
+      by signature. *)
+      let mass_symbol = function
+         | Boson A | Boson G-> "0._default"
+         | x -> "mass_array(" ^ (bcdi_of_flavor x) ^ ")"
+
+      (* Dito, for width. Required by signature. *)
+      let width_symbol = function
+         | Boson A | Boson G -> "0._default"
+         | x -> "width_array(" ^ (bcdi_of_flavor x) ^ ")"
+      
+      (* Determines the string referring to a coupling constant in the generated FORTRAN code.
+      Required by signature. *)
+      let constant_symbol =
+      let c = ", "
+      in let g_w_ferm = function
+         (kk1, kk2, gen1, kk3, gen2) ->
+            ":, " ^ (fspec_of_kkmode kk1) ^ c ^ (fspec_of_kkmode kk2) ^ c ^ (fspec_of_gen gen1) ^ c ^
+            (fspec_of_kkmode kk3) ^ c ^ (fspec_of_gen gen2)
+      in let g_z_ferm = function
+         (kk1, kk2, gen, iso) ->
+            ":, " ^ (fspec_of_kkmode kk1) ^ c ^ (fspec_of_kk2 kk2) ^ c ^ (fspec_of_gen gen) ^ c ^
+            (fspec_of_iso iso)
+      in function
+         | G_a_lep -> "g_a_lep"
+         | G_s -> "g_s_norm"
+         | IG_s -> "ig_s_norm"
+         | G_s2 -> "g_s_norm2"
+         | G_a_quark iso -> "g_a_quark(" ^ (fspec_of_iso iso) ^ ")"
+         | G_aww -> "ig_aww"
+         | G_aaww -> "g_aaww"
+         | G_w_lep spec -> "g_w_lep_va(" ^ (g_w_ferm spec) ^ ")"
+         | G_w_quark spec -> "g_w_quark_va(" ^ (g_w_ferm spec) ^ ")"
+         | G_z_lep spec -> "g_z_lep_va(" ^ (g_z_ferm spec) ^ ")"
+         | G_z_quark spec -> "g_z_quark_va(" ^ (g_z_ferm spec) ^ ")"
+         | G_wwz (kk1, kk2) -> "ig_wwz(" ^ (fspec_of_kk2 kk1) ^ c ^
+            (fspec_of_kkmode kk2) ^ ")"
+         | G_wwzz (kk1, kk2) -> "g_wwzz(" ^ (fspec_of_kk2 kk1) ^ c ^
+            (fspec_of_kk2 kk2) ^ ")"
+         | G_wwza (kk1, kk2) -> "g_wwza(" ^(fspec_of_kk2 kk1) ^ c ^
+            (fspec_of_kkmode kk2) ^ ")"
+         | G_wwww nhw -> if (0 <= nhw) & (nhw <= 4) then
+            "g_wwww(" ^ (string_of_int nhw) ^ ")"
+            else failwith "Modules4.Threeshl.constant_symbol: invalid int for G_wwww; very bad"
+
+   end
 
 
 (*i

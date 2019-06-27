@@ -1,4 +1,4 @@
-(* $Id: bundle.ml 2468 2010-05-05 16:37:03Z kilian $
+(* $Id: bundle.ml 2695 2010-07-08 22:15:33Z ohl $
 
    Copyright (C) 1999-2010 by
 
@@ -26,17 +26,6 @@ module type Elt_Base =
     type base
     val compare_elt : elt -> elt -> int
     val compare_base : base -> base -> int
-  end
-
-module type T0 =
-  sig
-    type t
-    type elt
-    type fiber = elt list
-    type base
-    val inv_pi : base -> t -> fiber
-    val base : t -> base list
-    val fibers : t -> (base * fiber) list
   end
 
 module type Dyn =

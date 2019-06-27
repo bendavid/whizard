@@ -1,4 +1,4 @@
-(* $Id: comphep.ml 2219 2010-04-04 16:05:44Z ohl $
+(* $Id: comphep.ml 2640 2010-06-23 22:16:40Z ohl $
 
    Copyright (C) 1999-2009 by
 
@@ -21,8 +21,8 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 let rcs_file = RCS.parse "Comphep" ["Plagiarizing CompHEP models ..."]
-    { RCS.revision = "$Revision: 2219 $";
-      RCS.date = "$Date: 2010-04-04 18:05:44 +0200 (Sun, 04 Apr 2010) $";
+    { RCS.revision = "$Revision: 2640 $";
+      RCS.date = "$Date: 2010-06-24 00:16:40 +0200 (Thu, 24 Jun 2010) $";
       RCS.author = "$Author: ohl $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/src/omega/src/comphep.ml $" }
@@ -209,6 +209,8 @@ module Model =
     let mass_symbol = M.mass_symbol
     let width_symbol = M.width_symbol
     let constant_symbol = M.constant_symbol
+    module Ch = M.Ch
+    let charges = M.charges
 
     let rcs = rcs_file
 

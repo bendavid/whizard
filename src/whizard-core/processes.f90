@@ -1,4 +1,4 @@
-! WHIZARD 2.0.2 Tue May 18 2010
+! WHIZARD 2.0.3 Tue Aug 10 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -57,6 +57,8 @@ module processes
   use sf_isr
   use sf_epa
   use sf_ewa
+  use sf_circe1
+  use sf_circe2
   use sf_lhapdf
   use strfun
   use mappings
@@ -65,6 +67,7 @@ module processes
   use process_libraries
   use prclib_interfaces
   use hard_interactions
+  use shower_interface
 
   implicit none
   private
@@ -89,6 +92,7 @@ module processes
   public :: process_get_md5sum_results
   public :: process_get_md5sum_polarized
   public :: process_get_model_ptr
+  public :: process_get_shower_settings
   public :: process_get_n_in
   public :: process_get_n_out
   public :: process_get_n_tot
@@ -288,6 +292,7 @@ module processes
      type(vamp_history), dimension(:), allocatable :: v_history
      type(vamp_history), dimension(:,:), allocatable :: v_histories
      type(integration_results_t) :: results
+     type(shower_settings_t) :: shower_settings
   end type process_t
 
   type :: process_p
@@ -339,6 +344,8 @@ module processes
      module procedure process_set_strfun_isr
      module procedure process_set_strfun_epa
      module procedure process_set_strfun_ewa     
+     module procedure process_set_strfun_circe1     
+     module procedure process_set_strfun_circe2     
   end interface
 
   interface operator(==)
@@ -1134,6 +1141,7 @@ contains
     call interaction_init_prt_list &
          (hard_interaction_get_int_ptr (process%hi), process%prt_list)
 !    call integration_results_init (process%results)
+    call shower_settings_init(process%shower_settings, process%var_list)
     process%initialized = .true.
   end subroutine process_init
 
@@ -1524,6 +1532,12 @@ contains
     model => process%model
   end function process_get_model_ptr
 
+  function process_get_shower_settings (process) result (shower_settings)
+    type(shower_settings_t) :: shower_settings
+    type(process_t), intent(in) :: process
+    shower_settings = process%shower_settings
+  end function process_get_shower_settings
+
   pure function process_get_n_in (process) result (n)
     integer :: n
     type(process_t), intent(in) :: process
@@ -1854,6 +1868,30 @@ contains
             (process%sfchain, i, line, ewa_data, n_parameters, flvs(1))
     end if
   end subroutine process_set_strfun_ewa
+
+  subroutine process_set_strfun_circe1 &
+       (process, i, line, circe1_data, n_parameters)
+    type(process_t), intent(inout), target :: process
+    integer, intent(in) :: i, line, n_parameters
+!    type(circe1_data_t), dimension(:), intent(in) :: circe1_data
+    type(circe1_data_t), intent(in) :: circe1_data
+    if (process%use_beams) then
+       call strfun_chain_set_strfun &
+            (process%sfchain, i, line, circe1_data, n_parameters)
+    end if
+  end subroutine process_set_strfun_circe1
+
+  subroutine process_set_strfun_circe2 &
+       (process, i, line, circe2_data, n_parameters)
+    type(process_t), intent(inout), target :: process
+    integer, intent(in) :: i, line, n_parameters
+!    type(circe2_data_t), dimension(:), intent(in) :: circe2_data
+    type(circe2_data_t), intent(in) :: circe2_data
+    if (process%use_beams) then
+       call strfun_chain_set_strfun &
+            (process%sfchain, i, line, circe2_data, n_parameters)
+    end if
+  end subroutine process_set_strfun_circe2
 
   subroutine process_set_strfun_mapping (process, i, index, type, par)
     type(process_t), intent(inout) :: process

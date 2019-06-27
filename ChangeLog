@@ -2,7 +2,65 @@ ChangeLog -- Summary of changes to the WHIZARD package
 
 Use svn log to see detailed changes.
 
-	Version 2.0.2
+	Version 2.0.3
+
+2010-10-18 
+	RELEASE: version 2.0.3
+	
+2010-08-08 
+	Bug in CP-violating anomalous triple TGCs fixed
+	
+2010-08-06 
+	Solving backwards compatibility problem with O'Caml 3.12.0
+	
+2010-07-12 
+	Conserved quantum numbers speed up O'Mega code generation
+	
+2010-07-07 
+	Attaching full ISR/FSR parton shower and MPI/ISR
+	   module
+	Added SM model containing Hgg, HAA, HAZ vertices	
+	
+2010-07-02 
+	Matching output available as LHEF and STDHEP
+	
+2010-06-30 
+	Various bug fixes, missing files, typos
+	
+2010-06-26 
+	CIRCE1 completely re-enabled
+	Chaining structure functions supported
+	
+2010-06-25 
+	Partial support for conserved quantum numbers in 
+	O'Mega
+
+2010-06-21 
+	Major upgrade of the graphics package: error bars,
+	smarter SINDARIN steering, documentation, and all that... 
+	
+2010-06-17 
+	MLM matching with PYTHIA shower included
+	
+2010-06-16 
+	Added full CIRCE1 and CIRCE2 versions including
+	full documentation and miscellanea to the trunk
+	
+2010-06-12 
+	User file management supported, improved variable
+	and command structure
+
+2010-05-24 
+	Improved handling of variables in local command lists
+	
+2010-05-20 
+	PYTHIA interface re-enabled
+	
+2010-05-19 
+	ASCII file formats for interfacing ROOT and gnuplot in
+	   data analysis
+	
+##################################################################
 
 2010-05-18 
 	RELEASE: version 2.0.2
@@ -28,7 +86,7 @@ Use svn log to see detailed changes.
 	   simulation modules
 	
 2010-05-04 
-	FSR+ISR for the first connected to the WHIZARD 2 core
+	FSR+ISR for the first time connected to the WHIZARD 2 core
 	
 ##################################################################
 

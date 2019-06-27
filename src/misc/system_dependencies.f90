@@ -1,10 +1,11 @@
 ! WHIZARD <<Version>> <<Date>>
 ! 
-! (C) 1999-2009 by 
+! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
-!     with contributions by Sebastian Schmidt
+!     with contributions by Christian Speckner, Sebastian Schmidt, 
+!     Daniel Wiesler, Felix Braam
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -33,40 +34,42 @@ module system_dependencies
   public
  
   ! Program version
-  character(*), parameter :: WHIZARD_VERSION = "2.0.2"
-  character(*), parameter :: WHIZARD_DATE = "May 18 2010"
+  character(*), parameter :: WHIZARD_VERSION = "2.0.3"
+  character(*), parameter :: WHIZARD_DATE = "Aug 10 2010"
 
   ! System paths
   ! These are used for testing without existing installation
   character(*), parameter :: WHIZARD_TEST_AUX_MODPATH = &
-       "/Users/reuter/Physik/progs/omwhiz/svn/trunk/build/src/misc"
+       "/Users/reuter/Physik/progs/whizard/trunk/build/src/misc"
   character(*), parameter :: WHIZARD_TEST_MODELS_MODPATH = &
-       "/Users/reuter/Physik/progs/omwhiz/svn/trunk/build/src/models"
+       "/Users/reuter/Physik/progs/whizard/trunk/build/src/models"
   character(*), parameter :: WHIZARD_TEST_OMEGA_MODPATH = &
-       "/Users/reuter/Physik/progs/omwhiz/svn/trunk/build/src/omega/src"
+       "/Users/reuter/Physik/progs/whizard/trunk/build/src/omega/src"
   character(*), parameter :: WHIZARD_TEST_CORE_MODPATH = &
-       "/Users/reuter/Physik/progs/omwhiz/svn/trunk/build/src/whizard-core"
+       "/Users/reuter/Physik/progs/whizard/trunk/build/src/whizard-core"
   character(*), parameter :: WHIZARD_TEST_CORE_LIBPATH = &
-       "/Users/reuter/Physik/progs/omwhiz/svn/trunk/build/src/whizard-core"
+       "/Users/reuter/Physik/progs/whizard/trunk/build/src/whizard-core"
   character(*), parameter :: WHIZARD_TEST_OMEGA_BINPATH = &
-       "/Users/reuter/Physik/progs/omwhiz/svn/trunk/build/src/omega/bin"
+       "/Users/reuter/Physik/progs/whizard/trunk/build/src/omega/bin"
   character(*), parameter :: WHIZARD_TEST_SRC_LIBPATH = &
-       "/Users/reuter/Physik/progs/omwhiz/svn/trunk/build/src"
+       "/Users/reuter/Physik/progs/whizard/trunk/build/src"
   character(*), parameter :: WHIZARD_TEST_HEPMC_LIBPATH = &
-       "/Users/reuter/Physik/progs/omwhiz/svn/trunk/build/src/hepmc"
+       "/Users/reuter/Physik/progs/whizard/trunk/build/src/hepmc"
   character(*), parameter :: WHIZARD_TEST_MODELPATH = &
-       "/Users/reuter/Physik/progs/omwhiz/svn/trunk/share/models"
+       "/Users/reuter/Physik/progs/whizard/trunk/share/models"
   character(*), parameter :: WHIZARD_TEST_MODELS_LIBPATH = &
-       "/Users/reuter/Physik/progs/omwhiz/svn/trunk/build/src/models"
+       "/Users/reuter/Physik/progs/whizard/trunk/build/src/models"
   character(*), parameter :: WHIZARD_TEST_SUSYPATH = &
-       "/Users/reuter/Physik/progs/omwhiz/svn/trunk/share/susy"
+       "/Users/reuter/Physik/progs/whizard/trunk/share/susy"
   character(*), parameter :: WHIZARD_TEST_GMLPATH= &
-       "/Users/reuter/Physik/progs/omwhiz/svn/trunk/build/src/gamelan"
+       "/Users/reuter/Physik/progs/whizard/trunk/build/src/gamelan"
   character(*), parameter :: WHIZARD_TEST_CUTSPATH = &
-       "/Users/reuter/Physik/progs/omwhiz/svn/trunk/share/cuts"
+       "/Users/reuter/Physik/progs/whizard/trunk/share/cuts"
   character(*), parameter :: WHIZARD_TEST_TESTDATAPATH = &
-       "/Users/reuter/Physik/progs/omwhiz/svn/trunk/share/test"
+       "/Users/reuter/Physik/progs/whizard/trunk/share/test"
   character(*), parameter :: WHIZARD_TEST_TEXPATH = ""
+  character(*), parameter :: WHIZARD_TEST_CIRCE2PATH = &
+       "/Users/reuter/Physik/progs/whizard/trunk/src/circe2/share/data"
 
   ! WHIZARD-specific include flags
   character(*), parameter :: WHIZARD_TEST_INCLUDES = &
@@ -84,7 +87,7 @@ module system_dependencies
 
   ! Libtool
   character(*), parameter :: WHIZARD_LIBTOOL_TEST = &
-       "/Users/reuter/Physik/progs/omwhiz/svn/trunk/build/libtool"
+       "/Users/reuter/Physik/progs/whizard/trunk/build/libtool"
 
 
   ! System paths
@@ -105,6 +108,7 @@ module system_dependencies
   character(*), parameter :: PKGLIBDIR = LIBDIR // "/whizard"
   character(*), parameter :: PKGDATADIR = DATAROOTDIR // "/whizard"
   character(*), parameter :: PKGTEXDIR = DATAROOTDIR // "/texmf/whizard"
+  character(*), parameter :: PKGCIRCE2DIR = DATAROOTDIR // "/circe2"
 
   character(*), parameter :: WHIZARD_AUX_MODPATH = &
        PKGLIBDIR // "/mod/misc"
@@ -132,6 +136,8 @@ module system_dependencies
        PKGDATADIR // "/cuts"
   character(*), parameter :: WHIZARD_TEXPATH = &
        PKGTEXDIR
+  character(*), parameter :: WHIZARD_CIRCE2PATH = &
+       PKGCIRCE2DIR // "/data"
 
   ! WHIZARD-specific include flags
   character(*), parameter :: WHIZARD_INCLUDES = &
@@ -154,7 +160,7 @@ module system_dependencies
   character(*), parameter :: DEFAULT_FC = &
        "gfortran"
   character(*), parameter :: DEFAULT_FCFLAGS = &
-       " -g -O0"
+       " -g -O2"
   character(*), parameter :: DEFAULT_FCFLAGS_PIC = &
        " -fno-common"
   character(*), parameter :: DEFAULT_FC_SRC_EXT = &
@@ -174,7 +180,7 @@ module system_dependencies
 
   ! LHAPDF library
   character(*), parameter :: LHAPDF_PDFSETS_PATH = &
-       "/usr/local//share/lhapdf/PDFsets"
+       "/usr/local/share/lhapdf/PDFsets"
 
   ! Available methods for event analysis display
   character(*), parameter :: EVENT_ANALYSIS_PS = &

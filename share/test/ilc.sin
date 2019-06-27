@@ -5,7 +5,16 @@ compile
 
 sqrts = 500 GeV
 
+beams = e1, E1
+integrate (ilc_zh)
+
 beams = e1, E1 => isr
+integrate (ilc_zh)
+
+beams = e1, E1 => circe1
+integrate (ilc_zh)
+
+beams = e1, E1 => circe1 => isr
 integrate (ilc_zh)
 
 epa_x_min = 0.1

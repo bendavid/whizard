@@ -1,4 +1,4 @@
-! WHIZARD 2.0.2 Tue May 18 2010
+! WHIZARD 2.0.3 Tue Aug 10 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -49,12 +49,12 @@ module event_files
   public :: input_event_stream_init
   public :: input_event_stream_read_event
   public :: input_event_stream_final 
-  public :: file_list_t
-  public :: file_list_append_file_spec
-  public :: file_list_is_filename
-  public :: file_list_open
-  public :: file_list_write_event
-  public :: file_list_close
+  public :: event_file_list_t
+  public :: event_file_list_append_file_spec
+  public :: event_file_list_is_filename
+  public :: event_file_list_open
+  public :: event_file_list_write_event
+  public :: event_file_list_close
   public :: event_format_code
 
   integer, parameter, public :: FMT_NONE = 0
@@ -95,11 +95,11 @@ module event_files
      type(file_spec_t), pointer :: next => null ()
   end type file_spec_t
 
-  type :: file_list_t
+  type :: event_file_list_t
      private
      type(file_spec_t), pointer :: first => null ()
      type(file_spec_t), pointer :: last => null ()
-  end type file_list_t
+  end type event_file_list_t
 
 
 contains
@@ -197,19 +197,19 @@ contains
     input_stream%fmt = FMT_NONE
   end subroutine input_event_stream_final
 
-  subroutine file_list_append_file_spec &
-       (file_list, basename, var_list, format, beam_flv, beam_energy) 
+  subroutine event_file_list_append_file_spec &
+       (event_file_list, basename, var_list, format, beam_flv, beam_energy, &
+        n_processes) 
        ! unweighted, negative_weights, &
-    type(file_list_t), intent(inout) :: file_list
+    type(event_file_list_t), intent(inout) :: event_file_list
     type(string_t), intent(in) :: basename
     type(var_list_t), intent(in) :: var_list
     integer, intent(in) :: format
     type(flavor_t), dimension(:), intent(in) :: beam_flv
     real(default), dimension(:), intent(in) :: beam_energy
+    integer, intent(in) :: n_processes
 !     logical, intent(in) :: unweighted, negative_weights
-    integer :: n_processes
     type(file_spec_t), pointer :: current
-    n_processes = size (beam_flv)
     allocate (current)
     select case (format)
     case (FMT_DEFAULT);     current%name = basename // "." // var_list_get_sval &
@@ -244,31 +244,31 @@ contains
     current%beam_energy = beam_energy
     current%n_processes = n_processes
     current%keep_beams = var_list_get_lval (var_list, var_str ("?keep_beams"))
-    if (associated (file_list%last)) then
-       file_list%last%next => current
+    if (associated (event_file_list%last)) then
+       event_file_list%last%next => current
     else
-       file_list%first => current
+       event_file_list%first => current
     end if
-    file_list%last => current
-  end subroutine file_list_append_file_spec
+    event_file_list%last => current
+  end subroutine event_file_list_append_file_spec
 
-  subroutine file_list_final (file_list)
-    type(file_list_t), intent(inout) :: file_list
+  subroutine event_file_list_final (event_file_list)
+    type(event_file_list_t), intent(inout) :: event_file_list
     type(file_spec_t), pointer :: current
-    do while (associated (file_list%first))
-       current => file_list%first
-       file_list%first => current%next
+    do while (associated (event_file_list%first))
+       current => event_file_list%first
+       event_file_list%first => current%next
        deallocate (current)
     end do
-    file_list%last => null ()
-  end subroutine file_list_final
+    event_file_list%last => null ()
+  end subroutine event_file_list_final
 
-  function file_list_is_filename (file_list, filename) result (flag)
+  function event_file_list_is_filename (event_file_list, filename) result (flag)
     logical :: flag
-    type(file_list_t), intent(in) :: file_list
+    type(event_file_list_t), intent(in) :: event_file_list
     type(string_t), intent(in) :: filename
     type(file_spec_t), pointer :: current
-    current => file_list%first
+    current => event_file_list%first
     do while (associated (current))
        if (current%name == filename) then
           flag = .true.
@@ -277,19 +277,22 @@ contains
        current => current%next
     end do
     flag = .false.
-  end function file_list_is_filename
+  end function event_file_list_is_filename
 
-  subroutine file_list_open (file_list, process_id, n_events)
-    type(file_list_t), intent(inout), target :: file_list
+  subroutine event_file_list_open (event_file_list, process_id, n_events, var_list)
+    type(event_file_list_t), intent(inout), target :: event_file_list
     type(string_t), dimension(:), intent(in) :: process_id
     integer, intent(in) :: n_events
     real(default), dimension(:), allocatable :: integral, error
+    real(default) :: pt, dr, kt
+    type(var_list_t), intent(in) :: var_list
     type(process_t), pointer :: process 
     type(file_spec_t), pointer :: current
-    integer :: i, n_proc
+    integer :: i, n_proc, ktmode
+    logical :: lhefout
     integer(i64) :: n_events_expected    
     n_proc = size (process_id)
-    current => file_list%first
+    current => event_file_list%first
     allocate (integral (n_proc), error (n_proc))
     do i = 1, n_proc
        process => process_store_get_process_ptr (process_id(i))
@@ -302,6 +305,11 @@ contains
        end if
     end do
     n_events_expected = n_events
+    pt = var_list_get_rval (var_list, var_str ("PTmin"))
+    dr = var_list_get_rval (var_list, var_str ("DRmin"))
+    kt = var_list_get_rval (var_list, var_str ("kTcut"))
+    ktmode = var_list_get_ival (var_list, var_str ("kTmode"))
+    lhefout = var_list_get_lval (var_list, var_str ("?LHEFout"))
     do while (associated (current))
        select case (current%format)
        case (FMT_DEFAULT)
@@ -357,6 +365,8 @@ contains
           open (unit=current%unit, file=char(current%name), &
                action="write", status="replace")
           call les_houches_events_write_header (current%unit)
+          call lhef_write_matching_info (unit = current%unit, ptmin = pt, &
+               drmin = dr, ktcut = kt, ktmode = ktmode, lhefout = lhefout)
           call heprup_init &
                (flavor_get_pdg (current%beam_flv), &
                 current%beam_energy, &
@@ -408,15 +418,15 @@ contains
         end select
        current => current%next
     end do
-  end subroutine file_list_open
+  end subroutine event_file_list_open
 
-  subroutine file_list_write_event (file_list, event, i_evt)
-    type(file_list_t), intent(in), target :: file_list
+  subroutine event_file_list_write_event (event_file_list, event, i_evt)
+    type(event_file_list_t), intent(in), target :: event_file_list
     type(event_t), intent(in), target :: event
     integer, intent(in) :: i_evt
     type(file_spec_t), pointer :: current
     type(hepmc_event_t) :: hepmc_event
-    current => file_list%first
+    current => event_file_list%first
     do while (associated (current))
        select case (current%format)
        case (FMT_DEFAULT)
@@ -458,12 +468,12 @@ contains
        end select
        current => current%next
     end do
-  end subroutine file_list_write_event
+  end subroutine event_file_list_write_event
 
-  subroutine file_list_close (file_list)
-    type(file_list_t), intent(inout), target :: file_list
+  subroutine event_file_list_close (event_file_list)
+    type(event_file_list_t), intent(inout), target :: event_file_list
     type(file_spec_t), pointer :: current
-    current => file_list%first
+    current => event_file_list%first
     do while (associated (current))
        select case (current%format)
        case (FMT_HEPMC)
@@ -483,7 +493,7 @@ contains
        end select
        current => current%next
     end do
-  end subroutine file_list_close
+  end subroutine event_file_list_close
 
   elemental function event_format_code (format) result (fmt)
     integer :: fmt

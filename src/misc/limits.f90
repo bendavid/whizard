@@ -1,4 +1,4 @@
-! WHIZARD 2.0.2 Tue May 18 2010
+! WHIZARD 2.0.3 Tue Aug 10 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -33,10 +33,8 @@ use iso_fortran_env, only: iostat_end, iostat_eor !NODEP!
 
   integer, parameter, public :: VERSION_STRLEN = 255
   character(len=VERSION_STRLEN), parameter, public :: &
-       & VERSION_STRING = "WHIZARD version 2.0.2 (Tue May 18 2010)"
+       & VERSION_STRING = "WHIZARD version 2.0.3 (Tue Aug 10 2010)"
   integer, parameter, public :: MIN_UNIT = 11, MAX_UNIT = 99
-  integer, parameter, public :: FILENAME_LEN = 256
-  character(len=*), parameter, public :: DEFAULT_FILENAME = "whizard"
   integer, parameter, public :: ENVVAR_LEN = 1000
   integer, parameter, public :: DLERROR_LEN = 160
   integer, parameter, public :: BUFFER_SIZE = 1000
@@ -56,6 +54,7 @@ use iso_fortran_env, only: iostat_end, iostat_eor !NODEP!
   character(*), parameter, public :: HISTOGRAM_DATA_FORMAT = "1PG15.8"
 
   integer, parameter, public :: VERTEX_TABLE_SCALE_FACTOR = 60
+  double precision, parameter, public :: CIRCE1_EPSILON = 1d-6
   character(*), parameter, public :: LHAPDF_DEFAULT_PROTON = "cteq6ll.LHpdf"
   character(*), parameter, public :: LHAPDF_DEFAULT_PION   = "ABFKWPI.LHgrid"
   character(*), parameter, public :: LHAPDF_DEFAULT_PHOTON = "GSG960.LHgrid"
@@ -67,6 +66,17 @@ use iso_fortran_env, only: iostat_end, iostat_eor !NODEP!
        RAW_EVENT_FILE_ID_STRING = "WHIZARD raw event file"
   integer, parameter, public :: RAW_EVENT_FILE_VERSION = 2
   integer, parameter, public :: ITERATIONS_DEFAULT_LIST_SIZE = 7
+  integer, parameter, public :: MAX_TRIES_FOR_SINGLE_EVENT = 100000
+  character(*), parameter, public :: &
+       DEFAULT_ANALYSIS_FILENAME = "whizard_analysis.dat"
+  character(len=1), dimension(1), parameter, public :: &
+       FORBIDDEN_ENDINGS1 = (/ "o" /)
+  character(len=2), dimension(3), parameter, public :: &       
+       FORBIDDEN_ENDINGS2 = (/ "mp", "ps", "vg" /)
+  character(len=3), dimension(12), parameter, public :: &
+       FORBIDDEN_ENDINGS3 = (/ "aux", "dvi", "evx", "f03", "f90", "log", &
+          "ltp", "mpx", "pdf", "phs", "sin", "tex" /)
+       
   integer, parameter, public :: CMDLINE_ARG_LEN = 1000
 
 end module limits

@@ -1,4 +1,4 @@
-(* $Id: fusion.ml 2403 2010-04-23 20:28:27Z ohl $
+(* $Id: fusion.ml 2644 2010-06-24 16:35:49Z ohl $
 
    Copyright (C) 1999-2009 by
 
@@ -21,8 +21,8 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 let rcs_file = RCS.parse "Fusion" ["General Fusions"]
-    { RCS.revision = "$Revision: 2403 $";
-      RCS.date = "$Date: 2010-04-23 22:28:27 +0200 (Fri, 23 Apr 2010) $";
+    { RCS.revision = "$Revision: 2644 $";
+      RCS.date = "$Date: 2010-06-24 18:35:49 +0200 (Thu, 24 Jun 2010) $";
       RCS.author = "$Author: ohl $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/src/omega/src/fusion.ml $" }
@@ -71,6 +71,7 @@ module type T =
     val allowed : amplitude -> bool
     val initialize_cache : string -> unit
     val set_cache_name : string -> unit
+    val check_charges : unit -> flavor_sans_color list list
     val count_fusions : amplitude -> int
     val count_propagators : amplitude -> int
     val count_diagrams : amplitude -> int
@@ -344,6 +345,8 @@ module Tagged (Tagger : Tagger) (PT : Tuple.Poly)
         let coupling_tag_raw c = c.coupling_tag
         let coupling_tag rhs = Tags.coupling_to_string (coupling_tag_raw rhs)
       end
+
+(* \thocwmodulesubsection{Amplitudes: Monochrome and Colored} *)
 
     module type Amplitude =
       sig
@@ -1197,7 +1200,7 @@ i*)
 (* \begin{dubious}
      At the end of the day, I shall want to have some sort of
      \textit{fibered DAG} as abstract data type, with a projection
-     of colored nodes to there uncolored counterparts.
+     of colored nodes to their uncolored counterparts.
    \end{dubious} *)
 
     module CWFBundle = Bundle.Make
@@ -1403,6 +1406,16 @@ i*)
     let constraints = CA.constraints
     let variables a = List.map lhs (fusions a)
     let dependencies = CA.dependencies
+
+(* \thocwmodulesubsection{Checking Conservation Laws} *)
+
+    let check_charges () =
+      let vlist3, vlist4, vlistn = M.vertices () in
+      List.filter
+        (fun flist -> not (M.Ch.is_null (M.Ch.sum (List.map M.charges flist))))
+        (List.map (fun ((f1, f2, f3), _, _) -> [f1; f2; f3]) vlist3
+         @ List.map (fun ((f1, f2, f3, f4), _, _) -> [f1; f2; f3; f4]) vlist4
+         @ List.map (fun (flist, _, _) -> flist) vlistn)
 
 (* \thocwmodulesubsection{Diagnostics} *)
 
@@ -2051,14 +2064,6 @@ i*)
 
       let unique_uncolored_processes =
         Proc.remove_duplicate_final_states (C.partition select_wf) processes in
-
-(* \begin{dubious}
-     Can we do better than [C_sc.no_cascades] here?
-
-     We should want to project out the colors from [select_wf], which
-     has type [Cascade.Make(CM)(P).selectors] to obtain a
-     [Cascade.Make(CM.M)(P).selectors].
-  \end{dubious} *)
 
       let progress =
         match !progress_option with

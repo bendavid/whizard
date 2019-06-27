@@ -1,0 +1,43 @@
+model = SM
+
+alias q = u:d:s:c
+alias Q = U:D:S:C
+alias j = u:d:s:c:U:D:S:C:g
+
+
+process jets2 = e1, E1 => q, Q
+process jets3 = e1, E1 => q, Q, g
+process jets4 = e1, E1 => q, Q, g, g 
+process jets5 = e1, E1 => q, Q, g, g, g 
+
+compile
+
+alias lepton = e1:e2:e3:E1:E2:E3
+cuts = all Dist > 0.4 [j, j]
+	and
+	all Pt > 10 GeV [j]
+
+sqrts = 200
+iterations = 5:20000,5:20000
+
+
+beams = e1, E1
+integrate (jets2, jets3, jets4, jets5)
+
+# Matching parameters
+PTmin = 10
+DRmin = 0.4
+kTcut = 0.01
+kTmode = 0
+?LHEFout = false
+
+# Trigger matching
+?mlm_matching = true
+
+n_events = 1000
+simulate (jets2, jets3, jets4, jets5)
+
+
+
+
+

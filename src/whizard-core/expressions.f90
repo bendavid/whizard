@@ -1,4 +1,4 @@
-! WHIZARD 2.0.2 Tue May 18 2010
+! WHIZARD 2.0.3 Tue Aug 10 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -88,6 +88,14 @@ module expressions
   public :: eval_tree_get_pdg_array_ptr
   public :: eval_tree_get_string_ptr
   public :: eval_tree_write
+  public :: eval_log
+  public :: eval_int
+  public :: eval_real
+  public :: eval_cmplx
+  public :: eval_prt_list
+  public :: eval_pdg_array
+  public :: eval_string
+  public :: eval_numeric
   public :: expressions_test
 
   integer, parameter :: EN_UNKNOWN = 0, EN_UNARY = 1, EN_BINARY = 2
@@ -120,6 +128,8 @@ module expressions
      type(eval_node_t), pointer :: arg0 => null ()
      type(eval_node_t), pointer :: arg1 => null ()
      type(eval_node_t), pointer :: arg2 => null ()
+     type(eval_node_t), pointer :: arg3 => null ()
+     type(eval_node_t), pointer :: arg4 => null ()
      procedure(obs_unary_int),   nopass, pointer :: obs1_int  => null ()
      procedure(obs_unary_real),  nopass, pointer :: obs1_real => null ()
      procedure(obs_binary_int),  nopass, pointer :: obs2_int  => null ()
@@ -331,6 +341,12 @@ contains
        if (associated (node%arg0))  call eval_node_final_rec (node%arg0)
        if (associated (node%arg1))  call eval_node_final_rec (node%arg1)
        deallocate (node%ival)
+    case (EN_RECORD_CMD)
+       if (associated (node%arg0))  call eval_node_final_rec (node%arg0)
+       if (associated (node%arg1))  call eval_node_final_rec (node%arg1)
+       if (associated (node%arg2))  call eval_node_final_rec (node%arg2)
+       if (associated (node%arg3))  call eval_node_final_rec (node%arg3)
+       if (associated (node%arg4))  call eval_node_final_rec (node%arg4)
     end select
     select case (node%type)
     case (EN_UNARY, EN_BINARY, EN_CONDITIONAL, EN_CONSTANT, EN_BLOCK, &
@@ -338,7 +354,7 @@ contains
           EN_EVAL_FUN_UNARY, EN_EVAL_FUN_BINARY, &
           EN_LOG_FUN_UNARY, EN_LOG_FUN_BINARY, &
           EN_INT_FUN_UNARY, EN_INT_FUN_BINARY, &
-          EN_FORMAT_STR)
+          EN_FORMAT_STR, EN_RECORD_CMD)
        select case (node%result_type)
        case (V_LOG);  deallocate (node%lval)
        case (V_INT);  deallocate (node%ival)
@@ -653,11 +669,12 @@ contains
     node%arg2 => arg2
   end subroutine eval_node_init_conditional
 
-  subroutine eval_node_init_record_cmd (node, event_weight, id, arg1, arg2)
+  subroutine eval_node_init_record_cmd &
+      (node, event_weight, id, arg1, arg2, arg3, arg4)
     type(eval_node_t), intent(out) :: node
     real(default), pointer :: event_weight
     type(eval_node_t), intent(in), target :: id
-    type(eval_node_t), intent(in), optional, target :: arg1, arg2
+    type(eval_node_t), intent(in), optional, target :: arg1, arg2, arg3, arg4
     call eval_node_init_log (node, .true.)
     node%type = EN_RECORD_CMD
     node%rval => event_weight
@@ -667,6 +684,12 @@ contains
        node%arg1 => arg1
        if (present (arg2)) then
           node%arg2 => arg2
+          if (present (arg3)) then
+             node%arg3 => arg3
+             if (present (arg4)) then
+                node%arg4 => arg4
+             end if
+          end if
        end if
     end if
   end subroutine eval_node_init_record_cmd
@@ -2738,7 +2761,8 @@ contains
           case (V_STR);  var_name = "$" // var_name   ! $ sign
           end select
        end if
-       var => var_list_get_var_ptr (var_list, var_name, var_type)
+       var => var_list_get_var_ptr &
+            (var_list, var_name, var_type, defined=.true.)
        allocate (en)
        if (associated (var)) then
           select case (var_entry_get_type (var))
@@ -4198,8 +4222,9 @@ contains
     type(eval_node_t), pointer :: en
     type(parse_node_t), intent(in) :: pn
     type(var_list_t), intent(in), target :: var_list
-    type(parse_node_t), pointer :: pn_key, pn_tag, pn_arg, pn_arg1, pn_arg2
-    type(eval_node_t), pointer :: en0, en1, en2
+    type(parse_node_t), pointer :: pn_key, pn_tag, pn_arg
+    type(parse_node_t), pointer :: pn_arg1, pn_arg2, pn_arg3, pn_arg4
+    type(eval_node_t), pointer :: en0, en1, en2, en3, en4
     type(var_entry_t), pointer :: var
     real(default), pointer :: event_weight
     if (debug) then
@@ -4237,7 +4262,25 @@ contains
           call eval_node_compile_expr (en2, pn_arg2, var_list)
           if (en2%result_type == V_INT) &
                call insert_conversion_node (en2, V_REAL)
-          call eval_node_init_record_cmd (en, event_weight, en0, en1, en2)
+          pn_arg3 => parse_node_get_next_ptr (pn_arg2)
+          if (associated (pn_arg3)) then
+             call eval_node_compile_expr (en3, pn_arg3, var_list)
+             if (en3%result_type == V_INT) &
+                  call insert_conversion_node (en3, V_REAL)
+             pn_arg4 => parse_node_get_next_ptr (pn_arg3)
+             if (associated (pn_arg4)) then
+                call eval_node_compile_expr (en4, pn_arg4, var_list)
+                if (en4%result_type == V_INT) &
+                     call insert_conversion_node (en4, V_REAL)
+                call eval_node_init_record_cmd &
+                     (en, event_weight, en0, en1, en2, en3, en4)
+             else
+                call eval_node_init_record_cmd &
+                     (en, event_weight, en0, en1, en2, en3)
+             end if
+          else
+             call eval_node_init_record_cmd (en, event_weight, en0, en1, en2)
+          end if
        else
           call eval_node_init_record_cmd (en, event_weight, en0, en1)
        end if
@@ -4699,7 +4742,7 @@ contains
 !     end select
     pn_name => pn
     var_name = parse_node_get_string (pn_name)
-    var => var_list_get_var_ptr (var_list, var_name, V_PDG)
+    var => var_list_get_var_ptr (var_list, var_name, V_PDG, defined=.true.)
     allocate (en)
     if (associated (var)) then
        call eval_node_init_pdg_array_ptr &
@@ -4826,7 +4869,7 @@ contains
     type(eval_node_t), pointer :: en
     type(parse_node_t), intent(in) :: pn
     type(var_list_t), intent(in), target :: var_list
-    type(parse_node_t), pointer :: pn_clause, pn_key, pn_args
+    type(parse_node_t), pointer :: pn_key, pn_args
     type(eval_node_t), pointer :: en1
     integer :: n_args
     type(string_t) :: key
@@ -5108,25 +5151,62 @@ contains
                 if (associated (en%arg2)) then
                    call eval_node_evaluate (en%arg2)
                    if (en%arg2%value_is_known) then
-                      if (associated (en%rval)) then
-                         call analysis_record_data (en%arg0%sval, &
-                              en%arg1%rval, en%arg2%rval, &
-                              weight=en%rval, exist=exist, &
-                              success=en%lval)
+                      if (associated (en%arg3)) then
+                         call eval_node_evaluate (en%arg3)
+                         if (en%arg3%value_is_known) then
+                            if (associated (en%arg4)) then
+                               call eval_node_evaluate (en%arg4)
+                               if (en%arg4%value_is_known) then
+                                  if (associated (en%rval)) then
+                                     call analysis_record_data (en%arg0%sval, &
+                                          en%arg1%rval, en%arg2%rval, &
+                                          en%arg3%rval, en%arg4%rval, &
+                                          weight=en%rval, exist=exist, &
+                                          success=en%lval)
+                                  else
+                                     call analysis_record_data (en%arg0%sval, &
+                                          en%arg1%rval, en%arg2%rval, &
+                                          en%arg3%rval, en%arg4%rval, &
+                                          exist=exist, success=en%lval)
+                                  end if
+                               end if
+                            else                                   
+                               if (associated (en%rval)) then
+                                  call analysis_record_data (en%arg0%sval, &
+                                       en%arg1%rval, en%arg2%rval, &
+                                       en%arg3%rval, &
+                                       weight=en%rval, exist=exist, &
+                                       success=en%lval)
+                               else
+                                  call analysis_record_data (en%arg0%sval, &
+                                       en%arg1%rval, en%arg2%rval, &
+                                       en%arg3%rval, &
+                                       exist=exist, success=en%lval)
+                               end if
+                            end if
+                         end if
                       else
-                         call analysis_record_data (en%arg0%sval, &
-                              en%arg1%rval, en%arg2%rval, exist=exist, &
-                              success=en%lval)
+                         if (associated (en%rval)) then
+                            call analysis_record_data (en%arg0%sval, &
+                                 en%arg1%rval, en%arg2%rval, &
+                                 weight=en%rval, exist=exist, &
+                                 success=en%lval)
+                         else
+                            call analysis_record_data (en%arg0%sval, &
+                                 en%arg1%rval, en%arg2%rval, &
+                                 exist=exist, success=en%lval)
+                         end if
                       end if
                    end if
                 else
                    if (associated (en%rval)) then
                       call analysis_record_data (en%arg0%sval, &
-                           en%arg1%rval, weight=en%rval, exist=exist, &
-                           success=en%lval)
+                           en%arg1%rval, &
+                           weight=en%rval, exist=exist, success=en%lval)
                    else
                       call analysis_record_data (en%arg0%sval, &
-                           en%arg1%rval, exist=exist, success=en%lval)
+                           en%arg1%rval, &
+                           exist=exist, success=en%lval)
                    end if
                 end if
              end if
@@ -5546,7 +5626,7 @@ contains
        call ifile_append (ifile, "KEY record_unweighted")
        call ifile_append (ifile, "ALT analysis_tag = analysis_id | sexpr")
        call ifile_append (ifile, "IDE analysis_id")
-       call ifile_append (ifile, "ARG record_arg = ( expr, expr? )")
+       call ifile_append (ifile, "ARG record_arg = ( expr+ )")
     end if
   end subroutine define_lexpr_syntax
 
@@ -6147,6 +6227,213 @@ contains
     end if
     if (vl)  call var_list_write (eval_tree%var_list, unit)
   end subroutine eval_tree_write
+
+  function eval_log &
+       (parse_node, var_list, prt_list, event_vars, is_known) result (lval)
+    logical :: lval
+    type(parse_node_t), intent(in), target :: parse_node
+    type(var_list_t), intent(in), target :: var_list
+    type(prt_list_t), intent(in), optional, target :: prt_list
+    type(event_vars_t), intent(in), optional, target :: event_vars
+    logical, intent(out), optional :: is_known
+    type(eval_tree_t), target :: eval_tree
+    call eval_tree_init_lexpr &
+         (eval_tree, parse_node, var_list, prt_list, event_vars)
+    call eval_tree_evaluate (eval_tree)
+    if (eval_tree_result_is_known (eval_tree)) then
+       if (present (is_known))  is_known = .true.
+       lval = eval_tree_get_log (eval_tree)
+    else if (present (is_known)) then
+       is_known = .false.
+    else
+       call eval_tree_unknown (eval_tree, parse_node)
+       lval = .false.
+    end if
+    call eval_tree_final (eval_tree)
+  end function eval_log
+
+  function eval_int &
+       (parse_node, var_list, prt_list, event_vars, is_known) result (ival)
+    integer :: ival
+    type(parse_node_t), intent(in), target :: parse_node
+    type(var_list_t), intent(in), target :: var_list
+    type(prt_list_t), intent(in), optional, target :: prt_list
+    type(event_vars_t), intent(in), optional, target :: event_vars
+    logical, intent(out), optional :: is_known
+    type(eval_tree_t), target :: eval_tree
+    call eval_tree_init_expr &
+         (eval_tree, parse_node, var_list, prt_list, event_vars)
+    call eval_tree_evaluate (eval_tree)
+    if (eval_tree_result_is_known (eval_tree)) then
+       if (present (is_known))  is_known = .true.
+       ival = eval_tree_get_int (eval_tree)
+    else if (present (is_known)) then
+       is_known = .false.
+    else
+       call eval_tree_unknown (eval_tree, parse_node)
+       ival = 0
+    end if
+    call eval_tree_final (eval_tree)
+  end function eval_int
+
+  function eval_real &
+       (parse_node, var_list, prt_list, event_vars, is_known) result (rval)
+    real(default) :: rval
+    type(parse_node_t), intent(in), target :: parse_node
+    type(var_list_t), intent(in), target :: var_list
+    type(prt_list_t), intent(in), optional, target :: prt_list
+    type(event_vars_t), intent(in), optional, target :: event_vars
+    logical, intent(out), optional :: is_known
+    type(eval_tree_t), target :: eval_tree
+    call eval_tree_init_expr &
+         (eval_tree, parse_node, var_list, prt_list, event_vars)
+    call eval_tree_evaluate (eval_tree)
+    if (eval_tree_result_is_known (eval_tree)) then
+       if (present (is_known))  is_known = .true.
+       rval = eval_tree_get_real (eval_tree)
+    else if (present (is_known)) then
+       is_known = .false.
+    else 
+       call eval_tree_unknown (eval_tree, parse_node)
+       rval = 0
+    end if
+    call eval_tree_final (eval_tree)
+  end function eval_real
+
+  function eval_cmplx &
+       (parse_node, var_list, prt_list, event_vars, is_known) result (cval)
+    complex(default) :: cval
+    type(parse_node_t), intent(in), target :: parse_node
+    type(var_list_t), intent(in), target :: var_list
+    type(prt_list_t), intent(in), optional, target :: prt_list
+    type(event_vars_t), intent(in), optional, target :: event_vars
+    logical, intent(out), optional :: is_known
+    type(eval_tree_t), target :: eval_tree
+    call eval_tree_init_expr &
+         (eval_tree, parse_node, var_list, prt_list, event_vars)
+    call eval_tree_evaluate (eval_tree)
+    if (eval_tree_result_is_known (eval_tree)) then
+       if (present (is_known))  is_known = .true.
+       cval = eval_tree_get_cmplx (eval_tree)
+    else if (present (is_known)) then
+       is_known = .false.
+    else
+       call eval_tree_unknown (eval_tree, parse_node)
+       cval = 0
+    end if
+    call eval_tree_final (eval_tree)
+  end function eval_cmplx
+
+  function eval_prt_list &
+       (parse_node, var_list, prt_list, event_vars, is_known) result (pval)
+    type(prt_list_t) :: pval
+    type(parse_node_t), intent(in), target :: parse_node
+    type(var_list_t), intent(in), target :: var_list
+    type(prt_list_t), intent(in), optional, target :: prt_list
+    type(event_vars_t), intent(in), optional, target :: event_vars
+    logical, intent(out), optional :: is_known
+    type(eval_tree_t), target :: eval_tree
+    call eval_tree_init_pexpr &
+         (eval_tree, parse_node, var_list, prt_list, event_vars)
+    call eval_tree_evaluate (eval_tree)
+    if (eval_tree_result_is_known (eval_tree)) then
+       if (present (is_known))  is_known = .true.
+       pval = eval_tree_get_prt_list (eval_tree)
+    else if (present (is_known)) then
+       is_known = .false.
+    else
+       call eval_tree_unknown (eval_tree, parse_node)
+    end if
+    call eval_tree_final (eval_tree)
+  end function eval_prt_list
+
+  function eval_pdg_array &
+       (parse_node, var_list, prt_list, event_vars, is_known) result (aval)
+    type(pdg_array_t) :: aval
+    type(parse_node_t), intent(in), target :: parse_node
+    type(var_list_t), intent(in), target :: var_list
+    type(prt_list_t), intent(in), optional, target :: prt_list
+    type(event_vars_t), intent(in), optional, target :: event_vars
+    logical, intent(out), optional :: is_known
+    type(eval_tree_t), target :: eval_tree
+    call eval_tree_init_cexpr &
+         (eval_tree, parse_node, var_list, prt_list, event_vars)
+    call eval_tree_evaluate (eval_tree)
+    if (eval_tree_result_is_known (eval_tree)) then
+       if (present (is_known))  is_known = .true.
+       aval = eval_tree_get_pdg_array (eval_tree)
+    else if (present (is_known)) then
+       is_known = .false.
+    else
+       call eval_tree_unknown (eval_tree, parse_node)
+    end if
+    call eval_tree_final (eval_tree)
+  end function eval_pdg_array
+
+  function eval_string &
+       (parse_node, var_list, prt_list, event_vars, is_known) result (sval)
+    type(string_t) :: sval
+    type(parse_node_t), intent(in), target :: parse_node
+    type(var_list_t), intent(in), target :: var_list
+    type(prt_list_t), intent(in), optional, target :: prt_list
+    type(event_vars_t), intent(in), optional, target :: event_vars
+    logical, intent(out), optional :: is_known
+    type(eval_tree_t), target :: eval_tree
+    call eval_tree_init_sexpr &
+         (eval_tree, parse_node, var_list, prt_list, event_vars)
+    call eval_tree_evaluate (eval_tree)
+    if (eval_tree_result_is_known (eval_tree)) then
+       if (present (is_known))  is_known = .true.
+       sval = eval_tree_get_string (eval_tree)
+    else if (present (is_known)) then
+       is_known = .false.
+    else
+       call eval_tree_unknown (eval_tree, parse_node)
+       sval = ""
+    end if
+    call eval_tree_final (eval_tree)
+  end function eval_string
+
+  subroutine eval_numeric &
+       (parse_node, var_list, prt_list, event_vars, ival, rval, cval, &
+        is_known, result_type)
+    type(parse_node_t), intent(in), target :: parse_node
+    type(var_list_t), intent(in), target :: var_list
+    type(prt_list_t), intent(in), optional, target :: prt_list
+    type(event_vars_t), intent(in), optional, target :: event_vars
+    integer, intent(out), optional :: ival
+    real(default), intent(out), optional :: rval
+    complex(default), intent(out), optional :: cval
+    logical, intent(out), optional :: is_known
+    integer, intent(out), optional :: result_type
+    type(eval_tree_t), target :: eval_tree
+    call eval_tree_init_expr &
+         (eval_tree, parse_node, var_list, prt_list, event_vars)
+    call eval_tree_evaluate (eval_tree)
+    if (eval_tree_result_is_known (eval_tree)) then
+       if (present (ival))  ival = eval_tree_get_int (eval_tree)
+       if (present (rval))  rval = eval_tree_get_real (eval_tree)
+       if (present (cval))  cval = eval_tree_get_cmplx (eval_tree)
+       if (present (is_known))  is_known = .true.
+    else
+       call eval_tree_unknown (eval_tree, parse_node)
+       if (present (ival))  ival = 0
+       if (present (rval))  rval = 0
+       if (present (cval))  cval = 0
+       if (present (is_known))  is_known = .false.
+    end if
+    if (present (result_type))  &
+         result_type = eval_tree_get_result_type (eval_tree)
+    call eval_tree_final (eval_tree)
+  end subroutine eval_numeric
+
+  subroutine eval_tree_unknown (eval_tree, parse_node)
+    type(eval_tree_t), intent(in) :: eval_tree
+    type(parse_node_t), intent(in) :: parse_node
+    call parse_node_write_rec (parse_node)
+    call eval_tree_write (eval_tree)
+    call msg_error ("Evaluation yields an undefined result, inserting default")
+  end subroutine eval_tree_unknown
 
   subroutine expressions_test ()
     call expressions_test1 ()

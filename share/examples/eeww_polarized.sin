@@ -1,4 +1,4 @@
-# $Id: eeww_polarized.sin 2512 2010-05-12 15:51:17Z cnspeckn $
+# $Id: eeww_polarized.sin 2633 2010-06-21 19:49:45Z kilian $
 # Use WHIZARD's initial and final state polarization facilities to
 # examine the angular distributions for all 36 helicity combinations
 # in e+, e- -> W+, W-
@@ -121,5 +121,5 @@ scan int hel_ep = (-1, 1) {
 }
 
 # Write out the generated histograms in eeww_polarized.ps / eeww_polarized.pdf
-$analysis_filename = "eeww_polarized"
-write_analysis
+compile_analysis { $out_file = "eeww_polarized.dat" }
+

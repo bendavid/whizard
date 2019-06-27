@@ -195,7 +195,8 @@ module Anomtop (Flags : SM_flags) =
           end
       | O _ -> 0
 
-    let colsymm _ = (0,false),(0,false)
+    module Ch = Charges.Null
+    let charges _ = ()
 
     type constant =
       | Unit | Pi | Alpha_QED | Sin2thw

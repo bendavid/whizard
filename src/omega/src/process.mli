@@ -1,4 +1,4 @@
-(* $Id: process.mli 2468 2010-05-05 16:37:03Z kilian $
+(* $Id: process.mli 2695 2010-07-08 22:15:33Z ohl $
 
    Copyright (C) 1999-2010 by
 
@@ -58,9 +58,25 @@ module type T =
     type process = Any of any | Decay of decay | Scattering of scattering
     val parse_process : string -> process
 
+(* [remove_duplicate_final_states partition processes] removes duplicates from
+   [processes], which differ only by a permutation of final state particles.
+   The permutation must respect the partitioning given by the offset 1 integers
+   in [partition]. *)
     val remove_duplicate_final_states : int list list -> t list -> t list
 
+(* [diff set1 set2] returns the processes in [set1] with the processes in [set2]
+   removed.  [set2] does not need to be a subset of [set1]. *)
     val diff : t list -> t list -> t list
+
+(* \begin{dubious}
+     Not functional yet.  Interface subject to change.  Should be moved to
+     [Fusion.Multi], because we will want to cross \emph{colored} matrix
+     elements.
+   \end{dubious} *)
+
+(* Factor amplitudes that are related by crossing symmetry. *)
+
+    val crossing : t list -> (flavor list * int list * t) list
 
   end
 

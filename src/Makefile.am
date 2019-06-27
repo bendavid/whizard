@@ -4,8 +4,8 @@
 
 ## Subdirectories to configure
 SUBDIRS = \
-  hepmc lhapdf stdhep circe \
-  misc vamp whizard-core prebuilt \
+  matching hepmc lhapdf stdhep circe1 \
+  circe2 misc vamp miisr whizard-core prebuilt \
   omega models 
 if MPOST_AVAILABLE
 SUBDIRS += gamelan feynmf
@@ -26,6 +26,9 @@ libomega_la_SOURCES =
 libwhizard_la_LIBADD = \
   whizard-core/libwhizard_core.la \
   vamp/src/libvamp.la \
+  circe1/src/libcirce1.la \
+  circe2/src/libcirce2.la \
+  miisr/libshower.la \
   misc/libaux.la
 
 if HEPMC_AVAILABLE
@@ -52,7 +55,6 @@ libwhizard_la_LIBADD += $(LDFLAGS_STDHEP)
 else
 libwhizard_la_LIBADD += stdhep/libstdhep_dummy.la
 endif 
-
 
 ## -------------------------------------------------------------------
 ## Build a standalone program

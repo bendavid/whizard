@@ -1,4 +1,4 @@
-(* $Id: omega.ml 2219 2010-04-04 16:05:44Z ohl $
+(* $Id: omega.ml 2640 2010-06-23 22:16:40Z ohl $
 
    Copyright (C) 1999-2009 by
 
@@ -229,6 +229,17 @@ i*)
 
         let amplitudes =
           try
+            begin match F.check_charges () with
+            | [] -> ()
+            | violators ->
+                let violator_strings =
+                  String.concat ", "
+                    (List.map
+                       (fun flist ->
+                         "(" ^ String.concat "," (List.map M.flavor_to_string flist) ^ ")")
+                       violators) in
+                failwith ("charge violating vertices: " ^ violator_strings)
+            end;
             CF.amplitudes (include_goldstones !checks) !unphysical_polarization selectors processes
           with
           | exc ->

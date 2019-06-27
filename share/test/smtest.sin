@@ -12,7 +12,7 @@ beams = e1, E1
 
 seed = 0
 integrate (smtest_nnh) { iterations = 4:20000 }
-echo("Expecting 84.883 fb")
+printf "Expecting 84.883 fb"
 tolerance = 3*0.14
 expect (integral (smtest_nnh) ==~ 84.883      )
 

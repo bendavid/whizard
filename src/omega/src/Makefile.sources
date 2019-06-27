@@ -1,11 +1,11 @@
 # Makefile.sources -- Makefile component for O'Mega
-# $Id: Makefile.sources 2468 2010-05-05 16:37:03Z kilian $
+# $Id: Makefile.sources 2695 2010-07-08 22:15:33Z ohl $
 ##
 ## Process Makefile.am with automake to include this file in Makefile.in
 ##
 ########################################################################
 #
-# Copyright (C) 1999-2009 by 
+# Copyright (C) 1999-2010 by 
 #     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
@@ -99,7 +99,7 @@ OMEGA_CORE_ML_PART1 = \
     rCS.ml thoFilename.ml cache.ml progress.ml trie.ml linalg.ml tree2.ml \
     algebra.ml options.ml product.ml combinatorics.ml partition.ml tree.ml \
     tuple.ml topology.ml dAG.ml momentum.ml phasespace.ml \
-    complex.ml color.ml modeltools.ml whizard.ml
+    charges.ml color.ml modeltools.ml whizard.ml
 
 OMEGA_CORE_ML_PART2 = \
     $(VERTEX_ML) $(MODEL_ML) $(COMPHEP_ML) $(CASCADE_ML)
@@ -151,6 +151,7 @@ OMEGA_APPLICATIONS_ML = \
     omega_SM_ac.ml \
     omega_SM_ac_CKM.ml \
     omega_SM_top.ml \
+	 omega_SM_triangle_higgs.ml \
     omega_MSSM.ml \
     omega_MSSM_CKM.ml \
     omega_MSSM_Grav.ml \

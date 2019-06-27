@@ -32,6 +32,6 @@ pull = (sigma_jj - sigma___) / errorsum
 
 tolerance = 5*errorsum
 
-echo("Comparing results:")
+printf "Comparing results:"
 show(pull, sigma_jj, sigma___, errorsum, error_jj, error___, tolerance)
 expect(sigma_jj ~~ sigma___)

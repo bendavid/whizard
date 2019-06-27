@@ -1,4 +1,4 @@
-# $Id: Z-lineshape.sin 2272 2010-04-09 16:43:37Z kilian $
+# $Id: Z-lineshape.sin 2753 2010-08-10 23:43:24Z jr_reuter $
 # Simple complete physics example: Z lineshape in the Standard Model
 ########################################################################
 #
@@ -38,16 +38,16 @@ cuts = all E >= 100 MeV [prt]
  
 # Define title etc. as global variables, that will be used by PLOT:
 $description = "A WHIZARD 2.0 Example"
-$xlabel = "$\sqrt{s}$/GeV"
-$ylabel = "$\sigma(s)$/pb"
+$x_label = "$\sqrt{s}$/GeV"
+$y_label = "$\sigma(s)$/pb"
 
 # Allocate one plot
 $title = "The Z Lineshape in $e^+e^-\to\mu^+\mu^-$"
-plot lineshape_born (88 GeV, 95 GeV)
+plot lineshape_born { x_min = 88 GeV  x_max = 95 GeV }
 
 # Allocate another plot
 $title = "The Z Lineshape in $e^+e^-\to\mu^+\mu^-\gamma$"
-plot lineshape_rc (88 GeV, 95 GeV)
+plot lineshape_rc { x_min = 88 GeV  x_max = 95 GeV }
 
 scan sqrts = (88.0 GeV => 90.0 GeV /+ 0.5 GeV,
               90.1 GeV => 91.9 GeV /+ 0.1 GeV,
@@ -59,6 +59,4 @@ scan sqrts = (88.0 GeV => 90.0 GeV /+ 0.5 GeV,
   record lineshape_rc (sqrts, integral (rc) / 1000)
 }
 
-$analysis_filename = "Z-lineshape"
-write_analysis
-
+compile_analysis { $out_file = "Z-lineshape.dat" }

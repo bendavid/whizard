@@ -1,5 +1,5 @@
 # Makefile.am -- Makefile for O'Mega within and without WHIZARD
-# $Id: Makefile.am 2392 2010-04-22 14:12:42Z ohl $
+# $Id: Makefile.am 2747 2010-08-09 16:27:25Z jr_reuter $
 ##
 ## Process this file with automake to produce Makefile.in
 ##
@@ -174,12 +174,50 @@ endif
 
 ########################################################################
 
-clean-local:
-	rm -f *.pdf *.log *.aux *.toc *.mpx *.idx *.out omega*.mp preview*.mp \
-		omegapics.t[0-9]* omegapics.[0-9]* \
-		$(OMEGA_INTERFACES) $(OMEGA_IMPLEMENTATIONS) omegalib.tex \
-		$(PICTURES_PDF) $(PICTURES_PS) \
-		index.tex
+## Cleanup tasks
+mostlyclean-latex:
+	-rm -f *.log *.aux *.toc *.mpx *.idx *.out omega*.mp preview*.mp \
+	omegapics.t[0-9]* omegapics.[0-9]* $(PICTURES_PDF) $(PICTURES_PS) \
+	omegalib.tex
+clean-latex:
+maintainer-clean-latex:
+	-rm $(PDFS)
+if NOWEB_AVAILABLE
+mostlyclean-omega:	
+	-test "$(srcdir)" != "." && -rm -f $(PDFS)
+maintainer-clean-omega:
+else
+mostlyclean-omega:
+maintainer-clean-omega:
+endif 
+.PHONY: mostlyclean-latex clean-latex maintainer-clean-latex
+.PHONY: mostlyclean-omega maintainer-clean-omega
+
+if OCAMLWEB_AVAILABLE
+mostlyclean-caml:
+	-rm -f $(OMEGA_INTERFACES) $(OMEGA_IMPLEMENTATIONS) index.tex
+else
+mostlyclean-caml:
+endif
+clean-caml:
+if OCAMLWEB_AVAILABLE
+maintainer-clean-caml:
+	-rm -f $(OMEGA_INTERFACES) $(OMEGA_IMPLEMENTATIONS) index.tex
+else 
+maintainer-clean-caml:
+endif
+.PHONY: mostlyclean-caml clean-caml maintainer-clean-caml
+
+## Remove backup files
+maintainer-clean-backup:
+	-rm -f *~
+.PHONY: maintainer-clean-backup
+
+## Register additional clean targets
+mostlyclean-local: mostlyclean-latex mostlyclean-caml mostlyclean-omega
+clean-local: clean-latex clean-caml
+maintainer-clean-local: maintainer-clean-latex maintainer-clean-caml \
+	maintainer-clean-omega maintainer-clean-backup
 
 distclean-local:
 	-test "$(srcdir)" != "." && rm -f $(LATEX_STYLES)

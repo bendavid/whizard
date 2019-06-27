@@ -1,4 +1,4 @@
-! WHIZARD 2.0.2 Tue May 18 2010
+! WHIZARD 2.0.3 Tue Aug 10 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -387,7 +387,7 @@ contains
             ss, lhapdf_data% photon_scheme, ff)
     end if
     allocate (fc (count (lhapdf_data% mask)))
-    fc = pack (ff / x, lhapdf_data% mask) * f
+    fc = max (pack (ff / x, lhapdf_data% mask) * f, 0._default)
     call interaction_set_matrix_element (int, fc)
   end subroutine interaction_apply_lhapdf
 

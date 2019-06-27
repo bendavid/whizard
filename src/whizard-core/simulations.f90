@@ -1,4 +1,4 @@
-! WHIZARD 2.0.2 Tue May 18 2010
+! WHIZARD 2.0.3 Tue Aug 10 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -30,6 +30,7 @@ module simulations
   use kinds, only: default !NODEP!
   use iso_varying_string, string_t => varying_string !NODEP!
   use file_utils !NODEP!
+  use limits, only: MAX_TRIES_FOR_SINGLE_EVENT !NODEP!
   use diagnostics !NODEP!
   use tao_random_numbers !NODEP!
   use cputime
@@ -59,6 +60,7 @@ module simulations
   public :: simulation_get_n_events
   public :: simulation_event
   public :: simulation_final
+  public :: simulation_check_matching
 
   integer, parameter :: NORM_UNDEFINED = 0
   integer, parameter :: NORM_UNIT = 1
@@ -114,7 +116,7 @@ module simulations
     type(string_t) :: file_raw
     type(string_t) :: file_hepmc
     type(input_event_stream_t) :: input_stream
-    type(file_list_t) :: file_list
+    type(event_file_list_t) :: event_file_list
     integer :: u_raw = -1
     type(simulation_parameters_t) :: spar
     real(default), dimension(:), allocatable :: integral
@@ -548,12 +550,14 @@ contains
     ok = .true.
   end subroutine simulation_check
 
-  subroutine simulation_setup_file_list (sim, event_fmt, basename_default)
+  subroutine simulation_setup_event_file_list (sim, event_fmt, basename_default)
     type(simulation_t), intent(inout) :: sim
     integer, dimension(:), intent(in), allocatable :: event_fmt
     type(string_t), intent(in) :: basename_default
     type(string_t) :: extension_raw
     integer :: i
+    logical :: mlm_matching
+    type(string_t) :: matching_basename
     sim%basename = var_list_get_sval (sim%var_list, var_str ("$sample"))
     if (sim%basename == "")  sim%basename = basename_default
     if (sim%rescan) then
@@ -578,23 +582,31 @@ contains
     end if
     if (allocated (event_fmt)) then
        do i = 1, size (event_fmt)
-          call file_list_append_file_spec (sim%file_list, &
+          call event_file_list_append_file_spec (sim%event_file_list, &
                sim%basename, sim%var_list, event_fmt(i), &
-               sim%beam_flv, sim%beam_energy)
+               sim%beam_flv, sim%beam_energy, sim%n_proc)
        end do
+    end if
+    mlm_matching = var_list_get_lval &
+        (sim%var_list, var_str ("?mlm_matching"))
+    if (mlm_matching) then
+        matching_basename = "mlm_sample"
+        call event_file_list_append_file_spec (sim%event_file_list, &
+               matching_basename, sim%var_list, FMT_LHEF, &
+               sim%beam_flv, sim%beam_energy, sim%n_proc)
     end if
     if (sim%rescan) then
        if (sim%read_raw) then
-          if (file_list_is_filename (sim%file_list, sim%file_raw)) &
+          if (event_file_list_is_filename (sim%event_file_list, sim%file_raw)) &
                call msg_fatal ("Output event file '" &
                     // char (sim%file_raw) // "' coincides with input file")
        else if (sim%read_hepmc) then
-          if (file_list_is_filename (sim%file_list, sim%file_hepmc)) &
+          if (event_file_list_is_filename (sim%event_file_list, sim%file_hepmc)) &
                call msg_fatal ("Output event file '" &
                     // char (sim%file_hepmc) // "' coincides with input file")
        end if
     end if
-  end subroutine simulation_setup_file_list
+  end subroutine simulation_setup_event_file_list
 
   subroutine simulation_collect_integrals (sim, var_list, ok)
     type(simulation_t), intent(inout) :: sim
@@ -674,6 +686,14 @@ contains
        sim%norm_weight = 0
     else
        luminosity = var_list_get_rval (sim%var_list, var_str ("luminosity"))
+       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+       !!! To be discussed for 2.0.4
+       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+       !!! if (sim%spar%unweighted) then
+       !!!    luminosity = var_list_get_rval (sim%var_list, var_str ("luminosity"))
+       !!! else
+       !!!    luminosity = 0
+       !!! end if
        sim%n_events = max (nint (luminosity * sim%integral_sum), n_events)
        sim%luminosity = max (luminosity, sim%n_events / sim%integral_sum)
        sim%norm_weight = simulation_parameters_get_norm &
@@ -682,10 +702,12 @@ contains
           write (msg_buffer, "(A,1x,I0)") &
                 "Requested number of events =", sim%n_events
           call msg_message ()           
-          write (msg_buffer, "(A,1x,G11.4)") &
-                "This corresponds to luminosity [fb-1] = ", &
-                sim%luminosity
-          call msg_message ()           
+          if (sim%spar%unweighted) then
+             write (msg_buffer, "(A,1x,G11.4)") &
+                   "This corresponds to luminosity [fb-1] = ", &
+                   sim%luminosity
+             call msg_message ()
+          end if
        end if
     end if
   end subroutine simulation_setup_n_events
@@ -704,7 +726,8 @@ contains
        if (sim%allow_decays) &
             call decay_tree_init (sim%decay_tree(proc), process)
     end do
-    call file_list_open (sim%file_list, sim%process_id, sim%n_events)
+    call event_file_list_open (sim%event_file_list, sim%process_id, &
+        sim%n_events, sim%var_list)
     if (sim%read_raw) then
        call open_raw_event_file_for_reading &
             (sim%file_raw, sim%rescan, sim%md5sum, sim%u_raw, ok, verbose)
@@ -874,30 +897,38 @@ contains
     type(tao_random_state), intent(inout) :: rng
     type(process_t), intent(in), target :: process
     integer, intent(in) :: proc
-    integer :: factorization_mode
+    integer :: factorization_mode, try
     if (sim%allow_decays) then
        call event_init (sim%event, process, &
             sim%event_vars, sim%decay_tree(proc))
     else
        call event_init (sim%event, process, sim%event_vars)
     end if
-    if (sim%spar%polarized) then 
-       factorization_mode = FM_SELECT_HELICITY 
-    else 
-       factorization_mode = FM_IGNORE_HELICITY 
-    end if 
-    call event_generate &
-         (sim%event, rng, sim%spar%unweighted, &
-          factorization_mode, &
-          keep_correlations=.false., &
-          keep_virtual=.true.)
-    sim%i_evt = sim%i_evt + 1
-    sim%event_vars%process_index = proc
     if (sim%use_num_id) then
        sim%event_vars%process_num_id = sim%num_id(proc)
     else
        sim%event_vars%process_num_id = proc
     end if
+    if (sim%spar%polarized) then 
+       factorization_mode = FM_SELECT_HELICITY 
+    else 
+       factorization_mode = FM_IGNORE_HELICITY 
+    end if 
+    GENERATE: do try = 1, MAX_TRIES_FOR_SINGLE_EVENT
+       call event_generate &
+            (sim%event, rng, sim%spar%unweighted, &
+             factorization_mode, &
+             keep_correlations=.false., &
+             keep_virtual=.true.)
+       if (event_is_valid (sim%event))  exit GENERATE
+    end do GENERATE
+    if (.not. event_is_valid (sim%event)) then
+       write (msg_buffer, "(A,I0,A)") "Failed to generate a valid event " &
+            // "after ", MAX_TRIES_FOR_SINGLE_EVENT, " tries"
+       call msg_fatal ()
+    end if
+    sim%i_evt = sim%i_evt + 1
+    sim%event_vars%process_index = proc
     sim%event_vars%event_index = sim%i_evt
     call event_renormalize_weight (sim%event, sim%norm_weight)
   end subroutine simulation_generate_event
@@ -919,7 +950,7 @@ contains
     type(simulation_t), intent(inout), target :: sim
     call event_reweight (sim%event, sim%prt_list, sim%reweight_expr)
     call event_do_analysis (sim%event, sim%prt_list, sim%analysis_expr)
-    call file_list_write_event (sim%file_list, sim%event, i_evt=sim%i_evt)
+    call event_file_list_write_event (sim%event_file_list, sim%event, i_evt=sim%i_evt)
     if (sim%write_raw .and. .not. sim%read_raw) &
          call event_write_raw (sim%event, sim%u_raw)
     call checkpointing_msg_event &
@@ -935,11 +966,11 @@ contains
     type(simulation_t), intent(inout) :: sim
     logical, intent(in), optional :: verbose
     integer :: proc
-    logical :: verb
+    logical :: verb, mlm_matching
     verb = .false.;  if (present (verbose)) verb = verbose
     call checkpointing_msg_end &
          (sim%checkpointing, sim%n_read, sim%i_evt)
-    call file_list_close (sim%file_list)
+    call event_file_list_close (sim%event_file_list)
     if (sim%read_raw .or. sim%write_raw)  close (sim%u_raw)
     if (sim%read_hepmc)  call input_event_stream_final (sim%input_stream)
     if (sim%allow_decays) then
@@ -1075,7 +1106,7 @@ contains
        call simulation_collect_integrals (sim, global%var_list, ok)
     end if
     if (ok) then
-       call simulation_setup_file_list &
+       call simulation_setup_event_file_list &
             (sim, global%event_fmt, basename_default)
        call simulation_collect_md5sums (sim)
        call simulation_setup_n_events (sim, verbose)
@@ -1124,6 +1155,13 @@ contains
     call simulation_finish_event_generation (sim, verbose)
     call simulation_basic_final (sim)
   end subroutine simulation_final
+
+  function simulation_check_matching (sim) result (mlm_matching)
+    type(simulation_t), intent(inout) :: sim
+    logical :: mlm_matching
+    mlm_matching = var_list_get_lval &
+          (sim%var_list, var_str ("?mlm_matching"))
+  end function simulation_check_matching
 
 
 end module simulations

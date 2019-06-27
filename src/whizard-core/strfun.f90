@@ -1,4 +1,4 @@
-! WHIZARD 2.0.2 Tue May 18 2010
+! WHIZARD 2.0.3 Tue Aug 10 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -40,6 +40,8 @@ module strfun
   use sf_isr
   use sf_epa
   use sf_ewa
+  use sf_circe1
+  use sf_circe2
   use sf_lhapdf
 
   implicit none
@@ -76,13 +78,15 @@ module strfun
 
   integer, parameter, public :: STRF_NONE = 0
   integer, parameter, public :: STRF_LHAPDF = 1, STRF_ISR = 2, &
-       STRF_EPA = 3, STRF_EWA = 4
+       STRF_EPA = 3, STRF_EWA = 4, STRF_CIRCE1 = 5, STRF_CIRCE2 = 6
   
   integer, parameter, public :: SFM_NONE = 0
   integer, parameter, public :: SFM_PDFPAIR = 1
   integer, parameter, public :: SFM_ISRPAIR = 2
   integer, parameter, public :: SFM_EPAPAIR = 3
   integer, parameter, public :: SFM_EWAPAIR = 4  
+  integer, parameter, public :: SFM_CIRCE1PAIR = 5
+  integer, parameter, public :: SFM_CIRCE2PAIR = 6
 
   type :: strfun_t
      private
@@ -93,6 +97,8 @@ module strfun
      type(isr_data_t), dimension(:), allocatable :: isr_data
      type(epa_data_t), dimension(:), allocatable :: epa_data
      type(ewa_data_t), dimension(:), allocatable :: ewa_data     
+     type(circe1_data_t), dimension(:), allocatable :: circe1_data     
+     type(circe2_data_t), dimension(:), allocatable :: circe2_data     
      real(default) :: x = 0, f = 1, s = 0
      real(default) :: scale = 0
   end type strfun_t
@@ -126,6 +132,8 @@ module strfun
      module procedure strfun_init_isr
      module procedure strfun_init_epa
      module procedure strfun_init_ewa
+     module procedure strfun_init_circe1
+     module procedure strfun_init_circe2
   end interface
 
   interface assignment(=)
@@ -137,6 +145,8 @@ module strfun
      module procedure strfun_chain_set_isr
      module procedure strfun_chain_set_epa
      module procedure strfun_chain_set_ewa     
+     module procedure strfun_chain_set_circe1     
+     module procedure strfun_chain_set_circe2     
   end interface
 
 contains
@@ -182,6 +192,26 @@ contains
     strfun%ewa_data = ewa_data
     call interaction_init_ewa (strfun%int, ewa_data)
   end subroutine strfun_init_ewa
+  
+  subroutine strfun_init_circe1 (strfun, circe1_data)
+    type(strfun_t), intent(out) :: strfun
+    type(circe1_data_t), intent(in) :: circe1_data
+    strfun%type = STRF_CIRCE1
+    strfun%name = "CIRCE1"
+    allocate (strfun%circe1_data (1))
+    strfun%circe1_data = circe1_data
+    call interaction_init_circe1 (strfun%int, circe1_data)
+  end subroutine strfun_init_circe1
+  
+  subroutine strfun_init_circe2 (strfun, circe2_data)
+    type(strfun_t), intent(out) :: strfun
+    type(circe2_data_t), intent(in) :: circe2_data
+    strfun%type = STRF_CIRCE2
+    strfun%name = "CIRCE2"
+    allocate (strfun%circe2_data (1))
+    strfun%circe2_data = circe2_data
+    call interaction_init_circe2 (strfun%int, circe2_data)
+  end subroutine strfun_init_circe2
 
   elemental subroutine strfun_final (strfun)
     type(strfun_t), intent(inout) :: strfun
@@ -192,6 +222,10 @@ contains
        deallocate (strfun%epa_data)
     case (STRF_EWA)
        deallocate (strfun%ewa_data)
+    case (STRF_CIRCE1)
+       deallocate (strfun%circe1_data)
+    case (STRF_CIRCE2)
+       deallocate (strfun%circe2_data)
     case (STRF_LHAPDF)
        deallocate (strfun%lhapdf_data)
     end select
@@ -221,6 +255,10 @@ contains
           call epa_data_write (strfun%epa_data(1), u)
        case (STRF_EWA)
           call ewa_data_write (strfun%ewa_data(1), u)
+       case (STRF_CIRCE1)
+          call circe1_data_write (strfun%circe1_data(1), u)
+       case (STRF_CIRCE2)
+          call circe2_data_write (strfun%circe2_data(1), u)
        end select
        call interaction_write &
             (strfun%int, unit, verbose, show_momentum_sum, show_mass)
@@ -248,6 +286,10 @@ contains
        call interaction_apply_epa (strfun%int, r, strfun%epa_data)
     case (STRF_EWA)
        call interaction_apply_ewa (strfun%int, r, strfun%ewa_data)
+    case (STRF_CIRCE1)
+       call interaction_apply_circe1 (strfun%int, r, strfun%circe1_data(1))
+    case (STRF_CIRCE2)
+       call interaction_apply_circe2 (strfun%int, r, strfun%circe2_data)
     end select
   end subroutine strfun_set_kinematics
 
@@ -292,7 +334,7 @@ contains
     real(default), intent(inout) :: factor
     real(default), dimension(2) :: x2
     select case (sf_mapping%type)
-    case (SFM_PDFPAIR)
+    case (SFM_EPAPAIR, SFM_PDFPAIR)
        x2 = x(sf_mapping%index)
        call map_unit_square (x2, factor, sf_mapping%par(1))
        x(sf_mapping%index) = x2
@@ -575,6 +617,26 @@ contains
     call strfun_chain_link (sfchain, i, line, (/1/), (/3/))
   end subroutine strfun_chain_set_ewa
 
+  subroutine strfun_chain_set_circe1 &
+       (sfchain, i, line, circe1_data, n_parameters)
+    type(strfun_chain_t), intent(inout), target :: sfchain
+    integer, intent(in) :: i, line, n_parameters
+    type(circe1_data_t), intent(in) :: circe1_data
+    call strfun_init (sfchain%strfun(i), circe1_data)
+    sfchain%n_parameters(i) = n_parameters
+    call strfun_chain_link (sfchain, i, line, (/1, 2/), (/5, 6/))
+  end subroutine strfun_chain_set_circe1
+
+  subroutine strfun_chain_set_circe2 &
+       (sfchain, i, line, circe2_data, n_parameters)
+    type(strfun_chain_t), intent(inout), target :: sfchain
+    integer, intent(in) :: i, line, n_parameters
+    type(circe2_data_t), intent(in) :: circe2_data
+    call strfun_init (sfchain%strfun(i), circe2_data)
+    sfchain%n_parameters(i) = n_parameters
+    call strfun_chain_link (sfchain, i, line, (/1/), (/3/))
+  end subroutine strfun_chain_set_circe2
+
   subroutine strfun_chain_link (sfchain, i, line, in_index, out_index)
     type(strfun_chain_t), intent(inout), target :: sfchain
     integer, intent(in) :: i, line
@@ -603,7 +665,7 @@ contains
       case default
          call interaction_set_source_link &
               (sfchain%strfun(i)%int, in_index, &
-               sfchain%strfun(j)%int, sfchain%out_index(j))
+               sfchain%strfun(j)%int, sfchain%out_index(line))
       end select
     end subroutine link_single
   end subroutine strfun_chain_link
@@ -620,10 +682,10 @@ contains
   subroutine strfun_chain_make_evaluators (sfchain, ok)
     type(strfun_chain_t), intent(inout), target :: sfchain
     logical, intent(out), optional :: ok
-    type(interaction_t), pointer :: beam_int, eval_int
+    type(interaction_t), pointer :: beam_int, eval_int, sf_int, eval_int_next
     type(quantum_numbers_mask_t) :: qn_mask_conn
     type(quantum_numbers_mask_t), dimension(:), allocatable :: qn_mask_beam
-    integer :: i, j
+    integer :: i, j, last, out_index, coll_index
     sfchain%n_parameters_tot = sum (sfchain%n_parameters)
     beam_int => beam_get_int_ptr (sfchain%beam)
     if (.not. associated (beam_int))  call msg_bug &
@@ -652,15 +714,33 @@ contains
           return
        end if
        eval_int => evaluator_get_int_ptr (sfchain%eval(i))
-       do j = 1, size (sfchain%coll_index)
-          sfchain%coll_index(i) = interaction_find_link (eval_int, &
-               sfchain%strfun(sfchain%last_strfun(i))%int, &
-               sfchain%out_index(i))
-       end do
-       if (any (sfchain%coll_index == 0)) &
-            call msg_bug ("Structure functions: " &
-            // "colliding particles can't be determined")
     end do
+    if (size (sfchain%strfun) /= 0) then    
+       do j = 1, size (sfchain%coll_index)
+          last = sfchain%last_strfun(j)
+          sf_int => sfchain%strfun(last)%int
+          eval_int => evaluator_get_int_ptr (sfchain%eval(last))
+          out_index = sfchain%out_index(j)
+          coll_index = interaction_find_link (eval_int, sf_int, out_index)
+          if (coll_index /= 0) then
+             do i = last + 1, size (sfchain%strfun)
+                out_index = coll_index
+                eval_int_next => evaluator_get_int_ptr (sfchain%eval(i))
+                coll_index = &
+                     interaction_find_link (eval_int_next, eval_int, out_index)
+                if (coll_index == 0)  call msg_bug ("Structure functions: " &
+                     // "broken links in structure function chain")
+                eval_int => eval_int_next
+             end do
+          end if
+          if (coll_index /= 0) then
+             sfchain%coll_index(j) =  coll_index
+          else
+             call msg_bug ("Structure functions: " &
+                  // "colliding particles can't be determined")
+          end if
+       end do
+    end if
     if (present (ok))  ok = .true.
   end subroutine strfun_chain_make_evaluators
 

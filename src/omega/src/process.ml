@@ -1,4 +1,4 @@
-(* $Id: process.ml 2468 2010-05-05 16:37:03Z kilian $
+(* $Id: process.ml 2695 2010-07-08 22:15:33Z ohl $
 
    Copyright (C) 1999-2010 by
 
@@ -37,6 +37,7 @@ module type T =
     val parse_process : string -> process
     val remove_duplicate_final_states : int list list -> t list -> t list
     val diff : t list -> t list -> t list
+    val crossing : t list -> (flavor list * int list * t) list
   end
 
 module Make (M : Model.T) =
@@ -48,6 +49,11 @@ module Make (M : Model.T) =
 
     let incoming (fin, _ ) = fin
     let outgoing (_, fout) = fout
+
+(* \thocwmodulesection{Select Charge Conserving Processes} *)
+
+    let allowed (fin, fout) =
+      M.Ch.is_null (M.Ch.sum (List.map M.charges (List.map M.conjugate fin @ fout)))
 
 (* \thocwmodulesection{Parsing Process Descriptions} *)
 
@@ -139,20 +145,32 @@ module Make (M : Model.T) =
     let expand_scatterings scatterings =
       ThoList.flatmap
         (function (fin1, fin2, fout) ->
-          Product.list
-            (function
-              | fin1' :: fin2' :: fout' -> ([fin1'; fin2'], fout')
+          Product.fold
+            (fun flist acc ->
+              match flist with
+              | fin1' :: fin2' :: fout' ->
+                  let fin_fout' = ([fin1'; fin2'], fout') in
+                  if allowed fin_fout' then
+                    fin_fout' :: acc
+                  else
+                    acc
               | [_] | [] -> failwith "Omega.expand_scatterings: can't happen")
-            (fin1 :: fin2 :: fout)) scatterings
+            (fin1 :: fin2 :: fout) []) scatterings
     
     let expand_decays decays =
       ThoList.flatmap
         (function (fin, fout) ->
-          Product.list
-            (function
-              | fin' :: fout' -> ([fin'], fout')
+          Product.fold
+            (fun flist acc ->
+              match flist with
+              | fin' :: fout' ->
+                  let fin_fout' = ([fin'], fout') in
+                  if allowed fin_fout' then
+                    fin_fout' :: acc
+                  else
+                    acc
               | [] -> failwith "Omega.expand_decays: can't happen")
-            (fin :: fout)) decays
+            (fin :: fout) []) decays
 
 (* \thocwmodulesection{Remove Duplicate Final States} *)
 
@@ -245,6 +263,41 @@ i*)
 
     let diff list1 list2 =
       PSet.elements (PSet.diff (set list1) (set list2))
+
+(* \begin{dubious}
+     Not functional yet.
+   \end{dubious} *)
+
+    module Crossing_Projection =
+      struct
+
+        type elt = t
+        type base = flavor list * int list * t
+              
+        let compare_elt (fin1, fout1) (fin2, fout2) =
+          let c = ThoList.compare ~cmp:by_color fin1 fin2 in
+          if c <> 0 then
+            c
+          else
+            ThoList.compare ~cmp:by_color fout1 fout2
+
+        let compare_base (f1, _, _) (f2, _, _) =
+          ThoList.compare ~cmp:by_color f1 f2
+
+        let pi (fin, fout as process) =
+          let flist, indices =
+            ThoList.ariadne_sort ~cmp:by_color (List.map M.conjugate fin @ fout) in
+          (flist, indices, process)
+
+      end
+
+    module Crossing_Bundle = Bundle.Make (Crossing_Projection)
+
+    let crossing processes =
+      List.map
+        (fun (fin, fout as process) ->
+          (List.map M.conjugate fin @ fout, [], process))
+        processes
 
   end
 

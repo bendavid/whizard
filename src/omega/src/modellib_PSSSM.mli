@@ -1,4 +1,4 @@
-(* $Id: modellib_PSSSM.mli 804 2009-06-13 19:37:21Z ohl $
+(* $Id: modellib_PSSSM.mli 2699 2010-07-10 10:17:20Z jr_reuter $
 
    Copyright (C) 1999-2009 by
 
@@ -34,7 +34,7 @@ module type extMSSM_flags =
 
 module PSSSM : extMSSM_flags
 module PSSSM_QCD : extMSSM_flags
-module ExtMSSM : functor (F: extMSSM_flags) -> Model.T
+module ExtMSSM : functor (F: extMSSM_flags) -> Model.T with module Ch = Charges.QQ
 
 (*i
  *  Local Variables:

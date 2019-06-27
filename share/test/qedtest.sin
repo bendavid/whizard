@@ -19,9 +19,9 @@ show (integral (qedtest_eemm))
 
 $title = "Some plot"
 $description = "Some arbitrary points"
-$xlabel = "$i$"
-$ylabel = "$y$"
-plot foo (1,4)
+$x_label = "$i$"
+$y_label = "$y$"
+plot foo { x_min = 0.5  x_max = 4.5 }
 record foo (1, 2)
 record foo (2, 3)
 record foo (4, 1)
@@ -29,16 +29,16 @@ record foo (5, 0)
 
 $title = "Angular distribution"
 $description = "Polar angle $\theta$ of the outgoing muon"
-$label = "\theta(\mu^-)"
-$physical_unit = "^\circ"
-$xlabel = ""
-$ylabel = ""
+$obs_label = "\theta(\mu^-)"
+$obs_unit = "^\circ"
+$x_label = ""
+$y_label = ""
 histogram angular_distribution (0, 180, 10)
 
 $title = "Forward/backward asymmetry"
 $description = "Forward/backward asymmetry $A_{fb}$ of the outgoing muon"
-$label = "A_{fb}"
-$physical_unit = ""
+$obs_label = "A_{fb}"
+$obs_unit = ""
 observable a_fb
 
 analysis = 
@@ -54,7 +54,6 @@ simulate (qedtest_eemm)
 
 write_analysis
 
-$analysis_filename = "qedtest"
-write_analysis
+compile_analysis { $out_file = "qedtest.dat" }
 
 

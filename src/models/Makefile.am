@@ -53,6 +53,7 @@ libmodels_la_SOURCES = \
   parameters.SM_km.f90 \
   parameters.SM_CKM.f90 \
   parameters.SM_top.f90 \
+  parameters.SM_triangle_higgs.f90 \
   parameters.Template.f90 \
   parameters.UED.f90 \
   parameters.Xdim.f90 \
@@ -85,6 +86,7 @@ nodist_execmod_HEADERS = \
   parameters_sm_km.$(FC_MODULE_EXT) \
   parameters_sm_ckm.$(FC_MODULE_EXT) \
   parameters_sm_top.$(FC_MODULE_EXT) \
+  parameters_sm_triangle_higgs.$(FC_MODULE_EXT) \
   parameters_template.$(FC_MODULE_EXT) \
   parameters_ued.$(FC_MODULE_EXT) \
   parameters_xdim.$(FC_MODULE_EXT) \
@@ -188,6 +190,9 @@ parameters_sm_km.$(FC_MODULE_EXT): parameters.SM_km.lo
 	@:
 
 parameters_sm_top.$(FC_MODULE_EXT): parameters.SM_top.lo
+	@:
+
+parameters_sm_triangle_higgs.$(FC_MODULE_EXT): parameters.SM_triangle_higgs.lo
 	@:
 
 parameters_simplest.$(FC_MODULE_EXT): parameters.Simplest.lo

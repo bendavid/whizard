@@ -1,4 +1,4 @@
-! WHIZARD 2.0.2 Tue May 18 2010
+! WHIZARD 2.0.3 Tue Aug 10 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -615,29 +615,37 @@ contains
     real(default) :: x_decay
     real(default) :: x
     integer :: i
+    logical :: decay_occurs
     call evaluator_normalize_by_max (decay_tree%eval_sqme_in)
+    decay_occurs = .false.
     REJECTION: do i = 1, MAX_TRIES_FOR_DECAY_CHAIN
        decay_tree%tries = i
        decay_tree%eval_sqme => decay_tree%eval_sqme_in
        decay_tree%eval_flows => decay_tree%eval_flows_in
-       call decay_node_generate_event (decay_tree%root)
-       x_decay = evaluator_sum (decay_tree%eval_sqme)
-       decay_tree%acceptance_probability = x_decay
-       call tao_random_number (rng, x)
-       if (x <= x_decay)  return
+       call decay_node_generate_event (decay_tree%root, decay_occurs)
+       if (decay_occurs) then
+          x_decay = evaluator_sum (decay_tree%eval_sqme)
+          decay_tree%acceptance_probability = x_decay
+          call tao_random_number (rng, x)
+          if (x <= x_decay)  return
+       else
+          return
+       end if
     end do REJECTION
     write (msg_buffer, "(A,I0,A)") "Failed to generate a decay chain " &
          // "after ", MAX_TRIES_FOR_DECAY_CHAIN, " tries"
     call msg_fatal ()
   contains
-    recursive subroutine decay_node_generate_event (node)
+    recursive subroutine decay_node_generate_event (node, decay_occurs)
       type(decay_node_t), intent(inout), target :: node
+      logical, intent(inout) :: decay_occurs
       type(flavor_t) :: flv
       type(vector4_t) :: p
       integer :: i, channel
       type(process_t), pointer :: process
       call evaluator_get_unstable_particle (decay_tree%eval_sqme, flv, p, i)
       if (flavor_is_defined (flv)) then
+         decay_occurs = .true.
          if (.not. associated (node%configuration)) &
               call decay_node_init (node, flv)
          channel = decay_configuration_select_channel (node%configuration, rng)
@@ -651,7 +659,8 @@ contains
          call decay_generate (node%decay(channel), rng, flv, p)
          decay_tree%eval_sqme => node%decay(channel)%eval_sqme
          decay_tree%eval_flows => node%decay(channel)%eval_flows
-         call decay_node_generate_event (node%decay(channel)%next_node)
+         call decay_node_generate_event &
+              (node%decay(channel)%next_node, decay_occurs)
       end if
     end subroutine decay_node_generate_event
   end subroutine decay_tree_generate_event

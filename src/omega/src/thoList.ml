@@ -1,4 +1,4 @@
-(* $Id: thoList.ml 2276 2010-04-09 17:15:14Z ohl $
+(* $Id: thoList.ml 2695 2010-07-08 22:15:33Z ohl $
 
    Copyright (C) 1999-2009 by
 
@@ -256,6 +256,17 @@ let partitioned_sort cmp index_sets list =
     (fun () -> sort_section cmp array)
     () (complement_index_sets (List.length list) index_sets);
   Array.to_list array
+
+let ariadne_sort ?(cmp=Pervasives.compare) list =
+  let sorted =
+    List.sort (fun (n1, a1) (n2, a2) -> cmp a1 a2) (enumerate 0 list) in
+  (List.map snd sorted, List.map fst sorted)
+
+let ariadne_unsort (sorted, indices) =
+  List.map snd
+    (List.sort
+       (fun (n1, a1) (n2, a2) -> Pervasives.compare n1 n2)
+       (List.map2 (fun n a -> (n, a)) indices sorted))
 
 (*i
  *  Local Variables:

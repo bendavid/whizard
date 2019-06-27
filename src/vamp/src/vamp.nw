@@ -274,6 +274,12 @@ initializer [[vamp_create_grid]] himself of herself, because we can't
 check for the allocation status of the pointers in \texttt{Fortran90}
 or~\texttt{F}.
 \index{deficiencies in \protect\texttt{Fortran90} and \protect\texttt{F}}
+\begin{dubious}
+  Augment this datatype by
+  [[real(kind=default), dimension(2) :: mu_plus, mu_minus]]
+  to record positive and negative weight separately, so that we can
+  estimmate the efficiency for reweighting from indefinite weights to $\{+1,-1\}$.
+\end{dubious}
 <<Declaration of [[vamp_grid_type]] types>>=
 type, public :: vamp_grid
    ! private !: forced by \texttt{use} association in interface

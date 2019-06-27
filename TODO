@@ -1,7 +1,7 @@
 WHIZARD Core
-* Release 2.0.2
+* Release 2.0.3
   - 2->1 processes ?
-  - reactivate ILC features (CIRCE etc.)
+  - reactivate CIRCE2/pT distribution
   - profiling/optimization
   - Library API (bind(C))
   - Behavior in batch environment, large event numbers
@@ -12,18 +12,20 @@ WHIZARD Core
   - reconsider structure function mappings for optimization
   - integration of multiple observables
   - jet finder
-  - parton shower (Sebastian)
+  - parton shower (Sebastian, verification)
   - underlying event (Hans)
   - process collections
   
 * 2.2
   - Mathematica interface
-  - Parton shower matching
+  - Parton shower matching (MLM done with PYTHIA)
   - GUI (Tim)
   - parallelization
   - NLO/GOLEM
   - Dark Matter
   - Use omega restrictions on diagrams for phase space
+
+* 3.0
   - Tau decay module
 
 Technical stuff
@@ -36,9 +38,9 @@ O'Mega
   - helicity optimization (numerically done/analytically pending)
 
 Models
-* Release 2.0.2
+* Release 2.0.4
   - more self-checks (trivial processes + all kinds of commands)
-  - Tests for 7, 8 fermions ...
+  - Tests for 7, 8 fermions ... 
 
 * 2.1
   - Top-quark anomalous couplings (partially done)
@@ -46,25 +48,22 @@ Models
   - W'
 
 VAMP
-* 2.0.2
+* 2.0.4
   - unify naming conventions for types with WHIZARD (JR will do, 
-	e.g. type :: division -> division_t
+	e.g. type :: division -> division_t (partially done)
 * 2.1
   - integration of multiple observables
 
 configure
-* Release 2.0.2
-  - support for CIRCE 1/2
-
 * 2.1
   - Windows support?
 
 Misc
-* Release 2.0.2
+* Release 2.0.4
   - ATLAS/CMS software environment
-  - Manual + Paper
+  - Manual + Paper (partially done)
 
 * 2.1
-  - GRID compatibility
-  - review gamelan
+  - GRID compatibility (Christian)
+  - review gamelan (partially done)
 
