@@ -1,1 +1,2 @@
-# empty
+do nothing:
+  when: manual
