@@ -1,4 +1,4 @@
-! WHIZARD 2.0.1 Sun Apr 25 2010
+! WHIZARD 2.0.2 Tue May 18 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -53,8 +53,9 @@ module mappings
   public :: mapping_compute_x_from_ct
 
   integer, parameter :: &
-       & NO_MAPPING = 0, S_CHANNEL = 1, T_CHANNEL =  2, U_CHANNEL = -2, &
-       & RADIATION = 3, COLLINEAR = 4, INFRARED = 5
+       & EXTERNAL_PRT = -1, &
+       & NO_MAPPING = 0, S_CHANNEL = 1, T_CHANNEL =  2, U_CHANNEL = 3, &
+       & RADIATION = 4, COLLINEAR = 5, INFRARED = 6
 
   type :: mapping_defaults_t
      real(default) :: energy_scale = 10

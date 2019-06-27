@@ -1,4 +1,4 @@
-! $Id: af_f.ects 2403 2010-04-23 20:28:27Z ohl $
+! $Id: af_f.ects 2468 2010-05-05 16:37:03Z kilian $
 !ects:model QCD
 !ects:scatter
 !ects:process gl u -> u

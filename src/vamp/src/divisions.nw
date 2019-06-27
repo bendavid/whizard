@@ -30,20 +30,22 @@ end module divisions
   [[vamp_apply_equivalences]] from [[vamp]] accesses [[%variance]] \ldots
 \end{dubious}
 <<Declaration of [[divisions]] types>>=
-type, public :: division
-   private
+type, public :: division_t
+!   private
+!!! Avoiding a g95 bug 
    real(kind=default), dimension(:), pointer :: x => null ()
    real(kind=default), dimension(:), pointer :: integral => null ()
-   real(kind=default), dimension(:), pointer, &
-                                      public :: variance => null ()
+   real(kind=default), dimension(:), pointer &
+                                      :: variance => null ()
+!                                      public :: variance => null ()
 !  real(kind=default), dimension(:), pointer :: efficiency => null ()
    real(kind=default) :: x_min, x_max
    real(kind=default) :: x_min_true, x_max_true
    real(kind=default) :: dx, dxg
    integer :: ng = 0
    logical :: stratified = .true.
-end type division
-@ %def division
+end type division_t
+@ %def division_t
 
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Creation, Manipulation \&\ Injection}
@@ -55,7 +57,7 @@ public :: set_rigid_division, reshape_division
 <<Implementation of [[divisions]] procedures>>=
 elemental subroutine create_division &
      (d, x_min, x_max, x_min_true, x_max_true)
-  type(division), intent(out) :: d
+  type(division_t), intent(out) :: d
   real(kind=default), intent(in) :: x_min, x_max
   real(kind=default), intent(in), optional :: x_min_true, x_max_true
   allocate (d%x(0:1), d%integral(1), d%variance(1))
@@ -79,24 +81,27 @@ elemental subroutine create_division &
      d%x_max_true = x_max
   end if
 end subroutine create_division
+
 @ %def create_division
 @ 
 <<Implementation of [[divisions]] procedures>>=
 elemental subroutine create_empty_division (d)
-  type(division), intent(out) :: d
+  type(division_t), intent(out) :: d
   nullify (d%x, d%integral, d%variance)
 ! nullify (d%efficiency)
 end subroutine create_empty_division
+
 @ %def create_empty_division
 @
 <<Implementation of [[divisions]] procedures>>=
 elemental subroutine set_rigid_division (d, ng)
-  type(division), intent(inout) :: d
+  type(division_t), intent(inout) :: d
   integer, intent(in) :: ng
   d%stratified = ng > 1
   d%ng = ng
   d%dxg = real (ubound (d%x, dim=1), kind=default) / d%ng
 end subroutine set_rigid_division
+
 @ %def set_rigid_division
 @
 \begin{equation}
@@ -105,7 +110,7 @@ end subroutine set_rigid_division
 such that $0 < [[cell]]\cdot[[dxg]] < n_{\text{div}}$
 <<Implementation of [[divisions]] procedures>>=
 elemental subroutine reshape_division (d, max_num_div, ng, use_variance)
-  type(division), intent(inout) :: d
+  type(division_t), intent(inout) :: d
   integer, intent(in) :: max_num_div
   integer, intent(in), optional :: ng
   logical, intent(in), optional :: use_variance
@@ -135,6 +140,7 @@ elemental subroutine reshape_division (d, max_num_div, ng, use_variance)
   d%x = rebin (m, old_x, num_div)
   deallocate (old_x, m)
 end subroutine reshape_division
+
 @ %def reshape_division
 @ 
 <<Set [[m]] to $(1,1,\ldots)$ or to rebinning weights from [[d%variance]]>>=
@@ -373,7 +379,7 @@ public :: inject_division, inject_division_short
 @
 <<Implementation of [[divisions]] procedures>>=
 elemental subroutine inject_division (d, r, cell, x, x_mid, idx, wgt)
-  type(division), intent(in) :: d
+  type(division_t), intent(in) :: d
   real(kind=default), intent(in) :: r
   integer, intent(in) :: cell
   real(kind=default), intent(out) :: x, x_mid
@@ -386,6 +392,7 @@ elemental subroutine inject_division (d, r, cell, x, x_mid, idx, wgt)
   idx = i
   x_mid = d%x_min + 0.5 * (d%x(i-1) + d%x(i)) * d%dx
 end subroutine inject_division
+
 @ %def inject_division
 @ 
 <<Set [[i]], [[delta_x]], [[x]], and [[wgt]] from [[xi]]>>=
@@ -396,7 +403,7 @@ wgt = delta_x * ubound (d%x, dim=1)
 @ 
 <<Implementation of [[divisions]] procedures>>=
 elemental subroutine inject_division_short (d, r, x, idx, wgt)
-  type(division), intent(in) :: d
+  type(division_t), intent(in) :: d
   real(kind=default), intent(in) :: r
   integer, intent(out) :: idx
   real(kind=default), intent(out) :: x, wgt
@@ -406,6 +413,7 @@ elemental subroutine inject_division_short (d, r, x, idx, wgt)
   <<Set [[i]], [[delta_x]], [[x]], and [[wgt]] from [[xi]]>>
   idx = i
 end subroutine inject_division_short
+
 @ %def inject_division_short
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Grid Refinement}
@@ -415,7 +423,7 @@ public :: record_integral, record_variance, clear_integral_and_variance
 @ 
 <<Implementation of [[divisions]] procedures>>=
 elemental subroutine record_integral (d, i, f)
-  type(division), intent(inout) :: d
+  type(division_t), intent(inout) :: d
   integer, intent(in) :: i
   real(kind=default), intent(in) :: f
   d%integral(i) = d%integral(i) + f
@@ -423,22 +431,24 @@ elemental subroutine record_integral (d, i, f)
      d%variance(i) = d%variance(i) + f*f
   end if
 end subroutine record_integral
+
 @ %def record_integral
 @ 
 <<Implementation of [[divisions]] procedures>>=
 elemental subroutine record_variance (d, i, var_f)
-  type(division), intent(inout) :: d
+  type(division_t), intent(inout) :: d
   integer, intent(in) :: i
   real(kind=default), intent(in) :: var_f
   if (d%stratified) then 
      d%variance(i) = d%variance(i) + var_f
   end if
 end subroutine record_variance
+
 @ %def record_variance
 @ 
 <<Implementation of [[divisions]] procedures (removed from WHIZARD)>>=
 elemental subroutine record_efficiency (d, i, eff)
-  type(division), intent(inout) :: d
+  type(division_t), intent(inout) :: d
   integer, intent(in) :: i
   real(kind=default), intent(in) :: eff
 ! d%efficiency(i) = d%efficiency(i) + eff
@@ -447,7 +457,7 @@ end subroutine record_efficiency
 @ 
 <<Implementation of [[divisions]] procedures>>=
 elemental subroutine clear_integral_and_variance (d)
-  type(division), intent(inout) :: d
+  type(division_t), intent(inout) :: d
   d%integral = 0.0
   d%variance = 0.0
 ! d%efficiency = 0.0
@@ -459,7 +469,7 @@ public :: refine_division
 @ 
 <<Implementation of [[divisions]] procedures>>=
 elemental subroutine refine_division (d)
-  type(division), intent(inout) :: d
+  type(division_t), intent(inout) :: d
   character(len=*), parameter :: FN = "refine_division"
   d%x = rebin (rebinning_weights (d%variance), d%x, size (d%variance))
 end subroutine refine_division
@@ -639,7 +649,7 @@ and
 \end{equation}
 <<Implementation of [[divisions]] procedures>>=
 elemental function probability (d, x) result (p)
-  type(division), intent(in) :: d
+  type(division_t), intent(in) :: d
   real(kind=default), intent(in) :: x
   real(kind=default) :: p
   real(kind=default) :: xi
@@ -673,7 +683,7 @@ public :: quadrupole_division
 @ 
 <<Implementation of [[divisions]] procedures>>=
 elemental function quadrupole_division (d) result (q)
-  type(division), intent(in) :: d
+  type(division_t), intent(in) :: d
   real(kind=default) :: q
   !!!   q = value_spread_percent (rebinning_weights (d%variance))
   q = standard_deviation_percent (rebinning_weights (d%variance))
@@ -694,8 +704,8 @@ public :: fork_division, join_division, sum_division
 \end{dubious}
 <<Implementation of [[divisions]] procedures>>=
 pure subroutine fork_division (d, ds, sum_calls, num_calls, exc)
-  type(division), intent(in) :: d
-  type(division), dimension(:), intent(inout) :: ds
+  type(division_t), intent(in) :: d
+  type(division_t), dimension(:), intent(inout) :: ds
   integer, intent(in) :: sum_calls
   integer, dimension(:), intent(inout) :: num_calls
   type(exception), intent(inout), optional :: exc
@@ -726,8 +736,8 @@ end subroutine fork_division
 @ 
 <<Implementation of [[divisions]] procedures>>=
 pure subroutine join_division (d, ds, exc)
-  type(division), intent(inout) :: d
-  type(division), dimension(:), intent(in) :: ds
+  type(division_t), intent(inout) :: d
+  type(division_t), dimension(:), intent(in) :: ds
   type(exception), intent(inout), optional :: exc
   character(len=*), parameter :: FN = "join_division"
   integer, dimension(size(ds)) :: n0, n1
@@ -952,8 +962,8 @@ end subroutine collect
 \subsubsection{Trivia}
 <<Implementation of [[divisions]] procedures>>=
 pure subroutine sum_division (d, ds)
-  type(division), intent(inout) :: d
-  type(division), dimension(:), intent(in) :: ds
+  type(division_t), intent(inout) :: d
+  type(division_t), dimension(:), intent(in) :: ds
   integer :: i
   d%integral = 0.0
   d%variance = 0.0
@@ -972,7 +982,7 @@ public :: dump_division
 @ 
 <<Implementation of [[divisions]] procedures>>=
 subroutine debug_division (d, prefix)
-  type(division), intent(in) :: d
+  type(division_t), intent(in) :: d
   character(len=*), intent(in) :: prefix
   print "(1x,a,2(a,1x,i3,1x,f10.7))", prefix, ": d%x: ", &
        lbound(d%x,dim=1), d%x(lbound(d%x,dim=1)), &
@@ -995,7 +1005,7 @@ end subroutine debug_division
 @ 
 <<Implementation of [[divisions]] procedures>>=
 subroutine dump_division (d, prefix)
-  type(division), intent(in) :: d
+  type(division_t), intent(in) :: d
   character(len=*), intent(in) :: prefix
 ! print "(2(1x,a),100(1x,f10.7))", prefix, ":x: ", d%x
   print "(2(1x,a),100(1x,f10.7))", prefix, ":x: ", d%x(1:)
@@ -1014,7 +1024,7 @@ public :: volume_division, rigid_division, adaptive_division
 @ 
 <<Implementation of [[divisions]] procedures>>=
 elemental function inside_division (d, x) result (theta)
-  type(division), intent(in) :: d
+  type(division_t), intent(in) :: d
   real(kind=default), intent(in) :: x
   logical :: theta
   theta = (x >= d%x_min_true) .and. (x <= d%x_max_true)
@@ -1023,7 +1033,7 @@ end function inside_division
 @ 
 <<Implementation of [[divisions]] procedures>>=
 elemental function stratified_division (d) result (yorn)
-  type(division), intent(in) :: d
+  type(division_t), intent(in) :: d
   logical :: yorn
   yorn = d%stratified
 end function stratified_division
@@ -1031,7 +1041,7 @@ end function stratified_division
 @ 
 <<Implementation of [[divisions]] procedures>>=
 elemental function volume_division (d) result (vol)
-  type(division), intent(in) :: d
+  type(division_t), intent(in) :: d
   real(kind=default) :: vol
   vol = d%dx
 end function volume_division
@@ -1039,7 +1049,7 @@ end function volume_division
 @ 
 <<Implementation of [[divisions]] procedures>>=
 elemental function rigid_division (d) result (n)
-  type(division), intent(in) :: d
+  type(division_t), intent(in) :: d
   integer :: n
   n = d%ng
 end function rigid_division
@@ -1047,7 +1057,7 @@ end function rigid_division
 @ 
 <<Implementation of [[divisions]] procedures>>=
 elemental function adaptive_division (d) result (n)
-  type(division), intent(in) :: d
+  type(division_t), intent(in) :: d
   integer :: n
   n = ubound (d%x, dim=1)
 end function adaptive_division
@@ -1071,7 +1081,7 @@ public :: copy_history, summarize_division
 @ 
 <<Implementation of [[divisions]] procedures>>=
 elemental function summarize_division (d) result (s)
-  type(division), intent(in) :: d
+  type(division_t), intent(in) :: d
   type(div_history) :: s
   real(kind=default), dimension(:), allocatable :: p, m
   allocate (p(ubound(d%x,dim=1)), m(ubound(d%x,dim=1)))
@@ -1175,7 +1185,7 @@ public :: division_variance, division_efficiency
 <<Implementation of [[divisions]] procedures (removed from WHIZARD)>>=
 pure subroutine division_x (x, d)
   real(kind=default), dimension(:), pointer :: x
-  type(division), intent(in) :: d
+  type(division_t), intent(in) :: d
   call copy_array_pointer (x, d%x, 0)
 end subroutine division_x
 @ %def division_x
@@ -1183,7 +1193,7 @@ end subroutine division_x
 <<Implementation of [[divisions]] procedures (removed from WHIZARD)>>=
 pure subroutine division_integral (integral, d)
   real(kind=default), dimension(:), pointer :: integral
-  type(division), intent(in) :: d
+  type(division_t), intent(in) :: d
   call copy_array_pointer (integral, d%integral)
 end subroutine division_integral
 @ %def division_integral
@@ -1191,7 +1201,7 @@ end subroutine division_integral
 <<Implementation of [[divisions]] procedures (removed from WHIZARD)>>=
 pure subroutine division_variance (variance, d)
   real(kind=default), dimension(:), pointer :: variance
-  type(division), intent(in) :: d
+  type(division_t), intent(in) :: d
   call copy_array_pointer (variance, d%variance, 0)
 end subroutine division_variance
 @ %def division_variance
@@ -1200,7 +1210,7 @@ end subroutine division_variance
 <<Implementation of [[divisions]] procedures (removed from WHIZARD)>>=
 pure subroutine division_efficiency (eff, d)
   real(kind=default), dimension(:), pointer :: eff
-  type(division), intent(in) :: d
+  type(division_t), intent(in) :: d
   call copy_array_pointer (eff, d%efficiency, 0)
 end subroutine division_efficiency
 @ %def division_efficiency
@@ -1237,14 +1247,14 @@ end interface
 during sampling.
 <<Implementation of [[divisions]] procedures>>=
 subroutine write_division_unit (d, unit, write_integrals)
-  type(division), intent(in) :: d
+  type(division_t), intent(in) :: d
   integer, intent(in) :: unit
   logical, intent(in), optional :: write_integrals
   logical :: write_integrals0
   integer :: i
   write_integrals0 = .false.
   if (present(write_integrals)) write_integrals0 = write_integrals
-  write (unit = unit, fmt = descr_fmt) "begin type(division) :: d"
+  write (unit = unit, fmt = descr_fmt) "begin type(division_t) :: d"
   write (unit = unit, fmt = integer_fmt) "ubound(d%x,1) = ", ubound (d%x, dim=1)
   write (unit = unit, fmt = integer_fmt) "d%ng = ", d%ng
   write (unit = unit, fmt = logical_fmt) "d%stratified = ", d%stratified
@@ -1264,7 +1274,7 @@ subroutine write_division_unit (d, unit, write_integrals)
      end if
   end do
   write (unit = unit, fmt = descr_fmt) "end d%x"
-  write (unit = unit, fmt = descr_fmt) "end type(division)"
+  write (unit = unit, fmt = descr_fmt) "end type(division_t)"
 end subroutine write_division_unit
 @ %def write_division_unit
 @
@@ -1279,7 +1289,7 @@ character(len=*), parameter, private :: &
 @ 
 <<Implementation of [[divisions]] procedures>>=
 subroutine read_division_unit (d, unit, read_integrals)
-  type(division), intent(inout) :: d
+  type(division_t), intent(inout) :: d
   integer, intent(in) :: unit
   logical, intent(in), optional :: read_integrals
   logical :: read_integrals0
@@ -1335,7 +1345,7 @@ end if
 @ 
 <<Implementation of [[divisions]] procedures>>=
 subroutine write_division_name (d, name, write_integrals)
-  type(division), intent(in) :: d
+  type(division_t), intent(in) :: d
   character(len=*), intent(in) :: name
   logical, intent(in), optional :: write_integrals
   integer :: unit
@@ -1348,7 +1358,7 @@ end subroutine write_division_name
 @ 
 <<Implementation of [[divisions]] procedures>>=
 subroutine read_division_name (d, name, read_integrals)
-  type(division), intent(inout) :: d
+  type(division_t), intent(inout) :: d
   character(len=*), intent(in) :: name
   logical, intent(in), optional :: read_integrals
   integer :: unit
@@ -1361,7 +1371,7 @@ end subroutine read_division_name
 @ 
 <<Implementation of [[divisions]] procedures>>=
 subroutine write_division_raw_unit (d, unit, write_integrals)
-  type(division), intent(in) :: d
+  type(division_t), intent(in) :: d
   integer, intent(in) :: unit
   logical, intent(in), optional :: write_integrals
   logical :: write_integrals0
@@ -1396,7 +1406,7 @@ integer, parameter, private :: MAGIC_DIVISION_END = MAGIC_DIVISION + 2
 @ 
 <<Implementation of [[divisions]] procedures>>=
 subroutine read_division_raw_unit (d, unit, read_integrals)
-  type(division), intent(inout) :: d
+  type(division_t), intent(inout) :: d
   integer, intent(in) :: unit
   logical, intent(in), optional :: read_integrals
   logical :: read_integrals0
@@ -1443,7 +1453,7 @@ end subroutine read_division_raw_unit
 @ 
 <<Implementation of [[divisions]] procedures>>=
 subroutine write_division_raw_name (d, name, write_integrals)
-  type(division), intent(in) :: d
+  type(division_t), intent(in) :: d
   character(len=*), intent(in) :: name
   logical, intent(in), optional :: write_integrals
   integer :: unit
@@ -1457,7 +1467,7 @@ end subroutine write_division_raw_name
 @ 
 <<Implementation of [[divisions]] procedures>>=
 subroutine read_division_raw_name (d, name, read_integrals)
-  type(division), intent(inout) :: d
+  type(division_t), intent(inout) :: d
   character(len=*), intent(in) :: name
   logical, intent(in), optional :: read_integrals
   integer :: unit
@@ -1480,7 +1490,7 @@ public :: marshal_division_size, marshal_division, unmarshal_division
 @ 
 <<Implementation of [[divisions]] procedures>>=
 pure subroutine marshal_division (d, ibuf, dbuf)
-  type(division), intent(in) :: d
+  type(division_t), intent(in) :: d
   integer, dimension(:), intent(inout) :: ibuf
   real(kind=default), dimension(:), intent(inout) :: dbuf
   integer :: num_div
@@ -1507,7 +1517,7 @@ end subroutine marshal_division
 @ 
 <<Implementation of [[divisions]] procedures>>=
 pure subroutine marshal_division_size (d, iwords, dwords)
-  type(division), intent(in) :: d
+  type(division_t), intent(in) :: d
   integer, intent(out) :: iwords, dwords
   iwords = 3
   dwords = 7 + 3 * ubound (d%x, dim=1)
@@ -1517,7 +1527,7 @@ end subroutine marshal_division_size
 @ 
 <<Implementation of [[divisions]] procedures>>=
 pure subroutine unmarshal_division (d, ibuf, dbuf)
-  type(division), intent(inout) :: d
+  type(division_t), intent(inout) :: d
   integer, dimension(:), intent(in) :: ibuf
   real(kind=default), dimension(:), intent(in) :: dbuf
   integer :: num_div
@@ -1600,8 +1610,8 @@ end subroutine unmarshal_div_history
 \subsection{Boring Copying and Deleting of Objects}
 <<Implementation of [[divisions]] procedures>>=
 elemental subroutine copy_division (lhs, rhs)
-  type(division), intent(inout) :: lhs
-  type(division), intent(in) :: rhs
+  type(division_t), intent(inout) :: lhs
+  type(division_t), intent(in) :: rhs
   if (associated (rhs%x)) then
      call copy_array_pointer (lhs%x, rhs%x, lb = 0)
   else if (associated (lhs%x)) then
@@ -1635,7 +1645,7 @@ end subroutine copy_division
 @
 <<Implementation of [[divisions]] procedures>>=
 elemental subroutine delete_division (d)
-  type(division), intent(inout) :: d
+  type(division_t), intent(inout) :: d
   if (associated (d%x)) then
      deallocate (d%x, d%integral, d%variance)
 !    deallocate (d%efficiency)

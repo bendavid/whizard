@@ -1,4 +1,4 @@
-! WHIZARD 2.0.1 Sun Apr 25 2010
+! WHIZARD 2.0.2 Tue May 18 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -29,7 +29,7 @@ module diagnostics
 
   use iso_c_binding !NODEP! 
   use system_dependencies !NODEP!
-  use kinds, only: i64 !NODEP!
+  use kinds, only: default !NODEP!
   use iso_varying_string, string_t => varying_string !NODEP!
   use limits, only: BUFFER_SIZE, MAX_ERRORS !NODEP!
   use file_utils !NODEP!
@@ -57,6 +57,10 @@ module diagnostics
   public :: expect_summary
   public :: int2string
   public :: int2char
+  public :: real2string
+  public :: real2char
+   public :: cmplx2string
+   public :: cmplx2char
   public :: wo_sigint
   public :: wo_sigterm
   public :: wo_sigxcpu
@@ -559,7 +563,7 @@ subroutine message_print (level, string, str_arr, unit, logfile)
 
   pure function int2fixed (i) result (c)
     integer, intent(in) :: i
-    character (200) :: c
+    character(200) :: c
     c = ""
     write (c, *) i
     c = adjustl (c)
@@ -572,10 +576,43 @@ subroutine message_print (level, string, str_arr, unit, logfile)
   end function int2string
 
   pure function int2char (i) result (c)
-     integer, intent(in) :: i
-     character(len (trim (int2fixed (i)))) :: c
-     c = int2fixed (i)
+    integer, intent(in) :: i
+    character(len (trim (int2fixed (i)))) :: c
+    c = int2fixed (i)
   end function int2char
+
+  pure function real2fixed (x) result (c)
+    real(default), intent(in) :: x
+    character(200) :: c
+    c = ""
+    write (c, *) x
+    c = adjustl (c)
+  end function real2fixed
+
+  pure function real2string (x) result (s)
+    real(default), intent(in) :: x
+    type(string_t) :: s
+    s = trim (real2fixed (x))
+  end function real2string
+
+  pure function real2char (x) result (c)
+    real(default), intent(in) :: x
+    character(len (trim (real2fixed (x)))) :: c
+    c = real2fixed (x)
+  end function real2char
+
+   pure function cmplx2string (x) result (s)
+     complex(default), intent(in) :: x
+     type(string_t) :: s
+     s = real2string (real (x, default))
+     if (aimag (x) /= 0) s = s // " + " // real2string (aimag (x)) // " I"
+   end function cmplx2string
+
+   pure function cmplx2char (x) result (c)
+     complex(default), intent(in) :: x
+     character(len (char (cmplx2string (x)))) :: c
+     c = char (cmplx2string (x))
+   end function cmplx2char
   subroutine mask_term_signals ()
     integer(c_int) :: status
     logical :: ok
@@ -608,13 +645,17 @@ subroutine message_print (level, string, str_arr, unit, logfile)
 
   subroutine terminate_now_if_signal ()
     if (wo_sigint /= 0) then
-       call msg_terminate ("Signal SIGINT (keyboard interrupt) received.", quit_code=wo_sigint)
+       call msg_terminate ("Signal SIGINT (keyboard interrupt) received.", &
+          quit_code=int (wo_sigint))
     else if (wo_sigterm /= 0) then
-       call msg_terminate ("Signal SIGTERM (termination signal) received.", quit_code=wo_sigterm)
+       call msg_terminate ("Signal SIGTERM (termination signal) received.", &
+          quit_code=int (wo_sigterm))
     else if (wo_sigxcpu /= 0) then
-       call msg_terminate ("Signal SIGXCPU (CPU time limit exceeded) received.", quit_code=wo_sigxcpu)
+       call msg_terminate ("Signal SIGXCPU (CPU time limit exceeded) received.", &
+          quit_code=int (wo_sigxcpu))
     else if (wo_sigxfsz /= 0) then
-       call msg_terminate ("Signal SIGXFSZ (file size limit exceeded) received.", quit_code=wo_sigxfsz)
+       call msg_terminate ("Signal SIGXFSZ (file size limit exceeded) received.", &
+          quit_code=int (wo_sigxfsz))
     end if
   end subroutine terminate_now_if_signal    
 

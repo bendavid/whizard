@@ -1,4 +1,4 @@
-! $Id: ca_c.ects 2403 2010-04-23 20:28:27Z ohl $
+! $Id: ca_c.ects 2468 2010-05-05 16:37:03Z kilian $
 !ects:model QCD
 !ects:scatter
 !ects:process ubar gl -> ubar

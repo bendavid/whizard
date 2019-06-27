@@ -1,4 +1,4 @@
-! WHIZARD 2.0.1 Sun Apr 25 2010
+! WHIZARD 2.0.2 Tue May 18 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -28,9 +28,7 @@
 module commands
 
   use kinds, only: default !NODEP!
-  use kinds, only: double, i64 !NODEP!
   use iso_varying_string, string_t => varying_string !NODEP!
-  use limits, only: ITERATIONS_DEFAULT_LIST_SIZE !NODEP!
   use constants !NODEP!
   use file_utils !NODEP!
   use diagnostics !NODEP!
@@ -52,15 +50,7 @@ module commands
   use flavors
   use quantum_numbers
   use polarizations
-  use event_formats
-  use hepmc_interface
-  use stdhep_interface
   use beams
-  use sf_isr
-  use sf_epa
-  use sf_ewa
-  use sf_lhapdf
-  use strfun
   use mappings
   use phs_forests
   use cascades
@@ -70,15 +60,17 @@ module commands
   use events
   use slha_interface
   use cputime
+  use iterations
+  use strfun_config
+  use event_files
+  use rt_data
+  use compilations
+  use integrations
+  use simulations
 
   implicit none
   private
 
-  public :: rt_data_global_init
-  public :: rt_data_global_final
-  public :: simulation_t
-  public :: simulation_setup_analysis
-  public :: simulation_init
   public :: command_list_t
   public :: command_list_final
   public :: command_list_write
@@ -96,34 +88,25 @@ module commands
   integer, parameter :: ST_LINEAR = 2
   integer, parameter :: ST_LOG = 3
 
-  integer, parameter :: FMT_NONE = 0
-  integer, parameter :: FMT_DEFAULT = 1
-  integer, parameter :: FMT_DEBUG = 2
-  integer, parameter :: FMT_HEPMC = 10
-  integer, parameter :: FMT_LHEF = 20
-  integer, parameter :: FMT_LHA = 21
-  integer, parameter :: FMT_HEPEVT = 30
-  integer, parameter :: FMT_ASCII_SHORT = 31
-  integer, parameter :: FMT_ASCII_LONG = 32
-  integer, parameter :: FMT_ATHENA = 33
-  integer, parameter :: FMT_STDHEP = 40
-  integer, parameter :: FMT_STDHEP_UP = 41
   integer, parameter :: CMD_NONE = 0
   integer, parameter :: CMD_PROCESS = 1
   integer, parameter :: CMD_INTEGRATE = 2
   integer, parameter :: CMD_SIMULATE = 3
+  integer, parameter :: CMD_RESCAN = 4
 
   integer, parameter :: CMD_COMPILE = 10
   integer, parameter :: CMD_LOAD = 11
   integer, parameter :: CMD_EXEC = 13
 
   integer, parameter :: CMD_BEAMS = 21
+  integer, parameter :: CMD_BEAM_POLARIZATION = 22
 
   integer, parameter :: CMD_MODEL = 31
   integer, parameter :: CMD_LIBRARY = 32
   integer, parameter :: CMD_CUTS = 33
-  integer, parameter :: CMD_WEIGHT = 34
-  integer, parameter :: CMD_SCALE = 35
+  integer, parameter :: CMD_SCALE = 34
+  integer, parameter :: CMD_WEIGHT = 35
+  integer, parameter :: CMD_REWEIGHT = 36
 
   integer, parameter :: CMD_VAR = 41
   integer, parameter :: CMD_PRINTD = 43
@@ -134,6 +117,8 @@ module commands
 
   integer, parameter :: CMD_UNSTABLE = 51
   integer, parameter :: CMD_STABLE = 52
+  integer, parameter :: CMD_POLARIZED = 53
+  integer, parameter :: CMD_UNPOLARIZED = 54
 
   integer, parameter :: CMD_SEED = 63
   integer, parameter :: CMD_ITERATIONS = 64
@@ -153,19 +138,6 @@ module commands
   integer, parameter :: CMD_QUIT = 99
 
   integer, parameter :: CMD_SLHA = 101
-
-  integer, parameter :: NORM_UNDEFINED = 0
-  integer, parameter :: NORM_UNIT = 1
-  integer, parameter :: NORM_N_EVT = 2
-  integer, parameter :: NORM_SIGMA = 3
-  integer, parameter :: NORM_SIGMA_N_EVT = 4
-
-  character(*), parameter :: &
-     checkpoint_head = &
-        "| % complete | events generated | events remaining | time remaining", &
-     checkpoint_bar = &
-        "|===================================================================|", &
-     checkpoint_fmt = "('   ',F5.1,T16,I9,T35,I9,T56,A)"
 
   integer, parameter :: STEP_NONE = 0
   integer, parameter :: STEP_ADD = 1
@@ -188,100 +160,6 @@ module commands
      type(step_spec_t), pointer :: last => null ()
   end type step_list_t
 
-  type :: sf_mapping_t
-     private
-     integer, dimension(:), allocatable :: index
-     integer :: type = SFM_NONE
-     real(default), dimension(:), allocatable :: par
-  end type sf_mapping_t
-
-  type :: sf_data_t
-     private
-     integer :: type = STRF_NONE
-     logical, dimension(2) :: affects_beam = .false.
-     integer :: n_parameters = 0
-     type(lhapdf_data_t), dimension(2) :: lhapdf
-     type(isr_data_t), dimension(2) :: isr
-     type(epa_data_t), dimension(2) :: epa
-     type(ewa_data_t), dimension(2) :: ewa     
-     logical :: has_mapping = .false.
-     type(sf_mapping_t) :: mapping
-     type(sf_data_t), pointer :: next => null ()
-  end type sf_data_t
-
-  type :: sf_list_t
-     private
-     integer :: n_strfun = 0
-     integer :: n_mapping = 0
-     type(sf_data_t), pointer :: first => null ()
-     type(sf_data_t), pointer :: last => null ()
-     character(32) :: md5sum = ""
-  end type sf_list_t
-
-  type :: iterations_spec_t
-     private
-     integer :: n_it = 0
-     integer :: n_calls = 0
-  end type iterations_spec_t
-
-  type :: iterations_list_t
-     private
-     integer :: n_pass = 0
-     type(iterations_spec_t), dimension(:), allocatable :: pass
-  end type iterations_list_t
-     
-  type :: file_spec_t
-     private
-     type(string_t) :: name
-     integer :: format = FMT_NONE
-     type(hepmc_iostream_t), pointer :: iostream => null ()
-     integer :: unit = 0
-     type(flavor_t), dimension(:), allocatable :: beam_flv
-     real(default), dimension(:), allocatable :: beam_energy
-     real(default), dimension(:), allocatable :: integral
-     real(default), dimension(:), allocatable :: error
-     integer :: n_processes = 0
-     logical :: unweighted = .true.
-     logical :: negative_weights = .false.
-     logical :: keep_beams = .false.
-     type(file_spec_t), pointer :: next => null ()
-  end type file_spec_t
-
-  type :: file_list_t
-     private
-     type(file_spec_t), pointer :: first => null ()
-     type(file_spec_t), pointer :: last => null ()
-  end type file_list_t
-
-  type :: process_p
-     type(process_t), pointer :: ptr
-  end type process_p
-
-  public :: rt_data_t
-  type :: rt_data_t
-     type(lexer_t), pointer :: lexer => null ()
-     type(var_list_t) :: var_list
-     type(iterations_list_t) :: it_list
-     type(iterations_list_t), dimension(:), pointer :: it_list_default
-     integer, dimension(:), allocatable :: event_fmt
-     type(os_data_t) :: os_data
-     type(process_library_t), pointer :: prc_lib => null ()
-     type(model_t), pointer :: model => null ()
-     type(beam_data_t) :: beam_data
-     type(lhapdf_status_t) :: lhapdf_status
-     logical :: sf_list_allocated = .false.
-     type(sf_list_t), pointer  :: sf_list => null ()
-     type(parse_node_t), pointer :: pn_cuts_lexpr => null ()
-     type(parse_node_t), pointer :: pn_weight_expr => null ()
-     type(parse_node_t), pointer :: pn_scale_expr => null ()
-     type(parse_node_t), pointer :: pn_analysis_lexpr => null ()
-     type(tao_random_state), pointer :: rng => null ()
-     integer :: seed
-     integer :: method = PRC_UNDEFINED
-     logical :: quit = .false.
-     integer :: quit_code = 0
-  end type rt_data_t
-
   type :: command_t
      private
      integer :: type = CMD_NONE
@@ -299,9 +177,11 @@ module commands
      type(cmd_expect_t), pointer :: expect => null ()
      type(cmd_echo_t), pointer :: echo => null ()
      type(cmd_beams_t), pointer :: beams => null ()
+     type(cmd_beam_polarization_t), pointer :: beam_polarization => null ()
      type(cmd_cuts_t), pointer :: cuts => null ()
-     type(cmd_weight_t), pointer :: weight => null ()
      type(cmd_scale_t), pointer :: scale => null ()
+     type(cmd_weight_t), pointer :: weight => null ()
+     type(cmd_reweight_t), pointer :: reweight => null ()
      type(cmd_seed_t), pointer :: seed => null ()
      type(cmd_iterations_t), pointer :: iterations => null ()
      type(cmd_integrate_t), pointer :: integrate => null ()
@@ -313,8 +193,10 @@ module commands
      type(cmd_analysis_t), pointer :: analysis => null ()
      type(cmd_unstable_t), pointer :: unstable => null ()
      type(cmd_stable_t), pointer :: stable => null ()
+     type(cmd_un_polarized_t), pointer :: un_polarized => null ()
      type(cmd_sample_format_t), pointer :: events => null ()
      type(cmd_simulate_t), pointer :: simulate => null ()
+     type(cmd_rescan_t), pointer :: rescan => null ()
      type(cmd_write_analysis_t), pointer :: write_analysis => null ()
      type(cmd_scan_t), pointer :: loop => null ()
      type(cmd_if_t), pointer :: cond => null ()
@@ -450,20 +332,80 @@ module commands
      type(strfun_pair_t), dimension(:), allocatable :: strfun_pair
   end type cmd_beams_t
 
+  type :: bp_circ_data_t
+     private
+     type(eval_tree_t) :: fraction_expr
+     real(default) :: fraction
+  end type bp_circ_data_t
+
+  type :: bp_trans_data_t
+     private
+     type(eval_tree_t) :: fraction_expr, phi_expr
+     real(default) :: fraction, phi
+  end type bp_trans_data_t
+
+  type :: bp_long_data_t
+     private
+     type(eval_tree_t) :: fraction_expr
+     real(default) :: fraction
+  end type bp_long_data_t
+
+  type :: bp_axis_data_t
+     private
+     type(eval_tree_t) :: fraction_expr, theta_expr, phi_expr
+     real(default) :: fraction, theta, phi
+  end type bp_axis_data_t
+
+  type :: bp_diag_data_t
+     private
+     type(eval_tree_t), dimension(:), allocatable :: hels_expr, fractions_expr
+     integer, dimension(:), allocatable :: hels
+     real(default), dimension(:), allocatable :: fractions
+  end type bp_diag_data_t
+
+  type :: bp_density_data_t
+     private
+     type(eval_tree_t) :: d_expr, nd_expr
+     real(default) :: d
+     complex(default) :: nd
+  end type bp_density_data_t
+
+  type :: cmd_beam_polarization_t
+     private
+     integer :: n = -1
+     integer, dimension(2) :: type = -1
+     type(bp_circ_data_t), dimension(:), pointer :: circ_data => null ()
+     type(bp_trans_data_t), dimension(:), pointer :: trans_data => null ()
+     type(bp_long_data_t), dimension(:), pointer :: long_data => null ()
+     type(bp_axis_data_t), dimension(:), pointer :: axis_data => null ()
+     type(bp_diag_data_t), dimension(:), pointer :: diag_data => null ()
+     type(bp_density_data_t), dimension(:), pointer :: &
+        density_data => null ()
+     type(command_list_t), pointer :: options => null ()
+     type(rt_data_t) :: local
+     type(beam_polarization_t), dimension(:), pointer :: &
+        beam_polarization => null ()
+  end type cmd_beam_polarization_t
+
   type :: cmd_cuts_t
      private
      type(parse_node_t), pointer :: pn_lexpr => null ()
   end type cmd_cuts_t
+
+  type :: cmd_scale_t
+     private
+     type(parse_node_t), pointer :: pn_expr => null ()
+  end type cmd_scale_t
 
   type :: cmd_weight_t
      private
      type(parse_node_t), pointer :: pn_expr => null ()
   end type cmd_weight_t
 
-  type :: cmd_scale_t
+  type :: cmd_reweight_t
      private
      type(parse_node_t), pointer :: pn_expr => null ()
-  end type cmd_scale_t
+  end type cmd_reweight_t
 
   type :: cmd_integrate_t
      private
@@ -538,6 +480,7 @@ module commands
      integer :: n_proc = 0
      type(string_t), dimension(:), allocatable :: process_id
      real(default), dimension(:), allocatable :: br
+     logical :: invalid = .false.
   end type decay_properties_t
 
   type :: cmd_unstable_t
@@ -554,58 +497,18 @@ module commands
      type(rt_data_t) :: local
   end type cmd_stable_t
      
+  type :: cmd_un_polarized_t
+     private
+     type(eval_tree_t), dimension(:), allocatable :: pdgs
+     type(string_t), dimension(:), allocatable :: names
+     type(command_list_t), pointer :: options => null ()
+     type(rt_data_t) :: local
+  end type cmd_un_polarized_t
   type :: cmd_sample_format_t
      private
      type(string_t), dimension(:), allocatable :: format
      integer, dimension(:), allocatable :: fmt
   end type cmd_sample_format_t
-
-  type :: simulation_parameters_t
-    logical :: unweighted = .true.
-    integer :: normalization_mode = NORM_UNDEFINED
-    logical :: negative_weights = .false.
-  end type simulation_parameters_t
-
-  type :: checkpointing_t
-    logical :: active = .false.
-    logical :: running = .false.
-    integer :: val = 0
-    real(default) :: tzero = 0
-  end type checkpointing_t
-
-  type :: simulation_t
-    private
-    integer :: n_proc = 0
-    type(string_t), dimension(:), allocatable :: process_id
-    type(process_p), dimension(:), allocatable :: prc_array
-    type(var_list_t) :: var_list
-    logical :: rebuild_events = .false.
-    integer :: n_in = 0
-    type(flavor_t), dimension(:), allocatable :: beam_flv
-    real(default), dimension(:), allocatable :: beam_energy
-    type(string_t) :: basename
-    logical :: read_raw = .false.
-    logical :: write_raw = .false.
-    type(string_t) :: file_raw
-    type(file_list_t) :: file_list
-    integer :: u_raw = -1
-    type(simulation_parameters_t) :: spar
-    real(default), dimension(:), allocatable :: integral
-    real(default) :: integral_sum = 0
-    real(default) :: norm_weight = 0
-    type(md5sum_events_t) :: md5sum
-    integer :: n_events = 0
-    integer :: n_read = 0
-    integer :: i_evt = 0
-    real(default) :: luminosity = 0
-    type(eval_tree_t) :: analysis_expr
-    type(prt_list_t) :: prt_list
-    real(default) :: event_weight = 0
-    real(default) :: event_sqme = 0
-    type(decay_tree_t), dimension(:), allocatable :: decay_tree
-    type(checkpointing_t) :: checkpointing
-    type(event_t) :: event
-  end type simulation_t
 
   type :: cmd_simulate_t
      private
@@ -615,6 +518,16 @@ module commands
      type(command_list_t), pointer :: options => null ()
      type(rt_data_t) :: local
   end type cmd_simulate_t
+
+  type :: cmd_rescan_t
+     private
+     integer :: n_evt = 0
+     integer :: n_proc = 0
+     type(eval_tree_t) :: filename
+     type(string_t), dimension(:), allocatable :: process_id
+     type(command_list_t), pointer :: options => null ()
+     type(rt_data_t) :: local
+  end type cmd_rescan_t
 
   type :: cmd_seed_t
      private
@@ -675,10 +588,6 @@ module commands
   type(syntax_t), target, save :: syntax_cmd_list
 
 
-  interface cmd_integrate_init
-     module procedure cmd_integrate_init1
-     module procedure cmd_integrate_init2
-  end interface
 
 
 contains
@@ -719,1134 +628,6 @@ contains
     end do
     step_list%last => null ()
   end subroutine step_list_final
-
-  subroutine sf_mapping_write (sf_mapping, unit)
-    type(sf_mapping_t), intent(in) :: sf_mapping
-    integer, intent(in), optional :: unit
-    integer :: u
-    u = output_unit (unit);  if (u < 0)  return
-    write (u, "(1x,A,I0,10(', #',I0))")  "Mapping for parameters #", &
-         sf_mapping%index
-    select case (sf_mapping%type)
-    case (SFM_NONE);     write (u, "(3x,A)")  "[none]"
-    case (SFM_PDFPAIR);  write (u, "(3x,A)")  "PDF pair mapping"
-    case (SFM_ISRPAIR);  write (u, "(3x,A)")  "ISR pair mapping"
-    case (SFM_EPAPAIR);  write (u, "(3x,A)")  "EPA pair mapping"
-    case (SFM_EWAPAIR);  write (u, "(3x,A)")  "EWA pair mapping"    
-    end select
-    if (allocated (sf_mapping%par)) then
-       write (u, "(3x,A)", advance="no")  "Parameters = "
-       write (u, *) sf_mapping%par
-    end if
-  end subroutine sf_mapping_write
-     
-  subroutine sf_data_write (sf_data, unit)
-    type(sf_data_t), intent(in) :: sf_data
-    integer, intent(in), optional :: unit
-    integer :: u, i
-    u = output_unit (unit);  if (u < 0)  return
-    write (u, "(A)")  "Structure function"
-    do i = 1, 2
-       if (sf_data%affects_beam(i)) then
-          select case (sf_data%type)
-          case (STRF_NONE)
-             write (u, "(1x,A)") "[none]"
-          case (STRF_LHAPDF)
-             call lhapdf_data_write (sf_data%lhapdf(i), unit)             
-          case (STRF_ISR)
-             call isr_data_write (sf_data%isr(i), unit)
-          case (STRF_EPA)
-             call epa_data_write (sf_data%epa(i), unit)
-          case (STRF_EWA)
-             call ewa_data_write (sf_data%ewa(i), unit)
-          end select
-       end if
-    end do
-    write (u, *)  "affects beams = ", sf_data%affects_beam
-    write (u, *)  "n_parameters  = ", sf_data%n_parameters
-    if (sf_data%has_mapping) then
-       call sf_mapping_write (sf_data%mapping, unit)
-    end if
-  end subroutine sf_data_write
-
-  subroutine sf_data_init_lhapdf &
-       (sf_data, lhapdf_status, model, flv, file, member, photon_scheme)
-    type(sf_data_t), intent(inout) :: sf_data
-    type(lhapdf_status_t), intent(inout) :: lhapdf_status
-    type(model_t), intent(in), target :: model
-    type(flavor_t), dimension(2), intent(in) :: flv
-    type(string_t), intent(in), optional :: file
-    integer, intent(in), optional :: member
-    integer, intent(in), optional :: photon_scheme
-    integer :: i
-    do i = 1, 2
-       if (sf_data%affects_beam(i)) then
-          call lhapdf_data_init (sf_data%lhapdf(i), lhapdf_status, &
-               model, flv(i), file, member, photon_scheme)
-       end if
-    end do
-    if (all (sf_data%affects_beam)) then
-       allocate (sf_data%mapping%index (2))
-       sf_data%mapping%index = (/1, sf_data%n_parameters+1/)
-       sf_data%mapping%type = SFM_PDFPAIR
-       allocate (sf_data%mapping%par (1))
-       sf_data%mapping%par = 2._default
-       sf_data%has_mapping = .true.
-    end if
-  end subroutine sf_data_init_lhapdf
-
-  subroutine sf_data_init_isr &
-       (sf_data, model, flv, alpha, q_max, mass, order)
-    type(sf_data_t), intent(inout) :: sf_data
-    type(model_t), intent(in), target :: model
-    type(flavor_t), dimension(2), intent(in) :: flv
-    real(default), intent(in) :: alpha, q_max
-    real(default), intent(in), optional :: mass
-    integer, intent(in), optional :: order
-    integer :: i
-    do i = 1, 2
-       if (sf_data%affects_beam(i)) then
-          call isr_data_init (sf_data%isr(i), &
-               model, flv(i), alpha, q_max, mass)
-          if (present (order)) &
-               call isr_data_set_order (sf_data%isr(i), order)
-          call isr_data_check (sf_data%isr(i))
-       end if
-    end do
-!     if (all (sf_data%affects_beam)) then
-!        allocate (sf_data%mapping%index (2))
-!        sf_data%mapping%index = (/1, sf_data%n_parameters+1/)
-!        sf_data%mapping%type = SFM_ISRPAIR
-!        allocate (sf_data%mapping%par (1))
-!        sf_data%mapping%par = 2._default
-!        sf_data%has_mapping = .true.
-!     end if
-  end subroutine sf_data_init_isr
-
-  subroutine sf_data_init_epa &
-       (sf_data, model, flv, alpha, x_min, q_min, E_max, mass)
-    type(sf_data_t), intent(inout) :: sf_data
-    type(model_t), intent(in), target :: model
-    type(flavor_t), dimension(2), intent(in) :: flv
-    real(default), intent(in) :: alpha, x_min, q_min, E_max
-    real(default), intent(in), optional :: mass
-    integer :: i
-    do i = 1, 2
-       if (sf_data%affects_beam(i)) then
-          call epa_data_init (sf_data%epa(i), &
-               model, flv(i), alpha, x_min, q_min, E_max, mass)
-          call epa_data_check (sf_data%epa(i))
-       end if
-    end do
-    if (all (sf_data%affects_beam)) then
-       allocate (sf_data%mapping%index (2))
-       sf_data%mapping%index = (/1, sf_data%n_parameters+1/)
-       sf_data%mapping%type = SFM_EPAPAIR
-       allocate (sf_data%mapping%par (1))
-       sf_data%mapping%par = 1._default
-       sf_data%has_mapping = .true.
-    end if
-  end subroutine sf_data_init_epa
-
-  subroutine sf_data_init_ewa &
-       (sf_data, model, flv, x_min, q_min, pt_max, sqrts, &
-        keep_momentum, keep_energy, mass)
-    type(sf_data_t), intent(inout) :: sf_data
-    type(model_t), intent(in), target :: model
-    type(flavor_t), dimension(2), intent(in) :: flv
-    real(default), intent(in) ::  x_min, q_min, pt_max, sqrts
-    logical, intent(in) :: keep_momentum, keep_energy
-    real(default), intent(in), optional :: mass
-    integer :: i
-    do i = 1, 2
-       if (sf_data%affects_beam(i)) then
-          call ewa_data_init (sf_data%ewa(i), &
-               model, flv(i), x_min, q_min, pt_max, sqrts, &
-               keep_momentum, keep_energy, mass)
-          call ewa_data_check (sf_data%ewa(i))
-       end if
-    end do
-    if (all (sf_data%affects_beam)) then
-       allocate (sf_data%mapping%index (2))
-       sf_data%mapping%index = (/1, sf_data%n_parameters+1/)
-       sf_data%mapping%type = SFM_EWAPAIR
-       allocate (sf_data%mapping%par (1))
-       sf_data%mapping%par = 1._default
-       sf_data%has_mapping = .true.
-    end if
-    if (keep_momentum .or. keep_energy) then
-       sf_data%n_parameters = 3
-    else
-       sf_data%n_parameters = 1
-    end if 
-  end subroutine sf_data_init_ewa
-
-  subroutine sf_list_write (sf_list, unit)
-    type(sf_list_t), intent(in) :: sf_list
-    integer, intent(in), optional :: unit
-    integer :: u
-    type(sf_data_t), pointer :: current
-    u = output_unit (unit);  if (u < 0)  return
-    write (u, "(A)")  "Structure function list"
-    if (associated (sf_list%first)) then
-       current => sf_list%first
-       do while (associated (current))
-          call sf_data_write (current, unit)
-          current => current%next
-       end do
-    else
-       write (u, "(1x,A)") "[empty]"
-    end if
-  end subroutine sf_list_write
-
-  subroutine sf_list_append (sf_list, type, affects_beam, n_parameters, current)
-    type(sf_list_t), intent(inout) :: sf_list
-    integer, intent(in) :: type
-    logical, dimension(2), intent(in) :: affects_beam
-    integer, intent(in) :: n_parameters
-    type(sf_data_t), pointer :: current
-    allocate (current)
-    current%type = type
-    current%affects_beam = affects_beam
-    current%n_parameters = n_parameters
-    if (associated (sf_list%last)) then
-       sf_list%last%next => current
-    else
-       sf_list%first => current
-    end if
-    sf_list%last => current
-    sf_list%n_strfun = sf_list%n_strfun + count (affects_beam)
-  end subroutine sf_list_append
-       
-  subroutine sf_list_freeze (sf_list)
-    type(sf_list_t), intent(inout) :: sf_list
-    type(sf_data_t), pointer :: current
-    sf_list%n_mapping = 0
-    current => sf_list%first
-    do while (associated (current))
-       if (current%has_mapping) then
-          sf_list%n_mapping = sf_list%n_mapping + 1
-       end if
-       current => current%next
-    end do
-  end subroutine sf_list_freeze
-
-  subroutine sf_list_final (sf_list)
-    type(sf_list_t), intent(inout) :: sf_list
-    type(sf_data_t), pointer :: current
-    do while (associated (sf_list%first))
-       current => sf_list%first
-       sf_list%first => sf_list%first%next
-       deallocate (current)
-    end do
-    sf_list%last => null ()
-    sf_list%n_strfun = 0
-  end subroutine sf_list_final
-
-  function sf_list_get_n_strfun (sf_list) result (n)
-    integer :: n
-    type(sf_list_t), intent(in) :: sf_list
-    n = sf_list%n_strfun
-  end function sf_list_get_n_strfun
-
-  function sf_list_get_n_mapping (sf_list) result (n)
-    integer :: n
-    type(sf_list_t), intent(in) :: sf_list
-    n = sf_list%n_mapping
-  end function sf_list_get_n_mapping
-
-  function sf_list_get_md5sum (sf_list) result (sf_md5sum)
-    character(32) :: sf_md5sum
-    type(sf_list_t), intent(in) :: sf_list
-    sf_md5sum = sf_list%md5sum
-  end function sf_list_get_md5sum
-
-  subroutine sf_list_compute_md5sum (sf_list)
-    type(sf_list_t), intent(inout) :: sf_list
-    integer :: unit
-    unit = free_unit ()
-    open (unit = unit, status = "scratch", action = "readwrite")
-    call sf_list_write (sf_list, unit)
-    rewind (unit)
-    sf_list%md5sum = md5sum (unit)
-    close (unit)
-  end subroutine sf_list_compute_md5sum
-
-  subroutine process_setup_strfun (process, sf_list)
-    type(process_t), intent(inout), target :: process
-    type(sf_list_t), intent(in) :: sf_list
-    type(sf_data_t), pointer :: current
-    integer :: i_sf, j, i_map, i_par
-    i_sf = 0
-    i_map = 0
-    i_par = 0
-    current => sf_list%first
-    do while (associated (current))
-       if (current%has_mapping) then
-          i_map = i_map + 1
-          call process_set_strfun_mapping &
-               (process, i_map, i_par + current%mapping%index, &
-                current%mapping%type, current%mapping%par)
-       end if
-       do j = 1, 2
-          if (current%affects_beam(j)) then
-             i_sf = i_sf + 1
-             select case (current%type)
-             case (STRF_LHAPDF)
-                call process_set_strfun &
-                     (process, i_sf, j, current%lhapdf(j), current%n_parameters)
-             case (STRF_ISR)
-                call process_set_strfun &
-                     (process, i_sf, j, current%isr(j), current%n_parameters)
-             case (STRF_EPA)
-                call process_set_strfun &
-                     (process, i_sf, j, current%epa(j), current%n_parameters)
-             case (STRF_EWA)
-                call process_set_strfun &
-                     (process, i_sf, j, current%ewa(j), current%n_parameters)
-             end select
-             i_par = i_par + current%n_parameters
-          end if
-       end do
-       current => current%next
-    end do
-  end subroutine process_setup_strfun
-       
-  subroutine iterations_list_init (it_list, n_it, n_calls)
-    type(iterations_list_t), intent(inout) :: it_list
-    integer, dimension(:), intent(in) :: n_it, n_calls
-    it_list%n_pass = size (n_it)
-    if (allocated (it_list%pass)) deallocate (it_list%pass)    
-    allocate (it_list%pass (it_list%n_pass))
-    it_list%pass%n_it = n_it
-    it_list%pass%n_calls = n_calls
-  end subroutine iterations_list_init
-
-  subroutine iterations_list_complete (it_list, it_list_default)
-    type(iterations_list_t), intent(inout) :: it_list
-    type(iterations_list_t), intent(in) :: it_list_default
-    if (it_list%n_pass >= 1) then
-       if (it_list%pass(1)%n_it == 0)  &
-            it_list%pass(1)%n_it = it_list_default%pass(1)%n_it
-       if (it_list%pass(1)%n_calls == 0)  &
-            it_list%pass(1)%n_calls = it_list_default%pass(1)%n_calls
-    end if
-    if (it_list%n_pass >= 2) then
-       where (it_list%pass%n_it == 0) &
-            it_list%pass%n_it = it_list_default%pass(2)%n_it
-       where (it_list%pass%n_calls == 0) &
-            it_list%pass%n_calls = it_list_default%pass(2)%n_calls
-    end if
-  end subroutine iterations_list_complete
-    
-  subroutine iterations_list_clear (it_list)
-    type(iterations_list_t), intent(inout) :: it_list
-    it_list%n_pass = 0
-    deallocate (it_list%pass)
-  end subroutine iterations_list_clear
-
-  subroutine iterations_list_write (it_list, unit)
-    type(iterations_list_t), intent(in) :: it_list
-    integer, intent(in), optional :: unit
-    type(string_t) :: buffer
-    character(30) :: ibuf
-    integer :: i
-    buffer = "iterations = "
-    if (it_list%n_pass > 0) then
-       do i = 1, it_list%n_pass
-          if (i > 1)  buffer = buffer // ", "
-          write (ibuf, "(I0,':',I0)") &
-               it_list%pass(i)%n_it, it_list%pass(i)%n_calls
-          buffer = buffer // trim (ibuf)
-       end do
-    else
-       buffer = buffer // "[undefined]"
-    end if
-    call msg_message (char (buffer), unit)
-  end subroutine iterations_list_write
-
-  function iterations_list_get_pass_array (it_list) result (pass)
-    integer, dimension(:), allocatable :: pass
-    type(iterations_list_t), intent(in) :: it_list
-    integer :: it, i
-    allocate (pass (sum (it_list%pass%n_it)))
-    it = 0
-    do i = 1, it_list%n_pass
-       pass(it+1 : it+it_list%pass(i)%n_it) = i
-       it = it + it_list%pass(i)%n_it
-    end do
-  end function iterations_list_get_pass_array
-
-  function iterations_list_get_n_calls_array (it_list) result (n_calls)
-    integer, dimension(:), allocatable :: n_calls
-    type(iterations_list_t), intent(in) :: it_list
-    integer :: it, i
-    allocate (n_calls (sum (it_list%pass%n_it)))
-    it = 0
-    do i = 1, it_list%n_pass
-       n_calls(it+1 : it+it_list%pass(i)%n_it) = it_list%pass(i)%n_calls
-       it = it + it_list%pass(i)%n_it
-    end do
-  end function iterations_list_get_n_calls_array
-
-  function iterations_list_get_n_it (it_list) result (n_it)
-    integer :: n_it
-    type(iterations_list_t), intent(in) :: it_list
-    n_it = sum (it_list%pass%n_it)
-  end function iterations_list_get_n_it
-
-   subroutine iterations_list_adjust_n_calls (it_list, process, grid_parameters)
-     type(iterations_list_t), intent(inout), target :: it_list
-     type(process_t), intent(in) :: process
-     type(grid_parameters_t), intent(in) :: grid_parameters
-     type(iterations_spec_t), pointer :: it_spec
-     integer :: n_calls, pass
-     logical :: changed
-     changed = .false.
-     do pass = 1, it_list%n_pass
-        it_spec => it_list%pass(pass)
-        n_calls = max (it_spec%n_calls, &
-             process_get_n_channels (process) &
-             * grid_parameters%min_calls_per_channel)
-        if (n_calls /= it_spec%n_calls) then
-           it_spec%n_calls = n_calls
-           changed = .true.
-        end if
-     end do
-     if (changed) then
-        write (msg_buffer, "(A,I0)") "Process '" &
-             // char (process_get_id (process)) // "': " &
-             // "resetting n_calls to ", n_calls
-        call msg_warning ()
-     end if
-  end subroutine iterations_list_adjust_n_calls
-
-  subroutine iterations_lists_init_default (it_list)
-    type(iterations_list_t), dimension(:), pointer :: it_list
-    allocate (it_list (ITERATIONS_DEFAULT_LIST_SIZE))
-    call iterations_list_init (it_list(1), (/  1 /), (/ 100 /))
-    call iterations_list_init (it_list(2), (/  3, 3 /), (/   1000,  10000 /))
-    call iterations_list_init (it_list(3), (/  5, 3 /), (/   5000,  10000 /))
-    call iterations_list_init (it_list(4), (/ 10, 5 /), (/  10000,  20000 /))
-    call iterations_list_init (it_list(5), (/ 10, 5 /), (/  20000,  50000 /))
-    call iterations_list_init (it_list(6), (/ 15, 5 /), (/  50000, 100000 /))
-    call iterations_list_init (it_list(7), (/ 20, 5 /), (/  50000, 200000 /))
-  end subroutine iterations_lists_init_default
-
-  subroutine file_list_append_file_spec &
-       (file_list, basename, var_list, format, beam_flv, beam_energy) 
-       ! unweighted, negative_weights, &
-    type(file_list_t), intent(inout) :: file_list
-    type(string_t), intent(in) :: basename
-    type(var_list_t), intent(in) :: var_list
-    integer, intent(in) :: format
-    type(flavor_t), dimension(:), intent(in) :: beam_flv
-    real(default), dimension(:), intent(in) :: beam_energy
-!     logical, intent(in) :: unweighted, negative_weights
-    integer :: n_processes
-    type(file_spec_t), pointer :: current
-    n_processes = size (beam_flv)
-    allocate (current)
-    select case (format)
-    case (FMT_DEFAULT);     current%name = basename // "." // var_list_get_sval &
-            (var_list, var_str ("$extension_default"))
-    case (FMT_DEBUG);       current%name = basename // "." // var_list_get_sval &
-            (var_list, var_str ("$extension_debug"))
-    case (FMT_HEPMC);       current%name = basename // "." // var_list_get_sval &
-            (var_list, var_str ("$extension_hepmc"))
-    case (FMT_LHEF);        current%name = basename // "." // var_list_get_sval &
-            (var_list, var_str ("$extension_lhef"))
-    case (FMT_LHA);         current%name = basename // "." // var_list_get_sval &
-            (var_list, var_str ("$extension_lha"))
-    case (FMT_HEPEVT);      current%name = basename // "." // var_list_get_sval &
-            (var_list, var_str ("$extension_hepevt"))
-    case (FMT_ASCII_SHORT); current%name = basename // "." // var_list_get_sval &
-            (var_list, var_str ("$extension_ascii_short"))
-    case (FMT_ASCII_LONG);  current%name = basename // "." // var_list_get_sval &
-            (var_list, var_str ("$extension_ascii_long"))
-    case (FMT_ATHENA);      current%name = basename // "." // var_list_get_sval &
-            (var_list, var_str ("$extension_athena"))
-    case (FMT_STDHEP);      current%name = basename // "." // var_list_get_sval &
-            (var_list, var_str ("$extension_stdhep"))
-    case (FMT_STDHEP_UP);   current%name = basename // "." // var_list_get_sval &
-            (var_list, var_str ("$extension_stdhep_up"))
-    case default;           current%name = basename // "." // var_list_get_sval &
-            (var_list, var_str ("$extension_default"))
-    end select          
-    current%format = format
-    allocate (current%beam_flv (size (beam_flv)))
-    current%beam_flv = beam_flv
-    allocate (current%beam_energy (size (beam_energy)))
-    current%beam_energy = beam_energy
-    current%n_processes = n_processes
-    current%keep_beams = var_list_get_lval (var_list, var_str ("?keep_beams"))
-    if (associated (file_list%last)) then
-       file_list%last%next => current
-    else
-       file_list%first => current
-    end if
-    file_list%last => current
-  end subroutine file_list_append_file_spec
-
-  subroutine file_list_final (file_list)
-    type(file_list_t), intent(inout) :: file_list
-    type(file_spec_t), pointer :: current
-    do while (associated (file_list%first))
-       current => file_list%first
-       file_list%first => current%next
-       deallocate (current)
-    end do
-    file_list%last => null ()
-  end subroutine file_list_final
-
-  subroutine file_list_open (file_list, process_id, n_events)
-    type(file_list_t), intent(inout), target :: file_list
-    type(string_t), dimension(:), intent(in) :: process_id
-    integer, intent(in) :: n_events
-    real(default), dimension(:), allocatable :: integral, error
-    type(process_t), pointer :: process 
-    type(file_spec_t), pointer :: current
-    integer :: i, n_proc
-    integer(i64) :: n_events_expected    
-    n_proc = size (process_id)
-    current => file_list%first
-    allocate (integral (n_proc), error (n_proc))
-    do i = 1, n_proc
-       process => process_store_get_process_ptr (process_id(i))
-       if (associated (process)) then
-          integral(i) = process_get_integral (process)
-          error(i) = process_get_error (process)
-       else
-          integral(i) = 0
-          error(i) = 0
-       end if
-    end do
-    n_events_expected = n_events
-    do while (associated (current))
-       select case (current%format)
-       case (FMT_DEFAULT)
-          call msg_message ("Writing events in human-readable format " &
-               // "to file '" // char (current%name) // "'")
-          current%unit = free_unit ()
-          open (unit=current%unit, file=char(current%name), &
-               action="write", status="replace")
-       case (FMT_DEBUG)
-          call msg_message ("Writing events in verbose format to file '" &
-               // char (current%name) // "'")
-          current%unit = free_unit ()
-          open (unit=current%unit, file=char(current%name), &
-               action="write", status="replace")
-       case (FMT_HEPMC)
-          call msg_message ("Writing events in HepMC format to file '" &
-               // char (current%name) // "'")
-          if (hepmc_is_available ()) then
-             allocate (current%iostream)
-             call hepmc_iostream_open_out (current%iostream, current%name)
-          else
-             call msg_error ("HepMC event writing is disabled " &
-                  // "because HepMC library is not linked.")
-          end if
-       case (FMT_HEPEVT)   
-          call msg_message ("Writing events in HEPEVT format to file '" &
-               // char (current%name) // "'")
-          current%unit = free_unit ()
-          open (unit=current%unit, file=char(current%name), &
-               action="write", status="replace")
-       case (FMT_ASCII_SHORT)   
-          call msg_message ("Writing events in short ASCII format to file '" &
-               // char (current%name) // "'")
-          current%unit = free_unit ()
-          open (unit=current%unit, file=char(current%name), &
-               action="write", status="replace")
-       case (FMT_ASCII_LONG)   
-          call msg_message ("Writing events in long ASCII format to file '" &
-               // char (current%name) // "'")
-          current%unit = free_unit ()
-          open (unit=current%unit, file=char(current%name), &
-               action="write", status="replace")
-       case (FMT_ATHENA)   
-          call msg_message ("Writing events in ATHENA format to file '" &
-               // char (current%name) // "'")
-          current%unit = free_unit ()
-          open (unit=current%unit, file=char(current%name), &
-               action="write", status="replace")
-       case (FMT_LHEF)
-          call msg_message ("Writing events in LHEF format to file '" &
-               // char (current%name) // "'")
-          current%unit = free_unit ()
-          open (unit=current%unit, file=char(current%name), &
-               action="write", status="replace")
-          call les_houches_events_write_header (current%unit)
-          call heprup_init &
-               (flavor_get_pdg (current%beam_flv), &
-                current%beam_energy, &
-                n_processes = current%n_processes, &
-                unweighted = current%unweighted, &
-                negative_weights = current%negative_weights)            
-          do i = 1, n_proc
-             call heprup_set_process_parameters (i = i, process_id = &
-                 i, cross_section = integral(i), error = error(i))
-          end do
-          call heprup_write_lhef (current%unit)
-       case (FMT_LHA)
-          call msg_message ("Writing events in (old) LHA format to file '" &
-               // char (current%name) // "'")
-          current%unit = free_unit ()
-          open (unit=current%unit, file=char(current%name), &
-               action="write", status="replace")
-          call heprup_init &
-               (flavor_get_pdg (current%beam_flv), &
-                current%beam_energy, &
-                n_processes = current%n_processes, &
-                unweighted = current%unweighted, &
-                negative_weights = current%negative_weights)            
-          do i = 1, n_proc
-             call heprup_set_process_parameters (i = i, process_id = &
-                 i, cross_section = integral(i), error = error(i))
-          end do
-       case (FMT_STDHEP)
-          call msg_message ("Writing events in binary STDHEP/HEPEVT format to file '" &
-               // char (current%name) // "'")
-          call stdhep_init (char(current%name), "WHIZARD event sample", &
-               n_events_expected)     
-       case (FMT_STDHEP_UP)
-          call msg_message ("Writing events in binary STDHEP/HEPRUP/HEPEUP format to file '" &
-               // char (current%name) // "'")
-          call heprup_init &
-               (flavor_get_pdg (current%beam_flv), &
-                current%beam_energy, &
-                n_processes = current%n_processes, &
-                unweighted = current%unweighted, &
-                negative_weights = current%negative_weights)                           
-          do i = 1, n_proc
-             call heprup_set_process_parameters (i = i, process_id = &
-                 i, cross_section = integral(i), error = error(i))
-          end do               
-          call stdhep_init (char(current%name), "WHIZARD event sample", &
-               n_events_expected)     
-          call stdhep_write (STDHEP_HEPRUP)
-        end select
-       current => current%next
-    end do
-  end subroutine file_list_open
-
-  subroutine file_list_write_event (file_list, event, i_proc, i_evt)
-    type(file_list_t), intent(in), target :: file_list
-    type(event_t), intent(in), target :: event
-    integer, intent(in), optional :: i_proc, i_evt
-    type(file_spec_t), pointer :: current
-    type(hepmc_event_t) :: hepmc_event
-    current => file_list%first
-    do while (associated (current))
-       select case (current%format)
-       case (FMT_DEFAULT)
-          call event_write (event, current%unit, verbose=.false.)
-       case (FMT_DEBUG)
-          call event_write (event, current%unit, verbose=.true.)
-       case (FMT_HEPMC)
-          if (hepmc_is_available ()) then
-             call hepmc_event_init (hepmc_event, i_proc, i_evt)
-             call event_write_to_hepmc (event, hepmc_event)
-             call hepmc_iostream_write_event (current%iostream, hepmc_event)
-             call hepmc_event_final (hepmc_event)
-          end if
-       case (FMT_HEPEVT)
-          call event_write_to_hepevt (event, current%keep_beams)
-          call hepevt_write_hepevt (current%unit)          
-       case (FMT_ASCII_SHORT)
-          call event_write_to_hepevt (event, current%keep_beams)
-          call hepevt_write_ascii (current%unit, .false.)                 
-       case (FMT_ASCII_LONG)
-          call event_write_to_hepevt (event, current%keep_beams)
-          call hepevt_write_ascii (current%unit, .true.)                  
-       case (FMT_ATHENA)
-          call event_write_to_hepevt (event, current%keep_beams)
-          call hepevt_write_athena (unit=current%unit, i_evt=i_evt)                       
-       case (FMT_LHEF)
-          call event_write_to_hepeup (event)
-          call hepeup_write_lhef (current%unit)
-       case (FMT_LHA)
-          call event_write_to_hepeup (event)
-          call hepeup_write_lha (current%unit)
-       case (FMT_STDHEP)
-          call event_write_to_hepevt (event, i_evt=i_evt)
-          call stdhep_write (STDHEP_HEPEVT)
-       case (FMT_STDHEP_UP)
-          call event_write_to_hepeup (event)
-          call stdhep_write (STDHEP_HEPEUP)
-       end select
-       current => current%next
-    end do
-  end subroutine file_list_write_event
-
-  subroutine file_list_close (file_list)
-    type(file_list_t), intent(inout), target :: file_list
-    type(file_spec_t), pointer :: current
-    current => file_list%first
-    do while (associated (current))
-       select case (current%format)
-       case (FMT_HEPMC)
-          if (hepmc_is_available ()) then
-             call hepmc_iostream_close (current%iostream)
-             deallocate (current%iostream)
-          end if
-       case (FMT_LHEF)          
-          call les_houches_events_write_footer (current%unit)
-          close (current%unit)
-       case (FMT_STDHEP)
-          call stdhep_end
-       case (FMT_STDHEP_UP)
-          call stdhep_end
-       case default
-          close (current%unit)
-       end select
-       current => current%next
-    end do
-  end subroutine file_list_close
-
-  elemental function event_format_code (format) result (fmt)
-    integer :: fmt
-    type(string_t), intent(in) :: format
-    select case (char (format))
-    case ("ascii")
-       fmt = FMT_DEFAULT
-    case ("debug")
-       fmt = FMT_DEBUG
-    case ("hepmc")
-       fmt = FMT_HEPMC
-    case ("hepevt")
-       fmt = FMT_HEPEVT
-    case ("short")
-       fmt = FMT_ASCII_SHORT
-    case ("long")
-       fmt = FMT_ASCII_LONG
-    case ("athena")
-       fmt = FMT_ATHENA
-    case ("lhef")
-       fmt = FMT_LHEF
-    case ("lha")
-       fmt = FMT_LHA
-    case ("stdhep")
-       fmt = FMT_STDHEP
-    case ("stdhep_up")
-       fmt = FMT_STDHEP_UP
-    case default
-       fmt = FMT_NONE
-    end select
-  end function event_format_code
-
-  subroutine process_ptr_array_create (prc_array, process_id)
-    type(process_p), dimension(:), intent(out), allocatable :: prc_array
-    type(string_t), dimension(:), intent(in) :: process_id
-    integer :: proc, n_proc
-    n_proc = size (process_id)
-    allocate (prc_array (n_proc))
-    do proc = 1, n_proc
-       prc_array(proc)%ptr => process_store_get_process_ptr (process_id(proc))
-    end do
-  end subroutine process_ptr_array_create
-
-  subroutine rt_data_global_init (global, paths)
-    type(rt_data_t), intent(out), target :: global
-    type(paths_t), intent(in), optional :: paths
-    logical, target, save :: known = .true.
-    real(default), parameter :: real_specimen = 1.
-    call os_data_init (global%os_data, paths)
-    allocate (global%rng)
-    call system_clock (global%seed)
-    call tao_random_create (global%rng, global%seed)
-    call var_list_append_int_ptr &
-         (global%var_list, var_str ("seed_value"), global%seed, known, &
-          intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("sqrts"), 0._default, &
-          intrinsic=.true.)
-    call var_list_append_string &
-         (global%var_list, var_str ("$model_name"), &
-          intrinsic=.true.)
-    call var_list_append_string &
-         (global%var_list, var_str ("$restrictions"), var_str (""), &
-          intrinsic=.true.)
-    call var_list_append_string &
-         (global%var_list, var_str ("$method"), var_str ("omega"), &
-          intrinsic=.true.)       
-    call var_list_append_log &
-         (global%var_list, var_str ("?read_color_factors"), .true., &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?slha_read_input"), .true., &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?slha_read_spectrum"), .true., &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?slha_read_decays"), .false., &
-          intrinsic=.true.)
-    call var_list_append_string &
-         (global%var_list, var_str ("$library_name"), &
-          intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("cm_momentum"), 0._default, &
-          intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("cm_theta"), 0._default, &
-          intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("cm_phi"), 0._default, &
-          intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("luminosity"), 0._default, &
-          intrinsic=.true.)
-    call var_list_append_string &
-         (global%var_list, var_str ("$lhapdf_file"), &
-          intrinsic=.true.)
-    call var_list_append_int &
-         (global%var_list, var_str ("lhapdf_member"), 0, &
-          intrinsic=.true.)
-    call var_list_append_int &
-         (global%var_list, var_str ("lhapdf_photon_scheme"), 0, &
-          intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("isr_alpha"), 0._default, &
-          intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("isr_q_max"), 0._default, &
-          intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("isr_mass"), 0._default, &
-          intrinsic=.true.)
-    call var_list_append_int &
-         (global%var_list, var_str ("isr_order"), 3, &
-          intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("epa_alpha"), 0._default, &
-          intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("epa_x_min"), 0._default, &
-          intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("epa_q_min"), 0._default, &
-          intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("epa_e_max"), 0._default, &
-          intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("epa_mass"), 0._default, &
-          intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("ewa_x_min"), 0._default, &
-          intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("ewa_q_min"), 0._default, &
-          intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("ewa_pt_max"), 0._default, &
-          intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("ewa_mass"), 0._default, &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?ewa_keep_momentum"), .false., &
-          intrinsic=.false.)      
-    call var_list_append_log &
-         (global%var_list, var_str ("?ewa_keep_energy"), .false., &
-          intrinsic=.false.)              
-    call var_list_append_log &
-         (global%var_list, var_str ("?alpha_s_is_fixed"), .true., &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?alpha_s_from_lhapdf"), .false., &
-          intrinsic=.true.)
-    call var_list_append_int &
-         (global%var_list, var_str ("alpha_s_order"), 0, &
-          intrinsic=.true.)
-    call var_list_append_int &
-         (global%var_list, var_str ("alpha_s_nf"), 5, &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?alpha_s_from_mz"), .true., &
-          intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("lambda_qcd"), 200.e-3_default, &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?fatal_beam_decay"), .true., &
-          intrinsic=.true.)          
-    call var_list_append_log &
-         (global%var_list, var_str ("?helicity_selection_active"), .true., &
-          intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("helicity_selection_threshold"), &
-          1E10_default, &
-          intrinsic=.true.)
-    call var_list_append_int &
-         (global%var_list, var_str ("helicity_selection_cutoff"), 1000, &
-          intrinsic=.true.)
-    call var_list_append_int &
-         (global%var_list, var_str ("threshold_calls"), 0, &
-          intrinsic=.true.)
-    call var_list_append_int &
-         (global%var_list, var_str ("min_calls_per_channel"), 10, &
-          intrinsic=.true.)
-    call var_list_append_int &
-         (global%var_list, var_str ("min_calls_per_bin"), 10, &
-          intrinsic=.true.)
-    call var_list_append_int &
-         (global%var_list, var_str ("min_bins"), 3, &
-          intrinsic=.true.)
-    call var_list_append_int &
-         (global%var_list, var_str ("max_bins"), 20, &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?stratified"), .true., &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?use_vamp_equivalences"), .true., &
-          intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("channel_weights_power"), 0.25_default, &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?vis_channels"), .false., &
-          intrinsic=.true.)       
-    call var_list_append_string &
-         (global%var_list, var_str ("$phs_file"), &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?phs_only"), .false., &
-          intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("phs_threshold_s"), 50._default, &
-          intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("phs_threshold_t"), 100._default, &
-          intrinsic=.true.)
-    call var_list_append_int &
-         (global%var_list, var_str ("phs_off_shell"), 1, &
-          intrinsic=.true.)
-    call var_list_append_int &
-         (global%var_list, var_str ("phs_t_channel"), 2, &
-          intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("phs_e_scale"), 10._default, &
-          intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("phs_m_scale"), 10._default, &
-          intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("phs_q_scale"), 10._default, &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?adapt_final_grids"), .true., &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?adapt_final_weights"), .false., &
-          intrinsic=.true.)       
-    call var_list_append_log &
-         (global%var_list, var_str ("?isotropic_decay"), .false., &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?diagonal_decay"), .false., &
-          intrinsic=.true.)
-    call var_list_append_int &
-         (global%var_list, var_str ("n_events"), 0, &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?unweighted"), .true., &
-          intrinsic=.true.)       
-    call var_list_append_string &
-         (global%var_list, var_str ("$event_normalization"), var_str ("auto"),&
-          intrinsic=.true.)       
-    call var_list_append_log &
-         (global%var_list, var_str ("?negative_weights"), .false., &
-          intrinsic=.true.)       
-    call var_list_append_log &
-         (global%var_list, var_str ("?keep_beams"), .false., &
-          intrinsic=.true.)
-    call var_list_append_string &
-         (global%var_list, var_str ("$sample"), var_str (""), &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?read_raw"), .true., &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?write_raw"), .true., &
-          intrinsic=.true.)
-    call var_list_append_string &
-         (global%var_list, var_str ("$extension_raw"), var_str ("evx"), &
-         intrinsic=.true.)
-    call var_list_append_string &
-         (global%var_list, var_str ("$extension_default"), var_str ("evt"), &
-         intrinsic=.true.)
-    call var_list_append_string &
-         (global%var_list, var_str ("$extension_debug"), var_str ("debug"), &
-          intrinsic=.true.)
-    call var_list_append_string &
-         (global%var_list, var_str ("$extension_hepevt"), var_str ("hepevt"), &
-          intrinsic=.true.)
-    call var_list_append_string &
-         (global%var_list, var_str ("$extension_ascii_short"), var_str ("short.evt"), &
-          intrinsic=.true.)
-    call var_list_append_string &
-         (global%var_list, var_str ("$extension_ascii_long"), var_str ("long.evt"), &
-          intrinsic=.true.)      
-    call var_list_append_string &
-         (global%var_list, var_str ("$extension_athena"), var_str ("athena.evt"), &
-          intrinsic=.true.) 
-    call var_list_append_string &
-         (global%var_list, var_str ("$extension_lhef"), var_str ("lhef"), &
-          intrinsic=.true.)
-    call var_list_append_string &
-         (global%var_list, var_str ("$extension_lha"), var_str ("lha"), &
-          intrinsic=.true.)
-    call var_list_append_string &
-         (global%var_list, var_str ("$extension_hepmc"), var_str ("hepmc"), &
-          intrinsic=.true.)
-    call var_list_append_string &
-         (global%var_list, var_str ("$extension_stdhep"), var_str ("stdhep"), &
-          intrinsic=.true.)
-    call var_list_append_string &
-         (global%var_list, var_str ("$extension_stdhep_up"), var_str ("up.stdhep"), &
-          intrinsic=.true.)
-    call var_list_append_string (global%var_list, &
-         var_str ("$analysis_filename"), &
-          intrinsic=.true.)
-    call var_list_append_int (global%var_list, &
-         var_str ("n_bins"), 20, &
-          intrinsic=.true.)
-    call var_list_append_string (global%var_list, &
-         var_str ("$label"), var_str (""), &
-          intrinsic=.true.)
-    call var_list_append_string (global%var_list, &
-         var_str ("$physical_unit"), var_str (""), &
-          intrinsic=.true.)
-    call var_list_append_string (global%var_list, &
-         var_str ("$title"), var_str (""), &
-          intrinsic=.true.)
-    call var_list_append_string (global%var_list, &
-         var_str ("$description"), var_str (""), &
-          intrinsic=.true.)
-    call var_list_append_string (global%var_list, &
-         var_str ("$xlabel"), var_str (""), &
-          intrinsic=.true.)
-    call var_list_append_string (global%var_list, &
-         var_str ("$ylabel"), var_str (""), &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?x_log"), .false., &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?y_log"), .false., &
-          intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("y_min"),  &
-          intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("y_max"),  &
-          intrinsic=.true.)
-    call var_list_append_real (global%var_list, &
-         var_str ("tolerance"), 0._default, &
-          intrinsic=.true.)
-    call var_list_append_int (global%var_list, &
-         var_str ("checkpoint"), intrinsic = .true.)
-    call var_list_append_int (global%var_list, var_str ("real_range"), &
-         range (real_specimen), intrinsic = .true., locked = .true.)
-    call var_list_append_int (global%var_list, var_str ("real_precision"), &
-         precision (real_specimen), intrinsic = .true., locked = .true.)
-    call var_list_append_real (global%var_list, var_str ("real_epsilon"), &
-         epsilon (real_specimen), intrinsic = .true., locked = .true.)
-    call var_list_append_real (global%var_list, var_str ("real_tiny"), &
-         tiny (real_specimen), intrinsic = .true., locked = .true.)
-    call rt_data_init_pointer_variables (global)
-    call iterations_lists_init_default (global%it_list_default)
-  end subroutine rt_data_global_init
-
-  subroutine rt_data_local_init (local, global)
-    type(rt_data_t), intent(inout), target :: local
-    type(rt_data_t), intent(in), target :: global
-    call var_list_link (local%var_list, global%var_list)
-    if (associated (global%model)) then
-       call var_list_init_copies (local%var_list, &
-            model_get_var_list_ptr (global%model), &
-            derived_only = .true.)
-    end if
-    call rt_data_init_pointer_variables (local)
-  end subroutine rt_data_local_init
-
-  subroutine rt_data_init_pointer_variables (local)
-    type(rt_data_t), intent(inout), target :: local
-    logical, target, save :: known = .true.
-    call var_list_append_string_ptr &
-         (local%var_list, var_str ("$fc"), local%os_data%fc, known, &
-          intrinsic=.true.)
-    call var_list_append_string_ptr &
-         (local%var_list, var_str ("$fcflags"), local%os_data%fcflags, known, &
-         intrinsic=.true.)
-  end subroutine rt_data_init_pointer_variables
-
-  subroutine rt_data_link (local, global)
-    type(rt_data_t), intent(inout), target :: local
-    type(rt_data_t), intent(in), target :: global
-    local%lexer => global%lexer
-    call var_list_link (local%var_list, global%var_list)
-    if (associated (global%model)) then
-       call var_list_synchronize (local%var_list, &
-            model_get_var_list_ptr (global%model), reset_pointers = .true.)
-    end if
-    local%it_list = global%it_list
-    local%it_list_default => global%it_list_default
-    if (allocated (global%event_fmt)) then
-       allocate (local%event_fmt (size (global%event_fmt)))
-       local%event_fmt = global%event_fmt
-    end if
-    local%os_data = global%os_data
-    local%prc_lib => global%prc_lib
-    local%model => global%model
-    local%beam_data = global%beam_data
-    local%lhapdf_status = global%lhapdf_status
-    local%sf_list_allocated = .false.
-    local%sf_list => global%sf_list
-    local%pn_cuts_lexpr => global%pn_cuts_lexpr
-    local%pn_weight_expr => global%pn_weight_expr
-    local%pn_scale_expr => global%pn_scale_expr
-    local%pn_analysis_lexpr => global%pn_analysis_lexpr
-    local%rng => global%rng
-  end subroutine rt_data_link
-
-  subroutine rt_data_restore (global, local, keep_model_vars)
-    type(rt_data_t), intent(inout) :: global
-    type(rt_data_t), intent(in) :: local
-    logical, intent(in), optional :: keep_model_vars
-    logical :: same_model, restore
-    if (associated (global%model)) then 
-       same_model = &
-            model_get_name (global%model) == model_get_name (local%model)
-       if (present (keep_model_vars) .and. same_model) then
-          restore = .not. keep_model_vars
-       else
-          if (.not. same_model)  call msg_message ("Restoring model '" // &
-               char (model_get_name (global%model)) // "'")
-          restore = .true.
-       end if
-       if (restore) then
-          call var_list_restore (global%var_list)
-       else
-          call var_list_synchronize &
-               (global%var_list, model_get_var_list_ptr (global%model))
-       end if
-    end if
-  end subroutine rt_data_restore
-
-  subroutine rt_data_global_final (global)
-    type(rt_data_t), intent(inout) :: global
-    call var_list_final (global%var_list)
-    if (global%sf_list_allocated) then
-       call sf_list_final (global%sf_list)
-       deallocate (global%sf_list)
-       global%sf_list_allocated = .false.
-    end if
-    deallocate (global%it_list_default)
-  end subroutine rt_data_global_final
 
   recursive subroutine command_final (command)
     type(command_t), intent(inout) :: command
@@ -1892,12 +673,17 @@ contains
     case (CMD_BEAMS)
        call cmd_beams_final (command%beams)
        deallocate (command%beams)
+    case (CMD_BEAM_POLARIZATION)
+       call cmd_beam_polarization_final (command%beam_polarization)
+       deallocate (command%beam_polarization)
     case (CMD_CUTS)
        deallocate (command%cuts)
-    case (CMD_WEIGHT)
-       deallocate (command%weight)
     case (CMD_SCALE)
        deallocate (command%scale)
+    case (CMD_WEIGHT)
+       deallocate (command%weight)
+    case (CMD_REWEIGHT)
+       deallocate (command%reweight)
     case (CMD_SEED)
        call cmd_seed_final (command%seed)
        deallocate (command%seed)
@@ -1930,12 +716,18 @@ contains
     case (CMD_STABLE)
        call cmd_stable_final (command%stable)
        deallocate (command%stable)
+    case (CMD_POLARIZED, CMD_UNPOLARIZED)
+       call cmd_un_polarized_final (command%un_polarized)
+       deallocate (command%un_polarized)
     case (CMD_SAMPLE_FORMAT)
        call cmd_sample_format_final (command%events)
        deallocate (command%events)
     case (CMD_SIMULATE)
        call cmd_simulate_final (command%simulate)
        deallocate (command%simulate)
+    case (CMD_RESCAN)
+       call cmd_rescan_final (command%rescan)
+       deallocate (command%rescan)
     case (CMD_WRITE_ANALYSIS)
        call cmd_write_analysis_final (command%write_analysis)
        deallocate (command%write_analysis)
@@ -1978,12 +770,17 @@ contains
        call cmd_exec_write (command%exec, unit, indent)
     case (CMD_BEAMS)
        call cmd_beams_write (command%beams, unit, indent)
+    case (CMD_BEAM_POLARIZATION)
+       call cmd_beam_polarization_write &
+          (command%beam_polarization, unit, indent)
     case (CMD_CUTS)
        call cmd_cuts_write (command%cuts, unit, indent)
-    case (CMD_WEIGHT)
-       call cmd_weight_write (command%weight, unit, indent)
     case (CMD_SCALE)
        call cmd_scale_write (command%scale, unit, indent)
+    case (CMD_WEIGHT)
+       call cmd_weight_write (command%weight, unit, indent)
+    case (CMD_REWEIGHT)
+       call cmd_reweight_write (command%reweight, unit, indent)
     case (CMD_SEED)
        call cmd_seed_write (command%seed, unit, indent)
     case (CMD_ITERATIONS)
@@ -2002,10 +799,15 @@ contains
        call cmd_unstable_write (command%unstable, unit, indent)
     case (CMD_STABLE)
        call cmd_stable_write (command%stable, unit, indent)
+    case (CMD_POLARIZED, CMD_UNPOLARIZED)
+       call cmd_un_polarized_write &
+          (command%un_polarized, command%type, unit, indent)
     case (CMD_SAMPLE_FORMAT)
        call cmd_sample_format_write (command%events, unit, indent)
     case (CMD_SIMULATE)
        call cmd_simulate_write (command%simulate, unit, indent)
+    case (CMD_RESCAN)
+       call cmd_rescan_write (command%rescan, unit, indent)
     case (CMD_SCAN)
        call cmd_scan_write (command%loop, unit, indent)
     case (CMD_IF)
@@ -2044,7 +846,7 @@ contains
        call cmd_exec_compile (command%exec, pn, global)
     case ("cmd_num", "cmd_complex", "cmd_real", "cmd_int", &
           "cmd_log_decl", "cmd_log", "cmd_string", "cmd_string_decl", &
-          "cmd_alias")
+          "cmd_alias", "cmd_result")
        command%type = CMD_VAR
        call cmd_var_compile (command%var, pn, global)
     case ("cmd_slha")
@@ -2068,15 +870,22 @@ contains
     case ("cmd_beams")
        command%type = CMD_BEAMS
        call cmd_beams_compile (command%beams, pn, global)
+    case ("cmd_beam_polarization")
+       command%type = CMD_BEAM_POLARIZATION
+       call cmd_beam_polarization_compile &
+          (command%beam_polarization, pn, global)
     case ("cmd_cuts")
        command%type = CMD_CUTS
        call cmd_cuts_compile (command%cuts, pn)
-    case ("cmd_weight")
-       command%type = CMD_WEIGHT
-       call cmd_weight_compile (command%weight, pn)
     case ("cmd_scale")
        command%type = CMD_SCALE
        call cmd_scale_compile (command%scale, pn)
+    case ("cmd_weight")
+       command%type = CMD_WEIGHT
+       call cmd_weight_compile (command%weight, pn)
+    case ("cmd_reweight")
+       command%type = CMD_REWEIGHT
+       call cmd_reweight_compile (command%reweight, pn)
     case ("cmd_seed")
        command%type = CMD_SEED
        call cmd_seed_compile (command%seed, pn, global)
@@ -2110,12 +919,21 @@ contains
     case ("cmd_stable")
        command%type = CMD_STABLE
        call cmd_stable_compile (command%stable, pn, global)
+    case ("cmd_polarized")
+         command%type = CMD_POLARIZED
+         call cmd_un_polarized_compile (command%un_polarized, pn, global)
+    case ("cmd_unpolarized")
+         command%type = CMD_UNPOLARIZED
+         call cmd_un_polarized_compile (command%un_polarized, pn, global)
     case ("cmd_sample_format")
        command%type = CMD_SAMPLE_FORMAT
        call cmd_sample_format_compile (command%events, pn)
     case ("cmd_simulate")
        command%type = CMD_SIMULATE
        call cmd_simulate_compile (command%simulate, pn, global)
+    case ("cmd_rescan")
+       command%type = CMD_RESCAN
+       call cmd_rescan_compile (command%rescan, pn, global)
     case ("cmd_write_analysis")
        command%type = CMD_WRITE_ANALYSIS
        call cmd_write_analysis_compile (command%write_analysis, pn, global)
@@ -2171,12 +989,16 @@ contains
        call cmd_echo_execute (command%echo, global)
     case (CMD_BEAMS)
        call cmd_beams_execute (command%beams, global)
+    case (CMD_BEAM_POLARIZATION)
+       call cmd_beam_polarization_execute (command%beam_polarization, global)
     case (CMD_CUTS)
        call cmd_cuts_execute (command%cuts, global)
-    case (CMD_WEIGHT)
-       call cmd_weight_execute (command%weight, global)
     case (CMD_SCALE)
        call cmd_scale_execute (command%scale, global)
+    case (CMD_WEIGHT)
+       call cmd_weight_execute (command%weight, global)
+    case (CMD_REWEIGHT)
+       call cmd_reweight_execute (command%reweight, global)
     case (CMD_SEED)
        call cmd_seed_execute (command%seed, global)
     case (CMD_ITERATIONS)
@@ -2199,10 +1021,14 @@ contains
        call cmd_unstable_execute (command%unstable, global)
     case (CMD_STABLE)
        call cmd_stable_execute (command%stable, global)
+    case (CMD_POLARIZED, CMD_UNPOLARIZED)
+       call cmd_un_polarized_execute (command%un_polarized, command%type, global)
     case (CMD_SAMPLE_FORMAT)
        call cmd_sample_format_execute (command%events, global)
     case (CMD_SIMULATE)
        call cmd_simulate_execute (command%simulate, global)
+    case (CMD_RESCAN)
+       call cmd_rescan_execute (command%rescan, global)
     case (CMD_WRITE_ANALYSIS)
        call cmd_write_analysis_execute (command%write_analysis, global)
     case (CMD_SCAN)
@@ -2306,14 +1132,15 @@ contains
     type(cmd_library_t), intent(in) :: library
     type(rt_data_t), intent(inout), target :: global
     logical :: rebuild_library, recompile_library
-    call process_library_store_append &
-         (library%name, global%os_data, global%prc_lib)
-    rebuild_library = var_list_get_lval (global%var_list, var_str ("?rebuild_library"))
-    recompile_library = var_list_get_lval (global%var_list, var_str ("?recompile_library"))
+    rebuild_library = &
+         var_list_get_lval (global%var_list, var_str ("?rebuild_library"))
+    recompile_library = &
+         var_list_get_lval (global%var_list, var_str ("?recompile_library"))
     if (.not. (rebuild_library .or. recompile_library)) then
-       call process_library_load (global%prc_lib, &
-            global%os_data, var_list=global%var_list, ignore=.true.)
+       call load_library (library%name, global, global%var_list, global%prc_lib)
     else
+       call process_library_store_append &
+            (library%name, global%os_data, global%prc_lib)
        call var_list_set_string (global%var_list, var_str ("$library_name"), &
             process_library_get_name (global%prc_lib), is_known=.true.)
     end if
@@ -2368,7 +1195,7 @@ contains
   subroutine cmd_process_compile (process, pn, global)
     type(cmd_process_t), pointer :: process
     type(parse_node_t), intent(in), target :: pn
-    type(rt_data_t), intent(in), target :: global
+    type(rt_data_t), intent(inout), target :: global
     type(parse_node_t), pointer :: pn_id, pn_in, pn_out, pn_codes, pn_opt
     integer :: i
     pn_id => parse_node_get_sub_ptr (pn, 2)
@@ -2401,6 +1228,7 @@ contains
        process%prt_out(i) = "?"
        pn_codes => parse_node_get_next_ptr (pn_codes)
     end do
+    call var_list_init_num_id (global%var_list, process%id)
   end subroutine cmd_process_compile
 
   subroutine cmd_process_execute (process, global)
@@ -2447,6 +1275,7 @@ contains
     else
        call msg_error ("Broken process declaration: skipped")
     end if
+    call var_list_init_num_id (global%var_list, process%id)
     call rt_data_restore (global, process%local)
   end subroutine cmd_process_execute
 
@@ -2582,44 +1411,16 @@ contains
   subroutine cmd_compile_execute (compile, global)
     type(cmd_compile_t), intent(inout), target :: compile
     type(rt_data_t), intent(inout), target :: global
-    type(string_t) :: objlist
-    type(process_library_t), pointer :: prc_lib
-    integer :: i
-    logical :: recompile_library
     call rt_data_link (compile%local, global)
     if (associated (compile%options)) then
        call command_list_execute (compile%options, compile%local)
     end if
-    do i = 1, size (compile%libname)
-       prc_lib => process_library_store_get_ptr (compile%libname(i))
-       if (associated (prc_lib)) then
-         if (process_library_get_n_processes (prc_lib) > 0) then
-            call process_library_generate_code (prc_lib, compile%local%os_data)
-            call process_library_write_driver (prc_lib)
-            recompile_library = var_list_get_lval &
-                 (compile%local%var_list, var_str ("?recompile_library"))
-            call process_library_compile &
-                 (prc_lib, compile%local%os_data, recompile_library, objlist)
-            call process_library_link &
-                 (prc_lib, compile%local%os_data, objlist)
-         end if
-       else
-         call msg_fatal ("Process library '" // char (compile%libname(i)) // &
-                   "' has not been declared.")
-       end if              
-    end do
     if (compile%make_executable) then
-       call write_library_manager (compile%libname)
-       call compile_library_manager (compile%local%os_data)
-       call link_executable &
-            (compile%libname, compile%exec_name, &
-               get_modellibs_flags (prc_lib, compile%local%os_data), &
-               compile%local%os_data)
+       call compile_executable &
+            (compile%libname, compile%exec_name, compile%local)
     else
-       do i = 1, size (compile%libname)
-          call process_library_load (prc_lib, compile%local%os_data, &
-               var_list=compile%local%var_list)
-       end do
+       call compile_library &
+            (compile%libname, compile%local, global%var_list, global%prc_lib)
     end if
     call rt_data_restore (global, compile%local)
   end subroutine cmd_compile_execute
@@ -2701,19 +1502,12 @@ contains
   subroutine cmd_load_execute (load, global)
     type(cmd_load_t), intent(inout) :: load
     type(rt_data_t), intent(inout), target :: global
-    type(process_library_t), pointer :: prc_lib
-    integer :: i
     call rt_data_link (load%local, global)
     if (associated (load%options)) then
        call command_list_execute (load%options, load%local)
     end if
-    do i = 1, size (load%libname)
-       call process_library_store_append &
-            (load%libname(i), load%local%os_data, prc_lib)
-       call process_library_load &
-            (prc_lib, load%local%os_data, var_list=load%local%var_list)
-    end do
-    global%prc_lib => prc_lib
+    call load_library &
+         (load%libname, load%local, global%var_list, global%prc_lib)
     call rt_data_restore (global, load%local)
   end subroutine cmd_load_execute
 
@@ -2784,10 +1578,12 @@ contains
     type(parse_node_t), intent(in), target :: pn
     type(rt_data_t), intent(inout), target :: global
     type(parse_node_t), pointer :: pn_var, pn_name, pn_expr
+    type(parse_node_t), pointer :: pn_result, pn_proc
     type(string_t) :: var_name
     type(var_entry_t), pointer :: var_entry
     integer :: type
     logical :: new
+    pn_result => null ()
     new = .false.
     allocate (var)
     select case (char (parse_node_get_rule_key (pn)))
@@ -2823,6 +1619,10 @@ contains
     case ("cmd_alias");       type = V_PDG
        pn_name => parse_node_get_sub_ptr (pn, 2)
        new = .true.
+    case ("cmd_result");      type = V_REAL
+       pn_name => parse_node_get_sub_ptr (pn)
+       pn_result => parse_node_get_sub_ptr (pn_name)
+       pn_proc => parse_node_get_next_ptr (pn_result)
     case default
        call parse_node_mismatch &
             ("logical|int|real|complex|?|$|alias|var_name", pn)  ! $
@@ -2830,7 +1630,12 @@ contains
     if (.not. associated (pn_name)) then   ! handle masked syntax error 
        var%type = V_NONE; return
     end if
-    var_name = parse_node_get_string (pn_name)
+    if (.not. associated (pn_result)) then
+       var_name = parse_node_get_string (pn_name)
+    else
+       var_name = parse_node_get_key (pn_result) &
+            // "(" // parse_node_get_string (pn_proc) // ")"
+    end if
     select case (type)
     case (V_LOG);  var_name = "?" // var_name
     case (V_STR);  var_name = "$" // var_name    ! $
@@ -2911,7 +1716,6 @@ contains
     type(rt_data_t), intent(inout), target :: global
     type(string_t) :: model_name
     type(var_list_t), pointer :: model_vars
-    type(var_entry_t) :: model_var
     if (eval_tree_is_defined (var%value)) then
        call eval_tree_evaluate (var%value)
        if (associated (global%model)) then
@@ -3032,7 +1836,6 @@ contains
   subroutine cmd_slha_execute (slha, global)
     type(cmd_slha_t), intent(inout), target :: slha
     type(rt_data_t), intent(inout), target :: global
-    type(model_t), pointer :: mdl
     logical :: input, spectrum, decays
     call rt_data_link (slha%local, global)
     if (associated (slha%options)) then
@@ -3074,8 +1877,6 @@ contains
     type(rt_data_t), intent(in), target :: global
     type(parse_node_t), pointer :: pn_cmd, pn_arg, pn_opt
     type(parse_node_t), pointer :: pn_sexpr, pn_sprintd
-    type(string_t) :: key
-    integer :: i, n_args
     pn_cmd => parse_node_get_sub_ptr (pn)
     pn_opt => parse_node_get_next_ptr (pn_cmd)
     pn_arg => parse_node_get_sub_ptr (pn_cmd)
@@ -3099,9 +1900,6 @@ contains
   subroutine cmd_printd_execute (printd, global)
     type(cmd_printd_t), intent(inout) :: printd
     type(rt_data_t), intent(inout), target :: global
-    type(string_t) :: name
-    type(process_library_t), pointer :: prc_lib
-    integer :: i
     call rt_data_link (printd%local, global)
     if (associated (printd%options)) then
        call command_list_execute (printd%options, printd%local)
@@ -3124,14 +1922,11 @@ contains
     type(cmd_printf_t), pointer :: printf
     type(parse_node_t), intent(in), target :: pn
     type(rt_data_t), intent(in), target :: global
-    type(parse_node_t), pointer :: pn_cmd, pn_clause, pn_arg, pn_opt
+    type(parse_node_t), pointer :: pn_cmd, pn_clause, pn_opt
     type(parse_node_t), pointer :: pn_sexpr, pn_sprintf
-    type(string_t) :: key
-    integer :: i, n_args
     pn_cmd => parse_node_get_sub_ptr (pn)
     pn_opt => parse_node_get_next_ptr (pn_cmd)
     pn_clause => parse_node_get_sub_ptr (pn_cmd)
-    pn_arg => parse_node_get_next_ptr (pn_clause)
     allocate (printf)
     call rt_data_local_init (printf%local, global)
     if (associated (pn_opt)) then
@@ -3152,9 +1947,6 @@ contains
   subroutine cmd_printf_execute (printf, global)
     type(cmd_printf_t), intent(inout) :: printf
     type(rt_data_t), intent(inout), target :: global
-    type(string_t) :: name
-    type(process_library_t), pointer :: prc_lib
-    integer :: i
     call rt_data_link (printf%local, global)
     if (associated (printf%options)) then
        call command_list_execute (printf%options, printf%local)
@@ -3198,7 +1990,7 @@ contains
           select case (char (parse_node_get_rule_key (pn_var)))
           case ("model", "beams", "results", "unstable", &
                 "real", "int", "intrinsic", &
-                "cuts", "weight", "scale", "analysis", &
+                "cuts", "scale", "weight", "reweight", "analysis", &
                 "expect")
              show%name(i) = parse_node_get_key (pn_var)
           case ("library_spec")
@@ -3451,7 +2243,7 @@ contains
                 call var_list_write (global%var_list, only_type=V_STR)
                 call var_list_write (global%var_list, only_type=V_STR, unit=u)
              end if
-          case ("n_calls", &
+          case ("n_calls", "num_id", &
                 "integral", "error", "accuracy", "chi2", "efficiency")
              call var_list_write (global%var_list, prefix=char(show%name(i)))
              call var_list_write (global%var_list, prefix=char(show%name(i)), &
@@ -3603,7 +2395,7 @@ contains
           if (u_log >= 0)  write (u_log, "(A)")  char (string)
        end if
     end do
-    flush (u_log)
+    if (u_log >= 0) flush (u_log)
   end subroutine cmd_echo_execute
 
   subroutine cmd_beams_final (beams)
@@ -3692,7 +2484,7 @@ contains
     pn_beam_list => parse_node_get_sub_ptr (pn_beam_spec)
     pn_opt => parse_node_get_next_ptr (pn_beam_list)
     allocate (beams)
-    call rt_data_local_init (beams%local, global)
+    call rt_data_local_init (beams%local, global, CMD_BEAMS)
     if (associated (pn_opt)) then
        allocate (beams%options)
        call command_list_compile (beams%options, pn_opt, beams%local)
@@ -3775,14 +2567,16 @@ contains
     type(pdg_array_t), dimension(2) :: aval
     type(flavor_t), dimension(:), allocatable :: flv_tmp
     type(flavor_t), dimension(2) :: flv
-    type(polarization_t), dimension(2) :: pol
+    type(beam_polarization_t), dimension(2) :: pol
     integer :: i, u
+    logical :: polarized
     u = logfile_unit ()
     call lhapdf_status_reset (global%lhapdf_status)
     call rt_data_link (beams%local, global)
     if (associated (beams%options)) then
        call command_list_execute (beams%options, beams%local)
     end if
+    polarized = .true.
     do i = 1, beams%n_in
        call eval_tree_evaluate (beams%pdg(i))
        aval(i) = eval_tree_get_pdg_array (beams%pdg(i))
@@ -3796,12 +2590,23 @@ contains
           return
        end select
        beams%prt(i) = flavor_get_name (flv(i))
-       select case (beams%n_in)
-       case (1)
-          call polarization_init_trivial (pol(i), flv(i))
-       case (2)
-          call polarization_init_unpolarized (pol(i), flv(i))
-       end select
+       if (polarized .and. associated (beams%local%beam_polarization)) then
+          if (size (beams%local%beam_polarization) == beams%n_in) then
+             pol(1:beams%n_in) = beams%local%beam_polarization
+          else
+             call msg_error ("the number of incoming particles differs " &
+                // "between beam and polarization setup - ignoring polarization")
+             polarized = .false.
+          end if
+       else
+          polarized = .false.
+          select case (beams%n_in)
+          case (1)
+             call beam_polarization_init_trivial (pol(i))
+          case (2)
+             call beam_polarization_init_none (pol(i))
+          end select
+       end if
     end do
     p_cm = var_list_get_rval (beams%local%var_list, var_str ("cm_momentum"))
     p_cm_theta = &
@@ -3811,10 +2616,10 @@ contains
     select case (beams%n_in)
     case (1)
        if (p_cm == 0 .and. p_cm_theta == 0) then
-          call beam_data_init_decay (global%beam_data, flv, pol)
+          call beam_data_init_decay (global%beam_data, flv, pol(1:1))
        else
           call beam_data_init_decay &
-               (global%beam_data, flv, pol, p_cm, p_cm_theta, p_cm_phi)
+               (global%beam_data, flv, pol(1:1), p_cm, p_cm_theta, p_cm_phi)
        end if
     case (2)
        if (beams%use_sqrts) then
@@ -3829,7 +2634,7 @@ contains
           else
              call msg_fatal ("Beam setup: value of sqrts " &
                   // "must be set and positive")
-             flush (u)
+             if (u >= 0) flush (u)
              call rt_data_restore (global, beams%local)
              return
           end if
@@ -3850,7 +2655,17 @@ contains
     end select
     call beam_data_write (global%beam_data, verbose=.false.)
     call beam_data_write (global%beam_data, verbose=.false., unit=u)
-    flush (u)
+    if (polarized) then
+       do i = 1, beams%n_in
+          if (output_unit () >= 0) write (output_unit (), '(1x,A)') &
+             "polarization of '" // char (flavor_get_name (flv(i))) // "':"
+          if (u >= 0) write (u, '(1x,A)') &
+             "polarization of '" // char (flavor_get_name (flv(i))) // "':"
+          call beam_polarization_write (beams%local%beam_polarization(i))
+          call beam_polarization_write (beams%local%beam_polarization(i), u)
+       end do
+    end if
+    if (u >= 0) flush (u)
     call rt_data_restore (global, beams%local)
   end subroutine cmd_beams_execute
     
@@ -3858,7 +2673,6 @@ contains
     type(strfun_pair_t), intent(inout) :: strfun_pair
     type(rt_data_t), intent(inout), target :: global
     logical, dimension(2) :: affects_beam
-    integer :: i
     select case (strfun_pair%n)
     case (1)
        affects_beam = .true.
@@ -3875,8 +2689,8 @@ contains
     type(strfun_def_t), intent(inout) :: strfun_def
     logical, dimension(2), intent(in) :: affects_beam
     type(rt_data_t), intent(inout), target :: global
-    type(string_t) :: lhapdf_file
     type(sf_data_t), pointer :: sf_data
+    type(string_t) :: lhapdf_file
     integer :: lhapdf_member, lhapdf_photon_scheme
     real(default) :: isr_alpha, isr_q_max, isr_mass
     integer :: isr_order
@@ -3971,28 +2785,457 @@ contains
                var_str ("ewa_mass"))
           ewa_sqrts = var_list_get_rval (strfun_def%local%var_list, &
                var_str ("sqrts"))               
-          ewa_keep_momentum = var_list_get_lval (strfun_def%local%var_list, &
+     ewa_keep_momentum = var_list_get_lval (strfun_def%local%var_list, &
                var_str ("?ewa_keep_momentum"))
-          ewa_keep_energy = var_list_get_lval (strfun_def%local%var_list, &
-               var_str ("?ewa_keep_energy"))           
-          if (ewa_keep_momentum .and. ewa_keep_energy) &
-             call msg_fatal (" EWA cannot violate both energy " &
-                  // "and momentum conservation.") 
+     ewa_keep_energy = var_list_get_lval (strfun_def%local%var_list, &
+               var_str ("?ewa_keep_energy"))          
+     if (ewa_keep_momentum .and. ewa_keep_energy) &
+        call msg_fatal (" EWA cannot violate both energy " &
+             // "and momentum conservation.") 
           if (ewa_mass /= 0) then     
              call sf_data_init_ewa (sf_data, &
                   global%model, global%beam_data%flv, &
                   ewa_x_min, ewa_q_min, ewa_pt_max, ewa_sqrts, &
-                  ewa_keep_momentum, ewa_keep_energy, ewa_mass)
+        ewa_keep_momentum, ewa_keep_energy, ewa_mass)
           else         
              call sf_data_init_ewa (sf_data, &
                   global%model, global%beam_data%flv, &
                   ewa_x_min, ewa_q_min, ewa_pt_max, ewa_sqrts, &
-                  ewa_keep_momentum, ewa_keep_energy)          
+        ewa_keep_momentum, ewa_keep_energy)          
           end if        
        end select
     end if
     call rt_data_restore (global, strfun_def%local)
   end subroutine strfun_def_register
+
+  subroutine cmd_beam_polarization_write (bp, unit, indent)
+    type(cmd_beam_polarization_t), intent(in) :: bp
+    integer, optional, intent(in) :: unit, indent
+    call msg_message ("cmd_beam_polarization_write: stub")
+  end subroutine cmd_beam_polarization_write
+
+
+  subroutine bp_circ_data_final (d)
+    type(bp_circ_data_t), intent(inout) :: d
+    call eval_tree_final (d%fraction_expr)
+  end subroutine bp_circ_data_final
+
+  subroutine bp_trans_data_final (d)
+    type(bp_trans_data_t), intent(inout) :: d
+    call eval_tree_final (d%fraction_expr)
+    call eval_tree_final (d%phi_expr)
+  end subroutine bp_trans_data_final
+
+  subroutine bp_long_data_final (d)
+    type(bp_long_data_t), intent(inout) :: d
+    call eval_tree_final (d%fraction_expr)
+  end subroutine bp_long_data_final
+
+  subroutine bp_axis_data_final (d)
+    type(bp_axis_data_t), intent(inout) :: d
+    call eval_tree_final (d%fraction_expr)
+    call eval_tree_final (d%theta_expr)
+    call eval_tree_final (d%phi_expr)
+  end subroutine bp_axis_data_final
+
+  subroutine bp_diag_data_final (d)
+    type(bp_diag_data_t), intent(inout) :: d
+    integer :: i
+    if (allocated (d%hels_expr)) then
+       if (size (d%hels_expr) > 0) then
+          do i = 1, size (d%hels_expr)
+             call eval_tree_final (d%hels_expr(i))
+          end do
+       end if
+       deallocate (d%hels_expr)
+    end if
+    if (allocated (d%fractions_expr)) then
+       if (size (d%fractions_expr) > 0) then
+          do i = 1, size (d%fractions_expr)
+             call eval_tree_final (d%fractions_expr(i))
+          end do
+       end if
+       deallocate (d%fractions_expr)
+    end if
+    if (allocated (d%hels)) deallocate (d%hels)
+    if (allocated (d%fractions)) deallocate (d%fractions)
+  end subroutine bp_diag_data_final
+
+  subroutine bp_density_data_final (d)
+    type(bp_density_data_t), intent(inout) :: d
+    call eval_tree_final (d%d_expr)
+    call eval_tree_final (d%nd_expr)
+  end subroutine bp_density_data_final
+
+  subroutine cmd_beam_polarization_final (bp)
+    type(cmd_beam_polarization_t), intent(inout) :: bp
+    integer :: i
+    if (associated (bp%circ_data)) then
+       do i = 1, size (bp%circ_data)
+          call bp_circ_data_final (bp%circ_data(i))
+       end do
+       deallocate (bp%circ_data)
+    end if
+    if (associated (bp%trans_data)) then
+       do i = 1, size (bp%trans_data)
+          call bp_trans_data_final (bp%trans_data(i))
+       end do
+       deallocate (bp%trans_data)
+    end if
+    if (associated (bp%long_data)) then
+       do i = 1, size (bp%long_data)
+          call bp_long_data_final (bp%long_data(i))
+       end do
+       deallocate (bp%long_data)
+    end if
+    if (associated (bp%axis_data)) then
+       do i = 1, size (bp%axis_data)
+          call bp_axis_data_final (bp%axis_data(i))
+       end do
+       deallocate (bp%axis_data)
+    end if
+    if (associated (bp%diag_data)) then
+       do i = 1, size (bp%diag_data)
+          call bp_diag_data_final (bp%diag_data(i))
+       end do
+       deallocate (bp%diag_data)
+    end if
+    if (associated (bp%density_data)) then
+       do i = 1, size (bp%density_data)
+          call bp_density_data_final (bp%density_data(i))
+       end do
+       deallocate (bp%density_data)
+    end if
+    if (associated (bp%options)) then
+       call command_list_final (bp%options)
+       deallocate (bp%options)
+    end if
+    if (associated (bp%beam_polarization)) deallocate (bp%beam_polarization)
+    bp%type = -1
+    bp%n = -1
+  end subroutine cmd_beam_polarization_final
+
+  subroutine cmd_beam_polarization_compile (bp, pn, global)
+    type(cmd_beam_polarization_t), pointer, intent(inout) :: bp
+    type(parse_node_t), intent(in), target :: pn
+    type(rt_data_t), intent(in), target :: global
+    type(parse_node_t), pointer :: pn_list, pn_opts, pn_args, pn_entry
+    integer :: i, n
+    pn_list => parse_node_get_sub_ptr (pn, 3)
+    pn_opts => parse_node_get_sub_ptr (pn, 4)
+    allocate (bp)
+    call rt_data_local_init (bp%local, global)
+    if (associated (pn_opts)) then
+       allocate (bp%options)
+       call command_list_compile (bp%options, pn_opts, bp%local)
+    end if
+    if (parse_node_get_rule_key (pn_list) == "off") then
+       bp%n = 0
+       bp%type = -1
+       return
+    end if
+    bp%n = parse_node_get_n_sub (pn_list)
+    pn_list => parse_node_get_sub_ptr (pn_list)
+    do i = 1, bp%n
+       pn_args => parse_node_get_sub_ptr (pn_list, 2)
+       select case (char (parse_node_get_rule_key (pn_list)))
+          case ("none")
+             bp%type(i) = BP_NONE
+          case ("bp_circ")
+             if (parse_node_get_n_sub (pn_args) /= 1) then
+                call cmd_beam_polarization_final (bp)
+                call msg_fatal &
+                   ("syntax error: expecting 'circular (fraction)'")
+                return
+             end if
+             bp%type(i) = BP_CIRC
+             if (.not. associated (bp%circ_data)) &
+                allocate (bp%circ_data(2))
+             call eval_tree_init_expr (bp%circ_data(i)%fraction_expr, &
+                parse_node_get_sub_ptr (pn_args, 1), bp%local%var_list)
+          case ("bp_trans")
+             if (parse_node_get_n_sub (pn_args) /= 2) then
+                call cmd_beam_polarization_final (bp)
+                call msg_fatal &
+                   ("syntax error: expecting transverse (fraction, phi)'")
+                return
+             end if
+             bp%type(i) = BP_TRANS
+             if (.not. associated (bp%trans_data)) &
+                allocate (bp%trans_data(2))
+             call eval_tree_init_expr (bp%trans_data(i)%fraction_expr, &
+                parse_node_get_sub_ptr (pn_args, 1), bp%local%var_list)
+             call eval_tree_init_expr (bp%trans_data(i)%phi_expr, &
+                parse_node_get_sub_ptr (pn_args, 2), bp%local%var_list)
+          case ("bp_axis")
+             if (parse_node_get_n_sub (pn_args) /= 3) then
+                call cmd_beam_polarization_final (bp)
+                call msg_fatal &
+                   ("syntax error: expecting 'axis (fraction, theta, phi)'")
+                return
+             end if
+             bp%type(i) = BP_AXIS
+             if (.not. associated (bp%axis_data)) &
+                allocate (bp%axis_data(2))
+             call eval_tree_init_expr (bp%axis_data(i)%fraction_expr, &
+                parse_node_get_sub_ptr (pn_args, 1), bp%local%var_list)
+             call eval_tree_init_expr (bp%axis_data(i)%theta_expr, &
+                parse_node_get_sub_ptr (pn_args, 2), bp%local%var_list)
+             call eval_tree_init_expr (bp%axis_data(i)%phi_expr, &
+                parse_node_get_sub_ptr (pn_args, 3), bp%local%var_list)
+          case ("bp_long")
+             if (parse_node_get_n_sub (pn_args) /= 1) then
+                call cmd_beam_polarization_final (bp)
+                call msg_fatal &
+                   ("syntax error: expecting 'longitudinal (fraction)'")
+                return
+             end if
+             bp%type(i) = BP_LONG
+             if (.not. associated (bp%long_data)) &
+                allocate (bp%long_data(2))
+             call eval_tree_init_expr (bp%long_data(i)%fraction_expr, &
+                parse_node_get_sub_ptr (pn_args, 1), bp%local%var_list)
+          case ("bp_dens")
+             if (parse_node_get_n_sub (pn_args) /= 2) then
+                call cmd_beam_polarization_final (bp)
+                call msg_fatal &
+                   ("syntax error: expecting 'density_matrix (a, b)'")
+                return
+             end if
+             bp%type(i) = BP_DENSITY
+             if (.not. associated (bp%density_data)) &
+                allocate (bp%density_data (2))
+             call eval_tree_init_expr (bp%density_data(i)%d_expr, &
+                parse_node_get_sub_ptr (pn_args, 1), bp%local%var_list)
+             call eval_tree_init_expr (bp%density_data(i)%nd_expr, &
+                parse_node_get_sub_ptr (pn_args, 2), bp%local%var_list)
+          case ("bp_diag")
+             bp%type(i) = BP_DIAG
+             n = parse_node_get_n_sub (pn_args)
+             if (.not. associated (bp%diag_data)) &
+                allocate (bp%diag_data(2))
+             allocate (bp%diag_data(i)%hels_expr(n))
+             allocate (bp%diag_data(i)%fractions_expr(n))
+             allocate (bp%diag_data(i)%hels(n))
+             allocate (bp%diag_data(i)%fractions(n))
+             pn_entry => parse_node_get_sub_ptr (pn_args)
+             n = 1
+             do while (associated (pn_entry))
+                call eval_tree_init_expr (bp%diag_data(i)%hels_expr(n), &
+                   parse_node_get_sub_ptr (pn_entry, 1), bp%local%var_list)
+                call eval_tree_init_expr &
+                   (bp%diag_data(i)%fractions_expr(n), &
+                      parse_node_get_sub_ptr (pn_entry, 3), bp%local%var_list)
+                pn_entry => parse_node_get_next_ptr (pn_entry)
+                n = n + 1
+             end do
+          case default
+             call msg_bug ("cmd_beam_polarization_compile: invalid " &
+                // "polarization type")
+       end select
+       pn_list => parse_node_get_next_ptr (pn_list)
+    end do
+  
+  end subroutine cmd_beam_polarization_compile
+
+  subroutine cmd_beam_polarization_execute (bp, global)
+    type(cmd_beam_polarization_t), pointer, intent(inout) :: bp
+    type(rt_data_t), intent(inout), target :: global
+    integer :: i, j, k, ulog
+    ulog = logfile_unit ()
+    call rt_data_link (bp%local, global)
+    if (associated (bp%options)) &
+       call command_list_execute (bp%options, bp%local)
+    if (bp%n < 0) then
+       call rt_data_restore (global, bp%local)
+       return
+    end if
+    if (bp%type(1) < 0) then
+       call rt_data_restore (global, bp%local)
+       global%beam_polarization => null ()
+       if (beam_data_are_valid (global%beam_data)) &
+          call beam_data_kill_polarization (global%beam_data)
+       if (global%environment /= CMD_BEAMS) call msg_message &
+          ("beam polarization disabled")
+       return
+    end if
+    if (.not. associated (bp%beam_polarization)) then
+       allocate (bp%beam_polarization(bp%n))
+    else
+       do i = 1, bp%n
+          call beam_polarization_final (bp%beam_polarization(i))
+       end do
+    end if
+    do i = 1, bp%n
+       select case (bp%type(i))
+          case (BP_NONE, BP_TRIVIAL)
+             if (bp%n == 2) then
+                call beam_polarization_init_none (bp%beam_polarization(i))
+             else
+                call beam_polarization_init_trivial (bp%beam_polarization(i))
+             end if
+          case (BP_CIRC)
+             if (.not. evalreal ( &
+                bp%circ_data(i)%fraction, bp%circ_data(i)%fraction_expr, &
+                "'circular (fraction)': real expected for 'fraction'")) return
+             call beam_polarization_init_circ (bp%beam_polarization(i), &
+                bp%circ_data(i)%fraction)
+          case (BP_TRANS)
+             if (.not. evalreal ( &
+                bp%trans_data(i)%fraction, bp%trans_data(i)%fraction_expr, &
+                "'transverse (fraction, phi)': real expected for 'fraction'")) &
+               return
+             if (.not. evalreal ( &
+                bp%trans_data(i)%phi, bp%trans_data(i)%phi_expr, &
+                "'transverse (fraction, phi)': real expected for 'phi'")) return
+             call beam_polarization_init_trans (bp%beam_polarization(i), &
+                bp%trans_data(i)%fraction, bp%trans_data(i)%phi)
+          case (BP_LONG)
+             if (.not. evalreal ( &
+                bp%long_data(i)%fraction, bp%long_data(i)%fraction_expr, &
+                "'longitudinal (fraction)': real expected for 'fraction'")) return
+             call beam_polarization_init_long (bp%beam_polarization(i), &
+                bp%long_data(i)%fraction)
+          case (BP_AXIS)
+             if (.not. evalreal ( &
+                bp%axis_data(i)%fraction, bp%axis_data(i)%fraction_expr, &
+                "'axis (fraction, theta, phi)': real expected for 'fraction'")) &
+               return
+             if (.not. evalreal ( &
+                bp%axis_data(i)%theta, bp%axis_data(i)%theta_expr, &
+                "'axis (fraction, theta, phi)': real expected for 'theta'")) &
+               return
+             if (.not. evalreal ( &
+                bp%axis_data(i)%phi, bp%axis_data(i)%phi_expr, &
+                "'axis (fraction, theta, phi)': real expected for 'phi'")) return
+             call beam_polarization_init_axis (bp%beam_polarization(i), &
+                bp%axis_data(i)%fraction, bp%axis_data(i)%theta, &
+                bp%axis_data(i)%phi)
+          case (BP_DENSITY)
+             if (.not. evalreal ( &
+                bp%density_data(i)%d, bp%density_data(i)%d_expr, &
+                "'density_matrix (a, b): real expected for 'a'")) return
+             if (.not. evalcmplx ( &
+                bp%density_data(i)%nd, bp%density_data(i)%nd_expr, &
+                "'density_matrix (a, b): complex expected for 'b'")) return
+             call beam_polarization_init_density (bp%beam_polarization (i), &
+                bp%density_data(i)%d, bp%density_data(i)%nd)
+          case (BP_DIAG)
+             do j = 1, size (bp%diag_data(i)%hels)
+                if (.not. evalint ( &
+                      bp%diag_data(i)%hels(j), bp%diag_data(i)%hels_expr(j), &
+                      "'diagonal_density (h1:f1 [, h2:f2, ...])': " &
+                         // "helicities must be integer")) then
+                   call rt_data_restore (global, bp%local)
+                   return
+                end if
+                if (.not. evalreal ( &
+                      bp%diag_data(i)%fractions(j), &
+                      bp%diag_data(i)%fractions_expr(j), &
+                      "'diagonal_density (h1:f1 [, h2:f2, ...])': " &
+                         // "fractions must be real")) then
+                   call rt_data_restore (global, bp%local)
+                   return
+                end if
+                if (j > 1) then
+                   do k = 1, j - 1 
+                      if (bp%diag_data(i)%hels(j) == bp%diag_data(i)%hels(k)) then
+                         call msg_error ( &
+                            "'diagonal_density (h1:f1 [, h2:f2, ...])': " &
+                            // "h" // int2char(j) // " and h" // int2char (k) &
+                            // " must not be equal")
+                         call rt_data_restore (global, bp%local)
+                         return
+                      end if
+                   end do
+                end if
+             end do
+             call beam_polarization_init_diag (bp%beam_polarization(i), &
+                bp%diag_data(i)%hels, bp%diag_data(i)%fractions)
+          case default
+             call msg_bug ("cmd_beam_polarization_execute: " &
+                // "unknown polarization type")
+       end select
+       if (global%environment /= CMD_BEAMS) then
+          call msg_message &
+             ("polarization of incoming particle " // int2char (i) // ":")
+          call beam_polarization_write (bp%beam_polarization(i))
+          call beam_polarization_write (bp%beam_polarization(i), ulog)
+       end if
+    end do
+
+    call rt_data_restore (global, bp%local)
+    global%beam_polarization => bp%beam_polarization
+    if (beam_data_are_valid (global%beam_data)) then
+       if (beam_data_get_n_in (global%beam_data) /= bp%n) then
+          call msg_error ("the number of incoming particles differs " &
+             // "between beam and polarization setup - ignoring polarization")
+       else
+          call beam_data_set_polarization (global%beam_data, &
+             bp%beam_polarization, decay=(bp%n == 1))
+       end if
+    else
+       if (global%environment /= CMD_BEAMS) call msg_warning ( &
+          "beam_polarization only works with a beam setup")
+    end if
+
+    contains
+
+    function evalint (val, expr, msg) result (success)
+      integer, intent(inout) :: val
+      type(eval_tree_t), intent(inout) :: expr
+      character(*), intent(in) :: msg
+      logical :: success
+      call eval_tree_evaluate (expr)
+      success = .false.
+      select case (eval_tree_get_result_type (expr))
+         case (V_INT, V_REAL, V_CMPLX)
+            val = eval_tree_get_int (expr)
+            success = .true.
+      end select
+      if (.not. success) then
+         call msg_error (msg)
+         call rt_data_restore (global, bp%local)
+      end if
+    end function evalint
+
+     function evalreal (val, expr, msg) result (success)
+      real(default), intent(inout) :: val
+      type(eval_tree_t), intent(inout) :: expr
+      character(*), intent(in) :: msg
+      logical :: success
+      call eval_tree_evaluate (expr)
+      success = .false.
+      select case (eval_tree_get_result_type (expr))
+         case (V_INT, V_REAL, V_CMPLX)
+            val = eval_tree_get_real (expr)
+            success = .true.
+      end select
+      if (.not. success) then
+         call msg_error (msg)
+         call rt_data_restore (global, bp%local)
+      end if
+    end function evalreal
+
+    function evalcmplx (val, expr, msg) result (success)
+      complex(default), intent(inout) :: val
+      type(eval_tree_t), intent(inout) :: expr
+      character(*), intent(in) :: msg
+      logical :: success
+      call eval_tree_evaluate (expr)
+      success = .false.
+      select case (eval_tree_get_result_type (expr))
+         case (V_INT, V_REAL, V_CMPLX)
+            val = eval_tree_get_cmplx (expr)
+            success = .true.
+      end select
+      if (.not. success) then
+         call msg_error (msg)
+         call rt_data_restore (global, bp%local)
+      end if
+    end function evalcmplx
+
+  end subroutine cmd_beam_polarization_execute
 
   subroutine cmd_cuts_write (cuts, unit, indent)
     type(cmd_cuts_t), intent(in) :: cuts
@@ -4017,6 +3260,29 @@ contains
     global%pn_cuts_lexpr => cuts%pn_lexpr
   end subroutine cmd_cuts_execute
 
+  subroutine cmd_scale_write (scale, unit, indent)
+    type(cmd_scale_t), intent(in) :: scale
+    integer, intent(in), optional :: unit, indent
+    integer :: u
+    u = output_unit (unit);  if (u < 0)  return
+    call write_indent (u, indent)
+    write (u, "(1x,A)")  "scale =" 
+    call parse_node_write_rec (scale%pn_expr, unit)
+  end subroutine cmd_scale_write
+
+  subroutine cmd_scale_compile (scale, pn)
+    type(cmd_scale_t), pointer :: scale
+    type(parse_node_t), intent(in), target :: pn
+    allocate (scale)
+    scale%pn_expr => parse_node_get_sub_ptr (pn, 3)
+  end subroutine cmd_scale_compile
+
+  subroutine cmd_scale_execute (scale, global)
+    type(cmd_scale_t), intent(inout), target :: scale
+    type(rt_data_t), intent(inout), target :: global
+    global%pn_scale_expr => scale%pn_expr
+  end subroutine cmd_scale_execute
+
   subroutine cmd_weight_write (weight, unit, indent)
     type(cmd_weight_t), intent(in) :: weight
     integer, intent(in), optional :: unit, indent
@@ -4040,28 +3306,28 @@ contains
     global%pn_weight_expr => weight%pn_expr
   end subroutine cmd_weight_execute
 
-  subroutine cmd_scale_write (scale, unit, indent)
-    type(cmd_scale_t), intent(in) :: scale
+  subroutine cmd_reweight_write (reweight, unit, indent)
+    type(cmd_reweight_t), intent(in) :: reweight
     integer, intent(in), optional :: unit, indent
     integer :: u
     u = output_unit (unit);  if (u < 0)  return
     call write_indent (u, indent)
-    write (u, "(1x,A)")  "scale =" 
-    call parse_node_write_rec (scale%pn_expr, unit)
-  end subroutine cmd_scale_write
+    write (u, "(1x,A)")  "reweight =" 
+    call parse_node_write_rec (reweight%pn_expr, unit)
+  end subroutine cmd_reweight_write
 
-  subroutine cmd_scale_compile (scale, pn)
-    type(cmd_scale_t), pointer :: scale
+  subroutine cmd_reweight_compile (reweight, pn)
+    type(cmd_reweight_t), pointer :: reweight
     type(parse_node_t), intent(in), target :: pn
-    allocate (scale)
-    scale%pn_expr => parse_node_get_sub_ptr (pn, 3)
-  end subroutine cmd_scale_compile
+    allocate (reweight)
+    reweight%pn_expr => parse_node_get_sub_ptr (pn, 3)
+  end subroutine cmd_reweight_compile
 
-  subroutine cmd_scale_execute (scale, global)
-    type(cmd_scale_t), intent(inout), target :: scale
+  subroutine cmd_reweight_execute (reweight, global)
+    type(cmd_reweight_t), intent(inout), target :: reweight
     type(rt_data_t), intent(inout), target :: global
-    global%pn_scale_expr => scale%pn_expr
-  end subroutine cmd_scale_execute
+    global%pn_reweight_expr => reweight%pn_expr
+  end subroutine cmd_reweight_execute
 
   subroutine cmd_integrate_final (integrate)
     type(cmd_integrate_t), intent(inout) :: integrate
@@ -4091,26 +3357,6 @@ contains
     end if
   end subroutine cmd_integrate_write
 
-  subroutine cmd_integrate_init1 (integrate, process_id, global)
-    type(cmd_integrate_t), intent(out) :: integrate
-    type(string_t), intent(in) :: process_id
-    type(rt_data_t), intent(inout), target :: global
-    integer :: i
-    integrate%n_proc = 1
-    allocate (integrate%process_id (1))
-    integrate%process_id(1) = process_id
-  end subroutine cmd_integrate_init1
-
-  subroutine cmd_integrate_init2 (integrate, process_id, global)
-    type(cmd_integrate_t), intent(out) :: integrate
-    type(string_t), dimension(:), intent(in) :: process_id
-    type(rt_data_t), intent(inout), target :: global
-    integer :: i
-    integrate%n_proc = size (process_id)
-    allocate (integrate%process_id (integrate%n_proc))
-    integrate%process_id = process_id
-  end subroutine cmd_integrate_init2
-
   subroutine cmd_integrate_compile (integrate, pn, global)
     type(cmd_integrate_t), pointer :: integrate
     type(parse_node_t), intent(in), target :: pn
@@ -4139,381 +3385,14 @@ contains
   subroutine cmd_integrate_execute (integrate, global)
     type(cmd_integrate_t), intent(inout), target :: integrate
     type(rt_data_t), intent(inout), target :: global
-    logical :: use_beams
-    type(process_t), pointer :: process
-    integer :: proc, n_in, n_out, pass, i, n_calls
-    type(iterations_list_t), dimension(:), allocatable :: it_list
-    type(iterations_spec_t) :: it_spec
-    logical :: ok, use_default_iterations, rebuild_phs, phs_only, rebuild_grids
-    type(grid_parameters_t) :: grid_parameters
-    type(phs_parameters_t) :: phs_par
-    type(mapping_defaults_t) :: mapping_defaults
-    type(string_t) :: phs_filename, grids_filename
-    logical :: hs_active, vis_channels
-    real(default) :: hs_threshold
-    integer :: hs_cutoff
-    real(default) :: alpha_s, sqrts
-    character(32) :: md5sum_beams, md5sum_sf_list, md5sum_mappings
-    character(32) :: md5sum_cuts, md5sum_weight, md5sum_scale
-    integer :: current_pass, current_it, it
-    logical :: adapt_final_grids, adapt_final_weights
-    logical :: time_estimate
-    integer :: u, u_tmp
-    u = logfile_unit ()
     call rt_data_link (integrate%local, global)
     if (associated (integrate%options)) then
        call command_list_execute (integrate%options, integrate%local)
     end if
-    call maybe_cmd_compile_execute (integrate%process_id, integrate%local)
-    grid_parameters%threshold_calls = &
-         var_list_get_ival (integrate%local%var_list, &
-                            var_str ("threshold_calls"))
-    grid_parameters%min_calls_per_channel = &
-         var_list_get_ival (integrate%local%var_list, &
-                            var_str ("min_calls_per_channel"))
-    grid_parameters%min_calls_per_bin = &
-         var_list_get_ival (integrate%local%var_list, &
-                            var_str ("min_calls_per_bin"))
-    grid_parameters%min_bins = &
-         var_list_get_ival (integrate%local%var_list, &
-                            var_str ("min_bins"))
-    grid_parameters%max_bins = &
-         var_list_get_ival (integrate%local%var_list, &
-                            var_str ("max_bins"))
-    grid_parameters%stratified = &
-         var_list_get_lval (integrate%local%var_list, &
-                            var_str ("?stratified"))
-    grid_parameters%use_vamp_equivalences = &
-         var_list_get_lval (integrate%local%var_list, &
-                            var_str ("?use_vamp_equivalences"))
-    grid_parameters%channel_weights_power = &
-         var_list_get_rval (integrate%local%var_list, &
-                            var_str ("channel_weights_power"))
-    phs_par%m_threshold_s = &
-         var_list_get_rval (integrate%local%var_list, &
-                            var_str ("phs_threshold_s"))
-    phs_par%m_threshold_t = &
-         var_list_get_rval (integrate%local%var_list, &
-                            var_str ("phs_threshold_t"))
-    phs_par%off_shell = &
-         var_list_get_ival (integrate%local%var_list, &
-                            var_str ("phs_off_shell"))
-    phs_par%t_channel = &
-         var_list_get_ival (integrate%local%var_list, &
-                            var_str ("phs_t_channel"))
-    vis_channels = &
-         var_list_get_lval (integrate%local%var_list, &
-                            var_str ("?vis_channels"))                      
-    use_beams = beam_data_are_valid (integrate%local%beam_data)
-    if (use_beams) then
-       if (.not. beam_data_masses_are_consistent &
-                     (integrate%local%beam_data)) then
-          call msg_warning &
-               ("Masses of beam particle(s) differ from beam masses")
-       end if
-    end if
-
-    allocate (it_list (integrate%n_proc))
-    it_list = integrate%local%it_list
-
-    LOOP_PROC: do proc = 1, integrate%n_proc
-       call msg_message ("Integrating process '" // &
-            char (integrate%process_id(proc)) // "'")
-       call process_store_init_process (process, &
-            integrate%local%prc_lib, &
-            integrate%process_id(proc), integrate%local%model, &
-            global%lhapdf_status, &
-            integrate%local%var_list, use_beams=use_beams)
-       if (.not. process_is_valid (process)) then
-          call msg_fatal ("Integrating process '" &
-               // char (integrate%process_id(proc)) // "': " &
-               // "initialization failed, skipping")
-          cycle LOOP_PROC
-       else if (.not. process_has_matrix_element (process)) then
-          call process_results_write_header (process, logfile=.false.)
-          call process_results_write_header (process, unit=u)
-          call process_do_dummy_integration (process)
-          call process_results_write_footer (process, no_line=.true.)
-          call process_results_write_footer (process, unit=u, no_line=.true.)
-          flush (u)
-          call process_record_integral (process, global%var_list)
-          cycle LOOP_PROC
-       end if
-       sqrts = var_list_get_rval (integrate%local%var_list, var_str ("sqrts"))
-       md5sum_beams = beam_data_get_md5sum (integrate%local%beam_data, sqrts)
-       md5sum_sf_list = ""
-       if (use_beams) then
-          if (beam_data_get_n_in (integrate%local%beam_data) &
-               /= process_get_n_in (process)) then
-             call msg_fatal ("Process '" // char (integrate%process_id(proc)) &
-                  // "': beam/process mismatch (collision/decay)", &
-                  (/ var_str ("   --------------------------------------------"), &
-                     var_str ("This possibly means that you tried to generate "), &
-                     var_str ("a forbidden process, for which WHIZARD could not"), &
-                     var_str ("find a valid phase space channel. Or there is a"), &
-                     var_str ("mismatch between beams and hard interaction.") /) )
-             return
-          end if
-          if (associated (integrate%local%sf_list)) then
-             md5sum_sf_list = sf_list_get_md5sum (integrate%local%sf_list)
-             call process_setup_beams (process, integrate%local%beam_data, &
-                  sf_list_get_n_strfun (integrate%local%sf_list), &
-                  sf_list_get_n_mapping (integrate%local%sf_list))
-             call process_check_beam_setup (process, integrate%local%var_list)
-             call process_setup_strfun (process, integrate%local%sf_list)
-          else
-             call process_setup_beams (process, integrate%local%beam_data, 0, 0)
-          end if
-       else
-          call process_setup_beams (process, integrate%local%beam_data, 0, 0, &
-               sqrts = sqrts)
-       end if
-       call process_connect_strfun (process, ok)
-       if (.not. ok) then
-          call msg_error ("Process '" // char (integrate%process_id(proc)) &
-               // "': beam/structure function setup failed, skipped")
-          cycle LOOP_PROC
-       end if
-       rebuild_phs = var_list_get_lval (integrate%local%var_list, &
-            var_str ("?rebuild_phase_space"))
-       phs_filename = var_list_get_sval (integrate%local%var_list, &
-            var_str ("$phs_file"))   ! $ fool the noweb emacs mode
-       phs_only = var_list_get_lval (integrate%local%var_list, &
-            var_str ("?phs_only"))
-       mapping_defaults%energy_scale = &
-            var_list_get_rval (integrate%local%var_list, &
-            var_str ("phs_e_scale"))
-       mapping_defaults%invariant_mass_scale = &
-            var_list_get_rval (integrate%local%var_list, &
-            var_str ("phs_m_scale"))
-       mapping_defaults%momentum_transfer_scale = &
-            var_list_get_rval (integrate%local%var_list, &
-            var_str ("phs_q_scale"))
-       md5sum_mappings = &
-            mapping_defaults_md5sum (mapping_defaults)
-       if (phs_filename == "") then
-          call process_setup_phase_space (process, rebuild_phs, &
-               global%os_data, &
-               phs_par, mapping_defaults, &
-               filename_out = integrate%process_id(proc) // ".phs", &
-               filename_vis = integrate%process_id(proc) // "_phs", &
-               vis_channels = vis_channels, ok = ok)
-       else
-          call process_setup_phase_space (process, rebuild_phs, &
-               global%os_data, &
-               phs_par, mapping_defaults, &
-               filename_in = phs_filename, &
-               filename_out = integrate%process_id(proc) // ".phs", &
-               filename_vis = integrate%process_id(proc) // "_phs", &
-               vis_channels = vis_channels, ok = ok)
-       end if       
-       if (.not. ok) then
-          call msg_error ("Process '" // char (integrate%process_id(proc)) &
-               // "': phase space setup failed, skipped")
-          cycle LOOP_PROC
-       end if
-       if (phs_only) then
-          call msg_message ("Process '" // char (integrate%process_id(proc)) &
-               // "': phase space setup complete.")
-          cycle LOOP_PROC
-       end if
-       if (associated (integrate%local%pn_cuts_lexpr)) then
-          call process_setup_cuts (process, integrate%local%pn_cuts_lexpr)
-          md5sum_cuts = parse_node_get_md5sum (integrate%local%pn_cuts_lexpr)
-          call msg_message ("Applying user-defined cuts.")
-       else
-          md5sum_cuts = ""
-          call msg_warning ("No cuts have been defined.")
-       end if
-       if (associated (integrate%local%pn_weight_expr)) then
-          call process_setup_weight (process, integrate%local%pn_weight_expr)
-          md5sum_weight = parse_node_get_md5sum (integrate%local%pn_weight_expr)
-          call msg_message ("Using user-defined integration weight.")
-       else
-          md5sum_weight = ""
-       end if
-       if (associated (integrate%local%pn_scale_expr)) then
-          call process_setup_scale (process, integrate%local%pn_scale_expr)
-          md5sum_scale = parse_node_get_md5sum (integrate%local%pn_scale_expr)
-          call msg_message ("Using user-defined event scale setup.")
-       else
-          md5sum_scale = ""
-          call msg_message ("Using partonic energy as event scale.")
-       end if
-       if (var_list_is_known (integrate%local%var_list, &
-            var_str ("alphas"))) then
-          alpha_s = var_list_get_rval (integrate%local%var_list, &
-               var_str ("alphas"))
-          call process_set_alpha_s (process, alpha_s)
-       end if
-
-       adapt_final_grids = var_list_get_lval (integrate%local%var_list, &
-            var_str ("?adapt_final_grids"))
-       adapt_final_weights = var_list_get_lval (integrate%local%var_list, &
-            var_str ("?adapt_final_weights"))
-
-       time_estimate = var_list_get_lval (integrate%local%var_list, &
-            var_str ("?time_estimate"))
-
-       n_in  = process_get_n_in  (process)
-       n_out = process_get_n_out (process)
-       use_default_iterations = it_list(proc)%n_pass == 0
-       if (use_default_iterations) then
-          select case (n_out)
-          case (:1)
-             call msg_error ("Integrate: number of outgoing particles " &
-                  // "must be at least 2")
-             cycle LOOP_PROC
-          case (2:ITERATIONS_DEFAULT_LIST_SIZE)
-             it_list(proc) = integrate%local%it_list_default(n_out + (n_in-2))
-          case default
-             it_list(proc) = &
-                  integrate%local%it_list_default(ITERATIONS_DEFAULT_LIST_SIZE)
-          end select
-       else
-          call iterations_list_complete (it_list(proc), &
-               integrate%local%it_list_default(n_out))
-       end if
-       call iterations_list_adjust_n_calls (it_list(proc), &
-            process, grid_parameters)
-       call iterations_list_write (it_list(proc))
-       call process_init_vamp_history &
-            (process, iterations_list_get_n_it (it_list(proc)))
-
-       if (it_list(proc)%n_pass > 0) then
-          it_spec = it_list(proc)%pass(1)
-          n_calls = it_spec%n_calls
-          grids_filename = process_get_id (process) // ".vg"
-          rebuild_grids = var_list_get_lval (integrate%local%var_list, &
-               var_str ("?rebuild_grids"))
-          if (.not. rebuild_grids) then
-             call process_read_grid_file (process, &
-                  grids_filename, &
-                  md5sum_beams, md5sum_sf_list, md5sum_mappings, &
-                  md5sum_cuts, md5sum_weight, md5sum_scale, &
-                  grid_parameters, &
-                  iterations_list_get_pass_array (it_list(proc)), &
-                  iterations_list_get_n_calls_array (it_list(proc)),&
-                  ok)
-             rebuild_grids = .not. ok
-          end if
-          if (rebuild_grids) then
-             call process_setup_grids &
-                  (process, grid_parameters, calls=n_calls)
-             write (msg_buffer, "(4(I0,A),A,L1)")  &
-                  n_calls, " calls, ", &
-                  process_get_n_channels (process), " channels, ", &
-                  process_get_n_parameters (process), " dimensions, ", &
-                  process_get_n_bins (process), " bins, ", &
-                  "stratified = ", grid_parameters%stratified
-             call msg_message ()
-          else
-             write (msg_buffer, "(3(I0,A),A,L1)")  &
-                  n_calls, " calls, ", &
-                  process_get_n_channels (process), " channels, ", &
-                  process_get_n_parameters (process), " dimensions, ", &
-                  "stratified = ", grid_parameters%stratified
-             call msg_message ()
-          end if
-          current_pass = process_get_current_pass (process)
-          current_it = process_get_current_it (process)
-       end if
-
-       hs_active = var_list_get_lval (integrate%local%var_list, &
-            var_str ("?helicity_selection_active"))
-       if (hs_active) then
-          hs_threshold = var_list_get_rval (integrate%local%var_list, &
-               var_str ("helicity_selection_threshold"))
-          hs_cutoff = var_list_get_ival (integrate%local%var_list, &
-               var_str ("helicity_selection_cutoff"))
-       else
-          hs_threshold = -1
-          hs_cutoff = 1000
-       end if
-       call process_reset_helicity_selection &
-            (process, hs_threshold, hs_cutoff)
-
-       call process_results_write_header (process, logfile=.false.)
-       call process_results_write_header (process, unit=u)
-       flush (u)
-       it = 0
-       LOOP_PASS: do pass = 1, it_list(proc)%n_pass - 1
-          it_spec = it_list(proc)%pass(pass)
-          n_calls = it_spec%n_calls
-          LOOP_IT: do i = 1, it_spec%n_it
-             it = it + 1
-             if (pass < current_pass &
-                  .or. pass == current_pass .and. i <= current_it) then
-                call process_results_write_entry (process, it)
-                call process_results_write_entry (process, it, unit=u)
-                flush (u)
-             else
-                call process_integrate (process, &
-                     integrate%local%rng, grid_parameters, &
-                     pass, 1, 1, n_calls, &
-                     i==1, .true., i>2, .true., &
-                     time_estimate, &
-                     grids_filename, &
-                     md5sum_beams, md5sum_sf_list, md5sum_mappings, &
-                     md5sum_cuts, md5sum_weight, md5sum_scale)
-             end if
-          end do LOOP_IT
-          call process_results_write_average (process, pass)
-          call process_results_write_average (process, pass, unit=u)
-          flush (u)
-          call process_record_integral (process, global%var_list)
-          call process_write_logfile (process)
-       end do LOOP_PASS
-
-       pass = it_list(proc)%n_pass
-       if (pass > current_pass)  current_it = 0
-       if (pass > 0 .and. pass >= current_pass) then
-          it_spec = it_list(proc)%pass(pass)
-          n_calls = it_spec%n_calls
-          do i = 1, current_it
-             it = it + 1
-             call process_results_write_entry (process, it)
-             call process_results_write_entry (process, it, unit=u)
-             flush (u)
-          end do
-          call process_integrate (process, &
-               integrate%local%rng, grid_parameters, &
-               pass, current_it+1, it_spec%n_it, n_calls, &
-               .true., adapt_final_grids, adapt_final_weights, .true., &
-               time_estimate, &
-               grids_filename, &
-               md5sum_beams, md5sum_sf_list, md5sum_mappings, &
-               md5sum_cuts, md5sum_weight, md5sum_scale)
-          call process_record_integral (process, global%var_list)
-          call process_write_logfile (process)
-       end if
-       call process_results_write_footer (process)
-       call process_results_write_footer (process, unit=u)
-       if (time_estimate .and. rebuild_grids)  call process_write_time_estimate (process)
-       flush (u)
-    end do LOOP_PROC
-
+    call integrate_process &
+         (integrate%process_id, integrate%local, global%var_list)
     call rt_data_restore (global, integrate%local)
   end subroutine cmd_integrate_execute
-
-  subroutine maybe_cmd_compile_execute (process_id, global)
-    type(string_t), dimension(:), intent(in) :: process_id
-    type(rt_data_t), intent(inout), target :: global
-    type(cmd_compile_t), pointer :: compile
-    integer :: i
-    if (associated (global%prc_lib)) then
-       call process_library_update_status (global%prc_lib)
-       if (.not. process_library_is_compiled (global%prc_lib)) then
-          allocate (compile)
-          allocate (compile%libname (1))
-          compile%libname(1) = process_library_get_name (global%prc_lib)
-          call cmd_compile_execute (compile, global)
-          deallocate (compile)
-       end if
-    else
-       call msg_bug ("Integrate: no process library active")
-    end if
-  end subroutine maybe_cmd_compile_execute
 
   subroutine cmd_observable_final (observable)
     type(cmd_observable_t), intent(inout) :: observable
@@ -5059,7 +3938,7 @@ contains
        else
           call analysis_write ()
           call analysis_write (unit=u_log)
-          flush (u_log)
+          if (u_log >= 0) flush (u_log)
        end if
        if (u_driver >= 0) then
           call analysis_write_driver (data_file, unit=u_driver)
@@ -5075,7 +3954,7 @@ contains
           else
              call analysis_write (write%id(i))
              call analysis_write (write%id(i), unit=u_log)
-             flush (u_log)
+             if (u_log >= 0) flush (u_log)
           end if
           if (u_driver >= 0) then
              call analysis_write_driver (data_file, write%id, unit=u_driver)
@@ -5218,6 +4097,7 @@ contains
     type(decay_properties_t), intent(in) :: decay
     integer, intent(in), optional :: unit, indent
     integer :: u, i
+    if (decay%invalid) return
     u = output_unit (unit);  if (u < 0)  return
     call write_indent (u, indent)
     if (decay%n_proc /= 0) then
@@ -5274,11 +4154,11 @@ contains
        pn_opt => null ()
     end if       
     allocate (unstable)
+    call rt_data_local_init (unstable%local, global)
     if (associated (pn_opt)) then
        allocate (unstable%options)
        call command_list_compile (unstable%options, pn_opt, unstable%local)
     end if
-    call rt_data_local_init (unstable%local, global)
     allocate (unstable%decay (parse_node_get_n_sub (pn_list)))
     d = 0
     pn_decl => parse_node_get_sub_ptr (pn_list)
@@ -5307,7 +4187,6 @@ contains
     type(pdg_array_t) :: aval
     type(flavor_t), dimension(:), allocatable :: flv_tmp
     type(flavor_t), dimension(:), allocatable :: flv
-    type(cmd_integrate_t) :: integrate
     real(default), dimension(:), allocatable :: integral
     real(default) :: integral_sum
     type(process_t), pointer :: process
@@ -5342,6 +4221,13 @@ contains
        prt_data => model_get_particle_ptr &
                        (unstable%local%model, flavor_get_pdg (flv(d)))
        if (associated (prt_data)) then
+          if (flavor_is_polarized (flv(d))) then
+             call msg_error ("particle '" // char (flavor_get_name (flv(d))) &
+                // "' cannot be marked at unstable and polarized at the same " &
+                // "time - skipping")
+             unstable%decay(d)%invalid = .true.
+             cycle
+          end if
           if (flavor_is_antiparticle (flv(d))) then
              call particle_data_set (prt_data, &
                    a_is_stable = .false., &
@@ -5353,35 +4239,31 @@ contains
                    p_decays_isotropically = isotropic_decay, &
                    p_decays_diagonal = diagonal_decay)
           end if
+          unstable%decay(d)%invalid = .false.
        else
           call msg_fatal ("Particle '" // char (unstable%decay(d)%prt) &
                // "' is not contained in model '" &
                // char (model_get_name (unstable%local%model)) // "'")
+          unstable%decay(d)%invalid = .true.
        end if
     end do
     do d = 1, size (unstable%decay)
-    end do
-    do d = 1, size (unstable%decay)
+       if (unstable%decay(d)%invalid) cycle
        unstable%decay(d)%prt = flavor_get_name (flv(d))
        allocate (integral (unstable%decay(d)%n_proc))
+       call integrate_missing_processes &
+            (unstable%decay(d)%process_id, unstable%local, global%var_list, &
+             no_beams=.true.)
        LOOP_PROC: do proc = 1, unstable%decay(d)%n_proc
           process_id = unstable%decay(d)%process_id(proc)
           process => process_store_get_process_ptr (process_id)
-          if (.not. associated (process)) then
-             call msg_message ("Missing integral for decay channel: " &
-                  // char (process_id))
-! This version triggers a bug BOTH in nagfor and gfortran, apparently
-!              call cmd_integrate_init (integrate, (/ process_id /), global)
-! This is ok:
-             call cmd_integrate_init (integrate, process_id, global)
-!
-             call cmd_integrate_execute (integrate, global)
-             call cmd_integrate_final (integrate)
-             call msg_message ("Integration for missing channel complete.")
-             process => process_store_get_process_ptr (process_id)
-          end if
           if (associated (process)) then
-             integral(proc) = process_get_integral (process)
+             integral(proc) = var_list_get_rval (unstable%local%var_list, &
+                 var_str ("integral(") // process_id // ")")
+             if (integral(proc) < 0) then
+                 call msg_fatal ("Integral of process '" &
+                      // char (process_id) // "' is negative")
+             end if
              call process_setup_event_generation (process, qn_mask_in = &
                   new_quantum_numbers_mask (.false., .false., isotropic_decay, &
                                             mask_hd = diagonal_decay))
@@ -5454,6 +4336,10 @@ contains
     pn_opt => parse_node_get_next_ptr (pn_list)
     allocate (stable)
     call rt_data_local_init (stable%local, global)
+    if (associated (pn_opt)) then
+       allocate (stable%options)
+       call command_list_compile (stable%options, pn_opt, stable%local)
+    end if
     allocate (stable%decay (parse_node_get_n_sub (pn_list)))
     d = 0
     pn_prt => parse_node_get_sub_ptr (pn_list)
@@ -5515,6 +4401,143 @@ contains
     call rt_data_restore (global, stable%local)
   end subroutine cmd_stable_execute
 
+  subroutine cmd_un_polarized_compile (polarized, pn, global)
+    type(cmd_un_polarized_t), pointer :: polarized
+    type(parse_node_t), intent(in), target :: pn
+    type(rt_data_t), intent(in), target :: global
+    type(parse_node_t), pointer :: pn_list, pn_opt, pn_prt
+    integer :: n
+    allocate (polarized)
+    pn_list => parse_node_get_sub_ptr (pn, 2)
+    call rt_data_local_init (polarized%local, global)
+    if (.not. associated (pn_list)) then
+       allocate (polarized%pdgs (0))
+       allocate (polarized%names (0))
+       return
+    end if
+    pn_opt => parse_node_get_next_ptr (pn_list)
+    if (associated (pn_opt)) then
+       allocate (polarized%options)
+       call command_list_compile (polarized%options, pn_opt, polarized%local)
+    end if
+    n = parse_node_get_n_sub (pn_list)
+    allocate (polarized%pdgs(n), polarized%names(n))
+    polarized%names = "?"
+    pn_prt => parse_node_get_sub_ptr (pn_list)
+    n = 1
+    do while (associated (pn_prt))
+       call eval_tree_init_cexpr &
+          (polarized%pdgs(n), pn_prt, polarized%local%var_list)
+       pn_prt  => parse_node_get_next_ptr (pn_prt)
+       n = n + 1
+    end do
+    print *, "Processed " // int2char (n - 1) // " particle definitions"
+  end subroutine cmd_un_polarized_compile
+  subroutine cmd_un_polarized_write (polarized, type, unit, indent)
+    type(cmd_un_polarized_t), intent(in) :: polarized
+    integer, intent(in) :: type
+    integer, optional, intent(in) :: unit, indent
+    integer :: u, i
+    u = output_unit (unit)
+    if (u < 0) return
+    call write_indent (u, indent)
+    if (type == CMD_POLARIZED) then
+       write (u, "(1x,A)", advance = "no") "final state polarization on: "
+    else
+       write (u, "(1x,A)", advance = "no") "final state polarization off: "
+    end if
+    if (size (polarized%names) == 0) then
+       write (u, "(A)", advance = "no") "no particles specified, doing nothing"
+    else
+       do i = 1, size (polarized%names)
+         write (u, "(A)", advance = "no") char (polarized%names(i))
+       end do
+    end if
+    write (u, "('')")
+  end subroutine cmd_un_polarized_write
+  subroutine cmd_un_polarized_execute (polarized, type, global)
+    type(cmd_un_polarized_t), intent(inout) :: polarized
+    integer, intent(in) :: type
+    type(rt_data_t), target, intent(inout) :: global
+    type(pdg_array_t) :: aval
+    type(flavor_t), dimension(:), allocatable :: flv
+    type(particle_data_t), pointer :: prt
+    integer :: i, u
+    logical :: anti
+    call rt_data_link (polarized%local, global)
+    if (associated (polarized%options)) &
+       call command_list_execute (polarized%options, polarized%local)
+    if (size (polarized%pdgs) == 0) return
+    do i = 1, size (polarized%pdgs)
+       call eval_tree_evaluate (polarized%pdgs(i))
+       aval = eval_tree_get_pdg_array (polarized%pdgs(i))
+       call flavor_init (flv, aval, polarized%local%model)
+       if (size (flv) /= 1) then
+          call pdg_array_write (aval)
+          u = output_unit ()
+          if (u >= 0) write (u, "('')")
+          call msg_error &
+             ("'polarized' needs unique particles, ignoring argument")
+          deallocate (flv)
+          cycle
+       end if
+       polarized%names(i) = flavor_get_name (flv(1))
+       prt => model_get_particle_ptr (polarized%local%model, &
+          flavor_get_pdg (flv(1)))
+       if (.not. associated (prt)) then
+          call msg_error ("Model '" &
+             // char (model_get_name (polarized%local%model)) &
+             // "' does not contain particle '" &
+             // char (polarized%names(i)) // "'")
+          deallocate (flv)
+          cycle
+       end if
+       anti = flavor_is_antiparticle (flv(1))
+       if (.not. particle_data_is_stable (prt, anti) .and. &
+             type == CMD_POLARIZED) then
+          call msg_error ("particle '" &
+             // char (polarized%names(i)) // "' cannot be marked as unstable " &
+             // "and polarized at the same time - skipping")
+          deallocate (flv)
+          cycle
+       end if
+       if (anti) then
+          call particle_data_set (prt, a_polarized=(type == CMD_POLARIZED))
+       else
+          call particle_data_set (prt, p_polarized=(type == CMD_POLARIZED))
+       end if
+       if (type == CMD_POLARIZED) then
+          call msg_message ("Polarization of particle '" &
+             // char (polarized%names(i)) // "' in model '" &
+             // char (model_get_name (polarized%local%model)) &
+             // "' will be retained.")
+       else
+          call msg_message ("Polarization of particle '" &
+             // char (polarized%names(i)) // "' in model '" &
+             // char (model_get_name (polarized%local%model)) &
+             // "' will be discarded.")
+       end if
+       deallocate (flv)
+    end do
+    call rt_data_restore (global, polarized%local)
+  end subroutine cmd_un_polarized_execute
+  subroutine cmd_un_polarized_final (polarized)
+    type(cmd_un_polarized_t), intent(inout) :: polarized
+    integer :: i
+    if (allocated (polarized%pdgs)) then
+       if (size (polarized%pdgs) > 0) then
+          do i = 1, size (polarized%pdgs)
+             call eval_tree_final (polarized%pdgs(i))
+          end do
+       end if
+       deallocate (polarized%pdgs)
+    end if
+    if (allocated (polarized%names)) deallocate (polarized%names)
+    if (associated (polarized%options)) then
+       call command_list_final (polarized%options)
+       deallocate (polarized%options)
+    end if
+  end subroutine cmd_un_polarized_final
   subroutine cmd_sample_format_final (sample)
     type(cmd_sample_format_t), intent(inout) :: sample
     if (allocated (sample%format)) then
@@ -5597,684 +4620,6 @@ contains
     deallocate (fmt_tmp)
   end subroutine cmd_sample_format_execute
 
-  recursive subroutine simulation_parameters_init &
-      (sim, unweighted, event_normalization, negative_weights)
-    type(simulation_parameters_t), intent(out) :: sim
-    logical, intent(in) :: unweighted
-    type(string_t), intent(in) :: event_normalization
-    logical, intent(in) :: negative_weights
-    sim%unweighted = unweighted
-    select case (char (event_normalization))
-    case ("auto", "Auto", "AUTO", "automatic", "Automatic", "AUTOMATIC")
-       if (unweighted) then
-          sim%normalization_mode = NORM_UNIT
-       else
-          sim%normalization_mode = NORM_SIGMA
-       end if
-    case ("1", "unity", "Unity", "UNITY")
-       sim%normalization_mode = NORM_UNIT
-    case ("1/n", "1/N")
-       sim%normalization_mode = NORM_N_EVT
-    case ("sigma", "Sigma", "SIGMA")
-       sim%normalization_mode = NORM_SIGMA
-    case ("sigma/n", "Sigma/n", "Sigma/N", "SIGMA/N")
-       sim%normalization_mode = NORM_SIGMA_N_EVT
-    case default
-       call msg_error ("Unknown value '" // char (event_normalization) &
-            // "for $event_normalization.  I'll assume 'auto'")
-       call simulation_parameters_init &
-            (sim, unweighted, var_str ("auto"), negative_weights)
-    end select
-  end subroutine simulation_parameters_init
-
-  subroutine simulation_parameters_write_message (sim, unit)
-    type(simulation_parameters_t), intent(in) :: sim
-    integer, intent(in), optional :: unit
-    type(string_t) :: weight_str, norm_str, neg_str
-    if (sim%unweighted) then
-       weight_str = "unweighted"
-    else
-       weight_str = "weighted"
-    end if     
-    select case (sim%normalization_mode)
-    case (NORM_UNIT)
-       norm_str = "1"
-    case (NORM_N_EVT)
-       norm_str = "1/n"
-    case (NORM_SIGMA)
-       norm_str = "sigma"
-    case (NORM_SIGMA_N_EVT)
-       norm_str = "sigma/n"
-    case default
-       norm_str = "unknown"
-    end select
-    if (sim%negative_weights) then
-       neg_str = ", allow negative weights"
-    else
-       neg_str = ""
-    end if
-    call msg_message ("Simulation mode = " // char (weight_str) &
-         // ", event_normalization = '" // char (norm_str) &
-         // "'" // char (neg_str), &
-         unit)
-  end subroutine simulation_parameters_write_message
-
-  subroutine simulation_parameters_write (sim, unit)
-    type(simulation_parameters_t), intent(in) :: sim
-    integer, intent(in), optional :: unit
-    integer :: u
-    u = output_unit (unit)
-    write (u, *) "Simulation parameters:"
-    write (u, *) "  unweighted         = ", sim%unweighted
-    write (u, *) "  normalization_mode = ", sim%normalization_mode
-    write (u, *) "  negative_weights   = ", sim%negative_weights
-  end subroutine simulation_parameters_write
-
-  function simulation_parameters_get_norm (sim, sigma, n) result (norm)
-    real(default) :: norm
-    type(simulation_parameters_t), intent(in) :: sim
-    real(default), intent(in) :: sigma
-    integer, intent(in) :: n
-    select case (sim%normalization_mode)
-    case (NORM_UNIT)
-       norm = 1
-    case (NORM_N_EVT)
-       if (n /= 0) then
-          norm = 1._default / n
-       else
-          norm = 1
-       end if
-    case (NORM_SIGMA)
-       norm = sigma
-    case (NORM_SIGMA_N_EVT)
-       if (n /= 0) then
-          norm = sigma / n
-       else
-          norm = sigma
-       end if
-    case default
-       norm = 1
-    end select
-    if ((.not. sim%unweighted) .and. sigma /= 0)  norm = norm / sigma
-  end function simulation_parameters_get_norm
-
-  function simulation_parameters_get_md5sum (sim) result (md5sum_sim)
-    character(32) :: md5sum_sim
-    type(simulation_parameters_t), intent(in) :: sim
-    integer :: u
-    u = free_unit ()
-    open (u, status = "scratch")
-    call simulation_parameters_write (sim, u)
-    rewind (u)
-    md5sum_sim = md5sum (u)
-    close (u)
-  end function simulation_parameters_get_md5sum
-
-  subroutine checkpointing_init (checkpointing, var_list)
-    type(checkpointing_t), intent(out) :: checkpointing
-    type(var_list_t), intent(in) :: var_list
-    checkpointing%active = var_list_is_known (var_list, var_str ("checkpoint"))
-    if (checkpointing%active) then
-       checkpointing%val = &
-       var_list_get_ival (var_list, var_str("checkpoint"))
-       if (checkpointing%val <= 0) then
-          call msg_warning ("ignoring nonpositive value of 'checkpoint'")
-          checkpointing%active = .false.
-       end if
-    end if
-  end subroutine checkpointing_init
-
-  subroutine checkpointing_msg_start (checkpointing, n_events, i_evt)
-    type(checkpointing_t), intent(inout) :: checkpointing
-    integer, intent(in) :: n_events, i_evt
-    if (checkpointing%active .and. n_events > i_evt) then
-       call msg_message ("")
-       call msg_message (checkpoint_bar)
-       call msg_message (checkpoint_head)
-       call msg_message (checkpoint_bar)
-       write (msg_buffer, checkpoint_fmt) 0., 0, n_events - i_evt, "???"
-       call msg_message ()
-       checkpointing%running = .true.
-       checkpointing%tzero = time_current ()
-    end if
-  end subroutine checkpointing_msg_start
-
-  subroutine checkpointing_msg_event (checkpointing, n_events, n_read, i_evt)
-    type(checkpointing_t), intent(in) :: checkpointing
-    integer, intent(in) :: n_events, n_read, i_evt
-    real(default) :: tcurrent
-    type(string_t) :: tremain
-    if (checkpointing%active .and. checkpointing%running &
-          .and. mod (i_evt, checkpointing%val) == 0) then
-       tcurrent = time_current ()
-       tremain = time2string ( &
-          int ((tcurrent - checkpointing%tzero) / (i_evt - n_read) &
-             * (n_events - i_evt)))
-       write (msg_buffer, checkpoint_fmt) &
-             100 * (i_evt - n_read) / real (n_events - n_read), &
-             i_evt - n_read, &
-             n_events - i_evt, char (tremain)
-       call msg_message ()
-    end if
-  end subroutine checkpointing_msg_event
-
-  subroutine checkpointing_msg_end (checkpointing, n_read, i_evt)
-    type(checkpointing_t), intent(inout) :: checkpointing
-    integer, intent(in) :: n_read, i_evt
-    if (checkpointing%active .and. checkpointing%running) then
-       if (mod (i_evt, checkpointing%val) /= 0) then
-          write (msg_buffer, checkpoint_fmt) 100., i_evt - n_read, 0, "0s"
-          call msg_message ()
-       end if
-       call msg_message (checkpoint_bar)
-       call msg_message ("")
-       checkpointing%running = .false.
-    end if
-  end subroutine checkpointing_msg_end
-
-  subroutine simulation_basic_init (sim, process_id, var_list, verbose)
-    type(simulation_t), intent(out) :: sim
-    type(string_t), dimension(:), intent(in) :: process_id
-    type(var_list_t), intent(in), target :: var_list
-    logical, intent(in), optional :: verbose
-    type(string_t) :: process_string
-    integer :: proc
-    sim%n_proc = size (process_id)
-    allocate (sim%process_id (sim%n_proc))
-    sim%process_id = process_id
-    allocate (sim%prc_array (sim%n_proc))
-    do proc = 1, sim%n_proc
-       sim%prc_array(proc)%ptr => &
-            process_store_get_process_ptr (sim%process_id(proc))
-    end do
-    if (present (verbose)) then
-       if (verbose) then
-          process_string = ""
-          do proc = 1, size (process_id)
-             if (proc > 1)  process_string = process_string // ", "
-             process_string = process_string // sim%process_id (proc)
-          end do
-          call msg_message ("Initializating simulation for processes " &
-            // char (process_string) // ":")
-       end if
-    end if
-    sim%rebuild_events = &
-         var_list_get_lval (var_list, var_str ("?rebuild_events"))
-    call simulation_parameters_init (sim%spar, &
-         var_list_get_lval &
-              (var_list, var_str ("?unweighted")), &
-         var_list_get_sval &
-              (var_list, var_str ("$event_normalization")), &
-         var_list_get_lval &
-              (var_list, var_str ("?negative_weights")))
-    if (present (verbose)) then
-       if (verbose)  call simulation_parameters_write_message (sim%spar)
-    end if
-    call var_list_init_snapshot (sim%var_list, var_list)
-  end subroutine simulation_basic_init
-
-  subroutine simulation_compute_missing_integrals (sim, global, verbose)
-    type(simulation_t), intent(inout) :: sim
-    type(rt_data_t), intent(inout), target :: global
-    logical, intent(in), optional :: verbose
-    integer :: n_missing
-    type(string_t), dimension(:), allocatable :: process_id
-    type(cmd_integrate_t), target :: integrate
-    logical, dimension(:), allocatable :: missing
-    type(string_t) :: prc_string
-    integer :: proc
-    logical :: verb
-    verb = .false.;  if (present (verbose))  verb = verbose
-    allocate (missing (sim%n_proc))
-    do proc = 1, sim%n_proc
-       missing(proc) = .not. associated (sim%prc_array(proc)%ptr)
-    end do
-    n_missing = count (missing)
-    if (n_missing > 0) then
-       allocate (process_id (n_missing))
-       process_id = pack (sim%process_id, missing)
-       if (verb) then
-          prc_string = process_id(1)
-          do proc = 2, n_missing
-             prc_string = prc_string // ", " // process_id(proc)
-          end do
-          call msg_message ("Integrating missing processes: " &
-               // char (prc_string))
-       end if
-       call cmd_integrate_init (integrate, process_id, global)
-       call cmd_integrate_execute (integrate, global)
-       call cmd_integrate_final (integrate)
-       if (verb) then
-          call msg_message ("Integration of missing processes complete, " &
-               // "resuming simulation.")
-       end if
-    end if
-    do proc = 1, sim%n_proc
-       if (missing(proc)) sim%prc_array(proc)%ptr => &
-            process_store_get_process_ptr (sim%process_id(proc))
-    end do
-  end subroutine simulation_compute_missing_integrals
-
-  subroutine simulation_check (sim, ok)
-    type(simulation_t), intent(inout) :: sim
-    logical, intent(out) :: ok
-    type(process_t), pointer :: process
-    integer :: proc
-    type(flavor_t), dimension(:), allocatable :: beam_flv
-    real(default), dimension(:), allocatable :: beam_energy
-    ok = .false.
-    do proc = 1, sim%n_proc
-       process => sim%prc_array(proc)%ptr
-       if (.not. associated (process)) then
-          call msg_fatal ("Process '" // char (sim%process_id(proc)) &
-               // "' is not available for simulation.")
-          return
-       end if
-       select case (proc)
-       case (1)
-          sim%n_in = process_get_n_in (process)
-          allocate (beam_flv (sim%n_in), beam_energy (sim%n_in))
-          beam_flv = process_get_beam_flv (process)
-          beam_energy = process_get_beam_energy (process)
-       case default
-          if (.not. process_has_matrix_element (process))  cycle
-          if (process_get_n_in (process) /= sim%n_in) then
-             call msg_fatal ("Simulation: " &
-                  // "Mixture of scattering and decays")
-             return
-          else if (any (process_get_beam_flv (process) /= beam_flv)) then
-             call msg_fatal ("Simulation: Mismatch in beam particles")
-             return
-          else if (any (process_get_beam_energy (process) &
-                        /= beam_energy))then
-             call msg_fatal ("Simulation: Mismatch in beam energies")
-             return
-          end if
-       end select
-    end do
-    allocate (sim%beam_flv (sim%n_in), sim%beam_energy (sim%n_in))
-    sim%beam_flv = beam_flv
-    sim%beam_energy = beam_energy
-    ok = .true.
-  end subroutine simulation_check
-
-  subroutine simulation_setup_file_list (sim, event_fmt, basename_default)
-    type(simulation_t), intent(inout) :: sim
-    integer, dimension(:), intent(in), allocatable :: event_fmt
-    type(string_t), intent(in) :: basename_default
-    type(string_t) :: basename, extension_raw
-    integer :: i
-    sim%basename = var_list_get_sval (sim%var_list, var_str ("$sample"))
-    if (basename == "")  sim%basename = basename_default
-    sim%read_raw = var_list_get_lval (sim%var_list, var_str ("?read_raw")) &
-        .and. .not. sim%rebuild_events
-    sim%write_raw = var_list_get_lval (sim%var_list, var_str ("?write_raw"))
-    extension_raw = var_list_get_sval (sim%var_list, var_str ("$extension_raw"))
-    sim%file_raw = sim%basename // "." // extension_raw
-    if (allocated (event_fmt)) then
-       do i = 1, size (event_fmt)
-          call file_list_append_file_spec (sim%file_list, &
-               sim%basename, sim%var_list, event_fmt(i), &
-               sim%beam_flv, sim%beam_energy)
-       end do
-    end if
-  end subroutine simulation_setup_file_list
-
-  subroutine simulation_collect_integrals (sim, ok)
-    type(simulation_t), intent(inout) :: sim
-    logical, intent(out) :: ok
-    integer :: proc
-    type(process_t), pointer :: process
-    allocate (sim%integral (sim%n_proc))
-    do proc = 1, sim%n_proc
-       process => sim%prc_array(proc)%ptr
-       sim%integral(proc) = process_get_integral (process)
-    end do
-    sim%integral_sum = sum (sim%integral)
-    if (sim%integral_sum > 0) then
-       ok = .true.
-    else
-       call msg_error ("Simulation: " &
-            // "sum of process integrals must be positive; skipping")
-       ok = .false.
-    end if
-  end subroutine simulation_collect_integrals
-
-  subroutine simulation_collect_md5sums (sim)
-    type(simulation_t), intent(inout) :: sim
-    integer :: proc
-    type(process_t), pointer :: process
-    allocate (sim%md5sum%process (sim%n_proc))
-    allocate (sim%md5sum%parameters (sim%n_proc))
-    allocate (sim%md5sum%results (sim%n_proc))
-    do proc = 1, sim%n_proc
-       process => sim%prc_array(proc)%ptr
-       sim%md5sum%process(proc) = process_get_md5sum (process)
-       sim%md5sum%parameters(proc) = process_get_md5sum_parameters (process)
-       sim%md5sum%results(proc) = process_get_md5sum_results (process)
-    end do
-    sim%md5sum%decays = decay_store_get_md5sum ()
-    sim%md5sum%simulation = simulation_parameters_get_md5sum (sim%spar)
-  end subroutine simulation_collect_md5sums
-
-  subroutine simulation_setup_n_events (sim, verbose)
-    type(simulation_t), intent(inout) :: sim
-    logical, intent(in), optional :: verbose
-    integer :: n_events
-    real(default) :: luminosity
-    n_events = var_list_get_ival (sim%var_list, var_str ("n_events"))
-    luminosity = var_list_get_rval (sim%var_list, var_str ("luminosity"))
-    sim%n_events = max (nint (luminosity * sim%integral_sum), n_events)
-    sim%luminosity = max (luminosity, sim%n_events / sim%integral_sum)
-    sim%norm_weight = simulation_parameters_get_norm &
-         (sim%spar, sim%integral_sum, sim%n_events)
-    if (present (verbose)) then
-       if (verbose) then
-           write (msg_buffer, "(A,1x,I0)") &
-                 "Requested number of events =", sim%n_events
-           call msg_message ()           
-           write (msg_buffer, "(A,1x,G11.4)") &
-                 "Event sample corresponds to luminosity [fb-1] = ", &
-                 sim%luminosity
-           call msg_message ()           
-       end if
-    end if
-  end subroutine simulation_setup_n_events
-
-  subroutine simulation_prepare_event_generation (sim, verbose)
-    type(simulation_t), intent(inout), target :: sim
-    logical, intent(in), optional :: verbose
-    integer :: proc
-    logical :: ok, verb
-    type(process_t), pointer :: process
-    verb = .false.;  if (present (verbose)) verb = verbose
-    allocate (sim%decay_tree (sim%n_proc))
-    do proc = 1, sim%n_proc
-       process => sim%prc_array(proc)%ptr
-       call process_setup_event_generation (process)
-       call decay_tree_init (sim%decay_tree(proc), process)
-    end do
-    call file_list_open (sim%file_list, sim%process_id, sim%n_events)
-    if (sim%read_raw) then
-       call open_raw_event_file_for_reading &
-            (sim%file_raw, sim%md5sum, sim%u_raw, ok, verbose)
-       if (.not. ok)  sim%read_raw = .false.
-    else
-       if (verb) then
-          write (msg_buffer, "(A,I0,A)") &
-                "Generating ", sim%n_events, " events ..."
-          call msg_message
-       end if
-    end if
-    if (.not. sim%read_raw) then
-       if (sim%write_raw) then
-          call open_raw_event_file_for_writing &
-               (sim%file_raw, sim%md5sum, sim%u_raw, verbose)
-       end if
-    end if
-    call checkpointing_init (sim%checkpointing, sim%var_list)
-    sim%n_read = 0
-    sim%i_evt = 0
-  end subroutine simulation_prepare_event_generation
-
-  subroutine simulation_setup_analysis (sim, pn_analysis_lexpr, verbose)
-    type(simulation_t), intent(inout), target :: sim
-    type(parse_node_t), pointer :: pn_analysis_lexpr
-    logical, intent(in), optional :: verbose
-    logical :: verb
-    verb = .false.;  if (present (verbose)) verb = verbose
-    if (verb) then
-       if (associated (pn_analysis_lexpr)) then
-          call msg_message ("Using user-defined analysis setup.")
-       else
-          call msg_message ("No analysis setup has been provided.")
-       end if
-    end if
-    if (associated (pn_analysis_lexpr)) then
-       call eval_tree_init_lexpr (sim%analysis_expr, &
-            pn_analysis_lexpr, sim%var_list, sim%prt_list, &
-            sim%event_weight, sim%event_sqme)
-    end if
-  end subroutine simulation_setup_analysis
-
-  subroutine simulation_read_event_raw (sim, verbose)
-    type(simulation_t), intent(inout), target :: sim
-    logical, intent(in), optional :: verbose
-    logical :: verb
-    integer :: iostat
-    verb = .false.;  if (present (verbose)) verb = verbose
-    call event_read_raw (sim%event, sim%u_raw, &
-         sim%event_weight, sim%event_sqme, iostat=iostat)
-    if (iostat == 0) then
-       sim%i_evt = sim%i_evt + 1
-       sim%n_read = sim%n_read + 1
-    else
-       if (verb) then
-          write (msg_buffer, "(A,1x,I0,1x,A)")  &
-                "...", sim%n_read, "events read."
-          call msg_message ()
-       end if
-       sim%read_raw = .false.
-       if (verb) then
-          write (msg_buffer, "(A,1x,I0,1x,A)") &
-                "Generating", sim%n_events - sim%n_read, " events ..."
-          call msg_message ()
-       end if
-       if (sim%write_raw) then
-           call reopen_raw_event_file_for_writing &
-                (sim%file_raw, sim%u_raw, verbose)
-       else
-           close (sim%u_raw)
-       end if
-    end if
-  end subroutine simulation_read_event_raw
-
-  subroutine simulation_select_process (sim, rng, process, proc)
-    type(simulation_t), intent(in) :: sim
-    type(tao_random_state), intent(inout) :: rng
-    type(process_t), pointer :: process
-    integer, intent(out) :: proc
-    real(default) :: integral_cmp, x
-    call tao_random_number (rng, x)
-    integral_cmp = 0
-    do proc = 1, sim%n_proc
-       integral_cmp = integral_cmp + sim%integral(proc)
-       if (integral_cmp > x * sim%integral_sum)  exit
-    end do
-    proc = min (proc, sim%n_proc)
-    process => sim%prc_array(proc)%ptr
-  end subroutine simulation_select_process
-
-  subroutine simulation_generate_event (sim, rng, process, proc)
-    type(simulation_t), intent(inout), target :: sim
-    type(tao_random_state), intent(inout) :: rng
-    type(process_t), intent(in), target :: process
-    integer, intent(in) :: proc
-    call event_init (sim%event, process, &
-         sim%event_weight, sim%event_sqme, sim%decay_tree(proc))
-    call event_generate &
-         (sim%event, rng, sim%spar%unweighted, &
-          FM_IGNORE_HELICITY, &
-          keep_correlations=.false., &
-          keep_virtual=.true.)
-    sim%i_evt = sim%i_evt + 1
-    sim%event%weight = sim%event%weight * sim%norm_weight
-  end subroutine simulation_generate_event
-
-  subroutine simulation_handle_event (sim)
-    type(simulation_t), intent(inout), target :: sim
-    call event_do_analysis (sim%event, sim%prt_list, sim%analysis_expr)
-    call file_list_write_event (sim%file_list, sim%event, i_evt=sim%i_evt)
-    if (sim%write_raw .and. .not. sim%read_raw) &
-         call event_write_raw (sim%event, sim%u_raw)
-    call checkpointing_msg_event &
-         (sim%checkpointing, sim%n_events, sim%n_read, sim%i_evt)
-  end subroutine simulation_handle_event
-
-  subroutine simulation_final_event (sim)
-    type(simulation_t), intent(inout), target :: sim
-    call event_final (sim%event)
-  end subroutine simulation_final_event
-
-  subroutine simulation_finish_event_generation (sim, verbose)
-    type(simulation_t), intent(inout) :: sim
-    logical, intent(in), optional :: verbose
-    integer :: proc
-    logical :: verb
-    verb = .false.;  if (present (verbose)) verb = verbose
-    call checkpointing_msg_end &
-         (sim%checkpointing, sim%n_read, sim%i_evt)
-    call file_list_close (sim%file_list)
-    if (sim%read_raw .or. sim%write_raw)  close (sim%u_raw)
-    do proc = 1, sim%n_proc
-       call decay_tree_final (sim%decay_tree(proc))
-    end do
-    call eval_tree_final (sim%analysis_expr)
-    if (verb) then
-       if (sim%read_raw) then
-          write (msg_buffer, "(A,1x,I0,1x,A,1x,I0,1x,A)")  &
-                "...", sim%n_read, "events read,", sim%n_events, "total."
-          call msg_message ()
-       else       
-          write (msg_buffer, "(A,1x,I0,1x,A,1x,I0,1x,A)")  &
-                "...", sim%n_events - sim%n_read, "events generated.", &
-                sim%n_events, "total."
-          call msg_message ()
-       end if
-       call msg_message ("Simulation finished.")
-    end if
-  end subroutine simulation_finish_event_generation
-
-  subroutine simulation_basic_final (sim)
-    type(simulation_t), intent(inout) :: sim
-    call var_list_final (sim%var_list)
-  end subroutine simulation_basic_final
-
-  subroutine open_raw_event_file_for_reading &
-      (file_raw, md5sum, u_raw, ok, verbose)
-    type(string_t), intent(in) :: file_raw
-    type(md5sum_events_t), intent(in) :: md5sum
-    integer, intent(out) :: u_raw
-    logical, intent(out) :: ok
-    logical, intent(in), optional :: verbose
-    logical :: verb
-    integer :: iostat
-    verb = .false.;  if (present (verbose))  verb = verbose
-    inquire (file = char (file_raw), exist = ok)
-    if (ok) then
-       if (verb)  call msg_message ("Reading events from file '" &
-            // char (file_raw) // "' ...")
-       u_raw = free_unit ()
-       open (file = char (file_raw), unit = u_raw, form = "unformatted", &
-             action = "read", status = "old")
-       call raw_event_file_read_header (u_raw, md5sum, ok, iostat)
-       if (iostat /= 0) then
-          call msg_error ("Event file '" & 
-               // char (file_raw) // "' is corrupt, discarding.")
-          close (u_raw)
-          ok = .false.
-       else if (.not. ok) then
-          close (u_raw)
-          ok = .false.
-       else
-          ok = .true.
-       end if
-    end if
-  end subroutine open_raw_event_file_for_reading
-
-  subroutine open_raw_event_file_for_writing (file_raw, md5sum, u_raw, verbose)
-    type(string_t), intent(in) :: file_raw
-    type(md5sum_events_t), intent(in) :: md5sum
-    integer, intent(out) :: u_raw
-    logical, intent(in), optional :: verbose
-    logical :: verb
-    verb = .false.;  if (present (verbose)) verb = verbose
-    if (verb) then
-       call msg_message ("Writing events in internal format to file '" &
-            // char (file_raw) // "'")
-    end if
-    u_raw = free_unit ()
-    open (file = char (file_raw), unit = u_raw, form = "unformatted", &
-          action = "write", status = "replace")
-    call raw_event_file_write_header (u_raw, md5sum)
-  end subroutine open_raw_event_file_for_writing
-
-  subroutine reopen_raw_event_file_for_writing (file_raw, u_raw, verbose)
-    type(string_t), intent(in) :: file_raw
-    integer, intent(in) :: u_raw
-    logical, intent(in), optional :: verbose
-    logical :: verb
-    verb = .false.;  if (present (verbose)) verb = verbose
-    if (verb) then
-       call msg_message ("Appending events in internal format to file '" &
-            // char (file_raw) // "'")
-    end if
-    close (u_raw)
-    open (file = char (file_raw), unit = u_raw, form = "unformatted", &
-          action = "write", status = "old", position = "append")
-  end subroutine reopen_raw_event_file_for_writing
-
-  subroutine simulation_init (sim, process_id, global, ok, verbose)
-    type(simulation_t), intent(out) :: sim
-    type(string_t), dimension(:), intent(in) :: process_id
-    type(rt_data_t), intent(inout), target :: global
-    logical, intent(out) :: ok
-    logical, intent(in), optional :: verbose
-    type(string_t) :: basename_default
-    if (size (process_id) /= 0) then
-       basename_default = process_id(1)
-    else
-       basename_default = "whizard"
-    end if
-    call simulation_basic_init (sim, process_id, global%var_list, verbose)
-    call simulation_compute_missing_integrals (sim, global, verbose)
-    call simulation_check (sim, ok)
-    if (ok) then
-       call simulation_collect_integrals (sim, ok)
-       if (ok) then
-          call simulation_setup_file_list &
-               (sim, global%event_fmt, basename_default)
-          call simulation_collect_md5sums (sim)
-          call simulation_setup_n_events (sim, verbose)
-          call simulation_prepare_event_generation (sim, verbose)
-       end if
-    end if
-    if (.not. ok)  call simulation_basic_final (sim)
-  end subroutine simulation_init
-
-  function simulation_get_n_events (sim) result (n_events)
-    integer :: n_events
-    type(simulation_t), intent(in) :: sim
-    n_events = sim%n_events
-  end function simulation_get_n_events
-
-  subroutine simulation_event (sim, rng, verbose)
-    type(simulation_t), intent(inout), target :: sim
-    type(tao_random_state), intent(inout) :: rng
-    logical, intent(in), optional :: verbose
-    type(process_t), pointer :: process
-    integer :: proc, i
-    if (sim%read_raw) then
-       call simulation_read_event_raw (sim, verbose)
-    end if
-    if (.not. sim%read_raw) then
-       if (sim%checkpointing%active .and. (.not. sim%checkpointing%running)) &
-          call checkpointing_msg_start (sim%checkpointing, sim%n_events, &
-             sim%i_evt)
-       call simulation_select_process (sim, rng, process, proc)
-       call simulation_generate_event (sim, rng, process, proc)
-    end if
-    call simulation_handle_event (sim)
-    call simulation_final_event (sim)
-  end subroutine simulation_event
-
-  subroutine simulation_final (sim, verbose)
-    type(simulation_t), intent(inout) :: sim
-    logical, intent(in), optional :: verbose
-    call simulation_finish_event_generation (sim, verbose)
-    call simulation_basic_final (sim)
-  end subroutine simulation_final
-
   subroutine cmd_simulate_final (simulate)
     type(cmd_simulate_t), intent(inout) :: simulate
     if (associated (simulate%options)) then
@@ -6337,17 +4682,104 @@ contains
        call command_list_execute (simulate%options, simulate%local)
     end if
     call simulation_init (sim, simulate%process_id, simulate%local, &
-         ok, verbose=.true.)
+         global%var_list, ok, verbose=.true.)
     if (ok) then
+       call simulation_setup_reweight &
+            (sim, simulate%local%pn_reweight_expr, verbose=.true.)
        call simulation_setup_analysis &
             (sim, simulate%local%pn_analysis_lexpr, verbose=.true.)
        do i_evt = 1, simulation_get_n_events (sim)
-          call simulation_event (sim, simulate%local%rng, verbose=.true.)
+          call simulation_event (sim, simulate%local%rng, ok, verbose=.true.)
+          if (.not. ok)  exit
        end do
        call simulation_final (sim, verbose=.true.)
     end if
     call rt_data_restore (global, simulate%local)
   end subroutine cmd_simulate_execute
+
+  subroutine cmd_rescan_final (rescan)
+    type(cmd_rescan_t), intent(inout) :: rescan
+    call eval_tree_final (rescan%filename)
+    if (associated (rescan%options)) then
+       call command_list_final (rescan%options)
+       deallocate (rescan%options)
+    end if
+  end subroutine cmd_rescan_final
+
+  subroutine cmd_rescan_write (rescan, unit, indent)
+    type(cmd_rescan_t), intent(in) :: rescan
+    integer, intent(in), optional :: unit, indent
+    integer :: u, i
+    u = output_unit (unit);  if (u < 0)  return
+    call write_indent (u, indent)
+    write (u, "(1x,A)", advance="no") "rescan ("
+    do i = 1, rescan%n_proc
+       if (i /= 1)  write (u, "(', ')", advance="no")
+       write (u, "(A)", advance="no")  char (rescan%process_id(i))
+    end do
+    write (u, "(A)") ")"
+    if (associated (rescan%options)) then
+       write (u, "(1x,'{')")
+       call command_list_write (rescan%options, unit, indent)
+       call write_indent (u, indent)
+       write (u, "(1x,'}')")
+    end if
+  end subroutine cmd_rescan_write
+
+  subroutine cmd_rescan_compile (rescan, pn, global)
+    type(cmd_rescan_t), pointer :: rescan
+    type(parse_node_t), intent(in), target :: pn
+    type(rt_data_t), intent(in), target :: global
+    type(parse_node_t), pointer :: pn_filename, pn_proclist, pn_proc, pn_opt
+    integer :: i
+    pn_filename => parse_node_get_sub_ptr (pn, 2)
+    pn_proclist => parse_node_get_next_ptr (pn_filename)
+    pn_opt => parse_node_get_next_ptr (pn_proclist)
+    allocate (rescan)
+    call rt_data_local_init (rescan%local, global)
+    if (associated (pn_opt)) then
+       allocate (rescan%options)
+       call command_list_compile (rescan%options, pn_opt, rescan%local)
+    end if
+    call eval_tree_init_sexpr (rescan%filename, pn_filename, global%var_list)
+    rescan%n_proc = parse_node_get_n_sub (pn_proclist)
+    allocate (rescan%process_id (rescan%n_proc))
+    pn_proc => parse_node_get_sub_ptr (pn_proclist)
+    do i = 1, rescan%n_proc
+       rescan%process_id(i) = parse_node_get_string (pn_proc)
+       pn_proc => parse_node_get_next_ptr (pn_proc)
+    end do
+  end subroutine cmd_rescan_compile
+
+  subroutine cmd_rescan_execute (rescan, global)
+    type(cmd_rescan_t), intent(inout), target :: rescan
+    type(rt_data_t), intent(inout), target :: global
+    logical :: ok
+    integer :: i_evt
+    type(simulation_t), target :: sim
+    type(string_t) :: filename
+    call rt_data_link (rescan%local, global)
+    if (associated (rescan%options)) then
+       call command_list_execute (rescan%options, rescan%local)
+    end if
+    call eval_tree_evaluate (rescan%filename)
+    filename = eval_tree_get_string (rescan%filename)
+    call simulation_init (sim, &
+         rescan%process_id, rescan%local, global%var_list, ok, &
+         filename=filename, verbose=.true.)
+    if (ok) then
+       call simulation_setup_reweight &
+            (sim, rescan%local%pn_reweight_expr, verbose=.true.)
+       call simulation_setup_analysis &
+            (sim, rescan%local%pn_analysis_lexpr, verbose=.true.)
+       do i_evt = 1, simulation_get_n_events (sim)
+          call simulation_event (sim, rescan%local%rng, ok, verbose=.true.)
+          if (.not. ok)  exit
+       end do
+       call simulation_final (sim, verbose=.true.)
+    end if
+    call rt_data_restore (global, rescan%local)
+  end subroutine cmd_rescan_execute
 
   subroutine cmd_seed_final (seed)
     type(cmd_seed_t), intent(inout) :: seed
@@ -6596,10 +5028,12 @@ contains
        loop%allow_steps = .true.
     case ("cmd_cuts_list")
        str_init = 'cuts = true'
-    case ("cmd_weight_list")
-       str_init = 'weight = 0'
     case ("cmd_scale_list")
        str_init = 'scale = 0'
+    case ("cmd_weight_list")
+       str_init = 'weight = 0'
+    case ("cmd_reweight_list")
+       str_init = 'reweight = 0'
     case ("cmd_analysis_list")
        str_init = 'analysis = true'
     case default
@@ -7411,14 +5845,16 @@ contains
          // "cmd_var | cmd_slha | " &
          // "cmd_print | cmd_printf | cmd_show | cmd_echo | " &
          // "cmd_expect | " &
-         // "cmd_cuts | cmd_weight | cmd_scale | " &
+         // "cmd_cuts | cmd_scale | cmd_weight | cmd_reweight | " &
          // "cmd_beams | cmd_integrate | " &
          // "cmd_observable | cmd_histogram | cmd_plot | cmd_clear | " &
          // "cmd_record | " &
          // "cmd_analysis | cmd_write_analysis | " &
-         // "cmd_unstable | cmd_stable | cmd_simulate | " &
+         // "cmd_unstable | cmd_stable | cmd_simulate | cmd_rescan| " &
          // "cmd_process | cmd_compile | cmd_load | cmd_exec | " &
-         // "cmd_scan | cmd_if | cmd_include | cmd_quit")
+         // "cmd_scan | cmd_if | cmd_include | cmd_quit | " &
+         // "cmd_polarized | cmd_unpolarized | " &
+         // "cmd_beam_polarization")
     call ifile_append (ifile, "GRO options = '{' local_command_list '}'")
     call ifile_append (ifile, "SEQ local_command_list = local_command*")
     call ifile_append (ifile, "ALT local_command = " &
@@ -7427,11 +5863,12 @@ contains
          // "cmd_var | cmd_slha | " &
          // "cmd_print | cmd_printf | cmd_show | cmd_echo | " &
          // "cmd_expect | " &
-         // "cmd_cuts | cmd_weight | cmd_scale | " &
+         // "cmd_cuts | cmd_scale | cmd_weight | cmd_reweight | " &
          // "cmd_beams | " &
          // "cmd_observable | cmd_histogram | cmd_plot | cmd_clear | " &
          // "cmd_record | " &
-         // "cmd_analysis | cmd_write_analysis")
+         // "cmd_analysis | cmd_write_analysis | " &
+         // "cmd_beam_polarization")
     call ifile_append (ifile, "SEQ cmd_model = model '=' model_name")
     call ifile_append (ifile, "KEY model")
     call ifile_append (ifile, "ALT model_name = model_id | string_literal")
@@ -7443,7 +5880,8 @@ contains
     call ifile_append (ifile, "ALT cmd_var = " &
          // "cmd_log_decl | cmd_log | " &
          // "cmd_int | cmd_real | cmd_complex | cmd_num | " &
-         // "cmd_string_decl | cmd_string | cmd_alias")
+         // "cmd_string_decl | cmd_string | cmd_alias | " &
+         // "cmd_result")
     call ifile_append (ifile, "SEQ cmd_log_decl = logical cmd_log")
     call ifile_append (ifile, "SEQ cmd_log = '?' var_name '=' lexpr")
     call ifile_append (ifile, "SEQ cmd_int = int var_name '=' expr")
@@ -7454,6 +5892,7 @@ contains
     call ifile_append (ifile, "SEQ cmd_string = " &
          // "'$' var_name '=' sexpr") ! $
     call ifile_append (ifile, "SEQ cmd_alias = alias var_name '=' cexpr")
+    call ifile_append (ifile, "SEQ cmd_result = result '=' expr") 
     call ifile_append (ifile, "SEQ cmd_slha = slha_action slha_arg options?")
     call ifile_append (ifile, "ALT slha_action = " &
          // "read_slha | write_slha")
@@ -7499,11 +5938,13 @@ contains
     call ifile_append (ifile, "SEQ cmd_echo = echo echo_arg?")
     call ifile_append (ifile, "KEY echo")
     call ifile_append (ifile, "ARG echo_arg = ( sexpr* )")
-    call ifile_append (ifile, "SEQ cmd_weight = weight '=' expr")
     call ifile_append (ifile, "SEQ cmd_scale = scale '=' expr")
+    call ifile_append (ifile, "SEQ cmd_weight = weight '=' expr")
+    call ifile_append (ifile, "SEQ cmd_reweight = reweight '=' expr")
     call ifile_append (ifile, "KEY cuts")
-    call ifile_append (ifile, "KEY weight")
     call ifile_append (ifile, "KEY scale")
+    call ifile_append (ifile, "KEY weight")
+    call ifile_append (ifile, "KEY reweight")
     call ifile_append (ifile, "SEQ cmd_process = process process_id '=' " &
          // "prt_list '=>' prt_list options?")   
     call ifile_append (ifile, "KEY process")
@@ -7599,17 +6040,26 @@ contains
     call ifile_append (ifile, "SEQ cmd_stable = stable stable_list options?")
     call ifile_append (ifile, "KEY stable")
     call ifile_append (ifile, "LIS stable_list = cexpr+")
+    call ifile_append (ifile, "KEY polarized")
+    call ifile_append (ifile, "SEQ cmd_polarized = polarized polarized_list options?")
+    call ifile_append (ifile, "LIS polarized_list = cexpr+")
+    call ifile_append (ifile, "KEY unpolarized")
+    call ifile_append (ifile, "SEQ cmd_unpolarized = unpolarized unpolarized_list options?")
+    call ifile_append (ifile, "LIS unpolarized_list = cexpr+")
     call ifile_append (ifile, "SEQ cmd_simulate = " &
          // "simulate proc_arg options?")
     call ifile_append (ifile, "KEY simulate")
+    call ifile_append (ifile, "SEQ cmd_rescan = " &
+         // "rescan sexpr proc_arg options?")
+    call ifile_append (ifile, "KEY rescan")
     call ifile_append (ifile, "SEQ cmd_scan = scan_spec scan_body?")
     call ifile_append (ifile, "SEQ scan_spec = scan scan_command?")
     call ifile_append (ifile, "KEY scan")
     call ifile_append (ifile, "ALT scan_command = " &
          // "cmd_model_list | cmd_library_list | " &
          // "cmd_seed_list | " &
-         // "cmd_cuts_list | cmd_weight_list | cmd_scale_list | " &
-         // "cmd_analysis_list | " &
+         // "cmd_cuts_list | cmd_scale_list | " &
+         // "cmd_weight_list | cmd_reweight_list | cmd_analysis_list | " &
          // "cmd_var_list")
     call ifile_append (ifile, "SEQ cmd_model_list = model = model_list_arg")
     call ifile_append (ifile, "ARG model_list_arg = ( model_name* )")
@@ -7648,8 +6098,9 @@ contains
          // "alias var_name alias_list_arg")
     call ifile_append (ifile, "ARG alias_list_arg = ( cexpr* )")
     call ifile_append (ifile, "SEQ cmd_cuts_list = cuts = log_list_arg")
-    call ifile_append (ifile, "SEQ cmd_weight_list = weight = num_list_arg")
     call ifile_append (ifile, "SEQ cmd_scale_list = scale = num_list_arg")
+    call ifile_append (ifile, "SEQ cmd_weight_list = weight = num_list_arg")
+    call ifile_append (ifile, "SEQ cmd_reweight_list = reweight = num_list_arg")
     call ifile_append (ifile, "ARG num_list_arg = ( expr* )")
     call ifile_append (ifile, "SEQ cmd_analysis_list = analysis = log_list_arg")
     call ifile_append (ifile, "GRO scan_body = '{' command_list '}'")
@@ -7667,6 +6118,32 @@ contains
     call ifile_append (ifile, "KEY quit")
     call ifile_append (ifile, "KEY exit")
     call ifile_append (ifile, "ARG quit_arg = ( expr )")
+    call ifile_append (ifile, "SEQ cmd_beam_polarization = " &
+         // "beam_polarization '=' bp_mode options?")
+    call ifile_append (ifile, "KEY beam_polarization")
+    call ifile_append (ifile, "ALT bp_mode = off | bp_defs")
+    call ifile_append (ifile, "KEY off")
+    call ifile_append (ifile, "LIS bp_defs = bp_def, bp_def?")
+    call ifile_append (ifile, "ARG arg_unary = ( expr )")
+    call ifile_append (ifile, "ARG arg_binary = (expr, expr)")
+    call ifile_append (ifile, "ARG arg_tenary = (expr, expr, expr)")
+    call ifile_append (ifile, "ALT bp_def = " &
+         // "none | bp_circ | bp_trans | bp_axis | bp_long | bp_diag | " &
+         // "bp_dens")
+    call ifile_append (ifile, "SEQ bp_circ = circular arg_unary")
+    call ifile_append (ifile, "KEY circular")
+    call ifile_append (ifile, "SEQ bp_trans = transverse arg_binary")
+    call ifile_append (ifile, "KEY transverse")
+    call ifile_append (ifile, "SEQ bp_axis = axis arg_tenary")
+    call ifile_append (ifile, "KEY axis")
+    call ifile_append (ifile, "SEQ bp_long = longitudinal arg_unary")
+    call ifile_append (ifile, "KEY longitudinal")
+    call ifile_append (ifile, "SEQ bp_dens = density_matrix arg_binary")
+    call ifile_append (ifile, "KEY density_matrix")
+    call ifile_append (ifile, "SEQ bp_diag = diagonal_density bp_diag_args")
+    call ifile_append (ifile, "KEY diagonal_density")
+    call ifile_append (ifile, "ARG bp_diag_args = ( bp_diag_entry+ )")
+    call ifile_append (ifile, "SEQ bp_diag_entry = expr ':' expr")
     call define_expr_syntax (ifile, particles=.true., analysis=.true.)
   end subroutine define_cmd_list_syntax
 

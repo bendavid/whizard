@@ -1,4 +1,4 @@
-! WHIZARD 2.0.1 Sun Apr 25 2010
+! WHIZARD 2.0.2 Tue May 18 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -32,6 +32,7 @@ module whizard
   use limits, only: VERSION_STRING !NODEP!
   use limits, only: EOF, BACKSLASH !NODEP!
   use diagnostics !NODEP!
+  use ifiles
   use formats
   use md5
   use os_interface
@@ -50,6 +51,7 @@ module whizard
   use decays
   use process_libraries
   use slha_interface
+  use rt_data
   use commands
   use vamp !NODEP!
 
@@ -61,6 +63,7 @@ module whizard
   public :: final_syntax_tables
   public :: write_syntax_tables
   public :: whizard_final
+  public :: whizard_process_ifile
   public :: whizard_process_stdin
   public :: whizard_process_file
   public :: whizard_shell
@@ -208,6 +211,20 @@ contains
     call model_list_final ()
     call final_syntax_tables ()
   end subroutine whizard_final
+
+  subroutine whizard_process_ifile (ifile, quit, quit_code)
+    type(ifile_t), intent(in) :: ifile
+    logical, intent(out) :: quit
+    integer, intent(out) :: quit_code
+    type(lexer_t), target :: lexer
+    type(stream_t), target :: stream
+    call msg_message ("Reading commands given on the command line")
+    call lexer_init_cmd_list (lexer)
+    call stream_init (stream, ifile)
+    call whizard_process_stream (stream, lexer, quit, quit_code)
+    call stream_final (stream)
+    call lexer_final (lexer)
+  end subroutine whizard_process_ifile
 
   subroutine whizard_process_stdin (quit, quit_code)
     logical, intent(out) :: quit

@@ -26,7 +26,7 @@ module vamp_grid_type
   private
   type, public :: vamp_grid
      ! private !: forced by \texttt{use} association in interface
-     type(division), dimension(:), pointer :: div => null ()
+     type(division_t), dimension(:), pointer :: div => null ()
      real(kind=default), dimension(:,:), pointer :: map => null ()
      real(kind=default), dimension(:), pointer :: mu_x => null ()
      real(kind=default), dimension(:), pointer :: sum_mu_x => null ()
@@ -798,153 +798,177 @@ contains
     type(vamp_grid), intent(inout) :: g
     g%sum_mu_gi = 0
   end subroutine vamp_nullify_variance_s
-   subroutine vamp_sample_grid0 &
-       (rng, g, func, prc_index, channel, weights, grids, exc)
-    type(tao_random_state), intent(inout) :: rng
-    type(vamp_grid), intent(inout) :: g
-    integer, intent(in) :: prc_index
-    integer, intent(in), optional :: channel
-    real(kind=default), dimension(:), intent(in), optional :: weights
-    type(vamp_grid), dimension(:), intent(in), optional :: grids
-    type(exception), intent(inout), optional :: exc
-    interface
-        function func (xi, prc_index, weights, channel, grids) result (f)
-         use kinds
-         use vamp_grid_type !NODEP!
-         real(kind=default), dimension(:), intent(in) :: xi
-         integer, intent(in) :: prc_index
-         real(kind=default), dimension(:), intent(in), optional :: weights
-         integer, intent(in), optional :: channel
-         type(vamp_grid), dimension(:), intent(in), optional :: grids
-         real(kind=default) :: f
-       end function func
-    end interface
-    character(len=*), parameter :: FN = "vamp_sample_grid0"
-    real(kind=default), parameter :: &
-         eps =  tiny (1._default) / epsilon (1._default)
-    character(len=6) :: buffer
-    integer :: j, k
-    integer, dimension(size(g%div)) :: cell
-    real(kind=default) :: wgt, f, f2, sum_f, sum_f2, var_f
-    real(kind=default), dimension(size(g%div)):: x, x_mid, wgts
-    real(kind=default), dimension(size(g%div)):: r
-    integer, dimension(size(g%div)) :: ia
-    integer :: ndim
-    ndim = size (g%div)
-    if (present (channel) .neqv. present (weights)) then
-       call raise_exception (exc, EXC_FATAL, FN, &
-            "channel and weights required together")
-       return
-    end if
-    g%mu = 0.0
-    cell = 1
-    call clear_integral_and_variance (g%div)
-    if (associated (g%mu_x)) then
-       g%mu_x = 0.0
-       g%mu_xx = 0.0
-    end if
-    if (present (channel)) then
-       g%mu_gi = 0.0
-    end if
-    loop_over_cells: do
-       sum_f = 0.0
-       sum_f2 = 0.0
-       do k = 1, g%calls_per_cell
-          call tao_random_number (rng, r)
-          call inject_division (g%div, real (r, kind=default), &
-                                cell, x, x_mid, ia, wgts)
-          wgt = g%jacobi * product (wgts)
-          if (associated (g%map)) then
-             x = matmul (g%map, x)
-          end if
-          if (associated (g%map)) then
-             if (all (inside_division (g%div, x))) then
-                f = wgt * func (x, prc_index, weights, channel, grids)
-             else
-                f = 0.0
-             end if
-          else
-             f = wgt * func (x, prc_index, weights, channel, grids)
-          end if
-          if (g%f_min > g%f_max) then
-             g%f_min = f * g%calls
-             g%f_max = f * g%calls
-          else if (f * g%calls < g%f_min) then
-             g%f_min = f * g%calls
-          else if (f * g%calls > g%f_max) then
-             g%f_max = f * g%calls
-          end if
-          f2 = f * f
-          sum_f = sum_f + f
-          sum_f2 = sum_f2 + f2
-          call record_integral (g%div, ia, f)
-          ! call record_efficiency (g%div, ia, f/g%f_max)
-          if ((associated (g%mu_x)) .and. (.not. g%all_stratified)) then
-             g%mu_x = g%mu_x + x * f
-             g%mu_xx = g%mu_xx + outer_product (x, x) * f
-          end if
-          if (present (channel)) then
-             g%mu_gi = g%mu_gi + f2
-          end if
-       end do
-       var_f = sum_f2 * g%calls_per_cell - sum_f**2
-       if (var_f <= 0.0) then 
-          var_f = tiny (1.0_default)
-       end if
-       g%mu = g%mu + (/ sum_f, var_f /)
-       call record_variance (g%div, ia, var_f)
-       if ((associated (g%mu_x)) .and. g%all_stratified) then
-          if (associated (g%map)) then
-             x_mid = matmul (g%map, x_mid)
-          end if
-          g%mu_x = g%mu_x + x_mid * var_f
-          g%mu_xx = g%mu_xx + outer_product (x_mid, x_mid) * var_f
-       end if
-       do j = ndim, 1, -1
-          cell(j) = modulo (cell(j), rigid_division (g%div(j))) + 1
-          if (cell(j) /= 1) then
-             cycle loop_over_cells
-          end if
-       end do
-       exit loop_over_cells
-    end do loop_over_cells
-    g%mu(2) = g%mu(2) * g%dv2g
-    if (g%mu(2) < eps * max (g%mu(1)**2, 1._default)) then
-       g%mu(2) = eps * max (g%mu(1)**2, 1._default)
-    end if
-    if (g%mu(1)>0) then
-       g%sum_integral = g%sum_integral + g%mu(1) / g%mu(2)
-       g%sum_weights = g%sum_weights + 1.0 / g%mu(2)
-       g%sum_chi2 = g%sum_chi2 + g%mu(1)**2 / g%mu(2)
-       if (associated (g%mu_x)) then
-          if (g%all_stratified) then
-             g%mu_x = g%mu_x / g%mu(2)
-             g%mu_xx = g%mu_xx / g%mu(2)
-          else
-             g%mu_x = g%mu_x / g%mu(1)
-             g%mu_xx = g%mu_xx / g%mu(1)
-          end if
-          g%sum_mu_x = g%sum_mu_x + g%mu_x / g%mu(2)
-          g%sum_mu_xx = g%sum_mu_xx + g%mu_xx / g%mu(2)
-       end if
-       if (present (channel)) then
-          g%sum_mu_gi = g%sum_mu_gi + g%mu_gi / g%mu(2)
-       end if
-    else
-       if (present(channel) .and. g%mu(1)==0) then
-          write (buffer, "(I6)")  channel
-          call raise_exception (exc, EXC_WARN, "! vamp", &
-               "Function identically zero in channel " // buffer)
-       else if (present(channel) .and. g%mu(1)<0) then
-          write (buffer, "(I6)")  channel
-          call raise_exception (exc, EXC_ERROR, "! vamp", &
-               "Negative integral in channel " // buffer)
-       end if
-       g%sum_integral = 0
-       g%sum_chi2 = 0
-       g%sum_weights = 0
-    end if
-  end subroutine vamp_sample_grid0
+     subroutine vamp_sample_grid0 &
+         (rng, g, func, prc_index, channel, weights, grids, exc, &
+          negative_weights)
+      type(tao_random_state), intent(inout) :: rng
+      type(vamp_grid), intent(inout) :: g
+      integer, intent(in) :: prc_index
+      integer, intent(in), optional :: channel
+      real(kind=default), dimension(:), intent(in), optional :: weights
+      type(vamp_grid), dimension(:), intent(in), optional :: grids
+      type(exception), intent(inout), optional :: exc
+      interface
+          function func (xi, prc_index, weights, channel, grids) result (f)
+           use kinds
+           use vamp_grid_type !NODEP!
+           real(kind=default), dimension(:), intent(in) :: xi
+           integer, intent(in) :: prc_index
+           real(kind=default), dimension(:), intent(in), optional :: weights
+           integer, intent(in), optional :: channel
+           type(vamp_grid), dimension(:), intent(in), optional :: grids
+           real(kind=default) :: f
+         end function func
+      end interface
+      character(len=*), parameter :: FN = "vamp_sample_grid0"
+      logical, intent(in), optional :: negative_weights
+      real(kind=default), parameter :: &
+           eps =  tiny (1._default) / epsilon (1._default)
+      character(len=6) :: buffer
+      integer :: j, k
+      integer, dimension(size(g%div)) :: cell
+      real(kind=default) :: wgt, f, f2, sum_f, sum_f2, var_f
+      real(kind=default), dimension(size(g%div)):: x, x_mid, wgts
+      real(kind=default), dimension(size(g%div)):: r
+      integer, dimension(size(g%div)) :: ia
+      integer :: ndim
+      logical :: neg_w
+      ndim = size (g%div)
+      neg_w = .false.
+      if (present (negative_weights)) neg_w = negative_weights
+      if (present (channel) .neqv. present (weights)) then
+         call raise_exception (exc, EXC_FATAL, FN, &
+              "channel and weights required together")
+         return
+      end if
+      g%mu = 0.0
+      cell = 1
+      call clear_integral_and_variance (g%div)
+      if (associated (g%mu_x)) then
+         g%mu_x = 0.0
+         g%mu_xx = 0.0
+      end if
+      if (present (channel)) then
+         g%mu_gi = 0.0
+      end if
+      loop_over_cells: do
+         sum_f = 0.0
+         sum_f2 = 0.0
+         do k = 1, g%calls_per_cell
+            call tao_random_number (rng, r)
+            call inject_division (g%div, real (r, kind=default), &
+                                  cell, x, x_mid, ia, wgts)
+            wgt = g%jacobi * product (wgts)
+            if (associated (g%map)) then
+               x = matmul (g%map, x)
+            end if
+            if (associated (g%map)) then
+               if (all (inside_division (g%div, x))) then
+                  f = wgt * func (x, prc_index, weights, channel, grids)
+               else
+                  f = 0.0
+               end if
+            else
+               f = wgt * func (x, prc_index, weights, channel, grids)
+            end if
+            if (g%f_min > g%f_max) then
+               g%f_min = f * g%calls
+               g%f_max = f * g%calls
+            else if (f * g%calls < g%f_min) then
+               g%f_min = f * g%calls
+            else if (f * g%calls > g%f_max) then
+               g%f_max = f * g%calls
+            end if
+            f2 = f * f
+            sum_f = sum_f + f
+            sum_f2 = sum_f2 + f2
+            call record_integral (g%div, ia, f)
+            ! call record_efficiency (g%div, ia, f/g%f_max)
+            if ((associated (g%mu_x)) .and. (.not. g%all_stratified)) then
+               g%mu_x = g%mu_x + x * f
+               g%mu_xx = g%mu_xx + outer_product (x, x) * f
+            end if
+            if (present (channel)) then
+               g%mu_gi = g%mu_gi + f2
+            end if
+         end do
+         var_f = sum_f2 * g%calls_per_cell - sum_f**2
+         if (var_f <= 0.0) then 
+            var_f = tiny (1.0_default)
+         end if
+         g%mu = g%mu + (/ sum_f, var_f /)
+         call record_variance (g%div, ia, var_f)
+         if ((associated (g%mu_x)) .and. g%all_stratified) then
+            if (associated (g%map)) then
+               x_mid = matmul (g%map, x_mid)
+            end if
+            g%mu_x = g%mu_x + x_mid * var_f
+            g%mu_xx = g%mu_xx + outer_product (x_mid, x_mid) * var_f
+         end if
+         do j = ndim, 1, -1
+            cell(j) = modulo (cell(j), rigid_division (g%div(j))) + 1
+            if (cell(j) /= 1) then
+               cycle loop_over_cells
+            end if
+         end do
+         exit loop_over_cells
+      end do loop_over_cells
+      g%mu(2) = g%mu(2) * g%dv2g
+      if (g%mu(2) < eps * max (g%mu(1)**2, 1._default)) then
+         g%mu(2) = eps * max (g%mu(1)**2, 1._default)
+      end if
+      if (g%mu(1)>0) then
+         g%sum_integral = g%sum_integral + g%mu(1) / g%mu(2)
+         g%sum_weights = g%sum_weights + 1.0 / g%mu(2)
+         g%sum_chi2 = g%sum_chi2 + g%mu(1)**2 / g%mu(2)
+         if (associated (g%mu_x)) then
+            if (g%all_stratified) then
+               g%mu_x = g%mu_x / g%mu(2)
+               g%mu_xx = g%mu_xx / g%mu(2)
+            else
+               g%mu_x = g%mu_x / g%mu(1)
+               g%mu_xx = g%mu_xx / g%mu(1)
+            end if
+            g%sum_mu_x = g%sum_mu_x + g%mu_x / g%mu(2)
+            g%sum_mu_xx = g%sum_mu_xx + g%mu_xx / g%mu(2)
+         end if
+         if (present (channel)) then
+            g%sum_mu_gi = g%sum_mu_gi + g%mu_gi / g%mu(2)
+         end if
+      else if (neg_w) then
+         g%sum_integral = g%sum_integral + g%mu(1) / g%mu(2)
+         g%sum_weights = g%sum_weights + 1.0 / g%mu(2)
+         g%sum_chi2 = g%sum_chi2 + g%mu(1)**2 / g%mu(2)
+         if (associated (g%mu_x)) then
+            if (g%all_stratified) then
+               g%mu_x = g%mu_x / g%mu(2)
+               g%mu_xx = g%mu_xx / g%mu(2)
+            else
+               g%mu_x = g%mu_x / g%mu(1)
+               g%mu_xx = g%mu_xx / g%mu(1)
+            end if
+            g%sum_mu_x = g%sum_mu_x + g%mu_x / g%mu(2)
+            g%sum_mu_xx = g%sum_mu_xx + g%mu_xx / g%mu(2)
+         end if
+         if (present (channel)) then
+            g%sum_mu_gi = g%sum_mu_gi + g%mu_gi / g%mu(2)
+         end if
+         else
+         if (present(channel) .and. g%mu(1)==0) then
+            write (buffer, "(I6)")  channel
+            call raise_exception (exc, EXC_WARN, "! vamp", &
+                 "Function identically zero in channel " // buffer)
+         else if (present(channel) .and. g%mu(1)<0) then
+            write (buffer, "(I6)")  channel
+            call raise_exception (exc, EXC_ERROR, "! vamp", &
+                 "Negative integral in channel " // buffer)
+         end if
+         g%sum_integral = 0
+         g%sum_chi2 = 0
+         g%sum_weights = 0
+      end if
+    end subroutine vamp_sample_grid0
+
    function vamp_probability (g, x) result (p)
     type(vamp_grid), intent(in) :: g
     real(kind=default), dimension(:), intent(in) :: x
@@ -1110,7 +1134,7 @@ contains
     integer, intent(in) :: d
     type(exception), intent(inout), optional :: exc
     character(len=*), parameter :: FN = "vamp_fork_grid_single"
-    type(division), dimension(:), allocatable :: d_tmp
+    type(division_t), dimension(:), allocatable :: d_tmp
     integer :: i, j, num_grids, num_div, ndim, num_cells
     num_grids = size (gs)
     ndim = size (g%div)
@@ -1195,7 +1219,7 @@ contains
     type(vamp_grid), dimension(:), intent(inout) :: gs
     integer, intent(in) :: d
     type(exception), intent(inout), optional :: exc
-    type(division), dimension(:), allocatable :: d_tmp
+    type(division_t), dimension(:), allocatable :: d_tmp
     integer :: i, j, num_grids
     num_grids = size (gs)
     do j = 1, size (g%div)
@@ -1952,119 +1976,123 @@ contains
        end if
     end do
   end subroutine vamp_reshape_grids
-   subroutine vamp_sample_grids &
-       (rng, g, func, prc_index, iterations, integral, std_dev, avg_chi2, &
-        accuracy, history, histories, exc, eq, warn_error)
-    type(tao_random_state), intent(inout) :: rng
-    type(vamp_grids), intent(inout) :: g
-    integer, intent(in) :: prc_index
-    integer, intent(in) :: iterations
-    real(kind=default), intent(out), optional :: integral, std_dev, avg_chi2
-    real(kind=default), intent(in), optional :: accuracy
-    type(vamp_history), dimension(:), intent(inout), optional :: history
-    type(vamp_history), dimension(:,:), intent(inout), optional :: histories
-    type(exception), intent(inout), optional :: exc
-    type(vamp_equivalences_t), intent(in), optional :: eq
-    logical, intent(in), optional :: warn_error
-    interface
-        function func (xi, prc_index, weights, channel, grids) result (f)
-         use kinds
-         use vamp_grid_type !NODEP!
-         real(kind=default), dimension(:), intent(in) :: xi
-         integer, intent(in) :: prc_index
-         real(kind=default), dimension(:), intent(in), optional :: weights
-         integer, intent(in), optional :: channel
-         type(vamp_grid), dimension(:), intent(in), optional :: grids
-         real(kind=default) :: f
-       end function func
-    end interface
-    integer :: ch, iteration
-    type(exception), dimension(size(g%grids)) :: excs
-    logical, dimension(size(g%grids)) :: active
-    real(kind=default), dimension(size(g%grids)) :: weights, integrals, std_devs
-    real(kind=default) :: local_integral, local_std_dev, local_avg_chi2
-    character(len=*), parameter :: FN = "vamp_sample_grids"
-    integrals = 0
-    std_devs = 0
-    active = (g%num_calls >= 2)
-    where (active)
-       weights = g%num_calls
-    elsewhere
-       weights = 0.0
-    endwhere
-    if (sum (weights) /= 0)  weights = weights / sum (weights)
-    call clear_exception (excs)
-    iterate: do iteration = 1, iterations
-       do ch = 1, size (g%grids)
-          if (active(ch)) then
-             call vamp_discard_integral (g%grids(ch))
-             call vamp_sample_grid0 &
-                  (rng, g%grids(ch), func, prc_index, &
-                   ch, weights, g%grids, excs(ch))
-             if (present (exc) .and. present (warn_error)) then
-                if (warn_error) call handle_exception (excs(ch))
-             end if
-             call vamp_average_iterations &
-                  (g%grids(ch), iteration, integrals(ch), std_devs(ch), local_avg_chi2)
-             if (present (histories)) then
-                if (iteration <= ubound (histories, dim=1)) then
-                   call vamp_get_history &
-                        (histories(iteration,ch), g%grids(ch), &
-                         integrals(ch), std_devs(ch), local_avg_chi2)
-                else
-                   call raise_exception (exc, EXC_WARN, FN, "history too short")
+     subroutine vamp_sample_grids &
+         (rng, g, func, prc_index, iterations, integral, std_dev, avg_chi2, &
+          accuracy, history, histories, exc, eq, warn_error, negative_weights)
+      type(tao_random_state), intent(inout) :: rng
+      type(vamp_grids), intent(inout) :: g
+      integer, intent(in) :: prc_index
+      integer, intent(in) :: iterations
+      real(kind=default), intent(out), optional :: integral, std_dev, avg_chi2
+      real(kind=default), intent(in), optional :: accuracy
+      type(vamp_history), dimension(:), intent(inout), optional :: history
+      type(vamp_history), dimension(:,:), intent(inout), optional :: histories
+      type(exception), intent(inout), optional :: exc
+      type(vamp_equivalences_t), intent(in), optional :: eq
+      logical, intent(in), optional :: warn_error, negative_weights
+      interface
+          function func (xi, prc_index, weights, channel, grids) result (f)
+           use kinds
+           use vamp_grid_type !NODEP!
+           real(kind=default), dimension(:), intent(in) :: xi
+           integer, intent(in) :: prc_index
+           real(kind=default), dimension(:), intent(in), optional :: weights
+           integer, intent(in), optional :: channel
+           type(vamp_grid), dimension(:), intent(in), optional :: grids
+           real(kind=default) :: f
+         end function func
+      end interface
+      integer :: ch, iteration
+      logical :: neg_w
+      type(exception), dimension(size(g%grids)) :: excs
+      logical, dimension(size(g%grids)) :: active
+      real(kind=default), dimension(size(g%grids)) :: weights, integrals, std_devs
+      real(kind=default) :: local_integral, local_std_dev, local_avg_chi2
+      character(len=*), parameter :: FN = "vamp_sample_grids"
+      integrals = 0
+      std_devs = 0
+      neg_w = .false.
+      if (present (negative_weights)) neg_w = negative_weights
+      active = (g%num_calls >= 2)
+      where (active)
+         weights = g%num_calls
+      elsewhere
+         weights = 0.0
+      endwhere
+      if (sum (weights) /= 0)  weights = weights / sum (weights)
+      call clear_exception (excs)
+      iterate: do iteration = 1, iterations
+         do ch = 1, size (g%grids)
+            if (active(ch)) then
+               call vamp_discard_integral (g%grids(ch))
+               call vamp_sample_grid0 &
+                    (rng, g%grids(ch), func, prc_index, &
+                     ch, weights, g%grids, excs(ch), neg_w)
+               if (present (exc) .and. present (warn_error)) then
+                  if (warn_error) call handle_exception (excs(ch))
+               end if
+               call vamp_average_iterations &
+                    (g%grids(ch), iteration, integrals(ch), std_devs(ch), local_avg_chi2)
+               if (present (histories)) then
+                  if (iteration <= ubound (histories, dim=1)) then
+                     call vamp_get_history &
+                          (histories(iteration,ch), g%grids(ch), &
+                           integrals(ch), std_devs(ch), local_avg_chi2)
+                  else
+                     call raise_exception (exc, EXC_WARN, FN, "history too short")
+                  end if
+                  call vamp_terminate_history (histories(iteration+1:,ch))
+               end if
+            else
+               call vamp_nullify_variance_s (g%grids(ch))
+               call vamp_nullify_covariance_s (g%grids(ch))
+            end if
+         end do
+         if (present(eq))  call vamp_apply_equivalences (g, eq)
+         if (iteration < iterations) then
+            do ch = 1, size (g%grids)
+               active(ch) = (integrals(ch) /= 0)
+               if (active(ch)) then
+                  call vamp_refine_grid (g%grids(ch))
                 end if
-                call vamp_terminate_history (histories(iteration+1:,ch))
-             end if
-          else
-             call vamp_nullify_variance_s (g%grids(ch))
-             call vamp_nullify_covariance_s (g%grids(ch))
-          end if
-       end do
-       if (present(eq))  call vamp_apply_equivalences (g, eq)
-       if (iteration < iterations) then
-          do ch = 1, size (g%grids)
-             active(ch) = (integrals(ch) /= 0)
-             if (active(ch)) then
-                call vamp_refine_grid (g%grids(ch))
-              end if
-          end do
-       end if
-       if (present (exc) .and. (any (excs%level > 0))) then
-          call gather_exceptions (exc, excs)
-  !       return
-       end if
-       call vamp_reduce_channels (g, integrals, std_devs, active)
-       call vamp_average_iterations &
-            (g, iteration, local_integral, local_std_dev, local_avg_chi2)
-       if (present (history)) then
-          if (iteration <= size (history)) then
-             call vamp_get_history &
-                  (history(iteration), g, local_integral, local_std_dev, &
-                   local_avg_chi2)
-          else
-             call raise_exception (exc, EXC_WARN, FN, "history too short")
-          end if
-          call vamp_terminate_history (history(iteration+1:))
-       end if
-       if (present (accuracy)) then
-          if (local_std_dev <= accuracy * local_integral) then
-             call raise_exception (exc, EXC_INFO, FN, &
-                  "requested accuracy reached")
-             exit iterate
-          end if
-       end if
-    end do iterate
-    if (present (integral)) then
-       integral = local_integral
-    end if
-    if (present (std_dev)) then
-       std_dev = local_std_dev
-    end if
-    if (present (avg_chi2)) then
-       avg_chi2 = local_avg_chi2
-    end if
-  end subroutine vamp_sample_grids
+            end do
+         end if
+         if (present (exc) .and. (any (excs%level > 0))) then
+            call gather_exceptions (exc, excs)
+    !       return
+         end if
+         call vamp_reduce_channels (g, integrals, std_devs, active)
+         call vamp_average_iterations &
+              (g, iteration, local_integral, local_std_dev, local_avg_chi2)
+         if (present (history)) then
+            if (iteration <= size (history)) then
+               call vamp_get_history &
+                    (history(iteration), g, local_integral, local_std_dev, &
+                     local_avg_chi2)
+            else
+               call raise_exception (exc, EXC_WARN, FN, "history too short")
+            end if
+            call vamp_terminate_history (history(iteration+1:))
+         end if
+         if (present (accuracy)) then
+            if (local_std_dev <= accuracy * local_integral) then
+               call raise_exception (exc, EXC_INFO, FN, &
+                    "requested accuracy reached")
+               exit iterate
+            end if
+         end if
+      end do iterate
+      if (present (integral)) then
+         integral = local_integral
+      end if
+      if (present (std_dev)) then
+         std_dev = local_std_dev
+      end if
+      if (present (avg_chi2)) then
+         avg_chi2 = local_avg_chi2
+      end if
+    end subroutine vamp_sample_grids
+
    subroutine vamp_reduce_channels (g, integrals, std_devs, active)
     type(vamp_grids), intent(inout) :: g
     real(kind=default), dimension(:), intent(in) :: integrals, std_devs
@@ -3629,37 +3657,38 @@ contains
        deallocate (g%weights, g%grids, g%num_calls)
     end if
   end subroutine vamp_delete_grids_s
-   subroutine vamp_copy_history_s (lhs, rhs)
-    type(vamp_history), intent(inout) :: lhs
-    type(vamp_history), intent(in) :: rhs
-    lhs%calls = rhs%calls
-    lhs%stratified = rhs%stratified
-    lhs%verbose = rhs%verbose
-    lhs%integral = rhs%integral
-    lhs%std_dev = rhs%std_dev
-    lhs%avg_integral = rhs%avg_integral
-    lhs%avg_std_dev = rhs%avg_std_dev
-    lhs%avg_chi2 = rhs%avg_chi2
-    lhs%f_min = rhs%f_min
-    lhs%f_max = rhs%f_max
-    if (rhs%verbose) then
-       if (associated (lhs%div)) then
-          if (size (lhs%div) /= size (rhs%div)) then
-             deallocate (lhs%div)
-             allocate (lhs%div(size(rhs%div)))
-          end if
-       else
-          allocate (lhs%div(size(rhs%div)))
-       end if
-       call copy_history (lhs%div, rhs%div)
-    end if
-  end subroutine vamp_copy_history_s
-   subroutine vamp_delete_history_s (h)
-    type(vamp_history), intent(inout) :: h
-    if (associated (h%div)) then
-       deallocate (h%div)
-    end if
-  end subroutine vamp_delete_history_s
+     subroutine vamp_copy_history_s (lhs, rhs)
+      type(vamp_history), intent(inout) :: lhs
+      type(vamp_history), intent(in) :: rhs
+      lhs%calls = rhs%calls
+      lhs%stratified = rhs%stratified
+      lhs%verbose = rhs%verbose
+      lhs%integral = rhs%integral
+      lhs%std_dev = rhs%std_dev
+      lhs%avg_integral = rhs%avg_integral
+      lhs%avg_std_dev = rhs%avg_std_dev
+      lhs%avg_chi2 = rhs%avg_chi2
+      lhs%f_min = rhs%f_min
+      lhs%f_max = rhs%f_max
+      if (rhs%verbose) then
+         if (associated (lhs%div)) then
+            if (size (lhs%div) /= size (rhs%div)) then
+               deallocate (lhs%div)
+               allocate (lhs%div(size(rhs%div)))
+            end if
+         else
+            allocate (lhs%div(size(rhs%div)))
+         end if
+         call copy_history (lhs%div, rhs%div)
+      end if
+    end subroutine vamp_copy_history_s
+
+     subroutine vamp_delete_history_s (h)
+      type(vamp_history), intent(inout) :: h
+      if (associated (h%div)) then
+         deallocate (h%div)
+      end if
+    end subroutine vamp_delete_history_s
 end module vamp_rest
 module vamp
   use vamp_grid_type    !NODEP!

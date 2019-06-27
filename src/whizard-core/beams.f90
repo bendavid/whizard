@@ -1,4 +1,4 @@
-! WHIZARD 2.0.1 Sun Apr 25 2010
+! WHIZARD 2.0.2 Tue May 18 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -45,6 +45,10 @@ module beams
   implicit none
   private
 
+  integer, parameter :: &
+     BP_NONE = 0, BP_CIRC = 1, BP_TRANS = 2, BP_LONG = 3, BP_AXIS = 4, &
+     BP_DIAG = 5, BP_DENSITY = 6, BP_TRIVIAL = 7
+
   public :: beam_data_t
   public :: beam_data_final
   public :: beam_data_write
@@ -53,8 +57,23 @@ module beams
   public :: beam_data_get_n_in
   public :: beam_data_get_energy
   public :: beam_data_get_md5sum
+  public :: BP_NONE, BP_CIRC, BP_TRANS, BP_LONG, BP_AXIS, BP_DIAG, BP_DENSITY
+  public :: BP_TRIVIAL
+  public :: beam_polarization_t
+  public :: beam_polarization_init_none
+  public :: beam_polarization_init_trivial
+  public :: beam_polarization_init_circ
+  public :: beam_polarization_init_trans
+  public :: beam_polarization_init_long
+  public :: beam_polarization_init_axis
+  public :: beam_polarization_init_diag
+  public :: beam_polarization_init_density
+  public :: beam_polarization_final
+  public :: beam_polarization_write
   public :: beam_data_init_sqrts
   public :: beam_data_init_decay
+  public :: beam_data_set_polarization
+  public :: beam_data_kill_polarization
   public :: beam_data_masses_are_consistent
   public :: beam_t
   public :: beam_init
@@ -80,11 +99,36 @@ module beams
      character(32) :: md5sum = ""
   end type beam_data_t
 
+  type :: beam_polarization_t
+    private
+    integer :: type = BP_NONE
+    real(default) :: fraction
+    real(default) :: theta
+    real(default) :: phi
+    real(default) :: d
+    complex(default) :: nd
+    integer, dimension(:), allocatable :: hels
+    real(default), dimension(:), allocatable :: fractions
+  end type beam_polarization_t
+
   type :: beam_t
      private
      type(interaction_t) :: int
   end type beam_t
 
+
+  interface beam_data_init_sqrts
+     module procedure beam_data_init_sqrts_pol
+     module procedure beam_data_init_sqrts_bp
+  end interface
+  interface beam_data_init_decay
+     module procedure beam_data_init_decay_pol
+     module procedure beam_data_init_decay_bp
+  end interface
+  interface beam_data_set_polarization
+     module procedure beam_data_set_polarization_pol
+     module procedure beam_data_set_polarization_bp
+  end interface beam_data_set_polarization
 
   interface assignment(=)
      module procedure beam_assign
@@ -233,7 +277,310 @@ contains
     end if
   end function beam_data_get_md5sum
 
-  subroutine beam_data_init_sqrts &
+  subroutine beam_polarization_init_none (bp)
+    type(beam_polarization_t), intent(inout) :: bp
+    bp%type = BP_NONE
+  end subroutine beam_polarization_init_none
+
+  subroutine beam_polarization_init_trivial (bp)
+    type(beam_polarization_t), intent(inout) :: bp
+    bp%type = BP_TRIVIAL
+  end subroutine beam_polarization_init_trivial
+
+  subroutine beam_polarization_init_circ (bp, fraction)
+    type(beam_polarization_t), intent(inout) :: bp
+    real(default), intent(in) :: fraction
+    bp%type = BP_CIRC
+    bp%fraction = fraction
+  end subroutine beam_polarization_init_circ
+
+  subroutine beam_polarization_init_trans (bp, fraction, phi)
+    type(beam_polarization_t), intent(inout) :: bp
+    real(default), intent(in) :: fraction, phi
+    bp%type = BP_TRANS
+    bp%fraction = fraction
+    bp%phi = phi
+  end subroutine beam_polarization_init_trans
+
+  subroutine beam_polarization_init_long (bp, fraction)
+    type(beam_polarization_t), intent(inout) :: bp
+    real(default), intent(in) :: fraction
+    bp%type = BP_LONG
+    bp%fraction = fraction
+  end subroutine beam_polarization_init_long
+
+  subroutine beam_polarization_init_axis (bp, fraction, theta, phi)
+    type(beam_polarization_t), intent(inout) :: bp
+    real(default), intent(in) :: fraction, theta, phi
+    bp%type = BP_AXIS
+    bp%fraction = fraction
+    bp%theta = theta
+    bp%phi = phi
+  end subroutine beam_polarization_init_axis
+
+  subroutine beam_polarization_init_diag (bp, hels, fracs)
+    type(beam_polarization_t), intent(inout) :: bp
+    integer, dimension(:), intent(in) :: hels
+    real(default), dimension(:), intent(in) :: fracs
+    bp%type = BP_DIAG
+    allocate (bp%hels(size (hels)))
+    allocate (bp%fractions(size (fracs)))
+    bp%hels = hels
+    bp%fractions = fracs
+  end subroutine beam_polarization_init_diag
+
+  subroutine beam_polarization_init_density (bp, d, nd)
+    type(beam_polarization_t), intent(inout) :: bp
+    real(default), intent(in) :: d
+    complex(default), intent(in) :: nd
+    bp%type = BP_DENSITY
+    bp%d = d
+    bp%nd = nd
+  end subroutine beam_polarization_init_density
+
+  subroutine beam_polarization_final (bp)
+    type(beam_polarization_t), intent(inout) :: bp
+    if (allocated (bp%hels)) deallocate (bp%hels)
+    if (allocated (bp%fractions)) deallocate (bp%fractions)
+  end subroutine beam_polarization_final
+
+  function beam_polarization2polarization (bp, flv, decay) result (pol)
+    type(beam_polarization_t), intent(in) :: bp
+    type(flavor_t), intent(in) :: flv
+    logical, optional, intent(in) :: decay
+    type(polarization_t) :: pol
+    logical :: fail
+    real(default), dimension(:), allocatable :: frac_vector
+    integer :: i, j, mult
+    type(string_t) :: msg
+    if (flavor_get_multiplicity (flv) == 1) then
+       select case (bp%type)
+          case (BP_NONE, BP_TRIVIAL)
+          case default
+             if (flavor_is_left_handed (flv)) then
+                msg = "left-handed"
+             elseif (flavor_is_right_handed (flv)) then
+                msg = "right-handed"
+             else
+                msg = "scalar"
+             end if
+             call msg_error (char (msg) // " particle '" &
+                // char (flavor_get_name (flv)) &
+                // "' cannot be polarized - ignoring polarization")
+             call emergency_unpolarized
+             return
+       end select
+    end if
+    select case (bp%type)
+       case (BP_NONE)
+          call polarization_init_unpolarized (pol, flv)
+       case (BP_TRIVIAL)
+          call polarization_init_trivial (pol, flv)
+       case (BP_CIRC)
+          if ((bp%fraction <= 1) .and. (bp%fraction >= -1)) then
+             call polarization_init_circular (pol, flv, bp%fraction)
+          else
+             call msg_error ( &
+                "circular polarization: 'fraction' must be within [-1; 1] - " &
+                // "ignoring polarization")
+             call emergency_unpolarized
+          end if
+       case (BP_TRANS)
+          if ((bp%fraction <= 1) .and. (bp%fraction >= -1)) then
+             call polarization_init_transversal (pol, flv, bp%phi, bp%fraction)
+          else
+             call msg_error ( &
+                "transverse polarization: 'fraction' must be within [-1; 1] - " &
+                // "ignoring polarization")
+             call emergency_unpolarized
+          end if
+       case (BP_LONG)
+          if ((bp%fraction > 1) .or. (bp%fraction < 0)) then
+             call msg_error ( &
+                "longitudinal polarization: 'fraction' must be within [0; 1]" &
+                // " - ignoring polarization");
+             call emergency_unpolarized
+          elseif (mod (flavor_get_multiplicity (flv), 2) == 0) then
+             call msg_error ( &
+                "longitudinal polarization is only available for massive " &
+                // " bosons - ignoring polarization")
+             call emergency_unpolarized
+          else
+             call polarization_init_longitudinal (pol, flv, bp%fraction)
+          end if
+       case (BP_AXIS)
+           if ((bp%fraction <= 1) .and. (bp%fraction >= -1)) then
+             call polarization_init_angles (pol, flv, bp%fraction, bp%theta, &
+                bp%phi)
+          else
+             call msg_error ( &
+                "axial polarization: 'fraction' must be within [-1; 1] - " &
+                // "ignoring polarization")
+             call emergency_unpolarized
+          end if
+       case (BP_DENSITY)
+          if ((bp%d <= 1) .and. (bp%d >= 0) .and. (abs (bp%nd) <= 0.5)) then
+             call polarization_init_axis (pol, flv, &
+                (/real (bp%nd, default), (-1.) * aimag (bp%nd), 2. * bp%d - 1./))
+          else
+             call msg_error ( &
+                "density matrix polarization: 'a' must be within [0; 1], |b| " &
+                // "within [0; 0.5] - ignoring polarization")
+             call emergency_unpolarized
+          end if
+       case (BP_DIAG)
+          fail = .false.
+          mult = flavor_get_multiplicity (flv)
+          allocate (frac_vector (mult))
+          frac_vector = 0
+          if (minval (bp%fractions) < 0) then
+             call msg_error ( &
+                "diagonal polarization: negative fractions are not allowed " &
+                // "- ignoring polarization")
+             fail = .true.
+          else
+          select case (mult) 
+             case (1)
+                call msg_bug (&
+                   "beam_polarizeation2polarization: invalid multiplicity")
+             case (2)
+                if ((size (bp%hels) <= 2) .and. all (abs (bp%hels) == 1)) then
+                   frac_vector = 0
+                   do i = 1, size(bp%hels)
+                      frac_vector((bp%hels(i) + 1) / 2 + 1) = bp%fractions(i)
+                   end do
+                else
+                   call msg_error ( &
+                      "diagonal polarization: the only admissible helicities " &
+                      // "for particle '" // char (flavor_get_name (flv)) &
+                      // "' are" // " -1 and 1 - ignoring polarization")
+                   fail = .true.
+                end if
+             case default
+                if (maxval (abs (bp%hels)) <= mult / 2) then
+                   if (mod (mult, 2) == 0) then
+                      if (minval (abs (bp%hels)) == 0) then
+                         call msg_error ( &
+                            "diagonal polarization: helicity 0 not allowed " &
+                            // "for particle '" // char (flavor_get_name (flv)) &
+                            // "' - ignoring polarization")
+                         fail = .true.
+                      else
+                         do i = 1, size (bp%hels)
+                            if (bp%hels(i) < 0) then
+                               j = bp%hels(i) + mult / 2 + 1
+                            else
+                               j = bp%hels(i) + mult / 2
+                            end if
+                            frac_vector(j) = bp%fractions(i)
+                         end do
+                      end if
+                   else
+                      do i = 1, size (bp%hels)
+                         j = bp%hels(i) + mult / 2 + 1
+                         frac_vector(j) = bp%fractions(i)
+                      end do
+                   end if
+                else
+                   call msg_error ( &
+                      "diagonal polarization: helicity exceeds admissible " &
+                      // "range for particle '" // char (flavor_get_name (flv)) &
+                      // "' - ignoring polarization")
+                   fail = .true.
+                end if
+          end select
+          end if
+          if (fail) then
+             call emergency_unpolarized
+          else
+             if (sum (frac_vector) /= 1) &
+                call msg_warning ( &
+                   "diagonal polarization: fractions will be normalized to 1")
+             call polarization_init_diagonal (pol, flv, frac_vector)
+          end if
+          deallocate (frac_vector)
+    end select
+
+  contains
+
+    subroutine emergency_unpolarized
+      logical :: is_decay
+      if (present (decay)) then
+         is_decay = decay
+      else
+         is_decay = .false.
+      end if
+      if (is_decay) then
+         call polarization_init_trivial (pol, flv)
+      else
+         call polarization_init_unpolarized (pol, flv)
+      end if
+    end subroutine emergency_unpolarized
+
+  end function beam_polarization2polarization
+
+  subroutine beam_polarization_write (bp, unit, indent)
+    type(beam_polarization_t), intent(in) :: bp
+    integer, intent(in), optional :: unit, indent
+    integer :: u, i
+    type(string_t), dimension(:), allocatable :: msgs
+    type(string_t) :: header, is
+    u = output_unit (unit)
+    if (u < 0) return
+    select case (bp%type)
+       case (BP_NONE, BP_TRIVIAL)
+          call printer ("none")
+       case (BP_CIRC)
+          call printer ("circular (fraction):")
+          call printer ("   fraction: " // real2char (bp%fraction))
+       case (BP_TRANS)
+          call printer ("transverse (fraction, phi):")
+          call printer ("   fraction: " // real2char (bp%fraction))
+          call printer ("   phi     : " // real2char (bp%phi))
+       case (BP_AXIS)
+          call printer ("axis (fraction, theta, phi):")
+          call printer ("   fraction: " // real2char (bp%fraction))
+          call printer ("   theta   : " // real2char (bp%theta))
+          call printer ("   phi     : " // real2char (bp%phi))
+       case (BP_LONG)
+          call printer ("longitudinal (fraction):")
+          call printer ("   fraction: " // real2char (bp%fraction))
+       case (BP_DENSITY)
+          call printer ("density_matrix (a, b):")
+          call printer ("   a: " // real2char (bp%d))
+          call printer ("   b: " // cmplx2char (bp%nd))
+       case (BP_DIAG)
+          allocate (msgs(size (bp%fractions)))
+          header = "diagonal_density ("
+          do i = 1, size (msgs)
+             is = int2string (i)
+             if (i > 1) header = header // ", "
+             header = header // "h" // is // ":f" // is
+             msgs (i) = "h" // is // ": " // int2string (bp%hels(i)) &
+               // " , f" // is // ": " // real2string (bp%fractions(i))
+          end do
+          call printer (char (header) // ")")
+          do i = 1, size (msgs)
+             call printer ("   " // char (msgs(i)))
+          end do
+          deallocate (msgs)
+       case default
+          call msg_bug ("beam_polarization_write: illegal polarization type")
+    end select
+    flush (u)
+
+  contains
+
+    subroutine printer (s)
+      character(*), intent(in) :: s
+      if (present (indent)) write (u, '(A)', advance="no") &
+         repeat (" ", indent)
+      write (u, '(1x,A)') s
+    end subroutine printer
+  
+  end subroutine beam_polarization_write
+
+  subroutine beam_data_init_sqrts_pol &
        (beam_data, sqrts, flv, pol, p_cm, p_cm_theta, p_cm_phi)
     type(beam_data_t), intent(out) :: beam_data
     real(default), intent(in) :: sqrts
@@ -275,9 +622,28 @@ contains
        end if
     end do
     call beam_data_compute_md5sum (beam_data)
-  end subroutine beam_data_init_sqrts
-    
-  subroutine beam_data_init_decay &
+  end subroutine beam_data_init_sqrts_pol
+
+  subroutine beam_data_init_sqrts_bp &
+       (beam_data, sqrts, flv, bp, p_cm, p_cm_theta, p_cm_phi)
+    type(beam_data_t), intent(out) :: beam_data
+    real(default), intent(in) :: sqrts
+    type(flavor_t), dimension(:), intent(in) :: flv
+    type(beam_polarization_t), dimension(:), intent(in) :: bp
+    real(default), intent(in), optional :: p_cm, p_cm_theta, p_cm_phi
+    type(polarization_t), dimension(size (flv)) :: pol
+    integer :: i
+    if (size (bp) /= size (flv)) call msg_bug ( &
+       "beam_data_init_sqrts_bp: arguments have incompatible dimensionality")
+    do i = 1, size (flv)
+       pol(i) = beam_polarization2polarization (bp(i), flv(i), &
+          decay=(size (bp) == 1))
+    end do
+    call beam_data_init_sqrts_pol (beam_data, sqrts, flv, pol, p_cm, &
+       p_cm_theta, p_cm_phi)
+  end subroutine beam_data_init_sqrts_bp
+
+  subroutine beam_data_init_decay_pol &
        (beam_data, flv, pol, p_cm, p_cm_theta, p_cm_phi)
     type(beam_data_t), intent(out) :: beam_data
     type(flavor_t), dimension(1), intent(in) :: flv
@@ -294,18 +660,72 @@ contains
        call beam_data_init_sqrts &
             (beam_data, m(1), flv, polarization, p_cm, p_cm_theta, p_cm_phi)
     end if
-  end subroutine beam_data_init_decay
-    
+  end subroutine beam_data_init_decay_pol
+
+  subroutine beam_data_init_decay_bp &
+       (beam_data, flv, bp, p_cm, p_cm_theta, p_cm_phi)
+    type(beam_data_t), intent(out) :: beam_data
+    type(flavor_t), dimension(1), intent(in) :: flv
+    type(beam_polarization_t), dimension(1), intent(in) :: bp
+    real(default), intent(in), optional :: p_cm, p_cm_theta, p_cm_phi
+    type(polarization_t), dimension(1) :: pol
+    pol = beam_polarization2polarization (bp(1), flv(1), decay=.true.)
+    call beam_data_init_decay_pol (beam_data, flv, pol, p_cm, &
+       p_cm_theta, p_cm_phi)
+  end subroutine beam_data_init_decay_bp
+
   subroutine beam_data_compute_md5sum (beam_data)
     type(beam_data_t), intent(inout) :: beam_data
     integer :: unit
     unit = free_unit ()
     open (unit = unit, status = "scratch", action = "readwrite")
-    call beam_data_write (beam_data, unit, write_md5sum = .false.)
+    call beam_data_write (beam_data, unit, write_md5sum = .false., &
+       verbose = .true.)
     rewind (unit)
     beam_data%md5sum = md5sum (unit)
     close (unit)
   end subroutine beam_data_compute_md5sum
+
+  subroutine beam_data_set_polarization_pol (beam_data, pol)
+     type(beam_data_t), intent(inout) :: beam_data
+     type(polarization_t), dimension(:), intent(in) :: pol
+     integer :: i
+     if (size (pol) /= beam_data%n) call msg_bug ( &
+        "beam_data_set_polarization_pol: initial state multiplicty mismatch")
+     !do i = 1, beam_data%n
+     !   call polarization_final (beam_data%pol(i))
+     !end do
+     beam_data%pol = pol
+     call beam_data_compute_md5sum (beam_data)
+  end subroutine beam_data_set_polarization_pol
+
+  subroutine beam_data_set_polarization_bp (beam_data, bp, decay)
+     type(beam_data_t), intent(inout) :: beam_data
+     type(beam_polarization_t), dimension(:), intent(in) :: bp
+     logical, optional, intent(in) :: decay
+     integer :: i
+     if (size (bp) /= beam_data%n) call msg_bug ( &
+        "beam_data_set_polarization_pol: initial state multiplicty mismatch")
+     do i = 1, beam_data%n
+     !   call polarization_final (beam_data%pol(i))
+        beam_data%pol(i) = beam_polarization2polarization &
+           (bp(i), beam_data%flv(i), decay)
+     end do
+     call beam_data_compute_md5sum (beam_data)
+  end subroutine beam_data_set_polarization_bp
+
+  subroutine beam_data_kill_polarization (beam_data)
+    type(beam_data_t), intent(inout) :: beam_data
+    type(beam_polarization_t) :: pol
+    if (beam_data%n == 1) then
+       call beam_polarization_init_trivial (pol)
+       call beam_data_set_polarization (beam_data, (/pol/))
+    else
+       call beam_polarization_init_none (pol)
+       call beam_data_set_polarization (beam_data, (/pol, pol/))
+    end if
+    call beam_polarization_final (pol)
+  end subroutine beam_data_kill_polarization
 
   function beam_data_masses_are_consistent (beam_data) result (flag)
     logical :: flag

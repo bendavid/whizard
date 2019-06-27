@@ -320,7 +320,7 @@ coefficients with the least significant bit set to 0.
 Note that the array notation is unambiguous because~$2K-1$ is odd and
 source and destination are therefore interleaved:
 <<$p(z)\to p(z)^2 \modpoly$>>=
-x(2:K+L-1:2) = x(2*K-1:K-L+2:-2) - modulo (x(2*K-1:K-L+2:-2), 2)
+x(2:K+L-1:2) = x(2*K-1:K-L+2:-2) - modulo (x(2*K-1:K-L+2:-2), 2_tao_i32)
 @ The Fortran program in~\cite{Knuth:1997:TAOCP2} reads
 <<$p(z)\to p(z)^2 \modpoly$ (DEK, Fortran)>>=
 do j = 2*K-1, K-L+1, -2
@@ -351,7 +351,7 @@ squaring.  The coefficient of $z^nz^K$ is left alone, because it
 doesn't belong to $p(z)$ anyway.
 <<$p(z)\to p(z)^2 \modpoly$>>=
 do j= 2*K-1, K+1, -1
-   if (modulo (x(j), 2) == 1) then
+   if (modulo (x(j), int(2, tao_i32)) == 1) then
       x(j-(K-L)) = modulo (x(j-(K-L)) - x(j), M)
       x(j-K) = modulo (x(j-K) - x(j), M)
    end if
@@ -361,7 +361,7 @@ end do
 if (modulo (s, 2) == 1) then
    x(2:K+1) = x(1:K)
    x(1) = x(K+1)
-   if (modulo (x(K+1), 2) == 1) then
+   if (modulo (x(K+1), 2_tao_i32) == 1) then
       x(L+1) = modulo (x(L+1) - x(K+1), M)
    end if
 end if

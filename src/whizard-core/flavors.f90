@@ -1,4 +1,4 @@
-! WHIZARD 2.0.1 Sun Apr 25 2010
+! WHIZARD 2.0.2 Tue May 18 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -61,6 +61,7 @@ module flavors
   public :: flavor_is_stable
   public :: flavor_decays_isotropically
   public :: flavor_decays_diagonal
+  public :: flavor_is_polarized
   public :: flavor_get_name
   public :: flavor_get_tex_name
   public :: flavor_get_spin_type
@@ -363,6 +364,12 @@ contains
     type(flavor_t), intent(in) :: flv
     flag = particle_data_decays_diagonal (flv%prt, anti = flv%f < 0)
   end function flavor_decays_diagonal
+
+  elemental function flavor_is_polarized (flv) result (flag)
+    logical :: flag
+    type(flavor_t), intent(in) :: flv
+    flag = particle_data_is_polarized (flv%prt, anti = flv%f < 0)
+  end function flavor_is_polarized
 
   elemental function flavor_get_name (flv) result (name)
     type(string_t) :: name

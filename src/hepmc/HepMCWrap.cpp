@@ -29,6 +29,62 @@ extern "C" void gen_event_print( GenEvent* evt ) {
   evt->print();
 }
 
+extern "C" int gen_event_event_number( GenEvent* evt ) {
+  return evt->event_number();
+}
+
+extern "C" void gen_event_set_signal_process_id( GenEvent* evt, int id ) {
+  evt->set_signal_process_id( id );
+}
+
+extern "C" int gen_event_signal_process_id( GenEvent* evt ) {
+  return evt->signal_process_id();
+}
+
+extern "C" void gen_event_set_event_scale( GenEvent* evt, double scale ) {
+  evt->set_event_scale( scale );
+}
+
+extern "C" double gen_event_event_scale( GenEvent* evt) {
+  return evt->event_scale();
+}
+
+extern "C" void gen_event_set_alpha_qcd( GenEvent* evt, double a ) {
+  evt->set_alphaQCD( a );
+}
+
+extern "C" double gen_event_alpha_qcd( GenEvent* evt) {
+  return evt->alphaQCD();
+}
+
+extern "C" void gen_event_set_alpha_qed( GenEvent* evt, double a ) {
+  evt->set_alphaQED( a );
+}
+
+extern "C" double gen_event_alpha_qed( GenEvent* evt) {
+  return evt->alphaQED();
+}
+
+extern "C" void gen_event_clear_weights( GenEvent* evt ) {
+  evt->weights().clear();
+}
+
+extern "C" void gen_event_add_weight( GenEvent* evt, double w ) {
+  evt->weights().push_back( w );
+}
+
+extern "C" int gen_event_weights_size( GenEvent* evt ) {
+  return evt->weights().size();
+}
+
+extern "C" double gen_event_weight( GenEvent* evt, int i ) {
+  if (0 <= i && i <= evt->weights().size()) {
+    return evt->weights()[i];
+  } else {
+    return 0;
+  }
+}
+
 extern "C" void gen_event_add_vertex( GenEvent* evt, GenVertex* v ) {
   evt->add_vertex( v );
 }
@@ -311,8 +367,8 @@ extern "C" void io_gen_event_write_event
   iostream->write_event( evt);
 }
 
-extern "C" void io_gen_event_read_event
+extern "C" bool io_gen_event_read_event
 ( IO_GenEvent* iostream, GenEvent* evt) {
-  iostream->fill_next_event( evt);
+  return iostream->fill_next_event( evt);
 }
 

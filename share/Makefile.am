@@ -59,4 +59,5 @@ dist_examples_DATA = \
   examples/casc_dec.sin \
   examples/Zprime.sin \
   examples/LEP_higgs.sin \
-  examples/LEP_cc10.sin
+  examples/LEP_cc10.sin \
+  examples/eeww_polarized.sin

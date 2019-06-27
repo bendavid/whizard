@@ -37,6 +37,7 @@
      type(c_ptr) function new_gen_event (proc_id, event_id) bind(C)
        use iso_c_binding
        integer(c_int), value :: proc_id, event_id
+       new_gen_event = c_null_ptr
      end function new_gen_event
 
 ! extern "C" void gen_event_delete( void* evt) {}
@@ -50,6 +51,97 @@
        use iso_c_binding
        type(c_ptr), value :: evt_obj
      end subroutine gen_event_print
+
+! extern "C" int gen_event_event_number( GenEvent* evt ) {}
+     integer(c_int) function gen_event_event_number (evt_obj) bind(C)
+       use iso_c_binding
+       type(c_ptr), value :: evt_obj
+       gen_event_event_number = 0
+     end function gen_event_event_number
+
+! extern "C" void gen_event_set_signal_process_id( GenEvent* evt, int id ) {}
+     subroutine gen_event_set_signal_process_id (evt_obj, id) bind(C)
+       use iso_c_binding
+       type(c_ptr), value :: evt_obj
+       integer(c_int), value :: id
+     end subroutine gen_event_set_signal_process_id
+
+! extern "C" int gen_event_signal_process_id( GenEvent* evt ) {}
+     integer(c_int) function gen_event_signal_process_id (evt_obj) bind(C)
+       use iso_c_binding
+       type(c_ptr), value :: evt_obj
+       gen_event_signal_process_id = 0
+     end function gen_event_signal_process_id
+
+! extern "C" void gen_event_set_event_scale( GenEvent* evt, double scale ) {}
+     subroutine gen_event_set_event_scale (evt_obj, scale) bind(C)
+       use iso_c_binding
+       type(c_ptr), value :: evt_obj
+       real(c_double), value :: scale
+     end subroutine gen_event_set_event_scale
+
+! extern "C" double gen_event_event_scale( GenEvent* evt) {}
+     real(c_double) function gen_event_event_scale (evt_obj) bind(C)
+       use iso_c_binding
+       type(c_ptr), value :: evt_obj
+       gen_event_event_scale = 0
+     end function gen_event_event_scale
+
+! extern "C" void gen_event_set_alpha_qcd( GenEvent* evt, double a ) {}
+     subroutine gen_event_set_alpha_qcd (evt_obj, a) bind(C)
+       use iso_c_binding
+       type(c_ptr), value :: evt_obj
+       real(c_double), value :: a
+     end subroutine gen_event_set_alpha_qcd
+
+! extern "C" double gen_event_alpha_qcd( GenEvent* evt) {}
+     real(c_double) function gen_event_alpha_qcd (evt_obj) bind(C)
+       use iso_c_binding
+       type(c_ptr), value :: evt_obj
+       gen_event_alpha_qcd = 0
+     end function gen_event_alpha_qcd
+
+! extern "C" void gen_event_set_alpha_qed( GenEvent* evt, double a ) {}
+     subroutine gen_event_set_alpha_qed (evt_obj, a) bind(C)
+       use iso_c_binding
+       type(c_ptr), value :: evt_obj
+       real(c_double), value :: a
+     end subroutine gen_event_set_alpha_qed
+
+! extern "C" double gen_event_alpha_qed( GenEvent* evt) {}
+     real(c_double) function gen_event_alpha_qed (evt_obj) bind(C)
+       use iso_c_binding
+       type(c_ptr), value :: evt_obj
+       gen_event_alpha_qed = 0
+     end function gen_event_alpha_qed
+
+! extern "C" void gen_event_clear_weights( GenEvent* evt ) {
+     subroutine gen_event_clear_weights (evt_obj) bind(C)
+       use iso_c_binding
+       type(c_ptr), value :: evt_obj
+     end subroutine gen_event_clear_weights
+
+! extern "C" void gen_event_add_weight( GenEvent* evt, double w ) {}
+     subroutine gen_event_add_weight (evt_obj, w) bind(C)
+       use iso_c_binding
+       type(c_ptr), value :: evt_obj
+       real(c_double), value :: w
+     end subroutine gen_event_add_weight
+
+! extern "C" int gen_event_weights_size( GenEvent* evt ) {}
+     integer(c_int) function gen_event_weights_size (evt_obj) bind(C)
+       use iso_c_binding
+       type(c_ptr), value :: evt_obj
+       gen_event_weights_size = 0
+     end function gen_event_weights_size
+
+! extern "C" double gen_event_weight( GenEvent* evt, int i ) {}
+     real(c_double) function gen_event_weight (evt_obj, i) bind(C)
+       use iso_c_binding
+       type(c_ptr), value :: evt_obj
+       integer(c_int), value :: i
+       gen_event_weight = 0
+     end function gen_event_weight
 
 ! extern "C" void gen_event_add_vertex( void* evt, void* v ) {}
      subroutine gen_event_add_vertex (evt_obj, v_obj) bind(C)
@@ -475,10 +567,11 @@
        type(c_ptr), value :: io_obj, evt_obj
      end subroutine io_gen_event_write_event
 
-! extern "C" void io_gen_event_read_event
+! extern "C" bool io_gen_event_read_event
 ! ( void* iostream, void* evt) {}
-     subroutine io_gen_event_read_event (io_obj, evt_obj) bind(C)
+     logical(c_bool) function io_gen_event_read_event (io_obj, evt_obj) bind(C)
        use iso_c_binding
        type(c_ptr), value :: io_obj, evt_obj
-     end subroutine io_gen_event_read_event
+       io_gen_event_read_event = .false.
+     end function io_gen_event_read_event
 

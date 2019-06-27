@@ -2,8 +2,34 @@ ChangeLog -- Summary of changes to the WHIZARD package
 
 Use svn log to see detailed changes.
 
-	Version 2.0.1
+	Version 2.0.2
 
+2010-05-18 
+	RELEASE: version 2.0.2
+
+2010-05-14 
+	Reimplementation of visualization of phase space 
+	   channels
+	Minor bug fixes
+	
+2010-05-12 
+	Improved phase space - elimination of redundancies
+	
+2010-05-08 
+	Interface for polarization completed: polarized beams etc.
+	
+2010-05-06 
+	Full quantum numbers appear in process log
+	Integration results are usable as user variables
+	Communication with external programs
+	
+2010-05-05 
+	Split module commands into commands, integration, 
+	   simulation modules
+	
+2010-05-04 
+	FSR+ISR for the first connected to the WHIZARD 2 core
+	
 ##################################################################
 
 2010-04-25 

@@ -1,4 +1,4 @@
-! WHIZARD 2.0.1 Sun Apr 25 2010
+! WHIZARD 2.0.2 Tue May 18 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -31,6 +31,7 @@ program main
   use system_dependencies !NODEP!
   use limits, only: CMDLINE_ARG_LEN !NODEP!
   use diagnostics !NODEP!
+  use ifiles
   use os_interface
   use whizard
 
@@ -49,6 +50,8 @@ program main
   logical :: rebuild_library, rebuild_phs, rebuild_grids, rebuild_events
   logical :: recompile_library
   logical :: time_estimate
+  type(ifile_t) :: commands
+  type(string_t) :: command
 
   ! Exit status
   logical :: quit = .false.
@@ -118,6 +121,10 @@ program main
            case ("--check")
               check = get_option_value (i, long_option, value)
               checks = checks // " " // check
+              cycle SCAN_CMDLINE
+           case ("--execute")
+              command = get_option_value (i, long_option, value)
+              call ifile_append (commands, command)
               cycle SCAN_CMDLINE
            case ("--interactive")
               call no_option_value (long_option, value)
@@ -203,6 +210,10 @@ program main
                     call print_version (); stop
                  case ("-?", "-h")
                     call print_usage (); stop
+                 case ("-e")
+                    command = get_option_value (i, var_str (option))
+                    call ifile_append (commands, command)
+                    cycle SCAN_CMDLINE
                  case ("-i")
                     interactive = .true.
                     cycle SCAN_SHORT_OPTIONS
@@ -261,29 +272,38 @@ program main
         time_estimate=time_estimate, &
         paths=paths)
 
-  ! Run any self-checks (and no commands)
-  if (checks /= "") then
 
-     checks = trim (adjustl (checks))
-     RUN_CHECKS: do while (checks /= "")
-        call split (checks, check, " ")
-        call whizard_check (check)
-     end do RUN_CHECKS
+   ! Run any self-checks (and no commands)
+   if (checks /= "") then
+      checks = trim (adjustl (checks))
+      RUN_CHECKS: do while (checks /= "")
+         call split (checks, check, " ")
+         call whizard_check (check)
+      end do RUN_CHECKS
+      quit = .true.
+   end if
+   
+  ! Run commands given on the command line
+  if (.not. quit .and. ifile_get_length (commands) > 0) then
+     call whizard_process_ifile (commands, quit, quit_code)
+  end if
 
-  ! Process commands from standard input
-  else if (.not. interactive .and. files == "") then
-     call whizard_process_stdin (quit, quit_code)
-
-  ! Process commands from file
-  else
-     files = trim (adjustl (files))
-     SCAN_FILES: do while (files /= "")
-        call split (files, this, " ")
-        call whizard_process_file (this, quit, quit_code)
-        if (quit)  exit SCAN_FILES
-     end do SCAN_FILES
-
-  end if 
+  if (.not. quit) then
+     ! Process commands from standard input
+     if (.not. interactive .and. files == "") then
+        call whizard_process_stdin (quit, quit_code)
+   
+     ! ... or process commands from file
+     else
+        files = trim (adjustl (files))
+        SCAN_FILES: do while (files /= "")
+           call split (files, this, " ")
+           call whizard_process_file (this, quit, quit_code)
+           if (quit)  exit SCAN_FILES
+        end do SCAN_FILES
+   
+     end if 
+  end if
 
   ! Enter an interactive shell if requested
   if (.not. quit .and. interactive) then
@@ -291,6 +311,7 @@ program main
   end if
 
   ! Overall finalization
+  call ifile_final (commands)
   call whizard_final ()
   call terminate_now_if_signal ()
   call release_term_signals ()
@@ -364,6 +385,7 @@ contains
     print "(A)", "    --datarootdir DIR"
     print "(A)", "Other options:"
     print "(A)", "-h, --help            display this help and exit"
+    print "(A)", "-e, --execute CMDS    execute SINDARIN CMDS before reading FILE(s)"
     print "(A)", "-i, --interactive     run interactively after reading FILE(s)"
     print "(A)", "-l, --library         preload process library NAME"
     print "(A)", "    --localprefix DIR"

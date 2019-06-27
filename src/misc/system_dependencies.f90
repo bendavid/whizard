@@ -33,8 +33,8 @@ module system_dependencies
   public
  
   ! Program version
-  character(*), parameter :: WHIZARD_VERSION = "2.0.1"
-  character(*), parameter :: WHIZARD_DATE = "Apr 25 2010"
+  character(*), parameter :: WHIZARD_VERSION = "2.0.2"
+  character(*), parameter :: WHIZARD_DATE = "May 18 2010"
 
   ! System paths
   ! These are used for testing without existing installation
@@ -154,7 +154,7 @@ module system_dependencies
   character(*), parameter :: DEFAULT_FC = &
        "gfortran"
   character(*), parameter :: DEFAULT_FCFLAGS = &
-       " -g -O2"
+       " -g -O0"
   character(*), parameter :: DEFAULT_FCFLAGS_PIC = &
        " -fno-common"
   character(*), parameter :: DEFAULT_FC_SRC_EXT = &

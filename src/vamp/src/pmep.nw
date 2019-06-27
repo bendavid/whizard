@@ -193,7 +193,7 @@ _interface_sv(delete_division)
 @ 
 <<Implementation of [[divisions]] procedures>>=
 pure subroutine create_division_v (d, x_min, x_max, x_min_true, x_max_true)
-  type(division), dimension(:), intent(out) :: d
+  type(division_t), dimension(:), intent(out) :: d
   real(kind=default), dimension(:), intent(in) :: x_min, x_max
   real(kind=default), dimension(:), intent(in), optional :: &
        x_min_true, x_max_true
@@ -210,7 +210,7 @@ end subroutine create_division_v
 @ 
 <<Implementation of [[divisions]] procedures>>=
 pure subroutine create_empty_division_v (d)
-  type(division), dimension(:), intent(out) :: d
+  type(division_t), dimension(:), intent(out) :: d
   integer :: j
   do j = 1, size (d)
      call create_empty_division (d(j))
@@ -219,8 +219,8 @@ end subroutine create_empty_division_v
 @
 <<Implementation of [[divisions]] procedures>>=
 pure subroutine copy_division_v (lhs, rhs)
-  type(division), dimension(:), intent(inout) :: lhs
-  type(division), dimension(:), intent(in) :: rhs
+  type(division_t), dimension(:), intent(inout) :: lhs
+  type(division_t), dimension(:), intent(in) :: rhs
   integer :: j
   do j = 1, size(lhs)
      call copy_division (lhs(j), rhs(j))
@@ -230,8 +230,8 @@ end subroutine copy_division_v
 two-dimensional arrays:
 <<Implementation of [[divisions]] procedures>>=
 pure subroutine copy_division_a (lhs, rhs)
-  type(division), dimension(:), intent(inout) :: lhs
-  type(division), intent(in) :: rhs
+  type(division_t), dimension(:), intent(inout) :: lhs
+  type(division_t), intent(in) :: rhs
   integer :: j
   do j = 1, size(lhs)
      call copy_division (lhs(j), rhs)
@@ -240,7 +240,7 @@ end subroutine copy_division_a
 @
 <<Implementation of [[divisions]] procedures>>=
 pure subroutine set_rigid_division_v (d, ng)
-  type(division), dimension(:), intent(inout) :: d
+  type(division_t), dimension(:), intent(inout) :: d
   integer, dimension(:), intent(in) :: ng
   integer :: j
   do j = 1, size(d)
@@ -250,7 +250,7 @@ end subroutine set_rigid_division_v
 @
 <<Implementation of [[divisions]] procedures>>=
 pure subroutine reshape_division_v (d, max_num_div, ng, use_variance)
-  type(division), dimension(:), intent(inout) :: d
+  type(division_t), dimension(:), intent(inout) :: d
   integer, dimension(:), intent(in) :: max_num_div
   integer, dimension(:), intent(in), optional :: ng
   logical, intent(in), optional :: use_variance
@@ -262,7 +262,7 @@ end subroutine reshape_division_v
 @
 <<Implementation of [[divisions]] procedures>>=
 pure subroutine delete_division_v (d)
-  type(division), dimension(:), intent(inout) :: d
+  type(division_t), dimension(:), intent(inout) :: d
   integer :: j
   do j = 1, size(d)
      call delete_division (d(j))
@@ -279,7 +279,7 @@ _interface_sv(inject_division_short)
 @
 <<Implementation of [[divisions]] procedures>>=
 pure subroutine inject_division_v (d, r, cell, x, x_mid, idx, wgt)
-  type(division), dimension(:), intent(in) :: d
+  type(division_t), dimension(:), intent(in) :: d
   real(kind=default), dimension(:), intent(in) :: r
   integer, dimension(:), intent(in) :: cell
   real(kind=default), dimension(:), intent(out) :: x, x_mid
@@ -294,7 +294,7 @@ end subroutine inject_division_v
 @
 <<Implementation of [[divisions]] procedures>>=
 pure subroutine inject_division_short_v (d, r, x, idx, wgt)
-  type(division), dimension(:), intent(in) :: d
+  type(division_t), dimension(:), intent(in) :: d
   real(kind=default), dimension(:), intent(in) :: r
   real(kind=default), dimension(:), intent(out) :: x
   integer, dimension(:), intent(out) :: idx
@@ -323,7 +323,7 @@ _interface_sv(record_efficiency)
 @ 
 <<Implementation of [[divisions]] procedures>>=
 pure subroutine record_integral_v (d, i, f)
-  type(division), dimension(:), intent(inout) :: d
+  type(division_t), dimension(:), intent(inout) :: d
   integer, dimension(:), intent(in) :: i
   real(kind=default), intent(in) :: f
   integer :: j
@@ -334,7 +334,7 @@ end subroutine record_integral_v
 @ 
 <<Implementation of [[divisions]] procedures>>=
 pure subroutine record_variance_v (d, i, var_f)
-  type(division), dimension(:), intent(inout) :: d
+  type(division_t), dimension(:), intent(inout) :: d
   integer, dimension(:), intent(in) :: i
   real(kind=default), intent(in) :: var_f
   integer :: j
@@ -345,7 +345,7 @@ end subroutine record_variance_v
 @ 
 <<Implementation of [[divisions]] procedures (removed from WHIZARD)>>=
 pure subroutine record_efficiency_v (d, i, eff_f)
-  type(division), dimension(:), intent(inout) :: d
+  type(division_t), dimension(:), intent(inout) :: d
   integer, dimension(:), intent(in) :: i
   real(kind=default), intent(in) :: eff_f
   integer :: j
@@ -356,7 +356,7 @@ end subroutine record_efficiency_v
 @ 
 <<Implementation of [[divisions]] procedures>>=
 pure subroutine clear_integral_and_variance_v (d)
-  type(division), dimension(:), intent(inout) :: d
+  type(division_t), dimension(:), intent(inout) :: d
   integer :: j
   do j = 1, size (d)
      call clear_integral_and_variance (d(j))
@@ -371,7 +371,7 @@ _interface_sv(refine_division)
 @ 
 <<Implementation of [[divisions]] procedures>>=
 pure subroutine refine_division_v (d)
-  type(division), dimension(:), intent(inout) :: d
+  type(division_t), dimension(:), intent(inout) :: d
   integer :: j
   do j = 1, size (d)
      call refine_division (d(j))
@@ -398,7 +398,7 @@ _interface_sv(quadrupole_division)
 @ 
 <<Implementation of [[divisions]] procedures>>=
 pure function probability_v (d, xi) result (p)
-  type(division), dimension(:), intent(in) :: d
+  type(division_t), dimension(:), intent(in) :: d
   real(kind=default), dimension(:), intent(in) :: xi
   real(kind=default), dimension(size(d)) :: p
   integer :: j
@@ -409,7 +409,7 @@ end function probability_v
 @ 
 <<Implementation of [[divisions]] procedures>>=
 pure function inside_division_v (d, x) result (theta)
-  type(division), dimension(:), intent(in) :: d
+  type(division_t), dimension(:), intent(in) :: d
   real(kind=default), dimension(:), intent(in) :: x
   logical, dimension(size(d)) :: theta
   integer :: j
@@ -420,7 +420,7 @@ end function inside_division_v
 @ 
 <<Implementation of [[divisions]] procedures>>=
 pure function stratified_division_v (d) result (yorn)
-  type(division), dimension(:), intent(in) :: d
+  type(division_t), dimension(:), intent(in) :: d
   logical, dimension(size(d)) :: yorn
   integer :: j
   do j = 1, size (d)
@@ -430,7 +430,7 @@ end function stratified_division_v
 @ 
 <<Implementation of [[divisions]] procedures>>=
 pure function volume_division_v (d) result (vol)
-  type(division), dimension(:), intent(in) :: d
+  type(division_t), dimension(:), intent(in) :: d
   real(kind=default), dimension(size(d)) :: vol
   integer :: j
   do j = 1, size(d)
@@ -440,7 +440,7 @@ end function volume_division_v
 @ 
 <<Implementation of [[divisions]] procedures>>=
 pure function rigid_division_v (d) result (n)
-  type(division), dimension(:), intent(in) :: d
+  type(division_t), dimension(:), intent(in) :: d
   integer, dimension(size(d)) :: n
   integer :: j
   do j = 1, size(d)
@@ -450,7 +450,7 @@ end function rigid_division_v
 @ 
 <<Implementation of [[divisions]] procedures>>=
 pure function adaptive_division_v (d) result (n)
-  type(division), dimension(:), intent(in) :: d
+  type(division_t), dimension(:), intent(in) :: d
   integer, dimension(size(d)) :: n
   integer :: j
   do j = 1, size(d)
@@ -460,7 +460,7 @@ end function adaptive_division_v
 @ 
 <<Implementation of [[divisions]] procedures>>=
 pure function quadrupole_division_v (d) result (q)
-  type(division), dimension(:), intent(in) :: d
+  type(division_t), dimension(:), intent(in) :: d
   real(kind=default), dimension(size(d)) :: q
   integer :: j
   do j = 1, size (d)
@@ -488,7 +488,7 @@ end subroutine copy_history_v
 @ 
 <<Implementation of [[divisions]] procedures>>=
 pure function summarize_division_v (d) result (s)
-  type(division), dimension(:), intent(in) :: d
+  type(division_t), dimension(:), intent(in) :: d
   type(div_history), dimension(size(d))  :: s
   integer :: j
   do j = 1, size (d)

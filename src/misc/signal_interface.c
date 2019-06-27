@@ -1,5 +1,5 @@
 /*
-! WHIZARD 2.0.1 Sun Apr 25 2010
+! WHIZARD 2.0.2 Tue May 18 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -51,49 +51,81 @@ static void wo_handler_sigxfsz (int sig) {
 }
 
 int wo_mask_sigint () {
-  struct sigaction sa;  
+  struct sigaction sa;
+  sigset_t blocks;
+  sigfillset (&blocks);
+  sa.sa_flags = 0;
+  sa.sa_mask = blocks;
   sa.sa_handler = wo_handler_sigint;
   return sigaction(SIGINT, &sa, NULL);
 }
 
 int wo_mask_sigterm () {
-  struct sigaction sa;  
+  struct sigaction sa;
+  sigset_t blocks;
+  sigfillset (&blocks);
+  sa.sa_flags = 0;
+  sa.sa_mask = blocks;
   sa.sa_handler = wo_handler_sigterm;
   return sigaction(SIGTERM, &sa, NULL);
 }
 
 int wo_mask_sigxcpu () {
   struct sigaction sa;  
+  sigset_t blocks;
+  sigfillset (&blocks);
+  sa.sa_flags = 0;
+  sa.sa_mask = blocks;
   sa.sa_handler = wo_handler_sigxcpu;
   return sigaction(SIGXCPU, &sa, NULL);
 }
 
 int wo_mask_sigxfsz () {
-  struct sigaction sa;  
+  struct sigaction sa;
+  sigset_t blocks;
+  sigfillset (&blocks);
+  sa.sa_flags = 0;
+  sa.sa_mask = blocks;
   sa.sa_handler = wo_handler_sigxfsz;
   return sigaction(SIGXFSZ, &sa, NULL);
 }
 
 int wo_release_sigint () {
   struct sigaction sa;  
+  sigset_t blocks;
+  sigfillset (&blocks);
+  sa.sa_flags = 0;
+  sa.sa_mask = blocks;
   sa.sa_handler = SIG_DFL;
   return sigaction(SIGINT, &sa, NULL);
 }
 
 int wo_release_sigterm () {
-  struct sigaction sa;  
+  struct sigaction sa;
+  sigset_t blocks;
+  sigfillset (&blocks);
+  sa.sa_flags = 0;
+  sa.sa_mask = blocks;
   sa.sa_handler = SIG_DFL;
   return sigaction(SIGTERM, &sa, NULL);
 }
 
 int wo_release_sigxcpu () {
-  struct sigaction sa;  
+  struct sigaction sa;
+  sigset_t blocks;
+  sigfillset (&blocks);
+  sa.sa_flags = 0;
+  sa.sa_mask = blocks;
   sa.sa_handler = SIG_DFL;
   return sigaction(SIGXCPU, &sa, NULL);
 }
 
 int wo_release_sigxfsz () {
-  struct sigaction sa;  
+  struct sigaction sa;
+  sigset_t blocks;
+  sigfillset (&blocks);
+  sa.sa_flags = 0;
+  sa.sa_mask = blocks;
   sa.sa_handler = SIG_DFL;
   return sigaction(SIGXFSZ, &sa, NULL);
 }

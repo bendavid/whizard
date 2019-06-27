@@ -41,6 +41,8 @@ integrate (dec_su_q, dec_neu_sl2) { iterations = 1:1000 }
 sqrts = 14000
 beams = p, p => lhapdf
 
+cuts = all Pt > 10 GeV [u]
+
 integrate (susybg) { iterations = 5:10000, 2:10000 }
 integrate (full)
 

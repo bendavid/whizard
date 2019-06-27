@@ -1,4 +1,4 @@
-! $Id: omega_interface.f90 2403 2010-04-23 20:28:27Z ohl $
+! $Id: omega_interface.f90 2468 2010-05-05 16:37:03Z kilian $
 ! omega_interface.f90 -- package the O'Mega interface functions
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !

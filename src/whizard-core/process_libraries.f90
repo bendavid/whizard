@@ -1,4 +1,4 @@
-! WHIZARD 2.0.1 Sun Apr 25 2010
+! WHIZARD 2.0.2 Tue May 18 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -81,13 +81,6 @@ module process_libraries
   public :: process_library_store_get_ptr
   public :: process_library_store_get_first
   public :: process_library_store_load_static
-  public :: process_library_record_integral
-  public :: process_library_get_n_calls
-  public :: process_library_get_integral
-  public :: process_library_get_error
-  public :: process_library_get_accuracy
-  public :: process_library_get_chi2
-  public :: process_library_get_efficiency
   public :: process_libraries_test
 
   integer, parameter, public :: PRC_UNDEFINED = 0
@@ -101,7 +94,6 @@ module process_libraries
   integer, parameter :: STAT_CODE_GENERATED = 2
   integer, parameter :: STAT_COMPILED = 3
   integer, parameter :: STAT_LOADED = 4
-  integer, parameter :: STAT_INTEGRATED = 5
 
 
   type :: process_configuration_t
@@ -116,13 +108,6 @@ module process_libraries
      type(string_t), dimension(:), allocatable :: prt_in, prt_out
      type(string_t) :: restrictions
      character(32) :: md5sum = ""
-     logical :: result_is_known = .false.
-     integer :: n_calls = 0
-     real(default) :: integral = 0
-     real(default) :: error = 0
-     real(default) :: accuracy = 0
-     real(default) :: chi2 = 0
-     real(default) :: efficiency = 0
      type(process_configuration_t), pointer :: next => null ()
   end type process_configuration_t
 
@@ -225,13 +210,6 @@ contains
     allocate (prc_conf%prt_out (prc_conf%n_out))
     prc_conf%prt_in  = prt_in
     prc_conf%prt_out = prt_out
-    prc_conf%result_is_known = .false.
-    prc_conf%n_calls = 0
-    prc_conf%integral = 0
-    prc_conf%error = 0
-    prc_conf%accuracy = 0
-    prc_conf%chi2 = 0
-    prc_conf%efficiency = 0
     if (present (status)) then
        prc_conf%status = status
     else
@@ -277,21 +255,6 @@ contains
     close (u)
   end subroutine process_configuration_compute_md5sum
     
-  subroutine process_configuration_record_integral &
-       (prc_conf, n_calls, integral, error, accuracy, chi2, efficiency)
-    type(process_configuration_t), intent(inout) :: prc_conf
-    integer, intent(in) :: n_calls
-    real(default), intent(in) :: integral, error, accuracy, chi2, efficiency
-    prc_conf%n_calls = n_calls
-    prc_conf%integral = integral
-    prc_conf%error = error
-    prc_conf%accuracy = accuracy
-    prc_conf%chi2 = chi2
-    prc_conf%efficiency = efficiency
-    prc_conf%result_is_known = .true.
-    prc_conf%status = STAT_INTEGRATED
-  end subroutine process_configuration_record_integral
-
   subroutine process_configuration_write (prc_conf, unit)
     type(process_configuration_t), intent(in) :: prc_conf
     integer, intent(in), optional :: unit
@@ -304,7 +267,6 @@ contains
     case (STAT_CODE_GENERATED);  status = "G"
     case (STAT_COMPILED);        status = "C"
     case (STAT_LOADED);          status = "L"
-    case (STAT_INTEGRATED);      status = "I"
     end select
     in_state = prc_conf%prt_in(1)
     do i = 2, size (prc_conf%prt_in)
@@ -2488,106 +2450,6 @@ contains
        call process_library_load (prc_lib, os_data, model, var_list)
     end do
   end subroutine process_library_store_load_static
-
-  subroutine process_library_record_integral &
-       (prc_lib, prc_id, n_calls, integral, error, accuracy, chi2, efficiency)
-    type(process_library_t), intent(inout), target :: prc_lib
-    type(string_t), intent(in) :: prc_id
-    integer, intent(in) :: n_calls
-    real(default), intent(in) :: integral, error, accuracy, chi2, efficiency
-    type(process_configuration_t), pointer :: prc_conf
-    prc_conf => process_library_get_process_ptr (prc_lib, prc_id)
-    if (associated (prc_conf)) then
-       if (prc_conf%status >= STAT_LOADED) then
-          call process_configuration_record_integral &
-               (prc_conf, n_calls, integral, error, accuracy, chi2, efficiency)
-       else
-          call msg_bug ("Process '" // char (prc_id) // "': not loaded, " &
-               // "can't record integral")
-       end if
-    else
-       call msg_bug ("Process '" // char (prc_id) // "': not associated, " &
-            // "can't record integral")
-    end if
-  end subroutine process_library_record_integral
-
-  function process_library_get_n_calls (prc_lib, prc_id) result (n_calls)
-    integer :: n_calls
-    type(process_library_t), intent(in), target :: prc_lib
-    type(string_t), intent(in) :: prc_id
-    type(process_configuration_t), pointer :: prc_conf
-    prc_conf => process_library_get_process_ptr (prc_lib, prc_id)
-    if (associated (prc_conf)) then
-       n_calls = prc_conf%n_calls
-    else
-       n_calls = 0
-    end if
-  end function process_library_get_n_calls
-
-  function process_library_get_integral (prc_lib, prc_id) result (integral)
-    real(default) :: integral
-    type(process_library_t), intent(in), target :: prc_lib
-    type(string_t), intent(in) :: prc_id
-    type(process_configuration_t), pointer :: prc_conf
-    prc_conf => process_library_get_process_ptr (prc_lib, prc_id)
-    if (associated (prc_conf)) then
-       integral = prc_conf%integral
-    else
-       integral = 0
-    end if
-  end function process_library_get_integral
-
-  function process_library_get_error (prc_lib, prc_id) result (error)
-    real(default) :: error
-    type(process_library_t), intent(in), target :: prc_lib
-    type(string_t), intent(in) :: prc_id
-    type(process_configuration_t), pointer :: prc_conf
-    prc_conf => process_library_get_process_ptr (prc_lib, prc_id)
-    if (associated (prc_conf)) then
-       error = prc_conf%error
-    else
-       error = 0
-    end if
-  end function process_library_get_error
-
-  function process_library_get_accuracy (prc_lib, prc_id) result (accuracy)
-    real(default) :: accuracy
-    type(process_library_t), intent(in), target :: prc_lib
-    type(string_t), intent(in) :: prc_id
-    type(process_configuration_t), pointer :: prc_conf
-    prc_conf => process_library_get_process_ptr (prc_lib, prc_id)
-    if (associated (prc_conf)) then
-       accuracy = prc_conf%accuracy
-    else
-       accuracy = 0
-    end if
-  end function process_library_get_accuracy
-
-  function process_library_get_chi2 (prc_lib, prc_id) result (chi2)
-    real(default) :: chi2
-    type(process_library_t), intent(in), target :: prc_lib
-    type(string_t), intent(in) :: prc_id
-    type(process_configuration_t), pointer :: prc_conf
-    prc_conf => process_library_get_process_ptr (prc_lib, prc_id)
-    if (associated (prc_conf)) then
-       chi2 = prc_conf%chi2
-    else
-       chi2 = 0
-    end if
-  end function process_library_get_chi2
-
-  function process_library_get_efficiency (prc_lib, prc_id) result (efficiency)
-    real(default) :: efficiency
-    type(process_library_t), intent(in), target :: prc_lib
-    type(string_t), intent(in) :: prc_id
-    type(process_configuration_t), pointer :: prc_conf
-    prc_conf => process_library_get_process_ptr (prc_lib, prc_id)
-    if (associated (prc_conf)) then
-       efficiency = prc_conf%efficiency
-    else
-       efficiency = 0
-    end if
-  end function process_library_get_efficiency
 
   subroutine process_libraries_test ()
     type(model_t), pointer :: model

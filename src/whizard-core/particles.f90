@@ -1,4 +1,4 @@
-! WHIZARD 2.0.1 Sun Apr 25 2010
+! WHIZARD 2.0.2 Tue May 18 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -30,6 +30,7 @@ module particles
   use kinds, only: default !NODEP!
   use iso_varying_string, string_t => varying_string !NODEP!
   use file_utils !NODEP!
+  use diagnostics !NODEP!
   use lorentz !NODEP!
   use prt_lists
   use expressions
@@ -61,6 +62,7 @@ module particles
   public :: particle_set_get_n_out, particle_set_get_n_in, &
                 particle_set_get_n_tot
   public :: particle_set_reduce
+  public :: particle_set_extract_interaction
   public :: particle_set_to_prt_list
   public :: particles_test
 
@@ -575,6 +577,12 @@ contains
     end do
     call hepmc_event_particle_iterator_final (it)
     particle_set%n_tot = n_tot
+    particle_set%n_in  = &
+         count (particle_get_status (particle_set%prt) == PRT_INCOMING)
+    particle_set%n_out = &
+         count (particle_get_status (particle_set%prt) == PRT_OUTGOING)
+    particle_set%n_vir = &
+         particle_set%n_tot - particle_set%n_in - particle_set%n_out
   end subroutine particle_set_init_hepmc
 
   subroutine particle_set_final (particle_set)
@@ -886,6 +894,91 @@ contains
     end subroutine copy_particles
   end subroutine particle_set_reduce
 
+  subroutine particle_set_extract_interaction (pset, int, flv_state)
+    type(particle_set_t), intent(in) :: pset
+    type(interaction_t), intent(inout) :: int
+    integer, dimension(:,:), intent(in) :: flv_state
+    integer :: n_in, n_out, n_tot
+    integer, dimension(:), allocatable :: status, incoming, outgoing, index
+    integer, dimension(:), allocatable :: pdg, perm
+    integer :: i
+    logical :: ok
+    allocate (status (pset%n_tot))
+    status = particle_get_status (pset%prt)
+    n_in = count (status == PRT_INCOMING)
+    allocate (incoming (n_in))
+    incoming = pack ((/ (i, i = 1, pset%n_tot) /), status == PRT_INCOMING)
+    i = incoming (1)
+    n_out = particle_get_n_children (pset%prt(i))
+    allocate (outgoing (n_out))
+    outgoing = particle_get_children (pset%prt(i))
+    n_tot = n_in + n_out
+    if (n_in /= interaction_get_n_in (int) &
+         .or. n_out /= interaction_get_n_out (int) &
+         .or. n_tot /= interaction_get_n_tot (int)) then
+       call msg_fatal &
+            ("This event does not match the associated process (size)")
+       return
+    end if
+    allocate (index (n_tot), pdg (n_tot), perm (n_tot))
+    index(:n_in) = incoming
+    index(n_in+1:) = outgoing
+    pdg = particle_get_pdg (pset%prt(index))
+    call find_flavor_ordering (flv_state, pdg, n_in, perm, ok)
+    if (.not. ok) then
+       call particle_set_write (pset)
+       call msg_fatal &
+            ("This event does not match the associated process (flavors)")
+       return
+    end if
+    do i = 1, n_tot
+       call interaction_set_momentum (int, &
+            particle_get_momentum (pset%prt(i)), perm(i))
+    end do
+  end subroutine particle_set_extract_interaction
+
+  subroutine find_flavor_ordering (flv_state, pdg, n_in, perm, ok)
+    integer, dimension(:,:), intent(in) :: flv_state
+    integer, dimension(:), intent(in) :: pdg
+    integer, intent(in) :: n_in
+    integer, dimension(:), intent(out) :: perm
+    logical, intent(out) :: ok
+    integer :: n_tot, f, i, j, k
+    logical, dimension(:), allocatable :: found
+    n_tot = size (pdg)
+    if (size (flv_state, 1) /= n_tot) then
+       ok = .false.
+       return
+    end if
+    do i = 1, n_in
+       perm(i) = i
+    end do
+    allocate (found (n_tot))
+    ok = .false.
+    do f = 1, size (flv_state, 2)
+       call find_ordering_for_this_state (flv_state(:,f))
+    end do
+  contains
+    subroutine find_ordering_for_this_state (pdg_state)    
+      integer, dimension(:), intent(in) :: pdg_state
+      found = .false.
+      if (all (pdg_state(1:n_in) == pdg(1:n_in))) then
+         SCAN_INPUT: do j = n_in + 1, n_tot
+            SCAN_STATE: do k = n_in + 1, n_tot
+              if (found(k))  cycle SCAN_STATE
+              if (pdg_state(k) == pdg(j)) then
+                 found(k) = .true.
+                 perm(j) = k
+                 cycle SCAN_INPUT
+              end if
+            end do SCAN_STATE
+            return
+         end do SCAN_INPUT
+         ok = .true.
+      end if
+    end subroutine find_ordering_for_this_state
+  end subroutine find_flavor_ordering
+
   subroutine particle_set_assign_vertices &
        (particle_set, v_from, v_to, n_vertices)
     type(particle_set_t), intent(in) :: particle_set
@@ -940,6 +1033,7 @@ contains
     type(prt_list_t), intent(out) :: prt_list
     type(particle_t), pointer :: prt
     integer :: i, k
+    integer, dimension(2) :: hel
     call prt_list_init (prt_list)
     call prt_list_reset (prt_list, particle_set%n_in + particle_set%n_out)
     k = 0
@@ -952,12 +1046,24 @@ contains
                particle_get_pdg (prt), &
                particle_get_momentum (prt), &
                particle_get_p2 (prt))
+          if (prt%polarization == PRT_DEFINITE_HELICITY) then
+             if (helicity_is_diagonal (prt%hel)) then
+                hel = helicity_get (prt%hel)
+                call prt_list_polarize (prt_list, k, hel(1))
+             end if
+          end if
        case (PRT_OUTGOING)
           k = k + 1
           call prt_list_set_outgoing (prt_list, k, &
                particle_get_pdg (prt), &
                particle_get_momentum (prt), &
                particle_get_p2 (prt))
+          if (prt%polarization == PRT_DEFINITE_HELICITY) then
+             if (helicity_is_diagonal (prt%hel)) then
+                hel = helicity_get (prt%hel)
+                call prt_list_polarize (prt_list, k, hel(1))
+             end if
+          end if
        end select
     end do
   end subroutine particle_set_to_prt_list
@@ -980,6 +1086,7 @@ contains
     type(hepmc_event_t) :: hepmc_event
     type(hepmc_iostream_t) :: iostream
     type(prt_list_t) :: prt_list
+    logical :: ok
     integer :: u
     print *, "*** Read model file"
     call syntax_model_file_init ()
@@ -1107,7 +1214,7 @@ contains
     call hepmc_event_init (hepmc_event)
     call hepmc_iostream_open_in &
          (iostream , var_str ("particles_test.hepmc.dat"))
-    call hepmc_iostream_read_event (iostream, hepmc_event)
+    call hepmc_iostream_read_event (iostream, hepmc_event, ok)
     call hepmc_iostream_close (iostream)
     call particle_set_init (particle_set2, &
          hepmc_event, model, PRT_DEFINITE_HELICITY)

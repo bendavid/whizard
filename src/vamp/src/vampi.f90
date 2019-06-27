@@ -81,12 +81,12 @@ module vamp_parallel_mpi
   public :: vamp_write_grids, vamp_read_grids
   private :: write_grids_unit, write_grids_name
   private :: read_grids_unit, read_grids_name
-  public :: vamp_send_grid
-  public :: vamp_receive_grid
-  public :: vamp_broadcast_grid
-  public :: vamp_broadcast_grids
-  public :: vamp_send_history
-  public :: vamp_receive_history
+    public :: vamp_send_grid
+    public :: vamp_receive_grid
+    public :: vamp_broadcast_grid
+    public :: vamp_broadcast_grids
+    public :: vamp_send_history
+    public :: vamp_receive_history
   interface vamp_print_history
      module procedure vamp_print_one_history, vamp_print_histories
   end interface
@@ -99,16 +99,17 @@ module vamp_parallel_mpi
   interface vamp_read_grid
      module procedure read_grid_unit, read_grid_name
   end interface
-  interface vamp_write_grids
-     module procedure write_grids_unit, write_grids_name
-  end interface
-  interface vamp_read_grids
-     module procedure read_grids_unit, read_grids_name
-  end interface
-  interface vamp_broadcast_grid
-     module procedure &
-          vamp_broadcast_one_grid, vamp_broadcast_many_grids
-  end interface
+    interface vamp_write_grids
+       module procedure write_grids_unit, write_grids_name
+    end interface
+    interface vamp_read_grids
+       module procedure read_grids_unit, read_grids_name
+    end interface
+
+    interface vamp_broadcast_grid
+       module procedure &
+            vamp_broadcast_one_grid, vamp_broadcast_many_grids
+    end interface
   integer, public, parameter :: VAMP_ROOT = 0
   real(kind=default), private, parameter :: VAMP_MAX_WASTE = 1.0
   ! real(kind=default), private, parameter :: VAMP_MAX_WASTE = 0.3
@@ -731,172 +732,181 @@ contains
        call vamp0_read_grid (g, name)
     end if
   end subroutine read_grid_name
-  subroutine write_grids_unit (g, unit)
-    type(vamp_grids), intent(in) :: g
-    integer, intent(in) :: unit
-    integer :: proc_id
-    call mpi90_rank (proc_id)
-    if (proc_id == VAMP_ROOT) then
-       call vamp0_write_grids (g%g0, unit)
-    end if
-  end subroutine write_grids_unit
-  subroutine read_grids_unit (g, unit)
-    type(vamp_grids), intent(inout) :: g
-    integer, intent(in) :: unit
-    integer :: proc_id
-    call mpi90_rank (proc_id)
-    if (proc_id == VAMP_ROOT) then
-       call vamp0_read_grids (g%g0, unit)
-    end if
-  end subroutine read_grids_unit
-  subroutine write_grids_name (g, name)
-    type(vamp_grids), intent(inout) :: g
-    character(len=*), intent(in) :: name
-    integer :: proc_id
-    call mpi90_rank (proc_id)
-    if (proc_id == VAMP_ROOT) then
-       call vamp0_write_grids (g%g0, name)
-    end if
-  end subroutine write_grids_name
-  subroutine read_grids_name (g, name)
-    type(vamp_grids), intent(inout) :: g
-    character(len=*), intent(in) :: name
-    integer :: proc_id
-    call mpi90_rank (proc_id)
-    if (proc_id == VAMP_ROOT) then
-       call vamp0_read_grids (g%g0, name)
-    end if
-  end subroutine read_grids_name
-  subroutine vamp_send_grid (g, target, tag, domain, error)
-    type(vamp_grid), intent(in) :: g
-    integer, intent(in) :: target, tag
-    integer, intent(in), optional :: domain
-    integer, intent(out), optional :: error
-    integer, dimension(2) :: words
-    integer, dimension(:), allocatable :: ibuf
-    real(kind=default), dimension(:), allocatable :: dbuf
-    call vamp_marshal_grid_size (g, words(1), words(2))
-    allocate (ibuf(words(1)), dbuf(words(2)))
-    call vamp_marshal_grid (g, ibuf, dbuf)
-    call mpi90_send (words, target, tag, domain, error)
-    call mpi90_send (ibuf, target, tag+1, domain, error)
-    call mpi90_send (dbuf, target, tag+2, domain, error)
-    deallocate (ibuf, dbuf)
-  end subroutine vamp_send_grid
-  subroutine vamp_receive_grid (g, source, tag, domain, status, error)
-    type(vamp_grid), intent(inout) :: g
-    integer, intent(in) :: source, tag
-    integer, intent(in), optional :: domain
-    type(mpi90_status), intent(out), optional :: status
-    integer, intent(out), optional :: error
-    integer, dimension(2) :: words
-    integer, dimension(:), allocatable :: ibuf
-    real(kind=default), dimension(:), allocatable :: dbuf
-    call mpi90_receive (words, source, tag, domain, status, error)
-    allocate (ibuf(words(1)), dbuf(words(2)))
-    call mpi90_receive (ibuf, source, tag+1, domain, status, error)
-    call mpi90_receive (dbuf, source, tag+2, domain, status, error)
-    call vamp_unmarshal_grid (g, ibuf, dbuf)
-    deallocate (ibuf, dbuf)
-  end subroutine vamp_receive_grid
-  subroutine vamp_broadcast_one_grid (g, root, domain, error)
-    type(vamp_grid), intent(inout) :: g
-    integer, intent(in) :: root
-    integer, intent(in), optional :: domain
-    integer, intent(out), optional :: error
-    integer, dimension(:), allocatable :: ibuf
-    real(kind=default), dimension(:), allocatable :: dbuf
-    integer :: iwords, dwords, me
-    call mpi90_rank (me)
-    if (me == root) then
-       call vamp_marshal_grid_size (g, iwords, dwords)
-    end if
-    call mpi90_broadcast (iwords, root, domain, error)
-    call mpi90_broadcast (dwords, root, domain, error)
-    allocate (ibuf(iwords), dbuf(dwords))
-    if (me == root) then
-       call vamp_marshal_grid (g, ibuf, dbuf)
-    end if
-    call mpi90_broadcast (ibuf, root, domain, error)
-    call mpi90_broadcast (dbuf, root, domain, error)
-    if (me /= root) then
-       call vamp_unmarshal_grid (g, ibuf, dbuf)
-    end if
-    deallocate (ibuf, dbuf)
-  end subroutine vamp_broadcast_one_grid
-  subroutine vamp_broadcast_many_grids (g, root, domain, error)
-    type(vamp_grid), dimension(:), intent(inout) :: g
-    integer, intent(in) :: root
-    integer, intent(in), optional :: domain
-    integer, intent(out), optional :: error
-    integer :: i
-    do i = 1, size(g)
-       call vamp_broadcast_one_grid (g(i), root, domain, error)
-    end do
-  end subroutine vamp_broadcast_many_grids
-  subroutine vamp_broadcast_grids (g, root, domain, error)
-    type(vamp0_grids), intent(inout) :: g
-    integer, intent(in) :: root
-    integer, intent(in), optional :: domain
-    integer, intent(out), optional :: error
-    integer :: nch, me
-    call mpi90_broadcast (g%sum_chi2, root, domain, error)
-    call mpi90_broadcast (g%sum_integral, root, domain, error)
-    call mpi90_broadcast (g%sum_weights, root, domain, error)
-    call mpi90_rank (me)
-    if (me == root) then
-       nch = size (g%grids)
-    end if
-    call mpi90_broadcast (nch, root, domain, error)
-    if (me /= root) then
-       if (associated (g%grids)) then
-          if (size (g%grids) /= nch) then
-             call vamp0_delete_grid (g%grids)
-             deallocate (g%grids, g%weights, g%num_calls)
-             allocate (g%grids(nch), g%weights(nch), g%num_calls(nch))
-             call vamp_create_empty_grid (g%grids)
-          end if
-       else
-          allocate (g%grids(nch), g%weights(nch), g%num_calls(nch))
-          call vamp_create_empty_grid (g%grids)
-       end if
-    end if
-    call vamp_broadcast_grid (g%grids, root, domain, error)
-    call mpi90_broadcast (g%weights, root, domain, error)
-    call mpi90_broadcast (g%num_calls, root, domain, error)
-  end subroutine vamp_broadcast_grids
-  subroutine vamp_send_history (g, target, tag, domain, error)
-    type(vamp_history), intent(in) :: g
-    integer, intent(in) :: target, tag
-    integer, intent(in), optional :: domain
-    integer, intent(out), optional :: error
-    integer, dimension(2) :: words
-    integer, dimension(:), allocatable :: ibuf
-    real(kind=default), dimension(:), allocatable :: dbuf
-    call vamp_marshal_history_size (g, words(1), words(2))
-    allocate (ibuf(words(1)), dbuf(words(2)))
-    call vamp_marshal_history (g, ibuf, dbuf)
-    call mpi90_send (words, target, tag, domain, error)
-    call mpi90_send (ibuf, target, tag+1, domain, error)
-    call mpi90_send (dbuf, target, tag+2, domain, error)
-    deallocate (ibuf, dbuf)
-  end subroutine vamp_send_history
-  subroutine vamp_receive_history (g, source, tag, domain, status, error)
-    type(vamp_history), intent(inout) :: g
-    integer, intent(in) :: source, tag
-    integer, intent(in), optional :: domain
-    type(mpi90_status), intent(out), optional :: status
-    integer, intent(out), optional :: error
-    integer, dimension(2) :: words
-    integer, dimension(:), allocatable :: ibuf
-    real(kind=default), dimension(:), allocatable :: dbuf
-    call mpi90_receive (words, source, tag, domain, status, error)
-    allocate (ibuf(words(1)), dbuf(words(2)))
-    call mpi90_receive (ibuf, source, tag+1, domain, status, error)
-    call mpi90_receive (dbuf, source, tag+2, domain, status, error)
-    call vamp_unmarshal_history (g, ibuf, dbuf)
-    deallocate (ibuf, dbuf)
-  end subroutine vamp_receive_history
+    subroutine write_grids_unit (g, unit)
+      type(vamp_grids), intent(in) :: g
+      integer, intent(in) :: unit
+      integer :: proc_id
+      call mpi90_rank (proc_id)
+      if (proc_id == VAMP_ROOT) then
+         call vamp0_write_grids (g%g0, unit)
+      end if
+    end subroutine write_grids_unit
+
+    subroutine read_grids_unit (g, unit)
+      type(vamp_grids), intent(inout) :: g
+      integer, intent(in) :: unit
+      integer :: proc_id
+      call mpi90_rank (proc_id)
+      if (proc_id == VAMP_ROOT) then
+         call vamp0_read_grids (g%g0, unit)
+      end if
+    end subroutine read_grids_unit
+
+    subroutine write_grids_name (g, name)
+      type(vamp_grids), intent(inout) :: g
+      character(len=*), intent(in) :: name
+      integer :: proc_id
+      call mpi90_rank (proc_id)
+      if (proc_id == VAMP_ROOT) then
+         call vamp0_write_grids (g%g0, name)
+      end if
+    end subroutine write_grids_name
+
+    subroutine read_grids_name (g, name)
+      type(vamp_grids), intent(inout) :: g
+      character(len=*), intent(in) :: name
+      integer :: proc_id
+      call mpi90_rank (proc_id)
+      if (proc_id == VAMP_ROOT) then
+         call vamp0_read_grids (g%g0, name)
+      end if
+    end subroutine read_grids_name
+    subroutine vamp_send_grid (g, target, tag, domain, error)
+      type(vamp_grid), intent(in) :: g
+      integer, intent(in) :: target, tag
+      integer, intent(in), optional :: domain
+      integer, intent(out), optional :: error
+      integer, dimension(2) :: words
+      integer, dimension(:), allocatable :: ibuf
+      real(kind=default), dimension(:), allocatable :: dbuf
+      call vamp_marshal_grid_size (g, words(1), words(2))
+      allocate (ibuf(words(1)), dbuf(words(2)))
+      call vamp_marshal_grid (g, ibuf, dbuf)
+      call mpi90_send (words, target, tag, domain, error)
+      call mpi90_send (ibuf, target, tag+1, domain, error)
+      call mpi90_send (dbuf, target, tag+2, domain, error)
+      deallocate (ibuf, dbuf)
+    end subroutine vamp_send_grid
+
+    subroutine vamp_receive_grid (g, source, tag, domain, status, error)
+      type(vamp_grid), intent(inout) :: g
+      integer, intent(in) :: source, tag
+      integer, intent(in), optional :: domain
+      type(mpi90_status), intent(out), optional :: status
+      integer, intent(out), optional :: error
+      integer, dimension(2) :: words
+      integer, dimension(:), allocatable :: ibuf
+      real(kind=default), dimension(:), allocatable :: dbuf
+      call mpi90_receive (words, source, tag, domain, status, error)
+      allocate (ibuf(words(1)), dbuf(words(2)))
+      call mpi90_receive (ibuf, source, tag+1, domain, status, error)
+      call mpi90_receive (dbuf, source, tag+2, domain, status, error)
+      call vamp_unmarshal_grid (g, ibuf, dbuf)
+      deallocate (ibuf, dbuf)
+    end subroutine vamp_receive_grid
+
+    subroutine vamp_broadcast_one_grid (g, root, domain, error)
+      type(vamp_grid), intent(inout) :: g
+      integer, intent(in) :: root
+      integer, intent(in), optional :: domain
+      integer, intent(out), optional :: error
+      integer, dimension(:), allocatable :: ibuf
+      real(kind=default), dimension(:), allocatable :: dbuf
+      integer :: iwords, dwords, me
+      call mpi90_rank (me)
+      if (me == root) then
+         call vamp_marshal_grid_size (g, iwords, dwords)
+      end if
+      call mpi90_broadcast (iwords, root, domain, error)
+      call mpi90_broadcast (dwords, root, domain, error)
+      allocate (ibuf(iwords), dbuf(dwords))
+      if (me == root) then
+         call vamp_marshal_grid (g, ibuf, dbuf)
+      end if
+      call mpi90_broadcast (ibuf, root, domain, error)
+      call mpi90_broadcast (dbuf, root, domain, error)
+      if (me /= root) then
+         call vamp_unmarshal_grid (g, ibuf, dbuf)
+      end if
+      deallocate (ibuf, dbuf)
+    end subroutine vamp_broadcast_one_grid
+
+    subroutine vamp_broadcast_many_grids (g, root, domain, error)
+      type(vamp_grid), dimension(:), intent(inout) :: g
+      integer, intent(in) :: root
+      integer, intent(in), optional :: domain
+      integer, intent(out), optional :: error
+      integer :: i
+      do i = 1, size(g)
+         call vamp_broadcast_one_grid (g(i), root, domain, error)
+      end do
+    end subroutine vamp_broadcast_many_grids
+
+    subroutine vamp_broadcast_grids (g, root, domain, error)
+      type(vamp0_grids), intent(inout) :: g
+      integer, intent(in) :: root
+      integer, intent(in), optional :: domain
+      integer, intent(out), optional :: error
+      integer :: nch, me
+      call mpi90_broadcast (g%sum_chi2, root, domain, error)
+      call mpi90_broadcast (g%sum_integral, root, domain, error)
+      call mpi90_broadcast (g%sum_weights, root, domain, error)
+      call mpi90_rank (me)
+      if (me == root) then
+         nch = size (g%grids)
+      end if
+      call mpi90_broadcast (nch, root, domain, error)
+      if (me /= root) then
+         if (associated (g%grids)) then
+            if (size (g%grids) /= nch) then
+               call vamp0_delete_grid (g%grids)
+               deallocate (g%grids, g%weights, g%num_calls)
+               allocate (g%grids(nch), g%weights(nch), g%num_calls(nch))
+               call vamp_create_empty_grid (g%grids)
+            end if
+         else
+            allocate (g%grids(nch), g%weights(nch), g%num_calls(nch))
+            call vamp_create_empty_grid (g%grids)
+         end if
+      end if
+      call vamp_broadcast_grid (g%grids, root, domain, error)
+      call mpi90_broadcast (g%weights, root, domain, error)
+      call mpi90_broadcast (g%num_calls, root, domain, error)
+    end subroutine vamp_broadcast_grids
+
+    subroutine vamp_send_history (g, target, tag, domain, error)
+      type(vamp_history), intent(in) :: g
+      integer, intent(in) :: target, tag
+      integer, intent(in), optional :: domain
+      integer, intent(out), optional :: error
+      integer, dimension(2) :: words
+      integer, dimension(:), allocatable :: ibuf
+      real(kind=default), dimension(:), allocatable :: dbuf
+      call vamp_marshal_history_size (g, words(1), words(2))
+      allocate (ibuf(words(1)), dbuf(words(2)))
+      call vamp_marshal_history (g, ibuf, dbuf)
+      call mpi90_send (words, target, tag, domain, error)
+      call mpi90_send (ibuf, target, tag+1, domain, error)
+      call mpi90_send (dbuf, target, tag+2, domain, error)
+      deallocate (ibuf, dbuf)
+    end subroutine vamp_send_history
+
+    subroutine vamp_receive_history (g, source, tag, domain, status, error)
+      type(vamp_history), intent(inout) :: g
+      integer, intent(in) :: source, tag
+      integer, intent(in), optional :: domain
+      type(mpi90_status), intent(out), optional :: status
+      integer, intent(out), optional :: error
+      integer, dimension(2) :: words
+      integer, dimension(:), allocatable :: ibuf
+      real(kind=default), dimension(:), allocatable :: dbuf
+      call mpi90_receive (words, source, tag, domain, status, error)
+      allocate (ibuf(words(1)), dbuf(words(2)))
+      call mpi90_receive (ibuf, source, tag+1, domain, status, error)
+      call mpi90_receive (dbuf, source, tag+2, domain, status, error)
+      call vamp_unmarshal_history (g, ibuf, dbuf)
+      deallocate (ibuf, dbuf)
+    end subroutine vamp_receive_history
 end module vamp_parallel_mpi
 module vampi
   use vamp_serial_mpi !NODEP!

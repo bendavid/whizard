@@ -433,9 +433,9 @@ contains
     t = TT - 1
     do
        x(3:2*K-1:2) = x(2:K)
-       x(2:K+L-1:2) = x(2*K-1:K-L+2:-2) - modulo (x(2*K-1:K-L+2:-2), 2)
+       x(2:K+L-1:2) = x(2*K-1:K-L+2:-2) - modulo (x(2*K-1:K-L+2:-2), 2_tao_i32)
        do j= 2*K-1, K+1, -1
-          if (modulo (x(j), 2) == 1) then
+          if (modulo (x(j), int(2, tao_i32)) == 1) then
              x(j-(K-L)) = modulo (x(j-(K-L)) - x(j), M)
              x(j-K) = modulo (x(j-K) - x(j), M)
           end if
@@ -443,7 +443,7 @@ contains
        if (modulo (s, 2) == 1) then
           x(2:K+1) = x(1:K)
           x(1) = x(K+1)
-          if (modulo (x(K+1), 2) == 1) then
+          if (modulo (x(K+1), 2_tao_i32) == 1) then
              x(L+1) = modulo (x(L+1) - x(K+1), M)
           end if
        end if

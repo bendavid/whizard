@@ -1,4 +1,4 @@
-! WHIZARD 2.0.1 Sun Apr 25 2010
+! WHIZARD 2.0.2 Tue May 18 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -39,8 +39,10 @@ module hard_interactions
   use helicities
   use colors
   use quantum_numbers
+  use state_matrices
   use interactions
   use evaluators
+  use particles
   use prclib_interfaces
   use process_libraries
 
@@ -51,6 +53,7 @@ module hard_interactions
   public :: hard_interaction_init
   public :: hard_interaction_unload
   public :: hard_interaction_reload
+  public :: hard_interaction_update_parameters
   public :: hard_interaction_final
   public :: hard_interaction_write
   public :: assignment(=)
@@ -82,6 +85,8 @@ module hard_interactions
   public :: hard_interaction_get_eval_trace_ptr
   public :: hard_interaction_get_eval_sqme_ptr
   public :: hard_interaction_get_eval_flows_ptr
+  public :: hard_interaction_recover_kinematics
+  public :: hard_interaction_write_state_summary
   public :: hard_interaction_test
 
   type :: hard_interaction_data_t
@@ -318,20 +323,6 @@ contains
     end do
   end subroutine hard_interaction_data_write
 
-  subroutine hard_interaction_unload (hi)
-    type(hard_interaction_t), intent(inout), target :: hi
-    if (.not. associated (hi%data%final)) return
-    call hard_interaction_data_unload (hi%data)
-  end subroutine hard_interaction_unload
-
-  subroutine hard_interaction_reload (hi, prc_lib)
-    type(hard_interaction_t), intent(inout), target :: hi
-    type(process_library_t), intent(in) :: prc_lib
-    if (associated (hi%data%init)) return
-    call hard_interaction_data_reload (hi%data, prc_lib)
-    call hi%data% init (real (hi%data%par, c_default_float))
-  end subroutine hard_interaction_reload
-
   subroutine hard_interaction_init &
        (hi, prc_lib, process_index, process_id, model)
     type(hard_interaction_t), intent(out), target :: hi
@@ -385,6 +376,26 @@ contains
     call interaction_freeze (hi%int)
     hi%initialized = .true.
   end subroutine hard_interaction_init
+
+  subroutine hard_interaction_unload (hi)
+    type(hard_interaction_t), intent(inout), target :: hi
+    if (.not. associated (hi%data%final)) return
+    call hard_interaction_data_unload (hi%data)
+  end subroutine hard_interaction_unload
+
+  subroutine hard_interaction_reload (hi, prc_lib)
+    type(hard_interaction_t), intent(inout), target :: hi
+    type(process_library_t), intent(in) :: prc_lib
+    if (associated (hi%data%init)) return
+    call hard_interaction_data_reload (hi%data, prc_lib)
+    call hi%data% init (real (hi%data%par, c_default_float))
+  end subroutine hard_interaction_reload
+
+  subroutine hard_interaction_update_parameters (hi)
+    type(hard_interaction_t), intent(inout), target :: hi
+    call model_parameters_to_array (hi%data%model, hi%data%par)
+    call hi%data% init (real (hi%data%par, c_default_float))
+  end subroutine hard_interaction_update_parameters
 
   subroutine hard_interaction_final (hi)
     type(hard_interaction_t), intent(inout) :: hi
@@ -603,6 +614,7 @@ contains
     type(quantum_numbers_mask_t), dimension(:), allocatable :: qn_mask
     type(flavor_t), dimension(:), allocatable :: flv
     integer :: i
+    logical :: helmask, helmask_hd
     if (present (use_hi_color_factors)) then
        use_hi_cf = use_hi_color_factors
     else
@@ -614,10 +626,15 @@ contains
          .or. qn_mask_in
     do i = hi%data%n_in + 1, hi%data%n_tot
        call flavor_init (flv, hi%data%flv_state(i,:), hi%data%model)
+       if (.not. all (flavor_is_stable (flv))) then
+          helmask = all (flavor_decays_isotropically (flv))
+          helmask_hd = all (flavor_decays_diagonal (flv))
+       else
+          helmask = all (.not. flavor_is_polarized (flv))
+          helmask_hd = .true.
+       end if
        qn_mask(i) = new_quantum_numbers_mask (.false., .true., &
-              all (flavor_decays_isotropically (flv) &
-                   .or. flavor_is_stable (flv)), &
-              mask_hd = all (flavor_decays_diagonal (flv)))
+              helmask, mask_hd = helmask_hd)
     end do
     if (use_hi_cf) then
        call evaluator_init_square (hi%eval_sqme, hi%int, qn_mask, &
@@ -633,16 +650,22 @@ contains
     type(quantum_numbers_mask_t), dimension(:), allocatable :: qn_mask
     type(flavor_t), dimension(:), allocatable :: flv
     integer :: i
+    logical :: helmask, helmask_hd
     allocate (qn_mask (hi%data%n_tot), flv (hi%data%n_flv))
     qn_mask(:hi%data%n_in) = &
          new_quantum_numbers_mask (.false., .false., .false.) &
          .or. qn_mask_in
     do i = hi%data%n_in + 1, hi%data%n_tot
        call flavor_init (flv, hi%data%flv_state(i,:), hi%data%model)
+       if (.not. all (flavor_is_stable (flv))) then
+          helmask = all (flavor_decays_isotropically (flv))
+          helmask_hd = all (flavor_decays_diagonal (flv))
+       else
+          helmask = all (.not. flavor_is_polarized (flv))
+          helmask_hd = .true.
+       end if
        qn_mask(i) = new_quantum_numbers_mask (.false., .false., &
-              all (flavor_decays_isotropically (flv) &
-                   .or. flavor_is_stable (flv)), &
-              mask_hd = all (flavor_decays_diagonal (flv)))
+              helmask, mask_hd = helmask_hd)
     end do
     call evaluator_init_square (hi%eval_flows, hi%int, qn_mask, &
          expand_color_flows = .true.)
@@ -737,6 +760,39 @@ contains
     type(hard_interaction_t), intent(in), target :: hi
     eval => hi%eval_flows
   end function hard_interaction_get_eval_flows_ptr
+
+  subroutine hard_interaction_recover_kinematics (hi, pset)
+    type(hard_interaction_t), intent(inout) :: hi
+    type(particle_set_t), intent(in) :: pset
+    call particle_set_extract_interaction (pset, hi%int, hi%data%flv_state)
+  end subroutine hard_interaction_recover_kinematics
+
+  subroutine hard_interaction_write_state_summary (hi, unit)
+    type(hard_interaction_t), intent(in) :: hi
+    integer, intent(in), optional :: unit
+    type(state_matrix_t) :: state
+    type(state_iterator_t) :: it
+    integer :: u, i, f, h, c
+    character(1) :: sgn
+    u = output_unit (unit)
+    state = interaction_get_state_matrix (hi%int)
+    call state_iterator_init (it, state)
+    do while (state_iterator_is_valid (it))
+       i = state_iterator_get_me_index (it)
+       f = hi%flv(i)
+       h = hi%hel(i)
+       c = hi%col(i)
+       if (hi%data% is_allowed (f, h, c)) then
+          sgn = "+"
+       else
+          sgn = " "
+       end if
+       write (u, "(1x,A1,1x,I0,2x)", advance="no")  sgn, i
+       call quantum_numbers_write (state_iterator_get_quantum_numbers (it), u)
+       write (u, *)
+       call state_iterator_advance (it)
+    end do
+  end subroutine hard_interaction_write_state_summary
 
   subroutine hard_interaction_test (model)
     type(model_t), pointer :: model

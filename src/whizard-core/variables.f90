@@ -1,4 +1,4 @@
-! WHIZARD 2.0.1 Sun Apr 25 2010
+! WHIZARD 2.0.2 Tue May 18 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -105,6 +105,7 @@ module variables
   public :: var_list_final
   public :: var_list_write
   public :: var_list_write_var
+  public :: var_list_get_next_ptr
   public :: var_list_get_var_ptr
   public :: var_list_get_type 
   public :: var_list_exists
@@ -118,10 +119,15 @@ module variables
   public :: var_list_get_pval
   public :: var_list_get_aval
   public :: var_list_get_sval
+  public :: var_list_init_num_id
   public :: var_list_init_process_results
   public :: var_list_set_observables_unary
   public :: var_list_set_observables_binary
-  public :: string_is_observable_id
+  public :: event_vars_t
+  public :: event_vars_write
+  public :: event_vars_write_raw
+  public :: event_vars_read_raw
+  public :: var_list_append_event_vars
   public :: var_list_set_log
   public :: var_list_set_int
   public :: var_list_set_real
@@ -175,6 +181,16 @@ module variables
      type(var_entry_t), pointer :: last => null ()
      type(var_list_t), pointer :: next => null ()
   end type var_list_t
+
+  type :: event_vars_t
+     integer :: event_index = 0
+     integer :: process_index = 0
+     integer :: process_num_id = 0
+     real(default) :: sqme = 0
+     real(default) :: sqme_ref = 0
+     real(default) :: weight = 0
+     real(default) :: excess = 0
+  end type event_vars_t
 
 
   abstract interface
@@ -518,7 +534,7 @@ contains
        end if
     case (V_CMPLX)
        if (var%is_known) then
-          write (u, *)  var%cval
+          write (u, *)  cmplx2char (var%cval)
        else
           write (u, "(A)")  "[unknown complex]"
        end if
@@ -738,7 +754,7 @@ contains
        if (verbose) then
           call var_entry_write (var, model_name=model_name)
           call var_entry_write (var, model_name=model_name, unit=u)
-          flush (u)
+          if (u >= 0) flush (u)
        end if
     end if
   end subroutine var_entry_set_log
@@ -761,7 +777,7 @@ contains
        if (verbose) then
           call var_entry_write (var, model_name=model_name)
           call var_entry_write (var, model_name=model_name, unit=u)
-          flush (u)
+          if (u >= 0) flush (u)
        end if
     end if
   end subroutine var_entry_set_int
@@ -784,7 +800,7 @@ contains
        if (verbose) then
           call var_entry_write (var, model_name=model_name)
           call var_entry_write (var, model_name=model_name, unit=u)
-          flush (u)
+          if (u >= 0) flush (u)
        end if
     end if
   end subroutine var_entry_set_real
@@ -807,7 +823,7 @@ contains
        if (verbose) then
           call var_entry_write (var, model_name=model_name)
           call var_entry_write (var, model_name=model_name, unit=u)
-          flush (u)
+          if (u >= 0) flush (u)
        end if
     end if
   end subroutine var_entry_set_cmplx
@@ -830,7 +846,7 @@ contains
        if (verbose) then
           call var_entry_write (var, model_name=model_name)
           call var_entry_write (var, model_name=model_name, unit=u)
-          flush (u)
+          if (u >= 0) flush (u)
        end if
     end if
   end subroutine var_entry_set_pdg_array
@@ -853,7 +869,7 @@ contains
        if (verbose) then
           call var_entry_write (var, model_name=model_name)
           call var_entry_write (var, model_name=model_name, unit=u)
-          flush (u)
+          if (u >= 0) flush (u)
        end if
     end if
   end subroutine var_entry_set_prt_list
@@ -876,7 +892,7 @@ contains
        if (verbose) then
           call var_entry_write (var, model_name=model_name)
           call var_entry_write (var, model_name=model_name, unit=u)
-          flush (u)
+          if (u >= 0) flush (u)
        end if
     end if
   end subroutine var_entry_set_string
@@ -1270,6 +1286,12 @@ contains
     end if
   end subroutine var_list_write_var
 
+  function var_list_get_next_ptr (var_list) result (next_ptr)
+    type(var_list_t), pointer :: next_ptr
+    type(var_list_t), intent(in) :: var_list
+    next_ptr => var_list%next
+  end function var_list_get_next_ptr
+
   recursive function var_list_get_var_ptr (var_list, name, type, follow_link) &
        result (var)
     type(var_entry_t), pointer :: var
@@ -1435,6 +1457,14 @@ contains
     sval = var%sval
   end function var_list_get_sval
   
+  subroutine var_list_init_num_id (var_list, proc_id, num_id)
+    type(var_list_t), intent(inout) :: var_list
+    type(string_t), intent(in) :: proc_id
+    integer, intent(in), optional :: num_id
+    call var_list_set_procvar_int (var_list, proc_id, &
+         var_str ("num_id"), num_id)
+  end subroutine var_list_init_num_id
+
   subroutine var_list_init_process_results (var_list, proc_id, &
        n_calls, integral, error, accuracy, chi2, efficiency)
     type(var_list_t), intent(inout) :: var_list
@@ -1442,40 +1472,51 @@ contains
     integer, intent(in), optional :: n_calls
     real(default), intent(in), optional :: integral, error, accuracy
     real(default), intent(in), optional :: chi2, efficiency
-    call set_var_int (var_str ("n_calls"), n_calls)
-    call set_var_real (var_str ("integral"), integral)
-    call set_var_real (var_str ("error"), error)
-    call set_var_real (var_str ("accuracy"), accuracy)
-    call set_var_real (var_str ("chi2"), chi2)
-    call set_var_real (var_str ("efficiency"), efficiency)
-  contains
-    subroutine set_var_int (name, ival)
-      type(string_t), intent(in) :: name
-      integer, intent(in), optional :: ival
-      type(string_t) :: var_name
-      type(var_entry_t), pointer :: var
-      var_name = name // "(" // proc_id // ")"
-      var => var_list_get_var_ptr (var_list, var_name)
-      if (.not. associated (var)) then
-         call var_list_append_int (var_list, var_name, ival, intrinsic=.true.)
-      else if (present (ival)) then
-         call var_list_set_int (var_list, var_name, ival, is_known=.true.)
-      end if
-    end subroutine set_var_int
-    subroutine set_var_real (name, rval)
-      type(string_t), intent(in) :: name
-      real(default), intent(in), optional :: rval
-      type(string_t) :: var_name
-      type(var_entry_t), pointer :: var
-      var_name = name // "(" // proc_id // ")"
-      var => var_list_get_var_ptr (var_list, var_name)
-      if (.not. associated (var)) then
-         call var_list_append_real (var_list, var_name, rval, intrinsic=.true.)
-      else if (present (rval)) then
-         call var_list_set_real (var_list, var_name, rval, is_known=.true.)
-      end if
-    end subroutine set_var_real
+    call var_list_set_procvar_int (var_list, proc_id, &
+         var_str ("n_calls"), n_calls)
+    call var_list_set_procvar_real (var_list, proc_id, &
+         var_str ("integral"), integral)
+    call var_list_set_procvar_real (var_list, proc_id, &
+         var_str ("error"), error)
+    call var_list_set_procvar_real (var_list, proc_id, &
+         var_str ("accuracy"), accuracy)
+    call var_list_set_procvar_real (var_list, proc_id, &
+         var_str ("chi2"), chi2)
+    call var_list_set_procvar_real (var_list, proc_id, &
+         var_str ("efficiency"), efficiency)
   end subroutine var_list_init_process_results
+
+  subroutine var_list_set_procvar_int (var_list, proc_id, name, ival)
+    type(var_list_t), intent(inout) :: var_list
+    type(string_t), intent(in) :: proc_id
+    type(string_t), intent(in) :: name
+    integer, intent(in), optional :: ival
+    type(string_t) :: var_name
+    type(var_entry_t), pointer :: var
+    var_name = name // "(" // proc_id // ")"
+    var => var_list_get_var_ptr (var_list, var_name)
+    if (.not. associated (var)) then
+       call var_list_append_int (var_list, var_name, ival, intrinsic=.true.)
+    else if (present (ival)) then
+       call var_list_set_int (var_list, var_name, ival, is_known=.true.)
+    end if
+  end subroutine var_list_set_procvar_int
+
+  subroutine var_list_set_procvar_real (var_list, proc_id, name, rval)
+    type(var_list_t), intent(inout) :: var_list
+    type(string_t), intent(in) :: proc_id
+    type(string_t), intent(in) :: name
+    real(default), intent(in), optional :: rval
+    type(string_t) :: var_name
+    type(var_entry_t), pointer :: var
+    var_name = name // "(" // proc_id // ")"
+    var => var_list_get_var_ptr (var_list, var_name)
+    if (.not. associated (var)) then
+       call var_list_append_real (var_list, var_name, rval, intrinsic=.true.)
+    else if (present (rval)) then
+       call var_list_set_real (var_list, var_name, rval, is_known=.true.)
+    end if
+  end subroutine var_list_set_procvar_real
 
   subroutine var_list_set_obs (var_list, name, type, var, prt1, prt2)
     type(var_list_t), intent(inout) :: var_list
@@ -1823,6 +1864,75 @@ contains
     dist = eta_phi_distance &
          (prt_get_momentum (prt1), prt_get_momentum (prt2))
   end function obs_dist2
+
+  subroutine event_vars_write (vars, unit)
+    type(event_vars_t), intent(in) :: vars
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = output_unit (unit)
+    write (u, *)  "Event index          = ", vars%event_index
+    write (u, *)  "Process index        = ", vars%process_index
+    write (u, *)  "Numerical process ID = ", vars%process_num_id
+    write (u, *)  "Event sqme           = ", vars%sqme
+    write (u, *)  "Event sqme(ref)      = ", vars%sqme_ref
+    write (u, *)  "Event weight         = ", vars%weight
+    write (u, *)  "Event excess weight  = ", vars%excess
+  end subroutine event_vars_write
+
+  subroutine event_vars_write_raw (vars, u)
+    type(event_vars_t), intent(in) :: vars
+    integer, intent(in) :: u
+    write (u)  vars%event_index
+    write (u)  vars%process_index
+    write (u)  vars%sqme
+    write (u)  vars%sqme_ref
+    write (u)  vars%weight
+    write (u)  vars%excess
+  end subroutine event_vars_write_raw
+
+  subroutine event_vars_read_raw (vars, u, iostat)
+    type(event_vars_t), intent(out) :: vars
+    integer, intent(in) :: u
+    integer, intent(out) :: iostat
+    read (u, iostat=iostat)  vars%event_index
+    if (iostat /= 0) return
+    read (u, iostat=iostat)  vars%process_index
+    if (iostat /= 0) return
+    read (u, iostat=iostat)  vars%sqme
+    if (iostat /= 0) return
+    read (u, iostat=iostat)  vars%sqme_ref
+    if (iostat /= 0) return
+    read (u, iostat=iostat)  vars%weight
+    if (iostat /= 0) return
+    read (u, iostat=iostat)  vars%excess
+  end subroutine event_vars_read_raw
+
+  subroutine var_list_append_event_vars (var_list, event_vars)
+    type(var_list_t), intent(inout) :: var_list
+    type(event_vars_t), intent(in), target :: event_vars
+    logical, target, save :: known = .true.
+    call var_list_append_int_ptr (var_list, &
+         var_str ("event_index"), event_vars%event_index, &
+         is_known = known, locked = .true., intrinsic = .true.)
+    call var_list_append_int_ptr (var_list, &
+         var_str ("process_index"), event_vars%process_index, &
+         is_known = known, locked = .true., intrinsic = .true.)
+    call var_list_append_int_ptr (var_list, &
+         var_str ("process_num_id"), event_vars%process_num_id, &
+         is_known = known, locked = .true., intrinsic = .true.)
+    call var_list_append_real_ptr (var_list, &
+         var_str ("event_weight"), event_vars%weight, &
+         is_known = known, locked = .true., intrinsic = .true.)
+    call var_list_append_real_ptr (var_list, &
+         var_str ("event_excess_weight"), event_vars%excess, &
+         is_known = known, locked = .true., intrinsic = .true.)
+    call var_list_append_real_ptr (var_list, &
+         var_str ("event_sqme"), event_vars%sqme, &
+         is_known = known, locked = .true., intrinsic = .true.)
+    call var_list_append_real_ptr (var_list, &
+         var_str ("event_sqme_ref"), event_vars%sqme, &
+         is_known = known, locked = .true., intrinsic = .true.)
+  end subroutine var_list_append_event_vars
 
   subroutine var_list_set_log &
        (var_list, name, lval, is_known, ignore, verbose, model_name)
@@ -2185,6 +2295,7 @@ contains
        type = V_NONE
        return
     end if
+    if (string_is_integer_result_var (name))  type = V_INT
     var => var_list_get_var_ptr (var_list, name)
     if (associated (var)) then
        if (type == V_NONE) then
@@ -2210,7 +2321,17 @@ contains
           end if
        end if
     else
-       if (.not. new) then
+       if (string_is_result_var (name)) then
+          call msg_error ("Result variable '" // char (name) // "' " &
+               // "set without prior integration")
+          type = V_NONE
+          return
+       else if (string_is_num_id (name)) then
+          call msg_error ("Numeric process ID '" // char (name) // "' " &
+               // "set without process declaration")
+          type = V_NONE
+          return
+       else if (.not. new) then
           call msg_error ("Variable '" // char (name) // "' " &
                // "set without declaration")
           type = V_NONE
@@ -2218,6 +2339,60 @@ contains
        end if
     end if
   end subroutine var_list_check_user_var
+
+  function string_is_integer_result_var (string) result (flag)
+    logical :: flag
+    type(string_t), intent(in) :: string
+    type(string_t) :: buffer, name, separator
+    buffer = string
+    call split (buffer, name, "(", separator=separator)  ! ")"
+    if (separator == "(") then
+       select case (char (name))
+       case ("num_id", "n_calls")
+          flag = .true.
+       case default
+          flag = .false.
+       end select
+    else
+       flag = .false.
+    end if
+  end function string_is_integer_result_var
+
+  function string_is_result_var (string) result (flag)
+    logical :: flag
+    type(string_t), intent(in) :: string
+    type(string_t) :: buffer, name, separator
+    buffer = string
+    call split (buffer, name, "(", separator=separator)  ! ")"
+    if (separator == "(") then
+       select case (char (name))
+       case ("n_calls", "integral", "error", "accuracy", "chi2", "efficiency")
+          flag = .true.
+       case default
+          flag = .false.
+       end select
+    else
+       flag = .false.
+    end if
+  end function string_is_result_var
+
+  function string_is_num_id (string) result (flag)
+    logical :: flag
+    type(string_t), intent(in) :: string
+    type(string_t) :: buffer, name, separator
+    buffer = string
+    call split (buffer, name, "(", separator=separator)  ! ")"
+    if (separator == "(") then
+       select case (char (name))
+       case ("num_id")
+          flag = .true.
+       case default
+          flag = .false.
+       end select
+    else
+       flag = .false.
+    end if
+  end function string_is_num_id
 
 
 end module variables

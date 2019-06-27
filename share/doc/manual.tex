@@ -17,6 +17,7 @@
 \newcommand{\email}[2]{\thanks{\ahref{#1@{}#2}{#1@{}#2}}}
 \newcommand{\whizardpage}{\url{http://whizard.event-generator.org}}
 \newcommand{\hepforgepage}{\url{http://projects.hepforge.org/whizard}}
+\DeclareMathOperator{\diag}{diag}
 
 %BEGIN LATEX
 \makeatletter
@@ -954,7 +955,7 @@ argument to the program:
 \begin{footnotesize}
 \begin{quote}
 \begin{verbatim}
-$ whizard script.sin
+  /home/user$ whizard script.sin
 \end{verbatim}
 \end{quote}
 \end{footnotesize}
@@ -988,6 +989,11 @@ is also a sequence of commands (possibly with their own options).  Usually, it
 has the purpose of setting specific parameters in a context local to the
 command.  The braces indicate a scoping unit; most parameters will be restored
 their previous values when the execution of that command is completed.
+
+The script can contain comments.   Comments are initiated by either a \verb|#|
+or a \verb|!| character and extend upon the end of line.  This distinction may
+be useful; a possible convention could be to initiate actual comments by \verb|#| and
+use \verb|!| for ``commenting out'' lines that should temporarily be disabled.
 
 
 \subsection{Data types and expressions}
@@ -1942,24 +1948,645 @@ and a change to a parameter in one of the models affects only the
 corresponding process.
 
 
-\clearpage
-
 \section{Processes}
+
+The purpose of \whizard\ is the integration and simulation of high-energy
+physics processes: scatterings and decays.  Hence, \ttt{process} objects play
+the central role in SINDARIN scripts.
+
+A SINDARIN script may contain an arbitrary number of process definitions.  The
+initial states need not agree, and the processes may belong to different
+physics models.
+
 
 \subsection{Process definition}
 
-\subsection{Options}
+A process object is defined in a straightforward notation.  The definition
+syntax is straightforward:
+\begin{quote}
+\begin{footnotesize}
+  \ttt{process \textit{process-id} = \textit{incoming-particles}} \verb|=>|
+  \ttt{\textit{outgoing-particles}}
+\end{footnotesize}
+\end{quote}
+Here are typical examples:
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+  process w_pair_production = e1, E1 => "W+", "W-"
+  process zdecay = Z => u, ubar
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+Throughout the program, the process will be identified by its
+\textit{process-id}, so this is the name of the process object.  This
+identifier is arbitrary, chosen by the user.  It follows the rules for
+variable names, so it consists of alphanumeric characters and underscores,
+where the first character is not numeric.  As a special rule, it must not
+contain upper-case characters.  The reason is that this name is used for
+identifying the process not just within the script, but also within the
+Fortran code that the matrix-element generator produces for this process.
+
+After the equals sign, there follow the lists of incoming and outgoing
+particles.  The number of incoming particles is either one or two: scattering
+processes and decay processes.  The number of outgoing particles must be two
+or larger\footnote{$2\to 1$ processes are currently unsupported, they will be
+  enabled in a later version.}.  There is no hard upper limit; the complexity
+of processes that \whizard\ can handle depends only on the practical computing
+limitations (CPU time and memory).  Roughly speaking, one can assume that
+processes up to $2\to 6$ particles are safe, $2\to 8$ processes are feasible
+given sufficient time for reaching a stable integration, while more
+complicated processes are largely unexplored.
+
+We emphasize that in the default setup, the matrix element of a physics
+process is computed exactly in leading-order perturbation theory, i.e., at
+tree level.  There is no restriction of intermediate states, the result always
+contains the complete set of Feynman graphs that connect the initial with the
+final state.  If the result would actually be expanded in Feynman graphs
+(which is not done by the \oMega\ matrix element generator that
+\whizard\ uses), the number of graphs can easily reach several thousands,
+depending on the complexity of the process and on the physics model.
+
+
+\subsection{Particle names}
+
+The particle names are taken from the particle definition in the current model
+file.  Looking at the SM, for instance, the electron entry in
+\ttt{share/models/SM.mdl} reads
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+particle E_LEPTON 11
+  spin 1/2  charge  -1   isospin -1/2  
+  name "e-" e1 electron e
+  anti "e+" E1 positron 
+  tex_name "e^-"
+  tex_anti "e^+"
+  mass me
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+This tells that you can identify an electron either as \verb|"e-"|, \verb|e1|,
+\verb|electron|, or simply \verb|e|.  The first version is used for output,
+but needs to be quoted, because otherwise SINDARIN would interpret the minus
+sign as an operator.  (Technically, unquoted particle identifiers are aliases,
+while the quoted versions -- you can say either \verb|e1| or \verb|"e1"| --
+are names.  On input, this makes no difference.)  The alternative version
+\verb|e1| follows a convention, inherited from \comphep, that particles are
+indicated by lower case, antiparticles by upper case, and for leptons, the
+generation index is appended: \verb|e2| is the muon, \verb|e3| the tau.  These
+alternative names need not be quoted because they contain no special
+characters.  
+
+In Table~\ref{tab:SM-particles}, we list the recommended names as well as
+mass and width parameters for all SM particles.  For other models, you may
+look up the names in the corresponding model file.
+
+\begin{table}[p]
+  \begin{center}
+    \begin{tabular}{|l|l|l|l|cc|}
+      \hline
+      & Particle & Output name & Alternative names & Mass & Width\\
+      \hline\hline
+      Leptons
+      &$e^-$ & \verb|e-| & \ttt{e1}\quad\ttt{electron} & \ttt{me} & \\
+      &$e^+$ & \verb|e+| & \ttt{E1}\quad\ttt{positron} & \ttt{me} & \\
+      \hline
+      &$\mu^-$ & \verb|mu-| & \ttt{e2}\quad\ttt{muon} & \ttt{mmu} & \\
+      &$\mu^+$ & \verb|mu+| & \ttt{E2} & \ttt{mmu} & \\
+      \hline
+      &$\tau^-$ & \verb|tau-| & \ttt{e3}\quad\ttt{tauon} & \ttt{mtau} & \\
+      &$\tau^+$ & \verb|tau+| & \ttt{E3} & \ttt{mtau} & \\
+      \hline\hline
+      Neutrinos
+      &$\nu_e$ & \verb|nue| & \ttt{n1} & & \\
+      &$\bar\nu_e$ & \verb|nuebar| & \ttt{N1} & & \\
+      \hline
+      &$\nu_\mu$ & \verb|numu| & \ttt{n2} & & \\
+      &$\bar\nu_\mu$ & \verb|numubar| & \ttt{N2} & & \\
+      \hline
+      &$\nu_\tau$ & \verb|nutau| & \ttt{n3} & & \\
+      &$\bar\nu_\tau$ & \verb|nutaubar| & \ttt{N3} & & \\
+      \hline\hline
+      Quarks
+      &$d$ & \verb|d| & \ttt{down} & & \\
+      &$\bar d$ & \verb|dbar| & \ttt{D} & & \\
+      \hline
+      &$u$ & \verb|u| & \ttt{up} & & \\
+      &$\bar u$ & \verb|ubar| & \ttt{U} & & \\
+      \hline
+      &$s$ & \verb|s| & \ttt{strange} & \ttt{ms} & \\
+      &$\bar s$ & \verb|sbar| & \ttt{S} & \ttt{ms}  & \\
+      \hline
+      &$c$ & \verb|c| & \ttt{charm} & \ttt{mc}  & \\
+      &$\bar c$ & \verb|cbar| & \ttt{C} & \ttt{mc} & \\
+      \hline
+      &$b$ & \verb|b| & \ttt{bottom} & \ttt{mb} & \\
+      &$\bar b$ & \verb|bbar| & \ttt{B} &  \ttt{mb} & \\
+      \hline
+      &$t$ & \verb|t| & \ttt{top} &  \ttt{mtop} & \ttt{wtop} \\
+      &$\bar t$ & \verb|tbar| & \ttt{T} &  \ttt{mtop} & \ttt{wtop} \\
+      \hline\hline
+      Vector bosons
+      &$g$ & \verb|gl| & \ttt{g}\quad\ttt{G}\quad\ttt{gluon} & & \\
+      \hline
+      &$\gamma$ & \verb|A| & \ttt{gamma}\quad\ttt{photon} & & \\
+      \hline
+      &$Z$ & \verb|Z| & & \ttt{mZ} & \ttt{wZ} \\
+      \hline
+      &$W^+$ & \verb|W+| & \ttt{Wp} & \ttt{mW} & \ttt{wW} \\
+      &$W^-$ & \verb|W-| & \ttt{Wm} & \ttt{mW} & \ttt{wW} \\
+      \hline\hline
+      Scalar bosons
+      &$H$ & \verb|H| & \ttt{h}\quad \ttt{Higgs} & \ttt{mH} & \ttt{wH} \\
+      \hline
+    \end{tabular}
+  \end{center}
+  \caption{\label{tab:SM-particles} Names that can be used for SM particles.
+    Also shown are the intrinsic variables that can be used to set mass and
+    width, if applicable.}
+\end{table}
+
+Where no mass or width parameters are listed in the table, the particle is
+assumed to be massless or stable, respectively.  This is obvious for particles
+such as the photon.  For neutrinos, the mass is meaningless to particle
+physics experiments, so it is zero.  For quarks, the $u$ or $d$ quark mass is
+unobservable directly, so we also set it zero.  For the heavier quarks, the
+mass may play a role, so it is kept.  (The $s$ quark is borderline; one may
+argue that its mass is also unobservable directly.)  On the other hand, the
+electron mass is relevant, e.g., in photon radiation without cuts, so it is
+not zero by default.
+
+It pays off to set particle masses to zero, if the approximation is justified,
+since fewer helicity states will contribute to the matrix element.  Switching
+off one of the helicity states of an external fermion speeds up the
+calculation by a factor of two.  Therefore, script files will usually contain
+the assignments
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+  me = 0  mmu = 0  ms = 0  mc = 0
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+unless they deal with processes where this simplification is
+phenomenologically unacceptable.  Often $m_\tau$ and $m_b$ can also be
+neglected, but this excludes processes where the Higgs couplings of $\tau$ or
+$b$ are relevant.  
+
+Setting fermion masses to zero enables, furthermore, the possibility to define
+multi-flavor aliases
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+  alias q = d:u:s:c
+  alias Q = D:U:S:C  
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+and handle processes such as
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+  process two_jets_at_ilc = e1, E1 => q, Q
+  process w_pairs_at_lhc = q, Q => Wp, Wm  
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+where a sum over all allowed flavor combination is automatically included.
+For technical reasons, such flavor sums are possible only for massless
+particles. 
+
+Assignments of masses, widths and other parameters are actually in effect when
+a process is integrated, not when it is defined.  So, these assignments may
+come before or after the process definition, with no significant difference.
+However, since flavor summation requires masses to be zero, the assignments
+may be put before the alias definition which is used in the process.
+
+The muon, tau, and the heavier quarks are actually unstable.  However, the
+width is set zero because their decay is a macroscopic effect and, except for
+the muon, affected by hadron physics, so it is not described by \whizard.  (In
+the current \whizard\ setup, all decays occur at the production vertex.  A
+future version may describe hadronic physics and/or macroscopic particle
+propagation, and this restriction may be eventually removed.)
+
+
+
+
+\subsection{Options for processes}
+
+The \ttt{process} definition may contain an optional argument:
+\begin{quote}
+\begin{footnotesize}
+  \ttt{process \textit{process-id} = \textit{incoming-particles}} \verb|=>|
+  \ttt{\textit{outgoing-particles}} \ttt{\{\textit{options\ldots}\}}
+\end{footnotesize}
+\end{quote}
+The \textit{options} are a SINDARIN script that is executed in a context local
+to the \ttt{process} command.  The assignments it contains apply only to the
+process that is defined.
+
+If the option string contains a \ttt{model =} reassignment, the process is
+defined for that model, which can be different from the current model that
+applies to other processes.  The process will retain this association during
+integration and event generation.
+
+Another useful option is the setting
+\begin{quote}
+\begin{footnotesize}
+  \verb|$restrictions =| \ttt{\textit{string}}
+\end{footnotesize}
+\end{quote}
+This option allows to select particular classes of Feynman graphs for the
+process.  The \verb|$restrictions| string specifies propagators that the graph
+must contain.  Here is an example:
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+  process zh_invis = e1, E1 => n1:n2:n3, N1:N2:N3, H { $restrictions = "1+2 ~ Z" }
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+The complete process $e^-e^+ \to \nu\bar\nu H$, summed over all neutrino
+generations,  contains both $ZH$ pair production (Higgs-strahlung) and
+$W^+W^-\to H$ fusion.  The restrictions string selects the Higgs-strahlung
+graph where the initial electrons combine to a $Z$ boson.  Here, the particles
+in the process are consecutively numbered, starting with the initial
+particles.  An alternative for the same selection would be
+\verb|$restrictions = "3+4 ~ Z"|.  Restrictions can be combined using
+\verb|&&|, for instance
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+  $restrictions = "1+2 ~ Z && 3 + 4 ~ Z"
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+which is redundant here, however.
+
+The restriction keeps the full energy dependence in the intermediate
+propagator, so the Breit-Wigner shape can be observed in distributions.  This
+breaks gauge invariance, in particular if the intermediate state is off shell,
+so you should use the feature only if you know the implications.
+
+All options can also be set globally, i.e., outside the \ttt{process}
+definition.   In the case of restrictions this may not be very useful,
+however.
+
+
+\subsection{Compilation}
+
+Once processes have been set up, to make them available for integration they
+have to be compiled.  More precisely, the matrix-element generator \oMega\ is
+called to generate matrix element code, the compiler is called to transform
+this Fortran code into object files, and the linker is called to collect this
+in a dynamically loadable library.  Finally, this library is linked to the
+program.
+
+All this is done automatically when an \ttt{integrate}, \ttt{unstable}, or
+\ttt{simulate} command is encountered for the first time.  You may also force
+compilation explicitly by the command
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+  compile  
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+which performs all steps as listed above, including loading the generated
+library.
+
+The Fortran part of the compilation will be done using the Fortran compiler
+specified by the string variable
+\verb|$fc| and the compiler flags specified as \verb|$fcflags|.  The default
+settings are those that have been used for compiling \whizard\ itself during
+installation.  For library compatibility, you should stick to the compiler.
+The flags may be set differently.  They are applied in the compilation and
+loading steps, and they are processed by \ttt{libtool}, so
+\ttt{libtool}-specific flags can also be given.
+
+\whizard\ has some precautions against unnecessary repetitions.  Hence, when a
+\ttt{compile} command is executed (explicitly, or implicitly by the first
+integration), the program checks first whether the library is already loaded,
+and whether source code already exists for the requested processes.  If yes,
+this code is used and no calls to \oMega\ or to the compiler are issued.
+Otherwise, it will detect any modification to the process configuration and
+regenerate the matrix element or recompile accordingly.  Thus, a SINDARIN
+script can be executed repeatedly without rebuilding everything from scratch,
+and you can safely add more processes to a script in a subsequent run without
+having to worry about the processes that have already been treated.
+
+This default behavior can be changed.  By setting
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+  ?rebuild_library = true
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+code will be re-generated and re-compiled even if \whizard\ would think that
+this is unncessary.  The same effect is achieved by calling \whizard\ with a
+command-line switch,
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+  /home/user$ whizard --rebuild_library
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+There are further \ttt{rebuild} switches which are described below.  If
+everything is to be rebuilt, you can set a master switch \ttt{?rebuild} or the
+command line option \verb|--rebuild|.  The latter can be abbreviated as a short
+command-line option:
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+  /home/user$ whizard -r
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+Setting this switch is always a good idea when starting a new project, just in
+case some old files clutter the working directory.  When re-running the same
+script, possibly modified, the \verb|-r| switch should be omitted, so the
+existing files can be reused.
+
+
 
 \subsection{Process libraries}
 
-\subsection{Tayloring \whizard}
+Processes are collected in \emph{libraries}.  A script may use more than one
+library, although for most applications a single library will probably be
+sufficient.
+
+The default library is \ttt{processes}.  If you do not specify anything else,
+the processes you compile will be collected by a driver file
+\ttt{processes.f90} which is compiled together with the process code and
+combined as a libtool archive \ttt{processes.la}, which is dynamically linked
+to the running \whizard\ process.
+
+Once in a while, you work on several projects at once, and you didn't care
+about opening a new working directory for each.  If the \verb|-r| option is
+given, a new run will erase the existing library, which may contain processes
+needed for the other project.  You could omit \verb|-r|, so all processes will
+be collected in the same library (this does not hurt), but you may wish to
+cleanly separate the projects.  In that case, you should open a separate
+library for each project.
+
+Again, there are two possibilities.  You may start the script with the
+specification
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+  library = "my_lhc_proc"  
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+to open a library \verb|my_lhc_proc| in place of the default library.
+Repeating the command with different arguments, you may introduce several
+libraries in the script.  The active library is always the one specified
+last.  It is possible to issue this command locally, so a particular process
+goes into its own library.
+
+Alternatively, you may call \whizard\ with the option
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+  /home/user$ whizard --library=my_lhc_proc  
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+
+If several libraries are open simultaneously, the \ttt{compile} command will
+compile all libraries that the script has referenced so far.  If this is not
+intended, you may give the command an argument,
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+  compile ("my_lhc_proc", "my_other_proc")
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+to compile only a specific subset.
+
+The command
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+  show ("my_lhc_proc", "my_other_proc")
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+will display the contents of the libraries together with a code letter which
+indicates the status of the libraries and the processes within.
+
+You may generate and compile a process library, and make use of it in a
+different project.  It is not necessary to write \ttt{process} definitions for
+all processes you want to use, if they are already available in compiled
+form.  If process libraries \verb|my_lhc_proc| and \verb|my_other_proc| 
+exist in the working directory, you may simply say
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+  load ("my_lhc_proc", "my_other_proc")
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+to make them available for the current project.  Note that the last one in the
+argument list becomes the active library.  You may switch to another library
+via a \verb|library = ...| statement.
+
+
+\subsection{Stand-alone \whizard\ with precompiled processes}
+
+Once you have set up a process library, it is straightforward to make a
+special stand-alone \whizard\ executable which will have this library
+preloaded on startup.  This is a matter of convenience, and it is also useful
+if you need a statically linked executable for reasons of profiling etc.
+
+For this task, there is a variant of the \ttt{compile} command:
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+  compile as "my_whizard" ("my_lhc_proc", "my_other_proc")
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+which produces an executable \verb|my_whizard|.  You can omit the library
+argument if you simply want to include everything.  (Note that this command
+will \emph{not} load a library into the current process, it is intended for
+creating a separate program that will be started independently.)
+
+As an example, the script
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+  process proc1 = e1, E1 => e1, E1
+  process proc2 = e1, E1 => e2, E2
+  process proc3 = e1, E1 => e3, E3
+  compile as "whizard-leptons"
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+will make a new executable program \verb|whizard-leptons|.  This
+program behaves completely identical to vanilla \whizard, except for the fact
+that the processes \ttt{proc1}, \ttt{proc2}, and \ttt{proc3} are available
+without configuring them or loading any library.  
+
+% This feature is particularly useful when compiling with the \ttt{-static}
+% flag.  As long as the architecture is compatible, the resulting binary may be
+% run on a different computer where no \whizard\ libraries are present.  (The
+% program will still need to find its model files, however.)
+
 
 
 \section{Beams}
+\label{sec:beams}
+
+Before processes can be integrated and simulated, the program has to know
+about the collider properties.  They can be specified by the \ttt{beam}
+statement.
+
+In the command script, it is irrelevant whether a \ttt{beam} statement comes
+before or after process specification.  The \ttt{integrate} or \ttt{simulate}
+commands will use the \ttt{beam} statement that was issued last.
+
 
 \subsection{Beam setup}
 
+If the beams have no special properties, and the colliding particles are the
+incoming particles in the process themselves, there is no need for a
+\ttt{beam} statement at all.  You only \emph{must} specify the
+center-of-momentum energy of the collider by setting the value of $\sqrt{s}$,
+for instance
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+  sqrts = 14 TeV
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+The \ttt{beam} statement comes into play if
+\begin{itemize}
+\item
+  the beams have nontrivial structure, e.g., parton structure in hadron
+  collision or photon radiation in lepton collision, or
+\item
+  the beams have non-standard properties: polarization, asymmetry, crossing
+  angle. 
+\end{itemize}
+\emph{Note: some beam properties have not yet been implemented in \whizard 2.}
+
+Beam parameters can be specified either globally or as local options to the
+\ttt{beam} statement (in braces, located before any structure-function
+settings).  These two forms have the same effect on the beam properties:
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+  sqrts = 14 TeV   beams = p, p => lhapdf
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+  beams = p, p { sqrts = 14 TeV } => lhapdf
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+The value of \ttt{sqrts}, as well as any other beam parameters, will be
+memorized by the \ttt{beam} statement, so a modification of beam parameters
+after the statement has no effect on a process where the beams setup is used.
+
+The \ttt{beam} statement also applies to particle decay processes, where there
+is only a single beam.  Here, it is usually redundant because no structure
+functions are possible, and the energy is fixed to the decaying particles's
+mass.  However, it is needed for computing polarized decay, e.g.
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+  beams = Z { beam_polarization = longitudinal (1) }
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+where for a boson at rest, the polarization axis is defined to be the $z$
+axis.
+
+Beam polarization is described in detail below in Sec.~\ref{sec:polarization}.
+
+
 \subsection{LHAPDF}
+
+For incoming hadron beams, the \ttt{beam} statement specifies which structure
+functions are used.  The simplest example is the study of parton-parton
+scattering processes at a hadron-hadron collider such as LHC or Tevatron.  The
+LHAPDF structure function set is selected by a syntax similar to process
+setup, namely the example already shown above:
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+  beams = p, p => lhapdf
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+This selects a default LHAPDF structure-function set for both proton beams
+(currently, \ttt{cteq6ll.LHpdf}, member 0).  The structure function will apply
+for all quarks, antiquarks, and the gluon as far as supported by the
+particular LHAPDF set.  Choosing a different set is done by adding the
+filename as a local option to the \ttt{lhapdf} keyword:
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+  beams = p, p => lhapdf { $lhapdf_file = "MSTW2008lo68cl.LHgrid" }
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+Similarly, a member within the set is selected by the numeric variable
+\verb|lhapdf_member|.
+
+In some cases, different structure functions have to be chosen for the two
+beams.  For instance, we may look at $ep$ collisions:
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+  beams = "e-", p => lhapdf, none
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+Here, there is a list of two independent structure functions (each with its
+own option set, if applicable) which applies to the two beams.
+
+Another mixed case is $p\gamma$ collisions, where the photon is to be
+resolved as a hadron.  The simple assignment
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+  beams = p, gamma => lhapdf
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+will be understood as follows: \whizard\ selects the appropriate default
+structure functions, \ttt{cteq6ll.LHpdf} for the proton and
+\ttt{GSG960.LHgrid} for the photon.  The photon case has an additional
+integer-valued parameter \verb|lhapdf_photon_scheme|.  (There are also pion
+structure functions available.)  For modifying the default, you have to
+specify separate structure functions
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+  beams = p, gamma => lhapdf { ... }, lhapdf { ... }
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+Finally, the scattering of elementary photons on partons is described by
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+  beams = p, gamma => lhapdf { ... }, none
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+
+
 
 \subsection{ISR structure functions}
 
@@ -1967,22 +2594,630 @@ corresponding process.
 
 \subsection{Effective photon approximation}
 
+\section{Polarization}
+\label{sec:polarization}
+
+\subsection{Initial state polarization}
+
+WHIZARD supports multiple modes of polarizing the inital state fully
+or partially by assigning a nontrivial density matrix in helicity space.
+Initial state polarization requires a beam setup and is initialized by
+means of the \ttt{beam\_polarization} statement:
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+beam_polarization = polarization_constructor [, polarization_constructor]
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+This statement assigns the polarization(s) specified by the
+\ttt{polarization\_constructor}s to the incoming beam(s). There are seven
+different constructors available:
+%
+{
+
+\newcommand{\cssparse}[4]{%
+\begin{pmatrix}
+  #1     & 0      & \cdots & \cdots & #3     \\
+  0      & 0      & \ddots &        & 0      \\
+  \vdots & \ddots & \ddots & \ddots & \vdots \\
+  0      &        & \ddots & 0      & 0      \\
+  #4     & \cdots & \cdots & 0      & #2
+\end{pmatrix}%
+}
+%
+\begin{itemize}
+\item\ttt{none}:
+Unpolarized. This has the same effect as not specifying any
+polarization at all and is the only constructor available for scalars and
+fermions declared as left- or right-handed (like the neutrino). Density matrix:
+\[ \rho = \frac{1}{m}\mathbb{I} \]
+($m$: particle multiplicty).
+%
+\item\ttt{circular $\left(f\right)$}:
+$\left|f\right|$ of the
+particles are in the maximum / minimum helicity eigenstate, the remainder
+is unpolarized. The sign of $f$ determines the sign of the helicity
+eigenvalue. As only the maximal / minimal entries of the density matrix are
+populated, \ttt{circular} is useful mainly for spin $\frac{1}{2}$ and massless
+bosons of spin $>0$. Parameter range:
+\[ f \in \left[-1\;;\;1\right] \]
+Density matrix:
+\[ \rho = \diag\left(\frac{1+f}{2}\;,\;0\;,\;\dots\;,\;0\;,
+\frac{1-f}{2}\right) \]
+%
+\item\ttt{longitudinal $\left(f\right)$}:
+$\left|f\right|$ of the
+particles have longitudinal polarization, the remainder is unpolarized.
+Longitudinal polarization is (obviously) only available for massive bosons of
+spin $>0$. Parameter range:
+\[ f \in \left[0\;;\;1\right] \]
+Density matrix:
+\[ \rho = \diag\left(\frac{1-f}{m}\;,\;\dots\;,\;\frac{1-f}{m}\;,\;
+\frac{1+f \left(m - 1\right)}{m}\;,\;\frac{1-f}{m}\;,
+\;\dots\;,\;\frac{1-f}{m}\right)
+\]
+($m$: particle multiplicity)
+%
+\item\ttt{transverse $\left(f, \phi\right)$}:
+Polarization along an arbitrary direction
+in the $x-y$ plane, with $\phi=0$ being positive $x$ direction and
+$\phi=90^\circ$ positive $y$ direction. $\left|f\right|$ of the particles are
+polarized, the remainder is unpolarized. The sign of $f$ determines the sign of
+the eigenvalue, and flipping it therefore is equivalent to shifting $\phi$ by
+$180^\circ$. Note that, although transverse polarization
+yields a valid density matrix
+for all particles with multiplicity $>1$ (in which the only the highest and
+lowest helicity states are populated), it is meaningful only for
+spin $\frac{1}{2}$ particles and massless bosons of spin $>0$. Parameter
+range:
+\[ f \in \left[-1\;;\;1\right] \quad,\quad \phi \in \mathbb{R} \]
+Density matrix:
+\[ \rho =
+\cssparse{1}{1}
+   {\frac{f}{2}\,e^{-i\phi}} {\frac{f}{2}\,e^{i\phi}} \]
+(for antiparticles, the matrix is conjugated).
+%
+\item\ttt{axis $\left(f, \theta, \phi\right)$}:
+Polarization along an arbitrary axis in polar coordinates (polar axis in
+positive $z$ direction, polar angle $\theta$, azimuthal angle $\phi$).
+$\left|f\right|$ of the particles are polarized, the remainder is unpolarized.
+The sign of $f$ determines the sign of the eigenvalue.
+Note that, although axis polarization defines a valid density matrix for all
+particles with multiplicity $>1$, it is meaningful only for particles
+with spin $\frac{1}{2}$. Parameter range:
+\[ f \in \left[-1\;;\;1\right] \quad,\quad \theta \in \mathbb{R} \quad,\quad
+\phi \in \mathbb{R} \]
+Density matrix:
+\[ \rho = \frac{1}{2}\cdot
+\cssparse{1 - f\cos\theta}{1 + f\cos\theta}
+   {f\sin\theta\, e^{-i\phi}}{f\sin\theta\, e^{i\phi}}
+\]
+%
+\item\ttt{density\_matrix $\left(a, b\right)$}:
+Allows to define a $2\times2$ density matrix (or the maximum / minimum helicity
+entries of a $n\times n$ matrix) explicitly. Parameter range:
+\[ a \in \left[0\;;\;1\right] \quad,\quad
+b \in\left\{z\in\mathbb{C}\left.\vphantom{\frac{1}{2}}
+   \right|\left|z\right|\le \frac{1}{2}\right\} \]
+Density matrix:
+\[ \rho = \cssparse{a}{1-a}{b}{b^*} \]
+(note that the matrix is conjugated for antiparticles).
+%
+\item\ttt{diagonal\_density} $\left(h_1:f_1\;,\; \left[h_2:f_2\;,\;
+\dots\,,\,h_n:f_n\right]\right)$:
+This explicitely defines an arbitrary diagonal density matrix. The entries
+$\rho_{h_1,h_1}\,,\,\dots\,,\,\rho_{h_n,h_n}$
+(where the $h_i$ denotes the (doubled) helicity
+eigenvalues for bosons (fermions) ) are initialized
+with $f_1\,,\,\dots\,,\,f_n$, the
+remaining matrix elements are set to zero. The $h_i$ must be mutually different;
+the $f_i$ are required to be positive and are normalized if necessary.
+Parameter range:
+\[ h_i\in \mathbb{Z} \quad,\quad f_i \in \mathbb{R}_+ \]
+\end{itemize}
+}
+%
+In addition, the \ttt{beam\_polarization} statement can be used to deactivate
+beam polarization:
+%
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+beam_polarization = off
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+%
+
+The statement can be used both globally and locally; the order of the
+\ttt{beam\_polarization} and \ttt{beams} statements doesn't matter.
+Some examples are in order to eludicate its use together with the different
+constructors:
+%
+\begin{itemize}
+\item
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+beams = A, A {
+   beam_polarization = circular(1), transverse (1, 90 degree)
+}
+beams = u, ubar
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+The first beam statement declares the initial state to be composed of two
+incoming photons, where the first photon is right-handed, and the second photon
+has transverse polarization in $y$ direction. As \ttt{beam\_polarization} is
+used as a local option to \ttt{beams}, its effect does not carry over to the
+second \ttt{beams} statement which sets up an unpolarized $u$ / $\overline{u}$
+pair.
+%
+\item
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+beam_polarization = longitudinal (1)
+beams = "W+"
+beams = Z
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+This example sets up the decay of a longitudinal vector boson. As the statement is
+used globally, it affects both \ttt{beams} definitions with the first \ttt{beams}
+statement defining a longitudinal $W^+$, and the second one defining a
+longitudinal $Z$.
+%
+\item
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+beams = u, ubar
+integrate (uuzz) {
+   beam_polarization =
+      diagonal_density (-1:1),
+      density_matrix (0.25, 0.2 + exp (90 degree * I))
+}
+integrate (uuzz)
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+The first integrate uses a polarized initial state with the $u$ being in a
+purely left-handed state and the $\overline{u}$ being assigned the explicit
+density matrix
+{\renewcommand{\arraystretch}{1.5}
+\[ \rho_{\overline{u}} = \begin{pmatrix}
+\frac{1}{4} & \frac{1}{5}\;e^{\frac{\pi}{2}i} \\
+\frac{1}{5}\;e^{-\frac{\pi}{2}i} & \frac{3}{4}
+\end{pmatrix} \]
+}
+(note that the sign of the phase is flipped as the $\overline{u}$ is an
+antiparticle). As \ttt{beam\_polarization} is used as a
+local argument to \ttt{integrate}, the second \ttt{integrate} is not afflicted
+and calculates the integral for the unpolarized process.
+%
+\item
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+beam_polarization = off
+beams = u, ubar
+scan int hel1 = (-1, 1) {
+   scan int hel2 = (-1, 1) {
+      beam_polarization = circular (hel1), circular (hel2)
+      integrate (uuzz)
+   }
+}
+integrate (uuzz)
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+This example loops over the different quark helicity combinations and calculates
+the respective integrals. The \ttt{beam\_polarization} statement is confined
+to the loop and, therefore, the last \ttt{integrate} calculates the unpolarized
+integral
+\end{itemize}
+%
+
+Although beam polarization should be straightforward to use, some pitfalls exist
+for the unwary:
+\begin{itemize}
+\item Once \ttt{beam\_polarization} is set globally, it persists and is applied
+every time \ttt{beams} is executed. In particular, this means that code like
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+beam_polarization = axis (0.5, 45 degree, 45 degree), none
+beams = "W+", "W-"
+beams = Z
+beam_polarization = transverse (1)
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+will throw an error, event though the beam setup is consistent in the end.
+In order to avoid this, beam polarization must be explicitly disabled between
+the two \ttt{beams} statements:
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+beam_polarization = axis (0.5, 45 degree, 45 degree), none
+beams = "W+", "W-"
+beam_polarization = off
+beams = Z
+beam_polarization = transverse (1)
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+This kind of trap can be avoided be using \ttt{beam\_polarization} only
+locally.
+%
+\item On-the-fly integrations executed by \ttt{simulate}
+use the beam
+setup found at the point of execution. This implies that any polarization
+settings you have previously done affect the result of the integration.
+%
+\item The \ttt{unstable} command also requires integrals of the selected decay
+  processes, and will compute them on-the-fly if they are unavailable.  Here,
+  a polarized integral is not meaningful at all.  Therefore, this command
+  ignores the current \ttt{beam} setting and issues a warning if a previous
+  polarized integral is available; this will be discarded.
+\end{itemize}
+
+\subsection{Final state polarization}
+
+Final state polarization is available in WHIZARD in the sense that the
+polarization of final state particles can be retained when generating simulated
+events. In order for the polarization of a particle to be retained, it must be
+declared as polarized via the \ttt{polarized} statement
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+polarized particle [, particle, ...]
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+The effect of \ttt{polarized} can be reversed with the \ttt{unpolarized}
+statement which has the same syntax. For example,
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+polarized "W+", "W-", Z
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+will cause the polarization of all final state $W$ and $Z$ bosons to be 
+retained, while
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+unpolarized "W+", "W-", Z
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+will reverse the effect and cause the polarization to be summed over again. Note
+that \ttt{polarized} and \ttt{unpolarized} are global statements which cannot be
+used locally as command arguments and if you use them e.g. in a loop, the
+effects will persist beyond the loop body. Also, a particle can't be
+\ttt{polarized} and \ttt{unstable} at the same time.
+
+After toggling the polarization flag, the generation of polarized events can be
+requested by using the \ttt{?polarized\_events} option of the \ttt{simulate}
+command, e.g.
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+simulate (eeww) {?polarized_events = true}
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+When \ttt{simulate} is run in this mode, helicity information for final state
+particles that have been toggled as \ttt{polarized} is written to the event
+file(s) (provided that polarization is supported by the select event file
+format(s) ) and can also be accessed in the analysis by means of the \ttt{Hel}
+observable. For example, an analysis defintion like
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+analysis =
+  if (all Hel == -1 ["W+"] and all Hel == -1 ["W-"] ) then
+    record cta_nn (eval cos (Theta) ["W+"]) endif;
+  if (all Hel == -1 ["W+"] and all Hel ==  0 ["W-"] )
+    then record cta_nl (eval cos (Theta) ["W+"]) endif
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+can be used to histogram the angular distribution for the production of
+polarized $W$ pairs (obviously, the example would have to extended to cover all
+possible helicity combinations). Note, however, that helicity information is not
+available in the integration step; therefore, it is not possible to use
+\ttt{Hel} as a cut observable.
+
+While final state polarization is straightforward to use, there is a caveat when
+used in combination with flavor products. If a particle in a flavor product is
+defined as \ttt{polarized}, then all particles ``originating'' from the product will
+act as if they had been declared as \ttt{polarized} --- their polarization will
+be recorded in the generated events. E.g., the example
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+process test = u:d, ubar:dbar => d:u, dbar:ubar, u, ubar
+
+! insert compilation, cuts and integration here
+
+polarized d, dbar
+simulate (test) {?polarized_events = true}
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+will generate events including helicity information for all final state $d$ and
+$\overline{d}$ quarks, but only for part of the final state $u$ and $\overline{u}$
+quarks. In this case, if you had wanted to keep the helicity information also
+for all $u$ and $\overline{u}$, you would have had to explicitely include them
+into the \ttt{polarized} statement.
 
 
 \section{Cross sections}
 
+Integrating matrix elements over phase space is the core of \whizard's
+activities.  For any process where we want the cross section, distributions,
+or event samples, the cross section has to be determined first.  This is done
+by a doubly adaptive multi-channel Monte-Carlo integration.  The integration,
+in turn, requires a \emph{phase-space setup}, i.e., a collection of
+phase-space \emph{channels}, which are mappings of the unit hypercube onto the
+complete space of multi-particle kinematics.  This phase-space information is
+encoded in the file \emph{xxx}\ttt{.phs}, where \emph{xxx} is the process tag.
+\whizard\ generates the phase-space file on the fly and can reuse it in later
+integrations.
+
+For each phase-space channel, the unit hypercube is binned in each dimension.
+The bin boundaries are allowed to move during a sequence of iterations, each
+with a fixed number of sampled phase-space points, so they adapt to the actual
+phase-space density as far as possible.  In addition to this \emph{intrinsic}
+adaptation, the relative channel weights are also allowed to vary.
+
+All these steps are done automatically when the \ttt{integrate} command is
+executed.  At the end of the iterative adaptation procedure, the program has
+obtained an estimate for the integral of the matrix element over phase space,
+together with an error estimate, and a set of integration \emph{grids} which
+contains all information on channel weights and bin boundaries.  This
+information is stored in a file \emph{xxx}\ttt{.vg}, where \emph{xxx} is the
+process tag, and is used for event generation by the \ttt{simulate} command.
+
+
 \subsection{Integration}
+
+Since everything can be handled automatically using default parameters, it
+often suffices to write the command
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+  integrate (proc1)
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+for integrating the process with name tag \ttt{proc1}, and similarly
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+  integrate (proc1, proc2, proc3)
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+for integrating several processes consecutively.  Options to the integrate
+command are specified, if not globally, by a local option string
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+  integrate (proc1, proc2, proc3) { mH = 200 GeV }
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+(It is possible to place a \ttt{beams} statement inside the option string, if
+desired.)
+
+If the process is configured but not compiled, compilation will be done
+automatically.   If it is not available at all, integration will fail.
+
+Integration uses the \vamp\ algorithm and code.  It is done in several
+\emph{passes} (usually two), and each pass consists of several
+\emph{iterations}.  An iteration consists of a definite number of \emph{calls}
+to the matrix-element function.
+
+For each iteration, \whizard\ computes an estimate of the integral and and
+estimate of the error, based on the binned sums of matrix element values and
+squares.  It also computes an estimate of the rejection efficiency for
+generating unweighted events, i.e., the ratio of the average sampling function
+value over the maximum value of this function.
+
+After each iteration, both the integration grids (the binnings) and the
+relative weights of the integration channels can be adapted to
+minimize the variance estimate of the integral.  After each pass of several
+iterations, \whizard\ computes an average of the iterations within the pass,
+the corresponding error estimate, and a $\chi^2$ value.  The integral, error,
+efficiency and $\chi^2$ value computed for the most recent integration pass,
+together with the most recent integration grid, are used for any subsequent
+calculation that involves this process, in particular for event generation.
+
+In the default setup, during the first pass(es) both grid binnings and channel
+weights are adapted.  In the final (usually second) pass, only binnings are
+further adapted.  Roughly speaking, the final pass is the actual calculation,
+while the previous pass(es) are used for ``warming up'' the integration grids,
+without using the numerical results.
+
+Here is an example of the integration output, which illustrates these
+properties.  The SINDARIN script describes the process $e^+e^-\to q\bar q
+q\bar q$ with $q$ being any light quark, i.e., $W^+W^-$ and $ZZ$ production
+and hadronic decay together will any irreducible background.  We cut on $p_T$
+and energy of jets, and on the invariant mass of jet pairs.  Here is the
+script:
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+alias q = d:u:s:c
+alias Q = D:U:S:C
+process proc_4f = e1, E1 => q, Q, q, Q
+
+ms = 0  mc = 0
+sqrts = 500 GeV
+cuts = all (Pt > 10 GeV and E > 10 GeV) [q:Q] 
+   and all M > 10 GeV [q:Q, q:Q]
+
+integrate (proc_4f)
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+After the run is finished, the integration output looks like
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+| Loading process library 'processes'
+| Process 'proc_4f': updating configuration
+| Generating phase space configuration ...
+| ... done.
+| ... found 114 phase space channels, collected in 17 groves.
+| Phase space: found 668 equivalences between channels.
+| Wrote phase-space configuration file 'proc_4f.phs'.
+| iterations = 10:10000, 5:20000
+| Applying user-defined cuts.
+| Creating VAMP integration grids:
+| Using phase-space channel equivalences.
+| 10000 calls, 114 channels, 8 dimensions, 8 bins, stratified = T
+| Integrating process 'proc_4f':
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1      10000  2.8081256E+03  3.57E+02   12.72   12.72*   4.11
+   2      10000  3.0181098E+03  1.92E+02    6.36    6.36*   3.50
+   3      10000  2.9288866E+03  8.53E+01    2.91    2.91*   7.55
+   4      10000  3.0906462E+03  6.75E+01    2.18    2.18*   9.63
+   5      10000  2.9092659E+03  5.60E+01    1.93    1.93*  10.82
+   6      10000  3.0194199E+03  5.35E+01    1.77    1.77*  10.27
+   7      10000  2.9812271E+03  5.31E+01    1.78    1.78   10.63
+   8      10000  2.9072033E+03  5.02E+01    1.73    1.73*  13.28
+   9      10000  2.9534310E+03  5.05E+01    1.71    1.71*  11.72
+  10      10000  2.8998730E+03  4.89E+01    1.69    1.69*  14.10
+|-----------------------------------------------------------------------------|
+  10     100000  2.9555210E+03  1.95E+01    0.66    2.09   14.10    0.99  10
+|-----------------------------------------------------------------------------|
+  11      20000  2.9816184E+03  3.45E+01    1.16    1.63*  11.84
+  12      20000  2.9773291E+03  2.41E+01    0.81    1.15*  10.30
+  13      20000  2.9701919E+03  1.96E+01    0.66    0.93*   9.60
+  14      20000  2.9785382E+03  1.70E+01    0.57    0.81*   9.50
+  15      20000  2.9821841E+03  1.52E+01    0.51    0.72*   9.05
+|-----------------------------------------------------------------------------|
+  15     100000  2.9781249E+03  8.79E+00    0.30    0.93    9.05    0.06   5
+|-----------------------------------------------------------------------------|
+|=============================================================================|
+  15     100000  2.9781249E+03  8.79E+00    0.30    0.93    9.05    0.06   5
+|=============================================================================|
+| Process 'proc_4f':
+|    time estimate for generating 10000 unweighted events: 3m:13s
+|-----------------------------------------------------------------------------|
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+Each row shows the index of a single iteration, the number of matrix element
+calls for that iteration, and the integral and error estimate.  The error
+should be viewed as the $1\sigma$ uncertainty, computed on a statistical
+basis.  The next two columns display the error in percent, and the
+\emph{accuracy} which is the same error normalized by $\sqrt{n_{\rm calls}}$.
+The accuracy value has the property that it is independent of $n_{\rm calls}$,
+it describes the quality of adaptation of the current grids.  Good-quality
+grids have a number of order one, the smaller the better.  The next column is
+the estimate for the rejection efficiency in percent.  Here, the value should
+be as high as possible, with $100\,\%$ being the possible maximum.
+
+In the example, the grids are adapted over ten iterations, after which the
+accuracy and efficiency have saturated at about $1.7$ and $14\,\%$,
+respectively.  The asterisk in the accuracy column marks those iterations
+where an improvement over the previous iteration is seen.  The average over
+these iterations exhibits an accuracy of $2.1$, corresponding to $0.7\,\%$
+error, and a $\chi^2$ value of $0.98$, which is just right: apparently,
+phase-space for this process and set of cuts is well-behaved.  The subsequent
+five iterations are used for obtaining the final integral, which has an
+accuracy below one (error $0.3\,\%$), while the efficiency settles at about
+$10\,\%$.  In this example, the final $\chi^2$ value happens to be quite
+small, i.e., the individual results are closer together than the error
+estimates would suggest.  One should nevertheless not scale down the error,
+but rather scale it up if the $\chi^2$ result happens to be much larger than
+unity: this often indicates sub-optimally adapted grids, which insufficiently
+map some corner of phase space.
+
+One should note that all values are subject to statistical fluctuations, since
+the number of calls within each iterations is finite.  Typically, fluctuations
+in the efficiency estimate are considerably larger than fluctuations in the
+error/accuracy estimate.  Two subsequent runs of the same script should yield
+statistically independent results which may differ in all quantities, within
+the error estimates, since the seed of the random-number generator will differ
+by default.
+
+It is possible to get exactly reproducible results by setting the
+random-number seed explicitly, e.g.,
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+  seed = 12345  
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+at any point in the SINDARIN script.  \ttt{seed} is a predefined intrinsic
+variable.  The value can be any 32bit integer.  Two runs with different seeds
+can be safely taken as statistically independent.
+
+The concluding line with the time estimate applies to a subsequent simulation
+step with unweighted events, which is not actually requested in the current
+example.  It is based on the timing and efficiency estimate of the most recent
+iteration.
+
+
+\subsection{Controlling iterations}
+
+\whizard\ has some predefined numbers of iterations and calls for the first
+and second integration pass, respectively, which depend on the number of
+initial and final-state particles.  They are guesses for values that yield
+good-quality grids and error values in standard situations, where no
+exceptionally strong peaks or loose cuts are present in the integrand.
+Actually, the large number of warmup iterations in the previous example
+indicates some safety margin in that respect.
+
+It is possible, and often advisable, to adjust the iteration and call numbers
+to the particular situation.  One may reduce the default numbers to short-cut
+the integration, if either less accuracy is needed, or CPU time is to be
+saved.  Otherwise, if convergence is bad, the number of iterations or calls
+might be increased.
+
+The manual setting is done by the \ttt{iterations} command:
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+  iterations = 5:50000, 3:100000  
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+This is a comma-separated list.
+
+
+\subsection{Phase space}
+
+\ttt{integrate} will look for existing phase-space files for the processes to
+be integrated.  If it doesn't find them, it will create them.
+
 
 \subsection{Cuts}
 
 \subsection{Weight and scale}
 
 
+\clearpage
 \section{Events}
 
 \subsection{Simulation}
 
+\subsection{Decays}
+
 \subsection{Analysis}
+
 
 
 
@@ -3489,7 +4724,7 @@ Optional logical argument for the \ttt{integrate} command that demands
 \whizard\ to generate a PDF or postscript output showing the
 classification of the found phase space channels according to their
 properties: \ttt{integrate (foo) { iterations=3:10000
-    ?vis\_channels}}.
+    ?vis\_channels = true}}. The default is \ttt{false}.
 (cf. also \ttt{integrate})
 %%%%%
 \item
@@ -3506,7 +4741,7 @@ variable.
 \ttt{write\_slha} \newline
 Demands WHIZARD to write out a file in the SUSY Les Houches accord
 (SLHA). 
-(cf. also \ttt{read\_slha})
+(Cf. also \ttt{read\_slha})
 %%%%%
 \item
 \ttt{\$xlabel} \newline

@@ -1,4 +1,4 @@
-! WHIZARD 2.0.1 Sun Apr 25 2010
+! WHIZARD 2.0.2 Tue May 18 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -2889,7 +2889,7 @@ contains
     if (associated (var)) then
        allocate (en)
        select case (char(key))
-       case ("n_calls")
+       case ("num_id", "n_calls")
           call eval_node_init_int_ptr &
                (en, var_name, var_entry_get_ival_ptr (var), &
                var_entry_get_known_ptr (var))
@@ -4893,41 +4893,58 @@ contains
     type(eval_node_t), pointer :: en_branch, en_var
     type(sprintf_arg_t), dimension(:), allocatable :: arg
     type(string_t) :: fmt
-    integer :: i
+    logical :: autoformat
+    integer :: i, j, sprintf_argc
+    autoformat = .not. associated (en_fmt)
+    if (autoformat) fmt = ""
     if (present (en_arg)) then
-       allocate (arg (n_args))
+       sprintf_argc = 0
+       en_branch => en_arg
+       do i = 1, n_args
+          select case (en_branch%arg1%result_type)
+             case (V_CMPLX); sprintf_argc = sprintf_argc + 2
+             case default  ; sprintf_argc = sprintf_argc + 1
+          end select
+          en_branch => en_branch%arg2
+       end do
+       allocate (arg (sprintf_argc))
+       j = 1
        en_branch => en_arg
        do i = 1, n_args
           en_var => en_branch%arg1
           select case (en_var%result_type)
-          case (V_LOG);  call sprintf_arg_init (arg(i), en_var%lval)
-          case (V_INT);  call sprintf_arg_init (arg(i), en_var%ival)
-          case (V_REAL); call sprintf_arg_init (arg(i), en_var%rval)
-          case (V_STR);  call sprintf_arg_init (arg(i), en_var%sval)
+          case (V_LOG)
+             call sprintf_arg_init (arg(j), en_var%lval)
+             if (autoformat) fmt = fmt // "%s "
+          case (V_INT);
+             call sprintf_arg_init (arg(j), en_var%ival)
+             if (autoformat) fmt = fmt // "%i "
+          case (V_REAL);
+             call sprintf_arg_init (arg(j), en_var%rval)
+             if (autoformat) fmt = fmt // "%g "
+          case (V_STR)
+             call sprintf_arg_init (arg(j), en_var%sval)
+             if (autoformat) fmt = fmt // "%s "
+          case (V_CMPLX)
+             call sprintf_arg_init (arg(j), real (en_var%cval, default))
+             j = j + 1
+             call sprintf_arg_init (arg(j), aimag (en_var%cval))
+             if (autoformat) fmt = fmt // "(%g + %g * I) "
           case default
              call eval_node_write (en_var)
              call msg_error ("sprintf is implemented " &
                   // "for logical, integer, real, and string values only")
           end select
+          j = j + 1
           en_branch => en_branch%arg2
        end do
     else
        allocate (arg(0))
     end if
-    if (associated (en_fmt)) then
-       string = sprintf (en_fmt%sval, arg)
+    if (autoformat) then
+       string = sprintf (trim (fmt), arg)
     else
-       fmt = ""
-       do i = 1, n_args
-          if (i > 1)  fmt = fmt // " "
-          select case (en_var%result_type)
-          case (V_LOG);  fmt = fmt // "%s"
-          case (V_INT);  fmt = fmt // "%i"
-          case (V_REAL); fmt = fmt // "%g"
-          case (V_STR);  fmt = fmt // "%s"
-          end select
-       end do
-       string = sprintf (fmt, arg)
+       string = sprintf (en_fmt%sval, arg)
     end if
   end subroutine evaluate_sprintf
 
@@ -5372,7 +5389,8 @@ contains
     call ifile_append (ifile, "IDE variable")
     call ifile_append (ifile, "SEQ result = result_key result_arg")
     call ifile_append (ifile, "ALT result_key = " // &
-         "n_calls | integral | error | accuracy | efficiency | chi2")
+         "num_id | n_calls | integral | error | accuracy | efficiency | chi2")
+    call ifile_append (ifile, "KEY num_id")
     call ifile_append (ifile, "KEY n_calls")
     call ifile_append (ifile, "KEY integral")
     call ifile_append (ifile, "KEY error")
@@ -5816,66 +5834,61 @@ contains
   end subroutine eval_tree_init_stream
 
   subroutine eval_tree_init_expr &
-      (eval_tree, parse_node, var_list, prt_list, event_weight, event_sqme)
+      (eval_tree, parse_node, var_list, prt_list, event_vars)
     type(eval_tree_t), intent(out), target :: eval_tree
     type(parse_node_t), intent(in), target :: parse_node
     type(var_list_t), intent(in), target :: var_list
     type(prt_list_t), intent(in), optional, target :: prt_list
-    real(default), intent(in), optional, target :: event_weight, event_sqme
-    call eval_tree_set_var_list (eval_tree, var_list, prt_list, &
-         event_weight, event_sqme)
+    type(event_vars_t), intent(in), optional, target :: event_vars
+    call eval_tree_set_var_list (eval_tree, var_list, prt_list, event_vars)
     call eval_node_compile_expr &
          (eval_tree%root, parse_node, eval_tree%var_list)
   end subroutine eval_tree_init_expr
     
   subroutine eval_tree_init_lexpr &
-      (eval_tree, parse_node, var_list, prt_list, event_weight, event_sqme)
+      (eval_tree, parse_node, var_list, prt_list, event_vars)
     type(eval_tree_t), intent(out), target :: eval_tree
     type(parse_node_t), intent(in), target :: parse_node
     type(var_list_t), intent(in), target :: var_list
     type(prt_list_t), intent(in), optional, target :: prt_list
-    real(default), intent(in), optional, target :: event_weight, event_sqme
-    call eval_tree_set_var_list (eval_tree, var_list, prt_list, &
-         event_weight, event_sqme)
+    type(event_vars_t), intent(in), optional, target :: event_vars
+    call eval_tree_set_var_list (eval_tree, var_list, prt_list, event_vars)
     call eval_node_compile_lexpr &
          (eval_tree%root, parse_node, eval_tree%var_list)
   end subroutine eval_tree_init_lexpr
 
   subroutine eval_tree_init_pexpr &
-      (eval_tree, parse_node, var_list, prt_list, event_weight, event_sqme)
+      (eval_tree, parse_node, var_list, prt_list, event_vars)
     type(eval_tree_t), intent(out), target :: eval_tree
     type(parse_node_t), intent(in), target :: parse_node
     type(var_list_t), intent(in), target :: var_list
     type(prt_list_t), intent(in), optional, target :: prt_list
-    real(default), intent(in), optional, target :: event_weight, event_sqme
-    call eval_tree_set_var_list (eval_tree, var_list, prt_list, &
-         event_weight, event_sqme)
+    type(event_vars_t), intent(in), optional, target :: event_vars
+    call eval_tree_set_var_list (eval_tree, var_list, prt_list, event_vars)
     call eval_node_compile_pexpr &
          (eval_tree%root, parse_node, eval_tree%var_list)
   end subroutine eval_tree_init_pexpr
 
   subroutine eval_tree_init_cexpr &
-      (eval_tree, parse_node, var_list, prt_list, event_weight, event_sqme)
+      (eval_tree, parse_node, var_list, prt_list, event_vars)
     type(eval_tree_t), intent(out), target :: eval_tree
     type(parse_node_t), intent(in), target :: parse_node
     type(var_list_t), intent(in), target :: var_list
     type(prt_list_t), intent(in), optional, target :: prt_list
-    real(default), intent(in), optional, target :: event_weight, event_sqme
-    call eval_tree_set_var_list (eval_tree, var_list, prt_list, &
-         event_weight, event_sqme)
+    type(event_vars_t), intent(in), optional, target :: event_vars
+    call eval_tree_set_var_list (eval_tree, var_list, prt_list, event_vars)
     call eval_node_compile_cexpr &
          (eval_tree%root, parse_node, eval_tree%var_list)
   end subroutine eval_tree_init_cexpr
 
   subroutine eval_tree_init_sexpr &
-      (eval_tree, parse_node, var_list, prt_list, event_weight, event_sqme)
+      (eval_tree, parse_node, var_list, prt_list, event_vars)
     type(eval_tree_t), intent(out), target :: eval_tree
     type(parse_node_t), intent(in), target :: parse_node
     type(var_list_t), intent(in), target :: var_list
     type(prt_list_t), intent(in), optional, target :: prt_list
-    real(default), intent(in), optional, target :: event_weight, event_sqme
-    call eval_tree_set_var_list (eval_tree, var_list, prt_list, &
-         event_weight, event_sqme)
+    type(event_vars_t), intent(in), optional, target :: event_vars
+    call eval_tree_set_var_list (eval_tree, var_list, prt_list, event_vars)
     call eval_node_compile_sexpr &
          (eval_tree%root, parse_node, eval_tree%var_list)
   end subroutine eval_tree_init_sexpr
@@ -5887,22 +5900,18 @@ contains
   end subroutine eval_tree_init_numeric_value
 
   subroutine eval_tree_set_var_list &
-      (eval_tree, var_list, prt_list, event_weight, event_sqme)
+      (eval_tree, var_list, prt_list, event_vars)
     type(eval_tree_t), intent(inout), target :: eval_tree
     type(var_list_t), intent(in), target :: var_list
     type(prt_list_t), intent(in), optional, target :: prt_list
-    real(default), intent(in), optional, target :: event_weight, event_sqme
+    type(event_vars_t), intent(in), optional, target :: event_vars
     logical, save, target :: known = .true.
     call var_list_link (eval_tree%var_list, var_list)
     if (present (prt_list))  call var_list_append_prt_list_ptr &
          (eval_tree%var_list, var_str ("@evt"), prt_list, known, &
          intrinsic=.true.)
-    if (present (event_weight))  call var_list_append_real_ptr &
-         (eval_tree%var_list, var_str ("event_weight"), event_weight, known, &
-          intrinsic=.true.)
-    if (present (event_sqme))  call var_list_append_real_ptr &
-         (eval_tree%var_list, var_str ("event_sqme"), event_sqme, known, &
-          intrinsic=.true.)
+    if (present (event_vars)) &
+         call var_list_append_event_vars (eval_tree%var_list, event_vars)
   end subroutine eval_tree_set_var_list
 
   subroutine eval_tree_final (eval_tree)

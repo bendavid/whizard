@@ -24,6 +24,7 @@ Scalar CHARACTER string supplied for dummy CHARACTER array
 ABSTRACT interface
 IMPORT statement
 VALUE attribute
+VOLATILE attribute
 POINTER attribute for INTENT(IN) dummy argument
 
 

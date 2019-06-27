@@ -1,4 +1,4 @@
-! WHIZARD 2.0.1 Sun Apr 25 2010
+! WHIZARD 2.0.2 Tue May 18 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -33,7 +33,7 @@ use iso_fortran_env, only: iostat_end, iostat_eor !NODEP!
 
   integer, parameter, public :: VERSION_STRLEN = 255
   character(len=VERSION_STRLEN), parameter, public :: &
-       & VERSION_STRING = "WHIZARD version 2.0.1 (Sun Apr 25 2010)"
+       & VERSION_STRING = "WHIZARD version 2.0.2 (Tue May 18 2010)"
   integer, parameter, public :: MIN_UNIT = 11, MAX_UNIT = 99
   integer, parameter, public :: FILENAME_LEN = 256
   character(len=*), parameter, public :: DEFAULT_FILENAME = "whizard"
@@ -63,7 +63,9 @@ use iso_fortran_env, only: iostat_end, iostat_eor !NODEP!
   real, parameter, public :: CASCADE_SET_FILL_RATIO = 0.1
   integer, parameter, public :: MAX_WARN_RESONANCE = 50
   integer, parameter, public :: MAX_TRIES_FOR_DECAY_CHAIN = 100000
-  integer, parameter, public :: RAW_EVENT_FILE_VERSION = 1
+  character(*), parameter, public :: &
+       RAW_EVENT_FILE_ID_STRING = "WHIZARD raw event file"
+  integer, parameter, public :: RAW_EVENT_FILE_VERSION = 2
   integer, parameter, public :: ITERATIONS_DEFAULT_LIST_SIZE = 7
   integer, parameter, public :: CMDLINE_ARG_LEN = 1000
 

@@ -1,4 +1,4 @@
-! WHIZARD 2.0.1 Sun Apr 25 2010
+! WHIZARD 2.0.2 Tue May 18 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -340,11 +340,15 @@ contains
   function decay_store_get_md5sum () result (md5sum_decays)
     character(32) :: md5sum_decays
     integer :: u
-    u = free_unit ()
-    open (u, status="scratch")
-    call decay_store_write (u)
-    rewind (u)
-    md5sum_decays = md5sum (u)
+    if (associated (store%first)) then
+       u = free_unit ()
+       open (u, status="scratch")
+       call decay_store_write (u)
+       rewind (u)
+       md5sum_decays = md5sum (u)
+    else
+       md5sum_decays = ""
+    end if
   end function decay_store_get_md5sum
 
   subroutine decay_store_append_decay &

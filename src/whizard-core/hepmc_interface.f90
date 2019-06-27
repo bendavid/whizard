@@ -1,4 +1,4 @@
-! WHIZARD 2.0.1 Sun Apr 25 2010
+! WHIZARD 2.0.2 Tue May 18 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -94,6 +94,19 @@ module hepmc_interface
   public :: hepmc_event_init
   public :: hepmc_event_final
   public :: hepmc_event_print
+  public :: hepmc_event_get_event_index
+  public :: hepmc_event_set_process_id
+  public :: hepmc_event_get_process_id
+  public :: hepmc_event_set_scale
+  public :: hepmc_event_get_scale
+  public :: hepmc_event_set_alpha_qcd
+  public :: hepmc_event_get_alpha_qcd
+  public :: hepmc_event_set_alpha_qed
+  public :: hepmc_event_get_alpha_qed
+  public :: hepmc_event_clear_weights
+  public :: hepmc_event_add_weight
+  public :: hepmc_event_get_weights_size
+  public :: hepmc_event_get_weight
   public :: hepmc_event_add_vertex
   public :: hepmc_event_set_signal_process_vertex
   public :: hepmc_event_particle_iterator_t
@@ -476,6 +489,90 @@ module hepmc_interface
      end subroutine gen_event_print
   end interface
   interface
+     integer(c_int) function gen_event_event_number (evt_obj) bind(C)
+       use iso_c_binding !NODEP!
+       type(c_ptr), value :: evt_obj
+     end function gen_event_event_number
+  end interface
+  interface
+     subroutine gen_event_set_signal_process_id (evt_obj, proc_id) bind(C)
+       import
+       type(c_ptr), value :: evt_obj
+       integer(c_int), value :: proc_id
+     end subroutine gen_event_set_signal_process_id
+  end interface
+  interface
+     integer(c_int) function gen_event_signal_process_id (evt_obj) bind(C)
+       import
+       type(c_ptr), value :: evt_obj
+     end function gen_event_signal_process_id
+  end interface
+  interface
+     subroutine gen_event_set_event_scale (evt_obj, scale) bind(C)
+       import
+       type(c_ptr), value :: evt_obj
+       real(c_double), value :: scale
+     end subroutine gen_event_set_event_scale
+  end interface
+  interface
+     real(c_double) function gen_event_event_scale (evt_obj) bind(C)
+       import
+       type(c_ptr), value :: evt_obj
+     end function gen_event_event_scale
+  end interface
+  interface
+     subroutine gen_event_set_alpha_qcd (evt_obj, a) bind(C)
+       import
+       type(c_ptr), value :: evt_obj
+       real(c_double), value :: a
+     end subroutine gen_event_set_alpha_qcd
+  end interface
+  interface
+     real(c_double) function gen_event_alpha_qcd (evt_obj) bind(C)
+       import
+       type(c_ptr), value :: evt_obj
+     end function gen_event_alpha_qcd
+  end interface
+  interface
+     subroutine gen_event_set_alpha_qed (evt_obj, a) bind(C)
+       import
+       type(c_ptr), value :: evt_obj
+       real(c_double), value :: a
+     end subroutine gen_event_set_alpha_qed
+  end interface
+  interface
+     real(c_double) function gen_event_alpha_qed (evt_obj) bind(C)
+       import
+       type(c_ptr), value :: evt_obj
+     end function gen_event_alpha_qed
+  end interface
+  interface
+     subroutine gen_event_clear_weights (evt_obj) bind(C)
+       use iso_c_binding !NODEP!
+       type(c_ptr), value :: evt_obj
+     end subroutine gen_event_clear_weights
+  end interface
+  interface
+     subroutine gen_event_add_weight (evt_obj, w) bind(C)
+       use iso_c_binding !NODEP!
+       type(c_ptr), value :: evt_obj
+       real(c_double), value :: w
+     end subroutine gen_event_add_weight
+  end interface
+  interface
+     integer(c_int) function gen_event_weights_size (evt_obj) bind(C)
+       use iso_c_binding !NODEP!
+       type(c_ptr), value :: evt_obj
+     end function gen_event_weights_size
+  end interface
+  interface
+     real(c_double) function gen_event_weight (evt_obj, i) bind(C)
+       use iso_c_binding !NODEP!
+       type(c_ptr), value :: evt_obj
+       integer(c_int), value :: i
+     end function gen_event_weight
+  end interface
+  interface
      subroutine gen_event_add_vertex (evt_obj, v_obj) bind(C)
        import
        type(c_ptr), value :: evt_obj
@@ -552,10 +649,10 @@ module hepmc_interface
      end subroutine io_gen_event_write_event
   end interface
   interface
-     subroutine io_gen_event_read_event (io_obj, evt_obj) bind(C)
+     logical(c_bool) function io_gen_event_read_event (io_obj, evt_obj) bind(C)
        import
        type(c_ptr), value :: io_obj, evt_obj
-     end subroutine io_gen_event_read_event
+     end function io_gen_event_read_event
   end interface
 
 contains
@@ -966,6 +1063,96 @@ contains
     call gen_event_print (evt%obj)
   end subroutine hepmc_event_print
     
+  function hepmc_event_get_event_index (evt) result (i_proc)
+    integer :: i_proc
+    type(hepmc_event_t), intent(in) :: evt
+    i_proc = gen_event_event_number (evt%obj)
+  end function hepmc_event_get_event_index
+
+  subroutine hepmc_event_set_process_id (evt, proc)
+    type(hepmc_event_t), intent(in) :: evt
+    integer, intent(in) :: proc
+    integer(c_int) :: i_proc
+    i_proc = proc
+    call gen_event_set_signal_process_id (evt%obj, i_proc)
+  end subroutine hepmc_event_set_process_id
+
+  function hepmc_event_get_process_id (evt) result (i_proc)
+    integer :: i_proc
+    type(hepmc_event_t), intent(in) :: evt
+    i_proc = gen_event_signal_process_id (evt%obj)
+  end function hepmc_event_get_process_id
+
+  subroutine hepmc_event_set_scale (evt, scale)
+    type(hepmc_event_t), intent(in) :: evt
+    real(default), intent(in) :: scale
+    real(c_double) :: cscale
+    cscale = scale
+    call gen_event_set_event_scale (evt%obj, cscale)
+  end subroutine hepmc_event_set_scale
+
+  function hepmc_event_get_scale (evt) result (scale)
+    real(default) :: scale
+    type(hepmc_event_t), intent(in) :: evt
+    scale = gen_event_event_scale (evt%obj)
+  end function hepmc_event_get_scale
+
+  subroutine hepmc_event_set_alpha_qcd (evt, alpha)
+    type(hepmc_event_t), intent(in) :: evt
+    real(default), intent(in) :: alpha
+    real(c_double) :: a
+    a = alpha
+    call gen_event_set_alpha_qcd (evt%obj, a)
+  end subroutine hepmc_event_set_alpha_qcd
+
+  function hepmc_event_get_alpha_qcd (evt) result (alpha)
+    real(default) :: alpha
+    type(hepmc_event_t), intent(in) :: evt
+    alpha = gen_event_alpha_qcd (evt%obj)
+  end function hepmc_event_get_alpha_qcd
+
+  subroutine hepmc_event_set_alpha_qed (evt, alpha)
+    type(hepmc_event_t), intent(in) :: evt
+    real(default), intent(in) :: alpha
+    real(c_double) :: a
+    a = alpha
+    call gen_event_set_alpha_qed (evt%obj, a)
+  end subroutine hepmc_event_set_alpha_qed
+
+  function hepmc_event_get_alpha_qed (evt) result (alpha)
+    real(default) :: alpha
+    type(hepmc_event_t), intent(in) :: evt
+    alpha = gen_event_alpha_qed (evt%obj)
+  end function hepmc_event_get_alpha_qed
+
+  subroutine hepmc_event_clear_weights (evt)
+    type(hepmc_event_t), intent(in) :: evt
+    call gen_event_clear_weights (evt%obj)
+  end subroutine hepmc_event_clear_weights
+
+  subroutine hepmc_event_add_weight (evt, weight)
+    type(hepmc_event_t), intent(in) :: evt
+    real(default), intent(in) :: weight
+    real(c_double) :: w
+    w = weight
+    call gen_event_add_weight (evt%obj, w)
+  end subroutine hepmc_event_add_weight
+
+  function hepmc_event_get_weights_size (evt) result (n)
+    integer :: n
+    type(hepmc_event_t), intent(in) :: evt
+    n = gen_event_weights_size (evt%obj)
+  end function hepmc_event_get_weights_size
+
+  function hepmc_event_get_weight (evt, index) result (weight)
+    real(default) :: weight
+    type(hepmc_event_t), intent(in) :: evt
+    integer, intent(in) :: index
+    integer(c_int) :: i
+    i = index - 1
+    weight = gen_event_weight (evt%obj, i)
+  end function hepmc_event_get_weight
+
   subroutine hepmc_event_add_vertex (evt, v)
     type(hepmc_event_t), intent(inout) :: evt
     type(hepmc_vertex_t), intent(in) :: v
@@ -1035,10 +1222,11 @@ contains
     call io_gen_event_write_event (iostream%obj, evt%obj)
   end subroutine hepmc_iostream_write_event
 
-  subroutine hepmc_iostream_read_event (iostream, evt)
+  subroutine hepmc_iostream_read_event (iostream, evt, ok)
     type(hepmc_iostream_t), intent(inout) :: iostream
     type(hepmc_event_t), intent(in) :: evt
-    call io_gen_event_read_event (iostream%obj, evt%obj)
+    logical, intent(out) :: ok
+    ok = io_gen_event_read_event (iostream%obj, evt%obj)
   end subroutine hepmc_iostream_read_event
 
   subroutine hepmc_test

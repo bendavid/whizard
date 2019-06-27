@@ -1,4 +1,4 @@
-! WHIZARD 2.0.1 Sun Apr 25 2010
+! WHIZARD 2.0.2 Tue May 18 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -607,7 +607,7 @@ contains
     type(string_t) :: fname, libname
     type(os_data_t) :: os_data
     type(string_t) :: filename_src, filename_obj
-    interface
+    abstract interface
        function so_test_proc (i) result (j) bind(C)
          import c_int
          integer(c_int), intent(in) :: i

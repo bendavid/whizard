@@ -1,4 +1,4 @@
-(* $Id: targets.ml 2409 2010-04-24 13:17:40Z ohl $
+(* $Id: targets.ml 2496 2010-05-10 11:28:31Z ohl $
 
    Copyright (C) 1999-2009 by
 
@@ -21,8 +21,8 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 let rcs_file = RCS.parse "Targets" ["Code Generation"]
-    { RCS.revision = "$Revision: 2409 $";
-      RCS.date = "$Date: 2010-04-24 15:17:40 +0200 (Sat, 24 Apr 2010) $";
+    { RCS.revision = "$Revision: 2496 $";
+      RCS.date = "$Date: 2010-05-10 13:28:31 +0200 (Mon, 10 May 2010) $";
       RCS.author = "$Author: ohl $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/src/omega/src/targets.ml $" }
@@ -2092,15 +2092,6 @@ i*)
         printf "  end subroutine init"; nl ();
         nl ();
         printf "  subroutine final ()"; nl ();
-        printf "    use diagnostics, only: logfile_unit"; nl ();
-        printf "    integer :: unit"; nl ();
-        printf "    if (hel_threshold .gt. 0) then"; nl ();
-        printf "      unit = logfile_unit (logfile=.true.)"; nl ();
-        printf "      if (unit .ge. 0) then"; nl ();
-        printf "        call @[<3>omega_report_helicity_selection@ ";
-        printf "(hel_is_allowed,@ table_spin_states,@ hel_threshold,@ unit)"; nl ();
-        printf "      end if"; nl ();
-        printf "    end if"; nl ();
         printf "  end subroutine final"; nl ();
         nl ();
         printf "  subroutine update_alpha_s (alpha_s)"; nl ();

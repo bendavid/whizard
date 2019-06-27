@@ -1,4 +1,4 @@
-! WHIZARD 2.0.1 Sun Apr 25 2010
+! WHIZARD 2.0.2 Tue May 18 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -65,6 +65,7 @@ module models
   public :: particle_data_is_stable
   public :: particle_data_decays_isotropically
   public :: particle_data_decays_diagonal
+  public :: particle_data_is_polarized
   public :: particle_data_get_name
   public :: particle_data_get_tex_name
   public :: particle_data_get_spin_type
@@ -82,6 +83,7 @@ module models
   public :: model_get_name
   public :: model_get_md5sum
   public :: model_get_parameters_md5sum
+  public :: model_get_polarized_md5sum
   public :: model_get_parameter_value
   public :: model_get_n_parameters
   public :: model_parameters_to_array
@@ -159,6 +161,8 @@ module models
      logical :: a_is_stable = .true.
      logical :: a_decays_isotropically = .false.
      logical :: a_decays_diagonal = .false.
+     logical :: p_polarized = .false.
+     logical :: a_polarized = .false.
      type(string_t), dimension(:), allocatable :: name, anti
      type(string_t) :: tex_name, tex_anti
      integer :: spin_type = UNDEFINED
@@ -352,6 +356,7 @@ contains
        is_visible, is_parton, is_gauge, is_left_handed, is_right_handed, &
        p_is_stable, p_decays_isotropically, p_decays_diagonal, &
        a_is_stable, a_decays_isotropically, a_decays_diagonal, &
+       p_polarized, a_polarized, &
        name, anti, tex_name, tex_anti, &
        spin_type, isospin_type, charge_type, color_type, &
        mass_src, width_src)
@@ -362,6 +367,7 @@ contains
     logical, intent(in), optional :: p_decays_isotropically, p_decays_diagonal
     logical, intent(in), optional :: a_is_stable
     logical, intent(in), optional :: a_decays_isotropically, a_decays_diagonal
+    logical, intent(in), optional :: p_polarized, a_polarized
     type(string_t), dimension(:), intent(in), optional :: name, anti
     type(string_t), intent(in), optional :: tex_name, tex_anti
     integer, intent(in), optional :: spin_type, isospin_type
@@ -382,6 +388,8 @@ contains
           prt%a_decays_isotropically = a_decays_isotropically
     if (present (a_decays_diagonal)) &
           prt%a_decays_diagonal = a_decays_diagonal
+    if (present (p_polarized)) prt%p_polarized = p_polarized
+    if (present (a_polarized)) prt%a_polarized = a_polarized
     if (present (name)) then
        allocate (prt%name (size (name)))
        prt%name = name
@@ -613,19 +621,43 @@ contains
     end if
   end function particle_data_decays_diagonal
 
+  elemental function particle_data_is_polarized (prt, anti) result (flag)
+    logical :: flag
+    type(particle_data_t), intent(in) :: prt
+    logical, intent(in), optional :: anti
+    logical :: a
+    if (present (anti)) then
+       a = anti
+    else
+       a = .false.
+    end if
+    if (a) then
+       flag = prt%a_polarized
+    else
+       flag = prt%p_polarized
+    end if
+  end function particle_data_is_polarized
+       
   elemental function particle_data_get_name &
        (prt, is_antiparticle) result (name)
     type(string_t) :: name
     type(particle_data_t), intent(in) :: prt
     logical, intent(in) :: is_antiparticle
+    name = "???"
     if (is_antiparticle) then
        if (prt%has_antiparticle) then
-          name = prt%anti(1)
+          if (allocated (prt%anti)) then
+             if (size(prt%anti) > 0) name = prt%anti(1)
+          end if
        else
-          name = prt%name(1)
+          if (allocated (prt%name)) then
+             if (size (prt%name) > 0) name = prt%name(1)
+          end if
        end if
     else
-       name = prt%name(1)
+       if (allocated (prt%name)) then
+          if (size (prt%name) > 0) name = prt%name(1)
+       end if
     end if
   end function particle_data_get_name
 
@@ -643,6 +675,7 @@ contains
     else
        name = prt%tex_name
     end if
+    if (name == "")  name = particle_data_get_name (prt, is_antiparticle)
   end function particle_data_get_tex_name
 
   elemental function particle_data_get_spin_type (prt) result (type)
@@ -1062,6 +1095,27 @@ contains
     close (unit)
   end function model_get_parameters_md5sum
 
+  function model_get_polarized_md5sum (model) result (pol_md5sum)
+    character(32) :: pol_md5sum
+    type(model_t), intent(in) :: model
+    integer :: unit, i
+    unit = free_unit ()
+    open (unit, status="scratch", action="readwrite")
+    if (size (model%prt) > 0) then
+       do i = 1, size (model%prt)
+          write (unit, *) &
+             char (particle_data_get_name (model%prt(i), .false.)), " ", &
+             particle_data_is_polarized (model%prt(i)), " "
+          if (particle_data_has_antiparticle (model%prt(i))) write (unit, *) &
+             char (particle_data_get_name (model%prt(i), .true.)), " ", &
+             particle_data_is_polarized (model%prt(i), .true.), " "
+       end do
+    end if
+    rewind (unit)
+    pol_md5sum = md5sum (unit)
+    close (unit)
+  end function model_get_polarized_md5sum
+
   subroutine model_set_parameter_constant (model, i, name, value)
     type(model_t), intent(inout), target :: model
     integer, intent(in) :: i
@@ -1138,6 +1192,7 @@ contains
     type(model_t), intent(in) :: model
     real(default), dimension(:), allocatable :: array
     integer :: i
+    if (allocated (array))  deallocate (array)
     allocate (array (size (model%par)))
     do i = 1, size (model%par)
        array(i) = model%par(i)%value
@@ -1216,10 +1271,13 @@ contains
     logical, parameter :: is_stable = .true.
     logical, parameter :: decays_isotropically = .false.
     logical, parameter :: decays_diagonal = .false.
+    logical, parameter :: p_polarized = .false.
+    logical, parameter :: a_polarized = .false.
     call particle_data_set (model%prt(i), &
        is_visible, is_parton, is_gauge, is_left_handed, is_right_handed, &
        is_stable, decays_isotropically, decays_diagonal, &
        is_stable, decays_isotropically, decays_diagonal, &
+       p_polarized, a_polarized, &
        name, anti, tex_name, tex_anti, &
        spin_type, isospin_type, charge_type, color_type, &
        mass_src, width_src)

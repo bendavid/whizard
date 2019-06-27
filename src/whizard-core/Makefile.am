@@ -50,6 +50,9 @@ libwhizard_core_la_SOURCES = \
   process_libraries.f90 hard_interactions.f90 processes.f90 \
   decays.f90 events.f90 \
   slha_interface.f90 \
+  iterations.f90 strfun_config.f90 event_files.f90 \
+  rt_data.f90 \
+  compilations.f90 integrations.f90 simulations.f90 \
   commands.f90 whizard.f90
 
 ## This C file has no dependencies
