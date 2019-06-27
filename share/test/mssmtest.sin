@@ -1,0 +1,16 @@
+model = MSSM
+
+read_slha ("sps1ap_decays.slha")
+
+process mssmtest_se =	e1, E1	=>	se1, SE1
+
+compile
+
+!---------------------------------------------
+
+me = 0
+
+sqrts = 1 TeV
+beams = e1, E1
+
+integrate (mssmtest_se) { iterations = 3:5000 }

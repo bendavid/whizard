@@ -1,0 +1,35 @@
+alias q = u:d:s
+alias Q = U:D:S
+process lhapdf_drell_yan = q, Q => e2, E2
+
+compile
+
+alias lepton = e1:e2:e3:E1:E2:E3
+cuts = all Pt > 100 GeV [lepton]
+
+sqrts = 1000
+iterations = 4:500, 2:500
+
+n_events = 1
+?write_raw = false
+sample_format = lhef
+
+integrate (lhapdf_drell_yan)
+simulate (lhapdf_drell_yan) { $sample = "lhapdf_drell_yan.1" }
+
+beams = u, U
+integrate (lhapdf_drell_yan)
+simulate (lhapdf_drell_yan) { $sample = "lhapdf_drell_yan.2" }
+
+beams = p, p => lhapdf
+integrate (lhapdf_drell_yan)
+simulate (lhapdf_drell_yan) { $sample = "lhapdf_drell_yan.3" }
+
+beams = p, A =>
+  lhapdf { $lhapdf_file = "cteq5l.LHgrid" },
+  lhapdf { $lhapdf_file = "GSG961.LHgrid" }
+integrate (lhapdf_drell_yan)
+simulate (lhapdf_drell_yan) { $sample = "lhapdf_drell_yan.4" }
+
+
+

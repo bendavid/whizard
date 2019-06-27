@@ -1,0 +1,150 @@
+########################################################################
+# QCD with six quarks + some extra stuff for testing purposes
+model  "TEST"
+
+# Independent parameters
+parameter alphas = 0.1180550856125484     # Strong coupling squared / 4pi
+parameter ms     = 120     MeV  # s-quark mass                         
+parameter mc     = 1.25    GeV  # c-quark mass                         
+parameter mb     = 4.20    GeV  # b-quark mass                         
+parameter mtop   = 174     GeV  # t-quark mass                         
+parameter wtop   = 1.523   GeV  # t-quark width
+parameter mz     = 91.1882 GeV  # Z-boson mass  
+parameter wz     = 2.443   GeV  # Z-boson width
+parameter mw     = 80.419  GeV  # W-boson mass  
+parameter ww     = 2.049   GeV  # W-boson width
+parameter mH     = 115     GeV  # Higgs mass
+parameter wH     = 3.228   MeV  # Higgs width  
+parameter GF     = 1.16639E-5   # Fermi constant
+
+derived    gs    = sqrt (4 * pi * alphas) # Strong coupling (ggg)
+derived    cw    = mw / mz                # cos(theta-W)
+derived    sw    = sqrt (1 - cw^2)        # sin(theta-W)
+derived    ee    = 2 * sw * mw * sqrt (sqrt(2.) * GF) # em-coupling (GF scheme)
+	
+########################################################################
+# Particle content
+
+# The quarks
+particle D_QUARK 1  parton
+  spin 1/2   charge -1/3  isospin -1/2  color 3
+  name d down
+  anti D dbar "d~" 
+  tex_anti "\bar{d}"
+particle U_QUARK 2  parton
+  spin 1/2   charge  2/3  isospin 1/2  color 3
+  name u up
+  anti U ubar "u~" 
+  tex_anti "\bar{u}"
+particle S_QUARK 3  like D_QUARK
+  name s strange
+  anti S sbar "s~"
+  tex_anti "\bar{s}"
+  mass ms
+particle C_QUARK 4  like U_QUARK
+  name c charm
+  anti C cbar "c~" 
+  tex_anti "\bar{c}"
+  mass mc
+particle B_QUARK 5  like D_QUARK
+  name b bottom
+  anti B bbar "b~" 
+  tex_anti "\bar{b}"
+  mass mb
+particle T_QUARK 6  like U_QUARK
+  name t top
+  anti T tbar "t~" 
+  tex_anti "\bar{t}"
+  mass mtop  width wtop
+
+# Some leptons
+particle ELECTRON 11
+  spin 1/2  charge -1  isospin -1/2
+  name e1 "e-"
+  anti E1 "e+"
+
+particle E_NEUTRINO 12
+  spin 1/2  isospin  1/2
+  name n1 nu_e nue "e-neutrino"
+  anti N1 nuebar
+  tex_name "\nu_e"
+  tex_anti "\bar\nu_e"
+
+# The vector bosons
+particle GLUON 21  parton gauge
+  spin 1  color 8
+  name g gl G gluon
+
+particle PHOTON 22  gauge
+  spin 1
+  name photon gamma
+  tex_name "\gamma"
+
+particle Z_BOSON 23  gauge
+  spin 1
+  name Z
+  tex_name "Z^0"
+  mass mz   width wz
+
+particle W_BOSON 24  gauge
+  spin 1
+  name "W+" Wp
+  anti "W-" Wm
+  tex_name "W^+"
+  tex_anti "W^-"
+  mass mw   width ww
+
+# Scalar bosons
+particle HIGGS 25
+  spin 0
+  name H h Higgs
+  mass mH   width wH
+
+
+# Hadrons
+particle PROTON 2212
+  spin 1/2  charge 1
+  name p "p+"
+  anti pbar "p-"
+
+particle HADRON_REMNANT 90
+
+particle HADRON_REMNANT_SINGLET 91
+
+particle HADRON_REMNANT_TRIPLET 92
+  color 3
+
+particle HADRON_REMNANT_OCTET 93
+  color 8
+
+########################################################################
+# Vertices (QCD)
+# In graphs with identical structure, the first vertex is kept for phase space,
+# therefore, lighter particles come before heavier ones.
+
+# QCD
+vertex G G G 
+
+vertex G G G G
+
+vertex D d G 
+vertex U u G 
+vertex S s G 
+vertex C c G 
+vertex B b G 
+vertex T t G 
+
+vertex D d Z 
+vertex U u Z 
+vertex S s Z 
+vertex C c Z 
+vertex B b Z 
+vertex T t Z 
+
+# Extra
+vertex e1 E1 Z
+vertex n1 N1 Z
+vertex e1 N1 Wp
+vertex E1 n1 Wm
+vertex Z Z H
+vertex Wp Wm H

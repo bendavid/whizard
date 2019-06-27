@@ -1,0 +1,119 @@
+## Makefile.am -- Makefile for WHIZARD
+# $Id: Makefile.am 1564 2010-01-21 18:19:23Z ohl $
+##
+## Process this file with automake to produce Makefile.in
+##
+########################################################################
+#
+# Copyright (C) 1999-2009 by 
+#     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+#     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
+#     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+#
+# WHIZARD is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by 
+# the Free Software Foundation; either version 2, or (at your option)
+# any later version.
+#
+# WHIZARD is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+#
+########################################################################
+
+## The files in this directory end up in an auxiliary libtool library.
+noinst_LTLIBRARIES = libaux.la
+
+libaux_la_SOURCES = \
+  kinds.f90 iso_varying_string.f90 \
+  system_dependencies.f90 \
+  constants.f90 \
+  limits.f90 \
+  file_utils.f90 \
+  diagnostics.f90 \
+  lorentz.f90 sm_physics.f90
+
+WHIZARD_SRC_FROM_WHIZARD_NW = \
+  limits.f90 \
+  file_utils.f90 \
+  diagnostics.f90 \
+  lorentz.f90 sm_physics.f90
+
+## Explicit dependencies:
+constants.lo: kinds.lo
+file_utils.lo: kinds.lo iso_varying_string.lo limits.lo
+diagnostics.lo: kinds.lo iso_varying_string.lo system_dependencies.lo \
+  file_utils.lo limits.lo
+lorentz.lo: kinds.lo file_utils.lo constants.lo diagnostics.lo
+sm_physics.lo: kinds.lo file_utils.lo constants.lo lorentz.lo diagnostics.lo
+
+## Install the modules used by generated matrix element code
+execmoddir = $(pkglibdir)/mod/misc
+nodist_execmod_HEADERS = \
+  kinds.$(FC_MODULE_EXT) \
+  constants.$(FC_MODULE_EXT) \
+  iso_varying_string.$(FC_MODULE_EXT) \
+  system_dependencies.$(FC_MODULE_EXT) \
+  limits.$(FC_MODULE_EXT) \
+  file_utils.$(FC_MODULE_EXT) \
+  diagnostics.$(FC_MODULE_EXT) \
+  lorentz.$(FC_MODULE_EXT) \
+  sm_physics.$(FC_MODULE_EXT)
+
+SUFFIXES = .lo .$(FC_MODULE_EXT)
+# Fortran90 module files are generated at the same time as object files
+.lo.$(FC_MODULE_EXT):
+	@:
+#	touch $@
+
+## OpenMP
+AM_FCFLAGS =
+AM_LDFLAGS =
+if WHIZARD_WITH_OPENMP
+AM_FCFLAGS += $(OPENMP_FCFLAGS)
+AM_LDFLAGS += $(OPENMP_FCFLAGS)
+endif
+
+########################################################################
+
+## Non-standard targets and dependencies
+## (Re)create F90 sources from NOWEB source.
+if NOWEB_AVAILABLE
+
+whizard.stamp: $(top_srcdir)/src/whizard-core/whizard.nw
+	@rm -f whizard.tmp
+	@touch whizard.tmp
+	for src in $(WHIZARD_SRC_FROM_WHIZARD_NW); do \
+	  $(NOTANGLE) -R[[$$src]] $< | $(CPIF) $$src; \
+        done
+	@mv -f whizard.tmp whizard.stamp
+
+$(WHIZARD_SRC_FROM_WHIZARD_NW): whizard.stamp
+## Recover from the removal of $@
+	@if test -f $@; then :; else \
+	  rm -f whizard.stamp; \
+	  $(MAKE) $(AM_MAKEFLAGS) whizard.stamp; \
+	fi
+
+endif
+
+
+## Non-standard cleanup tasks
+if NOWEB_AVAILABLE
+clean-noweb:
+	-rm -f whizard.stamp whizard.tmp
+	test "$(srcdir)" != "." && rm -f $(WHIZARD_SRC_FROM_WHIZARD_NW) || true
+endif
+.PHONY: clean-noweb
+
+clean-local: clean-noweb
+	-rm -f *.$(FC_MODULE_EXT)
+
+## Remove backup files
+maintainer-clean-local:
+	-rm -f *~

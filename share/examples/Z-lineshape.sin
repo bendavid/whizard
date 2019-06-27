@@ -1,0 +1,64 @@
+# $Id: Z-lineshape.sin 2272 2010-04-09 16:43:37Z kilian $
+# Simple complete physics example: Z lineshape in the Standard Model
+########################################################################
+#
+# Copyright (C) 2010-2010 by 
+#     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+#     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
+#     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+#
+# WHIZARD is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by 
+# the Free Software Foundation; either version 2, or (at your option)
+# any later version.
+#
+# WHIZARD is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+#
+########################################################################
+
+model = SM
+
+alias lep = e1:E1:e2:E2
+alias prt = lep:A
+
+process born = e1, E1 => e2, E2
+process rc = e1, E1 => e2, E2, A
+compile
+
+cuts = all E >= 100 MeV [prt]
+   and all abs (cos(Theta)) <= 0.99 [prt]
+   and all M2 >= (1 GeV)^2 [prt, prt]
+ 
+# Define title etc. as global variables, that will be used by PLOT:
+$description = "A WHIZARD 2.0 Example"
+$xlabel = "$\sqrt{s}$/GeV"
+$ylabel = "$\sigma(s)$/pb"
+
+# Allocate one plot
+$title = "The Z Lineshape in $e^+e^-\to\mu^+\mu^-$"
+plot lineshape_born (88 GeV, 95 GeV)
+
+# Allocate another plot
+$title = "The Z Lineshape in $e^+e^-\to\mu^+\mu^-\gamma$"
+plot lineshape_rc (88 GeV, 95 GeV)
+
+scan sqrts = (88.0 GeV => 90.0 GeV /+ 0.5 GeV,
+              90.1 GeV => 91.9 GeV /+ 0.1 GeV,
+              92.0 GeV => 95.0 GeV /+ 0.5 GeV) {
+  beams = e1, E1
+  integrate (born) { iterations = 1:2000 }
+  record lineshape_born (sqrts, integral (born) / 1000)
+  integrate (rc)   { iterations = 5:5000 }
+  record lineshape_rc (sqrts, integral (rc) / 1000)
+}
+
+$analysis_filename = "Z-lineshape"
+write_analysis
+

@@ -1,0 +1,532 @@
+! WHIZARD 2.0.0 Mon Apr 12 2010
+! 
+! (C) 1999-2010 by 
+!     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+!     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
+!     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+!     with contributions by Christian Speckner, Sebastian Schmidt, 
+!     Daniel Wiesler, Felix Braam
+!
+! WHIZARD is free software; you can redistribute it and/or modify it
+! under the terms of the GNU General Public License as published by 
+! the Free Software Foundation; either version 2, or (at your option)
+! any later version.
+!
+! WHIZARD is distributed in the hope that it will be useful, but
+! WITHOUT ANY WARRANTY; without even the implied warranty of
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! GNU General Public License for more details.
+!
+! You should have received a copy of the GNU General Public License
+! along with this program; if not, write to the Free Software
+! Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! This file has been stripped of most comments.  For documentation, refer
+! to the source 'whizard.nw'
+
+module diagnostics
+
+  use iso_c_binding !NODEP! 
+  use system_dependencies !NODEP!
+  use kinds, only: i64 !NODEP!
+  use iso_varying_string, string_t => varying_string !NODEP!
+  use limits, only: BUFFER_SIZE, MAX_ERRORS !NODEP!
+  use file_utils !NODEP!
+
+  implicit none
+  private
+
+  public :: mask_fatal_errors
+  public :: msg_count
+  public :: msg_list_clear
+  public :: msg_summary
+  public :: msg_listing
+  public :: msg_buffer
+  public :: msg_terminate
+  public :: msg_bug, msg_fatal, msg_error, msg_warning
+  public :: msg_message, msg_result, msg_debug
+  public :: msg_banner
+  public :: terminate_soon
+  public :: terminate_now_maybe
+  public :: logfile_init
+  public :: logfile_final
+  public :: logfile_unit
+  public :: expect_record
+  public :: expect_clear
+  public :: expect_summary
+
+  integer, parameter :: &
+       & TERMINATE=-2, BUG=-1, &
+       & FATAL=1, ERROR=2, WARNING=3, MESSAGE=4, RESULT=5, DEBUG=6
+  integer, parameter :: TERM_STOP = 0, TERM_EXIT = 1, TERM_CRASH = 2
+  integer, parameter :: &
+       & CONTINUE=0, KILLED=1, INTERRUPTED=2, &
+       & OS_TIME_EXCEEDED=3, TIME_EXCEEDED=4, &
+       & MAX_FILE_COUNT_EXCEEDED=5
+
+  type :: string_list
+     character(len=BUFFER_SIZE) :: string
+     type(string_list), pointer :: next
+  end type string_list
+  type :: string_list_pointer
+     type(string_list), pointer :: first, last
+  end type string_list_pointer
+
+  integer, save :: msg_level = RESULT
+  logical, save :: mask_fatal_errors = .false.
+  integer, save :: handle_fatal_errors = TERM_EXIT
+  integer, dimension(TERMINATE:DEBUG), save :: msg_count = 0
+  type(string_list_pointer), dimension(TERMINATE:WARNING), save :: &
+       & msg_list = string_list_pointer (null(), null())
+  character(len=BUFFER_SIZE), save :: msg_buffer = " "
+  integer, save :: terminate_status = CONTINUE
+  integer, save :: log_unit = -1
+  integer, save :: expect_total = 0
+  integer, save :: expect_failures = 0
+
+
+  interface
+     subroutine exit (status) bind (C)
+       use iso_c_binding !NODEP!
+       integer(c_int), value :: status
+     end subroutine exit
+  end interface
+
+
+contains
+
+  subroutine msg_add (level)
+    integer, intent(in) :: level
+    type(string_list), pointer :: message
+    select case (level)
+    case (TERMINATE:WARNING)
+       allocate (message)
+       message%string = msg_buffer
+       nullify (message%next)
+       if (.not.associated (msg_list(level)%first)) &
+            & msg_list(level)%first => message
+       if (associated (msg_list(level)%last)) &
+            & msg_list(level)%last%next => message
+       msg_list(level)%last => message
+       msg_count(level) = msg_count(level) + 1
+    end select
+  end subroutine msg_add
+
+  subroutine msg_list_clear
+    integer :: level
+    type(string_list), pointer :: message
+    do level = TERMINATE, WARNING
+       do while (associated (msg_list(level)%first))
+          message => msg_list(level)%first
+          msg_list(level)%first => message%next
+          deallocate (message)
+       end do
+       nullify (msg_list(level)%last)
+    end do
+    msg_count = 0
+  end subroutine msg_list_clear
+
+  subroutine msg_summary (unit)
+    integer, intent(in), optional :: unit
+    call expect_summary (unit)
+1   format (A,1x,I2,1x,A,I2,1x,A)
+    if (msg_count(ERROR) > 0 .and. msg_count(WARNING) > 0) then
+       write (msg_buffer, 1) "There were", &
+            & msg_count(ERROR), "error(s) and  ", &
+            & msg_count(WARNING), "warning(s)."
+       call msg_message (unit=unit)
+    else if (msg_count(ERROR) > 0) then
+       write (msg_buffer, 1) "There were", &
+            & msg_count(ERROR), "error(s) and no warnings."
+       call msg_message (unit=unit)
+    else if (msg_count(WARNING) > 0) then
+       write (msg_buffer, 1) "There were no errors and  ", &
+            & msg_count(WARNING), "warning(s)."
+       call msg_message (unit=unit)
+    end if
+  end subroutine msg_summary
+
+  subroutine msg_listing (level, unit, prefix)
+    integer, intent(in) :: level
+    integer, intent(in), optional :: unit
+    character(len=*), intent(in), optional :: prefix
+    type(string_list), pointer :: message
+    integer :: u
+    u = output_unit (unit);  if (u < 0)  return
+    if (present (unit))  u = unit
+    message => msg_list(level)%first
+    do while (associated (message))
+       if (present (prefix)) then
+          write (u, "(A)") prefix // trim (message%string)
+       else
+          write (u, "(A)") trim (message%string)
+       end if
+       message => message%next
+    end do
+  end subroutine msg_listing
+
+  subroutine buffer_clear
+    msg_buffer = " "
+  end subroutine buffer_clear
+
+subroutine message_print (level, string, str_arr, unit, logfile)
+    integer, intent(in) :: level
+    character(len=*), intent(in), optional :: string
+    type(string_t), dimension(:), intent(in), optional :: str_arr
+    integer, intent(in), optional :: unit
+    logical, intent(in), optional :: logfile   
+    type(string_t) :: prep_string, aux_string, head_footer
+    integer :: lu, i
+    logical :: severe, is_error
+    severe = .false.
+    head_footer  = "******************************************************************************"
+    aux_string = ""
+    is_error = .false.
+!    integer :: proc_id
+!    call mpi90_rank (proc_id)
+!    if (proc_id==WHIZARD_ROOT) then    
+       select case (level)
+       case (TERMINATE)
+          prep_string = ""
+       case (BUG)
+          prep_string   = "*** WHIZARD BUG: "
+          aux_string    = "***              "
+          severe = .true.
+          is_error = .true.
+       case (FATAL)
+          prep_string   = "*** FATAL ERROR: "
+          aux_string    = "***              "                     
+          severe = .true.
+          is_error = .true.
+       case (ERROR)
+          prep_string = "*** ERROR: "
+          aux_string  = "***        "
+          is_error = .true.
+       case (WARNING)
+          prep_string = "Warning: "
+       case (MESSAGE, DEBUG)
+          prep_string = "| "
+       case default
+          prep_string = ""
+       end select
+       if (present(string))  msg_buffer = string
+       lu = log_unit
+       if (present(unit)) then
+          if (unit/=6) then
+             if (severe) write (unit, "(A)") char(head_footer) 
+             if (is_error) write (unit, "(A)") char(head_footer) 
+             write (unit, "(A,A)") char(prep_string), trim(msg_buffer)
+             if (present (str_arr)) then
+                do i = 1, size(str_arr)
+                   write (unit, "(A,A)") char(aux_string), char(trim(str_arr(i)))
+                end do
+             end if
+             if (is_error) write (unit, "(A)") char(head_footer) 
+             if (severe) write (unit, "(A)") char(head_footer) 
+             lu = -1
+          else if (level <= msg_level) then
+             if (severe) print "(A)", char(head_footer) 
+             if (is_error) print "(A)", char(head_footer) 
+             print "(A,A)", char(prep_string), trim(msg_buffer)
+             if (present (str_arr)) then
+                do i = 1, size(str_arr)
+                   print "(A,A)", char(aux_string), char(trim(str_arr(i)))
+                end do                
+             end if
+             if (is_error) print "(A)", char(head_footer) 
+             if (severe) print "(A)", char(head_footer) 
+             if (unit == log_unit)  lu = -1
+          end if
+       else if (level <= msg_level) then
+          if (severe) print "(A)", char(head_footer) 
+          if (is_error) print "(A)", char(head_footer) 
+          print "(A,A)", char(prep_string), trim(msg_buffer)
+             if (present (str_arr)) then
+                do i = 1, size(str_arr)
+                   print "(A,A)", char(aux_string), char(trim(str_arr(i)))
+                end do                
+             end if
+          if (is_error) print "(A)", char(head_footer) 
+          if (severe) print "(A)", char(head_footer) 
+       end if
+       if (present (logfile)) then
+          if (.not. logfile)  lu = -1
+       end if
+       if (lu >= 0) then
+          if (severe) write (lu, "(A)") char(head_footer) 
+          if (is_error) write (lu, "(A)") char(head_footer) 
+          write (lu, "(A,A)")  char(prep_string), trim(msg_buffer)
+          if (present (str_arr)) then
+             do i = 1, size(str_arr)
+                write (lu, "(A,A)") char(aux_string), char(trim(str_arr(i)))
+             end do                
+          end if
+          if (is_error) write (lu, "(A)") char(head_footer) 
+          if (severe) write (lu, "(A)") char(head_footer) 
+          flush (lu)
+       end if
+!    end if
+    call msg_add (level)
+    call buffer_clear
+  end subroutine message_print
+
+  subroutine msg_terminate (string, unit, quit_code)
+    integer, intent(in), optional :: unit
+    character(len=*), intent(in), optional :: string
+    integer, intent(in), optional :: quit_code
+    integer(c_int) :: return_code
+    if (present (quit_code)) then
+       return_code = quit_code
+    else
+       return_code = 0
+    end if
+    call msg_summary (unit)
+    if (return_code == 0 .and. expect_failures /= 0) then
+       return_code = 5
+       call message_print (MESSAGE, &
+            "WHIZARD run finished with 'expect' failure(s).", unit=unit)
+    else
+       call message_print (MESSAGE, "WHIZARD run finished.", unit=unit)
+    end if
+    call message_print (0, &
+         "|=============================================================================|", unit=unit)
+    call logfile_final ()
+    if (return_code /= 0) then
+       call exit (return_code)
+    else 
+       stop
+    end if
+  end subroutine msg_terminate
+
+  subroutine msg_bug (string, arr, unit)
+    integer, intent(in), optional :: unit
+    character(len=*), intent(in), optional :: string
+    type(string_t), dimension(:), intent(in), optional :: arr
+    logical, pointer :: crash_ptr => null ()
+    call message_print (BUG, string, arr, unit)
+    call msg_summary (unit)
+    select case (handle_fatal_errors)
+    case (TERM_EXIT)
+       call message_print (TERMINATE, "WHIZARD run aborted.", unit=unit)
+       ! call flush_all ()
+       call exit (-1_c_int)
+    case (TERM_CRASH)
+       print *, "*** Intentional crash ***"
+       print *, crash_ptr
+    end select
+    stop "WHIZARD run aborted."
+  end subroutine msg_bug
+
+  recursive subroutine msg_fatal (string, arr, unit)
+    integer, intent(in), optional :: unit
+    character(len=*), intent(in), optional :: string
+    type(string_t), dimension(:), intent(in), optional :: arr
+    logical, pointer :: crash_ptr => null ()
+    if (mask_fatal_errors) then
+       call msg_error (string, arr, unit)
+    else
+       call message_print (FATAL, string, arr, unit)
+       call msg_summary (unit)
+       select case (handle_fatal_errors)
+       case (TERM_EXIT)
+          call message_print (TERMINATE, "WHIZARD run aborted.", unit=unit)
+          ! call flush_all ()
+          call exit (1_c_int)
+       case (TERM_CRASH)
+          print *, "*** Intentional crash ***"
+          print *, crash_ptr
+       end select
+       stop "WHIZARD run aborted."
+    end if
+  end subroutine msg_fatal
+
+  subroutine msg_error (string, arr, unit)
+    integer, intent(in), optional :: unit
+    character(len=*), intent(in), optional :: string
+    type(string_t), dimension(:), intent(in), optional :: arr
+    call message_print (ERROR, string, arr, unit)
+    if (msg_count(ERROR) >= MAX_ERRORS) then
+       mask_fatal_errors = .false.
+       call msg_fatal (" Too many errors encountered.")
+!    else if (.not.present(unit) .and. .not.mask_fatal_errors)  then
+!       call message_print (MESSAGE, "            (WHIZARD run continues)")
+    end if
+  end subroutine msg_error
+
+  subroutine msg_warning (string, arr, unit)
+    integer, intent(in), optional :: unit
+    character(len=*), intent(in), optional :: string
+    type(string_t), dimension(:), intent(in), optional :: arr
+    call message_print (WARNING, string, arr, unit)
+  end subroutine msg_warning
+
+  subroutine msg_message (string, unit, arr, logfile)
+    integer, intent(in), optional :: unit
+    character(len=*), intent(in), optional :: string
+    type(string_t), dimension(:), intent(in), optional :: arr
+    logical, intent(in), optional :: logfile
+    call message_print (MESSAGE, string, arr, unit, logfile)
+  end subroutine msg_message
+
+  subroutine msg_result (string, arr, unit, logfile)
+    integer, intent(in), optional :: unit
+    character(len=*), intent(in), optional :: string
+    type(string_t), dimension(:), intent(in), optional :: arr
+    logical, intent(in), optional :: logfile
+    call message_print (RESULT, string, arr, unit, logfile)
+  end subroutine msg_result
+
+  subroutine msg_debug (string, arr, unit)
+    integer, intent(in), optional :: unit
+    character(len=*), intent(in), optional :: string
+    type(string_t), dimension(:), intent(in), optional :: arr
+    call message_print (DEBUG, string, arr, unit)
+  end subroutine msg_debug
+
+  subroutine msg_banner (unit)
+    integer, intent(in), optional :: unit
+    call message_print (0, "|=============================================================================|", unit=unit)
+    call message_print (0, "|                                                                             |", unit=unit)
+    call message_print (0, "|    WW             WW  WW   WW  WW  WWWWWW      WW      WWWWW    WWWW        |", unit=unit)
+    call message_print (0, "|     WW    WW     WW   WW   WW  WW     WW      WWWW     WW  WW   WW  WW      |", unit=unit)
+    call message_print (0, "|      WW  WW WW  WW    WWWWWWW  WW    WW      WW  WW    WWWWW    WW   WW     |", unit=unit)
+    call message_print (0, "|       WWWW   WWWW     WW   WW  WW   WW      WWWWWWWW   WW  WW   WW  WW      |", unit=unit)
+    call message_print (0, "|        WW     WW      WW   WW  WW  WWWWWW  WW      WW  WW   WW  WWWW        |", unit=unit)
+    call message_print (0, "|                                                                             |", unit=unit)
+    call message_print (0, "|                                                                             |", unit=unit)
+    call message_print (0, "|                                        W                                    |", unit=unit)
+    call message_print (0, "|                                       sW                                    |", unit=unit)
+    call message_print (0, "|                                       WW                                    |", unit=unit)
+    call message_print (0, "|                                      sWW                                    |", unit=unit)
+    call message_print (0, "|                                      WWW                                    |", unit=unit)
+    call message_print (0, "|                                     wWWW                                    |", unit=unit)
+    call message_print (0, "|                                    wWWWW                                    |", unit=unit)
+    call message_print (0, "|                                    WW WW                                    |", unit=unit)
+    call message_print (0, "|                                    WW WW                                    |", unit=unit)
+    call message_print (0, "|                                   wWW WW                                    |", unit=unit)
+    call message_print (0, "|                                  wWW  WW                                    |", unit=unit)
+    call message_print (0, "|                                  WW   WW                                    |", unit=unit)
+    call message_print (0, "|                                  WW   WW                                    |", unit=unit)
+    call message_print (0, "|                                 WW    WW                                    |", unit=unit)
+    call message_print (0, "|                                 WW    WW                                    |", unit=unit)
+    call message_print (0, "|                                WW     WW                                    |", unit=unit)
+    call message_print (0, "|                                WW     WW                                    |", unit=unit)
+    call message_print (0, "|           wwwwww              WW      WW                                    |", unit=unit)
+    call message_print (0, "|              WWWWWww          WW      WW                                    |", unit=unit)
+    call message_print (0, "|                 WWWWWwwwww   WW       WW                                    |", unit=unit)
+    call message_print (0, "|                     wWWWwwwwwWW       WW                                    |", unit=unit)
+    call message_print (0, "|                 wWWWWWWWWWWwWWW       WW                                    |", unit=unit)
+    call message_print (0, "|                wWWWWW       wW        WWWWWWW                               |", unit=unit)
+    call message_print (0, "|                  WWWW       wW        WW  wWWWWWWWwww                       |", unit=unit)
+    call message_print (0, "|                   WWWW                      wWWWWWWWwwww                    |", unit=unit)
+    call message_print (0, "|                     WWWW                      WWWW     WWw                  |", unit=unit)
+    call message_print (0, "|                       WWWWww                   WWWW                         |", unit=unit)
+    call message_print (0, "|                           WWWwwww              WWWW                         |", unit=unit)
+    call message_print (0, "|                               wWWWWwww       wWWWWW                         |", unit=unit)
+    call message_print (0, "|                                     WwwwwwwwwWWW                            |", unit=unit)
+    call message_print (0, "|                                                                             |", unit=unit)
+    call message_print (0, "|                                                                             |", unit=unit)
+    call message_print (0, "|                                                                             |", unit=unit)
+    call message_print (0, "|  by:   Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>                    |", unit=unit)
+    call message_print (0, "|        Thorsten Ohl    <ohl@physik.uni-wuerzburg.de>                        |", unit=unit)
+    call message_print (0, "|        Juergen Reuter  <reuter@physik.uni-freiburg.de>                      |", unit=unit)
+    call message_print (0, "|                                                                             |", unit=unit)
+    call message_print (0, "|  if you use WHIZARD please cite:                                            |", unit=unit)   
+    call message_print (0, "|        W. Kilian, T. Ohl, J. Reuter,  arXiv: 0708.4233 [hep-ph]             |", unit=unit)   
+    call message_print (0, "|        M. Moretti, T. Ohl, J. Reuter, arXiv: hep-ph/0102195                 |", unit=unit)
+    call message_print (0, "|                                                                             |", unit=unit)
+    call message_print (0, "|=============================================================================|", unit=unit)
+    call message_print (0, "|                               WHIZARD " // WHIZARD_VERSION, unit=unit)
+    call message_print (0, "|=============================================================================|", unit=unit)
+  end subroutine msg_banner
+
+  subroutine terminate_soon (reason)
+    integer, intent(in) :: reason
+    terminate_status = reason
+  end subroutine terminate_soon
+
+  subroutine terminate_now_maybe (n_events)
+    integer(i64), intent(in), optional :: n_events
+    if (terminate_status /= CONTINUE) then
+       if (present (n_events)) then
+          write (msg_buffer, "(1x,A,1x,I12,1x,A)")  &
+               & "Generated", n_events, "events."
+          call msg_message
+       end if
+       select case (terminate_status)
+       case (KILLED)
+          call msg_terminate (" *** Process killed by external signal: Terminating.")
+       case (INTERRUPTED)
+          call msg_terminate (" *** Process interrupted by external signal: Terminating.")
+       case (OS_TIME_EXCEEDED)
+          call msg_terminate (" *** Process received signal SIGXCPU (time exceeded):  Terminating.")
+       case (TIME_EXCEEDED)
+          call msg_terminate (" *** User-defined time limit exceeded:  Terminating.")
+       case (MAX_FILE_COUNT_EXCEEDED)
+          call msg_terminate (" *** User-defined limit for event file count exceeded:  Terminating.")
+       case default
+          call msg_bug (" Process terminates for unknown reason")
+       end select
+    end if
+  end subroutine terminate_now_maybe
+
+  subroutine logfile_init (filename)
+    type(string_t), intent(in) :: filename
+    call msg_message ("Writing log to '" // char (filename) // "'")
+    log_unit = free_unit ()
+    open (file = char (filename), unit = log_unit, &
+          action = "write", status = "replace")
+  end subroutine logfile_init
+
+  subroutine logfile_final ()
+    if (log_unit >= 0) then
+       close (log_unit)
+       log_unit = -1
+    end if
+  end subroutine logfile_final
+
+  function logfile_unit (unit, logfile)
+    integer :: logfile_unit
+    integer, intent(in), optional :: unit
+    logical, intent(in), optional :: logfile
+    if (present (unit)) then
+       if (unit == 6) then
+          logfile_unit = log_unit
+       else
+          logfile_unit = -1
+       end if
+    else if (present (logfile)) then
+       if (logfile) then
+          logfile_unit = log_unit
+       else
+          logfile_unit = -1
+       end if
+    else
+       logfile_unit = log_unit
+    end if
+  end function logfile_unit
+
+  subroutine expect_record (success)
+    logical, intent(in) :: success
+    expect_total = expect_total + 1
+    if (.not. success)  expect_failures = expect_failures + 1
+  end subroutine expect_record
+
+  subroutine expect_clear ()
+    expect_total = 0
+    expect_failures = 0
+  end subroutine expect_clear
+
+  subroutine expect_summary (unit)
+    integer, intent(in), optional :: unit
+    if (expect_total /= 0) then
+       call msg_message ("Summary of value checks:", unit)
+       write (msg_buffer, "(2x,A,1x,I0,1x,A,1x,A,1x,I0)") &
+            "Failures:", expect_failures, "/", "Total:", expect_total
+       call msg_message (unit=unit)
+    end if
+  end subroutine expect_summary
+
+
+end module diagnostics

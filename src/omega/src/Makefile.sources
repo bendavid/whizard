@@ -1,0 +1,224 @@
+# Makefile.sources -- Makefile component for O'Mega
+# $Id: Makefile.sources 2276 2010-04-09 17:15:14Z ohl $
+##
+## Process Makefile.am with automake to include this file in Makefile.in
+##
+########################################################################
+#
+# Copyright (C) 1999-2009 by 
+#     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+#     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
+#     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+#
+# WHIZARD is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by 
+# the Free Software Foundation; either version 2, or (at your option)
+# any later version.
+#
+# WHIZARD is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+#
+########################################################################
+##
+## We define the source files in a separate file so that they can be
+## include by Makefiles in multiple directories.
+##
+########################################################################
+
+########################################################################
+#
+# O'Caml sources
+#
+########################################################################
+#
+# NB:
+#
+#   * all modules MUST be given in the correct sequence for linking
+#
+#   * foo.ml as a source file implies foo.mli as a source files
+#
+#   * we must use ocamlc -i to generate *_lexer.mli from *_lexer.ml in
+#     order to treat *_lexer.ml like all other modules
+#
+#   * automake conditionals are not available here, use
+#     autoconf substitutions that expand to '#' or ''
+#
+########################################################################
+
+CASCADE_MLL = cascade_lexer.mll
+CASCADE_MLY = cascade_parser.mly
+CASCADE_ML = \
+    cascade_syntax.ml cascade_lexer.ml cascade_parser.ml cascade.ml
+
+COMPHEP_MLL = comphep_lexer.mll
+COMPHEP_MLY = comphep_parser.mly
+COMPHEP_ML = \
+    comphep_syntax.ml comphep_lexer.ml comphep_parser.ml comphep.ml
+
+VERTEX_MLL = @comment_model_file@ vertex_lexer.mll
+VERTEX_MLY = @comment_model_file@ vertex_parser.mly
+VERTEX_ML = \
+    @comment_model_file@ vertex_syntax.ml vertex_lexer.ml vertex_parser.ml vertex.ml
+
+MODEL_FILE_MLL = @comment_model_file@ model_lexer.mll
+MODEL_FILE_MLY = @comment_model_file@ model_parser.mly
+MODEL_FILE_ML = \
+    @comment_model_file@ model_syntax.ml model_lexer.ml model_parser.ml model_file.ml
+
+OMEGA_MLL = $(CASCADE_MLL) $(COMPHEP_MLL) $(VERTEX_MLL) $(MODEL_FILE_MLL)
+OMEGA_MLY = $(CASCADE_MLY) $(COMPHEP_MLY) $(VERTEX_MLY) $(MODEL_FILE_MLY)
+
+OMEGA_DERIVED_CAML = \
+    $(OMEGA_MLL:.mll=.mli) $(OMEGA_MLL:.mll=.ml) \
+    $(OMEGA_MLY:.mly=.mli) $(OMEGA_MLY:.mly=.ml)
+
+OMEGA_INTERFACES_MLI = \
+    coupling.mli \
+    model.mli \
+    target.mli 
+
+OMEGA_CORE_ML = \
+    config.ml pmap.ml thoList.ml thoArray.ml thoString.ml bundle.ml powSet.ml \
+    rCS.ml thoFilename.ml cache.ml progress.ml trie.ml linalg.ml tree2.ml \
+    algebra.ml options.ml product.ml combinatorics.ml partition.ml tree.ml \
+    tuple.ml topology.ml dAG.ml momentum.ml phasespace.ml \
+    complex.ml color.ml modeltools.ml whizard.ml \
+    $(VERTEX_ML) $(MODEL_FILE_ML) $(COMPHEP_ML) $(CASCADE_ML) \
+    colorize.ml process.ml fusion.ml omega.ml
+
+OMEGA_CORE_MLI = \
+    $(OMEGA_INTERFACES_MLI) \
+    $(OMEGA_CORE_ML:.ml=.mli) 
+
+OMEGA_MODELLIB_ML = \
+    modellib_SM.ml \
+    modellib_MSSM.ml \
+    modellib_NMSSM.ml \
+    modellib_PSSSM.ml \
+    modellib_BSM.ml
+
+OMEGA_MODELLIB_MLI = $(OMEGA_MODELLIB_ML:.ml=.mli)
+
+OMEGA_TARGETLIB_ML = \
+    targets_Kmatrix.ml \
+    targets.ml 
+
+OMEGA_TARGETLIB_MLI = $(OMEGA_TARGETLIB_ML:.ml=.mli)
+
+########################################################################
+# The supported models:
+########################################################################
+
+OMEGA_MINIMAL_APPLICATIONS_ML = \
+    omega_QED.ml \
+    omega_QCD.ml \
+    omega_SM.ml
+
+OMEGA_APPLICATIONS_ML = \
+    omega_QED.ml \
+    omega_QCD.ml \
+    omega_SM.ml \
+    omega_SM_CKM.ml \
+    omega_SM_ac.ml \
+    omega_SM_ac_CKM.ml \
+    omega_SM_top.ml \
+    omega_MSSM.ml \
+    omega_MSSM_CKM.ml \
+    omega_MSSM_Grav.ml \
+    omega_NMSSM.ml \
+    omega_NMSSM_CKM.ml \
+    omega_PSSSM.ml \
+    omega_Littlest.ml \
+    omega_Littlest_Eta.ml \
+    omega_Littlest_Tpar.ml \
+    omega_Simplest.ml \
+    omega_Simplest_univ.ml \
+    omega_Xdim.ml \
+    omega_GravTest.ml \
+    omega_SM_km.ml \
+    omega_UED.ml \
+    omega_Zprime.ml \
+    omega_Threeshl.ml \
+    omega_Threeshl_nohf.ml \
+    omega_Template.ml \
+    omega_SYM.ml
+
+### omega_E6SSM ???
+
+OMEGA_CORE_CMO = $(OMEGA_CORE_ML:.ml=.cmo)
+OMEGA_CORE_CMX = $(OMEGA_CORE_ML:.ml=.cmx)
+OMEGA_TARGETS_CMO = $(OMEGA_TARGETLIB_ML:.ml=.cmo)
+OMEGA_TARGETS_CMX = $(OMEGA_TARGETLIB_ML:.ml=.cmx)
+OMEGA_MODELS_CMO = $(OMEGA_MODELLIB_ML:.ml=.cmo)
+OMEGA_MODELS_CMX = $(OMEGA_MODELLIB_ML:.ml=.cmx)
+
+OMEGA_APPLICATIONS_CMO = $(OMEGA_APPLICATIONS_ML:.ml=.cmo)
+OMEGA_APPLICATIONS_CMX = $(OMEGA_APPLICATIONS_ML:.ml=.cmx)
+OMEGA_APPLICATIONS_BYTECODE = $(OMEGA_APPLICATIONS_ML:.ml=$(OCAML_BYTECODE_EXT))
+OMEGA_APPLICATIONS_NATIVE = $(OMEGA_APPLICATIONS_ML:.ml=$(OCAML_NATIVE_EXT))
+OMEGA_CACHES = $(OMEGA_APPLICATIONS_ML:.ml=.$(OMEGA_CACHE_SUFFIX))
+
+OMEGA_MINIMAL_APPLICATIONS_BYTECODE = $(OMEGA_MINIMAL_APPLICATIONS_ML:.ml=$(OCAML_BYTECODE_EXT))
+OMEGA_MINIMAL_APPLICATIONS_NATIVE = $(OMEGA_MINIMAL_APPLICATIONS_ML:.ml=$(OCAML_NATIVE_EXT))
+OMEGA_MINIMAL_CACHES = $(OMEGA_MINIMAL_APPLICATIONS_ML:.ml=.$(OMEGA_CACHE_SUFFIX))
+
+OMEGA_ML = \
+    $(OMEGA_CORE_ML) \
+    $(OMEGA_MODELLIB_ML) \
+    $(OMEGA_TARGETLIB_ML) \
+    $(OMEGA_APPLICATIONS_ML)
+
+OMEGA_MLI = \
+    $(OMEGA_CORE_MLI) \
+    $(OMEGA_MODELLIB_MLI) \
+    $(OMEGA_TARGETLIB_MLI)
+
+OMEGA_CAML = $(OMEGA_ML) $(OMEGA_MLI) $(OMEGA_MLL) $(OMEGA_MLY) # $(OMEGA_DERIVED_CAML)
+
+########################################################################
+#
+# Fortran 90/95/2003 sources
+#
+########################################################################
+
+AM_FCFLAGS =
+AM_LDFLAGS =
+
+if OMEGA_WITH_OPENMP
+AM_FCFLAGS += $(OPENMP_FCFLAGS)
+AM_LDFLAGS += $(OPENMP_FCFLAGS)
+endif
+
+if STANDALONE_OMEGA_BUILD
+  KINDS_F90 = kinds.f90
+  CONSTANTS_F90 = constants.f90
+  OMEGA_PARAMETERS_F90 = # omega_parameters.f90 omega_parameters_madgraph.f90 
+else
+# use the copies in ../../misc instead
+endif
+
+OMEGALIB_DERIVED_F90 = \
+    omega_spinors.f90 omega_bispinors.f90 omega_vectors.f90 \
+    omega_vectorspinors.f90 omega_tensors.f90 \
+    omega_couplings.f90 omega_spinor_couplings.f90 omega_bispinor_couplings.f90 \
+    omega_polarizations.f90 omega_polarizations_madgraph.f90 \
+    omega_tensor_polarizations.f90 omega_vspinor_polarizations.f90 \
+    omega_color.f90 omega_utils.f90 \
+    omega95.f90 omega95_bispinors.f90
+
+OMEGALIB_F90 = \
+    $(KINDS_F90) $(CONSTANTS_F90) \
+    $(OMEGALIB_DERIVED_F90) \
+    $(OMEGA_PARAMETERS_F90)
+
+OMEGALIB_MOD = $(OMEGALIB_F90:.f90=.mod)
+
+########################################################################
+## The End.
+########################################################################

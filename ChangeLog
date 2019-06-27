@@ -1,0 +1,618 @@
+ChangeLog -- Summary of changes to the WHIZARD package
+
+Use svn log to see detailed changes.
+
+	Version 2.0.0
+
+##################################################################
+
+2010-04-12 
+	RELEASE: version 2.0.0
+
+2010-04-09 
+	Per default, the code for the amplitudes is subdivided to allow
+	  faster compiler optimization
+	More advanced and unified and straightforward command language
+	  syntax
+	Final bug fixes
+	
+2010-04-07 
+	Improvement on SINDARIN syntax; printf, sprintf function
+	  thorugh a C interface
+
+2010-04-05 
+	Colorizing DAGs instead of model vertices: speed boost
+	  in colored code generation
+
+2010-03-31 
+	Generalized options for normalization of weighted and
+	  unweighted events
+	Grid and weight histories added again to log files
+	Weights can be used in analyses
+	
+2010-03-28 
+	Cascade decays completely implemented including color and 
+	spin correlations
+
+2010-03-07 
+	Added new WHIZARD header with logo
+
+2010-03-05 
+	Removed conflict in O'Mega amplitudes between flavour sums
+	   and cascades
+	StdHEP interface re-implemented
+	
+2010-03-03 
+	RELEASE: version 2.0.0rc3
+	Several bug fixes for preventing abuse in input files
+	OpenMP support for amplitudes
+	Reimplementation of WHIZARD 1 HEPEVT ASCII event formats
+	FeynRules interface successfully passed MSSM test
+	
+2010-02-26 
+	Eliminating ghost gluons from multi-gluon amplitudes
+
+2010-02-25 
+	RELEASE: version 1.95
+	HEPEVT format from WHIZARD 1 re-implemented in WHIZARD 2	
+	
+2010-02-23 
+	Running alpha_s implemented in the FeynRules interface
+	
+2010-02-19 
+	MSSM (semi-) automatized self-tests finalized
+		
+2010-02-17 
+	RELEASE: version 1.94
+	
+2010-02-16 
+	Closed memory corruption in WHIZARD 1
+	Fixed problems of old MadGraph and CompHep drivers 
+	   with modern compilers
+	Uncolored vertex selection rules for colored amplitudes in
+	   O'Mega
+	
+2010-02-15 
+	Infrastructure for color correlation computation in O'Mega 
+	finished
+	Forbidden processes are warned about, but treated as non-fatal 
+	
+2010-02-10 
+	Improving phase space mappings for identical particles in
+	initial and final states
+	Introduction of more extended multi-line error message
+
+2010-02-08 
+	First O'Caml code for computation of color correlations in
+	O'Mega	
+	
+2010-02-07 
+	First MLM matching with e+ e- -> jets 
+
+
+2010-02-04 
+	Color correlation computation in O'Mega finalized
+	
+##################################################################
+
+2010-02-06 
+	RELEASE: version 2.0.0rc2
+	
+2010-02-05 	
+	Reconsidered the Makefile structure and more extended tests
+	Catch a crash between WHIZARD and O'Mega for forbidden processes
+	Tensor products of arbitrary color structures in jet definitions
+	
+##################################################################
+
+2010-02-03 
+	RELEASE: version 2.0.0rc1
+	
+##################################################################
+
+2010-01-31 
+	Reimplemented numerical helicity selection rules
+	Phase space functionality of version 1 restored and improved
+
+2009-12-05 
+	NMSSM validated with FeynRules in WHIZARD 1 (Felix Braam)
+	
+2009-12-04 
+	RELEASE: version 2.0.0beta
+
+##################################################################
+	
+2009-04-16 
+	RELEASE: version 1.93
+
+2009-04-15 
+	Clean-up of Makefiles and configure scripts	
+	Reconfiguration of BSM model implementation	
+	extended supersymmetric models		
+
+2008-12-23 
+	New model NMSSM	(Felix Braam)
+	SLHA2 added	
+	Bug in LHAPDF interface fixed	
+
+2008-08-16 
+	Bug fixed in K matrix implementation	
+	Gravitino option in the MSSM added
+
+2008-03-20 
+	Improved color and flavor sums
+
+##################################################################
+	
+2007-03-12 
+	RELEASE: version 1.92
+	LHEF (Les Houches Event File) format added
+	Fortran 2003 command-line interface (if supported by the compiler)
+	Automated interface to colored models
+	More bug fixes and workarounds for compiler compatibility
+
+##################################################################
+	
+2007-03-06 
+	RELEASE: version 1.91
+	New model K-matrix (resonances and anom. couplings in WW scattering)
+	EWA spectrum
+	Energy-scan pseudo spectrum
+	Preliminary parton shower module (only from final-state quarks)
+	Cleanup and improvements of configure process
+	Improvements for O'Mega parameter files
+	Quadruple precision works again
+	More plotting options: lines, symbols, errors
+	Documentation with PDF bookmarks enabled
+	Various bug fixes
+
+2007-11-29 
+	New model UED
+
+##################################################################
+	
+2007-11-23 
+	RELEASE: version 1.90
+	O'Mega now part of the WHIZARD tree
+	Madgraph/CompHEP disabled by default (but still usable)
+	Support for LHAPDF (preliminary)
+	Added new models: SMZprime, SM_km, Template
+	Improved compiler recognition and compatibility
+	Minor bug fixes
+
+##################################################################
+	
+2006-06-15 
+	RELEASE: version 1.51
+	Support for anomaly-type Higgs couplings (to gluon and photon/Z)
+	Support for spin 3/2 and spin 2
+	New models: Little Higgs (4 versions), toy models for extra dimensions
+          and gravitinos
+	Fixes to the whizard.nw source documentation to run through LaTeX
+	Intel 9.0 bug workaround (deallocation of some arrays)
+
+##################################################################
+	
+2006-02-07 
+	RELEASE: version 1.50
+        To avoid confusion: Mention outdated manual example in BUGS file
+
+2006-02-02   [bug fix update]
+	Bug fix: spurious error when writing event files for weighted events
+	Bug fix: 'r' option for omega produced garbage for some particle names
+	Workaround for ifort90 bug (crash when compiling whizard_event)
+	Workaround for ifort90 bug (crash when compiling hepevt_common)
+
+2006-01-27 
+	Added process definition files for MSSM 2->2 processes
+	Included beam recoil for EPA (T.Barklow)
+	Updated STDHEP byte counts (for STDHEP 5.04.02)
+	Fixed STDHEP compatibility (avoid linking of incomplete .so libs)
+	Fixed issue with comphep requiring Xlibs on Opteron
+	Fixed issue with ifort 8.x on Opteron (compiling 'signal' interface)
+	Fixed color-flow code: was broken for omega with option 'c' and 'w'
+	Workaround hacks for g95 compatibility
+
+##################################################################
+	
+2005-10-25 
+	RELEASE: version 1.43
+	Minor fixes in MSSM couplings (Higgs/3rd gen squarks).  
+	  This should be final, since the MSSM results agree now completely 
+          with Madgraph and Sherpa
+	User-defined lower and upper limits for split event file count
+	Allow for counters (events, bytes) exceeding $2^{31}$
+	Revised checksum treatment and implementation (now MD5)
+        Bug fix: missing process energy scale in raw event file
+
+##################################################################
+	
+2005-09-30 
+	RELEASE: version 1.42	
+	Graphical display of integration history ('make history')
+	Allow for switching off signals even if supported (configure option)
+
+2005-09-29 
+	Revised phase space generation code, in particular for flavor sums
+	Negative cut and histogram codes use initial beams instead of
+	  initial parton momenta.  This allows for computing, e.g., E_miss
+	Support constant-width and zero-width options for O'Mega
+	Width options now denoted by w:X (X=f,c,z).  f option obsolescent
+	Bug fix: colorized code: flipped indices could screw up result
+	Bug fix: O'Mega with 'c' and 'w:f' option together (still some problem)
+	Bug fix: dvips on systems where dvips defaults to lpr
+	Bug fix: integer overflow if too many events are requested
+
+2005-07-29 
+	Allow for 2 -> 1 processes (if structure functions are on)
+
+2005-07-26 
+	Fixed and expanded the 'test' matrix element:
+	  Unit matrix element with option 'u' / default: normalized phase space
+
+##################################################################
+	
+2005-07-15 
+	RELEASE: version 1.41	
+	Bug fix: no result for particle decay processes with width=0
+	Bug fix: line breaks in O'Mega files with color decomposition
+
+2005-06-02 
+	New self-tests (make test-QED / test-QCD / test-SM)
+	  check lists of 2->2 processes
+	Bug fix: HELAS calling convention for wwwwxx and jwwwxx (4W-Vertex)
+
+2005-05-25 
+	Revised Makefile structure
+	Eliminated obsolete references to ISAJET/SUSY (superseded by SLHA)
+
+2005-05-19 
+	Support for color in O'Mega (using color flow decomposition)
+	New model QCD
+	Parameter file changes that correspond to replaced SM module in O'Mega
+	Bug fixes in MSSM (O'Mega) parameter file
+
+2005-05-18 
+	New event file formats, useful for LHC applications:
+          ATHENA and Les Houches Accord (external fragmentation)
+        Naive (i.e., leading 1/N) color factor now implemented both for
+          incoming and outgoing partons
+
+2005-01-26 
+	include missing HELAS files for bundle
+	pgf90 compatibility issues [note: still internal error in pgf90]
+
+##################################################################
+	
+2004-12-13 
+	RELEASE: version 1.40	
+	compatibility fix: preprocessor marks in helas code now commented out 
+	minor bug fix: format string in madgraph source
+
+2004-12-03 
+	support for arbitray beam energies and directions
+	allow for pT kick in structure functions
+	bug fix: rounding error could result in zero cross section
+	  (compiler-dependent)
+
+2004-10-07 
+	simulate decay processes
+	list fraction (of total width/cross section) instead of efficiency 
+          in process summary
+	new cut/analysis parameters AA, AAD, CTA: absolute polar angle
+
+2004-10-04 
+	Replaced Madgraph I by Madgraph II.  Main improvement: model no
+          longer hardcoded
+	introduced parameter reset_seed_each_process (useful for debugging)
+        bug fix: color initialization for some processes was undefined
+
+2004-09-21 
+	don't compile unix_args module if it is not required
+
+##################################################################
+	
+2004-09-20 
+	RELEASE: version 1.30	
+	g95 compatibility issues resolved
+	some (irrelevant) memory leaks closed
+	removed obsolete warning in circe1
+	manual update (essentially) finished
+
+2004-07-26 
+	minor fixes and improvements in make process
+
+2004-06-29 
+	workarounds for new Intel compiler bugs ...
+	no rebuild of madgraph/comphep executables after 'make clean'
+	bug fix in phase space routine: 
+          wrong energy for massive initial particles
+        bug fix in (new) model interface: name checks for antiparticles
+        pre-run checks for comphep improved
+        ww-strong model file extended
+        Model files particle name fixes, chep SM vertices included
+
+2004-05-05 
+	Fixed bug in PDFLIB interface: p+pbar was initialized as p+p (ThO)
+	NAG compiler: set number of continuation lines to 200 as default
+	Extended format for cross section summary; appears now in whizard.out
+	Fixed 'bundle' feature
+
+2004-04-28 
+	Fixed compatibility with revised O'Mega SM_ac model
+	Fixed problem with x=0 or x=1 when calling PDFLIB (ThO) 
+	Fixed bug in comphep module: Vtb was overlooked
+
+##################################################################
+	
+2004-04-15 
+	RELEASE: version 1.28	
+        Fixed bug: Color factor was missing for O'Mega processes with
+          four quarks and more
+        Manual partially updated
+
+2004-04-08 
+	Support for grid files in binary format
+	New default value show_histories=F (reduce output file size)
+	Revised phase space switches: removed annihilation_lines,
+	  removed s_channel_resonance, changed meaning of 
+	  extra_off_shell_lines, added show_deleted_channels
+	Bug fixed which lead to omission of some phase space channels
+	Color flow guessed only if requested by guess_color_flow
+
+2004-03-10 
+	New model interface: Only one model name specified in whizard.prc
+        All model-dependent files reside in conf/models (modellib removed)
+
+2004-03-03 
+	Support for input/output in SUSY Les Houches Accord format
+	Split event files if requested
+	Support for overall time limit
+	Support for CIRCE and CIRCE2 generator mode
+	Support for reading beam events from file
+
+2004-02-05 
+	Fixed compiler problems with Intel Fortran 7.1 and 8.0
+	Support for catching signals
+
+##################################################################
+	
+2003-08-06 
+	RELEASE: version 1.27	
+	User-defined PDF libraries as an alternative to the standard PDFLIB
+
+2003-07-23 
+	Revised phase space module: improved mappings for massless particles,
+	  equivalences of phase space channels are exploited
+	Improved mapping for PDF (hadron colliders)
+	Madgraph module: increased max number of color flows from 250 to 1000
+
+##################################################################
+	
+2003-06-23 
+	RELEASE: version 1.26
+	CIRCE2 support
+	Fixed problem with 'TC' integer kind [Intel compiler complained]
+
+2003-05-28 
+	Support for drawing histograms of grids
+	Bug fixes for MSSM definitions
+
+##################################################################
+	
+2003-05-22 
+	RELEASE: version 1.25
+	Experimental MSSM support with ISAJET interface
+	Improved capabilities of generating/analyzing weighted events
+	Optional drawing phase space diagrams using FeynMF
+
+##################################################################
+	
+2003-01-31 
+	RELEASE: version 1.24
+	A few more fixes and workarounds (Intel and Lahey compiler)
+
+2003-01-15 
+	Fixes and workarounds needed for WHIZARD to run with Intel compiler
+	Command-line option interface for the Lahey compiler
+
+	Bug fix: problem with reading whizard.phs
+
+##################################################################
+	
+2002-12-10 
+	RELEASE: version 1.23
+	
+	Command-line options (on some systems)
+
+	Allow for initial particles in the event record, ordered:
+          [beams, initials] - [remnants] - outgoing partons
+
+	Support for PYTHIA 6.2: Les Houches external process interface
+	String pythia_parameters can be up to 1000 characters long
+	Select color flow states in (internal) analysis
+	Bug fix in color flow content of raw event files
+
+	Support for transversal polarization of fermion beams
+	Cut codes: PHI now for absolute azimuthal angle, DPHI for distance
+	'Test' matrix elements optionally respect polarization
+	
+	User-defined code can be inserted for spectra, structure functions
+          and fragmentation
+
+	Time limits can be specified for adaptation and simulation
+	User-defined file names and file directory
+        Initial weights in input file no longer supported
+
+        Bug fix in MadGraph (wave function counter could overflow)
+
+	Bug fix: Gamelan (graphical analysis) was not built if noweb absent
+
+##################################################################
+	
+2002-03-16 
+	RELEASE: version 1.22
+	Allow for beam remnants in the event record
+
+2002-03-01 
+        Handling of aliases in whizard.prc fixed (aliases are whole tokens)
+
+2002-02-28 
+	Optimized phase space handling routines
+	  (total execution time reduced by 20-60%, depending on process)
+
+##################################################################
+	
+2002-02-26 
+	RELEASE: version 1.21
+	Fixed ISR formula (ISR was underestimated in previous versions).
+          New version includes ISR in leading-log approximation up to 
+          third order.  Parameter ISR_sqrts renamed to ISR_scale.
+
+##################################################################
+	
+2002-02-19 
+	RELEASE: version 1.20	
+	New process-generating method 'test' (dummy matrix element)
+	Compatibility with autoconf 2.50 and current O'Mega version
+
+2002-02-05 
+	Prevent integration channels from being dropped (optionally)
+	New internal mapping for structure functions improves performance
+	Old whizard.phx file deleted after recompiling (could cause trouble)
+
+2002-01-24 
+	Support for user-defined cuts and matrix element reweighting
+	STDHEP output now written by write_events_format=20 (was 3)
+
+2002-01-16 
+	Improved structure function handling; small changes in user interface:
+          new parameter structured_beams in &process_input
+          parameter fixed_energy in &beam_input removed
+	Support for multiple initial states
+	Eta-phi (cone) cut possible (hadron collider applications)
+	Fixed bug: Whizard library was not always recompiled when necessary
+	Fixed bug: Default cuts were insufficient in some cases
+	Fixed bug: Unusable phase space mappings generated in some cases
+	
+2001-12-06 
+	Reorganized document source
+
+2001-12-05 
+	Preliminary CIRCE2 support (no functionality yet)
+
+2001-11-27 
+	Intel compiler support (does not yet work because of compiler bugs)
+	New cut and analysis mode cos-theta* and related
+	Fixed circular jetset_interface dependency warning
+	Some broadcast routines removed (parallel support disabled anyway)
+	Minor shifts in cleanup targets (Makefiles)
+        Modified library search, check for pdflib8*
+
+2001-08-06 
+	Fixed bug: I/O unit number could be undefined when reading phase space
+	Fixed bug: Unitialized variable could cause segfault when 
+                   event generation was disabled
+	Fixed bug: Undefined subroutine in CIRCE replacement module
+	Enabled feature: TGCs in O'Mega (not yet CompHEP!) matrix elements
+		   (CompHEP model sm-GF #5, O'Mega model SM_ac)
+	Fixed portability issue: Makefile did rely on PWD environment variable
+	Fixed portability issue: PYTHIA library search ambiguity resolved
+
+2001-08-01 
+	Default whizard.prc and whizard.in depend on activated modules
+	Fixed bug: TEX=latex was not properly enabled when making plots
+
+2001-07-20 
+	Fixed output settings in PERL script calls
+	Cache enabled in various configure checks
+
+2001-07-13 
+	Support for multiple processes in a single WHIZARD run.  The 
+          integrations are kept separate, but the generated events are mixed
+	The whizard.evx format has changed (incompatible), including now
+	  the color flow information for PYTHIA fragmentation
+	Output files are now process-specific, except for the event file
+	Phase space file whizard.phs (if present) is used only as input,
+	  program-generated phase space is now in whizard.phx
+
+2001-07-10 
+	Bug fix: Undefined parameters in parameters_SM_ac.f90 removed
+
+2001-07-04 
+	Bug fix: Compiler options for the case OMEGA is disabled
+	Small inconsistencies in whizard.out format fixed
+
+2001-07-01 
+	Workaround for missing PDFLIB dummy routines in PYTHIA library
+
+##################################################################
+	
+2001-06-30 
+	RELEASE: version 1.13
+	Default path /cern/pro/lib in configure script
+
+2001-06-20 
+	New fragmentation option: Interface for PYTHIA with full color flow
+          information, beam remnants etc.
+
+2001-06-18 
+	Severe bug fixed in madgraph interface: 3-gluon coupling was missing
+	Enabled color flow information in madgraph
+
+2001-06-11 
+	VAMP interface module rewritten
+	Revised output format: Multiple VAMP iterations count as one WHIZARD 
+          iteration in integration passes 1 and 3
+	Improved message and error handling
+	Bug fix in VAMP: handle exceptional cases in rebinning_weights
+
+2001-05-31 
+	new parameters for grid adaptation: accuracy_goal and efficiency_goal
+
+##################################################################
+	
+2001-05-29 
+	RELEASE: version 1.12
+	bug fixes (compilation problems): deleted/modified unused functions
+
+2001-05-16 
+	diagram selection improved and documented
+
+2001-05-06 
+        allow for disabling packages during configuration
+
+2001-05-03 
+	slight changes in whizard.out format; manual extended
+
+##################################################################
+	
+2001-04-20 
+	RELEASE: version 1.11
+	fixed some configuration and compilation problems (PDFLIB etc.)
+
+2001-04-18 
+	linked PDFLIB: support for quark/gluon structure functions
+
+2001-04-05 
+	parameter interface written by PERL script
+	SM_ac model file: fixed error in continuation line
+
+##################################################################
+	
+2001-03-27 
+	RELEASE: version 1.10
+	reorganized the modules as libraries
+	linked PYTHIA: support for parton fragmentation
+
+2000-12-14 
+	fixed some configuration problems (if noweb etc. are absent)
+
+##################################################################
+	
+2000-12-01 
+	RELEASE of first public version: version 1.00beta
+
+
+
+

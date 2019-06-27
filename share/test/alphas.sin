@@ -1,0 +1,24 @@
+# $Id: colors.sin 1373 2009-12-07 12:52:40Z jr_reuter $
+
+alias parton = u:b:B:g
+
+process alphas_ugug =  u, g => u, g
+compile
+
+!---------------------------------------------
+
+sqrts = 500 GeV
+cuts = all Pt >= 50 GeV [parton]
+   and all M2 >= (50 GeV)^2 [combine [parton, parton]]
+
+beams = u, g
+integrate (alphas_ugug) { iterations = 5:5000 }
+
+?alpha_s_is_fixed = false
+alpha_s_order = 1
+integrate (alphas_ugug) { iterations = 5:5000 }
+
+?alpha_s_is_fixed = false
+?alpha_s_from_lhapdf = true 
+integrate (alphas_ugug) { iterations = 5:5000 }
+

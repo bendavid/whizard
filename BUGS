@@ -1,0 +1,26 @@
+Known bugs:
+
+General:
+
+* WHIZARD 2.0 currently runs only with the NAGFOR 5.2 and gfortran 4.5.0 
+  Fortran compilers, as well as with ifort 11.1.069 on 32bit Linux
+
+  [After compiler bugs are fixed, it should also run with g95, PGF
+   and ifort.  See the file EXTENSIONS for the list of Fortran 2003 
+   features that the compiler must support.]
+
+* WHIZARD 2.0 is still in release candidate (rc) 3 stage.  Although 
+  almost all intended features of the final release are implemented, 
+  there are still regressions and bugs, or things that do not (entirely)
+  work as intended.
+
+* Please report bugs and problems or performance issues 
+  to one of the authors:
+  Wolfgang Kilian <kilian@physik.uni-siegen.de>
+  Thorsten Ohl <ohl@physik.uni-wuerzburg.de>	
+  Juergen Reuter <reuter@physik.uni-freiburg.de>
+
+Manual:
+
+* WHIZARD 2.0, the new features, is still undocumented.  The manual
+  is still quite sparse. We are working on that.

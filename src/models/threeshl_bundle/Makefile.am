@@ -1,0 +1,72 @@
+## Makefile.am -- Makefile for model-parameter modules in WHIZARD
+##
+## Process this file with automake to produce Makefile.in
+#
+# Copyright (C) 1999-2009 by 
+#     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+#     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
+#     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+#
+# WHIZARD is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by 
+# the Free Software Foundation; either version 2, or (at your option)
+# any later version.
+#
+# WHIZARD is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+#
+########################################################################
+
+## Build the threeshl bundle required for the 3SHL models.
+
+noinst_LTLIBRARIES = libthreeshl_bundle.la
+
+libthreeshl_bundle_la_SOURCES= threeshl_bundle.F90
+
+## Unfortunately, the NAG compiler requires these to be happy.
+execmoddir = $(pkglibdir)/mod/models
+nodist_execmod_HEADERS = \
+	tdefs.$(FC_MODULE_EXT) \
+	threeshl.$(FC_MODULE_EXT) \
+	tscript.$(FC_MODULE_EXT) \
+	tglue.$(FC_MODULE_EXT)
+
+# Fortran90 module files are generated at the same time as object files
+$(nodist_execmod_HEADERS): threeshl_bundle.lo
+	@:
+
+########################################################################
+## Dependencies on global WHIZARD modules
+
+auxdir = $(top_builddir)/src/misc
+
+KINDS_MOD = kinds.$(FC_MODULE_EXT)
+CONSTANTS_MOD = constants.$(FC_MODULE_EXT)
+
+AM_FCFLAGS = -I$(auxdir)
+
+$(libthreeshl_bundle_la_OBJECTS): \
+  $(auxdir)/$(KINDS_MOD) \
+  $(auxdir)/$(CONSTANTS_MOD)
+
+## OpenMP
+AM_LDFLAGS =
+if WHIZARD_WITH_OPENMP
+AM_FCFLAGS += $(OPENMP_FCFLAGS)
+AM_LDFLAGS += $(OPENMP_FCFLAGS)
+endif
+
+########################################################################
+## Non-standard cleanup tasks
+clean-local:
+	-rm -f *.$(FC_MODULE_EXT)
+
+## Remove backup files
+maintainer-clean-local:
+	-rm -f *~

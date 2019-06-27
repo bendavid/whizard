@@ -1,0 +1,40 @@
+# List of Fortran 2003 features (not in Fortran 95) used by WHIZARD
+
+* Syntax:
+
+Names can have more than 31 characters
+
+
+* Allocatable objects:
+
+ALLOCATABLE structure component
+ALLOCATABLE dummy argument
+ALLOCATABLE function result
+
+
+* C interoperability:
+
+ISO_C_BINDING module
+BIND(C) attribute
+Scalar CHARACTER string supplied for dummy CHARACTER array
+
+
+* Procedure interfaces:
+
+ABSTRACT interface
+IMPORT statement
+VALUE attribute
+POINTER attribute for INTENT(IN) dummy argument
+
+
+* Procedure pointers:
+
+Procedure pointer
+Procedure pointer component
+PROCEDURE declaration statement
+
+
+* Intrinsic procedures
+
+GET_COMMAND_ARGUMENT
+GET_ENVIRONMENT_VARIABLE

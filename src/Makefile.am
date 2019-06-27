@@ -1,0 +1,90 @@
+## Makefile.am -- Makefile for WHIZARD
+##
+## Process this file with automake to produce Makefile.in
+
+## Subdirectories to configure
+SUBDIRS = \
+  hepmc lhapdf stdhep circe \
+  misc vamp whizard-core prebuilt \
+  omega models 
+if MPOST_AVAILABLE
+SUBDIRS += gamelan
+endif
+
+## -------------------------------------------------------------------
+## Build the toplevel WHIZARD library, which wraps various libraries
+## built in the subdirectories
+## and the wrapper O'Mega library, which contains omegalib and
+## the W/O interface modules for the various models
+pkglib_LTLIBRARIES = libwhizard.la libomega.la
+
+libwhizard_la_SOURCES =
+
+libomega_la_SOURCES =
+
+## Collect the various partial libraries
+libwhizard_la_LIBADD = \
+  whizard-core/libwhizard_core.la \
+  vamp/libvamp.la \
+  misc/libaux.la
+
+if HEPMC_AVAILABLE
+libwhizard_la_LIBADD += hepmc/libHepMCWrap.la
+else
+libwhizard_la_LIBADD += hepmc/libHepMCWrap_dummy.la
+endif 
+
+libomega_la_LIBADD = \
+  omega/src/libomega_core.la \
+  models/libmodels.la
+
+
+## If LHAPDF is not available, link in a dummy as replacements
+if LHAPDF_AVAILABLE
+libwhizard_la_LIBADD += $(LDFLAGS_LHAPDF)
+else
+libwhizard_la_LIBADD += lhapdf/libLHAPDF_dummy.la
+endif 
+
+## If STDHEP is not available, link in a dummy as replacements
+if STDHEP_AVAILABLE
+libwhizard_la_LIBADD += $(LDFLAGS_STDHEP)
+else
+libwhizard_la_LIBADD += stdhep/libstdhep_dummy.la
+endif 
+
+
+## -------------------------------------------------------------------
+## Build a standalone program
+bin_PROGRAMS = whizard 
+
+whizard_SOURCES =
+
+## A dummy source tells libtool that the F90 compiler is used for linking
+## Without dummy, libtool uses the C linker (default: ld)
+nodist_EXTRA_whizard_SOURCES = dummy.f90
+
+whizard_LDADD  = whizard-core/libwhizard_main.la
+whizard_LDADD += ./libwhizard.la
+whizard_LDADD += prebuilt/libwhizard_prebuilt.la
+whizard_LDADD += $(LDFLAGS_LHAPDF)
+whizard_LDADD += $(LDFLAGS_STDHEP)
+whizard_LDADD += $(LDFLAGS_HEPMC)
+
+if WHIZARD_WITH_OPENMP
+whizard_LDADD += $(OPENMP_FCFLAGS)
+libwhizard_la_LIBADD += $(OPENMP_FCFLAGS)
+libomega_la_LIBADD += $(OPENMP_FCFLAGS)
+endif
+
+## -------------------------------------------------------------------
+## Re-create Fortran dependenies
+fc-depend:
+	$(MAKE) -C whizard-core fc-depend
+.PHONY: fc-depend
+
+
+## -------------------------------------------------------------------
+## Remove backup files
+maintainer-clean-local:
+	-rm -f *~

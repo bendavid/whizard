@@ -1,0 +1,58 @@
+model = Zprime
+
+alias pr = u:d:s:c:gl:U:D:S:C
+alias lepton = e1:E1
+process zp_drell_yan = pr, pr => e1, E1
+
+# Define model parameters
+mZH = 1500 GeV
+wZH = 50 GeV
+
+# Define reasonable cuts and integrate the cross section(s)
+# in order to initialize the phase space grids for similation
+cuts = all Pt >= 50 GeV [lepton]
+       and all -2.5 <= Eta <= 2.5 [e1:E1]
+       and all M >= 800 GeV [e1,E1]
+
+# Define the process scale 
+scale = 1500 GeV
+
+# Beam specification and integration
+sqrts = 14 TeV
+beams = p,p => lhapdf 
+integrate (zp_drell_yan) { iterations = 6:20000 }
+
+?unweighted = false
+
+# Define title etc. as global variables, that will be used by PLOT
+$description =
+  "A WHIZARD 2.0 Example.
+   Cuts: $p_T^\ell\ge50 \textrm{ GeV}$, $M_{\ell\ell} \ge$800 GeV, 
+         $|\eta(\ell)|\le2.5$
+         \newline Using weighted events to produce smooth 
+   distributions."
+$ylabel = "$N_{\textrm{events}}$"
+
+# Allocate plots
+$title = "$Z'$ Drell-Yan dilepton peak $pp\to \ell\ell$"
+$xlabel = "$\theta^{\ell}$/GeV"
+histogram m_lepton (1 TeV, 2 TeV, 50 GeV)
+
+$title = "$Z'$ Drell-Yan: $p_T$ distribution of the $\ell$"
+$xlabel = "$p_T^{\ell}$/GeV"
+histogram pt_lepton (100 GeV, 2000 GeV, 100 GeV)
+ 
+$title = "$Z'$ Drell-Yan: Angular distribution of the $\ell$"
+$xlabel = "$\theta^{\ell}$/rad"
+histogram th_lepton (0, 3.1415, 0.157)
+
+analysis = record m_lepton (eval M [e1,E1]) and
+	   record pt_lepton (eval Pt [e1]) and
+	   record th_lepton (eval Theta [e1]) 
+
+n_events = 100000
+
+simulate (zp_drell_yan)
+
+$analysis_filename = "Zprime"
+write_analysis 

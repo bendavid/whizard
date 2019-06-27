@@ -1,0 +1,5304 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% gamelan.nw: v 0.31 
+%
+% MetaPost macros and a LaTeX style file 
+% for Graphical Analysis in MEtapost LANguage
+%
+% Wolfgang Kilian <kilian@x4u2.desy.de> Tue Jan 21 17:03:38 1997
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%\NeedsTeXFormat{LaTeX2e}
+\documentclass[a4paper]{article}
+\usepackage{noweb}
+%\usepackage[dvips]{graphicx}
+\def\filename{gamelan.nw}
+\def\fileversion{0.40}
+\def\filedate{1998/11/02}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% Macro section
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\makeatletter
+\newif\if@preliminary
+\@preliminaryfalse
+\def\preliminary{\@preliminarytrue}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% Changes referring to article.cls
+%
+%%% Title page
+\def\preprintno#1{\def\@preprintno{#1}}
+\def\address#1{\def\@address{#1}}
+\def\email#1{\thanks{\tt #1}}
+\def\abstract#1{\def\@abstract{#1}}
+\renewcommand\abstractname{ABSTRACT}
+\newlength\preprintnoskip
+\setlength\preprintnoskip{\textwidth\@plus -1cm}
+\newlength\abstractwidth
+\setlength\abstractwidth{\textwidth\@plus -3cm}
+%
+\@titlepagetrue
+\renewcommand\maketitle{\begin{titlepage}%
+  \let\footnotesize\small
+  \hfill\parbox{\preprintnoskip}{%
+  \begin{flushright}\@preprintno\end{flushright}}\hspace*{1cm}
+  \vskip 60\p@
+  \begin{center}%
+    {\Large\bf\boldmath \@title \par}\vskip 1cm%
+    {\sc\@author \par}\vskip 3mm%
+    {\@address \par}%
+    \if@preliminary
+      \vskip 2cm {\large\sf PRELIMINARY DRAFT \par \@date}%
+    \fi
+  \end{center}\par
+  \@thanks
+  \vfill
+  \begin{center}%
+    \parbox{\abstractwidth}{\centerline{\abstractname}%
+    \vskip 3mm%
+    \@abstract}
+  \end{center}
+  \end{titlepage}%
+  \setcounter{footnote}{0}%
+  \let\thanks\relax\let\maketitle\relax
+  \gdef\@thanks{}\gdef\@author{}\gdef\@address{}%
+  \gdef\@title{}\gdef\@abstract{}\gdef\@preprintno{}
+}%
+%
+%%% New settings of dimensions
+\topmargin -1.5cm
+\textheight 22cm
+\textwidth 17cm
+\oddsidemargin 0cm
+\evensidemargin 0cm
+%
+%%% Captions set in italics
+\long\def\@makecaption#1#2{%
+  \vskip\abovecaptionskip
+  \sbox\@tempboxa{#1: \emph{#2}}%
+  \ifdim \wd\@tempboxa >\hsize
+    #1: \emph{#2}\par
+  \else
+    \hbox to\hsize{\hfil\box\@tempboxa\hfil}%
+  \fi
+  \vskip\belowcaptionskip}
+%
+\makeatother
+
+\def\MF{\textsf{META}\-\textsf{FONT}}%
+\def\MP{\texttt{Meta}\-\texttt{Post}}%
+\def\GML{\textsf{gamelan}}%
+\def\FMF{\texttt{feyn}\textsf{MF}}%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% Titlepage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\makeindex
+\begin{document}
+\preliminary        % mark on title page
+%\baselineskip20pt   % stretch linespacing in main text
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\preprintno{\filedate}
+\title{%
+ \LARGE\GML:\\
+ Graphical Analysis in the Metapost Language
+}
+\author{%
+ Wolfgang Kilian%
+ \email{kilian@x4u2.desy.de, kilian@thphys.uni-heidelberg.de}
+}
+\address{%
+ Institut f\"ur Theoretische Physik, Universit\"at Heidelberg,
+ Philosophenweg 16\\
+ D--69120 Heidelberg, Germany
+}
+\abstract{%
+A macro package for the presentation of scientific data in the \MP\
+language, based on John Hobby's [[graph.mp]] macros.  The macros can
+be accessed via a \LaTeX\ interface.  This document contains the
+source code for version \fileversion{}.
+}
+%
+\maketitle
+\tableofcontents
+\vfill\newpage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% Text
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+<<Filename>>=
+gamelan.nw
+<<Fileversion>>=
+0.40
+<<Filedate>>=
+1998/11/02
+<<Copyright notice>>=
+% Copyright (C) 1997,1998 by Wolfgang Kilian <kilian@x4u2.desy.de>
+%   v<<Fileversion>> <<Filedate>>
+% This file lacks all documentation.  See the source <<Filename>>
+% Note: This is a test version and not released code.  
+<<Header>>=
+<<Copyright notice>>
+%
+% This file is called by the main program  gamelan.mp
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\vfill\newpage
+\section{Synopsis}
+The \GML\ package is an extension to the \MP\ language which produces
+PostScript output.  The following [incomplete] list of commands gives
+some flavor of the features:
+\subsection{Graph and coordinate system}
+\begin{description}
+\item[{}[[begingraph]]{}] Initialize graph.  Arguments: width and height in
+absolute coordinates ([[cm]], [[mm]], [[in]], etc.).
+\item[{}[[setup]]{}] Set up a coordinate system ([[log]], [[linear]]).
+\item[{}[[graphrange]]{}] Range of graph in data coordinates.  Where unknown,
+it will be determined by the data.
+\item[{}[[graphbounds]]{}] Specify bounding box for the graph in absolute
+coordinates.  Default: Natural bounds.
+\item[{}[[endgraph]]{}] Finalize graph.  Results in a \MP\ picture
+expression.  If desired, such a picture can be transformed (scaled,
+rotated, etc.) and combined with other elements drawn with \MP.
+\end{description}
+\subsection{Reading data}
+\begin{description}
+\item[{}[[fromfile]]{}] Open a file for reading.
+\item[{}[[fromfunction]]{}] Take a (user-defined) function for reading.
+\item[{}[[get]]{}] Read items within one line of data.  Also: [[getn]],
+[[getstring]], etc.
+\item[{}[[plot]]{}] Store data as a function plot in a dataset.
+Points can be augmented by [[hbar]] and/or [[vbar]] for error bars.
+\item[{}[[hist]]{}] Store data as a histogram in a dataset.
+\end{description}
+\subsection{Data manipulations}
+\begin{description}
+\item[{}[[cat]]{}] Concatenate datasets or subparts.
+\item[{}[[calculate]]{}] Calculate new dataset from existing ones using
+arbitrary expressions in floating-point arithmetics.
+\end{description}
+Datasets may consist of several disconnected parts.
+``Chain'' expressions as arguments allow to specify arbitrary subparts
+and combinations of datasets for calculations and drawing.  All
+standard functions are available in floating-point.
+\subsection{Data drawing}
+\begin{description}
+\item[{}[[draw]]{}] Draw dataset(s) or subparts, or one of the
+usual \MP\ objects (curves, points, pictures).  Also: [[fill]],
+[[unfill]], etc.
+\end{description}
+Drawing options: [[cyclic]] for (piecewise) cyclic path(s), [[linked]]
+[[none]]/[[straight]]/[[smoothly]]/[[tight]], [[outlined]],
+[[withsymbol]] (user-definable data symbols),
+[[withlabel]] (label attached to curve), [[withlegend]],
+[[withpen]] (user-definable pen widths and styles), 
+[[withcolor]] (arbitrary RGB colors), [[dashed]]
+(user-definable dash patterns), [[hatched]] (user-definable hatch
+patterns), all \MP\ transforms in absolute coordinates (examples:
+[[shifted (2mm,0)]] , [[rotated 90]], etc.)
+\subsection{Labels}
+\begin{description}
+\item[{}[[label]]{}] Label the plot. Labels may be attached to points,
+curves, axes, outer labels.
+\item[{}[[thelegend]]{}] Legend picture defined using [[withlegend]] options.
+\end{description}
+Labels may consist of simple strings, arbitrary \TeX\ or \LaTeX\
+expressions, even whole pictures. 
+\subsection{Frame and tick marks}
+\begin{description}
+\item[{}[[frame]]{}] Draw frame or subparts.
+\item[{}[[grid]]{}] Full control over grid and/or tick marks
+([[line]]/[[tick]]/[[itick]]/[[otick]]/[[dot]]): axis-specific and/or
+multiple grids, nested levels of submarks, automatic tick number or
+manual control.  Example: [[grid(3 labeled ticks, 10 small iticks)]].
+Standard drawing options ([[withcolor]] etc.).
+\end{description}
+\subsection{Language}
+For frequently encountered cases macros are provided which perform
+several tasks in one step.  More can easily be added by the user
+([[vardef]]).  Standard data symbols, line styles, grid patterns,
+colors etc. are provided, but can be augmented and modified anywhere.
+Furthermore, the \MP\ language comprises the usual control structures
+([[for]], [[if]], etc.), variables, arrays, strings, linear equation
+solving, and a whole arsenal of drawing tools.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\vfill\newpage
+\section{Changes}
+\begin{itemize}
+\item[0.40:]
+  \begin{itemize}
+  \item[] Internal pictures now in Mlog coordinates; no rescaling.
+  \item[] [[draw plot]] instead of [[plot draw]] etc.
+  \item[] [[table plot]] replaces [[makeplot]].
+  \item[] [[transpose]]
+  \item[] [[withjoin]] and [[withcap]]
+  \item[] Bug fixes: defaultfont, gmlpreamble
+  \item[] New color definition files
+  \item[] [[<<]] and [[>>]] as replacement to [[btex]] and [[etex]]
+  \item[*] Completed manual (?!)
+  \end{itemize}
+\item[0.31:]
+  \begin{itemize}
+  \item[] Replaced [[foreachline]] by [[for]] \emph{var} [[withinblock]].
+  \item[] and [[foreachvalue]] by [[for]] \emph{var} [[within]].
+  \item[] Introduced [[withshadow]] analogous to [[outlined]].
+  \item[] Added [[spectrum]] etc.\ in [[gmlhatch.mp]].
+  \item[] [[withbackground]] now alias to [[hatched]]; a [[hatched]]
+	option now takes its own color(s).
+  \item[] Introduced [[\gmlon]]/[[\gmloff]]
+  \item[] Replaced [[\gmltext]] by [[\gmlcode]].
+  \item[] Changed [[\gmlpreamble]] to be an environment, writing a
+	preamble file.
+  \item[] Added [[hrange]] and [[vrange]].
+  \item[] Modified [[makeplot]] analogous to [[calculate]]; introduced
+	[[makeplots]] in addition.  Same with [[makehist]].
+  \item[] Removed bug in [[showfloat]].
+  \item[] New implementation of chains.
+  \item[] Dataset testing functions changed: [[defined]], [[checkdata]].
+  \item[] Modified settings for [[directory]] etc.
+  \end{itemize}
+\item[0.30:]
+  \begin{itemize}
+  \item[] Removed the leading [[g]] from command names
+  \item[] Streamlined the functionality of all drawing and labeling commands
+  \item[] Revised [[forfile]] etc.\ macros.
+  \item[] Improved Makefile.
+  \end{itemize}
+\item[0.21:]
+  \begin{itemize}
+  \item[] Primitive version control.
+  \item[] Templates now included in driver file.
+  \item[] Implementation changed for macros derived from [[forfile]]
+and [[forfun]].  Syntax streamlined for the latter.
+  \item[] Bug fix: [[plot]] with error bars.
+  \item[] Filename for [[\begin{gmlfile}]] now optional, defaults to
+[[\jobname]]. 
+  \item[] [[\gmlnumbers]]: Define style for the numeric axis marks.
+  \item[] [[gmlgroup]] environment with optional argument (similar
+with [[gmlfigure]] and [[gmlgraph]]): Declare local variables and make
+the pen, default color, and \TeX\ declarations, local to the group.
+  \item[] Improved color handling: [[\gmlreadcolor]] (with
+[[\gmlcolorfile]]), [[\gmlnewcolor]], and [[\gmlcolor]].  Also:
+[[\gmlpen]]. 
+  \item[] Included the [[format.mp]] and [[string.mp]] packages and
+removed the obsolete call to [[texnum.mp]].
+  \item[] Replaced [[thelab]] by [[tag]].  
+  \end{itemize}
+\item[0.20:]
+  \begin{itemize}
+  \item[] Rebuilt from start.
+  \item[] \LaTeX\ interface.
+  \end{itemize}
+\end{itemize}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Things to do}
+\begin{itemize}
+\item Manual.
+\item Testing.
+\item Error and help messages.
+\item Compatibility with Thorsten Ohl's [[feynmp]].
+\end{itemize}
+\vfill\newpage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Testing}
+\subsection{Testing the Metapost system}
+A \LaTeX\ driver file
+<<mptest.tex>>=
+% Include a file produced by MetaPost into a LaTeX document
+\documentclass[12pt]{article}
+\usepackage{graphics}
+\pagestyle{empty}
+\begin{document}
+\section*{Metapost test graph}
+The graph below should consist of a diagonal line and two strings:\\[1cm]
+\includegraphics{\jobname.1}
+\end{document}
+@ A \MP\ test file
+<<mptest.mp>>=
+% Test MetaPost working together with LaTeX
+tracingstats:=1;
+verbatimtex \documentclass[12pt]{article} \begin{document} etex
+beginfig(1) 
+draw origin--(5cm,5cm);
+label.lrt("String",(0,5cm));
+label.ulft(btex \LaTeX\ String etex, (5cm,0));
+endfig;
+end
+@ Compare [[virmp]] and the program run by [[mp]] -- If the two are
+not identical, we probably need a little work to install \GML\ in an
+analogous way:
+<<compare.sh>>=
+#!/bin/sh
+if ( diff $1 $2 > /dev/null )
+then :
+else  echo '*** Metapost called indirectly ***'
+fi
+@ 
+\subsection{Short test file for gamelan}
+<<gmltest.tex>>=
+% gmltest.tex --
+% Test for gamelan.mp
+\documentclass[12pt]{article}
+\usepackage{gamelan}
+\begin{gmlpreamble}
+\usepackage{latexsym}
+\def\foo{This is $\leadsto$}
+\def\bar{some text}
+\end{gmlpreamble}
+\begin{document}
+\begin{gmlfile}
+\gml{tracingscale:=tracingsets:=1;}
+\unitlength1mm
+\begin{gmlgraph}(100,100)[a,b,c,d_u]
+plot(a) (#0,#2), (#3,#1), (#6,#3), ??, (#7,#3), (#10,#9);
+plot(b2) (#0,#1), (#2,#4), (#5,#5), ??, (#6,#7), (#9,#10);
+picture s; s = fdshape(square scaled 2mm)(withcolor .9white)();
+draw piecewise from(a) dashed evenly withsymbol s withlegend "A";
+draw from(b2) withlegend "XXX" witharrows;
+calculate c[-1][3.1](a,b2)(x, y1 plus y2);
+freeze;
+draw from(c[-1][3.1]) 
+  withlabel("ABC", on curve at (#1,??)) 
+  withlabel("DEF", on curve at 2.5)
+  withsymbol (pentagram scaled 3mm);
+plot(d_u.4vv r) (#8,#2), (#10,#2), (#10,#3);
+fill from(d_u.4vv r) withcolor yellow outlined dashed withdashdots
+  withlegend "QQQ";
+fill from(d_u.4vv r) shifted (-5mm,-5mm) 
+	hatched withstripes scaled 2 rotated -30 withcolor red
+        outlined withlegend "qqq";
+interim tracingonline:=1;
+label.urt(thelegend,(1cm,7cm));
+label.lft(@<<\foo\bar@>> rotated 90)(out);
+line.bot("",#5);
+\end{gmlgraph}
+\gml{show currentpicture;}
+
+\foo\bar.
+\end{gmlfile}
+\end{document}
+@ 
+\subsection{Long test file}
+<<gmllongtest.tex>>=
+% gmllongtest.tex --
+% Test for gamelan.mp
+\documentclass[10pt]{article}
+\usepackage{gamelan}
+\begin{document}
+\begin{gmlfile}
+\begin{gmlcode}
+  message "These should be 1, 20, 300, 4e10, 5e-13, -6, -7e8, -8e-2.";
+  showfloat #1, #20, #300, #4e10, #5e-13, #-6, #-7e8, #-8e-2;
+  message "This should be 1.2345678.";
+  showfloat #1.2345678;
+\end{gmlcode}
+\input{gmlcolors}
+\begin{center}\unitlength1mm
+\begin{gmlfigure}
+@ We store the whole thing in a picture variable.
+<<gmllongtest.tex>>=
+tracingsets:=1; tracingonline:=1;
+picture px; px =
+begingraph(12cm,10cm)
+  graphrange (#0,#1.7), (#10,??);
+  fromfile "gmllongtest.dat": 
+
+    % A curve to be plotted in one line
+    table plot(u)(); showdata u;
+
+    % data points with x and y error bars
+    for l withinblock: get x,y,h; plot(t) z vbar h hbar (h over two); endfor
+    showdata t;
+
+    % Two named datasets
+    tables plot(a1,a2)();
+    showdata a1,a2;
+
+    for l withinblock: get x,y; hist(s) (x, y plus #6); endfor
+    showdata s;
+  endfrom
+
+@ Draw these data:
+<<gmllongtest.tex>>=
+  % A band between two curves. 
+  fill from(a1|a2\) linked(smoothly,straight) 
+    withbackground 
+	(spectrum(50)(red,magenta,blue) xscaled width yscaled height)
+    withlegend "Band";
+
+  % A small histogram that has been read in as horizontal bars,
+  % drawn with an offset in absolute coordinates.  The label points to
+  % the midpoint of the 2nd bar, that is point#1 on part#1 of the path
+  % set.  
+  calculate bb(s) (x,#6);
+  draw piecewise cyclic from(s,bb/\) shifted (5mm,0);
+  phantom from(bb$1\) shifted (5mm,0)
+    withlabel.bot("Histogram", on curve at 1);
+
+  % A triangle in graph coordinates
+  fill plot((#3,#4),(#9,#5),(#6,#4)) withcolor green
+    withlegend "Triangle" outlined;
+
+  % A curve with circles at the data points.  The first label refers to 
+  % point#2 on the first drawn path, the second one to the point where
+  % it intersects x=0.
+  draw from(u) dashed evenly withcolor red
+    withsymbol(circle scaled 3mm) withlegend "Curve"
+    withdotlabel.urt("Maximum", on curve at 2)
+    withdotlabel.lft(btex $x=0$ etex, on curve at (#0,??) shifted (-3mm,0));
+
+  % A label at a point in graph coords
+  dotlabel.lrt(image(drawarrow (1cm,-1cm)--origin;
+                     label.lrt(btex $(8,6)$ etex, (1cm,-1cm))),
+               on graph at (#8,#6));
+
+  % Horizontal and vertical error bars, with square symbols
+  picture sq; sq = 
+    image(draw square scaled 3mm; fill square scaled 2mm);
+  draw piecewise from(t) withcolor .5white withsymbol sq withticks 
+    withlegend btex Error bars etex;
+
+  % Another triangle, completely in absolute coords
+  draw(3cm,4cm)--(2cm,5cm)--(1cm,1cm)--cycle 
+    dashed withdots scaled .5 withpenscale 2
+    withdotlabel.ulft("Corner", on curve at 2);
+
+<<gmllongtest.tex>>=
+  % A histogram, calculated directly instead of using a file, drawn with
+  % dots at the reference points.  The color has been read from rgb.txt
+  hist(c) (#5,#4), (#5.5,#4.8), (#6,#5.4), (#6.5,#4.5), (#7,??);
+  calculate cb(c) (x,#3.5);
+  fill piecewise from(c,cb/\) hatched withstripes rotated 30 
+    withcolor orange
+    withshadow shifted (2mm,-3mm) withcolor .8[orange,white]
+    withlegend "Histogram";
+  phantom from(c) withsymbol(fshape(circle scaled 2mm)() colored red)
+    withlegend "Values";
+
+  % A closed shape
+  draw cyclic plot(
+    (#8,#2),(#9,#2.1),(#10,#2.5),(#9,#2.9),
+    (#8,#3),(#7,#2.9),(#6,#2.5),(#7,#2.1))
+    dashed withdashdots linked smoothly;
+
+  % A label picture that shows up at the left margin (slightly offset)
+  label.rt(image(drawarrow (1cm,0)--origin;
+                 label.rt(btex$6.5$etex, (1cm,0))),
+           on graph at (??,#6.5) shifted (3mm,0));
+
+  % Data points with cumulative errors
+  fromfile "gmllongtest.dat":
+    for l withinblock: 
+      get x,y,a,b; plot(r1) z vbar a; plot(r2) z vbar (a plus b);
+    endfor
+  endfrom;
+
+<<gmllongtest.tex>>=
+  % Outer labels and tick marks
+  label.top(btex\Large Test graph etex, out);
+  grid(labeled noticks rt, 10 iticks top, small iticks top) withlength 6mm; 
+  defaultgrid(2); grid.bot(small oticks);
+  frame.llft;
+
+  % The legend
+  begingroup interim bboxmargin:=3mm;
+    label.urt(fdbox(thelegend)
+	(withcolor yellow withshadow shifted (2mm,-3mm) withcolor .8white)
+	    ()(), on graph at (#2,#5.2));
+  endgroup;
+endgraph;    
+% Show the picture together with its bounding box
+draw dbox(px)()();
+\end{gmlfigure}
+\end{center}
+\end{gmlfile}
+\end{document}
+@ The data for the test file:
+<<gmllongtest.dat>>=
+-4  0
+1 3.2
+2 3.6
+3 1
+4 2.2
+5 3
+6 1
+7 0
+8 1
+9 4
+
+1.5 4 2
+4.5 3 2
+7.5 1.5 2.5
+8.5 .5 1
+9.5 .5 1
+
+2 2 3
+3 2.5 3.5
+6 3 5
+8 3 5.5
+
+6.1 .5
+6.3 .4
+6.5 .3
+6.7 .4
+
+1.9 5 .2 .3 
+2.3 4.6 .2 .15
+2.7 4.7 .15 .1 
+@ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Implementation}
+\subsection{Top-level structure}
+<<gamelan.mp>>=
+% gamelan.mp --
+<<Copyright notice>>
+@ Preload the [[plain]] base if not already done:
+<<gamelan.mp>>=
+if unknown mm: input plain fi
+@ We have to deal with large numbers.  We set [[warningcheck]] to zero
+once for all, assuming it is never reset to one.
+<<gamelan.mp>>=
+warningcheck := 0;
+@ %def warningcheck
+@ Input the rest
+<<gamelan.mp>>=
+<<Required packages>>
+endinput;
+% The End.
+@ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Supplements to [[plain.mp]]}
+<<Required packages>>=
+input gmlaux
+<<gmlaux.mp>>=
+% gmlaux.mp -- supplements to plain.mp (including string.mp)
+<<Header>>
+@ We like to handle strings, paths, and pictures in a list-like manner:
+<<gmlaux.mp>>=
+vardef take expr i of s = 
+  if string s:      substring(0,i) of 
+  elseif path s:    subpath(0,i) of
+  elseif picture s: subpicture(0,i) of
+  fi s
+enddef;
+vardef drop expr i of s = 
+  if string s:      substring(i,infinity) of 
+  elseif path s:    subpath(i,infinity) of
+  elseif picture s: subpicture(i,infinity) of
+  fi s 
+enddef;
+vardef subpicture expr u of p =
+  image(save i,x,y; i=0; z=(xpart u, ypart u);
+        for q within p: 
+          if (x<(incr i)) and (y>=i): addto currentpicture also q; fi 
+        endfor)
+enddef;
+@ %def take drop subpicture
+@ Transform a numeric subscript into a number
+<<gmlaux.mp>>=
+def number_from expr s =
+  scantokens
+    if substring(0,1) of s = "[":  substring(1, length s - 1) of fi  s
+enddef;
+@ For general use:
+<<gmlaux.mp>>=
+vardef whatever_str = save ?; string ?; ? enddef;
+def ?? = whatever enddef;
+string TAB,CR; TAB=char 9; CR=char 13;
+@ %def whatever_str ?? TAB CR
+@ Extend [[thelabel]] such that it also allows a path as argument.  
+Suffix [[o]] means to put the label's coordinate origin on top of the
+location.
+<<gmlaux.mp>>=
+vardef thesymbol(expr s) =
+  if picture s: s
+  elseif path s: 
+    image(addto currentpicture doublepath s withpen currentpen _op_)
+  else:  s infont defaultfont scaled defaultscale
+  fi
+enddef;
+vardef thelabel @#(expr s,z) =  % Position s near z
+  save p; picture p; p=thesymbol(s);
+  p shifted (z + labs @# *
+       (labeloffset*laboff @#
+        - (labxf @#*lrcorner p + labyf @#*ulcorner p 
+           + (1-labxf @#-labyf @#)*llcorner p)))
+enddef;
+pair laboff.o; laboff.o=origin; labxf.o=labyf.o=0;
+labs.o=0; 
+labs=labs.lft=labs.rt=labs.bot=labs.top=
+labs.ulft=labs.urt=labs.llft=labs.lrt=1;
+@ %def thesymbol thelabel laboff labxf labyf labs
+@ Make [[dotlabel]] a spark and parallel to [[label]].  Make the dot
+scale an internal variable.
+<<gmlaux.mp>>=
+def dotlabel = _dotlabel enddef;
+vardef _dotlabel@#(expr s,z) =
+  interim linecap:=rounded;
+  draw z withpen pencircle scaled dotscale;
+  label@#(s,z);
+enddef;
+newinternal dotscale; dotscale:=3bp;
+@ %def dotlabel dotscale
+@ Return a transform that makes [[unitsquare]] the bbox of picture
+[[p]] resp. transforms [[ttempl_]] into the first three points of path
+[[p]]
+<<gmlaux.mp>>=
+vardef thetransform(expr p) =
+  save t; transform t;
+  if picture p:
+    point 0 of ttempl_ transformed t = llcorner p;
+    point 1 of ttempl_ transformed t = lrcorner p;
+    point 2 of ttempl_ transformed t = urcorner p;
+  elseif path p:
+    for i=0,1,2:
+      point i of ttempl_ transformed t = point i of p;
+    endfor
+  fi
+  t
+enddef;
+path ttempl_; ttempl_=(0,0)--(1,0)--(1,1);
+@ %def thetransform ttempl_
+@ What one would expect:
+<<gmlaux.mp>>=
+def penscale = pickup pencircle scaled enddef;
+def withpenscale = withpen pencircle scaled enddef;
+vardef colorpart primary p =
+  (redpart p, greenpart p, bluepart p)
+enddef;
+def withoptions_from primary p =
+  withpen penpart p withcolor colorpart p dashed dashpart p
+enddef;
+@ %def penscale withpenscale colorpart withoptions_from
+@ This is similar to [[withcolor]], but it acts like a transform on
+picture [[p]].  Recall that transformations are primarydefs.
+<<gmlaux.mp>>=
+primarydef p colored c =
+  image(addto currentpicture also p withcolor c)
+enddef;
+@ %def colored
+@ Make the current pen local
+<<gmlaux.mp>>=
+def savecurrentpen =
+  pen _cpen; _cpen=currentpen;
+  save currentpen; pen currentpen; pickup _cpen;
+enddef;
+@ %def savecurrentpen
+@ Standard pen thicknesses
+<<gmlaux.mp>>=
+numeric thick, thin; thin=1pt; thick=2thin;
+@ %def thin thick
+@ Provide some more colors
+<<gmlaux.mp>>=
+color yellow, magenta, cyan;
+yellow = red+green; magenta = red+blue; cyan = blue+green;
+vardef gray primary nn = (nn/100)*white enddef;
+def grey = gray enddef;
+@ %def cyan magenta yellow gray grey
+@ Generic color definition: the argument may be a color expression or
+a string; in the latter case it must be either a six-digit hexadecimal
+number or a tripel or three-digit decimal numbers between $0$ and
+$255$ which will be converted to a color expression.
+<<gmlaux.mp>>=
+vardef newcolor @# expr s_ = 
+  if not color @#: scantokens("color " & templateof @# & ";"); fi
+  if color s_: @#:=s_; elseif string s_: @#:=color_from_string s_; fi
+enddef;
+vardef color_from_string expr s =
+  save l_; l_=length s;
+  if l_=6: 
+    (hex substring(0,2) of s,
+     hex substring(2,4) of s,
+     hex substring(4,6) of s)/255
+  elseif l_=11:
+    (scantokens substring(0,3) of s,
+     scantokens substring(4,7) of s,
+     scantokens substring(8,11)of s)/255
+  else: (??,??,??)
+  fi
+enddef;
+@ %def newcolor color_from_string
+@ Define a standard color for drawing, make it local, and enable it.
+[[beginfig]] will reset it in any case.
+<<gmlaux.mp>>=
+vardef pencolor expr s_ = 
+  color thepencolor;
+  if color s_: thepencolor:=s_; 
+  elseif string s_: thepencolor:=color_from_string s_; 
+  fi
+enddef;
+pencolor black;
+def savepencolor = 
+  color _fgnd; _fgnd=thepencolor;
+  save thepencolor; pencolor _fgnd;
+enddef;
+def setpencolor =
+  drawoptions if thepencolor=black: () else: (withcolor thepencolor) fi;
+enddef;
+@ %def pencolor savepencolor setpencolor
+@ Another dash pattern
+<<gmlaux.mp>>=
+picture withdashdots;
+withdashdots = dashpattern(on 3 off 3 on 0 off 3);
+@ %def withdashdots
+@ A function returning the type of [[x]] as a string.  The result
+could be reused in conjunction with [[scantokens]] and [[str]].
+<<gmlaux.mp>>=
+vardef typeof expr x =
+  if numeric x: "numeric"
+  elseif boolean x: "boolean"
+  elseif pair x: "pair"
+  elseif color x: "color"
+  elseif transform x: "transform"
+  elseif string x: "string"
+  elseif path x: "path"
+  elseif pen x: "pen"
+  elseif picture x: "picture"
+  else: "UNKNOWN"
+  fi
+enddef;
+@ %def typeof
+@ This function returns a template of variable name [[@#]] as a string
+that can be used in a declaration (via [[scantokens]]), i.e.\ with
+numeric suffixes replaced by empty square brackets.
+<<gmlaux.mp>>=
+vardef templateof @# =
+  save i_,p_,q_,s_,t_,skip_; i_=0; skip_=0;
+  string s_,t_; s_=str @#;
+  forever: t_:=substring(i_,incr i_) of s_;
+    if skip_=0:
+      if t_="[": skip_:=1; p_:=i_; 
+      elseif isdigit t_: skip_:=2; p_:=i_-1;
+      fi
+    elseif skip_=1:
+      if t_="]": skip_:=0; q_:=i_-1; 
+        s_:= (substring(0,p_) of s_)&(substring(q_,infinity) of s_);
+        i_:=i_-q_+p_;
+      fi
+    else:
+      if not ((isdigit t_) or (t_=".")): 
+        skip_:=0; q_:=i_-1;
+        s_:= (substring(0,p_) of s_)&"[]"&(substring(q_,infinity) of s_);
+        i_:=i_-q_+p_+1; 
+      fi
+    fi
+    exitif t_="";
+  endfor;
+  s_
+enddef;
+@ %def templateof
+@ This trick allows to implement new for-like macros: It reads
+text up to a colon, which is temporarily redefined to insert text
+[[t]] in its place.
+<<gmlaux.mp>>=
+def eatcolon(text t) =
+  gobble begingroup
+    save:; def : = endgroup t enddef;
+enddef;
+@ %def eatcolon
+@ Issue a warning message if style file and mp macros have different date 
+<<gmlaux.mp>>=
+vardef compare_filedate(expr sfd,fd,v) =
+  message("Package: `gamelan' "&v&" <"&fd&">");
+  if sfd<>fd: 
+    message "Warning: You are using gamelan.sty from "&sfd;
+    message "         together with gamelan.mp  from "&fd;
+  fi
+  message "";
+enddef;
+@ %def compare_filedate
+@ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Enhanced drawing facilitie}
+The following macro packages improve \MP's capabilities by providing
+an interface to frequent applications.  They are included by \GML, but
+they are self-contained and may be called independently.
+
+\subsubsection{Hatching areas}
+The following functions allow to draw hatched areas with \MP.  Hatch
+patterns are similar to dash patterns; in fact they are dashed lines
+scaled to very large width, such that a single dashed pen stroke fills a
+whole graph.
+<<Required packages>>=
+input gmlhatch
+<<gmlhatch.mp>>=
+% gmlhatch.mp --
+<<Header>>
+@
+The fill command must allow for a picture argument, so modify
+[[plain.mp]] in this respect:
+<<gmlhatch.mp>>=
+def fill expr p =
+  addto currentpicture
+  if picture p:
+    also p
+  else:
+    contour p
+  fi
+  _op_
+enddef;
+@ %def fill
+@ If [[p]] is a cycle and [[q]] a hatchpattern, [[p hatched q]] returns
+a picture where the hatchpattern is clipped to [[p]].  If [[p]] is a
+picture, [[p hatched q]] appends the hatchpattern, clipped by the
+pathpart of [[p]], to [[p]].  This allows for multiple hatching.  In
+other cases, [[p hatched q]] just returns [[p]].  One restriction:
+[[withcolor]] options can only appear \emph{after} all [[hatched]]
+options (this is different for [[dashed]]). 
+<<gmlhatch.mp>>=
+tertiarydef p_ hatched q_ = 
+  if known q_:
+    begingroup
+    save q; picture q; q = q_;
+    if hatchable p_: clip q to p_; q
+    elseif picture p_:
+      save pic,pa; picture pic; path pa; 
+      pic=p_; pa=pathpart pic;
+      if hatchable pa: clip q to pa; addto pic also q;  fi 
+      pic
+    else: p_
+    fi 
+    endgroup
+  else: p_
+  fi
+enddef;
+def withbackground = hatched enddef;
+@ %def hatched withbackground
+@ A [[hatchpattern]] is a picture containing a dashed line which has
+length and width [[2*hatchdim]].  It can be rotated or scaled, etc.
+The text [[t]] is an [[on-off]] clause as in [[dashpattern]].
+<<gmlhatch.mp>>=
+def hatchpattern(text t_) =
+  image(interim linecap:=butt;
+        addto currentpicture doublepath (0,-hatchdim)..(0,hatchdim) 
+        withpen (pencircle scaled hatchdim)
+        dashed dashpattern(t_))
+enddef;
+@ %def hatchpattern
+@ Define a default [[hatchpattern]], just as [[dashed evenly]].
+<<gmlhatch.mp>>=
+def withstripes = hatchpattern(on 3 off 3) enddef;
+def withlines = hatchpattern(on .5 off 5) enddef;
+@ %def withstripes withlines
+@ Choose this variable so that the whole area to be hatched lies within
+a circle of radius [[hatchdim]] with respect to the origin.  We could
+say [[hatchdim = infinity]], but a smaller value results in less
+drawing time.  The [[begingraph]] command resets this so that at least
+the predefined graph area will be hatched correctly.
+<<gmlhatch.mp>>=
+newinternal hatchdim; hatchdim := 20cm;
+@ %def hatchdim
+@ We have to check whether [[p]] is a cycle and encloses nonzero area,
+at least for horizontal and vertical lines.  (Hatching a degenerate
+cycle doesn't work in all cases.  This may rather be a problem of the
+postscript interpreter, but we should avoid such a situation.)
+<<gmlhatch.mp>>=
+def hatchable primary p =
+  cycle p and (llcorner p<>ulcorner p) and (llcorner p<>lrcorner p)
+enddef;
+@ %def hatchable
+@ Recall the hatchpattern in a picture.  We assume that hatching is
+the only reason for a picture to be clipped.
+<<gmlhatch.mp>>=
+def hatchpart expr p =
+  image(
+    if clipped p: 
+      for q within p: addto currentpicture also q; endfor
+    else: picture currentpicture;
+    fi )
+enddef;
+@ %def hatchpart
+@ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection{Boxing labels} 
+Since one might wish to draw labels on top of filled and hatched
+areas, a couple of functions is given here which fill or draw a
+suitable box surrounding a label text (or something else).
+<<Required packages>>=
+input gmlbox
+<<gmlbox.mp>>=
+% gmlbox.mp --
+<<Header>>
+@ 
+Fill a box with the dimensions of the bbox of [[p]] and draw [[p]] on
+top of it.  [[p]] may be a picture or a string.  The first text
+argument applies to the filling (e.g.\ [[withcolor .8white]]), and the
+second one to the picture drawing.  The result is a [[picture]]. 
+<<gmlbox.mp>>=
+def fbox(expr p_)(text tf_)(text tl_) =
+  image(save q_; picture q_; q_=thesymbol(p_);
+        fill bbox q_ tf_; draw q_ tl_)
+enddef;
+@ %def fbox
+@ Similar: unfill the box, no filling options.
+<<gmlbox.mp>>=
+def ufbox(expr p_)(text tl_) =
+  image(save q_; picture q_; q_=thesymbol(p_);
+        unfill bbox q_; draw q_ tl_)
+enddef;
+@ %def ufbox
+@ The extended version:  We define the dimensions of the box explicitly
+and provide a suffix which determines the alignment of the label
+picture inside the box.
+<<gmlbox.mp>>=
+vardef fillbox @#(expr p_, sc_)(text tf_)(text tl_) =
+  image(fill unitsquare xscaled xpart sc_ yscaled ypart sc_ tf_; 
+        _drilabel_ @#(p_, (1-labxf @#,1-labyf @#) 
+          xscaled xpart sc_ yscaled ypart sc_) tl_)
+enddef;
+vardef unfillbox @#(expr p_, sc_)(text tl_) =
+  image(unfill unitsquare xscaled xpart sc_ yscaled ypart sc_; 
+        _drilabel_ @#(p_, (1-labxf @#,1-labyf @#) 
+          xscaled xpart sc_ yscaled ypart sc_) tl_)
+enddef;
+@ %def fillbox unfillbox
+@ The other functions are similar: Draw an outline instead of filling,
+or do both. 
+<<gmlbox.mp>>=
+def dbox(expr p_)(text td_)(text tl_) =
+  image(save q_; picture q_; q_=thesymbol(p_);
+        draw bbox q_ td_; draw q_ tl_)
+enddef;
+vardef drawbox @#(expr p_, sc_)(text td_)(text tl_) =
+  image(draw unitsquare xscaled xpart sc_ yscaled ypart sc_  td_; 
+        _drilabel_ @#(p_, (1-labxf @#,1-labyf @#)
+          xscaled xpart sc_ yscaled ypart sc_) tl_)
+enddef;
+def fdbox(expr p_)(text tf_)(text td_)(text tl_) =
+  image(save q_; picture q_; q_=thesymbol(p_);
+        fill bbox q_ tf_; draw bbox q_ td_; draw q_ tl_)
+enddef;
+vardef filldrawbox @#(expr p_, sc_)(text tf_)(text td_)(text tl_) =
+  image(fill unitsquare xscaled xpart sc_ yscaled ypart sc_ tf_;
+        draw unitsquare xscaled xpart sc_ yscaled ypart sc_ td_; 
+        _drilabel_ @#(p_, (1-labxf @#,1-labyf @#)
+          xscaled xpart sc_ yscaled ypart sc_) tl_)
+enddef;
+def ufdbox(expr p_)(text td_)(text tl_) =
+  image(save q_; picture q_; q_=thesymbol(p_);
+        unfill bbox q_; draw bbox q_  td_; draw q_ tl_)
+enddef;
+vardef unfilldrawbox @#(expr p_, sc_)(text td_)(text tl_) =
+  image(unfill unitsquare xscaled xpart sc_ yscaled ypart sc_;
+        draw unitsquare xscaled xpart sc_ yscaled ypart sc_ td_; 
+        _drilabel_ @#(p_, (1-labxf @#,1-labyf @#)
+          xscaled xpart sc_ yscaled ypart sc_) tl_)
+enddef;
+@ %def dbox drawbox fdbox filldrawbox ufdbox unfilldrawbox
+@ We need an auxiliary function which is equivalent to 
+[[draw thelabel]], but with inverted label suffix.
+<<gmlbox.mp>>=
+vardef _drilabel_ @#(expr s_,z_) text t_ =
+  save p_; picture p_; p_=thesymbol(s_)
+  addto currentpicture also p_ shifted (z_ +
+    labeloffset*(-laboff @#) -
+       ((1-labxf @#)*lrcorner p_ + (1-labyf @#)*ulcorner p_
+         - (1-labxf @#-labyf @#)*llcorner p_)) _op_ t_;
+enddef;
+@ %def _drilabel_
+@ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection{Standard shapes}
+This code is copied from [[feynmp.mp]], except that we have replaced
+[[expr]] by [[primary]].
+<<Required packages>>=
+input gmlshapes
+<<gmlshapes.mp>>=
+% gmlshapes.mp --
+<<Header>>
+@ Generic shapes
+<<gmlshapes.mp>>=
+vardef polygon primary n =
+  if n > 2:
+    for i = 1 upto n:
+      (.5up rotated (360i/n)) --
+    endfor
+    cycle
+  else:
+    fullcircle
+  fi
+enddef;
+vardef polygram primary n =
+  if n > 2:
+    for i = 1 upto n:
+      (.5up rotated (360i/n)) --
+      (.2up rotated (360(i+.5)/n)) --
+    endfor
+    cycle
+  else:
+    fullcircle
+  fi
+enddef;
+vardef polycross primary n =
+  save i;
+  for i = 1 upto n:
+    origin -- .5 dir (360(i-.5)/n) --
+  endfor
+  cycle
+enddef;
+@ %def polygon polygram polycross
+@ Some aliases
+<<gmlshapes.mp>>=
+def circle = fullcircle enddef;
+def square = (unitsquare shifted -(.5,.5)) enddef;
+def triagon = (polygon 3) enddef;
+let triangle = triagon;
+def tetragon = (polygon 4) enddef;
+let diamond = tetragon;
+def pentagon = (polygon 5) enddef;
+def hexagon = (polygon 6) enddef;
+def triagram = (polygram 3) enddef;
+def tetragram = (polygram 4) enddef;
+def pentagram = (polygram 5) enddef;
+def hexagram = (polygram 6) enddef;
+def triacross = (polycross 3) enddef;
+def tetracross = (polycross 4) enddef;
+let cross = tetracross;
+def pentacross = (polycross 5) enddef;
+def hexacross = (polycross 6) enddef;
+@ %def circle square triangle triagon diamond tetragon pentagon hexagon
+@ %def triagram tetragram pentagram hexagram
+@ %def triacross tetracross cross pentacross hexacross
+@ An [[arc]] is a part of a circle, where the two argument(s) are the
+initial (and final) angle(s) in degrees.  The [[wedge]] macro is
+useful, e.g., for drawing pie charts.  The argument is an angle or a
+pair of angles in degrees.  The [[doublearc]] macro consists of an inner as
+well of an outer circle fraction.  There, the additional delimited
+argument determines the inner radius.  With zero argument, a [[doublearc]]
+looks like a [[wedge]] but has one point more.
+<<gmlshapes.mp>>=
+vardef arc primary u_ =
+  save a_,i_; pair a_;  a_ = 8/360 if pair u_: u_ else (0,u_) fi;
+  subpath a_ of fullcircle
+enddef;
+vardef wedge primary u_ =
+  arc u_ -- origin -- cycle
+enddef;
+vardef doublearc(expr f_) primary u_ =
+  (arc u_ scaled f_) -- (reverse arc u_) -- cycle
+enddef;
+@ %def arc wedge doublearc
+@ The usual applications, similar to box drawing commands
+<<gmlshapes.mp>>=
+vardef dshape(expr s_)(text d_) = image(draw s_ d_) enddef;
+vardef fshape(expr s_)(text f_) = image(fill s_ f_) enddef;
+vardef fdshape(expr s_)(text f_)(text d_) =
+  image(fill s_ f_; draw s_ d_)
+enddef;
+vardef ufdshape(expr s_)(text d_) =
+  image(unfill s_; draw s_ d_)
+enddef;
+@ %def dshape fshape fdshape ufdshape
+@ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection{Spectra}
+Spectra are an easy way to make fancy plots -- so we provide some macros.
+We define rectangular, ray, and concentric circular spectra.
+<<Required packages>>=
+input gmlspectra
+<<gmlspectra.mp>>=
+% gmlspectra.mp --
+<<Header>>
+@ We make use of wedges and arcs, so check if the [[gmlshape.mp]]
+package has been loaded:
+<<gmlspectra.mp>>=
+if unknown hexacross: input gmlshapes fi
+@
+The following code is used by the spectrum functions below for making up
+color arrays, but it may as well be used for other types.
+<<gmlspectra.mp>>=
+vardef create_array @#(text typ_)(text val_) =
+  typ_ @#[]; numeric @#?; @#?=-1;
+  augment_array @#(val_);
+enddef;
+vardef augment_array @#(text val_) =
+  if unknown @#?:
+    Gundef_array_err_(@#);
+  else:
+    for v_=val_: @#[incr @#?]:=v_; endfor
+  fi
+enddef;  
+vardef show_array @# =
+  if unknown @#?:
+    Gundef_array_err_(@#);
+  elseif @#?<0:
+    message "Array "& str @# &" is empty.";
+  else:
+    message "Contents of array "& str @# &":";
+    for i=0 upto @#?: show @#[i]; endfor
+  fi
+enddef;  
+@ %def create_array augment_array show_array
+@ This interpolation function uses an array [[@#]] (numeric, pair, or
+color) made up by the
+preceding functions.  The argument is always between 0 and 1.  It is
+used for linear interpolation between the array elements at the
+appropriate place.  The array length is irrelevant.
+<<gmlspectra.mp>>=
+vardef interpolate_array @#(expr x_) =
+  if unknown @#?:  Gundef_array_err_(@#); 0
+  elseif @#?<0:  Gempty_array_err_(@#); 0
+  else:
+    save i_,u_; u_=x_;    
+    if (u_<0): u_:=0; elseif (u_>1): u_:=1; fi
+    if (u_=1): @#[@#?]
+    else:
+      u_:=u_*@#?;  i_=floor u_; u_:=u_-i_; u_[@#[i_],@#[i_+1]]
+    fi
+  fi  
+enddef;
+@ %def interpolate_array
+@ Error messages
+<<gmlspectra.mp>>=
+def Gundef_array_err_(suffix @#) =
+  errhelp("The array "& str @# &" has not been defined.  Use `create_array' "&
+          "first.                   "&
+          "(Maybe you misspelled the name.)");
+  show str @#;
+  errmessage("Unknown array");
+enddef;
+def Gempty_array_err_(suffix @#) =
+  errmessage("The array "& str @# &" is empty, so I can't interpolate. "&
+             "Use `augment_array' to fill it.");
+  show str @#;
+  errmessage("Empty array"); 0
+enddef;
+@ %def Gundef_array_err_ Gempty_array_err_
+@
+Now comes the fancy stuff.  The second argument is a list of colors
+specifying the range of the spectrum.  The length of this list is
+arbitrary; put in more colors for finer control.  The first argument
+is the number of colors that are used for the plot.  It should be
+large for smooth transitions, say 50 for a spectrum from [[red]] to
+[[blue]].  The result is a square of side length 1
+which should be scaled explicitly to the appropriate size.
+<<gmlspectra.mp>>=
+def spectrum(expr ncol)(text cols) =
+  image(
+    save ca,x,dx,u; create_array ca(color)(cols);
+    dx = 1/ncol;
+    for i=0 upto ncol-1: 
+      x:=i/ncol;  u:=i/(ncol-1);
+      fill unitsquare xscaled dx shifted (x,0)
+	  withcolor interpolate_array ca(u);
+    endfor
+  )
+enddef;
+@ %def spectrum
+@ This spectrum fills up an annular region of radius 1
+couterclockwise.  The [[angle]] to be covered may range between 0 and
+360.
+<<gmlspectra.mp>>=
+def rayspectrum(expr ncol, angle)(text cols) =
+  image(
+    save ca,da; create_array ca(color)(cols);
+    da = angle/ncol;
+    for i=0 upto ncol-1: 
+      fill wedge (i*da, (i+1)*da) 
+        withcolor interpolate_array ca(i/(ncol-1));
+    endfor
+  )
+enddef;    
+@ %def rayspectrum
+@ This spectrum consists of circles around the origin, largest radius 1.
+<<gmlspectra.mp>>=
+def spotspectrum(expr ncol, angle)(text cols) =
+  image(
+    save ca; create_array ca(color)(cols);
+    for i=0 upto ncol-1: 
+      fill doublearc(i/(i+1)) (0,angle) scaled (i+1)/ncol
+        withcolor interpolate_array ca(i/(ncol-1));
+    endfor
+  )
+enddef;    
+@ %def spotspectrum
+@ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Emulating floating-point arithmetics}
+<<Required packages>>=
+input gmlarith
+<<gmlarith.mp>>=
+% gmlarith.mp --
+<<Header>>
+@ Macros for dealing with very large and very small numbers in
+[[Mlog]] form.  This part is an extended version of the [[marith.mp]]
+package by John Hobby.
+
+A number $x$ in [[Mlog]] form represents [[mexp]]$(x)$ if $x$ is an
+even multiple of [[epsilon]] and $-[[mexp]](x)$ if $x$ is an odd
+multiple of epsilon, where $[[epsilon]]=1/65536$ is the basic unit for
+MetaPost's fixpoint numbers.  Such numbers can represent values
+roughly between [[1e+27]] and [[1e-27]].  (Anything less than that is
+treated as zero.)  The relative error in the conversion from
+fixed-point to [[Mlog]] is about $2\times 10^{-7}$.  Numbers differing
+by smaller amounts cannot be distinguished.
+<<gmlarith.mp>>=
+newinternal zero,one,two,ten,pi; 
+zero:=-16384; one:=0; two:=177.44568; ten:=589.46179; pi:=293.07803;
+@ %def zero one two ten pi
+@ 
+\subsubsection{Conversion functions}
+Absolute value of a [[Mlog]] number
+<<gmlarith.mp>>=
+vardef Mabs primary x = x*.5*2 enddef;
+@ %def Mabs
+@ Convert a number to [[Mlog]] form
+<<gmlarith.mp>>=
+vardef Mlog primary x =
+  if     x>0: Mabs mlog x
+  elseif x<0: epsilon + Mabs mlog(-x)
+  else: zero
+  fi
+enddef;
+@ %def Mlog
+@ Convert a number from [[Mlog]] form back to fixed-point (this is only
+possible for numbers within a certain range)
+<<gmlarith.mp>>=
+vardef Mexp primary x =
+  if x=Mabs x: mexp x
+  else: -mexp x
+  fi
+enddef;
+@ %def Mexp
+@ For the user, [[#]] is the means for converting to [[Mlog]] form.
+The argument may be a number, a pair, or a string (the latter
+necessary for scientific notation).  The double hashmark [[##]] must
+have the same meaning, because \TeX\ always doubles hashmarks when
+writing to file.
+<<gmlarith.mp>>=
+vardef # primary u =
+  if pair u: (# xpart u, # ypart u)
+  elseif unknown u: ??
+  elseif numeric u: Mlog u
+  elseif string u:
+    for s=take 1 of u:
+      if s="-": -epsilon + Gnum_ drop 1 of
+      elseif s="+": Gnum_ drop 1 of
+      else: Gnum_
+      fi u
+    endfor
+  else: 
+    begingroup show u;
+      errhelp("The # operator can handle only strings, numerics, and pairs.");
+      errmessage("Not a number");
+      ??
+     endgroup
+  fi
+enddef;
+def ##=# enddef;
+@ %def # ##
+@ In converting a string to [[Mlog]] form we want to keep as many
+digits as possible, and we don't want an error when reading long
+numbers (e.g., double precision).  Before scanning the mantissa, it is
+mapped to the range between 1000 and 10000.  The exponent key can be
+any single character, not just [[e]].  If the number is unreadable, it
+is returned unknown.  If it is less than $10^{-27}$, it is returned as
+[[zero]].  If it is larger than $10^{27}$, an arithmetic overflow
+will occur when comparing with [[zero]], but we can still handle it.
+However, numbers larger than $10^{55}$ are beyond the allowed range.
+<<gmlarith.mp>>=
+vardef Gism_ primary m =
+  (isdigit m)or(m=".")
+enddef;
+vardef Gnum_ primary u =
+  save n,p; p=cspan(u,isdigit)+1;   
+  if substring(p-1,p) of u=".": 
+    n= p + cspan(drop p of u, isdigit)+1;
+    Gmm_((take p-1 of u)&(substring(p,n-1) of u), p, drop n of u)
+  else: Gmm_(take p-1 of u, p, drop p of u)
+  fi
+enddef;
+vardef Gmm_(expr m,p,e) =
+  save l,n,s; l=length m; n=cspan(m,"0"=); string s; 
+  s= if n>0: drop n if n=l: -1 fi of fi m; 
+  if s="0": zero
+  elseif s="": ??
+  else:
+    Gee_(Mabs(mlog(scantokens((take 4 of (s&"000"))&"."&(drop 4 of s))))
+         + (p-l-5+length s)*ten + 2epsilon)(e)
+  fi
+enddef;
+vardef Gee_(expr m,u) =
+  if u="": m
+  else: save n,e; string e;
+    e = for s=take 1 of u:
+	  if (s="-")or(s="+"): drop 1 of fi u
+	endfor;
+    if cspan(e,isdigit)<>length e: ??
+    else: n=m+(scantokens u)*ten;
+      if n<zero: zero else: n fi
+    fi
+  fi
+enddef;
+@ %def Gism_ Gnum_ Gmm_ Gee_
+@ The inverse transformation: Convert a [[Mlog]] number back to a
+string.  The result mantissa is between 1 and 10.  In the conversion
+we strip the fractional part twice, since we don't want to lose
+precision.
+<<gmlarith.mp>>=
+vardef $#$ primary u =
+  if unknown u: begingroup save ?; string ?; ? endgroup
+  else:
+    save m,n,e,i,a,b,f,s; (m,e)=Meform(u);
+    if m=0: "0"
+    else:  
+      n=abs m; i=floor n; f=n-i; i:=i/1000; a=floor i; b=i-a; 
+      string s; s="00"&decimal abs (e+3);
+      if m<0: "-"& fi
+      decimal a & "." & (substring(2,5) of (decimal b &"0000"))
+                      & (substring(2,7) of (decimal f &"000000"))
+                & if e>-4: "E+" else: "E-" fi 
+                & (drop (length s) - 2 of s)
+    fi
+  fi
+enddef;
+def $##$=$#$ enddef;
+vardef Meform(expr q) =
+  if q<=zero: (0,0)
+  else:
+    save e; e=floor((q-1768.38985)/ten);
+    (Mexp(q-e*ten), e)
+  fi
+enddef;
+def #$=Mexp enddef;
+def ##$=Mexp enddef;
+@ %def $#$ $##$ #$ ##$ Meform
+@ 
+\subsubsection{Arithmetics}
+Show [[Mlog]] numbers in readable form
+<<gmlarith.mp>>=
+vardef showfloat text t_ = 
+  for xf_=t_: 
+    if numeric xf_: show $#$ xf_; 
+    elseif pair xf_: showfloat xpart xf_; showfloat ypart xf_;
+    else: show xf_; 
+    fi 
+  endfor 
+enddef;
+@ %def showfloat
+@ Absolute value, sign change.  
+<<gmlarith.mp>>=
+def floatabs=Mabs enddef;
+vardef neg primary a =
+  if unknown a: whatever
+  elseif a=zero: zero
+  elseif a=floatabs a: a-epsilon
+  else: a+epsilon
+  fi
+enddef;
+vardef sign primary u =
+  if u=zero: zero
+  elseif u=floatabs u: 0
+  else: epsilon
+  fi
+enddef; 
+@ %def sign floatabs neg
+@ Comparison.  One may use [[=]] and [[<>]] for equality/inequality,
+but the rest has to be defined.
+<<gmlarith.mp>>=
+tertiarydef a less b =
+  if a=floatabs a:  if b=floatabs b: a<b else: false fi
+  elseif b=floatabs b: true
+  else: b<a
+  fi
+enddef;
+tertiarydef a lesseq b =
+  if a=b: true
+  else: a less b
+  fi
+enddef;
+tertiarydef a greatereq b = (b lesseq a) enddef;
+tertiarydef a greater b = (b less a) enddef;
+let equal = =; let unequal = <>;
+@ %def lesseq greatereq less greater equal unequal
+@ Multiplication and division is essentially addition and subtraction
+of logarithms
+<<gmlarith.mp>>=
+primarydef a times b =
+  if (unknown a) or (unknown b): whatever
+  elseif (a<=zero) or (b<=zero): zero
+  else: (a+b)
+  fi
+enddef;
+primarydef a over b =
+  if (unknown a) or (unknown b): whatever
+  elseif b=zero: begingroup
+                    errhelp "I can't divide by zero or by very "
+                           &"small numbers.  I'll insert 'infinity'.";
+                    errmessage "Division by zero";
+                    -2epsilon-zero endgroup
+  elseif a<=zero: zero
+  else: (a-b)
+  fi
+enddef;
+@ %def times over
+@ Addition is more involved than multiplication.  We need the constant
+$256\ln 1579 = 123556596.0003/65536 = 1885.3240356445$.
+<<gmlarith.mp>>=
+secondarydef a plus b =
+  if (unknown a) or (unknown b): whatever
+  elseif a = zero: b
+  elseif b = zero: a
+  elseif a >= b: (Mlog(1579 + Mexp(b times (1885.32404-a))) + a-1885.32404)
+  else:  b plus a
+  fi
+enddef;
+secondarydef a minus b = a plus (b-epsilon) enddef;
+@ %def plus minus
+@
+\subsubsection{Exponentiation and logarithms}
+This is for integer powers of the [[Mlog]] number [[a]]
+<<gmlarith.mp>>=
+primarydef a ^ b = if a=zero: zero else: b*a fi enddef;
+@ %def ^
+@ and this for general [[Mlog]] arguments
+<<gmlarith.mp>>=
+primarydef a to_the b = 
+  if (unknown a) or (unknown b): whatever
+  elseif a=zero: 
+    if b=floatabs b: zero
+    else:
+      begingroup interim showstopping:=0; showfloat a;
+        errhelp "#0 to_the b is illegal if b is "
+               &"negative.  I'll insert 'infinity'.";
+        errmessage "Negative power of zero is undefined";
+        -2epsilon-zero 
+      endgroup
+    fi
+  elseif a=floatabs a: (Mexp b)*a
+  else:
+    begingroup interim showstopping:=0; showfloat a;
+      errhelp "a to_the b is undefined if a is "
+             &"negative.  I'll use the absolute value of a "
+             &"     instead.  Nevertheless, if b is an "
+             &"integer, you can use a^b.";
+      errmessage "Power of negative argument is undefined";
+      (floatabs a) to_the b 
+    endgroup
+  fi
+enddef;
+@ %def to_the
+@ Since everything is in [[Mlog]] form, the following is trivial:
+<<gmlarith.mp>>=
+vardef logn primary y =
+  if unknown y: whatever
+  elseif y=zero: errhelp "I can't take the logarithm of zero or very "
+                       &"small numbers.  I'll insert         '-infinity'.";
+                  errmessage "Logarithm of 0 is undefined";
+                  -epsilon-zero
+  elseif y<>floatabs y: interim showstopping:=0; showfloat y; 
+                  errhelp "I can't take the logarithm of negative "
+                         &"numbers.  I'll take log(abs(x)) instead.";
+                  errmessage "Logarithm of negative argument is undefined";
+                  logn(floatabs y)
+  else: Mlog(y/256)
+  fi
+enddef;
+newinternal logten; logten:=logn ten;
+vardef logd primary y = (logn y over logten) enddef;
+vardef exp primary y =
+  if unknown y: whatever
+  else: 256 Mexp y
+  fi
+enddef;
+@ %def logn logten logd exp
+@
+\subsubsection{More unary functions}
+<<gmlarith.mp>>=
+vardef root primary y = 
+  if unknown y: whatever
+  elseif y=zero: zero
+  elseif y<>floatabs y: interim showstopping:=0; showfloat y;
+                  errhelp "I can't take the square root of negative "
+                         &"numbers.  I'll take sqrt(abs(x))      instead.";
+                  errmessage "Square root of negative argument is undefined";
+                  floatabs(.5 y)
+  else: floatabs(.5 y)
+  fi
+enddef;
+vardef inverse primary y =
+  if unknown y: whatever
+  elseif y=zero: errhelp "I can't take the inverse of zero or very "
+                         &"small numbers. I'll insert 'infinity'.";
+                  errmessage "Division by zero";
+                  -2epsilon-zero 
+  else: -y
+  fi
+enddef;
+@ %def root inverse
+@ We like to have the full set of transcendental functions.  For the
+inverse functions, the orthography is debatable, so allow both forms
+<<gmlarith.mp>>=
+vardef sinh primary y = (exp y minus exp neg y) over two enddef;
+vardef cosh primary y = (exp y plus exp neg y) over two enddef;
+vardef tanh primary y = (sinh y) over (cosh y) enddef;
+vardef coth primary y = (cosh y) over (sinh y) enddef;
+vardef arsinh primary y = logn(y plus root(y^2 plus 0)) enddef;
+vardef arcosh primary y = logn(y plus root(y^2 minus 0)) enddef;
+vardef artanh primary y = logn root((0 plus y) over (0 minus y)) enddef;
+vardef arcoth primary y = logn root((y plus 0) over (y minus 0)) enddef;
+def arcsinh=arsinh enddef;
+def arccosh=arcosh enddef;
+def arctanh=artanh enddef;
+def arccoth=arcoth enddef;
+@ %def sinh cosh tanh coth arsinh arcosh artanh arcoth
+@ Finally, the trigonometric functions: Contrary to the built-in [[sind]],
+we take the argument in radians.
+<<gmlarith.mp>>=
+vardef sin primary y = Mlog sind(57.29578 Mexp y) enddef;
+vardef cos primary y = Mlog cosd(57.29578 Mexp y) enddef;
+vardef tan primary y = (sin y) over (cos y) enddef;
+vardef cot primary y = (cos y) over (sin y) enddef;
+vardef arcsin primary y = arctan(y over root(0 minus y^2)) enddef;  
+vardef arccos primary y = arccot(y over root(0 minus y^2)) enddef;
+vardef arctan primary y = Mlog angle(1,Mexp y) over 1036.3461 enddef;
+vardef arccot primary y = Mlog angle(Mexp y,1) over 1036.3461 enddef;
+@ %def sin cos tan cot arcsin arccos arctan arccot
+@ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Number formatting}
+This is the standard [[format.mp]] package, modified to avoid an
+obsolete pass on [[texnum.mp]]
+<<Required packages>>=
+input gmlformat
+% gmlformat.mp -- modified version of J.Hobby's format.mp
+<<Header>>
+@ Macros for generating typeset pictures of computed numbers
+\begin{description}
+\item[{}[[format(f,x)]]{}] typeset generalized number $x$ using format
+string $f$
+\item[{}[[Mformat(f,x)]]{}] like [[format]], but $x$ is in [[Mlog]]
+form (see [[gmlarith.mp]])
+\item[{}[[init_numbers(s,m,x,sn,e)]]{}] choose typeset style given
+sample sign, mantissa,\ldots
+\item[{}[[roundd(x,d)]]{}] round numeric $x$ to $d$ places right of
+decimal point
+\item[{}[[Fe_base]]{}] what precedes the exponent for typeset powers
+of 10
+\item[{}[[Fe_plus]]{}] plus sign if any for typesetting positive
+exponents
+\item[{}[[Ten_to[]]]{}] powers of ten for indices 0,1,2,3,4
+\end{description}
+Other than the above-documented user interface, all externally visible
+names start with [[F]] and end with [[_]].
+
+\subsubsection{Choosing the Layout}
+We add the picture [[Fen_base]] ($1\times 10$) and [[Fee_base]] ($10$)
+which can alternatively be assigned to [[Fe_base]].
+<<gmlformat.mp>>=
+picture Fmneg_, Femarker_, Feneg_, Fe_base, Fen_base, Fee_base, Fe_plus;
+string Fmfont_, Fefont_;
+numeric Fmscale_, Fescale_, Feraise_;
+@ %def Fmneg_ Femarker_ Feneg_ Fe_base Fen_base Fee_base Fe_plus
+@ %def Fmfont_ Fefont_ Fmscale_ Fescale_ Feraise_
+@ Argument $s$ is a leading minus sign; $m$ is a 1-digit mantissa; $x$
+is whatever follows the mantissa; $sn$ is a leading minus for the
+exponent; and $e$ is a 1-digit exponent.  Numbers in scientific
+notation are constructed by placing these pieces side-by-side; decimal
+numbers use only $m$ and/or $s$.  To get exponenets with leading plus
+signs, assign to [[Fe_plus]] after calling [[init_numbers]].  To do
+something special with a unit mantissa followed by $x$, assign to
+[[Fe_base]] after calling [[init_numbers]].
+<<gmlformat.mp>>=
+vardef init_numbers(expr s, m, x, sn, e) =
+  Fmneg_ := s;
+  for p within m: 
+    Fmfont_ := fontpart p;
+    Fmscale_ := xxpart p;
+    exitif true;
+  endfor
+  Femarker_ := x;
+  Feneg_ := sn;
+  for p within e:
+    Fefont_ := fontpart p;
+    Fescale_ := xxpart p;
+    Feraise_ := ypart llcorner p;
+    exitif true;
+  endfor
+  Fen_base := Fline_up_("1" infont Fmfont_ scaled Fmscale_, Femarker_);
+  Fee_base := "10" infont Fmfont_ scaled Fmscale_;
+  Fe_base := Fen_base;
+  Fe_plus := nullpicture;
+enddef;
+@ %def init_numbers
+@
+\subsubsection{Low-Level Typesetting}
+<<gmlformat.mp>>=
+vardef Fmant_(expr x) =
+  (decimal abs x infont Fmfont_ scaled Fmscale_)
+enddef;
+vardef Fexp_(expr x) =
+  (decimal x infont Fefont_ scaled Fescale_ shifted (0,Feraise_))
+enddef;
+vardef Fline_up_(text t_) =
+  save p_, c_;
+  picture p_; p_=nullpicture;
+  pair c_; c_=(0,0);
+  for q_=t_:
+    addto p_ also q_ if string q_: infont defaultfont scaled defaultscale fi
+        shifted c_;
+    c_ := (xpart lrcorner p_, 0);
+  endfor
+  p_
+enddef;
+vardef Fdec_o_(expr x) =
+  if x<0: Fline_up_(Fmneg_, Fmant_(x))
+  else: Fmant_(x)
+  fi
+enddef;
+vardef Fsci_o_(expr x, e) =
+  Fline_up_(if x<0: Fmneg_,fi
+      if abs x =1:  Fe_base  else:  Fmant_(x), Femarker_  fi,
+      if e<0:  Feneg_  else:  Fe_plus  fi,
+      Fexp_(abs e))
+enddef;
+@ %def Fmant_ Fexp_ Fline_up_ Fdec_o_ Fsci_o_
+@ Here the original version inputs [[texnum.mp]].  We refrain from
+doing that, assuming that [[init_numbers]] is called explicitly in the
+user's document.  Calling [[gamelan]] from the \LaTeX\ interface will
+suffice.
+
+\subsubsection{Scaling and Rounding}
+Find a pair $p$ where $x=p_1\times 10^{p_2}$ and either $p=(0,0)$ or
+[[xpart ]]$p$ is between 1000 and 9999.99999.  This is the
+\emph{exponent form} of $x$.
+<<gmlformat.mp>>=
+vardef Feform_(expr x) =
+  if string x:
+    if unknown zero: scantokens "input marith"; fi
+    Meform(Mlog_str x)
+  else:
+    save b, e;
+    b=x; e=0;
+    if abs b>=10000: (b/10, 1)
+    elseif b=0: origin
+    else: forever:
+      exitif abs b>=1000;
+      b:=b*10; e:=e-1;
+      endfor
+     (b, e)
+    fi
+  fi
+enddef;
+@ %def Feform_
+@ The [[gmlarith.mp]] macros include a similar macro [[Meform]] that
+converts from [[Mlog]] form to exponent form.
+
+In case rounding has made the [[xpart]] of an exponent form number too
+large, fix it.
+<<gmlformat.mp>>=
+vardef Feadj_(expr x, y) =
+  if abs x>=10000: (x/10, y+1)   else: (x,y)  fi
+enddef;
+@ %def Feadj_
+@ Round $x$ to $d$ places right of the decimal point.  When $d<0$,
+round to the nearest multiple of $10^{-d}$.
+<<gmlformat.mp>>=
+vardef roundd(expr x, d) =
+  if abs d >4:
+    if d>0: x else: 0 fi
+  elseif d>0:
+    save i; i=floor x;
+    i + round(Ten_to[d]*(x-i))/Ten_to[d]
+  else:
+    round(x/Ten_to[-d])*Ten_to[-d]
+  fi
+enddef;
+Ten_to0=1; Ten_to1=10; Ten_to2=100; Ten_to3=1000; Ten_to4=10000;
+@ %def roundd Ten_to
+@ Round an exponent form number p to k significant figures.
+<<gmlformat.mp>>=
+primarydef p Fprec_ k =
+  Feadj_ (roundd(xpart p,k-4), ypart p)  
+enddef;
+@ %def Fprec_
+@ Round an exponent form number p to k digits right of the decimal point.
+<<gmlformat.mp>>=
+primarydef p Fdigs_ k =
+  Feadj_ (roundd(xpart p,k+ypart p), ypart p)  
+enddef;
+@ %def Fdigs_
+@
+\subsubsection{High-Level Routines}
+The following operators convert $z$ from exponent form and produce
+typeset output: [[Formsci_ ]]generates scientific notation;
+[[Formdec_]] generates decimal notation; and [[Formgen_]] generates
+whatever is likely to be most compact.
+<<gmlformat.mp>>=
+vardef Formsci_(expr z) = Fsci_o_(xpart z/1000, ypart z +3)  enddef;
+vardef Formdec_(expr z) =
+  if ypart z>0: Formsci_(z)
+  else:
+    Fdec_o_(xpart z
+      if ypart z>=-4: /Ten_to[-ypart z]
+      else: for i=ypart z upto -5: /(10) endfor/10000  
+      fi)
+  fi
+enddef;
+vardef Formgen_(expr q) =
+  clearxy; (x,y)=q;
+  if x=0: Formdec_
+  elseif y>=-6: Formdec_
+  else: Formsci_
+  fi (q)
+enddef;
+def Fset_item_(expr s) =
+  if s<>"":  s infont defaultfont scaled defaultscale,  fi
+enddef;
+@ %def Formsci_ Formdec_ Formgen_ Fset_item
+@ For each format letter, the table below tells how to round and typeset
+a quantity $z$ in exponent form.
+<<gmlformat.mp>>=
+string fmt_[];
+fmt_[ASCII "e"] = "Formsci_(z Fprec_ p)"; % scientific, p significant figures
+fmt_[ASCII "f"] = "Formdec_(z Fdigs_ p)"; % decimal, p digits right of the point
+fmt_[ASCII "g"] = "Formgen_(z Fprec_ p)"; % decimal or scientific, p sig. figs.
+fmt_[ASCII "G"] = "Formgen_(z Fdigs_ p)"; % decimal or scientific, p digits
+@ %def fmt_
+@ The [[format]] and [[Mformat]] macros take a format string $f$ and
+generate typeset output for a numeric quantity $x$.  String $f$ should
+contain a [[%]] followed by an optional number and one of the format
+letters defined above.  The number should be an integer giving the
+precision (default 3).
+<<gmlformat.mp>>=
+vardef dofmt_ @#(expr f, x) =
+  if (unknown f) or (f=""): nullpicture
+  else:
+    save k, l, s, p, z;
+    pair z; z=@#(x);
+    k = 1 + cspan(f, "%"<>);
+    l-k = cspan(substring(k,infinity)of f, isdigit);
+    p = if l>k:  scantokens substring(k,l)of f  else: 3 fi;
+    string s; s=fmt_[ASCII substring (l,l+1) of f];
+    if unknown s:
+      if k<=length f: errmessage("No valid format letter found in "&f); fi
+      s = "nullpicture";
+    fi
+    Fline_up_(
+      Fset_item_(substring (0,k-1) of f)
+      scantokens s,
+      Fset_item_(substring (l+1,infinity) of f)
+      nullpicture)
+  fi
+enddef;
+vardef format(expr f, x) = dofmt_.Feform_(f,x) enddef;
+vardef Mformat(expr f, x) = dofmt_.Meform(f,x) enddef;
+@ %def dofmt_ format Mformat
+@ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Reading data from file}
+<<Required packages>>=
+input gmlfiles
+<<gmlfiles.mp>>=
+% gmlfiles.mp --
+<<Header>>
+@
+\subsubsection{Opening and closing files}
+The [[fromfile]] macro has a syntax similar to a [[for]] loop:
+\begin{quote}
+  [[fromfile]] \emph{filename}[[:]] \emph{body} [[endfrom]]
+\end{quote}
+Within the body, which is a group, [[currentfile]] can be accessed.  The first
+line has already been read, and further lines can be read by executing
+[[\\]] which is aliased to [[readline]].
+<<gmlfiles.mp>>=
+def fromfile expr f =
+  eatcolon(Gtext_ beginfrom
+    save currentfile;
+    string currentfile; currentfile:=thedirectory & f & theextension;
+    if known defaultkey: readkey defaultkey; fi
+    if known defaultskip: skip defaultskip; fi   
+    )
+enddef;
+def Gtext_(text t) = gobble begingroup t endgroup; enddef;
+delimiters beginfrom endfrom;
+numeric defaultskip;
+def fileprefix=directory enddef;
+def fileextension=extension enddef;
+@ %def from Gtext_ beginfrom endfrom currentfile
+@ %def defaultkey defaultskip
+@ Looking for a key in the file
+<<gmlfiles.mp>>=
+vardef key expr k =
+  save l,$; l=length k; string $;
+  forever: 
+    $:=readfrom currentfile;  exitif k=take l of $;
+    if $=EOF:  Gkeyerr_(k); fi  exitif $=EOF;
+  endfor
+enddef;
+@ %def key
+@ Skipping lines in a file
+<<gmlfiles.mp>>=
+vardef skip expr sk =
+  save $; string $;
+  for i=1 upto sk: $:=readfrom currentfile;
+    if $=EOF: Gskiperr_; fi exitif $=EOF;
+  endfor
+enddef;
+@ %def skip
+@ The file directory (prefix) and extension, the field separator, the
+end-of block marker, the prefix for all data lines (will be stripped
+during reading), the comment character.  The notation dispenses of an
+equals sign, and the settings are automatically local.
+<<gmlfiles.mp>>=
+def directory expr d =
+  save thedirectory; string thedirectory; thedirectory:=d;
+enddef;
+def extension expr e =
+  save theextension; string theextension; theextension:=e;
+enddef;
+def separator expr s = 
+  save theseparator; string theseparator; theseparator=s; 
+enddef;
+def endkey expr k = 
+  save theendkey; string theendkey; theendkey=k; 
+enddef;
+def prefix expr p = 
+  save theprefix,Gpl_; string theprefix; theprefix=p; Gpl_=length p; 
+enddef;
+def comment expr c = 
+  save thecomment,Gcl_; string thecomment; thecomment=c; Gcl_=length c; 
+enddef;
+directory ""; extension "";
+separator " "; endkey ""; comment "#";
+@ %def directory extension separator endkey prefix comment
+@ %def thedirectory theextension theseparator theendkey
+@ %def theprefix Gpl_ thecomment Gcl_
+@ Close a file:  Read up to the end, so that any further reading will start
+at the beginning.
+<<gmlfiles.mp>>=
+vardef endfile =
+  save $; string $;
+  forever:  $:=readfrom currentfile; exitif $=EOF;  endfor
+enddef;
+@ %def endfile
+@ 
+\subsubsection{Line reading}
+The next three macros are from [[string.mp]]:
+<<gmlaux.mp>>=
+vardef isdigit primary d =
+  ("0"<=d)and(d<="9") 
+enddef;
+@ %def isdigit
+@ Number of initial characters of string $s$ where [[c]]
+$\langle$\emph{character}$\rangle$ is true
+<<gmlaux.mp>>=
+vardef cspan(expr s)(text c) =
+  0
+  for i=1 upto length s:
+    exitunless c substring (i-1,i) of s;
+    + 1
+  endfor
+enddef;
+@ %def cspan
+@ String $s$ is composed of items separated by white space.  Lop off
+the first item and the surrounding white space and return just the
+item.
+<<gmlaux.mp>>=
+vardef loptok suffix s =
+  save t_,j_,k_; string t_;
+  j_ = cspan(s," ">=);
+  k_ = j_ for i=j_ upto length s: exitif theseparator=substring(i,i+1) of s;
+          +1 endfor;
+  t_ = substring (j_,k_) of s;
+  s := substring (k_+1,infinity) of s;
+  t_
+enddef;
+@ %def loptok
+@ The macro for reading data:  If [[theprefix]] is known, we ignore all
+lines not beginning with that string.  Lines beginning with [[thecomment]]
+are also ignored.  Once a nonempty line is reached, we separate it
+into tokens.  An empty token or a token beginning with [[thecomment]] 
+terminates the reading of the current line.
+Finally, the whole line can be accessed as the string [[$d]], the
+individual tokens as strings [[$d[]]].  A counter [[$i]] keeps
+track of the token index.
+<<gmlfiles.mp>>=
+def readline =
+  string $d; numeric $i; 
+  forever:
+    if known theprefix:
+      forever: 
+        $d:=readfrom currentfile; exitif theprefix=take Gpl_ of $d; 
+        exitif $d=EOF;
+      endfor
+      if $d<>EOF:  $d := drop Gpl_ of $d; fi
+    else: $d:=readfrom currentfile;
+    fi
+    exitif $d=EOF;
+    string $d[]; $d0=$d; $d1=loptok $d0;
+    exitif unknown thecomment;
+    exitif thecomment<>take Gcl_ of $d1;
+  endfor
+  if $d=EOF: relax
+  elseif $d1=theendkey: string $d;
+  else: $i=1; 
+    forever:  
+      $d[incr $i]=loptok $d0; 
+      if known thecomment: 
+        if thecomment=take Gcl_ of $d[$i]: $d[$i]:=""; fi 
+      fi
+      exitif $d[$i]="";
+    endfor 
+    $d[$i]:=whatever_str;
+  fi
+  $i:=0;
+enddef;
+let \\ = readline;
+@ %def readline \\
+@ We can access numeric tokens as [[# $d[i]]].  Alternatively, we
+provide a [[get]] command that reads a variable list.  
+<<gmlfiles.mp>>=
+vardef get text vars =
+  forsuffixes  v=vars:  v:=#($d[incr $i]);  endfor
+enddef;
+def getn(expr n_) suffix v =
+  for i_=1 upto n_: get v[i_]; endfor
+enddef;
+vardef getstring text vars =
+  forsuffixes v=vars:  v:=$d[incr $i];  endfor
+enddef;
+def getnstring(expr n_) suffix v =
+  for i_=1 upto n_: getstring v[i_]; endfor
+enddef;
+@ %def get getn getstring getnstring
+@
+\subsubsection{Looping over files}
+After searching for an nonempty line, the [[withinblock]] construct
+executes a loop over the current file until a blank line
+or [[EOF]] is reached.  Within each line, a counter [[$i]] is
+provided that can be used by [[get]].  Currently, no check is made if
+actually data have been read.  The syntax is:
+\begin{quote}
+  [[for]] \emph{var} [[= eachline:]] \emph{commands} [[endfor]]
+\end{quote}
+<<gmlfiles.mp>>=
+def withinblock =
+  =  eatcolon(1 upto infinity: hide(readline)
+	      exitif unknown $d; exitif $d=EOF;
+  )
+enddef;
+@ %def withinblock
+@ Errors:
+<<gmlfiles.mp>>=
+def Gkeyerr_(expr key) =
+  errhelp("You should check the data file:  "
+         &"Either it doesn't exist,                      "
+         &"or it doesn't contain the key I was looking for.");
+  show currentfile,key;
+  errmessage("Key not found");
+enddef;
+def Gskiperr_ =
+  errhelp("While executing a 'skip' command I reached EOF.  "
+         &"Maybe the file doesn't exist.");
+  show currentfile;
+  errmessage("File ended while skipping lines");
+enddef;
+def Gfileerr_ =
+  errhelp("The data file I was reading "
+         &"either doesn't exist or doesn't contain            "
+         &"any more data.  (Maybe you specified a wrong prefix.)");
+  show currentfile;
+  errmessage("File not found or empty");
+enddef;
+@ %def Gkeyerr_ Gfileerr_ 
+@ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Datasets}
+<<Required packages>>=
+input gmlset
+<<gmlset.mp>>=
+% gmlset.mp --
+<<Header>>
+@
+\subsubsection{Initialization}
+Define a dataset.  [[Gdefset_]] will free memory if the dataset
+exists.  [[Gdefset_]] doesn't accept a suffix list!  The pair array
+[[@#[]]] contains the points, [[@#!]] has arbitrary type (usually
+[[boolean]]: true if a point is tagged), boolean [[@#|]] is true if
+the next point should begin a new part, the array [[@#[]?]] contains
+the indices of the first point of each part, the numeric [[@#.$]] is
+the number of parts.
+<<gmlset.mp>>=
+vardef Gdefset_ text @# =
+  pair @#[], @#.@@;  boolean @#|;  numeric @#[]?, @#.$;
+enddef;
+vardef defined @# = if boolean @#| : true else: false fi enddef;
+vardef cleared @# = known @#| enddef;
+@ %def Gdefset_ defined cleared
+@ Define a dataset using a specific name.  We have to remove explicit
+numeric suffixes from the dataset tag [[@#]].  The string [[typestr]]
+contains the requested type for the [[!]] suffix.
+<<gmlset.mp>>=
+vardef Gset_ @#(expr typestr) =
+  save v_,t_; string v_,t_; v_=templateof @#; t_=take 1 of v_;
+  if (t_="") or (t_="["): Gnumtagerr_ t_;
+  else:
+    if tracingsets>0: message "Defining "&typestr&" dataset: "&v_; fi
+    scantokens(typestr&" "&v_&"[]!;");
+    scantokens("Gdefset_ "&v_);  
+  fi
+enddef;
+newinternal tracingsets;
+def Gnumtagerr_ expr t =
+  errhelp("The first character in a dataset name should be a letter.");
+  errmessage("Dataset name `"&t&"' empty or beginning with numeric suffix");
+enddef;
+def Gnotagerr_ =
+  errhelp("Dataset tags must consist entirely of letters "
+         &"(including underscores)          "
+         &"and numeric suffixes.");
+  errmessage("Illegal character in dataset tag");
+enddef;
+@ %def Gset_ Gnumtagerr_ Gnotagerr_ tracingsets
+@ [[clear]] will define the dataset via [[Gset_]] if it doesn't
+exist.  This allows for specific names (explicit numeric suffixes).
+<<gmlset.mp>>=
+vardef clear(expr x) text t_ =
+  forsuffixes @#=t_: 
+    if not defined @#: Gset_ @#(typeof x); fi
+    @#.$:=0;  @#[0]?:=0;  @#| :=true;  @#.@@:=(??,??);
+    if tracingsets>0: message "Cleared dataset: "&str @#; fi
+  endfor
+enddef;
+vardef clearn(expr n)(text tmp) text t_ =
+  forsuffixes @#=t_:
+    for i=0 upto n: clear(tmp) @#[i]; endfor
+  endfor
+enddef;
+vardef empty @# =
+  if cleared @#: if @#.$=0: true else: false fi
+  else: Gnrerr_ @#; true
+  fi
+enddef;
+vardef Gnrerr_ @# =
+  errhelp("The dataset you referred to is not set up correctly. "&
+          "Maybe you forgot to       "&
+          "initialize it with clear.");
+  show str @#; errmessage("Irregular dataset");
+enddef;
+vardef Gemptwarning_ @# =
+  message("Warning: dataset "& str @# &" is empty.")
+enddef;
+@ %def clear clearn empty Gnrerr_ Gemptwarning_
+@ 
+\subsubsection{Accessing a dataset}
+[[@#[]]], [[@#[]!]], [[@#[]?]], and [[@#.$]] are variables: The set
+points, the tag mark ([[true]] or [[false]]), the part beginnings, and
+the number of parts, respectively.  Furthermore we define functions
+for accessing a dataset.  These have no error checking; use
+[[checkdata]] first to be sure.
+<<gmlset.mp>>=
+vardef length_of @# = @#[@#.$]? enddef;
+vardef partpoint @#(expr i_,j_) =
+  save ii_,gi_; ii_=i_ mod @#.$; gi_=@#[ii_]?; 
+  gi_ + j_ mod (@#[ii_+1]?-gi_)
+enddef;
+vardef endpoint @#(expr i_, r_) =
+  partpoint @#(i_, if r_: -1 else: 0 fi)
+enddef;
+vardef partindex @#(expr j_) =
+  save jj_,k_; jj_=j_ mod @#[@#.$]?; k_=0;
+  forever: exitif @#[incr k_]?>jj_; endfor k_-1
+enddef;
+@ %def length_of partpoint endpoint partindex
+@ Filling a dataset: [[pp_]] is a pair list in data coordinates.
+[[!!]] contains the tag associated to the points (boolean [[true]] for
+a tagged point in a function plot).  [[augment]] will create the set
+if it does not exist.  [[cut]] is a shorthand; note that it will define
+the [[!]] tags as [[boolean]] if it has to create the set.
+<<gmlset.mp>>=
+vardef augment @#(expr !!) text pp_ =
+  if not cleared @#: clear(!!)@#; fi
+  save l_,s_; l_=length_of @#; s_=@#.$;
+  for p_=pp_:
+    if known p_:
+      @#[l_] := p_;
+      @#[l_]! := !!;
+      @#[if @#| : incr fi @#.$]? := @#[s_]? + 1;
+      @#| :=false;
+    else:
+      @#| :=true;
+    fi
+  endfor
+enddef;
+vardef cut @# = augment @#(true) ?? enddef;
+@ %def augment cut
+@ Check each dataset in [[ss_]] whether it has been defined, whether
+it is empty, and whether it is filled consistently (all points must be
+known).  If the argument is true, issue error messages; otherwise just
+return [[true]] (if it is OK) or [[false]].
+<<gmlset.mp>>=
+vardef checkdata(expr showerr_) text ss_ =
+  save e_; boolean e_; e_=false;
+  forsuffixes s_=ss_:
+    if str s_ = "":
+      if showerr_:
+  	errhelp "The empty string can't be a dataset tag.";
+  	errmessage "Dataset tag empty";
+      fi
+      e_:=true;
+    elseif (known s_.$) and (numeric s_.$) and (known s_|) and (boolean s_|)
+      and (pair s_[0]):
+      if (s_.$>0) and (known length_of s_) and (numeric length_of s_):
+  	if (s_[0]?=0) and (length_of s_>0):
+  	  for i_=1 upto s_.$: 
+  	    if known s_[i_]?:  if s_[i_]?<=s_[i_-1]?: e_:=true; fi 
+  	    else: e_:=true;
+  	    fi
+  	  endfor
+  	  for i_=0 upto length_of s_ -1: if unknown s_[i_]: e_:=true; fi endfor
+  	else: e_:=true;
+  	fi
+  	if e_:
+  	  errhelp "Sorry, but this dataset is somewhat screwed up, "
+  		 &"so I can't use the contents.";
+  	  errmessage "Dataset "&str s_ &" is unreadable";
+  	fi
+      else:
+  	if showerr_:
+  	  errhelp "This dataset is empty.  "
+  		 &"                                                       "
+  		 &"Possibly a file was missing "
+  		 &"or empty when it should have been filled.";
+  	  errmessage "Dataset "&str s_ &" is empty";
+  	fi
+  	e_:=true;
+      fi
+    else:
+      if showerr_:
+  	errhelp "This dataset has not been defined. (Look for spelling errors.)";
+  	errmessage "Undefined dataset "&str s_;
+      fi
+      e_:=true;
+    fi
+  endfor
+  (not e_)
+enddef;
+@ %def checkdata
+@ This function is useful for debugging
+<<gmlset.mp>>=
+vardef showdata text ss_ =
+  forsuffixes s_=ss_:
+    save j_,l_,ip_; l_=length_of s_; ip_=0;
+    if l_=0: message("Dataset "&str s_&" is empty.");
+    else: scan(s_)(message("Contents of dataset "&str s_&":");j_=-1;)
+      (message("Point "&if boolean $!: if $!: "*"& fi fi str[incr j_]&":" 
+	      &" ("&($#$ x)&", "&($#$ y)&")");
+       if not boolean $!: show $!; fi
+       if $~<2: message("End of part "&str[ip_]&"."); ip_:=ip_+1; fi)
+      (message("End of dataset "&str s_&".  "&
+	       "Number of points: "&str[length_of s_]););
+    fi
+  endfor
+enddef;
+@ %def showdata
+@
+\subsubsection{Plotting and histogramming}
+The standard operation to fill dataset(s) [[s]] with the list of
+points [[t]].  The points are filled cyclicly into the specified sets
+[[s]].  We use a [[transform]] variable to store points with
+errorbars.
+<<gmlset.mp>>=
+def plot(text s_) text t_ = 
+  Gplot_(Gplpt_)(s_) t_
+enddef;
+vardef Gplot_(text cmd_)(text ss_) text pp_ =
+  save n_,i_,j_,k_;  n_=0 forsuffixes #=ss_: +1 endfor; i_=-1;
+  if n_>0: 
+    for p_=pp_:  Gplset_(cmd_)(incr i_, n_)(ss_)(p_);  endfor
+  else:
+    errhelp("'plot' and 'hist' require a list of datasets as first "
+	     &"argument.");
+    errmessage("Missing set tag");
+  fi
+enddef;
+def Gplset_(text cmd_)(expr i_, n_)(text ss_)(expr p_) =
+  j_:=i_ mod n_; k_:=-1;
+  forsuffixes @#=ss_: exitif (incr k_)>j_; 
+    if k_=j_: cmd_ @#(p_); fi
+  endfor
+enddef;
+vardef Gplpt_ @#(expr p_) =
+  if (numeric p_): cut @#;
+  elseif unknown (xpart p_, ypart p_): cut @#;
+  elseif pair p_:  augment @#(true) p_;
+  else: 
+    if known xxpart p_: cut @#;
+      augment @#(false)(xxpart p_, ypart p_);
+      augment @#(true)(xpart p_, ypart p_);
+      augment @#(false)(xypart p_, ypart p_);
+    fi
+    if known yxpart p_: cut @#;
+      augment @#(false)(xpart p_, yxpart p_);
+      if unknown xxpart p_: augment @#(true)(xpart p_, ypart p_); fi
+      augment @#(false)(xpart p_, yypart p_);
+    fi
+  fi
+enddef;
+@ %def plot Gplot_ Gplset_ Gplpt_
+@ Writing [[p hbar q]] and/or [[vbar q]] turns a point [[p]] into a
+[[transform]] that encodes a point with horizontal/vertical error bar.
+Whereas [[hbar]] and [[vbar]] expect value differences ($\pm$),
+[[hrange]] and [[vrange]] expect absolute coordinates.
+<<gmlset.mp>>=
+tertiarydef p hbar b =
+  begingroup save t; transform t;
+    xpart t = xpart p;  ypart t = ypart p;
+    xxpart t = (xpart t) minus if pair b: xpart fi b;
+    xypart t = (xpart t) plus  if pair b: ypart fi b;
+    if transform p:  yxpart t = yxpart p;  yypart t = yypart p;  fi
+  t endgroup
+enddef;
+tertiarydef p vbar b =
+  begingroup save t; transform t;
+    xpart t = xpart p;  ypart t = ypart p;
+    yxpart t = (ypart t) minus if pair b: xpart fi b;
+    yypart t = (ypart t) plus  if pair b: ypart fi b;
+    if transform p:  xxpart t = xxpart p;  xypart t = xypart p;  fi
+  t endgroup
+enddef;
+tertiarydef p hrange b =
+  begingroup save t; transform t;
+    xpart t = xpart p;  ypart t = ypart p;
+    xxpart t = if pair b: xpart fi b;
+    xypart t = if pair b: ypart fi b;
+    if transform p:  yxpart t = yxpart p;  yypart t = yypart p;  fi
+  t endgroup
+enddef;
+tertiarydef p vrange b =
+  begingroup save t; transform t;
+    xpart t = xpart p;  ypart t = ypart p;
+    yxpart t = if pair b: xpart fi b;
+    yypart t = if pair b: ypart fi b;
+    if transform p:  xxpart t = xxpart p;  xypart t = xypart p;  fi
+  t endgroup
+enddef;
+@ %def hbar vbar hrange vrange
+@ For histogramming we need to remember the previous point.
+<<gmlset.mp>>=
+def hist (text s_) text t_ = 
+  Gplot_(Ghspt_)(s_) t_
+enddef;
+vardef Ghspt_ @#(expr p_) =
+  if (unknown @#.@@) or (unknown xpart p_): cut @#;
+  elseif pair p_: cut @#;
+    augment @#(false) @#.@@; 
+    augment @#(true)((xpart @#.@@ plus xpart p_) over two, ypart @#.@@);
+    augment @#(false)(xpart p_, ypart @#.@@);
+  else: 
+    errhelp("For histogramming only pair expressions "
+           &"are meaningful.                        "
+           &"So, if you wanted to plot error bars, "
+           &"you should use 'plot' instead.");
+    errmessage("Wrong argument type for histogramming");
+  fi
+  @#.@@:=p_;
+enddef;
+@ %def hist Ghspt_
+@ 
+\subsection{Plotting tables}
+The [[table]] macro will turn a data table into a plot or histogram, using the
+pair expression [[t_]] for calculating the values.  This will work
+only if [[plot]] and [[hist]] are [[vardef]] macros, so they remain a
+tag.  The same macro is used for function plotting.  The current line
+is assigned to [[$l]].
+<<gmlset.mp>>=
+def table = Gtable_ enddef;
+vardef Gtable_.Gplot_(suffix cmd_)(suffix s_) text t_ =
+  save x,y,xy_; Gdefxy_ t_;
+  if known currentfile:
+    vardef x = #($d1) enddef;
+    vardef y @# = #($d[if str @#="": 2 else: @#+1 fi]) enddef;
+    for l_ withinblock: $l:=l_; Gplot_(cmd_)(s_) xy_; endfor
+  elseif Gfromf_:
+    for x_ within Gfrange_: x:=x_; y:=function(x); Gplot_(cmd_)(s_) xy_; endfor
+  else: Gtaberr_;
+  fi
+enddef;
+def Gdefxy_(text t_) =
+  save i_;  i_=0;
+  for d_=t_: i_:=i_+1; endfor
+  if i_=0:     def xy_ = (x,y) enddef;
+  elseif i_=1: def xy_ = (x,t_) enddef;
+  else:        def xy_ = (t_) enddef;
+  fi
+enddef;
+def Gtaberr_ =
+  errhelp("You must be inside of either a `fromfile' or `fromfunction' "&
+          " block to use this macro.");
+  errmessage("Can't use `table' here");
+enddef;
+@ %def table Gtable_ Gdefxy_ Gtaberr_
+@ Make multiple plots from a multi-column table.  This does not work
+for function plotting.
+<<gmlset.mp>>=
+def tables = Gtables_ enddef;
+vardef Gtables_.Gplot_(suffix cmd_)(text ss_) text t_ =
+  save x,y,xy_; Gdefxy_ t_;
+  if known currentfile:
+    vardef x = #($d1) enddef;
+    vardef y = #($d[ii_]) enddef;
+    for l_ withinblock: ii_:=1; $l:=l_;
+      forsuffixes @# = ss_:  ii_:=ii_+1; Gplot_(cmd_)(@#)(xy_); endfor
+    endfor
+  else: Gmkploterr_;
+  fi
+enddef;
+@ %def tables Gtables_
+@ 
+\subsubsection{Calculations with datasets}
+This macro applies the pair expression [[xy_]] which contains
+variables [[x]] and [[y]] (or [[x[i]]] and [[y[i]]] for several sets)
+to each point in the chain list [[chains_]] to generate a new set.  We
+do the scanning twice, using a temporary set [[Gs_]], since the new 
+set [[@#]] may appear in [[chains_]] and should not be destroyed beforehand.
+<<gmlset.mp>>=
+vardef calculate @#(text chains_) text xy_ =
+  save Gs_;
+  begingroup interim tracingsets:=0;
+    scan pointwise(chains_)
+      ()(x[$i]:=x; y[$i]:=y;
+	 if $i=$n: augment Gs_($!)(xy_); if $~=1: cut Gs_; fi fi)();
+  endgroup;
+  copy(Gs_) @#;
+enddef;
+@ %def calculate
+@ The [[transpose]] function reconnects chains such that the first
+part of the results consists of the first points of all chains, then
+the second points, and so on.  Part separations within a chain are
+ignored.  A single chain will be dissolved in points by that means.
+<<gmlset.mp>>=
+vardef transpose(text chains_) text setlist =
+  save Gs_;
+  begingroup interim tracingsets:=0;
+    scan pointwise(chains_)
+      ()(augment Gs_($!)(x,y); if $i=$n: cut Gs_; fi)();
+  endgroup;
+  copy(Gs_) setlist;
+enddef;
+@ %def transpose
+@ The [[copy]] function just does trivial copying.  No chain
+interpretation is done, thus more efficient.
+<<gmlset.mp>>=
+vardef copy(suffix s_) text setlist =
+  forsuffixes @#=setlist:
+    clear(s_[0]!)@#;
+    for i=0 upto length_of.s_-1:  @#[i]:=s_[i]; @#[i]!:=s_[i]!; endfor
+    for i=0 upto s_$: @#[i]?:=s_[i]?; endfor
+    @#.$:=s_$;
+  endfor
+enddef;
+@ %def copy
+@ 
+\subsubsection{Plotting functions}
+This is convenient for sampling functions at equidistant points.  To
+be used in a [[for]] construct (instead of [[..upto..]], which applies
+for integer/fixedpoint values).
+<<gmlset.mp>>=
+def Gsample_(expr xmin,xmax,n) =
+  if known xmin: 
+    xmin
+    if known xmax:
+      if unknown n: hide(n=defaultsample) fi
+      for i=1 upto n:
+        ,(xmax times #(i/n)) plus (xmin times #(1-i/n)) 
+      endfor
+    fi
+  fi
+enddef;
+newinternal defaultsample; defaultsample:=30;
+@ %def Gsample_ defaultsample
+@ Sampling a function: provide a syntax analogous to the [[fromfile]]
+macro for reading from file:
+\begin{quote}
+  [[fromfunction(]]\emph{range}[[):]] \emph{commands}
+  [[endfrom]]
+\end{quote}
+Within the body, the function is accessed as [[function(]]\emph{var}[[)]].
+The range is given as text argument; it is temporarily stored as
+[[Gfrange_]]. 
+<<gmlset.mp>>=
+def fromfunction suffix f = 
+  def function=f enddef; Gfromfun_
+enddef;
+def Gfromfun_(text t) =
+  def Gfrange_=(t) enddef;
+  eatcolon(Gtext_ beginfrom save Gfromf_; boolean Gfromf_; Gfromf_=true;)
+enddef;
+@ %def fromfunction Gfromfun_ Gfrange_
+@ For looping over a floating-point variable, we define a syntax
+similar to [[for..]] [[within]] [[picture]].  The original [[within]]
+is a spark, so it must be saved before redefinition.  The argument is
+usually a pair (lower and upper limit).  If it is a tripel, the third
+value specifies the number of points (plus one).  En passant, we take
+care of the trivial case (numeric) and allow for a string, which also
+makes some sense to loop over.
+<<gmlset.mp>>=
+let withinpicture=within;
+def within expr p =
+  if picture p: withinpicture p
+  elseif color p:
+    = Gsample_(redpart p, greenpart p, bluepart p)
+  elseif pair p:
+    = Gsample_(xpart p, ypart p, ??)
+  elseif numeric p:
+    = p
+  elseif string p:
+    = if length p>0: 
+        substring(0,1) of p
+        for i=2 upto length p: ,substring(i-1,i) of p endfor
+      fi
+  else:
+    =
+    hide(errhelp("I'm expecting a picture, string, numeric, pair, "&
+                 "or tripel here.                So I will ignore this loop.");
+         errmessage("Wrong type argument to within"))
+  fi
+enddef;
+@ %def withinpicture within
+@ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Scanning data sets via chains}
+<<Required packages>>=
+input gmlscan
+<<gmlscan.mp>>=
+% gmlscan.mp --
+<<Header>>
+@ To draw a dataset, a simple loop would suffice.  However, we are
+more ambitious and allow the user to specify arbitrary subsets of
+datasets which can be re-connected, using or dispensing the original
+topology.  Furthermore, we need to scan multiple datasets
+consecutively or in parallel, depending on the application.
+
+To a achieve this, the first argument to the scanning function is a
+list of \emph{chains}, which specify the dataset name(s) and
+subset(s), scanning direction(s), and connected parts.  Technically,
+they are legal variable names (suffixes beginning with a non-numeric)
+and are read by \MP\ as a single suffix.  However, they are
+interpreted differently: They are transformed immediately into strings
+which are parsed to make up FIFO queues (one for each chain),
+containing the information which points are to be scanned in which
+order.
+
+A \emph{chain} is defined as a chain of (one or more) \emph{links}
+which specify the points and range of points, linked by
+\emph{connectors}.  Valid connectors are the tokens [[~]] and [[|]],
+where the former means to connect the links, the latter makes them
+distinct parts:
+\begin{displaymath}
+  \textit{chain} = \textit{link} [[~] \textit{link} [[|]] \textit{link} \ldots
+\end{displaymath}
+Each link consists of the dataset name (a legal variable name, denoted
+below by $a$) and of the subset specification.  A link may be of one
+of the following forms:
+\begin{center}
+\begin{tabular}{l@{\quad:\quad}l}
+  $a$ & whole set (equivalent: $a$[[//]] \\
+  $a$[[\]] & whole set backwards (equivalent: $a$[[\\]])\\
+  $a$[[\/]] & whole set, parts in reverse order but scanned forward each \\
+  $a$[[/\]] & whole set, parts in natural order but scanned backwards each\\
+  $a$[[$]]$n$ & part $n$ of set $a$ \\
+  $a$[[$]]$n$[[\]] & part $n$ of set $a$ scanned backwards \\
+  $a$[[$]]$n$[[']]$i$ & point $i$ in part $n$ of set $a$ \\
+  $a$[[{]]\textit{subchain}[[}]] & subset of set $a$, specified by
+\textit{subchain} 
+\end{tabular}
+\end{center}
+Part and point indices are cyclic. [[$0]] is the first part and
+[[$[-1]]] the last one.  Positive indices are integer numbers.
+Negative indices and arithmetic expressions (which must evaluate to a
+known integer) must be enclosed in square brackets.  Unless specified
+otherwise, the topology of a dataset (its division into parts) is used
+to determine which points are connected.
+
+A subchain determines the points and/or parts \emph{within} a dataset to be
+scanned.  The syntax is as for chains:
+\begin{displaymath}
+  \textit{subchain} = 
+  \textit{link} [[~] \textit{link} [[|]] \textit{link} \ldots
+\end{displaymath}
+Here a link is either an absolute point index (integer), a part
+([[$]]$n$), or a relative point index ([[$]]$n$[[']]$i$).  In
+addition, the shorthands [[//]], [[\/]], [[/\]], [[\\]] specify a
+range (as above), e.g.\
+\begin{displaymath}
+\begin{tabular}{l@{\quad:\quad}l}
+  [[3]] [[//]] [[17]] & all points from 3 to 7 in order \\
+  [[0]] [[~//]] [[[-1]]] & 
+	all points, force connection (ignore part separations) \\
+  [[$3]] [[|/\]] [[$4]] & parts 3 and 4, each scanned backwards, 
+        all points disconnected 
+\end{tabular}
+\end{displaymath}
+These elements may be linked multiply in an arbitrary way.  However,
+redundant and inconsistent range specifiers are forbidden, e.g.\
+[[$1//$2//$3]] (correct: [[$1//$3]]), [[$3\~/\$5'0]] (correct:
+[[$3~/\$5'0]]), [[$1\~//55]] (inconsistent).
+
+\subsubsection{Scanning macros at user level}
+There is only one macro for scanning chains: [[scan]] which may take
+the suffixes [[piecewise]] or [[pointwise]].  The first form scans the
+chains in its argument in order.  Text [[ta_]] is inserted (executed)
+at the beginning, [[ti_]] for each point (which is available as [[x]]
+and [[y]], the boolean data tag as [[$!]], and the connector as [[$~]]
+which is 2 if the next point is connected, 1 if it is disconnected,
+and 0 if the chain end is reached).  At the end [[te_]] is inserted.
+[[ta_]] must be the beginning of a command, but [[ti_]] and [[te_]]
+may be incomplete.
+
+[[scan piecewise]] scans one part of the first chain, then one part of
+the next.  After the last chain is reached, the second part of the
+first chain is scanned, etc.\
+
+[[scan pointwise]] takes the first point of the first chain, connects it to the
+first point of the second.  After the last chain is reached, the
+second point of the first chain is taken, etc.\  Thus, it effectively
+transposes the chains.
+<<gmlscan.mp>>=
+vardef scan @#(text chains_)(text ta_)(text ti_)(text te_) =
+  Gscan_init_(chains_);
+  if str @#="": 
+    ta_ Gscan_(ti_) te_
+  else:
+    save piecewise,pointwise;
+    let piecewise=Gscan_pc_;  let pointwise=Gscan_pt_;  
+    ta_ @#(ti_) te_
+  fi
+enddef;
+def Gscan_init_(text chains_) =
+  save x,y,$; boolean $!; numeric $~,$i,$n;  
+  begingroup save \,\\,{,};  Gparse_chain_ chains_; endgroup;
+  Gq_init_;
+  save f_; boolean f_; f_=false;
+enddef;
+@ %def scan Gscan_init_
+@ The three forms of the [[scan]] body.  Note that all commands are enclosed in
+[[hide]] such that only [[ti_]] is visible at top level.
+<<gmlscan.mp>>=
+def Gscan_(text ti_) =
+  hide($i:=0)
+  forever: exitif (incr $i)>$n;
+    forever: hide(Gq_next_($i)) exitif Gqerr_; ti_ exitif $~=0; endfor
+  endfor
+enddef;
+def Gscan_pc_(text ti_) =
+  forever: hide($i:=0)
+    forever: exitif (incr $i)>$n; 
+      hide(Gdeftag_($i))
+      forever: hide(Gq_next_($i)) exitif Gqerr_;
+	if $~=0:     if $i<$n: hide($~:=1) fi  hide(f_:=true)
+        elseif $~=1: if $i=$n: hide($~:=0) fi
+        fi ti_
+        exitif $~<2; 
+      endfor
+      exitif Gqerr_;
+    endfor
+    exitif f_ or Gqerr_;
+  endfor
+enddef;
+def Gscan_pt_(text ti_) =
+  forever: hide($i:=0)
+    forever: exitif (incr $i)>$n; 
+      hide(Gdeftag_($i))
+      hide(Gq_next_($i)) exitif Gqerr_;
+      if $~=0: hide(f_:=true) fi
+      if $i<$n: hide($~:=2) fi
+      ti_
+    endfor
+    exitif f_ or Gqerr_;
+  endfor
+enddef;
+@ %def Gscan_ Gscan_pc_ Gscan_pt_
+@ 
+\subsubsection{Lexing}
+The chain interpretation is done in three steps.  In the first one,
+the string [[lexs_]] is broken down into tokens.  [[lexp_]] and [[lexq_]]
+point to the beginning and end of the current token in the string,
+respectively.  The [[Glex_]] function chops off one token [[tok_]] and
+determines its class [[tcl_]] and index [[tix_]].  A token consists of
+all consecutive characters which belong to the same class.
+<<gmlscan.mp>>=
+def Glexinit_ expr s =
+  save lexs_,lexp_,lexq_,tok_,tcl_,tix_;
+  string lexs_,tok_; lexs_=s; lexq_:=0;
+enddef;
+vardef Glex_ =
+  save cl,ix;
+  lexp_:=lexq_; lexq_:=lexp_+1;
+  Glexij_(tcl_,tix_)(substring(lexp_,lexq_) of lexs_);
+  if tcl_<>0:
+    forever:
+      Glexij_(cl,ix)(substring(lexq_, lexq_+1) of lexs_);
+      exitif tcl_<>cl;
+      lexq_:=lexq_+1;
+    endfor
+  fi
+  tok_:=substring(lexp_,lexq_) of lexs_;
+enddef;
+@ %def Glexinit_ Glex_
+@ Find the token class and index of the current character:
+<<gmlset.mp>>=
+vardef Glexij_(suffix i_,j_)(expr c) =
+  i_:=j_:=0;
+  if c<>"":
+    save found_; boolean found_; found_:=false;
+    forever: i_:=i_+1; j_:=0;
+      exitif unknown Glexc_[i_][1];
+      forever: j_:=j_+1;
+	exitif unknown Glexc_[i_][j_];
+	if c=Glexc_[i_][j_]: found_:=true; fi
+	exitif found_;
+      endfor
+      exitif found_;
+    endfor
+    if not found_: i_:=-1; j_:=0; fi
+  fi
+enddef;
+@ %def Glexij_
+@ These are the token classes and corresponding strings:
+<<gmlscan.mp>>=
+string Glexc_[][];
+@ %def Glexc_
+@ Class [[-1]] corresponds to alphanumeric tokens (dataset names and
+indices).  Class [[0]] is the chain end.  [[1]] is a connector:
+<<gmlscan.mp>>=
+Glexc_[1][1]="|";  Glexc_[1][2]="~";
+@ [[2]] is a direction (forward or backward)
+<<gmlscan.mp>>=
+Glexc_[2][1]="/";  Glexc_[2][2]="\";
+@ [[3]] is a part identifier, and [[4]] denotes a relative point index:
+<<gmlscan.mp>>=
+Glexc_[3][1]="$"; Glexc_[4][1]="'";
+@ [[5]] and [[6]] are the subchain brackets:
+<<gmlscan.mp>>=
+Glexc_[5][1]="{"; Glexc_[6][1]="}";
+@ To change the representation of a token, only the corresponding
+string above needs to be changed.
+
+\subsubsection{Parsing}
+After tokenization, the tokens are translated into entries in a FIFO
+queue, one for each chain ([[$n]]: number of queues).  The meaning
+of the queue variables is as follows:
+\begin{center}
+\begin{tabular}{l@{\quad:\quad}l}
+  [[Gqt_]]& new dataset name (string) \\
+  [[Gqp_]]& target point index \\
+  [[Gqc_]]& connector ($0=$EOC, $1=$disconn, $2=$conn, $-1=$unspec) \\
+  [[Gqd_]]& boolean: [[true]] for range scanning, [[false]] for direct
+connection \\
+  [[Gqsf_]]& part scanning direction (boolean) \\
+  [[Gqpf_]]& point scanning direction (boolean)
+\end{tabular}
+\end{center}
+<<gmlscan.mp>>=
+vardef Gparse_chain_ text ss_ =
+  save ql_,q_; q_=0;
+  Gparseinit_;
+  forsuffixes s_ = ss_: q_:=q_+1;
+    Glexinit_ str s_;
+    ql_:=0; Gqc_[q_][ql_]=0; Gqd_[q_][ql_]=false;
+    forever: Gparse_;
+      exitif Gqc_[q_][ql_]=0; 
+    endfor
+    ql_[q_]=ql_;
+  endfor
+  $n=q_;
+enddef;
+@ %def Gparse_chain_
+@ The [[Gparse_]] function reads one link and the following connector.
+The dataset name is read as suffix [[@#]] and the corresponding
+subchain is generated (if necessary) and parsed.
+<<gmlscan.mp>>=
+def Gparseinit_ =
+  string Gqt_[][];
+  numeric Gqc_[][],Gqp_[][]; boolean Gqd_[][],Gqsf_[][],Gqpf_[][];
+enddef;
+vardef Gparse_ =
+  save qll_,perr_,sf_,pf_; boolean perr_,sf_,pf_;
+  qll_=ql_;
+  Glex_;
+  if tcl_<0:
+    forsuffixes @#=scantokens tok_:
+      perr_:=not checkdata(true) @#;
+      if not perr_:
+	Gqt_[q_][ql_+1]=tok_; 
+	Glex_;
+	if (tcl_=1) or (tcl_=0):  
+	  Gparse_subchain_ @#(Ggen_subchain_(true,true));
+	elseif tcl_=2: 
+	  Gparse_dir_(sf_,pf_); 
+	  Gparse_subchain_ @#(Ggen_subchain_(sf_,pf_)); Glex_;
+	elseif tcl_=3:           
+	  Gparse_subchain_ @#(Ggen_pchain_);
+	elseif tcl_=5:           
+	  Gparse_subchain_ @#(Gsubchain_); Glex_; 
+	else: perr_:=true;
+	fi
+      fi
+      if not perr_:
+	if tcl_=1:     Gqc_[q_][ql_]:=tix_;
+	elseif tcl_=0: Gqc_[q_][ql_]:=0;
+	else: perr_:=true;
+        fi
+      fi
+    endfor
+  else: perr_:=true;
+  fi
+  if perr_: 
+    errhelp "The chain shown above is strange: "
+           &"Maybe it contains a syntax error, "
+           &"or it      addresses an empty dataset.  "
+           &"I'll try to recover, but all or part of the chain may be lost.";
+    show lexs_;
+    errmessage "Invalid chain"; 
+    ql_:=qll_; Gqc_[q_][ql_]:=0; 
+  fi
+enddef;
+@ %def Gparseinit_ Gparse_
+@ Interpret [[tok_]] as a direction and set booleans [[sf_]] and
+[[pf_]].
+<<gmlscan.mp>>=
+vardef Gparse_dir_(suffix sf_,pf_) =
+  save t_; string t_; t_=substring(1,2) of tok_;
+  if tix_=1:     sf_:=true;
+  elseif tix_=2: sf_:=false;
+  else: perr_:=true;
+  fi
+  if     t_=Glexc_[2][1]: pf_:=true;
+  elseif t_=Glexc_[2][2]: pf_:=false;
+  else:  pf_:=sf_;
+  fi
+enddef;
+@ %def Gparse_dir_
+@ Generate a subchain appropriate for scanning a whole dataset resp.\
+one part of it
+<<gmlscan.mp>>=
+vardef Ggen_subchain_(expr sf_, pf_) =
+  Glexc_[3][1]& if sf_: "0" else: "[-1]" fi
+ &Glexc_[2][ if sf_: 1 else: 2 fi ]
+ &Glexc_[2][ if pf_: 1 else: 2 fi ]
+ &Glexc_[3][1]& if sf_: "[-1]" else: "0" fi
+enddef;
+vardef Ggen_pchain_ =
+  save p_; p_=lexp_;
+  forever:  Glex_; exitif (tcl_=0) or (tcl_=1);  endfor;
+  substring(p_,lexp_) of lexs_
+enddef;
+@ %def Ggen_subchain_ Ggen_pchain_
+@ Strip the enclosing braces off a subchain
+<<gmlscan.mp>>=
+vardef Gsubchain_ =
+  save p_; p_=lexq_;
+  forever:  Glex_; exitif (tcl_=0) or (tcl_=6);  endfor;
+  substring(p_,lexp_) of lexs_
+enddef;
+@ 
+Parse a subchain [[s_]] for known dataset [[@#]].  The results are put
+into the current queue.
+<<gmlscan.mp>>=
+vardef Gparse_subchain_ @#(expr s_) =
+  Glexinit_ s_;
+  Glex_; Gchain_next_ @#;
+  forever: exitif perr_;
+    exitif Gqc_[q_][ql_]=0;
+    Gchain_next_ @#;
+  endfor
+enddef;
+@ %def Gparse_subchain_
+@ Strip one token and transform it into a queue entry.
+<<gmlscan.mp>>=
+vardef Gchain_next_ @# =
+  ql_:=ql_+1;
+  if tcl_<0:
+    Gqp_[q_][ql_]=Gget_cpt_ @#; Glex_;
+    Gset_con_; Gset_dir_;
+  elseif tcl_=3: Glex_;
+    Gsubchain_part_ @#;
+  else: perr_:=true;
+  fi
+enddef;
+@ %def Gchain_next_
+@ The most complicated task: Parse a part specifier ([[$a]]) and put
+result into queue.  A point within part ([[$a'b]]) is treated as before.
+For whole parts, the behavior depends on whether it terminates/begins
+a range (which  means [[Gqd_[q_][ql_-1]]] resp.\ [[Gqd_[q_][ql_]]] is
+true) or stands alone.  In the first case either the beginning or end
+of the part, depending on the scanning direction, is put into the
+queue.  In the latter case both ends of the part are put in.  The
+connector(s) are set accordingly.  
+<<gmlscan.mp>>=
+vardef Gsubchain_part_ @# =
+  if tcl_<0:
+      save s_; s_=Gget_cpart_ @#;  Glex_;
+% ..$a'b..
+    if tcl_=4: Glex_;
+      if tcl_<0: 
+        Gqp_[q_][ql_]=partpoint @#(s_, number_from tok_); Glex_;
+        Gset_con_; Gset_dir_;
+      else: perr_:=true;
+      fi
+% ..$a~
+    elseif (tcl_=1) or (tcl_=0):
+      Gset_con_; Gset_dir_;
+      if Gqd_[q_][ql_] and Gqd_[q_][ql_-1]: perr_:=true;   % //$a~// forbidden
+      elseif Gqd_[q_][ql_]:
+        Gqp_[q_][ql_]=endpoint @#(s_, not Gqpf_[q_][ql_]); % ..$a~//
+      elseif Gqd_[q_][ql_-1]:
+        Gqp_[q_][ql_]=endpoint @#(s_, Gqpf_[q_][ql_-1]);   % ..//$a~..
+      else:
+        Gqp_[q_][ql_]=endpoint @#(s_, false);              % ..$a~..
+        Gqd_[q_][ql_]:=Gqsf_[q_][ql_]:=Gqpf_[q_][ql_]:=true;
+        Gqd_[q_][ql_+1]=false;
+        Gqc_[q_][ql_+1]=Gqc_[q_][ql_];  Gqc_[q_][ql_]:=2;
+        Gqp_[q_][ql_+1]=endpoint @#(s_, true);
+        ql_:=ql_+1;
+      fi
+% ..$a/..
+    elseif tcl_=2:
+      if Gqd_[q_][ql_-1]: perr_:=true;                     % //$a/.. forbidden
+      else:
+        Gset_dir_;
+        if (tcl_<0) or (tcl_=3): Gset_con_;
+          Gqp_[q_][ql_]=endpoint @#(s_, not Gqpf_[q_][ql_]); % $a//..
+        elseif (tcl_=1) or (tcl_=0): Gset_con_;
+          Gqp_[q_][ql_]=endpoint @#(s_, not Gqpf_[q_][ql_]); % $a/~.. 
+          Gqd_[q_][ql_+1]=false;
+          Gqc_[q_][ql_+1]=Gqc_[q_][ql_];  Gqc_[q_][ql_]:=2;
+          Gqp_[q_][ql_+1]=endpoint @#(s_, Gqpf_[q_][ql_]);
+          ql_:=ql_+1;
+        else: perr_:=true;                                 % $a/~//  forbidden
+        fi
+      fi
+    else: perr_:=true;
+    fi
+  else: perr_:=true;
+  fi
+enddef;        
+@ %def Gsubchain_part_
+@ Auxiliary functions: Evaluate a point/part index for set [[@#]]
+<<gmlscan.mp>>=
+vardef Gget_cpt_ @# =
+  (number_from tok_) mod length_of @#
+enddef;
+vardef Gget_cpart_ @# =
+  (number_from tok_) mod @#.$
+enddef;
+@ %def Gget_cpt_ Gget_cpart_
+@ Set the connector resp.\ direction in the queue according to current
+token and read next token if successful
+<<gmlscan.mp>>=
+vardef Gset_con_ =
+  if tcl_=1:     Gqc_[q_][ql_]=tix_; Glex_;
+  elseif tcl_=0: Gqc_[q_][ql_]=0;
+  else:          Gqc_[q_][ql_]=-1;
+  fi
+enddef;
+vardef Gset_dir_ =
+  if tcl_=2: Gqd_[q_][ql_]=true; 
+    Gparse_dir_(Gqsf_[q_][ql_],Gqpf_[q_][ql_]); Glex_;
+  else:      Gqd_[q_][ql_]=false;
+  fi
+enddef;
+@ %def Gset_con_ Gset_dir_
+@
+\subsubsection{Queue interpretation}
+After queues have been set up, we can start the scanning and read out
+points consecutively.  Care has to be taken that several queues can
+be scanned in parallel, so keep variables with a queue index:
+\begin{center}
+\begin{tabular}{l@{\quad:\quad}l}
+  [[Gqpos_]]& Current position \\
+  [[Gqtag_]]& Current tag (string)\\
+  [[Gts_]]& Current part index\\
+  [[Gtp_]]& Current point index\\
+  [[Gtc_]]& Current connector\\
+  [[Gtn_]]& true if current point index has not yet been read\\
+  [[Gtu_]]& true if part limit has been reached during range scanning
+\end{tabular}
+\end{center}
+The function [[Gq_next]] determines the next scanning point [[(x,y)]],
+tag [[$!]] and connector [[$~]].  When within a range, it advances the
+counter in the current dataset; otherwise it reads new data from the
+current queue.  We use single recursion within [[Gq_next_]].
+<<gmlscan.mp>>=
+def Gq_init_ =
+  numeric Gtc_[],Gtp_[],Gts_[],Gqpos_[];  
+  boolean Gtn_[],Gtu_[];  string Gqtag_[];
+  for q_ = 1 upto $n:
+    Gqpos_[q_]=1; Gtn_[q_]=true; Gtu_[q_]=false; Gqtag_[q_]="";
+  endfor
+  boolean Gqerr_; Gqerr_=false;
+enddef;
+vardef Gq_next_(expr q_) =        
+  save qi_,tp_,ts_,tc_; 
+  qi_=Gqpos_[q_]; tp_=Gtp_[q_]; ts_=Gts_[q_]; tc_=Gtc_[q_];
+  Gq_nextx_(q_);
+  if not Gqerr_:
+    Gqpos_[q_]:=qi_;
+    Gtc_[q_]:=tc_; Gtp_[q_]:=tp_; Gts_[q_]:=ts_;
+    numeric x,y; z=Gtag_[tp_]; $!:=Gtag_[tp_]!; $~:=tc_;
+  else:
+    errhelp "There are no points to scan here, possibly a result "
+           &"of a previous error.       "
+           &"Just type return, and I will ignore this.";
+    errmessage "Empty scanning queue"; Gtc_[q_]:=0; 
+  fi
+enddef;
+def Gq_nextx_(expr q_) =
+  if Gtn_[q_]: Gtn_[q_]:=false;
+    if known Gqt_[q_][qi_]: 
+      Gqtag_[q_]:=Gqt_[q_][qi_]; Gdeftag_(q_);
+    fi
+    tp_:=Gqp_[q_][qi_]; tc_:=Gqc_[q_][qi_];
+    if (known tp_) and (known tc_):
+      ts_:=partindex Gtag_(tp_);
+      if Gqd_[q_][qi_]: Gqset_con_(q_, Gqpf_[q_][qi_], Gqc_[q_][qi_]);
+      else: qi_:=qi_+1; Gtn_[q_]:=true; 
+      fi
+    else: Gqerr_:=true;
+    fi
+  else:
+    if tp_<>Gqp_[q_][qi_+1]: 
+      Gqinc_tp_(q_, Gqpf_[q_][qi_], Gqsf_[q_][qi_]); 
+      Gqset_con_(q_, Gqpf_[q_][qi_], Gqc_[q_][qi_]); 
+    fi
+    if tp_=Gqp_[q_][qi_+1]:
+      qi_:=qi_+1; Gtn_[q_]:=true; Gq_nextx_(q_);
+    fi
+  fi
+enddef;
+@ %def Gq_init_ Gq_next_ Gq_nextx_
+@ The token [[Gtag_]] is set equal to the current dataset name, so we
+don't need [[scantokens]] anytime a point is accessed:
+<<gmlscan.mp>>=
+def Gdeftag_(expr q_) =
+  scantokens("def Gtag_ = "&Gqtag_[q_]&" enddef;");
+enddef;
+@ %def Gdeftag_
+@ Set [[Gtu_[q_]]] true if a part limit has been reached and set
+connector [[tc_]] accordingly
+<<gmlscan.mp>>=
+def Gqset_con_(expr q_,pf_,c_) =
+  Gtu_[q_]:=
+    if pf_:  if tp_+1 = Gtag_[ts_+1]?: true else: false fi
+    else:    if tp_   = Gtag_[ts_]?:   true else: false fi
+    fi;  
+  if c_<0:  tc_:= if Gtu_[q_]: 1 else: 2 fi;  fi
+enddef;
+@ %def Gqset_con_
+@ Increment/decrement pointer [[tp_]] according to point direction
+[[Gqpf_[q_][qi_]]] and watch for part end 
+<<gmlscan.mp>>=
+def Gqinc_tp_(expr q_, pf_,sf_) =
+  if pf_:  
+    tp_:=tp_+1;  
+    if Gtu_[q_]: Gqinc_ts_(q_, sf_); tp_:=Gtag_[ts_]?; fi
+  else:    
+    if Gtu_[q_]: Gqinc_ts_(q_, sf_); tp_:=Gtag_[ts_+1]?; fi  
+    tp_:=tp_-1;
+  fi
+enddef;
+@ %def Gqinc_tp_
+@ Increment/decrement part pointer [[ts_]] according to part direction
+[[Gqsf_[q_][qi_]]] and watch for  dataset end 
+<<gmlscan.mp>>=
+def Gqinc_ts_(expr q_, sf_) =
+  if sf_:  ts_:=ts_+1;  if ts_=Gtag_.$: ts_:=0; fi
+  else:    if ts_=0: ts_:=Gtag_.$; fi  ts_:=ts_-1;
+  fi
+enddef;
+@ %def Gqinc_ts_
+@ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Graph administration}
+This package contains the management part of graph data drawing:
+Coordinate conversions, data storage and rendering, outer labels and
+legend.
+<<Required packages>>=
+input gmlcoords
+<<gmlcoords.mp>>=
+% gmlcoords.mp --
+<<Header>>
+@
+\subsubsection{Conversion from floating-point to internal coordinates}
+The difficult point of coordinate conversions is that the scale is
+only known \emph{after} everything has been drawn.  Thus, we need
+means to store and accumulate data and to determine their bounding
+box.  To avoid overflow and extra rescalings, we keep everything in
+[[Mlog]] form in memory until a [[freeze]] command has been
+encountered.  However, in the linear case this makes it difficult to
+determine the bounding box.  For the latter reason, we introduce
+\emph{internal} coordinates which are [[Mlog]] coordinates with a
+sign.  Effectively, the least and highest bit in the representation
+are exchanged.  The conversions are implemented by two functions,
+[[Gpint_]] and [[Gpext_]] which operate on pairs, depending on the
+coordinate type.
+
+Global variables:
+[[Gr_.low/high]] (pairs),
+[[Gtype_.x/y]]   (numerics),
+[[Glmax_.x/y]]   (numerics),
+[[Glsc_.x/y]]    (numerics),
+[[Gfixed_]]      (boolean)
+<<gmlcoords.mp>>=
+Gzz_:=zero/2;
+vardef Gpint_ primary p = 
+  (if abs Gtype_.x=linear: Gcint_ fi xpart p, 
+   if abs Gtype_.y=linear: Gcint_ fi ypart p)
+enddef;
+def Gcint_ expr x =
+  if x<>Mabs x: - fi (.5x-Gzz_)
+enddef;
+vardef Gpext_ primary p =
+  (if abs Gtype_.x=linear: Gcext_ fi xpart p, 
+   if abs Gtype_.y=linear: Gcext_ fi ypart p)
+enddef;
+def Gcext_ expr x =
+  if x>=0: 2(x+Gzz_)
+  else:    2(-x+Gzz_) + epsilon
+  fi
+enddef;
+@ %def Gzz_ Gpint_ Gcint_ Gpext_ Gcext_
+@ 
+\subsubsection{Init and finalize graph}
+Open and initialize graph:  We define the [[width]] and [[height]] and
+correspondingly [[theframe]], set [[hatchdim]] appropriately,
+initialize some flags, numbers and pictures, and redefine the drawing
+commands.  Then, the data memory is initialized and a linear
+coordinate system is set up.
+<<gmlcoords.mp>>=
+def begingraph(expr w, h) =
+  begingroup
+  save width, height; width=w; height=h;  
+  save theframe; path theframe; theframe=unitsquare xscaled w yscaled h;
+  if known hatchdim: hatchdim:=2(w++h); fi
+  savecurrentpen;
+  save Gneedgr_, Gneedfr_, Gneedol_, Gb_, Glb_;  
+  boolean Gneedgr_, Gneedfr_, Gneedol_;  Gneedgr_=Gneedfr_=Gneedol_=true;
+  pair Gb_.low, Gb_.high, Glb_.low, Glb_.high;
+  forsuffixes $$=currentpicture, theouterlabels, thelegend:
+    save $$; picture $$; $$=nullpicture;
+  endfor
+  enable_enhanced_drawing;
+  initdata Gdata_;
+  setup(linear,linear);
+enddef;
+@ %def begingraph Gdata_
+@ Set up coordinate system (after clearing up) and disable conversions
+(until the scale is known)
+<<gmlcoords.mp>>=
+def setup(expr xtype,ytype) =
+  if Gdata_.count>0: freeze; fi
+  save Gtype_; (Gtype_.x,Gtype_.y)=(xtype,ytype);
+  save Gfixed_, Gr_, Glsc_, Glmax_, Gmr_;  pair Gr_.low, Gr_.high;
+  pair Gmr_.low, Gmr_.high;
+  boolean Gfixed_; Gfixed_=false;
+  save convert;
+enddef;
+newinternal linear, log; linear:=1; log:=2;
+@ %def setup linear log
+@ Reset and define graph range [[Gr_]].  If it is fully known, we can
+enable conversions already here.
+<<gmlcoords.mp>>=
+vardef graphrange text t_ = 
+  Grdrect_(Gr_) t_;
+  if (known Gr_.high) and (known Gr_.low): 
+    Gfixed_:=true;
+    Gfindconv_(Gfixed_,Gr_,Glsc_,Glmax_); 
+  fi
+enddef; 
+@ %def graphrange
+@ Define the bounds [[Glb_]] where the outer labels should be attached.
+<<gmlcoords.mp>>=
+vardef labelbounds text t_ =
+  Grdrect_(Glb_) t_;
+enddef;
+def framelabels =
+  labelbounds llcorner theframe, urcorner theframe;
+enddef;
+@ %def labelbounds framelabels Glb_
+@ Set the overall graph bounds [[Gb_]]
+<<gmlcoords.mp>>=
+vardef graphbounds text t_ = 
+  Grdrect_(Gb_) t_;
+enddef;
+def framebounds = 
+  graphbounds llcorner theframe, urcorner theframe; 
+enddef;
+@ %def graphbounds framebounds Gb_
+@ The functions above need a rectangle.  We allow for some flexibility
+in syntax:
+<<gmlcoords.mp>>=
+vardef Grdrect_(suffix rr) text t_ =
+  save i_,r_; i_=0;
+  for x_=
+      for p_=t_: if pair p_: xpart p_,ypart fi p_, endfor:
+    r_[incr i_] = x_; exitif i_=4;
+  endfor
+  i_:=0;
+  forsuffixes $$=low, high:  pair rr$$;
+    rr$$ = (r_[incr i_], r_[incr i_]);
+  endfor
+enddef;
+@ %def Grdrect_
+@ Configure data memory.  We need to remember quite a lot:
+[[_immd]] is true for immediate mode (drawing in paper coordinates).
+[[_data]] are the pictures containing data paths, [[_link]] says how
+to link them finally (smooth linking is possible only \emph{after} all
+conversions!).  [[_draw]], [[_fill]] and [[_cycl]] decide how to
+render these graphs.  Drawing options determine [[_shad]], [[_outl]],
+the end pictures [[_endp]], symbols [[_symb]] and a picture [[_symp]]
+with dots at the symbol locations.  Finally the labels for which we
+store the pictures [[_lab]], locations [[_lloc]], dot scales [[_ldsc]]
+and types [[_ltyp]].
+<<gmlcoords.mp>>=
+def initdata suffix d_ =
+  save d_; d_.count:=0;
+  boolean d_[]_immd;
+  picture d_[]_data[];  pair d_[]_link;
+  boolean d_[]_draw, d_[]_fill, d_[]_cycl;
+  numeric d_[]_lnjn, d_[]_lncp, d_[]_lnml;
+  picture d_[]_shad, d_[]_outl, d_[]_endp[], d_[]_symb, d_[]_symp;
+  picture d_[]_lab[];  pair d_[]_lloc[];  
+  numeric d_[]_ltyp[], d_[]_ldsc;
+enddef;
+@ %def initdata
+@ This is redundant, but it probably saves memory during the rendering
+procedure, nullifying all pictures that are no longer needed.
+<<gmlcoords.mp>>=
+vardef Gcleardata_ @# =
+  forsuffixes p = @#_shad, @#_outl, @#_endp[0], @#_endp[infinity],
+      @#_symb, @#_symp:
+    p:=nullpicture;
+  endfor
+  save i; i=0;
+  forever: exitif unknown @#_data[incr i];
+    @#_data[i]:=nullpicture;
+  endfor
+enddef;
+@ %def Gcleardata_
+@ If the scale is known, draw data immediately.  Otherwise, store them
+in memory, to be rendered when [[freeze]] is encountered.
+<<gmlcoords.mp>>=
+def drawdata suffix d_ =
+  if if known Gfixed_: Gfixed_ else: true fi:
+    addto currentpicture also Gimage_ d_;
+  else:
+    Gstoredata_ d_;
+  fi
+enddef;
+@ %def drawdata
+@ Store one picture set and accompanying information in data memory
+<<gmlcoords.mp>>=
+vardef Gstoredata_ suffix d_ =
+  save i_,j_;  i_ := incr Gdata_.count;
+  forsuffixes @@=_immd, _link, _draw, _fill, _cycl, _lnjn, _lncp, _lnml,
+    _shad, _outl, _symb, _symp, _endp[0], _endp[infinity]:
+    if known d_@@: Gdata_[i_]@@=d_@@; fi
+  endfor
+  if d_._immd: Gdata_[i_]_data0 = d_._data0; 
+  else: j_:=-1;
+    forever: exitif unknown d_._data[incr j_];
+      Gdata_[i_]_data[j_] = d_._data[j_];
+    endfor
+  fi
+  j_:=0;
+  forever: exitif unknown d_._lab[incr j_];
+    Gdata_[i_]_lab[j_] = d_._lab[j_];
+    Gdata_[i_]_lloc[j_]= d_._lloc[j_];
+    Gdata_[i_]_ldsc[j_]= d_._ldsc[j_];
+    Gdata_[i_]_ltyp[j_]= d_._ltyp[j_];
+  endfor
+enddef;
+@ %def Gstoredata_
+@ Finalize and draw pending data.  We first determine the conversions
+and then render all pending data.
+<<gmlcoords.mp>>=
+def freeze =
+  if not Gfixed_: 
+    Gfindconv_(Gfixed_,Gr_,Glsc_,Glmax_); 
+    Gfixed_:=true;
+    for i=1 upto Gdata_.count:
+      addto currentpicture also Gimage_ Gdata_[i];
+      Gcleardata_ Gdata_[i];
+    endfor
+    initdata Gdata_;
+  fi
+enddef;
+@ %def freeze
+@ Close the graph.  To determine the scale, we [[freeze]] the graph;
+then we can draw a grid.  Frame and outer labels are added, and the
+overall bounding box is determined and wrapped explicitly around the
+picture.  
+<<gmlcoords.mp>>=
+def endgraph =
+  freeze;
+  if Gneedgr_: defaultgrid(); fi
+  if Gneedfr_: frame; fi
+  if Gneedol_: outerlabels(Gbbox_(Glb_,currentpicture)); fi
+  interim truecorners:=1;
+  setbounds currentpicture to Gbbox_(Gb_,currentpicture);
+  currentpicture
+  endgroup
+enddef;
+@ %def endgraph Gneedgr_ Gneedfr_ Gneedol_
+@ Find a bounding box for [[pic]], overridden by [[b.low]] and
+[[b.high]] where known
+<<gmlcoords.mp>>=
+vardef Gbbox_(suffix b,pic) =
+  interim bboxmargin:=0;
+  Gfixb_(b,pic,low )(llcorner);
+  Gfixb_(b,pic,high)(urcorner);
+  bbox(b.low--b.high)
+enddef;
+def Gfixb_(suffix b,pic,hl)(text xxcorner) =
+  (if unknown xpart b.hl: xpart b.hl else: ?? fi,
+   if unknown ypart b.hl: ypart b.hl else: ?? fi)
+  = xxcorner pic;
+enddef;
+@ %def Gbbox_ Gfixb_
+@ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection{Outer labels}
+Add an outer label.  Attach it to the appropriate corner of
+[[unitsquare]], to be shifted to its accurate position later.
+<<gmlcoords.mp>>=
+vardef outerlabel @#(expr pic) =
+  addto theouterlabels also
+    image(currentpicture:=thelabel.@#(pic,origin);
+          setbounds currentpicture to origin..cycle)
+      shifted ((1,1)-(labxf @#, labyf @#));
+enddef;
+@ %def outerlabel
+@ Draw the outer labels, such that the reference points are mapped
+onto the corners of [[p]]
+<<gmlcoords.mp>>=
+vardef outerlabels(expr p) =
+  Gneedol_:=false;
+  if length theouterlabels>0:
+    save t; transform t; t=thetransform(p);
+    Gadd_dummy_(theouterlabels);
+    for q within theouterlabels:
+      addto currentpicture also q
+        shifted ((-llcorner q) + ((llcorner q) transformed t));
+    endfor
+    theouterlabels:=nullpicture;
+  fi
+enddef;
+@ %def outerlabels
+@
+\subsubsection{The legend}
+Add a legend entry [[dt]] and description [[dd]].  Both are attached
+to an imaginary central vertical line.
+<<gmlcoords.mp>>=
+def legendentry(expr dt,dd) =
+  interim labeloffset:=legendoffset;
+  save p; picture p; p=nullpicture;
+  if known dt: addto p also thelabel.lft(dt, origin); fi
+  if known dd: addto p also thelabel.rt (dd, origin); fi
+  addto thelegend also p
+    shifted (0, (ypart llcorner thelegend)
+               -(ypart llcorner p)-legendlineskip);
+enddef;
+newinternal legendoffset; legendoffset:=labeloffset;
+newinternal legendlineskip; legendlineskip:=5mm;
+@ %def legendentry legendoffset legendlineskip
+@ Draw the legend
+<<gmlcoords.mp>>=
+def legend =
+  addto currentpicture also thelegend
+    hide(thelegend:=nullpicture)
+enddef;
+@ %def legend
+@ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection{Find final conversions}
+Find range, scale factor and transform: define [[convert]] macro.
+If [[f=false]]: use bbox; [[f=true]]: assume range completely known
+<<gmlcoords.mp>>=
+vardef Gfindconv_(expr f)(suffix r,s,m) =
+  if not f: 
+    save b; picture b; b=nullpicture;
+    Gfindbbox_ b;
+    Gfindrange_(b) r;
+  fi
+  Gfindscale_(urcorner theframe - llcorner theframe, r) s;
+  Gfindmax_(s) m;
+  Gfindtransf_(r) t;
+  Gdefconv_(t);
+enddef;
+@ %def Gfindconv_
+@ To determine the bounding box, we loop over pending data.  We have
+to handle degenerate cases.
+<<gmlcoords.mp>>=
+def Gfindbbox_ suffix b =
+  save j;
+  interim bboxmargin:=0;
+  for i=1 upto Gdata_.count: j:=0;
+    forever: 
+      exitif unknown Gdata_[i]_data[incr j];
+      addto b doublepath llcorner Gdata_[i]_data[j] .. 
+        urcorner Gdata_[i]_data[j];
+    endfor
+    b := image(addto currentpicture doublepath llcorner b .. urcorner b);
+  endfor
+  if length b=0:  message "Warning: graph may be empty.";
+    setbounds b to  Gpint_(Gorig_.x, Gorig_.y) .. Gpint_(ten,ten) -- cycle;
+  else:
+    if xpart llcorner b = xpart lrcorner b:
+      message "Warning: graph degenerate in horizontal direction.";
+      addto b also Gdummyp_(x)(Gpext_ llcorner b);
+    fi
+    if ypart llcorner b = ypart ulcorner b:
+      message "Warning: graph degenerate in vertical direction.";
+      addto b also Gdummyp_(y)(Gpext_ llcorner b);
+    fi
+  fi
+enddef;  
+def Gorig_ suffix xy =
+  if abs Gtype_.xy=linear: zero else: one fi
+enddef;
+def Gdummyp_(suffix xy)(expr p) =
+  image(setbounds currentpicture to 
+        (Gshift_(xy)(p, #1, #10) .. Gshift_(xy)(p, #-1, #1/10) -- cycle))
+enddef;
+def Gshift_(suffix xy)(expr p, linshift, logshift) =
+  Gshiftt_(xy)(p)
+    (if abs Gtype_.xy=linear: plus linshift else: times logshift fi)
+enddef;
+def Gshiftt_(suffix xy)(expr p)(text mod) =
+  Gpint_
+  if str xy="x": (xpart p mod, ypart p)
+  else:          (xpart p, ypart p mod)
+  fi
+enddef;
+@ %def Gfindbbox_ Gorig_ Gdummyp_ Gshift_ Gshiftt_
+@ Determine the graph range [[r]] from the bounding box [[b]].  We
+insert extra margins, controlled by [[marginfraction]].
+<<gmlcoords.mp>>=
+def Gfindrange_(suffix b) suffix r =
+  save bl,bh; pair bl,bh;  
+  bl = Gpext_ llcorner b;  bh = Gpext_ urcorner b;
+  Gfix_(bl,bh) r.low;
+  Gfix_(bh,bl) r.high;
+enddef;
+def Gfix_(expr ba,bb) suffix r =
+  Gfixx_(xpart)(x)(ba,bb) r;
+  Gfixx_(ypart)(y)(ba,bb) r;
+enddef;
+def Gfixx_(text xypart)(suffix xy)(expr ba,bb) suffix r =
+  if unknown xypart r:
+    xypart r =
+      if abs Gtype_.xy=linear:
+        #(1+marginfraction) times xypart ba 
+        plus #(-marginfraction) times xypart bb
+      else:
+        (1+marginfraction)*(xypart ba) 
+        + (-marginfraction)*xypart bb
+      fi;
+  fi
+enddef;
+newinternal marginfraction; marginfraction:=.07;
+@ %def Gfindrange_ Gfix_ Gfixx_ marginfraction
+@ When the range [[r]] is known, we can determine the scale for
+transforming from [[Mlog]] to linear, and finally define a [[convert]]
+function which does the job for any pair, dependent on the graph
+setup.  In [[Gfindtransf_]], inverting the transform for negative
+scales is done in a second step: doing all in one step causes
+arithmetic overflow in some cases.
+<<gmlcoords.mp>>=
+def Gfindscale_(expr d)(suffix r) suffix s =
+  s.x := Mabs(#(xpart d) over max(xpart r.low, xpart r.high));
+  s.y := Mabs(#(ypart d) over max(ypart r.low, ypart r.high));
+enddef;
+def Gfindmax_(suffix s) suffix m =
+  m.x := Mlog 2infinity - s.x;
+  m.y := Mlog 2infinity - s.y;
+enddef;
+def Gfindtransf_(suffix r) suffix t =
+  transform t;  xypart t = yxpart t = 0;
+  Gconv_ r.low  transformed t = llcorner theframe;
+  Gconv_ r.high transformed t = urcorner theframe;
+  if Gtype_.x<0: 
+    t:=t reflectedabout (.5[llcorner theframe, lrcorner theframe], 
+                         .5[ulcorner theframe, urcorner theframe]);
+  fi
+  if Gtype_.y<0: 
+    t:=t reflectedabout (.5[llcorner theframe, ulcorner theframe], 
+                         .5[lrcorner theframe, urcorner theframe]);
+  fi
+enddef;
+vardef Gconv_ primary p =
+  (if abs Gtype_.x=linear: Gtolin_.x fi xpart p,
+   if abs Gtype_.y=linear: Gtolin_.y fi ypart p)
+enddef;
+vardef Gtolin_ @# primary x =
+  if known x:
+    if Mabs x < Glmax_ @#:  Mexp (x + Glsc_ @#)
+    elseif x=Mabs x: 2infinity
+    else:           -2infinity
+    fi
+  else: ??
+  fi
+enddef;
+def Gdefconv_(expr t) =
+  vardef convert primary p_ = Gconv_ p_ transformed t enddef;
+enddef;
+@ %def Gfindscale_ Gfindmax_ Gfindtransf_
+@ %def Gconv_ Gtolin_ Gdefconv_ convert
+@ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection{Rendering of pictures}
+This transforms a data item with all its accompanying attributes into
+a picture.  It can only be done if the [[convert]] operation is known.
+If immediate [[_immd]] is true, we bypass all conversions.
+<<gmlcoords.mp>>=
+vardef Gimage_ @# =
+  save Gopt_,cp,tmp,pp,tf; picture cp,tmp; cp=tmp=nullpicture; path pp;
+  if not @#_immd: transform tf; tf=thetransform(pathpart @#_data0); fi
+  interim linejoin:=@#_lnjn; interim linecap:=@#_lncp;
+  interim miterlimit:=@#_lnml;
+  Gdraw_data_(@#_data, @#_immd, @#_fill, @#_link, @#_cycl) tmp;
+  if @#_draw or @#_fill:
+    Gdraw_shadows_(@#_fill, @#_shad, tmp) cp;
+    addto cp also tmp;
+    if @#_cycl: Gdraw_outlines_(@#_outl, tmp) cp;
+    else:       Gdraw_ends_(@#_endp, colorpart @#_data0, tmp) cp;
+    fi
+  fi
+  Gdraw_symbols_(@#_immd, @#_symp, @#_symb) cp;
+  cp := cp if known tf: transformed tf fi;
+  if known Gfixed_: clip cp to theframe; fi
+  Gdraw_labels_(@#_lab, @#_lloc, @#_ldsc, @#_ltyp, @#_immd, tf, tmp) cp;
+  cp
+enddef;
+@ %def Gimage_
+@ Convert data points and re-connect them according to [[link]]
+specification (except for [[immd=true]])
+<<gmlcoords.mp>>=
+vardef Gdraw_data_(suffix data)(expr immd, fl, link, cycl) suffix pic =
+  if immd: addto pic also data[0];
+  else:
+    Gdefmodes_(fl,link,cycl)(pic);
+    Gfindopts_(data[0]);
+    save j,k,p; path p; j:=0;
+    forever: hide(k:=length data[incr j]) exitif k=0;
+      Gaddc_  
+        for d within data[j]: 
+          hide(p:=pathpart d)
+          convert Gpext_ point 0 of p
+            for i=1 upto length p:
+              Gccc_ convert Gpext_ point i of p
+            endfor
+            if (decr k>0): Gcc_ else: Gcyc_ Gopt_; fi
+        endfor
+    endfor
+  fi
+  Gadd_dummy_(pic);
+enddef;
+@ %def Gdraw_data_
+@ Dummy picture element: insert it to avoid pictures containing only
+one element.  If such an element had a setbounds path and we looped over
+it in the rendering step, the setbounds path would get lost.
+<<gmlcoords.mp>>=
+picture Gdummy_; Gdummy_=image(setbounds currentpicture to origin..cycle);
+def Gadd_dummy_(suffix pic) =
+  if length pic>0: addto pic also Gdummy_; fi
+enddef;
+@ %def Gdummy_ Gadd_dummy_
+@ Define the appropriate drawing and connecting macros
+<<gmlcoords.mp>>=
+def Gdefmodes_(expr fl,link,cycl)(suffix pic) =
+  Gdef_(Gaddc_ expr p)
+    if fl: (addto pic if picture p: also else: contour fi p _op_)
+    else:  (addto pic if picture p: also else: doublepath fi p _op_)
+    fi;
+  Gcdef_(Gccc_)(xpart link);
+  Gcdef_(Gcc_)(ypart link);
+  Gdef_(Gcyc_) if cycl and (ypart link<>none): (Gcc_ cycle) else: () fi;
+enddef;
+def Gcdef_(text m)(expr ln) =
+  Gdef_(m) if ln=straight: (--)
+           elseif ln=smoothly: (..)
+           elseif ln=tight: (...)
+           else: (Gcyc_ Gopt_; Gaddc_)
+           fi
+enddef;
+@ %def Gdefmodes_ Gaddc_ Gcc_ Gccc_ Gcyc_ Gcdef_
+@ Find the options of picture [[pic]] and define [[Gopt_]] accordingly.
+<<gmlcoords.mp>>=
+vardef Gfindopts_(expr pic) =
+  save gc,gp,gd,gh; color gc; pen gp; picture gd,gh;
+  gh = hatchpart pic; 
+  if known gh: gc=colorpart gh;
+  else: gc = colorpart pic; gp = penpart pic; gd = dashpart pic; 
+  fi
+  Gdefopts_(gc,gp,gd,gh);
+enddef;
+def Gdefopts_(expr gc,gp,gd,gh) =
+  Gdef_(Gopt_)
+    if known gh: (hatched gh) 
+    else: (withpen gp dashed gd withcolor gc) 
+    fi;
+enddef;
+def Gdef_(text m)(text b) =
+  def m= b enddef
+enddef;
+@ %def Gfindopts_ Gdefopts_ Gdef_ Gopt_
+@
+Draw a shadow.  We assume either [[_draw]] or [[_fill]] are true.
+<<gmlcoords.mp>>=
+def Gdraw_shadows_(expr fl, shad, data) suffix pic =
+  if known shad:  
+    save shtf; transform shtf; shtf=thetransform(pathpart shad);
+    Gfindopts_(shad);
+    Gdef_(Gaddc_ expr p)
+      if fl: (addto pic if picture p: also else: contour fi p _op_)
+      else:  (addto pic if picture p: also else: doublepath fi p _op_)
+      fi;
+    for q within data:
+      if (stroked q) or (filled q) or (clipped q):
+        Gaddc_ pathpart q transformed shtf Gopt_;
+      fi
+    endfor
+  fi
+enddef;
+@ %def Gdraw_shadows_
+@  Outlines (only for cyclic paths)
+<<gmlcoords.mp>>=
+def Gdraw_outlines_(expr outl, data) suffix pic =
+  if known outl:
+    Gfindopts_(outl);
+    for q within data:
+      if (stroked q) or (filled q) or (clipped q):
+        addto pic doublepath pathpart q Gopt_;
+      fi
+    endfor
+  fi
+enddef;
+@ %def Gdraw_outlines_
+@ Ends (only for non-cyclic paths): Scan data picture for paths and
+attach end pictures in result [[pic]]
+<<gmlcoords.mp>>=
+vardef Gdraw_ends_(suffix endp)(expr col, data) suffix pic =
+  save p; path p;
+  for q within data:
+    if (stroked q) or (filled q) or (clipped q):
+      p:=pathpart q;
+      for j=0,infinity:
+        if known endp[j]:
+          addto pic also endp[j]
+            rotated angle if j=0: - fi direction j of p
+            shifted point j of p withcolor col;
+        fi
+      endfor
+    fi
+  endfor
+enddef;
+@ %def Gdraw_ends_
+@ Symbols: Scan picture symp for data points and replace them by
+picture [[symb]] in result [[pic]]
+<<gmlcoords.mp>>=
+def Gdraw_symbols_(expr immd, symp, symb) suffix pic =
+  if (known symb) and (known symp):
+    for q within symp:
+      addto pic also symb
+        shifted if not immd: convert Gpext_ fi (llcorner q);
+    endfor
+  fi
+enddef;
+@ %def Gdraw_symbols_
+@
+Draw labels pending in memory.  The location is determined depending
+on [[typ]] and [[loc]].  We add a dot if [[dsc]] is nonzero.
+<<gmlcoords.mp>>=
+vardef Gdraw_labels_(suffix lab, loc, dsc, typ)
+    (expr immd, traf, data) suffix pic =
+  if known lab[1]:
+    save i,p; i=0; path p;  p=Gconnected_path_(data);
+    interim linecap:=rounded; 
+    forever: exitif unknown lab[incr i];
+      Gfindlloc_(immd, typ[i], p, traf) loc[i];
+      if dsc[i]>0: addto pic doublepath loc[i] withpenscale dsc[i]; fi
+      addto pic also lab[i] shifted loc[i];
+    endfor
+  fi
+enddef;
+def Gfindlloc_(expr immd, typ, p, traf) suffix loc =
+  if typ=1:
+    loc := convert loc;
+    (if unknown xpart loc: xpart loc else: ?? fi, 
+     if unknown ypart loc: ypart loc else: ?? fi)
+    = llcorner theframe;
+  elseif typ=2:  loc := point (xpart loc) of p;
+  elseif typ=3:
+    if not immd: loc := convert loc; fi
+    if known loc: relax
+    elseif known xpart loc:
+      loc:=((xpart loc,-2infinity)--(xpart loc,2infinity)) intersectionpoint p;
+    elseif known ypart loc:
+      loc:=((-2infinity,ypart loc)--(2infinity,ypart loc)) intersectionpoint p;
+    else: loc:=point 0 of p;
+    fi
+  fi
+  if known traf: loc := loc transformed traf; fi
+enddef;
+@ %def Gdraw_labels_ Gfindlloc_
+@ Return a path consisting of all data paths joined together
+<<gmlcoords.mp>>=
+vardef Gconnected_path_(expr data) =
+  if length data=0: origin
+  else:
+    save c; boolean c; c=false;
+    for d within data:
+      if (stroked d) or (filled d) or (clipped d):
+        if c: -- else: hide(c:=true) fi (pathpart d)
+      fi
+    endfor
+  fi
+enddef;
+@ %def Gconnected_path_
+@ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Drawing}
+The drawing and filling commands of [[plain.mp]] are redefined within
+a graph.  The new ones only transfer objects to temporary storage, to
+be added to [[currentpicture]] later.  This is necessary because of
+transformations which may not completely be known at the drawing time.
+<<Required packages>>=
+input gmldraw
+<<gmldraw.mp>>=
+% gmldraw.mp --
+<<Header>>
+@ \subsubsection{Drawing and filling}
+@ Save the original meanings
+<<gmldraw.mp>>=
+let plaindraw=draw;
+let plainfill=fill;
+let plainfilldraw=filldraw;
+let plainlabel=label;
+let plaindotlabel=dotlabel;
+@ %def plaindraw plainfill plainfilldraw plainlabel
+@ Define new drawing commands, to work within a graph.  If they
+are enabled, [[enhanced_drawing]] has a known value.
+<<gmldraw.mp>>=
+def enable_enhanced_drawing =
+  save draw,fill,filldraw,phantom,label,dotlabel,enhanced_drawing;
+  def draw     = Gdraw_(false,true ) enddef;
+  def fill     = Gdraw_(true, false) enddef;
+  def filldraw = Gdraw_(true ,true ) enddef;
+  def phantom  = Gdraw_(false,false) enddef;
+  def label    = Glabel_ enddef;
+  def dotlabel = Gdotlabel_ enddef;
+  enhanced_drawing=1;
+enddef;
+def disable_enhanced_drawing =
+  save draw,fill,filldraw,phantom,label,dotlabel,enhanced_drawing;
+  let draw=plaindraw;
+  let fill=plainfill;
+  let filldraw=plainfilldraw;
+  let label=plainlabel;
+  let dotlabel=plaindotlabel;
+enddef;
+enable_enhanced_drawing;
+@ %def enable_enhanced_drawing disable_enhanced_drawing enhanced_drawing
+@ %def draw fill filldraw phantom label dotlabel
+@ Within [[image]] only immediate drawing should be enabled; therefore
+remove [[Gfixed_]] to pretend that we are outside any graph.  However,
+enhanced drawing should make sense.
+<<gmldraw.mp>>=
+vardef image(text t) =
+  save currentpicture,Gfixed_;
+  picture currentpicture;
+  currentpicture := nullpicture;
+  t;
+  currentpicture
+enddef;
+@ %def image
+@ The actual drawing command.  We open a group and (re)define local
+macros and variables.  How to determine whether the object is cyclic?
+In immediate drawing, we test the path resp. picture and set
+[[d_0_cycl]].  For data drawing, this is achieved by an explicit
+[[cyclic]] suffix which is seen before anything is drawn.
+<<gmldraw.mp>>=
+def Gdraw_(expr fl,dr) =
+  begingroup
+  initdata d_; d_0_data0=nullpicture;
+  d_0_fill=fl; d_0_draw=dr; d_0_cycl=false; d_0_immd=true;
+  d_0_lnjn=linejoin; d_0_lncp=linecap; d_0_lnml=miterlimit;
+  Gdef_dsuf_; Gredef_plot_;
+  save labn_,ltyp_,ldsc_,lloc_; labn_=0; pair lloc_;
+  save leg_; picture leg_;
+  Gdrawbody_
+enddef;
+@ %def Gdraw_
+@ This swallows the object to be drawn.  For data drawing, the actual
+drawing is done as a side-effect by [[from]] and [[p]] is set equal to a
+template path.  Here is the place to insert any default drawing
+options [[_op_]]
+<<gmldraw.mp>>=
+def Gdrawbody_ expr p =
+  interim linejoin:=d_0_lnjn; interim linecap:=d_0_lncp;
+  interim miterlimit:=d_0_lnml;
+  addto d_0_data0
+    if picture p: 
+      if cycle pathpart p: cyclic fi
+      also p
+    elseif path p:
+      if cycle p: cyclic fi
+      if d_0_fill: contour else: doublepath fi  p  
+      if d_0_draw: withpen currentpen fi  _op_
+    else: also nullpicture
+    fi
+  Gdrawend_
+enddef;
+@ %def Gdrawbody_
+@ Now we read any remaining drawing options and put everything where
+it belongs.  Closing the group removes all local quantities.
+<<gmldraw.mp>>=
+def Gdrawend_ text t_ =
+  t_;
+  if (not d_0_immd) and (unknown d_0_link): d_0_link:=defaultlink; fi
+  Gupdate_legend_;
+  drawdata d_0;
+  endgroup
+enddef;
+@ %def Gdrawend_
+@ 
+\subsubsection{Update legend}
+To add a description to the legend, we take a line or bar with the
+appropriate drawing options, add outlines/endpics and any symbol and
+transfer it to the legend picture.
+<<gmldraw.mp>>=
+vardef Gupdate_legend_ =
+  if known leg_:
+    save p,dt; path p; picture dt; dt=nullpicture;
+    if d_0_draw or d_0_fill:
+      p = if d_0_cycl: unitsquare shifted (-.5,-.5) 
+          else: ((-.5,0)--(.5,0))
+          fi xscaled legendbarwidth yscaled legendbarheight;
+      Gfindopts_(d_0_data0);
+      Gaddl_(dt)(d_0_fill) p Gopt_;
+      if (d_0_cycl):
+        if known d_0_outl: Gfindopts_(d_0_outl);
+          addto dt doublepath p Gopt_;
+        fi
+      else:
+        if known d_0_endp0:
+          addto dt also d_0_endp0 rotated 180 shifted point 0 of p Gopt_;
+          addto dt also d_0_endp[infinity]    shifted point 1 of p Gopt_;
+        fi
+      fi
+    fi
+    if known d_0_symb: addto dt also d_0_symb; fi
+    legendentry(dt,leg_);    
+  fi
+enddef;
+newinternal legendbarwidth; legendbarwidth:=10mm;
+newinternal legendbarheight; legendbarheight:=3mm;
+@ %def Gupdate_legend_ legendbarwidth legendbarheight
+@ Add a picture, filled or stroked path
+<<gmldraw.mp>>=
+def Gaddl_(suffix pic)(expr fl) expr p =
+  addto pic
+    if picture p: also
+    elseif fl: contour
+    else: doublepath
+    fi p
+enddef;
+@ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection{Data drawing}
+Define data scanning suffixes for drawing command, saving the
+original meanings
+<<gmldraw.mp>>=
+def Gdef_dsuf_ =
+  save cyclic,piecewise,pointwise,pc_;  pc_=0; 
+  let cyclic=Gdcycl_; let piecewise=Gdpc_; let pointwise=Gdpt_;
+enddef;
+def Gdcycl_ = hide(d_0_cycl:=true) enddef;
+def Gdpc_ = hide(pc_:=1) enddef;
+def Gdpt_ = hide(pc_:=2) enddef;
+@ %def Gdef_dsuf_ Gdcycl_ Gdpc_ Gdpt_ cyclic piecewise pointwise
+@ [[draw .. from(..)]]:
+Draw data from chains.  We need not care for drawing options here.
+<<gmldraw.mp>>=
+vardef from(text chains_) =
+  if known Gfixed_:
+    d_0_immd:=false;
+    save i_; i_=1; d_0_data1=d_0_symp=nullpicture;
+    Gscan_init_(chains_);
+    Gadd_
+      if pc_=0: Gscan_ elseif pc_=1: Gscan_pc_ else: Gscan_pt_ fi
+      (Gwsymb_($!) Gpint_ z 
+       if $~=2: -- 
+       elseif $~=1: ; Gadd_
+       else:  ; d_0_data[incr i_]=nullpicture;  Gadd_
+       fi) 0;
+  else:
+    errhelp("Data drawing commands are possible only within a graph"
+           &"environment, and outside of `image' expressions."
+           &"Sorry, I have to discard this one.");
+    errmessage("`from' not allowed here");
+    d_0_draw:=d_0_fill:=false;
+  fi
+  ttempl_ if d_0_cycl or d_0_fill: --cycle fi
+enddef;
+@ %def from
+@ Add a point to symbol picture if required and return it.  Later,
+data symbols (if defined) will be drawn at these points.
+<<gmldraw.mp>>=
+vardef Gwsymb_(expr f) primary z =
+  if f: addto d_0_symp doublepath z; fi 
+  z
+enddef;
+@ %def Gwsymb_
+@ Add path to data picture
+<<gmldraw.mp>>=
+def Gadd_ expr p_ =
+  if path p_: addto d_0_data[i_] doublepath p_; fi
+enddef;
+@ %def Gadd_
+@ Assign [[table]], [[plot]], [[hist]] new meanings while saving the
+original ones
+<<gmldraw.mp>>=
+def Gredef_plot_ =
+  let plot_=plot; let hist_=hist; let table_=table;
+  save tmp_,plot,hist,table,tables;
+  let plot=Gdplot_; let hist=Gdhist_; let table=Gdtab_;
+enddef;
+@ %def Gredef_plot_ plot hist table tables
+@ [[draw .. plot(..)]]
+<<gmldraw.mp>>=
+def Gdplot_(text zz_) =
+  hide(plot_(tmp_) zz_) from(tmp_)
+enddef;
+def Gdhist_(text zz_) =
+  hide(hist_(tmp_) zz_) from(tmp_)
+enddef;
+@ %def Gdplot_ Gdhist_
+@ [[draw .. table plot(..)]]
+<<gmldraw.mp>>=
+def Gdtab_ =
+  hide(let plot=Gtplot_; let hist=Gthist_)
+enddef;
+def Gtplot_(text xy_) =
+  hide(table_ plot_(tmp_)(xy_)) from(tmp_)
+enddef;
+def Gthist_(text xy_) =
+  hide(table_ hist_(tmp_)(xy_)) from(tmp_)
+enddef;
+@ %def Gtplot_ Gthist_
+@ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection{Labels}
+Within a graph: assigned to [[label]]
+<<gmldraw.mp>>=
+def Glabel_ = phantom 0 withlabel enddef;
+def Gdotlabel_ = phantom 0 withdotlabel enddef;
+@ %def Glabel_ Gdotlabel_
+@ The labels are assigned as a side effect, to be drawn later
+<<gmldraw.mp>>=
+def withlabel =
+  hide(ltyp_:=0) hide(ldsc_:=0) gobble Gwithlab_
+enddef;
+def withdotlabel =
+  hide(ltyp_:=0) hide(ldsc_:=dotscale) gobble Gwithlab_
+enddef;
+vardef Gwithlab_ @#(expr t, loc) =
+  save p; picture p; p=nullpicture;
+  addto p also thelabel @#(t,if ltyp_>0: loc else: origin fi);
+  if ltyp_=4: outerlabel @#(p);
+  else:
+    d_0_lab[incr labn_]=p;
+    d_0_lloc[labn_]=if ltyp_>0: lloc_;  pair lloc_ else: loc fi;
+    d_0_ldsc[labn_]=ldsc_;
+    d_0_ltyp[labn_]=ltyp_;
+  fi
+enddef;
+vardef on graph at primary loc = 
+  if known Gfixed_:
+    ltyp_:=1; lloc_=loc;
+  else:
+    errhelp("You can't say `on graph' if there is no graph. "
+           &"I'll put the label at the coordinate origin.");
+    errmessage("`on graph at' outside graph or inside `image' expression");
+  fi
+  origin   
+enddef;
+vardef on curve at primary loc = 
+  ltyp_:= if pair loc: 3; loc  else: 2; (loc,0) fi
+    = lloc_; origin
+enddef;
+vardef out = ltyp_:=4; origin enddef;
+@ %def withlabel withdotlabel Gwithlab_ graph curve out
+@ Returns a corner of the graph margin, shifted by the argument [[u_]]
+(if present) to the inside.
+<<gmldraw.mp>>=
+vardef margin @#(text u_) =
+  (width*(1-labxf @#), height*(1-labyf @#))
+  for u=u_: + u*(2labxf @#-1, 2labyf @#-1) endfor
+enddef;
+@ %def margin
+@ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection{Virtual drawing options}
+<<gmldraw.mp>>=
+def withlinejoin primary j = hide(d_0_lnjn := j) enddef;
+def withlinecap  primary c = hide(d_0_lncp := c) enddef;
+def withmiterlimit primary c = hide(d_0_lnml := c) enddef;
+@ %def withlinejoin withlinecap withmiterlimit
+<<gmldraw.mp>>=
+def linked primary l =
+  hide(d_0_link := if numeric l: (l,l) else: l fi)
+enddef;
+newinternal none,straight,smoothly,tight;
+none:=0; straight:=1; smoothly:=2; tight:=3;
+pair defaultlink; defaultlink:=(straight,straight);
+@ %def linked none straight smoothly tight
+<<gmldraw.mp>>=
+def withsymbol primary s =
+  hide(d_0_symb:=thesymbol(s))
+enddef;
+def withlegend primary s =
+  hide(leg_ :=thesymbol(s))
+enddef;
+def outlined text t_ =
+  hide(d_0_outl:=nullpicture)
+  hide(addto d_0_outl doublepath origin withpen currentpen t_)
+enddef;
+def withshadow text t_ =
+  hide(d_0_shad:=nullpicture)
+  hide(Gaddl_(d_0_shad)(d_0_cycl) ttempl_ if d_0_cycl: --cycle fi t_)
+enddef;
+@ %def withsymbol withlegend outlined withshadow
+@ One or two pictures to be attached to the ends of open lines 
+<<gmldraw.mp>>=
+def withends(text t_) =
+  for p_=t_: 
+    hide(d_0_endp if known d_0_endp0: [infinity]:= else: [0]= fi
+         if known p_: thesymbol(p_) else: nullpicture fi)
+  endfor  
+  hide(if unknown d_0_endp[infinity]: d_0_endp[infinity]=d_0_endp0 fi)
+enddef;
+def withend(expr p_) = withends(??,p_) enddef;
+def witharrows = withends(thearrow scaled arrowscale) enddef;
+def witharrow = withends(??,thearrow scaled arrowscale) enddef;
+def withticks = withends(thetick scaled (ticklength*tickscale)) enddef;
+def withtick = withends(??,thetick scaled (ticklength*tickscale)) enddef;
+@ %def withends withend witharrows witharrow withticks withtick
+@ Standard end pictures
+<<gmldraw.mp>>=
+newinternal arrowscale; arrowscale:=1;
+def thearrow = 
+  image(plainfilldraw arrowhead (100,0)--(0,0)) rotated 180 
+enddef;
+newinternal ticklength; ticklength:=7bp;
+newinternal tickscale;  tickscale:=4/7;
+def thetick = (down--up) enddef;
+def theotick = (down--origin) enddef;
+def theitick = (origin--up) enddef;
+@ %def thearrow arrowscale thetick theitick theotick ticklength tickscale
+@ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Grid and tick marks, frame}
+<<Required packages>>=
+input gmlgrid
+<<gmlgrid.mp>>=
+% gmlgrid.mp --
+<<Header>>
+@
+\subsubsection{Drawing tick marks}
+The basic tick length, the shrink factor for subticks, the default tick 
+number, the multiplicity for subticks.  Revert to uniform marks when 
+$\emph{high}/\emph{low}<$ [[tickminlog]].
+<<gmlgrid.mp>>=
+newinternal ticknumber; ticknumber := 4;
+newinternal tickfactor; tickfactor := 1.1;
+newinternal tickminlog; tickminlog := 3.0;
+@ %def ticklength tickscale ticknumber tickfactor tickminlog
+@ The corresponding drawing options, redefining internal variables.
+<<gmlgrid.mp>>=
+def withlength primary x = hide(Gtlen_:=x) enddef;
+def withscale primary x = hide(Gtscl_:=x) enddef;
+def withnumber primary x = hide(Gtnum_:=x) enddef;
+def withfactor primary x = hide(Gtfac_:=x) enddef;
+def withminlog primary x = hide(Gtmlg_:=x) enddef;
+def Greset_ticks_ =
+  numeric Gtlen_,Gtscl_,Gtnum_,Gtfac_,Gtmlg_;
+enddef;
+@ %def withlength withscale withnumber 
+@ %def withfactor withminlog
+@ %def Gtlen_ Gtscl_ Gtnum_ Gtfac_ Gtmlg_ Greset_ticks_
+@ Functions to draw a single tick mark:  [[f]] is the format string or
+label picture, [[u]] the position, [[@#]] a location suffix, and [[s]]
+the tick scale (to be multiplied by [[Gtlen_]]) where applicable.
+<<gmlgrid.mp>>=
+vardef notick @#(expr lab_,loc_) text w_ = 
+  Gtick_ @#(??,lab_)(loc_)(false)(w_)
+enddef;
+vardef dot @#(expr lab_,loc_) text w_ = 
+  Gtick_ @#(origin,lab_)(loc_)(false)(w_)
+enddef;
+vardef tick @#(expr lab_,loc_) text w_ = 
+  Gtick_ @#(thetick,lab_)(loc_)(false)(w_)
+enddef;
+vardef itick @#(expr lab_,loc_) text w_ = 
+  Gtick_ @#(theitick,lab_)(loc_)(false)(w_)
+enddef;
+vardef otick @#(expr lab_,loc_) text w_ = 
+  Gtick_ @#(theotick,lab_)(loc_)(false)(w_)
+enddef;
+vardef line @#(expr lab_,loc_) text w_ =
+  Gtick_ @#(theitick,lab_)(loc_)(true)(w_)
+enddef;
+@ %def notick dot tick itick otick line
+@ Drawing a tick mark and the corresponding label: The path [[tick_]]
+is rotated and scaled to the appropriate scale ([[f_=true]]: the graph
+frame) and labeled by picture [[lab_]].  The result is drawn using the
+[[withlabel]] interface.  If only a single tick is needed we open an
+empty drawing statement; otherwise ([[Gtsc_]] has been set) we make
+use of the side effect of [[withlabel]].  A transformation [[Gtraf_]]
+and drawing options may have been set by [[grid]]; otherwise, we
+define them here.
+<<gmlgrid.mp>>=
+vardef Gtick_ @#(expr tick_,lab_,loc_,f_)(text w_) =
+  save p_,q_;  path p_; picture q_;
+  q_=image(plaindraw ttempl_ w_);
+  if unknown Gtraf_:
+    save Gtraf_,Gopt_; transform Gtraf_;
+    Gfindopts_(q_); Gtraf_=thetransform(pathpart q_); 
+  fi
+  q_:=nullpicture;
+  if (known loc_) and (abs(laboff @# dotprod (1,1))=1):
+    if known tick_:
+      p_ = tick_ scaled
+            if f_: abs(laboff @# dotprod (width,height))
+            elseif known Gtlen_:  (Gtlen_ if known Gtsc_: *Gtsc_ fi)
+            else: ticklength
+            fi
+           rotated 90 zscaled laboff @#;
+      addto q_ doublepath p_ transformed Gtraf_ withpen currentpen _op_ Gopt_;
+    fi
+    if known lab_:
+      addto q_ also 
+        thelabel.@#
+          (if string lab_: Mformat(lab_, loc_) else: lab_ fi, 
+           if known p_: point 0 of p_ else: origin transformed Gtraf_ fi);
+    fi
+    if unknown Gtsc_: phantom 0 fi 
+    withlabel.o(q_, Gloc_.@#(loc_));
+  else:
+    errhelp("Either the tick mark position is unknown "
+           &"or you specified a wrong location     "
+           &"suffix (for tick marks only "
+           &"lft,rt,top,bot is allowed).                        "
+           &"Don't be surprised if this error message "
+           &"occurs many times, once for each tick mark.");
+    errmessage("Illegal location for tick mark");
+  fi
+  if unknown Gtsc_: Greset_ticks_; fi
+enddef;
+vardef Gloc_.bot(expr loc_) = on graph at (loc_,??) enddef;
+vardef Gloc_.lft(expr loc_) = on graph at (??,loc_) enddef;
+vardef Gloc_.top(expr loc_) = on graph at (loc_,??) + (0,height) enddef;
+vardef Gloc_.rt (expr loc_) = on graph at (??,loc_) + (width,0) enddef;
+@ %def Gtick_ Gloc_
+@
+\subsubsection{User interface for grid and tick marks}
+<<gmlgrid.mp>>=
+vardef grid @#(text markdef) text opts =
+enddef;
+@ %def grid
+@ First step: Initialize variables and find drawing options.  Second
+step: Read the mark definitions, store them in arrays.  Scan the
+possible locations ([[lft]], [[rt]], etc.) and draw ticks from the
+definitions in the arrays which are applicable.  The minimum tick
+number is taken either from the array, from a previous scan (with
+multiplication factor [[Gtfac_]]), or from the value of [[Gtnum_]].
+The number of grids to be drawn at a single axis is determined by
+[[Gcount_]] which has been set up when reading [[mtyp_]].
+The drawing is done by side effects in the options of a dummy
+[[phantom]] command.
+<<gmlgrid.mp>>=
+vardef grid @#(text mtyp_) text w_ =
+  save Gopt_, Gcount_, Gmks_, Gttyp_, Gtnum_, Gtform_, Gtloc_, Gtsc_;
+  save suf_,Gtraf_,p_; string suf_; transform Gtraf_; picture p_;
+  Gtlen_:=ticklength; Gtscale_:=tickscale; Gtnum_:=ticknumber;
+  Gtfac_:=tickfactor; Gtmlg_:=tickminlog;
+  p_ = image(plaindraw ttempl_ w_);
+  Gfindopts_(p_); Gtraf_=thetransform(pathpart p_);
+  string Gttyp_[], Gtform_[], Gtloc_[];
+  Gcount_:=1; Ggdef_(mtyp_);
+  forsuffixes $$=scantokens(Glocs_ @#):  
+    suf_:=str $$; numeric Gmks_; 
+    for c_=1 upto Gcount_-1:
+      if false forsuffixes s_=scantokens Gtloc_[c_]: or (suf_=str s_) endfor:
+	Gmarks:=if known Gtnum_[c_]: Gtnum_[c_]
+	        elseif known Gmks_: Gmks_*Gtfac_
+		else: Gtnum_
+		fi;
+	Gmks_:=0;
+        phantom 0
+          for loc_= auto if labxf$$=.5: x else: y fi:
+	    hide(Gmks_:=Gmks_+1)  hide(Gtsc_:=Gtsc_[c_])
+	    hide(scantokens(Gttyp_[c_])$$(Gtform_[c_], loc_))
+          endfor;
+      fi
+    endfor
+  endfor
+  Greset_ticks_;
+  Gneedgr_:=false;
+enddef;
+@ %def grid
+@ Location suffixes and suffix lists
+<<gmlgrid.mp>>=
+string Glocs_, Glocs_.lft, Glocs_.rt, Glocs_.bot, Glocs_.top;
+string Glocs_.llft, Glocs_.ulft, Glocs_.lrt, Glocs_.urt;
+string Glocs_.lr, Glocs_.bt;
+Glocs_ = "lft, rt, bot, top";
+Glocs_.lft = "lft";
+Glocs_.rt  = "rt" ;
+Glocs_.bot = "bot";
+Glocs_.top = "top";
+Glocs_.llft = "lft, bot";
+Glocs_.ulft = "lft, top";
+Glocs_.lrt  = "rt, bot";
+Glocs_.urt  = "rt, top";
+Glocs_.lr = "lft, rt" ;
+Glocs_.bt = "bot, top";
+@ %def Glocs_
+@ Convenience macros:
+<<gmlgrid.mp>>=
+vardef fullgrid @#(text tnums_) text w_ =
+  save n_,i_; i_=0; n_[1]=n_[2];
+  for m_=tnums_: n_[incr i_]:=m_; endfor
+  grid @#(n_[1] labeled lines llft, n_[1] noticks urt,
+         n_[2] iticks) w_;
+enddef;
+vardef standardgrid @#(text tnums_) text w_ =
+  save n_,i_; i_=0; n_[1]=n_[2]=0;
+  for m_=tnums_: n_[incr i_]:=m_; endfor
+  grid @#(n_[1] labeled iticks llft, n_[1] iticks urt,
+         n_[2] small iticks) w_;
+enddef;
+vardef defaultgrid @#(text tnums_) text w_ =
+  save n_,i_; i_=0; n_=0; 
+  for m_=tnums_: n_:=m_; endfor
+  grid @#(n_ labeled oticks llft) w_;
+enddef;
+vardef nogrid =
+  Gneedgr_:=false;
+enddef;
+@ %def fullgrid defaultgrid standardgrid nogrid 
+@ Determine the mark types and attributes and store them in arrays
+[[Gtype_]], [[Gtnum_]], [[Gtform_]], [[Gtscl_]], [[Gtloc_]].
+The list [[mtyp_]] consists of expressions determining minimal mark
+numbers ([[0]] meaning: insert default value).  The keywords evaluate
+to nothing or zero; they store information in the array as a side effect. 
+The tick type keywords update the [[Gcount_]] counter.
+<<gmlgrid.mp>>=
+vardef Ggdef_(text mtyp_) =
+  save c_; c_=0;
+  for tn_=mtyp_: c_:=c_+1;
+    if known tn_:
+      Gtnum_[c_]=if tn_>0: tn_ else: ?? fi; 
+    fi
+  endfor
+enddef;
+def labeled = hide(Gtform_[Gcount_]:=autoform) enddef;
+def small = 
+  hide(Gtsc_[Gcount_]:=Gtscale_ if known Gtsc_[Gcount_]: *Gtsc_[Gcount_] fi)
+enddef;
+def noticks = Ggtdef_("notick") enddef;
+def dots = Ggtdef_("dot") enddef;
+def ticks = Ggtdef_("tick") enddef;
+def iticks = Ggtdef_("itick") enddef;
+def oticks = Ggtdef_("otick") enddef;
+def lines = Ggtdef_("line") enddef;
+def Ggtdef_(expr type) suffix loc =
+  +0 hide(Gtsc_[Gcount_]:=
+            if known Gtsc_[Gcount_]: Gtsc_[Gcount_] else: 1 fi;
+          Gttyp_[Gcount_]:=type; Gtloc_[Gcount_]:=Glocs_ loc;
+          Gcount_:=Gcount_+1)
+enddef;
+@ %def labeled small
+@ %def noticks dots ticks iticks oticks lines
+@ %def Ggdef_ Ggtdef_
+@ Exponent spacing options for logarithmic scales
+<<gmlgrid.mp>>=
+string Gemarks;      
+Gemarks="20,10,5,2,1";
+@ %def Gemarks
+@ To shorten the mark templates below:
+<<gmlgrid.mp>>=
+def Gfor_(text t) = for i=t endfor enddef;  
+@ %def Gfor_
+@ Marking options per decade for logarithmic scales
+<<gmlgrid.mp>>=
+string Glmarks[];
+Glmarks[1]="1,2,5";
+Glmarks[2]="1,2,3,4,5,6,7,8,9";
+Glmarks[3]="1Gfor_(6upto10:,i/5)Gfor_(5upto10:,i/2)Gfor_(6upto9:,i)";
+Glmarks[4]="1Gfor_(11upto20:,i/10)Gfor_(11upto25:,i/5)Gfor_(11upto19:,i/2)";
+Glmarks[5]="1Gfor_(21upto40:,i/20)Gfor_(21upto50:,i/10)Gfor_(26upto49:,i/5)";
+@ %def Glmarks
+@ Mark spacing options per decade for linear scales
+<<gmlgrid.mp>>=
+string Gumarks;  
+Gumarks="10,5,2";       % start with 10 and go down; a final `,1' is appended
+@ %def Gumarks
+@ 
+\subsubsection{Automatic grid selection}
+@ Determine the $x$ or $y$ bounds on the range to be covered by
+automatic grid marks.  Suffix [[@#]] is [[x]] or [[y]].  The result
+is [[log]] or [[linear]] to specify the type of grid spacing to use.
+Bounds are returned in variables local to [[begingraph..endgraph]]:
+pairs [[Gmr_.low]] and [[Gmr_.high]] are upper and lower bounds in `modified
+exponential form'.  In modified exponential form, [[(x,y)]] means
+$(x/1000)*10^y$, where $1000\leq\mbox{abs}(x)<10000$.
+<<gmlgrid.mp>>=
+vardef Gpick_ @# =
+  save b; 
+  forsuffixes $$=low,high:
+    b $$ = Gpart_ @# Gr_ $$;
+    Gmr_ $$ := Meform(b $$)+Gbias_;
+  endfor
+  if abs Gtype_ @#=log: if b.high-b.low >=mlog Gtmlg_: log else: linear fi
+  else: linear
+  fi
+enddef;
+pair Gbias_; Gbias_=(0,3);
+vardef Gpart_.x expr p = xpart p enddef;
+vardef Gpart_.y expr p = ypart p enddef;
+@ %def Gpick_ Gbias_ Gpart_
+@ Scan [[Glmarks[k]]] and evaluate tokens [[t]] for each [[m]] where
+[[l<=m<=h]].
+<<gmlgrid.mp>>=
+def Gmsc_(expr k, l, h, f)(text t) =
+  for m=if f: scantokens Glmarks[k] 
+        elseif string k: scantokens k 
+        else: for i=1 until 10-eps step 1/k: Gcma_ i endfor 
+        fi:
+    exitif m>h;
+    if m>=l: t fi
+  endfor
+enddef;
+@ %def Gmsc_
+@ Scan [[Gmark[k]]] and evaluate tokens [[t]] for each [[m]] and [[e]]
+where [[m*10^e]] belongs between [[l]] and [[h]] (inclusive), where
+both [[l]] and [[h]] are in modified exponent form.
+<<gmlgrid.mp>>=
+def Gmscan_(expr k, f)(text t) =
+  for e=ypart Gmr_.low upto ypart Gmr_.high:
+    Gmsc_(k, if e>ypart Gmr_.low: 1 else: xpart Gmr_.low/1000 fi,
+          if e<ypart Gmr_.high: 10 else: xpart Gmr_.high/1000 fi, f,  t)
+  endfor
+enddef;
+@ %def Gmscan_
+@ Select a [[k]] for which [[Gmscan_(k,...)]] gives enough marks.
+<<gmlgrid.mp>>=
+vardef Gkpick_ =
+  save k;
+  k = 0;
+  forever:
+    exitif unknown Glmarks[k+1];
+    exitif 0 Gmscan_(incr k, true, +1) >= Gmarks;
+  endfor
+  k
+enddef;
+@ %def Gkpick_
+@ Try to select an exponent spacing from [[Gemarks]].  If successful,
+set [[@#]] and return [[true]].
+<<gmlgrid.mp>>=
+vardef Gempick_ @# =
+  numeric @#;
+  for e=scantokens Gemarks:
+    @# = e;
+    exitif floor(ypart Gmr_.high/e)-floor(Gey_(Gmr_.low)/e) >= Gmarks;
+    numeric @#;
+  endfor
+  known @#
+enddef;
+vardef Gey_(expr p) = ypart p  if xpart p=1000: -1 fi  enddef;
+@ %def Gempic_ Gey_
+@ Compute the mark spacing [[d]] between [[xpart Gmr_.low]] and 
+[[xpart Gmr_.high]]. 
+<<gmlgrid.mp>>=
+vardef Gipick_ =
+  save m, n, d;
+  m = Gmarks;
+  n = 1 for i=1 upto 
+    mlog(xpart Gmr_.high-xpart Gmr_.low)/ten - mlog m/(ten-epsilon):
+        *10 endfor;
+  if n<=1000:
+    for x=scantokens Gumarks:
+      d = n*x;
+      exitif 0 Gigen_(d,+1)>=m;
+      numeric d;
+    endfor
+  fi
+  if known d: d else: n fi
+enddef;
+def Gigen_(expr d)(text t) =
+  if numeric d:
+    for m = d*ceiling(xpart Gmr_.low/d) step d until xpart Gmr_.high:
+      t
+    endfor
+  else:
+    for m = scantokens d:
+      if (m>=xpart Gmr_.low) and (m<=xpart Gmr_.high): t fi
+    endfor
+  fi
+enddef;
+@ %def Gipick_ Gigen_
+@ Evaluate tokens [[t]] for exponents [[e]] in multiples of [[d]] in
+the range determined by [[Gmr_.low]] and [[Gmr_.high]].
+<<gmlgrid.mp>>=
+def Gemgen_(expr d)(text t) =
+  for e = d*floor(Gey_(Gmr_.low)/d+1)
+      step d until d*floor(ypart Gmr_.high/d):  t
+  endfor
+enddef;
+@ %def Gemgen_
+@ Adjust [[Gmr_.low]] and [[Gmr_.high]] so their exponent parts match and
+they are in true exponent form ([[(x,y)]] means [[x*10^y]]).  Return
+he new exponent.
+<<gmlgrid.mp>>=
+vardef Gesame_ =
+  save e;
+  e+3 = if Gmr_.low=Gbias_: ypart Gmr_.high
+        elseif Gmr_.high=Gbias_: ypart Gmr_.low
+        else: max(ypart Gmr_.low, ypart Gmr_.high) 
+        fi;
+  forsuffixes $$=low, high:
+    Gmr_ $$ := (xpart Gmr_ $$ for i=ypart Gmr_ $$ upto e+2: /(10) endfor, e);
+  endfor
+  e
+enddef;
+@ %def Gesame_
+@ Assume [[e]] is an integer and either [[m=0]] or [[1<=abs(m)<10000]].
+Find [[m*(10^e)]] and represent the result in [[Mlog]] form.
+<<gmlgrid.mp>>=
+vardef Gpack_(expr m, e) =
+  if m=0: zero else: Mlog m + e*ten fi
+enddef;
+@ %def Gpack_
+@ Generate default tick mark positions.  We must call [[freeze]] here
+in case we need to determine the graph range.  If an integer
+exponent spacing is selected, we suppress the $1\times$ in front of
+$10^x$ for the labeled marks by selecting [[Fee_base]] instead of
+[[Fen_base]]. 
+<<gmlgrid.mp>>=
+string autoform; autoform = "%g";
+def auto suffix $ =
+  hide(freeze)
+  hide(Fe_base:=Fen_base)
+  hide(def Gcma_= hide(def Gcma_=,enddef) enddef) 
+  if Gmarks>0:
+    if Gpick_$=log:
+      if Gempick_.Gme_:  hide(Fe_base:=Fee_base) 
+        Gemgen_(Gme_, Gcma_ Gpack_(1,e))
+      else: 
+	Gmscan_(Gkpick_, true, Gcma_ Gpack_(m,e))
+      fi
+    else:
+      hide(Gme_:=Gesame_)
+      Gigen_(Gipick_, Gcma_ Gpack_(m,Gme_))
+    fi
+  fi
+enddef;
+@ %def Gmarks autoform auto
+@
+\subsubsection{Frame}
+The [[frame]] command has suffixes similar to labels.
+<<gmlgrid.mp>>=
+vardef subframe @# =
+  if str @#<>"":  subpath round(angle laboff @#*Gfra_+Gfrb_) of  fi theframe
+enddef;
+pair Gfra_, Gfrb_;  Gfra_=(1,1)/90;  Gfrb_=(.75,2.25);
+vardef frame @# text w_ =
+  if     str @#="lr": frame.lft w_; frame.rt w_; 
+  elseif str @#="bt": frame.bot w_; frame.top w_;
+  else:  addto currentpicture doublepath subframe @# withpen currentpen w_;
+  fi  noframe;
+enddef;
+vardef noframe = Gneedfr_:=false; enddef;
+@ %def subframepath Gfra_ Gfrb_ frame noframe
+@ 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{\LaTeX\ interface}
+This style file is derived from Thorsten Ohl's [[feynmp.sty]], using
+some features of the [[verbatim]] package.
+<<gamelan.sty>>=
+<<Copyright notice>>
+@ We need the [[verbatim]] and the [[graphics]] package.
+<<gamelan.sty>>=
+\RequirePackage{verbatim}
+\RequirePackage{graphics}
+\def\gmlfileversion{<<Fileversion>>}
+\def\gmlfiledate{<<Filedate>>}
+\ProvidesPackage{gamelan}
+\typeout{Package: `gamelan' \gmlfileversion \space <\gmlfiledate>}
+@ Every option we don't understand is sent down to [[graphics]]:
+<<gamelan.sty>>=
+\DeclareOption*{\PassOptionsToPackage{\CurrentOption}{graphics}}
+\ProcessOptions
+@ A couple of special characters might be needed
+<<gamelan.sty>>=
+{\catcode`\%=11\gdef\p@rcent{%}}%
+{\catcode`\#=11\gdef\sh@rp{#}}%
+{\catcode`\"=11\gdef\dqu@te{"}}%
+{\catcode`\ =11\gdef\sp@ce{ }}%
+@ %def \p@rcent \sh@arp \dqu@te
+@ 
+\subsection{Preamble file}
+Any stuff (packages, definitions) belonging to the preamble
+which should also be known to the inferior \LaTeX\ process is written
+to a special file with extension [[.ltp]].  (We would rather like to
+use a token register here, but once the catcodes are changed, we can't
+interpret control sequences anymore.)  This file is read in after the
+preamble, so the commands are both executed and saved for
+later use.  Here we need [[\globaldefs>0]], because otherwise [[\def]]s in
+the file will vanish when the closing brace is reached.
+<<gamelan.sty>>=
+\newwrite\@gmlpre
+\def\thegml@ltp{\jobname.ltp}
+\immediate\openout\@gmlpre=\thegml@ltp\relax
+\immediate\write\@gmlpre{%
+    \p@rcent\sp@ce\thegml@ltp\sp@ce -- Do not edit, %
+    generated automatically from \jobname.tex}
+\immediate\write\@gmlpre{\relax}
+\AtBeginDocument{%
+  \immediate\closeout\@gmlpre%
+  \input\thegml@ltp}
+\def\gmlpreamble{%
+  \def\verbatim@processline{%
+    \immediate\write\@gmlpre{\the\verbatim@line}}
+  \begingroup
+  \let\do\@makeother\dospecials\catcode`\^^M\active
+  \verbatim@start}
+\def\endgmlpreamble{\endgroup}
+@ %def \@gmlpre \thegml@ltp \gmlpreamble \endgmlpreamble
+@
+\subsection{Input file}
+We open a new output stream
+<<gamelan.sty>>=
+\newwrite\@outgml
+@ %def \@outgml
+@ This environment encloses each \MP{} input file.  The optional
+argument gives the name of the file.  The [[\verbatim@processline]] is
+redefined to write text to the file instead of typesetting it.  Then
+we write the file header, including the point size for the \LaTeX\
+document class, and initialize the figure counter
+<<gamelan.sty>>=
+\def\gmlfile{\@ifnextchar[{\gml@file}{\gml@file[\jobname]}}
+\def\gml@file[#1]{%
+  \def\thegmlfile{#1}%
+  \typeout{gamelan: Writing MetaPost commands to \thegmlfile.mp}
+  \immediate\openout\@outgml=\thegmlfile.mp\relax
+  \gml{\p@rcent\space \thegmlfile.mp -- do not edit, %
+       generated automatically from \jobname.tex^^J}%
+  \gml{compare_filedate("\gmlfiledate","<<Filedate>>","<<Fileversion>>");}
+  \gml{defaultfont:="cmr1\@ptsize";}
+  \gml{verbatimtex \noexpand\documentclass[1\@ptsize pt]{article}}
+  \ifx\thegml@ltp\relax\else{\gml{\noexpand\input\thegml@ltp}}\fi
+  \gml{\noexpand\begin{document} etex}
+  \gmlnumbers{}
+  \setcounter{gmlfigure}{0}
+  \def\verbatim@processline{%
+    \immediate\write\@outgml{\the\verbatim@line}}%
+  \gmlon
+  }
+@ %def \gmlfile \verbatim@processline
+@ And here is how we close the [[gmlfile]] environment:
+<<gamelan.sty>>=
+\def\endgmlfile{%
+  \gml{end}%
+  \let\thegmlfile\relax}
+@ %def \endgmlfile
+@ Initialization
+<<gamelan.sty>>=
+\let\thegmlfile\relax
+\newcounter{gmlfigure}
+@ %def \thegmlfile gmlfigure
+@ Switch figures on/off
+<<gamelan.sty>>=
+\def\gmlon {\def\gml@ctive{true}}
+\def\gmloff{\def\gml@ctive{false}}
+@ %def \gmlon \gmloff \gml@ctive
+@ 
+\subsection{Writing verbatim to file}
+Reset catcodes etc.
+<<gamelan.sty>>=
+\def\gml@init{%
+  \@bsphack
+  \let\do\@makeother\dospecials
+  \catcode`\^^M\active}
+\let\gml@end\@esphack
+@ %def \gml@init \gml@end
+@ This writes text directly to the file.  Not exactly
+verbatim:  \LaTeX\ control sequences are expanded.
+<<gamelan.sty>>=
+\def\gml#1{\immediate\write\@outgml{#1}}
+@ %def \gml
+@ This environment is really verbatim
+<<gamelan.sty>>=
+\def\gmlcode{\gml@init\verbatim@start}
+\let\endgmlcode\gml@end
+@ %def \gmlcode \endgmlcode
+@ And this is for \TeX\ stuff within the file
+<<gamelan.sty>>=
+\def\gmltex{\gml{verbatimtex}\gmlcode}
+\def\endgmltex{\endgmlcode\gml{etex}}
+@ %def \gmltex \endgmltex
+@ Insert a \TeX\ group into the file
+<<gamelan.sty>>=
+\def\gml@texgroup{\gml{verbatimtex\noexpand\begingroup etex}}
+\def\endgml@texgroup{\gml{verbatimtex\noexpand\endgroup etex}}
+@ %def \gml@texgroup \gml@endtexgroup
+@ This grouping environment applies both for the \TeX\ and the \MP\
+code.  The optional argument declares local variables.  The pen is
+made local automatically.  The argument [[#1]] must never be empty.
+<<gamelan.sty>>=
+\def\gmlgroup{\@ifnextchar[{\gml@group}{\gml@group[tmp]}}
+\def\gml@group[#1]{\gml{begingroup}\gmlst@rtgroup{#1}}
+\def\gmlst@rtgroup#1{%
+  \gml@texgroup\gml{savecurrentpen; savepencolor;}\gml{save #1;}}
+\let\gml@fingroup\endgml@texgroup
+\def\endgmlgroup{\gml@fingroup\gml{endgroup;}}
+@ %def \gmlgroup \gml@group \gmlst@rtgroup \gml@fingroup \endgmlgroup
+@
+\subsection{Graph environment}
+This is the bulk of the environment used for each graph drawn by \MP.
+We make sure that a \MP{} file is open, otherwise \emph{really}
+obscure error messages are possible.  For incrementing the figure
+counter, we don't use [[\stepcounter]] because of the [[amstext]]
+option of AMS-\LaTeX{} disables it sometimes.  If the figure already
+exists, it is included; otherwise, we inform the user.  Finally, a
+figure header is written.  After [[beginfig]] we reset the pen and
+color.  Since [[beginfig]] resets the pen also, we need an extra
+[[savecurrentpen]] before which stores it temporarily in [[_cpen]].
+The [[unitlength]] is taken from the \LaTeX\ mother process and
+transferred both to \MP\ and to the \LaTeX\ subprocess.  The remaining
+commands are executed by [[\gmlst@rtgroup]]: A \TeX\ group is begun,
+and the current pen and color, together with the variables declared in
+the argument [[#1]], are made local to the figure.
+<<gamelan.sty>>=
+\def\gmlfig@init#1{%
+  \ifx\thegmlfile\relax
+    \errhelp={Outside a gmlfile environment, I have no clue as to where^^J%
+	      the METAPOST commands should go.   I will use \jobname.mp,^^J%
+	      but this file will probably end up unclosed.}%      
+    \errmessage
+       {I detected a gmlgraph/gmlfigure environment outside of gmlfile}%
+    \gmlfile[\jobname]
+  \fi
+  \global\expandafter\advance\csname c@gmlfigure\endcsname \@ne
+  \leavevmode
+  \IfFileExists{\thegmlfile.\thegmlfigure}%
+    {\includegraphics{\thegmlfile.\thegmlfigure}}%
+    {\typeout{%
+      gamelan: File \thegmlfile.\thegmlfigure\space not found:^^J%
+      gamelan: Process \thegmlfile.mp with GAMELAN and then %
+               reprocess this file.}}%
+  \gml{if \gml@ctive:}
+  \gml{savecurrentpen;}
+  \gml{beginfig(\thegmlfigure);}
+  \gml{pickup _cpen; setpencolor;}
+  \gmlst@rtgroup{#1}
+  \gml{save unitlength; unitlength:=\the\unitlength;}
+  \gml{verbatimtex\noexpand\unitlength\the\unitlength{}etex}
+  }
+\def\gmlfig@end{%
+  \gml@fingroup
+  \gml{endfig;}
+  \gml{fi}
+  }
+@ %def \gmlfig@init \gmlfig@end unitlength
+@ The user interface: The [[gmlfigure]] environment is for generic
+\MP\ figures.
+<<gamelan.sty>>=
+\def\gmlfigure{\@ifnextchar[{\gml@fig}{\gml@fig[tmp]}}
+\def\gml@fig[#1]{\gmlfig@init{#1}\gml@init\verbatim@start}
+\def\endgmlfigure{\gml@end\gmlfig@end}
+@ %def \gmlfigure \endgmlfigure
+@ For data plotting, we usually just need the specific \GML\ features.
+This environment takes the graph dimensions as arguments. 
+<<gamelan.sty>>=
+\def\gmlgraph(#1,#2){\@ifnextchar[{\gmlgr@ph{#1}{#2}}{\gmlgr@ph{#1}{#2}[tmp]}}
+\def\gmlgr@ph#1#2[#3]{%
+  \gmlfig@init{#3}
+  \gml{plaindraw begingraph(#1*unitlength, #2*unitlength)}%
+  \gml@init\verbatim@start}
+\def\endgmlgraph{%
+  \gml@end\gml{endgraph;}\gmlfig@end}
+@ %def \gmlgraph \endgmlgraph
+@ The variant with fixed bounding box
+<<gamelan.sty>>=
+\@namedef{gmlgraph*}(#1,#2){\gmlgraph(#1,#2)}
+\@namedef{endgmlgraph*}{%
+  \gml@end\gml{framebounds;}\gml{endgraph;}\gmlfig@end}
+@ %def \gmlgraph* \endgmlgraph*
+@ 
+\subsection{Additional \LaTeX\ commands}
+Initialize the numeric axis marks with \TeX\ options [[#1]].
+Here we use a token register for the argument which should not be expanded.
+<<gamelan.sty>>=
+\newtoks\gmlbuf@
+\def\gmlnumbers#1{%
+  \gmlbuf@{#1}
+  \gml{init_numbers(^^J%
+       btex$\the\gmlbuf@-$etex,^^Jbtex$\the\gmlbuf@1$etex,^^J%
+       btex$\the\gmlbuf@{\noexpand\times}10$etex,^^J%
+       btex$\the\gmlbuf@{}^-$etex,^^Jbtex$\the\gmlbuf@{}^2$etex);}}
+@ %def \gmlnumbers
+@ We could provide more; but it seems not to be sensible to shift
+everything to the \LaTeX\ interface, since the \MP\ syntax is both
+flexible and simple.  However, the following are usually placed
+outside the figures:
+<<gamelan.sty>>=
+\def\gmlpenscale#1{\gml{penscale (#1);}}
+\def\gmlpencolor#1{\gml{pencolor (#1);}}
+\def\gmlcolor#1#2{\gml{newcolor #1 (#2);}}
+\def\gmlfunction#1#2#3{\gml{vardef #1(expr #2) = #3 enddef;}}
+@ %def \gmlpenscale \gmlpencolor \gmlcolor \gmlfunction
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Color definitions}
+These two files may be [[\input]] to define all standard RGB colors.
+<<gmlcolors.tex>>=
+\gmlcolor{snow}             	    {"255 250 250"}
+\gmlcolor{ghost white}      	    {"248 248 255"}
+\gmlcolor{white smoke}      	    {"245 245 245"}
+\gmlcolor{gainsboro}        	    {"220 220 220"}
+\gmlcolor{floral white}     	    {"255 250 240"}
+\gmlcolor{old lace}         	    {"253 245 230"}
+\gmlcolor{linen}            	    {"250 240 230"}
+\gmlcolor{antique white}    	    {"250 235 215"}
+\gmlcolor{papaya whip}      	    {"255 239 213"}
+\gmlcolor{blanched almond}  	    {"255 235 205"}
+\gmlcolor{bisque}           	    {"255 228 196"}
+\gmlcolor{peach puff}       	    {"255 218 185"}
+\gmlcolor{navajo white}     	    {"255 222 173"}
+\gmlcolor{moccasin}         	    {"255 228 181"}
+\gmlcolor{cornsilk}         	    {"255 248 220"}
+\gmlcolor{ivory}            	    {"255 255 240"}
+\gmlcolor{lemon chiffon}    	    {"255 250 205"}
+\gmlcolor{seashell}         	    {"255 245 238"}
+\gmlcolor{honeydew}         	    {"240 255 240"}
+\gmlcolor{mint cream}       	    {"245 255 250"}
+\gmlcolor{azure}            	    {"240 255 255"}
+\gmlcolor{alice blue}       	    {"240 248 255"}
+\gmlcolor{lavender}         	    {"230 230 250"}
+\gmlcolor{lavender blush}   	    {"255 240 245"}
+\gmlcolor{misty rose}       	    {"255 228 225"}
+\gmlcolor{white}            	    {"255 255 255"}
+\gmlcolor{black}            	    {"000 000 000"}
+\gmlcolor{dark slate gray}  	    {"047 079 079"}
+\gmlcolor{dim gray}         	    {"105 105 105"}
+\gmlcolor{slate gray}       	    {"112 128 144"}
+\gmlcolor{light slate gray} 	    {"119 136 153"}
+\gmlcolor{medium gry}       	    {"190 190 190"}
+\gmlcolor{light gray}       	    {"211 211 211"}
+\gmlcolor{midnight blue}    	    {"025 025 112"}
+\gmlcolor{navy}             	    {"000 000 128"}
+\gmlcolor{navy blue}        	    {"000 000 128"}
+\gmlcolor{cornflower blue}  	    {"100 149 237"}
+\gmlcolor{dark slate blue}  	    {"072 061 139"}
+\gmlcolor{slate blue}       	    {"106 090 205"}
+\gmlcolor{medium slate blue}	    {"123 104 238"}
+\gmlcolor{light slate blue} 	    {"132 112 255"}
+\gmlcolor{medium blue}      	    {"000 000 205"}
+\gmlcolor{royal blue}       	    {"065 105 225"}
+\gmlcolor{blue}             	    {"000 000 255"}
+\gmlcolor{dodger blue}      	    {"030 144 255"}
+\gmlcolor{deep sky blue}    	    {"000 191 255"}
+\gmlcolor{sky blue}         	    {"135 206 235"}
+\gmlcolor{light sky blue}   	    {"135 206 250"}
+\gmlcolor{steel blue}       	    {"070 130 180"}
+\gmlcolor{light steel blue} 	    {"176 196 222"}
+\gmlcolor{light blue}       	    {"173 216 230"}
+\gmlcolor{powder blue}      	    {"176 224 230"}
+\gmlcolor{pale turquoise}   	    {"175 238 238"}
+\gmlcolor{dark turquoise}   	    {"000 206 209"}
+\gmlcolor{medium turquoise} 	    {"072 209 204"}
+\gmlcolor{turquoise}        	    {"064 224 208"}
+\gmlcolor{cyan}             	    {"000 255 255"}
+\gmlcolor{light cyan}       	    {"224 255 255"}
+\gmlcolor{cadet blue}       	    {"095 158 160"}
+\gmlcolor{medium aquamarine}	    {"102 205 170"}
+\gmlcolor{aquamarine}       	    {"127 255 212"}
+\gmlcolor{dark green}       	    {"000 100 000"}
+\gmlcolor{dark olive green} 	    {"085 107 047"}
+\gmlcolor{dark sea green}   	    {"143 188 143"}
+\gmlcolor{sea green}        	    {"046 139 087"}
+\gmlcolor{medium sea green} 	    {"060 179 113"}
+\gmlcolor{light sea green}  	    {"032 178 170"}
+\gmlcolor{pale green}       	    {"152 251 152"}
+\gmlcolor{spring green}     	    {"000 255 127"}
+\gmlcolor{lawn green}       	    {"124 252 000"}
+\gmlcolor{green}            	    {"000 255 000"}
+\gmlcolor{chartreuse}       	    {"127 255 000"}
+\gmlcolor{medium spring green}      {"000 250 154"}
+\gmlcolor{green yellow}             {"173 255 047"}
+\gmlcolor{lime green}       	    {"050 205 050"}
+\gmlcolor{yellow green}     	    {"154 205 050"}
+\gmlcolor{forest green}     	    {"034 139 034"}
+\gmlcolor{olive drab}       	    {"107 142 035"}
+\gmlcolor{dark khaki}       	    {"189 183 107"}
+\gmlcolor{khaki}            	    {"240 230 140"}
+\gmlcolor{pale goldenrod}   	    {"238 232 170"}
+\gmlcolor{light goldenrod yellow}   {"250 250 210"}
+\gmlcolor{light yellow}     	    {"255 255 224"}
+\gmlcolor{yellow}           	    {"255 255 000"}
+\gmlcolor{gold}             	    {"255 215 000"}
+\gmlcolor{light goldenrod}  	    {"238 221 130"}
+\gmlcolor{goldenrod}        	    {"218 165 032"}
+\gmlcolor{dark goldenrod}   	    {"184 134 011"}
+\gmlcolor{rosy brown}       	    {"188 143 143"}
+\gmlcolor{indian red}       	    {"205 092 092"}
+\gmlcolor{saddle brown}     	    {"139 069 019"}
+\gmlcolor{sienna}           	    {"160 082 045"}
+\gmlcolor{peru}             	    {"205 133 063"}
+\gmlcolor{burlywood}        	    {"222 184 135"}
+\gmlcolor{beige}            	    {"245 245 220"}
+\gmlcolor{wheat}            	    {"245 222 179"}
+\gmlcolor{sandy brown}      	    {"244 164 096"}
+\gmlcolor{medium tan}          	    {"210 180 140"}
+\gmlcolor{chocolate}        	    {"210 105 030"}
+\gmlcolor{firebrick}        	    {"178 034 034"}
+\gmlcolor{brown}            	    {"165 042 042"}
+\gmlcolor{dark salmon}      	    {"233 150 122"}
+\gmlcolor{salmon}           	    {"250 128 114"}
+\gmlcolor{light salmon}     	    {"255 160 122"}
+\gmlcolor{orange}           	    {"255 165 000"}
+\gmlcolor{dark orange}      	    {"255 140 000"}
+\gmlcolor{coral}            	    {"255 127 080"}
+\gmlcolor{light coral}      	    {"240 128 128"}
+\gmlcolor{tomato}           	    {"255 099 071"}
+\gmlcolor{orange red}       	    {"255 069 000"}
+\gmlcolor{red}              	    {"255 000 000"}
+\gmlcolor{hot pink}         	    {"255 105 180"}
+\gmlcolor{deep pink}        	    {"255 020 147"}
+\gmlcolor{pink}             	    {"255 192 203"}
+\gmlcolor{light pink}       	    {"255 182 193"}
+\gmlcolor{pale violet red}  	    {"219 112 147"}
+\gmlcolor{maroon}           	    {"176 048 096"}
+\gmlcolor{medium violet red}	    {"199 021 133"}
+\gmlcolor{violet red}       	    {"208 032 144"}
+\gmlcolor{magenta}          	    {"255 000 255"}
+\gmlcolor{violet}           	    {"238 130 238"}
+\gmlcolor{plum}             	    {"221 160 221"}
+\gmlcolor{orchid}           	    {"218 112 214"}
+\gmlcolor{medium orchid}    	    {"186 085 211"}
+\gmlcolor{dark orchid}      	    {"153 050 204"}
+\gmlcolor{dark violet}      	    {"148 000 211"}
+\gmlcolor{blue violet}      	    {"138 043 226"}
+\gmlcolor{purple}           	    {"160 032 240"}
+\gmlcolor{medium purple}    	    {"147 112 219"}
+\gmlcolor{thistle}          	    {"216 191 216"}
+\gmlcolor{dark gray}        	    {"169 169 169"}
+\gmlcolor{dark blue}        	    {"000 000 139"}
+\gmlcolor{dark cyan}        	    {"000 139 139"}
+\gmlcolor{dark magenta}     	    {"139 000 139"}
+\gmlcolor{dark red}         	    {"139 000 000"}
+\gmlcolor{light green}      	    {"144 238 144"}
+@ 
+<<gmlextracolors.tex>>=
+\gmlcolor{snow1}            {"255 250 250"}
+\gmlcolor{snow2}            {"238 233 233"}
+\gmlcolor{snow3}            {"205 201 201"}
+\gmlcolor{snow4}            {"139 137 137"}
+\gmlcolor{seashell1}        {"255 245 238"}
+\gmlcolor{seashell2}        {"238 229 222"}
+\gmlcolor{seashell3}        {"205 197 191"}
+\gmlcolor{seashell4}        {"139 134 130"}
+\gmlcolor{antique white1}   {"255 239 219"}
+\gmlcolor{antique white2}   {"238 223 204"}
+\gmlcolor{antique white3}   {"205 192 176"}
+\gmlcolor{antique white4}   {"139 131 120"}
+\gmlcolor{bisque1}          {"255 228 196"}
+\gmlcolor{bisque2}          {"238 213 183"}
+\gmlcolor{bisque3}          {"205 183 158"}
+\gmlcolor{bisque4}          {"139 125 107"}
+\gmlcolor{peach puff1}      {"255 218 185"}
+\gmlcolor{peach puff2}      {"238 203 173"}
+\gmlcolor{peach puff3}      {"205 175 149"}
+\gmlcolor{peach puff4}      {"139 119 101"}
+\gmlcolor{navajo white1}    {"255 222 173"}
+\gmlcolor{navajo white2}    {"238 207 161"}
+\gmlcolor{navajo white3}    {"205 179 139"}
+\gmlcolor{navajo white4}    {"139 121 094"}
+\gmlcolor{lemon chiffon1}   {"255 250 205"}
+\gmlcolor{lemon chiffon2}   {"238 233 191"}
+\gmlcolor{lemon chiffon3}   {"205 201 165"}
+\gmlcolor{lemon chiffon4}   {"139 137 112"}
+\gmlcolor{cornsilk1}        {"255 248 220"}
+\gmlcolor{cornsilk2}        {"238 232 205"}
+\gmlcolor{cornsilk3}        {"205 200 177"}
+\gmlcolor{cornsilk4}        {"139 136 120"}
+\gmlcolor{ivory1}           {"255 255 240"}
+\gmlcolor{ivory2}           {"238 238 224"}
+\gmlcolor{ivory3}           {"205 205 193"}
+\gmlcolor{ivory4}           {"139 139 131"}
+\gmlcolor{honeydew1}        {"240 255 240"}
+\gmlcolor{honeydew2}        {"224 238 224"}
+\gmlcolor{honeydew3}        {"193 205 193"}
+\gmlcolor{honeydew4}        {"131 139 131"}
+\gmlcolor{lavender blush1}  {"255 240 245"}
+\gmlcolor{lavender blush2}  {"238 224 229"}
+\gmlcolor{lavender blush3}  {"205 193 197"}
+\gmlcolor{lavender blush4}  {"139 131 134"}
+\gmlcolor{misty rose1}      {"255 228 225"}
+\gmlcolor{misty rose2}      {"238 213 210"}
+\gmlcolor{misty rose3}      {"205 183 181"}
+\gmlcolor{misty rose4}      {"139 125 123"}
+\gmlcolor{azure1}           {"240 255 255"}
+\gmlcolor{azure2}           {"224 238 238"}
+\gmlcolor{azure3}           {"193 205 205"}
+\gmlcolor{azure4}           {"131 139 139"}
+\gmlcolor{slate blue1}      {"131 111 255"}
+\gmlcolor{slate blue2}      {"122 103 238"}
+\gmlcolor{slate blue3}      {"105 089 205"}
+\gmlcolor{slate blue4}      {"071 060 139"}
+\gmlcolor{royal blue1}      {"072 118 255"}
+\gmlcolor{royal blue2}      {"067 110 238"}
+\gmlcolor{royal blue3}      {"058 095 205"}
+\gmlcolor{royal blue4}      {"039 064 139"}
+\gmlcolor{blue1}            {"000 000 255"}
+\gmlcolor{blue2}            {"000 000 238"}
+\gmlcolor{blue3}            {"000 000 205"}
+\gmlcolor{blue4}            {"000 000 139"}
+\gmlcolor{dodger blue1}     {"030 144 255"}
+\gmlcolor{dodger blue2}     {"028 134 238"}
+\gmlcolor{dodger blue3}     {"024 116 205"}
+\gmlcolor{dodger blue4}     {"016 078 139"}
+\gmlcolor{steel blue1}      {"099 184 255"}
+\gmlcolor{steel blue2}      {"092 172 238"}
+\gmlcolor{steel blue3}      {"079 148 205"}
+\gmlcolor{steel blue4}      {"054 100 139"}	     
+\gmlcolor{deep sky blue1}   {"000 191 255"}
+\gmlcolor{deep sky blue2}   {"000 178 238"}
+\gmlcolor{deep sky blue3}   {"000 154 205"}
+\gmlcolor{deep sky blue4}   {"000 104 139"}	   
+\gmlcolor{sky blue1}        {"135 206 255"}
+\gmlcolor{sky blue2}        {"126 192 238"}
+\gmlcolor{sky blue3}        {"108 166 205"}
+\gmlcolor{sky blue4}        {"074 112 139"}	   
+\gmlcolor{light sky blue1}  {"176 226 255"}
+\gmlcolor{light sky blue2}  {"164 211 238"}
+\gmlcolor{light sky blue3}  {"141 182 205"}
+\gmlcolor{light sky blue4}  {"096 123 139"}
+\gmlcolor{slate gray1}      {"198 226 255"}
+\gmlcolor{slate gray2}      {"185 211 238"}
+\gmlcolor{slate gray3}      {"159 182 205"}
+\gmlcolor{slate gray4}      {"108 123 139"}	   
+\gmlcolor{light steel blue1}{"202 225 255"}
+\gmlcolor{light steel blue2}{"188 210 238"}
+\gmlcolor{light steel blue3}{"162 181 205"}
+\gmlcolor{light steel blue4}{"110 123 139"}
+\gmlcolor{light blue1}      {"191 239 255"}
+\gmlcolor{light blue2}      {"178 223 238"}
+\gmlcolor{light blue3}      {"154 192 205"}
+\gmlcolor{light blue4}      {"104 131 139"}
+\gmlcolor{light cyan1}      {"224 255 255"}
+\gmlcolor{light cyan2}      {"209 238 238"}
+\gmlcolor{light cyan3}      {"180 205 205"}
+\gmlcolor{light cyan4}      {"122 139 139"}	   
+\gmlcolor{pale turquoise1}  {"187 255 255"}
+\gmlcolor{pale turquoise2}  {"174 238 238"}
+\gmlcolor{pale turquoise3}  {"150 205 205"}
+\gmlcolor{pale turquoise4}  {"102 139 139"}
+\gmlcolor{cadet blue1}      {"152 245 255"}
+\gmlcolor{cadet blue2}      {"142 229 238"}
+\gmlcolor{cadet blue3}      {"122 197 205"}
+\gmlcolor{cadet blue4}      {"083 134 139"}	   
+\gmlcolor{turquoise1}       {"000 245 255"}
+\gmlcolor{turquoise2}       {"000 229 238"}
+\gmlcolor{turquoise3}       {"000 197 205"}
+\gmlcolor{turquoise4}       {"000 134 139"}
+\gmlcolor{cyan1}            {"000 255 255"}
+\gmlcolor{cyan2}            {"000 238 238"}
+\gmlcolor{cyan3}            {"000 205 205"}
+\gmlcolor{cyan4}            {"000 139 139"}	   
+\gmlcolor{dark slate gray1} {"151 255 255"}
+\gmlcolor{dark slate gray2} {"141 238 238"}
+\gmlcolor{dark slate gray3} {"121 205 205"}
+\gmlcolor{dark slate gray4} {"082 139 139"}
+\gmlcolor{aquamarine1}      {"127 255 212"}
+\gmlcolor{aquamarine2}      {"118 238 198"}
+\gmlcolor{aquamarine3}      {"102 205 170"}
+\gmlcolor{aquamarine4}      {"069 139 116"}	   
+\gmlcolor{dark sea green1}  {"193 255 193"}
+\gmlcolor{dark sea green2}  {"180 238 180"}
+\gmlcolor{dark sea green3}  {"155 205 155"}
+\gmlcolor{dark sea green4}  {"105 139 105"}
+\gmlcolor{sea green1}       {"084 255 159"}
+\gmlcolor{sea green2}       {"078 238 148"}
+\gmlcolor{sea green3}       {"067 205 128"}
+\gmlcolor{sea green4}       {"046 139 087"}
+\gmlcolor{pale green1}      {"154 255 154"}
+\gmlcolor{pale green2}      {"144 238 144"}
+\gmlcolor{pale green3}      {"124 205 124"}
+\gmlcolor{pale green4}      {"084 139 084"}
+\gmlcolor{spring green1}    {"000 255 127"}
+\gmlcolor{spring green2}    {"000 238 118"}
+\gmlcolor{spring green3}    {"000 205 102"}
+\gmlcolor{spring green4}    {"000 139 069"}	     
+\gmlcolor{green1}           {"000 255 000"}
+\gmlcolor{green2}           {"000 238 000"}
+\gmlcolor{green3}           {"000 205 000"}
+\gmlcolor{green4}           {"000 139 000"}	   
+\gmlcolor{chartreuse1}      {"127 255 000"}
+\gmlcolor{chartreuse2}      {"118 238 000"}
+\gmlcolor{chartreuse3}      {"102 205 000"}
+\gmlcolor{chartreuse4}      {"069 139 000"}
+\gmlcolor{olive drab1}      {"192 255 062"}
+\gmlcolor{olive drab2}      {"179 238 058"}
+\gmlcolor{olive drab3}      {"154 205 050"}
+\gmlcolor{olive drab4}      {"105 139 034"}	     
+\gmlcolor{dark olive green1}{"202 255 112"}
+\gmlcolor{dark olive green2}{"188 238 104"}
+\gmlcolor{dark olive green3}{"162 205 090"}
+\gmlcolor{dark olive green4}{"110 139 061"}
+\gmlcolor{khaki1}           {"255 246 143"}
+\gmlcolor{khaki2}           {"238 230 133"}
+\gmlcolor{khaki3}           {"205 198 115"}
+\gmlcolor{khaki4}           {"139 134 078"}	   
+\gmlcolor{light goldenrod1} {"255 236 139"}
+\gmlcolor{light goldenrod2} {"238 220 130"}
+\gmlcolor{light goldenrod3} {"205 190 112"}
+\gmlcolor{light goldenrod4} {"139 129 076"}
+\gmlcolor{light yellow1}    {"255 255 224"}
+\gmlcolor{light yellow2}    {"238 238 209"}
+\gmlcolor{light yellow3}    {"205 205 180"}
+\gmlcolor{light yellow4}    {"139 139 122"}
+\gmlcolor{yellow1}          {"255 255 000"}
+\gmlcolor{yellow2}          {"238 238 000"}
+\gmlcolor{yellow3}          {"205 205 000"}
+\gmlcolor{yellow4}          {"139 139 000"}
+\gmlcolor{gold1}            {"255 215 000"}
+\gmlcolor{gold2}            {"238 201 000"}
+\gmlcolor{gold3}            {"205 173 000"}
+\gmlcolor{gold4}            {"139 117 000"}
+\gmlcolor{goldenrod1}       {"255 193 037"}
+\gmlcolor{goldenrod2}       {"238 180 034"}
+\gmlcolor{goldenrod3}       {"205 155 029"}
+\gmlcolor{goldenrod4}       {"139 105 020"}	   
+\gmlcolor{dark goldenrod1}  {"255 185 015"}
+\gmlcolor{dark goldenrod2}  {"238 173 014"}
+\gmlcolor{dark goldenrod3}  {"205 149 012"}
+\gmlcolor{dark goldenrod4}  {"139 101 008"}
+\gmlcolor{rosy brown1}      {"255 193 193"}
+\gmlcolor{rosy brown2}      {"238 180 180"}
+\gmlcolor{rosy brown3}      {"205 155 155"}
+\gmlcolor{rosy brown4}      {"139 105 105"}
+\gmlcolor{indian red1}      {"255 106 106"}
+\gmlcolor{indian red2}      {"238 099 099"}
+\gmlcolor{indian red3}      {"205 085 085"}
+\gmlcolor{indian red4}      {"139 058 058"}
+\gmlcolor{sienna1}          {"255 130 071"}
+\gmlcolor{sienna2}          {"238 121 066"}
+\gmlcolor{sienna3}          {"205 104 057"}
+\gmlcolor{sienna4}          {"139 071 038"}
+\gmlcolor{burlywood1}       {"255 211 155"}
+\gmlcolor{burlywood2}       {"238 197 145"}
+\gmlcolor{burlywood3}       {"205 170 125"}
+\gmlcolor{burlywood4}       {"139 115 085"}
+\gmlcolor{wheat1}           {"255 231 186"}
+\gmlcolor{wheat2}           {"238 216 174"}
+\gmlcolor{wheat3}           {"205 186 150"}
+\gmlcolor{wheat4}           {"139 126 102"}
+\gmlcolor{tan1}             {"255 165 079"}
+\gmlcolor{tan2}             {"238 154 073"}
+\gmlcolor{tan3}             {"205 133 063"}
+\gmlcolor{tan4}             {"139 090 043"}
+\gmlcolor{chocolate1}       {"255 127 036"}	   
+\gmlcolor{chocolate2}       {"238 118 033"}
+\gmlcolor{chocolate3}       {"205 102 029"}
+\gmlcolor{chocolate4}       {"139 069 019"}
+\gmlcolor{firebrick1}       {"255 048 048"}
+\gmlcolor{firebrick2}       {"238 044 044"}
+\gmlcolor{firebrick3}       {"205 038 038"}
+\gmlcolor{firebrick4}       {"139 026 026"}
+\gmlcolor{brown1}           {"255 064 064"}
+\gmlcolor{brown2}           {"238 059 059"}
+\gmlcolor{brown3}           {"205 051 051"}
+\gmlcolor{brown4}           {"139 035 035"}
+\gmlcolor{salmon1}          {"255 140 105"}
+\gmlcolor{salmon2}          {"238 130 098"}
+\gmlcolor{salmon3}          {"205 112 084"}
+\gmlcolor{salmon4}          {"139 076 057"}	   
+\gmlcolor{light salmon1}    {"255 160 122"}
+\gmlcolor{light salmon2}    {"238 149 114"}
+\gmlcolor{light salmon3}    {"205 129 098"}
+\gmlcolor{light salmon4}    {"139 087 066"}
+\gmlcolor{orange1}          {"255 165 000"}
+\gmlcolor{orange2}          {"238 154 000"}
+\gmlcolor{orange3}          {"205 133 000"}
+\gmlcolor{orange4}          {"139 090 000"}
+\gmlcolor{dark orange1}     {"255 127 000"}
+\gmlcolor{dark orange2}     {"238 118 000"}
+\gmlcolor{dark orange3}     {"205 102 000"}
+\gmlcolor{dark orange4}     {"139 069 000"}
+\gmlcolor{coral1}           {"255 114 086"}
+\gmlcolor{coral2}           {"238 106 080"}
+\gmlcolor{coral3}           {"205 091 069"}
+\gmlcolor{coral4}           {"139 062 047"}
+\gmlcolor{tomato1}          {"255 099 071"}
+\gmlcolor{tomato2}          {"238 092 066"}
+\gmlcolor{tomato3}          {"205 079 057"}
+\gmlcolor{tomato4}          {"139 054 038"}	   
+\gmlcolor{orange red1}      {"255 069 000"}
+\gmlcolor{orange red2}      {"238 064 000"}
+\gmlcolor{orange red3}      {"205 055 000"}
+\gmlcolor{orange red4}      {"139 037 000"}
+\gmlcolor{red1}             {"255 000 000"}
+\gmlcolor{red2}             {"238 000 000"}
+\gmlcolor{red3}             {"205 000 000"}
+\gmlcolor{red4}             {"139 000 000"}
+\gmlcolor{deep pink1}       {"255 020 147"}
+\gmlcolor{deep pink2}       {"238 018 137"}
+\gmlcolor{deep pink3}       {"205 016 118"}
+\gmlcolor{deep pink4}       {"139 010 080"}
+\gmlcolor{hot pink1}        {"255 110 180"}
+\gmlcolor{hot pink2}        {"238 106 167"}
+\gmlcolor{hot pink3}        {"205 096 144"}
+\gmlcolor{hot pink4}        {"139 058 098"}	   
+\gmlcolor{pink1}            {"255 181 197"}
+\gmlcolor{pink2}            {"238 169 184"}
+\gmlcolor{pink3}            {"205 145 158"}
+\gmlcolor{pink4}            {"139 099 108"}
+\gmlcolor{light pink1}      {"255 174 185"}
+\gmlcolor{light pink2}      {"238 162 173"}
+\gmlcolor{light pink3}      {"205 140 149"}
+\gmlcolor{light pink4}      {"139 095 101"}	   
+\gmlcolor{pale violet red1} {"255 130 171"}
+\gmlcolor{pale violet red2} {"238 121 159"}
+\gmlcolor{pale violet red3} {"205 104 137"}
+\gmlcolor{pale violet red4} {"139 071 093"}
+\gmlcolor{maroon1}          {"255 052 179"}
+\gmlcolor{maroon2}          {"238 048 167"}
+\gmlcolor{maroon3}          {"205 041 144"}
+\gmlcolor{maroon4}          {"139 028 098"}
+\gmlcolor{violet red1}      {"255 062 150"}
+\gmlcolor{violet red2}      {"238 058 140"}
+\gmlcolor{violet red3}      {"205 050 120"}
+\gmlcolor{violet red4}      {"139 034 082"}
+\gmlcolor{magenta1}         {"255 000 255"}
+\gmlcolor{magenta2}         {"238 000 238"}
+\gmlcolor{magenta3}         {"205 000 205"}
+\gmlcolor{magenta4}         {"139 000 139"}
+\gmlcolor{orchid1}          {"255 131 250"}
+\gmlcolor{orchid2}          {"238 122 233"}
+\gmlcolor{orchid3}          {"205 105 201"}
+\gmlcolor{orchid4}          {"139 071 137"}
+\gmlcolor{plum1}            {"255 187 255"}
+\gmlcolor{plum2}            {"238 174 238"}
+\gmlcolor{plum3}            {"205 150 205"}
+\gmlcolor{plum4}            {"139 102 139"}	    
+\gmlcolor{medium orchid1}   {"224 102 255"}
+\gmlcolor{medium orchid2}   {"209 095 238"}
+\gmlcolor{medium orchid3}   {"180 082 205"}
+\gmlcolor{medium orchid4}   {"122 055 139"}
+\gmlcolor{dark orchid1}     {"191 062 255"}
+\gmlcolor{dark orchid2}     {"178 058 238"}
+\gmlcolor{dark orchid3}     {"154 050 205"}
+\gmlcolor{dark orchid4}     {"104 034 139"}
+\gmlcolor{purple1}          {"155 048 255"}
+\gmlcolor{purple2}          {"145 044 238"}
+\gmlcolor{purple3}          {"125 038 205"}
+\gmlcolor{purple4}          {"085 026 139"}	   
+\gmlcolor{medium purple1}   {"171 130 255"}
+\gmlcolor{medium purple2}   {"159 121 238"}
+\gmlcolor{medium purple3}   {"137 104 205"}
+\gmlcolor{medium purple4}   {"093 071 139"}
+\gmlcolor{thistle1}         {"255 225 255"}
+\gmlcolor{thistle2}         {"238 210 238"}
+\gmlcolor{thistle3}         {"205 181 205"}
+\gmlcolor{thistle4}         {"139 123 139"}
+@ 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Driver script}
+The preprocessing step wraps all floating-point constants in double quotes.
+<<gml>>=
+#!/bin/sh
+# gml <<Fileversion>> <<Filedate>>
+# Run GAMELAN on file $1, after preprocessing 
+TEX=latex; export TEX
+BINDIR=$HOME/mp/gamelan-current
+MPFILE=`expr $1 : '\(.*\)\.mp$' \| $1`
+sed \
+-e's/<<!/ verbatimtex /g' \
+-e's/<</ btex /g' \
+-e's/>>/ etex /g' \
+-e's/#\([+-]\{0,1\}[0-9][0-9]*\.[0-9]*[A-Za-z][+-]*[0-9][0-9]*\)/#"\1"/g' \
+-e's/#\([+-]\{0,1\}[0-9][0-9]*[A-Za-z][+-]*[0-9][0-9]*\)/#"\1"/g' \
+-e's/#\([+-]\{0,1\}\.[0-9][0-9]*[A-Za-z][+-]*[0-9][0-9]*\)/#"\1"/g' \
+-e's/#\([+-]\{0,1\}[0-9][0-9]*\.[0-9]*\)/#"\1"/g' \
+-e's/#\([+-]\{0,1\}\.[0-9][0-9]*\)/#"\1"/g' \
+-e's/#\([+-]\{0,1\}[0-9][0-9]*\)/#"\1"/g' \
+$MPFILE.mp > $MPFILE.tmp && \
+mv $MPFILE.tmp $MPFILE.mp && $BINDIR/gamelan $MPFILE.mp
+@ def gmltmp.mp
+@ 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Templates}
+\subsection{Plotting functions}
+This template can be used and extended for function drawing.  We take
+a particular function as an example
+<<gmlfun.tex>>=
+% Draw a function using the gamelan macros
+% This file has been generated automatically from <<Filename>>
+\documentclass[12pt]{article}
+\usepackage{gamelan}
+\begin{document}
+\begin{gmlfile}
+@ Define a MP function
+<<gmlfun.tex>>=
+\gmlfunction{f}{x}{exp(neg x over #10) times cos(x)}
+@ Start figure containing 10cm x 10cm graph
+<<gmlfun.tex>>=
+\begin{figure}\unitlength1cm
+\begin{gmlgraph}(10,10)
+@ Plot the function with x values between 0 and 10
+<<gmlfun.tex>>=
+  fromfunction f(#0,#10): draw table plot(); endfrom
+@ Label the plot at the upper right corner (with a 5mm offset)
+<<gmlfun.tex>>=
+  label.llft(btex $f(x)=e^{-x/10}\cos x$ etex, margin.urt(5mm));
+\end{gmlgraph}
+\end{figure}
+\end{gmlfile}
+\end{document}
+@ 
+\subsection{Data histogram}
+This template can be used and extended for data histogramming.  We take
+the following data file as an example:
+<<gmldata.dat>>=
+# Data for histogramming with driver file gmldata.tex
+# This file has been generated automatically from <<Filename>>
+0 10
+1 8
+2 7
+3 12
+4 14
+5 11
+6 5
+7 3
+8 2
+9 0
+10
+@ Here is the driver file:
+<<gmldata.tex>>=
+% Display data using the gamelan macros
+% This file has been generated automatically from <<Filename>>
+\documentclass[12pt]{article}
+\usepackage{gamelan}
+\begin{document}
+\begin{gmlfile}
+@ Start figure containing 10cm x 10cm graph
+<<gmldata.tex>>=
+\begin{figure}\unitlength1cm
+\begin{gmlgraph}(10,10)
+@ Plot data from file
+<<gmldata.tex>>=
+fromfile "gmldata.dat": draw table hist(); endfrom
+@  Label the plot at the upper right corner (with a 5mm offset)
+<<gmldata.tex>>=
+label.llft(btex \texttt{gmldata.dat} etex, margin.urt(5mm));
+\end{gmlgraph}
+\end{figure}
+\end{gmlfile}
+\end{document}
+@ 
+\subsection{Error bars}
+This template can be used and extended for displaying data points with
+error bars.  We take
+the following data file as an example:
+<<gmlerr.dat>>=
+# Data with errors for driver file gmldata.tex
+# This file has been generated automatically from <<Filename>>
+0 9.0 .4
+1 8.6 .4
+2 8.0 .3
+3 8.2 .4
+4 7.4 .3
+5 2.3 1.5
+6 5.6 .8
+7 10.1 .3
+8 9.5  .4
+9 9.7  .4
+10 8.1 .5
+@ Here is the driver file:
+<<gmlerr.tex>>=
+% Display data with error bars using the gamelan macros
+% This file has been generated automatically from <<Filename>>
+\documentclass[12pt]{article}
+\usepackage{gamelan}
+\begin{document}
+\begin{gmlfile}
+@ Start figure containing 10cm x 10cm graph
+<<gmlerr.tex>>=
+\begin{figure}\unitlength1cm
+\begin{gmlgraph}(10,10)
+@ Plot data from file with error bars.
+<<gmlerr.tex>>=
+fromfile "gmlerr.dat":
+  for l withinblock: get x,y,yerr; plot(tmp)(x,y) vbar yerr; endfor
+  draw piecewise from(tmp) withsymbol (cross scaled 3mm) withticks;
+endfrom
+@  Label the plot at the upper right corner (with a 5mm offset)
+<<gmlerr.tex>>=
+label.ulft(btex \texttt{gmlerr.dat} etex, margin.lrt(5mm));
+\end{gmlgraph}
+\end{figure}
+\end{gmlfile}
+\end{document}
+@ 
+\subsection{Impulse plot}
+This example tests pointwise scanning by drawing an impulse plot.
+<<gmlimp.tex>>=
+% Draw a function using the gamelan macros
+% This file has been generated automatically from <<Filename>>
+\documentclass[12pt]{article}
+\usepackage{gamelan}
+\begin{document}
+\begin{gmlfile}
+@ Start figure containing 10cm x 10cm graph
+<<gmlimp.tex>>=
+\begin{figure}\unitlength1cm
+\begin{gmlgraph}(10,10)
+@ Read data and calculate baseline
+<<gmlimp.tex>>=
+  plot(a) (#0,#6), (#1,#5), (#2,#8), (#3,#7), (#4,#6.5), (#5,#5.5), (#6,#3);
+  calculate b(a) (x,#0);
+@ Draw impulses using a flat pen
+<<gmlimp.tex>>=
+  draw pointwise from(a, b{0|//[-1]}) 
+    shifted (2mm,-1mm)
+    linked (straight,none)
+    withcolor gray80
+    withpen penrazor scaled 3mm;
+  transpose(a,b) c;
+  draw from(c) linked (straight,none) withlinecap butt withpenscale 3mm;
+\end{gmlgraph}
+\end{figure}
+\end{gmlfile}
+\end{document}
+@ 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Known bugs}
+\begin{itemize}
+\item It is slow.  This is partly due to the necessity of implementing
+floating-point numbers `by hand'.  Calling \TeX\ in the background
+is also responsible for delays.
+\item Large plots are likely to exceed \MP's capacity.  One should
+work at least with a BIG version of \MP.  Sometimes it helps to insert
+[[save]] commands where datasets are no longer needed.  In the worst
+case several plots from distinct \MP\ input files could be drawn on
+top of each other, using [[graphbounds]] for proper alignment if
+necessary.
+\item The number of precedence levels is only three in \MP.
+Thus it may be necessary to insert additional brackets in some places.
+\item Drawing and filling options must not contain semicolons.  Define
+a [[picture]] variable when more complicated [[image]] expression for
+drawing symbols etc.\ are required.
+\item Error messages may be completely incomprehensible.  This cannot
+be fixed in all cases, but at some places errors should be caught in
+advance.
+\end{itemize}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section*{Identifiers}
+\nowebindex
+\InputIfFileExists{\jobname.ind}{}{}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%\begin{thebibliography}{10}
+%  \bibitem{???} ???
+%\end{thebibliography}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\end{document}
+\endinput
+
+

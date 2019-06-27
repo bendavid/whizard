@@ -1,0 +1,61 @@
+model = QED
+
+library = "qedtest"
+
+process qedtest_eemm =	e1, E1	=>  e2, E2
+
+compile ("qedtest")
+
+!---------------------------------------------
+
+sqrts = 500 GeV
+beams = e1, E1
+
+integrate (qedtest_eemm) {
+  iterations = 1:2000
+}
+
+show (integral (qedtest_eemm))
+
+$title = "Some plot"
+$description = "Some arbitrary points"
+$xlabel = "$i$"
+$ylabel = "$y$"
+plot foo (1,4)
+record foo (1, 2)
+record foo (2, 3)
+record foo (4, 1)
+record foo (5, 0)
+
+$title = "Angular distribution"
+$description = "Polar angle $\theta$ of the outgoing muon"
+$label = "\theta(\mu^-)"
+$physical_unit = "^\circ"
+$xlabel = ""
+$ylabel = ""
+histogram angular_distribution (0, 180, 10)
+
+$title = "Forward/backward asymmetry"
+$description = "Forward/backward asymmetry $A_{fb}$ of the outgoing muon"
+$label = "A_{fb}"
+$physical_unit = ""
+observable a_fb
+
+analysis = 
+  record angular_distribution (eval Theta / 1 degree [e2])
+  and
+  record a_fb (eval sgn (cos (Theta)) [e2])
+
+
+n_events = 10
+$sample = "qedtest"
+sample_format = ascii, debug, hepevt, short, long, athena, lhef, lha, hepmc
+
+simulate (qedtest_eemm)
+
+write_analysis
+
+$analysis_filename = "qedtest"
+write_analysis
+
+

@@ -1,0 +1,13 @@
+process ilc_zh = e1, E1 => Z, H
+process ilc_ww = A, A => "W+", "W-"
+
+compile
+
+sqrts = 500 GeV
+
+beams = e1, E1 => isr
+integrate (ilc_zh)
+
+epa_x_min = 0.1
+beams = e1, E1 => epa
+integrate (ilc_ww)

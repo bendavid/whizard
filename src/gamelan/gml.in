@@ -1,0 +1,52 @@
+########################################################################
+#
+# Copyright (C) 1999-2010 by 
+#     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+#     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
+#     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+#
+# WHIZARD is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by 
+# the Free Software Foundation; either version 2, or (at your option)
+# any later version.
+#
+# WHIZARD is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+#
+########################################################################
+
+#!@SHELL@
+# Run GAMELAN on file $1, after preprocessing 
+
+MP=@MPOST@
+MPFILE=`expr $1 : '\(.*\)\.mp$' \| $1`
+if test -f ./gamelan.mem; then
+  GMLDIR=.
+elif test -f TESTFLAG; then
+  GMLDIR=@BUILDDIR@/src/gamelan
+else 
+  GMLDIR=@PKGLIBDIR@/gamelan
+fi
+
+export TEX=@LATEX@
+export MPINPUTS="$GMLDIR:$MPINPUTS"
+
+@SED@ \
+-e's/<<!/ verbatimtex /g' \
+-e's/<</ btex /g' \
+-e's/>>/ etex /g' \
+-e's/#\([+-]\{0,1\}[0-9][0-9]*\.[0-9]*[A-Za-z][+-]*[0-9][0-9]*\)/#"\1"/g' \
+-e's/#\([+-]\{0,1\}[0-9][0-9]*[A-Za-z][+-]*[0-9][0-9]*\)/#"\1"/g' \
+-e's/#\([+-]\{0,1\}\.[0-9][0-9]*[A-Za-z][+-]*[0-9][0-9]*\)/#"\1"/g' \
+-e's/#\([+-]\{0,1\}[0-9][0-9]*\.[0-9]*\)/#"\1"/g' \
+-e's/#\([+-]\{0,1\}\.[0-9][0-9]*\)/#"\1"/g' \
+-e's/#\([+-]\{0,1\}[0-9][0-9]*\)/#"\1"/g' \
+$MPFILE.mp > $MPFILE.$$.tmp && \
+mv $MPFILE.$$.tmp $MPFILE.mp && $MP --jobname=$MPFILE "\\input $GMLDIR/gamelan" "\\input $MPFILE.mp"
+exit 0

@@ -1,0 +1,71 @@
+model = SM
+
+alias n = n1:n2:n3
+alias N = N1:N2:N3
+alias q = u:d:s:c
+alias Q = U:D:S:C
+
+# The Higgsstrahlung process
+process zh = e1, E1 => Z, h
+# The missing-energy channel
+process nnbb = e1, E1 => n, N, b, B
+# Other channels (for the 4-jet channels
+# we combine EW and QCD contributions)
+process qqbb = e1, E1 => q, Q, b, B
+process bbbb = e1, E1 => b, B, b, B
+process eebb = e1, E1 => e1, E1, b, B
+process qqtt = e1, E1 => q, Q, e3, E3
+process bbtt = e1, E1 => b, B, e3, E3
+
+compile
+
+sqrts = 209 GeV
+
+# Set the input parameters
+mH = 115 GeV
+wH = 3.228 MeV
+# Running b mass
+mb = 2.9 GeV
+me = 0
+ms = 0
+mc = 0
+
+cuts = all M >= 10 GeV [q,Q]
+
+integrate (zh) { iterations = 5:5000}
+
+integrate(nnbb,qqbb,bbbb,eebb,
+          qqtt,bbtt) { iterations = 12:20000 }
+
+# Define title etc. as global variables, that will be used by PLOT
+$description =
+  "A WHIZARD 2.0 Example. Using weighted events to speed things up."
+$ylabel = "$N_{\textrm{events}}$"
+
+# Allocate plots
+$title = "Invisible mass distribution in $e^+e^- \to \nu\bar\nu b \bar b$"
+$xlabel = "$M_{\nu\nu}$/GeV"
+histogram m_invisible (70 GeV, 130 GeV, 0.5 GeV)
+
+$title = "$bb$ invariant mass distribution in $e^+e^- \to \nu\bar\nu b \bar b$"
+$xlabel = "$M_{b\bar b}$/GeV"
+histogram m_bb (70 GeV, 130 GeV, 0.5 GeV)
+
+analysis = record m_invisible (eval M [n,N]) and
+	   record m_bb (eval M [b,B])
+
+# To speed things up we use weighted events for demonstration purposes.
+?unweighted = false
+
+luminosity = 100
+
+simulate (nnbb) 
+
+$title = "Dijet invariant mass distribution in $e^+e^- \to q \bar q b \bar b$"
+$xlabel = "$M_{q\bar q}$/GeV"
+histogram m_jj (70 GeV, 130 GeV, 0.5 GeV)
+
+simulate (qqbb) { analysis = record m_jj (eval M / 1 GeV [combine [q,Q]]) }
+
+$analysis_filename = "lep_higgs"
+write_analysis 

@@ -1,0 +1,37 @@
+# $Id:$
+# Validating Jets
+
+alias j = u:U:d:D:g
+process jets_jj = U, u => j, j
+process jets_uu = U, u => U, u
+process jets_dd = U, u => D, d
+process jets_gg = U, u => g, g
+compile
+
+sqrts = 500 GeV
+beams = U, u
+
+cuts = all Pt >= 100 GeV [j]
+ 
+iterations = 3:20000
+
+integrate(jets_jj)
+integrate(jets_uu)
+integrate(jets_dd)
+integrate(jets_gg)
+
+sigma_jj = integral(jets_jj)
+error_jj = error(jets_jj)
+
+sigma___ = integral(jets_uu) + integral(jets_dd) + integral(jets_gg)
+error___ = sqrt(error(jets_uu)**2 + error(jets_dd)**2 + error(jets_gg)**2)
+
+errorsum = sqrt(error_jj**2 + error___**2)
+
+pull = (sigma_jj - sigma___) / errorsum
+
+tolerance = 5*errorsum
+
+echo("Comparing results:")
+show(pull, sigma_jj, sigma___, errorsum, error_jj, error___, tolerance)
+expect(sigma_jj ~~ sigma___)

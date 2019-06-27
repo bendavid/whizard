@@ -1,0 +1,1677 @@
+! WHIZARD 2.0.0 Mon Apr 12 2010
+! 
+! (C) 1999-2010 by 
+!     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+!     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
+!     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+!     with contributions by Christian Speckner, Sebastian Schmidt, 
+!     Daniel Wiesler, Felix Braam
+!
+! WHIZARD is free software; you can redistribute it and/or modify it
+! under the terms of the GNU General Public License as published by 
+! the Free Software Foundation; either version 2, or (at your option)
+! any later version.
+!
+! WHIZARD is distributed in the hope that it will be useful, but
+! WITHOUT ANY WARRANTY; without even the implied warranty of
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! GNU General Public License for more details.
+!
+! You should have received a copy of the GNU General Public License
+! along with this program; if not, write to the Free Software
+! Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! This file has been stripped of most comments.  For documentation, refer
+! to the source 'whizard.nw'
+
+module cascades
+
+  use kinds, only: default !NODEP!
+  use kinds, only: TC, i8, i32 !NODEP!
+  use iso_varying_string, string_t => varying_string !NODEP!
+  use limits, only: CASCADE_SET_FILL_RATIO, MAX_WARN_RESONANCE !NODEP!
+  use file_utils !NODEP!
+  use diagnostics !NODEP!
+  use hashes
+  use pdg_arrays, only: UNDEFINED
+  use models
+  use flavors
+  use phs_forests
+
+  implicit none
+  private
+
+  public :: cascade_set_t
+  public :: cascade_set_is_valid
+  public :: cascade_set_final
+  public :: cascade_set_write_file_format
+  public :: cascade_set_write
+  public :: cascade_set_generate
+  public :: cascade_test
+
+  integer, parameter :: &
+       & NO_MAPPING = 0, S_CHANNEL = 1, T_CHANNEL =  2, U_CHANNEL = -2, &
+       & RADIATION = 3, COLLINEAR = 4, INFRARED = 5
+
+  type :: cascade_t
+     private
+     ! counters
+     integer :: index = 0
+     integer :: grove = 0
+     ! status
+     logical :: active = .false.
+     logical :: complete = .false.
+     logical :: incoming = .false.
+     ! this node
+     integer(TC) :: bincode = 0
+     type(flavor_t) :: flv
+     integer :: pdg = UNDEFINED
+     logical :: is_vector = .false.
+     real(default) :: m_min = 0
+     real(default) :: m_rea = 0
+     real(default) :: m_eff = 0
+     integer :: mapping = NO_MAPPING
+     logical :: on_shell = .false.
+     logical :: resonant = .false.
+     logical :: log_enhanced = .false.
+     logical :: t_channel = .false.
+     ! global tree properties
+     integer :: multiplicity = 0
+     integer :: internal = 0
+     integer :: n_resonances = 0
+     integer :: n_log_enhanced = 0
+     integer :: n_t_channel = -1
+     ! the sub-node tree
+     integer :: depth = 0
+     integer(TC), dimension(:), allocatable :: tree
+     integer, dimension(:), allocatable :: tree_pdg
+     integer, dimension(:), allocatable :: tree_mapping
+     logical, dimension(:), allocatable :: tree_resonant
+     ! branch connections
+     logical :: has_children = .false.
+     type(cascade_t), pointer :: daughter1 => null ()
+     type(cascade_t), pointer :: daughter2 => null ()
+     type(cascade_t), pointer :: mother => null ()
+     ! next in list
+     type(cascade_t), pointer :: next => null ()
+  end type cascade_t
+
+  type :: cascade_p
+     type(cascade_t), pointer :: cascade => null ()
+     type(cascade_p), pointer :: next => null ()
+  end type cascade_p
+
+  type :: hash_entry_t
+     integer(i32) :: hashval = 0
+     integer(i8), dimension(:), allocatable :: key
+     type(cascade_p), pointer :: first => null ()
+     type(cascade_p), pointer :: last => null ()
+  end type hash_entry_t
+
+  type :: cascade_set_t
+     private
+     type(model_t), pointer :: model
+     integer :: n_in, n_out, n_tot
+     integer :: depth_out, depth_tot
+     real(default) :: sqrts = 0
+     real(default) :: m_threshold_s = 0
+     real(default) :: m_threshold_t = 0
+     integer :: off_shell = 0
+     integer :: t_channel = 0
+     integer :: n_groves = 0
+     ! The cascade list
+     type(cascade_t), pointer :: first => null ()
+     type(cascade_t), pointer :: last => null ()
+     type(cascade_t), pointer :: first_t => null ()
+     type(cascade_t), pointer :: first_k => null ()
+     ! The hashtable
+     integer :: n_entries = 0
+     real :: fill_ratio = 0
+     integer :: n_entries_max = 0
+     integer(i32) :: mask = 0
+     logical :: fatal_beam_decay = .true.
+     type(hash_entry_t), dimension(:), allocatable :: entry
+  end type cascade_set_t
+
+
+  interface operator(.disjunct.)
+     module procedure cascade_disjunct
+  end interface
+
+  interface operator(.match.)
+     module procedure pdg_match
+  end interface
+
+contains
+
+  subroutine cascade_init (cascade, depth)
+    type(cascade_t), intent(out) :: cascade
+    integer, intent(in) :: depth
+    integer, save :: index = 0
+    index = cascade_index ()
+    cascade%index = index
+    cascade%depth = depth
+    cascade%active = .true.
+    allocate (cascade%tree (depth))
+    allocate (cascade%tree_pdg (depth))
+    allocate (cascade%tree_mapping (depth))
+    allocate (cascade%tree_resonant (depth))
+  end subroutine cascade_init
+  function cascade_index (seed) result (index)
+    integer :: index
+    integer, intent(in), optional :: seed
+    integer, save :: i = 0
+    if (present (seed))  i = seed
+    i = i + 1
+    index = i
+  end function cascade_index
+
+  subroutine cascade_write_file_format (cascade, unit)
+    type(cascade_t), intent(in) :: cascade
+    integer, intent(in), optional :: unit
+    integer :: u, i
+1   format(3x,A,1x,40(1x,I4))
+2   format(3x,A,1x,I3,1x,A,1x,I7)
+    u = output_unit (unit);  if (u < 0)  return
+    write (u, 1)  "tree", reduced (cascade%tree)
+    do i = 1, cascade%depth
+       select case (cascade%tree_mapping(i))
+       case (NO_MAPPING)
+       case (S_CHANNEL)
+          write(u,2) 'map', &
+               cascade%tree(i), 's_channel', abs (cascade%tree_pdg(i))
+       case (T_CHANNEL)
+          write(u,2) 'map', &
+               cascade%tree(i), 't_channel', abs (cascade%tree_pdg(i))
+       case (U_CHANNEL)
+          write(u,2) 'map', &
+               cascade%tree(i), 'u_channel', abs (cascade%tree_pdg(i))
+       case (RADIATION)
+          write(u,2) 'map', &
+               cascade%tree(i), 'radiation', abs (cascade%tree_pdg(i))
+       case (COLLINEAR)
+          write(u,2) 'map', &
+               cascade%tree(i), 'collinear', abs (cascade%tree_pdg(i))
+       case (INFRARED)
+          write(u,2) 'map', &
+               cascade%tree(i), 'infrared',  abs (cascade%tree_pdg(i))
+       case default
+          call msg_bug (" Impossible mapping mode encountered")
+       end select
+    end do
+  contains
+    function reduced (array)
+      integer(TC), dimension(:), intent(in) :: array
+      integer(TC), dimension(max((size(array)-3)/2, 1)) :: reduced
+      integer :: i, j
+      j = 1
+      do i=1, size(array)
+         if (decay_level(array(i)) > 1) then
+            reduced(j) = array(i)
+            j = j+1
+         end if
+      end do
+    end function reduced
+    function decay_level (k) result (l)
+      integer(TC), intent(in) :: k
+      integer :: l
+      integer :: i
+      l = 0
+      do i = 0, bit_size(k) - 1
+         if (btest(k,i)) l = l + 1
+      end do
+    end function decay_level
+    subroutine start_comment (u)
+      integer, intent(in) :: u
+      write(u, '(1x,A)', advance='no') '!'
+    end subroutine start_comment
+  end subroutine cascade_write_file_format
+
+  subroutine cascade_write_graph_format (cascade, count, unit)
+    type(cascade_t), intent(in) :: cascade
+    integer, intent(in) :: count
+    integer, intent(in), optional :: unit
+    integer :: u
+    integer(TC) :: mask
+    type(string_t) :: left_str, right_str
+    u = output_unit (unit);  if (u < 0)  return
+    mask = 2**((cascade%depth+3)/2) - 1
+    left_str = ""
+    right_str = ""
+    write (u, '(A)') "\begin{minipage}{105pt}"
+    write (u, '(A)') "\vspace{30pt}"
+    write (u, '(A)') "\begin{center}"
+    write (u, '(A)') "\begin{fmfgraph*}(55,55)"
+    call graph_write (cascade, mask)
+    write (u, '(A)') "\fmfleft{" // char (extract (left_str, 2)) // "}"
+    write (u, '(A)') "\fmfright{" // char (extract (right_str, 2)) // "}"
+    write (u, '(A)') "\end{fmfgraph*}\\"
+    write (u, '(A,I5,A)') "\fbox{$", count, "$}"
+    write (u, '(A)') "\end{center}"
+    write (u, '(A)') "\end{minipage}"
+    write (u, '(A)') "%"
+  contains
+    recursive subroutine graph_write (cascade, mask, reverse)
+      type(cascade_t), intent(in) :: cascade
+      integer(TC), intent(in) :: mask
+      logical, intent(in), optional :: reverse
+      logical :: rev
+      rev = .false.;  if (present(reverse))  rev = reverse
+      if (cascade%has_children) then
+         if (.not.rev) then
+            call vertex_write (cascade, cascade%daughter1, mask)
+            call vertex_write (cascade, cascade%daughter2, mask)
+         else
+            call vertex_write (cascade, cascade%daughter2, mask, .true.)
+            call vertex_write (cascade, cascade%daughter1, mask, .true.)
+         end if
+         if (cascade%complete) then
+            call vertex_write (cascade, cascade%mother, mask, .true.)
+            write (u, '(A,I3,A)') &
+                 "\fmfv{d.shape=square}{v", cascade%bincode, "}"
+         end if
+      else
+         if (cascade%incoming) then
+            call external_write (cascade%bincode, &
+                 flavor_get_tex_name (flavor_anti (cascade%flv)), left_str)
+         else
+            call external_write (cascade%bincode, &
+                 flavor_get_tex_name (cascade%flv), right_str)
+         end if
+      end if
+    end subroutine graph_write
+    recursive subroutine vertex_write (cascade, daughter, mask, reverse)
+      type(cascade_t), intent(in) :: cascade, daughter
+      integer(TC), intent(in) :: mask
+      logical, intent(in), optional :: reverse
+      call graph_write (daughter, mask, reverse)
+      if (daughter%has_children) then
+         call line_write (cascade%bincode, daughter%bincode, cascade%flv, &
+              mapping=daughter%mapping)
+      else
+         call line_write (cascade%bincode, daughter%bincode, cascade%flv)
+      end if
+    end subroutine vertex_write
+    subroutine line_write (i1, i2, flv, mapping)
+      integer(TC), intent(in) :: i1, i2
+      type(flavor_t), intent(in) :: flv
+      integer, intent(in), optional :: mapping
+      integer :: k1, k2
+      type(string_t) :: prt_type
+      select case (flavor_get_spin_type (flv))
+      case (SCALAR);       prt_type = "plain"
+      case (SPINOR);       prt_type = "fermion"
+      case (VECTOR);       prt_type = "boson"
+      case (VECTORSPINOR); prt_type = "fermion"
+      case (TENSOR);       prt_type = "dbl_wiggly"
+      case default;        prt_type = "dashes"
+      end select
+      if (flavor_is_antiparticle (flv)) then
+         k1 = i2;  k2 = i1
+      else
+         k1 = i1;  k2 = i2
+      end if
+      if (present (mapping)) then
+         select case (mapping)
+         case (S_CHANNEL)
+            write (u, '(A,I3,A,I3,A)') "\fmf{" // char (prt_type) // &
+                 & ",f=blue,lab=\sm\blue$" // &
+                 & char (flavor_get_tex_name (flv)) // "$}" // &
+                 & "{v", k1, ",v", k2, "}"
+         case (T_CHANNEL, U_CHANNEL)
+            write (u, '(A,I3,A,I3,A)') "\fmf{" // char (prt_type) // &
+                 & ",f=cyan,lab=\sm\cyan$" // &
+                 & char (flavor_get_tex_name (flv)) // "$}" // &
+                 & "{v", k1, ",v", k2, "}"
+         case (RADIATION)
+            write (u, '(A,I3,A,I3,A)') "\fmf{" // char (prt_type) // &
+                 & ",f=green,lab=\sm\green$" // &
+                 & char (flavor_get_tex_name (flv)) // "$}" // &
+                 & "{v", k1, ",v", k2, "}"
+         case (COLLINEAR)
+            write (u, '(A,I3,A,I3,A)') "\fmf{" // char (prt_type) // &
+                 & ",f=magenta,lab=\sm\magenta$" // &
+                 & char (flavor_get_tex_name (flv)) // "$}" // &
+                 & "{v", k1, ",v", k2, "}"
+         case (INFRARED)
+            write (u, '(A,I3,A,I3,A)') "\fmf{" // char (prt_type) // &
+                 & ",f=red,lab=\sm\red$" // &
+                 & char (flavor_get_tex_name (flv)) // "$}" // &
+                 & "{v", k1, ",v", k2, "}"
+         case default
+            write (u, '(A,I3,A,I3,A)') "\fmf{" // char (prt_type) // &
+                 & ",f=black}" // &
+                 & "{v", k1, ",v", k2, "}"
+         end select
+      else
+         write (u, '(A,I3,A,I3,A)') "\fmf{" // char (prt_type) // &
+                 & "}" // &
+                 & "{v", k1, ",v", k2, "}"
+      end if
+    end subroutine line_write
+    subroutine external_write (bincode, name, ext_str)
+      integer(TC), intent(in) :: bincode
+      type(string_t), intent(in) :: name
+      type(string_t), intent(inout) :: ext_str
+      character(len=5) :: str
+      write (str, '(A2,I3)') ",v", bincode
+      ext_str = ext_str // str
+      write (u, '(A,I3,A,I3,A)') "\fmflabel{\sm$" &
+        // char (name) &
+        // "\,(", bincode, ")" &
+        // "$}{v", bincode, "}"
+    end subroutine external_write
+  end subroutine cascade_write_graph_format
+
+  subroutine cascade_write (cascade, unit)
+    type(cascade_t), intent(in) :: cascade
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = output_unit (unit);  if (u < 0)  return
+    write (u, *) 'Cascade #', cascade%index
+    write (u, *) '  Grove:       #', cascade%grove
+    write (u, *) '  act/cmp/inc:  ', &
+         cascade%active, cascade%complete, cascade%incoming
+    write (u, *) '  Bincode:      ', cascade%bincode
+    write (u, "(1x,A)", advance="no") '  Flavor:       '
+    call flavor_write (cascade%flv, unit)
+    write (u, *) '  Active flavor:', cascade%pdg
+    write (u, *) '  Is vector:    ', cascade%is_vector
+    write (u, *) '  Mass (m/r/e): ', &
+         cascade%m_min, cascade%m_rea, cascade%m_eff
+    write (u, *) '  Mapping:      ', cascade%mapping
+    write (u, *) '  res/log/tch:  ', &
+         cascade%resonant, cascade%log_enhanced, cascade%t_channel
+    write (u, *) '  Multiplicity: ', cascade%multiplicity
+    write (u, *) '  n internal:   ', cascade%internal
+    write (u, *) '  n res/log/tch:', &
+         cascade%n_resonances, cascade%n_log_enhanced, cascade%n_t_channel
+    write (u, *) '  Depth:        ', cascade%depth
+    write (u, *) '  Tree:         ', cascade%tree
+    write (u, *) '  Tree(PDG):    ', cascade%tree_pdg
+    write (u, *) '  Tree(mapping):', cascade%tree_mapping
+    write (u, *) '  Tree(res):    ', cascade%tree_resonant
+    if (cascade%has_children) then
+       write (u, *) '  Daughter1/2:  ', &
+            cascade%daughter1%index, cascade%daughter2%index
+    end if
+    if (associated (cascade%mother)) then
+       write (u, *) '  Mother:       ', cascade%mother%index
+    end if
+  end subroutine cascade_write
+
+  subroutine cascade_init_outgoing (cascade, flv, pos, m_thr)
+    type(cascade_t), intent(out) :: cascade
+    type(flavor_t), intent(in) :: flv
+    integer, intent(in) :: pos
+    real(default), intent(in) :: m_thr
+    call cascade_init (cascade, 1)
+    cascade%bincode = ibset (0_TC, pos-1)
+    cascade%flv = flv
+    cascade%pdg = 0
+    cascade%is_vector = flavor_get_spin_type (flv) == VECTOR
+    cascade%m_min = flavor_get_mass (flv)
+    cascade%m_rea = cascade%m_min
+    if (cascade%m_rea >= m_thr) then
+       cascade%m_eff = cascade%m_rea
+    end if
+    cascade%on_shell = .true.
+    cascade%multiplicity = 1
+    cascade%tree(1) = cascade%bincode
+    cascade%tree_pdg(1) = cascade%pdg
+    cascade%tree_mapping(1) = NO_MAPPING
+    cascade%tree_resonant(1) = .false.
+  end subroutine cascade_init_outgoing
+
+  subroutine cascade_init_incoming (cascade, flv, pos, m_thr)
+    type(cascade_t), intent(out) :: cascade
+    type(flavor_t), intent(in) :: flv
+    integer, intent(in) :: pos
+    real(default), intent(in) :: m_thr
+    call cascade_init (cascade, 1)
+    cascade%incoming = .true.
+    cascade%bincode = ibset (0_TC, pos-1)
+    cascade%flv = flavor_anti (flv)
+    cascade%pdg = 0
+    cascade%is_vector = flavor_get_spin_type (flv) == VECTOR
+    cascade%m_min = flavor_get_mass (flv)
+    cascade%m_rea = cascade%m_min
+    if (cascade%m_rea >= m_thr) then
+       cascade%m_eff = cascade%m_rea
+    end if
+    cascade%on_shell = .true.
+    cascade%n_t_channel = 0
+    cascade%tree(1) = cascade%bincode
+    cascade%tree_pdg(1) = cascade%pdg
+    cascade%tree_mapping(1) = NO_MAPPING
+    cascade%tree_resonant(1) = .false.
+  end subroutine cascade_init_incoming
+
+  function cascade_disjunct (cascade1, cascade2) result (flag)
+    logical :: flag
+    type(cascade_t), intent(in) :: cascade1, cascade2
+    flag = iand (cascade1%bincode, cascade2%bincode) == 0
+  end function cascade_disjunct
+
+  subroutine hash_entry_final (hash_entry)
+    type(hash_entry_t), intent(inout) :: hash_entry
+    type(cascade_p), pointer :: current
+    do while (associated (hash_entry%first))
+       current => hash_entry%first
+       hash_entry%first => current%next
+       deallocate (current)
+    end do
+  end subroutine hash_entry_final
+
+  subroutine hash_entry_write (hash_entry, unit)
+    type(hash_entry_t), intent(in) :: hash_entry
+    integer, intent(in), optional :: unit
+    type(cascade_p), pointer :: current
+    integer :: u, i
+    u = output_unit (unit);  if (u < 0)  return
+    write (u, "(1x,A)", advance="no")  "Entry:"
+    do i = 1, size (hash_entry%key)
+       write (u, "(1x,I3)", advance="no")  hash_entry%key(i)
+    end do
+    write (u, "(1x,A)", advance="no")  "->"
+    current => hash_entry%first
+    do while (associated (current))
+       write (u, "(1x,I7)", advance="no") current%cascade%index
+       current => current%next
+    end do
+    write (u, *)
+  end subroutine hash_entry_write
+
+  subroutine hash_entry_add_cascade_ptr (hash_entry, cascade, ok)
+    type(hash_entry_t), intent(inout) :: hash_entry
+    type(cascade_t), intent(in), target :: cascade
+    logical, intent(out), optional :: ok
+    type(cascade_p), pointer :: current
+    if (present (ok)) then
+       ok = .not. hash_entry_contains (hash_entry, cascade)
+       if (.not. ok)  return
+    end if
+    allocate (current)
+    current%cascade => cascade
+    if (associated (hash_entry%last)) then
+       hash_entry%last%next => current
+    else 
+       hash_entry%first => current
+    end if
+    hash_entry%last => current
+  end subroutine hash_entry_add_cascade_ptr
+
+  function hash_entry_contains (hash_entry, cascade) result (flag)
+    logical :: flag
+    type(hash_entry_t), intent(in), target :: hash_entry
+    type(cascade_t), intent(in) :: cascade
+    type(cascade_p), pointer :: current
+    integer, dimension(:), allocatable :: tree_pdg
+    flag = .false.
+    allocate (tree_pdg (size (cascade%tree_pdg)))
+    if (cascade%has_children) then 
+       if (cascade%complete) then
+          where (cascade%tree_mapping == INFRARED .or. &
+               cascade%tree_mapping == COLLINEAR .or. &
+               cascade%tree_mapping == T_CHANNEL .or. &
+               cascade%tree_mapping == U_CHANNEL)
+             tree_pdg = 0
+          elsewhere
+             tree_pdg = cascade%tree_pdg
+          end where
+       else
+          tree_pdg = cascade%tree_pdg
+       end if
+    else
+       tree_pdg = flavor_get_pdg (cascade%flv)
+    end if
+    current => hash_entry%first
+    do while (associated (current))
+       if (current%cascade%depth == cascade%depth) then
+          if (all (current%cascade%tree == cascade%tree)) then
+             if (all (current%cascade%tree_mapping == cascade%tree_mapping)) &
+                  then
+                if (all (current%cascade%tree_pdg .match. tree_pdg)) then
+                   flag = .true.;  return
+                end if
+             end if
+          end if
+       end if
+       current => current%next
+    end do
+  end function hash_entry_contains
+
+  function hash_entry_get_similar_p (hash_entry, cascade) result (current)
+    type(cascade_p), pointer :: current
+    type(hash_entry_t), intent(in), target :: hash_entry
+    type(cascade_t), intent(in) :: cascade
+    current => hash_entry%first
+    do while (associated (current))
+       if (current%cascade%depth == cascade%depth) then
+          if (all (current%cascade%tree == cascade%tree)) then
+             if (all (current%cascade%tree_pdg &
+                  .match. cascade%tree_pdg))  return
+          end if
+       end if
+       current => current%next
+    end do
+  end function hash_entry_get_similar_p
+
+  elemental function pdg_match (pdg1, pdg2) result (flag)
+    logical :: flag
+    integer(TC), intent(in) :: pdg1, pdg2
+    select case (pdg1)
+    case (0)
+       flag = .true.
+    case default
+       select case (pdg2)
+       case (0)
+          flag = .true.
+       case default
+          flag = pdg1 == pdg2
+       end select
+    end select
+  end function pdg_match
+
+  function cascade_set_is_valid (cascade_set) result (flag)
+    logical :: flag
+    type(cascade_set_t), intent(in) :: cascade_set
+    type(cascade_t), pointer :: cascade
+    flag = .false.
+    cascade => cascade_set%first_k
+    do while (associated (cascade))
+       if (cascade%active .and. cascade%complete) then
+          flag = .true.
+          return
+       end if
+       cascade => cascade%next
+    end do
+  end function cascade_set_is_valid
+
+  subroutine cascade_set_init (cascade_set, model, n_in, n_out, phs_par, &
+        fatal_beam_decay)
+    type(cascade_set_t), intent(out) :: cascade_set
+    type(model_t), intent(in), target :: model
+    integer, intent(in) :: n_in, n_out
+    type(phs_parameters_t), intent(in) :: phs_par
+    logical, intent(in) :: fatal_beam_decay
+    integer :: size_guess
+    cascade_set%model => model
+    cascade_set%n_in = n_in
+    cascade_set%n_out = n_out
+    cascade_set%n_tot = n_in + n_out
+    select case (n_in)
+    case (1);  cascade_set%depth_out = 2 * n_out - 3
+    case (2);  cascade_set%depth_out = 2 * n_out - 1
+    end select
+    cascade_set%depth_tot = 2 * cascade_set%n_tot - 3
+    cascade_set%sqrts = phs_par%sqrts
+    cascade_set%m_threshold_s = phs_par%m_threshold_s
+    cascade_set%m_threshold_t = phs_par%m_threshold_t
+    cascade_set%off_shell = phs_par%off_shell
+    cascade_set%t_channel = phs_par%t_channel
+    cascade_set%fill_ratio = CASCADE_SET_FILL_RATIO
+    size_guess = ishft (256, min (2 * (cascade_set%n_tot - 3), 22))
+    cascade_set%n_entries_max = size_guess * cascade_set%fill_ratio
+    cascade_set%mask = size_guess - 1
+    allocate (cascade_set%entry (0:cascade_set%mask))
+    cascade_set%fatal_beam_decay = fatal_beam_decay
+  end subroutine cascade_set_init
+    
+  subroutine cascade_set_final (cascade_set)
+    type(cascade_set_t), intent(inout), target :: cascade_set
+    type(cascade_t), pointer :: current
+    deallocate (cascade_set%entry)
+    do while (associated (cascade_set%first))
+       current => cascade_set%first
+       cascade_set%first => cascade_set%first%next
+       deallocate (current)
+    end do
+  end subroutine cascade_set_final
+
+  subroutine cascade_set_write_file_format (cascade_set, unit)
+    type(cascade_set_t), intent(in), target :: cascade_set
+    integer, intent(in), optional :: unit
+    type(cascade_t), pointer :: cascade
+    integer :: u, grove, count
+    logical :: first_in_grove
+    u = output_unit (unit);  if (u < 0)  return
+    count = 0
+    do grove = 1, cascade_set%n_groves
+       first_in_grove = .true.
+       cascade => cascade_set%first_k
+       do while (associated (cascade))
+          if (cascade%active .and. cascade%complete) then
+             if (cascade%grove == grove) then
+                if (first_in_grove) then
+                   first_in_grove = .false.
+                   write (u, *)
+                   write (u, "(1x,'!',1x,A,I2,A)", advance='no') &
+                      'Multiplicity =', cascade%multiplicity, ","
+                   select case (cascade%n_resonances)
+                   case (0)
+                      write (u, '(1x,A)', advance='no') 'no resonances, '
+                   case (1)
+                      write (u, '(1x,A)', advance='no') ' 1 resonance,  '
+                   case default
+                      write (u, '(1x,I2,1x,A)', advance='no') &
+                           cascade%n_resonances, 'resonances, '
+                   end select
+                   write (u, '(1x,I2,1x,A)', advance='no') &
+                        cascade%n_log_enhanced, 'logs, '
+                   select case (cascade%n_t_channel)
+                   case (0);  write (u, '(1x,A)') 's-channel graph'
+                   case (1);  write (u, '(1x,A)') ' 1 t-channel line'
+                   case default
+                      write(u,'(1x,I2,1x,A)') &
+                           cascade%n_t_channel, 't-channel lines'
+                   end select
+                   write (u, '(1x,A,I3)') 'grove #', grove
+                end if
+                count = count + 1
+                write (u, "(1x,'!',1x,A,1x)", advance="no")  "Channel #"
+                write (u, *)  count
+                call cascade_write_file_format (cascade, u)
+             end if
+          end if
+          cascade => cascade%next
+       end do
+    end do
+  end subroutine cascade_set_write_file_format
+
+  subroutine cascade_set_write_graph_format (cascade_set, filename, unit)
+    type(cascade_set_t), intent(in), target :: cascade_set
+    type(string_t), intent(in) :: filename
+    integer, intent(in), optional :: unit
+    type(cascade_t), pointer :: cascade
+    integer :: u, grove, count, pgcount
+    logical :: first_in_grove
+    u = output_unit (unit);  if (u < 0)  return
+    write (u, '(A)') "\documentclass[10pt]{article}"
+    write (u, '(A)') "\usepackage{feynmp}"
+    write (u, '(A)') "\usepackage{color}"
+    write (u, *)
+    write (u, '(A)') "\textwidth 18.5cm"
+    write (u, '(A)') "\evensidemargin -1.5cm"
+    write (u, '(A)') "\oddsidemargin -1.5cm"
+    write (u, *)
+    write (u, '(A)') "\newcommand{\blue}{\color{blue}}"
+    write (u, '(A)') "\newcommand{\green}{\color{green}}"
+    write (u, '(A)') "\newcommand{\red}{\color{red}}"
+    write (u, '(A)') "\newcommand{\magenta}{\color{magenta}}"
+    write (u, '(A)') "\newcommand{\cyan}{\color{cyan}}"
+    write (u, '(A)') "\newcommand{\sm}{\footnotesize}"
+    write (u, '(A)') "\setlength{\parindent}{0pt}"
+    write (u, '(A)') "\setlength{\parsep}{20pt}"
+    write (u, *)
+    write (u, '(A)') "\begin{document}"
+    write (u, '(A)') "\begin{fmffile}{" // char (filename) // "}"
+    write (u, '(A)') "\fmfcmd{color magenta; magenta = red + blue;}"
+    write (u, '(A)') "\fmfcmd{color cyan; cyan = green + blue;}"
+    write (u, '(A)') "\begin{fmfshrink}{0.5}"
+    write (u, '(A)') "\begin{flushleft}"
+    write (u, *)
+    write (u, '(A)') "\noindent" // &
+         & "\textbf{\large\texttt{WHIZARD} phase space channels}" // &
+         & "\hfill\today"
+    write (u, *)
+    write (u, '(A)') "\vspace{10pt}"
+!    call write_process_tex_form (u, process_id, code, n_in, n_out)
+    write (u, *)
+    write (u, '(A)') "\textbf{Color code:} " // &
+         & "{\blue resonance,} " // &
+         & "{\cyan t-channel,} " // &
+         & "{\green radiation,} " // &
+         & "{\red infrared,} " // &
+         & "{\magenta collinear,} " // &
+         & "external/off-shell"
+    write (u, *)
+    write (u, '(A)') "\vspace{-20pt}"
+    count = 0
+    pgcount = 0
+    do grove = 1, cascade_set%n_groves
+       first_in_grove = .true.
+       cascade => cascade_set%first
+       do while (associated (cascade))
+          if (cascade%active .and. cascade%complete) then
+             if (cascade%grove == grove) then
+                if (first_in_grove) then
+                   first_in_grove = .false.
+                   write (u, *)
+                   write (u, '(A)') "\vspace{20pt}"
+                   write (u, '(A)') "\begin{tabular}{l}"
+                   write (u, '(A,I5,A)') &
+                        & "\fbox{\bf Grove \boldmath$", grove, "$} \\[10pt]"
+                   write (u, '(A,I1,A)') "Multiplicity: ", &
+                        cascade%multiplicity, "\\"
+                   write (u, '(A,I1,A)') "Resonances:   ", &
+                        cascade%n_resonances, "\\"
+                   write (u, '(A,I1,A)') "Log-enhanced: ", &
+                        cascade%n_log_enhanced, "\\"
+                   write (u, '(A,I1,A)') "t-channel:    ", &
+                        cascade%n_t_channel, ""
+                   write (u, '(A)') "\end{tabular}"
+                end if
+                count = count + 1
+                call cascade_write_graph_format (cascade, count, unit)
+                if (pgcount >= 250) then
+                   write (u, '(A)') "\clearpage"
+                   pgcount = 0
+                end if
+             end if
+          end if
+          cascade => cascade%next
+       end do
+    end do
+    write (u, '(A)') "\end{flushleft}"
+    write (u, '(A)') "\end{fmfshrink}"
+    write (u, '(A)') "\end{fmffile}"
+    write (u, '(A)') "\end{document}"
+ end subroutine cascade_set_write_graph_format
+
+  subroutine cascade_set_write (cascade_set, unit, active_only, complete_only)
+    type(cascade_set_t), intent(in), target :: cascade_set
+    integer, intent(in), optional :: unit
+    logical, intent(in), optional :: active_only, complete_only
+    logical :: active, complete
+    type(cascade_t), pointer :: cascade
+    integer :: u, i
+    u = output_unit (unit);  if (u < 0)  return
+    active = .true.;  if (present (active_only))  active = active_only
+    complete = .false.;  if (present (complete_only))  complete = complete_only
+    write (u, *) "Cascade set:"
+    write (u, "(3x,A)", advance="no")  "Model:"
+    if (associated (cascade_set%model)) then
+       write (u, "(1x,A)") char (model_get_name (cascade_set%model))
+    else
+       write (u, "(1x,A)") "[none]"
+    end if
+    write (u, "(3x,A)", advance="no")  "n_in/out/tot  ="
+    write (u, *)  cascade_set%n_in, cascade_set%n_out, cascade_set%n_tot
+    write (u, "(3x,A)", advance="no")  "depth_out/tot ="
+    write (u, *)  cascade_set%depth_out, cascade_set%depth_tot
+    write (u, "(3x,A)", advance="no")  "mass thr(s/t) ="
+    write (u, *)  cascade_set%m_threshold_s, cascade_set%m_threshold_t
+    write (u, "(3x,A)", advance="no")  "off shell     ="
+    write (u, *)  cascade_set%off_shell
+    write (u, "(3x,A)", advance="no")  "n_groves      ="
+    write (u, *)  cascade_set%n_groves
+    write (u, *)
+    write (u, *) "Cascade list:"
+    if (associated (cascade_set%first)) then
+       cascade => cascade_set%first
+       do while (associated (cascade))
+          if (active .and. .not. cascade%active)  cycle
+          if (complete .and. .not. cascade%complete)  cycle
+          call cascade_write (cascade, unit)
+          cascade => cascade%next
+       end do
+    else
+       write (u, *) "[empty]"
+    end if
+    write (u, *) "Hash array"
+    write (u, "(3x,A)", advance="no")  "n_entries     ="
+    write (u, *)  cascade_set%n_entries
+    write (u, "(3x,A)", advance="no")  "fill_ratio    ="
+    write (u, *)  cascade_set%fill_ratio
+    write (u, "(3x,A)", advance="no")  "n_entries_max ="
+    write (u, *)  cascade_set%n_entries_max
+    write (u, "(3x,A)", advance="no")  "mask          ="
+    write (u, *)  cascade_set%mask
+    do i = 0, ubound (cascade_set%entry, 1)
+       if (allocated (cascade_set%entry(i)%key)) then
+          write (u, *) i
+          call hash_entry_write (cascade_set%entry(i), u)
+       end if
+    end do
+  end subroutine cascade_set_write
+
+  subroutine cascade_set_add (cascade_set, cascade, ok)
+    type(cascade_set_t), intent(inout), target :: cascade_set
+    type(cascade_t), intent(in), target :: cascade
+    logical, intent(out) :: ok
+    integer(i8), dimension(1) :: mold
+    call cascade_set_hash_insert &
+         (cascade_set, transfer (cascade%tree, mold), cascade, ok)
+    if (ok)  call cascade_set_list_add (cascade_set, cascade)
+  end subroutine cascade_set_add
+
+  subroutine cascade_set_list_add (cascade_set, cascade)
+    type(cascade_set_t), intent(inout) :: cascade_set
+    type(cascade_t), intent(in), target :: cascade
+    if (associated (cascade_set%last)) then
+       cascade_set%last%next => cascade
+    else
+       cascade_set%first => cascade
+    end if
+    cascade_set%last => cascade
+  end subroutine cascade_set_list_add
+
+  subroutine cascade_set_hash_insert (cascade_set, key, cascade, ok)
+    type(cascade_set_t), intent(inout), target :: cascade_set
+    integer(i8), dimension(:), intent(in) :: key
+    type(cascade_t), intent(in), target :: cascade
+    logical, intent(out) :: ok
+    integer(i32) :: h
+    if (cascade_set%n_entries >= cascade_set%n_entries_max) &
+         call cascade_set_hash_expand (cascade_set)
+    h = hash (key)
+    call cascade_set_hash_insert_rec (cascade_set, h, h, key, cascade, ok)
+  end subroutine cascade_set_hash_insert
+
+  subroutine cascade_set_hash_expand (cascade_set)
+    type(cascade_set_t), intent(inout), target :: cascade_set
+    type(hash_entry_t), dimension(:), allocatable, target :: table_tmp
+    type(cascade_p), pointer :: current
+    integer :: i, s
+    allocate (table_tmp (0:cascade_set%mask))
+    table_tmp = cascade_set%entry
+    deallocate (cascade_set%entry)
+    s = 2 * size (table_tmp)
+    cascade_set%n_entries = 0
+    cascade_set%n_entries_max = s * cascade_set%fill_ratio
+    cascade_set%mask = s - 1
+    allocate (cascade_set%entry (0:cascade_set%mask))
+    do i = 0, ubound (table_tmp, 1)
+       current => table_tmp(i)%first
+       do while (associated (current))
+          call cascade_set_hash_insert_rec &
+               (cascade_set, table_tmp(i)%hashval, table_tmp(i)%hashval, &
+                table_tmp(i)%key, current%cascade)
+          current => current%next
+       end do
+    end do
+  end subroutine cascade_set_hash_expand
+
+  recursive subroutine cascade_set_hash_insert_rec &
+       (cascade_set, h, hashval, key, cascade, ok)
+    type(cascade_set_t), intent(inout) :: cascade_set
+    integer(i32), intent(in) :: h, hashval
+    integer(i8), dimension(:), intent(in) :: key
+    type(cascade_t), intent(in), target :: cascade
+    logical, intent(out), optional :: ok
+    integer(i32) :: i
+    i = iand (h, cascade_set%mask)
+    if (allocated (cascade_set%entry(i)%key)) then
+       if (size (cascade_set%entry(i)%key) /= size (key)) then
+          call cascade_set_hash_insert_rec &
+               (cascade_set, h + 1, hashval, key, cascade, ok)
+       else if (any (cascade_set%entry(i)%key /= key)) then
+          call cascade_set_hash_insert_rec &
+               (cascade_set, h + 1, hashval, key, cascade, ok)
+       else
+          call hash_entry_add_cascade_ptr (cascade_set%entry(i), cascade, ok)
+       end if
+    else
+       cascade_set%entry(i)%hashval = hashval
+       allocate (cascade_set%entry(i)%key (size (key)))
+       cascade_set%entry(i)%key = key
+       call hash_entry_add_cascade_ptr (cascade_set%entry(i), cascade, ok)
+       cascade_set%n_entries = cascade_set%n_entries + 1
+    end if
+  end subroutine cascade_set_hash_insert_rec
+
+  subroutine cascade_set_add_outgoing (cascade_set, flv)
+    type(cascade_set_t), intent(inout), target :: cascade_set
+    type(flavor_t), dimension(:,:), intent(in) :: flv
+    integer :: pos, prc, n_out, n_prc
+    type(cascade_t), pointer :: cascade
+    logical :: ok
+    n_out = size (flv, dim=1)
+    n_prc = size (flv, dim=2)
+    do prc = 1, n_prc
+       do pos = 1, n_out
+          allocate (cascade)
+          call cascade_init_outgoing &
+               (cascade, flv(pos,prc), pos, cascade_set%m_threshold_s)
+          call cascade_set_add (cascade_set, cascade, ok)
+          if (.not. ok) then
+             deallocate (cascade)
+          end if
+       end do
+    end do
+  end subroutine cascade_set_add_outgoing
+
+  subroutine cascade_set_add_incoming (cascade_set, n1, n2, pos, flv)
+    type(cascade_set_t), intent(inout), target :: cascade_set
+    integer, intent(out) :: n1, n2
+    integer, intent(in) :: pos
+    type(flavor_t), dimension(:), intent(in) :: flv
+    integer :: prc, n_prc
+    type(cascade_t), pointer :: cascade
+    logical :: ok
+    n1 = 0
+    n2 = 0
+    n_prc = size (flv)
+    do prc = 1, n_prc
+       allocate (cascade)
+       call cascade_init_incoming &
+            (cascade, flv(prc), pos, cascade_set%m_threshold_t)
+       call cascade_set_add (cascade_set, cascade, ok)
+       if (ok) then
+          if (n1 == 0)  n1 = cascade%index
+          n2 = cascade%index
+          if (.not. associated (cascade_set%first_t)) then
+             cascade_set%first_t => cascade
+          end if
+       else
+          deallocate (cascade)
+       end if
+    end do
+  end subroutine cascade_set_add_incoming
+
+  subroutine cascade_match_pair (cascade_set, cascade1, cascade2, s_channel)
+    type(cascade_set_t), intent(inout), target :: cascade_set
+    type(cascade_t), intent(in), target :: cascade1, cascade2
+    logical, intent(in) :: s_channel
+    integer, dimension(:), allocatable :: pdg3
+    integer :: i, depth_max
+    type(flavor_t) :: flv
+    if (s_channel) then
+       depth_max = cascade_set%depth_out
+    else
+       depth_max = cascade_set%depth_tot
+    end if
+    if (cascade1%depth + cascade2%depth < depth_max) then
+       call model_match_vertex (cascade_set%model, &
+            flavor_get_pdg (cascade1%flv), &
+            flavor_get_pdg (cascade2%flv), &
+            pdg3)
+       do i = 1, size (pdg3)
+          call flavor_init (flv, pdg3(i), cascade_set%model)
+          if (s_channel) then
+             call cascade_combine_s (cascade_set, cascade1, cascade2, flv)
+          else
+             call cascade_combine_t (cascade_set, cascade1, cascade2, flv)
+          end if
+       end do
+       deallocate (pdg3)
+    end if
+  end subroutine cascade_match_pair
+
+  subroutine cascade_match_triplet &
+       (cascade_set, cascade1, cascade2, cascade3, s_channel)
+    type(cascade_set_t), intent(inout), target :: cascade_set
+    type(cascade_t), intent(in), target :: cascade1, cascade2, cascade3
+    logical, intent(in) :: s_channel
+    integer :: depth_max
+    depth_max = cascade_set%depth_tot
+    if (cascade1%depth + cascade2%depth + cascade3%depth == depth_max) then
+       if (model_check_vertex (cascade_set%model, &
+            flavor_get_pdg (cascade1%flv), &
+            flavor_get_pdg (cascade2%flv), &
+            flavor_get_pdg (cascade3%flv))) then
+          call cascade_combine_keystone &
+               (cascade_set, cascade1, cascade2, cascade3, s_channel)
+       end if
+    end if
+  end subroutine cascade_match_triplet
+
+  subroutine cascade_combine_s (cascade_set, cascade1, cascade2, flv)
+    type(cascade_set_t), intent(inout), target :: cascade_set
+    type(cascade_t), intent(in), target :: cascade1, cascade2
+    type(flavor_t), intent(in) :: flv
+    type(cascade_t), pointer :: cascade3, cascade4
+    logical :: keep
+    keep = .false.
+    allocate (cascade3)
+    call cascade_init (cascade3, cascade1%depth + cascade2%depth + 1)
+    cascade3%bincode = ior (cascade1%bincode, cascade2%bincode)
+    cascade3%flv = flavor_anti (flv)
+    cascade3%pdg = flavor_get_pdg (cascade3%flv)
+    cascade3%is_vector = flavor_get_spin_type (flv) == VECTOR
+    cascade3%m_min = cascade1%m_min + cascade2%m_min
+    cascade3%m_rea = flavor_get_mass (flv)
+    if (cascade3%m_rea > cascade_set%m_threshold_s) then
+       cascade3%m_eff = cascade3%m_rea
+    end if
+    ! Potentially resonant cases [sqrts = m_rea for on-shell decay]
+    if (cascade3%m_rea > cascade3%m_min &
+         .and. cascade3%m_rea <= cascade_set%sqrts) then
+       if (flavor_get_width (flv) /= 0) then
+          if (cascade1%on_shell .or. cascade2%on_shell) then
+             keep = .true.
+             cascade3%mapping = S_CHANNEL
+             cascade3%resonant = .true.
+          end if
+       else
+          call warn_decay (flv)
+       end if
+    ! Collinear and IR singular cases
+    else if (cascade3%m_rea < cascade_set%sqrts) then
+       ! Massless splitting
+       if (cascade1%m_eff == 0 .and. cascade2%m_eff == 0 &
+            .and. cascade3%depth <= 3) then
+          keep = .true.
+          cascade3%log_enhanced = .true.
+          if (cascade3%is_vector) then
+             if (cascade1%is_vector .and. cascade2%is_vector) then
+                cascade3%mapping = COLLINEAR   ! three-vector-vertex
+             else
+                cascade3%mapping = INFRARED    ! vector splitting into matter
+             end if
+          else
+             if (cascade1%is_vector .or. cascade2%is_vector) then
+                cascade3%mapping = COLLINEAR   ! vector radiation off matter
+             else
+                cascade3%mapping = INFRARED    ! scalar radiation/splitting
+             end if
+          end if
+       ! IR radiation off massive particle
+       else if (cascade3%m_eff > 0 .and. cascade1%m_eff > 0 &
+            .and. cascade2%m_eff == 0 &
+            .and. (cascade1%on_shell .or. cascade1%mapping == RADIATION) &
+            .and. abs (cascade3%m_eff - cascade1%m_eff) &
+                       < cascade_set%m_threshold_s) &
+            then
+          keep = .true.
+          cascade3%log_enhanced = .true.
+          cascade3%mapping = RADIATION
+       else if (cascade3%m_eff > 0 .and. cascade2%m_eff > 0 &
+            .and. cascade1%m_eff == 0 &
+            .and. (cascade2%on_shell .or. cascade2%mapping == RADIATION) &
+            .and. abs (cascade3%m_eff - cascade2%m_eff) &
+                  < cascade_set%m_threshold_s) &
+            then
+          keep = .true.
+          cascade3%log_enhanced = .true.
+          cascade3%mapping = RADIATION
+       end if
+    end if
+    ! Non-singular cases, including failed resonances
+    if (.not. keep) then
+       ! Two on-shell particles from a virtual mother
+       if (cascade1%on_shell .or. cascade2%on_shell) then
+          keep = .true.
+          cascade3%m_eff = max (cascade3%m_min, &
+                                cascade1%m_eff + cascade2%m_eff)
+          if (cascade3%m_eff < cascade_set%m_threshold_s) then
+             cascade3%m_eff = 0
+          end if
+       end if
+    end if
+    ! Complete and register the cascade (two in case of resonance)
+    if (keep) then
+       cascade3%on_shell = cascade3%resonant .or. cascade3%log_enhanced
+       if (cascade3%resonant) then
+          cascade3%pdg = flavor_get_pdg (cascade3%flv)
+          allocate (cascade4)
+          cascade4 = cascade3
+          cascade4%index = cascade_index ()
+          call cascade_fusion (cascade_set, cascade1, cascade2, cascade3)
+          cascade4%pdg = UNDEFINED
+          cascade4%mapping = NO_MAPPING
+          cascade4%resonant = .false.
+          cascade4%on_shell = .false.
+          call cascade_fusion (cascade_set, cascade1, cascade2, cascade4)
+       else
+          call cascade_fusion (cascade_set, cascade1, cascade2, cascade3)
+       end if
+    else
+       deallocate (cascade3)
+    end if
+  contains
+    subroutine warn_decay (flv)
+      type(flavor_t), intent(in) :: flv
+      integer :: i
+      integer, dimension(MAX_WARN_RESONANCE), save :: warned_code = 0
+      LOOP_WARNED: do i = 1, MAX_WARN_RESONANCE
+         if (warned_code(i) == 0) then
+            warned_code(i) = flavor_get_pdg (flv)
+            write (msg_buffer, "(A)") &
+                 & " Intermediate decay of zero-width particle " &
+                 & // char (flavor_get_name (flv)) &
+                 & // " may be possible."
+            call msg_warning
+            exit LOOP_WARNED
+         else if (warned_code(i) == flavor_get_pdg (flv)) then
+            exit LOOP_WARNED
+         end if
+      end do LOOP_WARNED
+    end subroutine warn_decay
+  end subroutine cascade_combine_s
+
+  subroutine cascade_combine_t (cascade_set, cascade1, cascade2, flv)
+    type(cascade_set_t), intent(inout), target :: cascade_set
+    type(cascade_t), intent(in), target :: cascade1, cascade2
+    type(flavor_t), intent(in) :: flv
+    type(cascade_t), pointer :: cascade3
+    allocate (cascade3)
+    call cascade_init (cascade3, cascade1%depth + cascade2%depth + 1)
+    cascade3%bincode = ior (cascade1%bincode, cascade2%bincode)
+    cascade3%flv = flavor_anti (flv)
+    cascade3%pdg = flavor_get_pdg (cascade3%flv)
+    cascade3%is_vector = flavor_get_spin_type (flv) == VECTOR
+    if (cascade1%incoming) then
+       cascade3%m_min = cascade2%m_min
+    else
+       cascade3%m_min = cascade1%m_min + cascade2%m_min
+    end if
+    cascade3%m_rea = flavor_get_mass (flv)
+    if (cascade3%m_rea > cascade_set%m_threshold_t) then
+       cascade3%m_eff = max (cascade3%m_rea, cascade2%m_eff)
+    else if (cascade2%m_eff > cascade_set%m_threshold_t) then
+       cascade3%m_eff = cascade2%m_eff
+    else
+       cascade3%m_eff = 0
+    end if
+    ! Allowed decay of beam particle
+    if (cascade1%incoming &
+         .and. cascade1%m_rea > cascade2%m_rea + cascade3%m_rea) then
+         call beam_decay (cascade_set%fatal_beam_decay)
+    ! Massless splitting
+    else if (cascade1%m_eff == 0 &
+         .and. cascade2%m_eff < cascade_set%m_threshold_t &
+         .and. cascade3%m_eff == 0) then
+       cascade3%mapping = U_CHANNEL
+       cascade3%log_enhanced = .true.
+    ! IR radiation off massive particle
+    else if (cascade1%m_eff /= 0 .and. cascade2%m_eff == 0 &
+         .and. cascade3%m_eff /= 0 &
+         .and. (cascade1%on_shell .or. cascade1%mapping == RADIATION) &
+         .and. abs (cascade1%m_eff - cascade3%m_eff) &
+               < cascade_set%m_threshold_t) &
+         then
+       cascade3%pdg = flavor_get_pdg (flv)
+       cascade3%log_enhanced = .true.
+       cascade3%mapping = RADIATION
+    end if
+    cascade3%t_channel = .true.
+    call cascade_fusion (cascade_set, cascade1, cascade2, cascade3)
+  contains
+    subroutine beam_decay (fatal_beam_decay)
+      logical, intent(in) :: fatal_beam_decay
+      write (msg_buffer, "(1x,A,1x,'->',1x,A,1x,A)") &
+           char (flavor_get_name (cascade1%flv)), &
+           char (flavor_get_name (cascade3%flv)), &
+           char (flavor_get_name (cascade2%flv))
+      call msg_message
+      write (msg_buffer, "(1x,'mass(',A,') =',1x,E17.10)") &
+           char (flavor_get_name (cascade1%flv)), cascade1%m_rea
+      call msg_message
+      write (msg_buffer, "(1x,'mass(',A,') =',1x,E17.10)") &
+           char (flavor_get_name (cascade3%flv)), cascade3%m_rea
+      call msg_message
+      write (msg_buffer, "(1x,'mass(',A,') =',1x,E17.10)") &
+           char (flavor_get_name (cascade2%flv)), cascade2%m_rea
+      call msg_message
+      if (fatal_beam_decay) then
+         call msg_fatal (" Phase space: Initial beam particle can decay")
+      else
+         call msg_warning (" Phase space: Initial beam particle can decay")
+      end if 
+    end subroutine beam_decay
+  end subroutine cascade_combine_t
+
+  subroutine cascade_combine_keystone &
+       (cascade_set, cascade1, cascade2, cascade3, s_channel)
+    type(cascade_set_t), intent(inout), target :: cascade_set
+    type(cascade_t), intent(in), target :: cascade1, cascade2, cascade3
+    logical, intent(in) :: s_channel
+    type(cascade_t), pointer :: cascade4, cascade0
+    logical :: keep, ok
+    keep = .false.
+    allocate (cascade4)
+    call cascade_init &
+         (cascade4, cascade1%depth + cascade2%depth + cascade3%depth)
+    cascade4%complete = .true.
+!     cascade4%bincode = ior (ior (cascade1%bincode, cascade2%bincode), &
+!          cascade3%bincode)
+    if (s_channel) then
+       cascade4%bincode = ior (cascade1%bincode, cascade2%bincode)
+    else
+       cascade4%bincode = cascade3%bincode
+    end if
+    cascade4%flv = cascade3%flv
+    cascade4%pdg = cascade3%pdg
+    cascade4%is_vector = cascade3%is_vector
+    cascade4%m_min = cascade1%m_min + cascade2%m_min
+    cascade4%m_rea = cascade3%m_rea
+    cascade4%m_eff = cascade3%m_rea
+    if (cascade4%m_min < cascade_set%sqrts) then
+       keep = .true.
+    end if
+    if (keep) then
+       if (cascade1%incoming .and. cascade2%log_enhanced) then
+          allocate (cascade0)
+          cascade0 = cascade2
+          cascade0%next => null ()
+          cascade0%index = cascade_index ()
+          cascade0%mapping = NO_MAPPING
+          cascade0%log_enhanced = .false.
+          cascade0%n_log_enhanced = cascade0%n_log_enhanced - 1
+          cascade0%tree_mapping(cascade0%depth) = NO_MAPPING
+          call cascade_keystone &
+               (cascade_set, cascade1, cascade0, cascade3, cascade4, ok)
+          if (ok)  call cascade_set_add (cascade_set, cascade0, ok)
+       else if (cascade1%t_channel .and. cascade1%mapping == U_CHANNEL) then
+          allocate (cascade0)
+          cascade0 = cascade1
+          cascade0%next => null ()
+          cascade0%index = cascade_index ()
+          cascade0%mapping = T_CHANNEL
+          cascade0%tree_mapping(cascade0%depth) = T_CHANNEL
+          call cascade_keystone &
+               (cascade_set, cascade0, cascade2, cascade3, cascade4, ok)
+          if (ok)  call cascade_set_add (cascade_set, cascade0, ok)
+       else
+          call cascade_keystone &
+               (cascade_set, cascade1, cascade2, cascade3, cascade4, ok)
+       end if
+    else
+       deallocate (cascade4)
+    end if
+  end subroutine cascade_combine_keystone
+
+  subroutine cascade_fusion (cascade_set, cascade1, cascade2, cascade3)
+    type(cascade_set_t), intent(inout), target :: cascade_set
+    type(cascade_t), intent(in), target :: cascade1, cascade2
+    type(cascade_t), pointer :: cascade3
+    integer :: i1, i2, i3, i4
+    logical :: ok
+    cascade3%internal = (cascade3%depth - 3) / 2
+    if (cascade3%resonant) then
+       cascade3%multiplicity = 1
+       cascade3%n_resonances = &
+            cascade1%n_resonances + cascade2%n_resonances + 1
+    else
+       cascade3%multiplicity = cascade1%multiplicity + cascade2%multiplicity
+       cascade3%n_resonances = cascade1%n_resonances + cascade2%n_resonances
+    end if
+    if (cascade3%log_enhanced) then
+       cascade3%n_log_enhanced = &
+            cascade1%n_log_enhanced + cascade2%n_log_enhanced + 1
+    else
+       cascade3%n_log_enhanced = &
+            cascade1%n_log_enhanced + cascade2%n_log_enhanced
+    end if
+    if (cascade3%t_channel) then
+       cascade3%n_t_channel = cascade1%n_t_channel + 1
+    end if
+    if (cascade3%internal - cascade3%n_resonances - cascade3%n_log_enhanced &
+         > cascade_set%off_shell) then
+       deallocate (cascade3)
+    else if (cascade3%n_t_channel > cascade_set%t_channel) then
+       deallocate (cascade3)
+    else
+       i1 = cascade1%depth
+       i2 = i1 + 1
+       i3 = i1 + cascade2%depth
+       i4 = cascade3%depth
+       cascade3%tree(:i1) = cascade1%tree
+       where (cascade1%tree_mapping /= NO_MAPPING)
+          cascade3%tree_pdg(:i1) = cascade1%tree_pdg
+       elsewhere
+          cascade3%tree_pdg(:i1) = UNDEFINED
+       end where
+       cascade3%tree_mapping(:i1) = cascade1%tree_mapping
+       cascade3%tree_resonant(:i1) = cascade1%tree_resonant
+       cascade3%tree(i2:i3) = cascade2%tree
+       where (cascade2%tree_mapping /= NO_MAPPING)
+          cascade3%tree_pdg(i2:i3) = cascade2%tree_pdg
+       elsewhere
+          cascade3%tree_pdg(i2:i3) = UNDEFINED
+       end where
+       cascade3%tree_mapping(i2:i3) = cascade2%tree_mapping
+       cascade3%tree_resonant(i2:i3) = cascade2%tree_resonant
+       cascade3%tree(i4) = cascade3%bincode
+       cascade3%tree_pdg(i4) = cascade3%pdg
+       cascade3%tree_mapping(i4) = cascade3%mapping
+       cascade3%tree_resonant(i4) = cascade3%resonant
+       call tree_sort (cascade3%tree, &
+            cascade3%tree_pdg, cascade3%tree_mapping, cascade3%tree_resonant)
+       cascade3%has_children = .true.
+       cascade3%daughter1 => cascade1
+       cascade3%daughter2 => cascade2
+       call cascade_set_add (cascade_set, cascade3, ok)
+       if (.not. ok)  deallocate (cascade3)
+    end if
+  end subroutine cascade_fusion
+
+  subroutine cascade_keystone &
+       (cascade_set, cascade1, cascade2, cascade3, cascade4, ok)
+    type(cascade_set_t), intent(inout), target :: cascade_set
+    type(cascade_t), intent(in), target :: cascade1, cascade2, cascade3
+    type(cascade_t), pointer :: cascade4
+    logical, intent(out) :: ok
+    integer :: i1, i2, i3, i4
+    cascade4%internal = (cascade4%depth - 3) / 2
+    cascade4%multiplicity = cascade1%multiplicity + cascade2%multiplicity
+    cascade4%n_resonances = cascade1%n_resonances + cascade2%n_resonances
+    cascade4%n_log_enhanced = &
+            cascade1%n_log_enhanced + cascade2%n_log_enhanced
+    cascade4%n_t_channel = cascade1%n_t_channel + cascade2%n_t_channel + 1
+    if (cascade4%internal - cascade4%n_resonances - cascade4%n_log_enhanced &
+         > cascade_set%off_shell) then
+       deallocate (cascade4)
+       ok = .false.
+    else if (cascade4%n_t_channel > cascade_set%t_channel) then
+       deallocate (cascade4)
+       ok = .false.
+    else
+       i1 = cascade1%depth
+       i2 = i1 + 1
+       i3 = i1 + cascade2%depth
+       i4 = cascade4%depth
+       cascade4%tree(:i1) = cascade1%tree
+       where (cascade1%tree_mapping /= NO_MAPPING)
+          cascade4%tree_pdg(:i1) = cascade1%tree_pdg
+       elsewhere
+          cascade4%tree_pdg(:i1) = UNDEFINED
+       end where
+       cascade4%tree_mapping(:i1) = cascade1%tree_mapping
+       cascade4%tree_resonant(:i1) = cascade1%tree_resonant
+       cascade4%tree(i2:i3) = cascade2%tree
+       where (cascade2%tree_mapping /= NO_MAPPING)
+          cascade4%tree_pdg(i2:i3) = cascade2%tree_pdg
+       elsewhere
+          cascade4%tree_pdg(i2:i3) = UNDEFINED
+       end where
+       cascade4%tree_mapping(i2:i3) = cascade2%tree_mapping
+       cascade4%tree_resonant(i2:i3) = cascade2%tree_resonant
+!       cascade4%tree(i4) = cascade3%bincode
+       cascade4%tree(i4) = cascade4%bincode
+       cascade4%tree_pdg(i4) = UNDEFINED
+       cascade4%tree_mapping(i4) = NO_MAPPING
+       cascade4%tree_resonant(i4) = .false.
+       call tree_sort (cascade4%tree, &
+            cascade4%tree_pdg, cascade4%tree_mapping, cascade4%tree_resonant)
+       cascade4%has_children = .true.
+       cascade4%daughter1 => cascade1
+       cascade4%daughter2 => cascade2
+       cascade4%mother => cascade3
+       call cascade_set_add (cascade_set, cascade4, ok)
+       if (ok) then
+          if (.not. associated (cascade_set%first_k)) then
+             cascade_set%first_k => cascade4
+          end if
+       else
+          deallocate (cascade4)
+       end if
+    end if
+  end subroutine cascade_keystone
+
+  subroutine tree_sort (tree, pdg, mapping, resonant)
+    integer(TC), dimension(:), intent(inout) :: tree
+    integer, dimension(:), intent(inout) :: pdg, mapping
+    logical, dimension(:), intent(inout) :: resonant
+    integer(TC), dimension(size(tree)) :: tree_tmp
+    integer, dimension(size(pdg)) :: pdg_tmp, mapping_tmp
+    logical, dimension(size(resonant)) :: resonant_tmp
+    integer, dimension(1) :: pos
+    integer :: i
+    tree_tmp = tree
+    pdg_tmp = pdg
+    mapping_tmp = mapping
+    resonant_tmp = resonant
+    do i = size(tree),1,-1
+       pos = maxloc (tree_tmp)
+       tree(i) = tree_tmp (pos(1))
+       pdg(i) = pdg_tmp (pos(1))
+       mapping(i) = mapping_tmp (pos(1))
+       resonant(i) = resonant_tmp (pos(1))
+       tree_tmp(pos(1)) = 0
+    end do
+  end subroutine tree_sort
+
+  subroutine cascade_set_generate_s (cascade_set)
+    type(cascade_set_t), intent(inout), target :: cascade_set
+    type(cascade_t), pointer :: cascade1, cascade2
+    cascade1 => cascade_set%first
+    LOOP1: do while (associated (cascade1))
+       cascade2 => cascade_set%first
+       LOOP2: do while (associated (cascade2))
+          if (cascade2%index >= cascade1%index)  exit LOOP2
+          if (cascade1 .disjunct. cascade2) then
+             call cascade_match_pair (cascade_set, cascade1, cascade2, .true.)
+          end if
+          cascade2 => cascade2%next
+       end do LOOP2
+       cascade1 => cascade1%next
+    end do LOOP1
+  end subroutine cascade_set_generate_s
+
+  subroutine cascade_set_generate_t (cascade_set, pos_seed, pos_target)
+    type(cascade_set_t), intent(inout), target :: cascade_set
+    integer, intent(in) :: pos_seed, pos_target
+    type(cascade_t), pointer :: cascade_seed, cascade_target
+    type(cascade_t), pointer :: cascade1, cascade2
+    integer(TC) :: bc_seed, bc_target
+    bc_seed = ibset (0_TC, pos_seed-1)
+    bc_target = ibset (0_TC, pos_target-1)
+    cascade_seed => cascade_set%first_t
+    LOOP_SEED: do while (associated (cascade_seed))
+       if (cascade_seed%bincode == bc_seed) then
+          cascade_target => cascade_set%first_t
+          LOOP_TARGET: do while (associated (cascade_target))
+             if (cascade_target%bincode == bc_target) then
+                cascade1 => cascade_set%first_t
+                LOOP_T: do while (associated (cascade1))
+                   if ((cascade1 .disjunct. cascade_target) &
+                        .and. .not. (cascade1 .disjunct. cascade_seed)) then
+                      cascade2 => cascade_set%first
+                      LOOP_S: do while (associated (cascade2))
+                         if ((cascade2 .disjunct. cascade_target) &
+                              .and. (cascade2 .disjunct. cascade1)) then
+                            call cascade_match_pair &
+                                 (cascade_set, cascade1, cascade2, .false.)
+                         end if
+                         cascade2 => cascade2%next
+                      end do LOOP_S
+                   end if
+                   cascade1 => cascade1%next
+                end do LOOP_T
+             end if
+             cascade_target => cascade_target%next
+          end do LOOP_TARGET
+       end if
+       cascade_seed => cascade_seed%next
+    end do LOOP_SEED
+  end subroutine cascade_set_generate_t
+                   
+  subroutine cascade_set_generate_decay (cascade_set)
+    type(cascade_set_t), intent(inout), target :: cascade_set
+    type(cascade_t), pointer :: cascade1, cascade2
+    type(cascade_t), pointer :: cascade_in
+    cascade_in => cascade_set%first_t
+    cascade1 => cascade_set%first
+    do while (associated (cascade1))
+       if (cascade1 .disjunct. cascade_in) then
+          cascade2 => cascade1%next
+          do while (associated (cascade2))
+             if ((cascade2 .disjunct. cascade1) &
+                  .and. (cascade2 .disjunct. cascade_in)) then
+                call cascade_match_triplet (cascade_set, &
+                     cascade1, cascade2, cascade_in, .true.)
+             end if
+             cascade2 => cascade2%next
+          end do
+       end if
+       cascade1 => cascade1%next
+    end do
+  end subroutine cascade_set_generate_decay
+
+  subroutine cascade_set_generate_scattering &
+       (cascade_set, ns1, ns2, nt1, nt2, pos_seed, pos_target)
+    type(cascade_set_t), intent(inout), target :: cascade_set
+    integer, intent(in) :: pos_seed, pos_target
+    integer, intent(in) :: ns1, ns2, nt1, nt2
+    type(cascade_t), pointer :: cascade_seed, cascade_target
+    type(cascade_t), pointer :: cascade1, cascade2
+    integer(TC) :: bc_seed, bc_target
+    bc_seed = ibset (0_TC, pos_seed-1)
+    bc_target = ibset (0_TC, pos_target-1)
+    cascade_seed => cascade_set%first_t
+    LOOP_SEED: do while (associated (cascade_seed))
+       if (cascade_seed%index < ns1) then
+          cascade_seed => cascade_seed%next
+          cycle LOOP_SEED
+       else if (cascade_seed%index > ns2) then
+          exit LOOP_SEED
+       else if (cascade_seed%bincode == bc_seed) then
+          cascade_target => cascade_set%first_t
+          LOOP_TARGET: do while (associated (cascade_target))
+             if (cascade_target%index < nt1) then
+                cascade_target => cascade_target%next
+                cycle LOOP_TARGET
+             else if (cascade_target%index > nt2) then
+                exit LOOP_TARGET
+             else if (cascade_target%bincode == bc_target) then
+                cascade1 => cascade_set%first_t
+                LOOP_T: do while (associated (cascade1))
+                   if ((cascade1 .disjunct. cascade_target) &
+                        .and. .not. (cascade1 .disjunct. cascade_seed)) then
+                      cascade2 => cascade_set%first
+                      LOOP_S: do while (associated (cascade2))
+                         if ((cascade2 .disjunct. cascade_target) &
+                              .and. (cascade2 .disjunct. cascade1)) then
+                            call cascade_match_triplet (cascade_set, &
+                                 cascade1, cascade2, cascade_target, .false.)
+                         end if
+                         cascade2 => cascade2%next
+                      end do LOOP_S
+                   end if
+                   cascade1 => cascade1%next
+                end do LOOP_T
+             end if
+             cascade_target => cascade_target%next
+          end do LOOP_TARGET
+       end if
+       cascade_seed => cascade_seed%next
+    end do LOOP_SEED
+  end subroutine cascade_set_generate_scattering
+    
+  subroutine cascade_set_assign_groves (cascade_set)
+    type(cascade_set_t), intent(inout), target :: cascade_set
+    type(cascade_t), pointer :: cascade1, cascade2
+    integer :: multiplicity, n_resonances, n_log_enhanced, n_t_channel
+    integer :: grove
+    grove = 0
+    cascade1 => cascade_set%first_k
+    do while (associated (cascade1))
+       if (cascade1%active .and. cascade1%complete &
+            .and. cascade1%grove == 0) then
+          grove = grove + 1
+          cascade1%grove = grove
+          multiplicity = cascade1%multiplicity
+          n_resonances = cascade1%n_resonances
+          n_log_enhanced = cascade1%n_log_enhanced
+          n_t_channel = cascade1%n_t_channel
+          cascade2 => cascade1%next
+          do while (associated (cascade2))
+             if (cascade2%grove == 0) then
+                if (cascade2%multiplicity == multiplicity &
+                     .and. cascade2%n_resonances == n_resonances &
+                     .and. cascade2%n_log_enhanced == n_log_enhanced &
+                     .and. cascade2%n_t_channel == n_t_channel) then
+                   cascade2%grove = grove
+                end if
+             end if
+             cascade2 => cascade2%next
+          end do
+       end if
+       cascade1 => cascade1%next
+    end do
+    cascade_set%n_groves = grove
+  end subroutine cascade_set_assign_groves
+
+  subroutine cascade_set_generate &
+       (cascade_set, model, n_in, n_out, flv, phs_par, fatal_beam_decay)
+    type(cascade_set_t), intent(out) :: cascade_set
+    type(model_t), intent(in), target :: model
+    integer, intent(in) :: n_in, n_out
+    type(flavor_t), dimension(:,:), intent(in) :: flv
+    type(phs_parameters_t), intent(in) :: phs_par
+    integer :: n11, n12, n21, n22
+    logical, intent(in) :: fatal_beam_decay
+    if (phase_space_vanishes (phs_par%sqrts, n_in, flv))  return
+    call cascade_set_init (cascade_set, model, n_in, n_out, phs_par, &
+       fatal_beam_decay)
+    call cascade_set_add_outgoing (cascade_set, flv(n_in+1:,:))
+    call cascade_set_generate_s (cascade_set)
+    select case (n_in)
+    case(1)
+       call cascade_set_add_incoming &
+            (cascade_set, n11, n12, n_out + 1, flv(1,:))
+       call cascade_set_generate_decay (cascade_set)
+    case(2)
+       call cascade_set_add_incoming &
+            (cascade_set, n11, n12, n_out + 1, flv(2,:))
+       call cascade_set_add_incoming &
+            (cascade_set, n21, n22, n_out + 2, flv(1,:))
+       call cascade_set_generate_t (cascade_set, n_out + 1, n_out + 2)
+       call cascade_set_generate_t (cascade_set, n_out + 2, n_out + 1)
+       call cascade_set_generate_scattering &
+            (cascade_set, n11, n12, n21, n22, n_out + 1, n_out + 2)
+       call cascade_set_generate_scattering &
+            (cascade_set, n21, n22, n11, n12, n_out + 2, n_out + 1)
+    end select
+    call cascade_set_assign_groves (cascade_set)
+  end subroutine cascade_set_generate
+
+  function phase_space_vanishes (sqrts, n_in, flv) result (flag)
+    logical :: flag
+    real(default), intent(in) :: sqrts
+    integer, intent(in) :: n_in
+    type(flavor_t), dimension(:,:), intent(in) :: flv
+    real(default), dimension(:,:), allocatable :: mass
+    real(default), dimension(:), allocatable :: mass_in, mass_out
+    integer :: n_prt, n_flv
+    flag = .false.
+    if (sqrts <= 0) then
+       call msg_error ("Phase space vanishes (sqrts must be positive)")
+       flag = .true.;  return
+    end if
+    n_prt = size (flv, 1)
+    n_flv = size (flv, 2)
+    allocate (mass (n_prt, n_flv), mass_in (n_flv), mass_out (n_flv))
+    mass = flavor_get_mass (flv)
+    mass_in = sum (mass(:n_in,:), 1)
+    mass_out = sum (mass(n_in+1:,:), 1)
+    if (any (mass_in > sqrts)) then
+       call msg_error ("Mass sum of incoming particles " &
+            // "is more than available energy")
+       flag = .true.;  return
+    end if
+    if (any (mass_out > sqrts)) then
+       call msg_error ("Mass sum of outgoing particles " &
+            // "is more than available energy")
+       flag = .true.;  return
+    end if
+  end function phase_space_vanishes
+       
+  subroutine cascade_test
+    use os_interface, only: os_data_t
+    type(os_data_t) :: os_data
+    type(model_t), pointer :: model
+    type(flavor_t), dimension(5,2) :: flv
+    type(cascade_set_t) :: cascade_set
+    type(string_t) :: name, filename
+    type(phs_parameters_t) :: phs_par
+    name = "QCD"
+    filename = "test.mdl"
+    call syntax_model_file_init ()
+    call model_list_read_model (name, filename, os_data, model)
+    call model_write (model, verbose=.true.)
+    call flavor_init (flv(1,1), 2, model)
+    call flavor_init (flv(2,1),-2, model)
+    call flavor_init (flv(3,1), 1, model)
+    call flavor_init (flv(4,1),-1, model)
+    call flavor_init (flv(5,1),21, model)
+    call flavor_init (flv(1,2), 2, model)
+    call flavor_init (flv(2,2),-2, model)
+    call flavor_init (flv(3,2), 2, model)
+    call flavor_init (flv(4,2),-2, model)
+    call flavor_init (flv(5,2),21, model)
+    phs_par%sqrts = 1000._default
+    phs_par%off_shell = 2
+    call cascade_set_generate (cascade_set, model, 2, 3, flv, phs_par,.true.)
+    call cascade_set_write (cascade_set)
+    call cascade_set_write_file_format (cascade_set)
+    call cascade_set_final (cascade_set)
+    call model_list_final ()
+  end subroutine cascade_test
+
+
+end module cascades

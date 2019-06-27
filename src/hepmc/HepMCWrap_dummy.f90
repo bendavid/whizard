@@ -1,0 +1,484 @@
+! WHIZARD <<Version>> <<Date>>
+! 
+! (C) 1999-2009 by 
+!     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+!     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
+!     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+!     with contributions by Sebastian Schmidt
+!
+! WHIZARD is free software; you can redistribute it and/or modify it
+! under the terms of the GNU General Public License as published by 
+! the Free Software Foundation; either version 2, or (at your option)
+! any later version.
+!
+! WHIZARD is distributed in the hope that it will be useful, but
+! WITHOUT ANY WARRANTY; without even the implied warranty of
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! GNU General Public License for more details.
+!
+! You should have received a copy of the GNU General Public License
+! along with this program; if not, write to the Free Software
+! Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! Dummy interface for non-existent HEPMC library
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!! Tell the caller that this is not the true HepMC library
+     logical(c_bool) function hepmc_available () bind(C)
+       use iso_c_binding
+       hepmc_available = .false.
+     end function hepmc_available
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! GenEvent functions
+
+! extern "C" void* new_gen_event( int proc_id, int event_id ) {}
+     type(c_ptr) function new_gen_event (proc_id, event_id) bind(C)
+       use iso_c_binding
+       integer(c_int), value :: proc_id, event_id
+     end function new_gen_event
+
+! extern "C" void gen_event_delete( void* evt) {}
+     subroutine gen_event_delete (evt_obj) bind(C)
+       use iso_c_binding
+       type(c_ptr), value :: evt_obj
+     end subroutine gen_event_delete
+
+! extern "C" void gen_event_print( void* evt ) {}
+     subroutine gen_event_print (evt_obj) bind(C)
+       use iso_c_binding
+       type(c_ptr), value :: evt_obj
+     end subroutine gen_event_print
+
+! extern "C" void gen_event_add_vertex( void* evt, void* v ) {}
+     subroutine gen_event_add_vertex (evt_obj, v_obj) bind(C)
+       use iso_c_binding
+       type(c_ptr), value :: evt_obj
+       type(c_ptr), value :: v_obj
+     end subroutine gen_event_add_vertex
+
+! extern "C" void gen_event_set_signal_process_vertex( void* evt, void* v ) {}
+     subroutine gen_event_set_signal_process_vertex (evt_obj, v_obj) bind(C)
+       use iso_c_binding
+       type(c_ptr), value :: evt_obj
+       type(c_ptr), value :: v_obj
+     end subroutine gen_event_set_signal_process_vertex
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! GenEvent particle iterator functions
+
+! extern "C" void* new_event_particle_const_iterator( void* evt )
+     type(c_ptr) function new_event_particle_const_iterator (evt_obj) bind(C)
+       use iso_c_binding
+       type(c_ptr), value :: evt_obj
+       new_event_particle_const_iterator = c_null_ptr
+     end function new_event_particle_const_iterator
+
+! extern "C" void event_particle_const_iterator_delete( void* it ) {}
+     subroutine event_particle_const_iterator_delete (it_obj) bind(C)
+       use iso_c_binding
+       type(c_ptr), value :: it_obj
+     end subroutine event_particle_const_iterator_delete
+
+! extern "C" void event_particle_const_iterator_advance( void* it ) {}
+     subroutine event_particle_const_iterator_advance (it_obj) bind(C)
+       use iso_c_binding
+       type(c_ptr), value :: it_obj
+     end subroutine event_particle_const_iterator_advance
+
+! extern "C" void event_particle_const_iterator_reset( void* it, void* evt ) {}
+     subroutine event_particle_const_iterator_reset (it_obj, evt_obj) bind(C)
+       use iso_c_binding
+       type(c_ptr), value :: it_obj, evt_obj
+     end subroutine event_particle_const_iterator_reset
+
+! extern "C" bool event_particle_const_iterator_is_valid( void* it, void* evt )
+     function event_particle_const_iterator_is_valid &
+          (it_obj, evt_obj) result (flag) bind(C)
+       use iso_c_binding
+       logical(c_bool) :: flag
+       type(c_ptr), value :: it_obj, evt_obj
+       flag = .false.
+     end function event_particle_const_iterator_is_valid
+
+! extern "C" void* event_particle_const_iterator_get( void* it )
+     type(c_ptr) function event_particle_const_iterator_get (it_obj) bind(C)
+       use iso_c_binding
+       type(c_ptr), value :: it_obj
+       event_particle_const_iterator_get = c_null_ptr
+     end function event_particle_const_iterator_get
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! GenVertex functions
+
+! extern "C" void* new_gen_vertex()
+     type(c_ptr) function new_gen_vertex () bind(C)
+       use iso_c_binding
+       new_gen_vertex = c_null_ptr
+     end function new_gen_vertex
+
+! extern "C" void new_gen_vertex_pos( void* pos ) {}
+     type(c_ptr) function new_gen_vertex_pos (prt_obj) bind(C)
+       use iso_c_binding
+       type(c_ptr), value :: prt_obj
+       new_gen_vertex_pos = c_null_ptr
+     end function new_gen_vertex_pos
+
+! extern "C" void gen_vertex_delete( void* v ) {}
+! [not implemented]
+
+! extern "C" void gen_vertex_add_particle_in( void* v, void* p ) {}
+     subroutine gen_vertex_add_particle_in (v_obj, prt_obj) bind(C)
+       use iso_c_binding
+       type(c_ptr), value :: v_obj, prt_obj
+     end subroutine gen_vertex_add_particle_in
+
+! extern "C" void gen_vertex_add_particle_out( void* v, void* p ) {}
+     subroutine gen_vertex_add_particle_out (v_obj, prt_obj) bind(C)
+       use iso_c_binding
+       type(c_ptr), value :: v_obj, prt_obj
+     end subroutine gen_vertex_add_particle_out
+
+! extern "C" bool gen_vertex_is_valid( void* v )
+     function gen_vertex_is_valid (v_obj) result (flag) bind(C)
+       use iso_c_binding
+       logical(c_bool) :: flag
+       type(c_ptr), value :: v_obj
+       flag = .false.
+     end function gen_vertex_is_valid
+
+! extern "C" int gen_vertex_particles_in_size( void* v )
+     function gen_vertex_particles_in_size (v_obj) result (size) bind(C)
+       use iso_c_binding
+       integer(c_int) :: size
+       type(c_ptr), value :: v_obj
+       size = 0
+     end function gen_vertex_particles_in_size
+
+! extern "C" int gen_vertex_particles_out_size( void* v )
+     function gen_vertex_particles_out_size (v_obj) result (size) bind(C)
+       use iso_c_binding
+       integer(c_int) :: size
+       type(c_ptr), value :: v_obj
+       size = 0
+     end function gen_vertex_particles_out_size
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! GenVertex iterator over in-particles
+
+! extern "C" void* new_vertex_particles_in_const_iterator( void* v )
+     type(c_ptr) function &
+          new_vertex_particles_in_const_iterator (v_obj) bind(C)
+       use iso_c_binding
+       type(c_ptr), value :: v_obj
+       new_vertex_particles_in_const_iterator = c_null_ptr
+     end function new_vertex_particles_in_const_iterator
+
+! extern "C" void vertex_particles_in_const_iterator_delete( void* it ) {}
+     subroutine vertex_particles_in_const_iterator_delete (it_obj) bind(C)
+       use iso_c_binding
+       type(c_ptr), value :: it_obj
+     end subroutine vertex_particles_in_const_iterator_delete
+
+! extern "C" void vertex_particles_in_const_iterator_advance( void* it ) {}
+     subroutine vertex_particles_in_const_iterator_advance (it_obj) bind(C)
+       use iso_c_binding
+       type(c_ptr), value :: it_obj
+     end subroutine vertex_particles_in_const_iterator_advance
+
+! extern "C" void vertex_particles_in_const_iterator_reset( void* it, void* v )
+     subroutine vertex_particles_in_const_iterator_reset &
+          (it_obj, v_obj) bind(C)
+       use iso_c_binding
+       type(c_ptr), value :: it_obj, v_obj
+     end subroutine vertex_particles_in_const_iterator_reset
+
+! extern "C" bool vertex_particles_in_const_iterator_is_valid
+! ( void* it, void* v )
+     function vertex_particles_in_const_iterator_is_valid &
+          (it_obj, v_obj) result (flag) bind(C)
+       use iso_c_binding
+       logical(c_bool) :: flag
+       type(c_ptr), value :: it_obj, v_obj
+       flag = .false.
+     end function vertex_particles_in_const_iterator_is_valid
+
+! extern "C" void* vertex_particles_in_const_iterator_get( void* it )
+     type(c_ptr) function &
+          vertex_particles_in_const_iterator_get (it_obj) bind(C)
+       use iso_c_binding
+       type(c_ptr), value :: it_obj
+       vertex_particles_in_const_iterator_get = c_null_ptr
+     end function vertex_particles_in_const_iterator_get
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! GenVertex iterator over out-particles
+
+! extern "C" void* new_vertex_particles_out_const_iterator( void* v )
+     type(c_ptr) function &
+          new_vertex_particles_out_const_iterator (v_obj) bind(C)
+       use iso_c_binding
+       type(c_ptr), value :: v_obj
+       new_vertex_particles_out_const_iterator = c_null_ptr
+     end function new_vertex_particles_out_const_iterator
+
+! extern "C" void vertex_particles_out_const_iterator_delete( void* it ) {}
+     subroutine vertex_particles_out_const_iterator_delete (it_obj) bind(C)
+       use iso_c_binding
+       type(c_ptr), value :: it_obj
+     end subroutine vertex_particles_out_const_iterator_delete
+
+! extern "C" void vertex_particles_out_const_iterator_advance( void* it ) {}
+     subroutine vertex_particles_out_const_iterator_advance (it_obj) bind(C)
+       use iso_c_binding
+       type(c_ptr), value :: it_obj
+     end subroutine vertex_particles_out_const_iterator_advance
+
+! extern "C" void vertex_particles_out_const_iterator_reset
+! ( void* it, void* v )
+     subroutine vertex_particles_out_const_iterator_reset &
+          (it_obj, v_obj) bind(C)
+       use iso_c_binding
+       type(c_ptr), value :: it_obj, v_obj
+     end subroutine vertex_particles_out_const_iterator_reset
+
+! extern "C" bool vertex_particles_out_const_iterator_is_valid( void* )
+     function vertex_particles_out_const_iterator_is_valid &
+          (it_obj, v_obj) result (flag) bind(C)
+       use iso_c_binding
+       logical(c_bool) :: flag
+       type(c_ptr), value :: it_obj, v_obj
+       flag = .false.
+     end function vertex_particles_out_const_iterator_is_valid
+
+! extern "C" void* vertex_particles_out_const_iterator_get( void* it )
+     type(c_ptr) function &
+          vertex_particles_out_const_iterator_get (it_obj) bind(C)
+       use iso_c_binding
+       type(c_ptr), value :: it_obj
+       vertex_particles_out_const_iterator_get = c_null_ptr
+     end function vertex_particles_out_const_iterator_get
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! GenParticle functions
+
+! extern "C" void* new_gen_particle(void* momentum, int pdg_id, int status)
+     type(c_ptr) function new_gen_particle (prt_obj, pdg_id, status) bind(C)
+       use iso_c_binding
+       type(c_ptr), value :: prt_obj
+       integer(c_int), value :: pdg_id, status
+       new_gen_particle = c_null_ptr
+     end function new_gen_particle
+
+! extern "C" void gen_particle_delete( void* prt ) {}
+! [not implemented]
+
+! extern "C" void gen_particle_set_flow( void* prt, int code_index, int code )
+     subroutine gen_particle_set_flow (prt_obj, code_index, code) bind(C)
+       use iso_c_binding
+       type(c_ptr), value :: prt_obj
+       integer(c_int), value :: code_index, code
+     end subroutine gen_particle_set_flow
+
+! extern "C" void gen_particle_set_polarization( void* prt, void* pol) {}
+     subroutine gen_particle_set_polarization (prt_obj, pol_obj) bind(C)
+       use iso_c_binding
+       type(c_ptr), value :: prt_obj, pol_obj
+     end subroutine gen_particle_set_polarization
+
+! extern "C" int gen_particle_barcode( void* prt )
+     function gen_particle_barcode (prt_obj) result (barcode) bind(C)
+       use iso_c_binding
+       integer(c_int) :: barcode
+       type(c_ptr), value :: prt_obj
+       barcode = 0
+     end function gen_particle_barcode
+
+! extern "C" void* gen_particle_momentum( void* prt )
+     type(c_ptr) function gen_particle_momentum (prt_obj) bind(C)
+       use iso_c_binding
+       type(c_ptr), value :: prt_obj
+       gen_particle_momentum = c_null_ptr
+     end function gen_particle_momentum
+
+! extern "C" double gen_particle_generated_mass( void* prt )
+     function gen_particle_generated_mass (prt_obj) result (mass) bind(C)
+       use iso_c_binding
+       real(c_double) :: mass
+       type(c_ptr), value :: prt_obj
+       mass = 0
+     end function gen_particle_generated_mass
+
+! extern "C" int gen_particle_pdg_id( void* prt )
+     function gen_particle_pdg_id (prt_obj) result (pdg_id) bind(C)
+       use iso_c_binding
+       integer(c_int) :: pdg_id
+       type(c_ptr), value :: prt_obj
+       pdg_id = 0
+     end function gen_particle_pdg_id
+
+! extern "C" int gen_particle_status( void* prt )
+     function gen_particle_status (prt_obj) result (status) bind(C)
+       use iso_c_binding
+       integer(c_int) :: status
+       type(c_ptr), value :: prt_obj
+       status = 0
+     end function gen_particle_status
+
+! extern "C" void* gen_particle_production_vertex( void* prt )
+     type(c_ptr) function gen_particle_production_vertex (prt_obj) bind(C)
+       use iso_c_binding
+       type(c_ptr), value :: prt_obj
+       gen_particle_production_vertex = c_null_ptr
+     end function gen_particle_production_vertex
+
+! extern "C" void* gen_particle_end_vertex( void* prt )
+     type(c_ptr) function gen_particle_end_vertex (prt_obj) bind(C)
+       use iso_c_binding
+       type(c_ptr), value :: prt_obj
+       gen_particle_end_vertex = c_null_ptr
+     end function gen_particle_end_vertex
+
+! extern "C" void* gen_particle_polarization( void* prt )
+     type(c_ptr) function gen_particle_polarization (prt_obj) bind(C)
+       use iso_c_binding
+       type(c_ptr), value :: prt_obj
+       gen_particle_polarization = c_null_ptr
+     end function gen_particle_polarization
+
+! extern "C" int gen_particle_flow( void* prt, int code_index )
+     function gen_particle_flow (prt_obj, code_index) result (code) bind(C)
+       use iso_c_binding
+       integer(c_int) :: code
+       type(c_ptr), value :: prt_obj
+       integer(c_int), value :: code_index
+       code = 0
+     end function gen_particle_flow
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! FourVector functions
+
+! extern "C" void* new_four_vector_xyzt
+! ( double x, double y, double z, double t)
+     type(c_ptr) function new_four_vector_xyz (x, y, z) bind(C)
+       use iso_c_binding
+       real(c_double), value :: x, y, z
+       new_four_vector_xyz = c_null_ptr
+     end function new_four_vector_xyz
+
+! extern "C" void* new_four_vector_xyz( double x, double y, double z)
+     type(c_ptr) function new_four_vector_xyzt (x, y, z, t) bind(C)
+       use iso_c_binding
+       real(c_double), value :: x, y, z, t
+       new_four_vector_xyzt = c_null_ptr
+     end function new_four_vector_xyzt
+
+! extern "C" void four_vector_delete( void* p ) {}
+     subroutine four_vector_delete (p_obj) bind(C)
+       use iso_c_binding
+       type(c_ptr), value :: p_obj
+     end subroutine four_vector_delete
+
+! extern "C" double four_vector_px( void* p )
+     function four_vector_px (p_obj) result (px) bind(C)
+       use iso_c_binding
+       real(c_double) :: px
+       type(c_ptr), value :: p_obj
+       px = 0
+     end function four_vector_px
+
+! extern "C" double four_vector_py( void* p )
+     function four_vector_py (p_obj) result (py) bind(C)
+       use iso_c_binding
+       real(c_double) :: py
+       type(c_ptr), value :: p_obj
+       py = 0
+     end function four_vector_py
+
+! extern "C" double four_vector_pz( void* p )
+     function four_vector_pz (p_obj) result (pz) bind(C)
+       use iso_c_binding
+       real(c_double) :: pz
+       type(c_ptr), value :: p_obj
+       pz = 0
+     end function four_vector_pz
+
+! extern "C" double four_vector_e( void* p )
+     function four_vector_e (p_obj) result (e) bind(C)
+       use iso_c_binding
+       real(c_double) :: e
+       type(c_ptr), value :: p_obj
+       e = 0
+     end function four_vector_e
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! Polarization functions
+
+! extern "C" void* new_polarization( double theta, double phi )
+     type(c_ptr) function new_polarization (theta, phi) bind(C)
+       use iso_c_binding
+       real(c_double), value :: theta, phi
+       new_polarization = c_null_ptr
+     end function new_polarization
+
+! extern "C" void polarization_delete( void* pol ) {}
+     subroutine polarization_delete (pol_obj) bind(C)
+       use iso_c_binding
+       type(c_ptr), value :: pol_obj
+     end subroutine polarization_delete
+
+
+! extern "C" double polarization_theta( void* pol )
+     function polarization_theta (pol_obj) result (theta) bind(C)
+       use iso_c_binding
+       real(c_double) :: theta
+       type(c_ptr), value :: pol_obj
+       theta = 0
+     end function polarization_theta
+
+! extern "C" double polarization_phi( void* pol )
+     function polarization_phi (pol_obj) result (phi) bind(C)
+       use iso_c_binding
+       real(c_double) :: phi
+       type(c_ptr), value :: pol_obj
+       phi = 0
+     end function polarization_phi
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! IO_GenEvent functions
+
+! extern "C" void* new_io_gen_event_in( char* filename )
+     type(c_ptr) function new_io_gen_event_in (filename) bind(C)
+       use iso_c_binding
+       character(c_char), dimension(*), intent(in) :: filename
+       new_io_gen_event_in = c_null_ptr
+     end function new_io_gen_event_in
+
+! extern "C" void* new_io_gen_event_out( char* filename )
+     type(c_ptr) function new_io_gen_event_out (filename) bind(C)
+       use iso_c_binding
+       character(c_char), dimension(*), intent(in) :: filename
+       new_io_gen_event_out = c_null_ptr
+     end function new_io_gen_event_out
+
+! extern "C" void io_gen_event_delete( void* iostream ) {}
+     subroutine io_gen_event_delete (io_obj) bind(C)
+       use iso_c_binding
+       type(c_ptr), value :: io_obj
+     end subroutine io_gen_event_delete
+
+! extern "C" void io_gen_event_write_event
+! ( void* iostream, const void* evt) {}
+     subroutine io_gen_event_write_event (io_obj, evt_obj) bind(C)
+       use iso_c_binding
+       type(c_ptr), value :: io_obj, evt_obj
+     end subroutine io_gen_event_write_event
+
+! extern "C" void io_gen_event_read_event
+! ( void* iostream, void* evt) {}
+     subroutine io_gen_event_read_event (io_obj, evt_obj) bind(C)
+       use iso_c_binding
+       type(c_ptr), value :: io_obj, evt_obj
+     end subroutine io_gen_event_read_event
+

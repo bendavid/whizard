@@ -1,0 +1,7 @@
+include ("default_cuts.sin")
+
+process defaultcuts_e4 = e1, E1 => e1, E1
+compile
+
+sqrts = 200
+integrate (defaultcuts_e4) { iterations = 5:1000, 3:1000 }

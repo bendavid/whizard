@@ -1,0 +1,24 @@
+This is O'Mega, an optimizing compiler for scattering
+amplitudes in quantum field theories at tree level.
+
+Subdirectories:
+***************
+
+   src/     Objective Caml sources for O'Mega
+            Sources for the runtime libraries
+              (currently only Fortran95 is complete)
+
+   bin/     compiled instances of O'Mega
+              (this directory will grow to tens of megabytes,
+               if --endable-all-programs is selected)
+            compiled auxiliary programs
+            compiled self-checks of the runtime libraries
+
+   lib/     compiled runtime libraries
+              (currently only Fortran95 is complete)
+
+   share/doc/	typeset versions of the sources in bin/
+                 (requires ocamlweb, ocamlweb.sty and noweb.sty)     
+		  additional documentation
+
+   tests/   regression tests
