@@ -1,2 +1,5 @@
-do nothing:
+build whizard tools:
   when: manual
+  script:
+  tags:
+    - public
