@@ -1,5 +1,6 @@
-build whizard tools:
+do nothing:
   when: manual
   script:
+    - echo "doing nothing"
   tags:
     - public
