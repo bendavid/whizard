@@ -1,4 +1,4 @@
-(* $Id: modeltools.mli 4926 2013-12-04 12:35:06Z jr_reuter $
+(* $Id: modeltools.mli 5864 2014-06-02 13:12:47Z ohl $
 
    Copyright (C) 1999-2014 by
 
@@ -51,9 +51,9 @@ module Fusions : functor (F : Flavor) ->
 
 (* \thocwmodulesection{Mutable Models} *)
 
-module Mutable : functor (FGC : sig type f and g and c and o end) ->
+module Mutable : functor (FGC : sig type f and g and c end) ->
   Model.Mutable with type flavor = FGC.f and type gauge = FGC.g 
-  and type constant = FGC.c and type orders = FGC.o
+  and type constant = FGC.c
 
 (*i
  *  Local Variables:

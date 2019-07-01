@@ -1,4 +1,4 @@
-! WHIZARD 2.2.0 May 18 2014
+! WHIZARD 2.2.1 June 3 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -34,6 +34,7 @@ module subevents
   use file_utils !NODEP!
   use limits, only: FMT_14, FMT_19 !NODEP!
   use c_particles !NODEP!
+  use jets
   use lorentz !NODEP!
   use sorting
   use pdg_arrays
@@ -76,6 +77,7 @@ module subevents
   public :: subevt_join
   public :: subevt_combine
   public :: subevt_collect
+  public :: subevt_cluster
   public :: subevt_select
   public :: subevt_extract
   public :: subevt_sort
@@ -191,6 +193,17 @@ contains
     call prt_set (prt, 0, p, p**2, src)
   end subroutine prt_init_combine
 
+  subroutine prt_init_pseudojet (prt, jet, src)
+    type(prt_t), intent(out) :: prt
+    type(pseudojet_t), intent(in) :: jet
+    integer, dimension(:), intent(in) :: src
+    type(vector4_t) :: p
+    prt%type = PRT_COMPOSITE
+    p = vector4_moving (jet%e(), &
+         vector3_moving ([jet%px(), jet%py(), jet%pz()]))
+    call prt_set (prt, 0, p, p**2, src)
+  end subroutine prt_init_pseudojet
+  
   elemental function prt_get_pdg (prt) result (pdg)
     integer :: pdg
     type(prt_t), intent(in) :: prt
@@ -352,6 +365,13 @@ contains
     integer, dimension(:), allocatable :: res
     integer :: i1, i2, i
     allocate (res (size (src1) + size (src2)))
+    if (size (src1) == 0) then
+       res = src2
+       return
+    else if (size (src2) == 0) then
+       res = src1
+       return
+    end if
     i1 = 1
     i2 = 1
     LOOP: do i = 1, size (res)
@@ -764,6 +784,68 @@ contains
        end if
     end do
   end subroutine subevt_collect
+
+  subroutine subevt_cluster (subevt, pl1, mask1, jet_def)
+    type(subevt_t), intent(inout) :: subevt
+    type(subevt_t), intent(in) :: pl1
+    logical, dimension(:), intent(in) :: mask1
+    type(jet_definition_t), intent(in) :: jet_def
+    integer, dimension(:), allocatable :: src, src_tmp
+    integer, dimension(:), allocatable :: map, jet_idx
+    type(pseudojet_t), dimension(:), allocatable :: jet_in, jet_out
+    type(pseudojet_vector_t) :: jv_in, jv_out
+    type(cluster_sequence_t) :: cs
+    integer :: i, j, k, n_src, n_active
+    n_active = 0
+    allocate (map (pl1%n_active), source = 0)
+    allocate (src (0))
+    do i = 1, pl1%n_active
+       if (mask1(i)) then
+          call combine_index_lists (src_tmp, src, pl1%prt(i)%src)
+          if (allocated (src_tmp)) then
+             call move_alloc (from=src_tmp, to=src)
+             n_active = n_active + 1
+             map(n_active) = i
+          end if
+       end if
+    end do
+    allocate (jet_in (count (map /= 0)))
+    do i = 1, size (jet_in)
+       call jet_in(i)%init (prt_get_momentum (pl1%prt(map(i))))
+    end do
+    call jv_in%init (jet_in)
+    call cs%init (jv_in, jet_def)
+    jv_out = cs%inclusive_jets ()
+    allocate (jet_idx (size (jet_in)))
+    call cs%assign_jet_indices (jv_out, jet_idx)
+    allocate (jet_out (jv_out%size ()))
+    jet_out = jv_out
+    call subevt_reset (subevt, size (jet_out))
+    do i = 1, size (jet_out)
+       src = 0
+       n_src = 0
+       do j = 1, size (jet_idx)
+          if (jet_idx(j) == i) then
+             associate (prt => pl1%prt(map(j)))
+               do k = 1, size (prt%src)
+                  src(n_src + k) = prt%src(k)
+               end do
+               n_src = n_src + size (prt%src)
+             end associate
+          end if
+       end do
+       call prt_init_pseudojet (subevt%prt(i), jet_out(i), src(:n_src))
+    end do
+    do i = 1, size (jet_out)
+       call jet_out(i)%final ()
+    end do
+    call jv_out%final ()
+    call cs%final ()
+    call jv_in%final ()
+    do i = 1, size (jet_in)
+       call jet_in(i)%final ()
+    end do
+  end subroutine subevt_cluster
 
   subroutine subevt_select (subevt, pl, mask1)
     type(subevt_t), intent(inout) :: subevt

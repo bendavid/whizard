@@ -128,7 +128,10 @@ dist_pdf_DATA = \
         pdf_builtin/mstw2008lo.00.dat \
 	pdf_builtin/mstw2008nlo.00.dat \
 	pdf_builtin/mstw2008nnlo.00.dat \
-	pdf_builtin/ct10.00.pds
+	pdf_builtin/ct10.00.pds \
+	pdf_builtin/CJ12_max_00.tbl \
+	pdf_builtin/CJ12_mid_00.tbl \
+	pdf_builtin/CJ12_min_00.tbl
 
 ## Files containing precompiled cross sections for muli
 ## to be installed with the 'muli' prefix kept

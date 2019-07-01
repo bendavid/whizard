@@ -41,6 +41,9 @@ REF_OUTPUT_FILES = \
 
 REF_OUTPUT_FILES_BASE = \
     ref-output/analysis_1.ref \
+    ref-output/jets_1.ref \
+    ref-output/pdg_arrays_1.ref \
+    ref-output/pdg_arrays_2.ref \
     ref-output/expressions_1.ref \
     ref-output/expressions_2.ref \
     ref-output/expressions_3.ref \
@@ -413,6 +416,7 @@ REF_OUTPUT_FILES_BASE = \
     ref-output/libraries_2.ref \
     ref-output/libraries_4.ref \
     ref-output/rebuild_2.ref \
+    ref-output/rebuild_3.ref \
     ref-output/fatal.ref \
     ref-output/model_test.ref \
     ref-output/cuts.ref \
@@ -444,6 +448,7 @@ REF_OUTPUT_FILES_BASE = \
     ref-output/analyze_1.ref \
     ref-output/analyze_2.ref \
     ref-output/analyze_3.ref \
+    ref-output/analyze_4.ref \
     ref-output/colors.ref \
     ref-output/colors_hgg.ref \
     ref-output/alphas.ref \
@@ -592,6 +597,8 @@ MISC_TESTS_M4 =
 
 UNIT_TESTS_SIN = \
     analysis.sin \
+    jets.sin \
+    pdg_arrays.sin \
     expressions.sin \
     beams.sin \
     polarizations.sin \
@@ -704,6 +711,7 @@ MISC_TESTS_SIN = \
     libraries_4.sin \
     rebuild_1.sin \
     rebuild_2.sin \
+    rebuild_3.sin \
     qedtest_1.sin \
     qedtest_2.sin \
     qedtest_3.sin \
@@ -736,6 +744,7 @@ MISC_TESTS_SIN = \
     analyze_1.sin \
     analyze_2.sin \
     analyze_3.sin \
+    analyze_4.sin \
     colors.sin \
     colors_hgg.sin \
     alphas.sin \

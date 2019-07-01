@@ -36,12 +36,12 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\def\WhizardVersion{2.2.0}
-\def\WhizardDate{May 18 2014}
+\def\WhizardVersion{2.2.1}
+\def\WhizardDate{June 3 2014}
 <<Version>>=
-2.2.0
+2.2.1
 <<Date>>=
-May 18 2014
+June 3 2014
 @ 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \title{%
@@ -18355,6 +18355,168 @@ has wrong type, the iterator will be invalid.
 @ 
 \clearpage
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Fastjet interface}
+
+The FastJet library is linked externally, if available.  The wrapper code is
+also in a separate directory.  Here, we define \whizard-specific procedures
+and tests.
+<<[[jets.f90]]>>=
+<<File header>>
+
+module jets
+    
+<<Use kinds>>
+  use unit_tests
+  use fastjet !NODEP!
+  
+<<Standard module head>>
+
+<<Jets: public>>
+
+contains
+  
+<<Jets: procedures>>
+
+<<Jets: tests>>
+
+end module jets
+@ %def jets
+@
+\subsection{Re-exported symbols}
+We use this module as a proxy for the FastJet interface, therefore we
+re-export some symbols.
+<<Jets: public>>=
+  public :: fastjet_available
+  public :: fastjet_init
+  public :: jet_definition_t
+  public :: pseudojet_t
+  public :: pseudojet_vector_t
+  public :: cluster_sequence_t
+  public :: assignment (=)
+
+@ %def jet_definition_t pseudojet_t pseudojet_vector_t cluster_sequence_t
+@ The initialization routine prints the banner.
+<<Jets: procedures>>=
+  subroutine fastjet_init ()
+    call print_banner ()
+  end subroutine fastjet_init
+  
+@ %def fastjet_init
+@ The jet algorithm codes (actually, integers)
+<<Jets: public>>=
+  public :: kt_algorithm
+  public :: cambridge_algorithm
+  public :: antikt_algorithm
+  public :: genkt_algorithm
+  public :: cambridge_for_passive_algorithm
+  public :: genkt_for_passive_algorithm
+  public :: ee_kt_algorithm
+  public :: ee_genkt_algorithm
+  public :: plugin_algorithm
+  public :: undefined_jet_algorithm
+  
+@ 
+\subsection{Unit tests}
+<<Jets: public>>=
+  public :: jets_test 
+<<Jets: procedures>>=
+  subroutine jets_test (u, results)
+    integer, intent(in) :: u
+    type (test_results_t), intent(inout) :: results
+  <<Jets: execute tests>>  
+  end subroutine jets_test
+
+@ %def jets_test
+@ This test is actually the minimal example from the FastJet manual,
+translated to Fortran.
+
+Note that FastJet creates pseudojet vectors, which we mirror in the
+[[pseudojet_vector_t]], but immediately assign to pseudojet arrays.  Without
+automatic finalization available in the compilers, we should avoid this in
+actual code and rather introduce intermediate variables for those objects,
+which we can finalize explicitly.
+<<Jets: execute tests>>=
+  call test (jets_1, "jets_1", &
+       "basic FastJet functionality", &
+       u, results) 
+<<Jets: tests>>=     
+  subroutine jets_1 (u)
+    integer, intent(in) :: u
+
+    type(pseudojet_t), dimension(:), allocatable :: prt, jets, constituents
+    type(jet_definition_t) :: jet_def
+    type(cluster_sequence_t) :: cs
+
+    integer, parameter :: dp = default
+    integer :: i, j
+
+    write (u, "(A)")  "* Test output: jets_1"
+    write (u, "(A)")  "*   Purpose: test basic FastJet functionality"
+    write (u, "(A)")    
+
+    write (u, "(A)")  "* Print banner"
+    call print_banner ()
+    
+    write (u, *)
+    write (u, "(A)")  "* Prepare input particles"
+    allocate (prt (3))
+    call prt(1)%init ( 99._dp, 0.1_dp, 0._dp, 100._dp)
+    call prt(2)%init (  4._dp,-0.1_dp, 0._dp,   5._dp)
+    call prt(3)%init (-99._dp, 0._dp,  0._dp,  99._dp)
+
+    write (u, *)
+    write (u, "(A)")  "* Define jet algorithm"
+    call jet_def%init (antikt_algorithm, 0.7_dp)
+
+    write (u, *)
+    write (u, "(A)")  "* Cluster particles according to jet algorithm"
+
+    write (u, *)
+    write (u, "(A,A)")  "Clustering with ", jet_def%description ()
+    call cs%init (pseudojet_vector (prt), jet_def)
+
+    write (u, *)
+    write (u, "(A)")  "* Sort output jets"
+    jets = sorted_by_pt (cs%inclusive_jets ())
+
+    write (u, *)
+    write (u, "(A)")  "* Print jet observables and constituents"
+    write (u, *)
+    write (u, "(4x,3(7x,A3))") "pt", "y", "phi"
+    do i = 1, size (jets)
+       write (u, "(A,1x,I0,A,3(1x,F9.5))") &
+            "jet", i, ":", jets(i)%perp (), jets(i)%rap (), jets(i)%phi ()
+       constituents = jets(i)%constituents ()
+       do j = 1, size (constituents)
+          write (u, "(4x,A,1x,I0,A,F9.5)") &
+               "constituent", j, "'s pt:", constituents(j)%perp ()
+       end do
+       do j = 1, size (constituents)
+          call constituents(j)%final ()
+       end do
+    end do
+    
+    write (u, *)
+    write (u, "(A)")  "* Cleanup"
+    
+    do i = 1, size (prt)
+       call prt(i)%final ()
+    end do
+    do i = 1, size (jets)
+       call jets(i)%final ()
+    end do
+    call jet_def%final ()
+    call cs%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: jets_1"        
+    
+  end subroutine jets_1
+  
+@ %def jets_1
+@ 
+\clearpage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{PDG arrays}
 
 For defining aliases, we introduce a special type which holds a set of
@@ -18366,6 +18528,7 @@ module pdg_arrays
 
 <<Use file utils>>
   use sorting
+  use unit_tests
 
 <<Standard module head>>
 
@@ -18381,6 +18544,8 @@ contains
 
 <<PDG arrays: procedures>>
 
+<<PDG arrays: tests>>
+
 end module pdg_arrays
 @ %def pdg_arrays
 @ 
@@ -18393,15 +18558,19 @@ finalizer.
   type :: pdg_array_t
      private
      integer, dimension(:), allocatable :: pdg
+   contains
+   <<PDG arrays: pdg array: TBP>>
   end type pdg_array_t
 
 @ %def pdg_array_t
 @ Output
 <<PDG arrays: public>>=
   public :: pdg_array_write
+<<PDG arrays: pdg array: TBP>>=
+  procedure :: write => pdg_array_write
 <<PDG arrays: procedures>>=
   subroutine pdg_array_write (aval, unit)
-    type(pdg_array_t), intent(in) :: aval
+    class(pdg_array_t), intent(in) :: aval
     integer, intent(in), optional :: unit
     integer :: u, i
     u = output_unit (unit);  if (u < 0)  return
@@ -18466,9 +18635,11 @@ allocatable by the caller.
 @ Length of the array.
 <<PDG arrays: public>>=
   public :: pdg_array_get_length
+<<PDG arrays: pdg array: TBP>>=
+  procedure :: get_length => pdg_array_get_length
 <<PDG arrays: procedures>>=
   elemental function pdg_array_get_length (aval) result (n)
-    type(pdg_array_t), intent(in) :: aval
+    class(pdg_array_t), intent(in) :: aval
     integer :: n
     if (allocated (aval%pdg)) then
        n = size (aval%pdg)
@@ -18481,9 +18652,11 @@ allocatable by the caller.
 @ Return the element with index i.
 <<PDG arrays: public>>=
   public :: pdg_array_get
+<<PDG arrays: pdg array: TBP>>=
+  procedure :: get => pdg_array_get
 <<PDG arrays: procedures>>=
   elemental function pdg_array_get (aval, i) result (pdg)
-    type(pdg_array_t), intent(in) :: aval
+    class(pdg_array_t), intent(in) :: aval
     integer, intent(in) :: i
     integer :: pdg
     pdg = aval%pdg(i)
@@ -18493,9 +18666,11 @@ allocatable by the caller.
 @ Replace element with index [[i]] by a new array of elements.
 <<PDG arrays: public>>=
   public :: pdg_array_replace
+<<PDG arrays: pdg array: TBP>>=
+  procedure :: replace => pdg_array_replace
 <<PDG arrays: procedures>>=
   function pdg_array_replace (aval, i, pdg_new) result (aval_new)
-    type(pdg_array_t), intent(in) :: aval
+    class(pdg_array_t), intent(in) :: aval
     integer, intent(in) :: i
     integer, dimension(:), intent(in) :: pdg_new
     type(pdg_array_t) :: aval_new
@@ -18654,8 +18829,8 @@ antiparticle, scanning from left to right.
     flag = .not. (aval1 == aval2)
   end function pdg_array_ne
 
-@ Equivalence.  Two PDG arrays are equivalent if either both contain
-[[UNDEFINED]] or each element of array 1 is present in array 2, and
+@ Equivalence.  Two PDG arrays are equivalent if either one contains
+[[UNDEFINED]] or if each element of array 1 is present in array 2, and
 vice versa.
 <<PDG arrays: public>>=
   public :: operator(.eqv.)
@@ -18676,7 +18851,7 @@ vice versa.
     integer :: i
     if (allocated (aval1%pdg) .and. allocated (aval2%pdg)) then
        eq = any (aval1%pdg == UNDEFINED) &
-            .and. any (aval1%pdg == UNDEFINED)
+            .or. any (aval2%pdg == UNDEFINED)
        if (.not. eq) then
           allocate (match1 (size (aval1%pdg)))
           allocate (match2 (size (aval2%pdg)))
@@ -18713,9 +18888,11 @@ sorting, we eliminate double entries.
      module procedure pdg_array_sort_abs
   end interface
   
+<<PDG arrays: pdg array: TBP>>=
+  procedure :: sort_abs => pdg_array_sort_abs
 <<PDG arrays: procedures>>=
   function pdg_array_sort_abs (aval1, unique) result (aval2)
-    type(pdg_array_t), intent(in) :: aval1
+    class(pdg_array_t), intent(in) :: aval1
     logical, intent(in), optional :: unique
     type(pdg_array_t) :: aval2
     integer, dimension(:), allocatable :: tmp
@@ -18740,6 +18917,362 @@ sorting, we eliminate double entries.
   end function pdg_array_sort_abs
 
 @ %def sort_abs
+@
+\subsection{PDG array list}
+A PDG array list, or PDG list, is an array of PDG-array objects with
+some convenience methods.
+<<PDG arrays: public>>=
+  public :: pdg_list_t
+<<PDG arrays: types>>=
+  type :: pdg_list_t
+     type(pdg_array_t), dimension(:), allocatable :: a
+   contains
+   <<PDG arrays: pdg list: TBP>>
+  end type pdg_list_t
+  
+@ %def pdg_list_t
+@ Output, as a comma-separated list without advancing I/O.
+<<PDG arrays: pdg list: TBP>>=
+  procedure :: write => pdg_list_write
+<<PDG arrays: procedures>>=
+  subroutine pdg_list_write (object, unit)
+    class(pdg_list_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    integer :: u, i
+    u = output_unit (unit)
+    if (allocated (object%a)) then
+       do i = 1, size (object%a)
+          if (i > 1)  write (u, "(A)", advance="no")  ", "
+          call object%a(i)%write (u)
+       end do
+    end if
+  end subroutine pdg_list_write
+    
+@ %def pdg_list_write
+@ Initialize for a certain size.  The entries are initially empty PDG arrays.
+<<PDG arrays: pdg list: TBP>>=
+  procedure :: init => pdg_list_init
+<<PDG arrays: procedures>>=
+  subroutine pdg_list_init (pl, n)
+    class(pdg_list_t), intent(out) :: pl
+    integer, intent(in) :: n
+    allocate (pl%a (n))
+  end subroutine pdg_list_init
+  
+@ %def pdg_list_init
+@ Set one of the entries.  No bounds-check.
+<<PDG arrays: pdg list: TBP>>=
+  generic :: set => pdg_list_set_int
+  generic :: set => pdg_list_set_int_array
+  generic :: set => pdg_list_set_pdg_array
+  procedure, private :: pdg_list_set_int
+  procedure, private :: pdg_list_set_int_array
+  procedure, private :: pdg_list_set_pdg_array
+<<PDG arrays: procedures>>=
+  subroutine pdg_list_set_int (pl, i, pdg)
+    class(pdg_list_t), intent(inout) :: pl
+    integer, intent(in) :: i
+    integer, intent(in) :: pdg
+    pl%a(i) = pdg
+  end subroutine pdg_list_set_int
+  
+  subroutine pdg_list_set_int_array (pl, i, pdg)
+    class(pdg_list_t), intent(inout) :: pl
+    integer, intent(in) :: i
+    integer, dimension(:), intent(in) :: pdg
+    pl%a(i) = pdg
+  end subroutine pdg_list_set_int_array
+  
+  subroutine pdg_list_set_pdg_array (pl, i, pa)
+    class(pdg_list_t), intent(inout) :: pl
+    integer, intent(in) :: i
+    type(pdg_array_t), intent(in) :: pa
+    pl%a(i) = pa
+  end subroutine pdg_list_set_pdg_array
+  
+@ %def pdg_list_set
+@ Array size, not the length of individual entries
+<<PDG arrays: pdg list: TBP>>=
+  procedure :: get_size => pdg_list_get_size
+<<PDG arrays: procedures>>=
+  function pdg_list_get_size (pl) result (n)
+    class(pdg_list_t), intent(in) :: pl
+    integer :: n
+    if (allocated (pl%a)) then
+       n = size (pl%a)
+    else
+       n = 0
+    end if
+  end function pdg_list_get_size
+  
+@ %def pdg_list_get_size
+@ Return an entry, as a PDG array.
+<<PDG arrays: pdg list: TBP>>=
+  procedure :: get => pdg_list_get
+<<PDG arrays: procedures>>=
+  function pdg_list_get (pl, i) result (pa)
+    class(pdg_list_t), intent(in) :: pl
+    integer, intent(in) :: i
+    type(pdg_array_t) :: pa
+    pa = pl%a(i)
+  end function pdg_list_get
+  
+@ %def pdg_list_get
+@ Sort the list.  First, each entry gets sorted, including elimination
+of doublers.  Then, we sort the list, using the first member of each
+PDG array as the marker.  No removal of doublers at this stage.
+<<PDG arrays: pdg list: TBP>>=
+  procedure :: sort_abs => pdg_list_sort_abs
+<<PDG arrays: procedures>>=
+  function pdg_list_sort_abs (pl) result (pl_sorted)
+    class(pdg_list_t), intent(in) :: pl
+    type(pdg_list_t) :: pl_sorted
+    type(pdg_array_t), dimension(:), allocatable :: pa
+    integer, dimension(:), allocatable :: pdg, map
+    integer :: i
+    call pl_sorted%init (pl%get_size ())
+    if (allocated (pl%a)) then
+       allocate (pa (size (pl%a)))
+       do i = 1, size (pl%a)
+          pa(i) = pl%a(i)%sort_abs (unique = .true.)
+       end do
+       allocate (pdg (size (pa)), source = 0)
+       do i = 1, size (pa)
+          if (allocated (pa(i)%pdg)) then
+             if (size (pa(i)%pdg) > 0) then
+                pdg(i) = pa(i)%pdg(1)
+             end if
+          end if
+       end do
+       allocate (map (size (pdg)))
+       map = order_abs (pdg)
+       do i = 1, size (pa)
+          call pl_sorted%set (i, pa(map(i)))
+       end do
+    end if
+  end function pdg_list_sort_abs
+    
+@ %def pdg_list_sort_abs
+@ Replace an entry.  In the result, the entry [[#i]] is replaced by
+the contents of the second argument.  The result is not sorted.
+<<PDG arrays: pdg list: TBP>>=
+  procedure :: replace => pdg_list_replace
+<<PDG arrays: procedures>>=
+  function pdg_list_replace (pl, i, pl_insert) result (pl_out)
+    class(pdg_list_t), intent(in) :: pl
+    integer, intent(in) :: i
+    class(pdg_list_t), intent(in) :: pl_insert
+    type(pdg_list_t) :: pl_out
+    integer :: n, n_insert, n_out, k
+    n = pl%get_size ()
+    n_insert = pl_insert%get_size ()
+    n_out = n + n_insert - 1
+    call pl_out%init (n_out)
+    if (allocated (pl%a)) then
+       do k = 1, i - 1
+          pl_out%a(k) = pl%a(k)
+       end do
+    end if
+    if (allocated (pl_insert%a)) then
+       do k = 1, n_insert
+          pl_out%a(i-1+k) = pl_insert%a(k)
+       end do
+    end if
+    if (allocated (pl%a)) then
+       do k = 1, n - i
+          pl_out%a(i+n_insert-1+k) = pl%a(i+k)
+       end do
+    end if
+  end function pdg_list_replace
+    
+@ %def pdg_list_replace
+@ 
+\subsection{Unit tests}
+<<PDG arrays: public>>=
+  public :: pdg_arrays_test 
+<<PDG arrays: procedures>>=
+  subroutine pdg_arrays_test (u, results)
+    integer, intent(in) :: u
+    type (test_results_t), intent(inout) :: results
+  <<PDG arrays: execute tests>>  
+  end subroutine pdg_arrays_test
+
+@ %def pdg_arrays_test
+@ Basic functionality.
+<<PDG arrays: execute tests>>=
+  call test (pdg_arrays_1, "pdg_arrays_1", &
+       "create and sort PDG array", &
+       u, results) 
+<<PDG arrays: tests>>=     
+  subroutine pdg_arrays_1 (u)
+    integer, intent(in) :: u
+
+    type(pdg_array_t) :: pa, pa1, pa2, pa3, pa4, pa5, pa6
+    integer, dimension(:), allocatable :: pdg
+
+    write (u, "(A)")  "* Test output: pdg_arrays_1"
+    write (u, "(A)")  "*   Purpose: create and sort PDG arrays"
+    write (u, "(A)")
+    
+    write (u, "(A)")  "* Assignment"
+    write (u, "(A)")
+    
+    call pa%write (u)
+    write (u, *)
+    write (u, "(A,I0)")  "length = ", pa%get_length ()
+    pdg = pa
+    write (u, "(A,3(1x,I0))")  "contents = ", pdg
+    
+    write (u, *)
+    pa = 1
+    call pa%write (u)
+    write (u, *)
+    write (u, "(A,I0)")  "length = ", pa%get_length ()
+    pdg = pa
+    write (u, "(A,3(1x,I0))")  "contents = ", pdg
+    
+    write (u, *)
+    pa = [1, 2, 3]
+    call pa%write (u)
+    write (u, *)
+    write (u, "(A,I0)")  "length = ", pa%get_length ()
+    pdg = pa
+    write (u, "(A,3(1x,I0))")  "contents = ", pdg
+    write (u, "(A,I0)")  "element #2 = ", pa%get (2)
+    
+    write (u, *)
+    write (u, "(A)")  "* Replace"
+    write (u, *)
+
+    pa = pa%replace (2, [-5, 5, -7])
+    call pa%write (u)
+    write (u, *)
+    
+    write (u, *)
+    write (u, "(A)")  "* Sort"
+    write (u, *)
+
+    pa = [1, -7, 3, -5, 5, 3]
+    call pa%write (u)
+    write (u, *)
+    pa1 = pa%sort_abs ()
+    pa2 = pa%sort_abs (unique = .true.)
+    call pa1%write (u)
+    write (u, *)
+    call pa2%write (u)
+    write (u, *)
+    
+    write (u, *)
+    write (u, "(A)")  "* Compare"
+    write (u, *)
+
+    pa1 = [1, 3]
+    pa2 = [1, 2, -2]
+    pa3 = [1, 2, 4]
+    pa4 = [1, 2, 4]
+    pa5 = [1, 2, -4]
+    pa6 = [1, 2, -3]
+    
+    write (u, "(A,6(1x,L1))")  "< ", &
+         pa1 < pa2, pa2 < pa3, pa3 < pa4, pa4 < pa5, pa5 < pa6, pa6 < pa1
+    write (u, "(A,6(1x,L1))")  "> ", &
+         pa1 > pa2, pa2 > pa3, pa3 > pa4, pa4 > pa5, pa5 > pa6, pa6 > pa1
+    write (u, "(A,6(1x,L1))")  "<=", &
+         pa1 <= pa2, pa2 <= pa3, pa3 <= pa4, pa4 <= pa5, pa5 <= pa6, pa6 <= pa1
+    write (u, "(A,6(1x,L1))")  ">=", &
+         pa1 >= pa2, pa2 >= pa3, pa3 >= pa4, pa4 >= pa5, pa5 >= pa6, pa6 >= pa1
+    write (u, "(A,6(1x,L1))")  "==", &
+         pa1 == pa2, pa2 == pa3, pa3 == pa4, pa4 == pa5, pa5 == pa6, pa6 == pa1
+    write (u, "(A,6(1x,L1))")  "/=", &
+         pa1 /= pa2, pa2 /= pa3, pa3 /= pa4, pa4 /= pa5, pa5 /= pa6, pa6 /= pa1
+   
+    write (u, *)
+    pa1 = [0]
+    pa2 = [1, 2]
+    pa3 = [1, -2]
+    
+    write (u, "(A,6(1x,L1))")  "eqv ", &
+         pa1 .eqv. pa1, pa1 .eqv. pa2, &
+         pa2 .eqv. pa2, pa2 .eqv. pa3
+    
+    write (u, "(A,6(1x,L1))")  "neqv", &
+         pa1 .neqv. pa1, pa1 .neqv. pa2, &
+         pa2 .neqv. pa2, pa2 .neqv. pa3
+    
+
+    write (u, *)
+    write (u, "(A,6(1x,L1))")  "match", &
+         pa1 .match. 0, pa1 .match. 1, &
+         pa2 .match. 0, pa2 .match. 1, pa2 .match. 3
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: pdg_arrays_1"        
+    
+  end subroutine pdg_arrays_1
+  
+@ %def pdg_arrays_1
+@ PDG array list, i.e., arrays of arrays.
+<<PDG arrays: execute tests>>=
+  call test (pdg_arrays_2, "pdg_arrays_2", &
+       "create and sort PDG array", &
+       u, results) 
+<<PDG arrays: tests>>=     
+  subroutine pdg_arrays_2 (u)
+    integer, intent(in) :: u
+
+    type(pdg_array_t) :: pa
+    type(pdg_list_t) :: pl, pl1
+
+    write (u, "(A)")  "* Test output: pdg_arrays_2"
+    write (u, "(A)")  "*   Purpose: create and sort PDG lists"
+    write (u, "(A)")
+    
+    write (u, "(A)")  "* Assignment"
+    write (u, "(A)")
+    
+    call pl%init (3)
+    call pl%set (1, 42)
+    call pl%set (2, [3, 2])
+    pa = [5, -5]
+    call pl%set (3, pa)
+    call pl%write (u)
+    write (u, *)
+    write (u, "(A,I0)")  "size = ", pl%get_size ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Sort"
+    write (u, "(A)")
+    
+    pl = pl%sort_abs ()
+    call pl%write (u)
+    write (u, *)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Extract item #3"
+    write (u, "(A)")
+    
+    pa = pl%get (3)
+    call pa%write (u)
+    write (u, *)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Replace item #3"
+    write (u, "(A)")
+    
+    call pl1%init (2)
+    call pl1%set (1, [2, 4])
+    call pl1%set (2, -7)
+    
+    pl = pl%replace (3, pl1)
+    call pl%write (u)
+    write (u, *)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: pdg_arrays_2"        
+    
+  end subroutine pdg_arrays_2
+  
+@ %def pdg_arrays_2
 @ 
 \clearpage
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -18758,6 +19291,7 @@ module subevents
 <<Use file utils>>
   use limits, only: FMT_14, FMT_19 !NODEP!
   use c_particles !NODEP!
+  use jets
   use lorentz !NODEP!
   use sorting
   use pdg_arrays
@@ -18883,6 +19417,20 @@ is not set.
   end subroutine prt_init_combine
 
 @ %def prt_init_combine
+@ Init from a pseudojet object.
+<<Subevents: procedures>>=
+  subroutine prt_init_pseudojet (prt, jet, src)
+    type(prt_t), intent(out) :: prt
+    type(pseudojet_t), intent(in) :: jet
+    integer, dimension(:), intent(in) :: src
+    type(vector4_t) :: p
+    prt%type = PRT_COMPOSITE
+    p = vector4_moving (jet%e(), &
+         vector3_moving ([jet%px(), jet%py(), jet%pz()]))
+    call prt_set (prt, 0, p, p**2, src)
+  end subroutine prt_init_pseudojet
+  
+@ %def prt_init_pseudojet
 @ 
 \subsubsection{Accessing contents}
 <<Subevents: public>>=
@@ -19139,6 +19687,13 @@ duplicate entry, it is discarded, and the result is unallocated.
     integer, dimension(:), allocatable :: res
     integer :: i1, i2, i
     allocate (res (size (src1) + size (src2)))
+    if (size (src1) == 0) then
+       res = src2
+       return
+    else if (size (src2) == 0) then
+       res = src1
+       return
+    end if
     i1 = 1
     i2 = 1
     LOOP: do i = 1, size (res)
@@ -19730,6 +20285,87 @@ not as expected.  This situation should be avoided.)
   end subroutine subevt_collect
 
 @ %def subevt_collect
+@ The cluster operation is similar to [[collect]], but applies a jet
+algorithm.  The result is a subevent consisting of jets and, possibly,
+unclustered extra particles.  As above, the result does not contain an
+original particle more than once; this is checked for each particle when it is
+collected.  Furthermore, each entry has a mask; where the mask is false, the
+entry is dropped.
+
+The algorithm: first determine the (pseudo)particles that participate in the
+clustering.  They should not overlap, and the mask entry must be set.  We then
+cluster the particles, using the given jet definition.  The result particles are
+retrieved from the cluster sequence.  We still have to determine the source
+indices for each jet: for each input particle, we get the jet index.
+Accumulating the source entries for all particles that are part of a given
+jet, we derive the jet source entries.  Finally, we delete the C structures
+that have been constructed by FastJet and its interface.
+<<Subevents: public>>=
+  public :: subevt_cluster
+<<Subevents: procedures>>=
+  subroutine subevt_cluster (subevt, pl1, mask1, jet_def)
+    type(subevt_t), intent(inout) :: subevt
+    type(subevt_t), intent(in) :: pl1
+    logical, dimension(:), intent(in) :: mask1
+    type(jet_definition_t), intent(in) :: jet_def
+    integer, dimension(:), allocatable :: src, src_tmp
+    integer, dimension(:), allocatable :: map, jet_idx
+    type(pseudojet_t), dimension(:), allocatable :: jet_in, jet_out
+    type(pseudojet_vector_t) :: jv_in, jv_out
+    type(cluster_sequence_t) :: cs
+    integer :: i, j, k, n_src, n_active
+    n_active = 0
+    allocate (map (pl1%n_active), source = 0)
+    allocate (src (0))
+    do i = 1, pl1%n_active
+       if (mask1(i)) then
+          call combine_index_lists (src_tmp, src, pl1%prt(i)%src)
+          if (allocated (src_tmp)) then
+             call move_alloc (from=src_tmp, to=src)
+             n_active = n_active + 1
+             map(n_active) = i
+          end if
+       end if
+    end do
+    allocate (jet_in (count (map /= 0)))
+    do i = 1, size (jet_in)
+       call jet_in(i)%init (prt_get_momentum (pl1%prt(map(i))))
+    end do
+    call jv_in%init (jet_in)
+    call cs%init (jv_in, jet_def)
+    jv_out = cs%inclusive_jets ()
+    allocate (jet_idx (size (jet_in)))
+    call cs%assign_jet_indices (jv_out, jet_idx)
+    allocate (jet_out (jv_out%size ()))
+    jet_out = jv_out
+    call subevt_reset (subevt, size (jet_out))
+    do i = 1, size (jet_out)
+       src = 0
+       n_src = 0
+       do j = 1, size (jet_idx)
+          if (jet_idx(j) == i) then
+             associate (prt => pl1%prt(map(j)))
+               do k = 1, size (prt%src)
+                  src(n_src + k) = prt%src(k)
+               end do
+               n_src = n_src + size (prt%src)
+             end associate
+          end if
+       end do
+       call prt_init_pseudojet (subevt%prt(i), jet_out(i), src(:n_src))
+    end do
+    do i = 1, size (jet_out)
+       call jet_out(i)%final ()
+    end do
+    call jv_out%final ()
+    call cs%final ()
+    call jv_in%final ()
+    do i = 1, size (jet_in)
+       call jet_in(i)%final ()
+    end do
+  end subroutine subevt_cluster
+
+@ %def subevt_cluster
 @ Return a list of all particles for which the mask is true.
 <<Subevents: public>>=
   public :: subevt_select
@@ -23566,6 +24202,7 @@ module expressions
   use syntax_rules
   use parser
   use analysis
+  use jets
   use pdg_arrays
   use subevents
   use user_code_interface
@@ -23654,6 +24291,8 @@ leafs are literal constants or named-parameter references.
      integer, pointer :: prt_type => null ()
      integer, pointer :: index => null ()
      real(default), pointer :: tolerance => null ()
+     integer, pointer :: jet_algorithm => null ()
+     real(default), pointer :: jet_r => null ()
      type(prt_t), pointer :: prt1 => null ()
      type(prt_t), pointer :: prt2 => null ()
      procedure(unary_log),  nopass, pointer :: op1_log  => null ()
@@ -25624,6 +26263,36 @@ test.
   end subroutine collect_p
 
 @ %def collect_p
+@ Cluster the particles of the first argument.  If [[en0]] is present,
+create a mask which is true only for those particles that pass the
+test.
+<<Expressions: procedures>>=
+  subroutine cluster_p (subevt, en1, en0)
+    type(subevt_t), intent(inout) :: subevt
+    type(eval_node_t), intent(in) :: en1
+    type(eval_node_t), intent(inout), optional :: en0
+    logical, dimension(:), allocatable :: mask1
+    integer :: n, i
+    ! Should not be hardcoded!
+    type(jet_definition_t) :: jet_def
+    call jet_def%init (en1%jet_algorithm, en1%jet_r)
+    n = subevt_get_length (en1%pval)
+    allocate (mask1 (n))
+    if (present (en0)) then
+       do i = 1, n
+          en0%index = i
+          en0%prt1 = subevt_get_prt (en1%pval, i)
+          call eval_node_evaluate (en0)
+          mask1(i) = en0%lval
+       end do
+    else
+       mask1 = .true.
+    end if
+    call subevt_cluster (subevt, en1%pval, mask1, jet_def)
+    call jet_def%final ()
+  end subroutine cluster_p
+
+@ %def cluster_p
 @ Select all particles of the first argument.  If [[en0]] is present,
 create a mask which is true only for those particles that pass the
 test.
@@ -28824,8 +29493,8 @@ array.
        call eval_node_compile_block_expr (en, pn, var_list, V_SEV)
     case ("conditional_pexpr")
        call eval_node_compile_conditional (en, pn, var_list, V_SEV)
-    case ("join_fun", "combine_fun", "collect_fun", "select_fun", &
-          "extract_fun", "sort_fun")
+    case ("join_fun", "combine_fun", "collect_fun", "cluster_fun", &
+          "select_fun", "extract_fun", "sort_fun")
        call eval_node_compile_prt_function (en, pn, var_list)
     case default
        call parse_node_mismatch &
@@ -28842,7 +29511,8 @@ array.
 @ %def eval_node_compile_pvalue
 @ 
 \subsubsection{Particle functions}
-This combines the treatment of 'join', 'combine', 'collect', 'select',
+This combines the treatment of 'join', 'combine', 'collect', 'cluster',
+'select', 
 and 'extract' which all have the same syntax.  The one or two argument
 nodes are allocated.  If there is a condition, the condition node is
 also allocated as a logical expression, for which the variable list is
@@ -28856,6 +29526,7 @@ augmented by the appropriate (unary/binary) observables.
     type(parse_node_t), pointer :: pn_arg0, pn_arg1, pn_arg2
     type(eval_node_t), pointer :: en0, en1, en2
     type(string_t) :: key
+    type(var_entry_t), pointer :: var
     if (debug) then
        print *, "read prt_function";  call parse_node_write (pn)
     end if
@@ -28874,6 +29545,18 @@ augmented by the appropriate (unary/binary) observables.
        select case (char (key))
        case ("collect")
           call eval_node_init_prt_fun_unary (en, en1, key, collect_p)
+       case ("cluster")
+          if (fastjet_available ()) then
+             call fastjet_init ()
+          else
+             call msg_fatal &
+               ("'cluster' function requires FastJet, which is not enabled")
+          end if
+          call eval_node_init_prt_fun_unary (en, en1, key, cluster_p)
+          var => var_list_get_var_ptr (var_list, var_str ("jet_algorithm"))
+          en1%jet_algorithm => var_entry_get_ival_ptr (var)
+          var => var_list_get_var_ptr (var_list, var_str ("jet_r"))
+          en1%jet_r => var_entry_get_rval_ptr (var)
        case ("select")
           call eval_node_init_prt_fun_unary (en, en1, key, select_p)
        case ("extract")
@@ -30332,23 +31015,26 @@ We have two different flavors of the syntax: with and without particles.
     call ifile_append (ifile, "SEQ elsif_pexpr = elsif lexpr then pexpr")
     call ifile_append (ifile, "SEQ else_pexpr = else pexpr")
     call ifile_append (ifile, "ALT prt_function = " // &
-         "join_fun | combine_fun | collect_fun | select_fun | " // &
-         "extract_fun | sort_fun")
+         "join_fun | combine_fun | collect_fun | cluster_fun | " // &
+         "select_fun | extract_fun | sort_fun")
     call ifile_append (ifile, "SEQ join_fun = join_clause pargs2")
     call ifile_append (ifile, "SEQ combine_fun = combine_clause pargs2")
     call ifile_append (ifile, "SEQ collect_fun = collect_clause pargs1")
+    call ifile_append (ifile, "SEQ cluster_fun = cluster_clause pargs1")
     call ifile_append (ifile, "SEQ select_fun = select_clause pargs1")
     call ifile_append (ifile, "SEQ extract_fun = extract_clause pargs1")
     call ifile_append (ifile, "SEQ sort_fun = sort_clause pargs1")
     call ifile_append (ifile, "SEQ join_clause = join condition?")
     call ifile_append (ifile, "SEQ combine_clause = combine condition?")
     call ifile_append (ifile, "SEQ collect_clause = collect condition?")
+    call ifile_append (ifile, "SEQ cluster_clause = cluster condition?")
     call ifile_append (ifile, "SEQ select_clause = select condition?")
     call ifile_append (ifile, "SEQ extract_clause = extract position?")
     call ifile_append (ifile, "SEQ sort_clause = sort criterion?")
     call ifile_append (ifile, "KEY join")
     call ifile_append (ifile, "KEY combine")
     call ifile_append (ifile, "KEY collect")
+    call ifile_append (ifile, "KEY cluster")
     call ifile_append (ifile, "KEY select")
     call ifile_append (ifile, "SEQ condition = if lexpr")
     call ifile_append (ifile, "KEY extract")
@@ -87670,6 +88356,9 @@ iterations is known.
 @ Given two pass objects, compare them.  All parameters must match.  Where
 integrations are done in both (number of calls nonzero), the results must be
 equal (up to numerical noise).
+
+The allocated array sizes might be different, but should match up to the
+common [[n_it]] value.
 <<MCI vamp: interfaces>>=
   interface operator (.matches.)
      module procedure pass_matches
@@ -87677,6 +88366,7 @@ equal (up to numerical noise).
 <<MCI vamp: procedures>>=
   function pass_matches (pass, ref) result (ok)
     type(pass_t), intent(in) :: pass, ref
+    integer :: n
     logical :: ok
     ok = .true.
     if (ok)  ok = pass%i_pass == ref%i_pass
@@ -87688,10 +88378,11 @@ equal (up to numerical noise).
     if (ok)  ok = pass%adapt_weights .eqv. ref%adapt_weights
     if (ok)  ok = pass%integral_defined .eqv. ref%integral_defined
     if (pass%integral_defined) then
-       if (ok)  ok = all (pass%calls == ref%calls)
-       if (ok)  ok = all (pass%integral .matches. ref%integral)
-       if (ok)  ok = all (pass%error .matches. ref%error)
-       if (ok)  ok = all (pass%efficiency .matches. ref%efficiency)
+       n = pass%n_it
+       if (ok)  ok = all (pass%calls(:n) == ref%calls(:n))
+       if (ok)  ok = all (pass%integral(:n) .matches. ref%integral(:n))
+       if (ok)  ok = all (pass%error(:n) .matches. ref%error(:n))
+       if (ok)  ok = all (pass%efficiency(:n) .matches. ref%efficiency(:n))
     end if
   end function pass_matches
     
@@ -92244,6 +92935,7 @@ the insertion of additional code when a library is loaded.
      character(32) :: md5sum = ""
      logical :: loaded = .false.
      type(string_t) :: libname
+     type(string_t) :: modellibs_ldflags
      integer :: n_processes = 0
      type(prclib_driver_record_t), dimension(:), allocatable :: record
      procedure(prc_get_n_processes), nopass, pointer :: &
@@ -92291,10 +92983,14 @@ communicating with the OS.
 <<Prclib interfaces: prclib driver: TBP>>=
   procedure :: write => prclib_driver_write
 <<Prclib interfaces: procedures>>=
-  subroutine prclib_driver_write (object, unit)
+  subroutine prclib_driver_write (object, unit, libpath)
     class(prclib_driver_t), intent(in) :: object
     integer, intent(in) :: unit
-    integer :: i
+    logical, intent(in), optional :: libpath
+    logical :: write_lib
+    integer :: i    
+    write_lib = .true.    
+    if (present (libpath))  write_lib = libpath
     write (unit, "(1x,A,A)")  &
          "External matrix-element code library: ", char (object%basename)
     select type (object)
@@ -92305,6 +93001,10 @@ communicating with the OS.
     end select
     write (unit, "(3x,A,L1)")  "loaded    = ", object%loaded
     write (unit, "(3x,A,A,A)") "MD5 sum   = '", object%md5sum, "'"
+    if (write_lib) then
+       write (unit, "(3x,A,A,A)") "Mdl flags = '", &
+            char (object%modellibs_ldflags), "'"
+    end if
     select type (object)
     type is (prclib_driver_dynamic_t)
        write (unit, *)
@@ -92340,9 +93040,11 @@ gfortran 4.7.
 <<Prclib interfaces: public>>=
   public :: dispatch_prclib_driver
 <<Prclib interfaces: procedures>>=
-  subroutine dispatch_prclib_driver (driver, basename)
+  subroutine dispatch_prclib_driver &
+       (driver, basename, modellibs_ldflags)
     class(prclib_driver_t), intent(inout), allocatable :: driver
     type(string_t), intent(in) :: basename
+    type(string_t), intent(in), optional :: modellibs_ldflags
     procedure(dispatch_prclib_driver) :: dispatch_prclib_static
     if (allocated (driver))  deallocate (driver)
     call dispatch_prclib_static (driver, basename)
@@ -92350,6 +93052,7 @@ gfortran 4.7.
        allocate (prclib_driver_dynamic_t :: driver)
     end if
     driver%basename = basename
+    driver%modellibs_ldflags = modellibs_ldflags
   end subroutine dispatch_prclib_driver
   
 @ %def dispatch_prclib_driver
@@ -92462,7 +93165,8 @@ name, and parts that depend on the specific processes and their types.
     write (unit, "(A)")  "CFLAGS = " // char (os_data%cflags)
     write (unit, "(A)")  "CFLAGS_PIC = " // char (os_data%cflags_pic)
     write (unit, "(A)")  "LDFLAGS = " // char (os_data%whizard_ldflags) &
-         // " " // char (os_data%ldflags)
+         // " " // char (os_data%ldflags) // " " // &
+         char (driver%modellibs_ldflags)
     write (unit, "(A)")  ""
     write (unit, "(A)")  "# LaTeX setup"
     write (unit, "(A)")  "LATEX = " // char (os_data%latex)
@@ -94350,7 +95054,7 @@ does nothing useful.
     write (u, "(A)")  "* Create a prclib driver object"
     write (u, "(A)")
 
-    call dispatch_prclib_driver (driver, var_str ("prclib"))
+    call dispatch_prclib_driver (driver, var_str ("prclib"), var_str (""))
     call driver%init (3)
     call driver%set_md5sum (md5sum)
 
@@ -94481,7 +95185,7 @@ wrappers (Fortran module library).
     write (u, "(A)")  "* Create a prclib driver object (2 processes)"
     write (u, "(A)")
 
-    call dispatch_prclib_driver (driver, var_str ("prclib2"))
+    call dispatch_prclib_driver (driver, var_str ("prclib2"), var_str (""))
     call driver%init (2)
     call driver%set_md5sum (md5sum)
 
@@ -94608,7 +95312,7 @@ components of [[os_data]] to known values.
     write (u, "(A)")  "* Create a prclib driver object (2 processes)"
     write (u, "(A)")
 
-    call dispatch_prclib_driver (driver, var_str ("prclib3"))
+    call dispatch_prclib_driver (driver, var_str ("prclib3"), var_str (""))
     call driver%init (2)
     call driver%set_md5sum (md5sum)
 
@@ -94690,7 +95394,7 @@ the featured procedure.
     allocate (test_writer_4_t :: test_writer_4)
     call test_writer_4%init_test ()
 
-    call dispatch_prclib_driver (driver, var_str ("prclib4"))
+    call dispatch_prclib_driver (driver, var_str ("prclib4"), var_str (""))
     call driver%init (1)
     call driver%set_md5sum (md5sum)
 
@@ -95086,7 +95790,7 @@ These procedures are bind(C).
     call os_data_init (os_data)
     allocate (test_writer_5_t :: test_writer_5)
 
-    call dispatch_prclib_driver (driver, var_str ("prclib5"))
+    call dispatch_prclib_driver (driver, var_str ("prclib5"), var_str (""))
     call driver%init (1)
     call driver%set_md5sum (md5sum)
 
@@ -95439,7 +96143,7 @@ These procedures should match the Fortran bind(C) interface.
     call os_data_init (os_data)
     allocate (test_writer_6_t :: test_writer_6)
 
-    call dispatch_prclib_driver (driver, var_str ("prclib6"))
+    call dispatch_prclib_driver (driver, var_str ("prclib6"), var_str (""))
     call driver%init (1)
     call driver%set_md5sum (md5sum)
 
@@ -95712,7 +96416,7 @@ driver) and properly clean up all generated files.
     allocate (test_writer_4_t :: test_writer_4)
 
     call os_data_init (os_data)
-    call dispatch_prclib_driver (driver, var_str ("prclib7"))
+    call dispatch_prclib_driver (driver, var_str ("prclib7"), var_str (""))
     call driver%init (1)
     call driver%set_md5sum (md5sum)
     call driver%set_record (1, var_str ("test7"), var_str ("Test_model"), &
@@ -97982,9 +98686,10 @@ entries do not need finalization themselves.
 <<Process libraries: process def list: TBP>>=
   procedure :: write => process_def_list_write
 <<Process libraries: procedures>>=
-  subroutine process_def_list_write (object, unit)
+  subroutine process_def_list_write (object, unit, libpath)
     class(process_def_list_t), intent(in) :: object
     integer, intent(in), optional :: unit
+    logical, intent(in), optional :: libpath
     type(process_def_entry_t), pointer :: entry
     integer :: i, u
     u = output_unit (unit)
@@ -98518,9 +99223,10 @@ Don't write the MD5 sum since this is used to generate it.
 <<Process libraries: process library: TBP>>=
   procedure :: write => process_library_write
 <<Process libraries: procedures>>=
-  subroutine process_library_write (object, unit)
+  subroutine process_library_write (object, unit, libpath)
     class(process_library_t), intent(in) :: object
     integer, intent(in), optional :: unit
+    logical, intent(in), optional :: libpath
     integer :: i, u
     u = output_unit (unit)
     write (u, "(1x,A,A)")  "Process library: ", char (object%basename)
@@ -98540,7 +99246,7 @@ Don't write the MD5 sum since this is used to generate it.
        write (u, *)
     end if
     if (object%external) then
-       call object%driver%write (u)
+       call object%driver%write (u, libpath)
        write (u, *)
     end if
     call object%process_def_list_t%write (u)
@@ -98631,8 +99337,9 @@ components are ignored.
 <<Process libraries: process library: TBP>>=
   procedure :: configure => process_library_configure
 <<Process libraries: procedures>>=
-  subroutine process_library_configure (lib)
+  subroutine process_library_configure (lib, os_data)
     class(process_library_t), intent(inout) :: lib
+    type(os_data_t), intent(in) :: os_data
     type(process_def_entry_t), pointer :: def_entry
     integer :: n_entries, n_external, i_entry, i_external
     type(string_t) :: model_name
@@ -98677,7 +99384,8 @@ components are ignored.
        def_entry => def_entry%next
     end do
 
-    call dispatch_prclib_driver (lib%driver, lib%basename)
+    call dispatch_prclib_driver (lib%driver, &
+         lib%basename, lib%get_modellibs_ldflags (os_data))
     call lib%driver%init (n_external)
     do i_entry = 1, n_entries
        associate (lib_entry => lib%entry(i_entry))
@@ -99254,6 +99962,73 @@ scan the process entries until we have found a match.
 
 @ %def process_library_connect_process
 @
+@
+\subsection{Collect model-specific libraries}
+This returns appropriate linker flags for the model parameter libraries that
+are used by the generated matrix element.  At the end, the main libwhizard is
+appended (again), because functions from that may be reqired.
+
+Extra models in the local user space need to be treated individually.
+<<Process libraries: process library: TBP>>=
+  procedure :: get_modellibs_ldflags => process_library_get_modellibs_ldflags
+<<Process libraries: procedures>>=
+  function process_library_get_modellibs_ldflags (prc_lib, os_data) result (flags)
+    class(process_library_t), intent(in) :: prc_lib
+    type(os_data_t), intent(in) :: os_data
+    type(string_t) :: flags
+    type(string_t), dimension(:), allocatable :: models
+    type(string_t) :: modelname, modellib, modellib_full
+    logical :: exist
+    integer :: i, j, mi
+    flags = " -lomega"
+    if ((.not. os_data%use_testfiles) .and. &
+	       os_dir_exist (os_data%whizard_models_libpath_local)) &
+		 flags = flags // " -L" // os_data%whizard_models_libpath_local
+    flags = flags // " -L" // os_data%whizard_models_libpath
+    allocate (models(prc_lib%n_entries + 1))
+    models = ""
+    mi = 1
+    if (allocated (prc_lib%entry)) then
+       SCAN: do i = 1, prc_lib%n_entries
+          if (associated (prc_lib%entry(i)%def)) then
+             if (associated (prc_lib%entry(i)%def%model)) then
+                modelname = model_get_name (prc_lib%entry(i)%def%model)
+             else
+                cycle SCAN
+             end if
+          else
+             cycle SCAN
+          end if
+          do j = 1, mi
+             if (models(mi) == modelname) cycle SCAN
+          end do
+          models(mi) = modelname
+          mi = mi + 1
+          if (os_data%use_libtool) then
+             modellib = "libparameters_" // modelname // ".la"
+          else
+             modellib = "libparameters_" // modelname // ".a"
+          end if
+          exist = .false.
+          if (.not. os_data%use_testfiles) then
+             modellib_full = os_data%whizard_models_libpath_local &
+                  // "/" // modellib
+             inquire (file=char (modellib_full), exist=exist)
+          end if
+          if (.not. exist) then
+             modellib_full = os_data%whizard_models_libpath &
+                  // "/" // modellib
+             inquire (file=char (modellib_full), exist=exist)
+          end if
+          if (exist) flags = flags // " -lparameters_" // modelname
+       end do SCAN
+    end if
+    deallocate (models)
+    flags = flags // " -lwhizard"
+  end function process_library_get_modellibs_ldflags
+
+@ %def process_library_get_modellibs_ldflags
+@
 \subsection{Test}
 This is the master for calling self-test procedures.
 <<Process libraries: public>>=
@@ -99599,6 +100374,7 @@ with a test matrix element type that needs no code written on file.
     write (u, "(A)")  "* Initialize a process library with one entry &
          &(no external code)"
     write (u, "(A)")
+    call os_data_init (os_data)
     call lib%init (var_str ("proclibs4"))
 
     allocate (prcdef_2_t :: core_def)
@@ -99610,7 +100386,7 @@ with a test matrix element type that needs no code written on file.
 
     write (u, "(A)")  "* Configure library"
     write (u, "(A)")
-    call lib%configure ()
+    call lib%configure (os_data)
 
     write (u, "(A)")  "* Compute MD5 sum"
     write (u, "(A)")
@@ -99807,7 +100583,7 @@ Here is the actual test:
     
     write (u, "(A)")  "* Configure library"
     write (u, "(A)")
-    call lib%configure ()
+    call lib%configure (os_data)
 
     write (u, "(A)")  "* Compute MD5 sum"
     write (u, "(A)")
@@ -99833,7 +100609,7 @@ Here is the actual test:
     write (u, "(A)")
     call lib%make_link (os_data)
 
-    call lib%write (u)
+    call lib%write (u, libpath = .false.)
     
     call lib%final ()
 
@@ -100029,7 +100805,7 @@ Here is the actual test:
 
     write (u, "(A)")  "* Configure library"
     write (u, "(A)")
-    call lib%configure ()
+    call lib%configure (os_data)
 
     write (u, "(A)")  "* Write makefile"
     write (u, "(A)")
@@ -100043,7 +100819,7 @@ Here is the actual test:
     write (u, "(A)")
     call lib%load (os_data)
 
-    call lib%write (u)
+    call lib%write (u, libpath = .false.)
     
     write (u, "(A)")
     write (u, "(A)")  "* Probe library API:"
@@ -100254,7 +101030,7 @@ Here is the actual test:
     write (u, "(A)")  "* Configure library"
     write (u, "(A)")
 
-    call lib%configure ()
+    call lib%configure (os_data)
     call lib%compute_md5sum ()
     
     associate (def => lib%entry(1)%def%initial(1))
@@ -100324,7 +101100,7 @@ Here is the actual test:
          variant = core_def)
     call lib%append (entry)
 
-    call lib%configure ()
+    call lib%configure (os_data)
     call lib%compute_md5sum ()
     associate (def => lib%entry(2)%def%initial(1))
       select type (writer => lib%driver%record(2)%writer)
@@ -100498,9 +101274,10 @@ empty stack can be immediately recycled, if necessary.
 <<Prclib stacks: prclib stack: TBP>>=
   procedure :: write => prclib_stack_write
 <<Prclib stacks: procedures>>=
-  subroutine prclib_stack_write (object, unit)
+  subroutine prclib_stack_write (object, unit, libpath)
     class(prclib_stack_t), intent(in) :: object
     integer, intent(in), optional :: unit
+    logical, intent(in), optional :: libpath
     type(prclib_entry_t), pointer :: lib
     integer :: u
     u = output_unit (unit)
@@ -100513,7 +101290,7 @@ empty stack can be immediately recycled, if necessary.
        lib => object%first
        do while (associated (lib))
           call write_separator (u)
-          call lib%write (u)
+          call lib%write (u, libpath)
           lib => lib%next
        end do
     end select
@@ -100942,6 +101719,7 @@ the driver.
     sca = .true.;   if (present (scattering))  sca = scattering
     dec = .false.;  if (present (decay))       dec = decay
 
+    call os_data_init (os_data)
     call lib%init (libname)
     model_name = "Test"
 
@@ -100996,7 +101774,7 @@ the driver.
        call lib%append (entry)
     end if
     
-    call lib%configure ()
+    call lib%configure (os_data)
     call lib%load (os_data)
   end subroutine prc_test_create_library
   
@@ -101047,6 +101825,7 @@ independent of angle.)  The matrix element is equal to unity.
 
     write (u, "(A)")  "* Initialize a process library with one entry"
     write (u, "(A)")
+    call os_data_init (os_data)
     call lib%init (var_str ("prc_test1"))
 
     model_name = "Test"
@@ -101071,7 +101850,7 @@ independent of angle.)  The matrix element is equal to unity.
     
     write (u, "(A)")  "* Configure library"
     write (u, "(A)")
-    call lib%configure ()
+    call lib%configure (os_data)
     
     write (u, "(A)")  "* Load library"
     write (u, "(A)")
@@ -101227,6 +102006,7 @@ independent of angle.)  The matrix element is equal to unity.
 
     write (u, "(A)")  "* Initialize a process library with one entry"
     write (u, "(A)")
+    call os_data_init (os_data)
     call lib%init (var_str ("prc_test3"))
 
     model_name = "Test"
@@ -101251,7 +102031,7 @@ independent of angle.)  The matrix element is equal to unity.
     
     write (u, "(A)")  "* Configure library"
     write (u, "(A)")
-    call lib%configure ()
+    call lib%configure (os_data)
     
     write (u, "(A)")  "* Load library"
     write (u, "(A)")
@@ -119338,7 +120118,7 @@ This sequence sets up a two-jet process, ready for generating events.
          report_progress=.true.)
     call lib%append (entry)
 
-    call lib%configure ()
+    call lib%configure (os_data)
     call lib%write_makefile (os_data, force = .true.)
     call lib%clean (os_data, distclean = .false.)
     call lib%write_driver (force = .true.)
@@ -122778,7 +123558,7 @@ parallel make.
     
     write (u, "(A)")  "* Configure library"
     write (u, "(A)")
-    call lib%configure ()
+    call lib%configure (os_data)
     
     write (u, "(A)")  "* Write makefile"
     write (u, "(A)")
@@ -122796,7 +123576,7 @@ parallel make.
     write (u, "(A)")
     call lib%load (os_data)
 
-    call lib%write (u)
+    call lib%write (u, libpath = .false.)
     
     write (u, "(A)")
     write (u, "(A)")  "* Probe library API:"
@@ -122948,7 +123728,7 @@ parallel make.
     
     write (u, "(A)")  "* Configure library"
     write (u, "(A)")
-    call lib%configure ()
+    call lib%configure (os_data)
     
     write (u, "(A)")  "* Write makefile"
     write (u, "(A)")
@@ -122966,7 +123746,7 @@ parallel make.
     write (u, "(A)")
     call lib%load (os_data)
 
-    call lib%write (u)
+    call lib%write (u, libpath = .false.)
     
     write (u, "(A)")
     write (u, "(A)")  "* Probe library API:"
@@ -124307,7 +125087,7 @@ parallel make.
     
     write (u, "(A)")  "* Configure library"
     write (u, "(A)")
-    call lib%configure ()
+    call lib%configure (os_data)
     
     write (u, "(A)")  "* Write makefile"
     write (u, "(A)")
@@ -124325,7 +125105,7 @@ parallel make.
     write (u, "(A)")
     call lib%load (os_data)
 
-    call lib%write (u)
+    call lib%write (u, libpath = .false.)
     
     write (u, "(A)")
     write (u, "(A)")  "* Probe library API:"
@@ -124502,7 +125282,7 @@ parallel make.
     write (u, "(A)")
     write (u, "(A)")  "* Build and load library"
 
-    call lib%configure ()
+    call lib%configure (os_data)
     call lib%write_makefile (os_data, force = .true.)
     call lib%clean (os_data, distclean = .false.)
     call lib%write_driver (force = .true.)
@@ -124714,7 +125494,7 @@ irrelevant helicities.
     write (u, "(A)")
     write (u, "(A)")  "* Build and load library"
 
-    call lib%configure ()
+    call lib%configure (os_data)
     call lib%write_makefile (os_data, force = .true.)
     call lib%clean (os_data, distclean = .false.)
     call lib%write_driver (force = .true.)
@@ -124921,7 +125701,7 @@ parallel make.
     
     write (u, "(A)")  "* Configure and compile process"
     write (u, "(A)")
-    call lib%configure ()
+    call lib%configure (os_data)
     call lib%write_makefile (os_data, force = .true.)
     call lib%clean (os_data, distclean = .false.)
     call lib%write_driver (force = .true.)
@@ -125066,7 +125846,7 @@ method [[compute_amplitude]].
     
     write (u, "(A)")  "* Configure and compile process"
     write (u, "(A)")
-    call lib%configure ()
+    call lib%configure (os_data)
     call lib%write_makefile (os_data, force = .true.)
     call lib%clean (os_data, distclean = .false.)
     call lib%write_driver (force = .true.)
@@ -125210,7 +125990,7 @@ possible.
     write (u, "(A)")  "* Configure and compile process"
     write (u, "(A)")  "    and generate diagrams"
     write (u, "(A)")
-    call lib%configure ()
+    call lib%configure (os_data)
     call lib%write_makefile (os_data, force = .true., testflag = .true.)
     call lib%clean (os_data, distclean = .false.)
     call lib%write_driver (force = .true.)
@@ -139192,6 +139972,7 @@ module rt_data
   use parser
   use models
   use flavors
+  use jets
   use variables
   use expressions
   use polarizations
@@ -139676,12 +140457,13 @@ temporarily override defaults.  The data set is transparent.
 <<RT data: rt data: TBP>>=
   procedure :: write_libraries => rt_data_write_libraries
 <<RT data: procedures>>=
-  subroutine rt_data_write_libraries (object, unit)
+  subroutine rt_data_write_libraries (object, unit, libpath)
     class(rt_data_t), intent(in) :: object
     integer, intent(in), optional :: unit
+    logical, intent(in), optional :: libpath
     integer :: u
     u = output_unit (unit)
-    call object%prclib_stack%write (u)
+    call object%prclib_stack%write (u, libpath)
   end subroutine rt_data_write_libraries
 
 @ %def rt_data_write_libraries
@@ -140396,6 +141178,52 @@ so the latter is always available (and kept global).
          epsilon (real_specimen), intrinsic = .true., locked = .true.)
     call var_list_append_real (global%var_list, var_str ("real_tiny"), &
          tiny (real_specimen), intrinsic = .true., locked = .true.)
+    !!! FastJet parameters
+    call var_list_append_int (global%var_list, &
+         var_str ("kt_algorithm"), &
+         kt_algorithm, &
+         intrinsic = .true., locked = .true.)
+    call var_list_append_int (global%var_list, &
+         var_str ("cambridge_algorithm"), &
+         cambridge_algorithm, intrinsic = .true., locked = .true.)
+    call var_list_append_int (global%var_list, &
+         var_str ("antikt_algorithm"), &
+         antikt_algorithm, &
+         intrinsic = .true., locked = .true.)
+    call var_list_append_int (global%var_list, &
+         var_str ("genkt_algorithm"), &
+         genkt_algorithm, &
+         intrinsic = .true., locked = .true.)
+    call var_list_append_int (global%var_list, &
+         var_str ("cambridge_for_passive_algorithm"), &
+         cambridge_for_passive_algorithm, &
+         intrinsic = .true., locked = .true.)
+    call var_list_append_int (global%var_list, &
+         var_str ("genkt_for_passive_algorithm"), &
+         genkt_for_passive_algorithm, &
+         intrinsic = .true., locked = .true.)
+    call var_list_append_int (global%var_list, &
+         var_str ("ee_kt_algorithm"), &
+         ee_kt_algorithm, &
+         intrinsic = .true., locked = .true.)
+    call var_list_append_int (global%var_list, &
+         var_str ("ee_genkt_algorithm"), &
+         ee_genkt_algorithm, &
+         intrinsic = .true., locked = .true.)
+    call var_list_append_int (global%var_list, &
+         var_str ("plugin_algorithm"), &
+         plugin_algorithm, &
+         intrinsic = .true., locked = .true.)
+    call var_list_append_int (global%var_list, &
+         var_str ("undefined_jet_algorithm"), &
+         undefined_jet_algorithm, &
+         intrinsic = .true., locked = .true.)
+    call var_list_append_int (global%var_list, &
+         var_str ("jet_algorithm"), undefined_jet_algorithm, &
+         intrinsic = .true.)
+    call var_list_append_real (global%var_list, &
+         var_str ("jet_r"), 0._default, &
+         intrinsic = .true.)
     call var_list_append_log &
          (global%var_list, var_str ("?polarized_events"), .false., &
             intrinsic=.true.)
@@ -144932,7 +145760,7 @@ accessible by a makefile will be overwritten.
     if (associated (comp%lib)) then
        call msg_message ("Process library '" &
             // char (comp%libname) // "': compiling ...")
-       call comp%lib%configure ()
+       call comp%lib%configure (os_data)
        if (signal_is_pending ())  return
        call comp%lib%compute_md5sum ()
        call comp%lib%write_makefile (os_data, force)
@@ -145072,7 +145900,8 @@ write a subroutine which returns the names of the compiled libraries.
     write (u, "(3A)")  "! Whizard: process libraries for executable '", &
          char (compilation%exe_name), "'"
     write (u, "(A)")  "! Automatically generated file, do not edit"
-    write (u, "(A)")  "subroutine dispatch_prclib_static (driver, basename)"
+    write (u, "(A)")  "subroutine dispatch_prclib_static " // &
+         "(driver, basename, modellibs_ldflags)"
     write (u, "(A)")  "  use iso_varying_string, string_t => varying_string"
     write (u, "(A)")  "  use prclib_interfaces"
     do i = 1, size (compilation%lib_name)
@@ -145084,6 +145913,8 @@ write a subroutine which returns the names of the compiled libraries.
     write (u, "(A)")  "  class(prclib_driver_t), intent(inout), allocatable &
          &:: driver"
     write (u, "(A)")  "  type(string_t), intent(in) :: basename"
+    write (u, "(A)")  "  logical, intent(in), optional :: " // &
+         "modellibs_ldflags"
     write (u, "(A)")  "  select case (char (basename))"
     do i = 1, size (compilation%lib_name)
        associate (lib_name => compilation%lib_name(i))
@@ -145362,7 +146193,7 @@ Compile an external test matrix element ([[omega]] type)
 
     call compile_library (libname, global)
     
-    call global%write_libraries (u)
+    call global%write_libraries (u, libpath = .false.)
 
     call global%final ()
     call syntax_model_file_final ()
@@ -161091,6 +161922,8 @@ module whizard
   use process_libraries
   use prclib_stacks
   use hepmc_interface
+  use jets
+  use pdg_arrays
   use interactions
   use slha_interface
   use cascades
@@ -161641,6 +162474,10 @@ This is for developers only, but needs a well-defined interface.
        call format_test (u, results)
     case ("hepmc")
        call hepmc_test (u, results)
+    case ("jets")
+       call jets_test (u, results)
+    case ("pdg_arrays")
+       call pdg_arrays_test (u, results)
     case ("interactions")
        call interaction_test (u, results)
     case ("lexers")
@@ -161799,6 +162636,7 @@ This is for developers only, but needs a well-defined interface.
        call expressions_test (u, results)
        call format_test (u, results)
        call hepmc_test (u, results)
+       call jets_test (u, results)
        call os_interface_test (u, results)
        call cputime_test (u, results)
        call interaction_test (u, results)

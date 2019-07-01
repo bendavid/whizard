@@ -63,11 +63,11 @@ cuts = all M >= 10 GeV [q,Q]
 integrate (zh) { iterations = 5:5000}
 
 integrate(nnbb,qqbb,bbbb,eebb,
-          qqtt,bbtt) { iterations = 12:20000 }
+          qqtt,bbtt) { iterations = 12:20000, 1:30000 }
 
 # Define title etc. as global variables, that will be used by PLOT
 $description =
-  "A WHIZARD 2.2 Example. Light Higgs search at LEP Using weighted events to speed things up. A 115 GeV pseudo-Higgs has been added. Luminosity enlarged by two orders of magnitude."
+  "A WHIZARD 2.2 Example. Light Higgs search at LEP. A 115 GeV pseudo-Higgs has been added. Luminosity enlarged by two orders of magnitude."
 $y_label = "$N_{\textrm{events}}$"
 
 # Allocate plots

@@ -3,12 +3,11 @@ WHIZARD Core
   - large event numbers (still a problem??)
 
 * 2.3
-  - EWA implementation (some progress in 2.1.1)
+  - EWA implementation (some progress in 2.2.0)
   - reconsider structure function mappings for optimization (done?)
   - integration of multiple observables
   - jet finder
   - reenabling underlying event 
-  - process collections (preparations in 2.2)
   
 * 2.4
   - Mathematica interface

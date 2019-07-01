@@ -1,4 +1,4 @@
-! WHIZARD 2.2.0 May 18 2014
+! WHIZARD 2.2.1 June 3 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -206,6 +206,7 @@ contains
     sca = .true.;   if (present (scattering))  sca = scattering
     dec = .false.;  if (present (decay))       dec = decay
 
+    call os_data_init (os_data)
     call lib%init (libname)
     model_name = "Test"
 
@@ -260,7 +261,7 @@ contains
        call lib%append (entry)
     end if
     
-    call lib%configure ()
+    call lib%configure (os_data)
     call lib%load (os_data)
   end subroutine prc_test_create_library
   
@@ -303,6 +304,7 @@ end subroutine prc_test_test
 
     write (u, "(A)")  "* Initialize a process library with one entry"
     write (u, "(A)")
+    call os_data_init (os_data)
     call lib%init (var_str ("prc_test1"))
 
     model_name = "Test"
@@ -327,7 +329,7 @@ end subroutine prc_test_test
     
     write (u, "(A)")  "* Configure library"
     write (u, "(A)")
-    call lib%configure ()
+    call lib%configure (os_data)
     
     write (u, "(A)")  "* Load library"
     write (u, "(A)")
@@ -460,6 +462,7 @@ end subroutine prc_test_test
 
     write (u, "(A)")  "* Initialize a process library with one entry"
     write (u, "(A)")
+    call os_data_init (os_data)
     call lib%init (var_str ("prc_test3"))
 
     model_name = "Test"
@@ -484,7 +487,7 @@ end subroutine prc_test_test
     
     write (u, "(A)")  "* Configure library"
     write (u, "(A)")
-    call lib%configure ()
+    call lib%configure (os_data)
     
     write (u, "(A)")  "* Load library"
     write (u, "(A)")

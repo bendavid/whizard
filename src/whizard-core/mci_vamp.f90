@@ -1,4 +1,4 @@
-! WHIZARD 2.2.0 May 18 2014
+! WHIZARD 2.2.1 June 3 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -448,6 +448,7 @@ contains
   
   function pass_matches (pass, ref) result (ok)
     type(pass_t), intent(in) :: pass, ref
+    integer :: n
     logical :: ok
     ok = .true.
     if (ok)  ok = pass%i_pass == ref%i_pass
@@ -459,10 +460,11 @@ contains
     if (ok)  ok = pass%adapt_weights .eqv. ref%adapt_weights
     if (ok)  ok = pass%integral_defined .eqv. ref%integral_defined
     if (pass%integral_defined) then
-       if (ok)  ok = all (pass%calls == ref%calls)
-       if (ok)  ok = all (pass%integral .matches. ref%integral)
-       if (ok)  ok = all (pass%error .matches. ref%error)
-       if (ok)  ok = all (pass%efficiency .matches. ref%efficiency)
+       n = pass%n_it
+       if (ok)  ok = all (pass%calls(:n) == ref%calls(:n))
+       if (ok)  ok = all (pass%integral(:n) .matches. ref%integral(:n))
+       if (ok)  ok = all (pass%error(:n) .matches. ref%error(:n))
+       if (ok)  ok = all (pass%efficiency(:n) .matches. ref%efficiency(:n))
     end if
   end function pass_matches
     

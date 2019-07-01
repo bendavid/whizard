@@ -1,4 +1,4 @@
-! WHIZARD 2.2.0 May 18 2014
+! WHIZARD 2.2.1 June 3 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -46,6 +46,7 @@ module expressions
   use syntax_rules
   use parser
   use analysis
+  use jets
   use pdg_arrays
   use subevents
   use user_code_interface
@@ -148,6 +149,8 @@ module expressions
      integer, pointer :: prt_type => null ()
      integer, pointer :: index => null ()
      real(default), pointer :: tolerance => null ()
+     integer, pointer :: jet_algorithm => null ()
+     real(default), pointer :: jet_r => null ()
      type(prt_t), pointer :: prt1 => null ()
      type(prt_t), pointer :: prt2 => null ()
      procedure(unary_log),  nopass, pointer :: op1_log  => null ()
@@ -1963,6 +1966,31 @@ contains
     end if
     call subevt_collect (subevt, en1%pval, mask1)
   end subroutine collect_p
+
+  subroutine cluster_p (subevt, en1, en0)
+    type(subevt_t), intent(inout) :: subevt
+    type(eval_node_t), intent(in) :: en1
+    type(eval_node_t), intent(inout), optional :: en0
+    logical, dimension(:), allocatable :: mask1
+    integer :: n, i
+    ! Should not be hardcoded!
+    type(jet_definition_t) :: jet_def
+    call jet_def%init (en1%jet_algorithm, en1%jet_r)
+    n = subevt_get_length (en1%pval)
+    allocate (mask1 (n))
+    if (present (en0)) then
+       do i = 1, n
+          en0%index = i
+          en0%prt1 = subevt_get_prt (en1%pval, i)
+          call eval_node_evaluate (en0)
+          mask1(i) = en0%lval
+       end do
+    else
+       mask1 = .true.
+    end if
+    call subevt_cluster (subevt, en1%pval, mask1, jet_def)
+    call jet_def%final ()
+  end subroutine cluster_p
 
   subroutine select_p (subevt, en1, en0)
     type(subevt_t), intent(inout) :: subevt
@@ -4811,8 +4839,8 @@ contains
        call eval_node_compile_block_expr (en, pn, var_list, V_SEV)
     case ("conditional_pexpr")
        call eval_node_compile_conditional (en, pn, var_list, V_SEV)
-    case ("join_fun", "combine_fun", "collect_fun", "select_fun", &
-          "extract_fun", "sort_fun")
+    case ("join_fun", "combine_fun", "collect_fun", "cluster_fun", &
+          "select_fun", "extract_fun", "sort_fun")
        call eval_node_compile_prt_function (en, pn, var_list)
     case default
        call parse_node_mismatch &
@@ -4834,6 +4862,7 @@ contains
     type(parse_node_t), pointer :: pn_arg0, pn_arg1, pn_arg2
     type(eval_node_t), pointer :: en0, en1, en2
     type(string_t) :: key
+    type(var_entry_t), pointer :: var
     if (debug) then
        print *, "read prt_function";  call parse_node_write (pn)
     end if
@@ -4852,6 +4881,18 @@ contains
        select case (char (key))
        case ("collect")
           call eval_node_init_prt_fun_unary (en, en1, key, collect_p)
+       case ("cluster")
+          if (fastjet_available ()) then
+             call fastjet_init ()
+          else
+             call msg_fatal &
+               ("'cluster' function requires FastJet, which is not enabled")
+          end if
+          call eval_node_init_prt_fun_unary (en, en1, key, cluster_p)
+          var => var_list_get_var_ptr (var_list, var_str ("jet_algorithm"))
+          en1%jet_algorithm => var_entry_get_ival_ptr (var)
+          var => var_list_get_var_ptr (var_list, var_str ("jet_r"))
+          en1%jet_r => var_entry_get_rval_ptr (var)
        case ("select")
           call eval_node_init_prt_fun_unary (en, en1, key, select_p)
        case ("extract")
@@ -6184,23 +6225,26 @@ contains
     call ifile_append (ifile, "SEQ elsif_pexpr = elsif lexpr then pexpr")
     call ifile_append (ifile, "SEQ else_pexpr = else pexpr")
     call ifile_append (ifile, "ALT prt_function = " // &
-         "join_fun | combine_fun | collect_fun | select_fun | " // &
-         "extract_fun | sort_fun")
+         "join_fun | combine_fun | collect_fun | cluster_fun | " // &
+         "select_fun | extract_fun | sort_fun")
     call ifile_append (ifile, "SEQ join_fun = join_clause pargs2")
     call ifile_append (ifile, "SEQ combine_fun = combine_clause pargs2")
     call ifile_append (ifile, "SEQ collect_fun = collect_clause pargs1")
+    call ifile_append (ifile, "SEQ cluster_fun = cluster_clause pargs1")
     call ifile_append (ifile, "SEQ select_fun = select_clause pargs1")
     call ifile_append (ifile, "SEQ extract_fun = extract_clause pargs1")
     call ifile_append (ifile, "SEQ sort_fun = sort_clause pargs1")
     call ifile_append (ifile, "SEQ join_clause = join condition?")
     call ifile_append (ifile, "SEQ combine_clause = combine condition?")
     call ifile_append (ifile, "SEQ collect_clause = collect condition?")
+    call ifile_append (ifile, "SEQ cluster_clause = cluster condition?")
     call ifile_append (ifile, "SEQ select_clause = select condition?")
     call ifile_append (ifile, "SEQ extract_clause = extract position?")
     call ifile_append (ifile, "SEQ sort_clause = sort criterion?")
     call ifile_append (ifile, "KEY join")
     call ifile_append (ifile, "KEY combine")
     call ifile_append (ifile, "KEY collect")
+    call ifile_append (ifile, "KEY cluster")
     call ifile_append (ifile, "KEY select")
     call ifile_append (ifile, "SEQ condition = if lexpr")
     call ifile_append (ifile, "KEY extract")

@@ -38,7 +38,7 @@ libwhizard_core_la_SOURCES = \
   permutations.f90 sorting.f90 ifiles.f90 \
   lexers.f90 syntax_rules.f90 parser.f90 xml.f90 \
   user_files.f90 analysis.f90 \
-  pdg_arrays.f90 subevents.f90 \
+  jets.f90 pdg_arrays.f90 subevents.f90 \
   user_code_interface.f90 \
   variables.f90 expressions.f90 \
   models.f90 \
@@ -146,7 +146,7 @@ SUFFIXES = .lo .$(FC_MODULE_EXT)
 	@:
 #	touch $@
 
-AM_FCFLAGS = -I../misc -I../vamp/src -I../shower -I../pdf_builtin -I../muli -I../circe1/src -I../circe2/src
+AM_FCFLAGS = -I../misc -I../vamp/src -I../shower -I../pdf_builtin -I../muli -I../circe1/src -I../circe2/src -I../fastjet
 
 ########################################################################
 ## Default Fortran compiler options

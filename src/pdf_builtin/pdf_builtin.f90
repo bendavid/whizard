@@ -1,4 +1,4 @@
-!$Id: pdf_builtin.f90 4926 2013-12-04 12:35:06Z jr_reuter $
+!$Id: pdf_builtin.f90 5840 2014-05-24 13:33:07Z jr_reuter $
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
@@ -36,6 +36,7 @@ module pdf_builtin
   use cteq6pdf
   use mstw2008
   use ct10pdf
+  use CJ12
 
   implicit none
   save
@@ -43,11 +44,12 @@ module pdf_builtin
   private
 
 ! The available sets
-  integer, parameter :: nsets = 10
+  integer, parameter :: nsets = 13
   integer, parameter, public :: &
        CTEQ6M = 1, CTEQ6D = 2, CTEQ6L = 3, CTEQ6L1 = 4, &
        MRST2004QEDp = 5, MRST2004QEDn = 6, MSTW2008LO = 7, MSTW2008NLO = 8, &
-       MSTW2008NNLO = 9, CT10 = 10
+       MSTW2008NNLO = 9, CT10 = 10, CJ12_max = 11, CJ12_mid = 12, &
+       CJ12_min = 13
   
 ! Limits
   real(kind=default), parameter :: &
@@ -58,34 +60,36 @@ module pdf_builtin
        mstw2008_q_min = 1.01, mstw2008_q_max = sqrt (0.99E9_default), &
        mstw2008_x_min = 1.01E-6, mstw2008_x_max = 1., &
        ct10_q_min = 1.3, ct10_q_max = 1.E5, &
-       ct10_x_min = 1.E-8, ct10_x_max = 1.
+       ct10_x_min = 1.E-8, ct10_x_max = 1., &
+       cj12_q_min = 1.69, cj12_q_max = 3.E5, &
+       cj12_x_min = 2.E-5, cj12_x_max = 0.9 
 
 ! Lambda_QCD and quark masses
   
   real(kind=double), dimension(6), parameter, public :: alam_ct10 = &
-       (/ 0.37219423568859566_double, 0.37219423568859566_double, &
+       [  0.37219423568859566_double, 0.37219423568859566_double, &
           0.37219423568859566_double, 0.37219423568859566_double, &      
-          0.32560730624033124_double, 0.22600000000000001_double /)
+          0.32560730624033124_double, 0.22600000000000001_double ]
 
   real(kind=double), dimension(6), parameter, public :: alam_cteq6m = &
-       (/ 0.37248648555333957_double, 0.37248648555333957_double, &
+       [  0.37248648555333957_double, 0.37248648555333957_double, &
           0.37248648555333957_double, 0.37248648555333957_double, &
-          0.32590307925177625_double, 0.22623045868581182_double /)
+          0.32590307925177625_double, 0.22623045868581182_double ]
 
   real(kind=double), dimension(6), parameter, public :: alam_cteq6l = &
-       (/ 0.37218603304249098_double, 0.37218603304249098_double, &
+       [  0.37218603304249098_double, 0.37218603304249098_double, &
           0.37218603304249098_double, 0.37218603304249098_double, &
-          0.32559900534407232_double, 0.22599353258372407_double /)
+          0.32559900534407232_double, 0.22599353258372407_double ]
 
   real(kind=double), dimension(6), parameter, public :: alam_cteq6ll = &
-       (/ 0.24560434095679567_double, 0.24560434095679567_double, &
+       [  0.24560434095679567_double, 0.24560434095679567_double, &
           0.24560434095679567_double, 0.24560434095679567_double, &
-          0.21495099184302788_double, 0.16499885346541945_double /)
+          0.21495099184302788_double, 0.16499885346541945_double ]
   
   real(kind=double), dimension(0:5), parameter :: amhat = &
-       (/ 0.0000000000000000_double,  0.0000000000000000_double, &        
+       [  0.0000000000000000_double,  0.0000000000000000_double, &        
           0.0000000000000000_double,  0.0000000000000000_double, &
-          1.3000000000000000_double,  4.500000000000000_double /)
+          1.3000000000000000_double,  4.500000000000000_double ]
 
   !!! Global parameter for minimal value of evolution
   real(kind=double), parameter, private :: amn = 0.375_double, &
@@ -103,6 +107,7 @@ module pdf_builtin
   integer :: cteq6_initialized = -1
   integer :: mstw2008_initialized = -1
   logical :: ct10_initialized = .false.
+  integer :: cj12_initialized = -1
   logical :: &
        mrst2004qedp_initialized =  .false., &
        mrst2004qedn_initialized =  .false.
@@ -156,6 +161,12 @@ contains
        name = var_str ("MSTW2008NNLO")
     case (CT10)
        name = var_str ("CT10")
+    case (CJ12_max)
+       name = var_str ("CJ12_max")
+    case (CJ12_mid)
+       name = var_str ("CJ12_mid")
+    case (CJ12_min)
+       name = var_str ("CJ12_min")
     case default
        call msg_fatal ("pdf_builtin: internal: invalid PDF set!")
     end select
@@ -183,6 +194,8 @@ contains
     case (MSTW2008LO, MSTW2008NLO, MSTW2008NNLO)
        flag = .false.
     case (CT10)
+       flag = .false.
+    case (CJ12_max, CJ12_mid, CJ12_min)
        flag = .false.
     case default
        call msg_fatal ("pdf_builtin: internal: invalid PDF set!")
@@ -229,6 +242,18 @@ contains
        if (ct10_initialized) return
        call setct10 (char (mprefix), 100)
        ct10_initialized = .true.
+    case (CJ12_max)
+       if (cj12_initialized == pdftype) return
+       call setCJ (char (mprefix), 300)
+       cj12_initialized = pdftype
+    case (CJ12_mid)
+       if (cj12_initialized == pdftype) return
+       call setCJ (char (mprefix), 200)
+       cj12_initialized = pdftype
+    case (CJ12_min)
+       if (cj12_initialized == pdftype) return
+       call setCJ (char (mprefix), 100)
+       cj12_initialized = pdftype
     case default
        call msg_fatal ("pdf_builtin: internal: invalid PDF set!")
     end select
@@ -259,13 +284,13 @@ contains
             " cannot be used simultaneously")
        mx = max (min (x, cteq6_x_max), cteq6_x_min)
        mq = max (min (q, cteq6_q_max), cteq6_q_min)
-       if (present (f)) f = (/ 0._double, &
+       if (present (f)) f = [ 0._double, &
             ctq6pdf (-5, mx, mq), ctq6pdf (-4, mx, mq), &
             ctq6pdf (-3, mx, mq), ctq6pdf (-1, mx, mq), &
             ctq6pdf (-2, mx, mq), ctq6pdf ( 0, mx, mq), &
             ctq6pdf ( 2, mx, mq), ctq6pdf ( 1, mx, mq), &
             ctq6pdf ( 3, mx, mq), ctq6pdf ( 4, mx, mq), &
-            ctq6pdf ( 5, mx, mq), 0._double /)
+            ctq6pdf ( 5, mx, mq), 0._double ]
        if (present (fphoton)) call msg_fatal ("photon pdf requested for " // &
             char (pdf_get_name (pdftype)) // " which does not provide it!")
     case (MRST2004QEDp)
@@ -277,8 +302,8 @@ contains
        call mrstqed (mx, mq, 1, upv, dnv, ups, dns, str, chm, bot, glu, phot, &
             char (mrst2004qedp_prefix))
        if (present (f)) f = &
-            (/ 0._double, bot, chm, str, ups, dns, glu, dns + dnv, ups + upv, &
-            str, chm, bot, 0._double /) / mx
+            [ 0._double, bot, chm, str, ups, dns, glu, dns + dnv, ups + upv, &
+            str, chm, bot, 0._double ] / mx
        if (present (fphoton)) fphoton = phot / mx
     case (MRST2004QEDn)
        if (.not. mrst2004qedn_initialized) call msg_fatal ( &
@@ -289,8 +314,8 @@ contains
        call mrstqed (mx, mq, 2, upv, dnv, ups, dns, str, chm, bot, glu, phot, &
             char (mrst2004qedn_prefix))
        if (present (f)) f = &
-            (/ 0._double, bot, chm, str, ups, dns, glu, dns + dnv, ups + upv, &
-            str, chm, bot, 0._double /) / mx
+            [ 0._double, bot, chm, str, ups, dns, glu, dns + dnv, ups + upv, &
+            str, chm, bot, 0._double ] / mx
        if (present (fphoton)) fphoton = phot / mx
     case (MSTW2008LO, MSTW2008NLO, MSTW2008NNLO)
        if (mstw2008_initialized < 0) &
@@ -314,8 +339,8 @@ contains
        call getmstw2008 (char (mstw2008_prefix), char (setname), 0, mx, mq, &
             upv, dnv, ups, dns, str, sbar, chm, cbar, bot, bbar, glu, phot)
        if (present (f)) f = &
-            (/ 0._double, bbar, cbar, sbar, ups, dns, glu, dns + dnv, ups + upv, &
-            str, chm, bot, 0._double /) / mx
+            [ 0._double, bbar, cbar, sbar, ups, dns, glu, dns + dnv, ups + upv, &
+            str, chm, bot, 0._double ] / mx
        if (present (fphoton)) call msg_fatal ("photon pdf requested for " // &
             char (pdf_get_name (pdftype)) // " which does not provide it!")
     case (CT10)
@@ -324,15 +349,33 @@ contains
             "initialization!")
        mx = max (min (x, ct10_x_max), ct10_x_min)
        mq = max (min (q, ct10_q_max), ct10_q_min)
-       if (present (f)) f = (/ 0._double, &
+       if (present (f)) f = [ 0._double, &
             getct10pdf (-5, mx, mq), getct10pdf (-4, mx, mq), &
             getct10pdf (-3, mx, mq), getct10pdf (-1, mx, mq), &
             getct10pdf (-2, mx, mq), getct10pdf ( 0, mx, mq), &
             getct10pdf ( 2, mx, mq), getct10pdf ( 1, mx, mq), &
             getct10pdf ( 3, mx, mq), getct10pdf ( 4, mx, mq), &
-            getct10pdf ( 5, mx, mq), 0._double /)
+            getct10pdf ( 5, mx, mq), 0._double ]
        if (present (fphoton)) call msg_fatal ("photon pdf requested for " // &
             "CT10 which does not provide it!")
+    case (CJ12_max, CJ12_mid, CJ12_min)
+       if (cj12_initialized < 0) &
+            call msg_fatal ("pdf_builtin: internal: PDF set " // &
+            char (pdf_get_name (pdftype)) // " requested without initialization!")
+       if (cj12_initialized /= pdftype) &
+            call msg_fatal ( &
+            "PDF sets " // char (pdf_get_name (pdftype)) // " and " // &
+            char (pdf_get_name (cj12_initialized)) // &
+            " cannot be used simultaneously")
+       mx = max (min (x, cj12_x_max), cj12_x_min)
+       mq = max (min (q, cj12_q_max), cj12_q_min)
+       if (present (f)) f = [ 0._double, &
+            CJpdf (-5, mx, mq), CJpdf (-4, mx, mq), CJpdf (-3, mx, mq), &
+            CJpdf (-2, mx, mq), CJpdf (-1, mx, mq), CJpdf ( 0, mx, mq), &
+            CJpdf ( 1, mx, mq), CJpdf ( 2, mx, mq), CJpdf ( 3, mx, mq), &
+            CJpdf ( 4, mx, mq), CJpdf ( 5, mx, mq), 0._double ]
+       if (present (fphoton)) call msg_fatal ("photon pdf requested for " // &
+            "CJ12 which does not provide it!")
     case default
        call msg_fatal ("pdf_builtin: internal: invalid PDF set!")
     end select
@@ -416,6 +459,16 @@ contains
           case (MSTW2008nnlo)
              call pdf_builtin_alfa (as,qdummy,2)
        end select
+    case (CJ12_max, CJ12_mid, CJ12_min)
+       if (cj12_initialized < 0) &
+            call msg_fatal ("pdf_builtin: internal: PDF set " // &
+            char (pdf_get_name (pdftype)) // " requested without initialization!")
+       if (cj12_initialized /= pdftype) &
+            call msg_fatal ( &
+            "PDF sets " // char (pdf_get_name (pdftype)) // " and " // &
+            char (pdf_get_name (cteq6_initialized)) // &
+            " cannot be used simultaneously")
+       as = PI*pdf_builtin_alpi (qdummy,2,5,alam_cteq6m)
     case default
          call msg_fatal ("pdf_builtin: internal: invalid PDF set!")
     end select

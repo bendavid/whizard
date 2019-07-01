@@ -1,4 +1,4 @@
-! WHIZARD 2.2.0 May 18 2014
+! WHIZARD 2.2.1 June 3 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -200,6 +200,7 @@ module process_libraries
      procedure :: get_name => process_library_get_name
      procedure :: is_active => process_library_is_active
      procedure :: connect_process => process_library_connect_process
+     procedure :: get_modellibs_ldflags => process_library_get_modellibs_ldflags
   end type process_library_t
 
   type, extends (process_driver_internal_t) :: prctest_2_t
@@ -753,9 +754,10 @@ contains
     end do
   end subroutine process_def_list_final
   
-  subroutine process_def_list_write (object, unit)
+  subroutine process_def_list_write (object, unit, libpath)
     class(process_def_list_t), intent(in) :: object
     integer, intent(in), optional :: unit
+    logical, intent(in), optional :: libpath
     type(process_def_entry_t), pointer :: entry
     integer :: i, u
     u = output_unit (unit)
@@ -1066,9 +1068,10 @@ contains
          (lib_driver, i, entry%driver)
   end subroutine process_library_entry_connect
 
-  subroutine process_library_write (object, unit)
+  subroutine process_library_write (object, unit, libpath)
     class(process_library_t), intent(in) :: object
     integer, intent(in), optional :: unit
+    logical, intent(in), optional :: libpath
     integer :: i, u
     u = output_unit (unit)
     write (u, "(1x,A,A)")  "Process library: ", char (object%basename)
@@ -1088,7 +1091,7 @@ contains
        write (u, *)
     end if
     if (object%external) then
-       call object%driver%write (u)
+       call object%driver%write (u, libpath)
        write (u, *)
     end if
     call object%process_def_list_t%write (u)
@@ -1139,8 +1142,9 @@ contains
          // "': initialized")
   end subroutine process_library_init_static
   
-  subroutine process_library_configure (lib)
+  subroutine process_library_configure (lib, os_data)
     class(process_library_t), intent(inout) :: lib
+    type(os_data_t), intent(in) :: os_data
     type(process_def_entry_t), pointer :: def_entry
     integer :: n_entries, n_external, i_entry, i_external
     type(string_t) :: model_name
@@ -1185,7 +1189,8 @@ contains
        def_entry => def_entry%next
     end do
 
-    call dispatch_prclib_driver (lib%driver, lib%basename)
+    call dispatch_prclib_driver (lib%driver, &
+         lib%basename, lib%get_modellibs_ldflags (os_data))
     call lib%driver%init (n_external)
     do i_entry = 1, n_entries
        associate (lib_entry => lib%entry(i_entry))
@@ -1594,6 +1599,61 @@ contains
                // "': process '" // char (id) // "' not found")
   end subroutine process_library_connect_process
 
+  function process_library_get_modellibs_ldflags (prc_lib, os_data) result (flags)
+    class(process_library_t), intent(in) :: prc_lib
+    type(os_data_t), intent(in) :: os_data
+    type(string_t) :: flags
+    type(string_t), dimension(:), allocatable :: models
+    type(string_t) :: modelname, modellib, modellib_full
+    logical :: exist
+    integer :: i, j, mi
+    flags = " -lomega"
+    if ((.not. os_data%use_testfiles) .and. &
+               os_dir_exist (os_data%whizard_models_libpath_local)) &
+                 flags = flags // " -L" // os_data%whizard_models_libpath_local
+    flags = flags // " -L" // os_data%whizard_models_libpath
+    allocate (models(prc_lib%n_entries + 1))
+    models = ""
+    mi = 1
+    if (allocated (prc_lib%entry)) then
+       SCAN: do i = 1, prc_lib%n_entries
+          if (associated (prc_lib%entry(i)%def)) then
+             if (associated (prc_lib%entry(i)%def%model)) then
+                modelname = model_get_name (prc_lib%entry(i)%def%model)
+             else
+                cycle SCAN
+             end if
+          else
+             cycle SCAN
+          end if
+          do j = 1, mi
+             if (models(mi) == modelname) cycle SCAN
+          end do
+          models(mi) = modelname
+          mi = mi + 1
+          if (os_data%use_libtool) then
+             modellib = "libparameters_" // modelname // ".la"
+          else
+             modellib = "libparameters_" // modelname // ".a"
+          end if
+          exist = .false.
+          if (.not. os_data%use_testfiles) then
+             modellib_full = os_data%whizard_models_libpath_local &
+                  // "/" // modellib
+             inquire (file=char (modellib_full), exist=exist)
+          end if
+          if (.not. exist) then
+             modellib_full = os_data%whizard_models_libpath &
+                  // "/" // modellib
+             inquire (file=char (modellib_full), exist=exist)
+          end if
+          if (exist) flags = flags // " -lparameters_" // modelname
+       end do SCAN
+    end if
+    deallocate (models)
+    flags = flags // " -lwhizard"
+  end function process_library_get_modellibs_ldflags
+
   function prctest_2_type_name () result (type)
     type(string_t) :: type
     type = "test"
@@ -1842,6 +1902,7 @@ contains
     write (u, "(A)")  "* Initialize a process library with one entry &
          &(no external code)"
     write (u, "(A)")
+    call os_data_init (os_data)
     call lib%init (var_str ("proclibs4"))
 
     allocate (prcdef_2_t :: core_def)
@@ -1853,7 +1914,7 @@ contains
 
     write (u, "(A)")  "* Configure library"
     write (u, "(A)")
-    call lib%configure ()
+    call lib%configure (os_data)
 
     write (u, "(A)")  "* Compute MD5 sum"
     write (u, "(A)")
@@ -1976,7 +2037,7 @@ contains
     
     write (u, "(A)")  "* Configure library"
     write (u, "(A)")
-    call lib%configure ()
+    call lib%configure (os_data)
 
     write (u, "(A)")  "* Compute MD5 sum"
     write (u, "(A)")
@@ -2002,7 +2063,7 @@ contains
     write (u, "(A)")
     call lib%make_link (os_data)
 
-    call lib%write (u)
+    call lib%write (u, libpath = .false.)
     
     call lib%final ()
 
@@ -2112,7 +2173,7 @@ contains
 
     write (u, "(A)")  "* Configure library"
     write (u, "(A)")
-    call lib%configure ()
+    call lib%configure (os_data)
 
     write (u, "(A)")  "* Write makefile"
     write (u, "(A)")
@@ -2126,7 +2187,7 @@ contains
     write (u, "(A)")
     call lib%load (os_data)
 
-    call lib%write (u)
+    call lib%write (u, libpath = .false.)
     
     write (u, "(A)")
     write (u, "(A)")  "* Probe library API:"
@@ -2320,7 +2381,7 @@ contains
     write (u, "(A)")  "* Configure library"
     write (u, "(A)")
 
-    call lib%configure ()
+    call lib%configure (os_data)
     call lib%compute_md5sum ()
     
     associate (def => lib%entry(1)%def%initial(1))
@@ -2390,7 +2451,7 @@ contains
          variant = core_def)
     call lib%append (entry)
 
-    call lib%configure ()
+    call lib%configure (os_data)
     call lib%compute_md5sum ()
     associate (def => lib%entry(2)%def%initial(1))
       select type (writer => lib%driver%record(2)%writer)

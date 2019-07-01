@@ -1,4 +1,4 @@
-! WHIZARD 2.2.0 May 18 2014
+! WHIZARD 2.2.1 June 3 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -31,6 +31,7 @@ module pdg_arrays
 
   use file_utils !NODEP!
   use sorting
+  use unit_tests
 
   implicit none
   private
@@ -52,14 +53,39 @@ module pdg_arrays
   public :: operator(.eqv.)
   public :: operator(.neqv.)
   public :: sort_abs
+  public :: pdg_list_t
+  public :: pdg_arrays_test 
 
   integer, parameter, public :: UNDEFINED = 0
 
   type :: pdg_array_t
      private
      integer, dimension(:), allocatable :: pdg
+   contains
+     procedure :: write => pdg_array_write
+     procedure :: get_length => pdg_array_get_length
+     procedure :: get => pdg_array_get
+     procedure :: replace => pdg_array_replace
+     procedure :: sort_abs => pdg_array_sort_abs
   end type pdg_array_t
 
+  type :: pdg_list_t
+     type(pdg_array_t), dimension(:), allocatable :: a
+   contains
+     procedure :: write => pdg_list_write
+     procedure :: init => pdg_list_init
+     generic :: set => pdg_list_set_int
+     generic :: set => pdg_list_set_int_array
+     generic :: set => pdg_list_set_pdg_array
+     procedure, private :: pdg_list_set_int
+     procedure, private :: pdg_list_set_int_array
+     procedure, private :: pdg_list_set_pdg_array
+     procedure :: get_size => pdg_list_get_size
+     procedure :: get => pdg_list_get
+     procedure :: sort_abs => pdg_list_sort_abs
+     procedure :: replace => pdg_list_replace
+  end type pdg_list_t
+  
 
   interface assignment(=)
      module procedure pdg_array_from_int_array
@@ -109,7 +135,7 @@ module pdg_arrays
 contains
 
   subroutine pdg_array_write (aval, unit)
-    type(pdg_array_t), intent(in) :: aval
+    class(pdg_array_t), intent(in) :: aval
     integer, intent(in), optional :: unit
     integer :: u, i
     u = output_unit (unit);  if (u < 0)  return
@@ -149,7 +175,7 @@ contains
   end subroutine int_array_from_pdg_array
 
   elemental function pdg_array_get_length (aval) result (n)
-    type(pdg_array_t), intent(in) :: aval
+    class(pdg_array_t), intent(in) :: aval
     integer :: n
     if (allocated (aval%pdg)) then
        n = size (aval%pdg)
@@ -159,14 +185,14 @@ contains
   end function pdg_array_get_length
 
   elemental function pdg_array_get (aval, i) result (pdg)
-    type(pdg_array_t), intent(in) :: aval
+    class(pdg_array_t), intent(in) :: aval
     integer, intent(in) :: i
     integer :: pdg
     pdg = aval%pdg(i)
   end function pdg_array_get
 
   function pdg_array_replace (aval, i, pdg_new) result (aval_new)
-    type(pdg_array_t), intent(in) :: aval
+    class(pdg_array_t), intent(in) :: aval
     integer, intent(in) :: i
     integer, dimension(:), intent(in) :: pdg_new
     type(pdg_array_t) :: aval_new
@@ -273,7 +299,7 @@ contains
     integer :: i
     if (allocated (aval1%pdg) .and. allocated (aval2%pdg)) then
        eq = any (aval1%pdg == UNDEFINED) &
-            .and. any (aval1%pdg == UNDEFINED)
+            .or. any (aval2%pdg == UNDEFINED)
        if (.not. eq) then
           allocate (match1 (size (aval1%pdg)))
           allocate (match2 (size (aval2%pdg)))
@@ -299,7 +325,7 @@ contains
   end function pdg_array_inequivalent
 
   function pdg_array_sort_abs (aval1, unique) result (aval2)
-    type(pdg_array_t), intent(in) :: aval1
+    class(pdg_array_t), intent(in) :: aval1
     logical, intent(in), optional :: unique
     type(pdg_array_t) :: aval2
     integer, dimension(:), allocatable :: tmp
@@ -323,5 +349,290 @@ contains
     end if
   end function pdg_array_sort_abs
 
+  subroutine pdg_list_write (object, unit)
+    class(pdg_list_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    integer :: u, i
+    u = output_unit (unit)
+    if (allocated (object%a)) then
+       do i = 1, size (object%a)
+          if (i > 1)  write (u, "(A)", advance="no")  ", "
+          call object%a(i)%write (u)
+       end do
+    end if
+  end subroutine pdg_list_write
+    
+  subroutine pdg_list_init (pl, n)
+    class(pdg_list_t), intent(out) :: pl
+    integer, intent(in) :: n
+    allocate (pl%a (n))
+  end subroutine pdg_list_init
+  
+  subroutine pdg_list_set_int (pl, i, pdg)
+    class(pdg_list_t), intent(inout) :: pl
+    integer, intent(in) :: i
+    integer, intent(in) :: pdg
+    pl%a(i) = pdg
+  end subroutine pdg_list_set_int
+  
+  subroutine pdg_list_set_int_array (pl, i, pdg)
+    class(pdg_list_t), intent(inout) :: pl
+    integer, intent(in) :: i
+    integer, dimension(:), intent(in) :: pdg
+    pl%a(i) = pdg
+  end subroutine pdg_list_set_int_array
+  
+  subroutine pdg_list_set_pdg_array (pl, i, pa)
+    class(pdg_list_t), intent(inout) :: pl
+    integer, intent(in) :: i
+    type(pdg_array_t), intent(in) :: pa
+    pl%a(i) = pa
+  end subroutine pdg_list_set_pdg_array
+  
+  function pdg_list_get_size (pl) result (n)
+    class(pdg_list_t), intent(in) :: pl
+    integer :: n
+    if (allocated (pl%a)) then
+       n = size (pl%a)
+    else
+       n = 0
+    end if
+  end function pdg_list_get_size
+  
+  function pdg_list_get (pl, i) result (pa)
+    class(pdg_list_t), intent(in) :: pl
+    integer, intent(in) :: i
+    type(pdg_array_t) :: pa
+    pa = pl%a(i)
+  end function pdg_list_get
+  
+  function pdg_list_sort_abs (pl) result (pl_sorted)
+    class(pdg_list_t), intent(in) :: pl
+    type(pdg_list_t) :: pl_sorted
+    type(pdg_array_t), dimension(:), allocatable :: pa
+    integer, dimension(:), allocatable :: pdg, map
+    integer :: i
+    call pl_sorted%init (pl%get_size ())
+    if (allocated (pl%a)) then
+       allocate (pa (size (pl%a)))
+       do i = 1, size (pl%a)
+          pa(i) = pl%a(i)%sort_abs (unique = .true.)
+       end do
+       allocate (pdg (size (pa)), source = 0)
+       do i = 1, size (pa)
+          if (allocated (pa(i)%pdg)) then
+             if (size (pa(i)%pdg) > 0) then
+                pdg(i) = pa(i)%pdg(1)
+             end if
+          end if
+       end do
+       allocate (map (size (pdg)))
+       map = order_abs (pdg)
+       do i = 1, size (pa)
+          call pl_sorted%set (i, pa(map(i)))
+       end do
+    end if
+  end function pdg_list_sort_abs
+    
+  function pdg_list_replace (pl, i, pl_insert) result (pl_out)
+    class(pdg_list_t), intent(in) :: pl
+    integer, intent(in) :: i
+    class(pdg_list_t), intent(in) :: pl_insert
+    type(pdg_list_t) :: pl_out
+    integer :: n, n_insert, n_out, k
+    n = pl%get_size ()
+    n_insert = pl_insert%get_size ()
+    n_out = n + n_insert - 1
+    call pl_out%init (n_out)
+    if (allocated (pl%a)) then
+       do k = 1, i - 1
+          pl_out%a(k) = pl%a(k)
+       end do
+    end if
+    if (allocated (pl_insert%a)) then
+       do k = 1, n_insert
+          pl_out%a(i-1+k) = pl_insert%a(k)
+       end do
+    end if
+    if (allocated (pl%a)) then
+       do k = 1, n - i
+          pl_out%a(i+n_insert-1+k) = pl%a(i+k)
+       end do
+    end if
+  end function pdg_list_replace
+    
+  subroutine pdg_arrays_test (u, results)
+    integer, intent(in) :: u
+    type (test_results_t), intent(inout) :: results
+    call test (pdg_arrays_1, "pdg_arrays_1", &
+         "create and sort PDG array", &
+         u, results) 
+    call test (pdg_arrays_2, "pdg_arrays_2", &
+         "create and sort PDG array", &
+         u, results)   
+  end subroutine pdg_arrays_test
+
+
+  subroutine pdg_arrays_1 (u)
+    integer, intent(in) :: u
+
+    type(pdg_array_t) :: pa, pa1, pa2, pa3, pa4, pa5, pa6
+    integer, dimension(:), allocatable :: pdg
+
+    write (u, "(A)")  "* Test output: pdg_arrays_1"
+    write (u, "(A)")  "*   Purpose: create and sort PDG arrays"
+    write (u, "(A)")
+    
+    write (u, "(A)")  "* Assignment"
+    write (u, "(A)")
+    
+    call pa%write (u)
+    write (u, *)
+    write (u, "(A,I0)")  "length = ", pa%get_length ()
+    pdg = pa
+    write (u, "(A,3(1x,I0))")  "contents = ", pdg
+    
+    write (u, *)
+    pa = 1
+    call pa%write (u)
+    write (u, *)
+    write (u, "(A,I0)")  "length = ", pa%get_length ()
+    pdg = pa
+    write (u, "(A,3(1x,I0))")  "contents = ", pdg
+    
+    write (u, *)
+    pa = [1, 2, 3]
+    call pa%write (u)
+    write (u, *)
+    write (u, "(A,I0)")  "length = ", pa%get_length ()
+    pdg = pa
+    write (u, "(A,3(1x,I0))")  "contents = ", pdg
+    write (u, "(A,I0)")  "element #2 = ", pa%get (2)
+    
+    write (u, *)
+    write (u, "(A)")  "* Replace"
+    write (u, *)
+
+    pa = pa%replace (2, [-5, 5, -7])
+    call pa%write (u)
+    write (u, *)
+    
+    write (u, *)
+    write (u, "(A)")  "* Sort"
+    write (u, *)
+
+    pa = [1, -7, 3, -5, 5, 3]
+    call pa%write (u)
+    write (u, *)
+    pa1 = pa%sort_abs ()
+    pa2 = pa%sort_abs (unique = .true.)
+    call pa1%write (u)
+    write (u, *)
+    call pa2%write (u)
+    write (u, *)
+    
+    write (u, *)
+    write (u, "(A)")  "* Compare"
+    write (u, *)
+
+    pa1 = [1, 3]
+    pa2 = [1, 2, -2]
+    pa3 = [1, 2, 4]
+    pa4 = [1, 2, 4]
+    pa5 = [1, 2, -4]
+    pa6 = [1, 2, -3]
+    
+    write (u, "(A,6(1x,L1))")  "< ", &
+         pa1 < pa2, pa2 < pa3, pa3 < pa4, pa4 < pa5, pa5 < pa6, pa6 < pa1
+    write (u, "(A,6(1x,L1))")  "> ", &
+         pa1 > pa2, pa2 > pa3, pa3 > pa4, pa4 > pa5, pa5 > pa6, pa6 > pa1
+    write (u, "(A,6(1x,L1))")  "<=", &
+         pa1 <= pa2, pa2 <= pa3, pa3 <= pa4, pa4 <= pa5, pa5 <= pa6, pa6 <= pa1
+    write (u, "(A,6(1x,L1))")  ">=", &
+         pa1 >= pa2, pa2 >= pa3, pa3 >= pa4, pa4 >= pa5, pa5 >= pa6, pa6 >= pa1
+    write (u, "(A,6(1x,L1))")  "==", &
+         pa1 == pa2, pa2 == pa3, pa3 == pa4, pa4 == pa5, pa5 == pa6, pa6 == pa1
+    write (u, "(A,6(1x,L1))")  "/=", &
+         pa1 /= pa2, pa2 /= pa3, pa3 /= pa4, pa4 /= pa5, pa5 /= pa6, pa6 /= pa1
+   
+    write (u, *)
+    pa1 = [0]
+    pa2 = [1, 2]
+    pa3 = [1, -2]
+    
+    write (u, "(A,6(1x,L1))")  "eqv ", &
+         pa1 .eqv. pa1, pa1 .eqv. pa2, &
+         pa2 .eqv. pa2, pa2 .eqv. pa3
+    
+    write (u, "(A,6(1x,L1))")  "neqv", &
+         pa1 .neqv. pa1, pa1 .neqv. pa2, &
+         pa2 .neqv. pa2, pa2 .neqv. pa3
+    
+
+    write (u, *)
+    write (u, "(A,6(1x,L1))")  "match", &
+         pa1 .match. 0, pa1 .match. 1, &
+         pa2 .match. 0, pa2 .match. 1, pa2 .match. 3
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: pdg_arrays_1"        
+    
+  end subroutine pdg_arrays_1
+  
+  subroutine pdg_arrays_2 (u)
+    integer, intent(in) :: u
+
+    type(pdg_array_t) :: pa
+    type(pdg_list_t) :: pl, pl1
+
+    write (u, "(A)")  "* Test output: pdg_arrays_2"
+    write (u, "(A)")  "*   Purpose: create and sort PDG lists"
+    write (u, "(A)")
+    
+    write (u, "(A)")  "* Assignment"
+    write (u, "(A)")
+    
+    call pl%init (3)
+    call pl%set (1, 42)
+    call pl%set (2, [3, 2])
+    pa = [5, -5]
+    call pl%set (3, pa)
+    call pl%write (u)
+    write (u, *)
+    write (u, "(A,I0)")  "size = ", pl%get_size ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Sort"
+    write (u, "(A)")
+    
+    pl = pl%sort_abs ()
+    call pl%write (u)
+    write (u, *)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Extract item #3"
+    write (u, "(A)")
+    
+    pa = pl%get (3)
+    call pa%write (u)
+    write (u, *)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Replace item #3"
+    write (u, "(A)")
+    
+    call pl1%init (2)
+    call pl1%set (1, [2, 4])
+    call pl1%set (2, -7)
+    
+    pl = pl%replace (3, pl1)
+    call pl%write (u)
+    write (u, *)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: pdg_arrays_2"        
+    
+  end subroutine pdg_arrays_2
+  
 
 end module pdg_arrays

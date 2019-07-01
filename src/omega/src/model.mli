@@ -1,4 +1,4 @@
-(* $Id: model.mli 4926 2013-12-04 12:35:06Z jr_reuter $
+(* $Id: model.mli 5864 2014-06-02 13:12:47Z ohl $
 
    Copyright (C) 1999-2014 by
 
@@ -71,7 +71,9 @@ module type T =
      whether it is efficient enough.
    \end{dubious} *)
     type constant 
-    type orders
+
+    (* Later: [type orders] to count orders of couplings *)
+
     val max_degree : unit -> int
     val vertices : unit ->
       ((((flavor * flavor * flavor) * constant Coupling.vertex3 * constant) list)
@@ -80,7 +82,8 @@ module type T =
     val fuse2 : flavor -> flavor -> (flavor * constant Coupling.t) list
     val fuse3 : flavor -> flavor -> flavor -> (flavor * constant Coupling.t) list
     val fuse : flavor list -> (flavor * constant Coupling.t) list
-    val orders : constant -> orders
+
+    (* Later: [val orders : constant -> orders] counting orders of couplings *)
 
 (* The list of all known flavors. *)
     val flavors : unit -> flavor list

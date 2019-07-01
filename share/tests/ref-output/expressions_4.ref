@@ -208,22 +208,25 @@ Syntax table:
  SEQUENCE    <maybe_else_pexpr> = <else_pexpr>?
  SEQUENCE    <elsif_pexpr> = elsif <lexpr> then <pexpr>
  SEQUENCE    <else_pexpr> = else <pexpr>
- ALTERNATIVE <prt_function> = <join_fun> | <combine_fun> | <collect_fun> | <select_fun> | <extract_fun> | <sort_fun>
+ ALTERNATIVE <prt_function> = <join_fun> | <combine_fun> | <collect_fun> | <cluster_fun> | <select_fun> | <extract_fun> | <sort_fun>
  SEQUENCE    <join_fun> = <join_clause> <pargs2>
  SEQUENCE    <combine_fun> = <combine_clause> <pargs2>
  SEQUENCE    <collect_fun> = <collect_clause> <pargs1>
+ SEQUENCE    <cluster_fun> = <cluster_clause> <pargs1>
  SEQUENCE    <select_fun> = <select_clause> <pargs1>
  SEQUENCE    <extract_fun> = <extract_clause> <pargs1>
  SEQUENCE    <sort_fun> = <sort_clause> <pargs1>
  SEQUENCE    <join_clause> = join <condition>?
  SEQUENCE    <combine_clause> = combine <condition>?
  SEQUENCE    <collect_clause> = collect <condition>?
+ SEQUENCE    <cluster_clause> = cluster <condition>?
  SEQUENCE    <select_clause> = select <condition>?
  SEQUENCE    <extract_clause> = extract <position>?
  SEQUENCE    <sort_clause> = sort <criterion>?
  KEYWORD     join
  KEYWORD     combine
  KEYWORD     collect
+ KEYWORD     cluster
  KEYWORD     select
  SEQUENCE    <condition> = if <lexpr>
  KEYWORD     extract
@@ -274,7 +277,7 @@ Syntax table:
  SEQUENCE    <user_cut_fun> = user_cut <user_arg> <pargs1>
  KEYWORD     user_cut
 Keyword list:
- + - TeV GeV MeV keV eV meV nbarn pbarn fbarn abarn rad mrad degree % ^ / ( ) pi I num_id integral error user_obs , let = int real complex logical ? true false not in if then elsif else endif < > <= >= == <> all [ ] incoming pdg : @ join combine collect se
+ + - TeV GeV MeV keV eV meV nbarn pbarn fbarn abarn rad mrad degree % ^ / ( ) pi I num_id integral error user_obs , let = int real complex logical ? true false not in if then elsif else endif < > <= >= == <> all [ ] incoming pdg : @ join combine collect cl
 
 * Expression:
      let alias quark = pdg(1):pdg(2):pdg(3) in  any E > 3 GeV     [sort by - Pt        [select if Index < 6           [photon:pdg(-11):pdg(3):quark            & incoming particle]]]  and  eval Theta [extract index -1 [photon]] > 45 degree  and  count [inco

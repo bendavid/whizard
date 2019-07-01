@@ -36,8 +36,8 @@ module system_dependencies
   public
  
   ! Program version
-  character(*), parameter :: WHIZARD_VERSION = "2.2.0"
-  character(*), parameter :: WHIZARD_DATE = "May 18 2014"
+  character(*), parameter :: WHIZARD_VERSION = "2.2.1"
+  character(*), parameter :: WHIZARD_DATE = "June 3 2014"
 
   ! System paths
   ! These are used for testing without existing installation

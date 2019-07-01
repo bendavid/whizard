@@ -1,4 +1,4 @@
-! WHIZARD 2.2.0 May 18 2014
+! WHIZARD 2.2.1 June 3 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -423,7 +423,7 @@ contains
     if (full .and. cfg%dirty) call msg_bug ( &
        "BUG: attempted to write out a dirty BLHA configuration")
     if (full) then
-       write (u,'(A)') "# BLHA order written by WHIZARD 2.2.0"
+       write (u,'(A)') "# BLHA order written by WHIZARD 2.2.1"
        write (u,'(A)')
     end if
     select case (cfg%mode)

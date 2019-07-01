@@ -1,4 +1,4 @@
-! WHIZARD 2.2.0 May 18 2014
+! WHIZARD 2.2.1 June 3 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -84,6 +84,8 @@ module whizard
   use process_libraries
   use prclib_stacks
   use hepmc_interface
+  use jets
+  use pdg_arrays
   use interactions
   use slha_interface
   use cascades
@@ -493,6 +495,10 @@ contains
        call format_test (u, results)
     case ("hepmc")
        call hepmc_test (u, results)
+    case ("jets")
+       call jets_test (u, results)
+    case ("pdg_arrays")
+       call pdg_arrays_test (u, results)
     case ("interactions")
        call interaction_test (u, results)
     case ("lexers")
@@ -651,6 +657,7 @@ contains
        call expressions_test (u, results)
        call format_test (u, results)
        call hepmc_test (u, results)
+       call jets_test (u, results)
        call os_interface_test (u, results)
        call cputime_test (u, results)
        call interaction_test (u, results)

@@ -1,4 +1,4 @@
-! WHIZARD 2.2.0 May 18 2014
+! WHIZARD 2.2.1 June 3 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -101,7 +101,7 @@ contains
     if (associated (comp%lib)) then
        call msg_message ("Process library '" &
             // char (comp%libname) // "': compiling ...")
-       call comp%lib%configure ()
+       call comp%lib%configure (os_data)
        if (signal_is_pending ())  return
        call comp%lib%compute_md5sum ()
        call comp%lib%write_makefile (os_data, force)
@@ -189,7 +189,8 @@ contains
     write (u, "(3A)")  "! Whizard: process libraries for executable '", &
          char (compilation%exe_name), "'"
     write (u, "(A)")  "! Automatically generated file, do not edit"
-    write (u, "(A)")  "subroutine dispatch_prclib_static (driver, basename)"
+    write (u, "(A)")  "subroutine dispatch_prclib_static " // &
+         "(driver, basename, modellibs_ldflags)"
     write (u, "(A)")  "  use iso_varying_string, string_t => varying_string"
     write (u, "(A)")  "  use prclib_interfaces"
     do i = 1, size (compilation%lib_name)
@@ -201,6 +202,8 @@ contains
     write (u, "(A)")  "  class(prclib_driver_t), intent(inout), allocatable &
          &:: driver"
     write (u, "(A)")  "  type(string_t), intent(in) :: basename"
+    write (u, "(A)")  "  logical, intent(in), optional :: " // &
+         "modellibs_ldflags"
     write (u, "(A)")  "  select case (char (basename))"
     do i = 1, size (compilation%lib_name)
        associate (lib_name => compilation%lib_name(i))
@@ -427,7 +430,7 @@ end subroutine compilations_test
 
     call compile_library (libname, global)
     
-    call global%write_libraries (u)
+    call global%write_libraries (u, libpath = .false.)
 
     call global%final ()
     call syntax_model_file_final ()

@@ -1,4 +1,4 @@
-! WHIZARD 2.2.0 May 18 2014
+! WHIZARD 2.2.1 June 3 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -43,6 +43,7 @@ module rt_data
   use parser
   use models
   use flavors
+  use jets
   use variables
   use expressions
   use polarizations
@@ -448,12 +449,13 @@ contains
     call object%model_list%write (u)
   end subroutine rt_data_write_model_list
 
-  subroutine rt_data_write_libraries (object, unit)
+  subroutine rt_data_write_libraries (object, unit, libpath)
     class(rt_data_t), intent(in) :: object
     integer, intent(in), optional :: unit
+    logical, intent(in), optional :: libpath
     integer :: u
     u = output_unit (unit)
-    call object%prclib_stack%write (u)
+    call object%prclib_stack%write (u, libpath)
   end subroutine rt_data_write_libraries
 
   subroutine rt_data_write_beams (object, unit)
@@ -1133,6 +1135,52 @@ contains
          epsilon (real_specimen), intrinsic = .true., locked = .true.)
     call var_list_append_real (global%var_list, var_str ("real_tiny"), &
          tiny (real_specimen), intrinsic = .true., locked = .true.)
+    !!! FastJet parameters
+    call var_list_append_int (global%var_list, &
+         var_str ("kt_algorithm"), &
+         kt_algorithm, &
+         intrinsic = .true., locked = .true.)
+    call var_list_append_int (global%var_list, &
+         var_str ("cambridge_algorithm"), &
+         cambridge_algorithm, intrinsic = .true., locked = .true.)
+    call var_list_append_int (global%var_list, &
+         var_str ("antikt_algorithm"), &
+         antikt_algorithm, &
+         intrinsic = .true., locked = .true.)
+    call var_list_append_int (global%var_list, &
+         var_str ("genkt_algorithm"), &
+         genkt_algorithm, &
+         intrinsic = .true., locked = .true.)
+    call var_list_append_int (global%var_list, &
+         var_str ("cambridge_for_passive_algorithm"), &
+         cambridge_for_passive_algorithm, &
+         intrinsic = .true., locked = .true.)
+    call var_list_append_int (global%var_list, &
+         var_str ("genkt_for_passive_algorithm"), &
+         genkt_for_passive_algorithm, &
+         intrinsic = .true., locked = .true.)
+    call var_list_append_int (global%var_list, &
+         var_str ("ee_kt_algorithm"), &
+         ee_kt_algorithm, &
+         intrinsic = .true., locked = .true.)
+    call var_list_append_int (global%var_list, &
+         var_str ("ee_genkt_algorithm"), &
+         ee_genkt_algorithm, &
+         intrinsic = .true., locked = .true.)
+    call var_list_append_int (global%var_list, &
+         var_str ("plugin_algorithm"), &
+         plugin_algorithm, &
+         intrinsic = .true., locked = .true.)
+    call var_list_append_int (global%var_list, &
+         var_str ("undefined_jet_algorithm"), &
+         undefined_jet_algorithm, &
+         intrinsic = .true., locked = .true.)
+    call var_list_append_int (global%var_list, &
+         var_str ("jet_algorithm"), undefined_jet_algorithm, &
+         intrinsic = .true.)
+    call var_list_append_real (global%var_list, &
+         var_str ("jet_r"), 0._default, &
+         intrinsic = .true.)
     call var_list_append_log &
          (global%var_list, var_str ("?polarized_events"), .false., &
             intrinsic=.true.)

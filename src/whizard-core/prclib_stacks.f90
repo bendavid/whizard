@@ -1,4 +1,4 @@
-! WHIZARD 2.2.0 May 18 2014
+! WHIZARD 2.2.1 June 3 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -75,9 +75,10 @@ contains
     object%n = 0
   end subroutine prclib_stack_final
   
-  subroutine prclib_stack_write (object, unit)
+  subroutine prclib_stack_write (object, unit, libpath)
     class(prclib_stack_t), intent(in) :: object
     integer, intent(in), optional :: unit
+    logical, intent(in), optional :: libpath
     type(prclib_entry_t), pointer :: lib
     integer :: u
     u = output_unit (unit)
@@ -90,7 +91,7 @@ contains
        lib => object%first
        do while (associated (lib))
           call write_separator (u)
-          call lib%write (u)
+          call lib%write (u, libpath)
           lib => lib%next
        end do
     end select

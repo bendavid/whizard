@@ -1,4 +1,4 @@
-! WHIZARD 2.2.0 May 18 2014
+! WHIZARD 2.2.1 June 3 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -37,7 +37,7 @@ module limits
 
   integer, parameter, public :: VERSION_STRLEN = 255
   character(len=VERSION_STRLEN), parameter, public :: &
-       & VERSION_STRING = "WHIZARD version 2.2.0 (May 18 2014)"
+       & VERSION_STRING = "WHIZARD version 2.2.1 (June 3 2014)"
   character(*), parameter, public :: FMT_19 = "ES19.12"
   character(*), parameter, public :: FMT_18 = "ES18.11"
   character(*), parameter, public :: FMT_17 = "ES17.10"  

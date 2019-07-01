@@ -1,4 +1,4 @@
-(* $Id: colorize.mli 4926 2013-12-04 12:35:06Z jr_reuter $
+(* $Id: colorize.mli 5864 2014-06-02 13:12:47Z ohl $
 
    Copyright (C) 1999-2014 by
 
@@ -26,11 +26,11 @@
 
 module It (M : Model.T) :
     Model.Colorized with type flavor_sans_color = M.flavor
-    and type constant = M.constant and type orders = M.orders
+    and type constant = M.constant
 
 module Gauge (M : Model.Gauge) :
     Model.Colorized_Gauge with type flavor_sans_color = M.flavor
-    and type constant = M.constant and type orders = M.orders
+    and type constant = M.constant
 
 (*i
  *  Local Variables:

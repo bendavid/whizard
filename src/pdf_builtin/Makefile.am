@@ -1,5 +1,5 @@
 ## Makefile.am -- Makefile for WHIZARD
-# $Id: Makefile.am 4926 2013-12-04 12:35:06Z jr_reuter $
+# $Id: Makefile.am 5837 2014-05-21 18:32:54Z jr_reuter $
 ##
 ## Process this file with automake to produce Makefile.in
 ##
@@ -32,7 +32,8 @@
 noinst_LTLIBRARIES = libpdf_builtin.la
 
 libpdf_builtin_la_SOURCES = \
-	cteq6pdf.f pdf_builtin.f90 mrst2004qed.f mstw2008.f ct10pdf.f
+	cteq6pdf.f pdf_builtin.f90 mrst2004qed.f mstw2008.f \
+	ct10pdf.f CJpdf.f
 
 $(libpdf_builtin_la_OBJECTS): \
 	../misc/kinds.$(FC_MODULE_EXT) \
@@ -47,7 +48,7 @@ AM_FCFLAGS = -I../misc/
 # get compiled with the appropiate compiler.
 F77 = $(FC)
 
-pdf_builtin.lo: cteq6pdf.lo mrst2004qed.lo mstw2008.lo ct10pdf.lo
+pdf_builtin.lo: cteq6pdf.lo mrst2004qed.lo mstw2008.lo ct10pdf.lo CJpdf.lo
 
 ########################################################################
 ## Default Fortran compiler options

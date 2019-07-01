@@ -40,7 +40,8 @@ sqrts = 209 GeV
 
 integrate (cc10) { iterations = 12:20000 }
 
-# We set a luminosity of 10 inverse femtobarn
+# We set a luminosity of 10 inverse femtobarn. Note that this is roughly
+# two orders of magnitude higher than the final LEP2 integrated luminosity.
 
 luminosity = 10 
 

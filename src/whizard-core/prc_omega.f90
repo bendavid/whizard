@@ -1,4 +1,4 @@
-! WHIZARD 2.2.0 May 18 2014
+! WHIZARD 2.2.1 June 3 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -1004,7 +1004,7 @@ end subroutine prc_omega_diags_test
     
     write (u, "(A)")  "* Configure library"
     write (u, "(A)")
-    call lib%configure ()
+    call lib%configure (os_data)
     
     write (u, "(A)")  "* Write makefile"
     write (u, "(A)")
@@ -1022,7 +1022,7 @@ end subroutine prc_omega_diags_test
     write (u, "(A)")
     call lib%load (os_data)
 
-    call lib%write (u)
+    call lib%write (u, libpath = .false.)
     
     write (u, "(A)")
     write (u, "(A)")  "* Probe library API:"
@@ -1182,7 +1182,7 @@ end subroutine prc_omega_diags_test
     write (u, "(A)")
     write (u, "(A)")  "* Build and load library"
 
-    call lib%configure ()
+    call lib%configure (os_data)
     call lib%write_makefile (os_data, force = .true.)
     call lib%clean (os_data, distclean = .false.)
     call lib%write_driver (force = .true.)
@@ -1383,7 +1383,7 @@ end subroutine prc_omega_diags_test
     write (u, "(A)")
     write (u, "(A)")  "* Build and load library"
 
-    call lib%configure ()
+    call lib%configure (os_data)
     call lib%write_makefile (os_data, force = .true.)
     call lib%clean (os_data, distclean = .false.)
     call lib%write_driver (force = .true.)
@@ -1575,7 +1575,7 @@ end subroutine prc_omega_diags_test
     
     write (u, "(A)")  "* Configure and compile process"
     write (u, "(A)")
-    call lib%configure ()
+    call lib%configure (os_data)
     call lib%write_makefile (os_data, force = .true.)
     call lib%clean (os_data, distclean = .false.)
     call lib%write_driver (force = .true.)
@@ -1709,7 +1709,7 @@ end subroutine prc_omega_diags_test
     
     write (u, "(A)")  "* Configure and compile process"
     write (u, "(A)")
-    call lib%configure ()
+    call lib%configure (os_data)
     call lib%write_makefile (os_data, force = .true.)
     call lib%clean (os_data, distclean = .false.)
     call lib%write_driver (force = .true.)
@@ -1841,7 +1841,7 @@ end subroutine prc_omega_diags_test
     write (u, "(A)")  "* Configure and compile process"
     write (u, "(A)")  "    and generate diagrams"
     write (u, "(A)")
-    call lib%configure ()
+    call lib%configure (os_data)
     call lib%write_makefile (os_data, force = .true., testflag = .true.)
     call lib%clean (os_data, distclean = .false.)
     call lib%write_driver (force = .true.)

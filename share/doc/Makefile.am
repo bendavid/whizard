@@ -31,7 +31,12 @@ dist_noinst_DATA = manual.tex $(PACKAGE).tex shower.tex \
 
 MANUAL_PICS = \
    proc_4f-history.eps proc_4f-history.pdf \
-   whizstruct.eps whizstruct.pdf
+   whizstruct.eps whizstruct.pdf cc10_1.eps cc10_1.pdf \
+   cc10_2.eps cc10_2.pdf Z-lineshape_1.eps \
+   Z-lineshape_1.pdf Z-lineshape_2.eps Z-lineshape_2.pdf \
+   flow4.eps flow4.pdf lep_higgs_1.eps lep_higgs_1.pdf \
+   lep_higgs_2.eps lep_higgs_2.pdf lep_higgs_3.eps \
+   lep_higgs_3.pdf 
 
 ## The primary targets
 if DISTRIBUTION

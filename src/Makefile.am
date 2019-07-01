@@ -27,7 +27,8 @@
 
 ## Subdirectories to configure
 SUBDIRS = \
-  pythia hepmc lhapdf stdhep hoppet circe1 circe2 misc pdf_builtin vamp \
+  pythia hepmc lhapdf stdhep hoppet \
+  circe1 circe2 misc fastjet pdf_builtin vamp \
   shower muli whizard-core prebuilt omega models 
 if MPOST_AVAILABLE
 SUBDIRS += gamelan feynmf
@@ -101,6 +102,12 @@ else
 libwhizard_la_LIBADD += hoppet/libhoppet_dummy.la
 endif 
 
+if FASTJET_AVAILABLE
+libwhizard_la_LIBADD += $(FASTJET_LIBS) fastjet/libFastjetWrap.la
+else
+libwhizard_la_LIBADD += fastjet/libFastjetWrap_dummy.la
+endif 
+
 ## -------------------------------------------------------------------
 ## Build a standalone program
 bin_PROGRAMS = whizard 
@@ -118,6 +125,7 @@ whizard_LDADD += $(LDFLAGS_LHAPDF)
 whizard_LDADD += $(LDFLAGS_STDHEP)
 whizard_LDADD += $(LDFLAGS_HEPMC)
 whizard_LDADD += $(LDFLAGS_HOPPET)
+whizard_LDADD += $(FASTJET_LIBS)
 
 AM_FCFLAGS =
 

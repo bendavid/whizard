@@ -15,12 +15,8 @@ Although it is possible to build the O'Mega libraries from this
 directory, we recommend that you create a separate build directory and
 work from there. 
 
-O'Mega is Free Software and the sources can be obtained (as either
-from  
-
-  http://whizard.event-generator.org
-
-or the HepForge repository:
+O'Mega is Free Software and the sources can be obtained from  
+the HepForge repository:
 
   http://projects.hepforge.org/whizard
 

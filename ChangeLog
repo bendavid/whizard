@@ -2,8 +2,26 @@ ChangeLog -- Summary of changes to the WHIZARD package
 
 Use svn log to see detailed changes.
 
-	Version 2.2.0
+	Version 2.2.1
 
+2014-06-03
+	RELEASE: version 2.2.1
+
+2014-05-30
+	Extensions of internal PDG arrays
+	
+2014-05-26
+	FastJet interface
+
+2014-05-24
+	CJ12 PDFs included
+	
+2014-05-20
+	Regression fix for external models (via SARAH
+	    or FeynRules)
+	
+##################################################################
+	
 2014-05-18
 	RELEASE: version 2.2.0
 

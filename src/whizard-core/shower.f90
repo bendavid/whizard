@@ -1,4 +1,4 @@
-! WHIZARD 2.2.0 May 18 2014
+! WHIZARD 2.2.1 June 3 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -1401,7 +1401,7 @@ contains
       call tag_gen_n%write (var_str ("WHIZARD"), unit)
       write (unit, *)
       write (unit, "(2x)", advance = "no")      
-      call tag_gen_v%write (var_str ("2.2.0"), unit)
+      call tag_gen_v%write (var_str ("2.2.1"), unit)
       write (unit, *)
       call tag_head%close (unit); write (unit, *)
       call tag_init%write (unit); write (unit, *)
@@ -2070,7 +2070,7 @@ contains
          report_progress=.true.)
     call lib%append (entry)
 
-    call lib%configure ()
+    call lib%configure (os_data)
     call lib%write_makefile (os_data, force = .true.)
     call lib%clean (os_data, distclean = .false.)
     call lib%write_driver (force = .true.)

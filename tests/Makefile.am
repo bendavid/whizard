@@ -31,6 +31,7 @@ WHIZARD_DRIVER = run_whizard.sh
 
 UNIT_TESTS = \
     analysis.run \
+    pdg_arrays.run \
     expressions.run \
     beams.run \
     polarizations.run \
@@ -109,6 +110,12 @@ UNIT_TESTS_REQ_EV_ANA = \
     prc_omega_diags.run \
     integrations_history.run
 
+TESTS_REQ_FASTJET = \
+    analyze_4.run
+
+UNIT_TESTS_REQ_FASTJET = \
+    jets.run
+
 UNIT_TESTS_REQ_HEPMC = \
     eio_hepmc.run
 
@@ -158,6 +165,7 @@ TESTS_REQ_OCAML = \
     libraries_2.run \
     libraries_3.run \
     rebuild_2.run \
+    rebuild_3.run \
     defaultcuts.run \
     cuts.run \
     model_test.run \
@@ -318,6 +326,7 @@ TEST_DRIVERS_RUN = \
     $(UNIT_TESTS) \
     $(UNIT_TESTS_REQ_GAMELAN) \
     $(UNIT_TESTS_REQ_HEPMC) \
+    $(UNIT_TESTS_REQ_FASTJET) \
     $(UNIT_TESTS_REQ_LHAPDF) \
     $(UNIT_TESTS_REQ_STDHEP) \
     $(UNIT_TESTS_REQ_OCAML) \
@@ -325,6 +334,7 @@ TEST_DRIVERS_RUN = \
     $(TESTS_REQ_OCAML) \
     $(TESTS_REQ_LHAPDF) \
     $(TESTS_REQ_HEPMC) \
+    $(TESTS_REQ_FASTJET) \
     $(TESTS_REQ_STDHEP) \
     $(TESTS_REQ_SHOWER) \
     $(TESTS_REQ_EV_ANA) \
@@ -339,6 +349,7 @@ TESTS =
 XFAIL_TESTS =
 
 UNIT_TESTS += $(UNIT_TESTS_REQ_GAMELAN)
+UNIT_TESTS += $(UNIT_TESTS_REQ_FASTJET)
 UNIT_TESTS += $(UNIT_TESTS_REQ_HEPMC)
 UNIT_TESTS += $(UNIT_TESTS_REQ_LHAPDF)
 UNIT_TESTS += $(UNIT_TESTS_REQ_STDHEP)
@@ -357,6 +368,9 @@ XFAIL_TESTS += $(XFAIL_TESTS_REQ_OCAML)
 
 TESTS += $(TESTS_REQ_HEPMC)
 XFAIL_TESTS += $(XFAIL_TESTS_REQ_HEPMC)
+
+TESTS += $(TESTS_REQ_FASTJET)
+XFAIL_TESTS += $(XFAIL_TESTS_REQ_FASTJET)
 
 TESTS += $(TESTS_REQ_LHAPDF)
 XFAIL_TESTS += $(XFAIL_TESTS_REQ_LHAPDF)
@@ -517,6 +531,7 @@ BUILT_SOURCES = \
     TESTFLAG  \
     STDHEP_FLAG \
     HEPMC_FLAG \
+    FASTJET_FLAG \
     LHAPDF_FLAG \
     GAMELAN_FLAG \
     EVENT_ANALYSIS_FLAG \
@@ -534,6 +549,11 @@ TESTFLAG:
 
 STDHEP_FLAG:
 if STDHEP_AVAILABLE
+	touch $@
+endif
+
+FASTJET_FLAG:
+if FASTJET_AVAILABLE
 	touch $@
 endif
 
@@ -599,7 +619,7 @@ notestflag:
 clean-local:
 	rm -f gamelan.sty TEST.mdl 
 	rm -f TESTFLAG GAMELAN_FLAG STDHEP_FLAG 
-	rm -f OCAML_FLAG HEPMC_FLAG LHAPDF_FLAG
+	rm -f OCAML_FLAG FASTJET_FLAG HEPMC_FLAG LHAPDF_FLAG
 	rm -f EVENT_ANALYSIS_FLAG SHOWER_FLAG
 	rm -f STATIC_FLAG static_1.exe
 	rm -f *.run *.log slha_test.out

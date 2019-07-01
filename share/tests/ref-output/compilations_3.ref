@@ -11,13 +11,14 @@
 
 ! Whizard: process libraries for executable 'compilations_3'
 ! Automatically generated file, do not edit
-subroutine dispatch_prclib_static (driver, basename)
+subroutine dispatch_prclib_static (driver, basename, modellibs_ldflags)
   use iso_varying_string, string_t => varying_string
   use prclib_interfaces
   use compilations_3_lib_driver
   implicit none
   class(prclib_driver_t), intent(inout), allocatable :: driver
   type(string_t), intent(in) :: basename
+  logical, intent(in), optional :: modellibs_ldflags
   select case (char (basename))
   case ('compilations_3_lib')
      allocate (compilations_3_lib_driver_t :: driver)

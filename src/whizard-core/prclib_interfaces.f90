@@ -1,4 +1,4 @@
-! WHIZARD 2.2.0 May 18 2014
+! WHIZARD 2.2.1 June 3 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -121,6 +121,7 @@ module prclib_interfaces
      character(32) :: md5sum = ""
      logical :: loaded = .false.
      type(string_t) :: libname
+     type(string_t) :: modellibs_ldflags
      integer :: n_processes = 0
      type(prclib_driver_record_t), dimension(:), allocatable :: record
      procedure(prc_get_n_processes), nopass, pointer :: &
@@ -519,10 +520,14 @@ contains
     call record%writer%write_source_code (record%id)
   end subroutine prclib_driver_record_write_source_code
 
-  subroutine prclib_driver_write (object, unit)
+  subroutine prclib_driver_write (object, unit, libpath)
     class(prclib_driver_t), intent(in) :: object
     integer, intent(in) :: unit
-    integer :: i
+    logical, intent(in), optional :: libpath
+    logical :: write_lib
+    integer :: i    
+    write_lib = .true.    
+    if (present (libpath))  write_lib = libpath
     write (unit, "(1x,A,A)")  &
          "External matrix-element code library: ", char (object%basename)
     select type (object)
@@ -533,6 +538,10 @@ contains
     end select
     write (unit, "(3x,A,L1)")  "loaded    = ", object%loaded
     write (unit, "(3x,A,A,A)") "MD5 sum   = '", object%md5sum, "'"
+    if (write_lib) then
+       write (unit, "(3x,A,A,A)") "Mdl flags = '", &
+            char (object%modellibs_ldflags), "'"
+    end if
     select type (object)
     type is (prclib_driver_dynamic_t)
        write (unit, *)
@@ -549,9 +558,11 @@ contains
     end if
   end subroutine prclib_driver_write
   
-  subroutine dispatch_prclib_driver (driver, basename)
+  subroutine dispatch_prclib_driver &
+       (driver, basename, modellibs_ldflags)
     class(prclib_driver_t), intent(inout), allocatable :: driver
     type(string_t), intent(in) :: basename
+    type(string_t), intent(in), optional :: modellibs_ldflags
     procedure(dispatch_prclib_driver) :: dispatch_prclib_static
     if (allocated (driver))  deallocate (driver)
     call dispatch_prclib_static (driver, basename)
@@ -559,6 +570,7 @@ contains
        allocate (prclib_driver_dynamic_t :: driver)
     end if
     driver%basename = basename
+    driver%modellibs_ldflags = modellibs_ldflags
   end subroutine dispatch_prclib_driver
   
   subroutine prclib_driver_init (driver, n_processes)
@@ -636,7 +648,8 @@ contains
     write (unit, "(A)")  "CFLAGS = " // char (os_data%cflags)
     write (unit, "(A)")  "CFLAGS_PIC = " // char (os_data%cflags_pic)
     write (unit, "(A)")  "LDFLAGS = " // char (os_data%whizard_ldflags) &
-         // " " // char (os_data%ldflags)
+         // " " // char (os_data%ldflags) // " " // &
+         char (driver%modellibs_ldflags)
     write (unit, "(A)")  ""
     write (unit, "(A)")  "# LaTeX setup"
     write (unit, "(A)")  "LATEX = " // char (os_data%latex)
@@ -1931,7 +1944,7 @@ contains
     write (u, "(A)")  "* Create a prclib driver object"
     write (u, "(A)")
 
-    call dispatch_prclib_driver (driver, var_str ("prclib"))
+    call dispatch_prclib_driver (driver, var_str ("prclib"), var_str (""))
     call driver%init (3)
     call driver%set_md5sum (md5sum)
 
@@ -2026,7 +2039,7 @@ contains
     write (u, "(A)")  "* Create a prclib driver object (2 processes)"
     write (u, "(A)")
 
-    call dispatch_prclib_driver (driver, var_str ("prclib2"))
+    call dispatch_prclib_driver (driver, var_str ("prclib2"), var_str (""))
     call driver%init (2)
     call driver%set_md5sum (md5sum)
 
@@ -2123,7 +2136,7 @@ contains
     write (u, "(A)")  "* Create a prclib driver object (2 processes)"
     write (u, "(A)")
 
-    call dispatch_prclib_driver (driver, var_str ("prclib3"))
+    call dispatch_prclib_driver (driver, var_str ("prclib3"), var_str (""))
     call driver%init (2)
     call driver%set_md5sum (md5sum)
 
@@ -2191,7 +2204,7 @@ contains
     allocate (test_writer_4_t :: test_writer_4)
     call test_writer_4%init_test ()
 
-    call dispatch_prclib_driver (driver, var_str ("prclib4"))
+    call dispatch_prclib_driver (driver, var_str ("prclib4"), var_str (""))
     call driver%init (1)
     call driver%set_md5sum (md5sum)
 
@@ -2533,7 +2546,7 @@ contains
     call os_data_init (os_data)
     allocate (test_writer_5_t :: test_writer_5)
 
-    call dispatch_prclib_driver (driver, var_str ("prclib5"))
+    call dispatch_prclib_driver (driver, var_str ("prclib5"), var_str (""))
     call driver%init (1)
     call driver%set_md5sum (md5sum)
 
@@ -2842,7 +2855,7 @@ contains
     call os_data_init (os_data)
     allocate (test_writer_6_t :: test_writer_6)
 
-    call dispatch_prclib_driver (driver, var_str ("prclib6"))
+    call dispatch_prclib_driver (driver, var_str ("prclib6"), var_str (""))
     call driver%init (1)
     call driver%set_md5sum (md5sum)
 
@@ -3074,7 +3087,7 @@ contains
     allocate (test_writer_4_t :: test_writer_4)
 
     call os_data_init (os_data)
-    call dispatch_prclib_driver (driver, var_str ("prclib7"))
+    call dispatch_prclib_driver (driver, var_str ("prclib7"), var_str (""))
     call driver%init (1)
     call driver%set_md5sum (md5sum)
     call driver%set_record (1, var_str ("test7"), var_str ("Test_model"), &

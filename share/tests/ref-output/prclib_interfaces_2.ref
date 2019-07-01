@@ -7,6 +7,7 @@
    static    = F
    loaded    = F
    MD5 sum   = 'prclib_interfaces_2_md5sum      '
+   Mdl flags = ''
 
  DL access info:
    is open   = F
