@@ -1,6 +1,6 @@
-! WHIZARD 2.6.2 Dec 13 2017
+! WHIZARD 2.6.3 Feb 10 2018
 !
-! Copyright (C) 1999-2017 by
+! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -57,6 +57,9 @@ contains
          u, results)
     call test (state_matrix_6, "state_matrix_6", &
                "check state matrix reduction", &
+               u, results)
+    call test (state_matrix_7, "state_matrix_7", &
+               "check ordered state matrix reduction", &
                u, results)
   end subroutine state_matrix_test
 

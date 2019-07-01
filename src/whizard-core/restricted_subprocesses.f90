@@ -1,6 +1,6 @@
-! WHIZARD 2.6.2 Dec 13 2017
+! WHIZARD 2.6.3 Feb 10 2018
 !
-! Copyright (C) 1999-2017 by
+! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -219,6 +219,9 @@ contains
     prc_set%n_history(i_component) = res_history_set%get_n_history ()
     if (prc_set%n_history(i_component) > 0) then
        prc_set%res_history_set(i_component) = res_history_set
+    else
+       call prc_set%res_history_set(i_component)%init (initial_size = 0)
+       call prc_set%res_history_set(i_component)%freeze ()
     end if
   end subroutine resonant_subprocess_set_fill_resonances
 

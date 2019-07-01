@@ -82,7 +82,9 @@ Output from running lcio_3_rd:
  date: [...]
  detector : unknown
  event parameters: 
+ parameter Event Number [int]: 1, 
  parameter ProcessID [int]: 1, 
+ parameter Run ID [int]: 0, 
  parameter beamPDG0 [int]: 11, 
  parameter beamPDG1 [int]: -11, 
  parameter Energy [float]: 500, 

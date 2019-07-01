@@ -1,6 +1,6 @@
-! WHIZARD 2.6.2 Dec 13 2017
+! WHIZARD 2.6.3 Feb 10 2018
 !
-! Copyright (C) 1999-2017 by
+! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -56,6 +56,7 @@ module pdg_arrays
   public :: is_massless_vector
   public :: is_massive_vector
   public :: is_vector
+  public :: is_elementary
   public :: operator(<)
   public :: operator(>)
   public :: operator(<=)
@@ -411,6 +412,16 @@ contains
       is_vector = .false.
     end if
   end function is_vector
+
+  elemental function is_elementary (pdg_nr)
+    integer, intent(in) :: pdg_nr
+    logical :: is_elementary
+    if (is_vector (pdg_nr) .or. is_fermion (pdg_nr) .or. pdg_nr == 25) then
+       is_elementary = .true.
+    else
+       is_elementary = .false.
+    end if
+  end function is_elementary
 
   function pdg_array_has_colored_particles (pdg) result (colored)
     class(pdg_array_t), intent(in) :: pdg

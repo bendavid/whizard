@@ -1,6 +1,6 @@
-! WHIZARD 2.6.2 Dec 13 2017
+! WHIZARD 2.6.3 Feb 10 2018
 !
-! Copyright (C) 1999-2017 by
+! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -164,6 +164,12 @@ contains
              var_list%get_rval (var_str ("channel_weights_power"))
         mci_vamp2_config%stratified = &
              var_list%get_lval (var_str ("?stratified"))
+        if (.not. dispatch_nlo) then
+           mci_vamp2_config%equivalences = &
+                var_list%get_lval (var_str ("?use_vamp_equivalences"))
+        else
+           mci_vamp2_config%equivalences = .false.
+        end if
         mci_vamp2_config%accuracy_goal = &
              var_list%get_rval (var_str ("accuracy_goal"))
         mci_vamp2_config%error_goal = &

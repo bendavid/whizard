@@ -148,6 +148,17 @@ types, no type-bound procedures.
 @ %def process_constants_get_n_flv
 @
 <<Process Constants: process constants: TBP>>=
+  procedure :: get_n_hel => process_constants_get_n_hel
+<<Process Constants: procedures>>=
+  function process_constants_get_n_hel (data) result (n_hel)
+    integer :: n_hel
+    class(process_constants_t), intent(in) :: data
+    n_hel = data%n_hel
+  end function process_constants_get_n_hel
+
+@ %def process_constants_get_n_flv
+@
+<<Process Constants: process constants: TBP>>=
   procedure :: get_hel_state => process_constants_get_hel_state
 <<Process Constants: procedures>>=
   subroutine process_constants_get_hel_state (prc_const, hel_state)

@@ -22,3 +22,13 @@ sqrts = 100 GeV
 iterations = 1:100
 
 integrate (recola_1_p1)
+
+sample_format = debug
+?sample_pacify = true
+?debug_decay = false
+?debug_process = false
+?debug_verbose = false
+?write_raw = false
+
+n_events = 2
+simulate (recola_1_p1)

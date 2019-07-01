@@ -1,4 +1,4 @@
-% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*-
+%% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*-
 % WHIZARD code as NOWEB source: VEGAS algorithm
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -234,6 +234,26 @@ be used, to export the actual grid.
   end subroutine vegas_grid_write
 
 @ %def vegas_grid_write
+@ Compare two grids, if they match up to an given precision.
+<<vegas: public>>=
+  public :: operator (==)
+<<vegas: interfaces>>=
+  interface operator (==)
+     module procedure vegas_grid_equal
+  end interface operator (==)
+<<vegas: procedures>>=
+  logical function vegas_grid_equal (grid_a, grid_b) result (yorn)
+    type(vegas_grid_t), intent(in) :: grid_a, grid_b
+    yorn = .true.
+    yorn = yorn .and. (grid_a%n_dim == grid_b%n_dim)
+    yorn = yorn .and. (grid_a%n_bins == grid_b%n_bins)
+    yorn = yorn .and. all (grid_a%x_lower == grid_b%x_lower)
+    yorn = yorn .and. all (grid_a%x_upper == grid_b%x_upper)
+    yorn = yorn .and. all (grid_a%delta_x == grid_b%delta_x)
+    yorn = yorn .and. all (grid_a%xi == grid_b%xi)
+  end function vegas_grid_equal
+
+@ %def vegas_grid_equal
 @ Resize each bin accordingly to its corresponding weight [[w]]. Can be used to
 resize the grid to a new size of bins or refinement.
 
@@ -288,41 +308,80 @@ Anytime else, we refine the grid accordingly to [[w]].
   end subroutine vegas_grid_resize
 
 @ %def vegas_grid_resize
-@ Find the probability for a given [[x]] in the unit hypercube. We use a binary
-search algorithm to find the correct bin along each axis.
+@ Find the probability for a given [[x]] in the unit hypercube. 
+
+For the case [[n_bins < N_BINARY_SEARCH]], we utilize linear search which is faster for short arrays.
+Else we make use of a binary search. Furthermore, we calculate the inverse of
+the probability and invert the result only at the end (saving some time on division).
 <<vegas: vegas grid: TBP>>=
   procedure, public :: get_probability => vegas_grid_get_probability
 <<vegas: procedures>>=
   function vegas_grid_get_probability (self, x) result (g)
     class(vegas_grid_t), intent(in) :: self
     real(default), dimension(:), intent(in) :: x
+    integer, parameter :: N_BINARY_SEARCH = 100
     real(default) :: g, y
     integer :: j, i_lower, i_higher, i_mid
     g = 1.
-    ndim: do j = 1, self%n_dim
-       y = (x(j) - self%x_lower(j)) / self%delta_x(j)
-       if (y >= 0. .or. y <= 1.) then
-          i_lower = 1
-          i_higher = self%n_bins + 1
-          search: do
-             if (i_lower >= (i_higher - 1)) then
-                g = g / (self%delta_x(j) * &
-                     & self%n_bins * (self%xi(i_higher, j) - self%xi(i_higher - 1, j)))
-                cycle ndim
-             end if
-             i_mid = (i_higher + i_lower) / 2
-             if (y > self%xi(i_mid, j)) then
-                i_lower = i_mid
-             else
-                i_higher = i_mid
-             end if
-          end do search
-       else
-          g = 0.
-          exit ndim
-       end if
-    end do ndim
-  end function vegas_grid_get_probability
+    if (self%n_bins > N_BINARY_SEARCH) then
+       g = binary_search (x)
+    else
+       g = linear_search (x)
+    end if
+    ! Move division to the end, which is more efficient.
+    if (g /= 0) g = 1. / g
+  contains
+    real(default) function linear_search (x) result (g)
+      real(default), dimension(:), intent(in) :: x
+      real(default) :: y
+      integer :: j, i
+      g = 1.
+      ndim: do j = 1, self%n_dim
+         y = (x(j) - self%x_lower(j)) / self%delta_x(j)
+         if (y >= 0. .and. y <= 1.) then
+            do i = 2, self%n_bins + 1
+               if (self%xi(i, j) > y) then
+                 g = g * (self%delta_x(j) * &
+                      & self%n_bins * (self%xi(i, j) - self%xi(i - 1, j)))
+                 cycle ndim
+              end if
+           end do
+           g = 0
+           exit ndim
+        else
+           g = 0
+           exit ndim
+        end if
+     end do ndim
+   end function linear_search
+
+   real(default) function binary_search (x) result (g)
+     real(default), dimension(:), intent(in) :: x
+     ndim: do j = 1, self%n_dim
+        y = (x(j) - self%x_lower(j)) / self%delta_x(j)
+        if (y >= 0. .and. y <= 1.) then
+           i_lower = 1
+           i_higher = self%n_bins + 1
+           search: do
+              if (i_lower >= (i_higher - 1)) then
+                 g = g * (self%delta_x(j) * &
+                      & self%n_bins * (self%xi(i_higher, j) - self%xi(i_higher - 1, j)))
+                 cycle ndim
+              end if
+              i_mid = (i_higher + i_lower) / 2
+              if (y > self%xi(i_mid, j)) then
+                 i_lower = i_mid
+              else
+                 i_higher = i_mid
+              end if
+           end do search
+        else
+           g = 0.
+           exit ndim
+        end if
+     end do ndim
+   end function binary_search
+ end function vegas_grid_get_probability
 
 @ %def vegas_grid_get_probability
 @ Broadcast the grid information. As safety measure, we get the actual grid
@@ -901,6 +960,31 @@ if you are not careful! Hence, it will only be avaible during usage with
   end function vegas_get_evt_weight_excess
 
 @ %def vegas_get_evt_weight, vegas_get_evt_weight_excess
+@ Get and set distribution. Beware! This method is hideous as it allows to
+manipulate the algorithm at its very core.
+<<vegas: vegas: TBP>>=
+  procedure, public :: get_distribution => vegas_get_distribution
+  procedure, public :: set_distribution => vegas_set_distribution
+<<vegas: procedures>>=
+  function vegas_get_distribution (self) result (d)
+    class(vegas_t), intent(in) :: self
+    real(default), dimension(:, :), allocatable :: d
+    d = self%d
+  end function vegas_get_distribution
+
+  subroutine vegas_set_distribution (self, d)
+    class(vegas_t), intent(inout) :: self
+    real(default), dimension(:, :), intent(in) :: d
+    if (size (d, dim = 2) /= self%config%n_dim) then
+       call msg_bug ("[VEGAS] set_distribution: new distribution has wrong size of dimension")
+    end if
+    if (size (d, dim = 1) /= self%config%n_bins_max) then
+       call msg_bug ("[VEGAS] set_distribution: new distribution has wrong number of bins")
+    end if
+    self%d = d
+  end subroutine vegas_set_distribution
+
+@ %def vegas_set_distribution, vegas_get_distribution
 @ Send distribution to specified rank, internally in a non-blocking way.
 We send the complete array of [[d]], not just the actually used part.
 <<MPI: vegas: vegas: TBP>>=
@@ -1569,6 +1653,15 @@ only for event generation.
 
 @ %def vegas_accumulate_distribution
 @ Generate weighted random event.
+
+The weight given by the overall jacobian
+\begin{equation}
+ \Delta_{\text{jac}} = \prod_{j=1}^{d} \left( x_j^+ - x_j^- \right) \frac{N_{\text{bins}}^d}{N_{\text{calls}}}
+\end{equation}
+includes the overall non-changing factors $\frac{1}{N_{\text{calls}}}$-factor (divisions are
+expensive) and $N_{\text{bins}}^{d}$, the latter combined with [[bin_volume]]
+gives rise to the probability, see [[vegas_init_grid]] for details.
+We have to factor out $N_{\text{calls}}$ to retrieve the correct weight.
 <<vegas: vegas: TBP>>=
   procedure :: generate_weighted => vegas_generate_weighted_event
 <<vegas: procedures>>=
@@ -2679,6 +2772,7 @@ calculated regarding [[n_calls_threshold]].
      integer :: n_calls_threshold = 10
      integer :: n_chains = 0
      logical :: stratified = .true.
+     logical :: equivalences = .false.
      real(default) :: beta = 0.5_default
      real(default) :: accuracy_goal = 0._default
      real(default) :: error_goal = 0._default
@@ -2717,6 +2811,9 @@ calculated regarding [[n_calls_threshold]].
     call write_indent (u, ind)
     write (u, "(2x,A,L1)") &
          & "Stratified                                       = ", self%stratified
+    call write_indent (u, ind)
+    write (u, "(2x,A,L1)") &
+         & "Equivalences                                     = ", self%equivalences
     call write_indent (u, ind)
     write (u, "(2x,A," // FMT_17 // ")") &
          & "Adaption power (beta)                            = ", self%beta
@@ -2769,7 +2866,250 @@ of [[vegas_result_t]].
   end subroutine vamp2_result_write
 
 @ %def vamp2_result_write
+@
+\subsection{Type: vamp2\_equivalences\_t}
+\label{sec:vamp2-eqv}
 
+<<vamp2: parameters>>=
+integer, parameter, public :: &
+     VEQ_IDENTITY = 0, VEQ_INVERT = 1, VEQ_SYMMETRIC = 2, VEQ_INVARIANT = 3
+@
+@ Channel equivalences. Store retrieving and sourcing channel.
+<<vamp2: types>>=
+  type :: vamp2_equi_t
+     integer :: ch
+     integer :: ch_src
+     integer, dimension(:), allocatable :: perm
+     integer, dimension(:), allocatable :: mode
+   contains
+   <<vamp2: vamp2 equi: TBP>>
+  end type vamp2_equi_t
+
+@ %def vamp2_equi_t
+@ Write equivalence.
+<<vamp2: vamp2 equi: TBP>>=
+  procedure :: write => vamp2_equi_write
+<<vamp2: procedures>>=
+  subroutine vamp2_equi_write (self, unit, indent)
+    class(vamp2_equi_t), intent(in) :: self
+    integer, intent(in), optional :: unit
+    integer, intent(in), optional :: indent
+    integer :: u, ind
+    u = given_output_unit (unit)
+    ind = 0; if (present (indent)) ind = indent
+    call write_indent (u, ind)
+    write (u, "(2(A,1X,I0))") "src:", self%ch_src, "-> dest:", self%ch
+    call write_indent (u, ind)
+    write (u, "(A,99(1X,I0))") "Perm: ", self%perm
+    call write_indent (u, ind)
+    write (u, "(A,99(1X,I0))") "Mode: ", self%mode
+  end subroutine vamp2_equi_write
+
+@ %def vamp2_equi_write
+@
+<<vamp2: public>>=
+  public :: vamp2_equivalences_t
+<<vamp2: types>>=
+  type :: vamp2_equivalences_t
+      private
+      integer :: n_eqv = 0
+      integer :: n_channel = 0
+      integer :: n_dim = 0
+      type(vamp2_equi_t), dimension(:), allocatable :: eqv
+      integer, dimension(:), allocatable :: map
+      integer, dimension(:), allocatable :: multiplicity
+      integer, dimension(:), allocatable :: symmetry
+      logical, dimension(:), allocatable :: independent
+      integer, dimension(:), allocatable :: equivalent_to_ch
+      logical, dimension(:, :), allocatable :: dim_is_invariant
+   contains
+   <<vamp2: vamp2 equivalences: TBP>>
+  end type vamp2_equivalences_t
+
+@ %def vamp2_equivalences_t
+@ Constructor.
+<<vamp2: interfaces>>=
+  interface vamp2_equivalences_t
+     module procedure vamp2_equivalences_init
+  end interface vamp2_equivalences_t
+
+<<vamp2: procedures>>=
+  type(vamp2_equivalences_t) function vamp2_equivalences_init (&
+       n_eqv, n_channel, n_dim) result (eqv)
+    integer, intent(in) :: n_eqv, n_channel, n_dim
+    eqv%n_eqv = n_eqv
+    eqv%n_channel = n_channel
+    eqv%n_dim = n_dim
+    allocate (eqv%eqv(n_eqv))
+    allocate (eqv%map(n_channel), source = 0)
+    allocate (eqv%multiplicity(n_channel), source = 0)
+    allocate (eqv%symmetry(n_channel), source = 0)
+    allocate (eqv%independent(n_channel), source = .true.)
+    allocate (eqv%equivalent_to_ch(n_channel), source = 0)
+    allocate (eqv%dim_is_invariant(n_dim, n_channel), source = .false.)
+  end function vamp2_equivalences_init
+
+@ %def vamp2_equivlences_init
+@ Write equivalences.
+<<vamp2: vamp2 equivalences: TBP>>=
+  procedure :: write => vamp2_equivalences_write
+<<vamp2: procedures>>=
+  subroutine vamp2_equivalences_write (self, unit, indent)
+    class(vamp2_equivalences_t), intent(in) :: self
+    integer, intent(in), optional :: unit
+    integer, intent(in), optional :: indent
+    integer :: u, ind, i_eqv, ch
+    u = given_output_unit (unit)
+    ind = 0; if (present (indent)) ind = indent
+    write (u, "(A)") "Inequivalent channels:"
+    if (allocated (self%independent)) then
+       do ch = 1, self%n_channel
+          if (self%independent(ch)) then
+             write (u, "(2X,A,1x,I0,A,4x,A,I0,4x,A,I0,4x,A,999(L1))") &
+                  "Channel", ch, ":", &
+                  "Mult. = ", self%multiplicity(ch), &
+                  "Symm. = ", self%symmetry(ch), &
+                  "Invar.: ", self%dim_is_invariant(:, ch)
+          end if
+       end do
+    else
+       write (u, "(A)") "[not allocated]"
+    end if
+    write (u, "(A)") "Equivalence list:"
+    if (allocated (self%eqv)) then
+       do i_eqv = 1, self%n_eqv
+          write (u, "(2X,A,1X,I0)") "i_eqv:", i_eqv
+          call self%eqv(i_eqv)%write (unit, indent = ind + 4)
+       end do
+    else
+       write (u, "(A)") "[not allocated]"
+    end if
+  end subroutine vamp2_equivalences_write
+
+@ %def vamp2_equivalences_write
+@ Is allocated.
+<<vamp2: vamp2 equivalences: TBP>>=
+  procedure, public :: is_allocated => vamp2_equivalences_is_allocated
+<<vamp2: procedures>>=
+  logical function vamp2_equivalences_is_allocated (self) result (yorn)
+    class(vamp2_equivalences_t), intent(in) :: self
+    yorn = allocated (self%eqv)
+  end function vamp2_equivalences_is_allocated
+
+@ %def vamp2_equivalences_is_allocated
+@ Get source channel and destination channel for given equivalence.
+<<vamp2: vamp2 equivalences: TBP>>=
+  procedure, public :: get_channels => vamp2_equivalences_get_channels
+<<vamp2: procedures>>=
+  subroutine vamp2_equivalences_get_channels (eqv, i_eqv, dest, src)
+   class(vamp2_equivalences_t), intent(in) :: eqv
+   integer, intent(in) :: i_eqv
+   integer, intent(out) :: dest, src
+   dest = eqv%eqv(i_eqv)%ch
+   src = eqv%eqv(i_eqv)%ch_src
+  end subroutine vamp2_equivalences_get_channels
+
+@ %def vamp2_equivalences_get_channels
+@
+<<vamp2: vamp2 equivalences: TBP>>=
+  procedure, public :: get_mode => vamp2_equivalences_get_mode
+  procedure, public :: get_perm => vamp2_equivalences_get_perm
+<<vamp2: procedures>>=
+  function vamp2_equivalences_get_mode (eqv, i_eqv) result (mode)
+    class(vamp2_equivalences_t), intent(in) :: eqv
+    integer, intent(in) :: i_eqv
+    integer, dimension(:), allocatable :: mode
+    mode = eqv%eqv(i_eqv)%mode
+  end function vamp2_equivalences_get_mode
+
+  function vamp2_equivalences_get_perm (eqv, i_eqv) result (perm)
+    class(vamp2_equivalences_t), intent(in) :: eqv
+    integer, intent(in) :: i_eqv
+    integer, dimension(:), allocatable :: perm
+    perm = eqv%eqv(i_eqv)%perm
+  end function vamp2_equivalences_get_perm
+
+@ %def vamp2_equivalences_get_perm, vamp2_equivalences_get_mode
+@
+<<vamp2: vamp2 equivalences: TBP>>=
+  procedure, public :: set_equivalence => vamp2_equivalences_set_equivalence
+<<vamp2: procedures>>=
+  subroutine vamp2_equivalences_set_equivalence &
+       (eqv, i_eqv, dest, src, perm, mode)
+    class(vamp2_equivalences_t), intent(inout) :: eqv
+    integer, intent(in) :: i_eqv
+    integer, intent(in) :: dest, src
+    integer, dimension(:), intent(in) :: perm, mode
+    integer :: i
+    if (dest < 1 .or. dest > eqv%n_channel)  call msg_bug &
+       ("[VAMP2] set_equivalences: destination channel out of range.")
+    if (src < 1 .or. src > eqv%n_channel)  call msg_bug &
+         ("[VAMP2] set_equivalences: source channel out of range.")
+    if (size(perm) /= eqv%n_dim)  call msg_bug &
+         ("[VAMP2] set_equivalences: size(perm) does not match n_dim.")
+    if (size(mode) /= eqv%n_dim)  call msg_bug &
+         ("[VAMP2] set_equivalences: size(mode) does not match n_dim.")
+    eqv%eqv(i_eqv)%ch = dest
+    eqv%eqv(i_eqv)%ch_src = src
+    allocate (eqv%eqv(i_eqv)%perm (size (perm)))
+    do i = 1, size (perm)
+       eqv%eqv(i_eqv)%perm(i) = perm(i)
+    end do
+    allocate (eqv%eqv(i_eqv)%mode (size (mode)))
+    do i = 1, size (mode)
+       eqv%eqv(i_eqv)%mode(i) = mode(i)
+    end do
+  end subroutine vamp2_equivalences_set_equivalence
+
+@ %def vamp2_equivalences_set_equivalence
+@ Freeze equivalences.
+<<vamp2: vamp2 equivalences: TBP>>=
+  procedure, public :: freeze => vamp2_equivalences_freeze
+<<vamp2: procedures>>=
+  subroutine vamp2_equivalences_freeze (self)
+    class(vamp2_equivalences_t), intent(inout) :: self
+    integer :: i_eqv, ch, upper, lower
+    ch = 0
+    do i_eqv = 1, self%n_eqv
+       if (ch /= self%eqv(i_eqv)%ch) then
+          ch = self%eqv(i_eqv)%ch
+          self%map(ch) = i_eqv
+       end if
+    end do
+    do ch = 1, self%n_channel
+       lower = self%map(ch)
+       if (ch == self%n_channel) then
+          upper = self%n_eqv
+       else
+          upper = self%map(ch + 1) - 1
+       end if
+       associate (eqv => self%eqv, n_eqv => size (self%eqv(lower:upper)))
+         if (.not. all(eqv(lower:upper)%ch == ch) .or. &
+              eqv(lower)%ch_src > ch) then
+            do i_eqv = lower, upper
+               call self%eqv(i_eqv)%write ()
+            end do
+            call msg_bug ("[VAMP2] vamp2_equivalences_freeze: &
+                 &equivalence order is not correct.")
+         end if
+         self%symmetry(ch) = count (eqv(lower:upper)%ch_src == ch)
+         if (mod (n_eqv, self%symmetry(ch)) /= 0) then
+            do i_eqv = lower, upper
+               call self%eqv(i_eqv)%write ()
+            end do
+            call msg_bug ("[VAMP2] vamp2_equivalences_freeze: &
+                 &permutation count is not correct.")
+         end if
+         self%multiplicity(ch) = n_eqv / self%symmetry(ch)
+         self%independent(ch) = all (eqv(lower:upper)%ch_src >= ch)
+         self%equivalent_to_ch(ch) = eqv(lower)%ch_src
+         self%dim_is_invariant(:, ch) = eqv(lower)%mode == VEQ_INVARIANT
+       end associate
+    end do
+  end subroutine vamp2_equivalences_freeze
+
+@ %def vamp2_equivalences_freeze
+@
 \subsection{Type: vamp2\_t}
 \label{sec:vamp2-t}
 
@@ -2786,6 +3126,7 @@ of [[vegas_result_t]].
      real(default), dimension(:), allocatable :: variance
      real(default), dimension(:), allocatable :: efficiency
      type(vamp2_result_t) :: result
+     type(vamp2_equivalences_t) :: equivalences
      logical :: event_prepared
      real(default), dimension(:), allocatable :: event_weight
    contains
@@ -2883,6 +3224,7 @@ of [[vegas_result_t]].
     class(vamp2_t), intent(inout) :: self
     class(vamp2_config_t), intent(in) :: config
     integer :: ch
+    self%config%equivalences = config%equivalences
     self%config%n_calls_min_per_channel = config%n_calls_min_per_channel
     self%config%n_calls_threshold = config%n_calls_threshold
     self%config%n_calls_min = config%n_calls_min
@@ -2960,6 +3302,17 @@ chained weights in [[vamp2_adapt_weights]].
   end subroutine vamp2_set_chain
 
 @ %def vamp2_set_chain
+@ Set channel equivalences.
+<<vamp2: vamp2: TBP>>=
+  procedure, public :: set_equivalences => vamp2_set_equivalences
+<<vamp2: procedures>>=
+  subroutine vamp2_set_equivalences (self, equivalences)
+    class(vamp2_t), intent(inout) :: self
+    type(vamp2_equivalences_t), intent(in) :: equivalences
+    self%equivalences = equivalences
+  end subroutine vamp2_set_equivalences
+
+@ %def vamp2_set_equivalences
 @ Get [[n_calls]] calculated by [[VEGAS]].
 <<vamp2: vamp2: TBP>>=
   procedure, public :: get_n_calls => vamp2_get_n_calls
@@ -3025,6 +3378,19 @@ chained weights in [[vamp2_adapt_weights]].
   end function vamp2_get_evt_weight_excess
 
 @ %def vamp2_get_evt_weight, vamp2_get_evt_weight_excess
+@ Get procedure to retrieve channel-th grid.
+<<vamp2: vamp2: TBP>>=
+  procedure :: get_grid => vamp2_get_grid
+<<vamp2: procedures>>=
+  type(vegas_grid_t) function vamp2_get_grid (self, channel) result (grid)
+    class(vamp2_t), intent(in) :: self
+    integer, intent(in) :: channel
+    if (channel < 1 .or. channel > self%config%n_channel) &
+         call msg_bug ("[VAMP2] vamp2_get_grid: channel index < 1 or > n_channel.")
+    grid = self%integrator(channel)%get_grid ()
+  end function vamp2_get_grid
+
+@ %def vamp2_get_grid
 @ Adapt. We adapt the weights due the contribution of variances with $\beta >
 0$.
 \begin{equation}
@@ -3083,6 +3449,51 @@ accordingly resized to fit the boundary condition of the partition of unity.
   end subroutine chain_weights
 
 @ %def chain_weights
+<<vamp2: vamp2: TBP>>=
+  procedure, private :: apply_equivalences => vamp2_apply_equivalences
+<<vamp2: procedures>>=
+  subroutine vamp2_apply_equivalences (self)
+    class(vamp2_t), intent(inout) :: self
+    integer :: ch, ch_src, j, j_src, i_eqv
+    real(default), dimension(:, :, :), allocatable :: d
+    real(default), dimension(:, :), allocatable :: d_src
+    integer, dimension(:), allocatable :: mode, perm
+    if (.not. self%equivalences%is_allocated ()) then
+       call msg_bug ("[VAMP2] vamp2_apply_equivalences: &
+            &cannot apply not-allocated equivalences.")
+    end if
+    allocate (d(self%config%n_bins_max, self%config%n_dim, &
+         self%config%n_channel), source=0._default)
+    associate (eqv => self%equivalences, nb => self%config%n_bins_max)
+      do i_eqv = 1, self%equivalences%n_eqv
+         call eqv%get_channels (i_eqv, ch, ch_src)
+         d_src = self%integrator(ch_src)%get_distribution ()
+         mode = eqv%get_mode (i_eqv)
+         perm = eqv%get_perm (i_eqv)
+         do j = 1, self%config%n_dim
+            select case (mode (j))
+            case (VEQ_IDENTITY)
+               d(:, j, ch) = d(:, j, ch) + &
+                    d_src(:, perm(j))
+            case (VEQ_INVERT)
+               d(:, j, ch) = d(:, j, ch) + &
+                    d_src(nb:1:-1, perm(j))
+            case (VEQ_SYMMETRIC)
+               d(:, j, ch) = d(:, j, ch) + &
+                    d_src(:, perm(j)) / 2. + &
+                    d_src(nb:1:-1, perm(j)) / 2.
+            case (VEQ_INVARIANT)
+               d(:, j, ch) = 1._default
+            end select
+         end do
+      end do
+    end associate
+    do ch = 1, self%config%n_channel
+       call self%integrator(ch)%set_distribution (d(:, :, ch))
+    end do
+  end subroutine vamp2_apply_equivalences
+
+@ %def vamp2_apply_equivalences
 @ Reset the cumulative result.
 <<vamp2: vamp2: TBP>>=
   procedure, public :: reset_result => vamp2_reset_result
@@ -3212,6 +3623,9 @@ in [[vegas_integrate]].
           call self%adapt_weights ()
        end if
        if (refine_grid) then
+          if (self%config%equivalences) then
+             call self%apply_equivalences ()
+          end if
           do ch = 1, self%config%n_channel
              call self%integrator(ch)%refine ()
           end do
@@ -3381,8 +3795,10 @@ An additional rescale factor [[opt_event_rescale]] is applied to [[f_max]], iff 
     call msg_debug (D_VAMP2, "vamp2_generate_weighted_event")
     call msg_debug (D_VAMP2, "Selected channel", ch)
     call msg_debug (D_VAMP2, "Ch. Event weight", self%event_weight(ch))
-    call self%integrator(ch)%generate_unweighted (func, rng, x)
-    self%result%evt_weight = self%integrator(ch)%get_evt_weight ()
+    call self%integrator(ch)%generate_weighted (func, rng, x)
+    ! Norm weight by f_max, hidden in event_weight(ch), else by 1
+    self%result%evt_weight = self%integrator(ch)%get_evt_weight () &
+         * self%weight(ch) / self%event_weight(ch)
     call msg_debug2 (D_VAMP2, "Event weight", self%result%evt_weight)
   contains
   <<vamp2: vamp2 generate event: procedures>>
@@ -3390,6 +3806,13 @@ An additional rescale factor [[opt_event_rescale]] is applied to [[f_max]], iff 
 
 @ %def vamp2_generate_weighted_event
 @ Generate unweighted events.
+
+After selecting a channel $ch$ by the acceptance $r$
+\begin{equation*}
+  r > \operatorname*{argmax}_{ch} \sum_{i = 1}^{ch} \alpha_i,
+\end{equation*}
+we try for an event from the previously selected channel.
+If the event is rejected, we also reject the selected channel.
 <<vamp2: vamp2: TBP>>=
   procedure, public :: generate_unweighted => vamp2_generate_unweighted_event
 <<vamp2: procedures>>=
@@ -3409,20 +3832,23 @@ An additional rescale factor [[opt_event_rescale]] is applied to [[f_max]], iff 
     if (.not. self%event_prepared) then
        call prepare_event ()
     end if
-    call rng%generate (r)
-    nchannel: do ch = 1, self%config%n_channel
-       r = r - self%event_weight(ch)
-       if (r <= 0._default) exit nchannel
-    end do nchannel
-    ch = min (ch, self%config%n_channel)
-    call func%set_channel (ch)
-    call msg_debug (D_VAMP2, "vamp2_generate_unweighted_event")
-    call msg_debug (D_VAMP2, "Selected channel", ch)
-    call msg_debug (D_VAMP2, "Ch. Event weight", self%event_weight(ch))
     generate: do
+       call rng%generate (r)
+       nchannel: do ch = 1, self%config%n_channel
+          r = r - self%event_weight(ch)
+          if (r <= 0._default) exit nchannel
+       end do nchannel
+       ch = min (ch, self%config%n_channel)
+       call func%set_channel (ch)
+       if (debug_active (D_VAMP2)) then
+          call msg_debug (D_VAMP2, "vamp2_generate_unweighted_event")
+          call msg_debug (D_VAMP2, "Selected channel", ch)
+          call msg_debug (D_VAMP2, "Ch. Event weight", self%event_weight(ch))
+       end if
        call self%integrator(ch)%generate_weighted (func, rng, x)
        self%result%evt_weight = self%integrator(ch)%get_evt_weight ()
-       call msg_debug (D_VAMP2, "Event weight", self%result%evt_weight)
+       if (debug_active (D_VAMP2)) &
+          call msg_debug (D_VAMP2, "Event weight", self%result%evt_weight)
        max_abs_f = merge ( &
             self%integrator(ch)%get_max_abs_f_pos (), &
             self%integrator(ch)%get_max_abs_f_neg (), &
@@ -3463,7 +3889,7 @@ An additional rescale factor [[opt_event_rescale]] is applied to [[f_max]], iff 
 Prepare event generation. We have to set the channel weights and the grids for
 the integrand's object.
 
-We use an ansatz proposed by the T. Ohl in the original VAMP code where we do not have to accept on
+We use an ansatz proposed by T. Ohl in the original VAMP code where we do not have to accept on
 \begin{equation*}
    \frac{w_i(x)}{\operatorname*{max}_{i, x} w_i(x)},
 \end{equation*}
@@ -3659,10 +4085,11 @@ module vamp2_uti
 <<Use kinds>>
   use io_units
   use constants, only: pi
+  use numeric_utils, only: nearly_equal
   use format_defs, only: FMT_12
   use rng_base
   use rng_stream
-  use vegas, only: vegas_func_t
+  use vegas, only: vegas_func_t, vegas_grid_t, operator(==)
   use vamp2
 
 <<Standard module head>>
@@ -3781,6 +4208,68 @@ The jacobian is $\frac{\partial (x, y)}{\partial (u, v)}$.
   end function vamp2_test_func_2_evaluate_func
 
 @ %def vamp2_test_func_2_evaluate_func
+@@ The third test function implements
+\begin{equation}
+  f(\vec{x}) = 5 x_{1}^4 + 5 (1 - x_{1})^4,
+\end{equation}
+where
+\begin{align}
+  x_1 = u^{1 / 5} & ∨ x_1 =  1 - v^{1 / 5} \\
+\end{align}
+The jacobians are $\frac{\partial x_1}{\partial u} = \frac{1}{5} u^{-\frac{4}{5}}$
+and $\frac{\partial x_1}{\partial v} = \frac{1}{5} v^{-\frac{4}{5}}$.
+<<vamp2: test types>>=
+  type, extends(vamp2_func_t) :: vamp2_test_func_3_t
+     !
+   contains
+   <<vamp2: vamp2 test func 3: TBP>>
+  end type vamp2_test_func_3_t
+
+@ %def vamp2_test_func_3_t
+@ Evaluate maps.
+<<vamp2: vamp2 test func 3: TBP>>=
+  procedure :: evaluate_maps => vamp2_test_func_3_evaluate_maps
+<<vamp2: tests>>=
+  subroutine vamp2_test_func_3_evaluate_maps (self, x)
+    class(vamp2_test_func_3_t), intent(inout) :: self
+    real(default), dimension(:), intent(in) :: x
+    real(default) :: u, v, xx
+    select case (self%current_channel)
+    case (1)
+       u = x(1)
+       xx = u**0.2_default
+       v = (1 - xx)**5._default
+    case (2)
+       v = x(1)
+       xx = 1 - v**0.2_default
+       u = xx**5._default
+    end select
+    self%det(1) = 0.2_default * u**(-0.8_default)
+    self%det(2) = 0.2_default * v**(-0.8_default)
+    self%xi(:, 1) = [u]
+    self%xi(:, 2) = [v]
+    self%valid_x = .true.
+  end subroutine vamp2_test_func_3_evaluate_maps
+
+@ %def vamp2_test_func_3_evaluate_maps
+@ Evaluate func.
+<<vamp2: vamp2 test func 3: TBP>>=
+  procedure :: evaluate_func => vamp2_test_func_3_evaluate_func
+<<vamp2: tests>>=
+  real(default) function vamp2_test_func_3_evaluate_func (self, x) result (f)
+    class(vamp2_test_func_3_t), intent(in) :: self
+    real(default), dimension(:), intent(in) :: x
+    real(default) :: xx
+    select case (self%current_channel)
+    case (1)
+       xx = x(1)**0.2_default
+    case (2)
+       xx = 1 - x(1)**0.2_default
+    end select
+    f = 5 * xx**4 + 5 * (1 - xx)**4
+  end function vamp2_test_func_3_evaluate_func
+
+@ %def vamp2_test_func_3_evaluate_func
 @
 \subsubsection{MC Integrator check}
 \label{sec:mc-integrator-check}
@@ -4110,3 +4599,126 @@ Use chained weights, although we average over each weight itself.
 
 @ %def vamp2_4
 @
+<<vamp2: execute tests>>=
+  call test (vamp2_5, "vamp2_5", "VAMP2 intgeration of two-dimensional &
+       & function with two channels with equivalences", u, results)
+<<vamp2: test declaration>>=
+  public :: vamp2_5
+<<vamp2: tests>>=
+  subroutine vamp2_5 (u)
+    integer, intent(in) :: u
+    type(vamp2_t) :: mc_integrator
+    class(rng_t), allocatable :: rng
+    class(vamp2_func_t), allocatable :: func
+    real(default), dimension(1), parameter :: x_lower = 0., &
+         x_upper = 1.
+    real(default) :: result, abserr
+    integer :: unit
+    type(vamp2_config_t) :: config
+    type(vamp2_equivalences_t) :: eqv
+    type(vegas_grid_t), dimension(2) :: grid
+
+    write (u, "(A)") "* Test output: vamp2_5"
+    write (u, "(A)") "*   Purpose:  intgeration of two-dimensional &
+       & function with two channels with equivalences"
+    write (u, "(A)")
+
+    write (u, "(A)") "* Initialise random number generator (default seed)"
+    write (u, "(A)")
+
+    allocate (rng_stream_t :: rng)
+    call rng%init ()
+
+    call rng%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Initialise MC integrator with n_channel = 2 and n_dim = 1"
+    write (u, "(A)")
+
+    allocate (vamp2_test_func_3_t :: func)
+    call func%init (n_dim = 1, n_channel = 2)
+    config%equivalences = .true.
+    mc_integrator = vamp2_t (n_channel = 2, n_dim = 1)
+    call mc_integrator%set_config (config)
+    call mc_integrator%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Initialise grid with n_calls = 20000 and set chains"
+    write (u, "(A)")
+
+    call mc_integrator%set_limits (x_lower, x_upper)
+    call mc_integrator%set_calls (20000)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Initialise equivalences"
+    write (u, "(A)")
+
+    eqv = vamp2_equivalences_t (n_eqv = 4, n_channel = 2, n_dim = 1)
+    call eqv%set_equivalence &
+         (i_eqv = 1, dest = 2, src = 1, perm = [1], mode = [VEQ_IDENTITY])
+    call eqv%set_equivalence &
+         (i_eqv = 2, dest = 1, src = 2, perm = [1], mode = [VEQ_IDENTITY])
+    call eqv%set_equivalence &
+         (i_eqv = 3, dest = 1, src = 1, perm = [1], mode = [VEQ_IDENTITY])
+    call eqv%set_equivalence &
+         (i_eqv = 4, dest = 2, src = 2, perm = [1], mode = [VEQ_IDENTITY])
+    call eqv%write (u)
+    call mc_integrator%set_equivalences (eqv)
+
+    write (u, "(A)")
+    write (u, "(A)") &
+         "* Integrate with n_it = 3 and n_calls = 10000 (Grid-only Adaptation)"
+    write (u, "(A)")
+
+    call mc_integrator%integrate (func, rng, 3, &
+         opt_adapt_weight = .false., result=result, abserr=abserr)
+    if (nearly_equal &
+         (result, 2.000_default, rel_smallness = 0.003_default)) then
+       write (u,  "(2x,A)") "Result: 2.000 [ok]"
+    else
+       write (u,  "(2x,A," // FMT_12 // ",A," // FMT_12 // ",A)") &
+            "Result: ", result, " +/- ", abserr, " [not ok]"
+    end if
+
+    write (u, "(A)")
+    write (u, "(A)") "* Compare the grids of both channels"
+    write (u, "(A)")
+
+    grid(1) = mc_integrator%get_grid(channel = 1)
+    grid(2) = mc_integrator%get_grid(channel = 2)
+
+    write (u, "(2X,A,1X,L1)") "Equal grids =", (grid(1) == grid(2))
+
+    write (u, "(A)")
+    write (u, "(A)") "* Write grid to file vamp2_5.grids"
+    write (u, "(A)")
+
+    unit = free_unit ()
+    open (unit, file = "vamp2_5.grids", &
+         action = "write", status = "replace")
+    call mc_integrator%write_grids (unit)
+    close (unit)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Integrate with n_it = 3 and n_calls = 5000 (Precision)"
+    write (u, "(A)")
+
+    call mc_integrator%set_calls (5000)
+    call mc_integrator%integrate (func, rng, 3, opt_adapt_weight = .false., &
+         opt_refine_grid = .false., result=result, abserr=abserr)
+    if (nearly_equal &
+         (result, 2.000_default, rel_smallness = 0.002_default)) then
+       write (u,  "(2x,A)") "Result: 2.000 [ok]"
+    else
+       write (u,  "(2x,A," // FMT_12 // ",A," // FMT_12 // ",A)") &
+            "Result: ", result, " +/- ", abserr, " [not ok]"
+    end if
+
+    write (u, "(A)")
+    write (u, "(A)") "* Cleanup"
+
+    call mc_integrator%final ()
+    call rng%final ()
+    deallocate (rng)
+  end subroutine vamp2_5
+

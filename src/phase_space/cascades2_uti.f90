@@ -1,6 +1,6 @@
-! WHIZARD 2.6.2 Dec 13 2017
+! WHIZARD 2.6.3 Feb 10 2018
 !
-! Copyright (C) 1999-2017 by
+! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -87,7 +87,8 @@ contains
     write (u, "(A)")
 
     call feyngraph_set_generate (feyngraph_set, model, n_in, n_out, &
-         flv, phs_par, fatal_beam_decay, u_in, use_dag = .false.)
+         flv, phs_par, fatal_beam_decay, u_in, use_dag = .false., &
+         vis_channels = .false.)
     call feyngraph_set_write_process_bincode_format (feyngraph_set, u)
     call feyngraph_set_write_file_format (feyngraph_set, u)
 
@@ -146,7 +147,8 @@ contains
     write (u, "(A)")
 
     call feyngraph_set_generate (feyngraph_set, model, n_in, n_out, &
-         flv, phs_par, fatal_beam_decay, u_in, use_dag = .true.)
+         flv, phs_par, fatal_beam_decay, u_in, use_dag = .true., &
+         vis_channels = .false.)
     call feyngraph_set_write_process_bincode_format (feyngraph_set, u)
     call feyngraph_set_write_file_format (feyngraph_set, u)
 

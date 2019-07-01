@@ -22,7 +22,9 @@ Writing completed
 [...]
  detector : unknown
  event parameters:
+ parameter Event Number [int]: 1,
  parameter ProcessID [int]: 20,
+ parameter Run ID [int]: 42,
  collection name : MCParticle
  parameters:
 --------------- print out of MCParticle collection ---------------

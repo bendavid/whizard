@@ -1,6 +1,6 @@
-! WHIZARD 2.6.2 Dec 13 2017
+! WHIZARD 2.6.3 Feb 10 2018
 !
-! Copyright (C) 1999-2017 by
+! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -47,6 +47,7 @@ module state_matrices_uti
   public :: state_matrix_4
   public :: state_matrix_5
   public :: state_matrix_6
+  public :: state_matrix_7
 
 contains
 
@@ -520,11 +521,79 @@ contains
     write (u, "(A)") "* Reduced state matrix: "
     call state_reduced%write (u)
 
-    write (u, "(A)")
     write (u, "(A)") "* Test output end: state_matrix_6"
-
-
   end subroutine state_matrix_6
+
+  subroutine state_matrix_7 (u)
+    integer, intent(in) :: u
+    type(state_matrix_t), allocatable :: state_orig, state_reduced, &
+         state_ordered
+    type(flavor_t), dimension(4) :: flv
+    type(helicity_t), dimension(4) :: hel
+    type(color_t), dimension(4) :: col
+    type(quantum_numbers_t), dimension(4) :: qn
+    type(quantum_numbers_mask_t), dimension(4) :: qn_mask
+    integer :: h1, h2, h3 , h4
+    integer :: n_states = 0
+
+    write (u, "(A)") "* Test output: state_matrix_7"
+    write (u, "(A)") "* Purpose: Check ordered state matrix reduction"
+    write (u, "(A)")
+
+    write (u, "(A)") "* Set up helicity-diagonal state matrix"
+    write (u, "(A)")
+
+    allocate (state_orig)
+    call state_orig%init ()
+
+    call flv%init ([11, -11, 1, -1])
+    call col(3)%init ([1])
+    call col(4)%init ([-1])
+    do h1 = -1, 1, 2
+       do h2 = -1, 1, 2
+          do h3 = -1, 1, 2
+             do h4 = -1, 1, 2
+                n_states = n_states + 1
+                call hel%init ([h1, h2, h3, h4], [h1, h2, h3, h4])
+                call qn%init (flv, col, hel)
+                call state_orig%add_state (qn)
+             end do
+          end do
+       end do
+    end do
+    call state_orig%freeze ()
+
+    write (u, "(A)") "* Original state: "
+    write (u, "(A)")
+    call state_orig%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Setup quantum mask: "
+
+    call qn_mask%init ([.false., .false., .false., .false.], &
+                       [.true., .true., .true., .true.], &
+                       [.false., .false., .true., .true.])
+    call quantum_numbers_mask_write (qn_mask, u)
+    write (u, "(A)")
+    write (u, "(A)") "* Reducing the state matrix using above mask and keeping the old indices:"
+    write (u, "(A)")
+    allocate (state_reduced)
+    call state_orig%reduce (qn_mask, state_reduced, keep_me_index = .true.)
+
+    write (u, "(A)") "* Reduced state matrix with kept indices: "
+    call state_reduced%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Reordering reduced state matrix:"
+    write (u, "(A)")
+    allocate (state_ordered)
+    call state_reduced%reorder_me (state_ordered)
+
+    write (u, "(A)") "* Reduced and ordered state matrix:"
+    call state_ordered%write (u)
+
+    write (u, "(A)") "* Test output end: state_matrix_6"
+  end subroutine state_matrix_7
 
 
 end module state_matrices_uti

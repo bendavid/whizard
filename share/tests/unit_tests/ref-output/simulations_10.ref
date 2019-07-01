@@ -74,6 +74,7 @@ weight = 2
    MD5 sum (proc)   = '0B2DE50F19EBF15A744DDBDF7D7FE4CF'
    MD5 sum (config) = '64084026865679451CDA8B1F6B3B529D'
    Events requested  = 1
+   Event index       = 1
    Events total      = 1
      generated       = 1
      read            = 0

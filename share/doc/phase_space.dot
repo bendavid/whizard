@@ -11,6 +11,7 @@ cascades2 -> resonances
 phs_wood -> phs_base
 phs_fks -> phs_forests
 dispatch_phase_space -> phs_forests
+cascades2 -> cascades2_lexer
 cascades -> resonances
 dispatch_phase_space -> mappings
 phs_trees -> mappings

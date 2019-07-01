@@ -1,6 +1,6 @@
-! WHIZARD 2.6.2 Dec 13 2017
+! WHIZARD 2.6.3 Feb 10 2018
 !
-! Copyright (C) 1999-2017 by
+! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -1805,7 +1805,6 @@ contains
     integer, dimension(:), allocatable :: map
     type(state_matrix_t), pointer :: state
     type(state_iterator_t) :: it
-
     eval%type = EVAL_IDENTITY
     eval%int_in1 => int
     nullify (eval%int_in2)

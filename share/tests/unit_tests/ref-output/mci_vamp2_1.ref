@@ -22,6 +22,7 @@
    Threshold number of calls (adapting weights)     = 10
    Number of chains                                 = 0
    Stratified                                       = T
+   Equivalences                                     = F
    Adaption power (beta)                            =  5.0000000000E-01
    Integrator defined   = F
    Integrator from file = F
@@ -64,6 +65,7 @@
    Threshold number of calls (adapting weights)     = 10
    Number of chains                                 = 0
    Stratified                                       = T
+   Equivalences                                     = F
    Adaption power (beta)                            =  5.0000000000E-01
    Integrator defined   = T
    Integrator from file = F
@@ -79,7 +81,7 @@
    adapt weights = F
    Results:  [it, calls, valid, integral, error, efficiency]
      1 1000 1000  9.9994974E-01  6.4743875E-05  3.3441596E-01
- MD5 sum (including results) = 'EECD7EF9A3F5D1170F8FF8DD902F39CA'
+ MD5 sum (including results) = 'E0C8610966F613D9DE19E2791CFF545A'
 
 * Contents of mci_instance:
 

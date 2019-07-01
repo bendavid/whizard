@@ -1,6 +1,6 @@
-! WHIZARD 2.6.2 Dec 13 2017
+! WHIZARD 2.6.3 Feb 10 2018
 !
-! Copyright (C) 1999-2017 by
+! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -113,6 +113,7 @@ module state_matrices
      procedure :: add_state => state_matrix_add_state
      procedure :: collapse => state_matrix_collapse
      procedure :: reduce => state_matrix_reduce
+     procedure :: reorder_me => state_matrix_reorder_me
      procedure :: freeze => state_matrix_freeze
      generic :: set_matrix_element => set_matrix_element_qn
      generic :: set_matrix_element => set_matrix_element_all
@@ -622,19 +623,26 @@ contains
     norm = state%norm
   end function state_matrix_get_norm
 
-  function state_matrix_get_quantum_number (state, i) result (qn)
+  function state_matrix_get_quantum_number (state, i, by_me_index) result (qn)
     class(state_matrix_t), intent(in), target :: state
     integer, intent(in) :: i
+    logical, intent(in), optional :: by_me_index
+    logical :: opt_by_me_index = .false.
     type(quantum_numbers_t), dimension(state%depth) :: qn
     type(state_iterator_t) :: it
     integer :: k
+    if (present (by_me_index)) opt_by_me_index = by_me_index
     k = 0
     call it%init (state)
     do while (it%is_valid ())
-       k = k + 1
+       if (opt_by_me_index) then
+          k = it%get_me_index ()
+       else
+          k = k + 1
+       end if
        if (k == i) then
           qn = it%get_quantum_numbers ()
-          return
+          exit
        end if
        call it%advance ()
     end do
@@ -694,11 +702,13 @@ contains
        flv_flv = qn(1, :)%get_flavor ()
        n_partons = count (is_elementary (flv_flv%get_pdg ()))
     end if
-    allocate (flv (size (qn, dim=1), n_partons))
-    do i_flv = 1, size (qn, dim=1)
-       flv_flv = qn(i_flv, :)%get_flavor ()
-       flv(i_flv, :) = pack (flv_flv%get_pdg (), is_elementary(flv_flv%get_pdg()))
-    end do
+    allocate (flv (n_partons, size (qn, dim=1)))
+    associate (n_flv => size (qn, dim=1))
+      do i_flv = 1, size (qn, dim=1)
+         flv_flv = qn(i_flv, :)%get_flavor ()
+         flv(:, i_flv) = pack (flv_flv%get_pdg (), is_elementary(flv_flv%get_pdg()))
+      end do
+    end associate
   contains
     elemental function is_elementary (pdg)
       logical :: is_elementary
@@ -841,22 +851,78 @@ contains
     end if
    end subroutine state_matrix_collapse
 
-  subroutine state_matrix_reduce (state, mask, red_state)
+  subroutine state_matrix_reduce (state, mask, red_state, keep_me_index)
     class(state_matrix_t), intent(in), target :: state
     type(quantum_numbers_mask_t), dimension(:), intent(in) :: mask
     type(state_matrix_t), intent(out) :: red_state
+    logical, optional, intent(in)  :: keep_me_index
+    logical :: opt_keep_me_index = .false.
     type(state_iterator_t) :: it
     type(quantum_numbers_t), dimension(size(mask)) :: qn
+    if (present (keep_me_index)) opt_keep_me_index = keep_me_index
     call red_state%init ()
     call it%init (state)
     do while (it%is_valid ())
        qn = it%get_quantum_numbers ()
        call qn%undefine (mask)
-       call red_state%add_state (qn)
+       if (opt_keep_me_index) then
+          call red_state%add_state (qn, index = it%get_me_index ())
+       else
+          call red_state%add_state (qn)
+       end if
        call it%advance ()
     end do
-    call red_state%freeze ()
+    if (.not. opt_keep_me_index) then
+       call red_state%freeze ()
+    end if
   end subroutine state_matrix_reduce
+
+  subroutine state_matrix_reorder_me (state, ordered_state)
+    class(state_matrix_t), intent(in), target :: state
+    type(state_matrix_t), intent(out) :: ordered_state
+    type(state_iterator_t) :: it
+    type(quantum_numbers_t), dimension(state%depth) :: qn
+    integer,  dimension(:), allocatable :: me_index
+    integer :: i
+    call ordered_state%init ()
+    call get_me_index_sorted (state, me_index)
+    i = 1; call it%init (state)
+    do while (it%is_valid ())
+       qn = it%get_quantum_numbers ()
+       call ordered_state%add_state (qn, index = me_index(i))
+       i = i + 1; call it%advance ()
+    end do
+    call ordered_state%freeze ()
+  contains
+    subroutine get_me_index_sorted (state, me_index)
+      class(state_matrix_t), intent(in), target :: state
+      integer, dimension(:), allocatable, intent(out) :: me_index
+      type(state_iterator_t) :: it
+      integer :: i, j
+      integer, dimension(:), allocatable :: me_index_unsorted, me_index_sorted
+      associate (n_matrix_elements => state%get_n_matrix_elements ())
+        allocate (me_index(n_matrix_elements), source = 0)
+        allocate (me_index_sorted(n_matrix_elements), source = 0)
+        allocate (me_index_unsorted(n_matrix_elements), source = 0)
+        i = 1; call it%init (state)
+        do while (it%is_valid ())
+           me_index_unsorted(i) = it%get_me_index ()
+           i = i + 1
+           call it%advance ()
+        end do
+        me_index_sorted = sort (me_index_unsorted)
+        ! We do not care about efficiency at this point.
+        UNSORTED: do i = 1, n_matrix_elements
+           SORTED: do j = 1, n_matrix_elements
+              if (me_index_unsorted(i) == me_index_sorted(j)) then
+                 me_index(i) = j
+                 cycle UNSORTED
+              end if
+           end do SORTED
+        end do UNSORTED
+      end associate
+    end subroutine get_me_index_sorted
+  end subroutine state_matrix_reorder_me
 
   subroutine state_matrix_freeze (state)
     class(state_matrix_t), intent(inout), target :: state

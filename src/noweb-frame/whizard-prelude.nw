@@ -48,12 +48,12 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\def\WhizardVersion{2.6.2}
-\def\WhizardDate{Dec 13 2017}
+\def\WhizardVersion{2.6.3}
+\def\WhizardDate{Feb 10 2018}
 <<Version>>=
-2.6.2
+2.6.3
 <<Date>>=
-Dec 13 2017
+Feb 10 2018
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \title{%
@@ -121,7 +121,7 @@ The WHIZARD file header:
 <<File header>>=
 ! WHIZARD <<Version>> <<Date>>
 !
-! Copyright (C) 1999-2017 by
+! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>

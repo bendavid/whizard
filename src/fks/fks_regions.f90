@@ -1,6 +1,6 @@
-! WHIZARD 2.6.2 Dec 13 2017
+! WHIZARD 2.6.3 Feb 10 2018
 !
-! Copyright (C) 1999-2017 by
+! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -2719,7 +2719,7 @@ contains
               i_em = get_emitter_index (i1, i2, reg_data%n_legs_real)
               i_res = sregion%ftuples(i_reg)%i_res
               call reg_data%get_contributors (i_res, i_em, contributors, share_emitter)
-              !!! Lookup contributor index
+        !!! Lookup contributor index
               do i_con = 1, size (reg_data%alr_contributors)
                  if (all (reg_data%alr_contributors(i_con)%c == contributors)) then
                     sregion%i_reg_to_i_con (i_reg) = i_con
@@ -2900,7 +2900,7 @@ contains
              if (.not. any (region%ftuples(alr) == ftuple_tmp)) then
                 j = j + 1
                 ftuple_tmp(j) = region%ftuples(alr)
-             end if 
+             end if
           end do
        end associate
     end do

@@ -1,6 +1,6 @@
-! WHIZARD 2.6.2 Dec 13 2017
+! WHIZARD 2.6.3 Feb 10 2018
 !
-! Copyright (C) 1999-2017 by
+! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -902,7 +902,8 @@ contains
        if (phs_config%use_cascades2) then
           call feyngraph_set_generate (phs_config%feyngraph_set, &
                phs_config%model, phs_config%n_in, phs_config%n_out - 1, &
-               flv_born, phs_config%par, phs_config%fatal_beam_decay, unit_fds)
+               flv_born, phs_config%par, phs_config%fatal_beam_decay, unit_fds, &
+               phs_config%vis_channels)
           if (feyngraph_set_is_valid (phs_config%feyngraph_set)) exit
        else
           call cascade_set_generate (phs_config%cascade_set, &

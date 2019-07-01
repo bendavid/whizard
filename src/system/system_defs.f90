@@ -1,6 +1,6 @@
-! WHIZARD 2.6.2 Dec 13 2017
+! WHIZARD 2.6.3 Feb 10 2018
 !
-! Copyright (C) 1999-2017 by
+! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -35,7 +35,7 @@ module system_defs
 
   integer, parameter, public :: VERSION_STRLEN = 255
   character(len=VERSION_STRLEN), parameter, public :: &
-       & VERSION_STRING = "WHIZARD version 2.6.2 (Dec 13 2017)"
+       & VERSION_STRING = "WHIZARD version 2.6.3 (Feb 10 2018)"
 
   integer, parameter, public :: BUFFER_SIZE = 1000
 

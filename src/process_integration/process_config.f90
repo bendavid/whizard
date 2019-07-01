@@ -1,6 +1,6 @@
-! WHIZARD 2.6.2 Dec 13 2017
+! WHIZARD 2.6.3 Feb 10 2018
 !
-! Copyright (C) 1999-2017 by
+! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -62,6 +62,7 @@ module process_config
   use expr_base
 
   use pcm_base, only: pcm_t
+  use pcm, only: pcm_nlo_t
 
   implicit none
   private
@@ -198,6 +199,7 @@ module process_config
      type(process_constants_t) :: data
      real(default) :: alpha_s = 0
      integer, dimension(:), allocatable :: flv, hel, col
+     integer :: n_sub
      type(interaction_t) :: int
      type(interaction_t), pointer :: int_eff => null ()
      class(pcm_t), pointer :: pcm => null ()
@@ -1066,12 +1068,14 @@ contains
       else
          n_sub = 0
       end if
-      !!! Add one for additional Born matrix element
+      !!! For the virtual subtraction we also need the finite virtual contribution
+      !!! corresponding to the $\epsilon^0$-pole
       if (nlo_t == NLO_VIRTUAL)  n_sub = n_sub + 1
       if (associated (term%pcm)) then
          if (term%pcm%has_pdfs .and. ((nlo_t == NLO_REAL .and. can_have_sub) &
               .or. nlo_t == NLO_DGLAP)) n_sub = n_sub + n_beam_structure_int
       end if
+      term%n_sub = n_sub
     end subroutine compute_n_sub
 
     subroutine fill_quantum_numbers ()

@@ -5151,10 +5151,10 @@ therefore the integration output will be the phase space volume.
 <<Prc User: prc user defined base: TBP>>=
   procedure :: compute_sqme => prc_user_defined_base_compute_sqme
 <<Prc User: procedures>>=
-  subroutine prc_user_defined_base_compute_sqme (object, i_flv, p, &
+  subroutine prc_user_defined_base_compute_sqme (object, i_flv, i_hel, p, &
          ren_scale, sqme, bad_point)
      class(prc_user_defined_base_t), intent(in) :: object
-     integer, intent(in) :: i_flv
+     integer, intent(in) :: i_flv, i_hel
      type(vector4_t), dimension(:), intent(in) :: p
      real(default), intent(in) :: ren_scale
      real(default), intent(out) :: sqme
@@ -5169,10 +5169,10 @@ Used for testing.
 <<Prc User: prc user defined base: TBP>>=
   procedure :: compute_sqme_virt => prc_user_defined_base_compute_sqme_virt
 <<Prc User: procedures>>=
-  subroutine prc_user_defined_base_compute_sqme_virt (object, i_flv, &
+  subroutine prc_user_defined_base_compute_sqme_virt (object, i_flv, i_hel, &
      p, ren_scale, sqme, bad_point)
     class(prc_user_defined_base_t), intent(in) :: object
-    integer, intent(in) :: i_flv
+    integer, intent(in) :: i_flv, i_hel
     type(vector4_t), dimension(:), intent(in) :: p
     real(default), intent(in) :: ren_scale
     logical, intent(out) :: bad_point
@@ -5194,10 +5194,10 @@ Used for testing.
 <<Prc User: prc user defined base: TBP>>=
   procedure :: compute_sqme_color_c => prc_user_defined_base_compute_sqme_color_c
 <<Prc User: procedures>>=
-  subroutine prc_user_defined_base_compute_sqme_color_c (object, i_flv, p, &
+  subroutine prc_user_defined_base_compute_sqme_color_c (object, i_flv, i_hel, p, &
      ren_scale, born_color_c, bad_point, born_out)
     class(prc_user_defined_base_t), intent(inout) :: object
-    integer, intent(in) :: i_flv
+    integer, intent(in) :: i_flv, i_hel
     type(vector4_t), intent(in), dimension(:) :: p
     real(default), intent(in) :: ren_scale
     real(default), intent(inout), dimension(:,:) :: born_color_c
@@ -6662,10 +6662,10 @@ end module prc_threshold
 <<Prc Threshold: prc threshold: TBP>>=
   procedure :: compute_sqme => prc_threshold_compute_sqme
 <<Prc Threshold: procedures>>=
-  subroutine prc_threshold_compute_sqme (object, i_flv, p, &
+  subroutine prc_threshold_compute_sqme (object, i_flv, i_hel, p, &
          ren_scale, sqme, bad_point)
     class(prc_threshold_t), intent(in) :: object
-    integer, intent(in) :: i_flv
+    integer, intent(in) :: i_flv, i_hel
     type(vector4_t), intent(in), dimension(:) :: p
     real(default), intent(in) :: ren_scale
     real(default), intent(out) :: sqme
@@ -6691,10 +6691,10 @@ end module prc_threshold
 <<Prc Threshold: prc threshold: TBP>>=
   procedure :: compute_sqme_virt => prc_threshold_compute_sqme_virt
 <<Prc Threshold: procedures>>=
-  subroutine prc_threshold_compute_sqme_virt (object, i_flv, &
+  subroutine prc_threshold_compute_sqme_virt (object, i_flv, i_hel, &
          p, ren_scale, sqme, bad_point)
     class(prc_threshold_t), intent(in) :: object
-    integer, intent(in) :: i_flv
+    integer, intent(in) :: i_flv, i_hel
     type(vector4_t), dimension(:), intent(in) :: p
     real(default), intent(in) :: ren_scale
     real(default), dimension(4), intent(out) :: sqme

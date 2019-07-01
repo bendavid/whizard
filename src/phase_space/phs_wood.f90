@@ -1,6 +1,6 @@
-! WHIZARD 2.6.2 Dec 13 2017
+! WHIZARD 2.6.3 Feb 10 2018
 !
-! Copyright (C) 1999-2017 by
+! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -213,18 +213,21 @@ contains
             "variable ?omega_write_phs_output has been set correctly.")
        unit_fds = free_unit ()
        open (unit=unit_fds, file=char(file_name), status='old', action='read')
-       allocate (phs_config%feyngraph_set)
        do extra_off_shell = 0, max (phs_config%n_tot - 3, 0)
           phs_config%par%off_shell = off_shell + extra_off_shell
+          allocate (phs_config%feyngraph_set)
           call feyngraph_set_generate (phs_config%feyngraph_set, &
                phs_config%model, phs_config%n_in, phs_config%n_out, &
                phs_config%flv, &
-               phs_config%par, phs_config%fatal_beam_decay, unit_fds)
+               phs_config%par, phs_config%fatal_beam_decay, unit_fds, &
+               phs_config%vis_channels)
           if (feyngraph_set_is_valid (phs_config%feyngraph_set)) then
              exit
           else
              call msg_message ("Phase space: ... failed.  &
                   &Increasing phs_off_shell ...")
+             call phs_config%feyngraph_set%final ()
+             deallocate (phs_config%feyngraph_set)
           end if
        end do
        close (unit_fds)

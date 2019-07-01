@@ -4,7 +4,7 @@
 ##
 ########################################################################
 #
-# Copyright (C) 1999-2017 by 
+# Copyright (C) 1999-2018 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -26,6 +26,9 @@
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
 ########################################################################
+
+## we do our own dependency checking for FORTRAN and OCaml:
+AUTOMAKE_OPTIONS = no-dependencies
 
 SUBDIRS = src share tests
 

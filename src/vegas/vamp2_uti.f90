@@ -1,6 +1,6 @@
-! WHIZARD 2.6.2 Dec 13 2017
+! WHIZARD 2.6.3 Feb 10 2018
 !
-! Copyright (C) 1999-2017 by
+! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -30,10 +30,11 @@ module vamp2_uti
   use kinds, only: default
   use io_units
   use constants, only: pi
+  use numeric_utils, only: nearly_equal
   use format_defs, only: FMT_12
   use rng_base
   use rng_stream
-  use vegas, only: vegas_func_t
+  use vegas, only: vegas_func_t, vegas_grid_t, operator(==)
   use vamp2
 
   implicit none
@@ -43,6 +44,7 @@ module vamp2_uti
   public :: vamp2_2
   public :: vamp2_3
   public :: vamp2_4
+  public :: vamp2_5
 
    type, extends (vamp2_func_t) :: vamp2_test_func_t
      !
@@ -57,6 +59,13 @@ end type vamp2_test_func_t
      procedure :: evaluate_maps => vamp2_test_func_2_evaluate_maps
      procedure :: evaluate_func => vamp2_test_func_2_evaluate_func
   end type vamp2_test_func_2_t
+
+  type, extends(vamp2_func_t) :: vamp2_test_func_3_t
+     !
+   contains
+     procedure :: evaluate_maps => vamp2_test_func_3_evaluate_maps
+     procedure :: evaluate_func => vamp2_test_func_3_evaluate_func
+  end type vamp2_test_func_3_t
 
 
 contains
@@ -98,6 +107,40 @@ contains
     real(default), dimension(:), intent(in) :: x
     f = 4. * sin(pi * self%xi(1, 1))**2 * sin(pi * self%xi(2, 1))**2 + 2. * sin(pi * self%xi(2, 2))**2
   end function vamp2_test_func_2_evaluate_func
+
+  subroutine vamp2_test_func_3_evaluate_maps (self, x)
+    class(vamp2_test_func_3_t), intent(inout) :: self
+    real(default), dimension(:), intent(in) :: x
+    real(default) :: u, v, xx
+    select case (self%current_channel)
+    case (1)
+       u = x(1)
+       xx = u**0.2_default
+       v = (1 - xx)**5._default
+    case (2)
+       v = x(1)
+       xx = 1 - v**0.2_default
+       u = xx**5._default
+    end select
+    self%det(1) = 0.2_default * u**(-0.8_default)
+    self%det(2) = 0.2_default * v**(-0.8_default)
+    self%xi(:, 1) = [u]
+    self%xi(:, 2) = [v]
+    self%valid_x = .true.
+  end subroutine vamp2_test_func_3_evaluate_maps
+
+  real(default) function vamp2_test_func_3_evaluate_func (self, x) result (f)
+    class(vamp2_test_func_3_t), intent(in) :: self
+    real(default), dimension(:), intent(in) :: x
+    real(default) :: xx
+    select case (self%current_channel)
+    case (1)
+       xx = x(1)**0.2_default
+    case (2)
+       xx = 1 - x(1)**0.2_default
+    end select
+    f = 5 * xx**4 + 5 * (1 - xx)**4
+  end function vamp2_test_func_3_evaluate_func
 
   subroutine vamp2_1 (u)
     integer, intent(in) :: u
@@ -388,5 +431,122 @@ contains
     call rng%final ()
     deallocate (rng)
   end subroutine vamp2_4
+
+  subroutine vamp2_5 (u)
+    integer, intent(in) :: u
+    type(vamp2_t) :: mc_integrator
+    class(rng_t), allocatable :: rng
+    class(vamp2_func_t), allocatable :: func
+    real(default), dimension(1), parameter :: x_lower = 0., &
+         x_upper = 1.
+    real(default) :: result, abserr
+    integer :: unit
+    type(vamp2_config_t) :: config
+    type(vamp2_equivalences_t) :: eqv
+    type(vegas_grid_t), dimension(2) :: grid
+
+    write (u, "(A)") "* Test output: vamp2_5"
+    write (u, "(A)") "*   Purpose:  intgeration of two-dimensional &
+       & function with two channels with equivalences"
+    write (u, "(A)")
+
+    write (u, "(A)") "* Initialise random number generator (default seed)"
+    write (u, "(A)")
+
+    allocate (rng_stream_t :: rng)
+    call rng%init ()
+
+    call rng%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Initialise MC integrator with n_channel = 2 and n_dim = 1"
+    write (u, "(A)")
+
+    allocate (vamp2_test_func_3_t :: func)
+    call func%init (n_dim = 1, n_channel = 2)
+    config%equivalences = .true.
+    mc_integrator = vamp2_t (n_channel = 2, n_dim = 1)
+    call mc_integrator%set_config (config)
+    call mc_integrator%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Initialise grid with n_calls = 20000 and set chains"
+    write (u, "(A)")
+
+    call mc_integrator%set_limits (x_lower, x_upper)
+    call mc_integrator%set_calls (20000)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Initialise equivalences"
+    write (u, "(A)")
+
+    eqv = vamp2_equivalences_t (n_eqv = 4, n_channel = 2, n_dim = 1)
+    call eqv%set_equivalence &
+         (i_eqv = 1, dest = 2, src = 1, perm = [1], mode = [VEQ_IDENTITY])
+    call eqv%set_equivalence &
+         (i_eqv = 2, dest = 1, src = 2, perm = [1], mode = [VEQ_IDENTITY])
+    call eqv%set_equivalence &
+         (i_eqv = 3, dest = 1, src = 1, perm = [1], mode = [VEQ_IDENTITY])
+    call eqv%set_equivalence &
+         (i_eqv = 4, dest = 2, src = 2, perm = [1], mode = [VEQ_IDENTITY])
+    call eqv%write (u)
+    call mc_integrator%set_equivalences (eqv)
+
+    write (u, "(A)")
+    write (u, "(A)") &
+         "* Integrate with n_it = 3 and n_calls = 10000 (Grid-only Adaptation)"
+    write (u, "(A)")
+
+    call mc_integrator%integrate (func, rng, 3, &
+         opt_adapt_weight = .false., result=result, abserr=abserr)
+    if (nearly_equal &
+         (result, 2.000_default, rel_smallness = 0.003_default)) then
+       write (u,  "(2x,A)") "Result: 2.000 [ok]"
+    else
+       write (u,  "(2x,A," // FMT_12 // ",A," // FMT_12 // ",A)") &
+            "Result: ", result, " +/- ", abserr, " [not ok]"
+    end if
+
+    write (u, "(A)")
+    write (u, "(A)") "* Compare the grids of both channels"
+    write (u, "(A)")
+
+    grid(1) = mc_integrator%get_grid(channel = 1)
+    grid(2) = mc_integrator%get_grid(channel = 2)
+
+    write (u, "(2X,A,1X,L1)") "Equal grids =", (grid(1) == grid(2))
+
+    write (u, "(A)")
+    write (u, "(A)") "* Write grid to file vamp2_5.grids"
+    write (u, "(A)")
+
+    unit = free_unit ()
+    open (unit, file = "vamp2_5.grids", &
+         action = "write", status = "replace")
+    call mc_integrator%write_grids (unit)
+    close (unit)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Integrate with n_it = 3 and n_calls = 5000 (Precision)"
+    write (u, "(A)")
+
+    call mc_integrator%set_calls (5000)
+    call mc_integrator%integrate (func, rng, 3, opt_adapt_weight = .false., &
+         opt_refine_grid = .false., result=result, abserr=abserr)
+    if (nearly_equal &
+         (result, 2.000_default, rel_smallness = 0.002_default)) then
+       write (u,  "(2x,A)") "Result: 2.000 [ok]"
+    else
+       write (u,  "(2x,A," // FMT_12 // ",A," // FMT_12 // ",A)") &
+            "Result: ", result, " +/- ", abserr, " [not ok]"
+    end if
+
+    write (u, "(A)")
+    write (u, "(A)") "* Cleanup"
+
+    call mc_integrator%final ()
+    call rng%final ()
+    deallocate (rng)
+  end subroutine vamp2_5
 
 end module vamp2_uti

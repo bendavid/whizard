@@ -1,6 +1,6 @@
-! WHIZARD 2.6.2 Dec 13 2017
+! WHIZARD 2.6.3 Feb 10 2018
 !
-! Copyright (C) 1999-2017 by
+! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -48,8 +48,11 @@ module vamp2
   public :: vamp2_func_t
   public :: vamp2_config_t
   public :: vamp2_result_t
+  public :: vamp2_equivalences_t
   public :: vamp2_t
 
+integer, parameter, public :: &
+     VEQ_IDENTITY = 0, VEQ_INVERT = 1, VEQ_SYMMETRIC = 2, VEQ_INVARIANT = 3
   character(len=*), parameter, private :: &
      descr_fmt =         "(1X,A)", &
      integer_fmt =       "(1X,A18,1X,I15)", &
@@ -88,6 +91,7 @@ module vamp2
      integer :: n_calls_threshold = 10
      integer :: n_chains = 0
      logical :: stratified = .true.
+     logical :: equivalences = .false.
      real(default) :: beta = 0.5_default
      real(default) :: accuracy_goal = 0._default
      real(default) :: error_goal = 0._default
@@ -101,6 +105,37 @@ module vamp2
      procedure, public :: write => vamp2_result_write
   end type vamp2_result_t
 
+  type :: vamp2_equi_t
+     integer :: ch
+     integer :: ch_src
+     integer, dimension(:), allocatable :: perm
+     integer, dimension(:), allocatable :: mode
+   contains
+     procedure :: write => vamp2_equi_write
+  end type vamp2_equi_t
+
+  type :: vamp2_equivalences_t
+      private
+      integer :: n_eqv = 0
+      integer :: n_channel = 0
+      integer :: n_dim = 0
+      type(vamp2_equi_t), dimension(:), allocatable :: eqv
+      integer, dimension(:), allocatable :: map
+      integer, dimension(:), allocatable :: multiplicity
+      integer, dimension(:), allocatable :: symmetry
+      logical, dimension(:), allocatable :: independent
+      integer, dimension(:), allocatable :: equivalent_to_ch
+      logical, dimension(:, :), allocatable :: dim_is_invariant
+   contains
+     procedure :: write => vamp2_equivalences_write
+     procedure, public :: is_allocated => vamp2_equivalences_is_allocated
+     procedure, public :: get_channels => vamp2_equivalences_get_channels
+     procedure, public :: get_mode => vamp2_equivalences_get_mode
+     procedure, public :: get_perm => vamp2_equivalences_get_perm
+     procedure, public :: set_equivalence => vamp2_equivalences_set_equivalence
+     procedure, public :: freeze => vamp2_equivalences_freeze
+  end type vamp2_equivalences_t
+
   type :: vamp2_t
      private
      type(vamp2_config_t) :: config
@@ -111,6 +146,7 @@ module vamp2
      real(default), dimension(:), allocatable :: variance
      real(default), dimension(:), allocatable :: efficiency
      type(vamp2_result_t) :: result
+     type(vamp2_equivalences_t) :: equivalences
      logical :: event_prepared
      real(default), dimension(:), allocatable :: event_weight
    contains
@@ -121,13 +157,16 @@ module vamp2
      procedure, public :: set_calls => vamp2_set_n_calls
      procedure, public :: set_limits => vamp2_set_limits
      procedure, public :: set_chain => vamp2_set_chain
+     procedure, public :: set_equivalences => vamp2_set_equivalences
      procedure, public :: get_n_calls => vamp2_get_n_calls
      procedure, public :: get_integral => vamp2_get_integral
      procedure, public :: get_variance => vamp2_get_variance
      procedure, public :: get_efficiency => vamp2_get_efficiency
      procedure :: get_evt_weight => vamp2_get_evt_weight
      procedure :: get_evt_weight_excess => vamp2_get_evt_weight_excess
+     procedure :: get_grid => vamp2_get_grid
      procedure, private :: adapt_weights => vamp2_adapt_weights
+     procedure, private :: apply_equivalences => vamp2_apply_equivalences
      procedure, public :: reset_result => vamp2_reset_result
      procedure, public :: integrate => vamp2_integrate
      procedure, public :: generate_weighted => vamp2_generate_weighted_event
@@ -152,6 +191,10 @@ module vamp2
        real(default), dimension(:), intent(in) :: x
      end function vamp2_func_evaluate_func
   end interface
+
+  interface vamp2_equivalences_t
+     module procedure vamp2_equivalences_init
+  end interface vamp2_equivalences_t
 
   interface vamp2_t
      module procedure vamp2_init
@@ -251,6 +294,9 @@ contains
     write (u, "(2x,A,L1)") &
          & "Stratified                                       = ", self%stratified
     call write_indent (u, ind)
+    write (u, "(2x,A,L1)") &
+         & "Equivalences                                     = ", self%equivalences
+    call write_indent (u, ind)
     write (u, "(2x,A," // FMT_17 // ")") &
          & "Adaption power (beta)                            = ", self%beta
     if (self%accuracy_goal > 0) then
@@ -279,6 +325,164 @@ contains
     ind = 0; if (present (indent)) ind = indent
     call self%vegas_result_t%write (unit, indent)
   end subroutine vamp2_result_write
+
+  subroutine vamp2_equi_write (self, unit, indent)
+    class(vamp2_equi_t), intent(in) :: self
+    integer, intent(in), optional :: unit
+    integer, intent(in), optional :: indent
+    integer :: u, ind
+    u = given_output_unit (unit)
+    ind = 0; if (present (indent)) ind = indent
+    call write_indent (u, ind)
+    write (u, "(2(A,1X,I0))") "src:", self%ch_src, "-> dest:", self%ch
+    call write_indent (u, ind)
+    write (u, "(A,99(1X,I0))") "Perm: ", self%perm
+    call write_indent (u, ind)
+    write (u, "(A,99(1X,I0))") "Mode: ", self%mode
+  end subroutine vamp2_equi_write
+
+  type(vamp2_equivalences_t) function vamp2_equivalences_init (&
+       n_eqv, n_channel, n_dim) result (eqv)
+    integer, intent(in) :: n_eqv, n_channel, n_dim
+    eqv%n_eqv = n_eqv
+    eqv%n_channel = n_channel
+    eqv%n_dim = n_dim
+    allocate (eqv%eqv(n_eqv))
+    allocate (eqv%map(n_channel), source = 0)
+    allocate (eqv%multiplicity(n_channel), source = 0)
+    allocate (eqv%symmetry(n_channel), source = 0)
+    allocate (eqv%independent(n_channel), source = .true.)
+    allocate (eqv%equivalent_to_ch(n_channel), source = 0)
+    allocate (eqv%dim_is_invariant(n_dim, n_channel), source = .false.)
+  end function vamp2_equivalences_init
+
+  subroutine vamp2_equivalences_write (self, unit, indent)
+    class(vamp2_equivalences_t), intent(in) :: self
+    integer, intent(in), optional :: unit
+    integer, intent(in), optional :: indent
+    integer :: u, ind, i_eqv, ch
+    u = given_output_unit (unit)
+    ind = 0; if (present (indent)) ind = indent
+    write (u, "(A)") "Inequivalent channels:"
+    if (allocated (self%independent)) then
+       do ch = 1, self%n_channel
+          if (self%independent(ch)) then
+             write (u, "(2X,A,1x,I0,A,4x,A,I0,4x,A,I0,4x,A,999(L1))") &
+                  "Channel", ch, ":", &
+                  "Mult. = ", self%multiplicity(ch), &
+                  "Symm. = ", self%symmetry(ch), &
+                  "Invar.: ", self%dim_is_invariant(:, ch)
+          end if
+       end do
+    else
+       write (u, "(A)") "[not allocated]"
+    end if
+    write (u, "(A)") "Equivalence list:"
+    if (allocated (self%eqv)) then
+       do i_eqv = 1, self%n_eqv
+          write (u, "(2X,A,1X,I0)") "i_eqv:", i_eqv
+          call self%eqv(i_eqv)%write (unit, indent = ind + 4)
+       end do
+    else
+       write (u, "(A)") "[not allocated]"
+    end if
+  end subroutine vamp2_equivalences_write
+
+  logical function vamp2_equivalences_is_allocated (self) result (yorn)
+    class(vamp2_equivalences_t), intent(in) :: self
+    yorn = allocated (self%eqv)
+  end function vamp2_equivalences_is_allocated
+
+  subroutine vamp2_equivalences_get_channels (eqv, i_eqv, dest, src)
+   class(vamp2_equivalences_t), intent(in) :: eqv
+   integer, intent(in) :: i_eqv
+   integer, intent(out) :: dest, src
+   dest = eqv%eqv(i_eqv)%ch
+   src = eqv%eqv(i_eqv)%ch_src
+  end subroutine vamp2_equivalences_get_channels
+
+  function vamp2_equivalences_get_mode (eqv, i_eqv) result (mode)
+    class(vamp2_equivalences_t), intent(in) :: eqv
+    integer, intent(in) :: i_eqv
+    integer, dimension(:), allocatable :: mode
+    mode = eqv%eqv(i_eqv)%mode
+  end function vamp2_equivalences_get_mode
+
+  function vamp2_equivalences_get_perm (eqv, i_eqv) result (perm)
+    class(vamp2_equivalences_t), intent(in) :: eqv
+    integer, intent(in) :: i_eqv
+    integer, dimension(:), allocatable :: perm
+    perm = eqv%eqv(i_eqv)%perm
+  end function vamp2_equivalences_get_perm
+
+  subroutine vamp2_equivalences_set_equivalence &
+       (eqv, i_eqv, dest, src, perm, mode)
+    class(vamp2_equivalences_t), intent(inout) :: eqv
+    integer, intent(in) :: i_eqv
+    integer, intent(in) :: dest, src
+    integer, dimension(:), intent(in) :: perm, mode
+    integer :: i
+    if (dest < 1 .or. dest > eqv%n_channel)  call msg_bug &
+       ("[VAMP2] set_equivalences: destination channel out of range.")
+    if (src < 1 .or. src > eqv%n_channel)  call msg_bug &
+         ("[VAMP2] set_equivalences: source channel out of range.")
+    if (size(perm) /= eqv%n_dim)  call msg_bug &
+         ("[VAMP2] set_equivalences: size(perm) does not match n_dim.")
+    if (size(mode) /= eqv%n_dim)  call msg_bug &
+         ("[VAMP2] set_equivalences: size(mode) does not match n_dim.")
+    eqv%eqv(i_eqv)%ch = dest
+    eqv%eqv(i_eqv)%ch_src = src
+    allocate (eqv%eqv(i_eqv)%perm (size (perm)))
+    do i = 1, size (perm)
+       eqv%eqv(i_eqv)%perm(i) = perm(i)
+    end do
+    allocate (eqv%eqv(i_eqv)%mode (size (mode)))
+    do i = 1, size (mode)
+       eqv%eqv(i_eqv)%mode(i) = mode(i)
+    end do
+  end subroutine vamp2_equivalences_set_equivalence
+
+  subroutine vamp2_equivalences_freeze (self)
+    class(vamp2_equivalences_t), intent(inout) :: self
+    integer :: i_eqv, ch, upper, lower
+    ch = 0
+    do i_eqv = 1, self%n_eqv
+       if (ch /= self%eqv(i_eqv)%ch) then
+          ch = self%eqv(i_eqv)%ch
+          self%map(ch) = i_eqv
+       end if
+    end do
+    do ch = 1, self%n_channel
+       lower = self%map(ch)
+       if (ch == self%n_channel) then
+          upper = self%n_eqv
+       else
+          upper = self%map(ch + 1) - 1
+       end if
+       associate (eqv => self%eqv, n_eqv => size (self%eqv(lower:upper)))
+         if (.not. all(eqv(lower:upper)%ch == ch) .or. &
+              eqv(lower)%ch_src > ch) then
+            do i_eqv = lower, upper
+               call self%eqv(i_eqv)%write ()
+            end do
+            call msg_bug ("[VAMP2] vamp2_equivalences_freeze: &
+                 &equivalence order is not correct.")
+         end if
+         self%symmetry(ch) = count (eqv(lower:upper)%ch_src == ch)
+         if (mod (n_eqv, self%symmetry(ch)) /= 0) then
+            do i_eqv = lower, upper
+               call self%eqv(i_eqv)%write ()
+            end do
+            call msg_bug ("[VAMP2] vamp2_equivalences_freeze: &
+                 &permutation count is not correct.")
+         end if
+         self%multiplicity(ch) = n_eqv / self%symmetry(ch)
+         self%independent(ch) = all (eqv(lower:upper)%ch_src >= ch)
+         self%equivalent_to_ch(ch) = eqv(lower)%ch_src
+         self%dim_is_invariant(:, ch) = eqv(lower)%mode == VEQ_INVARIANT
+       end associate
+    end do
+  end subroutine vamp2_equivalences_freeze
 
   type(vamp2_t) function vamp2_init (n_channel, n_dim, alpha, beta, n_bins_max,&
        & n_calls_min_per_channel, iterations, mode) result (self)
@@ -343,6 +547,7 @@ contains
     class(vamp2_t), intent(inout) :: self
     class(vamp2_config_t), intent(in) :: config
     integer :: ch
+    self%config%equivalences = config%equivalences
     self%config%n_calls_min_per_channel = config%n_calls_min_per_channel
     self%config%n_calls_threshold = config%n_calls_threshold
     self%config%n_calls_min = config%n_calls_min
@@ -396,6 +601,12 @@ contains
     self%chain = chain
   end subroutine vamp2_set_chain
 
+  subroutine vamp2_set_equivalences (self, equivalences)
+    class(vamp2_t), intent(inout) :: self
+    type(vamp2_equivalences_t), intent(in) :: equivalences
+    self%equivalences = equivalences
+  end subroutine vamp2_set_equivalences
+
   elemental real(default) function vamp2_get_n_calls (self) result (n_calls)
     class(vamp2_t), intent(in) :: self
     n_calls = sum (self%integrator%get_calls ())
@@ -434,6 +645,14 @@ contains
     class(vamp2_t), intent(in) :: self
     evt_weight_excess = self%result%evt_weight_excess
   end function vamp2_get_evt_weight_excess
+
+  type(vegas_grid_t) function vamp2_get_grid (self, channel) result (grid)
+    class(vamp2_t), intent(in) :: self
+    integer, intent(in) :: channel
+    if (channel < 1 .or. channel > self%config%n_channel) &
+         call msg_bug ("[VAMP2] vamp2_get_grid: channel index < 1 or > n_channel.")
+    grid = self%integrator(channel)%get_grid ()
+  end function vamp2_get_grid
 
   subroutine vamp2_adapt_weights (self)
     class(vamp2_t), intent(inout) :: self
@@ -474,6 +693,47 @@ contains
     end subroutine chain_weights
 
   end subroutine vamp2_adapt_weights
+
+  subroutine vamp2_apply_equivalences (self)
+    class(vamp2_t), intent(inout) :: self
+    integer :: ch, ch_src, j, j_src, i_eqv
+    real(default), dimension(:, :, :), allocatable :: d
+    real(default), dimension(:, :), allocatable :: d_src
+    integer, dimension(:), allocatable :: mode, perm
+    if (.not. self%equivalences%is_allocated ()) then
+       call msg_bug ("[VAMP2] vamp2_apply_equivalences: &
+            &cannot apply not-allocated equivalences.")
+    end if
+    allocate (d(self%config%n_bins_max, self%config%n_dim, &
+         self%config%n_channel), source=0._default)
+    associate (eqv => self%equivalences, nb => self%config%n_bins_max)
+      do i_eqv = 1, self%equivalences%n_eqv
+         call eqv%get_channels (i_eqv, ch, ch_src)
+         d_src = self%integrator(ch_src)%get_distribution ()
+         mode = eqv%get_mode (i_eqv)
+         perm = eqv%get_perm (i_eqv)
+         do j = 1, self%config%n_dim
+            select case (mode (j))
+            case (VEQ_IDENTITY)
+               d(:, j, ch) = d(:, j, ch) + &
+                    d_src(:, perm(j))
+            case (VEQ_INVERT)
+               d(:, j, ch) = d(:, j, ch) + &
+                    d_src(nb:1:-1, perm(j))
+            case (VEQ_SYMMETRIC)
+               d(:, j, ch) = d(:, j, ch) + &
+                    d_src(:, perm(j)) / 2. + &
+                    d_src(nb:1:-1, perm(j)) / 2.
+            case (VEQ_INVARIANT)
+               d(:, j, ch) = 1._default
+            end select
+         end do
+      end do
+    end associate
+    do ch = 1, self%config%n_channel
+       call self%integrator(ch)%set_distribution (d(:, :, ch))
+    end do
+  end subroutine vamp2_apply_equivalences
 
   subroutine vamp2_reset_result (self)
     class(vamp2_t), intent(inout) :: self
@@ -574,6 +834,9 @@ contains
           call self%adapt_weights ()
        end if
        if (refine_grid) then
+          if (self%config%equivalences) then
+             call self%apply_equivalences ()
+          end if
           do ch = 1, self%config%n_channel
              call self%integrator(ch)%refine ()
           end do
@@ -621,8 +884,10 @@ contains
     call msg_debug (D_VAMP2, "vamp2_generate_weighted_event")
     call msg_debug (D_VAMP2, "Selected channel", ch)
     call msg_debug (D_VAMP2, "Ch. Event weight", self%event_weight(ch))
-    call self%integrator(ch)%generate_unweighted (func, rng, x)
-    self%result%evt_weight = self%integrator(ch)%get_evt_weight ()
+    call self%integrator(ch)%generate_weighted (func, rng, x)
+    ! Norm weight by f_max, hidden in event_weight(ch), else by 1
+    self%result%evt_weight = self%integrator(ch)%get_evt_weight () &
+         * self%weight(ch) / self%event_weight(ch)
     call msg_debug2 (D_VAMP2, "Event weight", self%result%evt_weight)
   contains
     subroutine prepare_event ()
@@ -659,20 +924,23 @@ contains
     if (.not. self%event_prepared) then
        call prepare_event ()
     end if
-    call rng%generate (r)
-    nchannel: do ch = 1, self%config%n_channel
-       r = r - self%event_weight(ch)
-       if (r <= 0._default) exit nchannel
-    end do nchannel
-    ch = min (ch, self%config%n_channel)
-    call func%set_channel (ch)
-    call msg_debug (D_VAMP2, "vamp2_generate_unweighted_event")
-    call msg_debug (D_VAMP2, "Selected channel", ch)
-    call msg_debug (D_VAMP2, "Ch. Event weight", self%event_weight(ch))
     generate: do
+       call rng%generate (r)
+       nchannel: do ch = 1, self%config%n_channel
+          r = r - self%event_weight(ch)
+          if (r <= 0._default) exit nchannel
+       end do nchannel
+       ch = min (ch, self%config%n_channel)
+       call func%set_channel (ch)
+       if (debug_active (D_VAMP2)) then
+          call msg_debug (D_VAMP2, "vamp2_generate_unweighted_event")
+          call msg_debug (D_VAMP2, "Selected channel", ch)
+          call msg_debug (D_VAMP2, "Ch. Event weight", self%event_weight(ch))
+       end if
        call self%integrator(ch)%generate_weighted (func, rng, x)
        self%result%evt_weight = self%integrator(ch)%get_evt_weight ()
-       call msg_debug (D_VAMP2, "Event weight", self%result%evt_weight)
+       if (debug_active (D_VAMP2)) &
+          call msg_debug (D_VAMP2, "Event weight", self%result%evt_weight)
        max_abs_f = merge ( &
             self%integrator(ch)%get_max_abs_f_pos (), &
             self%integrator(ch)%get_max_abs_f_neg (), &

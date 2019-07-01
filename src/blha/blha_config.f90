@@ -1,6 +1,6 @@
-! WHIZARD 2.6.2 Dec 13 2017
+! WHIZARD 2.6.3 Feb 10 2018
 !
-! Copyright (C) 1999-2017 by
+! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -309,7 +309,7 @@ contains
     logical :: cmp_born, cmp_real
     logical :: cmp_loop, cmp_corr
     logical :: cmp_dglap
-    if (is_nlo) then       
+    if (is_nlo) then
        method = var_list%get_sval (var_str ("$method"))
        born_me_method = var_list%get_sval (var_str ("$born_me_method"))
        if (born_me_method == "")  born_me_method = method
@@ -1052,7 +1052,7 @@ subroutine blha_master_generate_dglap (master, basename, model, n_in, &
        if (no_v) then
           write (u, "(A)") "# BLHA order written by WHIZARD [version]"
        else
-          write (u, "(A)") "# BLHA order written by WHIZARD 2.6.2"
+          write (u, "(A)") "# BLHA order written by WHIZARD 2.6.3"
        end if
        write (u, "(A)")
     end if

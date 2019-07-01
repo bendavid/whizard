@@ -1,6 +1,6 @@
-! WHIZARD 2.6.2 Dec 13 2017
+! WHIZARD 2.6.3 Feb 10 2018
 !
-! Copyright (C) 1999-2017 by
+! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -108,18 +108,21 @@ module quantum_numbers
      procedure :: is_color_ghost => quantum_numbers_is_color_ghost
      generic :: operator(.match.) => quantum_numbers_match
      generic :: operator(.fmatch.) => quantum_numbers_match_f
+     generic :: operator(.hmatch.) => quantum_numbers_match_h
      generic :: operator(.fhmatch.) => quantum_numbers_match_fh
      generic :: operator(.dhmatch.) => quantum_numbers_match_hel_diag
      generic :: operator(==) => quantum_numbers_eq
      generic :: operator(/=) => quantum_numbers_neq
      procedure, private :: quantum_numbers_match
      procedure, private :: quantum_numbers_match_f
+     procedure, private :: quantum_numbers_match_h
      procedure, private :: quantum_numbers_match_fh
      procedure, private :: quantum_numbers_match_hel_diag
      procedure, private :: quantum_numbers_eq
      procedure, private :: quantum_numbers_neq
      procedure :: add_color_offset => quantum_numbers_add_color_offset
      procedure :: invert_color => quantum_numbers_invert_color
+     procedure :: flip_helicity => quantum_numbers_flip_helicity
      procedure :: undefine => quantum_numbers_undefine
      procedure :: undefined => quantum_numbers_undefined0
      procedure :: are_redundant => quantum_numbers_are_redundant
@@ -360,7 +363,7 @@ contains
           call qn(i)%h%write (u)
        end if
        if (qn(i)%sub > 0) &
-          write (u, "(A,I1)", advance = "no") " SUB = ", qn(i)%sub
+          write (u, "(A,I2)", advance = "no") " SUB = ", qn(i)%sub
     end do
     write (u, "(A)", advance = "no")  "]"
   end subroutine quantum_numbers_write_array
@@ -478,6 +481,12 @@ contains
     class(quantum_numbers_t), intent(in) :: qn1, qn2
     match = (qn1%f .match. qn2%f)
   end function quantum_numbers_match_f
+
+  elemental function quantum_numbers_match_h (qn1, qn2) result (match)
+    logical :: match
+    class(quantum_numbers_t), intent(in) :: qn1, qn2
+    match = (qn1%h .match. qn2%h)
+  end function quantum_numbers_match_h
 
   elemental function quantum_numbers_match_fh (qn1, qn2) result (match)
     logical :: match
@@ -626,6 +635,11 @@ contains
     class(quantum_numbers_t), intent(inout) :: qn
     call qn%c%invert ()
   end subroutine quantum_numbers_invert_color
+
+  elemental subroutine quantum_numbers_flip_helicity (qn)
+    class(quantum_numbers_t), intent(inout) :: qn
+    call qn%h%flip ()
+  end subroutine quantum_numbers_flip_helicity
 
   function merge_quantum_numbers0 (qn1, qn2) result (qn3)
     type(quantum_numbers_t) :: qn3

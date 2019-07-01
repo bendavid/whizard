@@ -1,6 +1,6 @@
-! WHIZARD 2.6.2 Dec 13 2017
+! WHIZARD 2.6.3 Feb 10 2018
 !
-! Copyright (C) 1999-2017 by
+! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -236,6 +236,8 @@ module simulations
      type(selector_t) :: process_selector
      integer :: n_evt_requested = 0
      integer :: event_index_offset = 0
+     logical :: event_index_set = .false.
+     integer :: event_index = 0
      integer :: split_n_evt = 0
      integer :: split_n_kbytes = 0
      integer :: split_index = 0
@@ -266,6 +268,10 @@ module simulations
      procedure :: generate => simulation_generate
      procedure :: calculate_alt_entries => simulation_calculate_alt_entries
      procedure :: rescan => simulation_rescan
+     procedure :: init_event_index => simulation_init_event_index
+     procedure :: increment_event_index => simulation_increment_event_index
+     procedure :: set_event_index => simulation_set_event_index
+     procedure :: get_event_index => simulation_get_event_index
      procedure :: update_processes => simulation_update_processes
      procedure :: restore_processes => simulation_restore_processes
      generic :: write_event => write_event_eio
@@ -1378,6 +1384,9 @@ contains
     if (object%event_index_offset /= 0) then
        write (u, "(3x,A,I0)")  "Event index offset= ", object%event_index_offset
     end if
+    if (object%event_index_set) then
+       write (u, "(3x,A,I0)")  "Event index       = ", object%event_index
+    end if
     if (object%split_n_evt > 0 .or. object%split_n_kbytes > 0) then
        write (u, "(3x,A,I0)")  "Events per file   = ", object%split_n_evt
        write (u, "(3x,A,I0)")  "KBytes per file   = ", object%split_n_kbytes
@@ -1880,9 +1889,11 @@ contains
     write (msg_buffer, "(A,1x,A)") "Events: event normalization mode", &
          char (event_normalization_string (simulation%norm_mode))
     call msg_message ()
+    call simulation%init_event_index ()
     start_it = 1
     end_it = n
     do i = start_it, end_it
+       call simulation%increment_event_index ()
        if (present (es_array)) then
           call simulation%read_event (es_array, .true., generate_new)
        else
@@ -1923,8 +1934,7 @@ contains
             current_entry => entry%get_first ()
             do k = 1, current_entry%count_nlo_entries ()
                if (k > 1) current_entry => current_entry%get_next ()
-               call current_entry%increment_index &
-                    (simulation%event_index_offset)
+               call current_entry%set_index (simulation%get_event_index ())
                call current_entry%evaluate_expressions ()
             end do
             if (signal_is_pending ()) return
@@ -1938,6 +1948,7 @@ contains
           end associate
        else
           associate (entry => simulation%entry(simulation%i_prc))
+            call simulation%set_event_index (entry%get_index ())
             call entry%accept_sqme_ref ()
             call entry%accept_weight_ref ()
             call entry%check ()
@@ -1996,7 +2007,7 @@ contains
            call alt_entry%update_normalization ()
            call alt_entry%accept_weight_prc ()
            call alt_entry%check ()
-           call alt_entry%increment_index (simulation%event_index_offset)
+           call alt_entry%set_index (simulation%get_event_index ())
            call alt_entry%evaluate_expressions ()
            if (signal_is_pending ())  return
            call alt_entry%restore_process ()
@@ -2039,7 +2050,9 @@ contains
     write (msg_buffer, "(A,1x,A,1x,A,A,A)")  char (str1), char (str2), &
          "events ", char (str3), "..."
     call msg_message ()
+    call simulation%init_event_index ()
     do
+       call simulation%increment_event_index ()
        call simulation%read_event (es_array, .false., complete)
        if (complete)  exit
        if (simulation%update_event &
@@ -2079,6 +2092,35 @@ contains
        call simulation%restore_processes ()
     end if
   end subroutine simulation_rescan
+
+  subroutine simulation_init_event_index (simulation)
+    class(simulation_t), intent(inout) :: simulation
+    call simulation%set_event_index (simulation%event_index_offset)
+  end subroutine simulation_init_event_index
+
+  subroutine simulation_increment_event_index (simulation)
+    class(simulation_t), intent(inout) :: simulation
+    if (simulation%event_index_set) then
+       simulation%event_index = simulation%event_index + 1
+    end if
+  end subroutine simulation_increment_event_index
+
+  subroutine simulation_set_event_index (simulation, i)
+    class(simulation_t), intent(inout) :: simulation
+    integer, intent(in) :: i
+    simulation%event_index = i
+    simulation%event_index_set = .true.
+  end subroutine simulation_set_event_index
+
+  function simulation_get_event_index (simulation) result (i)
+    class(simulation_t), intent(in) :: simulation
+    integer :: i
+    if (simulation%event_index_set) then
+       i = simulation%event_index
+    else
+       i = 0
+    end if
+  end function simulation_get_event_index
 
   subroutine simulation_update_processes (simulation, &
        model, qcd, helicity_selection)
@@ -2192,6 +2234,7 @@ contains
                 call es_array%skip_eio_entry (iostat)
                 current_entry => current_entry%get_next ()
              end if
+             call current_entry%set_index (object%get_event_index ())
              call es_array%input_event (current_entry%event_t, iostat)
           end do
        case (:-1)

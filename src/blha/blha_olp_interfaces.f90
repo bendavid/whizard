@@ -1,6 +1,6 @@
-! WHIZARD 2.6.2 Dec 13 2017
+! WHIZARD 2.6.3 Feb 10 2018
 !
-! Copyright (C) 1999-2017 by
+! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -130,9 +130,9 @@ module blha_olp_interfaces
     integer :: n_particles
     integer :: n_hel
     integer :: n_proc
-    integer, dimension(:), allocatable :: i_tree, i_spin_c, i_color_c
-    integer, dimension(:), allocatable :: i_virt
-    integer, dimension(:,:), allocatable :: i_hel
+    integer, dimension(:, :), allocatable :: i_tree, i_spin_c, i_color_c
+    integer, dimension(:, :), allocatable :: i_virt
+    integer, dimension(:, :), allocatable :: i_hel
     integer, dimension(:), allocatable :: i_whizard_to_i_olc
     logical, dimension(3) :: ew_parameter_mask
     integer :: sqme_tree_pos
@@ -641,10 +641,11 @@ contains
   end subroutine blha_driver_load
 
   subroutine blha_driver_read_contract_file (driver, flavors, &
-       amp_type, flv_index, label, helicities)
+       amp_type, flv_index, hel_index, label, helicities)
     class(blha_driver_t), intent(inout) :: driver
     integer, intent(in), dimension(:,:) :: flavors
-    integer, intent(out), dimension(:), allocatable :: amp_type, flv_index, label
+    integer, intent(out), dimension(:), allocatable :: amp_type, &
+         flv_index, hel_index, label
     integer, intent(out), dimension(:,:) :: helicities
     integer :: unit, filestat
     character(len=LEN_MAX_FLAVOR_STRING) :: rd_line
@@ -659,8 +660,8 @@ contains
     integer, parameter :: list_incr = 50
     integer :: n_found
     allocate (amp_type (N_MAX_FLAVORS), flv_index (N_MAX_FLAVORS), &
-           label (N_MAX_FLAVORS))
-    amp_type = -1; flv_index = -1; label = -1
+           hel_index (N_MAX_FLAVORS), label (N_MAX_FLAVORS))
+    amp_type = -1; flv_index = -1; hel_index = -1; label = -1
     helicities = 0
     n_in = size (helicities, dim = 2)
     n_entries = size (flavors, 1) + 2
@@ -668,7 +669,7 @@ contains
     open (unit, file = char (driver%contract_file), status="old")
     read_flavor = .false.
     label_count = 1
-    i_hel = 0
+    i_hel = 1
     n_found = 0
     give_warning = .false.
     do
@@ -677,7 +678,7 @@ contains
          exit
       else
          if (rd_line(1:13) == 'AmplitudeType') then
-            if (i_hel > 2 * n_in - 1) i_hel = 0
+            if (i_hel > 2 * n_in) i_hel = 1
             i_next = find_next_word_index (rd_line, 13)
             if (label_count > size (amp_type)) &
                  call extend_integer_array (amp_type, list_incr)
@@ -710,7 +711,10 @@ contains
                       label(label_count) = i_array (n_entries)
                       if (label_count > size (flv_index)) &
                            call extend_integer_array (flv_index, list_incr)
-                      flv_index (label_count) = i_flv + i_hel
+                      flv_index (label_count) = i_flv
+                      if (label_count > size (hel_index)) &
+                           call extend_integer_array (hel_index, list_incr)
+                      hel_index (label_count) = i_hel
                       if (driver%include_polarizations) then
                          helicities (label(label_count), :) = hel_array (1:n_in)
                          i_hel = i_hel + 1
@@ -993,43 +997,46 @@ contains
   subroutine prc_blha_read_contract_file (object, flavors)
     class(prc_blha_t), intent(inout) :: object
     integer, intent(in), dimension(:,:) :: flavors
-    integer, dimension(:), allocatable :: amp_type, flv_index, label
+    integer, dimension(:), allocatable :: amp_type, flv_index, hel_index, label
     integer, dimension(:,:), allocatable :: helicities
-    integer :: i_proc
+    integer :: i_proc, i_hel
     allocate (helicities (N_MAX_FLAVORS, object%data%n_in))
     select type (driver => object%driver)
     class is (blha_driver_t)
        call driver%read_contract_file (flavors, amp_type, flv_index, &
-            label, helicities)
+            hel_index, label, helicities)
     end select
     object%n_proc = count (amp_type >= 0)
     do i_proc = 1, object%n_proc
        if (amp_type (i_proc) < 0) exit
+       if (hel_index(i_proc) < 0 .and. object%includes_polarization ()) &
+               call msg_bug ("Object includes polarization, but helicity index is undefined.")
+       i_hel = hel_index (i_proc)
        select case (amp_type (i_proc))
        case (BLHA_AMP_TREE)
           if (allocated (object%i_tree)) then
-             object%i_tree(flv_index(i_proc)) = label(i_proc)
+             object%i_tree(flv_index(i_proc), i_hel) = label(i_proc)
           else
              call msg_fatal ("Tree matrix element present, &
                   &but neither Born nor real indices are allocated!")
           end if
        case (BLHA_AMP_COLOR_C)
           if (allocated (object%i_color_c)) then
-             object%i_color_c(flv_index(i_proc)) = label(i_proc)
+             object%i_color_c(flv_index(i_proc), i_hel) = label(i_proc)
           else
              call msg_fatal ("Color-correlated matrix element present, &
                   &but cc-indices are not allocated!")
           end if
        case (BLHA_AMP_SPIN_C)
           if (allocated (object%i_spin_c)) then
-             object%i_spin_c(flv_index(i_proc)) = label(i_proc)
+             object%i_spin_c(flv_index(i_proc), i_hel) = label(i_proc)
           else
              call msg_fatal ("Spin-correlated matrix element present, &
                   &but sc-indices are not allocated!")
           end if
        case (BLHA_AMP_LOOP)
           if (allocated (object%i_virt)) then
-             object%i_virt(flv_index(i_proc)) = label(i_proc)
+             object%i_virt(flv_index(i_proc), i_hel) = label(i_proc)
           else
              call msg_fatal ("Loop matrix element present, &
                   &but virt-indices are not allocated!")
@@ -1085,28 +1092,28 @@ contains
     object%n_hel = n_hel
     if (blha_template%compute_loop ()) then
        if (blha_template%include_polarizations) then
-          allocate (object%i_virt (n_flv * n_hel), &
-               object%i_color_c (n_flv * n_hel))
+          allocate (object%i_virt (n_flv, n_hel), &
+               object%i_color_c (n_flv, n_hel))
           if (blha_template%use_internal_color_correlations) then
              allocate (object%i_hel (n_flv * n_in * n_hel * 2, n_in))
           else
              allocate (object%i_hel (n_flv * n_in * n_hel, n_in))
           end if
        else
-          allocate (object%i_virt (n_flv), object%i_color_c (n_flv))
+          allocate (object%i_virt (n_flv, 1), object%i_color_c (n_flv, 1))
        end if
        object%i_virt = 0
        object%i_color_c = 0
     else if (blha_template%compute_subtraction ()) then
        if (blha_template%include_polarizations) then
-          allocate (object%i_tree (n_flv * n_hel), &
-               object%i_color_c (n_flv * n_hel), &
-               object%i_spin_c (n_flv * n_hel), &
+          allocate (object%i_tree (n_flv, n_hel), &
+               object%i_color_c (n_flv, n_hel), &
+               object%i_spin_c (n_flv, n_hel), &
                object%i_hel (3 * (n_flv * n_hel * n_in), n_in))
           object%i_hel = 0
        else
-          allocate (object%i_tree (n_flv), object%i_color_c (n_flv) , &
-               object%i_spin_c (n_flv))
+          allocate (object%i_tree (n_flv, 1), object%i_color_c (n_flv, 1) , &
+               object%i_spin_c (n_flv, 1))
        end if
        object%i_tree = 0
        object%i_color_c = 0
@@ -1114,10 +1121,12 @@ contains
     else if (blha_template%compute_real_trees () .or. blha_template%compute_born () &
            .or. blha_template%compute_dglap ()) then
        if (blha_template%include_polarizations) then
+          allocate (object%i_tree (n_flv, n_hel))
           allocate (object%i_hel (n_flv * n_hel * n_in, n_in))
           object%i_hel = 0
+       else
+          allocate (object%i_tree (n_flv, 1))
        end if
-       allocate (object%i_tree (n_flv * n_hel))
        object%i_tree = 0
     end if
 
@@ -1189,9 +1198,9 @@ contains
   end subroutine prc_blha_init_ew_parameters
 
   subroutine prc_blha_compute_sqme_virt (object, &
-       i_flv, p, ren_scale, sqme, bad_point)
+       i_flv, i_hel, p, ren_scale, sqme, bad_point)
     class(prc_blha_t), intent(in) :: object
-    integer, intent(in) :: i_flv
+    integer, intent(in) :: i_flv, i_hel
     type(vector4_t), dimension(:), intent(in) :: p
     real(default), intent(in) :: ren_scale
     real(default), dimension(4), intent(out) :: sqme
@@ -1202,11 +1211,11 @@ contains
     real(double) :: acc_dble
     real(default) :: acc
     real(default) :: alpha_s
-    if (object%i_virt(i_flv) > 0) then
+    if (object%i_virt(i_flv, i_hel) > 0) then
        allocate (r (blha_result_array_size (object%n_particles, BLHA_AMP_LOOP)))
        call msg_debug2 (D_VIRTUAL, "prc_blha_compute_sqme_virt")
        call msg_debug2 (D_VIRTUAL, "i_flv", i_flv)
-       call msg_debug2 (D_VIRTUAL, "object%i_virt(i_flv)", object%i_virt(i_flv))
+       call msg_debug2 (D_VIRTUAL, "object%i_virt(i_flv, i_hel)", object%i_virt(i_flv, i_hel))
        if (debug2_active (D_VIRTUAL)) then
            call msg_debug2 (D_VIRTUAL, "use momenta: ")
            call vector4_write_set (p, show_mass = .true., &
@@ -1220,7 +1229,7 @@ contains
        select type (driver => object%driver)
        class is (blha_driver_t)
           call driver%set_alpha_s (alpha_s)
-          call driver%blha_olp_eval2 (object%i_virt(i_flv), mom, mu_dble, r, acc_dble)
+          call driver%blha_olp_eval2 (object%i_virt(i_flv, i_hel), mom, mu_dble, r, acc_dble)
        end select
        acc = acc_dble
        sqme = r(1:4)
@@ -1231,10 +1240,10 @@ contains
     end if
   end subroutine prc_blha_compute_sqme_virt
 
-  subroutine prc_blha_compute_sqme (object, i_flv, p, &
+  subroutine prc_blha_compute_sqme (object, i_flv, i_hel, p, &
       ren_scale, sqme, bad_point)
     class(prc_blha_t), intent(in) :: object
-    integer, intent(in) :: i_flv
+    integer, intent(in) :: i_flv, i_hel
     type(vector4_t), intent(in), dimension(:) :: p
     real(default), intent(in) :: ren_scale
     real(default), intent(out) :: sqme
@@ -1243,7 +1252,7 @@ contains
     real(double), dimension(OLP_RESULTS_LIMIT) :: r
     real(double) :: mu_dble, acc_dble
     real(default) :: acc, alpha_s
-    if (object%i_tree(i_flv) > 0) then
+    if (object%i_tree(i_flv, i_hel) > 0) then
        mom = object%create_momentum_array (p)
        if (vanishes (ren_scale)) &
             call msg_fatal ("prc_blha_compute_sqme: ren_scale vanishes")
@@ -1252,7 +1261,7 @@ contains
        select type (driver => object%driver)
        class is (blha_driver_t)
           call driver%set_alpha_s (alpha_s)
-          call driver%blha_olp_eval2 (object%i_tree(i_flv), mom, &
+          call driver%blha_olp_eval2 (object%i_tree(i_flv, i_hel), mom, &
                mu_dble, r, acc_dble)
           sqme = r(object%sqme_tree_pos)
        end select
@@ -1291,6 +1300,7 @@ contains
     else
        incr = 0
     end if
+    pos = 0
     do j = 1, n
        do i = 1, j
           if (i /= j) then
@@ -1298,16 +1308,16 @@ contains
              if (present (n_flv))  incr = incr + n_flv - 1
              if (present (offset))  pos = pos + incr
              sqme_color_c (i, j) = -r (pos)
+             sqme_color_c (j, i) = sqme_color_c (i, j)
           end if
-          sqme_color_c (j, i) = sqme_color_c (i, j)
        end do
     end do
   end subroutine blha_color_c_fill_offdiag
 
   subroutine prc_blha_compute_sqme_color_c_raw &
-     (object, i_flv, p, ren_scale, rr, bad_point)
+     (object, i_flv, i_hel, p, ren_scale, rr, bad_point)
     class(prc_blha_t), intent(in) :: object
-    integer, intent(in) :: i_flv
+    integer, intent(in) :: i_flv, i_hel
     type(vector4_t), intent(in), dimension(:) :: p
     real(default), intent(in) :: ren_scale
     real(default), intent(out), dimension(:) :: rr
@@ -1316,7 +1326,7 @@ contains
     real(double), dimension(size(rr)) :: r
     real(default) :: alpha_s, acc
     real(double) :: mu_dble, acc_dble
-    if (object%i_color_c(i_flv) > 0) then
+    if (object%i_color_c(i_flv, i_hel) > 0) then
        mom = object%create_momentum_array (p)
        if (vanishes (ren_scale)) &
           call msg_fatal ("prc_blha_compute_sqme_color_c: ren_scale vanishes")
@@ -1326,7 +1336,7 @@ contains
        select type (driver => object%driver)
        class is (blha_driver_t)
           call driver%set_alpha_s (alpha_s)
-          call driver%blha_olp_eval2 (object%i_color_c(i_flv), &
+          call driver%blha_olp_eval2 (object%i_color_c(i_flv, i_hel), &
                mom, mu_dble, r, acc_dble)
        end select
        rr = r
@@ -1339,9 +1349,9 @@ contains
   end subroutine prc_blha_compute_sqme_color_c_raw
 
   subroutine prc_blha_compute_sqme_color_c &
-         (object, i_flv, p, ren_scale, born_color_c, bad_point, born_out)
+         (object, i_flv, i_hel, p, ren_scale, born_color_c, bad_point, born_out)
     class(prc_blha_t), intent(inout) :: object
-    integer, intent(in) :: i_flv
+    integer, intent(in) :: i_flv, i_hel
     type(vector4_t), intent(in), dimension(:) :: p
     real(default), intent(in) :: ren_scale
     real(default), intent(inout), dimension(:,:) :: born_color_c
@@ -1353,12 +1363,12 @@ contains
     integer, dimension(:), allocatable :: flavors
     allocate (r (blha_result_array_size &
          (size(born_color_c, dim=1), BLHA_AMP_COLOR_C)))
-    call object%compute_sqme_color_c_raw (i_flv, p, ren_scale, r, bad_point)
+    call object%compute_sqme_color_c_raw (i_flv, i_hel, p, ren_scale, r, bad_point)
 
     select type (driver => object%driver)
     class is (blha_driver_t)
        if (allocated (object%i_tree)) then
-          call object%compute_sqme (i_flv, p, ren_scale, born, bad_point2)
+          call object%compute_sqme (i_flv, i_hel, p, ren_scale, born, bad_point2)
        else
           born = zero
        end if

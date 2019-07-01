@@ -1,4 +1,4 @@
-! WHIZARD 2.6.2 Dec 13 2017
+! WHIZARD 2.6.3 Feb 10 2018
 
 ! TOPPIK code by M. Jezabek, T. Teubner (v1.1, 1992), T. Teubner (1998)
 !

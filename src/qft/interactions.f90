@@ -1,6 +1,6 @@
-! WHIZARD 2.6.2 Dec 13 2017
+! WHIZARD 2.6.3 Feb 10 2018
 !
-! Copyright (C) 1999-2017 by
+! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -31,6 +31,7 @@ module interactions
   use kinds, only: default
   use io_units
   use diagnostics
+  use pdg_arrays, only: is_elementary
   use sorting
   use lorentz
   use flavors
@@ -42,6 +43,7 @@ module interactions
   implicit none
   private
 
+  public :: qn_index_map_t
   public :: external_link_get_ptr
   public :: external_link_get_index
   public :: interaction_t
@@ -64,6 +66,22 @@ module interactions
   public :: interaction_pacify_momenta
   public :: interaction_declare_subtraction
   public :: find_connections
+
+  type :: qn_index_map_t
+     private
+     type(quantum_numbers_t), dimension(:, :), allocatable :: qn_flv
+     type(quantum_numbers_t), dimension(:, :), allocatable :: qn_hel
+     logical :: flip_hel = .false.
+     integer :: n_flv = 0, n_hel = 0, n_sub = 0
+     integer, dimension(:, :, :), allocatable :: index
+   contains
+     procedure :: write => qn_index_map_write
+     procedure :: set_helicity_flip => qn_index_map_set_helicity_flip
+     procedure :: get_index => qn_index_map_get_index
+     procedure :: get_n_flv => qn_index_map_get_n_flv
+     procedure :: get_n_hel => qn_index_map_get_n_hel
+     procedure :: get_n_sub => qn_index_map_get_n_sub
+  end type qn_index_map_t
 
   type :: external_link_t
      private
@@ -193,12 +211,215 @@ module interactions
   end type interaction_t
 
 
+  interface qn_index_map_t
+     module procedure qn_index_map_init, qn_index_map_init_trivial
+  end interface qn_index_map_t
+
   interface assignment(=)
      module procedure interaction_assign
   end interface
 
 
 contains
+
+type(qn_index_map_t) function qn_index_map_init (int, qn_flv, n_sub, qn_hel) &
+       result (self)
+    class(interaction_t), intent(in) :: int
+    type(quantum_numbers_t), dimension(:, :), intent(in) :: qn_flv
+    integer, intent(in) :: n_sub
+    type(quantum_numbers_t), dimension(:, :), intent(in), optional :: qn_hel
+    type(quantum_numbers_t), dimension(:), allocatable :: qn, qn_int
+    integer :: i, i_flv, i_hel, i_sub
+    self%qn_flv = qn_flv
+    self%n_flv = size (qn_flv, dim=2)
+    self%n_sub = n_sub
+    if (present (qn_hel)) then
+       if (size (qn_flv, dim=1) /= size (qn_hel, dim=1)) then
+          call msg_bug ("[qn_index_map_init] number of particles does not match.")
+       end if
+       self%qn_hel = qn_hel
+       self%n_hel = size (qn_hel, dim=2)
+    else
+       self%n_hel = 1
+    end if
+    allocate (self%index (self%n_flv, self%n_hel, 0:self%n_sub), source=0)
+    associate (n_me => int%get_n_matrix_elements ())
+      do i = 1, n_me
+         qn_int = int%get_quantum_numbers (i, by_me_index = .true.)
+         qn = pack (qn_int, get_elementary (qn_int))
+         i_flv = find_flv_index (self, qn)
+         i_hel = 1; if (allocated (self%qn_hel)) &
+            i_hel = find_hel_index (self, qn)
+         i_sub = find_sub_index (self, qn)
+         self%index(i_flv, i_hel, i_sub) = i
+      end do
+    end associate
+  contains
+    integer function find_flv_index (self, qn) result (i_flv)
+      type(qn_index_map_t), intent(in) :: self
+      type(quantum_numbers_t), dimension(:), intent(in) :: qn
+      integer :: j
+      do j = 1, self%n_flv
+         if (.not. all (qn .fmatch. self%qn_flv(:, j))) cycle
+         i_flv = j
+         exit
+      end do
+    end function find_flv_index
+
+    integer function find_hel_index (self, qn) result (i_hel)
+      type(qn_index_map_t), intent(in) :: self
+      type(quantum_numbers_t), dimension(:), intent(in) :: qn
+      integer :: j
+      do j = 1, self%n_hel
+         if (.not. all (qn .hmatch. self%qn_hel(:, j))) cycle
+         i_hel = j
+         exit
+      end do
+    end function find_hel_index
+
+    integer function find_sub_index (self, qn) result (i_sub)
+      type(qn_index_map_t), intent(in) :: self
+      type(quantum_numbers_t), dimension(:), intent(in) :: qn
+      integer :: s
+      do s = 0, self%n_sub
+         if ((all (pack(qn%get_sub (), qn%get_sub () > 0) == s)) &
+              .or. (all (qn%get_sub () == 0) .and. s == 0)) then
+            i_sub = s
+            exit
+         end if
+      end do
+    end function find_sub_index
+
+    impure elemental logical function get_elementary (qn) result (yorn)
+      type(quantum_numbers_t), intent(in) :: qn
+      type(flavor_t) :: flv
+      flv = qn%get_flavor ()
+      yorn = is_elementary (flv%get_pdg ())
+    end function get_elementary
+ end function qn_index_map_init
+
+  type(qn_index_map_t) function qn_index_map_init_trivial (int) result (self)
+    class(interaction_t), intent(in) :: int
+    integer :: qn
+    self%n_flv = int%get_n_matrix_elements ()
+    self%n_hel = 1
+    self%n_sub = 0
+    allocate (self%index(self%n_flv, self%n_hel, 0:self%n_sub), source = 0)
+    do qn = 1, self%n_flv
+       self%index(qn, 1, 0) = qn
+    end do
+  end function qn_index_map_init_trivial
+
+  subroutine qn_index_map_write (self, unit)
+    class(qn_index_map_t), intent(in) :: self
+    integer, intent(in), optional :: unit
+    integer :: u, i_flv, i_hel, i_sub
+    u = given_output_unit (unit); if (u < 0) return
+    write (u, *) "flip_hel: ", self%flip_hel
+    do i_flv = 1, self%n_flv
+       if (allocated (self%qn_flv)) &
+            call quantum_numbers_write (self%qn_flv(:, i_flv))
+       write (u, *)
+       do i_hel = 1, self%n_hel
+          if (allocated (self%qn_hel)) then
+             call quantum_numbers_write (self%qn_hel(:, i_hel))
+             write (u, *)
+          end if
+          do i_sub = 0, self%n_sub
+             write (u, *) &
+                  "(", i_flv, ",", i_hel, ",", i_sub, ") => ", self%index(i_flv, i_hel, i_sub)
+          end do
+       end do
+    end do
+  end subroutine qn_index_map_write
+
+  subroutine qn_index_map_set_helicity_flip (self, yorn)
+    class(qn_index_map_t), intent(inout) :: self
+    logical, intent(in) :: yorn
+    integer :: i, i_flv, i_hel, i_hel_new
+    type(quantum_numbers_t), dimension(:, :), allocatable :: qn_hel_flip
+    integer, dimension(:, :, :), allocatable :: index
+    if (.not. allocated (self%qn_hel)) then
+       call msg_bug ("[qn_index_map_set_helicity_flip] &
+            &cannot flip not-given helicity.")
+    end if
+    ! Workaround for ifort (allocate-on-assignmet)
+    allocate (qn_hel_flip (size (self%qn_hel, dim=1),&
+         size (self%qn_hel, dim=2)))
+    allocate (index (self%n_flv, self%n_hel, 0:self%n_sub),&
+         source=self%index)
+    self%flip_hel = yorn
+    if (self%flip_hel) then
+       do i_flv = 1, self%n_flv
+          qn_hel_flip = self%qn_hel
+          do i_hel = 1, self%n_hel
+             do i = 1, size (self%qn_flv, dim=1)
+                if (is_anti_particle (self%qn_flv(i, i_flv))) then
+                   call qn_hel_flip(i, i_hel)%flip_helicity ()
+                end if
+             end do
+          end do
+          do i_hel = 1, self%n_hel
+             i_hel_new = find_hel_index (qn_hel_flip, self%qn_hel(:, i_hel))
+             self%index(i_flv, i_hel_new, :) = index(i_flv, i_hel, :)
+          end do
+       end do
+    end if
+  contains
+    logical function is_anti_particle (qn) result (yorn)
+      type(quantum_numbers_t), intent(in) :: qn
+      type(flavor_t) :: flv
+      flv = qn%get_flavor ()
+      yorn = flv%get_pdg () < 0
+    end function is_anti_particle
+
+    integer function find_hel_index (qn_sort, qn) result (i_hel)
+      type(quantum_numbers_t), dimension(:, :), intent(in) :: qn_sort
+      type(quantum_numbers_t), dimension(:), intent(in) :: qn
+      integer :: j
+      do j = 1, size(qn_sort, dim=2)
+         if (.not. all (qn .hmatch. qn_sort(:, j))) cycle
+         i_hel = j
+         exit
+      end do
+    end function find_hel_index
+  end subroutine qn_index_map_set_helicity_flip
+
+  integer function qn_index_map_get_index (self, i_flv, i_hel, i_sub) result (index)
+    class(qn_index_map_t), intent(in) :: self
+    integer, intent(in) :: i_flv
+    integer, intent(in), optional :: i_hel
+    integer, intent(in), optional :: i_sub
+    integer :: i_sub_opt, i_hel_opt
+    i_sub_opt = 0; if (present (i_sub)) &
+         i_sub_opt = i_sub
+    i_hel_opt = 1; if (present (i_hel)) &
+         i_hel_opt = i_hel
+    index = 0
+    if (.not. allocated (self%index)) then
+       call msg_bug ("[qn_index_map_get_index] The index map is not allocated.")
+    end if
+    index = self%index(i_flv, i_hel_opt, i_sub_opt)
+    if (index <= 0) then
+       call self%write ()
+       call msg_bug ("[qn_index_map_get_index] The index for the given quantum numbers could not be retrieved.")
+    end if
+  end function qn_index_map_get_index
+
+  integer function qn_index_map_get_n_flv (self) result (n_flv)
+    class(qn_index_map_t), intent(in) :: self
+    n_flv = self%n_flv
+  end function qn_index_map_get_n_flv
+
+  integer function qn_index_map_get_n_hel (self) result (n_hel)
+    class(qn_index_map_t), intent(in) :: self
+    n_hel = self%n_hel
+  end function qn_index_map_get_n_hel
+
+  integer function qn_index_map_get_n_sub (self) result (n_sub)
+    class(qn_index_map_t), intent(in) :: self
+    n_sub = self%n_sub
+  end function qn_index_map_get_n_sub
 
   subroutine external_link_set (link, int, i)
     type(external_link_t), intent(out) :: link
@@ -493,12 +714,19 @@ contains
        testflag = testflag)
   end subroutine interaction_write_state_matrix
 
-  subroutine interaction_reduce_state_matrix (int, qn_mask)
+  subroutine interaction_reduce_state_matrix (int, qn_mask, keep_order)
     class(interaction_t), intent(inout) :: int
     type(quantum_numbers_mask_t), intent(in), dimension(:) :: qn_mask
+    logical, optional, intent(in) :: keep_order
     type(state_matrix_t) :: state
-    call int%state_matrix%reduce (qn_mask, state)
+    logical :: opt_keep_order = .false.
+    if (present (keep_order)) opt_keep_order = keep_order
+    call int%state_matrix%reduce (qn_mask, state, keep_me_index = keep_order)
     int%state_matrix = state
+    if (opt_keep_order) then
+       call int%state_matrix%reorder_me (state)
+       int%state_matrix = state
+    end if
   end subroutine interaction_reduce_state_matrix
 
   subroutine interaction_assign (int_out, int_in)
@@ -643,12 +871,13 @@ contains
     n_sub = int%state_matrix%compute_n_sub ()
   end function interaction_get_n_sub
 
-  function interaction_get_quantum_numbers_single (int, i) result (qn)
+  function interaction_get_quantum_numbers_single (int, i, by_me_index) result (qn)
     type(quantum_numbers_t), dimension(:), allocatable :: qn
     class(interaction_t), intent(in), target :: int
     integer, intent(in) :: i
+    logical, intent(in), optional :: by_me_index
     allocate (qn (int%state_matrix%get_depth ()))
-    qn = int%state_matrix%get_quantum_number (i)
+    qn = int%state_matrix%get_quantum_number (i, by_me_index)
   end function interaction_get_quantum_numbers_single
 
   function interaction_get_quantum_numbers_all (int) result (qn)

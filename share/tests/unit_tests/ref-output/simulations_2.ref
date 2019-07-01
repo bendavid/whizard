@@ -43,6 +43,7 @@
    MD5 sum (proc)   = '5368809EAF375C82590A69A6239A7DD4'
    MD5 sum (config) = '84C44539010DE76E0EA21E34BD713917'
    Events requested  = 3
+   Event index       = 3
    Events total      = 3
      generated       = 3
      read            = 0

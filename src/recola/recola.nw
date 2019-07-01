@@ -2319,7 +2319,7 @@ load any external dynamical libraries, so this is a dummy.
 @
 \subsection{Process object}
 We create [[prc_recola_t]] as an extension of the [[prc_user_defined_base_t]],
-which in turn inherits from [[prc_core_tt]]. This way, we can use a lot of the
+which in turn inherits from [[prc_core_t]]. This way, we can use a lot of the
 existing interfaces in the actual code. However, we have to stick to the rules and
 implement the deferred type-bound procedures of [[prc_core_t]].
 <<prc recola: public>>=
@@ -2576,10 +2576,6 @@ should be expanded.
     end select
     call rclwrap_generate_processes ()
     object%recola_id = rclwrap_get_n_processes ()
-    if (object%recola_id /= 1) then
-         call msg_fatal ("Recola: Process ID must be 1 &
-         & (multiple concurrent processes not supported yet)")
-      end if
     call object%replace_helicity_and_color_arrays ()
   end subroutine prc_recola_init
   
@@ -2607,7 +2603,6 @@ to be in its own format to do so.
     object%data%n_hel = size (object%data%hel_state, dim = 1)
   end subroutine prc_recola_replace_helicity_and_color_arrays
 
-@ %def prc_recola_check_helicity_and_color_arrays
 @ %def prc_recola_replace_helicity_and_color_arrays
 @
 \subsection{Compute matrix element}
@@ -2664,10 +2659,10 @@ implementation can fail due to missing helicity initialization.
 <<prc recola: prc recola: TBP>>=
   procedure :: compute_sqme => prc_recola_compute_sqme
 <<prc recola: procedures>>=
-  subroutine prc_recola_compute_sqme (object, i_flv, p, &
+  subroutine prc_recola_compute_sqme (object, i_flv, i_hel, p, &
          ren_scale, sqme, bad_point)
      class(prc_recola_t), intent(in) :: object
-     integer, intent(in) :: i_flv
+     integer, intent(in) :: i_flv, i_hel
      type(vector4_t), dimension(:), intent(in) :: p
      real(default), intent(in) :: ren_scale
      real(default), intent(out) :: sqme
@@ -2678,6 +2673,7 @@ implementation can fail due to missing helicity initialization.
      real(default) :: alpha_s
      integer :: i
      integer :: alphas_power
+     ! TODO sbrass: Helicity for RECOLA
      call msg_debug2 (D_ME_METHODS, "prc_recola_compute_sqme")
      do i = 1, object%data%n_in + object%data%n_out
         p_recola(:, i) = dble(p(i)%p)
@@ -2687,10 +2683,10 @@ implementation can fail due to missing helicity initialization.
      call msg_debug2 (D_ME_METHODS, "alpha_s", alpha_s)
      call msg_debug2 (D_ME_METHODS, "ren_scale", ren_scale)
      call rclwrap_set_alpha_s (dble (alpha_s), dble (ren_scale), object%qcd%n_f)
-     call rclwrap_compute_process (object%recola_id, p_recola, 'LO')
+     call rclwrap_compute_process (i_flv, p_recola, 'LO')
      call rclwrap_get_squared_amplitude &
-          (object%recola_id, object%get_alphas_power (), 'LO', sqme_dble)
-     sqme = sqme_dble
+             (i_flv, object%get_alphas_power (), 'LO', sqme_dble)
+     sqme = real(sqme_dble, kind=default)
      bad_point = .false.
   end subroutine prc_recola_compute_sqme
 
@@ -2699,10 +2695,10 @@ implementation can fail due to missing helicity initialization.
 <<prc recola: prc recola: TBP>>=
   procedure :: compute_sqme_virt => prc_recola_compute_sqme_virt
 <<prc recola: procedures>>=
-  subroutine prc_recola_compute_sqme_virt (object, i_flv, &
+  subroutine prc_recola_compute_sqme_virt (object, i_flv, i_hel,  &
           p, ren_scale, sqme, bad_point)
     class(prc_recola_t), intent(in) :: object
-    integer, intent(in) :: i_flv
+    integer, intent(in) :: i_flv, i_hel
     type(vector4_t), dimension(:), intent(in) :: p
     real(default), intent(in) :: ren_scale
     real(default), dimension(4), intent(out) :: sqme
@@ -2713,7 +2709,7 @@ implementation can fail due to missing helicity initialization.
     real(double) :: sqme_dble
     real(default) :: alpha_s
     integer :: i
-
+    ! TODO sbrass Helicity for RECOLA
     call msg_debug2 (D_ME_METHODS, "prc_recola_compute_sqme_virt")
     sqme = zero
     do i = 1, object%data%n_in + object%data%n_out

@@ -4,7 +4,7 @@
 ##
 ########################################################################
 #
-# Copyright (C) 1999-2017 by
+# Copyright (C) 1999-2018 by
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -107,6 +107,7 @@ TESTS_REQ_OCAML = \
     event_eff_1.run \
     event_eff_2.run \
     event_dump_1.run \
+    event_dump_2.run \
     reweight_1.run \
     reweight_2.run \
     reweight_3.run \
@@ -167,6 +168,7 @@ TESTS_REQ_OCAML = \
     resonances_9.run \
     resonances_10.run \
     resonances_11.run \
+    resonances_12.run \
     mssmtest_1.run \
     mssmtest_2.run \
     mssmtest_3.run \
@@ -200,6 +202,9 @@ TESTS_REQ_OCAML = \
     recola_3.run \
     recola_4.run \
     recola_5.run \
+    recola_6.run \
+    recola_7.run \
+    recola_8.run \
     powheg_1.run \
     spincor_1.run \
     show_1.run \

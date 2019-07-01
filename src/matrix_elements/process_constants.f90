@@ -1,6 +1,6 @@
-! WHIZARD 2.6.2 Dec 13 2017
+! WHIZARD 2.6.3 Feb 10 2018
 !
-! Copyright (C) 1999-2017 by
+! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -64,6 +64,7 @@ module process_constants
     procedure :: get_n_tot => process_constants_get_n_tot
     procedure :: get_flv_state => process_constants_get_flv_state
     procedure :: get_n_flv => process_constants_get_n_flv
+    procedure :: get_n_hel => process_constants_get_n_hel
     procedure :: get_hel_state => process_constants_get_hel_state
     procedure :: get_col_state => process_constants_get_col_state
     procedure :: get_ghost_flag => process_constants_get_ghost_flag
@@ -102,6 +103,12 @@ contains
     class(process_constants_t), intent(in) :: data
     n_flv = data%n_flv
   end function process_constants_get_n_flv
+
+  function process_constants_get_n_hel (data) result (n_hel)
+    integer :: n_hel
+    class(process_constants_t), intent(in) :: data
+    n_hel = data%n_hel
+  end function process_constants_get_n_hel
 
   subroutine process_constants_get_hel_state (prc_const, hel_state)
     class(process_constants_t), intent(in) :: prc_const

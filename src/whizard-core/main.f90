@@ -1,6 +1,6 @@
-! WHIZARD 2.6.2 Dec 13 2017
+! WHIZARD 2.6.3 Feb 10 2018
 !
-! Copyright (C) 1999-2017 by
+! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -454,7 +454,7 @@ contains
 
   subroutine print_version ()
     print "(A)", "WHIZARD " // WHIZARD_VERSION
-    print "(A)", "Copyright (C) 1999-2017 Wolfgang Kilian, Thorsten Ohl, Juergen Reuter"
+    print "(A)", "Copyright (C) 1999-2018 Wolfgang Kilian, Thorsten Ohl, Juergen Reuter"
     print "(A)", "              ---------------------------------------                "
     print "(A)", "This is free software; see the source for copying conditions.  There is NO"
     print "(A)", "warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."

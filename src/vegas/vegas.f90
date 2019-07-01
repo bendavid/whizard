@@ -1,6 +1,6 @@
-! WHIZARD 2.6.2 Dec 13 2017
+! WHIZARD 2.6.3 Feb 10 2018
 !
-! Copyright (C) 1999-2017 by
+! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -42,6 +42,7 @@ module vegas
   public :: vegas_func_t
   public :: vegas_config_t
   public :: vegas_grid_t
+  public :: operator (==)
   public :: vegas_result_t
   public :: vegas_t
 
@@ -140,6 +141,8 @@ module vegas
      procedure, public :: get_max_abs_f_neg => vegas_get_max_abs_f_neg
      procedure, public :: get_evt_weight => vegas_get_evt_weight
      procedure, public :: get_evt_weight_excess => vegas_get_evt_weight_excess
+     procedure, public :: get_distribution => vegas_get_distribution
+     procedure, public :: set_distribution => vegas_set_distribution
      procedure, private :: init_grid => vegas_init_grid
      procedure, public :: reset_result => vegas_reset_result
      procedure, public :: reset_grid => vegas_reset_grid
@@ -167,6 +170,9 @@ module vegas
      module procedure vegas_grid_init
   end interface vegas_grid_t
 
+  interface operator (==)
+     module procedure vegas_grid_equal
+  end interface operator (==)
   interface vegas_t
      module procedure vegas_init
   end interface vegas_t
@@ -256,6 +262,17 @@ contains
     write (u, descr_fmt) "end vegas_grid_t"
   end subroutine vegas_grid_write
 
+  logical function vegas_grid_equal (grid_a, grid_b) result (yorn)
+    type(vegas_grid_t), intent(in) :: grid_a, grid_b
+    yorn = .true.
+    yorn = yorn .and. (grid_a%n_dim == grid_b%n_dim)
+    yorn = yorn .and. (grid_a%n_bins == grid_b%n_bins)
+    yorn = yorn .and. all (grid_a%x_lower == grid_b%x_lower)
+    yorn = yorn .and. all (grid_a%x_upper == grid_b%x_upper)
+    yorn = yorn .and. all (grid_a%delta_x == grid_b%delta_x)
+    yorn = yorn .and. all (grid_a%xi == grid_b%xi)
+  end function vegas_grid_equal
+
   subroutine vegas_grid_resize (self, n_bins, w)
     class(vegas_grid_t), intent(inout) :: self
     integer, intent(in) :: n_bins
@@ -300,33 +317,69 @@ contains
   function vegas_grid_get_probability (self, x) result (g)
     class(vegas_grid_t), intent(in) :: self
     real(default), dimension(:), intent(in) :: x
+    integer, parameter :: N_BINARY_SEARCH = 100
     real(default) :: g, y
     integer :: j, i_lower, i_higher, i_mid
     g = 1.
-    ndim: do j = 1, self%n_dim
-       y = (x(j) - self%x_lower(j)) / self%delta_x(j)
-       if (y >= 0. .or. y <= 1.) then
-          i_lower = 1
-          i_higher = self%n_bins + 1
-          search: do
-             if (i_lower >= (i_higher - 1)) then
-                g = g / (self%delta_x(j) * &
-                     & self%n_bins * (self%xi(i_higher, j) - self%xi(i_higher - 1, j)))
-                cycle ndim
-             end if
-             i_mid = (i_higher + i_lower) / 2
-             if (y > self%xi(i_mid, j)) then
-                i_lower = i_mid
-             else
-                i_higher = i_mid
-             end if
-          end do search
-       else
-          g = 0.
-          exit ndim
-       end if
-    end do ndim
-  end function vegas_grid_get_probability
+    if (self%n_bins > N_BINARY_SEARCH) then
+       g = binary_search (x)
+    else
+       g = linear_search (x)
+    end if
+    ! Move division to the end, which is more efficient.
+    if (g /= 0) g = 1. / g
+  contains
+    real(default) function linear_search (x) result (g)
+      real(default), dimension(:), intent(in) :: x
+      real(default) :: y
+      integer :: j, i
+      g = 1.
+      ndim: do j = 1, self%n_dim
+         y = (x(j) - self%x_lower(j)) / self%delta_x(j)
+         if (y >= 0. .and. y <= 1.) then
+            do i = 2, self%n_bins + 1
+               if (self%xi(i, j) > y) then
+                 g = g * (self%delta_x(j) * &
+                      & self%n_bins * (self%xi(i, j) - self%xi(i - 1, j)))
+                 cycle ndim
+              end if
+           end do
+           g = 0
+           exit ndim
+        else
+           g = 0
+           exit ndim
+        end if
+     end do ndim
+   end function linear_search
+
+   real(default) function binary_search (x) result (g)
+     real(default), dimension(:), intent(in) :: x
+     ndim: do j = 1, self%n_dim
+        y = (x(j) - self%x_lower(j)) / self%delta_x(j)
+        if (y >= 0. .and. y <= 1.) then
+           i_lower = 1
+           i_higher = self%n_bins + 1
+           search: do
+              if (i_lower >= (i_higher - 1)) then
+                 g = g * (self%delta_x(j) * &
+                      & self%n_bins * (self%xi(i_higher, j) - self%xi(i_higher - 1, j)))
+                 cycle ndim
+              end if
+              i_mid = (i_higher + i_lower) / 2
+              if (y > self%xi(i_mid, j)) then
+                 i_lower = i_mid
+              else
+                 i_higher = i_mid
+              end if
+           end do search
+        else
+           g = 0.
+           exit ndim
+        end if
+     end do ndim
+   end function binary_search
+ end function vegas_grid_get_probability
 
   subroutine vegas_result_write (self, unit, indent)
     class(vegas_result_t), intent(in) :: self
@@ -551,6 +604,24 @@ contains
     class(vegas_t), intent(in) :: self
     evt_weight_excess = self%result%evt_weight_excess
   end function vegas_get_evt_weight_excess
+
+  function vegas_get_distribution (self) result (d)
+    class(vegas_t), intent(in) :: self
+    real(default), dimension(:, :), allocatable :: d
+    d = self%d
+  end function vegas_get_distribution
+
+  subroutine vegas_set_distribution (self, d)
+    class(vegas_t), intent(inout) :: self
+    real(default), dimension(:, :), intent(in) :: d
+    if (size (d, dim = 2) /= self%config%n_dim) then
+       call msg_bug ("[VEGAS] set_distribution: new distribution has wrong size of dimension")
+    end if
+    if (size (d, dim = 1) /= self%config%n_bins_max) then
+       call msg_bug ("[VEGAS] set_distribution: new distribution has wrong number of bins")
+    end if
+    self%d = d
+  end subroutine vegas_set_distribution
 
   subroutine vegas_init_grid (self)
     class(vegas_t), intent(inout) :: self

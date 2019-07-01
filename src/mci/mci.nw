@@ -11388,7 +11388,7 @@ We extend [[vamp2_config_t]].
   public :: mci_vamp2_config_t
 <<MCI vamp2: types>>=
   type, extends (vamp2_config_t) :: mci_vamp2_config_t
-     logical :: use_channel_equivalences = .false.
+     !
   end type mci_vamp2_config_t
 
 @ %def mci_vamp2_config_t
@@ -11855,6 +11855,7 @@ we replace [[n_calls]] with [[n_min_calls]].
   type, extends(mci_t) :: mci_vamp2_t
      type(mci_vamp2_config_t) :: config
      type(vamp2_t) :: integrator
+     type(vamp2_equivalences_t) :: equivalences
      logical :: integrator_defined = .false.
      logical :: integrator_from_file = .false.
      logical :: adapt_grids = .false.
@@ -11910,6 +11911,9 @@ we replace [[n_calls]] with [[n_min_calls]].
     write (u, "(3X,A,I0)") "No. of adapt grids   = ", object%n_adapt_grids
     write (u, "(3X,A,I0)") "No. of adapt weights = ", object%n_adapt_weights
     write (u, "(3X,A,L1)") "Verbose              = ", object%verbose
+    if (object%config%equivalences) then
+       call object%equivalences%write (u)
+    end if
     call object%list_pass%write (u, pacify)
     if (object%md5sum_adapted /= "") then
        write (u, "(1X,A,A,A)")  "MD5 sum (including results) = '", &
@@ -11965,9 +11969,9 @@ additional information about the multi-channel parameters.
     num_calls = 0; if (present (n_calls)) num_calls = n_calls
     n_bins = mci%config%n_bins_max
     call mci%base_startup_message (unit = unit, n_calls = n_calls)
-    if (mci%config%use_channel_equivalences) then
-       write (msg_buffer, "(A,2(1x,I0,1x,A))") &
-            "Integrator: Using channel equivalences"
+    if (mci%config%equivalences) then
+       write (msg_buffer, "(A)") &
+            "Integrator: Using VAMP2 channel equivalences"
        call msg_message (unit = unit)
     end if
     write (msg_buffer, "(A,2(1x,I0,1x,A),L1)") &
@@ -11991,9 +11995,8 @@ additional information about the multi-channel parameters.
     integer, intent(in) :: u
     write (u, "(1x,A)")  "MC Integrator is VAMP2"
     call write_separator (u)
-    if (mci%config%use_channel_equivalences) then
-       ! TODO
-       write (u, "(3x,A)") "No channel equivalences have not been implemented yet."
+    if (mci%config%equivalences) then
+       call mci%equivalences%write (u)
     else
        write (u, "(3x,A)") "No channel equivalences have been used."
     end if
@@ -12098,6 +12101,40 @@ We adjust the maximum number of bins [[n_bins_max]] according to [[n_calls]]
     class(mci_vamp2_t), intent(inout) :: mci
     type(phs_channel_t), dimension(:), intent(in) :: channel
     integer, intent(in) :: dim_offset
+    integer, dimension(:), allocatable :: perm, mode
+    integer :: n_channels, n_dim, n_equivalences
+    integer :: c, i, j, dest, src
+    n_channels = mci%n_channel
+    n_dim = mci%n_dim
+    n_equivalences = 0
+    do c = 1, n_channels
+       n_equivalences = n_equivalences + size (channel(c)%eq)
+    end do
+    mci%equivalences = vamp2_equivalences_t (&
+         n_eqv = n_equivalences, n_channel = n_channels, n_dim = n_dim)
+    allocate (perm (n_dim))
+    allocate (mode (n_dim))
+    perm(1:dim_offset) = [(i, i = 1, dim_offset)]
+    mode(1:dim_offset) = 0
+    c = 1
+    j = 0
+    do i = 1, n_equivalences
+       if (j < size (channel(c)%eq)) then
+          j = j + 1
+       else
+          c = c + 1
+          j = 1
+       end if
+       associate (eq => channel(c)%eq(j))
+         dest = c
+         src = eq%c
+         perm(dim_offset+1:) = eq%perm + dim_offset
+         mode(dim_offset+1:) = eq%mode
+         call mci%equivalences%set_equivalence &
+              (i, dest, src, perm, mode)
+       end associate
+    end do
+    call mci%equivalences%freeze ()
   end subroutine mci_vamp2_declare_equivalences
 
 @ %def mci_vamp2_declare_quivalences
@@ -12430,6 +12467,7 @@ read from file.
       if (.not. mci%integrator_from_file) then
          call mci%integrator%set_calls (current_pass%n_calls)
       end if
+      call mci%integrator%set_equivalences (mci%equivalences)
     end associate
   end subroutine mci_vamp2_init_integration
 
@@ -12744,7 +12782,6 @@ generating an event.
        else
           instance%event_weight = 1._default
        end if
-       instance%event_weight = 1
        instance%n_events = instance%n_events + 1
        instance%event_generated = .true.
     end select
@@ -13741,6 +13778,12 @@ Allocate an integrator according to the variable [[$integration_method]].
          var_list%get_rval (var_str ("channel_weights_power"))
     mci_vamp2_config%stratified = &
          var_list%get_lval (var_str ("?stratified"))
+    if (.not. dispatch_nlo) then
+       mci_vamp2_config%equivalences = &
+            var_list%get_lval (var_str ("?use_vamp_equivalences"))
+    else
+       mci_vamp2_config%equivalences = .false.
+    end if
     mci_vamp2_config%accuracy_goal = &
          var_list%get_rval (var_str ("accuracy_goal"))
     mci_vamp2_config%error_goal = &

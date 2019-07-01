@@ -45,6 +45,7 @@
    MD5 sum (proc)   = 'B88A275F2B403BA5A6D8C5159988A14F'
    MD5 sum (config) = 'DBE33E4C5AC78E2B2049E40696F682AD'
    Events requested  = 3
+   Event index       = 3
    Events total      = 3
      generated       = 3
      read            = 0

@@ -1517,6 +1517,21 @@ array.  If either one is zero (UNDEFINED), the match also succeeds.
   end function is_vector
 
 @ %def is vector
+@ Check if particle is elementary.
+<<PDG arrays: public>>=
+  public :: is_elementary
+<<PDG arrays: procedures>>=
+  elemental function is_elementary (pdg_nr)
+    integer, intent(in) :: pdg_nr
+    logical :: is_elementary
+    if (is_vector (pdg_nr) .or. is_fermion (pdg_nr) .or. pdg_nr == 25) then
+       is_elementary = .true.
+    else
+       is_elementary = .false.
+    end if
+  end function is_elementary
+
+@ %def is_elementary
 @ Check if particle is strongly interacting
 <<PDG arrays: pdg array: TBP>>=
   procedure :: has_colored_particles => pdg_array_has_colored_particles

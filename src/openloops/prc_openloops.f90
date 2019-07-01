@@ -1,6 +1,6 @@
-! WHIZARD 2.6.2 Dec 13 2017
+! WHIZARD 2.6.3 Feb 10 2018
 !
-! Copyright (C) 1999-2017 by
+! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -485,9 +485,9 @@ contains
   end subroutine prc_openloops_create_and_load_extra_libraries
 
   subroutine prc_openloops_compute_sqme_spin_c (object, &
-       i_flv, em, p, ren_scale, sqme_spin_c, bad_point)
+       i_flv, i_hel, em, p, ren_scale, sqme_spin_c, bad_point)
     class(prc_openloops_t), intent(inout) :: object
-    integer, intent(in) :: i_flv
+    integer, intent(in) :: i_flv, i_hel
     integer, intent(in) :: em
     type(vector4_t), intent(in), dimension(:) :: p
     real(default), intent(in) :: ren_scale
@@ -497,7 +497,7 @@ contains
     real(double), dimension(N_EXTERNAL) :: res
     real(double), dimension(16) :: res_munu
     real(default) :: alpha_s
-    if (object%i_spin_c(i_flv) > 0) then
+    if (object%i_spin_c(i_flv, i_hel) > 0) then
        mom = object%create_momentum_array (p)
        sqme_spin_c = zero
        if (vanishes (ren_scale)) call msg_fatal &
@@ -508,7 +508,7 @@ contains
        type is (openloops_driver_t)
           call driver%set_alpha_s (alpha_s)
           call driver%evaluate_spin_correlations_powheg &
-               (object%i_spin_c(i_flv), mom, em, res, res_munu)
+               (object%i_spin_c(i_flv, i_hel), mom, em, res, res_munu)
        end select
        sqme_spin_c = reshape (res_munu, (/4,4/))
        bad_point = .false.

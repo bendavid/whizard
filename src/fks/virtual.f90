@@ -1,6 +1,6 @@
-! WHIZARD 2.6.2 Dec 13 2017
+! WHIZARD 2.6.3 Feb 10 2018
 !
-! Copyright (C) 1999-2017 by
+! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -60,10 +60,11 @@ module virtual
     logical :: bad_point = .false.
     type(string_t) :: selection
     integer :: factorization_mode = NO_FACTORIZATION
+    real(default), dimension(:), allocatable :: sqme_born
+    real(default), dimension(:), allocatable :: sqme_virt_fin
     real(default), dimension(:,:,:), allocatable :: sqme_color_c
     real(default), dimension(:,:,:), allocatable :: sqme_charge_c
     logical :: use_internal_color_c = .false.
-    integer, dimension(:), allocatable :: me_index
     logical :: collinear_resonance_aware = .true.
     logical :: has_pdfs = .false.
   contains
@@ -74,8 +75,6 @@ module virtual
     procedure :: set_ellis_sexton_scale => virtual_set_ellis_sexton_scale
     procedure :: compute_n_sub => virtual_compute_n_sub
     procedure :: evaluate => virtual_evaluate
-    procedure :: get_i_virt => virtual_get_i_virt
-    procedure :: get_i_born_from_i_virt => virtual_get_i_born_from_i_virt
     procedure :: compute_eikonals => virtual_compute_eikonals
     procedure :: compute_eikonals_threshold => virtual_compute_eikonals_threshold
     procedure :: set_bad_point => virtual_set_bad_point
@@ -102,6 +101,8 @@ contains
     integer :: i_flv
     virt%n_legs = size (flv_born, 1); virt%n_flv = size (flv_born, 2)
     virt%n_in = n_in
+    allocate (virt%sqme_born (virt%n_flv))
+    allocate (virt%sqme_virt_fin (virt%n_flv))
     allocate (virt%sqme_color_c (virt%n_legs, virt%n_legs, virt%n_flv))
     allocate (virt%sqme_charge_c (virt%n_legs, virt%n_legs, virt%n_flv))
     allocate (virt%gamma_0 (virt%n_legs, virt%n_flv), &
@@ -117,7 +118,6 @@ contains
           virt%n_is_neutrinos(i_flv) = virt%n_is_neutrinos(i_flv) + 1
     end do
     virt%use_internal_color_c = use_internal_color_c
-    allocate (virt%me_index (virt%n_flv))
     select case (char (selection))
     case ("Full", "OLP", "Subtraction")
        virt%selection = selection
@@ -246,17 +246,16 @@ contains
   end function virtual_compute_n_sub
 
   subroutine virtual_evaluate (virt, reg_data, alpha_coupling, &
-         p_born, sqme, separate_alrs, sqme_virt)
+         p_born, separate_alrs, sqme_virt)
     class(virtual_t), intent(inout) :: virt
     type(region_data_t), intent(in) :: reg_data
     real(default), intent(in) :: alpha_coupling
     type(vector4_t), intent(in), dimension(:)  :: p_born
-    real(default), intent(in), dimension(:) :: sqme
     logical, intent(in) :: separate_alrs
     real(default), dimension(:), intent(inout) :: sqme_virt
     real(default) :: s, s_o_Q2
     real(default), dimension(reg_data%n_flv_born) :: QB, BI
-    integer :: i_flv, ii_flv, i_virt
+    integer :: i_flv, ii_flv
     QB = zero; BI = zero
     if (virt%bad_point) return
     if (debug2_active (D_VIRTUAL)) then
@@ -276,31 +275,29 @@ contains
           ii_flv = 1
        end if
 
-       i_virt = virt%get_i_virt (i_flv)
        if (virt%selection == var_str ("Full") .or. virt%selection == var_str ("OLP")) then
           !!! A factor of alpha_coupling/twopi is assumed to be included in vfin
-          sqme_virt(ii_flv) = sqme_virt(ii_flv) + sqme(i_virt)
+          sqme_virt(ii_flv) = sqme_virt(ii_flv) + virt%sqme_virt_fin(i_flv)
        end if
 
        if (virt%selection == var_str ("Full") .or. virt%selection == var_str ("Subtraction")) then
-          call virt%evaluate_initial_state (i_flv, i_virt, sqrt(s), reg_data, sqme, QB)
-          call virt%compute_collinear_contribution (i_flv, i_virt, p_born, &
-               sqrt(s), reg_data, sqme, QB)
+          call virt%evaluate_initial_state (i_flv, sqrt(s), reg_data, QB)
+          call virt%compute_collinear_contribution (i_flv, p_born, sqrt(s), reg_data, QB)
 
           select case (virt%factorization_mode)
           case (FACTORIZATION_THRESHOLD)
-             call virt%compute_eikonals_threshold (i_flv, p_born, s, s_o_Q2, reg_data, sqme, QB, BI)
+             call virt%compute_eikonals_threshold (i_flv, p_born, s, s_o_Q2, reg_data, QB, BI)
           case default
-             call virt%compute_massive_self_eikonals (i_flv, i_virt, p_born, s, reg_data, sqme, QB)
-             call virt%compute_eikonals (i_flv, i_virt, p_born, s, s_o_Q2, reg_data, sqme, BI)
+             call virt%compute_massive_self_eikonals (i_flv, p_born, s, reg_data, QB)
+             call virt%compute_eikonals (i_flv, p_born, s, s_o_Q2, reg_data, BI)
           end select
 
           if (debug2_active (D_VIRTUAL)) then
              print *, 'Evaluate i_flv: ', i_flv
-             print *, 'sqme_born: ', sqme (i_virt + 1)
+             print *, 'sqme_born: ', virt%sqme_born (i_flv)
              print *, 'Q * sqme_born: ', QB(i_flv)
              print *, 'BI: ', BI(i_flv)
-             print *, 'vfin: ', sqme (i_virt)
+             print *, 'vfin: ', virt%sqme_virt_fin (i_flv)
           end if
           sqme_virt(ii_flv) = &
                sqme_virt(ii_flv) + alpha_coupling / twopi * (QB(i_flv) + BI(i_flv))
@@ -326,44 +323,19 @@ contains
 
   end subroutine virtual_evaluate
 
-  function virtual_get_i_virt (virt, i_flv) result (i_virt)
-    integer :: i_virt
-    class(virtual_t), intent(in) :: virt
-    integer, intent(in) :: i_flv
-    if (virt%has_pdfs) then
-       i_virt = 1 + (virt%me_index(i_flv) - 1) * (virt%compute_n_sub () + 1)
-    else
-       i_virt = i_flv
-    end if
-  end function virtual_get_i_virt
-
-  function virtual_get_i_born_from_i_virt (virt, i_virt) result (i_born)
-    integer :: i_born
-    class(virtual_t), intent(in) :: virt
-    integer, intent(in) :: i_virt
-    if (virt%has_pdfs) then
-       i_born = i_virt + 1
-    else
-       i_born = i_virt + virt%n_flv
-    end if
-  end function virtual_get_i_born_from_i_virt
-
-  subroutine virtual_compute_eikonals (virtual, i_flv, i_virt, &
-           p_born, s, s_o_Q2, reg_data, sqme, BI)
+  subroutine virtual_compute_eikonals (virtual, i_flv, &
+           p_born, s, s_o_Q2, reg_data, BI)
     class(virtual_t), intent(inout) :: virtual
-    integer, intent(in) :: i_flv, i_virt
+    integer, intent(in) :: i_flv
     type(vector4_t), intent(in), dimension(:)  :: p_born
     real(default), intent(in) :: s, s_o_Q2
     type(region_data_t), intent(in) :: reg_data
-    real(default), intent(in), dimension(:) :: sqme
     real(default), intent(inout), dimension(:) :: BI
-    integer :: i_born
     integer :: i, j
     real(default) :: I_ij, BI_tmp
     BI_tmp = zero
-    i_born = virtual%get_i_born_from_i_virt (i_virt)
     associate (flst_born => reg_data%flv_born(i_flv), &
-           nlo_corr_type => reg_data%regions(1)%nlo_correction_type)
+            nlo_corr_type => reg_data%regions(1)%nlo_correction_type)
        do i = 1, virtual%n_legs
           do j = 1, virtual%n_legs
              if (i /= j) then
@@ -383,31 +355,31 @@ contains
                         print *, 'b_ij: ', virtual%sqme_charge_c (i, j, i_flv), 'I_ij: ', I_ij
                 end if
              end if
+                      if (debug2_active (D_VIRTUAL)) &
+                           print *, 'b_ij: ', i, j, virtual%sqme_color_c (i, j, i_flv), 'I_ij: ', I_ij
           end do
        end do
        if (virtual%use_internal_color_c .or. nlo_corr_type == "QED") &
-            BI_tmp = BI_tmp * sqme (i_born)
+            BI_tmp = BI_tmp * virtual%sqme_born (i_flv)
     end associate
     BI(i_flv) = BI(i_flv) + BI_tmp
   end subroutine virtual_compute_eikonals
 
   subroutine virtual_compute_eikonals_threshold (virtual, i_flv, &
-         p_born, s, s_o_Q2, reg_data, sqme, QB, BI)
+         p_born, s, s_o_Q2, reg_data, QB, BI)
     class(virtual_t), intent(in) :: virtual
     integer, intent(in) :: i_flv
     type(vector4_t), intent(in), dimension(:) :: p_born
     real(default), intent(in) :: s, s_o_Q2
     type(region_data_t), intent(in) :: reg_data
-    real(default), intent(in), dimension(:) :: sqme
     real(default), intent(inout), dimension(:) :: QB
     real(default), intent(inout), dimension(:) :: BI
     type(vector4_t), dimension(4) :: p_thr
-    integer :: i_born, leg
+    integer :: leg
     BI = zero; p_thr = get_threshold_momenta (p_born)
-    i_born = virtual%get_i_born_from_i_virt (virtual%get_i_virt (i_flv))
-    call compute_massive_self_eikonals (sqme (i_born), QB(i_flv))
+    call compute_massive_self_eikonals (virtual%sqme_born(i_flv), QB(i_flv))
     do leg = 1, 2
-       BI(i_flv) = BI(i_flv) + evaluate_leg_pair (ASSOCIATED_LEG_PAIR(leg), i_flv, i_born)
+       BI(i_flv) = BI(i_flv) + evaluate_leg_pair (ASSOCIATED_LEG_PAIR(leg), i_flv)
     end do
   contains
 
@@ -426,9 +398,9 @@ contains
       end do
     end subroutine compute_massive_self_eikonals
 
-    function evaluate_leg_pair (i_start, i_flv, i_born) result (b_ij_times_I)
+    function evaluate_leg_pair (i_start, i_flv) result (b_ij_times_I)
       real(default) :: b_ij_times_I
-      integer, intent(in) :: i_start, i_flv, i_born
+      integer, intent(in) :: i_start, i_flv
       real(default) :: I_ij
       integer :: i, j
       b_ij_times_I = zero
@@ -444,7 +416,7 @@ contains
             end if
          end do
       end do
-      if (virtual%use_internal_color_c) b_ij_times_I = b_ij_times_I * sqme (i_born)
+      if (virtual%use_internal_color_c) b_ij_times_I = b_ij_times_I * virtual%sqme_born (i_flv)
       if (debug2_active (D_VIRTUAL)) then
          print *, 'internal color: ', virtual%use_internal_color_c
          print *, 'b_ij_times_I =    ', b_ij_times_I
@@ -459,34 +431,31 @@ contains
      virt%bad_point = value
   end subroutine virtual_set_bad_point
 
-  subroutine virtual_evaluate_initial_state (virt, i_flv, i_virt, sqrts, reg_data, sqme, QB)
+  subroutine virtual_evaluate_initial_state (virt, i_flv, sqrts, reg_data, QB)
     class(virtual_t), intent(inout) :: virt
-    integer, intent(in) :: i_flv, i_virt
+    integer, intent(in) :: i_flv
     real(default), intent(in) :: sqrts
     type(region_data_t), intent(in) :: reg_data
-    real(default), intent(in), dimension(:) :: sqme
     real(default), intent(inout), dimension(:) :: QB
-    integer :: i, i_sqme
+    integer :: i
     if (virt%n_in == 2) then
-       i_sqme = virt%get_i_born_from_i_virt (i_virt)
        do i = 1, virt%n_in
           QB(i_flv) = QB(i_flv) - virt%gamma_0 (i, i_flv) * &
-               log(virt%fac_scale**2 / virt%es_scale2) * sqme (i_sqme)
+               log(virt%fac_scale**2 / virt%es_scale2) * virt%sqme_born (i_flv)
        end do
     end if
   end subroutine virtual_evaluate_initial_state
 
-  subroutine virtual_compute_collinear_contribution (virt, i_flv, i_virt, &
-           p_born, sqrts, reg_data, sqme, QB)
+  subroutine virtual_compute_collinear_contribution (virt, i_flv, &
+           p_born, sqrts, reg_data, QB)
     class(virtual_t), intent(inout) :: virt
-    integer, intent(in) :: i_flv, i_virt
+    integer, intent(in) :: i_flv
     type(vector4_t), dimension(:), intent(in) :: p_born
     real(default), intent(in) :: sqrts
     type(region_data_t), intent(in) :: reg_data
-    real(default), intent(in), dimension(:) :: sqme
     real(default), intent(inout), dimension(:) :: QB
     real(default) :: s1, s2, s3, s4, s5
-    integer :: alr, em, i_sqme
+    integer :: alr, em
     real(default) :: E_em, log_xi_max, E_tot2
     logical :: massive
     logical, dimension(virt%n_flv, virt%n_legs) :: evaluated
@@ -503,7 +472,6 @@ contains
        !!! Collinear terms only for massless particles
        if (massive) cycle
        E_em = p_born(em)%p(0)
-       i_sqme = virt%get_i_born_from_i_virt (i_virt)
        if (allocated (reg_data%alr_contributors)) then
           i_contr = reg_data%alr_to_i_contributor (alr)
           k_res = get_resonance_momentum (p_born, reg_data%alr_contributors(i_contr)%c)
@@ -524,7 +492,7 @@ contains
           s3 = two * log_xi_max * &
                (log_xi_max - log (virt%es_scale2 / E_tot2)) * virt%c_flv(em, i_flv)
           s4 = (log (virt%es_scale2 / E_tot2) - two * log_xi_max) * virt%gamma_0(em, i_flv)
-          QB(i_flv) = QB(i_flv) + (s1 + s2 + s3 + s4) * sqme(i_sqme)
+          QB(i_flv) = QB(i_flv) + (s1 + s2 + s3 + s4) * virt%sqme_born(i_flv)
        else
           if (debug_active (D_VIRTUAL)) &
               call msg_debug (D_VIRTUAL, "Using old-fashioned collinear subtraction")
@@ -534,31 +502,30 @@ contains
                log (two * E_em / sqrts)
           s4 = two * virt%c_flv(em,i_flv) * log (two * E_em / sqrts)**2
           s5 = two * virt%gamma_0(em,i_flv) * log (two * E_em / sqrts)
-          QB(i_flv) = QB(i_flv) + (s1 - s2 + s3 + s4 - s5) * sqme(i_sqme)
+          QB(i_flv) = QB(i_flv) + (s1 - s2 + s3 + s4 - s5) * virt%sqme_born(i_flv)
        end if
        evaluated(i_flv, em) = .true.
     end do
   end subroutine virtual_compute_collinear_contribution
 
-  subroutine virtual_compute_massive_self_eikonals (virt, i_flv, i_virt, &
-           p_born, s, reg_data, sqme, QB)
+  subroutine virtual_compute_massive_self_eikonals (virt, i_flv, &
+           p_born, s, reg_data,  QB)
     class(virtual_t), intent(inout) :: virt
-    integer, intent(in) :: i_flv, i_virt
+    integer, intent(in) :: i_flv
     type(vector4_t), intent(in), dimension(:) :: p_born
     real(default), intent(in) :: s
     type(region_data_t), intent(in) :: reg_data
-    real(default), intent(in), dimension(:) :: sqme
     real(default), intent(inout), dimension(:) :: QB
     real(default) :: term1, term2
-    integer :: i, i_born
+    integer :: i
     logical :: massive
-    i_born = virt%get_i_born_from_i_virt (i_virt)
     do i = 1, virt%n_legs
        massive = reg_data%flv_born(i_flv)%massive(i)
        if (massive) then
           term1 = log(s / virt%es_scale2)
           term2 = 0.5_default * I_m_eps (p_born(i))
-          QB(i_flv) = QB(i_flv) - (virt%c_flv (i, i_flv) * (term1 - term2)) * sqme (i_born)
+          QB(i_flv) = QB(i_flv) - (virt%c_flv (i, i_flv) * (term1 - term2)) * &
+               virt%sqme_born (i_flv)
        end if
     end do
   end subroutine virtual_compute_massive_self_eikonals

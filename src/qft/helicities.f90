@@ -1,6 +1,6 @@
-! WHIZARD 2.6.2 Dec 13 2017
+! WHIZARD 2.6.3 Feb 10 2018
 !
-! Copyright (C) 1999-2017 by
+! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -47,6 +47,7 @@ module helicities
      procedure, private :: helicity_init_different
      procedure :: undefine => helicity_undefine
      procedure :: diagonalize => helicity_diagonalize
+     procedure :: flip => helicity_flip
      procedure :: get_indices => helicity_get_indices
      procedure :: write => helicity_write
      procedure :: write_raw => helicity_write_raw
@@ -120,6 +121,12 @@ contains
     class(helicity_t), intent(inout) :: hel
     hel%h2 = hel%h1
   end subroutine helicity_diagonalize
+
+  elemental subroutine helicity_flip (hel)
+    class(helicity_t), intent(inout) :: hel
+    hel%h1 = - hel%h1
+    hel%h2 = - hel%h2
+  end subroutine helicity_flip
 
   subroutine helicity_get_indices (hel, h1, h2)
     class(helicity_t), intent(in) :: hel

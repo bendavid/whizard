@@ -1,6 +1,6 @@
-! WHIZARD 2.6.2 Dec 13 2017
+! WHIZARD 2.6.3 Feb 10 2018
 !
-! Copyright (C) 1999-2017 by
+! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -110,6 +110,7 @@ module cascades2
      logical :: keep = .true.
      logical :: empty = .true.
    contains
+     procedure :: final => tree_final
      procedure :: add_entry_from_numbers => tree_add_entry_from_numbers
      procedure :: add_entry_from_node => tree_add_entry_from_node
      generic :: add_entry =>  add_entry_from_numbers, add_entry_from_node
@@ -123,7 +124,7 @@ module cascades2
   end type graph_t
 
   type, extends (graph_t) :: feyngraph_t
-     character (len=FEYNGRAPH_LEN) :: omega_feyngraph_output
+     type (string_t) :: omega_feyngraph_output
      type (f_node_t), pointer :: root => null ()
      type (feyngraph_t), pointer :: next => null()
      type (kingraph_t), pointer :: kin_first => null ()
@@ -146,6 +147,7 @@ module cascades2
      type (tree_t) :: tree
      type (grove_prop_t) :: grove_prop
      logical :: inverse = .false.
+     integer :: prc_component = 0
      contains
      procedure :: final => kingraph_final
      procedure :: write_file_format => kingraph_write_file_format
@@ -261,10 +263,28 @@ module cascades2
      procedure :: final => f_node_list_final
   end type f_node_list_t
 
+  type :: compare_tree_entry_t
+     type (compare_tree_entry_t), dimension(:), pointer :: entry => null ()
+     type (kingraph_ptr_t), dimension(:), allocatable :: graph_entry
+   contains
+       procedure :: final => compare_tree_entry_final
+       procedure :: check_kingraph => compare_tree_entry_check_kingraph
+  end type compare_tree_entry_t
+
+  type :: compare_tree_t
+    integer :: depth = 3
+    type (compare_tree_entry_t), dimension(:), pointer :: entry => null ()
+  contains
+      procedure :: final => compare_tree_final
+      procedure :: check_kingraph => compare_tree_check_kingraph
+  end type compare_tree_t
+
   type :: grove_t
      type (grove_prop_t) :: grove_prop
      type (grove_t), pointer :: next => null ()
      type (kingraph_t), pointer :: first => null ()
+     type (kingraph_t), pointer :: last => null ()
+     type (compare_tree_t) :: compare_tree
      !$ integer (OMP_lock_kind) :: lock
    contains
      procedure :: final => grove_final
@@ -283,6 +303,7 @@ module cascades2
      procedure :: get_grove => grove_list_get_grove
      procedure :: add_kingraph => grove_list_add_kingraph
      procedure :: add_feyngraph => grove_list_add_feyngraph
+     procedure :: merge => grove_list_merge
      procedure :: rebuild => grove_list_rebuild
   end type grove_list_t
 
@@ -396,6 +417,13 @@ contains
     class(part_prop_t), intent(inout) :: part
     part%anti => null ()
   end subroutine part_prop_final
+
+  subroutine tree_final (tree)
+    class (tree_t), intent (inout) :: tree
+    if (allocated (tree%bc)) deallocate (tree%bc)
+    if (allocated (tree%pdg)) deallocate (tree%pdg)
+    if (allocated (tree%mapping)) deallocate (tree%mapping)
+  end subroutine tree_final
 
   subroutine tree_assign (tree1, tree2)
     type (tree_t), intent (inout) :: tree1
@@ -521,6 +549,7 @@ contains
     graph%root => null ()
     graph%next => null ()
     graph%grove_next => null ()
+    call graph%tree%final ()
   end subroutine kingraph_final
 
   subroutine k_node_entry_final (entry)
@@ -660,6 +689,7 @@ contains
        enddo
     endif
     if (.not. associated (ptr_to_node)) then
+       !$OMP CRITICAL (add_f_node_entry)
        if (list%n_entries == 0) then
           allocate (list%first)
           list%last => list%first
@@ -673,6 +703,7 @@ contains
        allocate (list%last%node)
        call list%last%node%set_index ()
        ptr_to_node => list%last%node
+       !$OMP END CRITICAL (add_f_node_entry)
     end if
   end subroutine f_node_list_add_entry
 
@@ -834,9 +865,143 @@ contains
     enddo
   end subroutine f_node_list_final
 
+  subroutine compare_tree_final (ctree)
+    class (compare_tree_t), intent (inout) :: ctree
+    integer :: i
+    if (associated (ctree%entry)) then
+       do i=1, size (ctree%entry)
+          call ctree%entry(i)%final ()
+          deallocate (ctree%entry)
+       end do
+    endif
+  end subroutine compare_tree_final
+
+  recursive subroutine compare_tree_entry_final (ct_entry)
+    class (compare_tree_entry_t), intent (inout) :: ct_entry
+    integer :: i
+    if (associated (ct_entry%entry)) then
+       do i=1, size (ct_entry%entry)
+          call ct_entry%entry(i)%final ()
+       enddo
+       deallocate (ct_entry%entry)
+    else
+       deallocate (ct_entry%graph_entry)
+    end if
+  end subroutine compare_tree_entry_final
+
+  subroutine compare_tree_check_kingraph (ctree, kingraph, model, preliminary)
+    class (compare_tree_t), intent (inout) :: ctree
+    type (kingraph_t), intent (inout), pointer :: kingraph
+    type (model_data_t), intent (in) :: model
+    logical, intent (in) :: preliminary
+    integer :: i
+    integer :: pos
+    integer(TC) :: sz
+    integer(TC), dimension(:), allocatable :: identifier
+    if (.not. associated (ctree%entry)) then
+       sz = 0_TC
+       do i = size(kingraph%tree%bc), 1, -1
+          sz = ior (sz, kingraph%tree%bc(i))
+       enddo
+       if (sz > 0) then
+          allocate (ctree%entry (sz))
+       else
+          call msg_bug ("Compare tree could not be created")
+       endif
+    endif
+    allocate (identifier (ctree%depth))
+    pos = 0
+    do i = size(kingraph%tree%bc), 1, -1
+       if (popcnt (kingraph%tree%bc(i)) /= 1) then
+          pos = pos + 1
+          identifier(pos) = kingraph%tree%bc(i)
+          if (pos == ctree%depth) exit
+       endif
+    enddo
+    if (size (identifier) > 1) then
+       call ctree%entry(identifier(1))%check_kingraph (kingraph, model, &
+            preliminary, identifier(1), identifier(2:))
+    else if (size (identifier) == 1) then
+       call ctree%entry(identifier(1))%check_kingraph (kingraph, model, preliminary)
+    endif
+    deallocate (identifier)
+  end subroutine compare_tree_check_kingraph
+
+  recursive subroutine compare_tree_entry_check_kingraph (ct_entry, kingraph, &
+       model, preliminary, subtree_size, identifier)
+    class (compare_tree_entry_t), intent (inout) :: ct_entry
+    type (kingraph_t), pointer, intent (inout) :: kingraph
+    type (model_data_t), intent (in) :: model
+    logical, intent (in) :: preliminary
+    integer, intent (in), optional :: subtree_size
+    integer, dimension (:), intent (in), optional :: identifier
+    if (present (identifier)) then
+       if (.not. associated (ct_entry%entry)) &
+            allocate (ct_entry%entry(subtree_size))
+       if (size (identifier) > 1) then
+          call ct_entry%entry(identifier(1))%check_kingraph (kingraph, &
+               model, preliminary, identifier(1), identifier(2:))
+       else if (size (identifier) == 1) then
+          call ct_entry%entry(identifier(1))%check_kingraph (kingraph, &
+               model, preliminary)
+       endif
+    else
+       if (allocated (ct_entry%graph_entry)) then
+          call perform_check
+       else
+          allocate (ct_entry%graph_entry(1))
+          ct_entry%graph_entry(1)%graph => kingraph
+       endif
+    endif
+
+    contains
+
+      subroutine perform_check
+        integer :: i
+        logical :: rebuild
+        rebuild = .true.
+        do i=1, size(ct_entry%graph_entry)
+           if (ct_entry%graph_entry(i)%graph%keep) then
+              if (preliminary .or. &
+                   ct_entry%graph_entry(i)%graph%prc_component /= kingraph%prc_component) then
+                 call kingraph_select (ct_entry%graph_entry(i)%graph, kingraph, model, preliminary)
+                 if (.not. kingraph%keep) then
+                    return
+                 else if (rebuild .and. .not. ct_entry%graph_entry(i)%graph%keep) then
+                    ct_entry%graph_entry(i)%graph => kingraph
+                    rebuild = .false.
+                 endif
+              endif
+           endif
+        enddo
+        if (rebuild) call rebuild_graph_entry
+      end subroutine perform_check
+
+      subroutine rebuild_graph_entry
+        type (kingraph_ptr_t), dimension(:), allocatable :: tmp_ptr
+        integer :: i
+        integer :: pos
+        allocate (tmp_ptr(size(ct_entry%graph_entry)+1))
+        pos = 0
+        do i=1, size(ct_entry%graph_entry)
+           pos = pos + 1
+           tmp_ptr(pos)%graph => ct_entry%graph_entry(i)%graph
+        enddo
+        pos = pos + 1
+        tmp_ptr(pos)%graph => kingraph
+        deallocate (ct_entry%graph_entry)
+        allocate (ct_entry%graph_entry (pos))
+        do i=1, pos
+           ct_entry%graph_entry(i)%graph => tmp_ptr(i)%graph
+        enddo
+        deallocate (tmp_ptr)
+      end subroutine rebuild_graph_entry
+  end subroutine compare_tree_entry_check_kingraph
+
   subroutine grove_final (grove)
     class(grove_t), intent(inout) :: grove
     grove%first => null ()
+    grove%last  => null ()
     grove%next => null ()
   end subroutine grove_final
 
@@ -844,45 +1009,48 @@ contains
     class(grove_list_t), intent(inout) :: list
     class(grove_t), pointer :: current
     do while (associated (list%first))
-       call list%first%final ()
        current => list%first
        list%first => list%first%next
+       call current%final ()
        deallocate (current)
     end do
   end subroutine grove_list_final
 
-  subroutine feyngraph_set_final (set)
+  recursive subroutine feyngraph_set_final (set)
     class(feyngraph_set_t), intent(inout) :: set
     class(feyngraph_t), pointer :: current
     integer :: i
     if (associated (set%fset)) then
        do i=1, size (set%fset)
-          do while (associated (set%fset(i)%first))
-             current => set%fset(i)%first
-             set%fset(i)%first => set%fset(i)%first%next
-             call current%final ()
-             deallocate (current)
-          end do
-          set%fset(i)%model => null ()
-          if (allocated (set%fset(i)%flv)) deallocate (set%fset(i)%flv)
-          set%fset(i)%particle => null ()
-          set%fset(i)%last => null ()
-          set%fset(i)%grove_list => null ()
-          call msg_debug (D_PHASESPACE, "f_node_list: final")
-          call set%fset(i)%f_node_list%final ()
+          call set%fset(i)%final ()
        enddo
        deallocate (set%fset)
-       set%model => null ()
-       if (allocated (set%flv)) deallocate (set%flv)
-       if (associated (set%particle)) then
-          do i = 1, size (set%particle)
-             call set%particle(i)%final ()
-          end do
-          deallocate (set%particle)
-       endif
+    else
+       set%particle => null ()
+       set%grove_list => null ()
+    endif
+    set%model => null ()
+    if (allocated (set%flv)) deallocate (set%flv)
+    set%last => null ()
+    do while (associated (set%first))
+       current => set%first
+       set%first => set%first%next
+       call current%final ()
+       deallocate (current)
+    end do
+    if (associated (set%particle)) then
+       do i = 1, size (set%particle)
+          call set%particle(i)%final ()
+       end do
+       deallocate (set%particle)
+    endif
+    if (associated (set%grove_list)) then
        call msg_debug (D_PHASESPACE, "grove_list: final")
        call set%grove_list%final ()
+       deallocate (set%grove_list)
     endif
+    call msg_debug (D_PHASESPACE, "f_node_list: final")
+    call set%f_node_list%final ()
   end subroutine feyngraph_set_final
 
   subroutine feyngraph_set_build (feyngraph_set, u_in)
@@ -905,7 +1073,7 @@ contains
           read (unit=u_in, fmt='(A)', iostat=stat, advance='yes') omega_feyngraph_output
           if (omega_feyngraph_output(1:1) == '(') then
              allocate (feyngraph_set%first)
-             feyngraph_set%first%omega_feyngraph_output = omega_feyngraph_output
+             feyngraph_set%first%omega_feyngraph_output = trim(omega_feyngraph_output)
              feyngraph_set%last => feyngraph_set%first
              feyngraph_set%n_graphs = feyngraph_set%n_graphs + 1
           else
@@ -929,7 +1097,7 @@ contains
                 if (.not. present) then
                    allocate (feyngraph_set%last%next)
                    feyngraph_set%last => feyngraph_set%last%next
-                   feyngraph_set%last%omega_feyngraph_output = omega_feyngraph_output
+                   feyngraph_set%last%omega_feyngraph_output = trim(omega_feyngraph_output)
                    feyngraph_set%n_graphs = feyngraph_set%n_graphs + 1
                 endif
                 read (unit=u_in, fmt='(A)', iostat=stat, advance='yes') omega_feyngraph_output
@@ -1491,7 +1659,7 @@ contains
     type (feyngraph_set_t), intent (inout) :: feyngraph_set
     type (feyngraph_t), pointer, intent (inout) :: feyngraph
     call node_construct_subtree_rec (feyngraph_set, feyngraph, &
-         feyngraph%omega_feyngraph_output, feyngraph%root)
+         char(feyngraph%omega_feyngraph_output), feyngraph%root)
     feyngraph%n_nodes = feyngraph%root%n_subtree_nodes
   end subroutine feyngraph_construct
 
@@ -1749,6 +1917,7 @@ contains
     integer :: n_obj
     integer :: pos
     integer :: new_size, size1, size2
+    integer, dimension(:), allocatable :: match
     if (allocated (dag_node%f_node)) return
     pos = minloc (dag_node%string%t%type, 1,dag_node%string%t%type == NODE_TK)
     particle_label = char (dag_node%string%t(pos))
@@ -1781,8 +1950,12 @@ contains
              call dag%combination(i_obj(1))%make_f_nodes(feyngraph_set, dag, daughter1_ptr, daughter2_ptr)
           endif
           allocate (dag_node%f_node(size(daughter1_ptr)))
+          !$OMP PARALLEL DO
           do i=1, size(dag_node%f_node)
              call feyngraph_set%f_node_list%add_entry (char(dag_node%string), dag_node%f_node(i)%node, .false.)
+          enddo
+          !$OMP END PARALLEL DO
+          do i=1, size(dag_node%f_node)
              call dag_node%f_node(i)%node%set_index ()
              dag_node%f_node(i)%node%particle_label = particle_label
              call dag_node%f_node(i)%node%assign_particle_properties (feyngraph_set)
@@ -1808,23 +1981,46 @@ contains
              call dag%options(i_obj(2))%make_f_nodes (feyngraph_set, dag, daughter2_ptr)
           endif
 !!! make all combinations of daughters
-          size1 = size (daughter1_ptr)
-          size2 = size (daughter2_ptr)
+          size1 = 0
+          do i=1, size (daughter1_ptr)
+             if (daughter1_ptr(i)%node%keep) size1 = size1 + 1
+          enddo
+          size2 = 0
+          do i=1, size (daughter2_ptr)
+             if (daughter2_ptr(i)%node%keep) size2 = size2 + 1
+          enddo
           new_size = size1*size2
           allocate (dag_node%f_node(new_size))
           pos = 0
-          do i = 1, size1
-             do j = 1, size2
-                pos = pos + 1
-                call feyngraph_set%f_node_list%add_entry(char(dag_node%string), dag_node%f_node(pos)%node, .false.)
-                call dag_node%f_node(pos)%node%set_index ()
-                dag_node%f_node(pos)%node%particle_label = particle_label
-                call dag_node%f_node(pos)%node%assign_particle_properties (feyngraph_set)
-                dag_node%f_node(pos)%node%daughter1 => daughter1_ptr(i)%node
-                dag_node%f_node(pos)%node%daughter2 => daughter2_ptr(j)%node
-                dag_node%f_node(pos)%node%n_subtree_nodes = daughter1_ptr(i)%node%n_subtree_nodes &
-                  + daughter2_ptr(j)%node%n_subtree_nodes + 1
-             enddo
+          do i = 1, size (daughter1_ptr)
+             if (daughter1_ptr(i)%node%keep) then
+                do j = 1, size (daughter2_ptr)
+                   if (daughter2_ptr(j)%node%keep) then
+                      pos = pos + 1
+                      call feyngraph_set%f_node_list%add_entry(char(dag_node%string), &
+                           dag_node%f_node(pos)%node, .false.)
+                      call dag_node%f_node(pos)%node%set_index ()
+                      dag_node%f_node(pos)%node%particle_label = particle_label
+                      call dag_node%f_node(pos)%node%assign_particle_properties (feyngraph_set)
+                      dag_node%f_node(pos)%node%daughter1 => daughter1_ptr(i)%node
+                      dag_node%f_node(pos)%node%daughter2 => daughter2_ptr(j)%node
+                      dag_node%f_node(pos)%node%n_subtree_nodes = daughter1_ptr(i)%node%n_subtree_nodes &
+                           + daughter2_ptr(j)%node%n_subtree_nodes + 1
+                      call feyngraph_set%model%match_vertex (daughter1_ptr(i)%node%particle%pdg, &
+                           daughter2_ptr(j)%node%particle%pdg, match)
+                      if (allocated (match)) then
+                         if (any (abs(match) == abs(dag_node%f_node(pos)%node%particle%pdg))) then
+                            dag_node%f_node(pos)%node%keep = .true.
+                         else
+                            dag_node%f_node(pos)%node%keep = .false.
+                         endif
+                         deallocate (match)
+                      else
+                         dag_node%f_node(pos)%node%keep = .false.
+                      endif
+                   endif
+                enddo
+             endif
           enddo
           deallocate (daughter1_ptr, daughter2_ptr)
        endif
@@ -2498,6 +2694,7 @@ contains
     type (feyngraph_set_t), intent (inout) :: feyngraph_set
     if (.not. (kingraph%root%daughter1%keep .and. kingraph%root%daughter2%keep)) then
        kingraph%keep = .false.
+       call kingraph%tree%final ()
     endif
     if (kingraph%keep) then
        kingraph%root%on_shell = .true.
@@ -2508,7 +2705,8 @@ contains
             kingraph%root%daughter1%ext_mass_sum + &
             kingraph%root%daughter2%ext_mass_sum
        if (kingraph%root%ext_mass_sum >= feyngraph_set%phs_par%sqrts) then
-          kingraph%root%keep = .false.; kingraph%keep = .false.; return
+          kingraph%root%keep = .false.
+          kingraph%keep = .false.; call kingraph%tree%final (); return
        endif
        call kingraph%root%subtree%add_entry (kingraph%root)
        kingraph%root%multiplicity &
@@ -2524,7 +2722,8 @@ contains
             = kingraph%root%daughter1%n_log_enhanced &
             + kingraph%root%daughter2%n_log_enhanced
        if (kingraph%root%n_off_shell > feyngraph_set%phs_par%off_shell) then
-          kingraph%root%keep = .false.; kingraph%keep = .false.; return
+          kingraph%root%keep = .false.
+          kingraph%keep = .false.; call kingraph%tree%final (); return
        else
           kingraph%grove_prop%multiplicity = &
                kingraph%root%multiplicity
@@ -2544,7 +2743,10 @@ contains
     type (kingraph_t), pointer, intent (inout) :: kingraph
     type (feyngraph_set_t), intent (inout) :: feyngraph_set
     call node_compute_t_line (feyngraph, kingraph, kingraph%root, feyngraph_set)
-    if (.not. kingraph%root%keep) kingraph%keep = .false.
+    if (.not. kingraph%root%keep) then
+       kingraph%keep = .false.
+       call kingraph%tree%final ()
+    endif
     if (kingraph%keep) kingraph%tree = kingraph%root%subtree
   end subroutine kingraph_compute_mappings_t_line
 
@@ -2628,9 +2830,11 @@ contains
           call node%subtree%add_entry (node)
           call node_count_specific_properties (node)
           if (node%n_off_shell > feyngraph_set%phs_par%off_shell) then
-             node%keep = .false.; kingraph%keep = .false.; return
+             node%keep = .false.
+             kingraph%keep = .false.; call kingraph%tree%final (); return
           else if (node%n_t_channel > feyngraph_set%phs_par%t_channel) then
-             node%keep = .false.; kingraph%keep = .false.; return
+             node%keep = .false.;
+             kingraph%keep = .false.; call kingraph%tree%final (); return
           endif
        else
           node%mapping = EXTERNAL_PRT
@@ -2640,7 +2844,8 @@ contains
                + s_node%ext_mass_sum
           node%effective_mass = node%particle%mass
           if (.not. (node%ext_mass_sum < feyngraph_set%phs_par%sqrts)) then
-             node%keep = .false.; kingraph%keep = .false.; return
+             node%keep = .false.
+             kingraph%keep = .false.; call kingraph%tree%final (); return
           endif
           if (kingraph%keep) then
              if (t_node%incoming .and. s_node%log_enhanced) then
@@ -2704,9 +2909,11 @@ contains
                = node%daughter1%n_t_channel &
                + node%daughter2%n_t_channel
           if (node%n_off_shell > feyngraph_set%phs_par%off_shell) then
-             node%keep = .false.; kingraph%keep = .false.; return
+             node%keep = .false.
+             kingraph%keep = .false.; call kingraph%tree%final (); return
           else if (node%n_t_channel > feyngraph_set%phs_par%t_channel) then
-             node%keep = .false.; kingraph%keep = .false.; return
+             node%keep = .false.
+             kingraph%keep = .false.; call kingraph%tree%final (); return
           else
              kingraph%grove_prop%multiplicity = node%multiplicity
              kingraph%grove_prop%n_resonances = node%n_resonances
@@ -2841,9 +3048,8 @@ contains
           return_grove => grove_list%first
           !$ call OMP_unset_lock (grove_list%lock)
           return
-       else
-          !$ call OMP_unset_lock (grove_list%lock)
        endif
+       !$ call OMP_unset_lock (grove_list%lock)
     endif
     current_grove => grove_list%first
     do while (associated (current_grove))
@@ -2857,12 +3063,13 @@ contains
              allocate (current_grove%next)
              !$ call OMP_init_lock (current_grove%next%lock)
              current_grove%next%grove_prop = kingraph%grove_prop
+             if (size (kingraph%tree%bc) < 9) &
+                  current_grove%compare_tree%depth = 1
              return_grove => current_grove%next
              !$ call OMP_unset_lock (current_grove%lock)
              exit
-          else
-             !$ call OMP_unset_lock (current_grove%lock)
           endif
+          !$ call OMP_unset_lock (current_grove%lock)
        endif
        if (associated (current_grove%next)) then
           current_grove => current_grove%next
@@ -2870,10 +3077,11 @@ contains
     enddo
   end subroutine grove_list_get_grove
 
-  subroutine grove_list_add_kingraph (grove_list, kingraph, preliminary, model)
+  subroutine grove_list_add_kingraph (grove_list, kingraph, preliminary, check, model)
     class (grove_list_t), intent (inout) :: grove_list
     type (kingraph_t), pointer, intent (inout) :: kingraph
     logical, intent (in) :: preliminary
+    logical, intent (in) :: check
     type (model_data_t), optional, intent (in) :: model
     type (grove_t), pointer :: grove
     type (kingraph_t), pointer :: current
@@ -2881,48 +3089,60 @@ contains
     grove => null ()
     current => null ()
     if (preliminary) then
-       !$OMP CRITICAL (increase_index)
-       index = index + 1
-       !$OMP END CRITICAL (increase_index)
-       kingraph%index = index
-    else
-       call kingraph%assign_resonance_hash ()
+       if (kingraph%index == 0) then
+          !$OMP CRITICAL (increase_index)
+          index = index + 1
+          kingraph%index = index
+          !$OMP END CRITICAL (increase_index)
+       endif
     endif
     call grove_list%get_grove (kingraph, grove, preliminary)
     !$ call OMP_set_lock (grove%lock)
-    if (associated (grove%first)) then
-       current => grove%first
-       do while (associated (current))
-          if (preliminary .and. current%keep) then
-             call kingraph_select (current, kingraph, model)
-             if (.not. kingraph%keep) exit
-          endif
-          if (associated (current%grove_next)) then
-             current => current%grove_next
-          else
-             current%grove_next => kingraph
-             exit
-          endif
-       enddo
-    else
-       grove%first => kingraph
+    if (check) then
+       call grove%compare_tree%check_kingraph (kingraph, model, preliminary)
+    endif
+    if (kingraph%keep) then
+       if (associated (grove%first)) then
+          grove%last%grove_next => kingraph
+          grove%last => kingraph
+       else
+          grove%first => kingraph
+          grove%last => kingraph
+       endif
     endif
     !$ call OMP_unset_lock (grove%lock)
   end subroutine grove_list_add_kingraph
 
   subroutine grove_list_add_feyngraph (grove_list, feyngraph, model)
     class (grove_list_t), intent (inout) :: grove_list
-    type (feyngraph_t), intent (in) :: feyngraph
+    type (feyngraph_t), intent (inout) :: feyngraph
     type (model_data_t), intent (in) :: model
-    type (kingraph_t), pointer :: current_kin_graph
-    current_kin_graph => feyngraph%kin_first
-    do while (associated (current_kin_graph))
-       if (current_kin_graph%keep) then
-          call grove_list%add_kingraph (current_kin_graph, &
-               .true., model)
+    type (kingraph_t), pointer :: current_kingraph, add_kingraph
+    do while (associated (feyngraph%kin_first))
+       if (feyngraph%kin_first%keep) then
+          add_kingraph => feyngraph%kin_first
+          feyngraph%kin_first => feyngraph%kin_first%next
+          add_kingraph%next => null ()
+          call grove_list%add_kingraph (kingraph=add_kingraph, &
+               preliminary=.true., check=.true., model=model)
+       else
+          exit
        endif
-       current_kin_graph => current_kin_graph%next
     enddo
+    if (associated (feyngraph%kin_first)) then
+       current_kingraph => feyngraph%kin_first
+       do while (associated (current_kingraph%next))
+          if (current_kingraph%next%keep) then
+             add_kingraph => current_kingraph%next
+             current_kingraph%next => current_kingraph%next%next
+             add_kingraph%next => null ()
+             call grove_list%add_kingraph (kingraph=add_kingraph, &
+                  preliminary=.true., check=.true., model=model)
+          else
+             current_kingraph => current_kingraph%next
+          endif
+       enddo
+    endif
   end subroutine grove_list_add_feyngraph
 
   function grove_prop_match (grove_prop1, grove_prop2) result (gp_match)
@@ -2968,9 +3188,9 @@ contains
        if (abs(kingraph1%tree%pdg(i)) /= abs(kingraph2%tree%pdg(i))) then
           equal = .false.;
           select case (kingraph1%tree%mapping(i))
-          case (S_CHANNEL, RADIATION, EXTERNAL_PRT)
+          case (S_CHANNEL, RADIATION)
              select case (kingraph2%tree%mapping(i))
-             case (S_CHANNEL, RADIATION, EXTERNAL_PRT)
+             case (S_CHANNEL, RADIATION)
                 return
              end select
           end select
@@ -2978,65 +3198,99 @@ contains
     enddo
     if (equal) then
        kingraph2%keep = .false.
+       call kingraph2%tree%final ()
     else
        eqv = .true.
     endif
   end function kingraph_eqv
 
-  subroutine kingraph_select (kingraph1, kingraph2, model)
+  subroutine kingraph_select (kingraph1, kingraph2, model, preliminary)
     type (kingraph_t), intent (inout) :: kingraph1
     type (kingraph_t), intent (inout) :: kingraph2
     type (model_data_t), intent (in) :: model
+    logical, intent (in) :: preliminary
     integer(TC), dimension(:), allocatable :: tmp_bc, daughter_bc
     integer, dimension(:), allocatable :: tmp_pdg, daughter_pdg
     integer, dimension (:), allocatable :: pdg_match
     integer :: i, j
     integer :: n_ext1, n_ext2
     if (kingraph_eqv (kingraph1, kingraph2)) then
+       if (.not. preliminary) then
+          kingraph2%keep = .false.; call kingraph2%tree%final ()
+          return
+       endif
        do i=1, size (kingraph1%tree%bc)
           if (abs(kingraph1%tree%pdg(i)) /= abs(kingraph2%tree%pdg(i))) then
-             n_ext1 = popcnt (kingraph1%tree%bc(i))
-             n_ext2 = n_ext1
-             do j=i+1, size (kingraph1%tree%bc)
-                if (abs(kingraph1%tree%pdg(j)) /= abs(kingraph2%tree%pdg(j))) then
-                   n_ext2 = popcnt (kingraph1%tree%bc(j))
-                   if (n_ext2 < n_ext1) exit
+             if (kingraph1%tree%mapping(i) /= EXTERNAL_PRT) then
+                n_ext1 = popcnt (kingraph1%tree%bc(i))
+                n_ext2 = n_ext1
+                do j=i+1, size (kingraph1%tree%bc)
+                   if (abs(kingraph1%tree%pdg(j)) /= abs(kingraph2%tree%pdg(j))) then
+                      n_ext2 = popcnt (kingraph1%tree%bc(j))
+                      if (n_ext2 < n_ext1) exit
+                   endif
+                enddo
+                if (n_ext2 < n_ext1) cycle
+                allocate (tmp_bc(i-1))
+                tmp_bc = kingraph1%tree%bc(:i-1)
+                allocate (tmp_pdg(i-1))
+                tmp_pdg = kingraph1%tree%pdg(:i-1)
+                do j=i-1, 1, - 1
+                   where (iand (tmp_bc(:j-1),tmp_bc(j)) /= 0 &
+                        .or. iand(tmp_bc(:j-1),kingraph1%tree%bc(i)) == 0)
+                      tmp_bc(:j-1) = 0
+                      tmp_pdg(:j-1) = 0
+                   endwhere
+                enddo
+                allocate (daughter_bc(size(pack(tmp_bc, tmp_bc /= 0))))
+                daughter_bc = pack (tmp_bc, tmp_bc /= 0)
+                allocate (daughter_pdg(size(pack(tmp_pdg, tmp_pdg /= 0))))
+                daughter_pdg = pack (tmp_pdg, tmp_pdg /= 0)
+                if (size (daughter_pdg) == 2) then
+                   call model%match_vertex(daughter_pdg(1), daughter_pdg(2), pdg_match)
                 endif
-             enddo
-             if (n_ext2 < n_ext1) cycle
-             allocate (tmp_bc(i-1))
-             tmp_bc = kingraph1%tree%bc(:i-1)
-             allocate (tmp_pdg(i-1))
-             tmp_pdg = kingraph1%tree%pdg(:i-1)
-             do j=i-1, 1, - 1
-                where (iand (tmp_bc(:j-1),tmp_bc(j)) /= 0 &
-                     .or. iand(tmp_bc(:j-1),kingraph1%tree%bc(i)) == 0)
-                   tmp_bc(:j-1) = 0
-                   tmp_pdg(:j-1) = 0
-                endwhere
-             enddo
-             allocate (daughter_bc(size(pack(tmp_bc, tmp_bc /= 0))))
-             daughter_bc = pack (tmp_bc, tmp_bc /= 0)
-             allocate (daughter_pdg(size(pack(tmp_pdg, tmp_pdg /= 0))))
-             daughter_pdg = pack (tmp_pdg, tmp_pdg /= 0)
-             if (size (daughter_pdg) == 2) then
-                call model%match_vertex(daughter_pdg(1), daughter_pdg(2), pdg_match)
+                do j=1, size (pdg_match)
+                   if (abs(pdg_match(j)) == abs(kingraph1%tree%pdg(i))) then
+                      kingraph2%keep = .false.; call kingraph2%tree%final ()
+                      exit
+                   else if (abs(pdg_match(j)) == abs(kingraph2%tree%pdg(i))) then
+                      kingraph1%keep = .false.; call kingraph1%tree%final ()
+                      exit
+                   endif
+                enddo
+                deallocate (tmp_bc, tmp_pdg, daughter_bc, daughter_pdg, pdg_match)
+                if (.not. (kingraph1%keep .and. kingraph2%keep)) exit
              endif
-             do j=1, size (pdg_match)
-                if (abs(pdg_match(j)) == abs(kingraph1%tree%pdg(i))) then
-                   kingraph2%keep = .false.
-                   exit
-                else if (abs(pdg_match(j)) == abs(kingraph2%tree%pdg(i))) then
-                   kingraph1%keep = .false.
-                   exit
-                endif
-             enddo
-             deallocate (tmp_bc, tmp_pdg, daughter_bc, daughter_pdg, pdg_match)
-             if (.not. (kingraph1%keep .and. kingraph2%keep)) exit
           endif
        enddo
     endif
   end subroutine kingraph_select
+
+  subroutine grove_list_merge (target_list, grove_list, model, prc_component)
+    class (grove_list_t), intent (inout) :: target_list
+    type (grove_list_t), intent (inout) :: grove_list
+    type (model_data_t), intent (in) :: model
+    integer, intent (in) :: prc_component
+    type (grove_t), pointer :: current_grove
+    type (kingraph_t), pointer :: current_graph
+    current_grove => grove_list%first
+    do while (associated (current_grove))
+       do while (associated (current_grove%first))
+          current_graph => current_grove%first
+          current_grove%first => current_grove%first%grove_next
+          current_graph%grove_next => null ()
+          if (current_graph%keep) then
+             current_graph%prc_component = prc_component
+             call target_list%add_kingraph(kingraph=current_graph, &
+                  preliminary=.false., check=.true., model=model)
+          else
+             call current_graph%final ()
+             deallocate (current_graph)
+          endif
+       enddo
+       current_grove => current_grove%next
+    enddo
+  end subroutine grove_list_merge
 
   subroutine grove_list_rebuild (grove_list)
     class (grove_list_t), intent (inout) :: grove_list
@@ -3045,23 +3299,23 @@ contains
     type (grove_t), pointer :: remove_grove
     type (kingraph_t), pointer :: current_graph
     type (kingraph_t), pointer :: next_graph
-    !$ call OMP_init_lock (grove_list%lock)
     tmp_list%first => grove_list%first
     grove_list%first => null ()
     current_grove => tmp_list%first
     do while (associated (current_grove))
        current_graph => current_grove%first
        do while (associated (current_graph))
+          call current_graph%assign_resonance_hash ()
           next_graph => current_graph%grove_next
           current_graph%grove_next => null ()
           if (current_graph%keep) then
-             call grove_list%add_kingraph (current_graph, .false.)
+             call grove_list%add_kingraph (kingraph=current_graph, &
+                  preliminary=.false., check=.false.)
           endif
           current_graph => next_graph
        enddo
        current_grove => current_grove%next
     enddo
-    !$ call OMP_destroy_lock (grove_list%lock)
     call tmp_list%final
   end subroutine grove_list_rebuild
 
@@ -3130,7 +3384,7 @@ contains
     integer, intent (in) :: u
     integer :: i
     integer(TC) :: bincode_incoming
-2   format(3X,'map',1X,I3,1X,A,1X,I7,1X,'!',1X,A)
+2   format(3X,'map',1X,I3,1X,A,1X,I9,1X,'!',1X,A)
 !!! determine bincode of incoming particle from tree
     bincode_incoming = maxval (kingraph%tree%bc)
     write (unit=u, fmt='(1X,A,I0)') '! Channel #', ch_number
@@ -3806,7 +4060,8 @@ contains
   end subroutine kingraph_write_graph_format
 
   subroutine feyngraph_set_generate &
-    (feyngraph_set, model, n_in, n_out, flv, phs_par, fatal_beam_decay, u_in, use_dag)
+    (feyngraph_set, model, n_in, n_out, flv, phs_par, fatal_beam_decay, &
+    u_in, vis_channels, use_dag)
     type(feyngraph_set_t), intent(out) :: feyngraph_set
     class(model_data_t), intent(in), target :: model
     integer, intent(in) :: n_in, n_out
@@ -3814,6 +4069,7 @@ contains
     type(phs_parameters_t), intent(in) :: phs_par
     logical, intent(in) :: fatal_beam_decay
     integer, intent(in) :: u_in
+    logical, intent(in) :: vis_channels
     logical, optional, intent(in) :: use_dag
     type(grove_t), pointer :: grove
     integer :: i, j
@@ -3831,17 +4087,21 @@ contains
     end do
     allocate (feyngraph_set%particle (PRT_ARRAY_SIZE))
     allocate (feyngraph_set%grove_list)
+    !$ call OMP_init_lock (feyngraph_set%grove_list%lock)
     allocate (feyngraph_set%fset (size (flv, 2)))
     do i = 1, size (feyngraph_set%fset)
        feyngraph_set%fset(i)%use_dag = feyngraph_set%use_dag
        allocate (feyngraph_set%fset(i)%flv(size (flv,1),1))
        feyngraph_set%fset(i)%flv(:,1) = flv(:,i)
        feyngraph_set%fset(i)%particle => feyngraph_set%particle
-       feyngraph_set%fset(i)%grove_list => feyngraph_set%grove_list
+       allocate (feyngraph_set%fset(i)%grove_list)
        call feyngraph_set_generate_single (feyngraph_set%fset(i), &
             model, n_in, n_out, phs_par, fatal_beam_decay, u_in)
+       call feyngraph_set%grove_list%merge (feyngraph_set%fset(i)%grove_list, model, i)
+       if (.not. vis_channels) call feyngraph_set%fset(i)%final()
     enddo
     call feyngraph_set%grove_list%rebuild ()
+    !$ call OMP_destroy_lock (feyngraph_set%grove_list%lock)
   end subroutine feyngraph_set_generate
 
   function feyngraph_set_is_valid (feyngraph_set) result (flag)

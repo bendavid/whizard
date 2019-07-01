@@ -1,6 +1,6 @@
-! WHIZARD 2.6.2 Dec 13 2017
+! WHIZARD 2.6.3 Feb 10 2018
 !
-! Copyright (C) 1999-2017 by
+! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -533,9 +533,9 @@ contains
   end subroutine prc_gosam_set_initialized
 
   subroutine prc_gosam_compute_sqme_spin_c (object, &
-       i_flv, em, p, ren_scale, me_sc, bad_point)
+       i_flv, i_hel, em, p, ren_scale, me_sc, bad_point)
     class(prc_gosam_t), intent(inout) :: object
-    integer, intent(in) :: i_flv
+    integer, intent(in) :: i_flv, i_hel
     integer, intent(in) :: em
     type(vector4_t), intent(in), dimension(:) :: p
     real(default), intent(in) :: ren_scale
@@ -548,7 +548,7 @@ contains
     integer :: pos_real, pos_imag
     real(double) :: acc_dble
     real(default) :: acc, alpha_s
-    if (object%i_spin_c(i_flv) > 0) then
+    if (object%i_spin_c(i_flv, i_hel) > 0) then
        me_sc = cmplx (zero ,zero, kind=default)
        mom = object%create_momentum_array (p)
        if (vanishes (ren_scale)) &
@@ -558,7 +558,7 @@ contains
        select type (driver => object%driver)
        type is (gosam_driver_t)
           call driver%set_alpha_s (alpha_s)
-          call driver%blha_olp_eval2 (object%i_spin_c(i_flv), &
+          call driver%blha_olp_eval2 (object%i_spin_c(i_flv, i_hel), &
                mom, ren_scale_dble, r, acc_dble)
        end select
        igm1 = em - 1

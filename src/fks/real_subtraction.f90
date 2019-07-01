@@ -1,6 +1,6 @@
-! WHIZARD 2.6.2 Dec 13 2017
+! WHIZARD 2.6.3 Feb 10 2018
 !
-! Copyright (C) 1999-2017 by
+! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -630,14 +630,14 @@ contains
   end subroutine coll_subtraction_init
 
   function coll_subtraction_compute_fsr &
-     (coll_sub, sregion, p_res, p_born, sqme_born, mom_times_sqme_born_spin_c, &
+     (coll_sub, sregion, p_res, p_born, sqme_born, mom_times_sqme_spin_c, &
      xi, alpha_coupling, alr, double_fsr) result (sqme)
     real(default) :: sqme
     class(coll_subtraction_t), intent(in) :: coll_sub
     type(singular_region_t), intent(in) :: sregion
     type(vector4_t), intent(in) :: p_res
     type(vector4_t), intent(in), dimension(:) :: p_born
-    real(default), intent(in) :: sqme_born, mom_times_sqme_born_spin_c
+    real(default), intent(in) :: sqme_born, mom_times_sqme_spin_c
     real(default), intent(in) :: xi, alpha_coupling
     integer, intent(in) :: alr
     logical, intent(in) :: double_fsr
@@ -667,9 +667,9 @@ contains
     end if
     if (is_gluon (flv_em) .and. is_gluon (flv_rad)) then
        pggz = two * CA_factor * (xi * z / onemz + onemz / z_o_xi)
-       sqme = pggz * sqme_born + four * CA_factor * z * onemz * xi * mom_times_sqme_born_spin_c
+       sqme = pggz * sqme_born + four * CA_factor * z * onemz * xi * mom_times_sqme_spin_c
     else if (is_fermion (flv_em) .and. is_fermion (flv_rad)) then
-       sqme = TR_factor * xi * (sqme_born - four * z * onemz * mom_times_sqme_born_spin_c)
+       sqme = TR_factor * xi * (sqme_born - four * z * onemz * mom_times_sqme_spin_c)
     else if (is_fermion (flv_em) .and. is_massless_vector (flv_rad)) then
        sqme = sqme_born * CF_factor * (one + onemz**2) / z_o_xi
     else
@@ -682,19 +682,19 @@ contains
   end function coll_subtraction_compute_fsr
 
   function coll_subtraction_compute_isr &
-     (coll_sub, sregion, p_born, sqme_born, sqme_born_spin_c, &
+     (coll_sub, sregion, p_born, sqme_born, mom_times_sqme_spin_c, &
      xi, alpha_coupling, alr, emitter, isr_mode) result (sqme)
     real(default) :: sqme
     class(coll_subtraction_t), intent(in) :: coll_sub
     type(singular_region_t), intent(in) :: sregion
     type(vector4_t), intent(in), dimension(:) :: p_born
     real(default), intent(in) :: sqme_born
-    real(default), intent(in) :: sqme_born_spin_c
+    real(default), intent(in) :: mom_times_sqme_spin_c
     real(default), intent(in) :: xi, alpha_coupling
     integer, intent(in) :: alr, emitter, isr_mode
     real(default) :: z, onemz
     real(default) :: p02
-    real(default) :: CF_factor, TR_factor
+    real(default) :: CF_factor, TR_factor, CA_factor
     integer :: flv_em, flv_rad
     integer :: nlegs
 
@@ -713,19 +713,27 @@ contains
     p02 = p_born(1)%p(0) * p_born(2)%p(0) / two
     z = one - xi; onemz = xi
     if (sregion%nlo_correction_type == "QCD") then
-       CF_factor = CF; TR_factor = TR
+       CA_factor = CA; CF_factor = CF; TR_factor = TR
     else if (sregion%nlo_correction_type == "QED") then
+       CA_factor = zero
        CF_factor = sregion%flst_real%charge(emitter)**2
        TR_factor = sregion%flst_real%charge(nlegs)**2
     end if
 
-    if (is_fermion (flv_em) .and. is_massless_vector (flv_rad)) then
+
+    if (is_massless_vector (flv_em) .and. is_massless_vector (flv_rad)) then
+       sqme = CA_factor * (two * (z + z * onemz**2) * sqme_born + four * onemz**2 &
+          / z * mom_times_sqme_spin_c)
+    else if (is_fermion (flv_em) .and. is_massless_vector (flv_rad)) then
        sqme = CF_factor * (one + z**2) * sqme_born
+    else if (is_fermion (flv_em) .and. is_fermion (flv_rad)) then
+       sqme = CF_factor * (z * onemz * sqme_born + four * onemz**2 / z * mom_times_sqme_spin_c)
     else if (is_massless_vector (flv_em) .and. is_fermion (flv_rad)) then
        sqme = TR_factor * (z**2 + onemz**2) * onemz * sqme_born
     else
        sqme = zero
     end if
+
     if (isr_mode == SQRTS_VAR) then
        sqme = sqme / p02 * z
     else
@@ -1663,7 +1671,7 @@ contains
        associate (ii => partition%fks_pairs(i)%ireg)
           if ((p(ii(1)) + p(ii(2)))**1 < p(ii(1))**1 + p(ii(2))**1 + partition%scale) then
              f = one
-             exit 
+             exit
           end if
        end associate
     end do

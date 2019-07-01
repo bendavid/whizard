@@ -4,7 +4,7 @@
 ##
 ########################################################################
 #
-# Copyright (C) 1999-2017 by
+# Copyright (C) 1999-2018 by
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -104,6 +104,7 @@ REF_OUTPUT_FILES_BASE = \
     unit_tests/ref-output/state_matrix_4.ref \
     unit_tests/ref-output/state_matrix_5.ref \
     unit_tests/ref-output/state_matrix_6.ref \
+    unit_tests/ref-output/state_matrix_7.ref \
     unit_tests/ref-output/interaction_1.ref \
     unit_tests/ref-output/xml_1.ref \
     unit_tests/ref-output/xml_2.ref \
@@ -278,6 +279,7 @@ REF_OUTPUT_FILES_BASE = \
     unit_tests/ref-output/vamp2_2.ref \
     unit_tests/ref-output/vamp2_3.ref \
     unit_tests/ref-output/vamp2_4.ref \
+    unit_tests/ref-output/vamp2_5.ref \
     unit_tests/ref-output/mci_base_1.ref \
     unit_tests/ref-output/mci_base_2.ref \
     unit_tests/ref-output/mci_base_3.ref \
@@ -625,6 +627,7 @@ REF_OUTPUT_FILES_BASE = \
     functional_tests/ref-output/event_eff_1.ref \
     functional_tests/ref-output/event_eff_2.ref \
     functional_tests/ref-output/event_dump_1.ref \
+    functional_tests/ref-output/event_dump_2.ref \
     functional_tests/ref-output/reweight_1.ref \
     functional_tests/ref-output/reweight_2.ref \
     functional_tests/ref-output/reweight_3.ref \
@@ -698,6 +701,7 @@ REF_OUTPUT_FILES_BASE = \
     functional_tests/ref-output/resonances_7.ref \
     functional_tests/ref-output/resonances_8.ref \
     functional_tests/ref-output/resonances_9.ref \
+    functional_tests/ref-output/resonances_12.ref \
     functional_tests/ref-output/ufo_1.ref \
     functional_tests/ref-output/ufo_2.ref \
     functional_tests/ref-output/ufo_3.ref \
@@ -720,6 +724,9 @@ REF_OUTPUT_FILES_BASE = \
     functional_tests/ref-output/recola_3.ref \
     functional_tests/ref-output/recola_4.ref \
     functional_tests/ref-output/recola_5.ref \
+    functional_tests/ref-output/recola_6.ref \
+    functional_tests/ref-output/recola_7.ref \
+    functional_tests/ref-output/recola_8.ref \
     functional_tests/ref-output/nlo_decay_1.ref \
     functional_tests/ref-output/mssmtest_1.ref \
     functional_tests/ref-output/mssmtest_2.ref \
@@ -1001,6 +1008,7 @@ MISC_TESTS_SIN = \
     functional_tests/event_eff_1.sin \
     functional_tests/event_eff_2.sin \
     functional_tests/event_dump_1.sin \
+    functional_tests/event_dump_2.sin \
     functional_tests/reweight_1.sin \
     functional_tests/reweight_2.sin \
     functional_tests/reweight_3.sin \
@@ -1091,6 +1099,7 @@ MISC_TESTS_SIN = \
     functional_tests/resonances_9.sin \
     functional_tests/resonances_10.sin \
     functional_tests/resonances_11.sin \
+    functional_tests/resonances_12.sin \
     functional_tests/sm_cms_1.sin \
     functional_tests/ufo_1.sin \
     functional_tests/ufo_2.sin \
@@ -1121,6 +1130,9 @@ MISC_TESTS_SIN = \
     functional_tests/recola_3.sin \
     functional_tests/recola_4.sin \
     functional_tests/recola_5.sin \
+    functional_tests/recola_6.sin \
+    functional_tests/recola_7.sin \
+    functional_tests/recola_8.sin \
     functional_tests/powheg_1.sin \
     functional_tests/mssmtest_1.sin \
     functional_tests/mssmtest_2.sin \

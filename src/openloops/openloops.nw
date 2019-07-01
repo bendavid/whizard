@@ -649,9 +649,9 @@ are requested.
   procedure :: compute_sqme_spin_c => prc_openloops_compute_sqme_spin_c
 <<prc openloops: procedures>>=
   subroutine prc_openloops_compute_sqme_spin_c (object, &
-       i_flv, em, p, ren_scale, sqme_spin_c, bad_point)
+       i_flv, i_hel, em, p, ren_scale, sqme_spin_c, bad_point)
     class(prc_openloops_t), intent(inout) :: object
-    integer, intent(in) :: i_flv
+    integer, intent(in) :: i_flv, i_hel
     integer, intent(in) :: em
     type(vector4_t), intent(in), dimension(:) :: p
     real(default), intent(in) :: ren_scale
@@ -661,7 +661,7 @@ are requested.
     real(double), dimension(N_EXTERNAL) :: res
     real(double), dimension(16) :: res_munu
     real(default) :: alpha_s
-    if (object%i_spin_c(i_flv) > 0) then
+    if (object%i_spin_c(i_flv, i_hel) > 0) then
        mom = object%create_momentum_array (p)
        sqme_spin_c = zero
        if (vanishes (ren_scale)) call msg_fatal &
@@ -672,7 +672,7 @@ are requested.
        type is (openloops_driver_t)
           call driver%set_alpha_s (alpha_s)
           call driver%evaluate_spin_correlations_powheg &
-               (object%i_spin_c(i_flv), mom, em, res, res_munu)
+               (object%i_spin_c(i_flv, i_hel), mom, em, res, res_munu)
        end select
        sqme_spin_c = reshape (res_munu, (/4,4/))
        bad_point = .false.

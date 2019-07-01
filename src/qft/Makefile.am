@@ -2,7 +2,7 @@
 ##
 ## Process this file with automake to produce Makefile.in
 #
-# Copyright (C) 1999-2017 by
+# Copyright (C) 1999-2018 by
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -74,7 +74,8 @@ module_lists = \
   ../system/Modules \
   ../combinatorics/Modules \
   ../expr_base/Modules \
-  ../physics/Modules
+  ../physics/Modules \
+  ../types/Modules
 
 $(module_lists):
 	$(MAKE) -C `dirname $@` Modules
@@ -119,7 +120,7 @@ DISTCLEANFILES += Makefile.depend
 	@:
 #	touch $@
 
-AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../expr_base -I../physics
+AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../expr_base -I../physics -I../types
 
 
 ########################################################################

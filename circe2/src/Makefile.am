@@ -4,7 +4,7 @@
 ##
 ########################################################################
 #
-# Copyright (C) 1999-2017 by 
+# Copyright (C) 1999-2018 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -209,8 +209,9 @@ if OCAML_AVAILABLE
 
 # echo lexer.mli: lexer.ml >>$@
 Makefile.depend_ocaml: $(CIRCE2_SRC) $(CIRCE2TOOL_SRC)
+	@if $(AM_V_P); then :; else echo "  OCAMLDEP " $@; fi
 	@rm -f $@
-	$(OCAMLDEP) -I $(srcdir) $^ | sed 's,[^ 	]*/,,g' >$@
+	$(AM_V_at)$(OCAMLDEP) -I $(srcdir) $^ | sed 's,[^ 	]*/,,g' >$@
 	echo parser.mli: parser.ml >>$@
 	echo lexer.cmi: parser.cmi >>$@
 	echo parser.cmi: syntax.cmi >>$@

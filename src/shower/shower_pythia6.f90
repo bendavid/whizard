@@ -1,6 +1,6 @@
-! WHIZARD 2.6.2 Dec 13 2017
+! WHIZARD 2.6.3 Feb 10 2018
 !
-! Copyright (C) 1999-2017 by
+! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -595,18 +595,40 @@ contains
        NEVHEP, NHEP, ISTHEP, IDHEP, &
        JMOHEP, JDAHEP, PHEP, VHEP
       save /HEPEVT/
-      integer:: parent2, parent1, npar
+      integer :: parent2, parent1, npar
+      integer :: jsearch
       call msg_debug (D_SHOWER, &
            "set_parent_child_relations_from_hepevt")
       if (debug_active (D_SHOWER)) then
          print *, 'NHEP, n, py_entries:' , NHEP, n, py_entries
+         call pylist(5)
       end if
       do i_whz = 1, py_entries
          parent1 = JMOHEP(1,py_index(i_whz))
+
+         if (IDHEP(py_index(i_whz)) == 94) then
+            firstmother: do jsearch =  parent1-1, 1, -1
+               if (JDAHEP(1,jsearch) /= py_index(i_whz)) then
+                  exit firstmother
+               end if
+               parent1 = jsearch
+            end do firstmother
+         end if
+
          parent2 = parent1
          if (JMOHEP(2,py_index(i_whz)) > 0) then
-           parent2 = JMOHEP(2,py_index(i_whz))
+            parent2 = JMOHEP(2,py_index(i_whz))
+         else
+            if (IDHEP(py_index(i_whz)) == 94) then
+               lastmother: do jsearch =  parent1+1, py_index(i_whz)
+                  if (JDAHEP(1,jsearch) /= py_index(i_whz)) then
+                     exit lastmother
+                  end if
+                  parent2 = jsearch
+               end do lastmother
+            endif
          end if
+         
          allocate (parents(parent2-parent1+1))
          parents = 0
          child = n_tot_old + i_whz

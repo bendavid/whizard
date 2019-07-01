@@ -37,8 +37,10 @@ extern "C" bool lcio_available() {
 extern "C" LCEventImpl* new_lcio_event ( int proc_id, int event_id, int run_id ) {
   LCEventImpl* evt = new LCEventImpl();
   evt->setRunNumber ( run_id );
+  evt->parameters().setValue("Run ID", run_id );
   evt->parameters().setValue("ProcessID", proc_id );
   evt->setEventNumber ( event_id );
+  evt->parameters().setValue("Event Number", event_id );
   LCTime now;
   evt->setTimeStamp ( now.timeStamp() );
   return evt;

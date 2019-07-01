@@ -1,6 +1,6 @@
-! WHIZARD 2.6.2 Dec 13 2017
+! WHIZARD 2.6.3 Feb 10 2018
 !
-! Copyright (C) 1999-2017 by
+! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -475,10 +475,6 @@ contains
     end select
     call rclwrap_generate_processes ()
     object%recola_id = rclwrap_get_n_processes ()
-    if (object%recola_id /= 1) then
-         call msg_fatal ("Recola: Process ID must be 1 &
-         & (multiple concurrent processes not supported yet)")
-      end if
     call object%replace_helicity_and_color_arrays ()
   end subroutine prc_recola_init
   
@@ -538,10 +534,10 @@ contains
     amp = amp_dble
   end function prc_recola_compute_amplitude
 
-  subroutine prc_recola_compute_sqme (object, i_flv, p, &
+  subroutine prc_recola_compute_sqme (object, i_flv, i_hel, p, &
          ren_scale, sqme, bad_point)
      class(prc_recola_t), intent(in) :: object
-     integer, intent(in) :: i_flv
+     integer, intent(in) :: i_flv, i_hel
      type(vector4_t), dimension(:), intent(in) :: p
      real(default), intent(in) :: ren_scale
      real(default), intent(out) :: sqme
@@ -552,6 +548,7 @@ contains
      real(default) :: alpha_s
      integer :: i
      integer :: alphas_power
+     ! TODO sbrass: Helicity for RECOLA
      call msg_debug2 (D_ME_METHODS, "prc_recola_compute_sqme")
      do i = 1, object%data%n_in + object%data%n_out
         p_recola(:, i) = dble(p(i)%p)
@@ -561,17 +558,17 @@ contains
      call msg_debug2 (D_ME_METHODS, "alpha_s", alpha_s)
      call msg_debug2 (D_ME_METHODS, "ren_scale", ren_scale)
      call rclwrap_set_alpha_s (dble (alpha_s), dble (ren_scale), object%qcd%n_f)
-     call rclwrap_compute_process (object%recola_id, p_recola, 'LO')
+     call rclwrap_compute_process (i_flv, p_recola, 'LO')
      call rclwrap_get_squared_amplitude &
-          (object%recola_id, object%get_alphas_power (), 'LO', sqme_dble)
-     sqme = sqme_dble
+             (i_flv, object%get_alphas_power (), 'LO', sqme_dble)
+     sqme = real(sqme_dble, kind=default)
      bad_point = .false.
   end subroutine prc_recola_compute_sqme
 
-  subroutine prc_recola_compute_sqme_virt (object, i_flv, &
+  subroutine prc_recola_compute_sqme_virt (object, i_flv, i_hel,  &
           p, ren_scale, sqme, bad_point)
     class(prc_recola_t), intent(in) :: object
-    integer, intent(in) :: i_flv
+    integer, intent(in) :: i_flv, i_hel
     type(vector4_t), dimension(:), intent(in) :: p
     real(default), intent(in) :: ren_scale
     real(default), dimension(4), intent(out) :: sqme
@@ -582,7 +579,7 @@ contains
     real(double) :: sqme_dble
     real(default) :: alpha_s
     integer :: i
-
+    ! TODO sbrass Helicity for RECOLA
     call msg_debug2 (D_ME_METHODS, "prc_recola_compute_sqme_virt")
     sqme = zero
     do i = 1, object%data%n_in + object%data%n_out

@@ -4,7 +4,7 @@
 ##
 ########################################################################
 #
-# Copyright (C) 1999-2017 by 
+# Copyright (C) 1999-2018 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -42,8 +42,7 @@ TESTS_EXTENDED = \
 	extra_shower_5.run \
 	extra_shower_6.run
 
-XFAIL_TESTS_EXTENDED = \
-	extra_shower_4_ee.run
+XFAIL_TESTS_EXTENDED =
 
 TESTS_REQ_GAMELAN = \
 	extra_shower_2.run

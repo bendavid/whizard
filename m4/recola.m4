@@ -22,23 +22,24 @@ if test "$enable_recola" = "yes"; then
     WO_PATH_LIB(RECOLA, [recola], [librecola.${SHRLIB_EXT}], $LD_LIBRARY_PATH)
   fi
   if test "$RECOLA" != "no"; then
-     AC_MSG_CHECKING([for openOutput in RECOLA])
+     AC_MSG_CHECKING([for get_recola_version_rcl in RECOLA])
      AC_LANG_PUSH([Fortran])
      recola_libdir=`dirname $RECOLA`
      RECOLA_DIR=$recola_libdir
-     COLLIER_DIR="$recola_libdir/../COLLIER-1.1"
-     wo_recola_libdir="-L${recola_libdir} -L${COLLIER_DIR}"
-     wo_recola_ldflags="-Wl,-rpath,$RECOLA_DIR -L$RECOLA_DIR -lrecola -Wl,-rpath,$COLLIER_DIR -L$COLLIER_DIR -lcollier"
-     wo_recola_includes="-I${recola_libdir}/modules -I${COLLIER_DIR}/modules"
+     wo_recola_libdir="-L${recola_libdir}"
+     wo_recola_ldflags="-Wl,-rpath,$RECOLA_DIR -L$RECOLA_DIR -lrecola -lcollier"
+     wo_recola_includes="-I${recola_libdir}/../include"
      wo_recola_version=""
      save_LIBS="$LIBS"
      LIBS="${LIBS} ${wo_recola_libdir} -lrecola -lcollier ${wo_recola_includes}"
      AC_LINK_IFELSE([dnl
         AC_LANG_PROGRAM([],[[
-                use globals_rcl
-                call openOutput
+                use recola
+		character(len=10) :: version
+                call get_recola_version_rcl (version)
+		print *, version
                 ]])],
-         [wo_recola_version=`./conftest | $GREP 'Version' | $SED 's/.* Version //g'`],
+         [wo_recola_version=`./conftest | $SED -e 's/^[ \t]*//'`],
          [enable_recola="no"])
      AC_MSG_RESULT([$enable_recola])
      if test "$enable_recola" = "no"; then
@@ -52,10 +53,10 @@ if test "$enable_recola" = "yes"; then
        AC_MSG_CHECKING([for Recola])
        AC_MSG_RESULT([disabled])
      else
-       if test "$wo_recola_version" = "1.0" || test "$wo_recola_version" = "1.1"; then
+       if test "$wo_recola_version" = "1.0" || test "$wo_recola_version" = "1.1" || test "$wo_recola_version" = "1.2" || test "$wo_recola_version" = "2.0.0"; then
          AC_MSG_NOTICE([error: **************************************************])
-         AC_MSG_NOTICE([error: Old RECOLA versions 1.0 and 1.1 are not supported.])
-         AC_MSG_NOTICE([error: RECOLA will be disabled.                          ])
+         AC_MSG_NOTICE([error: Old RECOLA versions (1.0/1.1/1.2 and 2.0.0)       ])
+         AC_MSG_NOTICE([error: are not supported. RECOLA will be disabled.       ])
          AC_MSG_NOTICE([error: **************************************************])
          AC_MSG_CHECKING([for Recola])
          AC_MSG_RESULT([(disabled)])

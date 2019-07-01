@@ -1,6 +1,6 @@
-! WHIZARD 2.6.2 Dec 13 2017
+! WHIZARD 2.6.3 Feb 10 2018
 !
-! Copyright (C) 1999-2017 by
+! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -425,10 +425,10 @@ contains
     end select
   end subroutine prc_threshold_set_process_mode
 
-  subroutine prc_threshold_compute_sqme (object, i_flv, p, &
+  subroutine prc_threshold_compute_sqme (object, i_flv, i_hel, p, &
          ren_scale, sqme, bad_point)
     class(prc_threshold_t), intent(in) :: object
-    integer, intent(in) :: i_flv
+    integer, intent(in) :: i_flv, i_hel
     type(vector4_t), intent(in), dimension(:) :: p
     real(default), intent(in) :: ren_scale
     real(default), intent(out) :: sqme
@@ -449,10 +449,10 @@ contains
     bad_point = .false.
   end subroutine prc_threshold_compute_sqme
 
-  subroutine prc_threshold_compute_sqme_virt (object, i_flv, &
+  subroutine prc_threshold_compute_sqme_virt (object, i_flv, i_hel, &
          p, ren_scale, sqme, bad_point)
     class(prc_threshold_t), intent(in) :: object
-    integer, intent(in) :: i_flv
+    integer, intent(in) :: i_flv, i_hel
     type(vector4_t), dimension(:), intent(in) :: p
     real(default), intent(in) :: ren_scale
     real(default), dimension(4), intent(out) :: sqme

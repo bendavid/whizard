@@ -274,6 +274,7 @@ subgraph cluster0 {
  color=gray95 
 edge[color=chartreuse2]
 qft -> system
+qft -> types
 qft -> basics
 qft -> physics
 qft -> expr_base

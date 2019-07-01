@@ -35,6 +35,7 @@
    Threshold number of calls (adapting weights)     = 10
    Number of chains                                 = 0
    Stratified                                       = T
+   Equivalences                                     = F
    Adaption power (beta)                            =  5.0000000000E-01
    Start iteration                 = 0
    Iteration number                = 0

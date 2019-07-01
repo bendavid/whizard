@@ -8337,6 +8337,9 @@ generator.
 \subsection{Resonance history set}
 Initialize subprocess set with an array of pre-created resonance
 history sets.
+
+Safeguard: if there are no resonances in the input, initialize the local set
+as empty, but complete.
 <<Restricted subprocesses: resonant subprocess set: TBP>>=
   procedure :: init => resonant_subprocess_set_init
   procedure :: fill_resonances => resonant_subprocess_set_fill_resonances
@@ -8356,6 +8359,9 @@ history sets.
     prc_set%n_history(i_component) = res_history_set%get_n_history ()
     if (prc_set%n_history(i_component) > 0) then
        prc_set%res_history_set(i_component) = res_history_set
+    else
+       call prc_set%res_history_set(i_component)%init (initial_size = 0)
+       call prc_set%res_history_set(i_component)%freeze ()
     end if
   end subroutine resonant_subprocess_set_fill_resonances
 
@@ -11759,6 +11765,8 @@ event file version. It can be
      type(selector_t) :: process_selector
      integer :: n_evt_requested = 0
      integer :: event_index_offset = 0
+     logical :: event_index_set = .false.
+     integer :: event_index = 0
      integer :: split_n_evt = 0
      integer :: split_n_kbytes = 0
      integer :: split_index = 0
@@ -11831,6 +11839,9 @@ writes the current event and process instance, depending on options.
     write (u, "(3x,A,I0)")  "Events requested  = ", object%n_evt_requested
     if (object%event_index_offset /= 0) then
        write (u, "(3x,A,I0)")  "Event index offset= ", object%event_index_offset
+    end if
+    if (object%event_index_set) then
+       write (u, "(3x,A,I0)")  "Event index       = ", object%event_index
     end if
     if (object%split_n_evt > 0 .or. object%split_n_kbytes > 0) then
        write (u, "(3x,A,I0)")  "Events per file   = ", object%split_n_evt
@@ -12206,10 +12217,6 @@ we may only read and rescan events.
 
 @ %def simulation_init
 @
-<<Simulations: simuulation init: variables>>=
-@
-<<Simulations: simuulation init: init>>=
-@
 <<MPI: Simulations: simulation init: variables>>=
   integer :: rank, n_size
 @
@@ -12478,8 +12485,10 @@ process instance will not be complete.  This should be fixed.
     write (msg_buffer, "(A,1x,A)") "Events: event normalization mode", &
          char (event_normalization_string (simulation%norm_mode))
     call msg_message ()
+    call simulation%init_event_index ()
   <<Simulations: simulation generate: init>>
     do i = start_it, end_it
+       call simulation%increment_event_index ()
        if (present (es_array)) then
           call simulation%read_event (es_array, .true., generate_new)
        else
@@ -12520,8 +12529,7 @@ process instance will not be complete.  This should be fixed.
             current_entry => entry%get_first ()
             do k = 1, current_entry%count_nlo_entries ()
                if (k > 1) current_entry => current_entry%get_next ()
-               call current_entry%increment_index &
-                    (simulation%event_index_offset)
+               call current_entry%set_index (simulation%get_event_index ())
                call current_entry%evaluate_expressions ()
             end do
             if (signal_is_pending ()) return
@@ -12535,6 +12543,7 @@ process instance will not be complete.  This should be fixed.
           end associate
        else
           associate (entry => simulation%entry(simulation%i_prc))
+            call simulation%set_event_index (entry%get_index ())
             call entry%accept_sqme_ref ()
             call entry%accept_weight_ref ()
             call entry%check ()
@@ -12655,7 +12664,7 @@ external matrix element parameters event by event.  The matrix element
            call alt_entry%update_normalization ()
            call alt_entry%accept_weight_prc ()
            call alt_entry%check ()
-           call alt_entry%increment_index (simulation%event_index_offset)
+           call alt_entry%set_index (simulation%get_event_index ())
            call alt_entry%evaluate_expressions ()
            if (signal_is_pending ())  return
            call alt_entry%restore_process ()
@@ -12712,7 +12721,9 @@ if [[update_weight]] is set.)  Otherwise, we accept the reference values.
     write (msg_buffer, "(A,1x,A,1x,A,A,A)")  char (str1), char (str2), &
          "events ", char (str3), "..."
     call msg_message ()
+    call simulation%init_event_index ()
     do
+       call simulation%increment_event_index ()
        call simulation%read_event (es_array, .false., complete)
        if (complete)  exit
        if (simulation%update_event &
@@ -12754,6 +12765,57 @@ if [[update_weight]] is set.)  Otherwise, we accept the reference values.
   end subroutine simulation_rescan
 
 @ %def simulation_rescan
+@ Here we handle the event index that is kept in the simulation record.  The
+event index is valid for the current sample.  When generating or reading
+events, we initialize the index with the offset that the user provides (if any)
+and increment it for each event that is generated or read from file.  The event
+index is stored in the event-entry that is current for the event.  If an
+event on file comes with its own index, that index overwrites the predefined
+one and also resets the index within the simulation record.
+
+The event index is not connected to the [[counter]] object.  The counter is
+supposed to collect statistical information.  The event index is a user-level
+object that is visible in event records and analysis expressions.
+<<Simulations: simulation: TBP>>=
+  procedure :: init_event_index => simulation_init_event_index
+  procedure :: increment_event_index => simulation_increment_event_index
+  procedure :: set_event_index => simulation_set_event_index
+  procedure :: get_event_index => simulation_get_event_index
+<<Simulations: procedures>>=
+  subroutine simulation_init_event_index (simulation)
+    class(simulation_t), intent(inout) :: simulation
+    call simulation%set_event_index (simulation%event_index_offset)
+  end subroutine simulation_init_event_index
+
+  subroutine simulation_increment_event_index (simulation)
+    class(simulation_t), intent(inout) :: simulation
+    if (simulation%event_index_set) then
+       simulation%event_index = simulation%event_index + 1
+    end if
+  end subroutine simulation_increment_event_index
+
+  subroutine simulation_set_event_index (simulation, i)
+    class(simulation_t), intent(inout) :: simulation
+    integer, intent(in) :: i
+    simulation%event_index = i
+    simulation%event_index_set = .true.
+  end subroutine simulation_set_event_index
+
+  function simulation_get_event_index (simulation) result (i)
+    class(simulation_t), intent(in) :: simulation
+    integer :: i
+    if (simulation%event_index_set) then
+       i = simulation%event_index
+    else
+       i = 0
+    end if
+  end function simulation_get_event_index
+
+@ %def simulation_init_event_index
+@ %def simulation_increment_event_index
+@ %def simulation_set_event_index
+@ %def simulation_get_event_index
+@ 
 @ These routines take care of temporary parameter redefinitions that
 we want to take effect while recalculating the matrix elements.  We
 extract the core(s) of the processes that we are simulating, apply the
@@ -12920,6 +12982,7 @@ can be appended to that stream.
                 call es_array%skip_eio_entry (iostat)
                 current_entry => current_entry%get_next ()
              end if
+             call current_entry%set_index (object%get_event_index ())
              call es_array%input_event (current_entry%event_t, iostat)
           end do
        case (:-1)
@@ -28746,7 +28809,7 @@ contains
 
   subroutine print_version ()
     print "(A)", "WHIZARD " // WHIZARD_VERSION
-    print "(A)", "Copyright (C) 1999-2017 Wolfgang Kilian, Thorsten Ohl, Juergen Reuter"
+    print "(A)", "Copyright (C) 1999-2018 Wolfgang Kilian, Thorsten Ohl, Juergen Reuter"
     print "(A)", "              ---------------------------------------                "
     print "(A)", "This is free software; see the source for copying conditions.  There is NO"
     print "(A)", "warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."
@@ -28983,7 +29046,7 @@ contains
 
   subroutine print_version ()
     print "(A)", "WHIZARD " // WHIZARD_VERSION // " (unit test driver)"
-    print "(A)", "Copyright (C) 1999-2017 Wolfgang Kilian, Thorsten Ohl, Juergen Reuter"
+    print "(A)", "Copyright (C) 1999-2018 Wolfgang Kilian, Thorsten Ohl, Juergen Reuter"
     print "(A)", "              ---------------------------------------                "
     print "(A)", "This is free software; see the source for copying conditions.  There is NO"
     print "(A)", "warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."

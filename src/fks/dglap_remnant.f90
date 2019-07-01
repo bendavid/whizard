@@ -1,6 +1,6 @@
-! WHIZARD 2.6.2 Dec 13 2017
+! WHIZARD 2.6.3 Feb 10 2018
 !
-! Copyright (C) 1999-2017 by
+! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -159,11 +159,9 @@ contains
     end do
   end function dglap_remnant_get_summed_quark_sqmes
 
-  subroutine dglap_remnant_evaluate (dglap, alpha_s, sqme_born, &
-         separate_alrs, sqme_dglap)
+  subroutine dglap_remnant_evaluate (dglap, alpha_s, separate_alrs, sqme_dglap)
     class(dglap_remnant_t), intent(inout) :: dglap
     real(default), intent(in) :: alpha_s
-    real(default), intent(in), dimension(:) :: sqme_born
     logical, intent(in) :: separate_alrs
     real(default), intent(inout), dimension(:) :: sqme_dglap
     real(default) :: factor, factor_soft, plus_dist_remnant
@@ -197,8 +195,8 @@ contains
              if (is_gluon(dglap%flv_in(emitter, i_flv))) then
                 sqme_scaled = dglap%sqme_coll_isr(emitter, 2, i_flv)
                 tmp(emitter) = p_hat_gg(z) * factor / z * sqme_scaled * jac &
-                     - p_hat_gg(one) * factor_soft * sqme_born(i_flv) * jac &
-                     + p_hat_gg(one) * plus_dist_remnant * sqme_born(i_flv)
+                     - p_hat_gg(one) * factor_soft * dglap%sqme_born(i_flv) * jac &
+                     + p_hat_gg(one) * plus_dist_remnant * dglap%sqme_born(i_flv)
 
                 tmp(emitter) = tmp(emitter) + &
                      (p_hat_qg(z) * factor - p_derived_qg(z)) / z * jac * &
@@ -207,8 +205,8 @@ contains
                 sqme_scaled = dglap%sqme_coll_isr(emitter, 1, i_flv)
                 tmp(emitter) = p_hat_qq(z) * factor / z * sqme_scaled * jac &
                      - p_derived_qq(z) / z * sqme_scaled * jac &
-                     - p_hat_qq(one) * factor_soft * sqme_born(i_flv) * jac &
-                     + p_hat_qq(one) * plus_dist_remnant * sqme_born(i_flv)
+                     - p_hat_qq(one) * factor_soft * dglap%sqme_born(i_flv) * jac &
+                     + p_hat_qq(one) * plus_dist_remnant * dglap%sqme_born(i_flv)
 
                 sqme_scaled = dglap%sqme_coll_isr(emitter, 2, i_flv)
                 tmp(emitter) = tmp(emitter) + &

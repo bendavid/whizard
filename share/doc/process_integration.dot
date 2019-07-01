@@ -13,14 +13,15 @@ process -> process_mci
 process -> process_counter
 kinematics -> process_mci
 process_config -> pcm_base
+process_config -> pcm
 instances -> pcm_base
-instances -> process_config
+instances -> parton_states
 instances -> core_manager
 instances -> kinematics
 instances -> process_mci
 process -> core_manager
 process_mci -> process_config
-instances -> parton_states
+instances -> process_config
 instances -> process_counter
 pcm -> pcm_base
 process_stacks -> process

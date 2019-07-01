@@ -74,6 +74,7 @@ Warning: No cuts have been defined.
 | Starting integration for process 'testproc_11_p2'
 | Integrate: iterations = 1:1000
 | Integrator: 2 chains, 5 channels, 2 dimensions
+| Integrator: Using VAMP2 channel equivalences
 | Integrator: 1000 initial calls, 20 max. bins, stratified = T
 | Integrator: VAMP2
 |=============================================================================|

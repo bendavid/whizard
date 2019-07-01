@@ -1,6 +1,6 @@
-! WHIZARD 2.6.2 Dec 13 2017
+! WHIZARD 2.6.3 Feb 10 2018
 !
-! Copyright (C) 1999-2017 by
+! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -43,6 +43,7 @@ module cascades2_lexer
   public :: operator (/=)
   public :: char
 
+  integer, parameter :: PRT_NAME_LEN = 20
   character(len=1), parameter, public :: BACKSLASH_CHAR = "\\"
   character(len=1), parameter :: BLANC_CHAR = " "
   integer, parameter, public :: NEW_LINE_TK = -2
@@ -64,8 +65,8 @@ module cascades2_lexer
   type :: dag_token_t
      integer :: type = EMPTY_TK
      integer :: char_len = 0
-     integer :: bincode = 0
-     character (len=1), dimension (:), allocatable :: particle_name
+     integer(TC) :: bincode = 0
+     character (PRT_NAME_LEN) :: particle_name=""
      integer :: index = 0
    contains
        procedure :: init_dag_object_token => dag_token_init_dag_object_token
@@ -208,9 +209,8 @@ contains
           case ("[")
              dag_token%type = NODE_TK
              if (i > 1) then
-                allocate (dag_token%particle_name(i-1))
                 do j = 1, i - 1
-                   dag_token%particle_name(j) = char_string(j:j)
+                   dag_token%particle_name(j:j) = char_string(j:j)
                 enddo
              endif
              set_bincode = .true.
@@ -243,10 +243,7 @@ contains
     token_out%type = token_in%type
     token_out%char_len = token_in%char_len
     token_out%bincode = token_in%bincode
-    if (allocated (token_in%particle_name)) then
-       allocate (token_out%particle_name(size(token_in%particle_name)))
-       token_out%particle_name = token_in%particle_name
-    endif
+    token_out%particle_name = token_in%particle_name
     token_out%index = token_in%index
   end subroutine dag_token_assign_from_dag_token
 
@@ -396,10 +393,7 @@ contains
          (token1%char_len == token2%char_len) .and. &
          (token1%bincode == token2%bincode) .and. &
          (token1%index == token2%index) .and. &
-         (allocated (token1%particle_name) .eqv. allocated (token2%particle_name))
-    if (flag) then
-       if (allocated (token1%particle_name)) flag = all (token1%particle_name == token2%particle_name)
-    endif
+         (token1%particle_name == token2%particle_name)
   end function dag_token_eq_dag_token
 
   elemental function dag_string_eq_dag_string (string1, string2) result (flag)
@@ -556,10 +550,8 @@ contains
              write (char_string, fmt=fmt_spec) "<C", dag_token%index, ">"
           end select
     case (NODE_TK)
-       name_len = size (dag_token%particle_name)
-       do i=1, name_len
-          char_string(i:i) = dag_token%particle_name(i)
-       enddo
+       name_len = len_trim (dag_token%particle_name)
+       char_string = dag_token%particle_name
        bc_pos = name_len + 1
        char_string(bc_pos:bc_pos) = "["
        do i=0, bit_size (dag_token%bincode) - 1
