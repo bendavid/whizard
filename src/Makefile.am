@@ -27,9 +27,9 @@
 
 ## Subdirectories to configure
 SUBDIRS = \
-  pythia hepmc lhapdf stdhep hoppet \
-  circe1 circe2 misc fastjet pdf_builtin vamp \
-  shower muli whizard-core prebuilt omega models 
+  hepmc misc lhapdf lhapdf5 stdhep pdf_builtin \
+  fastjet hoppet shower muli \
+  whizard-core prebuilt models 
 if MPOST_AVAILABLE
 SUBDIRS += gamelan feynmf
 endif
@@ -49,9 +49,9 @@ libomega_la_SOURCES =
 ## Collect the various partial libraries
 libwhizard_la_LIBADD = \
   whizard-core/libwhizard_core.la \
-  vamp/src/libvamp.la \
-  circe1/src/libcirce1.la \
-  circe2/src/libcirce2.la \
+  ../vamp/src/libvamp.la \
+  ../circe1/src/libcirce1.la \
+  ../circe2/src/libcirce2.la \
   misc/libaux.la \
   pdf_builtin/libpdf_builtin.la
 if SHOWER_AVAILABLE
@@ -76,18 +76,27 @@ libwhizard_la_LIBADD += hepmc/libHepMCWrap_dummy.la
 endif 
 
 libomega_la_LIBADD = \
-  omega/src/libomega_core.la \
+  ../omega/src/libomega_core.la \
   models/libmodels.la
 
 
 ## If (parts of) LHAPDF is not available, link in a dummy as replacements
-if LHAPDF_AVAILABLE
+if LHAPDF5_AVAILABLE
 libwhizard_la_LIBADD += $(LDFLAGS_LHAPDF)
+if LHAPDF5_HAS_PHOTON_DUMMY
+libwhizard_la_LIBADD += lhapdf5/libLHAPDF5_dummy.la
+endif
+else
+if !LHAPDF6_AVAILABLE
+libwhizard_la_LIBADD += lhapdf5/libLHAPDF5_dummy.la
+endif
 endif
 
-if LHAPDF_DUMMY
-libwhizard_la_LIBADD += lhapdf/libLHAPDF_dummy.la
-endif 
+if LHAPDF6_AVAILABLE
+libwhizard_la_LIBADD += $(LHAPDF_LIBS) lhapdf/libLHAPDFWrap.la
+else
+libwhizard_la_LIBADD += lhapdf/libLHAPDFWrap_dummy.la
+endif
 
 ## If STDHEP is not available, link in a dummy as replacements
 if STDHEP_AVAILABLE

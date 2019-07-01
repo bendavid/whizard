@@ -57,7 +57,8 @@ endif
 ## Explicit dependencies
 
 fastjet.lo: cpp_strings.lo
-fastjet.lo: ../misc/kinds.$(FC_MODULE_EXT)
+fastjet.lo: ../misc/kinds.$(FC_MODULE_EXT) \
+   ../misc/lorentz.$(FC_MODULE_EXT)
 
 AM_FCFLAGS += -I../misc
 

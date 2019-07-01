@@ -36,8 +36,8 @@ module system_dependencies
   public
  
   ! Program version
-  character(*), parameter :: WHIZARD_VERSION = "2.2.1"
-  character(*), parameter :: WHIZARD_DATE = "June 3 2014"
+  character(*), parameter :: WHIZARD_VERSION = "2.2.2"
+  character(*), parameter :: WHIZARD_DATE = "July 6 2014"
 
   ! System paths
   ! These are used for testing without existing installation
@@ -46,13 +46,13 @@ module system_dependencies
   character(*), parameter :: WHIZARD_TEST_MODELS_MODPATH = &
        "/Users/reuter/local/packages/whizard/trunk/build/src/models"
   character(*), parameter :: WHIZARD_TEST_OMEGA_MODPATH = &
-       "/Users/reuter/local/packages/whizard/trunk/build/src/omega/src"
+       "/Users/reuter/local/packages/whizard/trunk/build/omega/src"
   character(*), parameter :: WHIZARD_TEST_CORE_MODPATH = &
        "/Users/reuter/local/packages/whizard/trunk/build/src/whizard-core"
   character(*), parameter :: WHIZARD_TEST_CORE_LIBPATH = &
        "/Users/reuter/local/packages/whizard/trunk/build/src/whizard-core"
   character(*), parameter :: WHIZARD_TEST_OMEGA_BINPATH = &
-       "/Users/reuter/local/packages/whizard/trunk/build/src/omega/bin"
+       "/Users/reuter/local/packages/whizard/trunk/build/omega/bin"
   character(*), parameter :: WHIZARD_TEST_SRC_LIBPATH = &
        "/Users/reuter/local/packages/whizard/trunk/build/src"
   character(*), parameter :: WHIZARD_TEST_HEPMC_LIBPATH = &
@@ -74,7 +74,7 @@ module system_dependencies
   character(*), parameter :: WHIZARD_TEST_TEXPATH = &
        "/Users/reuter/local/packages/whizard/trunk/src/feynmf"
   character(*), parameter :: WHIZARD_TEST_CIRCE2PATH = &
-       "/Users/reuter/local/packages/whizard/trunk/src/circe2/share/data"
+       "/Users/reuter/local/packages/whizard/trunk/circe2/share/data"
   character(*), parameter :: WHIZARD_TEST_BEAMSIMPATH = &
        "/Users/reuter/local/packages/whizard/trunk/share/beam-sim"
   character(*), parameter :: WHIZARD_TEST_MULIPATH = &
@@ -96,7 +96,7 @@ module system_dependencies
       "-L" // WHIZARD_TEST_HEPMC_LIBPATH // " " // &
       "-L" // WHIZARD_TEST_HOPPET_LIBPATH // " " // &
        "-lwhizard_main -lwhizard -lomega " // &
-       "-lHepMC -L/usr/local/lib -lhoppet_v1"
+       "-lHepMC -L/usr/local//lib -lhoppet_v1"
 
   ! Libtool
   character(*), parameter :: WHIZARD_LIBTOOL_TEST = &
@@ -169,7 +169,7 @@ module system_dependencies
   character(*), parameter :: WHIZARD_LDFLAGS = &
       "-L" // WHIZARD_OMEGA_LIBPATH // " " // &
        "-lwhizard_main -lwhizard -lomega " // &
-       "-lHepMC -L/usr/local/lib -lhoppet_v1"
+       "-lHepMC -L/usr/local//lib -lhoppet_v1"
 
   ! Libtool
   character(*), parameter :: WHIZARD_LIBTOOL = &
@@ -209,7 +209,7 @@ module system_dependencies
   character(*), parameter :: DEFAULT_LDFLAGS_HEPMC = &
        "-lHepMC"
   character(*), parameter :: DEFAULT_LDFLAGS_HOPPET = &
-       "-L/usr/local/lib -lhoppet_v1"
+       "-L/usr/local//lib -lhoppet_v1"
   character(*), parameter :: DEFAULT_SHLIB_EXT = ".so"
 
   ! Make
@@ -218,7 +218,7 @@ module system_dependencies
 
   ! LHAPDF library
   character(*), parameter :: LHAPDF_PDFSETS_PATH = &
-       "/usr/local/share/lhapdf/PDFsets"
+       "/usr/local/share/LHAPDF"
 
   ! Available methods for event analysis display
   character(*), parameter :: EVENT_ANALYSIS = &
@@ -238,6 +238,20 @@ module system_dependencies
   character(*), parameter :: PRG_PS2PDF = &
        "ps2pdf14"
 
+  ! Programs and libraries used for NLO calculations
+  character(*), parameter :: GOSAM_DIR = &
+       "/usr/local"
+  character(*), parameter :: GOLEM_DIR = &
+       "/usr/local"
+  character(*), parameter :: FORM_DIR = &
+       "/usr/local"
+  character(*), parameter :: QGRAF_DIR = &
+       "/usr/local"
+  character(*), parameter :: NINJA_DIR = &
+       "/usr/local"
+  character(*), parameter :: SAMURAI_DIR = &
+       "/usr/local"
+
   ! Hardwired options for batch-mode processing
   character(*), parameter :: OPT_LATEX  = &
        "-halt-on-error"
@@ -252,7 +266,8 @@ module system_dependencies
      RTLD_LOCAL  = 4
 
   ! Misc
-  logical, parameter :: LHAPDF_AVAILABLE = .true.
+  logical, parameter :: LHAPDF5_AVAILABLE = .false.
+  logical, parameter :: LHAPDF6_AVAILABLE = .true.
 
 contains
 

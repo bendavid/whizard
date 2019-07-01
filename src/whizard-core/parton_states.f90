@@ -1,4 +1,4 @@
-! WHIZARD 2.2.1 June 3 2014
+! WHIZARD 2.2.2 July 6 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -316,10 +316,12 @@ contains
     state%has_flows = .true.
   end subroutine isolated_state_setup_square_flows
 
-  subroutine connected_state_setup_connected_trace (state, isolated, int)
+  subroutine connected_state_setup_connected_trace &
+       (state, isolated, int, resonant)
     class(connected_state_t), intent(inout), target :: state
     type(isolated_state_t), intent(in), target :: isolated
     type(interaction_t), intent(in), optional, target :: int
+    logical, intent(in), optional :: resonant
     type(quantum_numbers_mask_t) :: mask
     type(interaction_t), pointer :: src_int
     mask = new_quantum_numbers_mask (.true., .true., .true.)
@@ -329,14 +331,17 @@ contains
        src_int => isolated%sf_chain_eff%get_out_int_ptr ()
     end if
     call evaluator_init_product &
-         (state%trace, src_int, isolated%trace, mask, mask)
+         (state%trace, src_int, isolated%trace, mask, mask, &
+          connections_are_resonant = resonant)
     state%has_trace = .true.
   end subroutine connected_state_setup_connected_trace
     
-  subroutine connected_state_setup_connected_matrix (state, isolated, int)
+  subroutine connected_state_setup_connected_matrix &
+       (state, isolated, int, resonant)
     class(connected_state_t), intent(inout), target :: state
     type(isolated_state_t), intent(in), target :: isolated
     type(interaction_t), intent(in), optional, target :: int
+    logical, intent(in), optional :: resonant
     type(quantum_numbers_mask_t) :: mask
     type(interaction_t), pointer :: src_int
     mask = new_quantum_numbers_mask (.false., .true., .true.)
@@ -346,14 +351,17 @@ contains
        src_int => isolated%sf_chain_eff%get_out_int_ptr ()
     end if
     call evaluator_init_product &
-         (state%matrix, src_int, isolated%matrix, mask)
+         (state%matrix, src_int, isolated%matrix, mask, &
+          connections_are_resonant = resonant)
     state%has_matrix = .true.
   end subroutine connected_state_setup_connected_matrix
   
-  subroutine connected_state_setup_connected_flows (state, isolated, int)
+  subroutine connected_state_setup_connected_flows &
+       (state, isolated, int, resonant)
     class(connected_state_t), intent(inout), target :: state
     type(isolated_state_t), intent(in), target :: isolated
     type(interaction_t), intent(in), optional, target :: int
+    logical, intent(in), optional :: resonant
     type(quantum_numbers_mask_t) :: mask
     type(interaction_t), pointer :: src_int
     mask = new_quantum_numbers_mask (.false., .false., .true.)
@@ -366,7 +374,8 @@ contains
        src_int => evaluator_get_int_ptr (state%flows_sf)
     end if
     call evaluator_init_product &
-         (state%flows, src_int, isolated%flows, mask)
+         (state%flows, src_int, isolated%flows, mask, &
+          connections_are_resonant = resonant)
     state%has_flows = .true.
   end subroutine connected_state_setup_connected_flows
   

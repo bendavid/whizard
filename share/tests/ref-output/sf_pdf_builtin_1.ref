@@ -15,6 +15,7 @@
    has photon   = F
    mask         = T T T T T T * T * T T T T T T
    photon mask  = T
+   hoppet_b     = F
 
  Outgoing particle codes:
    -6 -5 -4 -3 -2 -1 0 1 2 3 4 5 6

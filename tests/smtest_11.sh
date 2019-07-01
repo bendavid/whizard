@@ -4,8 +4,8 @@ echo "Running script $0"
 script=`basename @script@`
 if test -f OCAML_FLAG; then
     ./run_whizard.sh @script@ --no-logging
-    echo "Contents of ${script}_tt.short.evt:" >> $script.log
-    cat ${script}_tt.short.evt >> $script.log
+    echo "Contents of ${script}_tt.mokka.evt:" >> $script.log
+    cat ${script}_tt.mokka.evt >> $script.log
     diff ref-output/$script.ref $script.log
 else
     echo "|=============================================================================|"

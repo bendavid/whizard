@@ -1,4 +1,4 @@
-! WHIZARD 2.2.1 June 3 2014
+! WHIZARD 2.2.2 July 6 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -65,6 +65,7 @@ module pdg_arrays
      procedure :: write => pdg_array_write
      procedure :: get_length => pdg_array_get_length
      procedure :: get => pdg_array_get
+     procedure :: set => pdg_array_set
      procedure :: replace => pdg_array_replace
      procedure :: sort_abs => pdg_array_sort_abs
   end type pdg_array_t
@@ -73,7 +74,10 @@ module pdg_arrays
      type(pdg_array_t), dimension(:), allocatable :: a
    contains
      procedure :: write => pdg_list_write
-     procedure :: init => pdg_list_init
+     generic :: init => pdg_list_init_size
+     procedure, private :: pdg_list_init_size
+     generic :: init => pdg_list_init_int_array
+     procedure, private :: pdg_list_init_int_array
      generic :: set => pdg_list_set_int
      generic :: set => pdg_list_set_int_array
      generic :: set => pdg_list_set_pdg_array
@@ -82,8 +86,17 @@ module pdg_arrays
      procedure, private :: pdg_list_set_pdg_array
      procedure :: get_size => pdg_list_get_size
      procedure :: get => pdg_list_get
+     procedure :: is_regular => pdg_list_is_regular
      procedure :: sort_abs => pdg_list_sort_abs
+     generic :: operator (==) => pdg_list_eq
+     procedure, private :: pdg_list_eq
+     generic :: operator (<) => pdg_list_lt
+     procedure, private :: pdg_list_lt
      procedure :: replace => pdg_list_replace
+     procedure :: match_replace => pdg_list_match_replace
+     generic :: operator (.match.) => pdg_list_match_pdg_array
+     procedure, private :: pdg_list_match_pdg_array
+     procedure :: find_match => pdg_list_find_match_pdg_array
   end type pdg_list_t
   
 
@@ -99,6 +112,7 @@ module pdg_arrays
 
   interface operator(.match.)
      module procedure pdg_array_match_integer
+     module procedure pdg_array_match_pdg_array
   end interface
 
   interface operator(<)
@@ -191,6 +205,13 @@ contains
     pdg = aval%pdg(i)
   end function pdg_array_get
 
+  subroutine pdg_array_set (aval, i, pdg)
+    class(pdg_array_t), intent(inout) :: aval
+    integer, intent(in) :: i
+    integer, intent(in) :: pdg
+    aval%pdg(i) = pdg
+  end subroutine pdg_array_set
+
   function pdg_array_replace (aval, i, pdg_new) result (aval_new)
     class(pdg_array_t), intent(in) :: aval
     integer, intent(in) :: i
@@ -234,6 +255,16 @@ contains
        flag = .false.
     end if
   end function pdg_array_match_integer
+
+  function pdg_array_match_pdg_array (aval1, aval2) result (flag)
+    logical :: flag
+    type(pdg_array_t), intent(in) :: aval1, aval2
+    if (allocated (aval1%pdg) .and. allocated (aval2%pdg)) then
+       flag = any (aval1 .match. aval2%pdg)
+    else
+       flag = .false.
+    end if
+  end function pdg_array_match_pdg_array
 
   elemental function pdg_array_lt (aval1, aval2) result (flag)
     type(pdg_array_t), intent(in) :: aval1, aval2
@@ -362,11 +393,21 @@ contains
     end if
   end subroutine pdg_list_write
     
-  subroutine pdg_list_init (pl, n)
+  subroutine pdg_list_init_size (pl, n)
     class(pdg_list_t), intent(out) :: pl
     integer, intent(in) :: n
     allocate (pl%a (n))
-  end subroutine pdg_list_init
+  end subroutine pdg_list_init_size
+  
+  subroutine pdg_list_init_int_array (pl, pdg)
+    class(pdg_list_t), intent(out) :: pl
+    integer, dimension(:), intent(in) :: pdg
+    integer :: i
+    allocate (pl%a (size (pdg)))
+    do i = 1, size (pdg)
+       pl%a(i) = pdg(i)
+    end do
+  end subroutine pdg_list_init_int_array
   
   subroutine pdg_list_set_int (pl, i, pdg)
     class(pdg_list_t), intent(inout) :: pl
@@ -406,12 +447,31 @@ contains
     pa = pl%a(i)
   end function pdg_list_get
   
-  function pdg_list_sort_abs (pl) result (pl_sorted)
+  function pdg_list_is_regular (pl) result (flag)
     class(pdg_list_t), intent(in) :: pl
+    logical :: flag
+    integer :: i, j, s
+    s = pl%get_size ()
+    flag = .true.
+    do i = 1, s
+       do j = i + 1, s
+          if (pl%a(i) .match. pl%a(j)) then
+             if (pl%a(i) /= pl%a(j)) then
+                flag = .false.
+                return
+             end if
+          end if
+       end do
+    end do
+  end function pdg_list_is_regular
+  
+  function pdg_list_sort_abs (pl, n_in) result (pl_sorted)
+    class(pdg_list_t), intent(in) :: pl
+    integer, intent(in), optional :: n_in
     type(pdg_list_t) :: pl_sorted
     type(pdg_array_t), dimension(:), allocatable :: pa
     integer, dimension(:), allocatable :: pdg, map
-    integer :: i
+    integer :: i, n0
     call pl_sorted%init (pl%get_size ())
     if (allocated (pl%a)) then
        allocate (pa (size (pl%a)))
@@ -426,41 +486,168 @@ contains
              end if
           end if
        end do
+       if (present (n_in)) then
+          n0 = n_in
+       else
+          n0 = 0
+       end if
        allocate (map (size (pdg)))
-       map = order_abs (pdg)
+       map(:n0) = [(i, i = 1, n0)]
+       map(n0+1:) = n0 + order_abs (pdg(n0+1:))
        do i = 1, size (pa)
           call pl_sorted%set (i, pa(map(i)))
        end do
     end if
   end function pdg_list_sort_abs
     
-  function pdg_list_replace (pl, i, pl_insert) result (pl_out)
+  function pdg_list_eq (pl1, pl2) result (flag)
+    class(pdg_list_t), intent(in) :: pl1, pl2
+    logical :: flag
+    integer :: i
+    flag = .false.
+    if (allocated (pl1%a) .and. allocated (pl2%a)) then
+       if (size (pl1%a) == size (pl2%a)) then
+          do i = 1, size (pl1%a)
+             associate (a1 => pl1%a(i), a2 => pl2%a(i))
+               if (allocated (a1%pdg) .and. allocated (a2%pdg)) then
+                  if (size (a1%pdg) == size (a2%pdg)) then
+                     if (size (a1%pdg) > 0) then
+                        if (a1%pdg(1) /= a2%pdg(1)) return
+                     end if
+                  else
+                     return
+                  end if
+               else
+                  return
+               end if
+             end associate
+          end do
+          flag = .true.
+       end if
+    end if
+  end function pdg_list_eq
+  
+  function pdg_list_lt (pl1, pl2) result (flag)
+    class(pdg_list_t), intent(in) :: pl1, pl2
+    logical :: flag
+    integer :: i
+    flag = .false.
+    if (allocated (pl1%a) .and. allocated (pl2%a)) then
+       if (size (pl1%a) < size (pl2%a)) then
+          flag = .true.;  return
+       else if (size (pl1%a) > size (pl2%a)) then
+          return
+       else
+          do i = 1, size (pl1%a)
+             associate (a1 => pl1%a(i), a2 => pl2%a(i))
+               if (allocated (a1%pdg) .and. allocated (a2%pdg)) then
+                  if (size (a1%pdg) < size (a2%pdg)) then
+                     flag = .true.;  return
+                  else if (size (a1%pdg) > size (a2%pdg)) then
+                     return
+                  else
+                     if (size (a1%pdg) > 0) then
+                        if (abs (a1%pdg(1)) < abs (a2%pdg(1))) then
+                           flag = .true.;  return
+                        else if (abs (a1%pdg(1)) > abs (a2%pdg(1))) then
+                           return
+                        else if (a1%pdg(1) > 0 .and. a2%pdg(1) < 0) then
+                           flag = .true.;  return
+                        else if (a1%pdg(1) < 0 .and. a2%pdg(1) > 0) then
+                           return
+                        end if
+                     end if
+                  end if
+               else
+                  return
+               end if
+             end associate
+          end do
+          flag = .false.
+       end if
+    end if
+  end function pdg_list_lt
+  
+  function pdg_list_replace (pl, i, pl_insert, n_in) result (pl_out)
     class(pdg_list_t), intent(in) :: pl
     integer, intent(in) :: i
     class(pdg_list_t), intent(in) :: pl_insert
+    integer, intent(in), optional :: n_in
     type(pdg_list_t) :: pl_out
     integer :: n, n_insert, n_out, k
     n = pl%get_size ()
     n_insert = pl_insert%get_size ()
     n_out = n + n_insert - 1
     call pl_out%init (n_out)
-    if (allocated (pl%a)) then
+!    if (allocated (pl%a)) then
        do k = 1, i - 1
           pl_out%a(k) = pl%a(k)
        end do
-    end if
-    if (allocated (pl_insert%a)) then
-       do k = 1, n_insert
-          pl_out%a(i-1+k) = pl_insert%a(k)
+!    end if
+    if (present (n_in)) then
+       pl_out%a(i) = pl_insert%a(1)
+       do k = i + 1, n_in
+          pl_out%a(k) = pl%a(k)
        end do
-    end if
-    if (allocated (pl%a)) then
-       do k = 1, n - i
-          pl_out%a(i+n_insert-1+k) = pl%a(i+k)
+       do k = 1, n_insert - 1
+          pl_out%a(n_in+k) = pl_insert%a(1+k)
        end do
-    end if
+       do k = 1, n - n_in
+          pl_out%a(n_in+k+n_insert-1) = pl%a(n_in+k)
+       end do
+    else
+!       if (allocated (pl_insert%a)) then
+          do k = 1, n_insert
+             pl_out%a(i-1+k) = pl_insert%a(k)
+          end do
+!       end if
+!       if (allocated (pl%a)) then
+          do k = 1, n - i
+             pl_out%a(i+n_insert-1+k) = pl%a(i+k)
+          end do
+       end if
+!    end if
   end function pdg_list_replace
     
+  subroutine pdg_list_match_replace (pl, pl_match, success)
+    class(pdg_list_t), intent(inout) :: pl
+    class(pdg_list_t), intent(in) :: pl_match
+    logical, intent(out) :: success
+    integer :: i, j
+    success = .true.
+    SCAN_ENTRIES: do i = 1, size (pl%a)
+       do j = 1, size (pl_match%a)
+          if (pl%a(i) .match. pl_match%a(j)) then
+             pl%a(i) = pl_match%a(j)
+             cycle SCAN_ENTRIES
+          end if
+       end do
+       success = .false.
+       return
+    end do SCAN_ENTRIES
+  end subroutine pdg_list_match_replace
+ 
+  function pdg_list_match_pdg_array (pl, pa) result (flag)
+    class(pdg_list_t), intent(in) :: pl
+    type(pdg_array_t), intent(in) :: pa
+    logical :: flag
+    flag = pl%find_match (pa) /= 0
+  end function pdg_list_match_pdg_array
+  
+  function pdg_list_find_match_pdg_array (pl, pa, mask) result (i)
+    class(pdg_list_t), intent(in) :: pl
+    type(pdg_array_t), intent(in) :: pa
+    logical, dimension(:), intent(in), optional :: mask
+    integer :: i
+    do i = 1, size (pl%a)
+       if (present (mask)) then
+          if (.not. mask(i))  cycle
+       end if
+       if (pl%a(i) .match. pa)  return
+    end do
+    i = 0
+  end function pdg_list_find_match_pdg_array
+  
   subroutine pdg_arrays_test (u, results)
     integer, intent(in) :: u
     type (test_results_t), intent(inout) :: results
@@ -468,7 +655,16 @@ contains
          "create and sort PDG array", &
          u, results) 
     call test (pdg_arrays_2, "pdg_arrays_2", &
-         "create and sort PDG array", &
+         "create and sort PDG lists", &
+         u, results) 
+    call test (pdg_arrays_3, "pdg_arrays_3", &
+         "check PDG lists", &
+         u, results) 
+    call test (pdg_arrays_4, "pdg_arrays_4", &
+         "compare PDG lists", &
+         u, results) 
+    call test (pdg_arrays_5, "pdg_arrays_5", &
+         "match PDG lists", &
          u, results)   
   end subroutine pdg_arrays_test
 
@@ -633,6 +829,150 @@ contains
     write (u, "(A)")  "* Test output end: pdg_arrays_2"        
     
   end subroutine pdg_arrays_2
+  
+  subroutine pdg_arrays_3 (u)
+    integer, intent(in) :: u
+
+    type(pdg_list_t) :: pl
+
+    write (u, "(A)")  "* Test output: pdg_arrays_3"
+    write (u, "(A)")  "*   Purpose: check for regular PDG lists"
+    write (u, "(A)")
+    
+    write (u, "(A)")  "* Regular list"
+    write (u, "(A)")
+    
+    call pl%init (4)
+    call pl%set (1, [1, 2])
+    call pl%set (2, [1, 2])
+    call pl%set (3, [5, -5])
+    call pl%set (4, 42)
+    call pl%write (u)
+    write (u, *)
+    write (u, "(L1)") pl%is_regular ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Irregular list"
+    write (u, "(A)")
+    
+    call pl%init (4)
+    call pl%set (1, [1, 2])
+    call pl%set (2, [1, 2])
+    call pl%set (3, [2, 5, -5])
+    call pl%set (4, 42)
+    call pl%write (u)
+    write (u, *)
+    write (u, "(L1)") pl%is_regular ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: pdg_arrays_3"        
+    
+  end subroutine pdg_arrays_3
+  
+  subroutine pdg_arrays_4 (u)
+    integer, intent(in) :: u
+
+    type(pdg_list_t) :: pl1, pl2, pl3
+
+    write (u, "(A)")  "* Test output: pdg_arrays_4"
+    write (u, "(A)")  "*   Purpose: check for regular PDG lists"
+    write (u, "(A)")
+    
+    write (u, "(A)")  "* Create lists"
+    write (u, "(A)")
+    
+    call pl1%init (4)
+    call pl1%set (1, [1, 2])
+    call pl1%set (2, [1, 2])
+    call pl1%set (3, [5, -5])
+    call pl1%set (4, 42)
+    write (u, "(I1,1x)", advance = "no")  1
+    call pl1%write (u)
+    write (u, *)
+
+    call pl2%init (2)
+    call pl2%set (1, 3)
+    call pl2%set (2, [5, -5])
+    write (u, "(I1,1x)", advance = "no")  2
+    call pl2%write (u)
+    write (u, *)
+
+    call pl3%init (2)
+    call pl3%set (1, 4)
+    call pl3%set (2, [5, -5])
+    write (u, "(I1,1x)", advance = "no")  3
+    call pl3%write (u)
+    write (u, *)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* a == b"
+    write (u, "(A)")
+    
+    write (u, "(2x,A)")  "123"
+    write (u, *)
+    write (u, "(I1,1x,4L1)")  1, pl1 == pl1, pl1 == pl2, pl1 == pl3
+    write (u, "(I1,1x,4L1)")  2, pl2 == pl1, pl2 == pl2, pl2 == pl3
+    write (u, "(I1,1x,4L1)")  3, pl3 == pl1, pl3 == pl2, pl3 == pl3
+
+    write (u, "(A)")
+    write (u, "(A)")  "* a < b"
+    write (u, "(A)")
+    
+    write (u, "(2x,A)")  "123"
+    write (u, *)
+    write (u, "(I1,1x,4L1)")  1, pl1 < pl1, pl1 < pl2, pl1 < pl3
+    write (u, "(I1,1x,4L1)")  2, pl2 < pl1, pl2 < pl2, pl2 < pl3
+    write (u, "(I1,1x,4L1)")  3, pl3 < pl1, pl3 < pl2, pl3 < pl3
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: pdg_arrays_4"        
+    
+  end subroutine pdg_arrays_4
+  
+  subroutine pdg_arrays_5 (u)
+    integer, intent(in) :: u
+
+    type(pdg_list_t) :: pl1, pl2, pl3
+    logical :: success
+
+    write (u, "(A)")  "* Test output: pdg_arrays_5"
+    write (u, "(A)")  "*   Purpose: match-replace"
+    write (u, "(A)")
+    
+    write (u, "(A)")  "* Create lists"
+    write (u, "(A)")
+    
+    call pl1%init (2)
+    call pl1%set (1, [1, 2])
+    call pl1%set (2, 42)
+    call pl1%write (u)
+    write (u, *)
+    call pl3%init (2)
+    call pl3%set (1, [42, -42])
+    call pl3%set (2, [1, 2, 3, 4])
+    call pl1%match_replace (pl3, success)
+    call pl3%write (u)
+    write (u, "(1x,A,1x,L1,':',1x)", advance="no")  "=>", success
+    call pl1%write (u)
+    write (u, *)
+
+    write (u, *)
+
+    call pl2%init (2)
+    call pl2%set (1, 9)
+    call pl2%set (2, 42)
+    call pl2%write (u)
+    write (u, *)
+    call pl2%match_replace (pl3, success)
+    call pl3%write (u)
+    write (u, "(1x,A,1x,L1,':',1x)", advance="no")  "=>", success
+    call pl2%write (u)
+    write (u, *)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: pdg_arrays_5"        
+    
+  end subroutine pdg_arrays_5
   
 
 end module pdg_arrays

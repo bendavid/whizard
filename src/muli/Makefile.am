@@ -42,7 +42,7 @@ DISTCLEANFILES = Makefile.depend
 
 # commented out by SS
 #AM_FCFLAGS = @FC_PROF@ -I../misc -I../vamp/src/
-AM_FCFLAGS = -I../misc -I../vamp/src/ -I../pdf_builtin
+AM_FCFLAGS = -I../misc -I../../vamp/src/ -I../pdf_builtin
 
 # commented out by SS
 ### OpenMP

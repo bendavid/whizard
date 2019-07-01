@@ -33,5 +33,5 @@ openmp_num_threads = 1
 integrate (smtest_11_tt) { iterations = 1:1000 }
 
 n_events = 1
-sample_format = short
+sample_format = mokka
 simulate (smtest_11_tt)

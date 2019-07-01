@@ -1,4 +1,4 @@
-! WHIZARD 2.2.1 June 3 2014
+! WHIZARD 2.2.2 July 6 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -54,6 +54,7 @@ module commands
   use variables
   use expressions
   use models
+  use auto_components
   use interactions
   use flavors
   use polarizations
@@ -3517,8 +3518,9 @@ contains
     type(rt_data_t), intent(inout) :: global
     type(prclib_entry_t), pointer :: lib_entry
     type(process_library_t), pointer :: lib
-    type(fs_table_t) :: fs_table
-    integer, dimension(:), allocatable :: pdg_out
+    type(ds_table_t) :: ds_table
+    type(split_constraints_t) :: constraints
+    type(pdg_array_t), dimension(:), allocatable :: pa_out
     character(80) :: buffer
     character :: p_or_a
     type(string_t) :: process_string, libname_cur
@@ -3526,9 +3528,17 @@ contains
     type(string_t) :: prt_in
     type(string_t), dimension(:), allocatable :: prt_out
     type(process_configuration_t) :: prc_config
-    integer :: i, j
-    call fs_table%make (global%model, pdg_in, mult, rad)
+    integer :: i, j, k, n
     call flavor_init (flv_in, pdg_in, global%model)
+    if (rad) then
+       call constraints%init (2)
+    else
+       call constraints%init (3)
+       call constraints%set (3, constrain_radiation ())
+    end if
+    call constraints%set (1, constrain_n_tot (mult))
+    call constraints%set (2, constrain_mass_sum (flavor_get_mass (flv_in)))
+    call ds_table%make (global%model, pdg_in, constraints)
     prt_in = flavor_get_name (flv_in)
     if (pdg_in > 0) then
        p_or_a = "p"
@@ -3549,16 +3559,22 @@ contains
     else
        call global%update_prclib (lib)
     end if
-    allocate (process_id (fs_table%get_length ()))
+    allocate (process_id (ds_table%get_length ()))
     do i = 1, size (process_id)
        write (buffer, "(A,'_',A,I0,'_',I0)")  "decay", p_or_a, abs (pdg_in), i
        process_id(i) = trim (buffer)
        process_string = process_id(i) // ": " // prt_in // " =>"
-       call fs_table%get_pdg_out (i, pdg_out)
-       allocate (prt_out (size (pdg_out)))
-       do j = 1, size (pdg_out)
-          call flavor_init (flv_out, pdg_out(j), global%model)
-          prt_out(j) = flavor_get_name (flv_out)
+       call ds_table%get_pdg_out (i, pa_out)
+       allocate (prt_out (size (pa_out)))
+       do j = 1, size (pa_out)
+          do k = 1, pa_out(j)%get_length ()
+             call flavor_init (flv_out, pa_out(j)%get (k), global%model)
+             if (k == 1) then
+                prt_out(j) = flavor_get_name (flv_out)
+             else
+                prt_out(j) = prt_out(j) // ":" // flavor_get_name (flv_out)
+             end if
+          end do
           process_string = process_string // " " // prt_out(j)
        end do
        call msg_message (char (process_string))
@@ -3567,8 +3583,9 @@ contains
             new_prt_spec ([prt_in]), new_prt_spec (prt_out), global)
        call prc_config%record (global)
        deallocate (prt_out)
-       deallocate (pdg_out)
+       deallocate (pa_out)
     end do
+    call ds_table%final ()
     lib => global%prclib_stack%get_library_ptr (libname_cur)
     call global%update_prclib (lib)
   end subroutine create_auto_decays
@@ -6145,6 +6162,9 @@ contains
     call syntax_cmd_list_init ()
     call syntax_model_file_init ()
     call global%global_init ()
+    call global%init_fallback_model &
+         (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"))
+
     call var_list_set_string (global%var_list, var_str ("$method"), &
          var_str ("unit_test"), is_known=.true.)
     call var_list_set_string (global%var_list, var_str ("$phs_method"), &
@@ -6414,7 +6434,11 @@ contains
 
     call syntax_cmd_list_init ()
     call syntax_model_file_init ()
+
     call global%global_init ()
+    call global%init_fallback_model &
+         (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"))
+
     call var_list_set_string (global%var_list, var_str ("$method"), &
          var_str ("unit_test"), is_known=.true.)
     call var_list_set_string (global%var_list, var_str ("$phs_method"), &
@@ -6501,6 +6525,9 @@ contains
     call syntax_cmd_list_init ()
     call syntax_model_file_init ()
     call global%global_init ()
+    call global%init_fallback_model &
+         (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"))
+
     call var_list_set_string (global%var_list, var_str ("$method"), &
          var_str ("unit_test"), is_known=.true.)
     call var_list_set_string (global%var_list, var_str ("$phs_method"), &
@@ -7123,6 +7150,9 @@ contains
     call syntax_cmd_list_init ()
     call syntax_model_file_init ()
     call global%global_init ()
+    call global%init_fallback_model &
+         (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"))
+
     call var_list_set_string (global%var_list, var_str ("$method"), &
          var_str ("unit_test"), is_known=.true.)
     call var_list_set_string (global%var_list, var_str ("$phs_method"), &

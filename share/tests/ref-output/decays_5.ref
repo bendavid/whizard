@@ -1298,7 +1298,7 @@ n_tot* => 3
  mask [fch] = [TTT]
  internal links: X => 3 4
  source: (17)2
- Particle 3
+ Particle 3[r]
  E =   5.000000000000E+02
  P =  -8.976132546819E+01  2.762569536685E+02  3.872983346207E+02
  mask [fch] = [TTT]
@@ -1352,7 +1352,7 @@ n_tot* => 3
  mask [fch] = [FTT]
  internal links: X => 3 4
  source: (20)2
- Particle 3
+ Particle 3[r]
  E =   5.000000000000E+02
  P =  -8.976132546819E+01  2.762569536685E+02  3.872983346207E+02
  mask [fch] = [FTT]
@@ -1406,7 +1406,7 @@ n_tot* => 3
  mask [fch] = [FFgT]
  internal links: X => 3 4
  source: (22)2
- Particle 3
+ Particle 3[r]
  E =   5.000000000000E+02
  P =  -8.976132546819E+01  2.762569536685E+02  3.872983346207E+02
  mask [fch] = [FFgT]
@@ -1468,13 +1468,13 @@ n_tot* => 3
  mask [fch] = [TTT]
  internal links: X => 3 4
  source: (43)2
- Particle 3
+ Particle 3[r]
  E =   5.000000000000E+02
  P =  -8.976132546819E+01  2.762569536685E+02  3.872983346207E+02
  mask [fch] = [TTT]
  internal links: 1 2 => X => 5 6
  source: (43)3
- Particle 4
+ Particle 4[r]
  E =   5.000000000000E+02
  P =   8.976132546819E+01 -2.762569536685E+02 -3.872983346207E+02
  mask [fch] = [TTT]
@@ -1536,13 +1536,13 @@ n_tot* => 3
  mask [fch] = [FTT]
  internal links: X => 3 4
  source: (44)2
- Particle 3
+ Particle 3[r]
  E =   5.000000000000E+02
  P =  -8.976132546819E+01  2.762569536685E+02  3.872983346207E+02
  mask [fch] = [FTT]
  internal links: 1 2 => X => 5 6
  source: (44)3
- Particle 4
+ Particle 4[r]
  E =   5.000000000000E+02
  P =   8.976132546819E+01 -2.762569536685E+02 -3.872983346207E+02
  mask [fch] = [FTT]
@@ -1604,13 +1604,13 @@ n_tot* => 3
  mask [fch] = [FFgT]
  internal links: X => 3 4
  source: (45)2
- Particle 3
+ Particle 3[r]
  E =   5.000000000000E+02
  P =  -8.976132546819E+01  2.762569536685E+02  3.872983346207E+02
  mask [fch] = [FFgT]
  internal links: 1 2 => X => 5 6
  source: (45)3
- Particle 4
+ Particle 4[r]
  E =   5.000000000000E+02
  P =   8.976132546819E+01 -2.762569536685E+02 -3.872983346207E+02
  mask [fch] = [FFgT]
@@ -1672,13 +1672,13 @@ n_tot* => 3
  mask [fch] = [TTT]
  internal links: X => 3 4
  source: (47)2
- Particle 3
+ Particle 3[r]
  E =   5.000000000000E+02
  P =  -8.976132546819E+01  2.762569536685E+02  3.872983346207E+02
  mask [fch] = [TTT]
  internal links: 1 2 => X => 5 6
  source: (47)3
- Particle 4
+ Particle 4[r]
  E =   5.000000000000E+02
  P =   8.976132546819E+01 -2.762569536685E+02 -3.872983346207E+02
  mask [fch] = [TTT]

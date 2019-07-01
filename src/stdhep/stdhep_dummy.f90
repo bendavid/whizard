@@ -19,6 +19,15 @@ subroutine stdxwrt (ilbl, istr, lok)
   stop
 end subroutine stdxwrt
 
+subroutine stdxrd (ilbl, istr, lok)
+  integer, intent(out) :: ilbl, lok
+  integer, intent(in) :: istr
+  write (0, "(A)")  "*************************************************************"
+  write (0, "(A)")  "*** STDHEP: Error: library not linked, WHIZARD terminates ***"
+  write (0, "(A)")  "*************************************************************"
+  stop
+end subroutine stdxrd
+
 subroutine stdxend (istr)
   integer, intent(in) :: istr
   write (0, "(A)")  "*************************************************************"

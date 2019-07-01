@@ -36,12 +36,12 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\def\WhizardVersion{2.2.1}
-\def\WhizardDate{June 3 2014}
+\def\WhizardVersion{2.2.2}
+\def\WhizardDate{July 6 2014}
 <<Version>>=
-2.2.1
+2.2.2
 <<Date>>=
-June 3 2014
+July 6 2014
 @ 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \title{%
@@ -907,6 +907,12 @@ file extensions, etc.
      type(string_t) :: gml
      type(string_t) :: dvips
      type(string_t) :: ps2pdf
+     type(string_t) :: gosampath
+     type(string_t) :: golempath
+     type(string_t) :: formpath
+     type(string_t) :: qgrafpath
+     type(string_t) :: ninjapath
+     type(string_t) :: samuraipath
   end type os_data_t
 
 @ %def os_data_t
@@ -1020,6 +1026,12 @@ necessary.
     os_data%dvips  = PRG_DVIPS
     os_data%ps2pdf = PRG_PS2PDF
     call os_data_expand_paths (os_data)
+    os_data%gosampath = GOSAM_DIR
+    os_data%golempath = GOLEM_DIR
+    os_data%formpath = FORM_DIR
+    os_data%qgrafpath = QGRAF_DIR
+    os_data%ninjapath = NINJA_DIR
+    os_data%samuraipath = SAMURAI_DIR
   end subroutine os_data_init
     
 @ %def os_data_init
@@ -1138,6 +1150,14 @@ of each other.    %% Fooling Noweb Emacs mode: $
     write (u, *) "gml    = ", char (os_data%gml)
     write (u, *) "dvips  = ", char (os_data%dvips)
     write (u, *) "ps2pdf = ", char (os_data%ps2pdf)
+    if (os_data%gosampath /= "") then
+       write (u, *) "gosam   = ", char (os_data%gosampath)
+       write (u, *) "golem   = ", char (os_data%golempath)
+       write (u, *) "form    = ", char (os_data%formpath)
+       write (u, *) "qgraf   = ", char (os_data%qgrafpath)
+       write (u, *) "ninja   = ", char (os_data%ninjapath)
+       write (u, *) "samurai = ", char (os_data%samuraipath)
+    end if
   end subroutine os_data_write
 
 @ %def os_data_write
@@ -2749,6 +2769,7 @@ entries beforehand, we use a linked list.
   type :: string_list_pointer
      type(string_list), pointer :: first, last
   end type string_list_pointer
+  
 @ %def string_list string_list_pointer
 <<Diagnostics: variables>>=
   type(string_list_pointer), dimension(TERMINATE:WARNING), save :: &
@@ -18663,6 +18684,18 @@ allocatable by the caller.
   end function pdg_array_get
 
 @ %def pdg_array_get
+@ Explicitly set the element with index i.
+<<PDG arrays: pdg array: TBP>>=
+  procedure :: set => pdg_array_set
+<<PDG arrays: procedures>>=
+  subroutine pdg_array_set (aval, i, pdg)
+    class(pdg_array_t), intent(inout) :: aval
+    integer, intent(in) :: i
+    integer, intent(in) :: pdg
+    aval%pdg(i) = pdg
+  end subroutine pdg_array_set
+
+@ %def pdg_array_set
 @ Replace element with index [[i]] by a new array of elements.
 <<PDG arrays: public>>=
   public :: pdg_array_replace
@@ -18720,9 +18753,11 @@ array.  If either one is zero (UNDEFINED), the match also succeeds.
 <<PDG arrays: interfaces>>=
   interface operator(.match.)
      module procedure pdg_array_match_integer
+     module procedure pdg_array_match_pdg_array
   end interface
 
 @ %def .match.
+@ Match a single code against the array.
 <<PDG arrays: procedures>>=
   elemental function pdg_array_match_integer (aval, pdg) result (flag)
     logical :: flag
@@ -18738,6 +18773,19 @@ array.  If either one is zero (UNDEFINED), the match also succeeds.
   end function pdg_array_match_integer
 
 @ %def pdg_array_match_integer
+@ Match two arrays.  Succeeds if any pair of entries matches.
+<<PDG arrays: procedures>>=
+  function pdg_array_match_pdg_array (aval1, aval2) result (flag)
+    logical :: flag
+    type(pdg_array_t), intent(in) :: aval1, aval2
+    if (allocated (aval1%pdg) .and. allocated (aval2%pdg)) then
+       flag = any (aval1 .match. aval2%pdg)
+    else
+       flag = .false.
+    end if
+  end function pdg_array_match_pdg_array
+
+@ %def pdg_array_match_pdg_array
 @ Comparison.  Here, we take the PDG arrays as-is, assuming that they
 are sorted.
 
@@ -18951,15 +18999,33 @@ some convenience methods.
 @ %def pdg_list_write
 @ Initialize for a certain size.  The entries are initially empty PDG arrays.
 <<PDG arrays: pdg list: TBP>>=
-  procedure :: init => pdg_list_init
+  generic :: init => pdg_list_init_size
+  procedure, private :: pdg_list_init_size
 <<PDG arrays: procedures>>=
-  subroutine pdg_list_init (pl, n)
+  subroutine pdg_list_init_size (pl, n)
     class(pdg_list_t), intent(out) :: pl
     integer, intent(in) :: n
     allocate (pl%a (n))
-  end subroutine pdg_list_init
+  end subroutine pdg_list_init_size
   
-@ %def pdg_list_init
+@ %def pdg_list_init_size
+@ Initialize with a definite array of PDG codes.  That is, each entry
+in the list becomes a single-particle PDG array.
+<<PDG arrays: pdg list: TBP>>=
+  generic :: init => pdg_list_init_int_array
+  procedure, private :: pdg_list_init_int_array
+<<PDG arrays: procedures>>=
+  subroutine pdg_list_init_int_array (pl, pdg)
+    class(pdg_list_t), intent(out) :: pl
+    integer, dimension(:), intent(in) :: pdg
+    integer :: i
+    allocate (pl%a (size (pdg)))
+    do i = 1, size (pdg)
+       pl%a(i) = pdg(i)
+    end do
+  end subroutine pdg_list_init_int_array
+  
+@ %def pdg_list_init_array
 @ Set one of the entries.  No bounds-check.
 <<PDG arrays: pdg list: TBP>>=
   generic :: set => pdg_list_set_int
@@ -19018,18 +19084,47 @@ some convenience methods.
   end function pdg_list_get
   
 @ %def pdg_list_get
+@ Check if the list entries are all either mutually disjoint or identical.
+The individual entries (PDG arrays) should already be sorted, so we can test
+for equality.
+<<PDG arrays: pdg list: TBP>>=
+  procedure :: is_regular => pdg_list_is_regular
+<<PDG arrays: procedures>>=
+  function pdg_list_is_regular (pl) result (flag)
+    class(pdg_list_t), intent(in) :: pl
+    logical :: flag
+    integer :: i, j, s
+    s = pl%get_size ()
+    flag = .true.
+    do i = 1, s
+       do j = i + 1, s
+          if (pl%a(i) .match. pl%a(j)) then
+             if (pl%a(i) /= pl%a(j)) then
+                flag = .false.
+                return
+             end if
+          end if
+       end do
+    end do
+  end function pdg_list_is_regular
+  
+@ %def pdg_list_is_regular
 @ Sort the list.  First, each entry gets sorted, including elimination
 of doublers.  Then, we sort the list, using the first member of each
 PDG array as the marker.  No removal of doublers at this stage.
+
+If [[n_in]] is supplied, we do not reorder the first [[n_in]] particle
+entries.
 <<PDG arrays: pdg list: TBP>>=
   procedure :: sort_abs => pdg_list_sort_abs
 <<PDG arrays: procedures>>=
-  function pdg_list_sort_abs (pl) result (pl_sorted)
+  function pdg_list_sort_abs (pl, n_in) result (pl_sorted)
     class(pdg_list_t), intent(in) :: pl
+    integer, intent(in), optional :: n_in
     type(pdg_list_t) :: pl_sorted
     type(pdg_array_t), dimension(:), allocatable :: pa
     integer, dimension(:), allocatable :: pdg, map
-    integer :: i
+    integer :: i, n0
     call pl_sorted%init (pl%get_size ())
     if (allocated (pl%a)) then
        allocate (pa (size (pl%a)))
@@ -19044,8 +19139,14 @@ PDG array as the marker.  No removal of doublers at this stage.
              end if
           end if
        end do
+       if (present (n_in)) then
+          n0 = n_in
+       else
+          n0 = 0
+       end if
        allocate (map (size (pdg)))
-       map = order_abs (pdg)
+       map(:n0) = [(i, i = 1, n0)]
+       map(n0+1:) = n0 + order_abs (pdg(n0+1:))
        do i = 1, size (pa)
           call pl_sorted%set (i, pa(map(i)))
        end do
@@ -19053,39 +19154,201 @@ PDG array as the marker.  No removal of doublers at this stage.
   end function pdg_list_sort_abs
     
 @ %def pdg_list_sort_abs
+@ Compare sorted lists: equality.  The result is undefined if some entries
+are not allocated.
+<<PDG arrays: pdg list: TBP>>=
+  generic :: operator (==) => pdg_list_eq
+  procedure, private :: pdg_list_eq
+<<PDG arrays: procedures>>=
+  function pdg_list_eq (pl1, pl2) result (flag)
+    class(pdg_list_t), intent(in) :: pl1, pl2
+    logical :: flag
+    integer :: i
+    flag = .false.
+    if (allocated (pl1%a) .and. allocated (pl2%a)) then
+       if (size (pl1%a) == size (pl2%a)) then
+          do i = 1, size (pl1%a)
+             associate (a1 => pl1%a(i), a2 => pl2%a(i))
+               if (allocated (a1%pdg) .and. allocated (a2%pdg)) then
+                  if (size (a1%pdg) == size (a2%pdg)) then
+                     if (size (a1%pdg) > 0) then
+                        if (a1%pdg(1) /= a2%pdg(1)) return
+                     end if
+                  else
+                     return
+                  end if
+               else
+                  return
+               end if
+             end associate
+          end do
+          flag = .true.
+       end if
+    end if
+  end function pdg_list_eq
+  
+@ %def pdg_list_eq
+@ Compare sorted lists.  The result is undefined if some entries
+are not allocated.
+
+The ordering is quite complicated.  First, a shorter list comes before
+a longer list.  Comparing entry by entry, a shorter entry comes
+first.  Next, we check the first PDG code within corresponding
+entries.  This is compared by absolute value.  If equal, particle
+comes before antiparticle.  Finally, if all is equal, the result is
+false.
+<<PDG arrays: pdg list: TBP>>=
+  generic :: operator (<) => pdg_list_lt
+  procedure, private :: pdg_list_lt
+<<PDG arrays: procedures>>=
+  function pdg_list_lt (pl1, pl2) result (flag)
+    class(pdg_list_t), intent(in) :: pl1, pl2
+    logical :: flag
+    integer :: i
+    flag = .false.
+    if (allocated (pl1%a) .and. allocated (pl2%a)) then
+       if (size (pl1%a) < size (pl2%a)) then
+          flag = .true.;  return
+       else if (size (pl1%a) > size (pl2%a)) then
+          return
+       else
+          do i = 1, size (pl1%a)
+             associate (a1 => pl1%a(i), a2 => pl2%a(i))
+               if (allocated (a1%pdg) .and. allocated (a2%pdg)) then
+                  if (size (a1%pdg) < size (a2%pdg)) then
+                     flag = .true.;  return
+                  else if (size (a1%pdg) > size (a2%pdg)) then
+                     return
+                  else
+                     if (size (a1%pdg) > 0) then
+                        if (abs (a1%pdg(1)) < abs (a2%pdg(1))) then
+                           flag = .true.;  return
+                        else if (abs (a1%pdg(1)) > abs (a2%pdg(1))) then
+                           return
+                        else if (a1%pdg(1) > 0 .and. a2%pdg(1) < 0) then
+                           flag = .true.;  return
+                        else if (a1%pdg(1) < 0 .and. a2%pdg(1) > 0) then
+                           return
+                        end if
+                     end if
+                  end if
+               else
+                  return
+               end if
+             end associate
+          end do
+          flag = .false.
+       end if
+    end if
+  end function pdg_list_lt
+  
+@ %def pdg_list_lt
 @ Replace an entry.  In the result, the entry [[#i]] is replaced by
 the contents of the second argument.  The result is not sorted.
+
+If [[n_in]] is also set and [[i]] is less or equal to [[n_in]],
+replace [[#i]] only by the first entry of [[pl_insert]], and insert
+the remainder after entry [[n_in]].
 <<PDG arrays: pdg list: TBP>>=
   procedure :: replace => pdg_list_replace
 <<PDG arrays: procedures>>=
-  function pdg_list_replace (pl, i, pl_insert) result (pl_out)
+  function pdg_list_replace (pl, i, pl_insert, n_in) result (pl_out)
     class(pdg_list_t), intent(in) :: pl
     integer, intent(in) :: i
     class(pdg_list_t), intent(in) :: pl_insert
+    integer, intent(in), optional :: n_in
     type(pdg_list_t) :: pl_out
     integer :: n, n_insert, n_out, k
     n = pl%get_size ()
     n_insert = pl_insert%get_size ()
     n_out = n + n_insert - 1
     call pl_out%init (n_out)
-    if (allocated (pl%a)) then
+!    if (allocated (pl%a)) then
        do k = 1, i - 1
           pl_out%a(k) = pl%a(k)
        end do
-    end if
-    if (allocated (pl_insert%a)) then
-       do k = 1, n_insert
-          pl_out%a(i-1+k) = pl_insert%a(k)
+!    end if
+    if (present (n_in)) then
+       pl_out%a(i) = pl_insert%a(1)
+       do k = i + 1, n_in
+          pl_out%a(k) = pl%a(k)
        end do
-    end if
-    if (allocated (pl%a)) then
-       do k = 1, n - i
-          pl_out%a(i+n_insert-1+k) = pl%a(i+k)
+       do k = 1, n_insert - 1
+          pl_out%a(n_in+k) = pl_insert%a(1+k)
        end do
-    end if
+       do k = 1, n - n_in
+          pl_out%a(n_in+k+n_insert-1) = pl%a(n_in+k)
+       end do
+    else
+!       if (allocated (pl_insert%a)) then
+          do k = 1, n_insert
+             pl_out%a(i-1+k) = pl_insert%a(k)
+          end do
+!       end if
+!       if (allocated (pl%a)) then
+          do k = 1, n - i
+             pl_out%a(i+n_insert-1+k) = pl%a(i+k)
+          end do
+       end if
+!    end if
   end function pdg_list_replace
     
 @ %def pdg_list_replace
+@ Replace the entries of [[pl]] by the matching entries of [[pl_match]], one by
+one.  This is done in-place.  If there is no match, return failure.
+<<PDG arrays: pdg list: TBP>>=
+  procedure :: match_replace => pdg_list_match_replace
+<<PDG arrays: procedures>>=
+  subroutine pdg_list_match_replace (pl, pl_match, success)
+    class(pdg_list_t), intent(inout) :: pl
+    class(pdg_list_t), intent(in) :: pl_match
+    logical, intent(out) :: success
+    integer :: i, j
+    success = .true.
+    SCAN_ENTRIES: do i = 1, size (pl%a)
+       do j = 1, size (pl_match%a)
+          if (pl%a(i) .match. pl_match%a(j)) then
+             pl%a(i) = pl_match%a(j)
+             cycle SCAN_ENTRIES
+          end if
+       end do
+       success = .false.
+       return
+    end do SCAN_ENTRIES
+  end subroutine pdg_list_match_replace
+ 
+@ %def pdg_list_match_replace
+@ Just check if a PDG array matches any entry in the PDG list.  The second
+version returns the position of the match within the list.  An optional mask
+indicates the list elements that should be checked.
+<<PDG arrays: pdg list: TBP>>=
+  generic :: operator (.match.) => pdg_list_match_pdg_array
+  procedure, private :: pdg_list_match_pdg_array
+  procedure :: find_match => pdg_list_find_match_pdg_array
+<<PDG arrays: procedures>>=
+  function pdg_list_match_pdg_array (pl, pa) result (flag)
+    class(pdg_list_t), intent(in) :: pl
+    type(pdg_array_t), intent(in) :: pa
+    logical :: flag
+    flag = pl%find_match (pa) /= 0
+  end function pdg_list_match_pdg_array
+  
+  function pdg_list_find_match_pdg_array (pl, pa, mask) result (i)
+    class(pdg_list_t), intent(in) :: pl
+    type(pdg_array_t), intent(in) :: pa
+    logical, dimension(:), intent(in), optional :: mask
+    integer :: i
+    do i = 1, size (pl%a)
+       if (present (mask)) then
+          if (.not. mask(i))  cycle
+       end if
+       if (pl%a(i) .match. pa)  return
+    end do
+    i = 0
+  end function pdg_list_find_match_pdg_array
+  
+@ %def pdg_list_match_pdg_array
+@ %def pdg_list_find_match_pdg_array
 @ 
 \subsection{Unit tests}
 <<PDG arrays: public>>=
@@ -19214,7 +19477,7 @@ the contents of the second argument.  The result is not sorted.
 @ PDG array list, i.e., arrays of arrays.
 <<PDG arrays: execute tests>>=
   call test (pdg_arrays_2, "pdg_arrays_2", &
-       "create and sort PDG array", &
+       "create and sort PDG lists", &
        u, results) 
 <<PDG arrays: tests>>=     
   subroutine pdg_arrays_2 (u)
@@ -19273,6 +19536,174 @@ the contents of the second argument.  The result is not sorted.
   end subroutine pdg_arrays_2
   
 @ %def pdg_arrays_2
+@ Check if a (sorted) PDG array lists is regular.  The entries (PDG arrays)
+must not overlap, unless they are identical.
+<<PDG arrays: execute tests>>=
+  call test (pdg_arrays_3, "pdg_arrays_3", &
+       "check PDG lists", &
+       u, results) 
+<<PDG arrays: tests>>=     
+  subroutine pdg_arrays_3 (u)
+    integer, intent(in) :: u
+
+    type(pdg_list_t) :: pl
+
+    write (u, "(A)")  "* Test output: pdg_arrays_3"
+    write (u, "(A)")  "*   Purpose: check for regular PDG lists"
+    write (u, "(A)")
+    
+    write (u, "(A)")  "* Regular list"
+    write (u, "(A)")
+    
+    call pl%init (4)
+    call pl%set (1, [1, 2])
+    call pl%set (2, [1, 2])
+    call pl%set (3, [5, -5])
+    call pl%set (4, 42)
+    call pl%write (u)
+    write (u, *)
+    write (u, "(L1)") pl%is_regular ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Irregular list"
+    write (u, "(A)")
+    
+    call pl%init (4)
+    call pl%set (1, [1, 2])
+    call pl%set (2, [1, 2])
+    call pl%set (3, [2, 5, -5])
+    call pl%set (4, 42)
+    call pl%write (u)
+    write (u, *)
+    write (u, "(L1)") pl%is_regular ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: pdg_arrays_3"        
+    
+  end subroutine pdg_arrays_3
+  
+@ %def pdg_arrays_3
+@ Compare PDG array lists.  The lists must be regular, i.e., sorted and with
+non-overlapping (or identical) entries.
+<<PDG arrays: execute tests>>=
+  call test (pdg_arrays_4, "pdg_arrays_4", &
+       "compare PDG lists", &
+       u, results) 
+<<PDG arrays: tests>>=     
+  subroutine pdg_arrays_4 (u)
+    integer, intent(in) :: u
+
+    type(pdg_list_t) :: pl1, pl2, pl3
+
+    write (u, "(A)")  "* Test output: pdg_arrays_4"
+    write (u, "(A)")  "*   Purpose: check for regular PDG lists"
+    write (u, "(A)")
+    
+    write (u, "(A)")  "* Create lists"
+    write (u, "(A)")
+    
+    call pl1%init (4)
+    call pl1%set (1, [1, 2])
+    call pl1%set (2, [1, 2])
+    call pl1%set (3, [5, -5])
+    call pl1%set (4, 42)
+    write (u, "(I1,1x)", advance = "no")  1
+    call pl1%write (u)
+    write (u, *)
+
+    call pl2%init (2)
+    call pl2%set (1, 3)
+    call pl2%set (2, [5, -5])
+    write (u, "(I1,1x)", advance = "no")  2
+    call pl2%write (u)
+    write (u, *)
+
+    call pl3%init (2)
+    call pl3%set (1, 4)
+    call pl3%set (2, [5, -5])
+    write (u, "(I1,1x)", advance = "no")  3
+    call pl3%write (u)
+    write (u, *)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* a == b"
+    write (u, "(A)")
+    
+    write (u, "(2x,A)")  "123"
+    write (u, *)
+    write (u, "(I1,1x,4L1)")  1, pl1 == pl1, pl1 == pl2, pl1 == pl3
+    write (u, "(I1,1x,4L1)")  2, pl2 == pl1, pl2 == pl2, pl2 == pl3
+    write (u, "(I1,1x,4L1)")  3, pl3 == pl1, pl3 == pl2, pl3 == pl3
+
+    write (u, "(A)")
+    write (u, "(A)")  "* a < b"
+    write (u, "(A)")
+    
+    write (u, "(2x,A)")  "123"
+    write (u, *)
+    write (u, "(I1,1x,4L1)")  1, pl1 < pl1, pl1 < pl2, pl1 < pl3
+    write (u, "(I1,1x,4L1)")  2, pl2 < pl1, pl2 < pl2, pl2 < pl3
+    write (u, "(I1,1x,4L1)")  3, pl3 < pl1, pl3 < pl2, pl3 < pl3
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: pdg_arrays_4"        
+    
+  end subroutine pdg_arrays_4
+  
+@ %def pdg_arrays_4
+@ Match-replace: translate all entries in the first list into the
+matching entries of the second list, if there is a match.
+<<PDG arrays: execute tests>>=
+  call test (pdg_arrays_5, "pdg_arrays_5", &
+       "match PDG lists", &
+       u, results) 
+<<PDG arrays: tests>>=     
+  subroutine pdg_arrays_5 (u)
+    integer, intent(in) :: u
+
+    type(pdg_list_t) :: pl1, pl2, pl3
+    logical :: success
+
+    write (u, "(A)")  "* Test output: pdg_arrays_5"
+    write (u, "(A)")  "*   Purpose: match-replace"
+    write (u, "(A)")
+    
+    write (u, "(A)")  "* Create lists"
+    write (u, "(A)")
+    
+    call pl1%init (2)
+    call pl1%set (1, [1, 2])
+    call pl1%set (2, 42)
+    call pl1%write (u)
+    write (u, *)
+    call pl3%init (2)
+    call pl3%set (1, [42, -42])
+    call pl3%set (2, [1, 2, 3, 4])
+    call pl1%match_replace (pl3, success)
+    call pl3%write (u)
+    write (u, "(1x,A,1x,L1,':',1x)", advance="no")  "=>", success
+    call pl1%write (u)
+    write (u, *)
+
+    write (u, *)
+
+    call pl2%init (2)
+    call pl2%set (1, 9)
+    call pl2%set (2, 42)
+    call pl2%write (u)
+    write (u, *)
+    call pl2%match_replace (pl3, success)
+    call pl3%write (u)
+    write (u, "(1x,A,1x,L1,':',1x)", advance="no")  "=>", success
+    call pl2%write (u)
+    write (u, *)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: pdg_arrays_5"        
+    
+  end subroutine pdg_arrays_5
+  
+@ %def pdg_arrays_5
 @ 
 \clearpage
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -33324,16 +33755,11 @@ data pointers associated with the pdg codes.
 codes if present, otherwise zero.  Actually, we return the
 antiparticles of the matching codes, as appropriate for computing
 splittings.
-
-If the [[radiative]] flag is not set, we eliminate radiative decays.
-These have the properties that the initial particle coincides with one
-of the outgoing particles.
 <<Models: procedures>>=
-  subroutine vertex_get_match (vtx, pdg1, pdg2, radiative)
+  subroutine vertex_get_match (vtx, pdg1, pdg2)
     type(vertex_t), intent(in) :: vtx
     integer, intent(in) :: pdg1
     integer, dimension(:), allocatable, intent(out) :: pdg2
-    logical, intent(in) :: radiative
     integer :: i, j
     do i = 1, size (vtx%pdg)
        if (vtx%pdg(i) == pdg1) then
@@ -33347,9 +33773,6 @@ of the outgoing particles.
           exit
        end if
     end do
-    if (allocated (pdg2)) then
-       if (.not. radiative .and. any (pdg2 == pdg1))  deallocate (pdg2)
-    end if
   contains
     function anti (i) result (pdg)
       integer, intent(in) :: i
@@ -33363,6 +33786,51 @@ of the outgoing particles.
   end subroutine vertex_get_match
 
 @ %def vertex_get_match
+@ To access this from the outside, we create an iterator.  The iterator has
+the sole purpose of returning the matching particles for a given array of PDG
+codes.
+<<Models: public>>=
+  public :: vertex_iterator_t
+<<Models: types>>=
+  type :: vertex_iterator_t
+     private
+     type(model_t), pointer :: model => null ()
+     integer, dimension(:), allocatable :: pdg
+     integer :: vertex_index = 0
+   contains
+     procedure :: init => vertex_iterator_init
+     procedure :: get_next_match => vertex_iterator_get_next_match
+  end type vertex_iterator_t
+  
+@ %def vertex_iterator_t
+@ We initialize the iterator for a particular model with the [[pdg]] index of
+the particle we are looking at.
+<<Models: procedures>>=
+  subroutine vertex_iterator_init (it, model, pdg)
+    class(vertex_iterator_t), intent(out) :: it
+    type(model_t), intent(in), target :: model
+    integer, dimension(:), intent(in) :: pdg
+    it%model => model
+    allocate (it%pdg (size (pdg)), source = pdg)
+  end subroutine vertex_iterator_init
+  
+  subroutine vertex_iterator_get_next_match (it, pdg_match)
+    class(vertex_iterator_t), intent(inout) :: it
+    integer, dimension(:), allocatable, intent(out) :: pdg_match
+    integer :: i, j
+    do i = it%vertex_index + 1, size (it%model%vtx)
+       do j = 1, size (it%pdg)
+          call vertex_get_match (it%model%vtx(i), it%pdg(j), pdg_match)
+          if (allocated (pdg_match)) then
+             it%vertex_index = i
+             return
+          end if
+       end do
+    end do
+    it%vertex_index = 0
+  end subroutine vertex_iterator_get_next_match
+  
+@ %def vertex_iterator_get_next_match
 @
 \subsection{Vertex lookup table}
 The vertex lookup table is a hash table: given two particle codes, we
@@ -34393,9 +34861,10 @@ name as defaults.
 @ %def model_get_n_particles
 @ Find the index that belongs to a particle.
 <<Models: procedures>>=
-  function model_get_particle_index (model, pdg) result (index)
+  function model_get_particle_index (model, pdg, nocheck) result (index)
     type(model_t), intent(in) :: model
     integer, intent(in) :: pdg
+    logical, intent(in), optional :: nocheck
     integer :: index
     integer :: i
     do i = 1, size (model%prt)
@@ -34403,25 +34872,50 @@ name as defaults.
           index = i;  return
        end if
     end do
-    write (msg_buffer, "(1x,A,1x,I0)")  "PDG code =", pdg
-    call msg_message
-    call msg_fatal (" Model '" // char (model%name) // "'" // &
-         " has no particle with this PDG code")
+    if (present (nocheck)) then
+       if (nocheck) then
+          index = 0
+          return
+       end if
+    end if
+    write (msg_buffer, "(A,1x,I0,1x,A,1x,A)") &
+         "No particle with PDG code", pdg, &
+         "is contained in model", &
+         char (model_get_name (model))
+    call msg_fatal ()
   end function model_get_particle_index
 
 @ %def model_get_particle_index
 @ Return a pointer to the particle-data object that belongs to the
-specified PDG code or name.
+specified PDG code.  If enabled, use a fallback model if the
+code is not found in the current model.
 <<Models: public>>=
   public :: model_get_particle_ptr
 <<Models: procedures>>=
-  function model_get_particle_ptr (model, pdg) result (prt)
+  function model_get_particle_ptr (model, pdg, alt_model) result (prt)
     type(particle_data_t), pointer :: prt
     type(model_t), intent(in), target :: model
+    type(model_t), intent(in), optional, target :: alt_model
     integer, intent(in) :: pdg
+    integer :: i
     prt => null ()
     if (pdg /= UNDEFINED) then
-       prt => model%prt(model_get_particle_index (model, pdg))
+       i = model_get_particle_index (model, pdg, nocheck = present (alt_model))
+       if (i > 0) then
+          prt => model%prt(i)
+       else if (present (alt_model)) then
+          i = model_get_particle_index (alt_model, pdg, nocheck = .true.)
+          if (i > 0) then
+             prt => alt_model%prt(i)
+          else
+             write (msg_buffer, "(A,1x,I0,1x,A,1x,A,1x,A,1x,A)") &
+                  "No particle with PDG code", pdg, &
+                  "is contained in models", &
+                  char (model_get_name (model)), "or", &
+                  char (model_get_name (alt_model))
+             call msg_fatal ()
+          end if
+       end if
     end if
   end function model_get_particle_ptr
 
@@ -34500,10 +34994,11 @@ particle index.
        end if
     end do
     if (pdg == UNDEFINED) then
-       write (msg_buffer, "(1x,A,1x,A)")  "Particle name =", char (name)
-       call msg_message
-       call msg_fatal (" Model '" // char (model%name) // "'" // &
-            " has no particle with this name")
+       write (msg_buffer, "(A,A,A,1x,A,1x,A)") &
+            "No particle with name '", char (name), &
+            "' is contained in model", &
+            char (model_get_name (model))
+       call msg_fatal ()
     end if
   end function model_get_particle_pdg_name
 
@@ -35333,246 +35828,6 @@ The instance must carry the [[target]] attribute.
     
 @ %def model_pointer_to_instance
 @
-\subsection{Inclusive Processes}
-Automatically generate a list of possible final states for a given
-initial state (currently: a single massive particle).
-
-The current implementation is intended for simple 2- and 3-body decays
-and will perform badly if used for other purposes.  We generate all
-final states recursively without caring about kinematics or doublers,
-sort each final state, then transfer them all to an array.  In this
-array, we mark all kinematically forbidden channels and all doublers, to
-finally a packed version.
-
-If the flag [[radiative]] is unset, we do look at kinematics for each
-branching: a branching is omitted if either (a) all three
-
-For temporary storage we need a list.
-<<Models: types>>=
-  type, extends (pdg_array_t) :: fs_entry_t
-     type(fs_entry_t), pointer :: previous => null ()
-     type(fs_entry_t), pointer :: next => null ()
-  end type fs_entry_t
-
-@ %def fs_entry_t
-@
-This is the wrapper type for the decay tree for the list of final
-states and the final array.
-<<Models: public>>=
-  public :: fs_table_t
-<<Models: types>>=
-  type :: fs_table_t
-     type(model_t), pointer :: model => null ()
-     integer :: pdg_in = 0
-     integer :: n_max = 0
-     real(default) :: e = 0
-     logical :: radiative = .false.
-     type(fs_entry_t), pointer :: first => null ()
-     type(fs_entry_t), pointer :: last => null ()
-   contains
-   <<Models: fs table: TBP>>
-  end type fs_table_t
-     
-@ %def fs_table_t
-@ Write the table.
-<<Models: fs table: TBP>>=
-  procedure :: write => fs_table_write
-<<Models: procedures>>=
-  subroutine fs_table_write (object, unit)
-    class(fs_table_t), intent(in) :: object
-    integer, intent(in), optional :: unit
-    integer, dimension(:), allocatable :: pdg
-    type(fs_entry_t), pointer :: entry
-    integer :: u, j, k
-    u = output_unit (unit)
-    k = model_get_particle_index (object%model, object%pdg_in)
-    write (u, "(1x,A,1x,A)")  "Decays for particle:", &
-         char (particle_data_get_name (object%model%prt(k), object%pdg_in < 0))
-    entry => object%first
-    do while (associated (entry))
-       write (u, "(2x)", advance = "no")
-       pdg = entry%pdg_array_t
-       do j = 1, size (pdg)
-          k = model_get_particle_index (object%model, pdg(j))
-          write (u, "(1x,A)", advance = "no") &
-               char (particle_data_get_name (object%model%prt(k), pdg(j) < 0))
-       end do
-       write (u, *)
-       entry => entry%next
-    end do
-  end subroutine fs_table_write
-          
-@ %def fs_table_write
-@ Create the table.  Construct all possible final states up to
-[[n_max]] entries, starting from a single particle with PDG code
-[[pdg_in]].
-<<Models: fs table: TBP>>=
-  procedure :: make => fs_table_make
-<<Models: procedures>>=
-  subroutine fs_table_make (table, model, pdg_in, n_max, radiative)
-    class(fs_table_t), intent(out) :: table
-    type(model_t), intent(in), target :: model
-    integer, intent(in) :: pdg_in
-    integer, intent(in) :: n_max
-    logical, intent(in), optional :: radiative
-    type(pdg_array_t) :: pa_in
-    integer :: i
-    table%model => model
-    table%pdg_in = pdg_in
-    table%n_max = n_max
-    i = model_get_particle_index (model, pdg_in)
-    table%e = particle_data_get_mass (model%prt(i))
-    if (present (radiative))  table%radiative = radiative
-    pa_in = [pdg_in]
-    call table%split (pa_in, 1)
-  end subroutine fs_table_make
-    
-@ %def fs_table_make
-@ Recursive splitting.  We take a PDG array and the index of an
-element, split this element in all possible ways, record the  
-result, and continue splitting.
-
-The recursion terminates whenever the split array would have a length
-greater than $n_\text{max}$.
-<<Models: fs table: TBP>>=
-  procedure :: split => fs_table_split
-<<Models: procedures>>=
-  recursive subroutine fs_table_split (table, pa, i, record)
-    class(fs_table_t), intent(inout) :: table
-    type(pdg_array_t), intent(in) :: pa
-    integer, intent(in) :: i
-    logical, intent(in), optional :: record
-    integer :: pdg1, v, l
-    integer, dimension(:), allocatable :: pdg2
-    if (present (record)) then
-       if (record)  call table%record (sort_abs (pa))
-    end if
-    pdg1 = pdg_array_get (pa, i)
-    l = pdg_array_get_length (pa)
-    do v = 1, size (table%model%vtx)
-       call vertex_get_match (table%model%vtx(v), pdg1, pdg2, table%radiative)
-       if (allocated (pdg2)) then
-          if (l + size (pdg2) - 1 <= table%n_max) then
-             call fs_table_split (table, pdg_array_replace (pa, i, pdg2), i, &
-                  record = .true.)
-          end if
-       end if
-    end do
-    if (i < l) then
-       call fs_table_split (table, pa, i + 1)
-    end if
-  end subroutine fs_table_split
-    
-@ %def fs_table_split
-@ Record an entry: insert into the list.  Check the ordering and
-insert it at the correct place, unless it is already there.
-
-We record an array only if its mass sum is less than the total
-available energy.
-<<Models: fs table: TBP>>=
-  procedure :: record => fs_table_record
-<<Models: procedures>>=
-  subroutine fs_table_record (table, pa)
-    class(fs_table_t), intent(inout) :: table
-    type(pdg_array_t), intent(in) :: pa
-    type(fs_entry_t), pointer :: current
-    current => table%first
-    do while (associated (current))
-       if (pa == current%pdg_array_t) then
-          return
-       else if (mass_sum (pa, table%model) >= table%e) then
-          return
-       else if (pa < current%pdg_array_t) then
-          call insert
-          return
-       end if
-       current => current%next
-    end do
-    call insert
-  contains
-    subroutine insert ()
-      type(fs_entry_t), pointer :: entry
-      allocate (entry)
-      entry%pdg_array_t = pa
-      if (associated (current)) then
-         if (associated (current%previous)) then
-            current%previous%next => entry
-            entry%previous => current%previous
-         else
-            table%first => entry
-         end if
-         entry%next => current
-         current%previous => entry
-      else
-         if (associated (table%last)) then
-            table%last%next => entry
-            entry%previous => table%last
-         else
-            table%first => entry
-         end if
-         table%last => entry
-      end if
-    end subroutine insert
-  end subroutine fs_table_record
-    
-@ %def fs_table_record
-@ Compute the mass sum for a PDG array.
-<<Models: procedures>>=
-  function mass_sum (pa, model) result (m)
-    type(pdg_array_t), intent(in) :: pa
-    type(model_t), intent(in), target :: model
-    real(default) :: m
-    integer :: i, k
-    m = 0
-    do i = 1, pdg_array_get_length (pa)
-       k = model_get_particle_index (model, pdg_array_get (pa, i))
-       m = m + particle_data_get_mass (model%prt(k))
-    end do
-  end function mass_sum
-  
-@ %def mass_sum
-@ Return the number of generated decays.
-<<Models: fs table: TBP>>=
-  procedure :: get_length => fs_table_get_length
-<<Models: procedures>>=
-  function fs_table_get_length (fs_table) result (n)
-    class(fs_table_t), intent(in) :: fs_table
-    integer :: n
-    type(fs_entry_t), pointer :: entry
-    n = 0
-    entry => fs_table%first
-    do while (associated (entry))
-       n = n + 1
-       entry => entry%next
-    end do
-  end function fs_table_get_length
-
-@ %def fs_table_get_length
-@ Return an allocated array of decay products (PDG codes)
-<<Models: fs table: TBP>>=
-  procedure :: get_pdg_out => fs_table_get_pdg_out
-<<Models: procedures>>=
-  subroutine fs_table_get_pdg_out (fs_table, i, pdg_out)
-    class(fs_table_t), intent(in) :: fs_table
-    integer, intent(in) :: i
-    integer, dimension(:), allocatable, intent(out) :: pdg_out
-    type(fs_entry_t), pointer :: entry
-    integer :: n
-    n = 0
-    entry => fs_table%first
-    do while (associated (entry))
-       n = n + 1
-       if (n == i) then
-          allocate (pdg_out (pdg_array_get_length (entry%pdg_array_t)))
-          pdg_out = entry%pdg_array_t
-          exit
-       end if
-       entry => entry%next
-    end do
-  end subroutine fs_table_get_pdg_out
-  
-@ %def fs_table_get_pdg_out
-@
 \subsection{Unit tests}
 <<Models: public>>=
   public :: models_test
@@ -35833,22 +36088,1102 @@ Read a predefined model from file and define decays and polarization.
 
 @ %def models_4
 @
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Automatic generation of process components}
+
+This module provides the functionality for automatically generating radiation
+corrections or decays, provided as lists of PDG codes.
+<<[[auto_components.f90]]>>=
+<<File header>>
+
+module auto_components
+
+<<Use kinds>>
+<<Use strings>>
+<<Use file utils>>
+  use diagnostics !NODEP!
+  use os_interface
+  use unit_tests
+  use pdg_arrays
+  use models
+
+<<Standard module head>>
+
+<<Auto components: public>>
+
+<<Auto components: types>>
+
+<<Auto components: interfaces>>
+
+contains
+
+<<Auto components: procedures>>
+
+<<Auto components: tests>>
+
+end module auto_components
+@ %def auto_components
+@
+\subsection{Constraints: Abstract types}
+An abstract type that denotes a constraint on the automatically generated
+states.  The concrete objects are applied as visitor objects at certain hooks
+during the splitting algorithm.
+<<Auto components: types>>=
+  type, abstract :: split_constraint_t
+   contains
+   <<Auto components: split constraint: TBP>>
+  end type split_constraint_t
+
+@ %def split_constraint_t
+@ By default, all checks return true.
+<<Auto components: split constraint: TBP>>=
+  procedure :: check_before_split  => split_constraint_check_before_split
+  procedure :: check_before_insert => split_constraint_check_before_insert
+  procedure :: check_before_record => split_constraint_check_before_record
+<<Auto components: procedures>>=
+  subroutine split_constraint_check_before_split (c, table, pl, k, passed)
+    class(split_constraint_t), intent(in) :: c
+    class(ps_table_t), intent(in) :: table
+    type(pdg_list_t), intent(in) :: pl
+    integer, intent(in) :: k
+    logical, intent(out) :: passed
+    passed = .true.
+  end subroutine split_constraint_check_before_split
+  
+  subroutine split_constraint_check_before_insert (c, table, pa, pl, passed)
+    class(split_constraint_t), intent(in) :: c
+    class(ps_table_t), intent(in) :: table
+    type(pdg_array_t), intent(in) :: pa
+    type(pdg_list_t), intent(inout) :: pl
+    logical, intent(out) :: passed
+    passed = .true.
+  end subroutine split_constraint_check_before_insert
+  
+  subroutine split_constraint_check_before_record (c, table, pl, n_loop, passed)
+    class(split_constraint_t), intent(in) :: c
+    class(ps_table_t), intent(in) :: table
+    type(pdg_list_t), intent(in) :: pl
+    integer, intent(in) :: n_loop
+    logical, intent(out) :: passed
+    passed = .true.
+  end subroutine split_constraint_check_before_record
+  
+@ %def check_before_split
+@ %def check_before_insert
+@ %def check_before_record
+@ A transparent wrapper, so we can collect constraints of different type.
+<<Auto components: types>>=
+  type :: split_constraint_wrap_t
+     class(split_constraint_t), allocatable :: c
+  end type split_constraint_wrap_t
+  
+@ %def split_constraint_wrap_t
+@ A collection of constraints.
+<<Auto components: public>>=
+  public :: split_constraints_t
+<<Auto components: types>>=
+  type :: split_constraints_t
+     class(split_constraint_wrap_t), dimension(:), allocatable :: cc
+   contains
+   <<Auto components: split constraints: TBP>>
+  end type split_constraints_t
+  
+@ %def split_constraints_t
+@ Initialize the constraints set with a specific number of elements.
+<<Auto components: split constraints: TBP>>=
+  procedure :: init => split_constraints_init
+<<Auto components: procedures>>=
+  subroutine split_constraints_init (constraints, n)
+    class(split_constraints_t), intent(out) :: constraints
+    integer, intent(in) :: n
+    allocate (constraints%cc (n))
+  end subroutine split_constraints_init
+  
+@ %def split_constraints_init
+@ Set a constraint.
+<<Auto components: split constraints: TBP>>=
+  procedure :: set => split_constraints_set
+<<Auto components: procedures>>=
+  subroutine split_constraints_set (constraints, i, c)
+    class(split_constraints_t), intent(inout) :: constraints
+    integer, intent(in) :: i
+    class(split_constraint_t), intent(in) :: c
+    allocate (constraints%cc(i)%c, source = c)
+  end subroutine split_constraints_set
+  
+@ %def split_constraints_set
+@ Apply checks.
+
+[[check_before_split]] is applied to the particle list that we want
+to split.
+
+[[check_before_insert]] is applied to the particle list [[pl]] that is to
+replace the particle [[pa]] that is split.  This check may transform the
+particle list.
+
+[[check_before_record]] is applied to the complete new particle list that
+results from splitting before it is recorded.
+<<Auto components: split constraints: TBP>>=
+  procedure :: check_before_split  => split_constraints_check_before_split
+  procedure :: check_before_insert => split_constraints_check_before_insert
+  procedure :: check_before_record => split_constraints_check_before_record
+<<Auto components: procedures>>=
+  subroutine split_constraints_check_before_split &
+       (constraints, table, pl, k, passed)
+    class(split_constraints_t), intent(in) :: constraints
+    class(ps_table_t), intent(in) :: table
+    type(pdg_list_t), intent(in) :: pl
+    integer, intent(in) :: k
+    logical, intent(out) :: passed
+    integer :: i
+    passed = .true.
+    do i = 1, size (constraints%cc)
+       call constraints%cc(i)%c%check_before_split (table, pl, k, passed)
+       if (.not. passed)  return
+    end do
+  end subroutine split_constraints_check_before_split
+    
+  subroutine split_constraints_check_before_insert &
+       (constraints, table, pa, pl, passed)
+    class(split_constraints_t), intent(in) :: constraints
+    class(ps_table_t), intent(in) :: table
+    type(pdg_array_t), intent(in) :: pa
+    type(pdg_list_t), intent(inout) :: pl
+    logical, intent(out) :: passed
+    integer :: i
+    passed = .true.
+    do i = 1, size (constraints%cc)
+       call constraints%cc(i)%c%check_before_insert (table, pa, pl, passed)
+       if (.not. passed)  return
+    end do
+  end subroutine split_constraints_check_before_insert
+    
+  subroutine split_constraints_check_before_record &
+       (constraints, table, pl, n_loop, passed)
+    class(split_constraints_t), intent(in) :: constraints
+    class(ps_table_t), intent(in) :: table
+    type(pdg_list_t), intent(in) :: pl
+    integer, intent(in) :: n_loop
+    logical, intent(out) :: passed
+    integer :: i
+    passed = .true.
+    do i = 1, size (constraints%cc)
+       call constraints%cc(i)%c%check_before_record (table, pl, n_loop, passed)
+       if (.not. passed)  return
+    end do
+  end subroutine split_constraints_check_before_record
+    
+@ %def split_constraints_check_before_split
+@ %def split_constraints_check_before_insert
+@ %def split_constraints_check_before_record
+@ 
+\subsection{Specific constraints}
+\subsubsection{Number of particles}
+Specific constraint: The number of particles plus the number of loops, if
+any, must remain less than the given limit.  Note that the number of loops is
+defined only when we are recording the entry.
+<<Auto components: types>>=
+  type, extends (split_constraint_t) :: constraint_n_tot
+     private
+     integer :: n_max = 0
+   contains
+     procedure :: check_before_split => constraint_n_tot_check_before_split
+     procedure :: check_before_record => constraint_n_tot_check_before_record
+  end type constraint_n_tot
+  
+@ %def constraint_n_tot
+<<Auto components: public>>=
+  public :: constrain_n_tot
+<<Auto components: procedures>>=
+  function constrain_n_tot (n_max) result (c)
+    integer, intent(in) :: n_max
+    type(constraint_n_tot) :: c
+    c%n_max = n_max
+  end function constrain_n_tot
+  
+  subroutine constraint_n_tot_check_before_split (c, table, pl, k, passed)
+    class(constraint_n_tot), intent(in) :: c
+    class(ps_table_t), intent(in) :: table
+    type(pdg_list_t), intent(in) :: pl
+    integer, intent(in) :: k
+    logical, intent(out) :: passed
+    passed = pl%get_size () < c%n_max
+  end subroutine constraint_n_tot_check_before_split
+
+  subroutine constraint_n_tot_check_before_record (c, table, pl, n_loop, passed)
+    class(constraint_n_tot), intent(in) :: c
+    class(ps_table_t), intent(in) :: table
+    type(pdg_list_t), intent(in) :: pl
+    integer, intent(in) :: n_loop
+    logical, intent(out) :: passed
+    passed = pl%get_size () + n_loop <= c%n_max
+  end subroutine constraint_n_tot_check_before_record
+
+@ %def constrain_n_tot
+@ %def constraint_n_tot_check_before_insert
+@ 
+\subsubsection{Number of loops}
+Specific constraint: The number of loops is limited, independent of the
+total number of particles.
+<<Auto components: types>>=
+  type, extends (split_constraint_t) :: constraint_n_loop
+     private
+     integer :: n_loop_max = 0
+   contains
+     procedure :: check_before_record => constraint_n_loop_check_before_record
+  end type constraint_n_loop
+  
+@ %def constraint_n_loop
+<<Auto components: public>>=
+  public :: constrain_n_loop
+<<Auto components: procedures>>=
+  function constrain_n_loop (n_loop_max) result (c)
+    integer, intent(in) :: n_loop_max
+    type(constraint_n_loop) :: c
+    c%n_loop_max = n_loop_max
+  end function constrain_n_loop
+
+  subroutine constraint_n_loop_check_before_record &
+       (c, table, pl, n_loop, passed)
+    class(constraint_n_loop), intent(in) :: c
+    class(ps_table_t), intent(in) :: table
+    type(pdg_list_t), intent(in) :: pl
+    integer, intent(in) :: n_loop
+    logical, intent(out) :: passed
+    passed = n_loop <= c%n_loop_max
+  end subroutine constraint_n_loop_check_before_record
+
+@ %def constrain_n_loop
+@ %def constraint_n_loop_check_before_insert
+@ 
+\subsubsection{Particles allowed in splitting}
+Specific constraint: The entries in the particle list ready for insertion
+are matched to a given list of particle patterns.  If a match occurs, the
+entry is replaced by the corresponding pattern.  If there is no match, the
+check fails.
+<<Auto components: types>>=
+  type, extends (split_constraint_t) :: constraint_insert
+     private
+     type(pdg_list_t) :: pl_match
+   contains
+     procedure :: check_before_insert => constraint_insert_check_before_insert
+  end type constraint_insert
+  
+@ %def constraint_insert
+<<Auto components: public>>=
+  public :: constrain_insert
+<<Auto components: procedures>>=
+  function constrain_insert (pl_match) result (c)
+    type(pdg_list_t), intent(in) :: pl_match
+    type(constraint_insert) :: c
+    c%pl_match = pl_match
+  end function constrain_insert
+  
+  subroutine constraint_insert_check_before_insert (c, table, pa, pl, passed)
+    class(constraint_insert), intent(in) :: c
+    class(ps_table_t), intent(in) :: table
+    type(pdg_array_t), intent(in) :: pa
+    type(pdg_list_t), intent(inout) :: pl
+    logical, intent(out) :: passed
+    call pl%match_replace (c%pl_match, passed)
+  end subroutine constraint_insert_check_before_insert
+
+@ %def constrain_insert
+@ %def constraint_insert_check_before_insert
+@ 
+\subsubsection{Particles required in final state}
+Specific constraint: The entries in the recorded state must be a superset of
+the entries in the given list (for instance, the lowest-order
+state).
+<<Auto components: types>>=
+  type, extends (split_constraint_t) :: constraint_require
+     private
+     type(pdg_list_t) :: pl
+   contains
+     procedure :: check_before_record => constraint_require_check_before_record
+  end type constraint_require
+  
+@ %def constraint_require
+@ We check the current state by matching all particle entries against the
+stored particle list, and crossing out the particles in the latter list when a
+match is found.  The constraint passed if all entries have been crossed out.
+
+For an [[if_table]] in particular, we check the final state only.
+<<Auto components: public>>=
+  public :: constrain_require
+<<Auto components: procedures>>=
+  function constrain_require (pl) result (c)
+    type(pdg_list_t), intent(in) :: pl
+    type(constraint_require) :: c
+    c%pl = pl
+  end function constrain_require
+  
+  subroutine constraint_require_check_before_record &
+       (c, table, pl, n_loop, passed)
+    class(constraint_require), intent(in) :: c
+    class(ps_table_t), intent(in) :: table
+    type(pdg_list_t), intent(in) :: pl
+    integer, intent(in) :: n_loop
+    logical, intent(out) :: passed
+    logical, dimension(:), allocatable :: mask
+    integer :: i, k, n_in
+    select type (table)
+    type is (if_table_t)
+       n_in = 2
+    class default
+       n_in = 0
+    end select
+    allocate (mask (c%pl%get_size ()), source = .true.)
+    do i = n_in + 1, pl%get_size ()
+       k = c%pl%find_match (pl%get (i), mask)
+       if (k /= 0)  mask(k) = .false.
+    end do
+    passed = .not. any (mask)
+  end subroutine constraint_require_check_before_record
+
+@ %def constrain_require
+@ %def constraint_require_check_before_record
+@ 
+\subsubsection{Radiation}
+Specific constraint: We have radiation pattern if the original particle
+matches an entry in the list of particles that should replace it.  The
+constraint prohibits this situation.
+<<Auto components: public>>=
+  public :: constrain_radiation
+<<Auto components: types>>=
+  type, extends (split_constraint_t) :: constraint_radiation
+     private
+   contains
+     procedure :: check_before_insert => &
+          constraint_radiation_check_before_insert
+  end type constraint_radiation
+  
+@ %def constraint_radiation
+<<Auto components: procedures>>=
+  function constrain_radiation () result (c)
+    type(constraint_radiation) :: c
+  end function constrain_radiation
+  
+  subroutine constraint_radiation_check_before_insert (c, table, pa, pl, passed)
+    class(constraint_radiation), intent(in) :: c
+    class(ps_table_t), intent(in) :: table
+    type(pdg_array_t), intent(in) :: pa
+    type(pdg_list_t), intent(inout) :: pl
+    logical, intent(out) :: passed
+    passed = .not. (pl .match. pa)
+  end subroutine constraint_radiation_check_before_insert
+
+@ %def constrain_radiation
+@ %def constraint_radiation_check_before_insert
+@ 
+\subsubsection{Mass sum}
+Specific constraint: The sum of masses within the particle list must not
+exceed a given limit.  For in/out state combinations, we check initial and
+final state separately.
+<<Auto components: public>>=
+  public :: constrain_mass_sum
+<<Auto components: types>>=
+  type, extends (split_constraint_t) :: constraint_mass_sum
+     private
+     real(default) :: mass_limit = 0
+   contains
+     procedure :: check_before_record => constraint_mass_sum_check_before_record
+  end type constraint_mass_sum
+  
+@ %def contraint_mass_sum
+<<Auto components: procedures>>=
+  function constrain_mass_sum (mass_limit) result (c)
+    real(default), intent(in) :: mass_limit
+    type(constraint_mass_sum) :: c
+    c%mass_limit = mass_limit
+  end function constrain_mass_sum
+  
+  subroutine constraint_mass_sum_check_before_record &
+       (c, table, pl, n_loop, passed)
+    class(constraint_mass_sum), intent(in) :: c
+    class(ps_table_t), intent(in) :: table
+    type(pdg_list_t), intent(in) :: pl
+    integer, intent(in) :: n_loop
+    logical, intent(out) :: passed
+    select type (table)
+    type is (if_table_t)
+       passed = mass_sum (pl, 1, 2, table%model) <= c%mass_limit &
+            .and. mass_sum (pl, 3, pl%get_size (), table%model) <= c%mass_limit
+    class default
+       passed = mass_sum (pl, 1, pl%get_size (), table%model) <= c%mass_limit
+    end select
+  end subroutine constraint_mass_sum_check_before_record
+
+@ %def constrain_mass_sum
+@ %def constraint_mass_sum_check_before_record
+@ 
+\subsubsection{Initial state particles}
+Specific constraint: The two incoming particles must both match the given
+particle list.  This is checked for the generated particle list, just before
+it is recorded.
+<<Auto components: public>>=
+  public :: constrain_in_state
+<<Auto components: types>>=
+  type, extends (split_constraint_t) :: constraint_in_state
+     private
+     type(pdg_list_t) :: pl
+   contains
+     procedure :: check_before_record => constraint_in_state_check_before_record
+  end type constraint_in_state
+
+@ %def constraint_in_state
+<<Auto components: procedures>>=
+  function constrain_in_state (pl) result (c)
+    type(pdg_list_t), intent(in) :: pl
+    type(constraint_in_state) :: c
+    c%pl = pl
+  end function constrain_in_state
+
+  subroutine constraint_in_state_check_before_record &
+       (c, table, pl, n_loop, passed)
+    class(constraint_in_state), intent(in) :: c
+    class(ps_table_t), intent(in) :: table
+    type(pdg_list_t), intent(in) :: pl
+    integer, intent(in) :: n_loop
+    logical, intent(out) :: passed
+    integer :: i
+    select type (table)
+    type is (if_table_t)
+       passed = .false.
+       do i = 1, 2
+          if (.not. (c%pl .match. pl%get (i)))  return
+       end do
+    end select
+    passed = .true.
+  end subroutine constraint_in_state_check_before_record
+  
+@ %def constrain_in_state
+@ %def constraint_in_state_check_before_record
+@
+\subsection{Tables of states}
+Automatically generate a list of possible process components for a given
+initial set (a single massive particle or a preset list of states).
+
+The set of process components are generated by recursive splitting, applying
+constraints on the fly that control and limit the process.  The generated
+states are accumulated in a table that we can read out after completion.
+<<Auto components: types>>=
+  type, extends (pdg_list_t) :: ps_entry_t
+     integer :: n_loop = 0
+     integer :: n_rad = 0
+     type(ps_entry_t), pointer :: previous => null ()
+     type(ps_entry_t), pointer :: next => null ()
+  end type ps_entry_t
+
+@ %def ps_entry_t
+@
+This is the wrapper type for the decay tree for the list of final
+states and the final array.  First, an abstract base type:
+<<Auto components: public>>=
+  public :: ps_table_t
+<<Auto components: types>>=
+  type, abstract :: ps_table_t
+     private
+     type(model_t), pointer :: model => null ()
+     logical :: loops = .false.
+     type(ps_entry_t), pointer :: first => null ()
+     type(ps_entry_t), pointer :: last => null ()
+   contains
+   <<Auto components: ps table: TBP>>
+  end type ps_table_t
+     
+@ %def ps_table_t
+@ The extensions: one for decay, one for generic final states.  The decay-state
+table stores the initial particle.  The final-state table is
+indifferent, and the initial/final state table treats the first two
+particles in its list as incoming antiparticles.
+<<Auto components: public>>=
+  public :: ds_table_t
+<<Auto components: types>>=
+  type, extends (ps_table_t) :: ds_table_t
+     private
+     integer :: pdg_in = 0
+   contains
+   <<Auto components: ds table: TBP>>
+  end type ds_table_t
+
+  type, extends (ps_table_t) :: fs_table_t
+   contains
+   <<Auto components: fs table: TBP>>
+  end type fs_table_t
+
+  type, extends (fs_table_t) :: if_table_t
+   contains
+   <<Auto components: if table: TBP>>
+  end type if_table_t
+
+@ %def ds_table_t fs_table_t if_table_t
+@ Finalizer: we must deallocate the embedded list.
+<<Auto components: ps table: TBP>>=
+  procedure :: final => ps_table_final
+<<Auto components: procedures>>=
+  subroutine ps_table_final (object)
+    class(ps_table_t), intent(inout) :: object
+    type(ps_entry_t), pointer :: current
+    do while (associated (object%first))
+       current => object%first
+       object%first => current%next
+       deallocate (current)
+    end do
+    nullify (object%last)
+  end subroutine ps_table_final
+  
+@ %def ps_table_final
+@ Write the table.  A base writer for the body and specific writers
+for the headers.
+<<Auto components: ps table: TBP>>=
+  procedure :: base_write => ps_table_base_write
+  procedure (ps_table_write), deferred :: write
+<<Auto components: interfaces>>=
+  interface
+     subroutine ps_table_write (object, unit)
+       import
+       class(ps_table_t), intent(in) :: object
+       integer, intent(in), optional :: unit
+     end subroutine ps_table_write
+  end interface
+<<Auto components: ds table: TBP>>=
+  procedure :: write => ds_table_write
+<<Auto components: fs table: TBP>>=
+  procedure :: write => fs_table_write
+<<Auto components: if table: TBP>>=
+  procedure :: write => if_table_write
+@ The first [[n_in]] particles will be replaced by antiparticles in
+the output, and we write an arrow if [[n_in]] is present.
+<<Auto components: procedures>>=
+  subroutine ps_table_base_write (object, unit, n_in)
+    class(ps_table_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    integer, intent(in), optional :: n_in
+    integer, dimension(:), allocatable :: pdg
+    type(ps_entry_t), pointer :: entry
+    type(particle_data_t), pointer :: prt
+    integer :: u, i, j, n0
+    u = output_unit (unit)
+    entry => object%first
+    do while (associated (entry))
+       write (u, "(2x)", advance = "no")
+       if (present (n_in)) then
+          do i = 1, n_in
+             write (u, "(1x)", advance = "no")
+             pdg = entry%get (i)
+             do j = 1, size (pdg)
+                prt => model_get_particle_ptr (object%model, pdg(j))
+                if (j > 1)  write (u, "(':')", advance = "no")
+                write (u, "(A)", advance = "no") &
+                     char (particle_data_get_name (prt, pdg(j) >= 0))
+             end do
+          end do
+          write (u, "(1x,A)", advance = "no")  "=>"
+          n0 = n_in + 1
+       else
+          n0 = 1
+       end if
+       do i = n0, entry%get_size ()
+          write (u, "(1x)", advance = "no")
+          pdg = entry%get (i)
+          do j = 1, size (pdg)
+             prt => model_get_particle_ptr (object%model, pdg(j))
+             if (j > 1)  write (u, "(':')", advance = "no")
+             write (u, "(A)", advance = "no") &
+                  char (particle_data_get_name (prt, pdg(j) < 0))
+          end do
+       end do
+       if (object%loops) then
+          write (u, "(2x,'[',I0,',',I0,']')")  entry%n_loop, entry%n_rad
+       else
+          write (u, *)
+       end if
+       entry => entry%next
+    end do
+  end subroutine ps_table_base_write
+          
+  subroutine ds_table_write (object, unit)
+    class(ds_table_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    type(particle_data_t), pointer :: prt
+    integer :: u
+    u = output_unit (unit)
+    prt => model_get_particle_ptr (object%model, object%pdg_in)
+    write (u, "(1x,A,1x,A)")  "Decays for particle:", &
+         char (particle_data_get_name (prt, object%pdg_in < 0))
+    call object%base_write (u)
+  end subroutine ds_table_write
+          
+  subroutine fs_table_write (object, unit)
+    class(fs_table_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = output_unit (unit)
+    write (u, "(1x,A)")  "Table of final states:"
+    call object%base_write (u)
+  end subroutine fs_table_write
+          
+  subroutine if_table_write (object, unit)
+    class(if_table_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = output_unit (unit)
+    write (u, "(1x,A)")  "Table of in/out states:"
+    call object%base_write (u, n_in = 2)
+  end subroutine if_table_write
+          
+@ %def ps_table_write ds_table_write fs_table_write
+@ Initialize with a predefined set of final states, or in/out state lists.
+<<Auto components: ps table: TBP>>=
+  generic :: init => ps_table_init
+  procedure, private :: ps_table_init
+<<Auto components: if table: TBP>>=
+  generic :: init => if_table_init
+  procedure, private :: if_table_init
+<<Auto components: procedures>>=
+  subroutine ps_table_init (table, model, pl, constraints)
+    class(ps_table_t), intent(out) :: table
+    type(model_t), intent(in), target :: model
+    type(pdg_list_t), dimension(:), intent(in) :: pl
+    type(split_constraints_t), intent(in) :: constraints
+    logical :: passed
+    integer :: i
+    table%model => model
+    do i = 1, size (pl)
+       call table%record (pl(i), 0, 0, constraints, passed)
+       if (.not. passed) then
+          call msg_fatal ("Registering process components: constraint failed")
+       end if
+    end do
+  end subroutine ps_table_init
+    
+  subroutine if_table_init (table, model, pl_in, pl_out, constraints)
+    class(if_table_t), intent(out) :: table
+    type(model_t), intent(in), target :: model
+    type(pdg_list_t), dimension(:), intent(in) :: pl_in, pl_out
+    type(split_constraints_t), intent(in) :: constraints
+    integer :: i, j, k, p, n_in, n_out
+    type(pdg_array_t), dimension(:), allocatable :: pa_in
+    type(pdg_list_t), dimension(:), allocatable :: pl
+    allocate (pl (size (pl_in) * size (pl_out)))
+    k = 0
+    do i = 1, size (pl_in)
+       n_in = pl_in(i)%get_size ()
+       allocate (pa_in (n_in))
+       do p = 1, n_in
+          pa_in(p) = pl_in(i)%get (p)
+       end do
+       do j = 1, size (pl_out)
+          n_out = pl_out(j)%get_size ()
+          k = k + 1
+          call pl(k)%init (n_in + n_out)
+          do p = 1, n_in
+             call pl(k)%set (p, invert_pdg_array (pa_in(p), model))
+          end do
+          do p = 1, n_out
+             call pl(k)%set (n_in + p, pl_out(j)%get (p))
+          end do
+       end do
+       deallocate (pa_in)
+    end do
+    call table%init (model, pl, constraints)
+  end subroutine if_table_init
+    
+@ %def ps_table_init if_table_init
+@ Enable loops for the table.  This affects both splitting and output.
+<<Auto components: ps table: TBP>>=
+  procedure :: enable_loops => ps_table_enable_loops
+<<Auto components: procedures>>=
+  subroutine ps_table_enable_loops (table)
+    class(ps_table_t), intent(inout) :: table
+    table%loops = .true.
+  end subroutine ps_table_enable_loops
+    
+@ %def ps_table_enable_loops
+@ 
+\subsection{Top-level methods}
+Create a table for a single-particle decay.  Construct all possible final
+states from a single particle with PDG code [[pdg_in]].  The construction is
+limited by the given [[constraints]].
+<<Auto components: ds table: TBP>>=
+  procedure :: make => ds_table_make
+<<Auto components: procedures>>=
+  subroutine ds_table_make (table, model, pdg_in, constraints)
+    class(ds_table_t), intent(out) :: table
+    type(model_t), intent(in), target :: model
+    integer, intent(in) :: pdg_in
+    type(split_constraints_t), intent(in) :: constraints
+    type(pdg_list_t) :: pl_in
+    type(pdg_list_t), dimension(0) :: pl
+    logical :: passed
+    call table%init (model, pl, constraints)
+    table%pdg_in = pdg_in
+    call pl_in%init (1)
+    call pl_in%set (1, [pdg_in])
+    call table%split (pl_in, 0, constraints)
+  end subroutine ds_table_make
+    
+@ %def ds_table_make
+@ Split all entries in a growing table, starting from a table that may already
+contain states.  Add and record split states on the fly.
+<<Auto components: fs table: TBP>>=
+  procedure :: radiate => fs_table_radiate
+<<Auto components: procedures>>=
+  subroutine fs_table_radiate (table, constraints)
+    class(fs_table_t), intent(inout) :: table
+    type(split_constraints_t) :: constraints
+    type(ps_entry_t), pointer :: current
+    integer :: i, s
+    logical :: passed
+    current => table%first
+    do while (associated (current))
+       call table%split (current, 0, constraints, record = .true.)
+       current => current%next
+    end do
+  end subroutine fs_table_radiate
+
+@ %def fs_table_radiate
+@ 
+\subsection{Splitting algorithm}
+Recursive splitting.  First of all, we record the current [[pdg_list]] in
+the table, subject to [[constraints]], if requested.  We also record copies of
+the list marked as loop corrections.
+
+When we record a particle list, we sort it first.
+
+If there is room for splitting, We take a PDG array list and the index of an
+element, and split this element in all possible ways.  The split entry is
+inserted into the list, which we split further.
+
+The recursion terminates whenever the split array would have a length
+greater than $n_\text{max}$.
+<<Auto components: ps table: TBP>>=
+  procedure :: split => ps_table_split
+<<Auto components: procedures>>=
+  recursive subroutine ps_table_split (table, pl, n_rad, constraints, &
+        record)
+    class(ps_table_t), intent(inout) :: table
+    class(pdg_list_t), intent(in) :: pl
+    integer, intent(in) :: n_rad
+    type(split_constraints_t), intent(in) :: constraints
+    logical, intent(in), optional :: record
+    integer :: n_loop, i
+    logical :: passed
+    type(vertex_iterator_t) :: vit
+    integer, dimension(:), allocatable :: pdg1
+    integer, dimension(:), allocatable :: pdg2
+    if (present (record)) then
+       if (record) then
+          n_loop = 0
+          INCR_LOOPS: do
+             call table%record_sorted (pl, n_loop, n_rad, constraints, passed)
+             if (.not. passed)  exit INCR_LOOPS
+             if (.not. table%loops)  exit INCR_LOOPS
+             n_loop = n_loop + 1
+          end do INCR_LOOPS
+       end if
+    end if
+    do i = 1, pl%get_size ()
+       call constraints%check_before_split (table, pl, i, passed)
+       if (passed) then
+          pdg1 = pl%get (i)
+          call vit%init (table%model, pdg1)
+          SCAN_VERTICES: do
+             call vit%get_next_match (pdg2)
+             if (allocated (pdg2)) then
+                call table%insert (pl, n_rad, i, pdg2, constraints)
+             else
+                exit SCAN_VERTICES
+             end if
+          end do SCAN_VERTICES
+       end if
+    end do
+  end subroutine ps_table_split
+    
+@ %def ps_table_split
+@ The worker part: insert the list of particles found by vertex matching in
+place of entry [[i]] in the PDG list.  Then split/record further.
+
+The [[n_in]] parameter tells the replacement routine to insert the new
+particles after entry [[n_in]].  Otherwise, they follow index [[i]].
+<<Auto components: ps table: TBP>>=
+  procedure :: insert => ps_table_insert
+<<Auto components: procedures>>=
+  recursive subroutine ps_table_insert &
+       (table, pl, n_rad, i, pdg, constraints, n_in)
+    class(ps_table_t), intent(inout) :: table
+    class(pdg_list_t), intent(in) :: pl
+    integer, intent(in) :: n_rad, i
+    integer, dimension(:), intent(in) :: pdg
+    type(split_constraints_t), intent(in) :: constraints
+    integer, intent(in), optional :: n_in
+    type(pdg_list_t) :: pl_insert
+    logical :: passed
+    integer :: k, s
+    s = size (pdg)
+    call pl_insert%init (s)
+    do k = 1, s
+       call pl_insert%set (k, pdg(k))
+    end do
+    call constraints%check_before_insert (table, pl%get (i), pl_insert, passed)
+    if (passed) then
+       call table%split (pl%replace (i, pl_insert, n_in), n_rad + s - 1, &
+            constraints, record = .true.)
+    end if
+  end subroutine ps_table_insert
+    
+@ %def ps_table_insert
+@ Special case:
+If we are splitting an initial particle, there is slightly more to
+do.  We loop over the particles from the vertex match and replace the
+initial particle by each of them in turn.  The remaining particles
+must be appended after the second initial particle, so they will end
+up in the out state.  This is done by providing the [[n_in]] argument
+to the base method as an optional argument.
+
+Note that we must call the base-method procedure explicitly, so the
+[[table]] argument keeps its dynamic type as [[if_table]] inside this
+procedure.
+<<Auto components: if table: TBP>>=
+  procedure :: insert => if_table_insert
+<<Auto components: procedures>>=
+  recursive subroutine if_table_insert  &
+       (table, pl, n_rad, i, pdg, constraints, n_in)
+    class(if_table_t), intent(inout) :: table
+    class(pdg_list_t), intent(in) :: pl
+    integer, intent(in) :: n_rad, i
+    integer, dimension(:), intent(in) :: pdg
+    type(split_constraints_t), intent(in) :: constraints
+    integer, intent(in), optional :: n_in
+    integer, dimension(:), allocatable :: pdg_work
+    integer :: p
+    if (i > 2) then
+       call ps_table_insert (table, pl, n_rad, i, pdg, constraints)
+    else
+       allocate (pdg_work (size (pdg)))
+       do p = 1, size (pdg)
+          pdg_work(1) = pdg(p)
+          pdg_work(2:p) = pdg(1:p-1)
+          pdg_work(p+1:) = pdg(p+1:)
+          call ps_table_insert (table, &
+               pl, n_rad, i, pdg_work, constraints, n_in = 2)
+       end do
+    end if
+  end subroutine if_table_insert
+
+@ %def if_table_insert
+@ Sort before recording.  In the case of the [[if_table]], we do not
+sort the first [[n_in]] particle entries.  Instead, we check whether they are
+allowed in the [[pl_beam]] PDG list, if that is provided.
+<<Auto components: ps table: TBP>>=
+  procedure :: record_sorted => ps_table_record_sorted
+<<Auto components: if table: TBP>>=
+  procedure :: record_sorted => if_table_record_sorted
+<<Auto components: procedures>>=
+  subroutine ps_table_record_sorted &
+       (table, pl, n_loop, n_rad, constraints, passed)
+    class(ps_table_t), intent(inout) :: table
+    type(pdg_list_t), intent(in) :: pl
+    integer, intent(in) :: n_loop, n_rad
+    type(split_constraints_t), intent(in) :: constraints
+    logical, intent(out) :: passed
+    call table%record (pl%sort_abs (), n_loop, n_rad, constraints, passed)
+  end subroutine ps_table_record_sorted
+  
+  subroutine if_table_record_sorted &
+       (table, pl, n_loop, n_rad, constraints, passed)
+    class(if_table_t), intent(inout) :: table
+    type(pdg_list_t), intent(in) :: pl
+    integer, intent(in) :: n_loop, n_rad
+    type(split_constraints_t), intent(in) :: constraints
+    logical, intent(out) :: passed
+    integer :: i
+    call table%record (pl%sort_abs (2), n_loop, n_rad, constraints, passed)
+  end subroutine if_table_record_sorted
+
+@ %def ps_table_record_sorted if_table_record_sorted
+@ Record an entry: insert into the list.  Check the ordering and
+insert it at the correct place, unless it is already there.
+
+We record an array only if its mass sum is less than the total
+available energy.  This restriction is removed by setting
+[[contrained]] to false.
+<<Auto components: ps table: TBP>>=
+  procedure :: record => ps_table_record
+<<Auto components: procedures>>=
+  subroutine ps_table_record (table, pl, n_loop, n_rad, constraints, passed)
+    class(ps_table_t), intent(inout) :: table
+    type(pdg_list_t), intent(in) :: pl
+    integer, intent(in) :: n_loop, n_rad
+    type(split_constraints_t), intent(in) :: constraints
+    logical, intent(out) :: passed
+    type(ps_entry_t), pointer :: current
+    logical :: mass_limit
+    if (.not. pl%is_regular ())  return
+    call constraints%check_before_record (table, pl, n_loop, passed)
+    if (.not. passed)  return
+    current => table%first
+    do while (associated (current))
+       if (pl == current) then
+          if (n_loop == current%n_loop)  return
+       else if (pl < current) then
+          call insert
+          return
+       end if
+       current => current%next
+    end do
+    call insert
+  contains
+    subroutine insert ()
+      type(ps_entry_t), pointer :: entry
+      allocate (entry)
+      entry%pdg_list_t = pl
+      entry%n_loop = n_loop
+      entry%n_rad = n_rad
+      if (associated (current)) then
+         if (associated (current%previous)) then
+            current%previous%next => entry
+            entry%previous => current%previous
+         else
+            table%first => entry
+         end if
+         entry%next => current
+         current%previous => entry
+      else
+         if (associated (table%last)) then
+            table%last%next => entry
+            entry%previous => table%last
+         else
+            table%first => entry
+         end if
+         table%last => entry
+      end if
+    end subroutine insert
+  end subroutine ps_table_record
+    
+@ %def ps_table_record
+@
+\subsection{Tools}
+Compute the mass sum for a PDG list object, counting the entries with indices
+between (including) [[n1]] and [[n2]].  Rely on the requirement that
+if an entry is a PDG array, this array must be degenerate in mass.
+<<Auto components: procedures>>=
+  function mass_sum (pl, n1, n2, model) result (m)
+    type(pdg_list_t), intent(in) :: pl
+    integer, intent(in) :: n1, n2
+    type(model_t), intent(in), target :: model
+    integer, dimension(:), allocatable :: pdg
+    real(default) :: m
+    type(particle_data_t), pointer :: prt
+    integer :: i
+    m = 0
+    do i = n1, n2
+       pdg = pl%get (i)
+       prt => model_get_particle_ptr (model, pdg(1))
+       m = m + particle_data_get_mass (prt)
+    end do
+  end function mass_sum
+  
+@ %def mass_sum
+@ Invert a PDG array, replacing particles by antiparticles.  This
+depends on the model.
+<<Auto components: procedures>>=
+  function invert_pdg_array (pa, model) result (pa_inv)
+    type(pdg_array_t), intent(in) :: pa
+    type(model_t), intent(in), target :: model
+    type(pdg_array_t) :: pa_inv
+    type(particle_data_t), pointer :: prt
+    integer :: i, pdg
+    pa_inv = pa
+    do i = 1, pa_inv%get_length ()
+       pdg = pa_inv%get (i)
+       prt => model_get_particle_ptr (model, pdg)
+       if (particle_data_has_antiparticle (prt))  call pa_inv%set (i, -pdg)
+    end do
+  end function invert_pdg_array
+          
+@ %def invert_pdg_array
+@ 
+\subsection{Access results}
+Return the number of generated decays.
+<<Auto components: ps table: TBP>>=
+  procedure :: get_length => ps_table_get_length
+<<Auto components: procedures>>=
+  function ps_table_get_length (ps_table) result (n)
+    class(ps_table_t), intent(in) :: ps_table
+    integer :: n
+    type(ps_entry_t), pointer :: entry
+    n = 0
+    entry => ps_table%first
+    do while (associated (entry))
+       n = n + 1
+       entry => entry%next
+    end do
+  end function ps_table_get_length
+
+@ %def ps_table_get_length
+@ Return an allocated array of decay products (PDG codes).  If
+requested, return also the loop and radiation order count.
+<<Auto components: ps table: TBP>>=
+  procedure :: get_pdg_out => ps_table_get_pdg_out
+<<Auto components: procedures>>=
+  subroutine ps_table_get_pdg_out (ps_table, i, pa_out, n_loop, n_rad)
+    class(ps_table_t), intent(in) :: ps_table
+    integer, intent(in) :: i
+    type(pdg_array_t), dimension(:), allocatable, intent(out) :: pa_out
+    integer, intent(out), optional :: n_loop, n_rad
+    type(ps_entry_t), pointer :: entry
+    integer :: n, j
+    n = 0
+    entry => ps_table%first
+    FIND_ENTRY: do while (associated (entry))
+       n = n + 1
+       if (n == i) then
+          allocate (pa_out (entry%get_size ()))
+          do j = 1, entry%get_size ()
+             pa_out(j) = entry%get (j)
+             if (present (n_loop))  n_loop = entry%n_loop
+             if (present (n_rad))  n_rad = entry%n_rad
+          end do
+          exit FIND_ENTRY
+       end if
+       entry => entry%next
+    end do FIND_ENTRY
+  end subroutine ps_table_get_pdg_out
+  
+@ %def ps_table_get_pdg_out
+@
+\subsection{Unit tests}
+<<Auto components: public>>=
+  public :: auto_components_test
+<<Auto components: tests>>=
+  subroutine auto_components_test (u, results)
+    integer, intent(in) :: u
+    type(test_results_t), intent(inout) :: results
+  <<Auto components: execute tests>>
+  end subroutine auto_components_test
+
+@ %def auto_components_tests
+@
 \subsubsection{Generate Decay Table}
 Determine all kinematically allowed decay channels for a Higgs boson,
 using default parameter values.
-<<Models: execute tests>>=
-  call test (models_5, "models_5", &
+<<Auto components: execute tests>>=
+  call test (auto_components_1, "auto_components_1", &
        "generate decay table", &
        u, results)
-<<Models: tests>>=
-  subroutine models_5 (u)
+<<Auto components: tests>>=
+  subroutine auto_components_1 (u)
     integer, intent(in) :: u
     type(os_data_t) :: os_data
     type(model_list_t) :: model_list
     type(model_t), pointer :: model
-    type(fs_table_t) :: fs_table
+    type(particle_data_t), pointer :: prt
+    type(ds_table_t) :: ds_table
+    type(split_constraints_t) :: constraints
 
-    write (u, "(A)")  "* Test output: models_5"
+    write (u, "(A)")  "* Test output: auto_components_1"
     write (u, "(A)")  "*   Purpose: determine Higgs decay table"
     write (u, *)
 
@@ -35860,26 +37195,44 @@ using default parameter values.
     call model_list%read_model (var_str ("SM"), var_str ("SM.mdl"), &
          os_data, model)
 
+    prt => model_get_particle_ptr (model, 25)
+
     write (u, *)
     write (u, "(A)")  "* Higgs decays n = 2"
     write (u, *)
 
-    call fs_table%make (model, 25, 2)
-    call fs_table%write (u)
+    call constraints%init (2)
+    call constraints%set (1, constrain_n_tot (2))
+    call constraints%set (2, constrain_mass_sum (particle_data_get_mass (prt)))
+
+    call ds_table%make (model, 25, constraints)
+    call ds_table%write (u)
+    call ds_table%final ()
 
     write (u, *)
     write (u, "(A)")  "* Higgs decays n = 3 (w/o radiative)"
     write (u, *)
 
-    call fs_table%make (model, 25, 3, radiative = .false.)
-    call fs_table%write (u)
+    call constraints%init (3)
+    call constraints%set (1, constrain_n_tot (3))
+    call constraints%set (2, constrain_mass_sum (particle_data_get_mass (prt)))
+    call constraints%set (3, constrain_radiation ())
+
+    call ds_table%make (model, 25, constraints)
+    call ds_table%write (u)
+    call ds_table%final ()
 
     write (u, *)
     write (u, "(A)")  "* Higgs decays n = 3 (w/ radiative)"
     write (u, *)
 
-    call fs_table%make (model, 25, 3, radiative = .true.)
-    call fs_table%write (u)
+    call constraints%init (2)
+    call constraints%set (1, constrain_n_tot (3))
+    call constraints%set (2, constrain_mass_sum (particle_data_get_mass (prt)))
+
+    call ds_table%make (model, 25, constraints)
+    call ds_table%write (u)
+    call ds_table%final ()
 
     write (u, *)
     write (u, "(A)")  "* Cleanup"
@@ -35888,11 +37241,323 @@ using default parameter values.
     call syntax_model_file_final ()
 
     write (u, *)
-    write (u, "(A)")  "* Test output end: models_5"
+    write (u, "(A)")  "* Test output end: auto_components_1"
 
-  end subroutine models_5
+  end subroutine auto_components_1
 
-@ %def models_5
+@ %def auto_components_1
+@
+\subsubsection{Generate radiation}
+Given a final state, add radiation (NLO and NNLO).  We provide a list
+of particles that is allowed to occur in the generated final states.
+<<Auto components: execute tests>>=
+  call test (auto_components_2, "auto_components_2", &
+       "generate NLO corrections, final state", &
+       u, results)
+<<Auto components: tests>>=
+  subroutine auto_components_2 (u)
+    integer, intent(in) :: u
+    type(os_data_t) :: os_data
+    type(model_list_t) :: model_list
+    type(model_t), pointer :: model
+    type(pdg_list_t), dimension(:), allocatable :: pl, pl_zzh
+    type(pdg_list_t) :: pl_match
+    type(fs_table_t) :: fs_table
+    type(split_constraints_t) :: constraints
+    real(default) :: sqrts
+    integer :: i
+
+    write (u, "(A)")  "* Test output: auto_components_2"
+    write (u, "(A)")  "*   Purpose: generate radiation (NLO)"
+    write (u, *)
+
+    call syntax_model_file_init ()
+    call os_data_init (os_data)
+
+    write (u, "(A)")  "* Read Standard Model"
+
+    call model_list%read_model (var_str ("SM"), var_str ("SM.mdl"), &
+         os_data, model)
+
+    write (u, *)
+    write (u, "(A)")  "* LO final state"
+    write (u, *)
+    
+    allocate (pl (2))
+    call pl(1)%init (2)
+    call pl(1)%set (1, 1)
+    call pl(1)%set (2, -1)
+    call pl(2)%init (2)
+    call pl(2)%set (1, 21)
+    call pl(2)%set (2, 21)
+    do i = 1, 2
+       call pl(i)%write (u);  write (u, *)
+    end do
+
+    write (u, *)
+    write (u, "(A)")  "* Initialize FS table"
+    write (u, *)
+    
+    call constraints%init (1)
+    call constraints%set (1, constrain_n_tot (3))
+
+    call fs_table%init (model, pl, constraints)
+    call fs_table%write (u)
+    
+    write (u, *)
+    write (u, "(A)")  "* Generate NLO corrections, unconstrained"
+    write (u, *)
+    
+    call fs_table%radiate (constraints)
+    call fs_table%write (u)
+    call fs_table%final ()
+    
+    write (u, *)
+    write (u, "(A)")  "* Generate NLO corrections, &
+         &complete but mass-constrained"
+    write (u, *)
+    
+    sqrts = 50
+
+    call constraints%init (2)
+    call constraints%set (1, constrain_n_tot (3))
+    call constraints%set (2, constrain_mass_sum (sqrts))
+
+    call fs_table%init (model, pl, constraints)
+    call fs_table%radiate (constraints)
+    call fs_table%write (u)
+    call fs_table%final ()
+    
+    write (u, *)
+    write (u, "(A)")  "* Generate NLO corrections, restricted"
+    write (u, *)
+    
+    call pl_match%init ([1, -1, 21])
+    
+    call constraints%init (2)
+    call constraints%set (1, constrain_n_tot (3))
+    call constraints%set (2, constrain_insert (pl_match))
+
+    call fs_table%init (model, pl, constraints)
+    call fs_table%radiate (constraints)
+    call fs_table%write (u)
+    call fs_table%final ()
+    
+    write (u, *)
+    write (u, "(A)")  "* Generate NNLO corrections, restricted, with one loop"
+    write (u, *)
+    
+    call pl_match%init ([1, -1, 21])
+    
+    call constraints%init (3)
+    call constraints%set (1, constrain_n_tot (4))
+    call constraints%set (2, constrain_n_loop (1))
+    call constraints%set (3, constrain_insert (pl_match))
+
+    call fs_table%init (model, pl, constraints)
+    call fs_table%enable_loops ()
+    call fs_table%radiate (constraints)
+    call fs_table%write (u)
+    call fs_table%final ()
+    
+    write (u, *)
+    write (u, "(A)")  "* Generate NNLO corrections, restricted, with loops"
+    write (u, *)
+    
+    call constraints%init (2)
+    call constraints%set (1, constrain_n_tot (4))
+    call constraints%set (2, constrain_insert (pl_match))
+
+    call fs_table%init (model, pl, constraints)
+    call fs_table%enable_loops ()
+    call fs_table%radiate (constraints)
+    call fs_table%write (u)
+    call fs_table%final ()
+    
+    write (u, *)
+    write (u, "(A)")  "* Generate NNLO corrections, restricted, to Z Z H, &
+         &no loops"
+    write (u, *)
+    
+    allocate (pl_zzh (1))
+    call pl_zzh(1)%init (3)
+    call pl_zzh(1)%set (1, 23)
+    call pl_zzh(1)%set (2, 23)
+    call pl_zzh(1)%set (3, 25)
+
+    call constraints%init (3)
+    call constraints%set (1, constrain_n_tot (5))
+    call constraints%set (2, constrain_mass_sum (500._default))
+    call constraints%set (3, constrain_require (pl_zzh(1)))
+
+    call fs_table%init (model, pl_zzh, constraints)
+    call fs_table%radiate (constraints)
+    call fs_table%write (u)
+    call fs_table%final ()
+    
+    call model_list%final ()
+    call syntax_model_file_final ()
+
+    write (u, *)
+    write (u, "(A)")  "* Test output end: auto_components_2"
+
+  end subroutine auto_components_2
+
+@ %def auto_components_2
+@
+\subsubsection{Generate radiation from initial and final state}
+Given a process, add radiation (NLO and NNLO).  We provide a list
+of particles that is allowed to occur in the generated final states.
+<<Auto components: execute tests>>=
+  call test (auto_components_3, "auto_components_3", &
+       "generate NLO corrections, in and out", &
+       u, results)
+<<Auto components: tests>>=
+  subroutine auto_components_3 (u)
+    integer, intent(in) :: u
+    type(os_data_t) :: os_data
+    type(model_list_t) :: model_list
+    type(model_t), pointer :: model
+    type(pdg_list_t), dimension(:), allocatable :: pl_in, pl_out
+    type(pdg_list_t) :: pl_match, pl_beam
+    type(if_table_t) :: if_table
+    type(split_constraints_t) :: constraints
+    real(default) :: sqrts
+    integer :: i
+
+    write (u, "(A)")  "* Test output: auto_components_3"
+    write (u, "(A)")  "*   Purpose: generate radiation (NLO)"
+    write (u, *)
+
+    call syntax_model_file_init ()
+    call os_data_init (os_data)
+
+    write (u, "(A)")  "* Read Standard Model"
+
+    call model_list%read_model (var_str ("SM"), var_str ("SM.mdl"), &
+         os_data, model)
+
+    write (u, *)
+    write (u, "(A)")  "* LO initial state"
+    write (u, *)
+    
+    allocate (pl_in (2))
+    call pl_in(1)%init (2)
+    call pl_in(1)%set (1, 1)
+    call pl_in(1)%set (2, -1)
+    call pl_in(2)%init (2)
+    call pl_in(2)%set (1, -1)
+    call pl_in(2)%set (2, 1)
+    do i = 1, 2
+       call pl_in(i)%write (u);  write (u, *)
+    end do
+
+    write (u, *)
+    write (u, "(A)")  "* LO final state"
+    write (u, *)
+    
+    allocate (pl_out (1))
+    call pl_out(1)%init (1)
+    call pl_out(1)%set (1, 23)
+    call pl_out(1)%write (u);  write (u, *)
+
+    write (u, *)
+    write (u, "(A)")  "* Initialize FS table"
+    write (u, *)
+    
+    call constraints%init (1)
+    call constraints%set (1, constrain_n_tot (4))
+    
+    call if_table%init (model, pl_in, pl_out, constraints)
+    call if_table%write (u)
+    
+    write (u, *)
+    write (u, "(A)")  "* Generate NLO corrections, unconstrained"
+    write (u, *)
+    
+    call if_table%radiate (constraints)
+    call if_table%write (u)
+    call if_table%final ()
+    
+    write (u, *)
+    write (u, "(A)")  "* Generate NLO corrections, &
+         &complete but mass-constrained"
+    write (u, *)
+    
+    sqrts = 100
+    call constraints%init (2)
+    call constraints%set (1, constrain_n_tot (4))
+    call constraints%set (2, constrain_mass_sum (sqrts))
+    
+    call if_table%init (model, pl_in, pl_out, constraints)
+    call if_table%radiate (constraints)
+    call if_table%write (u)
+    call if_table%final ()
+    
+    write (u, *)
+    write (u, "(A)")  "* Generate NLO corrections, &
+         &mass-constrained, restricted beams"
+    write (u, *)
+    
+    call pl_beam%init (3)
+    call pl_beam%set (1, 1)
+    call pl_beam%set (2, -1)
+    call pl_beam%set (3, 21)
+
+    call constraints%init (3)
+    call constraints%set (1, constrain_n_tot (4))
+    call constraints%set (2, constrain_in_state (pl_beam))
+    call constraints%set (3, constrain_mass_sum (sqrts))
+
+    call if_table%init (model, pl_in, pl_out, constraints)
+    call if_table%radiate (constraints)
+    call if_table%write (u)
+    call if_table%final ()
+    
+    write (u, *)
+    write (u, "(A)")  "* Generate NLO corrections, restricted"
+    write (u, *)
+    
+    call pl_match%init ([1, -1, 21])
+    
+    call constraints%init (4)
+    call constraints%set (1, constrain_n_tot (4))
+    call constraints%set (2, constrain_in_state (pl_beam))
+    call constraints%set (3, constrain_mass_sum (sqrts))
+    call constraints%set (4, constrain_insert (pl_match)) 
+
+    call if_table%init (model, pl_in, pl_out, constraints)
+    call if_table%radiate (constraints)
+    call if_table%write (u)
+    call if_table%final ()
+    
+    write (u, *)
+    write (u, "(A)")  "* Generate NNLO corrections, restricted, Z preserved, &
+         &with loops"
+    write (u, *)
+    
+    call constraints%init (5)
+    call constraints%set (1, constrain_n_tot (5))
+    call constraints%set (2, constrain_in_state (pl_beam))
+    call constraints%set (3, constrain_mass_sum (sqrts))
+    call constraints%set (4, constrain_insert (pl_match)) 
+    call constraints%set (5, constrain_require (pl_out(1)))
+
+    call if_table%init (model, pl_in, pl_out, constraints)
+    call if_table%enable_loops ()
+    call if_table%radiate (constraints)
+    call if_table%write (u)
+    call if_table%final ()
+    
+    call model_list%final ()
+    call syntax_model_file_final ()
+
+    write (u, *)
+    write (u, "(A)")  "* Test output end: auto_components_3"
+
+  end subroutine auto_components_3
+
+@ %def auto_components_3
 @ 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Quantum Numbers}
@@ -37619,10 +39284,13 @@ impure, therefore we have to define a separate array version.
      module procedure flavor_init0
      module procedure flavor_init0_particle_data
      module procedure flavor_init0_model
+     module procedure flavor_init0_model_alt
      module procedure flavor_init0_name_model
      module procedure flavor_init1_model
+     module procedure flavor_init1_model_alt
      module procedure flavor_init1_name_model
      module procedure flavor_init2_model
+     module procedure flavor_init2_model_alt
      module procedure flavor_init_aval_model
   end interface
 <<Flavors: procedures>>=
@@ -37651,6 +39319,14 @@ impure, therefore we have to define a separate array version.
     flv%prt => model_get_particle_ptr (model, f)
   end subroutine flavor_init0_model
 
+  subroutine flavor_init0_model_alt (flv, f, model, alt_model)
+    type(flavor_t), intent(out) :: flv
+    integer, intent(in) :: f
+    type(model_t), intent(in), target :: model, alt_model
+    flv%f = f
+    flv%prt => model_get_particle_ptr (model, f, alt_model)
+  end subroutine flavor_init0_model_alt
+
   subroutine flavor_init1_model (flv, f, model)
     type(flavor_t), dimension(:), intent(out) :: flv
     integer, dimension(:), intent(in) :: f
@@ -37661,6 +39337,16 @@ impure, therefore we have to define a separate array version.
     end do
   end subroutine flavor_init1_model
 
+  subroutine flavor_init1_model_alt (flv, f, model, alt_model)
+    type(flavor_t), dimension(:), intent(out) :: flv
+    integer, dimension(:), intent(in) :: f
+    type(model_t), intent(in), target :: model, alt_model
+    integer :: i
+    do i = 1, size (f)
+       call flavor_init0_model_alt (flv(i), f(i), model, alt_model)
+    end do
+  end subroutine flavor_init1_model_alt
+
   subroutine flavor_init2_model (flv, f, model)
     type(flavor_t), dimension(:,:), intent(out) :: flv
     integer, dimension(:,:), intent(in) :: f
@@ -37670,6 +39356,16 @@ impure, therefore we have to define a separate array version.
        call flavor_init1_model (flv(:,i), f(:,i), model)
     end do
   end subroutine flavor_init2_model
+
+  subroutine flavor_init2_model_alt (flv, f, model, alt_model)
+    type(flavor_t), dimension(:,:), intent(out) :: flv
+    integer, dimension(:,:), intent(in) :: f
+    type(model_t), intent(in), target :: model, alt_model
+    integer :: i
+    do i = 1, size (f, 2)
+       call flavor_init1_model_alt (flv(:,i), f(:,i), model, alt_model)
+    end do
+  end subroutine flavor_init2_model_alt
 
   subroutine flavor_init0_name_model (flv, name, model)
     type(flavor_t), intent(out) :: flv
@@ -67518,7 +69214,7 @@ has to be switched on or off for both beams simultaneously).
 
 \subsection{The CIRCE2 data block}
 The CIRCE2 parameters are: file and collider specification, incoming
-(= outgoing) particles.  The luminosity is returned by [[cir2lm]].
+(= outgoing) particles.  The luminosity is returned by [[circe2_luminosity]].
 <<SF circe2: public>>=
   public :: circe2_data_t
 <<SF circe2: types>>=
@@ -67543,6 +69239,9 @@ The CIRCE2 parameters are: file and collider specification, incoming
   end type circe2_data_t
 
 @ %def circe2_data_t
+<<SF circe2: types>>=
+  type(circe2_state) :: circe2_global_state
+  
 @ 
 <<SF circe2: circe2 data: TBP>>=
   procedure :: init => circe2_data_init
@@ -67569,14 +69268,15 @@ The CIRCE2 parameters are: file and collider specification, incoming
     data%filename = file
     data%design = design
     call data%check_file (os_data)
-    call cir2ld (trim (char(data%file)), trim (char(data%design)), &
-            dble (data%sqrts), data%error)
-    data%lumi = cir2lm (data%pdg_in(1), 0, data%pdg_in(2), 0)
+    call circe2_load (circe2_global_state, trim (char(data%file)), &
+            trim (char(data%design)), data%sqrts, data%error)
+    data%lumi = circe2_luminosity (circe2_global_state, data%pdg_in, [0, 0])
     call data%check ()
     if (data%polarized) then
        do h = 1, 4
           data%lumi_hel_frac(h) = &
-               cir2lm (data%pdg_in(1), data%h1(h), data%pdg_in(2), data%h2(h)) &
+               circe2_luminosity (circe2_global_state, data%pdg_in, &
+	                          [data%h1(h), data%h2(h)]) &
                / data%lumi
        end do
     end if
@@ -67754,7 +69454,7 @@ delegate the generator call to the (also abstract) RNG used by WHIZARD.
 <<SF circe2: procedures>>=
   subroutine rng_obj_generate (rng_obj, u)
     class(rng_obj_t), intent(inout) :: rng_obj
-    real(double), intent(out) :: u
+    real(default), intent(out) :: u
     real(default) :: x
     call rng_obj%rng%generate (x)
     u = x
@@ -67893,9 +69593,9 @@ Refer to the [[data]] component.
 @ Generate free parameters.  We first select a helicity, which we have
 to store, then generate $x$ values for that helicity.
 <<SF circe2: circe2: TBP>>=
-  procedure :: generate_free => circe2_generate_free
+  procedure :: generate_free => circe2_generate_whizard_free
 <<SF circe2: procedures>>=
-  subroutine circe2_generate_free (sf_int, r, rb, x_free)
+  subroutine circe2_generate_whizard_free (sf_int, r, rb, x_free)
     class(circe2_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(out) :: r, rb
     real(default), intent(inout) :: x_free
@@ -67906,28 +69606,26 @@ to store, then generate $x$ values for that helicity.
        h_sel = 0
     end if
     sf_int%h_sel = h_sel
-    call circe2_generate (r, sf_int%data%pdg_in, &
+    call circe2_generate_whizard (r, sf_int%data%pdg_in, &
          [sf_int%data%h1(h_sel), sf_int%data%h2(h_sel)], &
          sf_int%rng_obj)
     rb = 1 - r
     x_free = x_free * product (r)
-  end subroutine circe2_generate_free
+  end subroutine circe2_generate_whizard_free
     
-@ %def circe2_generate_free
+@ %def circe2_generate_whizard_free
 @ Generator mode: call the CIRCE2 generator for the given particles
 and helicities.  (For unpolarized generation, helicities are zero.)
 <<SF circe2: procedures>>=
-  subroutine circe2_generate (x, pdg, hel, rng_obj)
+  subroutine circe2_generate_whizard (x, pdg, hel, rng_obj)
     real(default), dimension(2), intent(out) :: x
     integer, dimension(2), intent(in) :: pdg
     integer, dimension(2), intent(in) :: hel
     class(rng_obj_t), intent(inout) :: rng_obj
-    real(double) :: xc1, xc2
-    call cir2gn (pdg(1), hel(1), pdg(2), hel(2), xc1, xc2, rng_obj = rng_obj)
-    x = [xc1, xc2]
-  end subroutine circe2_generate
+    call circe2_generate (circe2_global_state, rng_obj, x, pdg, hel)
+  end subroutine circe2_generate_whizard
 
-@ %def circe2_generate
+@ %def circe2_generate_whizard
 @ Set kinematics.  Trivial here.
 <<SF circe2: circe2: TBP>>=
   procedure :: complete_kinematics => circe2_complete_kinematics
@@ -69527,10 +71225,12 @@ the LHAPDF standard library.
 The default PDF for protons set is chosen to be CTEQ6ll (LO fit with
 LO $\alpha_s$).
 <<Limits: public parameters>>=
-  character(*), parameter, public :: LHAPDF_DEFAULT_PROTON = "cteq6ll.LHpdf"
-  character(*), parameter, public :: LHAPDF_DEFAULT_PION   = "ABFKWPI.LHgrid"
-  character(*), parameter, public :: LHAPDF_DEFAULT_PHOTON = "GSG960.LHgrid"
-@ %def LHAPDF_DEFAULT_SET
+  character(*), parameter, public :: LHAPDF5_DEFAULT_PROTON = "cteq6ll.LHpdf"
+  character(*), parameter, public :: LHAPDF5_DEFAULT_PION   = "ABFKWPI.LHgrid"
+  character(*), parameter, public :: LHAPDF5_DEFAULT_PHOTON = "GSG960.LHgrid"
+  character(*), parameter, public :: LHAPDF6_DEFAULT_PROTON = "CT10"
+@ %def LHAPDF5_DEFAULT_PROTON LHAPDF5_DEFAULT_PION 
+@ %def LHAPDF5_DEFAULT_PHOTON LHAPDF6_DEFAULT_PROTON
 @
 \subsection{The module}
 <<[[sf_lhapdf.f90]]>>=
@@ -69541,10 +71241,12 @@ module sf_lhapdf
 <<Use kinds>>
 <<Use strings>>
   use system_dependencies, only: LHAPDF_PDFSETS_PATH !NODEP!
-  use system_dependencies, only: LHAPDF_AVAILABLE !NODEP!
-  use limits, only: LHAPDF_DEFAULT_PROTON !NODEP!
-  use limits, only: LHAPDF_DEFAULT_PION !NODEP!
-  use limits, only: LHAPDF_DEFAULT_PHOTON !NODEP!
+  use system_dependencies, only: LHAPDF5_AVAILABLE !NODEP!
+  use system_dependencies, only: LHAPDF6_AVAILABLE !NODEP!  
+  use limits, only: LHAPDF5_DEFAULT_PROTON !NODEP!
+  use limits, only: LHAPDF5_DEFAULT_PION !NODEP!
+  use limits, only: LHAPDF5_DEFAULT_PHOTON !NODEP!
+  use limits, only: LHAPDF6_DEFAULT_PROTON !NODEP!
   use limits, only: FMT_17, FMT_19 !NODEP!
 <<Use file utils>>
   use diagnostics !NODEP!
@@ -69562,6 +71264,7 @@ module sf_lhapdf
   use interactions
   use sf_aux
   use sf_base
+  use lhapdf !NODEP!
   use hoppet_interface
 
 <<Standard module head>>
@@ -69749,37 +71452,65 @@ outsourced to a separate module (inc. [[lhapdf_status]] etc.).
 <<SF lhapdf: public>>=
   public :: lhapdf_initialize
 <<SF lhapdf: procedures>>=
-  subroutine lhapdf_initialize (status, set, prefix, file, member, b_match)
+  subroutine lhapdf_initialize (status, set, prefix, file, member, pdf, b_match)
     type(lhapdf_status_t), intent(inout) :: status
     integer, intent(in) :: set
     type(string_t), intent(inout) :: prefix
     type(string_t), intent(inout) :: file
+    type(lhapdf_pdf_t), intent(inout), optional :: pdf
     integer, intent(inout) :: member
     logical, intent(in), optional :: b_match
-    if (lhapdf_status_is_initialized (status, set))  return
     if (prefix == "")  prefix = LHAPDF_PDFSETS_PATH
-    if (file == "") then
-       select case (set)
-       case (1);  file = LHAPDF_DEFAULT_PROTON
-       case (2);  file = LHAPDF_DEFAULT_PION
-       case (3);  file = LHAPDF_DEFAULT_PHOTON
-       end select
+    if (LHAPDF5_AVAILABLE) then
+       if (lhapdf_status_is_initialized (status, set))  return       
+       if (file == "") then
+          select case (set)
+          case (1);  file = LHAPDF5_DEFAULT_PROTON
+          case (2);  file = LHAPDF5_DEFAULT_PION
+          case (3);  file = LHAPDF5_DEFAULT_PHOTON
+          end select
+       end if
+       if (data_file_exists (prefix // "/" // file)) then
+          call InitPDFsetM (set, char (prefix // "/" // file))
+       else
+          call msg_fatal ("LHAPDF: Data file '" &
+               // char (file) // "' not found in '" // char (prefix) // "'.")
+          return
+       end if
+       if (.not. dataset_member_exists (set, member)) then
+          call msg_error (" LHAPDF: Chosen member does not exist for set '" &
+               // char (file) // "', using default.")
+          member = 0
+       end if
+       call InitPDFM (set, member)
+    else if (LHAPDF6_AVAILABLE) then
+       if (lhapdf_status_is_initialized (status, set) .and. &
+            pdf%is_associated ())  return
+       if (file == "") then
+          select case (set)
+          case (1);  file = LHAPDF6_DEFAULT_PROTON
+          case (2);  
+             call msg_fatal ("LHAPDF6: no pion PDFs supported (yet)")
+          case (3);  
+             call msg_fatal ("LHAPDF6: no photon PDFs supported (yet)")
+          end select
+       end if
+       if (data_file_exists (prefix // "/" // file // "/" // file // ".info")) then          
+          call pdf%init (char (file), member)
+       else
+          call msg_fatal ("LHAPDF: Data file '" &
+               // char (file) // "' not found in '" // char (prefix) // "'.")
+          return
+       end if 
     end if
-    if (data_file_exists (prefix // "/" // file)) then
-       call InitPDFsetM (set, char (prefix // "/" // file))
-    else
-       call msg_fatal ("LHAPDF: Data file '" &
-            // char (file) // "' not found in '" // char (prefix) // "'.")
-       return
-    end if
-    if (.not. dataset_member_exists (set, member)) then
-       call msg_error (" LHAPDF: Chosen member does not exist for set '" &
-            // char (file) // "', using default.")
-       member = 0
-    end if
-    call InitPDFM (set, member)
     if (present (b_match)) then
-       if (b_match)  call hoppet_init ()
+       if (b_match) then
+          if (LHAPDF5_AVAILABLE) then
+             call hoppet_init (.false.)
+          else if (LHAPDF6_AVAILABLE) then
+             call hoppet_init (.false., pdf)
+          end if
+       end if
     end if
     call lhapdf_status_set_initialized (status, set)
   contains
@@ -69887,6 +71618,7 @@ determines which partons will be actually in use.
      private
      type(string_t) :: prefix
      type(string_t) :: file
+     type(lhapdf_pdf_t) :: pdf 
      integer :: member = 0
      type(model_t), pointer :: model => null ()
      type(flavor_t) :: flv_in
@@ -69899,13 +71631,13 @@ determines which partons will be actually in use.
      real(default) :: qmin = 0, qmax = 0
      logical, dimension(-6:6) :: mask = .true.
      logical :: mask_photon = .true.
-     logical :: hoppet_b_matching = .false.
+     logical :: hoppet_b_matching = .false.     
    contains
      <<SF lhapdf: lhapdf data: TBP>>
   end type lhapdf_data_t
 
 @ %def lhapdf_data_t
-@ Generate PDF data.  This is a provided as a function, but it has the
+@ Generate PDF data.  This is provided as a function, but it has the
 side-effect of initializing the requested PDF set.  A finalizer is not
 needed.
 
@@ -69928,7 +71660,7 @@ quadruple, we use auxiliary variables for type casting.
     double precision :: xmin, xmax, q2min, q2max
     external :: InitPDFsetM, InitPDFM, numberPDFM
     external :: GetXminM, GetXmaxM, GetQ2minM, GetQ2maxM
-    if (.not. LHAPDF_AVAILABLE) then
+    if (.not. LHAPDF5_AVAILABLE .and. .not. LHAPDF6_AVAILABLE) then
        call msg_fatal ("LHAPDF requested but library is not linked")
        return
     end if
@@ -69966,19 +71698,30 @@ quadruple, we use auxiliary variables for type casting.
     else
        data%file = ""
     end if
-    if (present (hoppet_b_matching))  data%hoppet_b_matching = hoppet_b_matching
-    call lhapdf_initialize &
-         (status, data%set, data%prefix, data%file, data%member, &
-         data%hoppet_b_matching)
-    call GetXminM (data%set, data%member, xmin)
-    call GetXmaxM (data%set, data%member, xmax)
-    call GetQ2minM (data%set, data%member, q2min)
-    call GetQ2maxM (data%set, data%member, q2max)
-    data%xmin = xmin
-    data%xmax = xmax
-    data%qmin = sqrt (q2min)
-    data%qmax = sqrt (q2max)
-    data%has_photon = has_photon ()
+    if (present (hoppet_b_matching))  data%hoppet_b_matching = hoppet_b_matching    
+    if (LHAPDF5_AVAILABLE) then
+       call lhapdf_initialize &
+            (status, data%set, data%prefix, data%file, data%member, &
+            b_match = data%hoppet_b_matching)       
+       call GetXminM (data%set, data%member, xmin)
+       call GetXmaxM (data%set, data%member, xmax)
+       call GetQ2minM (data%set, data%member, q2min)
+       call GetQ2maxM (data%set, data%member, q2max)
+       data%xmin = xmin
+       data%xmax = xmax
+       data%qmin = sqrt (q2min)
+       data%qmax = sqrt (q2max)       
+       data%has_photon = has_photon ()       
+    else if (LHAPDF6_AVAILABLE) then
+       call lhapdf_initialize &
+            (status, data%set, data%prefix, data%file, data%member, &
+            data%pdf, data%hoppet_b_matching)              
+       data%xmin = data%pdf%getxmin ()
+       data%xmax = data%pdf%getxmax ()
+       data%qmin = sqrt(data%pdf%getq2min ())
+       data%qmax = sqrt(data%pdf%getq2max ())
+       data%has_photon = data%pdf%has_photon ()
+    end if
   end subroutine lhapdf_data_init
 
 @ %def lhapdf_data_init
@@ -70050,8 +71793,8 @@ applying the PDF will generate the corresponding flavor on output.
        write (u, "(3x,A,I3)")      "  member       = ", data%member
        write (u, "(3x,A," // FMT_19 // ")") "  x(min)       = ", data%xmin
        write (u, "(3x,A," // FMT_19 // ")") "  x(max)       = ", data%xmax
-       write (u, "(3x,A," // FMT_19 // ")") "  Q^2(min)     = ", data%qmin
-       write (u, "(3x,A," // FMT_19 // ")") "  Q^2(max)     = ", data%qmax
+       write (u, "(3x,A," // FMT_19 // ")") "  Q(min)       = ", data%qmin
+       write (u, "(3x,A," // FMT_19 // ")") "  Q(max)       = ", data%qmax
        write (u, "(3x,A,L1)")      "  invert       =  ", data%invert
        if (data%photon)  write (u, "(3x,A,I3)") &
             "  IP2 (scheme) = ", data%photon_scheme
@@ -70273,29 +72016,52 @@ these unphysical values to zero.
          xx = x
          if (data% invert) then
             if (data%has_photon) then
-               call evolvePDFphotonM (data% set, xx, qq, ff(6:-6:-1), fphot)
+               if (LHAPDF5_AVAILABLE) then
+                  call evolvePDFphotonM &
+                       (data% set, xx, qq, ff(6:-6:-1), fphot)
+               else if (LHAPDF6_AVAILABLE) then
+                  call data%pdf%evolve_pdfphotonm &
+                       (xx, qq, ff(6:-6:-1), fphot)
+               end if
             else
                if (data%hoppet_b_matching) then
                   call hoppet_eval (xx, qq, ff(6:-6:-1)) 
                else
-                  call evolvePDFM (data% set, xx, qq, ff(6:-6:-1))
+                  if (LHAPDF5_AVAILABLE) then
+                     call evolvePDFM (data% set, xx, qq, ff(6:-6:-1))
+                  else if (LHAPDF6_AVAILABLE) then
+                     call data%pdf%evolve_pdfm (xx, qq, ff(6:-6:-1))
+                  end if
                end if
             end if
          else
             if (data%has_photon) then
-               call evolvePDFphotonM (data% set, xx, qq, ff, fphot)
+               if (LHAPDF5_AVAILABLE) then
+                  call evolvePDFphotonM (data% set, xx, qq, ff, fphot)
+               else if (LHAPDF6_AVAILABLE) then
+                  call data%pdf%evolve_pdfphotonm (xx, qq, ff, fphot)
+               end if
             else
                if (data%hoppet_b_matching) then
                   call hoppet_eval (xx, qq, ff) 
                else
-                  call evolvePDFM (data% set, xx, qq, ff)
+                  if (LHAPDF5_AVAILABLE) then
+                     call evolvePDFM (data% set, xx, qq, ff)
+                  else if (LHAPDF6_AVAILABLE) then
+                     call data%pdf%evolve_pdfm (xx, qq, ff)
+                  end if
                end if
             end if
          end if
       else
          ss = s
-         call evolvePDFpM (data% set, xx, qq, &
-              ss, data% photon_scheme, ff)
+         if (LHAPDF5_AVAILABLE) then
+            call evolvePDFpM (data% set, xx, qq, &
+                 ss, data% photon_scheme, ff)
+         else if (LHAPDF6_AVAILABLE) then
+            call data%pdf%evolve_pdfpm (xx, qq, ss, &
+                 data%photon_scheme, ff)
+         end if
       end if
       if (data%has_photon) then
          allocate (fc (count ([data%mask, data%mask_photon])))
@@ -70323,6 +72089,7 @@ abstract [[alpha_qcd_t]] type, which is used for matrix element evaluation.
      type(string_t) :: pdfset_dir
      type(string_t) :: pdfset_file
      integer :: pdfset_member = -1
+     type(lhapdf_pdf_t) :: pdf
    contains
    <<SF lhapdf: alpha qcd: TBP>>
   end type alpha_qcd_lhapdf_t
@@ -70361,7 +72128,11 @@ be properly initialized.
     class(alpha_qcd_lhapdf_t), intent(in) :: alpha_qcd
     real(default), intent(in) :: scale
     real(default) :: alpha
-    alpha = alphasPDF (dble (scale))
+    if (LHAPDF5_AVAILABLE) then
+       alpha = alphasPDF (dble (scale))
+    else if (LHAPDF6_AVAILABLE) then
+       alpha = alpha_qcd%pdf%alphas_pdf (dble (scale))
+    end if
   end function alpha_qcd_lhapdf_get
   
 @ %def alpha_qcd_lhapdf_get
@@ -70381,7 +72152,12 @@ Initialization.  We need to access the (quasi-global) initialization status.
     if (alpha_qcd%pdfset_member < 0) &
          call msg_fatal ("QCD parameter initialization: PDF set " &
          // char (file) // " is unknown")
-    call lhapdf_initialize (status, 1, path, file, member)
+    if (LHAPDF5_AVAILABLE) then
+       call lhapdf_initialize (status, 1, path, file, member)
+    else if (LHAPDF6_AVAILABLE) then
+       call lhapdf_initialize &
+            (status, 1, path, file, member, alpha_qcd%pdf)
+    end if
   end subroutine alpha_qcd_lhapdf_init
     
 @ %def alpha_qcd_lhapdf_init
@@ -70401,9 +72177,15 @@ Initialization.  We need to access the (quasi-global) initialization status.
 \subsubsection{Test structure function data}
 Construct and display a test structure function data object.
 <<SF lhapdf: execute tests>>=
-  call test (sf_lhapdf_1, "sf_lhapdf_1", &
-       "structure function configuration", &
-       u, results)
+  if (LHAPDF5_AVAILABLE) then  
+     call test (sf_lhapdf_1, "sf_lhapdf5_1", &
+          "structure function configuration", &
+          u, results)
+  else if (LHAPDF6_AVAILABLE) then
+     call test (sf_lhapdf_1, "sf_lhapdf6_1", &
+          "structure function configuration", &
+          u, results)
+  end if
 <<SF lhapdf: tests>>=
   subroutine sf_lhapdf_1 (u)
     integer, intent(in) :: u
@@ -70465,9 +72247,15 @@ Construct and display a test structure function data object.
 Construct and display a structure function object based on the PDF builtin
 structure function.
 <<SF lhapdf: execute tests>>=
-  call test (sf_lhapdf_2, "sf_lhapdf_2", &
-       "structure function instance", &
-       u, results)
+  if (LHAPDF5_AVAILABLE) then
+     call test (sf_lhapdf_2, "sf_lhapdf5_2", &
+          "structure function instance", &
+          u, results)
+  else if (LHAPDF6_AVAILABLE) then
+     call test (sf_lhapdf_2, "sf_lhapdf6_2", &
+          "structure function instance", &
+          u, results)     
+  end if
 <<SF lhapdf: tests>>=
   subroutine sf_lhapdf_2 (u)
     integer, intent(in) :: u
@@ -70587,9 +72375,15 @@ structure function.
 Test $\alpha_s$ as an implementation of the [[alpha_qcd_t]] abstract
 type.
 <<SF lhapdf: execute tests>>=
-  call test (sf_lhapdf_3, "sf_lhapdf_3", &
-       "running alpha_s", &
-       u, results)
+  if (LHAPDF5_AVAILABLE) then
+     call test (sf_lhapdf_3, "sf_lhapdf5_3", &
+          "running alpha_s", &
+          u, results)
+  else if (LHAPDF6_AVAILABLE) then
+     call test (sf_lhapdf_3, "sf_lhapdf6_3", &
+          "running alpha_s", &
+          u, results)     
+  end if
 <<SF lhapdf: tests>>=
   subroutine sf_lhapdf_3 (u)
     integer, intent(in) :: u
@@ -70608,10 +72402,16 @@ type.
     write (u, "(A)")
 
     call os_data_init (os_data)
-    
-    name = "cteq6ll.LHpdf"
-    member = 1
-    path = ""
+
+    if (LHAPDF5_AVAILABLE) then
+       name = "cteq6ll.LHpdf"
+       member = 1
+       path = ""
+    else if (LHAPDF6_AVAILABLE) then
+       name = "CT10"
+       member = 1
+       path = ""
+    end if
        
     write (u, "(A)")  "* Initialize qcd object"
     write (u, "(A)")
@@ -70659,6 +72459,7 @@ we ship some PDFs with WHIZARD.
 module sf_pdf_builtin
 
 <<Use kinds>>
+  use kinds, only: double !NODEP!
 <<Use strings>>
   use limits, only: PDF_BUILTIN_DEFAULT_PROTON !NODEP!
   use limits, only: PDF_BUILTIN_DEFAULT_PION !NODEP!
@@ -70681,6 +72482,7 @@ module sf_pdf_builtin
   use interactions
   use sf_aux
   use sf_base
+  use hoppet_interface
 
 <<Standard module head>>
 
@@ -70717,6 +72519,7 @@ determines which partons will be actually in use.
      logical :: photon
      logical, dimension(-6:6) :: mask
      logical :: mask_photon
+     logical :: hoppet_b_matching = .false.
    contains
    <<SF pdf builtin: pdf builtin data: TBP>>
   end type pdf_builtin_data_t
@@ -70728,13 +72531,15 @@ needed.
 <<SF pdf builtin: pdf builtin data: TBP>>=
   procedure :: init => pdf_builtin_data_init
 <<SF pdf builtin: procedures>>=
-  subroutine pdf_builtin_data_init (data, pdf_status, model, pdg_in, name, path)
+  subroutine pdf_builtin_data_init (data, pdf_status, &
+       model, pdg_in, name, path, hoppet_b_matching)
     class(pdf_builtin_data_t), intent(out) :: data
     type(pdf_builtin_status_t), intent(inout) :: pdf_status
     type(model_t), intent(in), target :: model
     type(pdg_array_t), intent(in) :: pdg_in
     type(string_t), intent(in) :: name
     type(string_t), intent(in) :: path
+    logical, intent(in), optional :: hoppet_b_matching
     data%model => model
     if (pdg_array_get_length (pdg_in) /= 1) &
          call msg_fatal ("PDF: incoming particle must be unique")
@@ -70771,7 +72576,9 @@ needed.
     data%id = pdf_get_id (data%name)
     if (data%id < 0) call msg_fatal ("unknown PDF set " // char (data%name))
     data%has_photon = pdf_provides_photon (data%id)
+    if (present (hoppet_b_matching))  data%hoppet_b_matching = hoppet_b_matching
     call pdf_init (pdf_status, data%id, path)
+    if (data%hoppet_b_matching)  call hoppet_init (.true., pdf_id = data%id)
   end subroutine pdf_builtin_data_init
 
 @ %def pdf_builtin_data_init
@@ -70811,6 +72618,7 @@ applying the PDF will generate the corresponding flavor on output.
          "mask         =", &
          data%mask(-6:-1), "*", data%mask(0), "*", data%mask(1:6)
     write (u, "(3x,A,L1)") "photon mask  = ", data%mask_photon
+    write (u, "(3x,A,L1)") "hoppet_b     = ", data%hoppet_b_matching    
   end subroutine pdf_builtin_data_write
 
 @ %def pdf_builtin_data_write
@@ -71077,22 +72885,36 @@ adjusting to the $x$ and $Q$ bounds.  Account for the Jacobian.
     class(pdf_builtin_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
     real(default), dimension(-6:6) :: ff
+    real(double), dimension(-6:6) :: ff_dbl
     real(default) :: x, fph
+    real(double) :: xx, qq
     complex(default), dimension(:), allocatable :: fc
     associate (data => sf_int%data)
       sf_int%q = scale
       x = sf_int%x
+      xx = x
+      qq = scale
       if (data%invert) then
          if (data%has_photon) then
             call pdf_evolve (data%id, x, scale, ff(6:-6:-1), fph)
          else
-            call pdf_evolve (data%id, x, scale, ff(6:-6:-1))
+            if (data%hoppet_b_matching) then
+               call hoppet_eval (xx, qq, ff_dbl(6:-6:-1))
+               ff = ff_dbl
+            else
+               call pdf_evolve (data%id, x, scale, ff(6:-6:-1))
+            end if
          end if
       else
          if (data%has_photon) then
             call pdf_evolve (data%id, x, scale, ff, fph)
          else
-            call pdf_evolve (data%id, x, scale, ff)
+            if (data%hoppet_b_matching) then
+               call hoppet_eval (xx, qq, ff_dbl)
+               ff = ff_dbl
+            else
+               call pdf_evolve (data%id, x, scale, ff)               
+            end if
          end if
       end if
       if (data%has_photon) then
@@ -71953,16 +73775,20 @@ b quark.
 <<File header>>
 
 module hoppet_interface
-
+  use lhapdf !NODEP!     
+  
 <<Standard module head>>
 
   public :: hoppet_init, hoppet_eval
 
 contains
 
-  subroutine hoppet_init ()
+  subroutine hoppet_init (pdf_builtin, pdf, pdf_id)
+    logical, intent(in) :: pdf_builtin
+    type(lhapdf_pdf_t), intent(inout), optional :: pdf
+    integer, intent(in), optional :: pdf_id
     external InitForWhizard
-    call InitForWhizard ()
+    call InitForWhizard (pdf_builtin, pdf, pdf_id)
   end subroutine hoppet_init
 
   subroutine hoppet_eval (x, q, f)
@@ -105602,13 +107428,19 @@ effective interaction).  In the result, all quantum numbers are summed over.
 If the optional [[int]] interaction is provided, use this for the
 first factor in the convolution.  Otherwise, use the final interaction
 of the stored [[sf_chain]].
+
+The [[resonant]] flag applies if we want to construct
+a decay chain.  The resonance property can propagate to the final
+event output.
 <<Parton states: connected state: TBP>>=
   procedure :: setup_connected_trace => connected_state_setup_connected_trace
 <<Parton states: procedures>>=
-  subroutine connected_state_setup_connected_trace (state, isolated, int)
+  subroutine connected_state_setup_connected_trace &
+       (state, isolated, int, resonant)
     class(connected_state_t), intent(inout), target :: state
     type(isolated_state_t), intent(in), target :: isolated
     type(interaction_t), intent(in), optional, target :: int
+    logical, intent(in), optional :: resonant
     type(quantum_numbers_mask_t) :: mask
     type(interaction_t), pointer :: src_int
     mask = new_quantum_numbers_mask (.true., .true., .true.)
@@ -105618,7 +107450,8 @@ of the stored [[sf_chain]].
        src_int => isolated%sf_chain_eff%get_out_int_ptr ()
     end if
     call evaluator_init_product &
-         (state%trace, src_int, isolated%trace, mask, mask)
+         (state%trace, src_int, isolated%trace, mask, mask, &
+          connections_are_resonant = resonant)
     state%has_trace = .true.
   end subroutine connected_state_setup_connected_trace
     
@@ -105630,10 +107463,12 @@ numbers which are present in the original evaluators.
 <<Parton states: connected state: TBP>>=
   procedure :: setup_connected_matrix => connected_state_setup_connected_matrix
 <<Parton states: procedures>>=
-  subroutine connected_state_setup_connected_matrix (state, isolated, int)
+  subroutine connected_state_setup_connected_matrix &
+       (state, isolated, int, resonant)
     class(connected_state_t), intent(inout), target :: state
     type(isolated_state_t), intent(in), target :: isolated
     type(interaction_t), intent(in), optional, target :: int
+    logical, intent(in), optional :: resonant
     type(quantum_numbers_mask_t) :: mask
     type(interaction_t), pointer :: src_int
     mask = new_quantum_numbers_mask (.false., .true., .true.)
@@ -105643,7 +107478,8 @@ numbers which are present in the original evaluators.
        src_int => isolated%sf_chain_eff%get_out_int_ptr ()
     end if
     call evaluator_init_product &
-         (state%matrix, src_int, isolated%matrix, mask)
+         (state%matrix, src_int, isolated%matrix, mask, &
+          connections_are_resonant = resonant)
     state%has_matrix = .true.
   end subroutine connected_state_setup_connected_matrix
   
@@ -105662,10 +107498,12 @@ caller-provided [[int]], this is not necessary.
 <<Parton states: connected state: TBP>>=
   procedure :: setup_connected_flows => connected_state_setup_connected_flows
 <<Parton states: procedures>>=
-  subroutine connected_state_setup_connected_flows (state, isolated, int)
+  subroutine connected_state_setup_connected_flows &
+       (state, isolated, int, resonant)
     class(connected_state_t), intent(inout), target :: state
     type(isolated_state_t), intent(in), target :: isolated
     type(interaction_t), intent(in), optional, target :: int
+    logical, intent(in), optional :: resonant
     type(quantum_numbers_mask_t) :: mask
     type(interaction_t), pointer :: src_int
     mask = new_quantum_numbers_mask (.false., .false., .true.)
@@ -105678,7 +107516,8 @@ caller-provided [[int]], this is not necessary.
        src_int => evaluator_get_int_ptr (state%flows_sf)
     end if
     call evaluator_init_product &
-         (state%flows, src_int, isolated%flows, mask)
+         (state%flows, src_int, isolated%flows, mask, &
+          connections_are_resonant = resonant)
     state%has_flows = .true.
   end subroutine connected_state_setup_connected_flows
   
@@ -117188,11 +119027,11 @@ in the decay chain generation.
     current_decay => decay%process_instance%get_isolated_state_ptr &
          (decay%selected_term)
     call entry%setup_connected_trace &
-         (current_decay, previous_state%get_trace_int_ptr ())
+         (current_decay, previous_state%get_trace_int_ptr (), resonant=.true.)
     call entry%setup_connected_matrix &
-         (current_decay, previous_state%get_matrix_int_ptr ())
+         (current_decay, previous_state%get_matrix_int_ptr (), resonant=.true.)
     call entry%setup_connected_flows &
-         (current_decay, previous_state%get_flows_int_ptr ())
+         (current_decay, previous_state%get_flows_int_ptr (), resonant=.true.)
     chain%last => entry
     call chain%build_term_entries (decay%term(decay%selected_term))
   end subroutine decay_chain_build_decay_entries
@@ -118402,11 +120241,12 @@ from WHIZARD.
   public :: apply_shower_particle_set
 <<Shower: procedures>>=
   subroutine apply_shower_particle_set & 
-       (particle_set, shower_settings,  model, &
+       (particle_set, shower_settings,  model, model_hadrons, &
         os_data, pdf_type, pdf_set, valid, vetoed)
     type(particle_set_t), intent(inout) :: particle_set
     type(shower_settings_t), intent(in) :: shower_settings
-    type(model_t), pointer, intent(in) :: model
+    type(model_t), intent(in), target :: model
+    type(model_t), intent(in), target :: model_hadrons
     type(os_data_t), intent(in) :: os_data
     integer, intent(in) :: pdf_type
     integer, intent(in) :: pdf_set
@@ -118508,11 +120348,12 @@ from WHIZARD.
           .not. shower_settings%ps_isr_active .and. &
            shower_settings%hadronization_active)) then
        call apply_PYTHIAshower_particle_set (particle_set, &
-            shower_settings, mlm_matching_data%P_ME, model, valid)
+            shower_settings, mlm_matching_data%P_ME, model, model_hadrons, &
+            valid)
        if (debug)  call pylist(2)
     else
        call apply_WHIZARDshower_particle_set (particle_set, &
-            shower_settings, mlm_matching_data%P_ME, model, &
+            shower_settings, mlm_matching_data%P_ME, model, model_hadrons, &
             os_data, pdf_func, pdf_set, valid, vetoed)
             if (vetoed) return
     end if
@@ -118540,7 +120381,7 @@ from WHIZARD.
        !! transferred there by one of the shower routines
        if (valid) then
           call apply_PYTHIAhadronization (particle_set, &
-               shower_settings, model, valid)
+               shower_settings, model, model_hadrons, valid)
        end if
     end if
 !!! FINAL
@@ -118576,7 +120417,7 @@ from WHIZARD.
     end function shower_get_PYTHIA_error
 
     subroutine apply_PYTHIAshower_particle_set &
-         (particle_set, shower_settings, JETS_ME, model, valid)
+         (particle_set, shower_settings, JETS_ME, model, model_hadrons, valid)
     <<HEP common: parameters>>
     <<HEP common: variables>>
     <<HEP common: common blocks>>
@@ -118585,7 +120426,8 @@ from WHIZARD.
       type(particle_set_t) :: pset_reduced
       type(shower_settings_t), intent(in) :: shower_settings
       type(vector4_t), dimension(:), allocatable, intent(inout) :: JETS_ME
-      type(model_t), pointer, intent(in) :: model
+      type(model_t), intent(in), target :: model
+      type(model_t), intent(in), target :: model_hadrons
       logical, intent(inout) :: valid
       real(kind=default) :: rand
       
@@ -118738,7 +120580,7 @@ from WHIZARD.
       !!! read and add lhef from u_P2W
       if (signal_is_pending ()) return          
       call shower_add_lhef_to_particle_set &
-           (particle_set, u_P2W, model, os_data)
+           (particle_set, u_P2W, model, model_hadrons)
       close (unit=u_P2W)
       
       !!! Transfer momenta of the partons in the final state of 
@@ -118755,12 +120597,13 @@ from WHIZARD.
     end subroutine apply_PYTHIAshower_particle_set
 
     subroutine apply_WHIZARDshower_particle_set & 
-         (particle_set, shower_settings, JETS_ME, model_in, &
+         (particle_set, shower_settings, JETS_ME, model, model_hadrons, &
          os_data, pdf_func, pdf_set, valid, vetoed)
       type(particle_set_t), intent(inout) :: particle_set
       type(shower_settings_t), intent(in) :: shower_settings
       type(vector4_t), dimension(:), allocatable, intent(inout) :: JETS_ME
-      type(model_t), pointer, intent(in) :: model_in
+      type(model_t), intent(in), target :: model
+      type(model_t), intent(in), target :: model_hadrons
       type(os_data_t), intent(in) :: os_data
       procedure(shower_pdf), pointer, intent(in) :: pdf_func
       integer, intent(in) :: pdf_set
@@ -118783,11 +120626,7 @@ from WHIZARD.
       integer, dimension(1) :: parent
       type(flavor_t) :: flv
       type(color_t) :: col
-      type(model_t), pointer :: model
-      type(model_t), target, save :: model_SM_hadrons
-      logical, save :: model_SM_hadrons_associated = .false.
       logical, save :: msg_written = .false.
-      logical :: exist_SM_hadrons
       type(string_t) :: filename
       integer, dimension(2,4) :: color_corr
       integer :: colori, colorj
@@ -119165,7 +121004,7 @@ from WHIZARD.
          end if
          call shower%write_lhef (u_S2W)
          call shower_add_lhef_to_particle_set &
-              (particle_set, u_S2W, model_in, os_data)
+              (particle_set, u_S2W, model, model_hadrons)
          close (u_S2W)
          
          !!! move the particle data to the PYTHIA COMMON BLOCKS in case 
@@ -119307,10 +121146,11 @@ from WHIZARD.
     end subroutine matching_transfer_PS
     
     subroutine apply_PYTHIAhadronization &
-         (particle_set, shower_settings, model, valid)
+         (particle_set, shower_settings, model, model_hadrons, valid)
       type(particle_set_t), intent(inout) :: particle_set
       type(shower_settings_t), intent(in) :: shower_settings
-      type(model_t), pointer, intent(in) :: model
+      type(model_t), intent(in), target :: model
+      type(model_t), intent(in), target :: model_hadrons
       logical, intent(inout) :: valid
       integer :: u_W2P, u_P2W
       type(string_t) :: remaining_PYGIVE, partial_PYGIVE
@@ -119399,7 +121239,7 @@ from WHIZARD.
          !!! read and add lhef from u_P2W
          if (signal_is_pending ()) return             
          call shower_add_lhef_to_particle_set &
-              (particle_set, u_P2W, model, os_data)
+              (particle_set, u_P2W, model, model_hadrons)
          close (u_W2P)
          close (u_P2W)
          valid = .true.
@@ -119451,20 +121291,17 @@ remaining existing former outgoing particles are set to be the mothers of all
 remaining new outgoing particles.
 <<Shower: procedures>>=
   subroutine shower_add_lhef_to_particle_set &
-       (particle_set, u, model_in, os_data)
+       (particle_set, u, model_in, model_hadrons)
     type(particle_set_t), intent(inout) :: particle_set
     integer, intent(in) :: u
-    type(model_t), intent(in), pointer :: model_in
-    type(model_t), target, save :: model_SM_hadrons
-    type(model_t), pointer :: model
-    logical, save :: model_SM_hadrons_associated = .false.
-    type(os_data_t), intent(in) :: os_data 
-    logical :: exist_SM_hadrons
+    type(model_t), intent(in), target :: model_in
+    type(model_t), intent(in), target :: model_hadrons
     type(string_t) :: filename
     type(flavor_t) :: flv
     type(color_t) :: col
     logical :: logging_save
 
+    type(model_t), pointer :: model
     integer :: newsize, oldsize
     type(particle_t), dimension(:), allocatable :: temp_prt
     integer :: i, j
@@ -119541,27 +121378,13 @@ remaining new outgoing particles.
        ! particle_set%prt (oldsize+i-2)%polarization = 0 ! =PRT_UNPOLARIZED !??
        if (model_test_particle (model_in, IDUP)) then
           model => model_in
-       else 
-          ! prepare model_SM_hadrons for hadrons created in the hadronization
-          ! and not present in the model file
-          if (.not. model_SM_hadrons_associated) then
-             ! call os_data_init (os_data)
-             filename = "SM_hadrons.mdl"
-             logging_save = logging
-             logging = .false.
-             call model_read (model_SM_hadrons, filename, os_data, & 
-                  exist_SM_hadrons)
-             logging = logging_save
-             model_SM_hadrons_associated = .true.
-          end if
-          if (model_test_particle (model_SM_hadrons, IDUP)) then
-             model => model_SM_hadrons
-          else
-             write (buffer, "(I5)") IDUP
-             call msg_error ("Parton " // buffer // &
-                  " found neither in given model file nor in SM_hadrons")
-             return
-          end if
+       else if (model_test_particle (model_hadrons, IDUP)) then
+          model => model_hadrons
+       else
+          write (buffer, "(I5)") IDUP
+          call msg_error ("Parton " // buffer // &
+               " found neither in given model file nor in SM_hadrons")
+          return
        end if
        call flavor_init (flv, IDUP, model)
        call particle_set_flavor (temp_prt (oldsize+i-2), flv)
@@ -119624,7 +121447,6 @@ remaining new outgoing particles.
     if (allocated (available_parents))  deallocate (available_parents)
     deallocate (direct_child)
     deallocate (temp_prt)
-    call model_final (model_SM_hadrons)
 
 200 continue
     return
@@ -119832,6 +121654,7 @@ remaining new outgoing particles.
 <<Shower: types>>=
   type, extends (evt_t) :: evt_shower_t
      type(shower_settings_t) :: settings
+     type(model_t), pointer :: model_hadrons => null ()
      type(os_data_t) :: os_data
      integer :: pdf_type = STRF_NONE
      integer :: pdf_set = 0
@@ -119859,16 +121682,20 @@ remaining new outgoing particles.
   end subroutine evt_shower_write
     
 @ %def evt_shower_write
-@ Initialize the parameters.
+@ Initialize the parameters.  The [[model_hadrons]] is supposed to be
+the SM variant that contains all hadrons that may be generated in the
+shower.
 <<Shower: evt shower: TBP>>=
   procedure :: init => evt_shower_init
 <<Shower: procedures>>=
-  subroutine evt_shower_init (evt, settings, os_data)
+  subroutine evt_shower_init (evt, settings, model_hadrons, os_data)
     class(evt_shower_t), intent(out) :: evt
     type(shower_settings_t), intent(in) :: settings
+    type(model_t), intent(in), target :: model_hadrons
     type(os_data_t), intent(in) :: os_data
     evt%settings = settings
     evt%os_data = os_data
+    evt%model_hadrons => model_hadrons
   end subroutine evt_shower_init
   
 @ %def evt_shower_init
@@ -119935,7 +121762,7 @@ by the caller which is why we mark the particle set as invalid.
                evt%settings%ckkw_weights, evt%particle_set)
        end if
        call apply_shower_particle_set (evt%particle_set, &
-            evt%settings, evt%model, &
+            evt%settings, evt%model, evt%model_hadrons, &
             evt%os_data, evt%pdf_type, evt%pdf_set, valid, vetoed)
        probability = 1
        !!! BCN: WK please check: In 2.1.1 vetoed events reduced sim%n_events by
@@ -120170,7 +121997,7 @@ the WHIZARD FSR shower.
     type(os_data_t) :: os_data
     type(process_library_t), target :: lib
     type(model_list_t) :: model_list
-    type(model_t), pointer :: model
+    type(model_t), pointer :: model, model_hadrons
     type(process_t), target :: process
     type(process_instance_t), target :: process_instance
     integer :: factorization_mode
@@ -120187,6 +122014,9 @@ the WHIZARD FSR shower.
     write (u, "(A)")
 
     call syntax_model_file_init ()
+    call os_data_init (os_data)
+    call model_list%read_model (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"), &
+         os_data, model_hadrons)
     call setup_testbed (var_str ("shower_1"), &
          os_data, lib, model_list, model, process, process_instance)
 
@@ -120212,14 +122042,12 @@ the WHIZARD FSR shower.
     write (u, "(A)")  "* Set up shower event transform"
     write (u, "(A)")
 
-    settings%ps_fsr_active = .true.
-
+    allocate (evt_shower_t :: evt_shower)
     select type (evt_shower)
     type is (evt_shower_t)
-       call evt_shower%init (settings, os_data)
+       call evt_shower%init (settings, model_hadrons, os_data)
     end select
 
-    allocate (evt_shower_t :: evt_shower)
     call evt_shower%connect (process_instance, model)
     evt_trivial%next => evt_shower
     evt_shower%previous => evt_trivial
@@ -120265,7 +122093,7 @@ Since the default settings have all
     type(os_data_t) :: os_data
     type(process_library_t), target :: lib
     type(model_list_t) :: model_list
-    type(model_t), pointer :: model
+    type(model_t), pointer :: model, model_hadrons
     type(process_t), target :: process
     type(process_instance_t), target :: process_instance
     integer :: factorization_mode
@@ -120282,6 +122110,9 @@ Since the default settings have all
     write (u, "(A)")
 
     call syntax_model_file_init ()
+    call os_data_init (os_data)
+    call model_list%read_model (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"), &
+         os_data, model_hadrons)
     call setup_testbed (var_str ("shower_2"), &
          os_data, lib, model_list, model, process, process_instance)
 
@@ -120312,7 +122143,7 @@ Since the default settings have all
     allocate (evt_shower_t :: evt_shower)
     select type (evt_shower)
     type is (evt_shower_t)
-       call evt_shower%init (settings, os_data)
+       call evt_shower%init (settings, model_hadrons, os_data)
     end select
 
     call evt_shower%connect (process_instance, model)
@@ -126469,6 +128300,10 @@ requires a wrapper:
 \subsection{Type}
 We can assume that most implementations will need the file extension as a
 fixed string and, if they support file splitting, the current file index.
+
+The fallback model is useful for implementations that are able to read
+unknown files which may contain hadrons etc., not in the current
+hard-interaction model.
 <<EIO base: public>>=
   public :: eio_t
 <<EIO base: types>>=
@@ -126479,6 +128314,7 @@ fixed string and, if they support file splitting, the current file index.
      logical :: split = .false.
      integer :: split_n_evt = 0
      integer :: split_index = 0
+     type(model_t), pointer :: fallback_model => null ()
    contains
    <<EIO base: eio: TBP>>
   end type eio_t
@@ -126542,6 +128378,17 @@ channels.
   end subroutine eio_set_filename
 
 @ %def eio_set_filename
+@ Set the fallback model.
+<<EIO base: eio: TBP>>=
+  procedure :: set_fallback_model => eio_set_fallback_model
+<<EIO base: procedures>>=
+  subroutine eio_set_fallback_model (eio, model)
+    class(eio_t), intent(inout) :: eio
+    type(model_t), intent(in), target :: model
+    eio%fallback_model => model
+  end subroutine eio_set_fallback_model
+  
+@ %def eio_set_fallback_model
 @ Initialize for output.  We provide process pointers.  This should
 open an event file if appropriate and write header data.  Some methods
 may require event sample data.
@@ -128614,7 +130461,7 @@ use the PDG code for this.
        case (1);   status = PRT_OUTGOING
        case (2);   status = PRT_RESONANT
        case (3);
-          select case (IDUP(i))
+          select case (abs (IDUP(i)))
           case (HADRON_REMNANT, HADRON_REMNANT_SINGLET, &
                HADRON_REMNANT_TRIPLET, HADRON_REMNANT_OCTET)
              status = PRT_BEAM_REMNANT
@@ -129031,6 +130878,7 @@ to be parsed to the MOKKA LC fast simulation software.
     write (u, "(3(1x,I0),(1x,ES17.10))") &
          NHEP, hepevt_n_out, hepevt_n_remnants, hepevt_weight
     do i = 1, NHEP
+       if (ISTHEP(i) /= 1)  cycle
        write (u, "(2(1x,I0))") IDHEP(i), hepevt_pol(i)
        write (u, "(5(1x,ES17.10))") PHEP(:,i)
     end do
@@ -129151,11 +130999,13 @@ two particles should be the incoming partons.
 <<HEP common: public>>=
   public :: hepeup_to_particle_set
 <<HEP common: procedures>>=
-  subroutine hepeup_to_particle_set (particle_set, recover_beams, model)
+  subroutine hepeup_to_particle_set &
+       (particle_set, recover_beams, model, alt_model)
     type(particle_set_t), intent(inout), target :: particle_set
     logical, intent(in), optional :: recover_beams
-    type(model_t), intent(in), target :: model
+    type(model_t), intent(in), target :: model, alt_model
     type(particle_t), dimension(:), allocatable :: prt
+    integer, dimension(2) :: parent
     integer, dimension(:), allocatable :: child
     integer :: i, j, k, pdg, status
     type(flavor_t) :: flv
@@ -129179,13 +131029,18 @@ two particles should be the incoming partons.
     do i = 1, NUP
        k = i + off
        call hepeup_get_particle (i, pdg, status, col = c, p = p, m2 = p2)
-       call flavor_init (flv, pdg, model)
+       call flavor_init (flv, pdg, model, alt_model)
        call particle_set_flavor (prt(k), flv)
        call particle_reset_status (prt(k), status)
        call color_init (col, c)
        call particle_set_color (prt(k), col)
        call particle_set_momentum (prt(k), p, p2)
-       call particle_set_parents (prt(k), MOTHUP(:,i) + off)
+       where (MOTHUP(:,i) /= 0)
+          parent = MOTHUP(:,i) + off
+       elsewhere
+          parent = 0
+       end where
+       call particle_set_parents (prt(k), parent)
        child = [(j, j = 1 + off, NUP + off)]
        where (MOTHUP(1,:NUP) /= i .and. MOTHUP(2,:NUP) /= i)  child = 0
        call particle_set_children (prt(k), child)
@@ -129340,8 +131195,10 @@ Note: setting of scale or alpha is not yet supported by the
 <<HEP events: public>>=
   public :: hepeup_to_event
 <<HEP events: procedures>>=
-  subroutine hepeup_to_event (event, process_index, recover_beams)
+  subroutine hepeup_to_event &
+       (event, fallback_model, process_index, recover_beams)
     type(event_t), intent(inout), target :: event
+    type(model_t), intent(in), target :: fallback_model
     integer, intent(out), optional :: process_index
     logical, intent(in), optional :: recover_beams
     type(process_t), pointer :: process
@@ -129350,7 +131207,8 @@ Note: setting of scale or alpha is not yet supported by the
     type(particle_set_t) :: particle_set
     process => event%get_process_ptr ()
     model => process%get_model_ptr ()
-    call hepeup_to_particle_set (particle_set, recover_beams, model)
+    call hepeup_to_particle_set &
+         (particle_set, recover_beams, model, fallback_model)
     call event%set_particle_set_hard_proc (particle_set)
     call particle_set_final (particle_set)
     if (present (process_index)) then
@@ -129406,6 +131264,7 @@ module eio_lhef
 <<Use file utils>>
 <<Use strings>>
   use diagnostics !NODEP!
+  use os_interface
   use unit_tests
 
   use xml
@@ -130039,11 +131898,12 @@ the matrix element.
     iostat = 0
     call event%reset ()
     call event%select (1, 1, 1)
-    call hepeup_to_event (event, recover_beams = eio%recover_beams)
-    if (associated (event%process)) then
-       pset => event%get_particle_set_ptr ()
-       call particle_set_set_model (pset, event%process%get_model_ptr ())
-    end if
+    call hepeup_to_event (event, eio%fallback_model, &
+         recover_beams = eio%recover_beams)
+!    if (associated (event%process)) then
+!       pset => event%get_particle_set_ptr ()
+!       call particle_set_set_model (pset, event%process%get_model_ptr ())
+!    end if
     select case (eio%version)
     case ("1.0")
        call eio%tag_event%read_content (eio%cstream, s, closing = closing)
@@ -130942,6 +132802,8 @@ Check input of a version-1.0 conforming LHEF file.
   subroutine eio_lhef_4 (u)
     integer, intent(in) :: u
     type(model_list_t) :: model_list
+    type(model_t), pointer :: fallback_model
+    type(os_data_t) :: os_data
     type(event_t), allocatable, target :: event
     type(process_t), allocatable, target :: process
     type(process_ptr_t) :: process_ptr
@@ -130999,6 +132861,9 @@ Check input of a version-1.0 conforming LHEF file.
     write (u, "(A)")
 
     call syntax_model_file_init ()
+    call os_data_init (os_data)
+    call model_list%read_model (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"), &
+         os_data, fallback_model)
  
     allocate (process)
     process_ptr%ptr => process
@@ -131015,6 +132880,7 @@ Check input of a version-1.0 conforming LHEF file.
     type is (eio_lhef_t)
        call eio%set_parameters (recover_beams = .false.)
     end select
+    call eio%set_fallback_model (fallback_model)
     
     call data%init (1)
     data%n_beam = 2
@@ -131097,6 +132963,8 @@ Check input of a version-2.0 conforming LHEF file.
   subroutine eio_lhef_5 (u)
     integer, intent(in) :: u
     type(model_list_t) :: model_list
+    type(model_t), pointer :: fallback_model
+    type(os_data_t) :: os_data
     type(event_t), allocatable, target :: event
     type(process_t), allocatable, target :: process
     type(process_ptr_t) :: process_ptr
@@ -131154,6 +133022,9 @@ Check input of a version-2.0 conforming LHEF file.
     write (u, "(A)")
 
     call syntax_model_file_init ()
+    call os_data_init (os_data)
+    call model_list%read_model (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"), &
+         os_data, fallback_model)
  
     allocate (process)
     process_ptr%ptr => process
@@ -131170,6 +133041,7 @@ Check input of a version-2.0 conforming LHEF file.
     type is (eio_lhef_t)
        call eio%set_parameters (version = "2.0", recover_beams = .false.)
     end select
+    call eio%set_fallback_model (fallback_model)
     
     call data%init (1)
     data%unweighted = .false.
@@ -131251,6 +133123,8 @@ Check input of a version-3.0 conforming LHEF file.
   subroutine eio_lhef_6 (u)
     integer, intent(in) :: u
     type(model_list_t) :: model_list
+    type(model_t), pointer :: fallback_model
+    type(os_data_t) :: os_data
     type(event_t), allocatable, target :: event
     type(process_t), allocatable, target :: process
     type(process_ptr_t) :: process_ptr
@@ -131309,6 +133183,9 @@ Check input of a version-3.0 conforming LHEF file.
     write (u, "(A)")
 
     call syntax_model_file_init ()
+    call os_data_init (os_data)
+    call model_list%read_model (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"), &
+         os_data, fallback_model)
  
     allocate (process)
     process_ptr%ptr => process
@@ -131325,6 +133202,7 @@ Check input of a version-3.0 conforming LHEF file.
     type is (eio_lhef_t)
        call eio%set_parameters (version = "3.0", recover_beams = .false.)
     end select
+    call eio%set_fallback_model (fallback_model)
     
     call data%init (1)
     data%unweighted = .false.
@@ -131632,6 +133510,11 @@ polarization density matrix, or for a definite (diagonal) helicity.
   massless particles; massive vector bosons cannot be treated this
   way.  In particular, zero helicity is always translated as
   unpolarized.}
+
+\emph{For massive vector bosons, we arbitrarily choose the convention
+  that the longitudinal (zero) helicity state is mapped to the theta
+  angle $\pi/2$.  This works under the condition that helicity is
+  projected onto one of the basis states.}
 <<HepMC interface: interfaces>>=
   interface
      type(c_ptr) function new_polarization (theta, phi) bind(C)
@@ -131676,6 +133559,9 @@ polarization density matrix, or for a definite (diagonal) helicity.
        case (:-1)
           hpol%polarized = .true.
           hpol%obj = new_polarization (real (pi, c_double), 0._c_double)
+       case (0)
+          hpol%polarized = .true.
+          hpol%obj = new_polarization (real (pi/2, c_double), 0._c_double)
        end select
     end if
   end subroutine hepmc_polarization_init_hel
@@ -131690,6 +133576,9 @@ polarization density matrix, or for a definite (diagonal) helicity.
     case (:-1)
        hpol%polarized = .true.
        hpol%obj = new_polarization (real (pi, c_double), 0._c_double)
+    case (0)
+       hpol%polarized = .true.
+       hpol%obj = new_polarization (real (pi/2, c_double), 0._c_double)
     end select
   end subroutine hepmc_polarization_init_int
 
@@ -135531,6 +137420,7 @@ end module eio_stdhep
 <<EIO stdhep: types>>=
   type, abstract, extends (eio_t) :: eio_stdhep_t
      logical :: writing = .false.
+     logical :: reading = .false.
      integer :: unit = 0
      logical :: keep_beams = .false.     
      integer(i64) :: n_events_expected = 0
@@ -135571,9 +137461,9 @@ Set parameters that are specifically used with STDHEP file formats.
     else
        select type (eio)
        type is (eio_stdhep_hepevt_t)
-          eio%extension = "stdhep"
+          eio%extension = "hep"
        type is (eio_stdhep_hepeup_t)
-          eio%extension = "up.stdhep"
+          eio%extension = "up.hep"
        end select
     end if
   end subroutine eio_stdhep_set_parameters
@@ -135594,6 +137484,8 @@ of the current object status.
     write (u, "(1x,A)")  "STDHEP event stream:"
     if (object%writing) then
        write (u, "(3x,A,A)")  "Writing to file   = ", char (object%filename)
+    else if (object%reading) then
+       write (u, "(3x,A,A)")  "Reading from file = ", char (object%filename)
     else
        write (u, "(3x,A)")  "[closed]"
     end if
@@ -135613,10 +137505,43 @@ of the current object status.
        call msg_message ()
        call stdhep_end
        object%writing = .false.
+    else if (object%reading) then
+       write (msg_buffer, "(A,A,A)")  "Events: closing STDHEP file '", &
+            char (object%filename), "'"
+       call msg_message ()
+       object%reading = .false.
     end if
   end subroutine eio_stdhep_final
   
 @ %def eio_stdhep_final
+@ Common initialization for input and output.
+<<EIO stdhep: eio stdhep: TBP>>=
+  procedure :: common_init => eio_stdhep_common_init
+<<EIO stdhep: procedures>>=
+  subroutine eio_stdhep_common_init (eio, sample, data, extension)
+    class(eio_stdhep_t), intent(inout) :: eio
+    type(string_t), intent(in) :: sample
+    type(string_t), intent(in), optional :: extension
+    type(event_sample_data_t), intent(in), optional :: data
+    if (.not. present (data)) &
+         call msg_bug ("STDHEP initialization: missing data")
+    if (data%n_beam /= 2) &
+         call msg_fatal ("STDHEP: defined for scattering processes only")
+    if (present (extension)) then
+       eio%extension = extension
+    else
+       select type (eio)
+       type is (eio_stdhep_hepevt_t)
+          eio%extension = "hep"
+       type is (eio_stdhep_hepeup_t)
+          eio%extension = "up.hep"
+       end select
+    end if
+    call eio%set_filename ()    
+    eio%unit = free_unit ()    
+  end subroutine eio_stdhep_common_init
+
+@ %def eio_stdhep_common_init
 @ Split event file: increment the counter, close the current file, open a new
 one.  If the file needs a header, repeat it for the new file.  (We assume that
 the common block contents are still intact.)
@@ -135634,11 +137559,11 @@ the common block contents are still intact.)
        call stdhep_end
        select type (eio)
        type is (eio_stdhep_hepeup_t)
-          call stdhep_init (char (eio%filename), &
+          call stdhep_init_out (char (eio%filename), &
                "WHIZARD event sample", eio%n_events_expected)
           call stdhep_write (STDHEP_HEPRUP)
        type is (eio_stdhep_hepevt_t)
-          call stdhep_init (char (eio%filename), &
+          call stdhep_init_out (char (eio%filename), &
                "WHIZARD event sample", eio%n_events_expected) 
        end select
     end if
@@ -135657,20 +137582,11 @@ the common block contents are still intact.)
     logical, intent(out), optional :: success
     integer :: i
     if (.not. present (data)) &
-         call msg_bug ("STDHEP initialization: missing data")
-    if (data%n_beam /= 2) &
-         call msg_fatal ("STDHEP: defined for scattering processes only")
-    call eio%set_splitting (data)
+         call msg_bug ("STDHEP initialization: missing data")        
     eio%sample = sample
-    select type (eio)
-    type is (eio_stdhep_hepevt_t)
-       eio%extension = "stdhep"
-    type is (eio_stdhep_hepeup_t)
-       eio%extension = "up.stdhep"
-    end select
-    call eio%set_filename ()
+    call eio%set_splitting (data)    
+    call eio%common_init (sample, data)
     eio%n_events_expected = data%n_evt
-    eio%unit = free_unit ()
     write (msg_buffer, "(A,A,A)")  "Events: writing to STDHEP file '", &
          char (eio%filename), "'"
     call msg_message ()
@@ -135689,11 +137605,11 @@ the common block contents are still intact.)
                cross_section = data%cross_section(i), &
                error = data%error(i))          
        end do
-       call stdhep_init (char (eio%filename), &
+       call stdhep_init_out (char (eio%filename), &
             "WHIZARD event sample", eio%n_events_expected)
        call stdhep_write (STDHEP_HEPRUP)
     type is (eio_stdhep_hepevt_t)
-       call stdhep_init (char (eio%filename), &
+       call stdhep_init_out (char (eio%filename), &
             "WHIZARD event sample", eio%n_events_expected) 
     end select
     if (present (success))  success = .true.
@@ -135712,6 +137628,7 @@ the common block contents are still intact.)
     type(process_ptr_t), dimension(:), intent(in) :: process_ptr
     type(event_sample_data_t), intent(inout), optional :: data
     logical, intent(out), optional :: success
+    
     call msg_bug ("STDHEP: event input not supported")
     if (present (success))  success = .false.
   end subroutine eio_stdhep_init_in
@@ -135785,11 +137702,12 @@ squared matrix element, then the particle set.
 @ %def eio_stdhep_input_event
 @ STDHEP speficic routines.
 <<EIO stdhep: public>>=
-  public :: stdhep_init
+  public :: stdhep_init_out
+  public :: stdhep_init_in
   public :: stdhep_write 
   public :: stdhep_end  
 <<EIO stdhep: procedures>>=
-  subroutine stdhep_init (file, title, nevt)
+  subroutine stdhep_init_out (file, title, nevt)
     character(len=*), intent(in) :: file, title
     integer(i64), intent(in) :: nevt
     integer(i32) :: nevt32
@@ -135797,20 +137715,35 @@ squared matrix element, then the particle set.
     nevt32 = min (nevt, int (huge (1_i32), i64))
     call stdxwinit (file, title, nevt32, istr, lok)
     call stdxwrt (100, istr, lok)
-  end subroutine stdhep_init
+  end subroutine stdhep_init_out
 
+  subroutine stdhep_init_in (file, nevt)
+    character(len=*), intent(in) :: file
+    integer(i64), intent(in) :: nevt
+    integer(i32) :: nevt32
+    external stdx
+  end subroutine stdhep_init_in
+  
   subroutine stdhep_write (ilbl)
     integer, intent(in) :: ilbl
     external stdxwrt
     call stdxwrt (ilbl, istr, lok)
   end subroutine stdhep_write
 
+  subroutine stdhep_read (ilbl, lok)
+    integer, intent(out) :: ilbl
+    logical, intent(out) :: lok
+    external stdxrd
+    call stdxrd (ilbl, istr, lok)
+  end subroutine stdhep_read
+  
   subroutine stdhep_end
-    external stdxend
+    external stdxend, stdxwrt
+    call stdxwrt (200, istr, lok)
     call stdxend (istr)
   end subroutine stdhep_end  
   
-@  %def stdhep_init stdhep_write stdhep_end
+@  %def stdhep_init stdhep_read stdhep_write stdhep_end
 @ 
 \subsection{Variables}
 <<EIO stdhep: variables>>=
@@ -135900,7 +137833,7 @@ We test the implementation of the STDHEP HEPEVT I/O method:
     write (u, "(A)")
 
     u_file = free_unit ()
-    open (u_file, file = char (sample // ".stdhep"), &
+    open (u_file, file = char (sample // ".hep"), &
          action = "read", status = "old")
     do
        read (u_file, "(A)", iostat = iostat)  buffer
@@ -136015,7 +137948,7 @@ We test the implementation of the STDHEP HEPEUP I/O method:
     write (u, "(A)")
 
     u_file = free_unit ()
-    open (u_file, file = char(sample // ".up.stdhep"), &
+    open (u_file, file = char(sample // ".up.hep"), &
          action = "read", status = "old")
     do
        read (u_file, "(A)", iostat = iostat)  buffer
@@ -140343,6 +142276,7 @@ temporarily override defaults.  The data set is transparent.
      type(os_data_t) :: os_data
      type(model_list_t) :: model_list
      type(model_t), pointer :: model => null ()
+     type(model_t), pointer :: fallback_model => null ()
      type(rt_particle_stack_t) :: particle_stack
      type(prclib_stack_t) :: prclib_stack
      type(process_library_t), pointer :: prclib => null ()
@@ -140641,7 +142575,7 @@ so the latter is always available (and kept global).
          (global%var_list, var_str ("lhapdf_photon_scheme"), 0, &
           intrinsic=.true.)
     call var_list_append_log &
-         (global%var_list, var_str ("?lhapdf_hoppet_b_matching"), .false., &
+         (global%var_list, var_str ("?hoppet_b_matching"), .false., &
           intrinsic=.true.)
     call var_list_append_real &
          (global%var_list, var_str ("isr_alpha"), 0._default, &
@@ -141041,11 +142975,11 @@ so the latter is always available (and kept global).
          (global%var_list, var_str ("$extension_hepmc"), var_str ("hepmc"), &
           intrinsic=.true.)
     call var_list_append_string &
-         (global%var_list, var_str ("$extension_stdhep"), var_str ("stdhep"), &
+         (global%var_list, var_str ("$extension_stdhep"), var_str ("hep"), &
           intrinsic=.true.)
     call var_list_append_string &
          (global%var_list, var_str ("$extension_stdhep_up"), &
-          var_str ("up.stdhep"), intrinsic=.true.)
+          var_str ("up.hep"), intrinsic=.true.)
     call var_list_append_string &
          (global%var_list, var_str ("$extension_hepevt_verb"), &
           var_str ("hepevt.verb"), intrinsic=.true.)
@@ -141368,6 +143302,7 @@ their targets.
             derived_only = .true.)
     end if
     call local%init_pointer_variables ()
+    local%fallback_model => global%fallback_model
     local%os_data = global%os_data
     local%logfile = global%logfile
   end subroutine rt_data_local_init
@@ -141562,6 +143497,22 @@ of local copies.
 @ %def rt_data_local_final
 @
 \subsection{Filling Contents}
+Initialize the fallback model.  This model is used
+whenever the current model does not describe all physical particles
+(hadrons, mainly).  It is not supposed to be modified, and the pointer
+should remain linked to this model.
+<<RT data: rt data: TBP>>=
+  procedure :: init_fallback_model => rt_data_init_fallback_model
+<<RT data: procedures>>=
+  subroutine rt_data_init_fallback_model (global, name, filename)
+    class(rt_data_t), intent(inout) :: global
+    type(string_t), intent(in) :: name, filename
+    call global%model_list%read_model &
+         (name, filename, global%os_data, global%fallback_model)
+  end subroutine rt_data_init_fallback_model
+  
+@ %def rt_data_init_fallback_model
+@
 Read a model, filling the model list component and assigning this as
 the current model.  Copy the model variables to the global var list.
 <<RT data: rt data: TBP>>=
@@ -142215,6 +144166,8 @@ Display selected variables in the global record.
 
     call rt_data%write (u, &
          vars = [var_str ("?unweighted"), var_str ("$phs_method")])
+
+    call rt_data%final ()
     
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: rt_data_4"
@@ -143044,7 +144997,7 @@ flavors (beam index, component index) for the hard process.
     type(string_t) :: lhapdf_dir, lhapdf_file
     type(string_t), dimension(13) :: lhapdf_photon_sets
     integer :: lhapdf_member, lhapdf_photon_scheme
-    logical :: lhapdf_hoppet_b_matching
+    logical :: hoppet_b_matching
     class(rng_factory_t), allocatable :: rng_factory
     logical :: circe1_photon1, circe1_photon2, circe1_generate
     real(default) :: circe1_sqrts, circe1_eps
@@ -143083,10 +145036,13 @@ flavors (beam index, component index) for the hard process.
          type is (pdf_builtin_data_t)
             pdf_name = &
                  var_list_get_sval (var_list, var_str ("$pdf_builtin_set"))
+            hoppet_b_matching = &
+                 var_list_get_lval (var_list, var_str ("?hoppet_b_matching"))
             call data%init (global%pdf_builtin_status, &
                  model, pdg_in(i_beam(1)), &
                  name = pdf_name, &
-                 path = global%os_data%pdf_builtin_datapath)
+                 path = global%os_data%pdf_builtin_datapath, &
+                 hoppet_b_matching = hoppet_b_matching)
          end select
       case ("pdf_builtin_photon")
          call msg_fatal ("Currently, there are no photon PDFs built into WHIZARD,", &
@@ -143106,14 +145062,14 @@ flavors (beam index, component index) for the hard process.
               var_list_get_ival (var_list, var_str ("lhapdf_member"))
          lhapdf_photon_scheme = &
               var_list_get_ival (var_list, var_str ("lhapdf_photon_scheme"))
-         lhapdf_hoppet_b_matching = &
-              var_list_get_lval (var_list, var_str ("?lhapdf_hoppet_b_matching"))
+         hoppet_b_matching = &
+              var_list_get_lval (var_list, var_str ("?hoppet_b_matching"))
          select type (data)
          type is (lhapdf_data_t)
             call data%init &
                  (global%lhapdf_status, model, pdg_in(i_beam(1)), &
                   lhapdf_dir, lhapdf_file, lhapdf_member, &
-                  lhapdf_photon_scheme, lhapdf_hoppet_b_matching)
+                  lhapdf_photon_scheme, hoppet_b_matching)
          end select
       case ("lhapdf_photon")
          allocate (lhapdf_data_t :: data)
@@ -143947,6 +145903,7 @@ structure-function chain.
        call msg_fatal ("Event I/O method '" // char (method) &
             // "' not implemented")
     end select
+    call eio%set_fallback_model (global%fallback_model)
   end subroutine dispatch_eio
   
 @ %def dispatch_eio
@@ -144118,7 +146075,7 @@ concatenated, we provide individual dispatchers for each of them.
             call msg_message ("Simulate: applying hadronization")
        select type (evt)
        type is (evt_shower_t)
-          call evt%init (settings, global%os_data)
+          call evt%init (settings, global%fallback_model, global%os_data)
           if (present (process)) &
                call evt%setup_pdf (process, global%beam_structure)
        end select
@@ -144807,7 +146764,10 @@ This is the master for calling self-test procedures.
     write (u, "(A)")  "*   Purpose: allocate an event I/O (eio) stream"
     write (u, "(A)")
 
+    call syntax_model_file_init ()
     call global%global_init ()
+    call global%init_fallback_model &
+         (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"))
     
     write (u, "(A)")  "* Allocate as raw"
     write (u, "(A)")
@@ -144880,6 +146840,7 @@ This is the master for calling self-test procedures.
 
     call eio%final ()
     call global%final ()
+    call syntax_model_file_final ()
     
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: dispatch_9"
@@ -145155,6 +147116,8 @@ the only nontrivial transform is the partonic decay chain..
 
     call syntax_model_file_init ()
     call global%global_init ()
+    call global%init_fallback_model &
+         (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"))
 
     write (u, "(A)")  "* Partonic decays"
     write (u, "(A)")
@@ -148321,6 +150284,8 @@ the stream array.
 
     call syntax_model_file_init ()
     call global%global_init ()
+    call global%init_fallback_model &
+         (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"))
 
     write (u, "(A)")  "* Generate test process event"
     write (u, "(A)")
@@ -148407,6 +150372,8 @@ reading when the file is exhausted.
 
     call syntax_model_file_init ()
     call global%global_init ()
+    call global%init_fallback_model &
+         (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"))
 
     write (u, "(A)")  "* Generate test process event"
     write (u, "(A)")
@@ -148520,7 +150487,11 @@ parameters and once with modified parameters.
     write (u, "(A)")  "* Generate test process event"
     write (u, "(A)")
 
+    call syntax_model_file_init ()
     call global%global_init ()
+    call global%init_fallback_model &
+         (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"))
+    
     call var_list_set_log (global%var_list, var_str ("?check_event_file"), &
          .true., is_known = .true.)
 
@@ -148569,6 +150540,7 @@ parameters and once with modified parameters.
     call es_array%final ()
     
     call global%final ()
+    call syntax_model_file_final ()
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: event_streams_4"
@@ -151142,6 +153114,9 @@ append.
     call syntax_model_file_init ()
 
     call global%global_init ()
+    call global%init_fallback_model &
+         (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"))
+
     call var_list_set_log (global%var_list, var_str ("?omega_openmp"), &
          .false., is_known = .true.)
     call var_list_set_int (global%var_list, var_str ("seed"), &
@@ -151311,6 +153286,9 @@ Generate events and rescan the resulting raw event file.
     call syntax_model_file_init ()
 
     call global%global_init ()
+    call global%init_fallback_model &
+         (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"))
+
     call var_list_set_log (global%var_list, var_str ("?omega_openmp"), &
          .false., is_known = .true.)
     call var_list_set_int (global%var_list, var_str ("seed"), &
@@ -151502,6 +153480,9 @@ Generate events and rescan with process mismatch.
     call syntax_model_file_init ()
 
     call global%global_init ()
+    call global%init_fallback_model &
+         (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"))
+
     call var_list_set_log (global%var_list, var_str ("?omega_openmp"), &
          .false., is_known = .true.)
     call var_list_set_int (global%var_list, var_str ("seed"), &
@@ -152020,6 +154001,7 @@ module commands
   use variables
   use expressions
   use models
+  use auto_components
   use interactions
   use flavors
   use polarizations
@@ -156310,7 +158292,7 @@ the [[unstable]] and by the [[show]] command.
     
 @ %def show_unstable
 @ Auto decays: create process IDs and make up process
-configurations, using the PDG codes generated by the [[fs_table]] make
+configurations, using the PDG codes generated by the [[ds_table]] make
 method.
 
 We allocate and use a self-contained process library that contains only the
@@ -156329,8 +158311,9 @@ referred to at any time.
     type(rt_data_t), intent(inout) :: global
     type(prclib_entry_t), pointer :: lib_entry
     type(process_library_t), pointer :: lib
-    type(fs_table_t) :: fs_table
-    integer, dimension(:), allocatable :: pdg_out
+    type(ds_table_t) :: ds_table
+    type(split_constraints_t) :: constraints
+    type(pdg_array_t), dimension(:), allocatable :: pa_out
     character(80) :: buffer
     character :: p_or_a
     type(string_t) :: process_string, libname_cur
@@ -156338,9 +158321,17 @@ referred to at any time.
     type(string_t) :: prt_in
     type(string_t), dimension(:), allocatable :: prt_out
     type(process_configuration_t) :: prc_config
-    integer :: i, j
-    call fs_table%make (global%model, pdg_in, mult, rad)
+    integer :: i, j, k, n
     call flavor_init (flv_in, pdg_in, global%model)
+    if (rad) then
+       call constraints%init (2)
+    else
+       call constraints%init (3)
+       call constraints%set (3, constrain_radiation ())
+    end if
+    call constraints%set (1, constrain_n_tot (mult))
+    call constraints%set (2, constrain_mass_sum (flavor_get_mass (flv_in)))
+    call ds_table%make (global%model, pdg_in, constraints)
     prt_in = flavor_get_name (flv_in)
     if (pdg_in > 0) then
        p_or_a = "p"
@@ -156361,16 +158352,22 @@ referred to at any time.
     else
        call global%update_prclib (lib)
     end if
-    allocate (process_id (fs_table%get_length ()))
+    allocate (process_id (ds_table%get_length ()))
     do i = 1, size (process_id)
        write (buffer, "(A,'_',A,I0,'_',I0)")  "decay", p_or_a, abs (pdg_in), i
        process_id(i) = trim (buffer)
        process_string = process_id(i) // ": " // prt_in // " =>"
-       call fs_table%get_pdg_out (i, pdg_out)
-       allocate (prt_out (size (pdg_out)))
-       do j = 1, size (pdg_out)
-          call flavor_init (flv_out, pdg_out(j), global%model)
-          prt_out(j) = flavor_get_name (flv_out)
+       call ds_table%get_pdg_out (i, pa_out)
+       allocate (prt_out (size (pa_out)))
+       do j = 1, size (pa_out)
+          do k = 1, pa_out(j)%get_length ()
+             call flavor_init (flv_out, pa_out(j)%get (k), global%model)
+             if (k == 1) then
+                prt_out(j) = flavor_get_name (flv_out)
+             else
+                prt_out(j) = prt_out(j) // ":" // flavor_get_name (flv_out)
+             end if
+          end do
           process_string = process_string // " " // prt_out(j)
        end do
        call msg_message (char (process_string))
@@ -156379,8 +158376,9 @@ referred to at any time.
             new_prt_spec ([prt_in]), new_prt_spec (prt_out), global)
        call prc_config%record (global)
        deallocate (prt_out)
-       deallocate (pdg_out)
+       deallocate (pa_out)
     end do
+    call ds_table%final ()
     lib => global%prclib_stack%get_library_ptr (libname_cur)
     call global%update_prclib (lib)
   end subroutine create_auto_decays
@@ -159558,6 +161556,9 @@ phase-space parameterization and integration.
     call syntax_cmd_list_init ()
     call syntax_model_file_init ()
     call global%global_init ()
+    call global%init_fallback_model &
+         (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"))
+
     call var_list_set_string (global%var_list, var_str ("$method"), &
          var_str ("unit_test"), is_known=.true.)
     call var_list_set_string (global%var_list, var_str ("$phs_method"), &
@@ -159867,7 +161868,11 @@ generated event sample.
 
     call syntax_cmd_list_init ()
     call syntax_model_file_init ()
+
     call global%global_init ()
+    call global%init_fallback_model &
+         (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"))
+
     call var_list_set_string (global%var_list, var_str ("$method"), &
          var_str ("unit_test"), is_known=.true.)
     call var_list_set_string (global%var_list, var_str ("$phs_method"), &
@@ -159963,6 +161968,9 @@ Set output formats for event files.
     call syntax_cmd_list_init ()
     call syntax_model_file_init ()
     call global%global_init ()
+    call global%init_fallback_model &
+         (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"))
+
     call var_list_set_string (global%var_list, var_str ("$method"), &
          var_str ("unit_test"), is_known=.true.)
     call var_list_set_string (global%var_list, var_str ("$phs_method"), &
@@ -160661,6 +162669,9 @@ event generation.
     call syntax_cmd_list_init ()
     call syntax_model_file_init ()
     call global%global_init ()
+    call global%init_fallback_model &
+         (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"))
+
     call var_list_set_string (global%var_list, var_str ("$method"), &
          var_str ("unit_test"), is_known=.true.)
     call var_list_set_string (global%var_list, var_str ("$phs_method"), &
@@ -161889,6 +163900,7 @@ module whizard
   use expressions
   use particles
   use models
+  use auto_components
   use sorting
   use evaluators
   use phs_forests
@@ -162098,6 +164110,8 @@ handling uses global state.  This should be improved.
     call whizard%init_rebuild_flags ()
     call whizard%preload_model ()
     call whizard%preload_library ()
+    call whizard%global%init_fallback_model &
+         (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"))
   end subroutine whizard_init
   
 @ %def whizard_init
@@ -162498,6 +164512,8 @@ This is for developers only, but needs a well-defined interface.
        call sm_qcd_test (u, results)
     case ("models")
        call models_test (u, results)
+    case ("auto_components")
+       call auto_components_test (u, results)
     case ("particles")
        call particles_test (u, results)
     case ("polarizations")
@@ -162643,6 +164659,7 @@ This is for developers only, but needs a well-defined interface.
        call xml_test (u, results)
        call sm_qcd_test (u, results)
        call models_test (u, results)
+       call auto_components_test (u, results)
        call particles_test (u, results)
        call polarization_test (u, results)
        call sf_aux_test (u, results)

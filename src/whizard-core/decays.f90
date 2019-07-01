@@ -1,4 +1,4 @@
-! WHIZARD 2.2.1 June 3 2014
+! WHIZARD 2.2.2 July 6 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -1189,11 +1189,11 @@ contains
     current_decay => decay%process_instance%get_isolated_state_ptr &
          (decay%selected_term)
     call entry%setup_connected_trace &
-         (current_decay, previous_state%get_trace_int_ptr ())
+         (current_decay, previous_state%get_trace_int_ptr (), resonant=.true.)
     call entry%setup_connected_matrix &
-         (current_decay, previous_state%get_matrix_int_ptr ())
+         (current_decay, previous_state%get_matrix_int_ptr (), resonant=.true.)
     call entry%setup_connected_flows &
-         (current_decay, previous_state%get_flows_int_ptr ())
+         (current_decay, previous_state%get_flows_int_ptr (), resonant=.true.)
     chain%last => entry
     call chain%build_term_entries (decay%term(decay%selected_term))
   end subroutine decay_chain_build_decay_entries

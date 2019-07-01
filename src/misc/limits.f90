@@ -1,4 +1,4 @@
-! WHIZARD 2.2.1 June 3 2014
+! WHIZARD 2.2.2 July 6 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -37,7 +37,7 @@ module limits
 
   integer, parameter, public :: VERSION_STRLEN = 255
   character(len=VERSION_STRLEN), parameter, public :: &
-       & VERSION_STRING = "WHIZARD version 2.2.1 (June 3 2014)"
+       & VERSION_STRING = "WHIZARD version 2.2.2 (July 6 2014)"
   character(*), parameter, public :: FMT_19 = "ES19.12"
   character(*), parameter, public :: FMT_18 = "ES18.11"
   character(*), parameter, public :: FMT_17 = "ES17.10"  
@@ -69,9 +69,10 @@ module limits
   character(*), parameter, public :: HISTOGRAM_DATA_FORMAT = FMT_19
 
   integer, parameter, public :: VERTEX_TABLE_SCALE_FACTOR = 60
-  character(*), parameter, public :: LHAPDF_DEFAULT_PROTON = "cteq6ll.LHpdf"
-  character(*), parameter, public :: LHAPDF_DEFAULT_PION   = "ABFKWPI.LHgrid"
-  character(*), parameter, public :: LHAPDF_DEFAULT_PHOTON = "GSG960.LHgrid"
+  character(*), parameter, public :: LHAPDF5_DEFAULT_PROTON = "cteq6ll.LHpdf"
+  character(*), parameter, public :: LHAPDF5_DEFAULT_PION   = "ABFKWPI.LHgrid"
+  character(*), parameter, public :: LHAPDF5_DEFAULT_PHOTON = "GSG960.LHgrid"
+  character(*), parameter, public :: LHAPDF6_DEFAULT_PROTON = "CT10"
   character(*), parameter, public :: PDF_BUILTIN_DEFAULT_PROTON = "CTEQ6L"
   character(*), parameter, public :: PDF_BUILTIN_DEFAULT_PION   = "NONE"
   character(*), parameter, public :: PDF_BUILTIN_DEFAULT_PHOTON = "MRST2004QEDp"

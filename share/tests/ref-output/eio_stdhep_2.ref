@@ -7,7 +7,7 @@
 * Generate and write an event
 
  STDHEP event stream:
-   Writing to file   = eio_stdhep_2.up.stdhep
+   Writing to file   = eio_stdhep_2.up.hep
    Keep beams        = F
 
 * File contents:

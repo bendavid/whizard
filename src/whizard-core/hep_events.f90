@@ -1,4 +1,4 @@
-! WHIZARD 2.2.1 June 3 2014
+! WHIZARD 2.2.2 July 6 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -75,8 +75,10 @@ contains
     end if
   end subroutine hepeup_from_event
 
-  subroutine hepeup_to_event (event, process_index, recover_beams)
+  subroutine hepeup_to_event &
+       (event, fallback_model, process_index, recover_beams)
     type(event_t), intent(inout), target :: event
+    type(model_t), intent(in), target :: fallback_model
     integer, intent(out), optional :: process_index
     logical, intent(in), optional :: recover_beams
     type(process_t), pointer :: process
@@ -85,7 +87,8 @@ contains
     type(particle_set_t) :: particle_set
     process => event%get_process_ptr ()
     model => process%get_model_ptr ()
-    call hepeup_to_particle_set (particle_set, recover_beams, model)
+    call hepeup_to_particle_set &
+         (particle_set, recover_beams, model, fallback_model)
     call event%set_particle_set_hard_proc (particle_set)
     call particle_set_final (particle_set)
     if (present (process_index)) then

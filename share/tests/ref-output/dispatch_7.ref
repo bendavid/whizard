@@ -12,6 +12,7 @@
    has photon   = F
    mask         = T T T T T T * T * T T T T T T
    photon mask  = T
+   hoppet_b     = F
 
  Initialized = T
 
@@ -28,6 +29,7 @@
    has photon   = F
    mask         = T T T T T T * T * T T T T T T
    photon mask  = T
+   hoppet_b     = F
 
  Initialized = T
 

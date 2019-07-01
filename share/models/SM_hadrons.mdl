@@ -1,6 +1,6 @@
 ########################################################################
 # Standard Model with trivial CKM matrix 
-model "SM"
+model "SM_hadrons"
 
 # Independent parameters
 ### DO NOT CHANGE THE ORDER OF THESE PARAMETERS

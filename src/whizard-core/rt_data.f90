@@ -1,4 +1,4 @@
-! WHIZARD 2.2.1 June 3 2014
+! WHIZARD 2.2.2 July 6 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -108,6 +108,7 @@ module rt_data
      type(os_data_t) :: os_data
      type(model_list_t) :: model_list
      type(model_t), pointer :: model => null ()
+     type(model_t), pointer :: fallback_model => null ()
      type(rt_particle_stack_t) :: particle_stack
      type(prclib_stack_t) :: prclib_stack
      type(process_library_t), pointer :: prclib => null ()
@@ -139,6 +140,7 @@ module rt_data
      procedure :: restore_globals => rt_data_restore_globals
      procedure :: final => rt_data_global_final
      procedure :: local_final => rt_data_local_final
+     procedure :: init_fallback_model => rt_data_init_fallback_model
      procedure :: read_model => rt_data_read_model
      procedure :: select_model => rt_data_select_model
      procedure :: modify_particle => rt_data_modify_particle
@@ -598,7 +600,7 @@ contains
          (global%var_list, var_str ("lhapdf_photon_scheme"), 0, &
           intrinsic=.true.)
     call var_list_append_log &
-         (global%var_list, var_str ("?lhapdf_hoppet_b_matching"), .false., &
+         (global%var_list, var_str ("?hoppet_b_matching"), .false., &
           intrinsic=.true.)
     call var_list_append_real &
          (global%var_list, var_str ("isr_alpha"), 0._default, &
@@ -998,11 +1000,11 @@ contains
          (global%var_list, var_str ("$extension_hepmc"), var_str ("hepmc"), &
           intrinsic=.true.)
     call var_list_append_string &
-         (global%var_list, var_str ("$extension_stdhep"), var_str ("stdhep"), &
+         (global%var_list, var_str ("$extension_stdhep"), var_str ("hep"), &
           intrinsic=.true.)
     call var_list_append_string &
          (global%var_list, var_str ("$extension_stdhep_up"), &
-          var_str ("up.stdhep"), intrinsic=.true.)
+          var_str ("up.hep"), intrinsic=.true.)
     call var_list_append_string &
          (global%var_list, var_str ("$extension_hepevt_verb"), &
           var_str ("hepevt.verb"), intrinsic=.true.)
@@ -1312,6 +1314,7 @@ contains
             derived_only = .true.)
     end if
     call local%init_pointer_variables ()
+    local%fallback_model => global%fallback_model
     local%os_data = global%os_data
     local%logfile = global%logfile
   end subroutine rt_data_local_init
@@ -1428,6 +1431,13 @@ contains
     call var_list_final (local%var_list)
   end subroutine rt_data_local_final
 
+  subroutine rt_data_init_fallback_model (global, name, filename)
+    class(rt_data_t), intent(inout) :: global
+    type(string_t), intent(in) :: name, filename
+    call global%model_list%read_model &
+         (name, filename, global%os_data, global%fallback_model)
+  end subroutine rt_data_init_fallback_model
+  
   subroutine rt_data_read_model (global, name, filename, synchronize)
     class(rt_data_t), intent(inout) :: global
     type(string_t), intent(in) :: name, filename
@@ -1984,6 +1994,8 @@ contains
 
     call rt_data%write (u, &
          vars = [var_str ("?unweighted"), var_str ("$phs_method")])
+
+    call rt_data%final ()
     
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: rt_data_4"

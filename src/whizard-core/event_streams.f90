@@ -1,4 +1,4 @@
-! WHIZARD 2.2.1 June 3 2014
+! WHIZARD 2.2.2 July 6 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -131,6 +131,8 @@ contains
 
     call syntax_model_file_init ()
     call global%global_init ()
+    call global%init_fallback_model &
+         (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"))
 
     write (u, "(A)")  "* Generate test process event"
     write (u, "(A)")
@@ -207,6 +209,8 @@ contains
 
     call syntax_model_file_init ()
     call global%global_init ()
+    call global%init_fallback_model &
+         (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"))
 
     write (u, "(A)")  "* Generate test process event"
     write (u, "(A)")
@@ -310,7 +314,11 @@ contains
     write (u, "(A)")  "* Generate test process event"
     write (u, "(A)")
 
+    call syntax_model_file_init ()
     call global%global_init ()
+    call global%init_fallback_model &
+         (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"))
+    
     call var_list_set_log (global%var_list, var_str ("?check_event_file"), &
          .true., is_known = .true.)
 
@@ -359,6 +367,7 @@ contains
     call es_array%final ()
     
     call global%final ()
+    call syntax_model_file_final ()
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: event_streams_4"

@@ -46,13 +46,13 @@ module system_dependencies
   character(*), parameter :: WHIZARD_TEST_MODELS_MODPATH = &
        "@BUILDDIR@/src/models"
   character(*), parameter :: WHIZARD_TEST_OMEGA_MODPATH = &
-       "@BUILDDIR@/src/omega/src"
+       "@BUILDDIR@/omega/src"
   character(*), parameter :: WHIZARD_TEST_CORE_MODPATH = &
        "@BUILDDIR@/src/whizard-core"
   character(*), parameter :: WHIZARD_TEST_CORE_LIBPATH = &
        "@BUILDDIR@/src/whizard-core"
   character(*), parameter :: WHIZARD_TEST_OMEGA_BINPATH = &
-       "@BUILDDIR@/src/omega/bin"
+       "@BUILDDIR@/omega/bin"
   character(*), parameter :: WHIZARD_TEST_SRC_LIBPATH = &
        "@BUILDDIR@/src"
   character(*), parameter :: WHIZARD_TEST_HEPMC_LIBPATH = &
@@ -74,7 +74,7 @@ module system_dependencies
   character(*), parameter :: WHIZARD_TEST_TEXPATH = &
        "@SRCDIR@/src/feynmf"
   character(*), parameter :: WHIZARD_TEST_CIRCE2PATH = &
-       "@SRCDIR@/src/circe2/share/data"
+       "@SRCDIR@/circe2/share/data"
   character(*), parameter :: WHIZARD_TEST_BEAMSIMPATH = &
        "@SRCDIR@/share/beam-sim"
   character(*), parameter :: WHIZARD_TEST_MULIPATH = &
@@ -238,6 +238,20 @@ module system_dependencies
   character(*), parameter :: PRG_PS2PDF = &
        "@PS2PDF@"
 
+  ! Programs and libraries used for NLO calculations
+  character(*), parameter :: GOSAM_DIR = &
+       "@GOSAM_DIR@"
+  character(*), parameter :: GOLEM_DIR = &
+       "@GOLEM_DIR@"
+  character(*), parameter :: FORM_DIR = &
+       "@FORM_DIR@"
+  character(*), parameter :: QGRAF_DIR = &
+       "@QGRAF_DIR@"
+  character(*), parameter :: NINJA_DIR = &
+       "@NINJA_DIR@"
+  character(*), parameter :: SAMURAI_DIR = &
+       "@SAMURAI_DIR@"
+
   ! Hardwired options for batch-mode processing
   character(*), parameter :: OPT_LATEX  = &
        "-halt-on-error"
@@ -252,7 +266,8 @@ module system_dependencies
      RTLD_LOCAL  = @RTLD_LOCAL_VALUE@
 
   ! Misc
-  logical, parameter :: LHAPDF_AVAILABLE = @LHAPDF_AVAILABLE_FLAG@
+  logical, parameter :: LHAPDF5_AVAILABLE = @LHAPDF5_AVAILABLE_FLAG@
+  logical, parameter :: LHAPDF6_AVAILABLE = @LHAPDF6_AVAILABLE_FLAG@
 
 contains
 

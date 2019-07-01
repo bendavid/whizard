@@ -11,6 +11,7 @@
    has photon   = F
    mask         = T T T T T T * T * T T T T T T
    photon mask  = T
+   hoppet_b     = F
  Structure-function configuration: beam(s) 2
  PDF builtin data:
    flavor       = f(2212)
@@ -19,6 +20,7 @@
    has photon   = F
    mask         = T T T T T T * T * T T T T T T
    photon mask  = T
+   hoppet_b     = F
  Mapping configuration:
    s s / map: standard (2.00000)
 

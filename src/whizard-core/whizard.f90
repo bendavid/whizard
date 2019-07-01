@@ -1,4 +1,4 @@
-! WHIZARD 2.2.1 June 3 2014
+! WHIZARD 2.2.2 July 6 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -51,6 +51,7 @@ module whizard
   use expressions
   use particles
   use models
+  use auto_components
   use sorting
   use evaluators
   use phs_forests
@@ -211,6 +212,8 @@ contains
     call whizard%init_rebuild_flags ()
     call whizard%preload_model ()
     call whizard%preload_library ()
+    call whizard%global%init_fallback_model &
+         (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"))
   end subroutine whizard_init
   
   subroutine whizard_final (whizard)
@@ -519,6 +522,8 @@ contains
        call sm_qcd_test (u, results)
     case ("models")
        call models_test (u, results)
+    case ("auto_components")
+       call auto_components_test (u, results)
     case ("particles")
        call particles_test (u, results)
     case ("polarizations")
@@ -664,6 +669,7 @@ contains
        call xml_test (u, results)
        call sm_qcd_test (u, results)
        call models_test (u, results)
+       call auto_components_test (u, results)
        call particles_test (u, results)
        call polarization_test (u, results)
        call sf_aux_test (u, results)

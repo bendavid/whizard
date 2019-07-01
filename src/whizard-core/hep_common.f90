@@ -1,4 +1,4 @@
-! WHIZARD 2.2.1 June 3 2014
+! WHIZARD 2.2.2 July 6 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -443,7 +443,7 @@ contains
        case (1);   status = PRT_OUTGOING
        case (2);   status = PRT_RESONANT
        case (3);
-          select case (IDUP(i))
+          select case (abs (IDUP(i)))
           case (HADRON_REMNANT, HADRON_REMNANT_SINGLET, &
                HADRON_REMNANT_TRIPLET, HADRON_REMNANT_OCTET)
              status = PRT_BEAM_REMNANT
@@ -684,6 +684,7 @@ contains
     write (u, "(3(1x,I0),(1x,ES17.10))") &
          NHEP, hepevt_n_out, hepevt_n_remnants, hepevt_weight
     do i = 1, NHEP
+       if (ISTHEP(i) /= 1)  cycle
        write (u, "(2(1x,I0))") IDHEP(i), hepevt_pol(i)
        write (u, "(5(1x,ES17.10))") PHEP(:,i)
     end do
@@ -766,11 +767,13 @@ contains
     call particle_set_final (pset_hepevt)
   end subroutine hepeup_from_particle_set
 
-  subroutine hepeup_to_particle_set (particle_set, recover_beams, model)
+  subroutine hepeup_to_particle_set &
+       (particle_set, recover_beams, model, alt_model)
     type(particle_set_t), intent(inout), target :: particle_set
     logical, intent(in), optional :: recover_beams
-    type(model_t), intent(in), target :: model
+    type(model_t), intent(in), target :: model, alt_model
     type(particle_t), dimension(:), allocatable :: prt
+    integer, dimension(2) :: parent
     integer, dimension(:), allocatable :: child
     integer :: i, j, k, pdg, status
     type(flavor_t) :: flv
@@ -794,13 +797,18 @@ contains
     do i = 1, NUP
        k = i + off
        call hepeup_get_particle (i, pdg, status, col = c, p = p, m2 = p2)
-       call flavor_init (flv, pdg, model)
+       call flavor_init (flv, pdg, model, alt_model)
        call particle_set_flavor (prt(k), flv)
        call particle_reset_status (prt(k), status)
        call color_init (col, c)
        call particle_set_color (prt(k), col)
        call particle_set_momentum (prt(k), p, p2)
-       call particle_set_parents (prt(k), MOTHUP(:,i) + off)
+       where (MOTHUP(:,i) /= 0)
+          parent = MOTHUP(:,i) + off
+       elsewhere
+          parent = 0
+       end where
+       call particle_set_parents (prt(k), parent)
        child = [(j, j = 1 + off, NUP + off)]
        where (MOTHUP(1,:NUP) /= i .and. MOTHUP(2,:NUP) /= i)  child = 0
        call particle_set_children (prt(k), child)

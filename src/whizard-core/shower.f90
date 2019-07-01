@@ -1,4 +1,4 @@
-! WHIZARD 2.2.1 June 3 2014
+! WHIZARD 2.2.2 July 6 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -130,6 +130,7 @@ module shower
 
   type, extends (evt_t) :: evt_shower_t
      type(shower_settings_t) :: settings
+     type(model_t), pointer :: model_hadrons => null ()
      type(os_data_t) :: os_data
      integer :: pdf_type = STRF_NONE
      integer :: pdf_set = 0
@@ -316,11 +317,12 @@ contains
   end subroutine shower_settings_write
 
   subroutine apply_shower_particle_set & 
-       (particle_set, shower_settings,  model, &
+       (particle_set, shower_settings,  model, model_hadrons, &
         os_data, pdf_type, pdf_set, valid, vetoed)
     type(particle_set_t), intent(inout) :: particle_set
     type(shower_settings_t), intent(in) :: shower_settings
-    type(model_t), pointer, intent(in) :: model
+    type(model_t), intent(in), target :: model
+    type(model_t), intent(in), target :: model_hadrons
     type(os_data_t), intent(in) :: os_data
     integer, intent(in) :: pdf_type
     integer, intent(in) :: pdf_set
@@ -422,11 +424,12 @@ contains
           .not. shower_settings%ps_isr_active .and. &
            shower_settings%hadronization_active)) then
        call apply_PYTHIAshower_particle_set (particle_set, &
-            shower_settings, mlm_matching_data%P_ME, model, valid)
+            shower_settings, mlm_matching_data%P_ME, model, model_hadrons, &
+            valid)
        if (debug)  call pylist(2)
     else
        call apply_WHIZARDshower_particle_set (particle_set, &
-            shower_settings, mlm_matching_data%P_ME, model, &
+            shower_settings, mlm_matching_data%P_ME, model, model_hadrons, &
             os_data, pdf_func, pdf_set, valid, vetoed)
             if (vetoed) return
     end if
@@ -454,7 +457,7 @@ contains
        !! transferred there by one of the shower routines
        if (valid) then
           call apply_PYTHIAhadronization (particle_set, &
-               shower_settings, model, valid)
+               shower_settings, model, model_hadrons, valid)
        end if
     end if
 !!! FINAL
@@ -490,7 +493,7 @@ contains
     end function shower_get_PYTHIA_error
 
     subroutine apply_PYTHIAshower_particle_set &
-         (particle_set, shower_settings, JETS_ME, model, valid)
+         (particle_set, shower_settings, JETS_ME, model, model_hadrons, valid)
       integer, parameter :: MAXNUP = 500
       integer, parameter :: MAXPUP = 100
       integer :: NUP
@@ -561,7 +564,8 @@ contains
       type(particle_set_t) :: pset_reduced
       type(shower_settings_t), intent(in) :: shower_settings
       type(vector4_t), dimension(:), allocatable, intent(inout) :: JETS_ME
-      type(model_t), pointer, intent(in) :: model
+      type(model_t), intent(in), target :: model
+      type(model_t), intent(in), target :: model_hadrons
       logical, intent(inout) :: valid
       real(kind=default) :: rand
       
@@ -714,7 +718,7 @@ contains
       !!! read and add lhef from u_P2W
       if (signal_is_pending ()) return          
       call shower_add_lhef_to_particle_set &
-           (particle_set, u_P2W, model, os_data)
+           (particle_set, u_P2W, model, model_hadrons)
       close (unit=u_P2W)
       
       !!! Transfer momenta of the partons in the final state of 
@@ -731,12 +735,13 @@ contains
     end subroutine apply_PYTHIAshower_particle_set
 
     subroutine apply_WHIZARDshower_particle_set & 
-         (particle_set, shower_settings, JETS_ME, model_in, &
+         (particle_set, shower_settings, JETS_ME, model, model_hadrons, &
          os_data, pdf_func, pdf_set, valid, vetoed)
       type(particle_set_t), intent(inout) :: particle_set
       type(shower_settings_t), intent(in) :: shower_settings
       type(vector4_t), dimension(:), allocatable, intent(inout) :: JETS_ME
-      type(model_t), pointer, intent(in) :: model_in
+      type(model_t), intent(in), target :: model
+      type(model_t), intent(in), target :: model_hadrons
       type(os_data_t), intent(in) :: os_data
       procedure(shower_pdf), pointer, intent(in) :: pdf_func
       integer, intent(in) :: pdf_set
@@ -759,11 +764,7 @@ contains
       integer, dimension(1) :: parent
       type(flavor_t) :: flv
       type(color_t) :: col
-      type(model_t), pointer :: model
-      type(model_t), target, save :: model_SM_hadrons
-      logical, save :: model_SM_hadrons_associated = .false.
       logical, save :: msg_written = .false.
-      logical :: exist_SM_hadrons
       type(string_t) :: filename
       integer, dimension(2,4) :: color_corr
       integer :: colori, colorj
@@ -1141,7 +1142,7 @@ contains
          end if
          call shower%write_lhef (u_S2W)
          call shower_add_lhef_to_particle_set &
-              (particle_set, u_S2W, model_in, os_data)
+              (particle_set, u_S2W, model, model_hadrons)
          close (u_S2W)
          
          !!! move the particle data to the PYTHIA COMMON BLOCKS in case 
@@ -1283,10 +1284,11 @@ contains
     end subroutine matching_transfer_PS
     
     subroutine apply_PYTHIAhadronization &
-         (particle_set, shower_settings, model, valid)
+         (particle_set, shower_settings, model, model_hadrons, valid)
       type(particle_set_t), intent(inout) :: particle_set
       type(shower_settings_t), intent(in) :: shower_settings
-      type(model_t), pointer, intent(in) :: model
+      type(model_t), intent(in), target :: model
+      type(model_t), intent(in), target :: model_hadrons
       logical, intent(inout) :: valid
       integer :: u_W2P, u_P2W
       type(string_t) :: remaining_PYGIVE, partial_PYGIVE
@@ -1375,7 +1377,7 @@ contains
          !!! read and add lhef from u_P2W
          if (signal_is_pending ()) return             
          call shower_add_lhef_to_particle_set &
-              (particle_set, u_P2W, model, os_data)
+              (particle_set, u_P2W, model, model_hadrons)
          close (u_W2P)
          close (u_P2W)
          valid = .true.
@@ -1401,7 +1403,7 @@ contains
       call tag_gen_n%write (var_str ("WHIZARD"), unit)
       write (unit, *)
       write (unit, "(2x)", advance = "no")      
-      call tag_gen_v%write (var_str ("2.2.1"), unit)
+      call tag_gen_v%write (var_str ("2.2.2"), unit)
       write (unit, *)
       call tag_head%close (unit); write (unit, *)
       call tag_init%write (unit); write (unit, *)
@@ -1417,20 +1419,17 @@ contains
   
   end subroutine apply_shower_particle_set
   subroutine shower_add_lhef_to_particle_set &
-       (particle_set, u, model_in, os_data)
+       (particle_set, u, model_in, model_hadrons)
     type(particle_set_t), intent(inout) :: particle_set
     integer, intent(in) :: u
-    type(model_t), intent(in), pointer :: model_in
-    type(model_t), target, save :: model_SM_hadrons
-    type(model_t), pointer :: model
-    logical, save :: model_SM_hadrons_associated = .false.
-    type(os_data_t), intent(in) :: os_data 
-    logical :: exist_SM_hadrons
+    type(model_t), intent(in), target :: model_in
+    type(model_t), intent(in), target :: model_hadrons
     type(string_t) :: filename
     type(flavor_t) :: flv
     type(color_t) :: col
     logical :: logging_save
 
+    type(model_t), pointer :: model
     integer :: newsize, oldsize
     type(particle_t), dimension(:), allocatable :: temp_prt
     integer :: i, j
@@ -1507,27 +1506,13 @@ contains
        ! particle_set%prt (oldsize+i-2)%polarization = 0 ! =PRT_UNPOLARIZED !??
        if (model_test_particle (model_in, IDUP)) then
           model => model_in
-       else 
-          ! prepare model_SM_hadrons for hadrons created in the hadronization
-          ! and not present in the model file
-          if (.not. model_SM_hadrons_associated) then
-             ! call os_data_init (os_data)
-             filename = "SM_hadrons.mdl"
-             logging_save = logging
-             logging = .false.
-             call model_read (model_SM_hadrons, filename, os_data, & 
-                  exist_SM_hadrons)
-             logging = logging_save
-             model_SM_hadrons_associated = .true.
-          end if
-          if (model_test_particle (model_SM_hadrons, IDUP)) then
-             model => model_SM_hadrons
-          else
-             write (buffer, "(I5)") IDUP
-             call msg_error ("Parton " // buffer // &
-                  " found neither in given model file nor in SM_hadrons")
-             return
-          end if
+       else if (model_test_particle (model_hadrons, IDUP)) then
+          model => model_hadrons
+       else
+          write (buffer, "(I5)") IDUP
+          call msg_error ("Parton " // buffer // &
+               " found neither in given model file nor in SM_hadrons")
+          return
        end if
        call flavor_init (flv, IDUP, model)
        call particle_set_flavor (temp_prt (oldsize+i-2), flv)
@@ -1590,7 +1575,6 @@ contains
     if (allocated (available_parents))  deallocate (available_parents)
     deallocate (direct_child)
     deallocate (temp_prt)
-    call model_final (model_SM_hadrons)
 
 200 continue
     return
@@ -1802,12 +1786,14 @@ contains
     call object%settings%write (u)
   end subroutine evt_shower_write
     
-  subroutine evt_shower_init (evt, settings, os_data)
+  subroutine evt_shower_init (evt, settings, model_hadrons, os_data)
     class(evt_shower_t), intent(out) :: evt
     type(shower_settings_t), intent(in) :: settings
+    type(model_t), intent(in), target :: model_hadrons
     type(os_data_t), intent(in) :: os_data
     evt%settings = settings
     evt%os_data = os_data
+    evt%model_hadrons => model_hadrons
   end subroutine evt_shower_init
   
   subroutine evt_shower_setup_pdf (evt, process, beam_structure)
@@ -1853,7 +1839,7 @@ contains
                evt%settings%ckkw_weights, evt%particle_set)
        end if
        call apply_shower_particle_set (evt%particle_set, &
-            evt%settings, evt%model, &
+            evt%settings, evt%model, evt%model_hadrons, &
             evt%os_data, evt%pdf_type, evt%pdf_set, valid, vetoed)
        probability = 1
        !!! BCN: WK please check: In 2.1.1 vetoed events reduced sim%n_events by
@@ -2112,7 +2098,7 @@ contains
     type(os_data_t) :: os_data
     type(process_library_t), target :: lib
     type(model_list_t) :: model_list
-    type(model_t), pointer :: model
+    type(model_t), pointer :: model, model_hadrons
     type(process_t), target :: process
     type(process_instance_t), target :: process_instance
     integer :: factorization_mode
@@ -2129,6 +2115,9 @@ contains
     write (u, "(A)")
 
     call syntax_model_file_init ()
+    call os_data_init (os_data)
+    call model_list%read_model (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"), &
+         os_data, model_hadrons)
     call setup_testbed (var_str ("shower_1"), &
          os_data, lib, model_list, model, process, process_instance)
 
@@ -2154,14 +2143,12 @@ contains
     write (u, "(A)")  "* Set up shower event transform"
     write (u, "(A)")
 
-    settings%ps_fsr_active = .true.
-
+    allocate (evt_shower_t :: evt_shower)
     select type (evt_shower)
     type is (evt_shower_t)
-       call evt_shower%init (settings, os_data)
+       call evt_shower%init (settings, model_hadrons, os_data)
     end select
 
-    allocate (evt_shower_t :: evt_shower)
     call evt_shower%connect (process_instance, model)
     evt_trivial%next => evt_shower
     evt_shower%previous => evt_trivial
@@ -2197,7 +2184,7 @@ contains
     type(os_data_t) :: os_data
     type(process_library_t), target :: lib
     type(model_list_t) :: model_list
-    type(model_t), pointer :: model
+    type(model_t), pointer :: model, model_hadrons
     type(process_t), target :: process
     type(process_instance_t), target :: process_instance
     integer :: factorization_mode
@@ -2214,6 +2201,9 @@ contains
     write (u, "(A)")
 
     call syntax_model_file_init ()
+    call os_data_init (os_data)
+    call model_list%read_model (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"), &
+         os_data, model_hadrons)
     call setup_testbed (var_str ("shower_2"), &
          os_data, lib, model_list, model, process, process_instance)
 
@@ -2244,7 +2234,7 @@ contains
     allocate (evt_shower_t :: evt_shower)
     select type (evt_shower)
     type is (evt_shower_t)
-       call evt_shower%init (settings, os_data)
+       call evt_shower%init (settings, model_hadrons, os_data)
     end select
 
     call evt_shower%connect (process_instance, model)

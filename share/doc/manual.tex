@@ -263,7 +263,7 @@ Parameter & Value & Default & Description \\
 }
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %END LATEX
-\newcommand{\thisversion}{2.2.1}
+\newcommand{\thisversion}{2.2.2}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -621,7 +621,10 @@ of \whizard:
   object-orientation; 2HDM; \\
   & & reweighting; LHE v2/3; BLHA; HOPPET interface; inclusive
   processes \\
-  2.2.1 & 05/2014 & CJ12 PDFs; FastJet interface \\\hline
+  2.2.1 & 05/2014 & CJ12 PDFs; FastJet interface \\
+  2.2.2 & 07/2014 & LHAPDF6 support; correlated LC beams; GuineaPig
+  interface 
+  \\\hline  
 \end{tabular}
 \end{center}
 
@@ -744,7 +747,8 @@ You need the additional prerequisites:
   details).
 \item
   The \ocaml\ system.  \ocaml\ is a functional and object-oriented
-  language.  The package is freely available either as a debian/RPM package
+  language.  Version 3.12 or later is required to compile all components 
+  of \whizard. The package is freely available either as a debian/RPM package
   on your system (it might be necessary to install it from the usual
   repositories), or you can obtain it directly from
   \begin{quote}
@@ -889,69 +893,95 @@ structure-function library, which is an external package.  It has to
 be linked during \whizard\ installation.  For use with \whizard,
 version 5.3.0 or higher of the library is required\footnote{ Note that
   PDF sets which contain photons as partons are only supported with
-  \whizard\ for 5.7.1 or higher}.
-
-Please note, that the new release series of LHAPDF, version 6.0 and
-higher, is not yet supported within \whizard\ 2.2.1. A working
-interface is planned for one of the next minor releases. 
+  \whizard\ for \lhapdf\ version 5.7.1 or higher}. The \lhapdf\
+package has undergone a major rewriting from \fortran\ version 5
+to \ttt{C++} version 6. While still maintaining the interface for
+the \lhapdf\ version 5 series, from version 2.2.2 of \whizard\ on, the
+new release series of \lhapdf, version 6.0 and higher, is also
+supported.  
 
 If \lhapdf\ is not yet installed on your system, you can download it from
 \begin{quote}
-\url{http://lhapdf.hepforge.org/lhapdf5}
-\end{quote}
-for LHAPDF version 5 and older, or 
-\begin{quote}
   \url{http://lhapdf.hepforge.org}
 \end{quote}
-for version 6 and newer, and install it.  The website contains
-comprehensive documentation on 
-the configuring and installation procedure.  Make sure that you have
-downloaded and installed not just the package, but also the data sets.
+for the most recent LHAPDF version 6 and newer, or
+\begin{quote}
+  \url{http://lhapdf.hepforge.org/lhapdf5}
+\end{quote}
+for version 5 and older, and install it.  The website contains
+comprehensive documentation on the configuring and installation
+procedure.  Make sure that you have downloaded and installed not just
+the package, but also the data sets. Note that \lhapdf\ version 5
+needs both a \fortran\ and a \ttt{C++} compiler. 
 
-Note that \lhapdf\ (version 5) needs both a \fortran\ and a \ttt{C++}
-compiler. 
-
-When configuring \whizard, \whizard\ looks for the binary
-\ttt{lhapdf-config} (which is present since \lhapdf\ version 4.1.0): if
-this file is in an executable path, the environment variables for
-\lhapdf\ are automatically recognized by \whizard, as well as the version
-number. This should look like this in the \ttt{configure} output:   
+During \whizard\ configuration, \whizard\ looks for the script
+\ttt{lhapdf} (which is present in \lhapdf\ series 6) first, and then
+for \ttt{lhapdf-config} (which is present since \lhapdf\ version
+4.1.0): if those are in an executable path (or only 
+the latter for \lhapdf\ version 5), the environment variables for
+\lhapdf\ are automatically recognized by \whizard, as well as the
+version number. This should look like this in the \ttt{configure}
+output (for \lhapdf\ version 6 or newer),
 
 \begin{footnotesize}
 \begin{verbatim}
    configure: --------------------------------------------------------------
    configure: --- LHAPDF ---
    configure:
+   checking for lhapdf... /usr/local/bin/lhapdf
+   checking for lhapdf-config... /usr/local/bin/lhapdf-config
+   checking the LHAPDF version... 6.1.3
+   checking the major version... 6
+   checking the LHAPDF pdfsets path... /usr/local/share/LHAPDF
+   checking the standard PDF sets...  all standard PDF sets installed
+   checking if LHAPDF is functional (may take a while)... yes
+   checking LHAPDF... yes
+   configure: --------------------------------------------------------------
+\end{verbatim}
+\end{footnotesize}
+while for \lhapdf\ version 5 and older it looks like this:
+
+\begin{footnotesize}
+\begin{verbatim}
+   configure: --------------------------------------------------------------
+   configure: --- LHAPDF ---
+   configure: 
+   checking for lhapdf... no
    checking for lhapdf-config... /usr/local/bin/lhapdf-config
    checking the LHAPDF version... 5.9.1
+   checking the major version... 5
    checking the LHAPDF pdfsets path... /usr/local/share/lhapdf/PDFsets
-   checking the standard PDF sets... all standard PDF sets installed
+   checking the standard PDF sets...  all standard PDF sets installed
    checking for getxminm in -lLHAPDF... yes
-   checling for has_photon in -lLHAPDF... yes
+   checking for has_photon in -lLHAPDF... yes
    configure: --------------------------------------------------------------
 \end{verbatim}
 \end{footnotesize}
 
 If you want to use a different \lhapdf\ (e.g. because the one installed
 on your system by default is an older one), the preferred way to do so
-is to put the \ttt{lhapf-config} in an executable path that is checked
-before the system paths, e.g. \ttt{<home>/bin}. 
+is to put the \ttt{lhapdf} (and/or \ttt{lhapdf-config}) scripts in an
+executable path that is checked before the system paths,
+e.g. \ttt{<home>/bin}.  
 
-A possible error could arise if \lhapdf\ had been compiled with a
-different Fortran compiler than \whizard, and if the run-time library
-of that Fortran compiler had not been included in the \whizard\
-configure process. The output then looks like this:
+For the old series, \lhapdf\ version 5, a possible error could arise
+if \lhapdf\ had been compiled with a different \fortran\ compiler than
+\whizard, and if the run-time library of that \fortran\ compiler had
+not been included in the \whizard\ configure process. The output then
+looks like this: 
 
 \begin{footnotesize}
 \begin{verbatim}
    configure: --------------------------------------------------------------
    configure: --- LHAPDF ---
    configure:
+   checking for lhapdf... no
    checking for lhapdf-config... /usr/local/bin/lhapdf-config
    checking the LHAPDF version... 5.9.1
+   checking the major version... 5
    checking the LHAPDF pdfsets path... /usr/local/share/lhapdf/PDFsets
    checking for standard PDF sets... all standard PDF sets installed
-   checking for initpdfsetm in -lLHAPDF... no
+   checking for getxminm in -lLHAPDF... no
    checking for has_photon in -lLHAPDF... no
    configure: --------------------------------------------------------------
 \end{verbatim}
@@ -968,11 +998,15 @@ If \lhapdf\ is installed in a non-default directory where
 \whizard.
 
 The check for the standard PDF sets are those sets that are used in
-the default \whizard\ self tests in case, \lhapdf\ is enabled and
+the default \whizard\ self tests in the case \lhapdf\ is enabled and 
 correctly linked. If some of them are missing, then this test will
-result in a failure. The last check is for the \ttt{has\_photon} flag,
-which tests whether photon PDFs are available in the found \lhapdf\
-installation. 
+result in a failure. They are the \ttt{CT10} set for \lhapdf\ version
+6 (for version 5, \ttt{cteq61.LHpdf}, \ttt{cteq6ll.LHpdf},
+\ttt{cteq5l.LHgrid}, and \ttt{GSG961.LHgrid} are demanded). If you
+want to use \lhapdf\ inside \whizard\ please install them such that
+\whizard\ could perform all its sanity checks with them. The last
+check is for the \ttt{has\_photon} flag, which tests whether photon
+PDFs are available in the found \lhapdf\ installation. 
 
 %%%%%
 
@@ -1046,34 +1080,14 @@ respectively. After configuration, do \ttt{make}, an optional
 \ttt{make check} (which might sometimes fail for non-standard values
 of momentum and length), and finally \ttt{make install}.
 
-A \whizard\ configuration for HepMC is a bit lengthier as the
-\ttt{C++} details have to be checked first:
+A \whizard\ configuration for HepMC looks like this:
 \begin{footnotesize}
   \begin{verbatim}
    configure: --------------------------------------------------------------
    configure: --- HepMC ---
    configure:
-   checking for g++... g++
-   checking whether we are using the GNU C++ compiler... yes
-   checking whether g++ accepts -g... yes
-   checking dependency style of g++... gcc3
-   checking how to run the C++ preprocessor... g++ -E
-   checking for ld used by g++... /usr/bin/ld
-   checking if the linker (/usr/bin/ld) is GNU ld... yes
-   checking whether the g++ linker (/usr/bin/ld) supports shared libraries... yes
-   checking for g++ option to produce PIC... -fPIC -DPIC
-   checking if g++ PIC flag -fPIC -DPIC works... yes
-   checking if g++ static flag -static works... yes
-   checking if g++ supports -c -o file.o... yes
-   checking if g++ supports -c -o file.o... (cached) yes
-   checking whether the g++ linker (/usr/bin/ld) supports shared libraries... yes
-   checking dynamic linker characteristics... GNU/Linux ld.so
-   checking how to hardcode library paths into programs... immediate
    checking the HepMC version... 2.06.09
-   checking for LDFLAGS_STATIC: host system is linux-gnu: static flag...
    checking for GenEvent class in -lHepMC... yes
-   checking whether we are using the GNU Fortran compiler... (cached) yes
-   checking whether /usr/bin/gfortran accepts -g... (cached)  yes
    configure: --------------------------------------------------------------    
   \end{verbatim}
 \end{footnotesize}
@@ -1127,7 +1141,6 @@ configure:
 checking for fastjet-config... /usr/local/bin/fastjet-config
 checking if FastJet is functional... yes
 checking FastJet... yes
-checking for LDFLAGS_STATIC: host system is linux-gnu: static flag... 
 configure: --------------------------------------------------------------
 \end{verbatim}
 \end{footnotesize}
@@ -2244,7 +2257,7 @@ named \verb|hello.sin|.
 		|        M. Moretti, T. Ohl, J. Reuter, arXiv: hep-ph/0102195                 |
 		|                                                                             |
 		|=============================================================================|
-		|                               WHIZARD 2.2.1
+		|                               WHIZARD 2.2.2
 		|=============================================================================|
 		| Reading model file '/usr/local/share/whizard/models/SM.mdl'
 		| Preloaded model: SM
@@ -2275,7 +2288,7 @@ including the \whizard\ banner is shown in Fig.~\ref{fig:helloworld})
 \centerline{[... here a banner is displayed]}
 \begin{Verbatim}
 |=============================================================================|
-|                               WHIZARD 2.2.1
+|                               WHIZARD 2.2.2
 |=============================================================================|
 | Reading model file '/usr/local/share/whizard/models/SM.mdl'
 | Preloaded model: SM
@@ -2334,7 +2347,7 @@ This produces a lot of output which looks similar to this:
  | Writing log to 'whizard.log'
 [... banner ...]
  |=============================================================================|
- |                               WHIZARD 2.2.1
+ |                               WHIZARD 2.2.2
  |=============================================================================|
  | Reading model file '/usr/local/share/whizard/models/SM.mdl'
  | Preloaded model: SM
@@ -5262,15 +5275,28 @@ process setup, namely the example already shown above:
 \end{verbatim}
 \end{footnotesize}
 \end{quote}
-(Note that for the moment, only the release series 5 of \lhapdf\ is
-automatically interfaced to \whizard. Support for the release series 6
-of \lhapdf\ is foreseen for the near future). The above \ttt{beams}
+Note that there are slight differences in using the \lhapdf\ release
+series 6 and the older \fortran\ \lhapdf\ release series 5, at least
+concerning the naming conventions for the PDF sets~\footnote{Until
+  \whizard\ version 2.2.1 including, only the \lhapdf\ series 5 was
+  supported, while from version 2.2.2 on also the \lhapdf\ release
+  series 6 has been supported.}. The above \ttt{beams}
 statement selects a default \lhapdf\ structure-function set for both
-proton beams (in the current setup, this is \ttt{cteq6ll.LHpdf},
-member 0).  The structure function will apply for all quarks,
-antiquarks, and the gluon as far as supported by the particular
-\lhapdf\ set.  Choosing a different set is done by adding the 
-filename as a local option to the \ttt{lhapdf} keyword:
+proton beams (which is the \ttt{CT10} central set for \lhapdf\ 6, and 
+\ttt{cteq6ll.LHpdf} central set for \lhapdf 5).  The structure
+function will apply for all quarks, antiquarks, and the gluon as far
+as supported by the particular \lhapdf\ set.  Choosing a different set
+is done by adding the  filename as a local option to the \ttt{lhapdf}
+keyword: 
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+  beams = p, p => lhapdf 
+  $lhapdf_file = "MSTW2008lo68cl"
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+for the actual \lhapdf\ 6 series, and
 \begin{quote}
 \begin{footnotesize}
 \begin{verbatim}
@@ -5279,8 +5305,8 @@ filename as a local option to the \ttt{lhapdf} keyword:
 \end{verbatim}
 \end{footnotesize}
 \end{quote}
-Similarly, a member within the set is selected by the numeric variable
-\verb|lhapdf_member|.
+for \lhapdf 5.Similarly, a member within the set is selected by the
+numeric variable \verb|lhapdf_member| (for both release series of \lhapdf).
 
 In some cases, different structure functions have to be chosen for the two
 beams.  For instance, we may look at $ep$ collisions:
@@ -5304,7 +5330,9 @@ resolved as a hadron.  The simple assignment
 \end{footnotesize}
 \end{quote}
 will be understood as follows: \whizard\ selects the appropriate default
-structure functions, \ttt{cteq6ll.LHpdf} for the proton and
+structure functions (here we are using \lhapdf\ 5 as an example as the
+support of photon and pion PDFs in \lhapdf\ 6 has been dropped),
+\ttt{cteq6ll.LHpdf} for the proton and 
 \ttt{GSG960.LHgrid} for the photon.  The photon case has an additional
 integer-valued parameter \verb|lhapdf_photon_scheme|.  (There are also pion
 structure functions available.)  For modifying the default, you have to
@@ -5432,16 +5460,22 @@ fitting collaborations.
 
 %%%%%%%%%%%%%%%
 
-\subsection{HOPPET $b$ parton matching for LHAPDF}
+\subsection{HOPPET $b$ parton matching}
 
-When both \lhapdf\ for hadron-collider PDF structure functions and the
-\hoppet\ tool~\cite{Salam:2008qg} for their manipulations are
-correctly linked to \whizard, both can be used for advanced
+When the \hoppet\ tool~\cite{Salam:2008qg} for hadron-collider PDF
+structure functions and their manipulations are
+correctly linked to \whizard, it can be used for advanced
 calculations and simulations of hadron collider physics. Its main
 usage inside \whizard\ is for matching schemes between 4-flavor and
 5-flavor schemes in $b$-parton initiated processes at hadron
-colliders. Here, it depends on the corresponding process and the
-energy scales involved whether it is a better description to use the
+colliders. Note that in versions 2.2.0 and 2.2.1 it only worked
+together with \lhapdf\ version 5, while with the \lhapdf\ version 6
+interface from version 2.2.2 on it can be used also with the modern
+version of PDFs from \lhapdf. Furthermore, from version 2.2.2, the
+\hoppet\ $b$ parton matching also works for the builtin PDFs. 
+
+It depends on the corresponding process and the energy scales involved 
+whether it is a better description to use the 
 $g\to b\bar b$ splitting from the DGLAP evolution inside the PDF and
 just take the $b$ parton content of a PDF, e.g. in BSM Higgs
 production for large $\tan\beta$: $pp \to H$ with a partonic
@@ -5461,9 +5495,9 @@ process proc2 = u, b => t, d
 process proc3 = g, u => t, d, B	{ $restrictions = "2+4 ~ W+" }
 process proc4 = u, g => t, d, B	{ $restrictions = "1+4 ~ W+" }
 
-beams = p,p => lhapdf
+beams = p,p => pdf_builtin
 sqrts = 14 TeV
-?lhapdf_hoppet_b_matching = true
+?hoppet_b_matching = true
 
 $sample = "single_top_matched"
 luminosity = 1 / 1 fbarn
@@ -5475,10 +5509,9 @@ The first two processes are single top production from $b$ PDFs, the
 last two processes contain an explicit $g\to b\bar b$ splitting (the
 restriction, cf. Sec.~\ref{sec:process options} has been placed in
 order to single out the single top production signal process). PDFs
-are then chosen from \lhapdf\ (note that it is not possible to use
-\whizard's built-in PDFs for the $b$ parton matching schemes), and the
-\hoppet\ matching routines are switched on by the flag
-\ttt{?lhapdf\_hoppet\_b\_matching}. 
+are then chosen from the default builtin PDF (which is \ttt{CTEQ6L}), 
+and the \hoppet\ matching routines are switched on by the flag
+\ttt{?hoppet\_b\_matching}. 
 
 %%%%%%%%%%%%%%%
 
@@ -5722,7 +5755,7 @@ the package \circetwo\ (that is also a part of \whizard) is this:
 process eemm = e1, E1 => e2, E2
 sqrts = 500 GeV
 beams = e1, E1 => circe2
-$circe2_file = "ilc_ee_500_polavg.circe"
+$circe2_file = "ilc500.circe"
 $circe2_design = "ILC"
 ?circe_polarized = false
 \end{Verbatim}
@@ -6069,8 +6102,7 @@ now there have not been any setups for a photon collider option for
 the modern linear collider concepts like ILC and CLIC. The string
 variable \ttt{\$circe2\_file} then allows to give the name of the file
 containing the actual beam spectrum; all files that ship with
-\whizard\ are stored in the directory \ttt{src/circe2/share/data}.
-%%% Improve directory structure
+\whizard\ are stored in the directory \ttt{circe2/share/data}.
 
 More details about the subpackage \circetwo\ and the physics it
 covers, can be found in its own manual and the chapter
@@ -8733,11 +8765,11 @@ the following supported variables:
 \item \ttt{stdhep}: StdHEP binary format based on the HEPEVT common
   block (only available if StdHEP is installed and correctly linked)
   \newline 
-  Standard suffix: \ttt{.stdhep} 
+  Standard suffix: \ttt{.hep} 
 \item \ttt{stdhep\_up}: StdHEP binary format based on the HEPRUP/HEPEUP
   common blocks (only available if StdHEP is installed and correctly
   linked)  \newline
-  Standard suffix: \ttt{.up.stdhep}
+  Standard suffix: \ttt{.up.hep}
 \item \ttt{weight\_stream}: Format that prints out only the event
   weight (and maybe alternative ones) \newline
   Standard suffix: \ttt{.weight.dat}
@@ -8943,7 +8975,7 @@ This is the modern version of the Les Houches accord event format
 <LesHouchesEvents version="1.0">
 <header>
   <generator_name>WHIZARD</generator_name>
-  <generator_version>2.2.1</generator_version>
+  <generator_version>2.2.2</generator_version>
 </header>
 <init>
  25 25  5.0000000000E+02  5.0000000000E+02 -1 -1 -1 -1 3 1
@@ -13771,15 +13803,15 @@ String variable that allows via \ttt{\$extension\_stdhep = "{\em <suffix>}"} to
 specify the suffix for the file \ttt{name.suffix} to which events in
 the StdHEP format via the HEPEVT common block are written. If not set,
 the default file name and suffix is
-\ttt{{\em <process\_name>}.stdhep}. (cf. also \ttt{sample\_format},
+\ttt{{\em <process\_name>}.hep}. (cf. also \ttt{sample\_format},
 \ttt{\$sample})   
 %%%%%
 \item
-\ttt{\$extension\_stdhep\_up} \qquad (default: \ttt{"up.stdhep"}) \newline
+\ttt{\$extension\_stdhep\_up} \qquad (default: \ttt{"up.hep"}) \newline
 String variable that allows via \ttt{\$extension\_stdhep = "{\em <suffix>}"} to 
 specify the suffix for the file \ttt{name.suffix} to which events in
 the StdHEP format via the HEPRUP/HEPEUP common blocks are
-written. \ttt{{\em <process\_name>}.up.stdhep} is the default file name and
+written. \ttt{{\em <process\_name>}.up.hep} is the default file name and
 suffix, if this variable not set. (cf. also \ttt{sample\_format},
 \ttt{\$sample})
 %%%%%
@@ -14028,6 +14060,14 @@ defined, either before or after the histogram definition. Possible optional
 arguments of the \ttt{histogram} command are the minimal and maximal values
 of the axes (\ttt{x\_min}, \ttt{x\_max}, \ttt{y\_min}, \ttt{y\_max}). 
 (cf. \ttt{graph}, \ttt{plot}, \ttt{record})
+%%%%%
+\item
+\ttt{?hoppet\_b\_matching} \qquad (default: \ttt{false}) \newline
+Flag that switches on the matching between 4- and 5-flavor schemes for 
+hadron collider $b$-parton initiated processes. Works either with
+builtin PDFs or with the external \lhapdf\ interface. Needs the
+external \ttt{HOPPET} library to be linked. (cf. \ttt{beams},
+\ttt{pdf\_builtin}, \ttt{lhapdf})
 %%%%%
 \item
 \ttt{if} \newline
@@ -14298,13 +14338,6 @@ different beam particles like proton and photon. (cf. also
 \ttt{lhapdf}, \ttt{\$lhapdf\_dir}, \ttt{lhapdf\_photon},
 \ttt{\$lhapdf\_photon\_file}, \ttt{lhapdf\_photon\_scheme},
 \ttt{lhapdf\_member}) 
-%%%%%
-\item
-\ttt{?lhapdf\_hoppet\_b\_matching} \qquad (default: \ttt{false})
-\newline
-If the external libraries \lhapdf\ and \ttt{HOPPET} are correctly
-linked, this allows to switch on the matching for 4-/5-flavor schemes
-for $b$-initiated processes at hadron colliders.
 %%%%%
 \item
 \ttt{lhapdf\_member} \qquad (default: \ttt{0}) \newline

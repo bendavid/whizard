@@ -2,8 +2,34 @@ ChangeLog -- Summary of changes to the WHIZARD package
 
 Use svn log to see detailed changes.
 
-	Version 2.2.1
+	Version 2.2.2
 
+2014-07-06
+	RELEASE: version 2.2.2
+
+2014-07-05
+	CIRCE2: correlated LC beam spectra and
+	  GuineaPig Interface to LC machine parameters
+	
+2014-07-01
+	Reading LHEF for decayed/factorized/showered/
+	   hadronized events
+	
+2014-06-25
+	Configure support for GoSAM/Ninja/Form/QGraf
+	
+2014-06-22
+	LHAPDF6 interface
+	
+2014-06-18	
+	Module for automatic generation of 
+	  radiation and loop infrastructure code
+	
+2014-06-11
+	Improved internal directory structure
+	
+##################################################################
+	
 2014-06-03
 	RELEASE: version 2.2.1
 

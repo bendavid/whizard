@@ -1,4 +1,4 @@
-! WHIZARD 2.2.1 June 3 2014
+! WHIZARD 2.2.2 July 6 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -87,6 +87,7 @@ module diagnostics
   type :: string_list_pointer
      type(string_list), pointer :: first, last
   end type string_list_pointer
+  
 
   integer, save :: msg_level = RESULT
   logical, save :: mask_fatal_errors = .false.

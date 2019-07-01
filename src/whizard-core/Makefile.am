@@ -41,7 +41,7 @@ libwhizard_core_la_SOURCES = \
   jets.f90 pdg_arrays.f90 subevents.f90 \
   user_code_interface.f90 \
   variables.f90 expressions.f90 \
-  models.f90 \
+  models.f90 auto_components.f90 \
   helicities.f90 colors.f90 flavors.f90 quantum_numbers.f90 \
   state_matrices.f90 interactions.f90 evaluators.f90 \
   polarizations.f90 particles.f90 \
@@ -129,9 +129,10 @@ $(libwhizard_core_la_OBJECTS): \
   ../misc/c_particles.$(FC_MODULE_EXT) \
   ../misc/lorentz.$(FC_MODULE_EXT) \
   ../misc/sm_physics.$(FC_MODULE_EXT) \
-  ../vamp/src/vamp.$(FC_MODULE_EXT) \
-  ../circe1/src/circe1.$(FC_MODULE_EXT) \
-  ../circe2/src/circe2.$(FC_MODULE_EXT)
+  ../lhapdf/lhapdf.$(FC_MODULE_EXT) \
+  ../../vamp/src/vamp.$(FC_MODULE_EXT) \
+  ../../circe1/src/circe1.$(FC_MODULE_EXT) \
+  ../../circe2/src/circe2.$(FC_MODULE_EXT)
 ## Dependency libshower (kinds, constants, strings) and VAMP
 #$(libwhizard_core_la_OBJECTS): \
   ../shower/shower_module.$(FC_MODULE_EXT) \
@@ -146,7 +147,7 @@ SUFFIXES = .lo .$(FC_MODULE_EXT)
 	@:
 #	touch $@
 
-AM_FCFLAGS = -I../misc -I../vamp/src -I../shower -I../pdf_builtin -I../muli -I../circe1/src -I../circe2/src -I../fastjet
+AM_FCFLAGS = -I../misc -I../../vamp/src -I../shower -I../pdf_builtin -I../muli -I../../circe1/src -I../../circe2/src -I../lhapdf -I../fastjet
 
 ########################################################################
 ## Default Fortran compiler options

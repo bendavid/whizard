@@ -1,4 +1,4 @@
-dnl fastjet.m4 -- checks for HOPPET library
+dnl fastjet.m4 -- checks for fastjet library
 dnl Includes the fastjet.m4 code from the fastjet webpage
 dnl
 
@@ -16,23 +16,7 @@ if test "$enable_fastjet" = "yes"; then
   if test "${fjconfig}" = "no"; then
      enable_fastjet="no"
   else
-   ### Checking for static C++ libraries for the static version
-   ### This is only necessary for MAC OS X and BSD-like OS
-   case $host in
-     *-darwin*)
-        case "$XCODE_VERSION" in
-          1.*|2.*|3.*)
-   	wo_ldflags_stdcpp="-lstdc++-static" ;;
-          *)
-           wo_ldflags_stdcpp="-lstdc++" ;;
-        esac ;;
-     *-*-freebsd2*|*-*-freebsd3.0*|*-*-freebsdelf3.0*)
-	wo_ldflags_stdcpp="-lstdc++-static" ;;
-     *)
-        wo_ldflags_stdcpp="-lstdc++" ;;
-  esac
-  AC_MSG_CHECKING([for LDFLAGS_STATIC: host system is $host_os: static flag])
-  AC_MSG_RESULT([$wo_ldflags_stdcpp])
+     wo_require_stdcpp="yes"
   fi
 else
   AC_MSG_CHECKING([for FASTJET])
@@ -62,7 +46,7 @@ AC_DEFUN([ACX_CHECK_FASTJET],
 dnl ckeck if a directory is specified for FastJet
 AC_ARG_WITH(fastjet,
             [AC_HELP_STRING([--with-fastjet=dir], 
-                            [Assume the given directory for FastJet])])
+                            [assume the given directory for FastJet])])
 
 dnl search for the fastjet-config script
 if test "$with_fastjet" = ""; then

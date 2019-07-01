@@ -1,0 +1,1077 @@
+% circe2/circe2.nw -- 
+@ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Implementation of [[circe2]]}
+<<Version>>=
+'Version 2.2.2'
+@ 
+<<[[implicit none]]>>=
+implicit none
+@ 
+<<[[circe2.f90]]>>=
+! circe2.f90 -- correlated beam spectra for linear colliders
+<<Copyleft notice>>
+<<Separator>>
+module circe2
+  use kinds
+  implicit none
+  private
+  <<[[circe2]] parameters>>
+  <<[[circe2]] declarations>>
+contains
+  <<[[circe2]] implementation>>
+end module circe2
+@ 
+<<Separator>>=
+!-----------------------------------------------------------------------
+@ The following is usually not needed for scientific programs.  Nobody
+is going to hijack such code.  But let us include it anyway to spread
+the gospel of free software:
+<<Copyleft notice>>=
+! Copyright (C) 2001-2014 by Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
+!
+! Circe2 is free software; you can redistribute it and/or modify it
+! under the terms of the GNU General Public License as published by
+! the Free Software Foundation; either version 2, or (at your option)
+! any later version.
+!
+! Circe2 is distributed in the hope that it will be useful, but
+! WITHOUT ANY WARRANTY; without even the implied warranty of
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+! GNU General Public License for more details.
+!
+! You should have received a copy of the GNU General Public License
+! along with this program; if not, write to the Free Software
+! Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+@ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Data}
+<<[[circe2]] declarations>>=
+type circe2_division
+  <<[[circe2_division]] members>>
+end type circe2_division
+@
+<<[[circe2]] declarations>>=
+type circe2_channel
+  <<[[circe2_channel]] members>>
+end type circe2_channel
+@
+<<[[circe2]] declarations>>=
+type circe2_state
+  <<[[circe2_state]] members>>
+end type circe2_state
+public :: circe2_state
+@ 
+\begin{figure}
+  \begin{center}
+    \begin{empgraph}(110,60)
+      setrange (0, 0, 1, 1);
+      autogrid (,);
+      pickup pencircle scaled 0.5pt;
+      for i = 2 step 2 until 8:
+        x := i / 10;
+        gdraw (0,x) -- (1,x);
+        gdraw (x,0) -- (x,1);
+      endfor
+      glabel (btex $x_{1}^{\min}$ etex, (0.0,-0.1));
+      glabel (btex $x_{1}^{\max}$ etex, (1.0,-0.1));
+      glabel (btex $x_{2}^{\min}$ etex, (-0.1,0.0));
+      glabel (btex $x_{3}^{\max}$ etex, (-0.1,1.0));
+      glabel (btex $i_1=1$ etex, (0.1,-0.1));
+      glabel (btex $2$ etex, (0.3,-0.1));
+      glabel (btex $3$ etex, (0.5,-0.1));
+      glabel (btex $\ldots$ etex, (0.7,-0.1));
+      glabel (btex $n_1$ etex, (0.9,-0.1));
+      glabel (btex $1$ etex, (-0.1,0.1));
+      glabel (btex $2$ etex, (-0.1,0.3));
+      glabel (btex $3$ etex, (-0.1,0.5));
+      glabel (btex $\ldots$ etex, (-0.1,0.7));
+      glabel (btex $i_2=n_2$ etex, (-0.1,0.9));
+      glabel (btex $1$ etex, (0.1,0.1));
+      glabel (btex $2$ etex, (0.3,0.1));
+      glabel (btex $3$ etex, (0.5,0.1));
+      glabel (btex $\ldots$ etex, (0.7,0.1));
+      glabel (btex $n_1$ etex, (0.9,0.1));
+      glabel (btex $n_1+1$ etex, (0.1,0.3));
+      glabel (btex $n_1+2$ etex, (0.3,0.3));
+      glabel (btex $\ldots$ etex, (0.5,0.3));
+      glabel (btex $\ldots$ etex, (0.7,0.3));
+      glabel (btex $2n_1$ etex, (0.9,0.3));
+      glabel (btex $2n_1+1$ etex, (0.1,0.5));
+      glabel (btex $\ldots$ etex, (0.3,0.5));
+      glabel (btex $\ldots$ etex, (0.5,0.5));
+      glabel (btex $\ldots$ etex, (0.7,0.5));
+      glabel (btex $\ldots$ etex, (0.9,0.5));
+      glabel (btex $\ldots$ etex, (0.1,0.7));
+      glabel (btex $\ldots$ etex, (0.3,0.7));
+      glabel (btex $\ldots$ etex, (0.5,0.7));
+      glabel (btex $\ldots$ etex, (0.7,0.7));
+      glabel (btex $n_1(n_2-1)$ etex, (0.9,0.7));
+      glabel (btex $\displaystyle {n_1(n_2-1)\atop\mbox{}+1}$ etex, (0.1,0.9));
+      glabel (btex $\displaystyle {n_1(n_2-1)\atop\mbox{}+2}$ etex, (0.3,0.9));
+      glabel (btex $\ldots$ etex, (0.5,0.9));
+      glabel (btex $n_1n_2-1$ etex, (0.7,0.9));
+      glabel (btex $n_1n_2$ etex, (0.9,0.9));
+      pickup pencircle scaled 1.0pt;
+    \end{empgraph}
+  \end{center}
+  \caption{\label{fig:linear-enumeration}%
+    Enumerating the bins linearly, starting from 1 (Fortran style).
+    Probability distribution functions will have a sentinel at~0
+    that's always~0.}
+\end{figure}
+We store the probability distribution function as a one-dimensional
+array~[[wgt]]\footnote{The second ``dimension'' is just an index for
+the channel.}, since this simplifies the binary search used for
+inverting the distribution.  [wgt(0,ic)] is always 0 and serves as a
+convenient sentinel for the binary search.  It is \emph{not} written
+in the file, which contains the normalized weight of the bins.
+<<[[circe2_state]] members>>=
+type(circe2_channel), dimension(:), allocatable :: ch
+@
+<<[[circe2_channel]] members>>=
+real(kind=default), dimension(:), allocatable :: wgt
+@ 
+<<[[circe2_channel]] members>>=
+type(circe2_division), dimension(2) :: d
+@ Using figure~\ref{fig:linear-enumeration}, calculating the
+index of a bin from the two-dimensional coordinates is
+straightforward, of course:
+\begin{equation}
+  i = i_1 + (i_2 - 1) n_1\,.
+\end{equation}
+The inverse
+\begin{subequations}
+\begin{align}
+  i_1 &= 1 + ((i - 1) \mod n_1) \\
+  i_2 &= 1 + \lfloor (i - 1) / n_1 \rfloor
+\end{align}
+\end{subequations}
+can also be written
+\begin{subequations}
+\begin{align}
+  i_2 &= 1 + \lfloor (i - 1) / n_1 \rfloor \\
+  i_1 &= i - (i_2 - 1) n_1
+\end{align}
+\end{subequations}
+because
+\begin{subequations}
+\begin{multline}
+   1 + \lfloor (i - 1) / n_1 \rfloor
+    = 1 + \lfloor i_2 - 1 + (i_1 - 1) / n_1 \rfloor \\
+    = 1 + \lfloor (i_1 + (i_2 - 1) n_1 - 1) / n_1 \rfloor
+    = 1 + i_2 - 1 + \underbrace{\lfloor (i_1 - 1) / n_1 \rfloor}_{=0}
+    = i_2
+\end{multline}
+and trivially
+\begin{equation}
+   i - (i_2 - 1) n_1
+    = i_1 + (i_2 - 1) n_1 - (i_2 - 1) n_1 = i_1
+\end{equation}
+\end{subequations}
+<<$([[i1]],[[i2]]) \leftarrow [[i]]$>>=
+i2 = 1 + (i - 1) / ubound (ch%d(1)%x, dim=1)
+i1 = i - (i2 - 1) * ubound (ch%d(1)%x, dim=1)
+@ 
+<<$[[ib]] \leftarrow [[i]]$>>=
+ib(2) = 1 + (i - 1) / ubound (ch%d(1)%x, dim=1)
+ib(1) = i - (ib(2) - 1) * ubound (ch%d(1)%x, dim=1)
+@ The density normalized to the bin size
+\begin{equation*}
+   v = \frac{w}{\Delta x_1 \Delta x_2}
+\end{equation*}
+such that
+\begin{equation*}
+   \int\!\mathrm{d}x_1\mathrm{d}x_2\; v = \sum w = 1
+\end{equation*}
+For mapped distributions, on the level of bins, we can either use the
+area of the domain and apply a jacobian or the area of the codomain
+directly
+\begin{equation}
+\label{eq:jacobian-Delta_x-Delta_y}
+ \frac{\mathrm{d}x}{\mathrm{d}y}\cdot\frac{1}{\Delta x}
+   \approx \frac{1}{\Delta y}
+\end{equation}
+We elect to use the former, because this reflects the distribution
+of the events generated by~[[circe2_generate]] \emph{inside} the bins as well.
+This quantity is more conveniently stored as a true two-dimensional array:
+<<[[circe2_channel]] members>>=
+real(kind=default), dimension(:,:), allocatable :: val
+@
+\begin{figure}
+  \begin{center}
+    \begin{empgraph}(50,50)
+      pickup pencircle scaled 1.0pt;
+      setrange (0, 0, 1, 1);
+      autogrid (,);
+      for i = 1 upto 15:
+        xi := i / 16;
+        x := 1 - xi * xi * xi;
+        gdraw (0,x) -- (1,x);
+        gdraw (x,0) -- (x,1);
+      endfor
+    \end{empgraph}
+  \end{center}
+  \caption{%
+    Almost factorizable distributions, like $\mathrm{e}^+\mathrm{e}^-$.}
+\end{figure}
+<<[[circe2_division]] members>>=
+real(kind=default), dimension(:), allocatable :: x
+@
+\begin{figure}
+  \begin{center}
+    \begin{empgraph}(50,50)
+      setrange (0, 0, 1, 1);
+      autogrid (,);
+      for i = 1 upto 15:
+        xi := i / 16;
+        x := 1 - xi * xi * xi;
+        pickup pencircle scaled 1.0pt;
+        gdraw (0,0) -- (1,x);
+        pickup pencircle scaled 0.5pt;
+        gdraw (0,0) -- (x,1);
+      endfor
+      for i = 1 upto 15:
+        xi := i / 16;
+        x := 0.8 * (1 - xi * xi * xi);
+        pickup pencircle scaled 1.0pt;
+        gdraw (x,0) -- (x,x);
+        pickup pencircle scaled 0.5pt;
+        gdraw (0,x) -- (x,x);
+      endfor
+      pickup pencircle scaled 1.0pt;
+      gdraw (0,0) -- (1,1);
+    \end{empgraph}
+  \end{center}
+  \caption{%
+    Symmetrical, strongly correlated distributions, e.\,g.~with a
+    ridge on the diagonal, like $\gamma\gamma$ at a $\gamma$-collider.}
+\end{figure}
+<<[[circe2_channel]] members>>=
+logical :: triang
+@ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Channels}
+The number of available channels $\gamma\gamma$, $\mathrm{e}^-\gamma$,
+$\mathrm{e}^-\mathrm{e}^+$, etc. can be found with
+[[size (circe2_state%ch)]].
+@ The particles that are described by this channel and their
+polarizations:
+<<[[circe2_channel]] members>>=
+integer, dimension(2) :: pid, pol
+@ The integrated luminosity of the channel
+<<[[circe2_channel]] members>>=
+real(kind=default) :: lumi
+@ The integrated luminosity of the channel
+<<[[circe2_state]] members>>=
+real(kind=default), dimension(:), allocatable :: cwgt
+@ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Maps}
+<<[[circe2_division]] members>>=
+integer, dimension(:), allocatable :: map
+@ 
+<<[[circe2_division]] members>>=
+real(kind=default), dimension(:), allocatable :: y
+@ 
+<<[[circe2_division]] members>>=
+real(kind=default), dimension(:), allocatable :: alpha, xi, eta, a, b
+@ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Random Number Generation}
+We use the new WHIZARD interface.
+<<[[circe2]] declarations>>=
+public :: rng_type
+type, abstract :: rng_type
+  contains
+    procedure(rng_generate), deferred :: generate
+end type rng_type
+@
+<<[[circe2]] declarations>>=
+abstract interface
+   subroutine rng_generate (rng_obj, u)
+     import :: rng_type, default
+     class(rng_type), intent(inout) :: rng_obj
+     real(kind=default), intent(out) :: u
+   end subroutine rng_generate
+end interface
+@ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Event Generation}
+Generate a two-dimensional distribution for~$([[x1]],[[x2]])$
+according to the histogram for channel [[ic]].
+@
+<<[[circe2]] declarations>>=
+public :: circe2_generate
+interface circe2_generate
+   module procedure circe2_generate
+end interface circe2_generate
+@ 
+<<[[circe2]] implementation>>=
+subroutine circe2_generate (c2s, rng, y, p, h)
+  type(circe2_state), intent(in) :: c2s
+  class(rng_type), intent(inout) :: rng
+  real(kind=default), dimension(:), intent(out) :: y
+  integer, dimension(:), intent(in) :: p
+  integer, dimension(:), intent(in) :: h
+  integer :: i, ic
+  <<Find [[ic]] for [[p]] and [[h]]>>
+  <<Complain and [[return]] iff $[[ic]] \le 0$>>
+  call circe2_generate_channel (c2s%ch(ic), rng, y)
+end subroutine circe2_generate
+<<Separator>>
+@
+<<[[circe2]] declarations>>=
+interface circe2_generate
+   module procedure circe2_generate_channel
+end interface circe2_generate
+@ 
+<<[[circe2]] implementation>>=
+subroutine circe2_generate_channel (ch, rng, y)
+  type(circe2_channel), intent(in) :: ch
+  class(rng_type), intent(inout) :: rng
+  real(kind=default), dimension(:), intent(out) :: y
+  integer :: i, d, ibot, itop
+  integer, dimension(2) :: ib
+  real(kind=default), dimension(2) :: x, v
+  real(kind=default) :: u, tmp
+  call rng%generate (u)
+  <<Do a binary search for $[[wgt(i-1)]] \le [[u]] < [[wgt(i)]]$>>
+  <<$[[ib]] \leftarrow [[i]]$>>
+  <<$[[x]]\in[ [[x(ib-1)]], [[x(ib)]] ]$>>
+  y = circe2_map (ch%d, x, ib)
+  <<Inverse triangle map>>
+end subroutine circe2_generate_channel
+<<Separator>>
+@
+<<[[circe2_state]] members>>=
+integer :: polspt
+@
+<<[[circe2]] parameters>>=
+integer, parameter :: POLAVG = 1, POLHEL = 2, POLGEN = 3
+@ A linear search for a matching channel should suffice, because the
+number if channels~[[nc]] will always be a small number.  The most
+popular channels should be first in the list, anyway.
+<<Find [[ic]] for [[p]] and [[h]]>>=
+ic = 0
+if ((c2s%polspt == POLAVG .or. c2s%polspt == POLGEN) .and. any (h /= 0)) then
+   write (*, '(2A)') 'circe2: current beam description ', &
+        'supports only polarization averages'
+else if (c2s%polspt == POLHEL .and. any (h == 0)) then
+   write (*, '(2A)') 'circe2: polarization averages ', &
+        'not supported by current beam description'
+else
+   do i = 1, size (c2s%ch)
+      if (all (p == c2s%ch(i)%pid .and. h == c2s%ch(i)%pol)) then
+         ic = i
+      end if
+   end do
+end if
+@
+<<Complain and [[return]] iff $[[ic]] \le 0$>>=
+if (ic <= 0) then
+   write (*, '(A,2I4,A,2I3)') &
+        'circe2: no channel for particles', p, &
+        ' and polarizations', h
+   y = - huge (y)
+   return
+end if
+@ The number of bins is typically \emph{much} larger and we must use a
+binary search to get a reasonable performance.
+<<Do a binary search for $[[wgt(i-1)]] \le [[u]] < [[wgt(i)]]$>>=
+ibot = 0
+itop = ubound (ch%wgt, dim=1)
+do
+   if (itop <= ibot + 1) then
+      i = ibot + 1
+      exit
+   else
+      i = (ibot + itop) / 2
+      if (u < ch%wgt(i)) then
+         itop = i
+      else
+         ibot = i
+      end if
+   end if
+end do
+@
+<<$[[x]]\in[ [[x(ib-1)]], [[x(ib)]] ]$>>=
+call rng%generate (v(1))
+call rng%generate (v(2))
+forall (d = 1:2)
+  x(d) = ch%d(d)%x(ib(d))*v(d) + ch%d(d)%x(ib(d)-1)*(1-v(d))
+end forall
+@ The NAG compiler is picky and doesn't like $(-0)^\alpha$ at all.
+<<$y\leftarrow(a(x-\xi))^\alpha/b + \eta$>>=
+z = d%a(b) * (x - d%xi(b))
+if (abs (z) <= tiny (z)) then
+   z = abs (z)
+end if
+y = z**d%alpha(b) / d%b(b) + d%eta(b)
+@ 
+<<[[circe2]] implementation>>=
+elemental function circe2_map (d, x, b) result (y)
+   type(circe2_division), intent(in) :: d
+   real(kind=default), intent(in) :: x
+   integer, intent(in) :: b
+   real(kind=default) :: y
+   real(kind=default) :: z
+   select case (d%map(b))
+   case (0)
+      y = x
+   case (1)
+      <<$y\leftarrow(a(x-\xi))^\alpha/b + \eta$>>
+   case (2)
+      y = d%a(b) * tan (d%a(b)*(x-d%xi(b)) / d%b(b)**2) + d%eta(b)
+   case default
+      y = - huge (y)
+   end select
+end function circe2_map
+@ cf.~(\ref{eq:jacobian-Delta_x-Delta_y})
+<<[[circe2]] implementation>>=
+elemental function circe2_jacobian (d, y, b) result (j)
+   type(circe2_division), intent(in) :: d
+   real(kind=default), intent(in) :: y
+   integer, intent(in) :: b
+   real(kind=default) :: j
+   select case (d%map(b))
+   case (0)
+      j = 1
+   case (1)
+      j = d%b(b) / (d%a(b)*d%alpha(b)) &
+        * (d%b(b)*(y-d%eta(b)))**(1/d%alpha(b)-1)
+   case (2)
+      j = d%b(b)**2 / ((y-d%eta(b))**2 + d%a(b)**2)
+   case default
+      j = - huge (j)
+   end select
+end function circe2_jacobian
+@
+\begin{dubious}
+  There's still something wrong with \emph{unweighted} events
+  for the case that there is a triangle map \emph{together} with a
+  non-trivial $[[x(2)]]\to[[y(2)]]$ map. \emph{Fix this!!!}
+\end{dubious}
+<<Inverse triangle map>>=
+if (ch%triang) then
+   y(2) = y(1) * y(2)
+   <<Swap [[y(1)]] and [[y(2)]] in 50\%{} of the cases>>
+end if
+@
+<<Swap [[y(1)]] and [[y(2)]] in 50\%{} of the cases>>=
+call rng%generate (u)
+if (2*u >= 1) then
+   tmp = y(1)
+   y(1) = y(2)
+   y(2) = tmp
+end if
+@ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Channel selection}
+We could call [[circe2_generate]] immediately, but then [[circe2_generate]] and
+[[cir2_choose_channel]] would have the same calling conventions and might have
+caused a lot of confusion.
+<<[[circe2]] declarations>>=
+public :: circe2_choose_channel
+interface circe2_choose_channel
+   module procedure circe2_choose_channel
+end interface circe2_choose_channel
+@ 
+<<[[circe2]] implementation>>=
+subroutine circe2_choose_channel (c2s, rng, p, h)
+  type(circe2_state), intent(in) :: c2s
+  class(rng_type), intent(inout) :: rng
+  integer, dimension(:), intent(out) :: p, h
+  integer :: ic, ibot, itop
+  real(kind=default) :: u
+  call rng%generate (u)
+  ibot = 0
+  itop = size (c2s%ch)
+  do
+     if (itop <= ibot + 1) then
+        ic = ibot + 1
+        p = c2s%ch(ic)%pid
+        h = c2s%ch(ic)%pol
+        return
+     else
+        ic = (ibot + itop) / 2
+        if (u < c2s%cwgt(ic)) then
+           itop = ic
+        else
+           ibot = ic
+        end if
+     end if
+  end do
+  write (*, '(A)') 'circe2: internal error'
+  stop
+end subroutine circe2_choose_channel
+@ Below, we will always have $[[h]]=0$. but we don't have to
+check this explicitely, because [[circe2_density_matrix]] will do it anyway.  The
+procedure could be made more efficient, since most of [[circe2_density_matrix]] is
+undoing parts of [[circe2_generate]].  
+<<[[circe2]] declarations>>=
+public :: circe2_generate_polarized
+interface circe2_generate_polarized
+   module procedure circe2_generate_polarized
+end interface circe2_generate_polarized
+@
+<<[[circe2]] implementation>>=
+subroutine circe2_generate_polarized (c2s, rng, p, pol, x)
+  type(circe2_state), intent(in) :: c2s
+  class(rng_type), intent(inout) :: rng
+  integer, dimension(:), intent(out) :: p
+  real(kind=default), intent(out) :: pol(0:3,0:3)
+  real(kind=default), dimension(:), intent(out) :: x
+  integer, dimension(2) :: h
+  integer :: i1, i2
+  real(kind=default) :: pol00
+  call circe2_choose_channel (c2s, rng, p, h)
+  call circe2_generate (c2s, rng, x, p, h)
+  call circe2_density_matrix (c2s, pol, p, x)
+  pol00 = pol(0,0)
+  do i1 = 0, 4
+     do i2 = 0, 4
+        pol(i1,i2) = pol(i1,i2) / pol00
+     end do
+  end do
+end subroutine circe2_generate_polarized
+@ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Luminosity}
+<<[[circe2]] declarations>>=
+public :: circe2_luminosity
+@ 
+<<[[circe2]] implementation>>=
+function circe2_luminosity (c2s, p, h)
+  type(circe2_state), intent(in) :: c2s
+  integer, dimension(:), intent(in) :: p
+  integer, dimension(:), intent(in) :: h
+  real(kind=default) :: circe2_luminosity
+  integer :: ic
+  circe2_luminosity = 0
+  do ic = 1, size (c2s%ch)
+     if (       all (p == c2s%ch(ic)%pid .or. p == 0) &
+          .and. all (h == c2s%ch(ic)%pol .or. h == 0)) then
+        circe2_luminosity = circe2_luminosity + c2s%ch(ic)%lumi
+     end if
+  end do
+end function circe2_luminosity
+<<Separator>>
+@ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{2D-Distribution}
+<<[[circe2]] declarations>>=
+public :: circe2_distribution
+interface circe2_distribution
+   module procedure circe2_distribution
+end interface circe2_distribution
+@ 
+<<[[circe2]] implementation>>=
+function circe2_distribution (c2s, p, h, yy)
+  type(circe2_state), intent(in) :: c2s
+  integer, dimension(:), intent(in) :: p
+  real(kind=default), dimension(:), intent(in)  :: yy
+  integer, dimension(:), intent(in) :: h
+  real(kind=default) :: circe2_distribution
+  integer :: i, ic
+  <<Find [[ic]] for [[p]] and [[h]]>>
+  if (ic <= 0) then
+     circe2_distribution = 0
+  else
+     circe2_distribution = circe2_distribution_channel (c2s%ch(ic), yy)
+  end if
+end function circe2_distribution
+<<Separator>>
+@ 
+<<[[circe2]] declarations>>=
+interface circe2_distribution
+   module procedure circe2_distribution_channel
+end interface circe2_distribution
+@
+<<[[circe2]] implementation>>=
+function circe2_distribution_channel (ch, yy)
+  type(circe2_channel), intent(in) :: ch
+  real(kind=default), dimension(:), intent(in)  :: yy
+  real(kind=default) :: circe2_distribution_channel
+  real(kind=default), dimension(2) :: y
+  integer :: d, ibot, itop
+  integer, dimension(2) :: ib
+  <<$[[y]])\leftarrow[[yy]]$>>
+  if (      y(1) < ch%d(1)%y(0) &
+       .or. y(1) > ch%d(1)%y(ubound (ch%d(1)%y, dim=1)) &
+       .or. y(2) < ch%d(2)%y(0) &
+       .or. y(2) > ch%d(2)%y(ubound (ch%d(2)%y, dim=1))) then
+     circe2_distribution_channel = 0
+     return
+  end if
+  <<Do a binary search for $[[y(ib-1)]] \le [[y]] < [[y(ib)]]$>>
+  circe2_distribution_channel = &
+      ch%val(ib(1),ib(2)) * product (circe2_jacobian (ch%d, y, ib))
+  <<Apply Jacobian for triangle map>>
+end function circe2_distribution_channel
+<<Separator>>
+@ The triangle map
+\begin{equation}
+  \begin{aligned}
+    \tau : \{(x_{1},x_{2}) \in [0,1]\times[0,1] : x_{2} \le x_{1} \}
+                    &\to [0,1]\times[0,1] \\
+      (x_{1},x_{2}) &\mapsto (y_{1},y_{2}) = (x_{1},x_{1}x_{2})
+  \end{aligned}
+\end{equation}
+and its inverse
+\begin{equation}
+  \begin{aligned}
+    \tau^{-1} : [0,1]\times[0,1]
+       &\to \{(x_{1},x_{2}) \in [0,1]\times[0,1] : x_{2} \le x_{1} \} \\
+      (y_{1},y_{2}) &\mapsto (x_{1},x_{2}) = (y_{1},y_{2}/y_{1})
+  \end{aligned}
+\end{equation}
+<<$[[y]])\leftarrow[[yy]]$>>=
+if (ch%triang) then
+   y(1) = maxval (yy)
+   y(2) = minval (yy) / y(1)
+else
+   y = yy
+end if
+@ with the jacobian~$J^*(y_{1},y_{2})=1/y_{2}$ from
+\begin{equation}
+  \mathrm{d}x_{1}\wedge\mathrm{d}x_{2}
+    = \frac{1}{y_{2}} \cdot \mathrm{d}y_{1}\wedge\mathrm{d}y_{2}
+\end{equation}
+<<Apply Jacobian for triangle map>>=
+if (ch%triang) then
+   circe2_distribution_channel = circe2_distribution_channel / y(1)
+end if
+@ Careful: the loop over [[d]] \emph{must} be executed sequentially,
+because of the shared local variables [[ibot]] and [[itop]].
+<<Do a binary search for $[[y(ib-1)]] \le [[y]] < [[y(ib)]]$>>=
+do d = 1, 2
+   ibot = 0
+   itop = ubound (ch%d(d)%x, dim=1)
+   search: do
+      if (itop <= ibot + 1) then
+         ib(d) = ibot + 1
+         exit search
+      else
+         ib(d) = (ibot + itop) / 2
+         if (y(d) < ch%d(d)%y(ib(d))) then
+            itop = ib(d)
+         else
+            ibot = ib(d)
+         end if
+      end if
+   end do search
+end do
+@ 
+<<[[circe2]] declarations>>=
+public :: circe2_density_matrix
+@ 
+<<[[circe2]] implementation>>=
+subroutine circe2_density_matrix (c2s, pol, p, x)
+  type(circe2_state), intent(in) :: c2s
+  real(kind=default), dimension(0:,0:), intent(out) :: pol
+  integer, dimension(:), intent(in) :: p
+  real(kind=default), dimension(:), intent(in) :: x
+  <<Test support for density matrices>>
+  print *, 'circe2: circe2_density_matrix not implemented yet!'
+  if (p(1) < p(2) .and. x(1) < x(2)) then
+     ! nonsense test to suppress warning
+  end if
+  pol = 0
+end subroutine circe2_density_matrix
+<<Separator>>
+@ 
+<<Test support for density matrices>>=
+if (c2s%polspt /= POLGEN) then
+   write (*, '(2A)') 'circe2: current beam ', &
+        'description supports no density matrices'
+   return
+end if
+@ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Reading Files}
+<<[[circe2]] declarations>>=
+public :: circe2_load
+<<Error codes for [[circe2_load]]>>
+@
+<<Error codes for [[circe2_load]]>>=
+integer, parameter, public :: &
+     EOK = 0, EFILE = -1, EMATCH = -2, EFORMT = -3, ESIZE = -4
+@ 
+<<[[circe2]] implementation>>=
+subroutine circe2_load (c2s, file, design, roots, ierror)
+  type(circe2_state), intent(out) :: c2s
+  character(len=*), intent(in) :: file, design
+  real(kind=default), intent(in) :: roots
+  integer, intent(out) :: ierror
+  character(len=72) :: buffer, fdesgn, fpolsp
+  real(kind=default) :: froots
+  integer :: lun, loaded, prefix
+  logical match
+  <<Local variables in [[circe2_load]]>>
+  <<Find free logical unit for [[lun]]>>
+  if (lun < 0) then
+     write (*, '(A)') 'circe2_load: no free unit'
+     ierror = ESIZE
+     return
+  end if
+  loaded = 0
+  <<Open [[name]] for reading on [[lun]]>>
+  if (ierror .gt. 0) then
+     write (*, '(2A)') 'circe2_load: ', <<Version>>                         
+  end if
+  prefix = index (design, '*') - 1
+  do
+     <<Skip comments until [[CIRCE2]]>>
+     if (buffer(8:15) == 'FORMAT#1') then
+        read (lun, *)
+        read (lun, *) fdesgn, froots
+        <<Check if [[design]] and [[fdesgn]] do [[match]]>>
+        if (match .and. abs (froots - roots) <= 1) then
+           <<Load histograms>>
+           loaded = loaded + 1
+        else
+           <<Skip data until [[ECRIC2]]>>
+           cycle
+        end if
+     else
+        write (*, '(2A)') 'circe2_load: invalid format: ', buffer(8:72)
+        ierror = EFORMT
+        return
+     end if
+     <<Check for [[ECRIC2]]>>
+  end do
+end subroutine circe2_load
+<<Separator>>
+@ 
+<<Check if [[design]] and [[fdesgn]] do [[match]]>>=
+match = .false.
+if (fdesgn == design) then
+   match = .true.
+else if (prefix == 0) then
+   match = .true.
+else if (prefix .gt. 0) then
+   if (fdesgn(1:min(prefix,len(fdesgn))) &
+        == design(1:min(prefix,len(design)))) then
+      match = .true.
+   end if
+end if
+@ 
+<<Load histograms>>=
+read (lun, *) 
+read (lun, *) nc, fpolsp
+allocate (c2s%ch(nc), c2s%cwgt(0:nc))
+<<Decode polarization support>>
+c2s%cwgt(0) = 0
+do ic = 1, nc
+   call circe2_load_channel (c2s%ch(ic), c2s%polspt, lun, ierror)
+   c2s%cwgt(ic) = c2s%cwgt(ic-1) + c2s%ch(ic)%lumi
+end do
+c2s%cwgt = c2s%cwgt / c2s%cwgt(nc)
+@
+<<[[circe2]] implementation>>=
+subroutine circe2_load_channel (ch, polspt, lun, ierror)
+  type(circe2_channel), intent(out) :: ch
+  integer, intent(in) :: polspt, lun
+  integer, intent(out) :: ierror
+  integer :: d, i, ib
+  integer :: i1, i2
+  integer, dimension(2) :: nb
+  real(kind=default) :: w
+  <<Load channel [[ch]]>>
+  <<Load divisions [[x]]>>
+  <<Calculate [[y]]>>
+  <<Load weights [[wgt]] and [[val]]>>
+end subroutine circe2_load_channel
+@ 
+@ 
+<<Decode polarization support>>=
+if (fpolsp(1:1)=='a' .or. fpolsp(1:1)=='A') then
+   c2s%polspt = POLAVG
+else if (fpolsp(1:1)=='h' .or. fpolsp(1:1)=='H') then
+   c2s%polspt = POLHEL
+else if (fpolsp(1:1)=='d' .or. fpolsp(1:1)=='D') then
+   c2s%polspt = POLGEN
+else
+   write (*, '(A,I5)') 'circe2_load: invalid polarization support: ', fpolsp
+   ierror = EFORMT
+   return
+end if
+@ 
+<<Local variables in [[circe2_load]]>>=
+integer :: ic, nc
+@ 
+<<Load channel [[ch]]>>=
+read (lun, *)
+read (lun, *) ch%pid(1), ch%pol(1), ch%pid(2), ch%pol(2), ch%lumi
+<<Check polarization support>>
+@
+<<Check polarization support>>=
+if (polspt == POLAVG .and. any (ch%pol /= 0)) then
+   write (*, '(A)') 'circe2_load: expecting averaged polarization'
+   ierror = EFORMT
+   return
+else if (polspt == POLHEL .and. any (ch%pol == 0)) then
+   write (*, '(A)') 'circe2_load: expecting helicities'
+   ierror = EFORMT
+   return
+else if (polspt == POLGEN) then
+   write (*, '(A)') 'circe2_load: general polarizations not supported yet'
+   ierror = EFORMT
+   return
+else if (polspt == POLGEN .and. any (ch%pol /= 0)) then
+   write (*, '(A)') 'circe2_load: expecting pol = 0'
+   ierror = EFORMT
+   return
+end if
+@ 
+<<Load channel [[ch]]>>=
+read (lun, *)
+read (lun, *) nb, ch%triang
+@ 
+<<Load divisions [[x]]>>=
+do d = 1, 2
+   read (lun, *)
+   allocate (ch%d(d)%x(0:nb(d)), ch%d(d)%y(0:nb(d)))
+   allocate (ch%d(d)%map(nb(d)), ch%d(d)%alpha(nb(d)))
+   allocate (ch%d(d)%xi(nb(d)), ch%d(d)%eta(nb(d)))
+   allocate (ch%d(d)%a(nb(d)), ch%d(d)%b(nb(d)))
+   read (lun, *) ch%d(d)%x(0)
+   do ib = 1, nb(d)
+      read (lun, *) ch%d(d)%x(ib), ch%d(d)%map(ib), &
+           ch%d(d)%alpha(ib), ch%d(d)%xi(ib), ch%d(d)%eta(ib), &
+           ch%d(d)%a(ib), ch%d(d)%b(ib)
+      if (ch%d(d)%map(ib) < 0 .or. ch%d(d)%map(ib) > 2) then
+         write (*, '(A,I3)') 'circe2_load: invalid map: ', ch%d(d)%map(ib)
+         ierror = EFORMT
+         return
+      end if
+   end do
+end do
+@ The boundaries are guaranteed to be fixed points of the maps
+only if the boundaries are not allowed to float. This doesn't affect
+the unweighted events, because they never see the codomain grid, but
+distribution would be distorted significantly.   In the following sums
+[[i1]] and [[i2]] run over the maps, while [[i]] runs over the
+boundaries.
+\begin{dubious}
+An alternative would be to introduce sentinels [[alpha(1,0,:)]],
+[[xi(1,0,:)]], etc.
+\end{dubious}
+<<Calculate [[y]]>>=
+forall (d = 1:2)
+   forall (i = 0:ubound (ch%d(d)%x, dim=1))
+      ch%d(d)%y(i) = circe2_map (ch%d(d), ch%d(d)%x(i), max (i, 1))
+   end forall
+end forall
+@ cf.~(\ref{eq:jacobian-Delta_x-Delta_y})
+<<Load weights [[wgt]] and [[val]]>>=
+read (lun, *)
+allocate (ch%wgt(0:product(nb)), ch%val(nb(1),nb(2)))
+ch%wgt(0) = 0
+do i = 1, ubound (ch%wgt, dim=1)
+   read (lun, *) w
+   ch%wgt(i) = ch%wgt(i-1) + w
+   <<$([[i1]],[[i2]]) \leftarrow [[i]]$>>
+   ch%val(i1,i2) = w &
+        / (  (ch%d(1)%x(i1) - ch%d(1)%x(i1-1)) &
+           * (ch%d(2)%x(i2) - ch%d(2)%x(i2-1)))
+end do
+ch%wgt(ubound (ch%wgt, dim=1)) = 1
+@ 
+<<Local variables in [[circe2_load]]>>=
+@ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Auxiliary Code For Reading Files}
+<<Open [[name]] for reading on [[lun]]>>=
+open (unit = lun, file = file, status = 'old', iostat = status)
+if (status /= 0) then
+   write (*, '(2A)') 'circe2_load: can''t open ', file
+   ierror = EFILE
+   return
+end if
+@ 
+<<Local variables in [[circe2_load]]>>=
+integer :: status
+@ The outer [[do]] loop is never repeated!
+<<Skip comments until [[CIRCE2]]>>=
+find_circe2: do
+   skip_comments: do
+      read (lun, '(A)', iostat = status) buffer
+      if (status /= 0) then
+         close (unit = lun)
+         if (loaded > 0) then           
+            ierror = EOK
+         else
+            ierror = EMATCH
+         end if
+         return
+      else
+         if (buffer(1:6) == 'CIRCE2') then
+            exit find_circe2
+         else if (buffer(1:1) == '!') then
+            if (ierror > 0) then
+               write (*, '(A)') buffer
+            end if
+         else
+            exit skip_comments
+         end if
+       end if
+    end do skip_comments
+    write (*, '(A)') 'circe2_load: invalid file'
+    ierror = EFORMT
+    return
+ end do find_circe2
+@ 
+<<Skip data until [[ECRIC2]]>>=
+skip_data: do
+   read (lun, *) buffer
+   if (buffer(1:6) == 'ECRIC2') then
+      exit skip_data
+   end if
+end do skip_data
+@ 
+<<Check for [[ECRIC2]]>>=
+read (lun, '(A)') buffer
+if (buffer(1:6) /= 'ECRIC2') then
+   write (*, '(A)') 'circe2_load: invalid file'
+   ierror = EFORMT
+   return
+end if
+@ 
+<<Find free logical unit for [[lun]]>>=
+scan: do lun = 10, 99
+   inquire (unit = lun, exist = exists, opened = isopen, iostat = status)
+   if (status == 0 .and. exists .and. .not.isopen) exit scan
+end do scan
+if (lun > 99) lun = -1
+@ 
+<<Local variables in [[circe2_load]]>>=
+logical exists, isopen
+@ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Tests and Examples}
+<<[[sample.f90]]>>=
+! sample.f90 -- testing circe2
+<<Copyleft notice>>
+<<Separator>>
+program sample
+  <<[[implicit none]]>>
+  external circe2_distribution
+  real(kind=default) :: circe2_distribution
+  integer :: i, n, ierror
+  integer, dimension(2) :: p, h
+  character(len=256) :: file, design, mode
+  real(kind=default) :: roots, x1, x2, w
+  read *, file, design, roots, p(1), h(1), p(2), h(2), mode, n
+  ierror = 0
+  call circe2_load (file, design, roots, ierror)
+  if (ierror /= 0) then
+     print *, 'sample: circe2_load failed!'
+     stop
+  end if
+  if (mode(1:1) == 'w' .or. mode(1:1) == 'W') then
+     <<Generate [[n]] weighted events>>
+  else
+     <<Generate [[n]] unweighted events>>
+  end if
+end program sample
+<<Separator>>
+<<Sample procedures>>
+<<Separator>>
+@ Generation of unweighted events is \Kirke/'s home turf
+<<Generate [[n]] unweighted events>>=
+do i = 1, n    
+   call circe2_generate (p, [x1, x2], h)
+   call write3 (x1, x2, 1d0)
+end do
+@ while generation of weighted events without any importance sampling
+is slightly abusive and only useful for checking [[circe2_distribution]].
+<<Generate [[n]] weighted events>>=
+do i = 1, n
+   call random (x1)
+   call random (x2)
+   w = circe2_distribution (p, [x1, x2], h)
+   print *, x, y, w
+end do
+@ The following bare bones random number generator produces
+some correlations that have been observed in testing \KirkeTwo/
+<<Unused sample procedures>>=
+subroutine random (r)
+  real(kind=default) :: r
+  integer, parameter :: M = 259200, A = 7141, C = 54773
+  integer, save :: n = 0
+  n = mod (n*A + C, M)
+  r = dble (n) / dble (M)
+end subroutine random
+@ therfore, it makes sense to call a more sophisticated one:
+<<Sample procedures>>=
+subroutine random (u)
+  real(kind=default) :: u
+  call taornu (u)
+end subroutine random
+@ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Listing File Contents}
+Here's a small utility program for listing the contents of \KirkeTwo/
+data files.  It performs \emph{no} verification and assumes that the
+file is in the correct format (cf.~table~\ref{tab:fileformat}).
+<<[[circe2_ls.f90]]>>=
+! circe2_ls.f90 -- beam spectra for linear colliders and photon colliders
+<<Copyleft notice>>
+<<Separator>>
+program circe2_ls
+   use circe2
+   use kinds
+   implicit none
+   integer :: i, lun
+   character(len=132) :: buffer
+   character(len=60) :: design, polspt
+   integer :: pid1, hel1, pid2, hel2, nc
+   real(kind=default) :: roots, lumi
+   integer :: status
+   logical :: exists, isopen
+   character(len=1024) :: filename
+   <<Find free logical unit for [[lun]]>>
+   if (lun < 0) then
+      write (*, '(A)') 'circe2_ls: no free unit'
+      stop
+   end if
+   files: do i = 1, command_argument_count ()
+      call get_command_argument (i, value = filename, status = status)
+      if (status /= 0) then
+         exit files
+      else
+         open (unit = lun, file = filename, status = 'old', iostat = status)
+         if (status /= 0) then
+            write (*, "(A,1X,A)") "circe2: can't open", trim(filename)
+         else
+            write (*, "(A,1X,A)") "file:", trim(filename)
+            lines: do
+               read (lun, '(A)', iostat = status) buffer
+               if (status /= 0) exit lines
+               if (buffer(1:7) == 'design,') then
+                  read (lun, *) design, roots
+                  read (lun, *)
+                  read (lun, *) nc, polspt
+                  <<Write design/beam data>>
+                  <<Write channel header>>
+               else if (buffer(1:5) == 'pid1,') then
+                  read (lun, *) pid1, hel1, pid2, hel2, lumi
+                  <<Write channel data>>
+               end if
+            end do lines
+         end if
+         close (unit = lun)
+      end if
+   end do files
+end program circe2_ls
+<<Separator>>
+@ 
+<<Write design/beam data>>=
+write (*, '(A,1X,A)')    '        design:', trim(design)
+write (*, '(A,1X,F7.1)') '       sqrt(s):', roots
+write (*, '(A,1X,I3)')   '     #channels:', nc
+write (*, '(A,1X,A)')      '  polarization:', trim(polspt)
+@ 
+<<Write channel header>>=
+write (*, '(4X,4(A5,2X),A)') &
+     'pid#1', 'hel#1', 'pid#2', 'hel#2', 'luminosity / (10^32cm^-2sec^-1)'
+@ 
+<<Write channel data>>=
+write (*, '(4X,4(I5,2X),F10.2)') pid1, hel1, pid2, hel2, lumi
+@ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Local Variables:
+% mode:noweb
+% noweb-doc-mode:latex-mode
+% noweb-code-mode:f90-mode
+% indent-tabs-mode:nil
+% page-delimiter:"^@ %%%.*\n"
+% End:

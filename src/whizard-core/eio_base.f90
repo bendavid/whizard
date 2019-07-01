@@ -1,4 +1,4 @@
-! WHIZARD 2.2.1 June 3 2014
+! WHIZARD 2.2.2 July 6 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -61,11 +61,13 @@ module eio_base
      logical :: split = .false.
      integer :: split_n_evt = 0
      integer :: split_index = 0
+     type(model_t), pointer :: fallback_model => null ()
    contains
      procedure (eio_write), deferred :: write
      procedure (eio_final), deferred :: final
      procedure :: set_splitting => eio_set_splitting
      procedure :: set_filename => eio_set_filename
+     procedure :: set_fallback_model => eio_set_fallback_model
      procedure (eio_init_out), deferred :: init_out
      procedure (eio_init_in), deferred :: init_in
      procedure (eio_switch_inout), deferred :: switch_inout
@@ -193,6 +195,12 @@ contains
     end if
   end subroutine eio_set_filename
 
+  subroutine eio_set_fallback_model (eio, model)
+    class(eio_t), intent(inout) :: eio
+    type(model_t), intent(in), target :: model
+    eio%fallback_model => model
+  end subroutine eio_set_fallback_model
+  
   subroutine eio_split_out (eio)
     class(eio_t), intent(inout) :: eio
   end subroutine eio_split_out

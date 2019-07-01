@@ -49,6 +49,7 @@ UNIT_TESTS = \
     xml.run \
     sm_qcd.run \
     models.run \
+    auto_components.run \
     particles.run \
     beam_structures.run \
     sf_aux.run \
@@ -210,6 +211,8 @@ TESTS_REQ_OCAML = \
     lhef_4.run \
     lhef_5.run \
     lhef_6.run \
+    lhef_7.run \
+    lhef_8.run \
     fatal_beam_decay.run \
     smtest_1.run \
     smtest_2.run \
@@ -280,14 +283,20 @@ TESTS_REQ_HEPMC = \
     hepmc_1.run \
     hepmc_2.run \
     hepmc_3.run \
-    hepmc_4.run
+    hepmc_4.run \
+    hepmc_5.run
 
-UNIT_TESTS_REQ_LHAPDF = \
-    sf_lhapdf.run 
+UNIT_TESTS_REQ_LHAPDF5 = \
+    sf_lhapdf5.run 
+UNIT_TESTS_REQ_LHAPDF6 = \
+    sf_lhapdf6.run 
 
-TESTS_REQ_LHAPDF = \
-    lhapdf.run
-XFAIL_TESTS_REQ_LHAPDF =
+TESTS_REQ_LHAPDF5 = \
+    lhapdf5.run
+TESTS_REQ_LHAPDF6 = \
+    lhapdf6.run
+XFAIL_TESTS_REQ_LHAPDF5 =
+XFAIL_TESTS_REQ_LHAPDF6 =
 
 TESTS_REQ_STDHEP = \
     stdhep_1.run \
@@ -327,12 +336,14 @@ TEST_DRIVERS_RUN = \
     $(UNIT_TESTS_REQ_GAMELAN) \
     $(UNIT_TESTS_REQ_HEPMC) \
     $(UNIT_TESTS_REQ_FASTJET) \
-    $(UNIT_TESTS_REQ_LHAPDF) \
+    $(UNIT_TESTS_REQ_LHAPDF5) \
+    $(UNIT_TESTS_REQ_LHAPDF6) \
     $(UNIT_TESTS_REQ_STDHEP) \
     $(UNIT_TESTS_REQ_OCAML) \
     $(TESTS_DEFAULT) \
     $(TESTS_REQ_OCAML) \
-    $(TESTS_REQ_LHAPDF) \
+    $(TESTS_REQ_LHAPDF5) \
+    $(TESTS_REQ_LHAPDF6) \
     $(TESTS_REQ_HEPMC) \
     $(TESTS_REQ_FASTJET) \
     $(TESTS_REQ_STDHEP) \
@@ -351,7 +362,8 @@ XFAIL_TESTS =
 UNIT_TESTS += $(UNIT_TESTS_REQ_GAMELAN)
 UNIT_TESTS += $(UNIT_TESTS_REQ_FASTJET)
 UNIT_TESTS += $(UNIT_TESTS_REQ_HEPMC)
-UNIT_TESTS += $(UNIT_TESTS_REQ_LHAPDF)
+UNIT_TESTS += $(UNIT_TESTS_REQ_LHAPDF5)
+UNIT_TESTS += $(UNIT_TESTS_REQ_LHAPDF6)
 UNIT_TESTS += $(UNIT_TESTS_REQ_STDHEP)
 UNIT_TESTS += $(UNIT_TESTS_REQ_OCAML)
 UNIT_TESTS += $(UNIT_TESTS_REQ_EV_ANA)
@@ -372,8 +384,11 @@ XFAIL_TESTS += $(XFAIL_TESTS_REQ_HEPMC)
 TESTS += $(TESTS_REQ_FASTJET)
 XFAIL_TESTS += $(XFAIL_TESTS_REQ_FASTJET)
 
-TESTS += $(TESTS_REQ_LHAPDF)
-XFAIL_TESTS += $(XFAIL_TESTS_REQ_LHAPDF)
+TESTS += $(TESTS_REQ_LHAPDF5)
+XFAIL_TESTS += $(XFAIL_TESTS_REQ_LHAPDF5)
+
+TESTS += $(TESTS_REQ_LHAPDF6)
+XFAIL_TESTS += $(XFAIL_TESTS_REQ_LHAPDF6)
 
 TESTS += $(TESTS_REQ_STDHEP)
 XFAIL_TESTS += $(XFAIL_TESTS_REQ_STDHEP)
@@ -504,12 +519,12 @@ WT_OCAML_NATIVE_EXT=opt
 
 if OCAML_AVAILABLE
 qedtest_1.run qedtest_2.run qedtest_3.run qedtest_4.run qedtest_5.run qedtest_6.run: omega_QED.$(WT_OMEGA_CACHE_SUFFIX)
-OMEGA_QED = $(top_builddir)/src/omega/bin/omega_QED.$(WT_OCAML_NATIVE_EXT)
+OMEGA_QED = $(top_builddir)/omega/bin/omega_QED.$(WT_OCAML_NATIVE_EXT)
 omega_QED.$(WT_OMEGA_CACHE_SUFFIX): $(OMEGA_QED)
 	$(OMEGA_QED) -initialize .
 
 qcdtest_1.run qcdtest_2.run: omega_QCD.$(WT_OMEGA_CACHE_SUFFIX)
-OMEGA_QCD = $(top_builddir)/src/omega/bin/omega_QCD.$(WT_OCAML_NATIVE_EXT)
+OMEGA_QCD = $(top_builddir)/omega/bin/omega_QCD.$(WT_OCAML_NATIVE_EXT)
 omega_QCD.$(WT_OMEGA_CACHE_SUFFIX): $(OMEGA_QCD)
 	$(OMEGA_QCD) -initialize .
 endif OCAML_AVAILABLE
@@ -532,7 +547,8 @@ BUILT_SOURCES = \
     STDHEP_FLAG \
     HEPMC_FLAG \
     FASTJET_FLAG \
-    LHAPDF_FLAG \
+    LHAPDF5_FLAG \
+    LHAPDF6_FLAG \
     GAMELAN_FLAG \
     EVENT_ANALYSIS_FLAG \
     OCAML_FLAG \
@@ -562,8 +578,13 @@ if HEPMC_AVAILABLE
 	touch $@
 endif
 
-LHAPDF_FLAG:
-if LHAPDF_AVAILABLE
+LHAPDF5_FLAG:
+if LHAPDF5_AVAILABLE
+	touch $@
+endif
+
+LHAPDF6_FLAG:
+if LHAPDF6_AVAILABLE
 	touch $@
 endif
 
@@ -619,8 +640,8 @@ notestflag:
 clean-local:
 	rm -f gamelan.sty TEST.mdl 
 	rm -f TESTFLAG GAMELAN_FLAG STDHEP_FLAG 
-	rm -f OCAML_FLAG FASTJET_FLAG HEPMC_FLAG LHAPDF_FLAG
-	rm -f EVENT_ANALYSIS_FLAG SHOWER_FLAG
+	rm -f OCAML_FLAG FASTJET_FLAG HEPMC_FLAG LHAPDF5_FLAG
+	rm -f EVENT_ANALYSIS_FLAG SHOWER_FLAG LHAPDF6_FLAG
 	rm -f STATIC_FLAG static_1.exe
 	rm -f *.run *.log slha_test.out
 	rm -f *.f90 *.c *.$(FC_MODULE_EXT) *.o *.la
@@ -631,7 +652,7 @@ clean-local:
 	rm -f *.phs *.vg *.vgb *.evt *.evx *.lhe *.hepmc *.dat *.debug 
 	rm -f *.tmp *.hepevt *.hepevt.verb *.lha *.lha.verb
 	rm -f prc_omega_diags_1_p_i1_diags.out prc_omega_diags_1_p_i1_diags.toc
-	rm -f *.stdhep *.up.stdhep *.[1-9] *.[1-9][0-9] *.[1-9][0-9][0-9] 
+	rm -f *.hep *.up.hep *.[1-9] *.[1-9][0-9] *.[1-9][0-9][0-9] 
 	rm -f *.tex *.mp *.mpx *.t[1-9] *.t[1-9][0-9] *.t[1-9][0-9][0-9] 
 	rm -f *.ltp *.aux *.dvi *.ps *.pdf so_test.*
 	rm -f *.tbl sps1ap_decays.slha bar structure_6[a-b].out 

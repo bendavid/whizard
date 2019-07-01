@@ -82,9 +82,9 @@ $(libshower_la_OBJECTS): \
 ../misc/file_utils.$(FC_MODULE_EXT) \
 ../misc/diagnostics.$(FC_MODULE_EXT) \
 ../misc/lorentz.$(FC_MODULE_EXT) \
-../vamp/src/tao_random_numbers.$(FC_MODULE_EXT)
+../../vamp/src/tao_random_numbers.$(FC_MODULE_EXT)
 
-libshower_la_LIBADD = ../pythia/libpythia_wo.la
+libshower_la_LIBADD = ../../pythia/libpythia_wo.la
 
 SUFFIXES = .lo .$(FC_MODULE_EXT)
 # Fortran90 module files are generated at the same time as object files
@@ -92,7 +92,7 @@ SUFFIXES = .lo .$(FC_MODULE_EXT)
         @:
 #       touch $@
 
-AM_FCFLAGS += -I../misc -I../vamp/src/ -I../pythia
+AM_FCFLAGS += -I../misc -I../../vamp/src/ -I../../pythia
 
 ########################################################################
 ## Default Fortran compiler options

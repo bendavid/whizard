@@ -1,4 +1,4 @@
-! WHIZARD 2.2.1 June 3 2014
+! WHIZARD 2.2.2 July 6 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -86,6 +86,8 @@ module sf_circe2
        procedure :: allocate_sf_int => circe2_data_allocate_sf_int
   end type circe2_data_t
 
+  type(circe2_state) :: circe2_global_state
+  
   type, extends (circe2_rng_t) :: rng_obj_t
      class(rng_t), allocatable :: rng
    contains
@@ -102,7 +104,7 @@ module sf_circe2
      procedure :: write => circe2_write
      procedure :: init => circe2_init
      procedure :: is_generator => circe2_is_generator
-     procedure :: generate_free => circe2_generate_free
+     procedure :: generate_free => circe2_generate_whizard_free
      procedure :: complete_kinematics => circe2_complete_kinematics
      procedure :: inverse_kinematics => circe2_inverse_kinematics
      procedure :: apply => circe2_apply
@@ -133,14 +135,15 @@ contains
     data%filename = file
     data%design = design
     call data%check_file (os_data)
-    call cir2ld (trim (char(data%file)), trim (char(data%design)), &
-            dble (data%sqrts), data%error)
-    data%lumi = cir2lm (data%pdg_in(1), 0, data%pdg_in(2), 0)
+    call circe2_load (circe2_global_state, trim (char(data%file)), &
+            trim (char(data%design)), data%sqrts, data%error)
+    data%lumi = circe2_luminosity (circe2_global_state, data%pdg_in, [0, 0])
     call data%check ()
     if (data%polarized) then
        do h = 1, 4
           data%lumi_hel_frac(h) = &
-               cir2lm (data%pdg_in(1), data%h1(h), data%pdg_in(2), data%h2(h)) &
+               circe2_luminosity (circe2_global_state, data%pdg_in, &
+                                  [data%h1(h), data%h2(h)]) &
                / data%lumi
        end do
     end if
@@ -258,7 +261,7 @@ contains
   
   subroutine rng_obj_generate (rng_obj, u)
     class(rng_obj_t), intent(inout) :: rng_obj
-    real(double), intent(out) :: u
+    real(default), intent(out) :: u
     real(default) :: x
     call rng_obj%rng%generate (x)
     u = x
@@ -337,7 +340,7 @@ contains
     flag = sf_int%data%is_generator ()
   end function circe2_is_generator
   
-  subroutine circe2_generate_free (sf_int, r, rb, x_free)
+  subroutine circe2_generate_whizard_free (sf_int, r, rb, x_free)
     class(circe2_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(out) :: r, rb
     real(default), intent(inout) :: x_free
@@ -348,22 +351,20 @@ contains
        h_sel = 0
     end if
     sf_int%h_sel = h_sel
-    call circe2_generate (r, sf_int%data%pdg_in, &
+    call circe2_generate_whizard (r, sf_int%data%pdg_in, &
          [sf_int%data%h1(h_sel), sf_int%data%h2(h_sel)], &
          sf_int%rng_obj)
     rb = 1 - r
     x_free = x_free * product (r)
-  end subroutine circe2_generate_free
+  end subroutine circe2_generate_whizard_free
     
-  subroutine circe2_generate (x, pdg, hel, rng_obj)
+  subroutine circe2_generate_whizard (x, pdg, hel, rng_obj)
     real(default), dimension(2), intent(out) :: x
     integer, dimension(2), intent(in) :: pdg
     integer, dimension(2), intent(in) :: hel
     class(rng_obj_t), intent(inout) :: rng_obj
-    real(double) :: xc1, xc2
-    call cir2gn (pdg(1), hel(1), pdg(2), hel(2), xc1, xc2, rng_obj = rng_obj)
-    x = [xc1, xc2]
-  end subroutine circe2_generate
+    call circe2_generate (circe2_global_state, rng_obj, x, pdg, hel)
+  end subroutine circe2_generate_whizard
 
   subroutine circe2_complete_kinematics (sf_int, x, f, r, rb, map)
     class(circe2_t), intent(inout) :: sf_int

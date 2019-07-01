@@ -32,7 +32,7 @@ seed = 0
 integrate (circe2_2_p1) { iterations = 3:n:"g", 3:n }
 
 beams = "e-", "e+" => circe2
-$circe2_file = "ilc_ee_500_polavg.circe"
+$circe2_file = "ilc500.circe"
 $circe2_design = "ILC"
 ?circe2_polarized = false
 

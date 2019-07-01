@@ -28,7 +28,7 @@
 if HOPPET_AVAILABLE
 noinst_LTLIBRARIES = libhoppet.la
 libhoppet_la_SOURCES = hoppet.f90
-libhoppet_la_FCFLAGS = $(HOPPET_INCLUDES)
+libhoppet_la_FCFLAGS = $(AM_FCFLAGS) $(HOPPET_INCLUDES) 
 else
 noinst_LTLIBRARIES = libhoppet_dummy.la
 libhoppet_dummy_la_SOURCES = hoppet_dummy.f90
@@ -48,6 +48,20 @@ endif
 if FC_USE_OPENMP
 AM_FCFLAGS += $(FCFLAGS_OPENMP)
 endif
+
+########################################################################
+## Explicit dependencies
+
+libhoppet.lo: ../misc/system_dependencies.$(FC_MODULE_EXT) \
+	../pdf_builtin/pdf_builtin.$(FC_MODULE_EXT) \
+	../lhapdf/lhapdf.$(FC_MODULE_EXT)
+
+libhoppet_dummy.lo: ../lhapdf/lhapdf.$(FC_MODULE_EXT)
+
+AM_FCFLAGS += -I../misc -I../pdf_builtin -I../lhapdf
+
+MODULES= \
+   hoppet.$(FC_MODULE_EXT)
 
 ########################################################################
 ## Cleanup

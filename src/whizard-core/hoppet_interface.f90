@@ -1,4 +1,4 @@
-! WHIZARD 2.2.1 June 3 2014
+! WHIZARD 2.2.2 July 6 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -28,7 +28,8 @@
 ! to the source 'whizard.nw'
 
 module hoppet_interface
-
+  use lhapdf !NODEP!     
+  
   implicit none
   private
 
@@ -36,9 +37,12 @@ module hoppet_interface
 
 contains
 
-  subroutine hoppet_init ()
+  subroutine hoppet_init (pdf_builtin, pdf, pdf_id)
+    logical, intent(in) :: pdf_builtin
+    type(lhapdf_pdf_t), intent(inout), optional :: pdf
+    integer, intent(in), optional :: pdf_id
     external InitForWhizard
-    call InitForWhizard ()
+    call InitForWhizard (pdf_builtin, pdf, pdf_id)
   end subroutine hoppet_init
 
   subroutine hoppet_eval (x, q, f)

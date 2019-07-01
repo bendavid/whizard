@@ -1,4 +1,4 @@
-! WHIZARD 2.2.1 June 3 2014
+! WHIZARD 2.2.2 July 6 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -440,7 +440,7 @@ contains
     type(string_t) :: lhapdf_dir, lhapdf_file
     type(string_t), dimension(13) :: lhapdf_photon_sets
     integer :: lhapdf_member, lhapdf_photon_scheme
-    logical :: lhapdf_hoppet_b_matching
+    logical :: hoppet_b_matching
     class(rng_factory_t), allocatable :: rng_factory
     logical :: circe1_photon1, circe1_photon2, circe1_generate
     real(default) :: circe1_sqrts, circe1_eps
@@ -479,10 +479,13 @@ contains
          type is (pdf_builtin_data_t)
             pdf_name = &
                  var_list_get_sval (var_list, var_str ("$pdf_builtin_set"))
+            hoppet_b_matching = &
+                 var_list_get_lval (var_list, var_str ("?hoppet_b_matching"))
             call data%init (global%pdf_builtin_status, &
                  model, pdg_in(i_beam(1)), &
                  name = pdf_name, &
-                 path = global%os_data%pdf_builtin_datapath)
+                 path = global%os_data%pdf_builtin_datapath, &
+                 hoppet_b_matching = hoppet_b_matching)
          end select
       case ("pdf_builtin_photon")
          call msg_fatal ("Currently, there are no photon PDFs built into WHIZARD,", &
@@ -502,14 +505,14 @@ contains
               var_list_get_ival (var_list, var_str ("lhapdf_member"))
          lhapdf_photon_scheme = &
               var_list_get_ival (var_list, var_str ("lhapdf_photon_scheme"))
-         lhapdf_hoppet_b_matching = &
-              var_list_get_lval (var_list, var_str ("?lhapdf_hoppet_b_matching"))
+         hoppet_b_matching = &
+              var_list_get_lval (var_list, var_str ("?hoppet_b_matching"))
          select type (data)
          type is (lhapdf_data_t)
             call data%init &
                  (global%lhapdf_status, model, pdg_in(i_beam(1)), &
                   lhapdf_dir, lhapdf_file, lhapdf_member, &
-                  lhapdf_photon_scheme, lhapdf_hoppet_b_matching)
+                  lhapdf_photon_scheme, hoppet_b_matching)
          end select
       case ("lhapdf_photon")
          allocate (lhapdf_data_t :: data)
@@ -1292,6 +1295,7 @@ contains
        call msg_fatal ("Event I/O method '" // char (method) &
             // "' not implemented")
     end select
+    call eio%set_fallback_model (global%fallback_model)
   end subroutine dispatch_eio
   
   subroutine dispatch_qcd (qcd, global)
@@ -1430,7 +1434,7 @@ contains
             call msg_message ("Simulate: applying hadronization")
        select type (evt)
        type is (evt_shower_t)
-          call evt%init (settings, global%os_data)
+          call evt%init (settings, global%fallback_model, global%os_data)
           if (present (process)) &
                call evt%setup_pdf (process, global%beam_structure)
        end select
@@ -2074,7 +2078,10 @@ contains
     write (u, "(A)")  "*   Purpose: allocate an event I/O (eio) stream"
     write (u, "(A)")
 
+    call syntax_model_file_init ()
     call global%global_init ()
+    call global%init_fallback_model &
+         (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"))
     
     write (u, "(A)")  "* Allocate as raw"
     write (u, "(A)")
@@ -2147,6 +2154,7 @@ contains
 
     call eio%final ()
     call global%final ()
+    call syntax_model_file_final ()
     
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: dispatch_9"
@@ -2382,6 +2390,8 @@ contains
 
     call syntax_model_file_init ()
     call global%global_init ()
+    call global%init_fallback_model &
+         (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"))
 
     write (u, "(A)")  "* Partonic decays"
     write (u, "(A)")

@@ -6,7 +6,6 @@
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
-#     with contributions from
 #     Christian Speckner <cnspeckn@googlemail.com>
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
@@ -25,18 +24,16 @@
 #
 ########################################################################
 
-## If (parts of) LHAPDF are not available, we create a dummy to stub them.
-if LHAPDF_FULL_DUMMY
-noinst_LTLIBRARIES = libLHAPDF_dummy.la
-libLHAPDF_dummy_la_SOURCES = \
-	lhapdf_full_dummy.f90 \
-	lhapdf_has_photon_dummy.f90
-endif
-
-if LHAPDF_HAS_PHOTON_DUMMY
-noinst_LTLIBRARIES = libLHAPDF_dummy.la
-libLHAPDF_dummy_la_SOURCES = \
-	lhapdf_has_photon_dummy.f90
+## The files in this directory end up in an auxiliary libtool library.
+if LHAPDF6_AVAILABLE
+noinst_LTLIBRARIES = libLHAPDFWrap.la
+libLHAPDFWrap_la_SOURCES = \
+   LHAPDFWrap.cpp lhapdf.f90
+libLHAPDFWrap_la_CPPFLAGS = $(LHAPDF_CXXFLAGS)
+else
+noinst_LTLIBRARIES = libLHAPDFWrap_dummy.la
+libLHAPDFWrap_dummy_la_SOURCES = \
+   LHAPDFWrap_dummy.f90 lhapdf.f90
 endif
 
 AM_FCFLAGS =
@@ -55,8 +52,22 @@ AM_FCFLAGS += $(FCFLAGS_OPENMP)
 endif
 
 ########################################################################
+## Explicit dependencies
+
+lhapdf.lo: ../misc/kinds.$(FC_MODULE_EXT)
+
+AM_FCFLAGS += -I../misc
+
+MODULES= \
+  lhapdf.$(FC_MODULE_EXT)
+
+########################################################################
 ## Non-standard cleanup tasks
 
 ## Remove backup files
 maintainer-clean-local:
 	-rm -f *~
+
+## Remove module files
+clean-local:
+	-rm -f $(MODULES)

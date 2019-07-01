@@ -7,7 +7,7 @@ if test -f OCAML_FLAG -a -f STDHEP_FLAG; then
     s=`basename @script@`
     ./run_whizard.sh @script@ --no-logging --model QED
     # echo "STHDHEP file contents:" >> $s.log
-    # cat ${s}_p.stdhep >> $s.log
+    # cat ${s}_p.hep >> $s.log
     diff ref-output/$s.ref $s.log
 else
     echo "|=============================================================================|"

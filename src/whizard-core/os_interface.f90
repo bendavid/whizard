@@ -1,4 +1,4 @@
-! WHIZARD 2.2.1 June 3 2014
+! WHIZARD 2.2.2 July 6 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -124,6 +124,12 @@ module os_interface
      type(string_t) :: gml
      type(string_t) :: dvips
      type(string_t) :: ps2pdf
+     type(string_t) :: gosampath
+     type(string_t) :: golempath
+     type(string_t) :: formpath
+     type(string_t) :: qgrafpath
+     type(string_t) :: ninjapath
+     type(string_t) :: samuraipath
   end type os_data_t
 
   type :: dlaccess_t
@@ -299,6 +305,12 @@ contains
     os_data%dvips  = PRG_DVIPS
     os_data%ps2pdf = PRG_PS2PDF
     call os_data_expand_paths (os_data)
+    os_data%gosampath = GOSAM_DIR
+    os_data%golempath = GOLEM_DIR
+    os_data%formpath = FORM_DIR
+    os_data%qgrafpath = QGRAF_DIR
+    os_data%ninjapath = NINJA_DIR
+    os_data%samuraipath = SAMURAI_DIR
   end subroutine os_data_init
     
   subroutine os_data_expand_paths (os_data)
@@ -406,6 +418,14 @@ contains
     write (u, *) "gml    = ", char (os_data%gml)
     write (u, *) "dvips  = ", char (os_data%dvips)
     write (u, *) "ps2pdf = ", char (os_data%ps2pdf)
+    if (os_data%gosampath /= "") then
+       write (u, *) "gosam   = ", char (os_data%gosampath)
+       write (u, *) "golem   = ", char (os_data%golempath)
+       write (u, *) "form    = ", char (os_data%formpath)
+       write (u, *) "qgraf   = ", char (os_data%qgrafpath)
+       write (u, *) "ninja   = ", char (os_data%ninjapath)
+       write (u, *) "samurai = ", char (os_data%samuraipath)
+    end if
   end subroutine os_data_write
 
   subroutine dlaccess_write (object, unit)

@@ -1,4 +1,4 @@
-! WHIZARD 2.2.1 June 3 2014
+! WHIZARD 2.2.2 July 6 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -95,10 +95,13 @@ module flavors
      module procedure flavor_init0
      module procedure flavor_init0_particle_data
      module procedure flavor_init0_model
+     module procedure flavor_init0_model_alt
      module procedure flavor_init0_name_model
      module procedure flavor_init1_model
+     module procedure flavor_init1_model_alt
      module procedure flavor_init1_name_model
      module procedure flavor_init2_model
+     module procedure flavor_init2_model_alt
      module procedure flavor_init_aval_model
   end interface
   interface flavor_set_model
@@ -152,6 +155,14 @@ contains
     flv%prt => model_get_particle_ptr (model, f)
   end subroutine flavor_init0_model
 
+  subroutine flavor_init0_model_alt (flv, f, model, alt_model)
+    type(flavor_t), intent(out) :: flv
+    integer, intent(in) :: f
+    type(model_t), intent(in), target :: model, alt_model
+    flv%f = f
+    flv%prt => model_get_particle_ptr (model, f, alt_model)
+  end subroutine flavor_init0_model_alt
+
   subroutine flavor_init1_model (flv, f, model)
     type(flavor_t), dimension(:), intent(out) :: flv
     integer, dimension(:), intent(in) :: f
@@ -162,6 +173,16 @@ contains
     end do
   end subroutine flavor_init1_model
 
+  subroutine flavor_init1_model_alt (flv, f, model, alt_model)
+    type(flavor_t), dimension(:), intent(out) :: flv
+    integer, dimension(:), intent(in) :: f
+    type(model_t), intent(in), target :: model, alt_model
+    integer :: i
+    do i = 1, size (f)
+       call flavor_init0_model_alt (flv(i), f(i), model, alt_model)
+    end do
+  end subroutine flavor_init1_model_alt
+
   subroutine flavor_init2_model (flv, f, model)
     type(flavor_t), dimension(:,:), intent(out) :: flv
     integer, dimension(:,:), intent(in) :: f
@@ -171,6 +192,16 @@ contains
        call flavor_init1_model (flv(:,i), f(:,i), model)
     end do
   end subroutine flavor_init2_model
+
+  subroutine flavor_init2_model_alt (flv, f, model, alt_model)
+    type(flavor_t), dimension(:,:), intent(out) :: flv
+    integer, dimension(:,:), intent(in) :: f
+    type(model_t), intent(in), target :: model, alt_model
+    integer :: i
+    do i = 1, size (f, 2)
+       call flavor_init1_model_alt (flv(:,i), f(:,i), model, alt_model)
+    end do
+  end subroutine flavor_init2_model_alt
 
   subroutine flavor_init0_name_model (flv, name, model)
     type(flavor_t), intent(out) :: flv

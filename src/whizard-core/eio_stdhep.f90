@@ -1,4 +1,4 @@
-! WHIZARD 2.2.1 June 3 2014
+! WHIZARD 2.2.2 July 6 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -52,13 +52,15 @@ module eio_stdhep
   public :: eio_stdhep_t
   public :: eio_stdhep_hepevt_t
   public :: eio_stdhep_hepeup_t
-  public :: stdhep_init
+  public :: stdhep_init_out
+  public :: stdhep_init_in
   public :: stdhep_write 
   public :: stdhep_end  
   public :: eio_stdhep_test
 
   type, abstract, extends (eio_t) :: eio_stdhep_t
      logical :: writing = .false.
+     logical :: reading = .false.
      integer :: unit = 0
      logical :: keep_beams = .false.     
      integer(i64) :: n_events_expected = 0
@@ -66,6 +68,7 @@ module eio_stdhep
      procedure :: set_parameters => eio_stdhep_set_parameters
      procedure :: write => eio_stdhep_write
      procedure :: final => eio_stdhep_final
+     procedure :: common_init => eio_stdhep_common_init
      procedure :: split_out => eio_stdhep_split_out
      procedure :: init_out => eio_stdhep_init_out
      procedure :: init_in => eio_stdhep_init_in
@@ -98,9 +101,9 @@ contains
     else
        select type (eio)
        type is (eio_stdhep_hepevt_t)
-          eio%extension = "stdhep"
+          eio%extension = "hep"
        type is (eio_stdhep_hepeup_t)
-          eio%extension = "up.stdhep"
+          eio%extension = "up.hep"
        end select
     end if
   end subroutine eio_stdhep_set_parameters
@@ -113,6 +116,8 @@ contains
     write (u, "(1x,A)")  "STDHEP event stream:"
     if (object%writing) then
        write (u, "(3x,A,A)")  "Writing to file   = ", char (object%filename)
+    else if (object%reading) then
+       write (u, "(3x,A,A)")  "Reading from file = ", char (object%filename)
     else
        write (u, "(3x,A)")  "[closed]"
     end if
@@ -127,9 +132,37 @@ contains
        call msg_message ()
        call stdhep_end
        object%writing = .false.
+    else if (object%reading) then
+       write (msg_buffer, "(A,A,A)")  "Events: closing STDHEP file '", &
+            char (object%filename), "'"
+       call msg_message ()
+       object%reading = .false.
     end if
   end subroutine eio_stdhep_final
   
+  subroutine eio_stdhep_common_init (eio, sample, data, extension)
+    class(eio_stdhep_t), intent(inout) :: eio
+    type(string_t), intent(in) :: sample
+    type(string_t), intent(in), optional :: extension
+    type(event_sample_data_t), intent(in), optional :: data
+    if (.not. present (data)) &
+         call msg_bug ("STDHEP initialization: missing data")
+    if (data%n_beam /= 2) &
+         call msg_fatal ("STDHEP: defined for scattering processes only")
+    if (present (extension)) then
+       eio%extension = extension
+    else
+       select type (eio)
+       type is (eio_stdhep_hepevt_t)
+          eio%extension = "hep"
+       type is (eio_stdhep_hepeup_t)
+          eio%extension = "up.hep"
+       end select
+    end if
+    call eio%set_filename ()    
+    eio%unit = free_unit ()    
+  end subroutine eio_stdhep_common_init
+
   subroutine eio_stdhep_split_out (eio)
     class(eio_stdhep_t), intent(inout) :: eio
     if (eio%split) then
@@ -141,11 +174,11 @@ contains
        call stdhep_end
        select type (eio)
        type is (eio_stdhep_hepeup_t)
-          call stdhep_init (char (eio%filename), &
+          call stdhep_init_out (char (eio%filename), &
                "WHIZARD event sample", eio%n_events_expected)
           call stdhep_write (STDHEP_HEPRUP)
        type is (eio_stdhep_hepevt_t)
-          call stdhep_init (char (eio%filename), &
+          call stdhep_init_out (char (eio%filename), &
                "WHIZARD event sample", eio%n_events_expected) 
        end select
     end if
@@ -159,20 +192,11 @@ contains
     logical, intent(out), optional :: success
     integer :: i
     if (.not. present (data)) &
-         call msg_bug ("STDHEP initialization: missing data")
-    if (data%n_beam /= 2) &
-         call msg_fatal ("STDHEP: defined for scattering processes only")
-    call eio%set_splitting (data)
+         call msg_bug ("STDHEP initialization: missing data")        
     eio%sample = sample
-    select type (eio)
-    type is (eio_stdhep_hepevt_t)
-       eio%extension = "stdhep"
-    type is (eio_stdhep_hepeup_t)
-       eio%extension = "up.stdhep"
-    end select
-    call eio%set_filename ()
+    call eio%set_splitting (data)    
+    call eio%common_init (sample, data)
     eio%n_events_expected = data%n_evt
-    eio%unit = free_unit ()
     write (msg_buffer, "(A,A,A)")  "Events: writing to STDHEP file '", &
          char (eio%filename), "'"
     call msg_message ()
@@ -191,11 +215,11 @@ contains
                cross_section = data%cross_section(i), &
                error = data%error(i))          
        end do
-       call stdhep_init (char (eio%filename), &
+       call stdhep_init_out (char (eio%filename), &
             "WHIZARD event sample", eio%n_events_expected)
        call stdhep_write (STDHEP_HEPRUP)
     type is (eio_stdhep_hepevt_t)
-       call stdhep_init (char (eio%filename), &
+       call stdhep_init_out (char (eio%filename), &
             "WHIZARD event sample", eio%n_events_expected) 
     end select
     if (present (success))  success = .true.
@@ -209,6 +233,7 @@ contains
     type(process_ptr_t), dimension(:), intent(in) :: process_ptr
     type(event_sample_data_t), intent(inout), optional :: data
     logical, intent(out), optional :: success
+    
     call msg_bug ("STDHEP: event input not supported")
     if (present (success))  success = .false.
   end subroutine eio_stdhep_init_in
@@ -261,7 +286,7 @@ contains
     iostat = 1
   end subroutine eio_stdhep_input_event
 
-  subroutine stdhep_init (file, title, nevt)
+  subroutine stdhep_init_out (file, title, nevt)
     character(len=*), intent(in) :: file, title
     integer(i64), intent(in) :: nevt
     integer(i32) :: nevt32
@@ -269,16 +294,31 @@ contains
     nevt32 = min (nevt, int (huge (1_i32), i64))
     call stdxwinit (file, title, nevt32, istr, lok)
     call stdxwrt (100, istr, lok)
-  end subroutine stdhep_init
+  end subroutine stdhep_init_out
 
+  subroutine stdhep_init_in (file, nevt)
+    character(len=*), intent(in) :: file
+    integer(i64), intent(in) :: nevt
+    integer(i32) :: nevt32
+    external stdx
+  end subroutine stdhep_init_in
+  
   subroutine stdhep_write (ilbl)
     integer, intent(in) :: ilbl
     external stdxwrt
     call stdxwrt (ilbl, istr, lok)
   end subroutine stdhep_write
 
+  subroutine stdhep_read (ilbl, lok)
+    integer, intent(out) :: ilbl
+    logical, intent(out) :: lok
+    external stdxrd
+    call stdxrd (ilbl, istr, lok)
+  end subroutine stdhep_read
+  
   subroutine stdhep_end
-    external stdxend
+    external stdxend, stdxwrt
+    call stdxwrt (200, istr, lok)
     call stdxend (istr)
   end subroutine stdhep_end  
   
@@ -357,7 +397,7 @@ contains
     write (u, "(A)")
 
     u_file = free_unit ()
-    open (u_file, file = char (sample // ".stdhep"), &
+    open (u_file, file = char (sample // ".hep"), &
          action = "read", status = "old")
     do
        read (u_file, "(A)", iostat = iostat)  buffer
@@ -464,7 +504,7 @@ contains
     write (u, "(A)")
 
     u_file = free_unit ()
-    open (u_file, file = char(sample // ".up.stdhep"), &
+    open (u_file, file = char(sample // ".up.hep"), &
          action = "read", status = "old")
     do
        read (u_file, "(A)", iostat = iostat)  buffer

@@ -1,4 +1,4 @@
-! WHIZARD 2.2.1 June 3 2014
+! WHIZARD 2.2.2 July 6 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -2153,6 +2153,9 @@ contains
     call syntax_model_file_init ()
 
     call global%global_init ()
+    call global%init_fallback_model &
+         (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"))
+
     call var_list_set_log (global%var_list, var_str ("?omega_openmp"), &
          .false., is_known = .true.)
     call var_list_set_int (global%var_list, var_str ("seed"), &
@@ -2313,6 +2316,9 @@ contains
     call syntax_model_file_init ()
 
     call global%global_init ()
+    call global%init_fallback_model &
+         (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"))
+
     call var_list_set_log (global%var_list, var_str ("?omega_openmp"), &
          .false., is_known = .true.)
     call var_list_set_int (global%var_list, var_str ("seed"), &
@@ -2495,6 +2501,9 @@ contains
     call syntax_model_file_init ()
 
     call global%global_init ()
+    call global%init_fallback_model &
+         (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"))
+
     call var_list_set_log (global%var_list, var_str ("?omega_openmp"), &
          .false., is_known = .true.)
     call var_list_set_int (global%var_list, var_str ("seed"), &

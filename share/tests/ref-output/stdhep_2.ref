@@ -60,11 +60,11 @@ n_events = 1
 | RNG: Setting seed for random-number generator to 1
 | Simulation: requested number of events = 1
 |             corr. to luminosity [fb-1] =   5.2017E-06
-| Events: writing to STDHEP file 'stdhep_2_p.up.stdhep'
+| Events: writing to STDHEP file 'stdhep_2_p.up.hep'
 | Events: generating 1 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
-| Events: closing STDHEP file 'stdhep_2_p.up.stdhep'
+| Events: closing STDHEP file 'stdhep_2_p.up.hep'
 | There were no errors and    1 warning(s).
 | WHIZARD run finished.
 |=============================================================================|

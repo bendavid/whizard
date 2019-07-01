@@ -1,4 +1,4 @@
-! WHIZARD 2.2.1 June 3 2014
+! WHIZARD 2.2.2 July 6 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -33,6 +33,7 @@ module eio_lhef
   use file_utils !NODEP!
   use iso_varying_string, string_t => varying_string !NODEP!
   use diagnostics !NODEP!
+  use os_interface
   use unit_tests
 
   use xml
@@ -258,7 +259,7 @@ contains
        allocate (eio%tag_generator)
        call eio%tag_generator%init ( &
             var_str ("generator"), &
-            [xml_attribute (var_str ("version"), var_str ("2.2.1"))], &
+            [xml_attribute (var_str ("version"), var_str ("2.2.2"))], &
             .true.)
        allocate (eio%tag_xsecinfo)
        call eio%tag_xsecinfo%init ( &
@@ -578,11 +579,12 @@ contains
     iostat = 0
     call event%reset ()
     call event%select (1, 1, 1)
-    call hepeup_to_event (event, recover_beams = eio%recover_beams)
-    if (associated (event%process)) then
-       pset => event%get_particle_set_ptr ()
-       call particle_set_set_model (pset, event%process%get_model_ptr ())
-    end if
+    call hepeup_to_event (event, eio%fallback_model, &
+         recover_beams = eio%recover_beams)
+!    if (associated (event%process)) then
+!       pset => event%get_particle_set_ptr ()
+!       call particle_set_set_model (pset, event%process%get_model_ptr ())
+!    end if
     select case (eio%version)
     case ("1.0")
        call eio%tag_event%read_content (eio%cstream, s, closing = closing)
@@ -611,7 +613,7 @@ contains
        call eio%tag_gen_n%write (var_str ("WHIZARD"), u)
        write (u, *)
        write (u, "(2x)", advance = "no")
-       call eio%tag_gen_v%write (var_str ("2.2.1"), u)
+       call eio%tag_gen_v%write (var_str ("2.2.2"), u)
        write (u, *)
     end select
     call eio%tag_head%close (u);  write (u, *)
@@ -1309,6 +1311,8 @@ contains
   subroutine eio_lhef_4 (u)
     integer, intent(in) :: u
     type(model_list_t) :: model_list
+    type(model_t), pointer :: fallback_model
+    type(os_data_t) :: os_data
     type(event_t), allocatable, target :: event
     type(process_t), allocatable, target :: process
     type(process_ptr_t) :: process_ptr
@@ -1366,6 +1370,9 @@ contains
     write (u, "(A)")
 
     call syntax_model_file_init ()
+    call os_data_init (os_data)
+    call model_list%read_model (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"), &
+         os_data, fallback_model)
  
     allocate (process)
     process_ptr%ptr => process
@@ -1382,6 +1389,7 @@ contains
     type is (eio_lhef_t)
        call eio%set_parameters (recover_beams = .false.)
     end select
+    call eio%set_fallback_model (fallback_model)
     
     call data%init (1)
     data%n_beam = 2
@@ -1455,6 +1463,8 @@ contains
   subroutine eio_lhef_5 (u)
     integer, intent(in) :: u
     type(model_list_t) :: model_list
+    type(model_t), pointer :: fallback_model
+    type(os_data_t) :: os_data
     type(event_t), allocatable, target :: event
     type(process_t), allocatable, target :: process
     type(process_ptr_t) :: process_ptr
@@ -1512,6 +1522,9 @@ contains
     write (u, "(A)")
 
     call syntax_model_file_init ()
+    call os_data_init (os_data)
+    call model_list%read_model (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"), &
+         os_data, fallback_model)
  
     allocate (process)
     process_ptr%ptr => process
@@ -1528,6 +1541,7 @@ contains
     type is (eio_lhef_t)
        call eio%set_parameters (version = "2.0", recover_beams = .false.)
     end select
+    call eio%set_fallback_model (fallback_model)
     
     call data%init (1)
     data%unweighted = .false.
@@ -1600,6 +1614,8 @@ contains
   subroutine eio_lhef_6 (u)
     integer, intent(in) :: u
     type(model_list_t) :: model_list
+    type(model_t), pointer :: fallback_model
+    type(os_data_t) :: os_data
     type(event_t), allocatable, target :: event
     type(process_t), allocatable, target :: process
     type(process_ptr_t) :: process_ptr
@@ -1658,6 +1674,9 @@ contains
     write (u, "(A)")
 
     call syntax_model_file_init ()
+    call os_data_init (os_data)
+    call model_list%read_model (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"), &
+         os_data, fallback_model)
  
     allocate (process)
     process_ptr%ptr => process
@@ -1674,6 +1693,7 @@ contains
     type is (eio_lhef_t)
        call eio%set_parameters (version = "3.0", recover_beams = .false.)
     end select
+    call eio%set_fallback_model (fallback_model)
     
     call data%init (1)
     data%unweighted = .false.

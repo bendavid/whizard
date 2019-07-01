@@ -61,12 +61,12 @@ $sample = "beam_setup_4p_1"
 | RNG: Setting seed for random-number generator to 1
 | Simulation: requested number of events = 1
 |             corr. to luminosity [fb-1] =   9.3557E-03
-| Events: writing to ASCII file 'beam_setup_4p_1.short.evt'
+| Events: writing to ASCII file 'beam_setup_4p_1.mokka.evt'
 | Events: writing to raw file 'beam_setup_4p_1.evx'
 | Events: generating 1 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
-| Events: closing ASCII file 'beam_setup_4p_1.short.evt'
+| Events: closing ASCII file 'beam_setup_4p_1.mokka.evt'
 | Events: closing raw file 'beam_setup_4p_1.evx'
 seed = 0
 | RNG: Initializing TAO random-number generator
@@ -114,12 +114,12 @@ $sample = "beam_setup_4p_2"
 | RNG: Setting seed for random-number generator to 1
 | Simulation: requested number of events = 1
 |             corr. to luminosity [fb-1] =   3.3554E-03
-| Events: writing to ASCII file 'beam_setup_4p_2.short.evt'
+| Events: writing to ASCII file 'beam_setup_4p_2.mokka.evt'
 | Events: writing to raw file 'beam_setup_4p_2.evx'
 | Events: generating 1 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
-| Events: closing ASCII file 'beam_setup_4p_2.short.evt'
+| Events: closing ASCII file 'beam_setup_4p_2.mokka.evt'
 | Events: closing raw file 'beam_setup_4p_2.evx'
 seed = 0
 | RNG: Initializing TAO random-number generator
@@ -168,12 +168,12 @@ $sample = "beam_setup_4p_3"
 | RNG: Setting seed for random-number generator to 1
 | Simulation: requested number of events = 1
 |             corr. to luminosity [fb-1] =   9.2845E-03
-| Events: writing to ASCII file 'beam_setup_4p_3.short.evt'
+| Events: writing to ASCII file 'beam_setup_4p_3.mokka.evt'
 | Events: writing to raw file 'beam_setup_4p_3.evx'
 | Events: generating 1 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
-| Events: closing ASCII file 'beam_setup_4p_3.short.evt'
+| Events: closing ASCII file 'beam_setup_4p_3.mokka.evt'
 | Events: closing raw file 'beam_setup_4p_3.evx'
 seed = 0
 | RNG: Initializing TAO random-number generator
@@ -223,53 +223,37 @@ $sample = "beam_setup_4p_4"
 | RNG: Setting seed for random-number generator to 1
 | Simulation: requested number of events = 1
 |             corr. to luminosity [fb-1] =   9.2845E-03
-| Events: writing to ASCII file 'beam_setup_4p_4.short.evt'
+| Events: writing to ASCII file 'beam_setup_4p_4.mokka.evt'
 | Events: writing to raw file 'beam_setup_4p_4.evx'
 | Events: generating 1 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
-| Events: closing ASCII file 'beam_setup_4p_4.short.evt'
+| Events: closing ASCII file 'beam_setup_4p_4.mokka.evt'
 | Events: closing raw file 'beam_setup_4p_4.evx'
 | There were no errors and    4 warning(s).
 | WHIZARD run finished.
 |=============================================================================|
-Contents of beam_setup_4p_1.short.evt:
+Contents of beam_setup_4p_1.mokka.evt:
  4 2 0  1.0000000000E+00
- 11 0
-  0.0000000000E+00  0.0000000000E+00  5.0000000000E+02  5.0000000000E+02  0.0000000000E+00
- -11 0
-  0.0000000000E+00  0.0000000000E+00 -5.0000000000E+02  5.0000000000E+02  0.0000000000E+00
- 13 0
-  2.0901288193E+02 -3.0192283873E+02  3.3934674691E+02  5.0000000000E+02  0.0000000000E+00
- -13 0
- -2.0901288193E+02  3.0192283873E+02 -3.3934674691E+02  5.0000000000E+02  0.0000000000E+00
-Contents of beam_setup_4p_2.short.evt:
+ 2 11 3 4  0.0000000000E+00  0.0000000000E+00  5.0000000000E+02  0.0000000000E+00
+ 2 -11 3 4  0.0000000000E+00  0.0000000000E+00 -5.0000000000E+02  0.0000000000E+00
+ 1 13 0 0  2.0901288193E+02 -3.0192283873E+02  3.3934674691E+02  0.0000000000E+00
+ 1 -13 0 0 -2.0901288193E+02  3.0192283873E+02 -3.3934674691E+02  0.0000000000E+00
+Contents of beam_setup_4p_2.mokka.evt:
  4 2 0  1.0000000000E+00
- 11 0
-  0.0000000000E+00  0.0000000000E+00  1.0000000000E+02  1.0000000000E+02  0.0000000000E+00
- -11 0
-  0.0000000000E+00  0.0000000000E+00 -9.0000000000E+02  9.0000000000E+02  0.0000000000E+00
- 13 0
-  1.2540772916E+02 -1.8115370324E+02 -6.0653253086E+01  2.2852260247E+02  0.0000000000E+00
- -13 0
- -1.2540772916E+02  1.8115370324E+02 -7.3934674691E+02  7.7147739753E+02  0.0000000000E+00
-Contents of beam_setup_4p_3.short.evt:
+ 2 11 3 4  0.0000000000E+00  0.0000000000E+00  1.0000000000E+02  0.0000000000E+00
+ 2 -11 3 4  0.0000000000E+00  0.0000000000E+00 -9.0000000000E+02  0.0000000000E+00
+ 1 13 0 0  1.2540772916E+02 -1.8115370324E+02 -6.0653253086E+01  0.0000000000E+00
+ 1 -13 0 0 -1.2540772916E+02  1.8115370324E+02 -7.3934674691E+02  0.0000000000E+00
+Contents of beam_setup_4p_3.mokka.evt:
  4 2 0  1.0000000000E+00
- 11 0
-  0.0000000000E+00  0.0000000000E+00  5.0000000000E+02  5.0000000000E+02  0.0000000000E+00
- -11 0
- -8.6824088833E+01  0.0000000000E+00 -4.9240387651E+02  5.0000000000E+02  0.0000000000E+00
- 13 0
-  1.9426895249E+02 -3.0077393118E+02  3.2235041590E+02  4.8178332703E+02  0.0000000000E+00
- -13 0
- -2.8109304132E+02  3.0077393118E+02 -3.1475429240E+02  5.1821667297E+02  0.0000000000E+00
-Contents of beam_setup_4p_4.short.evt:
+ 2 11 3 4  0.0000000000E+00  0.0000000000E+00  5.0000000000E+02  0.0000000000E+00
+ 2 -11 3 4 -8.6824088833E+01  0.0000000000E+00 -4.9240387651E+02  0.0000000000E+00
+ 1 13 0 0  1.9426895249E+02 -3.0077393118E+02  3.2235041590E+02  0.0000000000E+00
+ 1 -13 0 0 -2.8109304132E+02  3.0077393118E+02 -3.1475429240E+02  0.0000000000E+00
+Contents of beam_setup_4p_4.mokka.evt:
  4 2 0  1.0000000000E+00
- 11 0
-  0.0000000000E+00  0.0000000000E+00  5.0000000000E+02  5.0000000000E+02  0.0000000000E+00
- -11 0
- -6.1393901984E+01 -6.1393901984E+01 -4.9240387651E+02  5.0000000000E+02  0.0000000000E+00
- 13 0
-  1.9835439473E+02 -3.1063706125E+02  3.4629298240E+02  5.0572589354E+02  0.0000000000E+00
- -13 0
- -2.5974829672E+02  2.4924315927E+02 -3.3869685891E+02  4.9427410646E+02  0.0000000000E+00
+ 2 11 3 4  0.0000000000E+00  0.0000000000E+00  5.0000000000E+02  0.0000000000E+00
+ 2 -11 3 4 -6.1393901984E+01 -6.1393901984E+01 -4.9240387651E+02  0.0000000000E+00
+ 1 13 0 0  1.9835439473E+02 -3.1063706125E+02  3.4629298240E+02  0.0000000000E+00
+ 1 -13 0 0 -2.5974829672E+02  2.4924315927E+02 -3.3869685891E+02  0.0000000000E+00

@@ -24,7 +24,7 @@ where X.X is the current version (and sub-version) number.
 Prerequisites are:
 
  - Make
- - Objective Caml compiler (version 3.10 or higher)
+ - Objective Caml compiler (version 3.12 or higher)
  - Fortran 2003 compiler
  - C/C++ (for HepMC interfaces)
 

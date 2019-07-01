@@ -1,4 +1,4 @@
-! WHIZARD 2.2.1 June 3 2014
+! WHIZARD 2.2.2 July 6 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -82,6 +82,7 @@ module models
   public :: particle_data_get_mass_sign
   public :: particle_data_get_width
   public :: particle_data_get_isospin
+  public :: vertex_iterator_t
   public :: model_t
   public :: model_final
   public :: model_write
@@ -120,7 +121,6 @@ module models
   public :: model_list_t
   public :: model_init_instance
   public :: model_pointer_to_instance
-  public :: fs_table_t
   public :: models_test
 
   integer, parameter :: PAR_NONE = 0
@@ -209,6 +209,16 @@ module models
      type(particle_p), dimension(:), allocatable :: prt
   end type vertex_t
 
+  type :: vertex_iterator_t
+     private
+     type(model_t), pointer :: model => null ()
+     integer, dimension(:), allocatable :: pdg
+     integer :: vertex_index = 0
+   contains
+     procedure :: init => vertex_iterator_init
+     procedure :: get_next_match => vertex_iterator_get_next_match
+  end type vertex_iterator_t
+  
   type :: vertex_table_entry_t
      integer :: pdg1 = 0, pdg2 = 0
      integer :: n = 0
@@ -258,28 +268,6 @@ module models
      procedure :: final => model_list_final
   end type model_list_t
 
-  type, extends (pdg_array_t) :: fs_entry_t
-     type(fs_entry_t), pointer :: previous => null ()
-     type(fs_entry_t), pointer :: next => null ()
-  end type fs_entry_t
-
-  type :: fs_table_t
-     type(model_t), pointer :: model => null ()
-     integer :: pdg_in = 0
-     integer :: n_max = 0
-     real(default) :: e = 0
-     logical :: radiative = .false.
-     type(fs_entry_t), pointer :: first => null ()
-     type(fs_entry_t), pointer :: last => null ()
-   contains
-     procedure :: write => fs_table_write
-     procedure :: make => fs_table_make
-     procedure :: split => fs_table_split
-     procedure :: record => fs_table_record
-     procedure :: get_length => fs_table_get_length
-     procedure :: get_pdg_out => fs_table_get_pdg_out
-  end type fs_table_t
-     
 
   abstract interface
      subroutine model_init_external_parameters (par) bind (C)
@@ -1058,11 +1046,10 @@ contains
     write (u, *)
   end subroutine vertex_write
 
-  subroutine vertex_get_match (vtx, pdg1, pdg2, radiative)
+  subroutine vertex_get_match (vtx, pdg1, pdg2)
     type(vertex_t), intent(in) :: vtx
     integer, intent(in) :: pdg1
     integer, dimension(:), allocatable, intent(out) :: pdg2
-    logical, intent(in) :: radiative
     integer :: i, j
     do i = 1, size (vtx%pdg)
        if (vtx%pdg(i) == pdg1) then
@@ -1076,9 +1063,6 @@ contains
           exit
        end if
     end do
-    if (allocated (pdg2)) then
-       if (.not. radiative .and. any (pdg2 == pdg1))  deallocate (pdg2)
-    end if
   contains
     function anti (i) result (pdg)
       integer, intent(in) :: i
@@ -1091,6 +1075,30 @@ contains
     end function anti
   end subroutine vertex_get_match
 
+  subroutine vertex_iterator_init (it, model, pdg)
+    class(vertex_iterator_t), intent(out) :: it
+    type(model_t), intent(in), target :: model
+    integer, dimension(:), intent(in) :: pdg
+    it%model => model
+    allocate (it%pdg (size (pdg)), source = pdg)
+  end subroutine vertex_iterator_init
+  
+  subroutine vertex_iterator_get_next_match (it, pdg_match)
+    class(vertex_iterator_t), intent(inout) :: it
+    integer, dimension(:), allocatable, intent(out) :: pdg_match
+    integer :: i, j
+    do i = it%vertex_index + 1, size (it%model%vtx)
+       do j = 1, size (it%pdg)
+          call vertex_get_match (it%model%vtx(i), it%pdg(j), pdg_match)
+          if (allocated (pdg_match)) then
+             it%vertex_index = i
+             return
+          end if
+       end do
+    end do
+    it%vertex_index = 0
+  end subroutine vertex_iterator_get_next_match
+  
   function vertex_table_size (n_vtx) result (n)
     integer(i32) :: n
     integer, intent(in) :: n_vtx
@@ -1868,9 +1876,10 @@ contains
     n = size (model%prt)
   end function model_get_n_particles
   
-  function model_get_particle_index (model, pdg) result (index)
+  function model_get_particle_index (model, pdg, nocheck) result (index)
     type(model_t), intent(in) :: model
     integer, intent(in) :: pdg
+    logical, intent(in), optional :: nocheck
     integer :: index
     integer :: i
     do i = 1, size (model%prt)
@@ -1878,19 +1887,43 @@ contains
           index = i;  return
        end if
     end do
-    write (msg_buffer, "(1x,A,1x,I0)")  "PDG code =", pdg
-    call msg_message
-    call msg_fatal (" Model '" // char (model%name) // "'" // &
-         " has no particle with this PDG code")
+    if (present (nocheck)) then
+       if (nocheck) then
+          index = 0
+          return
+       end if
+    end if
+    write (msg_buffer, "(A,1x,I0,1x,A,1x,A)") &
+         "No particle with PDG code", pdg, &
+         "is contained in model", &
+         char (model_get_name (model))
+    call msg_fatal ()
   end function model_get_particle_index
 
-  function model_get_particle_ptr (model, pdg) result (prt)
+  function model_get_particle_ptr (model, pdg, alt_model) result (prt)
     type(particle_data_t), pointer :: prt
     type(model_t), intent(in), target :: model
+    type(model_t), intent(in), optional, target :: alt_model
     integer, intent(in) :: pdg
+    integer :: i
     prt => null ()
     if (pdg /= UNDEFINED) then
-       prt => model%prt(model_get_particle_index (model, pdg))
+       i = model_get_particle_index (model, pdg, nocheck = present (alt_model))
+       if (i > 0) then
+          prt => model%prt(i)
+       else if (present (alt_model)) then
+          i = model_get_particle_index (alt_model, pdg, nocheck = .true.)
+          if (i > 0) then
+             prt => alt_model%prt(i)
+          else
+             write (msg_buffer, "(A,1x,I0,1x,A,1x,A,1x,A,1x,A)") &
+                  "No particle with PDG code", pdg, &
+                  "is contained in models", &
+                  char (model_get_name (model)), "or", &
+                  char (model_get_name (alt_model))
+             call msg_fatal ()
+          end if
+       end if
     end if
   end function model_get_particle_ptr
 
@@ -1947,10 +1980,11 @@ contains
        end if
     end do
     if (pdg == UNDEFINED) then
-       write (msg_buffer, "(1x,A,1x,A)")  "Particle name =", char (name)
-       call msg_message
-       call msg_fatal (" Model '" // char (model%name) // "'" // &
-            " has no particle with this name")
+       write (msg_buffer, "(A,A,A,1x,A,1x,A)") &
+            "No particle with name '", char (name), &
+            "' is contained in model", &
+            char (model_get_name (model))
+       call msg_fatal ()
     end if
   end function model_get_particle_pdg_name
 
@@ -2628,160 +2662,6 @@ contains
     call model_init_instance (model, model_tmp)
   end subroutine model_pointer_to_instance
     
-  subroutine fs_table_write (object, unit)
-    class(fs_table_t), intent(in) :: object
-    integer, intent(in), optional :: unit
-    integer, dimension(:), allocatable :: pdg
-    type(fs_entry_t), pointer :: entry
-    integer :: u, j, k
-    u = output_unit (unit)
-    k = model_get_particle_index (object%model, object%pdg_in)
-    write (u, "(1x,A,1x,A)")  "Decays for particle:", &
-         char (particle_data_get_name (object%model%prt(k), object%pdg_in < 0))
-    entry => object%first
-    do while (associated (entry))
-       write (u, "(2x)", advance = "no")
-       pdg = entry%pdg_array_t
-       do j = 1, size (pdg)
-          k = model_get_particle_index (object%model, pdg(j))
-          write (u, "(1x,A)", advance = "no") &
-               char (particle_data_get_name (object%model%prt(k), pdg(j) < 0))
-       end do
-       write (u, *)
-       entry => entry%next
-    end do
-  end subroutine fs_table_write
-          
-  subroutine fs_table_make (table, model, pdg_in, n_max, radiative)
-    class(fs_table_t), intent(out) :: table
-    type(model_t), intent(in), target :: model
-    integer, intent(in) :: pdg_in
-    integer, intent(in) :: n_max
-    logical, intent(in), optional :: radiative
-    type(pdg_array_t) :: pa_in
-    integer :: i
-    table%model => model
-    table%pdg_in = pdg_in
-    table%n_max = n_max
-    i = model_get_particle_index (model, pdg_in)
-    table%e = particle_data_get_mass (model%prt(i))
-    if (present (radiative))  table%radiative = radiative
-    pa_in = [pdg_in]
-    call table%split (pa_in, 1)
-  end subroutine fs_table_make
-    
-  recursive subroutine fs_table_split (table, pa, i, record)
-    class(fs_table_t), intent(inout) :: table
-    type(pdg_array_t), intent(in) :: pa
-    integer, intent(in) :: i
-    logical, intent(in), optional :: record
-    integer :: pdg1, v, l
-    integer, dimension(:), allocatable :: pdg2
-    if (present (record)) then
-       if (record)  call table%record (sort_abs (pa))
-    end if
-    pdg1 = pdg_array_get (pa, i)
-    l = pdg_array_get_length (pa)
-    do v = 1, size (table%model%vtx)
-       call vertex_get_match (table%model%vtx(v), pdg1, pdg2, table%radiative)
-       if (allocated (pdg2)) then
-          if (l + size (pdg2) - 1 <= table%n_max) then
-             call fs_table_split (table, pdg_array_replace (pa, i, pdg2), i, &
-                  record = .true.)
-          end if
-       end if
-    end do
-    if (i < l) then
-       call fs_table_split (table, pa, i + 1)
-    end if
-  end subroutine fs_table_split
-    
-  subroutine fs_table_record (table, pa)
-    class(fs_table_t), intent(inout) :: table
-    type(pdg_array_t), intent(in) :: pa
-    type(fs_entry_t), pointer :: current
-    current => table%first
-    do while (associated (current))
-       if (pa == current%pdg_array_t) then
-          return
-       else if (mass_sum (pa, table%model) >= table%e) then
-          return
-       else if (pa < current%pdg_array_t) then
-          call insert
-          return
-       end if
-       current => current%next
-    end do
-    call insert
-  contains
-    subroutine insert ()
-      type(fs_entry_t), pointer :: entry
-      allocate (entry)
-      entry%pdg_array_t = pa
-      if (associated (current)) then
-         if (associated (current%previous)) then
-            current%previous%next => entry
-            entry%previous => current%previous
-         else
-            table%first => entry
-         end if
-         entry%next => current
-         current%previous => entry
-      else
-         if (associated (table%last)) then
-            table%last%next => entry
-            entry%previous => table%last
-         else
-            table%first => entry
-         end if
-         table%last => entry
-      end if
-    end subroutine insert
-  end subroutine fs_table_record
-    
-  function mass_sum (pa, model) result (m)
-    type(pdg_array_t), intent(in) :: pa
-    type(model_t), intent(in), target :: model
-    real(default) :: m
-    integer :: i, k
-    m = 0
-    do i = 1, pdg_array_get_length (pa)
-       k = model_get_particle_index (model, pdg_array_get (pa, i))
-       m = m + particle_data_get_mass (model%prt(k))
-    end do
-  end function mass_sum
-  
-  function fs_table_get_length (fs_table) result (n)
-    class(fs_table_t), intent(in) :: fs_table
-    integer :: n
-    type(fs_entry_t), pointer :: entry
-    n = 0
-    entry => fs_table%first
-    do while (associated (entry))
-       n = n + 1
-       entry => entry%next
-    end do
-  end function fs_table_get_length
-
-  subroutine fs_table_get_pdg_out (fs_table, i, pdg_out)
-    class(fs_table_t), intent(in) :: fs_table
-    integer, intent(in) :: i
-    integer, dimension(:), allocatable, intent(out) :: pdg_out
-    type(fs_entry_t), pointer :: entry
-    integer :: n
-    n = 0
-    entry => fs_table%first
-    do while (associated (entry))
-       n = n + 1
-       if (n == i) then
-          allocate (pdg_out (pdg_array_get_length (entry%pdg_array_t)))
-          pdg_out = entry%pdg_array_t
-          exit
-       end if
-       entry => entry%next
-    end do
-  end subroutine fs_table_get_pdg_out
-  
 
   subroutine models_test (u, results)
     integer, intent(in) :: u
@@ -2797,9 +2677,6 @@ contains
          u, results)
     call test (models_4, "models_4", &
          "handle decays and polarization", &
-         u, results)
-    call test (models_5, "models_5", &
-         "generate decay table", &
          u, results)
   end subroutine models_test
 
@@ -3014,57 +2891,6 @@ contains
     write (u, "(A)")  "* Test output end: models_4"
 
   end subroutine models_4
-
-  subroutine models_5 (u)
-    integer, intent(in) :: u
-    type(os_data_t) :: os_data
-    type(model_list_t) :: model_list
-    type(model_t), pointer :: model
-    type(fs_table_t) :: fs_table
-
-    write (u, "(A)")  "* Test output: models_5"
-    write (u, "(A)")  "*   Purpose: determine Higgs decay table"
-    write (u, *)
-
-    call syntax_model_file_init ()
-    call os_data_init (os_data)
-
-    write (u, "(A)")  "* Read Standard Model"
-
-    call model_list%read_model (var_str ("SM"), var_str ("SM.mdl"), &
-         os_data, model)
-
-    write (u, *)
-    write (u, "(A)")  "* Higgs decays n = 2"
-    write (u, *)
-
-    call fs_table%make (model, 25, 2)
-    call fs_table%write (u)
-
-    write (u, *)
-    write (u, "(A)")  "* Higgs decays n = 3 (w/o radiative)"
-    write (u, *)
-
-    call fs_table%make (model, 25, 3, radiative = .false.)
-    call fs_table%write (u)
-
-    write (u, *)
-    write (u, "(A)")  "* Higgs decays n = 3 (w/ radiative)"
-    write (u, *)
-
-    call fs_table%make (model, 25, 3, radiative = .true.)
-    call fs_table%write (u)
-
-    write (u, *)
-    write (u, "(A)")  "* Cleanup"
-    
-    call model_list%final ()
-    call syntax_model_file_final ()
-
-    write (u, *)
-    write (u, "(A)")  "* Test output end: models_5"
-
-  end subroutine models_5
 
 
 end module models

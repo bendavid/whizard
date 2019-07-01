@@ -24,7 +24,7 @@ iterations = 1:400
 openmp_num_threads = 1
 
 n_events = 1
-sample_format = short
+sample_format = mokka
 
 beams = "e-", "e+"
 

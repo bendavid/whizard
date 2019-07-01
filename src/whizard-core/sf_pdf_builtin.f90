@@ -1,4 +1,4 @@
-! WHIZARD 2.2.1 June 3 2014
+! WHIZARD 2.2.2 July 6 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -30,6 +30,7 @@
 module sf_pdf_builtin
 
   use kinds, only: default !NODEP!
+  use kinds, only: double !NODEP!
   use iso_varying_string, string_t => varying_string !NODEP!
   use limits, only: PDF_BUILTIN_DEFAULT_PROTON !NODEP!
   use limits, only: PDF_BUILTIN_DEFAULT_PION !NODEP!
@@ -52,6 +53,7 @@ module sf_pdf_builtin
   use interactions
   use sf_aux
   use sf_base
+  use hoppet_interface
 
   implicit none
   private
@@ -71,6 +73,7 @@ module sf_pdf_builtin
      logical :: photon
      logical, dimension(-6:6) :: mask
      logical :: mask_photon
+     logical :: hoppet_b_matching = .false.
    contains
      procedure :: init => pdf_builtin_data_init
      procedure :: set_mask => pdf_builtin_data_set_mask
@@ -106,13 +109,15 @@ module sf_pdf_builtin
 
 contains
 
-  subroutine pdf_builtin_data_init (data, pdf_status, model, pdg_in, name, path)
+  subroutine pdf_builtin_data_init (data, pdf_status, &
+       model, pdg_in, name, path, hoppet_b_matching)
     class(pdf_builtin_data_t), intent(out) :: data
     type(pdf_builtin_status_t), intent(inout) :: pdf_status
     type(model_t), intent(in), target :: model
     type(pdg_array_t), intent(in) :: pdg_in
     type(string_t), intent(in) :: name
     type(string_t), intent(in) :: path
+    logical, intent(in), optional :: hoppet_b_matching
     data%model => model
     if (pdg_array_get_length (pdg_in) /= 1) &
          call msg_fatal ("PDF: incoming particle must be unique")
@@ -149,7 +154,9 @@ contains
     data%id = pdf_get_id (data%name)
     if (data%id < 0) call msg_fatal ("unknown PDF set " // char (data%name))
     data%has_photon = pdf_provides_photon (data%id)
+    if (present (hoppet_b_matching))  data%hoppet_b_matching = hoppet_b_matching
     call pdf_init (pdf_status, data%id, path)
+    if (data%hoppet_b_matching)  call hoppet_init (.true., pdf_id = data%id)
   end subroutine pdf_builtin_data_init
 
   subroutine pdf_builtin_data_set_mask (data, mask)
@@ -178,6 +185,7 @@ contains
          "mask         =", &
          data%mask(-6:-1), "*", data%mask(0), "*", data%mask(1:6)
     write (u, "(3x,A,L1)") "photon mask  = ", data%mask_photon
+    write (u, "(3x,A,L1)") "hoppet_b     = ", data%hoppet_b_matching    
   end subroutine pdf_builtin_data_write
 
   function pdf_builtin_data_get_n_par (data) result (n)
@@ -349,22 +357,36 @@ contains
     class(pdf_builtin_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
     real(default), dimension(-6:6) :: ff
+    real(double), dimension(-6:6) :: ff_dbl
     real(default) :: x, fph
+    real(double) :: xx, qq
     complex(default), dimension(:), allocatable :: fc
     associate (data => sf_int%data)
       sf_int%q = scale
       x = sf_int%x
+      xx = x
+      qq = scale
       if (data%invert) then
          if (data%has_photon) then
             call pdf_evolve (data%id, x, scale, ff(6:-6:-1), fph)
          else
-            call pdf_evolve (data%id, x, scale, ff(6:-6:-1))
+            if (data%hoppet_b_matching) then
+               call hoppet_eval (xx, qq, ff_dbl(6:-6:-1))
+               ff = ff_dbl
+            else
+               call pdf_evolve (data%id, x, scale, ff(6:-6:-1))
+            end if
          end if
       else
          if (data%has_photon) then
             call pdf_evolve (data%id, x, scale, ff, fph)
          else
-            call pdf_evolve (data%id, x, scale, ff)
+            if (data%hoppet_b_matching) then
+               call hoppet_eval (xx, qq, ff_dbl)
+               ff = ff_dbl
+            else
+               call pdf_evolve (data%id, x, scale, ff)               
+            end if
          end if
       end if
       if (data%has_photon) then

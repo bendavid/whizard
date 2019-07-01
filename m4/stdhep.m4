@@ -30,7 +30,7 @@ if test "$enable_stdhep" = "yes"; then
   if test "$enable_stdhep" = "yes"; then
 
   wo_stdhep_libdir="-L$STDHEP_DIR -L$FMCFIO_DIR"
-  AC_LANG([Fortran])	
+  AC_LANG_PUSH([Fortran])	
   AC_CHECK_LIB([stdhep], [stdxwinit],
     [LDFLAGS_STDHEP="$wo_stdhep_libdir -lstdhep -lFmcfio"],
     [withoutg2c="no"],
@@ -54,7 +54,7 @@ if test "$enable_stdhep" = "yes"; then
 	  AC_MSG_RESULT([(disabled)])
      fi
    fi
-	
+  AC_LANG_POP() 	
   fi
 else
   AC_MSG_CHECKING([for STDHEP])

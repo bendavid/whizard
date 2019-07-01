@@ -61,13 +61,13 @@ sample_split_n_evt = 2
 | RNG: Setting seed for random-number generator to 1
 | Simulation: requested number of events = 5
 |             corr. to luminosity [fb-1] =   5.9087E-02
-| Events: writing to STDHEP file 'stdhep_3_p.0.stdhep'
+| Events: writing to STDHEP file 'stdhep_3_p.0.hep'
 | Events: generating 5 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
-| Events: writing to STDHEP file 'stdhep_3_p.1.stdhep'
-| Events: writing to STDHEP file 'stdhep_3_p.2.stdhep'
+| Events: writing to STDHEP file 'stdhep_3_p.1.hep'
+| Events: writing to STDHEP file 'stdhep_3_p.2.hep'
 |         ... event sample complete.
-| Events: closing STDHEP file 'stdhep_3_p.2.stdhep'
+| Events: closing STDHEP file 'stdhep_3_p.2.hep'
 | There were no errors and    1 warning(s).
 | WHIZARD run finished.
 |=============================================================================|

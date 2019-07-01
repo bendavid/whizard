@@ -1,4 +1,4 @@
-!$Id: pdf_builtin.f90 5840 2014-05-24 13:33:07Z jr_reuter $
+!$Id: pdf_builtin.f90 5925 2014-06-22 22:17:54Z jr_reuter $
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
@@ -129,6 +129,8 @@ module pdf_builtin
   public :: pdf_provides_photon
   public :: pdf_get_id
   public :: pdf_alphas
+  public :: pdf_alphas_LHAPDF
+  public :: pdf_getmass
   public :: pdf_builtin_status_reset
   public :: pdf_builtin_status_is_initialized
   public :: pdf_builtin_status_set_initialized
@@ -394,7 +396,7 @@ contains
     dx = x
     dq = q
 
-    call pdf_evolve(set, dx, dq, f)
+    call pdf_evolve (set, dx, dq, f)
     ff = f
   end subroutine pdf_evolve_LHAPDF
   
@@ -474,6 +476,30 @@ contains
     end select
     alphas = as
   end function pdf_alphas
+
+  function pdf_alphas_LHAPDF (pdftype, q) result (alphas)
+    integer, intent(in) :: pdftype
+    real(kind=double), intent(in) :: q
+    real(kind=double) :: alphas
+    real(kind=default) :: q_def
+    q_def = q
+    alphas = pdf_alphas (pdftype, q_def)
+  end function pdf_alphas_LHAPDF
+
+  function pdf_getmass (nf) result (mass)
+    integer, intent(in) :: nf
+    real(kind=double) :: mass
+    select case (abs (nf))
+       case (1:3)
+          mass = 0._double
+       case (4)
+          mass = 1.3_double
+       case (5)
+          mass = 4.5_double
+       case default
+          call msg_fatal ("PDF builtin: invalid PDG code for quark mass.")
+       end select
+  end function pdf_getmass
 
   subroutine pdf_builtin_status_reset (pdf_builtin_status)
     type(pdf_builtin_status_t), intent(inout) :: pdf_builtin_status
