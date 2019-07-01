@@ -10607,7 +10607,7 @@ may contain extra passes, these are ignored.
     type(pass_t), pointer :: current
     current => self%first
     do while (associated (current))
-       write (unit, descr_fmt) "Integration pass:"
+       write (unit, "(1X,A)") "Integration pass:"
        call current%write (unit, pacify)
        current => current%next
     end do
@@ -10649,14 +10649,14 @@ precision for comparing output from file with data.
     character(len=7) :: fmt
     call pac_fmt (fmt, FMT_17, FMT_14, pacify)
     u = given_output_unit (unit)
-    write (u, integer_fmt) "n_it = ", self%n_it
-    write (u, integer_fmt) "n_calls = ", self%n_calls
-    write (u, logical_fmt) "adapt grids = ", self%adapt_grids
-    write (u, logical_fmt) "adapt weights = ", self%adapt_weights
+    write (u, "(3X,A,I0)") "n_it          = ", self%n_it
+    write (u, "(3X,A,I0)") "n_calls       = ", self%n_calls
+    write (u, "(3X,A,L1)") "adapt grids   = ", self%adapt_grids
+    write (u, "(3X,A,L1)") "adapt weights = ", self%adapt_weights
     if (self%integral_defined) then
-       write (u, descr_fmt) "Results:  [it, calls, integral, error, efficiency]"
+       write (u, "(3X,A)") "Results:  [it, calls, integral, error, efficiency]"
        do i = 1, self%n_it
-          write (u, "(2x,I0,1x,I0,3(1x," // fmt // "))") &
+          write (u, "(5x,I0,1x,I0,3(1x," // fmt // "))") &
                i, self%calls(i), self%integral(i), self%error(i), &
                self%efficiency(i)
        end do
@@ -10677,15 +10677,15 @@ precision for comparing output from file with data.
     character(80) :: buffer
     self%i_pass = n_pass + 1
     self%i_first_it = n_it + 1
-    read (u, integer_fmt) buffer, self%n_it
-    read (u, integer_fmt) buffer, self%n_calls
-    read (u, logical_fmt) buffer, self%adapt_grids
-    read (u, logical_fmt) buffer, self%adapt_weights
+    call read_ival (u, self%n_it)
+    call read_ival (u, self%n_calls)
+    call read_lval (u, self%adapt_grids)
+    call read_lval (u, self%adapt_weights)
     allocate (self%calls (self%n_it), source = 0)
     allocate (self%integral (self%n_it), source = 0._default)
     allocate (self%error (self%n_it), source = 0._default)
     allocate (self%efficiency (self%n_it), source = 0._default)
-    read (u, descr_fmt)  buffer
+    read (u, "(A)")  buffer
     select case (trim (adjustl (buffer)))
     case ("Results:  [it, calls, integral, error, efficiency]")
        do i = 1, self%n_it
@@ -10702,6 +10702,46 @@ precision for comparing output from file with data.
   end subroutine pass_read
 
 @ %def pass_read
+@ Auxiliary: Read real, integer, string value.  We search for an equals sign,
+the value must follow.
+<<MCI vamp2: procedures>>=
+  subroutine read_rval (u, rval)
+    integer, intent(in) :: u
+    real(default), intent(out) :: rval
+    character(80) :: buffer
+    read (u, "(A)")  buffer
+    buffer = adjustl (buffer(scan (buffer, "=") + 1:))
+    read (buffer, *)  rval
+  end subroutine read_rval
+
+  subroutine read_ival (u, ival)
+    integer, intent(in) :: u
+    integer, intent(out) :: ival
+    character(80) :: buffer
+    read (u, "(A)")  buffer
+    buffer = adjustl (buffer(scan (buffer, "=") + 1:))
+    read (buffer, *)  ival
+  end subroutine read_ival
+
+  subroutine read_sval (u, sval)
+    integer, intent(in) :: u
+    character(*), intent(out) :: sval
+    character(80) :: buffer
+    read (u, "(A)")  buffer
+    buffer = adjustl (buffer(scan (buffer, "=") + 1:))
+    read (buffer, *)  sval
+  end subroutine read_sval
+
+  subroutine read_lval (u, lval)
+    integer, intent(in) :: u
+    logical, intent(out) :: lval
+    character(80) :: buffer
+    read (u, "(A)")  buffer
+    buffer = adjustl (buffer(scan (buffer, "=") + 1:))
+    read (buffer, *)  lval
+  end subroutine read_lval
+
+@ %def read_rval read_ival read_sval read_lval
 @ Configure. We adjust the number of [[n_calls]], if it is lower than
 [[n_calls_min_per_channel]] times [[b_channel]], and print a warning message.
 <<MCI vamp2: pass: TBP>>=
@@ -10953,20 +10993,21 @@ we replace [[n_calls]] with [[n_min_calls]].
     logical, intent(in), optional :: md5sum_version
     integer :: u, i
     u = given_output_unit (unit)
-    write (u, descr_fmt) "VAMP2 integrator:"
+    write (u, "(1X,A)") "VAMP2 integrator:"
     call object%base_write (u, pacify, md5sum_version)
-    write (u, descr_fmt) "Grid config:"
+    write (u, "(1X,A)") "Grid config:"
     call object%config%write (u)
-    write (u, logical_fmt) "integrator_defined = ", object%integrator_defined
-    write (u, logical_fmt) "integrator_from_file = ", object%integrator_from_file
-    write (u, logical_fmt) "adapt_grids = ", object%adapt_grids
-    write (u, logical_fmt) "adapt_weights = ", object%adapt_weights
-    write (u, integer_fmt) "n_adapt_grids = ", object%n_adapt_grids
-    write (u, integer_fmt) "n_adapt_weights = ", object%n_adapt_weights
-    write (u, logical_fmt) "verbose = ", object%verbose
+    write (u, "(3X,A,L1)") "Integrator defined   = ", object%integrator_defined
+    write (u, "(3X,A,L1)") "Integrator from file = ", object%integrator_from_file
+    write (u, "(3X,A,L1)") "Adapt grids          = ", object%adapt_grids
+    write (u, "(3X,A,L1)") "Adapt weights        = ", object%adapt_weights
+    write (u, "(3X,A,I0)") "No. of adapt grids   = ", object%n_adapt_grids
+    write (u, "(3X,A,I0)") "No. of adapt weights = ", object%n_adapt_weights
+    write (u, "(3X,A,L1)") "Verbose              = ", object%verbose
     call object%list_pass%write (u, pacify)
     if (object%md5sum_adapted /= "") then
-       write (u, md5_fmt)  "MD5 sum (including results) = ", object%md5sum_adapted
+       write (u, "(1X,A,A,A)")  "MD5 sum (including results) = '", &
+            & object%md5sum_adapted, "'"
     end if
   end subroutine mci_vamp2_write
 
@@ -11043,9 +11084,6 @@ additional information about the multi-channel parameters.
     class(mci_vamp2_t), intent(in) :: mci
     integer, intent(in) :: u
     write (u, "(1x,A)")  "MC Integrator is VAMP2"
-    call write_separator (u)
-    ! TODO
-    ! call mci%history%write (u)
     call write_separator (u)
     if (mci%config%use_channel_equivalences) then
        ! TODO
@@ -11145,7 +11183,7 @@ We adjust the maximum number of bins [[n_bins_max]] according to [[n_calls]]
     integer, dimension(:), intent(in) :: dim_flat
   end subroutine mci_vamp2_declare_flat_dimensions
 
-@ %def mci_vamp2_declare_last_dimensions
+@ %def mci_vamp2_declare_flat_dimensions
 @ TODO: Not implemented.
 <<MCI vamp2: mci vamp2: TBP>>=
   procedure, public :: declare_equivalences => mci_vamp2_declare_equivalences
@@ -11224,19 +11262,19 @@ record.
     character(32) :: md5sum_file
     type(mci_vamp2_t) :: mci_file
     integer :: n_pass, n_it
-    read (u, md5_fmt) buffer, md5sum_file
+    call read_sval (u, md5sum_file)
     success = .true.; if (mci%check_grid_file) &
        & success = (md5sum_file == mci%md5sum)
     if (success) then
        read (u, *)
-       read (u, descr_fmt) buffer
+       read (u, "(A)") buffer
        if (trim (adjustl (buffer)) /= "VAMP2 integrator:") then
           call msg_fatal ("VAMP2: reading grid file: corrupted data")
        end if
        n_pass = 0
        n_it = 0
        do
-          read (u, descr_fmt) buffer
+          read (u, "(A)") buffer
           select case (trim (adjustl (buffer)))
           case ("")
              exit
@@ -11254,18 +11292,6 @@ record.
 
 @ %def mci_vamp2_update
 @ Read / write grids from / to file.
-<<MCI vamp2: parameters>>=
-  character(len=*), parameter, private :: &
-       descr_fmt   = "(1X,A)", &
-       md5_fmt     = "(1X,A25,1X,A32)", &
-       integer_fmt = "(1X,A25,1X,I15)", &
-       logical_fmt = "(1X,A25,1X,L1)", &
-       double_fmt  = "(1X,A25,1X," // FMT_14 // ")", &
-       double_array_fmt = "(1X,I25,1X," // FMT_14 // ")", &
-       double_array2_fmt =  "(1X,2(1X,I8),1X," // FMT_14 // ")"
-
-@ %def descr_fmt md5_fmt integer_fmt logical_fmt double_fmt double_array_fmt double_array2_fmt
-@
 <<MCI vamp2: mci vamp2: TBP>>=
   procedure :: write_grids => mci_vamp2_write_grids
   procedure :: read_grids_header => mci_vamp2_read_grids_header
@@ -11284,11 +11310,11 @@ record.
     u = free_unit ()
     open (u, file = char (mci%integrator_filename), &
          action = "write", status = "replace")
-    write (u, md5_fmt) "MD5sum =", mci%md5sum
+    write (u, "(1X,A,A,A)") "MD5sum = '", mci%md5sum, "'"
     write (u, *)
     call mci%write (u)
     write (u, *)
-    write (u, descr_fmt) "VAMP2 grids:"
+    write (u, "(1X,A)") "VAMP2 grids:"
     call mci%integrator%write_grids (u)
     close (u)
   end subroutine mci_vamp2_write_grids
@@ -11329,7 +11355,7 @@ record.
     open (u, file = char (mci%integrator_filename), &
          action = "read", status = "old")
     do
-       read (u, descr_fmt)  buffer
+       read (u, "(A)")  buffer
        if (trim (adjustl (buffer)) == "VAMP2 grids:")  exit
     end do
     call mci%integrator%read_grids (u)
@@ -11357,7 +11383,7 @@ record.
             action = "read", status = "old")
        call mci%update (u, success)
        if (success) then
-          read (u, descr_fmt)  buffer
+          read (u, "(A)")  buffer
           if (trim (adjustl (buffer)) /= "VAMP2 grids:") then
              call msg_fatal ("VAMP2: reading grid file: &
                   &corrupted grid data")
@@ -11407,6 +11433,7 @@ track this set of integrator.
          & n_bins_max = mci%config%n_bins_max, &
          & iterations = 1, &
          & mode = vegas_mode)
+    if (mci%has_chains ()) call mci%integrator%set_chain (mci%n_chain, mci%chain)
     call mci%integrator%set_config (mci%config)
     mci%integrator_defined = .true.
   end subroutine mci_vamp2_init_integrator
@@ -11592,6 +11619,7 @@ Note: recording the efficiency is not supported yet.
       call mci%compute_md5sum (pacify)
     end associate
   end subroutine mci_vamp2_integrate
+
 @ %def mci_vamp2_integrate
 @ Check whether we are already finished with this pass.
 <<MCI vamp2: mci vamp2: TBP>>=
@@ -11815,37 +11843,46 @@ than actual stored max. weight.
     character(len=7) :: fmt
     call pac_fmt (fmt, FMT_17, FMT_14, pacify)
     u = given_output_unit (unit)
-    write (u, descr_fmt) "MCI VAMP2 instance"
-    write (u, integer_fmt) "Selected channel =", object%selected_channel
-    write (u, double_fmt) "Integrand =", object%integrand
-    write (u, double_fmt) "MCI weight =", object%mci_weight
-    write (u, logical_fmt) "Valid =", object%valid
-    write (u, descr_fmt) "MCI a-priori weight"
+    write (u, "(1X,A)") "MCI VAMP2 instance:"
+    write (u, "(1X,A,I0)") &
+         & "Selected channel        = ", object%selected_channel
+    write (u, "(1X,A25,1X," // fmt // ")") &
+         & "Integrand               = ", object%integrand
+    write (u, "(1X,A25,1X," // fmt // ")") &
+         & "MCI weight              = ", object%mci_weight
+    write (u, "(1X,A,L1)") &
+         & "Valid                   = ", object%valid
+    write (u, "(1X,A)") "MCI a-priori weight:"
     do ch = 1, size (object%w)
-       write (u, double_array_fmt) ch, object%w(ch)
+       write (u, "(3X,I25,1X," // fmt // ")") ch, object%w(ch)
     end do
-    write (u, descr_fmt) "MCI jacobian"
+    write (u, "(1X,A)") "MCI jacobian:"
     do ch = 1, size (object%w)
-       write (u, double_array_fmt) ch, object%f(ch)
+       write (u, "(3X,I25,1X," // fmt // ")") ch, object%f(ch)
     end do
-    write (u, descr_fmt) "MCI mapped x"
+    write (u, "(1X,A)") "MCI mapped x:"
     do ch = 1, size (object%w)
        do j = 1, size (object%x, 1)
-          write (u, double_array2_fmt) j, ch, object%x(j, ch)
+          write (u, "(3X,2(1X,I8),1X," // fmt // ")") j, ch, object%x(j, ch)
        end do
     end do
-    write (u, descr_fmt) "MCI channel weight"
+    write (u, "(1X,A)") "MCI channel weight:"
     do ch = 1, size (object%w)
-       write (u, double_array_fmt) ch, object%gi(ch)
+       write (u, "(3X,I25,1X," // fmt // ")") ch, object%gi(ch)
     end do
-    write (u, integer_fmt) "Number of event =", object%n_events
-    write (u, logical_fmt) "Event generated =", object%event_generated
-    write (u, double_fmt) "Event weight =", object%event_weight
-    write (u, double_fmt) "Event excess =", object%event_excess
-    write (u, logical_fmt) "Negative (event) weight = ", object%negative_weights
-    write (u, descr_fmt) "MCI event"
+    write (u, "(1X,A,I0)") &
+         & "Number of event         = ", object%n_events
+    write (u, "(1X,A,L1)") &
+         & "Event generated         = ", object%event_generated
+    write (u, "(1X,A25,1X," // fmt // ")") &
+         & "Event weight            = ", object%event_weight
+    write (u, "(1X,A25,1X," // fmt // ")") &
+         & "Event excess            = ", object%event_excess
+    write (u, "(1X,A,L1)") &
+         & "Negative (event) weight = ", object%negative_weights
+    write (u, "(1X,A)") "MCI event"
     do j = 1, size (object%event_x)
-       write (u, double_array_fmt) j, object%event_x(j)
+       write (u, "(3X,I25,1X," // fmt // ")") j, object%event_x(j)
     end do
   end subroutine mci_vamp2_instance_write
 
@@ -12343,7 +12380,7 @@ Construct an integrator and use it for a one-dimensional sampler.
     call rng%init ()
     call mci%import_rng (rng)
 
-    call mci%write (u)
+    call mci%write (u, pacify = .true.)
 
     write (u, "(A)")
     write (u, "(A)") "* Initialise instance"
@@ -12370,22 +12407,23 @@ Construct an integrator and use it for a one-dimensional sampler.
        call mci%add_pass ()
     end select
     call mci%integrate (mci_instance, mci_sampler, 1, 1000, pacify = .true.)
-    call mci%write (u, .true.)
+    call mci%write (u, pacify = .true.)
 
     write (u, "(A)")
     write (u, "(A)")  "* Contents of mci_instance:"
     write (u, "(A)")
 
-    call mci_instance%write (u)
+    call mci_instance%write (u, pacify = .true.)
 
     write (u, "(A)")
-    write (u, "(A)") "* Dump channel weights and grids"
+    write (u, "(A)") "* Dump channel weights and grids to file"
     write (u, "(A)")
 
-   select type (mci)
-   type is (mci_vamp2_t)
-      call mci%write_grids ()
-   end select
+    mci%md5sum = "1234567890abcdef1234567890abcdef"
+    select type (mci)
+    type is (mci_vamp2_t)
+       call mci%write_grids ()
+    end select
 
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
@@ -12458,23 +12496,24 @@ Integrate with five iterations without grid adaptation.
     type is (mci_vamp2_t)
        call mci%add_pass (adapt_grids = .false.)
     end select
-    call mci%integrate (mci_instance, sampler, 3, 100)
-    call mci%write (u)
+    call mci%integrate (mci_instance, sampler, 3, 1000, pacify = .true.)
+    call mci%write (u, pacify = .true.)
 
     write (u, "(A)")
     write (u, "(A)")  "* Contents of mci_instance:"
     write (u, "(A)")
 
-    call mci_instance%write (u)
+    call mci_instance%write (u, pacify = .true.)
 
     write (u, "(A)")
-    write (u, "(A)") "* Dump channel weights and grids"
+    write (u, "(A)") "* Dump channel weights and grids to file"
     write (u, "(A)")
 
-   select type (mci)
-   type is (mci_vamp2_t)
-      call mci%write_grids ()
-   end select
+    mci%md5sum = "1234567890abcdef1234567890abcdef"
+    select type (mci)
+    type is (mci_vamp2_t)
+       call mci%write_grids ()
+    end select
 
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
@@ -12548,19 +12587,20 @@ Integrate with three iterations and in-between grid adaptations.
     type is (mci_vamp2_t)
        call mci%add_pass (adapt_grids = .true.)
     end select
-    call mci%integrate (mci_instance, sampler, 3, 100)
-    call mci%write (u)
+    call mci%integrate (mci_instance, sampler, 3, 1000, pacify = .true.)
+    call mci%write (u, pacify = .true.)
 
     write (u, "(A)")
     write (u, "(A)")  "* Contents of mci_instance:"
     write (u, "(A)")
 
-    call mci_instance%write (u)
+    call mci_instance%write (u, pacify = .true.)
 
     write (u, "(A)")
-    write (u, "(A)") "* Dump channel weights and grids"
+    write (u, "(A)") "* Dump channel weights and grids to file"
     write (u, "(A)")
 
+    mci%md5sum = "1234567890abcdef1234567890abcdef"
     select type (mci)
     type is (mci_vamp2_t)
        call mci%write_grids ()
@@ -12568,6 +12608,7 @@ Integrate with three iterations and in-between grid adaptations.
 
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
+    write (u, "(A)")
 
     call mci_instance%final ()
     call mci%final ()

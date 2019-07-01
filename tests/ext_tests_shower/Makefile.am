@@ -209,7 +209,6 @@ clean-local:
 	rm -f slhaspectrum.in suspect2.out suspect2_lha.out 
 	rm -f susyhit.in susyhit_slha.out suspect2_lha.in
 	rm -f nmssm.slha
-	rm -f *.$(WT_OMEGA_CACHE_SUFFIX)
 if FC_SUBMODULES
 	rm -f *.smod
 endif

@@ -5307,6 +5307,18 @@ expense of some overhead.
     type(eval_node_t), intent(in) :: en
     y = abs (en%cval)
   end function abs_c
+  integer function conjg_i (en) result (y)
+    type(eval_node_t), intent(in) :: en
+    y = en%ival
+  end function conjg_i
+  real(default) function conjg_r (en) result (y)
+    type(eval_node_t), intent(in) :: en
+    y = en%rval
+  end function conjg_r
+  complex(default) function conjg_c (en) result (y)
+    type(eval_node_t), intent(in) :: en
+    y = conjg (en%cval)
+  end function conjg_c
   integer function sgn_i (en) result (y)
     type(eval_node_t), intent(in) :: en
     y = sign (1, en%ival)
@@ -7520,6 +7532,12 @@ for functions which convert their argument to a different type.
           case (V_REAL); call eval_node_init_real (en, abs_r (en1))
           case (V_CMPLX); call eval_node_init_real (en, abs_c (en1))
           end select
+       case ("conjg")
+          select case (t)
+          case (V_INT);  call eval_node_init_int  (en, conjg_i (en1))
+          case (V_REAL); call eval_node_init_real (en, conjg_r (en1))
+          case (V_CMPLX); call eval_node_init_cmplx (en, conjg_c (en1))
+          end select
        case ("sgn")
           select case (t)
           case (V_INT);  call eval_node_init_int  (en, sgn_i (en1))
@@ -7660,6 +7678,12 @@ for functions which convert their argument to a different type.
           case (V_CMPLX);
              call eval_node_init_branch (en, key, V_REAL, en1)
              call eval_node_set_op1_real (en, abs_c)
+          end select
+       case ("conjg")
+          select case (t)
+          case (V_INT);  call eval_node_set_op1_int  (en, conjg_i)
+          case (V_REAL); call eval_node_set_op1_real (en, conjg_r)
+          case (V_CMPLX);  call eval_node_set_op1_cmplx (en, conjg_c)
           end select
        case ("sgn")
           select case (t)
@@ -10354,7 +10378,7 @@ We have two different flavors of the syntax: with and without particles.
     call ifile_append (ifile, "SEQ unary_function = fun_unary function_arg1")
     call ifile_append (ifile, "SEQ binary_function = fun_binary function_arg2")
     call ifile_append (ifile, "ALT fun_unary = " // &
-         "complex | real | int | nint | floor | ceiling | abs | sgn | " // &
+         "complex | real | int | nint | floor | ceiling | abs | conjg | sgn | " // &
          "sqrt | exp | log | log10 | " // &
          "sin | cos | tan | asin | acos | atan | " // &
          "sinh | cosh | tanh")
@@ -10365,6 +10389,7 @@ We have two different flavors of the syntax: with and without particles.
     call ifile_append (ifile, "KEY floor")
     call ifile_append (ifile, "KEY ceiling")
     call ifile_append (ifile, "KEY abs")
+    call ifile_append (ifile, "KEY conjg")
     call ifile_append (ifile, "KEY sgn")
     call ifile_append (ifile, "KEY sqrt")
     call ifile_append (ifile, "KEY exp")
@@ -12211,6 +12236,8 @@ the instances).
   type, extends (model_data_t) :: model_t
      private
      character(32) :: md5sum = ""
+     logical :: ufo_model = .false.
+     type(string_t) :: ufo_path
      type(string_t), dimension(:), allocatable :: schemes
      type(string_t), allocatable :: selected_scheme
      type(parameter_t), dimension(:), allocatable :: par
@@ -12251,16 +12278,18 @@ base.
   procedure, private :: model_init
 <<Models: procedures>>=
   subroutine model_init &
-       (model, name, libname, os_data, n_par, n_prt, n_vtx)
+       (model, name, libname, os_data, n_par, n_prt, n_vtx, ufo)
     class(model_t), intent(inout) :: model
     type(string_t), intent(in) :: name, libname
     type(os_data_t), intent(in) :: os_data
     integer, intent(in) :: n_par, n_prt, n_vtx
+    logical, intent(in), optional :: ufo
     type(c_funptr) :: c_fptr
     type(string_t) :: libpath
     integer :: scheme_num
     scheme_num = model%get_scheme_num ()
     call model%basic_init (name, n_par, n_prt, n_vtx)
+    if (present (ufo))  model%ufo_model = ufo
     call model%set_scheme_num (scheme_num)
     if (libname /= "") then
        if (.not. os_data%use_testfiles) then
@@ -12368,7 +12397,9 @@ tree) is displayed, and the vertex hash table is shown.
     write (u, "(A,A,A)") 'model "', char (model%get_name ()), '"'
     if (show_md5 .and. model%md5sum /= "") &
          write (u, "(1x,A,A,A)") "! md5sum = '", model%md5sum, "'"
-    if (model%has_schemes ()) then
+    if (model%is_ufo_model ()) then
+       write (u, "(1x,A)")  "! model derived from UFO source"
+    else if (model%has_schemes ()) then
        write (u, "(1x,A)", advance="no")  "! schemes ="
        do i = 1, size (model%schemes)
           if (i > 1)  write (u, "(',')", advance="no")
@@ -12854,6 +12885,90 @@ always synchronized.
 
 @ %def model_get_var_list_ptr
 @
+\subsection{UFO models}
+A single flag identifies a model as a UFO model.  There is no other
+distinction, but the flag allows us to handle built-in and UFO models
+with the same name in parallel.
+<<Models: model: TBP>>=
+  procedure :: is_ufo_model => model_is_ufo_model
+<<Models: procedures>>=
+  function model_is_ufo_model (model) result (flag)
+    class(model_t), intent(in) :: model
+    logical :: flag
+    flag = model%ufo_model
+  end function model_is_ufo_model
+
+@ %def model_is_ufo_model
+@ Return the UFO path used for fetching the UFO source.
+<<Models: model: TBP>>=
+  procedure :: get_ufo_path => model_get_ufo_path
+<<Models: procedures>>=
+  function model_get_ufo_path (model) result (path)
+    class(model_t), intent(in) :: model
+    type(string_t) :: path
+    if (model%ufo_model) then
+       path = model%ufo_path
+    else
+       path = ""
+    end if
+  end function model_get_ufo_path
+
+@ %def model_get_ufo_path
+@
+Call OMega and generate a model file from an UFO source file.  We
+start with a file name; the model name is expected to be the base
+name, stripping extensions.
+<<Models: procedures>>=
+  subroutine model_generate_ufo (filename, os_data, ufo_path)
+    type(string_t), intent(in) :: filename
+    type(os_data_t), intent(in) :: os_data
+    type(string_t), intent(out) :: ufo_path
+    type(string_t) :: model_name, omega_path, ufo_dir, ufo_init
+    logical :: exist
+    call get_model_name (filename, model_name)
+    call msg_message ("Model: Generating model '" // char (model_name) // "' from UFO sources")
+    call msg_message ("Model: Searching for UFO sources in working directory")
+    ufo_path = "."
+    ufo_dir = ufo_path // "/" // model_name
+    ufo_init = ufo_dir // "/" // "__init__.py"
+    inquire (file = char (ufo_init), exist = exist)
+    if (.not. exist) then
+       ufo_path = char (os_data%whizard_modelpath_ufo)
+       ufo_dir = ufo_path // "/" // model_name
+       ufo_init = ufo_dir // "/" // "__init__.py"
+       call msg_message ("Model: Searching for UFO sources in '" &
+            // char (os_data%whizard_modelpath_ufo) // "'")
+       inquire (file = char (ufo_init), exist = exist)
+    end if
+    if (exist) then
+       call msg_message ("Model: Found UFO sources for model '" // char (model_name) // "'")
+    else
+       call msg_fatal ("Model: UFO sources for model '" // char (model_name) // "' not found")
+    end if
+    omega_path = os_data%whizard_omega_binpath // "/omega_UFO.opt"
+    call os_system_call (omega_path &
+         // " -model:UFO_dir " // ufo_dir &
+         // " -model:write_WHIZARD" &
+         // " > " // filename)
+    inquire (file = char (filename), exist = exist)
+    if (exist) then
+        call msg_message ("Model: Model file '" // char (filename) // "' generated")
+    else
+        call msg_fatal ("Model: Model file '" // char (filename) &
+             // "' could not be generated")
+    end if
+  contains
+    subroutine get_model_name (filename, model_name)
+       type(string_t), intent(in) :: filename
+       type(string_t), intent(out) :: model_name
+       type(string_t) :: string
+       string = filename
+       call split (string, model_name, ".")
+    end subroutine get_model_name
+  end subroutine model_generate_ufo
+
+@ %def model_generate_ufo
+@
 \subsection{Scheme handling}
 A model can specify a set of allowed schemes that steer the setup of
 model variables.  The model file can contain scheme-specific
@@ -12954,25 +13069,36 @@ Get the scheme.  Note that the base [[model_data_t]] provides a
 Check if a model has been set up with a specific name and (if
 applicable) scheme.  This helps in determining whether we need a new
 model object.
+
+A UFO model is considered to be distinct from a non-UFO model.  We assume that
+if [[ufo]] is asked for, there is no scheme argument.
 <<Models: model: TBP>>=
   procedure :: matches => model_matches
 <<Models: procedures>>=
-  function model_matches (model, name, scheme) result (flag)
+  function model_matches (model, name, scheme, ufo) result (flag)
     logical :: flag
     class(model_t), intent(in) :: model
     type(string_t), intent(in) :: name
     type(string_t), intent(in), optional :: scheme
-    flag = model%get_name () == name
-    if (flag) then
-       if (model%has_schemes ()) then
-          if (present (scheme)) then
-             flag = model%get_scheme () == scheme
-          else
-             flag = model%get_scheme_num () == 1
-          end if
+    logical, intent(in), optional :: ufo
+    logical :: ufo_model
+    ufo_model = .false.;  if (present (ufo))  ufo_model = ufo
+    if (name /= model%get_name ()) then
+       flag = .false.
+    else if (ufo_model .neqv. model%is_ufo_model ()) then
+       flag = .false.
+    else if (ufo_model) then
+       flag = .true.
+    else if (model%has_schemes ()) then
+       if (present (scheme)) then
+          flag = model%get_scheme () == scheme
        else
-          flag = .not. present (scheme)
+          flag = model%get_scheme_num () == 1
        end if
+    else if (present (scheme)) then
+       flag = .false.
+    else
+       flag = .true.
     end if
   end function model_matches
 
@@ -13030,13 +13156,12 @@ expression syntax, so we exclude them here.
     call ifile_append (ifile, "KEY other")
     call ifile_append (ifile, "KEY end")
     call ifile_append (ifile, "SEQ particles = particle_def*")
-    call ifile_append (ifile, "SEQ particle_def = particle prt_longname " // &
+    call ifile_append (ifile, "SEQ particle_def = particle name_def " // &
          "prt_pdg prt_details")
     call ifile_append (ifile, "KEY particle")
-    call ifile_append (ifile, "IDE prt_longname")
     call ifile_append (ifile, "INT prt_pdg")
     call ifile_append (ifile, "ALT prt_details = prt_src | prt_properties")
-    call ifile_append (ifile, "SEQ prt_src = like prt_longname prt_properties")
+    call ifile_append (ifile, "SEQ prt_src = like name_def prt_properties")
     call ifile_append (ifile, "KEY like")
     call ifile_append (ifile, "SEQ prt_properties = prt_property*")
     call ifile_append (ifile, "ALT prt_property = " // &
@@ -13126,15 +13251,23 @@ module variables:
   end subroutine syntax_model_file_write
 
 @ %def syntax_model_file_write
+@
+Read a model from file.  Handle all syntax and respect the provided scheme.
+
+The [[ufo]] flag just says that the model object should be tagged as
+being derived from an UFO model.  There is no difference in the
+contents of the file or the generated model object.
 <<Models: model: TBP>>=
   procedure :: read => model_read
 <<Models: procedures>>=
-  subroutine model_read (model, filename, os_data, exist, scheme)
+  subroutine model_read (model, filename, os_data, exist, &
+       scheme, ufo, rebuild_mdl)
     class(model_t), intent(out), target :: model
     type(string_t), intent(in) :: filename
     type(os_data_t), intent(in) :: os_data
     logical, intent(out), optional :: exist
     type(string_t), intent(in), optional :: scheme
+    logical, intent(in), optional :: ufo, rebuild_mdl
     type(string_t) :: file
     type(stream_t), target :: stream
     type(lexer_t) :: lexer
@@ -13151,7 +13284,9 @@ module variables:
     type(parse_node_t), pointer :: nd_ext_def
     type(parse_node_t), pointer :: nd_prt
     type(parse_node_t), pointer :: nd_vtx
-    logical :: model_exist
+    logical :: ufo_model, model_exist, rebuild
+    ufo_model = .false.;  if (present (ufo))  ufo_model = ufo
+    rebuild = .true.; if (present (rebuild_mdl))  rebuild = rebuild_mdl
     file = filename
     inquire (file=char(file), exist=model_exist)
     if ((.not. model_exist) .and. (.not. os_data%use_testfiles)) then
@@ -13160,6 +13295,11 @@ module variables:
     end if
     if (.not. model_exist) then
        file = os_data%whizard_modelpath // "/" // filename
+       inquire (file = char (file), exist = model_exist)
+    end if
+    if (ufo_model .and. rebuild) then
+       file = filename
+       call model_generate_ufo (filename, os_data, model%ufo_path)
        inquire (file = char (file), exist = model_exist)
     end if
     if (.not. model_exist) then
@@ -13213,7 +13353,8 @@ module variables:
     n_par = 0
     call count_parameters (nd_par_def, n_parblock, n_par)
 
-    call model%init (model_name, lib_name, os_data, n_par + n_ext, n_prt, n_vtx)
+    call model%init &
+         (model_name, lib_name, os_data, n_par + n_ext, n_prt, n_vtx, ufo)
     model%md5sum = model_md5sum
 
     if (associated (nd_par_def)) then
@@ -13875,18 +14016,20 @@ modified, we should first allocate a local copy.
   procedure :: read_model => model_list_read_model
 <<Models: procedures>>=
   subroutine model_list_read_model &
-       (model_list, name, filename, os_data, model, scheme)
+       (model_list, name, filename, os_data, model, scheme, ufo, rebuild_mdl)
     class(model_list_t), intent(inout), target :: model_list
     type(string_t), intent(in) :: name, filename
     type(os_data_t), intent(in) :: os_data
     type(model_t), pointer, intent(inout) :: model
     type(string_t), intent(in), optional :: scheme
+    logical, intent(in), optional :: ufo, rebuild_mdl
     class(model_list_t), pointer :: global_model_list
     type(model_entry_t), pointer :: current
     logical :: exist
-    if (.not. model_list%model_exists (name, scheme, follow_link=.true.)) then
+    if (.not. model_list%model_exists (name, scheme, ufo, follow_link=.true.)) then
        allocate (current)
-       call current%read (filename, os_data, exist, scheme=scheme)
+       call current%read (filename, os_data, exist, &
+            scheme=scheme, ufo=ufo, rebuild_mdl=rebuild_mdl)
        if (.not. exist)  return
        if (current%get_name () /= name) then
           call msg_fatal ("Model file '" // char (filename) // &
@@ -13901,7 +14044,7 @@ modified, we should first allocate a local copy.
        end do
        call global_model_list%import (current, model)
     else
-       model => model_list%get_model_ptr (name, scheme)
+       model => model_list%get_model_ptr (name, scheme, ufo)
     end if
   end subroutine model_list_read_model
 
@@ -13928,25 +14071,26 @@ told otherwise.
   procedure :: model_exists => model_list_model_exists
 <<Models: procedures>>=
   recursive function model_list_model_exists &
-       (model_list, name, scheme, follow_link) result (exists)
+       (model_list, name, scheme, ufo, follow_link) result (exists)
     class(model_list_t), intent(in) :: model_list
     logical :: exists
     type(string_t), intent(in) :: name
     type(string_t), intent(in), optional :: scheme
+    logical, intent(in), optional :: ufo
     logical, intent(in), optional :: follow_link
     type(model_entry_t), pointer :: current
     logical :: rec
     rec = .true.;  if (present (follow_link))  rec = follow_link
     current => model_list%first
     do while (associated (current))
-       if (current%matches (name, scheme)) then
+       if (current%matches (name, scheme, ufo)) then
           exists = .true.
           return
        end if
        current => current%next
     end do
     if (rec .and. associated (model_list%context)) then
-       exists = model_list%context%model_exists (name, scheme, follow_link)
+       exists = model_list%context%model_exists (name, scheme, ufo, follow_link)
     else
        exists = .false.
     end if
@@ -13958,25 +14102,26 @@ told otherwise.
   procedure :: get_model_ptr => model_list_get_model_ptr
 <<Models: procedures>>=
   recursive function model_list_get_model_ptr &
-       (model_list, name, scheme, follow_link) result (model)
+       (model_list, name, scheme, ufo, follow_link) result (model)
     class(model_list_t), intent(in) :: model_list
     type(model_t), pointer :: model
     type(string_t), intent(in) :: name
     type(string_t), intent(in), optional :: scheme
+    logical, intent(in), optional :: ufo
     logical, intent(in), optional :: follow_link
     type(model_entry_t), pointer :: current
     logical :: rec
     rec = .true.;  if (present (follow_link))  rec = follow_link
     current => model_list%first
     do while (associated (current))
-       if (current%matches (name, scheme)) then
+       if (current%matches (name, scheme, ufo)) then
           model => current%model_t
           return
        end if
        current => current%next
     end do
     if (rec .and. associated (model_list%context)) then
-       model => model_list%context%get_model_ptr (name, scheme, follow_link)
+       model => model_list%context%get_model_ptr (name, scheme, ufo, follow_link)
     else
        model => null ()
     end if
@@ -14078,6 +14223,7 @@ module models_uti
 
 <<Use kinds>>
 <<Use strings>>
+  use file_utils, only: delete_file
   use physics_defs, only: SCALAR, SPINOR
   use os_interface
   use model_data
@@ -14653,6 +14799,190 @@ parameter list.
   end subroutine models_7
 
 @ %def models_7
+@
+\subsubsection{Read and handle UFO model}
+Read a model from file which is considered as an UFO model.  In fact,
+it is a mock model file which just follows our naming convention for
+UFO models.  Compare this to an equivalent non-UFO model.
+<<Models: execute tests>>=
+  call test (models_8, "models_8", &
+       "handle UFO-derived models", &
+       u, results)
+<<Models: test declarations>>=
+  public :: models_8
+<<Models: tests>>=
+  subroutine models_8 (u)
+    integer, intent(in) :: u
+    integer :: um
+    character(80) :: buffer
+    type(os_data_t) :: os_data
+    type(model_list_t) :: model_list
+    type(string_t) :: model_name
+    type(model_t), pointer :: model
+
+    write (u, "(A)")  "* Test output: models_8"
+    write (u, "(A)")  "*   Purpose: distinguish models marked as UFO-derived"
+    write (u, *)
+
+    call os_data_init (os_data)
+
+    call show_model_list_status ()
+    model_name = "models_8_M"
+
+    write (u, *)
+    write (u, "(A)")  "* Write WHIZARD model"
+    write (u, *)
+
+    open (newunit=um, file=char (model_name // ".mdl"), &
+         status="replace", action="readwrite")
+    write (um, "(A)")  'model "models_8_M"'
+    write (um, "(A)")  '  parameter a = 1'
+
+    rewind (um)
+    do
+       read (um, "(A)", end=1)  buffer
+       write (u, "(A)")  trim (buffer)
+    end do
+1   continue
+    close (um)
+
+    write (u, *)
+    write (u, "(A)")  "* Write UFO model"
+    write (u, *)
+
+    open (newunit=um, file=char (model_name // ".ufo.mdl"), &
+         status="replace", action="readwrite")
+    write (um, "(A)")  'model "models_8_M"'
+    write (um, "(A)")  '  parameter a = 2'
+
+    rewind (um)
+    do
+       read (um, "(A)", end=2)  buffer
+       write (u, "(A)")  trim (buffer)
+    end do
+2   continue
+    close (um)
+
+    call syntax_model_file_init ()
+    call os_data_init (os_data)
+
+    write (u, *)
+    write (u, "(A)")  "* Read WHIZARD model"
+    write (u, *)
+
+    call model_list%read_model (model_name, model_name // ".mdl", &
+         os_data, model)
+    call model%write (u, show_md5sum=.false.)
+
+    call show_model_list_status ()
+
+    write (u, *)
+    write (u, "(A)")  "* Read UFO model"
+    write (u, *)
+
+    call model_list%read_model (model_name, model_name // ".ufo.mdl", &
+         os_data, model, ufo=.true., rebuild_mdl = .false.)
+    call model%write (u, show_md5sum=.false.)
+
+    call show_model_list_status ()
+
+    write (u, *)
+    write (u, "(A)")  "* Reload WHIZARD model"
+    write (u, *)
+
+    call model_list%read_model (model_name, model_name // ".mdl", &
+         os_data, model)
+    call model%write (u, show_md5sum=.false.)
+
+    call show_model_list_status ()
+
+    write (u, *)
+    write (u, "(A)")  "* Reload UFO model"
+    write (u, *)
+
+    call model_list%read_model (model_name, model_name // ".ufo.mdl", &
+         os_data, model, ufo=.true., rebuild_mdl = .false.)
+    call model%write (u, show_md5sum=.false.)
+
+    call show_model_list_status ()
+
+    write (u, *)
+    write (u, "(A)")  "* Cleanup"
+
+    call model_list%final ()
+    call syntax_model_file_final ()
+
+    write (u, *)
+    write (u, "(A)")  "* Test output end: models_8"
+
+  contains
+
+    subroutine show_model_list_status ()
+      write (u, "(A)")  "* Model list status"
+      write (u, *)
+      write (u, "(A,1x,L1)")  "WHIZARD model exists =", &
+           model_list%model_exists (model_name)
+      write (u, "(A,1x,L1)")  "UFO model exists =", &
+           model_list%model_exists (model_name, ufo=.true.)
+    end subroutine show_model_list_status
+
+  end subroutine models_8
+
+@ %def models_8
+@
+\subsubsection{Generate UFO model file}
+Generate the necessary [[.ufo.mdl]] file from source, calling OMega, and load the model.
+
+Note: There must not be another unit test which works with the same
+UFO model.  The model file is deleted explicitly at the end of this test.
+<<Models: execute tests>>=
+  call test (models_9, "models_9", &
+       "generate UFO-derived model file", &
+       u, results)
+<<Models: test declarations>>=
+  public :: models_9
+<<Models: tests>>=
+  subroutine models_9 (u)
+    integer, intent(in) :: u
+    integer :: um
+    character(80) :: buffer
+    type(os_data_t) :: os_data
+    type(model_list_t) :: model_list
+    type(string_t) :: model_name, model_file_name
+    type(model_t), pointer :: model
+
+    write (u, "(A)")  "* Test output: models_9"
+    write (u, "(A)")  "*   Purpose: enable the UFO Standard Model (test version)"
+    write (u, *)
+
+    call os_data_init (os_data)
+    call syntax_model_file_init ()
+
+    os_data%whizard_modelpath_ufo = "../models/UFO"
+
+    model_name = "SM"
+    model_file_name = model_name // ".models_9" // ".ufo.mdl"
+
+    write (u, "(A)")  "* Generate and read UFO model"
+    write (u, *)
+
+    call delete_file (char (model_file_name))
+
+    call model_list%read_model (model_name, model_file_name, os_data, model, ufo=.true.)
+    call model%write (u, show_md5sum=.false.)
+
+    write (u, *)
+    write (u, "(A)")  "* Cleanup"
+
+    call model_list%final ()
+    call syntax_model_file_final ()
+
+    write (u, *)
+    write (u, "(A)")  "* Test output end: models_9"
+
+  end subroutine models_9
+
+@ %def models_9
 @
 \clearpage
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

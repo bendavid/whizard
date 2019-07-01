@@ -1,5 +1,5 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! WHIZARD 2.4.1 Mar 24 2017
+! WHIZARD 2.5.0 May 06 2017
 
 ! routine hypgeo and other useful procedures from:
 !

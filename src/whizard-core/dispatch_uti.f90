@@ -1,4 +1,4 @@
-! WHIZARD 2.4.1 Mar 24 2017
+! WHIZARD 2.5.0 May 06 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -46,7 +46,7 @@ module dispatch_uti
   use prc_test_core, only: test_t
   use prc_core, only: prc_core_t
   use prc_test, only: prc_test_def_t
-  use prc_omega, only: omega_omega_def_t, prc_omega_t
+  use prc_omega, only: omega_def_t, prc_omega_t
   use sf_mappings, only: sf_channel_t
   use sf_base, only: sf_data_t, sf_config_t
   use phs_base, only: phs_channel_collection_t
@@ -115,7 +115,7 @@ contains
          var_str ("omega"), is_known = .true.)
     call dispatch_core_def (core_def, prt_in, prt_out, global%model, global%var_list)
     select type (core_def)
-    type is (omega_omega_def_t)
+    type is (omega_def_t)
        call core_def%write (u)
     end select
 

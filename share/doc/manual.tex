@@ -195,6 +195,7 @@
 \newcommand{\spheno}{\texttt{SPheno}}
 \newcommand{\Mathematica}{\texttt{Mathematica}}
 \newcommand{\FeynRules}{\texttt{FeynRules}}
+\newcommand{\UFO}{\texttt{UFO}}
 \newcommand{\gosam}{\texttt{Gosam}}
 \newcommand{\openloops}{\texttt{OpenLoops}}
 \newcommand{\recola}{\texttt{Recola}}
@@ -269,7 +270,7 @@ Parameter & Value & Default & Description \\
 }
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %END LATEX
-\newcommand{\thisversion}{2.4.1}
+\newcommand{\thisversion}{2.5.0}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -278,9 +279,9 @@ Parameter & Value & Default & Description \\
 %%%\preprintno{arXiv:0708.4233 (also based on LC-TOOL-2001-039 (revised))}
 %END LATEX
 \title{%
-%HEVEA WHIZARD 2.4 \\
+%HEVEA WHIZARD 2.5 \\
 %BEGIN LATEX
- \texttt{\huge WHIZARD 2.4} \\[\baselineskip]
+ \texttt{\huge WHIZARD 2.5} \\[\baselineskip]
 %END LATEX
  A generic \\ Monte-Carlo integration and event generation package \\
  for multi-particle processes\\[\baselineskip]
@@ -303,6 +304,7 @@ Parameter & Value & Default & Description \\
   J\"urgen Reuter,%
   with contributions from 
   Fabian Bach, %
+  Simon Bra\ss,
   Bijan Chokouf\'{e} Nejad, %
   Christian Fleper, %
   Vincent Rothe, %
@@ -530,8 +532,8 @@ More technical details about efficiency, tuning and advance usage of
 \whizard\ are collected in Chap.~\ref{chap:tuning}. Then,
 Chap.~\ref{chap:extmodels} shows how to set up your own new physics
 model with the help of external programs like \sarah\ or
-\FeynRules\ program and include it into the \whizard\ event
-generator.  
+\FeynRules\ program or the Universal Feynrules Output, UFO, and
+include it into the \whizard\ event generator.  
 
 In the appendices, we e.g. give an exhaustive reference list of
 SINDARIN commands and built-in variables. 
@@ -653,6 +655,8 @@ of \whizard:
   \\\hline
   2.4.0 & 11/2016 & Refactoring of NLO setup \\
   2.4.1 & 03/2017 & $\alpha$ version of new VEGAS implementation
+  \\\hline
+  2.5.0 & 05/2017 & Full UFO support (SM-like models)
   \\\hline
 \end{tabular}
 \end{center}
@@ -824,7 +828,9 @@ and proceed.\footnote{Without GNU \ttt{tar}, this would read
 For using external physics models that are directly supported by
 \whizard\ and \oMega, the user can use tools like \sarah\ or
 \FeynRules. There installation and linking to \whizard\ will be
-explained in Chap.~\ref{chap:extmodels}.
+explained in Chap.~\ref{chap:extmodels}. Besides this, also new models
+can be conveniently included via \UFO\ files, which will be explained
+as well in that chapter.
 
 The directory will then contain a subdirectory \ttt{whizard-\thisversion}
 where the complete source tree is located.  To update later to a new
@@ -897,8 +903,8 @@ this subset is supported by, at least, the following compilers:
   \ttt{nagfor} (NAG).  You will need version 6.0 or higher.
 \item
   \ttt{ifort} (Intel). You will need version 16.0.0 or
-  higher. Unfortunately, versions 17.0.0 and 17.0.1 show a severe
-  regression and cannot be used.
+  higher. Unfortunately, versions 17.0.0, 17.0.1 and 17.0.2 show a
+  severe regression and cannot be used.
 \end{itemize}
 There are some commercial compilers that might be able to compile
 \whizard\ 2.4 in the near future, but at the time of writing, all of
@@ -907,7 +913,7 @@ the compilers listed below contained compiler bugs. Consult the
 \begin{itemize}
 \item
   \ttt{pgfortran} (PGI).  You will need a more modern version than
-  16.11.
+  17.1.
 \item{ekopath}. You will need a more modern version than 4.0.  
 \end{itemize}
 
@@ -2192,7 +2198,7 @@ named \verb|hello.sin|.
 		|        M. Moretti, T. Ohl, J. Reuter, arXiv: hep-ph/0102195                 |
 		|                                                                             |
 		|=============================================================================|
-		|                               WHIZARD 2.4.1
+		|                               WHIZARD 2.5.0
 		|=============================================================================|
 		| Reading model file '/usr/local/share/whizard/models/SM.mdl'
 		| Preloaded model: SM
@@ -2223,7 +2229,7 @@ including the \whizard\ banner is shown in Fig.~\ref{fig:helloworld})
 \centerline{[... here a banner is displayed]}
 \begin{Verbatim}
 |=============================================================================|
-|                               WHIZARD 2.4.1
+|                               WHIZARD 2.5.0
 |=============================================================================|
 | Reading model file '/usr/local/share/whizard/models/SM.mdl'
 | Preloaded model: SM
@@ -2282,7 +2288,7 @@ This produces a lot of output which looks similar to this:
  | Writing log to 'whizard.log'
 [... banner ...]
  |=============================================================================|
- |                               WHIZARD 2.4.1
+ |                               WHIZARD 2.5.0
  |=============================================================================|
  | Reading model file '/usr/local/share/whizard/models/SM.mdl'
  | Preloaded model: SM
@@ -3424,7 +3430,7 @@ with their obvious meaning and the usual precedence rules.
 SINDARIN supports a bunch of standard numerical functions, mostly equivalent
 to their Fortran counterparts:
 \begin{center}
-  \ttt{abs}\quad \ttt{sgn}\quad \ttt{mod}\quad \ttt{modulo}
+  \ttt{abs}\quad \ttt{conjg}\quad \ttt{sgn}\quad \ttt{mod}\quad \ttt{modulo}
 \\
   \ttt{sqrt}\quad \ttt{exp}\quad \ttt{log}\quad \ttt{log10}
 \\
@@ -8133,7 +8139,7 @@ There is a related \ttt{sprintf} function, cf.~Sec.~\ref{sec:sprintf}.
 A full NLO computation requires virtual matrix elements obtained from
 loop diagrams. Since \oMega\ cannot calculate such diagrams, external
 programs have to be used.  \whizard\ has a generic interface to each
-matrix-element generator which is BLHA-compatible.  
+matrix-element generator which is BLHA-compatible.
 Explicit implementations exist for \gosam\, \openloops and \recola.
 
 %%%%%
@@ -8254,7 +8260,7 @@ Several sindarin options exist to control the behaviour of \openloops.
 
 The installation of \recola\ is explained in detail on the HepForge page
 \url{http://recola.hepforge.org}. In the following the main steps for usage with \whizard\
-are summarized.
+are summarized. The minimal required version number of \recola is 1.2.
 
 \recola\ can be linked to \whizard\ during configuration by including
 \begin{code}
@@ -8439,8 +8445,8 @@ Sec.~\ref{sec:bsmmodels} gives a list and short description of all
 genuine beyond the SM models (BSM) that are currently implemented in
 \whizard\ and its matrix element generator \oMega. Additional models
 beyond that can be integrated and handled via the interfaces to
-external tools like \sarah\ and \FeynRules,
-cf. Chap.~\ref{chap:extmodels}. 
+external tools like \sarah\ and \FeynRules, or the universal model
+format \UFO, cf. Chap.~\ref{chap:extmodels}. 
 
 %%%%%%%%%%%%%%%
 
@@ -8468,6 +8474,8 @@ cf. Chap.~\ref{chap:extmodels}.
              \tt{SM\_ac} \\
              SM with $Hgg$, $H\gamma\gamma$, $H\mu\mu$ &  \tt{---} &
              \tt{SM\_Higgs} \\
+             SM with bosonic dim-6 operators &  \tt{---} &
+             \tt{SM\_dim6} \\
              SM with charge 4/3 top &  \tt{---} &
              \tt{SM\_top} \\
              SM with anomalous top couplings &  \tt{---} &
@@ -9455,7 +9463,7 @@ This is the modern version of the Les Houches accord event format
 <LesHouchesEvents version="1.0">
 <header>
   <generator_name>WHIZARD</generator_name>
-  <generator_version>2.4.1</generator_version>
+  <generator_version>2.5.0</generator_version>
 </header>
 <init>
  25 25  5.0000000000E+02  5.0000000000E+02 -1 -1 -1 -1 3 1
@@ -11563,6 +11571,13 @@ was a regression for the usage of external models (from either \sarah\
 or \FeynRules) in the first release of series v2.2, v2.2.0. This has
 been fixed in all upcoming versions.
 
+Besides using \sarah\ or \FeynRules\ via their interfaces, there is
+now a much easier way to let those programs output model files in the
+"Universal FeynRules Output" (or \UFO). This option does not have any
+principle limitations for models, and also does not rely on the never
+truly constant interfaces between two different tools. Their usage is
+described in Sec.~\ref{sec:ufo}.
+
 %%%%%%%%%%%%%%%
 
 \section{New physics models via \sarah}
@@ -12517,6 +12532,32 @@ showing that no vertices were missed.  The files are stored in the
 directory \verb|fr_mhm| and are ready to be installed and used with
 \whizard. 
 
+%%%%%%%%%%%%%%%
+
+\section{New physics models via the \UFO\ file format}
+
+In this section, we describe how to use the {\em Universal FeynRules
+Output} (\UFO, \cite{Degrande:2011ua}) format for physics models
+inside \whizard. Please refer the manuals of e.g.~\FeynRules\ manual
+for details on how to generate a \UFO\ file for your favorite physics
+model. \UFO\ files are a collection of \ttt{Python} scripts that
+encode the particles, the couplings, the Lorentz structures, the
+decays, as well as parameters, vertices and propagators of the
+corresponding model. They reside in a directory of the exact name of
+the model they have been created from.
+
+If the user wants to generate events for processes from a physics
+model from a \UFO\ file, then this directory of scripts generated by
+\FeynRules\ has to be copied to the working directory of \whizard.
+The only other difference in usage compared to the hard-coded models 
+or models integrated from \FeynRules\ or \sarah\ via their explicit
+interfaces to \whizard\, is the following, e.g. for a model called
+\texttt{test\_model}
+\begin{Code}
+  model = test_model (ufo)
+\end{Code}
+In other words, only the specification \texttt{(ufo)} has to be added
+behind the name of the model. 
 
 %%%%%%%%%%%%%%%
  
@@ -12859,7 +12900,7 @@ barn). (cf. also \ttt{nbarn}, \ttt{fbarn}, \ttt{pbarn})
 \ttt{abs} \newline
 Numerical function that takes the absolute value of its argument: 
 \ttt{abs ({\em <num\_val>})} yields \ttt{|{\em
-<num\_val>}|}. (cf. also \ttt{sgn}, \ttt{mod}, \ttt{modulo}) 
+<num\_val>}|}. (cf. also \ttt{conjg}, \ttt{sgn}, \ttt{mod}, \ttt{modulo}) 
 %%%%%
 \item
 \ttt{acos} \newline
@@ -13556,6 +13597,12 @@ $\rightarrow$ \ttt{?analysis\_file\_only} is set to \ttt{true}).
 \ttt{?analysis\_file\_only}) 
 %%%%%
 \item
+\ttt{conjg} \newline
+Numerical function that takes the complex conjugate of its argument: 
+\ttt{conjg ({\em <num\_val>})} yields \ttt{{\em
+<num\_val>}$^\ast$}. (cf. also \ttt{abs}, \ttt{sgn}, \ttt{mod}, \ttt{modulo}) 
+%%%%%
+\item
 \ttt{\$correlation\_me\_method} \qquad (default: \ttt{"omega"}) \newline
 This string variable specifies the method for the matrix elements to be used in
 the evaluation of the color (and helicity) correlated part of the NLO
@@ -14082,7 +14129,7 @@ one. (cf. also \ttt{ewa}, \ttt{ewa\_pt\_max}, \ttt{ewa\_mass},
 \item
 \ttt{\$exclude\_gauge\_splittings} \qquad (default: \ttt{"c:b:t:e2:e3"}) \newline
 String variable that allows via \ttt{\$exclude\_gauge\_splittings =
-"{\em <prt1>, <prt2>, \dots}"} to exclude fermion flavors from gluon/photon
+"{\em <prt1>:<prt2>:\dots}"} to exclude fermion flavors from gluon/photon
 splitting into fermion pairs beyond LO. For example
 \ttt{\$exclude\_gauge\_splittings = "c:s:b:t"} would lead to \ttt{gl => u U}
 and \ttt{gl => d D} as possible splittings in QCD. It is important to keep in mind
@@ -15249,7 +15296,7 @@ matrix elements and QCD parton showers.  (cf. also
 Numerical function for integer and real numbers \ttt{mod (x, y)} that
 computes the remainder of the division of \ttt{x} by \ttt{y} (which
 must not be zero). (cf. also
-\ttt{abs}, \ttt{sgn}, \ttt{modulo}) 
+\ttt{abs}, \ttt{conjg}, \ttt{sgn}, \ttt{modulo}) 
 %%%%%
 \item
 \ttt{model} \qquad (default: \ttt{SM}) \newline
@@ -15273,7 +15320,7 @@ different string. (cf. also \ttt{model}, \ttt{\$library\_name},
 \ttt{modulo} \newline
 Numerical function for integer and real numbers \ttt{modulo (x, y)} that
 computes the value of $x$ modulo $y$. (cf. also
-\ttt{abs}, \ttt{sgn}, \ttt{mod}) 
+\ttt{abs}, \ttt{conjg}, \ttt{sgn}, \ttt{mod}) 
 %%%%%
 \item
 \ttt{mokka} \newline 
@@ -16560,7 +16607,7 @@ default \ttt{{\em <proc\_name>}\_sftrace.dat}.
 Numerical function for integer and real numbers that gives the sign of
 its argument: \ttt{sgn ({\em <num\_val>})} yields $+1$ if \ttt{{\em
 <num\_val>}} is positive or zero, and $-1$ otherwise. (cf. also
-\ttt{abs}, \ttt{mod}, \ttt{modulo}) 
+\ttt{abs}, \ttt{conjg}, \ttt{mod}, \ttt{modulo}) 
 %%%%%
 \item
 \ttt{short} \newline 
@@ -17770,6 +17817,15 @@ respectively.
   [arXiv:1010.3251 [hep-ph]].
   %%CITATION = ARXIV:1010.3251;%%
 
+%\cite{Degrande:2011ua}
+\bibitem{Degrande:2011ua} 
+  C.~Degrande, C.~Duhr, B.~Fuks, D.~Grellscheid, O.~Mattelaer and T.~Reiter,
+  %``UFO - The Universal FeynRules Output,''
+  Comput.\ Phys.\ Commun.\  {\bf 183}, 1201 (2012)
+  doi:10.1016/j.cpc.2012.01.022
+  [arXiv:1108.2040 [hep-ph]].
+  %%CITATION = doi:10.1016/j.cpc.2012.01.022;%%
+  
 %\cite{Han:1998sg}
 \bibitem{Han:1998sg} 
   T.~Han, J.~D.~Lykken and R.~-J.~Zhang,

@@ -1,4 +1,4 @@
-! WHIZARD 2.4.1 Mar 24 2017
+! WHIZARD 2.5.0 May 06 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -419,6 +419,8 @@ contains
        else
           p_born = p_in
        end if
+       if (.not. k%phs%is_cm_frame ()) &
+            p_born = inverse (k%phs%lt_cm_to_lab) * p_born
        call phs%compute_xi_max (p_born, k%threshold)
        if (k%emitter >= 0) then
           p = size (p_born) + 1
@@ -430,7 +432,7 @@ contains
                 jac_rand_dummy = 1._default
                 call compute_y_from_emitter (phs%generator%real_kinematics%x_rad (I_Y), &
                      phs%generator%real_kinematics%p_born_cms%get_momenta(1), &
-                     k%emitter, .false., phs%generator%y_max, jac_rand_dummy, &
+                     k%n_in, k%emitter, .false., phs%generator%y_max, jac_rand_dummy, &
                      y_offshell)
                 call phs%compute_xi_max (k%emitter, k%i_phs, y_offshell, &
                      phs%generator%real_kinematics%p_born_cms%get_momenta(1), &

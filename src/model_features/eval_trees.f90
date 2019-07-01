@@ -1,4 +1,4 @@
-! WHIZARD 2.4.1 Mar 24 2017
+! WHIZARD 2.5.0 May 06 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -1580,6 +1580,18 @@ contains
     type(eval_node_t), intent(in) :: en
     y = abs (en%cval)
   end function abs_c
+  integer function conjg_i (en) result (y)
+    type(eval_node_t), intent(in) :: en
+    y = en%ival
+  end function conjg_i
+  real(default) function conjg_r (en) result (y)
+    type(eval_node_t), intent(in) :: en
+    y = en%rval
+  end function conjg_r
+  complex(default) function conjg_c (en) result (y)
+    type(eval_node_t), intent(in) :: en
+    y = conjg (en%cval)
+  end function conjg_c
   integer function sgn_i (en) result (y)
     type(eval_node_t), intent(in) :: en
     y = sign (1, en%ival)
@@ -3552,6 +3564,12 @@ contains
           case (V_REAL); call eval_node_init_real (en, abs_r (en1))
           case (V_CMPLX); call eval_node_init_real (en, abs_c (en1))
           end select
+       case ("conjg")
+          select case (t)
+          case (V_INT);  call eval_node_init_int  (en, conjg_i (en1))
+          case (V_REAL); call eval_node_init_real (en, conjg_r (en1))
+          case (V_CMPLX); call eval_node_init_cmplx (en, conjg_c (en1))
+          end select
        case ("sgn")
           select case (t)
           case (V_INT);  call eval_node_init_int  (en, sgn_i (en1))
@@ -3692,6 +3710,12 @@ contains
           case (V_CMPLX);
              call eval_node_init_branch (en, key, V_REAL, en1)
              call eval_node_set_op1_real (en, abs_c)
+          end select
+       case ("conjg")
+          select case (t)
+          case (V_INT);  call eval_node_set_op1_int  (en, conjg_i)
+          case (V_REAL); call eval_node_set_op1_real (en, conjg_r)
+          case (V_CMPLX);  call eval_node_set_op1_cmplx (en, conjg_c)
           end select
        case ("sgn")
           select case (t)
@@ -6112,7 +6136,7 @@ contains
     call ifile_append (ifile, "SEQ unary_function = fun_unary function_arg1")
     call ifile_append (ifile, "SEQ binary_function = fun_binary function_arg2")
     call ifile_append (ifile, "ALT fun_unary = " // &
-         "complex | real | int | nint | floor | ceiling | abs | sgn | " // &
+         "complex | real | int | nint | floor | ceiling | abs | conjg | sgn | " // &
          "sqrt | exp | log | log10 | " // &
          "sin | cos | tan | asin | acos | atan | " // &
          "sinh | cosh | tanh")
@@ -6123,6 +6147,7 @@ contains
     call ifile_append (ifile, "KEY floor")
     call ifile_append (ifile, "KEY ceiling")
     call ifile_append (ifile, "KEY abs")
+    call ifile_append (ifile, "KEY conjg")
     call ifile_append (ifile, "KEY sgn")
     call ifile_append (ifile, "KEY sqrt")
     call ifile_append (ifile, "KEY exp")

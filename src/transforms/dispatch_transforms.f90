@@ -1,4 +1,4 @@
-! WHIZARD 2.4.1 Mar 24 2017
+! WHIZARD 2.5.0 May 06 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -87,7 +87,7 @@ contains
   subroutine dispatch_evt_nlo (evt, keep_failed_events)
     class(evt_t), intent(out), pointer :: evt
     logical, intent(in) :: keep_failed_events
-    call msg_message ("Simuate: activating fixed-order NLO events")
+    call msg_message ("Simulate: activating fixed-order NLO events")
     allocate (evt_nlo_t :: evt)
     evt%only_weighted_events = .true.
     select type (evt)
@@ -230,6 +230,8 @@ contains
     type(var_list_t), intent(in) :: var_list
     type(model_t), target, intent(in) :: fallback_model
     class(event_callback_t), allocatable, intent(in) :: event_callback
+    !!! !!! !!! Workaround for ifort v18(beta) bug
+    type(event_callback_nop_t) :: event_callback_tmp
     logical :: check, keep_beams, keep_remnants, recover_beams
     logical :: use_alpha_s_from_file, use_scale_from_file
     logical :: write_sqme_prc, write_sqme_ref, write_sqme_alt
@@ -289,7 +291,9 @@ contains
           if (allocated (event_callback)) then
              call eio%set_parameters (event_callback, checkpoint)
           else
-             call eio%set_parameters (event_callback_nop_t (), 0)
+             !!! !!! !!! Workaround for ifort v18(beta) bug
+             ! call eio%set_parameters (event_callback_nop_t (), 0)
+             call eio%set_parameters (event_callback_tmp, 0)
           end if
        end select
     case ("lhef")

@@ -1,4 +1,4 @@
-! WHIZARD 2.4.1 Mar 24 2017
+! WHIZARD 2.5.0 May 06 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -111,6 +111,7 @@ module commands
      private
      type(string_t) :: name
      type(string_t) :: scheme
+     logical :: ufo_model = .false.
    contains
      procedure :: write => cmd_model_write
      procedure :: compile => cmd_model_compile
@@ -907,7 +908,14 @@ contains
     integer :: u
     u = given_output_unit (unit);  if (u < 0)  return
     call write_indent (u, indent)
-    write (u, "(1x,A,1x,'""',A,'""')")  "model =", char (cmd%name)
+    write (u, "(1x,A,1x,'""',A,'""')", advance="no")  "model =", char (cmd%name)
+    if (cmd%ufo_model) then
+       write (u, "(1x,A)")  "(ufo)"
+    else if (cmd%scheme /= "") then
+       write (u, "(1x,'(',A,')')")  char (cmd%scheme)
+    else
+       write (u, *)
+    end if
   end subroutine cmd_model_write
 
   subroutine cmd_model_compile (cmd, global)
@@ -915,6 +923,7 @@ contains
     type(rt_data_t), intent(inout), target :: global
     type(parse_node_t), pointer :: pn_name, pn_arg, pn_scheme
     type(model_t), pointer :: model
+    type(string_t) :: scheme
     pn_name => cmd%pn%get_sub_ptr (3)
     pn_arg => pn_name%get_next_ptr ()
     if (associated (pn_arg)) then
@@ -924,8 +933,21 @@ contains
     end if
     cmd%name = pn_name%get_string ()
     if (associated (pn_scheme)) then
-       cmd%scheme = pn_scheme%get_string ()
-       call preload_model (model, cmd%name, cmd%scheme)
+       select case (char (pn_scheme%get_rule_key ()))
+       case ("ufo")
+          cmd%ufo_model = .true.
+       case default
+          scheme = pn_scheme%get_string ()
+          select case (char (lower_case (scheme)))
+          case ("ufo");  cmd%ufo_model = .true.
+          case default;  cmd%scheme = scheme
+          end select
+       end select
+       if (cmd%ufo_model) then
+          call preload_ufo_model (model, cmd%name)
+       else
+          call preload_model (model, cmd%name, cmd%scheme)
+       end if
     else
        cmd%scheme = ""
        call preload_model (model, cmd%name)
@@ -953,12 +975,31 @@ contains
          end if
       end if
     end subroutine preload_model
+    subroutine preload_ufo_model (model, name)
+      type(model_t), pointer, intent(out) :: model
+      type(string_t), intent(in) :: name
+      model => null ()
+      if (associated (global%model)) then
+         if (global%model%matches (name, ufo=.true.)) then
+            model => global%model
+         end if
+      end if
+      if (.not. associated (model)) then
+         if (global%model_list%model_exists (name, scheme)) then
+            model => global%model_list%get_model_ptr (name, ufo=.true.)
+         else
+            call global%read_ufo_model (name, model)
+         end if
+      end if
+    end subroutine preload_ufo_model
   end subroutine cmd_model_compile
 
   subroutine cmd_model_execute (cmd, global)
     class(cmd_model_t), intent(inout) :: cmd
     type(rt_data_t), intent(inout), target :: global
-    if (cmd%scheme /= "") then
+    if (cmd%ufo_model) then
+       call global%select_model (cmd%name, ufo = .true.)
+    else if (cmd%scheme /= "") then
        call global%select_model (cmd%name, cmd%scheme)
     else
        call global%select_model (cmd%name)
@@ -1203,8 +1244,14 @@ contains
 
     subroutine determine_needed_components ()
       type(string_t) :: fks_method
+      logical :: has_active_real
 
-      if (use_real_finite) then
+      if (allocated (cmd%local%nlo_component)) then
+         has_active_real = any (cmd%local%nlo_component == NLO_REAL)
+      else
+         has_active_real = .false.
+      end if
+      if (has_active_real .and. use_real_finite) then
          call radiation_generator%get_emitter_indices (emitters)
          n_emitters = size (emitters)
       end if
@@ -1594,7 +1641,7 @@ contains
                (eval_string (pn_comp, global%var_list))
           pn_comp => parse_node_get_next_ptr (pn_comp)
        end do
-    end if    
+    end if
   end subroutine cmd_nlo_compile
 
   subroutine cmd_nlo_execute (cmd, global)
@@ -1630,6 +1677,8 @@ contains
     end do
     global%nlo_fixed_order = any (selected_nlo_parts(1:5))
     global%selected_nlo_parts = selected_nlo_parts
+    allocate (global%nlo_component (size (cmd%nlo_component)))
+    global%nlo_component = cmd%nlo_component
   end subroutine cmd_nlo_execute
 
   subroutine cmd_compile_write (cmd, unit, indent)
@@ -5925,7 +5974,8 @@ contains
     call ifile_append (ifile, "ALT model_name = model_id | string_literal")
     call ifile_append (ifile, "IDE model_id")
     call ifile_append (ifile, "ARG model_arg = ( model_scheme? )")
-    call ifile_append (ifile, "ALT model_scheme = scheme_id | string_literal")
+    call ifile_append (ifile, "ALT model_scheme = ufo | scheme_id | string_literal")
+    call ifile_append (ifile, "KEY ufo")
     call ifile_append (ifile, "IDE scheme_id")
     call ifile_append (ifile, "SEQ cmd_library = library '=' lib_name")
     call ifile_append (ifile, "KEY library")

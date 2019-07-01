@@ -1,4 +1,4 @@
-! WHIZARD 2.4.1 Mar 24 2017
+! WHIZARD 2.5.0 May 06 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -96,6 +96,9 @@ module phs_fks
   integer, parameter, public :: GEN_ANTI_COLL_LIMIT_TEST = 5
   integer, parameter, public :: GEN_SOFT_COLL_LIMIT_TEST = 6
   integer, parameter, public :: GEN_SOFT_ANTI_COLL_LIMIT_TEST = 7
+
+  integer, parameter, public :: SQRTS_FIXED = 1
+  integer, parameter, public :: SQRTS_VAR = 2
 
   real(default), parameter :: xi_tilde_test_soft = 0.0001_default
   real(default), parameter :: xi_tilde_test_coll = 0.5_default
@@ -217,6 +220,7 @@ module phs_fks
     integer :: i_fsr_first = -1
     type(resonance_contributors_t), dimension(:), allocatable :: resonance_contributors !!! Put somewhere else?
     integer :: mode = GEN_REAL_PHASE_SPACE
+    integer :: isr_mode = SQRTS_FIXED
   contains
     procedure :: connect_kinematics => phs_fks_generator_connect_kinematics
     procedure :: compute_isr_kinematics => phs_fks_generator_compute_isr_kinematics
@@ -234,7 +238,7 @@ module phs_fks
        phs_fks_generator_compute_emitter_kinematics_massless
     procedure :: compute_emitter_kinematics_massive => &
        phs_fks_generator_compute_emitter_kinematics_massive
-    procedure :: generate_isr_decay => phs_fks_generator_generate_isr_decay
+    procedure :: generate_isr_fixed_beam_energy => phs_fks_generator_generate_isr_fixed_beam_energy
     procedure :: generate_isr_factorized => phs_fks_generator_generate_isr_factorized
     procedure :: generate_isr => phs_fks_generator_generate_isr
     procedure :: set_sqrts_hat => phs_fks_generator_set_sqrts_hat
@@ -1226,6 +1230,8 @@ contains
        else
           p_born = phs%p_born_tot
        end if
+       if (.not. phs%is_cm_frame ()) &
+            p_born = inverse (phs%lt_cm_to_lab) * p_born
        call phs%generator%generate_radiation_variables &
             (r_in, p_born, phs%phs_identifiers, threshold)
        phs%r_real = r_in
@@ -1288,11 +1294,7 @@ contains
     real(default) :: q0
 
     call generator%generate_fsr_in (p_born, p_real)
-    if (generator%n_in == 1) then
-       q0 = energy (p_born(1))
-    else
-       q0 = energy (p_born(1) + p_born(2))
-    end if
+    q0 = sum (p_born(1:generator%n_in))**1
 
     generator%i_fsr_first = generator%n_in + 1
     call generator%generate_fsr_out (emitter, i_phs, p_born, p_real, q0, &
@@ -1851,7 +1853,7 @@ contains
         p_dec_new(1) = sum (p (3 : ))
         p_dec_new(2 : n_tot - 1) = p (3 : n_tot)
         xi_max = min (xi_max_one_to_two (p(1), p(2), sum(p(3 : ))), &
-           get_xi_max_isr_decay (p_dec_new))
+             get_xi_max_isr_decay (p_dec_new))
      end if
   contains
     function xi_max_one_to_two (p_in, p_out1, p_out2) result (xi_max)
@@ -1878,7 +1880,7 @@ contains
        case (1)
           call generator%compute_xi_max (1, i_phs, p_born, &
                generator%real_kinematics%xi_max(i_phs))
-          call generator%generate_isr_decay (i_phs, p_born, p_real)
+          call generator%generate_isr_fixed_beam_energy (i_phs, p_born, p_real)
           phs%config%cm_frame = .true.
        case (2)
           !!! TODO (cw-2016-11-03): Check this - isn't xi_max overwritten each time?
@@ -1903,7 +1905,7 @@ contains
      end associate
   end subroutine phs_fks_generate_isr
 
-  subroutine phs_fks_generator_generate_isr_decay (generator, i_phs, p_born, p_real)
+  subroutine phs_fks_generator_generate_isr_fixed_beam_energy (generator, i_phs, p_born, p_real)
      class(phs_fks_generator_t), intent(inout) :: generator
      integer, intent(in) :: i_phs
      type(vector4_t), intent(in), dimension(:) :: p_born
@@ -1926,28 +1928,30 @@ contains
     nlegborn = size (p_born)
     nlegreal = nlegborn + 1
 
-    msq_in = p_born(1)**2
+    msq_in = sum (p_born(1:generator%n_in))**2
     generator%real_kinematics%jac(i_phs)%jac = one
 
     p_real%p(1) = p_born(1)
+    if (generator%n_in > 1) p_real%p(2) = p_born(2)
     k0_np1 = p_real%p(1)%p(0) * xi / two
     p_real%p(nlegreal)%p(0) = k0_np1
     p_real%p(nlegreal)%p(1) = k0_np1 * sqrt(one - y**2) * sin(phi)
     p_real%p(nlegreal)%p(2) = k0_np1 * sqrt(one - y**2) * cos(phi)
     p_real%p(nlegreal)%p(3) = k0_np1 * y
 
-    p_virt = p_real%p(1) - p_real%p(nlegreal)
+    p_virt = sum (p_real%p(1:generator%n_in)) - p_real%p(nlegreal)
+
     jac_real = one
     call generate_on_shell_decay (p_virt, &
-         p_born(2 : nlegborn), p_real%p(2 : nlegreal - 1), 1, &
-         msq_in, jac_real)
+         p_born(generator%n_in + 1 : nlegborn), p_real%p(generator%n_in + 1 : nlegreal - 1), &
+         1, msq_in, jac_real)
 
     associate (jac => generator%real_kinematics%jac(i_phs))
        jac%jac(1) = jac_real
        jac%jac(2) = one
     end associate
 
-  end subroutine phs_fks_generator_generate_isr_decay
+  end subroutine phs_fks_generator_generate_isr_fixed_beam_energy
 
   subroutine phs_fks_generator_generate_isr_factorized (generator, i_phs, emitter, p_born, p_real)
     class(phs_fks_generator_t), intent(inout) :: generator
@@ -1979,7 +1983,7 @@ contains
     boost_to_rest_frame = inverse (boost (p_top, p_top**1))
     p_tmp_born = boost_to_rest_frame * p_tmp_born
     call generator%compute_xi_max_isr_factorized (i_phs, p_tmp_born)
-    call generator%generate_isr_decay (i_phs, p_tmp_born, p_tmp_real)
+    call generator%generate_isr_fixed_beam_energy (i_phs, p_tmp_born, p_tmp_real)
     p_tmp_real = inverse (boost_to_rest_frame) * p_tmp_real
     if (emitter == THR_POS_B) then
        p_real%p(THR_POS_WP) = p_tmp_real%p (2)
@@ -2169,9 +2173,11 @@ contains
     type(phs_identifier_t), intent(in), dimension(:) :: phs_identifiers
     logical, intent(in), optional :: threshold
 
-    if (any (generator%emitters <= 2) .and. generator%n_in > 1) &
-        call generator%set_isr_kinematics &
-           (generator%real_kinematics%p_born_lab%phs_point(1)%p(1:2))
+    if (any (generator%emitters <= 2) .and. generator%n_in > 1) then
+        if (associated (generator%isr_kinematics)) &
+             call generator%set_isr_kinematics &
+                  (generator%real_kinematics%p_born_lab%phs_point(1)%p(1:2))
+    end if
 
     associate (rad_var => generator%real_kinematics)
        rad_var%phi = r_in (I_PHI) * twopi
@@ -2237,7 +2243,7 @@ contains
     integer, intent(in), optional :: i_con
     real(default), intent(in), optional :: y_in
     real(default) :: q0
-    type(vector4_t), dimension(:), allocatable :: pp
+    type(vector4_t), dimension(:), allocatable :: pp, pp_decay
     type(vector4_t) :: p_res
     type(lorentz_transformation_t) :: L_to_resonance
     real(default) :: y
@@ -2254,39 +2260,36 @@ contains
        else
           y = rad_var%y(i_phs)
        end if
-       select case (generator%n_in)
-       case (1)
-          if (emitter > 1) then
-             if (generator%is_massive(emitter)) then
-                xi_max = get_xi_max_fsr (p, q0, emitter, &
-                     generator%m2(emitter), y)
+       if (present (i_con)) then
+          p_res = rad_var%xi_ref_momenta(i_con)
+          L_to_resonance = inverse (boost (p_res, q0))
+          pp = L_to_resonance * p
+       else
+          pp = p
+       end if
+       if (emitter <= generator%n_in) then
+          select case (generator%isr_mode)
+          case (SQRTS_FIXED)
+             if (generator%n_in > 1) then
+                allocate (pp_decay (size (pp) - 1))
              else
-                xi_max = get_xi_max_fsr (p, q0, emitter)
+                allocate (pp_decay (size (pp)))
              end if
-          else
-             xi_max = get_xi_max_isr_decay (p)
-          end if
-       case (2)
-          if (present (i_con)) then
-             p_res = rad_var%xi_ref_momenta(i_con)
-             L_to_resonance = inverse (boost (p_res, q0))
-             pp = L_to_resonance * p
-          else
-             pp = p
-          end if
-          if (emitter <= 2) then
+             pp_decay (1) = sum (pp(1:generator%n_in))
+             pp_decay (2 : ) = pp (generator%n_in + 1 : )
+             xi_max = get_xi_max_isr_decay (pp_decay)
+             deallocate (pp_decay)
+          case (SQRTS_VAR)
              xi_max = get_xi_max_isr (generator%isr_kinematics%x, y)
+          end select
+       else
+          if (generator%is_massive(emitter)) then
+             xi_max = get_xi_max_fsr (pp, q0, emitter, generator%m2(emitter), y)
           else
-             if (generator%is_massive(emitter)) then
-                xi_max = get_xi_max_fsr (pp, q0, emitter, generator%m2(emitter), y)
-             else
-                xi_max = get_xi_max_fsr (pp, q0, emitter)
-             end if
+             xi_max = get_xi_max_fsr (pp, q0, emitter)
           end if
-       case default
-          call msg_fatal ("Real phase space: " // &
-             "Only one or two initial particles supported")
-       end select
+       end if
+       deallocate (pp)
     end associate
   end subroutine phs_fks_generator_compute_xi_max
 
@@ -2312,10 +2315,11 @@ contains
     end do
   end subroutine phs_fks_generator_set_masses
 
-  subroutine compute_y_from_emitter (r_y, p, emitter, massive, &
+  subroutine compute_y_from_emitter (r_y, p, n_in, emitter, massive, &
          y_max, jac_rand, y, contributors, threshold)
     real(default), intent(in) :: r_y
     type(vector4_t), intent(in), dimension(:) :: p
+    integer, intent(in) :: n_in
     integer, intent(in) :: emitter
     logical, intent(in) :: massive
     real(default), intent(in) :: y_max
@@ -2341,19 +2345,14 @@ contains
           do i = 1, size (contributors)
              p_res = p_res + p(contributors(i))
           end do
-          q0 = p_res**1
-          boost_to_resonance = inverse (boost (p_res, q0))
-          p_em = boost_to_resonance * p(emitter)
        else if (thr) then
-          !p_res = generator%real_kinematics%xi_ref_momenta (thr_leg (emitter))
           p_res = p(ass_boson(thr_leg(emitter))) + p(ass_quark(thr_leg(emitter)))
-          q0 = p_res**1
-          boost_to_resonance = inverse (boost (p_res, q0))
-          p_em = boost_to_resonance * p(emitter)
        else
-          q0 = energy (p(1) + p(2))
-          p_em = p(emitter)
+          p_res = sum (p(1:n_in))
        end if
+       q0 = p_res**1
+       boost_to_resonance = inverse (boost (p_res, q0))
+       p_em = boost_to_resonance * p(emitter)
        beta = beta_emitter (q0, p_em)
        one_m_beta = one - beta
        one_p_beta = one + beta
@@ -2392,8 +2391,8 @@ contains
        !!! not be treated here.
        construct_massive_fsr = emitter > generator%n_in
        if (construct_massive_fsr) construct_massive_fsr = &
-          construct_massive_fsr .and. generator%is_massive (emitter)
-       call compute_y_from_emitter (r_y, p, emitter, construct_massive_fsr, &
+            construct_massive_fsr .and. generator%is_massive (emitter)
+       call compute_y_from_emitter (r_y, p, generator%n_in, emitter, construct_massive_fsr, &
             generator%y_max, jac_rand(i_phs), y(i_phs), &
             phs_identifiers(i_phs)%contributors, threshold)
     end do
@@ -2763,10 +2762,10 @@ contains
     allocate (resonance_histories (size (phs_config%get_resonance_histories ())))
     resonance_histories = phs_config%get_resonance_histories ()
     call clean_resonance_histories (resonance_histories, &
-       n_in, flv_state (:,1), resonance_histories_clean, success)
+         n_in, flv_state (:,1), resonance_histories_clean, success)
     if (success .and. allocated (excluded_resonances)) then
        call filter_particles_from_resonances (resonance_histories_clean, &
-          excluded_resonances, model, resonance_histories_filtered)
+            excluded_resonances, model, resonance_histories_filtered)
     else
        allocate (resonance_histories_filtered (size (resonance_histories_clean)))
        resonance_histories_filtered = resonance_histories_clean

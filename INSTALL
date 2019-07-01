@@ -233,6 +233,10 @@ Optional Features:
   --enable-fc-impure	  compile Omega libraries impure [[no]]
   --disable-ocaml	  disable the OCaml parts, even if OCaml available
   			  [[no]]
+  --enable-default-UFO-dir=directory
+                          Read precomputed model tables from this directory,
+                          which will be populated by an administrator at
+                          install time [default=$datadir/UFO, enabled].
   --enable-lhapdf         enable LHAPDF for structure functions [[yes]]
   --enable-hepmc          enable HepMC for handling event data [[yes]]
   --enable-lcio		  enable LCIO for binary event files [[yes]]

@@ -1,4 +1,4 @@
-! WHIZARD 2.4.1 Mar 24 2017
+! WHIZARD 2.5.0 May 06 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -103,6 +103,7 @@ module rt_data
      type(string_t) :: logfile
      logical :: nlo_fixed_order = .false.
      logical, dimension(0:5) :: selected_nlo_parts = .false.
+     integer, dimension(:), allocatable :: nlo_component
    contains
      procedure :: write => rt_data_write
      procedure :: write_vars => rt_data_write_vars
@@ -122,6 +123,7 @@ module rt_data
      procedure :: final => rt_data_global_final
      procedure :: local_final => rt_data_local_final
      procedure :: read_model => rt_data_read_model
+     procedure :: read_ufo_model => rt_data_read_ufo_model
      procedure :: init_fallback_model => rt_data_init_fallback_model
      procedure :: select_model => rt_data_select_model
      procedure :: unselect_model => rt_data_unselect_model
@@ -575,6 +577,16 @@ contains
          (name, filename, global%os_data, model, scheme)
   end subroutine rt_data_read_model
 
+  subroutine rt_data_read_ufo_model (global, name, model)
+    class(rt_data_t), intent(inout) :: global
+    type(string_t), intent(in) :: name
+    type(model_t), pointer, intent(out) :: model
+    type(string_t) :: filename
+    filename = name // ".ufo.mdl"
+    call global%model_list%read_model &
+         (name, filename, global%os_data, model, ufo=.true.)
+  end subroutine rt_data_read_ufo_model
+
   subroutine rt_data_init_fallback_model (global, name, filename)
     class(rt_data_t), intent(inout) :: global
     type(string_t), intent(in) :: name, filename
@@ -582,24 +594,30 @@ contains
          (name, filename, global%os_data, global%fallback_model)
   end subroutine rt_data_init_fallback_model
 
-  subroutine rt_data_select_model (global, name, scheme)
+  subroutine rt_data_select_model (global, name, scheme, ufo)
     class(rt_data_t), intent(inout), target :: global
     type(string_t), intent(in) :: name
     type(string_t), intent(in), optional :: scheme
-    logical :: same_model
+    logical, intent(in), optional :: ufo
+    logical :: same_model, ufo_model
+    ufo_model = .false.;  if (present (ufo))  ufo_model = ufo
     if (associated (global%model)) then
-       same_model = global%model%matches (name, scheme)
+       same_model = global%model%matches (name, scheme, ufo)
     else
        same_model = .false.
     end if
     if (.not. same_model) then
-       global%model => global%model_list%get_model_ptr (name, scheme)
+       global%model => global%model_list%get_model_ptr (name, scheme, ufo)
        if (.not. associated (global%model)) then
-          call global%read_model (name, global%model)
+          if (ufo_model) then
+             call global%read_ufo_model (name, global%model)
+          else
+             call global%read_model (name, global%model)
+          end if
           global%model_is_copy = .false.
        else if (associated (global%context)) then
           global%model_is_copy = &
-               global%model_list%model_exists (name, scheme, &
+               global%model_list%model_exists (name, scheme, ufo, &
                follow_link=.false.)
        else
           global%model_is_copy = .false.
@@ -609,7 +627,10 @@ contains
        call global%model%link_var_list (global%var_list)
        call global%var_list%set_string (var_str ("$model_name"), &
             name, is_known = .true.)
-       if (global%model%has_schemes ()) then
+       if (global%model%is_ufo_model ()) then
+          call msg_message ("Switching to model '" // char (name) // "' " &
+               // "(generated from UFO source)")
+       else if (global%model%has_schemes ()) then
           call msg_message ("Switching to model '" // char (name) // "', " &
                // "scheme '" // char (global%model%get_scheme ()) // "'")
        else

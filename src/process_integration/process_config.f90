@@ -1,4 +1,4 @@
-! WHIZARD 2.4.1 Mar 24 2017
+! WHIZARD 2.5.0 May 06 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -1053,23 +1053,36 @@ contains
     end subroutine count_number_of_states
 
     subroutine compute_n_sub ()
+      use_color = .false.; if (present (use_internal_color)) &
+           use_color = use_internal_color
       if (nlo_t == NLO_VIRTUAL) then
-         use_color = .false.; if (present (use_internal_color)) &
-              use_color = use_internal_color
          n_sub = 1
          if (.not. use_color) n_sub = n_sub + n_tot * (n_tot - 1) / 2
+      else if (nlo_t == NLO_REAL) then
+         if (.not. use_color .and. term%i_term_global == term%i_sub) then
+            n_sub = n_tot * (n_tot - 1) / 2
+         else
+            n_sub = 0
+         end if
       else
          n_sub = 0
       end if
     end subroutine compute_n_sub
 
     subroutine fill_quantum_numbers ()
+      integer :: nn
       if (nlo_t == NLO_VIRTUAL) then
-         allocate (term%flv ((n_sub + 1) * n), &
-              term%col ((n_sub + 1) * n), term%hel ((n_sub + 1) * n))
+         nn = (n_sub + 1) * n
+      else if (nlo_t == NLO_REAL) then
+         if (term%i_term_global == term%i_sub) then
+            nn = (n_sub + 1) * n
+         else
+            nn = n
+         end if
       else
-         allocate (term%flv (n), term%col (n), term%hel (n))
+         nn = n
       end if
+      allocate (term%flv (nn), term%col (nn), term%hel (nn))
       allocate (flv (n_tot), col (n_tot), hel (n_tot))
       allocate (qn (n_tot))
     end subroutine fill_quantum_numbers
@@ -1090,7 +1103,7 @@ contains
                       call flv%init (data%flv_state (:,f), model)
                       call color_init_from_array (col, &
                            data%col_state(:,:,c), data%ghost_flag(:,c))
-                      call col(:data%n_in)%invert ()
+                      call col(1:data%n_in)%invert ()
                       if (is_pol) then
                          call hel%init (data%hel_state (:,h))
                          call qn%init (flv, hel, col, s)

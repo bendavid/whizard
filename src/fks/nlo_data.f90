@@ -1,4 +1,4 @@
-! WHIZARD 2.4.1 Mar 24 2017
+! WHIZARD 2.5.0 May 06 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -111,6 +111,7 @@ module nlo_data
      logical :: virtual_resonance_aware_collinear = .true.
      logical :: use_born_scale = .true.
      logical :: cut_all_sqmes = .true.
+     type(string_t) :: nlo_correction_type
   contains
   procedure :: init => nlo_settings_init
     procedure :: write => nlo_settings_write
@@ -199,6 +200,7 @@ contains
          var_list%get_lval (var_str ("?nlo_use_born_scale"))
     nlo_settings%cut_all_sqmes = &
          var_list%get_lval (var_str ("?nlo_cut_all_sqmes"))
+    nlo_settings%nlo_correction_type = var_list%get_sval (var_str ('$nlo_correction_type'))
   contains
     subroutine setup_alr_selection ()
       type(string_t) :: alr_selection

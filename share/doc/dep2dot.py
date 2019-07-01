@@ -6,9 +6,51 @@ import re
 
 dot_head = '''
 digraph G {
+concentrate=true
+splines=ortho
+node[shape=record,style=filled,fillcolor=white]
+edge[color=gray50]
 '''
 dot_foot = ''' }
 '''
+# see http://www.graphviz.org/doc/info/colors.html for more colors
+colors = [
+    'magenta',
+    'limegreen',
+    'navy',
+    'orange',
+    'red',
+    'salmon',
+    'blue',
+    'cyan',
+    'green',
+    'brown1',
+    'hotpink',
+    'lightcyan',
+    'gold',
+    'chocolate1',
+    'chartreuse2',
+    'cadetblue1',
+    'blueviolet',
+    'aquamarine2',
+    'deepskyblue',
+    'deeppink',
+    'darkorchid',
+    'darkorange',
+    'darksalmon',
+    'crimson',
+    'darkslategray',
+    'darkseagreen',
+    'violet',
+    'slateblue',
+    'violetred',
+    'springgreen',
+    'sienna',
+    'skyblue',
+    'sandybrown',
+    'sandybrown',
+    'tomato'
+]
 
 parser = argparse.ArgumentParser(
     description='Build dependency graphs',
@@ -33,6 +75,7 @@ def transform_external(strg, this_dir):
 
 
 def deps_of_file(filename):
+    counter = 0
     this_dir = os.path.basename(os.path.dirname(filename))
     dot = open(filename, "r")
     dep_strgs = []
@@ -49,7 +92,12 @@ def deps_of_file(filename):
     dep_strgs = map(transform, dep_strgs)
     if len(args.files) > 1:
         dep_strgs = map(lambda x: transform_external(x, this_dir), dep_strgs)
-        dep_strgs = list(set(dep_strgs))
+        strgs = ['subgraph cluster' + str(counter) +
+                 ' {\n style=filled \n color=gray95 \n']
+        counter += 1
+        strgs += ['edge[color=' + colors.pop() + ']\n'] + list(set(dep_strgs))
+        strgs += ['}\n']
+        dep_strgs = strgs
     return dep_strgs
 
 

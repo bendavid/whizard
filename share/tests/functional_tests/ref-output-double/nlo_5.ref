@@ -92,7 +92,7 @@ n_events = 5
 ?write_raw = false
 | Starting simulation for process 'nlo_5_p1'
 | Simulate: using integration grids from file 'nlo_5_p1_m2.vg'
-| Simuate: activating fixed-order NLO events
+| Simulate: activating fixed-order NLO events
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1
 | Events: writing to ASCII file 'nlo_5_p1.debug'

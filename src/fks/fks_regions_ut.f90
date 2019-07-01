@@ -1,4 +1,4 @@
-! WHIZARD 2.4.1 Mar 24 2017
+! WHIZARD 2.5.0 May 06 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -66,6 +66,9 @@ contains
          u, results)
     call test(fks_regions_7, "fks_regions_7", &
          "Check Latex output", u, results)
+    call test(fks_regions_8, "fks_regions_8", &
+         "Test singular regions for initial-state photon contributions", &
+         u, results)
   end subroutine fks_regions_test
 
 

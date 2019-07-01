@@ -1,5 +1,9 @@
 
 digraph G {
+concentrate=true
+splines=ortho
+node[shape=record,style=filled,fillcolor=white]
+edge[color=gray50]
 observables -> variables
  }
 

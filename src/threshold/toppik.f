@@ -1,4 +1,4 @@
-! WHIZARD 2.4.1 Mar 24 2017
+! WHIZARD 2.5.0 May 06 2017
 
 ! TOPPIK code by M. Jezabek, T. Teubner (v1.1, 1992), T. Teubner (1998)
 !
@@ -109,15 +109,15 @@ c                 function
 c    xdi      :  R_{ttbar} form the integral over the momentum
 c                 distribution (no cutoff but the numerical one here!!)
 c    np       :  number of points used for the grid; fixed in tttoppik
-c    xpp      :  1-dim array (max. 400 elements) giving the momenta of
+c    xpp      :  1-dim array (max. 900 elements) giving the momenta of
 c                 the Gauss-Legendre grid (pp(i) in the code)
-c    xww      :  1-dim array (max. 400 elements) giving the corresponding
+c    xww      :  1-dim array (max. 900 elements) giving the corresponding
 c                 Gauss-Legendre weights for the grid
-c    xdsdp    :  1-dim array (max. 400 elements) giving the
+c    xdsdp    :  1-dim array (max. 900 elements) giving the
 c                 momentum distribution of top: d\sigma/dp,
 c                  normalized to R,
 c                  at the momenta of the Gauss-Legendre grid xpp(i)
-c    zvfct    :  1-dim array (max. 400 elements) of COMPLEX*16 numbers
+c    zvfct    :  1-dim array (max. 900 elements) of COMPLEX*16 numbers
 c                 giving the vertex function K(p), G(p)=K(p)*G_0(p)
 c                 at the momenta of the grid
 c
@@ -137,13 +137,13 @@ c
      u        xdsdp,xpp,xww,
      u        cplas,scale,c0,c1,c2,cdeltc,cdeltl,cfullc,cfulll,crm2,
      u        xcutn,dcut,xcutv,
-     u        xp,xpmax,
+     u        xp,xpmax,hmass,
      u        kincom,kincoa,kincov,xkincm,xkinca,xkincv,
-     u        xcdeltc,xcdeltl,xcfullc,xcfulll,xcrm2
+     u        xcdeltc,xcdeltl,xcfullc,xcfulll,xcrm2,chiggs
            complex*16 bb,gg,a1,a,g0,g0c,zvfct
            integer i,n,nmax,npot,np,gcflg,kinflg,jknflg,jgcflg,
      u             jvflg,vflag
-           parameter (nmax=400)
+           parameter (nmax=900)
            dimension pp(nmax), bb(nmax), xx(nmax), gg(nmax),
      u               w1(nmax), w2(nmax), a1(nmax),
      u               xdsdp(nmax),xpp(nmax),xww(nmax),zvfct(nmax)
@@ -152,18 +152,18 @@ c
 c
            common/ovalco/ pi, energy, vzero, eps, npot
       COMMON/PHCONS/TMASS,TGAMMA,ZMASS,ALPHAS,ALAMB5,
-     $ WMASS,WGAMMA,BMASS,GFERMI
+     $ WMASS,WGAMMA,BMASS,GFERMI,hmass
            common/cplcns/cplas,scale,c0,c1,c2,
-     u                   cdeltc,cdeltl,cfullc,cfulll,crm2
+     u                   cdeltc,cdeltl,cfullc,cfulll,crm2,chiggs
            common/mom/ xp,xpmax,dcut
            common/g0inf/kincom,kincoa,kincov,kinflg,gcflg,vflag
 c
            pi=3.141592653589793238d0
 c
 c Number of points to evaluate on the integral equation
-c  (<=400 and n mod 3 = 0 !!):
+c  (<=900 and n mod 3 = 0 !!):
 c          n=66
-           n=360
+           n=600
            np=n
 c
 c For second order potential with free parameters:
@@ -420,10 +420,10 @@ c
      u        tmass,tgamma,zmass,alphas,alamb5,
      u        wmass,wgamma,bmass,GFERMI,
      u        pi,energy,vzero,eps,
-     u        p,gtpcor
+     u        p,gtpcor,hmass
            integer npot
       COMMON/PHCONS/TMASS,TGAMMA,ZMASS,ALPHAS,ALAMB5,
-     $ WMASS,WGAMMA,BMASS,GFERMI
+     $ WMASS,WGAMMA,BMASS,GFERMI,hmass
            common/ovalco/ pi, energy, vzero, eps, npot
            external gtpcor
            save
@@ -441,11 +441,11 @@ c
      u        tmass,tgamma,zmass,alphas,alamb5,
      u        wmass,wgamma,bmass,GFERMI,
      u        pi,energy,vzero,eps,
-     u        p,gtpcor,
+     u        p,gtpcor,hmass,
      u        kincom,kincoa,kincov,xp,xpmax,dcut
            integer npot,kinflg,gcflg,vflag
       COMMON/PHCONS/TMASS,TGAMMA,ZMASS,ALPHAS,ALAMB5,
-     $ WMASS,WGAMMA,BMASS,GFERMI
+     $ WMASS,WGAMMA,BMASS,GFERMI,hmass
            common/ovalco/ pi, energy, vzero, eps, npot
            common/g0inf/kincom,kincoa,kincov,kinflg,gcflg,vflag
            common/mom/ xp,xpmax,dcut
@@ -520,14 +520,14 @@ c
      u        adglg1, fretil1, fretil2, fimtil1, fimtil2,
      u        ALEFVQ, gtpcor, ad8gle, buf,adglg2,
 c     u        xerg,
-     u        kincom,kincoa,kincov
+     u        kincom,kincoa,kincov,hmass
 !          complex*16 zapvq1,ZAPVGP
            complex*16 ZAPVGP !!! FB
 c     u                ,acomp
            integer npot,ILFLAG,kinflg,gcflg,vflag
 c
       COMMON/PHCONS/TMASS,TGAMMA,ZMASS,ALPHAS,ALAMB5,
-     $ WMASS,WGAMMA,BMASS,GFERMI
+     $ WMASS,WGAMMA,BMASS,GFERMI,hmass
       COMMON/PARFLG/ QCUT,QMAT1,ALR,ILFLAG
            common/ovalco/ pi, energy, vzero, eps, npot
            common/mom/ xp,xpmax,dcut
@@ -650,11 +650,11 @@ c
      u        tmass,tgamma,zmass,alphas,alamb5,
      u        wmass,wgamma,bmass,GFERMI,
      u        pi, energy, vzero, eps,
-     u        p,pmax, xk, gtpcor,dcut
+     u        p,pmax, xk, gtpcor,dcut,hmass
            complex*16 g0,g0c
            integer npot
       COMMON/PHCONS/TMASS,TGAMMA,ZMASS,ALPHAS,ALAMB5,
-     $ WMASS,WGAMMA,BMASS,GFERMI
+     $ WMASS,WGAMMA,BMASS,GFERMI,hmass
            common/ovalco/ pi, energy, vzero, eps, npot
            common/mom/ p,pmax,dcut
            external vhat, g0, g0c, gtpcor
@@ -669,11 +669,11 @@ c
      u        tmass,tgamma,zmass,alphas,alamb5,
      u        wmass,wgamma,bmass,GFERMI,
      u        pi, energy, vzero, eps,
-     u        p,pmax, xk, gtpcor,dcut
+     u        p,pmax, xk, gtpcor,dcut,hmass
            complex*16 g0,g0c
            integer npot
       COMMON/PHCONS/TMASS,TGAMMA,ZMASS,ALPHAS,ALAMB5,
-     $ WMASS,WGAMMA,BMASS,GFERMI
+     $ WMASS,WGAMMA,BMASS,GFERMI,hmass
            common/ovalco/ pi, energy, vzero, eps, npot
            common/mom/ p,pmax,dcut
            external vhat, g0, g0c, gtpcor
@@ -696,7 +696,7 @@ c
      u        cplas,scale,c0,c1,c2,
      u        cdeltc,cdeltl,cfullc,cfulll,crm2,
      u        xkpln1st,xkpln2nd,xkpln3rd,
-     u        pp,pmax,dcut
+     u        pp,pmax,dcut,hmass,chiggs
            integer npot
            parameter(zi=(0.d0,1.d0))
            parameter(zeta3=1.20205690316d0,
@@ -706,12 +706,12 @@ c
            external AD8GLE, phfqcd, ALPHEF
 c
       COMMON/PHCONS/TMASS,TGAMMA,ZMASS,ALPHAS,ALAMB5,
-     $ WMASS,WGAMMA,BMASS,GFERMI
+     $ WMASS,WGAMMA,BMASS,GFERMI,hmass
            common/ovalco/ pi, energy, vzero, eps, npot
            common/pmaxkm/ pm, xkm
            common/mom/ pp,pmax,dcut
            common/cplcns/cplas,scale,c0,c1,c2,
-     u                   cdeltc,cdeltl,cfullc,cfulll,crm2
+     u                   cdeltc,cdeltl,cfullc,cfulll,crm2,chiggs
 c
            b0=11.d0-2.d0/3.d0*xnf
            b1=102.d0-38.d0/3.d0*xnf
@@ -820,7 +820,7 @@ c
       implicit real*8(a-h,o-z)
       save
       COMMON/PHCONS/TMASS,TGAMMA,ZMASS,ALPHAS,ALAMB5,
-     $ WMASS,WGAMMA,BMASS,GFERMI
+     $ WMASS,WGAMMA,BMASS,GFERMI,hmass
       common/ovalco/ pi, energy, vzero, eps, npot
       COMMON/PARFLG/ QCUT,QMAT1,ALR,ILFLAG
       CHARACTER QCTCHR,QMTCHR,ALFCHR
@@ -902,117 +902,6 @@ c
       end
 C
 C
-!!! FB:
-!       COMPLEX*16 FUNCTION ZAPVQ1(F,P,VME,gtpcor,ACC)
-! C for testing only! Original ZAPVQ1 for const. tgamma !!
-! C     A(p,E)= ZAPVQ1(F,p,V0-E,Gtpcor,acc)
-! C             where  F(q)=(q/p)**2*VQ(q/p)
-! C
-!       implicit real*8(a-c,d-h,o-y),complex*16(z)
-!       real*8 zmass
-!       EXTERNAL F, gtpcor
-!       common/xtr101/ p0
-!       COMMON/PHCONS/TMASS,TGAMMA,ZMASS,ALPHAS,ALAMB5,
-!      $ WMASS,WGAMMA,BMASS,GFERMI
-! c           common/phcons/ TM,tgamma,zmass,alphas,alamb5,
-! c     u                    wmass,wgamma,bmass
-!          common/ovalco/ pi, energy, vzero, eps, npot
-!       DIMENSION W(12),X(12)
-!       data pi/3.1415926535897930d0/
-!       DATA W / 0.10122 85362 90376 25915 25313 543D0,
-!      1         0.22238 10344 53374 47054 43559 944D0,
-!      2         0.31370 66458 77887 28733 79622 020D0,
-!      3         0.36268 37833 78361 98296 51504 493D0,
-!      4         0.27152 45941 17540 94851 78057 246D-1,
-!      5         0.62253 52393 86478 92862 84383 699D-1,
-!      6         0.95158 51168 24927 84809 92510 760D-1,
-!      7         0.12462 89712 55533 87205 24762 822D0,
-!      8         0.14959 59888 16576 73208 15017 305D0,
-!      9         0.16915 65193 95002 53818 93120 790D0,
-!      A         0.18260 34150 44923 58886 67636 680D0,
-!      B         0.18945 06104 55068 49628 53967 232D0/
-! C
-!       DATA X / 0.96028 98564 97536 23168 35608 686D0,
-!      1         0.79666 64774 13626 73959 15539 365D0,
-!      2         0.52553 24099 16328 98581 77390 492D0,
-!      3         0.18343 46424 95649 80493 94761 424D0,
-!      4         0.98940 09349 91649 93259 61541 735D0,
-!      5         0.94457 50230 73232 57607 79884 155D0,
-!      6         0.86563 12023 87831 74388 04678 977D0,
-!      7         0.75540 44083 55003 03389 51011 948D0,
-!      8         0.61787 62444 02643 74844 66717 640D0,
-!      9         0.45801 67776 57227 38634 24194 430D0,
-!      A         0.28160 35507 79258 91323 04605 015D0,
-!      B         0.95012 50983 76374 40185 31933 543D-1/
-! C
-!       ZA(xk)= log( cmplx((xk+1)**2+ vme*tm/p**2,-tm*tgamma*
-!      $              gtpcor(xk*p,2.d0*tm+energy)/p**2)/
-!      $             cmplx((xk-1)**2+ vme*tm/p**2,-tm*tgamma*
-!      $              gtpcor(xk*p,2.d0*tm+energy)/p**2) )
-! C
-!       TM=TMASS
-!       p0= p
-! c     integral from 0 to 1  for IEX=1 and from 1 to 1/0 for IEX=-1
-!       sumr=0d0
-!       sumi=0d0
-!       IEX=1
-!    7  a=0d0
-!       b=1d0
-!       BB=A
-! C
-!    11 AA=BB
-!       BB=B
-!    12    C1=0.5D0*(BB+AA)
-!          C2=0.5D0*(BB-AA)
-!          S8r=0.0D0
-!          S8i=0.0D0
-!          DO 13 I=1,4
-!             U=C2*X(I)
-!             z1=ZA((c1+u)**IEX)
-!             xz1r=DBLE(z1)/(c1+u)
-!             xz1i=AIMAG(z1)/(c1+u)
-!             z2=ZA((c1-u)**IEX)
-!             xz2r=DBLE(z2)/(c1-u)
-!             xz2i=AIMAG(z2)/(c1-u)
-!             S8r=S8r+W(I)*(F((C1+U)**IEX)*xz1r+F((C1-U)**IEX)*xz2r)
-!             S8i=S8i+W(I)*(F((C1+U)**IEX)*xz1i+F((C1-U)**IEX)*xz2i)
-!    13    CONTINUE
-!          S8r=C2*S8r
-!          S8i=C2*S8i
-!          S16r=0.0D0
-!          S16i=0.0D0
-!          DO 14 I=5,12
-!             U=C2*X(I)
-!             z1=ZA((c1+u)**IEX)
-!             xz1r=DBLE(z1)/(c1+u)
-!             xz1i=AIMAG(z1)/(c1+u)
-!             z2=ZA((c1-u)**IEX)
-!             xz2r=DBLE(z2)/(c1-u)
-!             xz2i=AIMAG(z2)/(c1-u)
-!             S16r=S16r+W(I)*(F((C1+U)**IEX)*xz1r+F((C1-U)**IEX)*xz2r)
-!             S16i=S16i+W(I)*(F((C1+U)**IEX)*xz1i+F((C1-U)**IEX)*xz2i)
-!    14    CONTINUE
-!          S16r=C2*S16r
-!          S16i=C2*S16i
-!          IF(ABS(S16r-S8r) .LE. acc*(abs(s8r)+ABS(S16r))/2  .AND.
-!      $      ABS(S16i-S8i) .LE. acc*(abs(s8i)+ABS(S16i))/2 ) GO TO 15
-!          BB=C1
-!          IF( 1.D0+ABS(C2) .NE. 1.D0) GO TO 12
-!          ZAPVQ1 =(0d0,0d0)
-!          WRITE(*,*) 'Too high accuracy required'
-!          STOP 10101
-!    15 sumr=sumr+s16r
-!       sumi=sumi+s16i
-!       IF(BB.NE.B) GO TO 11
-!       IF(IEX.EQ.1) THEN
-!          IEX= -1
-!          GOTO 7
-!       ELSE
-!          ZAPVQ1= -TM/(8*pi**2*p)*CMPLX(SUMR,SUMI)
-!       ENDIF
-!       RETURN
-!       END
-!!! /FB
 C
 C
       COMPLEX*16 FUNCTION ZAPVGP(P,ETOT,VME,PCUT,ACC)
@@ -1031,7 +920,7 @@ C
       IMPLICIT REAL*8(A-Z)
       EXTERNAL FIN01P,FIN02P,FIN03P,FIN04P,AD8GLE,ADGLG1,ADGLG2
       COMMON/PHCONS/TMASS,TGAMMA,ZMASS,ALPHAS,ALAMB5,
-     $ WMASS,WGAMMA,BMASS,GFERMI
+     $ WMASS,WGAMMA,BMASS,GFERMI,hmass
       COMMON/XTR102/ P0,E0,VMEM,TM,ACC0
       DATA PI/3.14159265/,BUF/1D-10/,SMALL/1D-2/
 C For Testing only
@@ -1116,7 +1005,7 @@ c
       implicit real*8(a-h,o-z)
       external alphef,fncqct
       COMMON/PHCONS/TMASS,TGAMMA,ZMASS,ALPHAS,ALAMB5,
-     $ WMASS,WGAMMA,BMASS,GFERMI
+     $ WMASS,WGAMMA,BMASS,GFERMI,hmass
       COMMON/PARFLG/ QCUT,QMAT1,ALR,ILFLAG
       data pi/3.141592653589793238D0/
 c
@@ -1138,7 +1027,7 @@ C
       IMPLICIT REAL*8(A-C,D-H,O-Z)
       EXTERNAL ALPHEF
       COMMON/PHCONS/TMASS,TGAMMA,ZMASS,ALPHAS,ALAMB5,
-     $ WMASS,WGAMMA,BMASS,GFERMI
+     $ WMASS,WGAMMA,BMASS,GFERMI,hmass
       DATA PI/3.14159265/
       VQQBAR = -4D0/3*4*PI*ALPHEF(P)/P**2
       END
@@ -1164,7 +1053,7 @@ c
       implicit real*8(a-h,o-z)
       SAVE
       COMMON/PHCONS/TMASS,TGAMMA,ZMASS,ALPHAS,ALAMB5,
-     $ WMASS,WGAMMA,BMASS,GFERMI
+     $ WMASS,WGAMMA,BMASS,GFERMI,hmass
       COMMON/PARFLG/ QCUT,QMAT1,ALR,ILFLAG
       common/parpot/ a5,b5,c5,alfmt,d,alphrc
       data pi/3.141592653589793238D0/,
@@ -1198,7 +1087,7 @@ c Only called by ALPHEF:
       SUBROUTINE POTPAR
       implicit real*8(a-h,o-z)
       COMMON/PHCONS/TMASS,TGAMMA,ZMASS,ALPHAS,ALAMB5,
-     $ WMASS,WGAMMA,BMASS,GFERMI
+     $ WMASS,WGAMMA,BMASS,GFERMI,hmass
       COMMON/PARFLG/ QCUT,QMAT1,ALR,ILFLAG
       common/parpot/ a5,b5,c5,alfmt,d,alphrc
       data pi/3.141592653589793238D0/,nefr/3/
@@ -1249,7 +1138,7 @@ C
       IMPLICIT REAL*8(A-C,D-H,O-Z)
       EXTERNAL DILOG
       COMMON/PHCONS/TMASS,TGAMMA,ZMASS,ALPHAS,ALAMB5,
-     $ WMASS,WGAMMA,BMASS,GFERMI
+     $ WMASS,WGAMMA,BMASS,GFERMI,hmass
       DATA PI/3.14159265/
       F(X)= PI**2+2*DILOG(X)-2*DILOG(1-X)+( 4*X*(1-X-2*X**2)*LOG(X)+
      $2*(1-X)**2*(5+4*X)*LOG(1-X) - (1-X)*(5+9*X-6*X**2) ) /
@@ -1275,7 +1164,7 @@ C
       IMPLICIT REAL*8(A-C,D-H,O-Z)
       EXTERNAL GTPCOR
       COMMON/PHCONS/TMASS,TGAMMA,ZMASS,ALPHAS,ALAMB5,
-     $ WMASS,WGAMMA,BMASS,GFERMI
+     $ WMASS,WGAMMA,BMASS,GFERMI,hmass
       GAMTPE= TGAMMA*GTPCOR(P,ETOT)
       END
 C
@@ -1285,9 +1174,9 @@ c
         real*8 function gtpcor(topp,etot)
         real*8 topp,etot,
      u         tmass,tgamma,zmass,alphas,alamb5,
-     u         wmass,wgamma,bmass,GFERMI
+     u         wmass,wgamma,bmass,GFERMI,hmass
       COMMON/PHCONS/TMASS,TGAMMA,ZMASS,ALPHAS,ALAMB5,
-     $ WMASS,WGAMMA,BMASS,GFERMI
+     $ WMASS,WGAMMA,BMASS,GFERMI,hmass
 c       if (topp.ge.tmass/2.d0) then
 c          gtpcor1=0.001d0
 c       else
@@ -1324,7 +1213,7 @@ c
       dimension gamma(0:NG),pw1(0:3),pw2(0:3),AIJ(NC,NC),BJ(NC),
      $AI(NC),SIG2IN(0:NG),XIK(0:NG,NC),INDX(NC)
       COMMON/PHCONS/TMASS,TGAMMA,ZMASS,ALPHAS,ALAMB5,
-     $ WMASS,WGAMMA,BMASS,GFERMI
+     $ WMASS,WGAMMA,BMASS,GFERMI,hmass
       SAVE NUM,EOLD,TOLD,AI
       data nevent/10000/, num/0/, eold/-1d5/, told/-1d0/
 c
@@ -1412,7 +1301,7 @@ c      external ran2
       dimension pw1(0:3),pw2(0:3)
       save
       COMMON/PHCONS/TMASS,TGAMMA,ZMASS,ALPHAS,ALAMB5,
-     $ WMASS,WGAMMA,BMASS,GFERMI
+     $ WMASS,WGAMMA,BMASS,GFERMI,hmass
       data PI/3.141592653589793238D0/
       real idum
 c  3   s1= wmass**2+wmass*wgamma*TAN((2*ran2(idum)-1)*pi/2)
@@ -1471,16 +1360,16 @@ c
      u        tmass,tgamma,zmass,alphas,alamb5,
      u        wmass,wgamma,bmass,GFERMI,
      u        pi, energy, vzero, eps,
-     u        d, pp, w1, gtpcor,
+     u        d, pp, w1, gtpcor,hmass,
      u        xp,xpmax,dcut,kincom,kincoa,kincov
            complex*16 a, a1, bb, ff, cw, svw, g0, g0c
            integer i, j, npot, n, nmax, indx,kinflg,gcflg,vflag
-           parameter (nmax=400)
+           parameter (nmax=900)
            dimension bb(nmax), ff(nmax,nmax), pp(nmax), w1(nmax),
      u               indx(nmax), cw(nmax), a1(nmax)
 c
       COMMON/PHCONS/TMASS,TGAMMA,ZMASS,ALPHAS,ALAMB5,
-     $ WMASS,WGAMMA,BMASS,GFERMI
+     $ WMASS,WGAMMA,BMASS,GFERMI,hmass
            common/ovalco/ pi, energy, vzero, eps, npot
            common/mom/ xp,xpmax,dcut
            common/g0inf/kincom,kincoa,kincov,kinflg,gcflg,vflag
@@ -1568,7 +1457,7 @@ C complex version of ludcmp
       INTEGER I, IMAX, INDX, J, K, N, NP, NMAX
       REAL*8 AAMAX, D, TINY, VV
       COMPLEX*16 A, DUM, SUM
-      PARAMETER (NMAX=400)
+      PARAMETER (NMAX=900)
       DIMENSION A(NP,NP), INDX(N), VV(NMAX)
 c
         tiny=1.d-5
@@ -2394,283 +2283,6 @@ C
       DILOG=S*T*(A-B)+Z
       RETURN
       END
-C
-c Everything for hypergeometric function F_{2,1},
-c  taken from Numerical Recipes.
-c
-!!! FB:
-!       FUNCTION hypgeo(a,b,c,z)
-!       implicit none
-!       COMPLEX*16 hypgeo,a,b,c,z,hp
-!       REAL*8 EPS
-! cttt
-! c      PARAMETER (EPS=1.d-6)
-!       PARAMETER (EPS=1.d-8)
-!       INTEGER kmax,nbad,nok
-!       COMPLEX*16 z0,dz,aa,bb,cc,y(2)
-! cu    needs bsstep,hypser,odeint,mmid,hypdrv
-!       COMMON /hypg/ aa,bb,cc,z0,dz
-!       COMMON /path1/ kmax
-!       kmax=0
-!       if (real(z)**2+aimag(z)**2.le.0.25d0) then
-!         call hypser(a,b,c,z,hp,y(2))
-!         hypgeo=hp
-!         return
-!       else if (real(z).lt.0.d0) then
-!         z0=cmplx(-0.5d0,0.d0,kind=kind(0d0))
-!       else if (real(z).le.1.d0) then
-!         z0=cmplx(0.5d0,0.d0,kind=kind(0d0))
-!       else
-!         z0=cmplx(0.d0,sign(0.5d0,aimag(z)),kind=kind(0d0))
-!       endif
-!       aa=a
-!       bb=b
-!       cc=c
-!       dz=z-z0
-!       call hypser(aa,bb,cc,z0,y(1),y(2))
-!       call odeint(y,4,0.d0,1.d0,EPS,.1d0,.00001d0,nok,nbad)
-!       hypgeo=y(1)
-!       return
-!       END
-! c
-!       SUBROUTINE odeint(ystart,nvar,x1,x2,eps,h1,hmin,nok,nbad)
-!       implicit none
-!       INTEGER nbad,nok,nvar,KMAXX,MAXSTP,NMAX
-!       REAL*8 eps,h1,hmin,x1,x2,ystart(nvar),TINY
-!       PARAMETER (MAXSTP=10000,NMAX=50,KMAXX=200,TINY=1.d-30)
-!       INTEGER i,kmax,kount,nstp
-!       REAL*8 dxsav,h,hdid,hnext,x,xsav,dydx(NMAX),xp(KMAXX),y(NMAX),
-!      *yp(NMAX,KMAXX),yscal(NMAX)
-!       COMMON /path/ dxsav,xp,yp,kount
-!       COMMON /path1/ kmax
-!       x=x1
-!       h=sign(h1,x2-x1)
-!       nok=0
-!       nbad=0
-!       kount=0
-!       do 11 i=1,nvar
-!         y(i)=ystart(i)
-! 11    continue
-!       if (kmax.gt.0) xsav=x-2.d0*dxsav
-!       do 16 nstp=1,MAXSTP
-!         call hypdrv(x,y,dydx)
-!         do 12 i=1,nvar
-!           yscal(i)=abs(y(i))+abs(h*dydx(i))+TINY
-! 12      continue
-!         if(kmax.gt.0)then
-!           if(abs(x-xsav).gt.abs(dxsav)) then
-!             if(kount.lt.kmax-1)then
-!               kount=kount+1
-!               xp(kount)=x
-!               do 13 i=1,nvar
-!                 yp(i,kount)=y(i)
-! 13            continue
-!               xsav=x
-!             endif
-!           endif
-!         endif
-!         if((x+h-x2)*(x+h-x1).gt.0.d0) h=x2-x
-!         call bsstep(y,dydx,nvar,x,h,eps,yscal,hdid,hnext)
-!         if(hdid.eq.h)then
-!           nok=nok+1
-!         else
-!           nbad=nbad+1
-!         endif
-!         if((x-x2)*(x2-x1).ge.0.d0)then
-!           do 14 i=1,nvar
-!             ystart(i)=y(i)
-! 14        continue
-!           if(kmax.ne.0)then
-!             kount=kount+1
-!             xp(kount)=x
-!             do 15 i=1,nvar
-!               yp(i,kount)=y(i)
-! 15          continue
-!           endif
-!           return
-!         endif
-!         if(abs(hnext).lt.hmin) pause
-!      *'stepsize smaller than minimum in odeint'
-!         h=hnext
-! 16    continue
-!       pause 'too many steps in odeint'
-!       return
-!       END
-! c
-!       SUBROUTINE bsstep(y,dydx,nv,x,htry,eps,yscal,hdid,hnext)
-!       implicit none
-!       INTEGER nv,NMAX,KMAXX,IMAX
-!       REAL*8 eps,hdid,hnext,htry,x,dydx(nv),y(nv),yscal(nv),
-!      *SAFE1,SAFE2,REDMAX,REDMIN,TINY,SCALMX
-!       PARAMETER (NMAX=50,KMAXX=8,IMAX=KMAXX+1,SAFE1=.25d0,SAFE2=.7d0,
-!      *REDMAX=1.d-5,REDMIN=.7d0,TINY=1.d-30,SCALMX=.1d0)
-!       INTEGER i,iq,k,kk,km,kmax,kopt,nseq(IMAX)
-!       REAL*8 eps1,epsold,errmax,fact,h,red,scale,work,wrkmin,xest,
-!      *xnew,a(IMAX),alf(KMAXX,KMAXX),err(KMAXX),yerr(NMAX),ysav(NMAX),
-!      *yseq(NMAX)
-!       LOGICAL first,reduct
-!       SAVE a,alf,epsold,first,kmax,kopt,nseq,xnew
-!       DATA first/.true./,epsold/-1.d0/
-!       DATA nseq /2,4,6,8,10,12,14,16,18/
-!       if(eps.ne.epsold)then
-!         hnext=-1.d29
-!         xnew=-1.d29
-!         eps1=SAFE1*eps
-!         a(1)=nseq(1)+1
-!         do 11 k=1,KMAXX
-!           a(k+1)=a(k)+nseq(k+1)
-! 11      continue
-!         do 13 iq=2,KMAXX
-!           do 12 k=1,iq-1
-!             alf(k,iq)=eps1**((a(k+1)-a(iq+1))/((a(iq+1)-a(1)+1.d0)*
-!      *(2.d0*k+1.d0)))
-! 12        continue
-! 13      continue
-!         epsold=eps
-!         do 14 kopt=2,KMAXX-1
-!           if(a(kopt+1).gt.a(kopt)*alf(kopt-1,kopt))goto 1
-! 14      continue
-! 1       kmax=kopt
-!       endif
-!       h=htry
-!       do 15 i=1,nv
-!         ysav(i)=y(i)
-! 15    continue
-!       if(h.ne.hnext.or.x.ne.xnew)then
-!         first=.true.
-!         kopt=kmax
-!       endif
-!       reduct=.false.
-! 2     do 17 k=1,kmax
-!         xnew=x+h
-!         if(xnew.eq.x)pause 'step size underflow in bsstep'
-!         call mmid(ysav,dydx,nv,x,h,nseq(k),yseq)
-!         xest=(h/nseq(k))**2
-!         call pzext0(k,xest,yseq,y,yerr,nv)
-!         if(k.ne.1)then
-!           errmax=TINY
-!           do 16 i=1,nv
-!             errmax=max(errmax,abs(yerr(i)/yscal(i)))
-! 16        continue
-!           errmax=errmax/eps
-!           km=k-1
-!           err(km)=(errmax/SAFE1)**(1.d0/(2.d0*km+1.d0))
-!         endif
-!         if(k.ne.1.and.(k.ge.kopt-1.or.first))then
-!           if(errmax.lt.1.)goto 4
-!           if(k.eq.kmax.or.k.eq.kopt+1)then
-!             red=SAFE2/err(km)
-!             goto 3
-!           else if(k.eq.kopt)then
-!             if(alf(kopt-1,kopt).lt.err(km))then
-!               red=1.d0/err(km)
-!               goto 3
-!             endif
-!           else if(kopt.eq.kmax)then
-!             if(alf(km,kmax-1).lt.err(km))then
-!               red=alf(km,kmax-1)*SAFE2/err(km)
-!               goto 3
-!             endif
-!           else if(alf(km,kopt).lt.err(km))then
-!             red=alf(km,kopt-1)/err(km)
-!             goto 3
-!           endif
-!         endif
-! 17    continue
-! 3     red=min(red,REDMIN)
-!       red=max(red,REDMAX)
-!       h=h*red
-!       reduct=.true.
-!       goto 2
-! 4     x=xnew
-!       hdid=h
-!       first=.false.
-!       wrkmin=1.d35
-!       do 18 kk=1,km
-!         fact=max(err(kk),SCALMX)
-!         work=fact*a(kk+1)
-!         if(work.lt.wrkmin)then
-!           scale=fact
-!           wrkmin=work
-!           kopt=kk+1
-!         endif
-! 18    continue
-!       hnext=h/scale
-!       if(kopt.ge.k.and.kopt.ne.kmax.and..not.reduct)then
-!         fact=max(scale/alf(kopt-1,kopt),SCALMX)
-!         if(a(kopt+1)*fact.le.wrkmin)then
-!           hnext=h/fact
-!           kopt=kopt+1
-!         endif
-!       endif
-!       return
-!       END
-! c
-!       SUBROUTINE hypser(a,b,c,z,series,deriv)
-!       implicit none
-!       INTEGER n
-!       COMPLEX*16 a,b,c,z,series,deriv,aa,bb,cc,fac,temp
-!       deriv=cmplx(0.d0,0.d0,kind=kind(0d0))
-!       fac=cmplx(1.d0,0.d0,kind=kind(0d0))
-!       temp=fac
-!       aa=a
-!       bb=b
-!       cc=c
-!       do 11 n=1,1000
-!         fac=fac*aa*bb/cc
-!         deriv=deriv+fac
-!         fac=fac*z/n
-!         series=temp+fac
-!         if (series.eq.temp) return
-!         temp=series
-!         aa=aa+1.d0
-!         bb=bb+1.d0
-!         cc=cc+1.d0
-! 11    continue
-!       pause 'convergence failure in hypser'
-!       END
-! c
-!       SUBROUTINE hypdrv(s,y,dyds)
-!       implicit none
-!       REAL*8 s
-!       COMPLEX*16 y(2),dyds(2),aa,bb,cc,z0,dz,z
-!       COMMON /hypg/ aa,bb,cc,z0,dz
-!       z=z0+s*dz
-!       dyds(1)=y(2)*dz
-!       dyds(2)=(aa*bb*y(1)-(cc-(aa+bb+1.d0)*z)*y(2))*dz/(z*(1.d0-z))
-!       return
-!       END
-! c
-!       SUBROUTINE mmid(y,dydx,nvar,xs,htot,nstep,yout)
-!       implicit none
-!       INTEGER nstep,nvar,NMAX
-!       REAL*8 htot,xs,dydx(nvar),y(nvar),yout(nvar)
-!       PARAMETER (NMAX=50)
-!       INTEGER i,n
-!       REAL*8 h,h2,swap,x,ym(NMAX),yn(NMAX)
-!       h=htot/nstep
-!       do 11 i=1,nvar
-!         ym(i)=y(i)
-!         yn(i)=y(i)+h*dydx(i)
-! 11    continue
-!       x=xs+h
-!       call hypdrv(x,yn,yout)
-!       h2=2.d0*h
-!       do 13 n=2,nstep
-!         do 12 i=1,nvar
-!           swap=ym(i)+h2*yout(i)
-!           ym(i)=yn(i)
-!           yn(i)=swap
-! 12      continue
-!         x=x+h
-!         call hypdrv(x,yn,yout)
-! 13    continue
-!       do 14 i=1,nvar
-!         yout(i)=0.5d0*(ym(i)+yn(i)+h*yout(i))
-! 14    continue
-!       return
-!       END
-!!! /FB
 c
       SUBROUTINE pzext0(iest,xest,yest,yz,dy,nv)
       implicit none

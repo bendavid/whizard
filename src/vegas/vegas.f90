@@ -1,4 +1,4 @@
-! WHIZARD 2.4.1 Mar 24 2017
+! WHIZARD 2.5.0 May 06 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -38,7 +38,7 @@ module vegas
   use diagnostics
   use io_units
   use format_utils, only: write_indent
-  use format_defs, only: FMT_14
+  use format_defs, only: FMT_17
   use rng_base, only: rng_t
 
   implicit none
@@ -57,9 +57,9 @@ character(len=*), parameter, private :: &
      integer_fmt =       "(1X,A18,1X,I15)", &
      integer_array_fmt = "(1X,I18,1X,I15)", &
      logical_fmt =       "(1X,A18,1X,L1)", &
-     double_fmt =        "(1X,A18,1X," // FMT_14 // ")", &
-     double_array_fmt =  "(1X,I18,1X," // FMT_14 // ")", &
-     double_array2_fmt =  "(1X,2(1X,I8),1X," // FMT_14 // ")"
+     double_fmt =        "(1X,A18,1X," // FMT_17 // ")", &
+     double_array_fmt =  "(1X,I18,1X," // FMT_17 // ")", &
+     double_array2_fmt =  "(1X,2(1X,I8),1X," // FMT_17 // ")"
 
 
   type, abstract :: vegas_func_t
@@ -180,26 +180,37 @@ contains
     u = given_output_unit (unit)
     ind = 0; if (present (indent)) ind = indent
     call write_indent (u, ind)
-    write (u, "(2x,A,I0)") "Number of dimensions = ", self%n_dim
+    write (u, "(2x,A,I0)") &
+         & "Number of dimensions            = ", self%n_dim
     call write_indent (u, ind)
-    write (u, "(2x,A," // FMT_14 // ")") "Adaption power (alpha) = ", self%alpha
+    write (u, "(2x,A," // FMT_17 // ")") &
+         & "Adaption power (alpha)          = ", self%alpha
     call write_indent (u, ind)
-    write (u, "(2x,A,I0)") "Max. number of bins (per dim.) = ", self%n_bins_max
+    write (u, "(2x,A,I0)") &
+         & "Max. number of bins (per dim.)  = ", self%n_bins_max
     call write_indent (u, ind)
-    write (u, "(2x,A,I0)") "Number of iterations = ", self%iterations
+    write (u, "(2x,A,I0)") &
+         & "Number of iterations            = ", self%iterations
     call write_indent (u, ind)
-    write (u, "(2x,A,I0)") "Mode (stratified or importance) = ", self%mode
+    write (u, "(2x,A,I0)") &
+         & "Mode (stratified or importance) = ", self%mode
     call write_indent (u, ind)
-    write (u, "(2x,A,I0)") "Calls per box = ", self%calls_per_box
+    write (u, "(2x,A,I0)") &
+         & "Calls per box                   = ", self%calls_per_box
     call write_indent (u, ind)
-    write (u, "(2x,A,I0)") "Number of calls = ", self%n_calls
+    write (u, "(2x,A,I0)") &
+         & "Number of calls                 = ", self%n_calls
     call write_indent (u, ind)
-    write (u, "(2x,A,I0)") "Min. number of calls = ", self%n_calls_min
+    write (u, "(2x,A,I0)") &
+         & "Min. number of calls            = ", self%n_calls_min
     call write_indent (u, ind)
-    write (u, "(2x,A,I0)") "Number of bins = ", self%n_bins
+    write (u, "(2x,A,I0)") &
+         & "Number of bins                  = ", self%n_bins
     call write_indent (u, ind)
-    write (u, "(2x,A,I0)") "Number of boxes = ", self%n_boxes
+    write (u, "(2x,A,I0)") &
+         & "Number of boxes                 = ", self%n_boxes
   end subroutine vegas_config_write
+
   subroutine vegas_grid_write (self, unit, indent)
     class(vegas_grid_t), intent(in) :: self
     integer, intent(in), optional :: unit
@@ -274,35 +285,50 @@ contains
     u = given_output_unit (unit)
     ind = 0; if (present (indent)) ind = indent
     call write_indent (u, ind)
-    write (u, "(2x,A,I0)") "Start iteration = ", self%it_start
+    write (u, "(2x,A,I0)") &
+         & "Start iteration                 = ", self%it_start
     call write_indent (u, ind)
-    write (u, "(2x,A,I0)") "Iteration number = ", self%it_num
+    write (u, "(2x,A,I0)") &
+         & "Iteration number                = ", self%it_num
     call write_indent (u, ind)
-    write (u, "(2x,A,I0)") "Sample number = ", self%samples
+    write (u, "(2x,A,I0)") &
+         & "Sample number                   = ", self%samples
     call write_indent (u, ind)
-    write (u, "(2x,A," // FMT_14 //")") "Sum of weighted integrals = ", self%sum_int_wgtd
+    write (u, "(2x,A," // FMT_17 //")") &
+         & "Sum of weighted integrals       = ", self%sum_int_wgtd
     call write_indent (u, ind)
-    write (u, "(2x,A," // FMT_14 // ")") "Sum of weights = ", self%sum_wgts
+    write (u, "(2x,A," // FMT_17 // ")")  &
+         & "Sum of weights                  = ", self%sum_wgts
     call write_indent (u, ind)
-    write (u, "(2x,A," // FMT_14 // ")") "Sum of chi = ", self%sum_chi
+    write (u, "(2x,A," // FMT_17 // ")") &
+         & "Sum of chi                      = ", self%sum_chi
     call write_indent (u, ind)
-    write (u, "(2x,A," // FMT_14 // ")") "chi2 = ", self%chi2
+    write (u, "(2x,A," // FMT_17 // ")") &
+         & "chi2                            = ", self%chi2
     call write_indent (u, ind)
-    write (u, "(2x,A," // FMT_14 // ")") "Overall efficiency = ", self%efficiency
+    write (u, "(2x,A," // FMT_17 // ")") &
+         & "Overall efficiency              = ", self%efficiency
     call write_indent (u, ind)
-    write (u, "(2x,A," // FMT_14 // ")") "f-positive efficiency = ", self%efficiency_pos
+    write (u, "(2x,A," // FMT_17 // ")") &
+         & "f-positive efficiency           = ", self%efficiency_pos
     call write_indent (u, ind)
-    write (u, "(2x,A," // FMT_14 // ")") "f-negative efficiency = ", self%efficiency_neg
+    write (u, "(2x,A," // FMT_17 // ")") &
+         & "f-negative efficiency           = ", self%efficiency_neg
     call write_indent (u, ind)
-    write (u, "(2x,A," // FMT_14 // ")") "Maximum absolute overall value = ", self%max_abs_f
+    write (u, "(2x,A," // FMT_17 // ")") &
+         & "Maximum absolute overall value  = ", self%max_abs_f
     call write_indent (u, ind)
-    write (u, "(2x,A," // FMT_14 // ")") "Maximum absolute positive value = ", self%max_abs_f_pos
+    write (u, "(2x,A," // FMT_17 // ")") &
+         & "Maximum absolute positive value = ", self%max_abs_f_pos
     call write_indent (u, ind)
-    write (u, "(2x,A," // FMT_14 // ")") "Maximum absolute negative value = ", self%max_abs_f_neg
+    write (u, "(2x,A," // FMT_17 // ")") &
+         & "Maximum absolute negative value = ", self%max_abs_f_neg
     call write_indent (u, ind)
-    write (u, "(2x,A," // FMT_14 // ")") "Integral (of latest iteration) = ", self%result
+    write (u, "(2x,A," // FMT_17 // ")") &
+         & "Integral (of latest iteration)  = ", self%result
     call write_indent (u, ind)
-    write (u, "(2x,A," // FMT_14 // ")") "Standard deviation = ", self%std
+    write (u, "(2x,A," // FMT_17 // ")") &
+         & "Standard deviation              = ", self%std
   end subroutine vegas_result_write
 
   type(vegas_t) function vegas_init (n_dim, alpha, n_bins_max, iterations, mode) result (self)
@@ -571,49 +597,48 @@ contains
   subroutine vegas_refine_grid (self)
     class(vegas_t), intent(inout) :: self
     integer :: i, j, k
-    real(default) :: oldg, newg, rc
-    real(default) :: grid_total_jacobian, total_weight
-    real(default) :: pts_per_bin, x_old, x_new, d_width
+    real(default) :: d_min, grid_total_jacobian, total_weight
+    real(default) :: pts_per_bin, d_width
     real(default), dimension(self%config%n_bins_max + 1) :: xi_new
     ndim: do j = 1, self%config%n_dim
-       oldg = self%d(1, j)
-       newg = self%d(2, j)
-       self%d(1, j) = (oldg + newg) / 2.
        ! d[i][j] = (d[i-1][j]+d[i][j]+d[i+1][j])/3
-       do i = 2, self%config%n_bins - 1
-          rc = oldg + newg
-          oldg = newg
-          newg = self%d(i + 1, j)
-          self%d(i, j) = (rc + newg) / 3
-       end do
-       self%d(self%config%n_bins, j) = (newg + oldg) / 2.
-       grid_total_jacobian = sum(self%d(:, j))
-       self%weight = 0.
-       do i = 1, self%config%n_bins
-          if (self%d(i, j) > 0.) then
-             oldg = grid_total_jacobian / self%d(i, j)
-             self%weight(i) = ((oldg - 1.) / oldg / log(oldg))**self%config%alpha
-          end if
-       end do
-       total_weight = sum(self%weight)
-       pts_per_bin = total_weight / self%config%n_bins
-       xi_new = self%grid%xi(:, j)
-       x_new = 0.
-       d_width = 0.
-       i = 2
-       do k = 1, self%config%n_bins
-          d_width = d_width + self%weight(k)
-          associate (x_upper => self%grid%xi(k + 1, j), x_lower => self%grid%xi(k, j))
-            do while (d_width > pts_per_bin .and. i <= self%config%n_bins)
-               d_width = d_width - pts_per_bin
-               xi_new(i) = x_upper - (x_upper - x_lower) * d_width / self%weight(k)
-               i = i + 1
+       associate (n_bins => self%config%n_bins)
+         if (n_bins > 2) then
+            self%d(1, j) = (self%d(1, j) + self%d(2, j)) / 2.0_default
+            self%d(2:n_bins - 1, j) = (self%d(1:n_bins - 2, j) &
+                 & + self%d(2:n_bins - 1, j) &
+                 & + self%d(3:n_bins, j)) / 3.0_default
+            self%d(n_bins, j) = (self%d(n_bins - 1, j) &
+                 & + self%d(n_bins, j)) / 2.0_default
+         end if
+         self%weight = 1.0_default
+         if (.not. all (self%d(:n_bins, j) < tiny(1.0_default))) then
+            d_min = minval (self%d(:n_bins, j), self%d(:n_bins, j) /= 0.)
+            self%d(:n_bins, j) = max (self%d(:n_bins, j), d_min)
+            self%d(:n_bins, j) = self%d(:n_bins, j) / sum (self%d(:n_bins, j))
+            do i = 1, n_bins
+               self%weight(i) = ((self%d(i, j) - 1.) / log(self%d(i, j)))**self%config%alpha
             end do
-          end associate
-       end do
-       self%grid%xi(:, j) = 0. ! Reset explicitly the grid
-       self%grid%xi(2:self%config%n_bins, j) = xi_new(2:self%config%n_bins)
-       self%grid%xi(self%config%n_bins + 1, j) = 1.
+         end if
+         total_weight = sum(self%weight)
+         pts_per_bin = total_weight / n_bins
+         xi_new = self%grid%xi(:, j)
+         d_width = 0.
+         i = 2
+         do k = 1, n_bins
+            d_width = d_width + self%weight(k)
+            associate (x_upper => self%grid%xi(k + 1, j), x_lower => self%grid%xi(k, j))
+              do while (d_width > pts_per_bin .and. i <= n_bins)
+                 d_width = d_width - pts_per_bin
+                 xi_new(i) = x_upper - (x_upper - x_lower) * d_width / self%weight(k)
+                 i = i + 1
+              end do
+            end associate
+         end do
+         self%grid%xi(:, j) = 0. ! Reset explicitly the grid
+         self%grid%xi(2:n_bins, j) = xi_new(2:self%config%n_bins)
+         self%grid%xi(n_bins + 1, j) = 1.
+       end associate
     end do ndim
   end subroutine vegas_refine_grid
 
@@ -744,7 +769,7 @@ contains
        self%result%max_abs_f = max (self%result%max_abs_f_pos, self%result%max_abs_f_neg)
        self%result%efficiency = self%result%efficiency_pos + self%result%efficiency_neg
        if (verbose) then
-          write (msg_buffer, "(I0,1x,I0,1x, 4(" // FMT_14 // ",1x))") &
+          write (msg_buffer, "(I0,1x,I0,1x, 4(" // FMT_17 // ",1x))") &
                & it, self%config%n_calls, cumulative_int, cumulative_std, &
                & self%result%chi2, self%result%efficiency
           call msg_message ()
@@ -845,7 +870,7 @@ contains
        if (fval > 0.) then
           if (abs (fval) > self%result%max_abs_f_pos) then
              self%result%max_abs_f_pos = abs (fval)
-             write (msg_buffer, "(A,1X," // FMT_14 // ")") &
+             write (msg_buffer, "(A,1X," // FMT_17 // ")") &
                   & "[VEGAS] Adjust maximal absolute value for event&
                   & generation.", self%result%max_abs_f_pos
              call msg_warning ()
@@ -855,7 +880,7 @@ contains
        else
           if (abs (fval) > self%result%max_abs_f_neg) then
              self%result%max_abs_f_neg = abs (fval)
-             write (msg_buffer, "(A,1X," // FMT_14 // ")") "[VEGAS] Adjust&
+             write (msg_buffer, "(A,1X," // FMT_17 // ")") "[VEGAS] Adjust&
                   & maximal absolute value for event generation.", self%result&
                   &%max_abs_f_neg
              call msg_warning ()

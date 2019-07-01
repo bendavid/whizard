@@ -1,4 +1,4 @@
-! WHIZARD 2.4.1 Mar 24 2017
+! WHIZARD 2.5.0 May 06 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -38,7 +38,7 @@ module prc_recola
   use recola_wrapper !NODEP!
 
   use kinds
-  use constants, only: pi
+  use constants, only: pi, zero
   use iso_varying_string, string_t => varying_string
   use diagnostics
   use io_units
@@ -81,7 +81,7 @@ module prc_recola
          prc_recola_create_and_load_extra_libraries
     procedure :: replace_helicity_and_color_arrays => &
          prc_recola_replace_helicity_and_color_arrays
-    !procedure :: enable_dynamic_settings => prc_recola_enable_dynamic_settings
+    procedure :: enable_dynamic_settings => prc_recola_enable_dynamic_settings
     procedure :: register_processes => prc_recola_register_processes
     procedure :: compute_amplitude => prc_recola_compute_amplitude
     procedure :: write => prc_recola_write
@@ -216,13 +216,9 @@ contains
      integer, intent(in) :: i_core
      integer :: i_recola = 0
      call core%set_nlo ()
-     call core%set_mu_ir (var_list%get_rval (var_str ("recola_mu_ir")))
+     call core%enable_dynamic_settings ()
      call core%register_processes (i_recola)
      call core%replace_helicity_and_color_arrays ()
-     !!! This will allow to set, among others, mu_ir
-     !!! in Recola-1.1 dynamically, i.e. for every
-     !!! phase-space point.
-     !!! call core%enable_dynamic_settings ()
   end subroutine prc_recola_create_and_load_extra_libraries
 
   subroutine prc_recola_replace_helicity_and_color_arrays (object)
@@ -240,11 +236,10 @@ contains
     object%data%n_hel = size (object%data%hel_state, dim = 1)
   end subroutine prc_recola_replace_helicity_and_color_arrays
 
-  !!! Recola-1.1 feature, not yet active
-  !!! subroutine prc_recola_enable_dynamic_settings (object)
-  !!!   class(prc_recola_t), intent(inout) :: object
-  !!!   call rclwrap_set_dynamic_settings ()
-  !!! end subroutine prc_recola_enable_dynamic_settings
+  subroutine prc_recola_enable_dynamic_settings (object)
+    class(prc_recola_t), intent(inout) :: object
+    call rclwrap_set_dynamic_settings ()
+  end subroutine prc_recola_enable_dynamic_settings
 
   subroutine prc_recola_register_processes (object, recola_id)
     class(prc_recola_t), intent(inout) :: object
@@ -342,19 +337,20 @@ contains
     integer :: i
     real(default) :: alpha_s
 
-    sqme = 0
+    sqme = zero
     do i = 1, object%data%n_in + object%data%n_out
        p_recola(:, i) = dble(p(i)%p)
     end do
+    call rclwrap_set_mu_ir (dble (ren_scale))
     alpha_s = object%qcd%alpha%get (ren_scale)
+    !!! TODO (cw-2016-12-23): Use variable n_f here
     call rclwrap_set_alpha_s (dble (alpha_s), dble (ren_scale), 5)
     call rclwrap_compute_process (object%recola_id, p_recola, 'NLO')
     call rclwrap_get_squared_amplitude (object%recola_id, object%alphas_power + 1, &
          'NLO', sqme_dble)
     sqme(3) = sqme_dble
-
-    call rclwrap_compute_process (object%recola_id, p_recola, 'LO')
-    call rclwrap_get_squared_amplitude (object%recola_id, object%alphas_power, 'LO', sqme_dble)
+    call rclwrap_get_squared_amplitude&
+         (object%recola_id, object%alphas_power, 'LO', sqme_dble)
     sqme(4) = sqme_dble
 
     bad_point = .false.
@@ -370,8 +366,6 @@ contains
     call rclwrap_set_pole_mass (13, dble(model%get_real (var_str ('mmu'))), 0._double)
     call rclwrap_set_pole_mass (15, dble(model%get_real (var_str ('mtau'))), 0._double)
 
-    !!! call set_pole_mass_up_rcl (model%get_real (var_str ('mu')))
-    !!! call set_pole_mass_down_rcl (model%get_real (var_str ('md')))
 
     call rclwrap_set_pole_mass (1, 0._double, 0._double)
     call rclwrap_set_pole_mass (2, 0._double, 0._double)

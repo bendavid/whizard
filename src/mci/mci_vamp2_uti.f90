@@ -1,4 +1,4 @@
-! WHIZARD 2.4.1 Mar 24 2017
+! WHIZARD 2.5.0 May 06 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -265,7 +265,7 @@ contains
     call rng%init ()
     call mci%import_rng (rng)
 
-    call mci%write (u)
+    call mci%write (u, pacify = .true.)
 
     write (u, "(A)")
     write (u, "(A)") "* Initialise instance"
@@ -292,22 +292,23 @@ contains
        call mci%add_pass ()
     end select
     call mci%integrate (mci_instance, mci_sampler, 1, 1000, pacify = .true.)
-    call mci%write (u, .true.)
+    call mci%write (u, pacify = .true.)
 
     write (u, "(A)")
     write (u, "(A)")  "* Contents of mci_instance:"
     write (u, "(A)")
 
-    call mci_instance%write (u)
+    call mci_instance%write (u, pacify = .true.)
 
     write (u, "(A)")
-    write (u, "(A)") "* Dump channel weights and grids"
+    write (u, "(A)") "* Dump channel weights and grids to file"
     write (u, "(A)")
 
-   select type (mci)
-   type is (mci_vamp2_t)
-      call mci%write_grids ()
-   end select
+    mci%md5sum = "1234567890abcdef1234567890abcdef"
+    select type (mci)
+    type is (mci_vamp2_t)
+       call mci%write_grids ()
+    end select
 
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
@@ -368,23 +369,24 @@ contains
     type is (mci_vamp2_t)
        call mci%add_pass (adapt_grids = .false.)
     end select
-    call mci%integrate (mci_instance, sampler, 3, 100)
-    call mci%write (u)
+    call mci%integrate (mci_instance, sampler, 3, 1000, pacify = .true.)
+    call mci%write (u, pacify = .true.)
 
     write (u, "(A)")
     write (u, "(A)")  "* Contents of mci_instance:"
     write (u, "(A)")
 
-    call mci_instance%write (u)
+    call mci_instance%write (u, pacify = .true.)
 
     write (u, "(A)")
-    write (u, "(A)") "* Dump channel weights and grids"
+    write (u, "(A)") "* Dump channel weights and grids to file"
     write (u, "(A)")
 
-   select type (mci)
-   type is (mci_vamp2_t)
-      call mci%write_grids ()
-   end select
+    mci%md5sum = "1234567890abcdef1234567890abcdef"
+    select type (mci)
+    type is (mci_vamp2_t)
+       call mci%write_grids ()
+    end select
 
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
@@ -446,19 +448,20 @@ contains
     type is (mci_vamp2_t)
        call mci%add_pass (adapt_grids = .true.)
     end select
-    call mci%integrate (mci_instance, sampler, 3, 100)
-    call mci%write (u)
+    call mci%integrate (mci_instance, sampler, 3, 1000, pacify = .true.)
+    call mci%write (u, pacify = .true.)
 
     write (u, "(A)")
     write (u, "(A)")  "* Contents of mci_instance:"
     write (u, "(A)")
 
-    call mci_instance%write (u)
+    call mci_instance%write (u, pacify = .true.)
 
     write (u, "(A)")
-    write (u, "(A)") "* Dump channel weights and grids"
+    write (u, "(A)") "* Dump channel weights and grids to file"
     write (u, "(A)")
 
+    mci%md5sum = "1234567890abcdef1234567890abcdef"
     select type (mci)
     type is (mci_vamp2_t)
        call mci%write_grids ()
@@ -466,6 +469,7 @@ contains
 
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
+    write (u, "(A)")
 
     call mci_instance%final ()
     call mci%final ()

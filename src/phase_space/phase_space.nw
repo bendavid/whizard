@@ -13415,7 +13415,8 @@ contains
 end module phs_fks
 
 @ %def phs_fks
-@ Another container for the $x_\oplus$- and $x_\ominus$-values for initial-state phase spaces.
+@ A container for the $x_\oplus$- and $x_\ominus$-values for initial-state
+phase spaces.
 <<phs fks: public>>=
   public :: isr_kinematics_t
 <<phs fks: types>>=
@@ -14285,6 +14286,9 @@ be assured that Born flavors are used for this.
   integer, parameter, public :: GEN_SOFT_COLL_LIMIT_TEST = 6
   integer, parameter, public :: GEN_SOFT_ANTI_COLL_LIMIT_TEST = 7
 
+  integer, parameter, public :: SQRTS_FIXED = 1
+  integer, parameter, public :: SQRTS_VAR = 2
+
   real(default), parameter :: xi_tilde_test_soft = 0.0001_default
   real(default), parameter :: xi_tilde_test_coll = 0.5_default
   real(default), parameter :: y_test_soft = 0.5_default
@@ -14340,6 +14344,7 @@ phase-space points with [[p_real(emitter) = 0]].
     integer :: i_fsr_first = -1
     type(resonance_contributors_t), dimension(:), allocatable :: resonance_contributors !!! Put somewhere else?
     integer :: mode = GEN_REAL_PHASE_SPACE
+    integer :: isr_mode = SQRTS_FIXED
   contains
   <<phs fks: phs fks generator: TBP>>
   end type phs_fks_generator_t
@@ -14846,6 +14851,8 @@ calculated from the Born momenta.
        else
           p_born = phs%p_born_tot
        end if
+       if (.not. phs%is_cm_frame ()) &
+            p_born = inverse (phs%lt_cm_to_lab) * p_born
        call phs%generator%generate_radiation_variables &
             (r_in, p_born, phs%phs_identifiers, threshold)
        phs%r_real = r_in
@@ -14975,11 +14982,7 @@ recoiling momenta.
     real(default) :: q0
 
     call generator%generate_fsr_in (p_born, p_real)
-    if (generator%n_in == 1) then
-       q0 = energy (p_born(1))
-    else
-       q0 = energy (p_born(1) + p_born(2))
-    end if
+    q0 = sum (p_born(1:generator%n_in))**1
 
     generator%i_fsr_first = generator%n_in + 1
     call generator%generate_fsr_out (emitter, i_phs, p_born, p_real, q0, &
@@ -15717,7 +15720,7 @@ momentum vanishes. Thus we define
         p_dec_new(1) = sum (p (3 : ))
         p_dec_new(2 : n_tot - 1) = p (3 : n_tot)
         xi_max = min (xi_max_one_to_two (p(1), p(2), sum(p(3 : ))), &
-           get_xi_max_isr_decay (p_dec_new))
+             get_xi_max_isr_decay (p_dec_new))
      end if
   contains
     function xi_max_one_to_two (p_in, p_out1, p_out2) result (xi_max)
@@ -15750,7 +15753,7 @@ momentum vanishes. Thus we define
        case (1)
           call generator%compute_xi_max (1, i_phs, p_born, &
                generator%real_kinematics%xi_max(i_phs))
-          call generator%generate_isr_decay (i_phs, p_born, p_real)
+          call generator%generate_isr_fixed_beam_energy (i_phs, p_born, p_real)
           phs%config%cm_frame = .true.
        case (2)
           !!! TODO (cw-2016-11-03): Check this - isn't xi_max overwritten each time?
@@ -15800,9 +15803,9 @@ about the same azimuthal and polar angles as in the Born system.
 Finally, the momenta are boosted out of the rest frame by multiplying
 with $\Lambda$.
 <<phs fks: phs fks generator: TBP>>=
-  procedure :: generate_isr_decay => phs_fks_generator_generate_isr_decay
+  procedure :: generate_isr_fixed_beam_energy => phs_fks_generator_generate_isr_fixed_beam_energy
 <<phs fks: procedures>>=
-  subroutine phs_fks_generator_generate_isr_decay (generator, i_phs, p_born, p_real)
+  subroutine phs_fks_generator_generate_isr_fixed_beam_energy (generator, i_phs, p_born, p_real)
      class(phs_fks_generator_t), intent(inout) :: generator
      integer, intent(in) :: i_phs
      type(vector4_t), intent(in), dimension(:) :: p_born
@@ -15825,30 +15828,32 @@ with $\Lambda$.
     nlegborn = size (p_born)
     nlegreal = nlegborn + 1
 
-    msq_in = p_born(1)**2
+    msq_in = sum (p_born(1:generator%n_in))**2
     generator%real_kinematics%jac(i_phs)%jac = one
 
     p_real%p(1) = p_born(1)
+    if (generator%n_in > 1) p_real%p(2) = p_born(2)
     k0_np1 = p_real%p(1)%p(0) * xi / two
     p_real%p(nlegreal)%p(0) = k0_np1
     p_real%p(nlegreal)%p(1) = k0_np1 * sqrt(one - y**2) * sin(phi)
     p_real%p(nlegreal)%p(2) = k0_np1 * sqrt(one - y**2) * cos(phi)
     p_real%p(nlegreal)%p(3) = k0_np1 * y
 
-    p_virt = p_real%p(1) - p_real%p(nlegreal)
+    p_virt = sum (p_real%p(1:generator%n_in)) - p_real%p(nlegreal)
+
     jac_real = one
     call generate_on_shell_decay (p_virt, &
-         p_born(2 : nlegborn), p_real%p(2 : nlegreal - 1), 1, &
-         msq_in, jac_real)
+         p_born(generator%n_in + 1 : nlegborn), p_real%p(generator%n_in + 1 : nlegreal - 1), &
+         1, msq_in, jac_real)
 
     associate (jac => generator%real_kinematics%jac(i_phs))
        jac%jac(1) = jac_real
        jac%jac(2) = one
     end associate
 
-  end subroutine phs_fks_generator_generate_isr_decay
+  end subroutine phs_fks_generator_generate_isr_fixed_beam_energy
 
-@ %def phs_fks_generator_generate_isr_decay
+@ %def phs_fks_generator_generate_isr_fixed_beam_energy
 @
 <<phs fks: phs fks generator: TBP>>=
   procedure :: generate_isr_factorized => phs_fks_generator_generate_isr_factorized
@@ -15883,7 +15888,7 @@ with $\Lambda$.
     boost_to_rest_frame = inverse (boost (p_top, p_top**1))
     p_tmp_born = boost_to_rest_frame * p_tmp_born
     call generator%compute_xi_max_isr_factorized (i_phs, p_tmp_born)
-    call generator%generate_isr_decay (i_phs, p_tmp_born, p_tmp_real)
+    call generator%generate_isr_fixed_beam_energy (i_phs, p_tmp_born, p_tmp_real)
     p_tmp_real = inverse (boost_to_rest_frame) * p_tmp_real
     if (emitter == THR_POS_B) then
        p_real%p(THR_POS_WP) = p_tmp_real%p (2)
@@ -16109,9 +16114,11 @@ with $\Lambda$.
     type(phs_identifier_t), intent(in), dimension(:) :: phs_identifiers
     logical, intent(in), optional :: threshold
 
-    if (any (generator%emitters <= 2) .and. generator%n_in > 1) &
-        call generator%set_isr_kinematics &
-           (generator%real_kinematics%p_born_lab%phs_point(1)%p(1:2))
+    if (any (generator%emitters <= 2) .and. generator%n_in > 1) then
+        if (associated (generator%isr_kinematics)) &
+             call generator%set_isr_kinematics &
+                  (generator%real_kinematics%p_born_lab%phs_point(1)%p(1:2))
+    end if
 
     associate (rad_var => generator%real_kinematics)
        rad_var%phi = r_in (I_PHI) * twopi
@@ -16198,7 +16205,7 @@ with $\Lambda$.
     integer, intent(in), optional :: i_con
     real(default), intent(in), optional :: y_in
     real(default) :: q0
-    type(vector4_t), dimension(:), allocatable :: pp
+    type(vector4_t), dimension(:), allocatable :: pp, pp_decay
     type(vector4_t) :: p_res
     type(lorentz_transformation_t) :: L_to_resonance
     real(default) :: y
@@ -16215,39 +16222,36 @@ with $\Lambda$.
        else
           y = rad_var%y(i_phs)
        end if
-       select case (generator%n_in)
-       case (1)
-          if (emitter > 1) then
-             if (generator%is_massive(emitter)) then
-                xi_max = get_xi_max_fsr (p, q0, emitter, &
-                     generator%m2(emitter), y)
+       if (present (i_con)) then
+          p_res = rad_var%xi_ref_momenta(i_con)
+          L_to_resonance = inverse (boost (p_res, q0))
+          pp = L_to_resonance * p
+       else
+          pp = p
+       end if
+       if (emitter <= generator%n_in) then
+          select case (generator%isr_mode)
+          case (SQRTS_FIXED)
+             if (generator%n_in > 1) then
+                allocate (pp_decay (size (pp) - 1))
              else
-                xi_max = get_xi_max_fsr (p, q0, emitter)
+                allocate (pp_decay (size (pp)))
              end if
-          else
-             xi_max = get_xi_max_isr_decay (p)
-          end if
-       case (2)
-          if (present (i_con)) then
-             p_res = rad_var%xi_ref_momenta(i_con)
-             L_to_resonance = inverse (boost (p_res, q0))
-             pp = L_to_resonance * p
-          else
-             pp = p
-          end if
-          if (emitter <= 2) then
+             pp_decay (1) = sum (pp(1:generator%n_in))
+             pp_decay (2 : ) = pp (generator%n_in + 1 : )
+             xi_max = get_xi_max_isr_decay (pp_decay)
+             deallocate (pp_decay)
+          case (SQRTS_VAR)
              xi_max = get_xi_max_isr (generator%isr_kinematics%x, y)
+          end select
+       else
+          if (generator%is_massive(emitter)) then
+             xi_max = get_xi_max_fsr (pp, q0, emitter, generator%m2(emitter), y)
           else
-             if (generator%is_massive(emitter)) then
-                xi_max = get_xi_max_fsr (pp, q0, emitter, generator%m2(emitter), y)
-             else
-                xi_max = get_xi_max_fsr (pp, q0, emitter)
-             end if
+             xi_max = get_xi_max_fsr (pp, q0, emitter)
           end if
-       case default
-          call msg_fatal ("Real phase space: " // &
-             "Only one or two initial particles supported")
-       end select
+       end if
+       deallocate (pp)
     end associate
   end subroutine phs_fks_generator_compute_xi_max
 
@@ -16289,10 +16293,11 @@ with $\Lambda$.
 <<phs fks: public>>=
   public :: compute_y_from_emitter
 <<phs fks: procedures>>=
-  subroutine compute_y_from_emitter (r_y, p, emitter, massive, &
+  subroutine compute_y_from_emitter (r_y, p, n_in, emitter, massive, &
          y_max, jac_rand, y, contributors, threshold)
     real(default), intent(in) :: r_y
     type(vector4_t), intent(in), dimension(:) :: p
+    integer, intent(in) :: n_in
     integer, intent(in) :: emitter
     logical, intent(in) :: massive
     real(default), intent(in) :: y_max
@@ -16318,19 +16323,14 @@ with $\Lambda$.
           do i = 1, size (contributors)
              p_res = p_res + p(contributors(i))
           end do
-          q0 = p_res**1
-          boost_to_resonance = inverse (boost (p_res, q0))
-          p_em = boost_to_resonance * p(emitter)
        else if (thr) then
-          !p_res = generator%real_kinematics%xi_ref_momenta (thr_leg (emitter))
           p_res = p(ass_boson(thr_leg(emitter))) + p(ass_quark(thr_leg(emitter)))
-          q0 = p_res**1
-          boost_to_resonance = inverse (boost (p_res, q0))
-          p_em = boost_to_resonance * p(emitter)
        else
-          q0 = energy (p(1) + p(2))
-          p_em = p(emitter)
+          p_res = sum (p(1:n_in))
        end if
+       q0 = p_res**1
+       boost_to_resonance = inverse (boost (p_res, q0))
+       p_em = boost_to_resonance * p(emitter)
        beta = beta_emitter (q0, p_em)
        one_m_beta = one - beta
        one_p_beta = one + beta
@@ -16374,8 +16374,8 @@ with $\Lambda$.
        !!! not be treated here.
        construct_massive_fsr = emitter > generator%n_in
        if (construct_massive_fsr) construct_massive_fsr = &
-          construct_massive_fsr .and. generator%is_massive (emitter)
-       call compute_y_from_emitter (r_y, p, emitter, construct_massive_fsr, &
+            construct_massive_fsr .and. generator%is_massive (emitter)
+       call compute_y_from_emitter (r_y, p, generator%n_in, emitter, construct_massive_fsr, &
             generator%y_max, jac_rand(i_phs), y(i_phs), &
             phs_identifiers(i_phs)%contributors, threshold)
     end do
@@ -16811,10 +16811,10 @@ has already been taken into account during its generation.
     allocate (resonance_histories (size (phs_config%get_resonance_histories ())))
     resonance_histories = phs_config%get_resonance_histories ()
     call clean_resonance_histories (resonance_histories, &
-       n_in, flv_state (:,1), resonance_histories_clean, success)
+         n_in, flv_state (:,1), resonance_histories_clean, success)
     if (success .and. allocated (excluded_resonances)) then
        call filter_particles_from_resonances (resonance_histories_clean, &
-          excluded_resonances, model, resonance_histories_filtered)
+            excluded_resonances, model, resonance_histories_filtered)
     else
        allocate (resonance_histories_filtered (size (resonance_histories_clean)))
        resonance_histories_filtered = resonance_histories_clean
@@ -16896,6 +16896,9 @@ end module phs_fks_uti
     call test(phs_fks_generator_6, "phs_fks_generator_6", &
          "Test the generation of a real phase space for 1 -> 3 decays", &
          u, results)
+    call test(phs_fks_generator_7, "phs_fks_generator_7", &
+         "Test the generation of an ISR FKS phase space for fixed beam energy", &
+         u, results)
   end subroutine phs_fks_generator_test
 
 @ %def phs_fks_generator_test
@@ -16932,6 +16935,7 @@ end module phs_fks_uti
 
     allocate (generator%isr_kinematics)
     generator%n_in = 2
+    generator%isr_mode = SQRTS_FIXED
 
     call generator%set_sqrts_hat (sqrts)
 
@@ -17023,12 +17027,13 @@ end module phs_fks_uti
 
     allocate (generator%emitters (2))
     allocate (generator%isr_kinematics)
-    generator%n_in = 2
     generator%emitters(1) = 1; generator%emitters(2) = 2
     generator%sqrts = sqrts_hadronic
     generator%isr_kinematics%beam_energy = sqrts_hadronic / two
     call generator%set_sqrts_hat (sqrts_hadronic)
     call generator%set_isr_kinematics (p_born)
+    generator%n_in = 2
+    generator%isr_mode = SQRTS_VAR
 
     write (u, "(A)") "* Use four-particle phase space containing: "
     call vector4_write_set (p_born, u, testflag = .true., ultra = .true.)
@@ -17112,6 +17117,7 @@ end module phs_fks_uti
     p_born(3)%p(1:3) = -p_born(2)%p(1:3)
 
     generator%n_in = 1
+    generator%isr_mode = SQRTS_FIXED
 
     mB = 4.2_default
     mW = 80.376_default
@@ -17167,7 +17173,7 @@ end module phs_fks_uti
     i_phs = 1; emitter = phs_identifiers(i_phs)%emitter
     write (u, "(A,I1)") "emitter: ", emitter
     p_real = 4
-    call generator%generate_isr_decay (i_phs, p_born, p_real)
+    call generator%generate_isr_fixed_beam_energy (i_phs, p_born, p_real)
     call pacify (p_real%p, 1E-6_default)
     call vector4_write_set (p_real%p, u, testflag = .true., ultra = .true.)
     call write_separator(u)
@@ -17237,6 +17243,7 @@ end module phs_fks_uti
 
     allocate (generator%isr_kinematics)
     generator%n_in = 2
+    generator%isr_mode = SQRTS_FIXED
 
     call generator%set_sqrts_hat (sqrts)
 
@@ -17368,6 +17375,7 @@ end module phs_fks_uti
     p_born(6)%p(3) = 44.25011295081_default
 
     generator%n_in = 2
+    generator%isr_mode = SQRTS_FIXED
 
     mB = 4.2_default
     mW = 80.376_default
@@ -17541,6 +17549,7 @@ end module phs_fks_uti
     p_born(4)%p(3) = -8.440032040958_default
 
     generator%n_in = 1
+    generator%isr_mode = SQRTS_FIXED
 
     mB = 4.2_default
     mW = 80.376_default
@@ -17567,7 +17576,7 @@ end module phs_fks_uti
     generator%emitters(2) = 2
     allocate (generator%m2 (4), generator%is_massive(4))
     generator%m2(1) = mT**2
-    generator%m2(1) = mB**2
+    generator%m2(2) = mB**2
     generator%m2(3) = zero
     generator%m2(4) = zero
     generator%is_massive(1:2) = .true.
@@ -17598,7 +17607,7 @@ end module phs_fks_uti
     i_phs = 1; emitter = phs_identifiers(i_phs)%emitter
     write (u, "(A,I1)") "emitter: ", emitter
     p_real = 5
-    call generator%generate_isr_decay (i_phs, p_born, p_real)
+    call generator%generate_isr_fixed_beam_energy (i_phs, p_born, p_real)
     call pacify (p_real%p, 1E-6_default)
     call vector4_write_set (p_real%p, u, testflag = .true., ultra = .true.)
     call write_separator(u)
@@ -17614,6 +17623,106 @@ end module phs_fks_uti
   end subroutine phs_fks_generator_6
 
 @ %def phs_fks_generator_6
+@
+<<phs fks: test declarations>>=
+  public :: phs_fks_generator_7
+<<phs fks: tests>>=
+  subroutine phs_fks_generator_7 (u)
+    integer, intent(in) :: u
+    type(phs_fks_generator_t) :: generator
+    type(vector4_t), dimension(:), allocatable :: p_born
+    type(phs_point_t) :: p_real
+    real(default) :: x1, x2, x3
+    integer :: i, emitter, i_phs
+    type(phs_identifier_t), dimension(2) :: phs_identifiers
+    real(default), parameter :: sqrts = 1000.0_default
+
+    write (u, "(A)") "* Test output: phs_fks_generator_7"
+    write (u, "(A)") "* Puropse: Create real phase space for scattering ISR"
+    write (u, "(A)") "*          keeping the beam energy fixed."
+    write (u, "(A)")
+
+    allocate (p_born(4))
+    p_born(1)%p(0) = 500._default
+    p_born(1)%p(1) = 0._default
+    p_born(1)%p(2) = 0._default
+    p_born(1)%p(3) = 500._default
+    p_born(2)%p(0) = 500._default
+    p_born(2)%p(1) = 0._default
+    p_born(2)%p(2) = 0._default
+    p_born(2)%p(3) = -500._default
+    p_born(3)%p(0) = 500._default
+    p_born(3)%p(1) = 11.275563070_default
+    p_born(3)%p(2) = -13.588797663_default
+    p_born(3)%p(3) = 486.93070588_default
+    p_born(4)%p(0) = 500._default
+    p_born(4)%p(1:3) = -p_born(3)%p(1:3)
+
+    phs_identifiers(1)%emitter = 1
+    phs_identifiers(2)%emitter = 2
+
+    allocate (generator%emitters(2))
+    generator%n_in = 2
+    generator%isr_mode = SQRTS_FIXED
+    generator%emitters(1) = 1; generator%emitters(2) = 2
+    generator%sqrts = sqrts
+
+    write (u, "(A)") "* Use 2 -> 2 phase space containing: "
+    call vector4_write_set (p_born, u, testflag = .true., ultra = .true.)
+    write (u, "(A)") "**********************"
+    write (u, "(A)")
+
+    x1 = 0.5_default; x2 = 0.25_default; x3 = 0.6_default
+    write (u, "(A)") "* Use random numbers: "
+    write (u, "(A,F3.2,1X,A,F3.2,A,1X,F3.2)") &
+       "x1: ", x1, "x2: ", x2, "x3: ", x3
+
+    allocate (generator%real_kinematics)
+    call generator%real_kinematics%init (4, 2, 2, 1)
+    call generator%real_kinematics%p_born_lab%set_momenta (1, p_born)
+
+    allocate (generator%m2 (4))
+    generator%m2 = 0._default
+    allocate (generator%is_massive(4))
+    generator%is_massive = .false.
+    call generator%generate_radiation_variables ([x1,x2,x3], p_born, phs_identifiers)
+    call generator%compute_xi_ref_momenta (p_born)
+    do i_phs = 1, 2
+       emitter = phs_identifiers(i_phs)%emitter
+       call generator%compute_xi_max (emitter, i_phs, p_born, &
+            generator%real_kinematics%xi_max(i_phs))
+    end do
+
+    write (u, "(A)") &
+       "* With these, the following radiation variables have been produced: "
+    associate (rad_var => generator%real_kinematics)
+       write (u, "(A,F4.2)") "xi_tilde: ", rad_var%xi_tilde
+       do i = 1, 2
+          write (u, "(A,I1,A,F5.2)") "i: ", i, "y: " , rad_var%y(i)
+       end do
+       write (u, "(A,F4.2)") "phi: ", rad_var%phi
+    end associate
+
+    call write_separator (u)
+    write (u, "(A)") "Produce real momenta via initial-state emission: "
+    i_phs = 1; emitter = phs_identifiers(i_phs)%emitter
+    write (u, "(A,I1)") "emitter: ", emitter
+    p_real = 5
+    call generator%generate_isr_fixed_beam_energy (i_phs, p_born, p_real)
+    call pacify (p_real%p, 1E-6_default)
+    call vector4_write_set (p_real%p, u, testflag = .true., ultra = .true.)
+    call write_separator(u)
+    i_phs = 2; emitter = phs_identifiers(i_phs)%emitter
+    write (u, "(A,I1)") "emitter: ", emitter
+    call generator%generate_isr_fixed_beam_energy (i_phs, p_born, p_real)
+    call pacify (p_real%p, 1E-6_default)
+    call vector4_write_set (p_real%p, u, testflag = .true., ultra = .true.)
+    write (u, "(A)")
+    write (u, "(A)") "* Test output end: phs_fks_generator_7"
+
+  end subroutine phs_fks_generator_7
+
+@ %def phs_fks_generator_3
 @
 \section{Dispatch}
 <<[[dispatch_phase_space.f90]]>>=

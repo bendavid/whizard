@@ -1,4 +1,4 @@
-! WHIZARD 2.4.1 Mar 24 2017
+! WHIZARD 2.5.0 May 06 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -113,6 +113,7 @@ module os_interface
      type(string_t) :: whizard_ldflags
      type(string_t) :: whizard_libtool
      type(string_t) :: whizard_modelpath
+     type(string_t) :: whizard_modelpath_ufo
      type(string_t) :: whizard_models_libpath
      type(string_t) :: whizard_susypath
      type(string_t) :: whizard_gmlpath
@@ -274,6 +275,7 @@ contains
        os_data%whizard_ldflags        = WHIZARD_TEST_LDFLAGS
        os_data%whizard_libtool        = WHIZARD_LIBTOOL_TEST
        os_data%whizard_modelpath      = WHIZARD_TEST_MODELPATH
+       os_data%whizard_modelpath_ufo  = WHIZARD_TEST_MODELPATH_UFO
        os_data%whizard_models_libpath = WHIZARD_TEST_MODELS_LIBPATH
        os_data%whizard_susypath       = WHIZARD_TEST_SUSYPATH
        os_data%whizard_gmlpath        = WHIZARD_TEST_GMLPATH
@@ -299,6 +301,7 @@ contains
           if (paths%libtool /= "")  os_data%whizard_libtool = paths%libtool
        end if
        os_data%whizard_modelpath      = WHIZARD_MODELPATH
+       os_data%whizard_modelpath_ufo  = WHIZARD_MODELPATH_UFO
        os_data%whizard_models_libpath = WHIZARD_MODELS_LIBPATH
        os_data%whizard_susypath       = WHIZARD_SUSYPATH
        os_data%whizard_gmlpath        = WHIZARD_GMLPATH
@@ -349,6 +352,7 @@ contains
     call expand_paths (os_data%whizard_ldflags)
     call expand_paths (os_data%whizard_libtool)
     call expand_paths (os_data%whizard_modelpath)
+    call expand_paths (os_data%whizard_modelpath_ufo)
     call expand_paths (os_data%whizard_models_libpath)
     call expand_paths (os_data%whizard_susypath)
     call expand_paths (os_data%whizard_gmlpath)
@@ -418,8 +422,10 @@ contains
     write (u, *) "whizard_libtool        = ", char (os_data%whizard_libtool)
     write (u, *) "whizard_modelpath      = ", &
          char (os_data%whizard_modelpath)
+    write (u, *) "whizard_modelpath_ufo  = ", &
+         char (os_data%whizard_modelpath_ufo)
     write (u, *) "whizard_models_libpath = ", &
-         char (os_data%whizard_modelpath)
+         char (os_data%whizard_models_libpath)
     write (u, *) "whizard_susypath       = ", char (os_data%whizard_susypath)
     write (u, *) "whizard_gmlpath        = ", char (os_data%whizard_gmlpath)
     write (u, *) "whizard_cutspath       = ", char (os_data%whizard_cutspath)

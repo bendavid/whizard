@@ -46,7 +46,7 @@ alphas = 0.118
 ?alpha_s_from_mz = true
 ?alpha_s_from_lambda_qcd = false
 
-process user_prc_threshold_3_p1 = e1, E1 => Wp, Wm, b, B {nlo_calculation = "Real"}
+process user_prc_threshold_3_p1 = E1, e1 => Wp, Wm, b, B {nlo_calculation = "Real"}
 
 top_helicity_selection = 3
 seed = 0

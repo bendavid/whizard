@@ -34,6 +34,7 @@
 
 ## Subdirectories to configure
 SUBDIRS = \
+  models \
   unit_tests \
   functional_tests
 

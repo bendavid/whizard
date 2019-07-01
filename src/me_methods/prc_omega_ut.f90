@@ -1,4 +1,4 @@
-! WHIZARD 2.4.1 Mar 24 2017
+! WHIZARD 2.5.0 May 06 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -62,6 +62,9 @@ contains
          u, results)
     call test (prc_omega_5, "prc_omega_5", &
          "running QCD alpha", &
+         u, results)
+    call test (prc_omega_6, "prc_omega_6", &
+         "OMega UFO support", &
          u, results)
 end subroutine prc_omega_test
 

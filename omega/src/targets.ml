@@ -1064,8 +1064,8 @@ module VM (Fusion_Maker : Fusion.Maker) (P : Momentum.T) (M : Model.T) =
               | (F32|F13|F21) -> printc wf2 p2 wf1 p1
               end
 
-          | Aux_Gauge_Gauge _ ->
-              failwith "print_current: V3: not implemented"
+          | I_Gauge_Gauge_Gauge _ ->
+              failwith "print_current: I_Gauge_Gauge_Gauge: not implemented"
 
           | Scalar_Vector_Vector coeff ->
               let printc code r1 r2 = printi code
@@ -2344,23 +2344,10 @@ i*)
              complex_arrays = [] }
            (List.map fst params.derived)) params.derived_arrays
 
-(* \begin{dubious}
-     Unify this with the other code using [ThoList.chopn].
-   \end{dubious} *)
+    let schisma = ThoList.chopn
 
-    let rec schisma n l =
-      if List.length l <= n then
-        [l]
-      else
-        let a, b = ThoList.splitn n l in
-        [a] @ (schisma n b)
-
-    let rec schisma_num i n l =
-      if List.length l <= n then
-        [(i,l)]
-      else
-        let a, b = ThoList.splitn n l in
-        [(i,a)] @ (schisma_num (i+1) n b)
+    let schisma_num i n l =
+      ThoList.enumerate i (schisma n l)
 
     let declare_parameters' t = function
       | [] -> ()
@@ -2375,8 +2362,10 @@ i*)
       printf "  @[<2>%s(kind=%s), dimension(%d), public, save :: %s"
         t !kind n (CM.constant_symbol p); nl ()
 
+    (* NB: we use [string_of_float] to make sure that a decimal
+       point is included to make Fortran compilers happy. *)
     let default_parameter (x, v) =
-      printf "@ %s = %g_%s" (CM.constant_symbol x) v !kind
+      printf "@ %s = %s_%s" (CM.constant_symbol x) (string_of_float v) !kind
 
     let declare_default_parameters t = function
       | [] -> ()
@@ -2387,13 +2376,13 @@ i*)
           nl ()
 
     let format_constant = function
-      | I -> sprintf "cmplx (0.0_%s, 1.0_%s)" !kind !kind
+      | I -> sprintf "cmplx (0.0_%s, 1.0_%s, kind=%s)" !kind !kind !kind
       | Const c when c < 0 -> sprintf "(%d.0_%s)" c !kind
       | Const c -> sprintf "%d.0_%s" c !kind
       | _ -> invalid_arg "format_constant"
 
     let rec eval_parameter' = function
-      | I -> printf "cmplx (0.0_%s, 1.0_%s)" !kind !kind
+      | I -> printf "cmplx (0.0_%s,@ 1.0_%s,@ kind=%s)" !kind !kind !kind
       | Const c when c < 0 -> printf "(%d.0_%s)" c !kind
       | Const c -> printf "%d.0_%s" c !kind
       | Atom x -> printf "%s" (CM.constant_symbol x)
@@ -2442,9 +2431,9 @@ i*)
       printf "    @[<2>%s = " x; eval_parameter' rhs; nl ()
 
     let eval_para_list n l =
-      printf " subroutine setup_parameters%s ()" (string_of_int n); nl ();
+      printf "  subroutine setup_parameters_%03d ()" n; nl ();
       List.iter eval_parameter l;
-      printf " end subroutine setup_parameters%s" (string_of_int n); nl ()
+      printf "  end subroutine setup_parameters_%03d" n; nl ()
 
     let eval_parameter_pair (lhs, rhs) =
       let x = CM.constant_symbol (strip_array_tag lhs) in
@@ -2454,9 +2443,9 @@ i*)
       ()
 
     let eval_para_pair_list n l =
-      printf " subroutine setup_parameters%s ()" (string_of_int n); nl ();
+      printf "  subroutine setup_parameters_%03d ()" n; nl ();
       List.iter eval_parameter_pair l;
-      printf " end subroutine setup_parameters%s" (string_of_int n); nl ()
+      printf "  end subroutine setup_parameters_%03d" n; nl ()
 
     let print_echo fmt p =
       let s = CM.constant_symbol p in
@@ -2470,6 +2459,56 @@ i*)
         printf "\"%s\", %d, %s(%d)" s i s i; nl ()
       done
 
+    let contains params couplings =
+      List.exists
+        (fun (name, _) -> List.mem (CM.constant_symbol name) params)
+        couplings.input
+
+    let rec depends_on params = function
+      | I | Const _ -> false
+      | Atom name -> List.mem (CM.constant_symbol name) params
+      | Sum es | Prod es ->
+         List.exists (depends_on params) es
+      | Diff (e1, e2) | Quot (e1, e2) ->
+         depends_on params e1 || depends_on params e2
+      | Neg e | Rec e | Pow (e, _) ->
+         depends_on params e
+      | Sqrt e | Sin e | Cos e | Tan e | Cot e | Conj e ->
+         depends_on params e
+      | Atan2 (e1, e2) ->
+         depends_on params e1 || depends_on params e2
+
+    let dependencies params couplings =
+      if contains params couplings then
+        List.rev
+          (fst (List.fold_left
+                  (fun (deps, plist) (param, v) ->
+                    match param with
+                    | Real name | Complex name ->
+                       if depends_on plist v then
+                         ((param, v) :: deps, CM.constant_symbol name :: plist)
+                       else
+                         (deps, plist))
+                  ([], params) couplings.derived))
+      else
+        []
+
+    let dependencies_arrays params couplings =
+      if contains params couplings then
+        List.rev
+          (fst (List.fold_left
+                  (fun (deps, plist) (param, vlist) ->
+                    match param with
+                    | Real_Array name | Complex_Array name ->
+                       if List.exists (depends_on plist) vlist then
+                         ((param, vlist) :: deps,
+                          CM.constant_symbol name :: plist)
+                       else
+                         (deps, plist))
+                  ([], params) couplings.derived_arrays))
+      else
+        []
+
     let parameters_to_fortran oc params =
       setup_fortran_formatter !line_length oc;
       let declarations = classify_parameters params in
@@ -2479,11 +2518,13 @@ i*)
       printf "  implicit none"; nl ();
       printf "  private"; nl ();
       printf "  @[<2>public :: setup_parameters";
+      printf ",@ import_from_whizard";
+      printf ",@ model_update_alpha_s";
       if !no_write then begin
-        printf "! No print_parameters"; nl ();
+        printf "! No print_parameters";
       end else begin
-        printf "@,, print_parameters"; nl ();
-      end;
+        printf ",@ print_parameters";
+      end; nl ();
       declare_default_parameters "real" params.input;
       declare_parameters "real" (schisma 69 declarations.real_singles);
       List.iter (declare_parameter_array "real") declarations.real_arrays;
@@ -2493,20 +2534,41 @@ i*)
       printf "    ! derived parameters:"; nl ();
       let shredded = schisma_num 1 120 params.derived in
       let shredded_arrays = schisma_num 1 120 params.derived_arrays in
-         let num_sub = List.length shredded in
-         let num_sub_arrays = List.length shredded_arrays in
-      printf "     !length: %s" (string_of_int (List.length params.derived));
-         nl ();
-      printf "     !Num_Sub: %s" (string_of_int num_sub); nl ();
+      let num_sub = List.length shredded in
+      let num_sub_arrays = List.length shredded_arrays in
       List.iter (fun (i,l) -> eval_para_list i l) shredded;
       List.iter (fun (i,l) -> eval_para_pair_list (num_sub + i) l)
         shredded_arrays;
       printf "  subroutine setup_parameters ()"; nl ();
-      let sum_sub = num_sub + num_sub_arrays in
-      for i = 1 to sum_sub do
-        printf "    call setup_parameters%s" (string_of_int i); nl ();
+      for i = 1 to num_sub + num_sub_arrays do
+        printf "    call setup_parameters_%03d ()" i; nl ();
       done;
       printf "  end subroutine setup_parameters"; nl ();
+      printf "  subroutine import_from_whizard (par_array, scheme)"; nl ();
+      printf
+        "    real(%s), dimension(%d), intent(in) :: par_array"
+        !kind (List.length params.input); nl ();
+      printf "    integer, intent(in) :: scheme"; nl ();
+      let i = ref 1 in
+      List.iter
+        (fun (p, _) ->
+          printf "    %s = par_array(%d)" (CM.constant_symbol p) !i; nl ();
+          incr i)
+        params.input;
+      printf "    call setup_parameters ()"; nl ();
+      printf "  end subroutine import_from_whizard"; nl ();
+      printf "  subroutine model_update_alpha_s (alpha_s)"; nl ();
+      printf "    real(%s), intent(in) :: alpha_s" !kind; nl ();
+      begin match (dependencies ["aS"] params,
+                   dependencies_arrays ["aS"] params) with
+      | [], [] ->
+         printf "    ! 'aS' not among the input parameters"; nl ();
+      | deps, deps_arrays ->
+         printf "    aS = alpha_s"; nl ();
+         List.iter eval_parameter deps;
+         List.iter eval_parameter_pair deps_arrays
+      end;
+      printf "  end subroutine model_update_alpha_s"; nl ();
       if !no_write then begin
         printf "! No print_parameters"; nl ();
       end else begin
@@ -2528,13 +2590,7 @@ i*)
         List.iter (print_echo_array "complex") declarations.complex_arrays;
         printf "  end subroutine print_parameters"; nl ();
       end;
-      printf "end module %s" !parameter_module; nl ();
-      printf "! O'Mega revision control information:"; nl ();
-      printf "!!! program test_parameters"; nl ();
-      printf "!!!   use %s" !parameter_module; nl ();
-      printf "!!!   call setup_parameters ()"; nl ();
-      printf "!!!   call print_parameters ()"; nl ();
-      printf "!!! end program test_parameters"; nl ()
+      printf "end module %s" !parameter_module; nl ()
 
 (* \thocwmodulesubsection{Run-Time Diagnostics} *)
 
@@ -2995,6 +3051,15 @@ i*)
                   printf "g_gg(%s,%s,%s,%s,%s)" c wf1 p1 wf2 p2
               | (F32|F13|F21) ->
                   printf "g_gg(%s,%s,%s,%s,%s)" c wf2 p2 wf1 p1
+              end
+
+          | I_Gauge_Gauge_Gauge coeff ->
+              let c = format_coupling coeff c in
+              begin match fusion with
+              | (F23|F31|F12) ->
+                  printf "g_gg((0,1)*(%s),%s,%s,%s,%s)" c wf1 p1 wf2 p2
+              | (F32|F13|F21) ->
+                  printf "g_gg((0,1)*(%s),%s,%s,%s,%s)" c wf2 p2 wf1 p1
               end
 
 (* In [Aux_Gauge_Gauge], we can not rely on antisymmetry alone, because of the

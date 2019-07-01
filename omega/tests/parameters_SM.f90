@@ -90,13 +90,11 @@ contains
 
     e_em = sqrt(4.0_default * PI * alpha)
     vev = 1 / sqrt (sqrt (2.0_default) * GF)  ! v (Higgs vev)
-    ! costhw = mass(24) / mass(23)  ! cos(theta-W)
-    costhw = 0.881901_default
+    costhw = mass(24) / mass(23)  ! cos(theta-W)
     sinthw = sqrt (1.0_default-costhw**2)  ! sin(theta-W)
     sin2thw = sinthw**2
     tanthw = sinthw/costhw
-    ! e = 2.0_default * sinthw * mass(24) / vev  ! em-coupling (GF scheme)
-    e = 0.349196_default
+    e = 2.0_default * sinthw * mass(24) / vev  ! em-coupling (GF scheme)
     qelep = - 1
     qeup = 2.0_default / 3.0_default
     qedwn = - 1.0_default / 3.0_default

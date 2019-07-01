@@ -1,4 +1,4 @@
-! WHIZARD 2.4.1 Mar 24 2017
+! WHIZARD 2.5.0 May 06 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -52,6 +52,7 @@ module fks_regions_uti
   public :: fks_regions_5
   public :: fks_regions_6
   public :: fks_regions_7
+  public :: fks_regions_8
 
 contains
 
@@ -210,7 +211,7 @@ contains
     type(region_data_t) :: reg_data
     write (u, "(A)") "* Test output: fks_regions_2"
     write (u, "(A)") "* Create singular regions for processes with up to four singular regions"
-    write (u, "(A)") "* ee -> qq"
+    write (u, "(A)") "* ee -> qq with QCD corrections"
     write (u, "(A)")
 
     n_flv_born = 1; n_flv_real = 1
@@ -221,7 +222,23 @@ contains
     allocate (flv_real (n_legs_real, n_flv_real))
     flv_born (:, 1) = [11, -11, 2, -2]
     flv_real (:, 1) = [11, -11, 2, -2, 21]
-    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data)
+    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, var_str ("QCD"))
+    call reg_data%check_consistency (.false., u)
+    call reg_data%write (u)
+
+    deallocate (flv_born, flv_real)
+    call reg_data%final ()
+    call write_separator (u)
+
+    write (u, "(A)") "* ee -> qq with QED corrections"
+    write (u, "(A)")
+    
+    allocate (flv_born (n_legs_born, n_flv_born))
+    allocate (flv_real (n_legs_real, n_flv_real))
+    flv_born (:, 1) = [11, -11, 2, -2]
+    flv_real (:, 1) = [11, -11, 2, -2, 22]
+
+    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, var_str ("QED"))
     call reg_data%check_consistency (.false., u)
     call reg_data%write (u)
 
@@ -241,7 +258,7 @@ contains
     allocate (flv_real (n_legs_real, n_flv_real))
     flv_born (:, 1) = [11, -11, 6, -6, 6, -6]
     flv_real (:, 1) = [11, -11, 6, -6, 6, -6, 21]
-    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data)
+    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, var_str ("QCD"))
     call reg_data%check_consistency (.false., u)
     call reg_data%write (u)
 
@@ -253,7 +270,7 @@ contains
     integer, intent(in) :: u
     integer :: n_flv_born, n_flv_real
     integer :: n_legs_born, n_legs_real
-    integer :: n_in
+    integer :: n_in, i, j
     integer, dimension(:,:), allocatable :: flv_born, flv_real
     type(region_data_t) :: reg_data
     write (u, "(A)") "* Test output: fks_regions_3"
@@ -271,12 +288,33 @@ contains
     flv_real (:, 1) = [11, -11, 2, -2, 21, 21]
     flv_real (:, 2) = [11, -11, 2, -2, 1, -1]
 
-    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data)
+    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, var_str ("QCD"))
     call reg_data%check_consistency (.false., u)
     call reg_data%write (u)
 
     deallocate (flv_born, flv_real)
     call reg_data%final ()
+    call write_separator (u)
+
+    write (u, "(A)") "* ee -> qqA"
+    write (u, "(A)")
+    n_flv_born = 1; n_flv_real = 2
+    n_legs_born = 5; n_legs_real = 6
+    n_in = 2
+    allocate (flv_born (n_legs_born, n_flv_born))
+    allocate (flv_real (n_legs_real, n_flv_real))
+
+    flv_born (:, 1) = [11, -11, 2, -2, 22]
+    flv_real (:, 1) = [11, -11, 2, -2, 22, 22]
+    flv_real (:, 2) = [11, -11, 2, -2, 11, -11]
+
+    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, var_str ("QED"))
+    call reg_data%check_consistency (.false., u)
+    call reg_data%write (u)
+
+    deallocate (flv_born, flv_real)
+    call reg_data%final ()
+    call write_separator (u)
 
     write (u, "(A)") "* ee -> jet jet jet"
     write (u, "(A)") "* with jet = u:U:d:D:s:S:c:C:b:B:gl"
@@ -315,7 +353,34 @@ contains
     flv_real (:, 21) = [11, -11, -1, -1, 1, 1]
     flv_real (:, 22) = [11, -11, -1, 1, 21, 21]
 
-    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data)
+    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, var_str ("QCD"))
+    call reg_data%check_consistency (.false., u)
+    call reg_data%write (u)
+
+    deallocate (flv_born, flv_real)
+    call reg_data%final ()
+    call write_separator (u)
+
+    write (u, "(A)") "* ee -> L L A"
+    write (u, "(A)") "* with L = e2:E2:e3:E3"
+    write (u, "(A)")
+    n_flv_born = 2; n_flv_real = 6
+    n_legs_born = 5; n_legs_real = 6
+    n_in = 2
+    allocate (flv_born (n_legs_born, n_flv_born))
+    allocate (flv_real (n_legs_real, n_flv_real))
+
+    flv_born (:, 1) = [11, -11, -15, 15, 22]
+    flv_born (:, 2) = [11, -11, -13, 13, 22]
+
+    flv_real (:, 1) = [11, -11, -15, -15, 15, 15]
+    flv_real (:, 2) = [11, -11, -15, -13, 13, 13]
+    flv_real (:, 3) = [11, -11, -13, -15, 13, 15]
+    flv_real (:, 4) = [11, -11, -15, 15, 22, 22]
+    flv_real (:, 5) = [11, -11, -13, -13, 13, 13]
+    flv_real (:, 6) = [11, -11, -13, 13, 22, 22]
+
+    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, var_str ("QED"))
     call reg_data%check_consistency (.false., u)
     call reg_data%write (u)
 
@@ -387,7 +452,45 @@ contains
     flv_real (:, 21)  = [11, -11, -1, -1, 1, 1, 21]
     flv_real (:, 22)  = [11, -11, -1, 1, 21, 21, 21]
 
-    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data)
+    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, var_str ("QCD"))
+    call reg_data%check_consistency (.false., u)
+    call reg_data%write (u)
+
+    deallocate (flv_born, flv_real)
+    call reg_data%final ()
+    call write_separator (u)
+
+    write (u, "(A)") "* ee -> bbmumu with QCD corrections"
+    write (u, "(A)")
+    n_flv_born = 1; n_flv_real = 1
+    n_legs_born = 6; n_legs_real = 7
+    n_in = 2
+    allocate (flv_born (n_legs_born, n_flv_born))
+    allocate (flv_real (n_legs_real, n_flv_real))
+
+    flv_born (:, 1)   = [11, -11, -5, 5, -13, 13]
+    flv_real (:, 1)   = [11, -11, -5, 5, -13, 13, 21]
+
+    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, var_str ("QCD"))
+    call reg_data%check_consistency (.false., u)
+    call reg_data%write (u)
+
+    deallocate (flv_born, flv_real)
+    call reg_data%final ()
+    call write_separator (u)
+
+    write (u, "(A)") "* ee -> bbmumu with QED corrections"
+    write (u, "(A)")
+    n_flv_born = 1; n_flv_real = 1
+    n_legs_born = 6; n_legs_real = 7
+    n_in = 2
+    allocate (flv_born (n_legs_born, n_flv_born))
+    allocate (flv_real (n_legs_real, n_flv_real))
+
+    flv_born (:, 1)   = [11, -11, -5, 5, -13, 13]
+    flv_real (:, 1)   = [11, -11, -5, 5, -13, 13, 22]
+
+    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, var_str ("QCD"))
     call reg_data%check_consistency (.false., u)
     call reg_data%write (u)
 
@@ -506,7 +609,7 @@ contains
     flv_real (:,66) = [11,-11,-1,-1,1,1,21,21]
     flv_real (:,67) = [11,-11,-1,1,21,21,21,21]
 
-    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data)
+    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, var_str ("QCD"))
     call reg_data%check_consistency (.false., u)
     call reg_data%write (u)
 
@@ -563,7 +666,7 @@ contains
        end if
     end do
 
-    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data)
+    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, var_str ("QCD"))
     call reg_data%check_consistency (.false., u)
     call reg_data%write (u)
 
@@ -583,7 +686,38 @@ contains
     flv_born (:, 1) = [6, -5, 2, -1]
     flv_real (:, 1) = [6, -5, 2, -1, 21]
 
-    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data)
+    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, var_str ("QCD"))
+    call reg_data%check_consistency (.false., u)
+    call reg_data%write (u)
+
+    call write_separator (u)
+
+    deallocate (flv_born, flv_real)
+    call reg_data%final ()
+
+    write (u, "(A)") "* Create table of singular regions for dijet s sbar -> jet jet"
+    write (u, "(A)") "* With jet = u:d:gl"
+    write (u, "(A)")
+
+    n_flv_born = 3; n_flv_real = 3
+    n_legs_born = 4; n_legs_real = 5
+    n_in = 2
+    allocate (flv_born (n_legs_born, n_flv_born))
+    allocate (flv_real (n_legs_real, n_flv_real))
+    do i = 1, n_flv_born
+       flv_born (1:2, i) = [3, -3]
+    end do
+    flv_born (3, :) = [1, 2, 21]
+    flv_born (4, :) = [-1, -2, 21]
+
+    do i = 1, n_flv_real
+       flv_real (1:2, i) = [3, -3]
+    end do
+    flv_real (3, :) = [1, 2, 21]
+    flv_real (4, :) = [-1, -2, 21]
+    flv_real (5, :) = [21, 21, 21]
+
+    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, var_str ("QCD"))
     call reg_data%check_consistency (.false., u)
     call reg_data%write (u)
     call reg_data%final ()
@@ -609,11 +743,42 @@ contains
     allocate (flv_real (n_legs_real, n_flv_real))
     flv_born (:, 1) = [11, -11, 2, -2]
     flv_real (:, 1) = [11, -11, 2, -2, 21]
-    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data)
+    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, var_str ("QCD"))
     call reg_data%write_latex (u)
     call reg_data%final ()
 
   end subroutine fks_regions_7
+
+  subroutine fks_regions_8 (u)
+    integer, intent(in) :: u
+    integer :: n_flv_born, n_flv_real
+    integer :: n_legs_born, n_legs_real
+    integer :: n_in
+    integer, dimension(:,:), allocatable :: flv_born, flv_real
+    type(region_data_t) :: reg_data
+    integer :: i, j
+    integer, dimension(10) :: flavors
+    write (u, "(A)") "* Test output: fks_regions_8"
+    write (u, "(A)") "* Create table of singular regions for ee -> ee"
+    write (u, "(A)")
+
+    n_flv_born = 1; n_flv_real = 3
+    n_legs_born = 4; n_legs_real = 5
+    n_in = 2
+    allocate (flv_born (n_legs_born, n_flv_born))
+    allocate (flv_real (n_legs_real, n_flv_real))
+    flv_born (:, 1) = [11, -11, -11, 11]
+
+    flv_real (:, 1) = [11, -11, -11, 11, 22]
+    flv_real (:, 2) = [11, 22, -11, 11, 11]
+    flv_real (:, 3) = [22, -11, 11, -11, -11]
+
+    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, var_str ("QED"))
+    call reg_data%check_consistency (.false., u)
+    call reg_data%write (u)
+    call reg_data%final ()
+
+  end subroutine fks_regions_8
 
 
 end module fks_regions_uti

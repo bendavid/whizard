@@ -44,13 +44,15 @@ contains
   end function ieee_is_nan
 
   subroutine check (v1, v2, roots, threshold, n, &
-                    failures, attempts, seed, abs_threshold)
+                    failures, attempts, seed, abs_threshold, ignore_phase)
     type(omega_procedures), intent(in) :: v1, v2
     real(kind=default), intent(in) :: roots, threshold
     integer, intent(in) :: n
     integer, intent(out) :: failures, attempts
     integer, intent(in), optional :: seed
     real(kind=default), intent(in), optional :: abs_threshold
+    logical, intent(in), optional :: ignore_phase
+    logical :: modulus_only
     logical :: match, passed
     integer :: n_out, n_flv, n_hel, n_col
     integer :: i, i_flv, i_hel, i_col
@@ -58,6 +60,10 @@ contains
     complex(kind=default) :: a1, a2
     real(kind=default) :: asq1, asq2, s_asq1, s_asq2
     character(len=80) :: msg
+    modulus_only = .false.
+    if (present (ignore_phase)) then
+       modulus_only = ignore_phase
+    end if
     failures = 0
     attempts = 0
     a1 = 0
@@ -104,9 +110,15 @@ contains
                 end if
                 write (msg, "(1X,'evt=',I5,', flv=',I3,', col=',I3,', hel=',I3)") &
                      i, i_flv, i_col, i_hel
-                call expect (a1, a2, trim(msg), passed, &
-                             quiet=.true., threshold=threshold, &
-                             abs_threshold=abs_threshold)
+                if (modulus_only) then
+                   call expect (abs (a1), abs (a2), trim(msg), passed, &
+                                quiet=.true., threshold=threshold, &
+                                abs_threshold=abs_threshold)
+                else
+                   call expect (a1, a2, trim(msg), passed, &
+                                quiet=.true., threshold=threshold, &
+                                abs_threshold=abs_threshold)
+                end if
              end do
              write (msg, "(1X,'evt=',I5,', flv=',I3,', hel=',I3)") &
                   i, i_flv, i_hel

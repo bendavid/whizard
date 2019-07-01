@@ -36,15 +36,15 @@
 SUBDIRS = \
   noweb-frame \
   basics \
-  hepmc lcio lhapdf lhapdf5 looptools pythia8 xdr\
-  expr_base utilities\
+  hepmc lcio lhapdf lhapdf5 looptools pythia8 xdr \
+  expr_base utilities \
   system \
-  combinatorics pdf_builtin testing\
+  combinatorics pdf_builtin testing \
   hoppet \
   muli parsing physics \
-  fastjet qft threshold types\
+  fastjet qft threshold types \
   models particles matrix_elements variables \
-  events prebuilt rng\
+  events prebuilt rng \
   beams tauola \
   me_methods shower user \
   blha model_features \

@@ -1,4 +1,4 @@
-! WHIZARD 2.4.1 Mar 24 2017
+! WHIZARD 2.5.0 May 06 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -62,6 +62,9 @@ contains
          &" of a real phase-space from that", u, results)
     call test(phs_fks_generator_6, "phs_fks_generator_6", &
          "Test the generation of a real phase space for 1 -> 3 decays", &
+         u, results)
+    call test(phs_fks_generator_7, "phs_fks_generator_7", &
+         "Test the generation of an ISR FKS phase space for fixed beam energy", &
          u, results)
   end subroutine phs_fks_generator_test
 

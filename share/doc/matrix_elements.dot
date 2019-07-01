@@ -1,5 +1,9 @@
 
 digraph G {
+concentrate=true
+splines=ortho
+node[shape=record,style=filled,fillcolor=white]
+edge[color=gray50]
 process_libraries -> prc_core_def
 prc_test -> process_libraries
 process_libraries -> prclib_interfaces

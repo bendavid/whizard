@@ -282,7 +282,7 @@ module Tagged (Tagger : Tagger) (PT : Tuple.Poly)
   struct 
 
     type cache_mode = Cache_Use | Cache_Ignore | Cache_Overwrite
-    let cache_option = ref Cache_Use
+    let cache_option = ref Cache_Ignore
     type qcd_order = 
       | QCD_order of int
     type ew_order = 
@@ -292,13 +292,15 @@ module Tagged (Tagger : Tagger) (PT : Tuple.Poly)
 
     let options = Options.create
         [ "ignore-cache", Arg.Unit (fun () -> cache_option := Cache_Ignore),
-          "ignore cached model tables";
+          " ignore cached model tables (default)";
+          "use-cache", Arg.Unit (fun () -> cache_option := Cache_Use),
+          " use cached model tables";
           "overwrite-cache", Arg.Unit (fun () -> cache_option := Cache_Overwrite),
-          "overwrite cached model tables";
+          " overwrite cached model tables";
 	  "qcd", Arg.Int (fun n -> qcd_order := QCD_order n), 
-	  "set QCD order n [>= 0, default = 99]";
+	  " set QCD order n [>= 0, default = 99] (ignored)";
 	  "ew", Arg.Int (fun n -> ew_order := EW_order n), 
-	  "set QCD order n [>=0, default = 99]"]
+	  " set QCD order n [>=0, default = 99] (ignored)"]
 
     exception Negative_QCD_order
     exception Negative_EW_order
@@ -729,14 +731,8 @@ module Tagged (Tagger : Tagger) (PT : Tuple.Poly)
               flush stderr;
               result
           | Cache_Ignore ->
-              Printf.eprintf
-                " >>> Ignoring vertex table %s.  This may take some time ... "
-                !cache_name;
-              flush stderr;
               let result = vertices_nocache max_degree flavors in
               vertices_cache := Some result;
-              Printf.eprintf "done. <<< \n";
-              flush stderr;
               result
           end
       | Some result -> result

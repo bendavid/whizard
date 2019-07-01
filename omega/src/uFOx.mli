@@ -27,6 +27,8 @@ module Expr :
     type t
     val of_string : string -> t
     val of_strings : string list -> t
+    val substitute : string -> t -> t -> t
+    val half : string -> t
   end
 
 module Index :

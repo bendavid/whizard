@@ -217,7 +217,7 @@ contains
                    pyjets_spin_data(idau2)%helicity = +1
                 end if
              end if
-             
+
              !!! W+(24)/H+(37) -> tau+(-15) and neu_tau
           else if ( pyjets_spin_data(ip)%pid == 24 .or. &
                pyjets_spin_data(ip)%pid == 37) then
@@ -322,7 +322,7 @@ contains
        p_dexay = p(itau,1:5)
        pyjets_spin_data(itau)%helicity = pyjets_spin_data(ip)%helicity
        spin_dexay = pyjets_spin_data(ip)%helicity
-       
+
        !!! If tau origin is known (iorig .ne. 0), decide tau helicity
        !!! based on parent particle id (kforig)
        !!! kforig = 25/35/36: 2 tau's spin must be generated: tau
@@ -345,8 +345,8 @@ contains
              idau2 = pyjets_spin_data(iorig)%index_daughter(2)
              !!! Parent Higgs is not in the documentation line (K(,1) != 21)
              !!! Get pointer to daughter directly from JETSET
-             if (idau1 == 0) then 
-                idau1 = k(iorig,4)     
+             if (idau1 == 0) then
+                idau1 = k(iorig,4)
                 idau2 = k(iorig,5)
              end if
              if (idau1 .ne. itau) then
@@ -357,14 +357,16 @@ contains
              end if
              jtau2 = idau2
              !!! Reset tau spin information because it is decided internally
-             pyjets_spin_data(itau)%helicity = 0   
+             pyjets_spin_data(itau)%helicity = 0
              pyjets_spin_data(jtau2)%helicity = 0
           end if
        else
         !!! Unknow decay mother
-          call msg_warning ("wo_tau_decay : Unknown decay modther of " // &
-               "tau, id = " // int2char (kforig) // ", tau is 50% right " // &
-               "or 50% left handed.")
+          if (debug_active (D_TAUOLA)) then
+             call msg_warning ("wo_tau_decay : Unknown decay mother of " // &
+                  "tau, id = " // int2char (kforig) // &
+                  ", tau is 50% right or 50% left handed.")
+          end if
           if (pyr(0) .lt. 0.5) then
              spin_dexay = -1
           else
@@ -402,8 +404,8 @@ contains
     common /pyjets/ n, npad, k, p, v
     save /pyjets/
 
-    integer :: n1, n2    
-    
+    integer :: n1, n2
+
     is_swapped = .false.
 
     !!! For transverse spin of the Higgs, Higgs and the two taus
@@ -470,10 +472,10 @@ contains
             phep(3,1)**2)
        jmohep(:,n1) = 1
        jmohep(:,n2) = 1
-       
+
        p1=phep(1:4,np1)  ! tau+ momentum
        p2=phep(1:4,np2)  ! tau- momentum
-       
+
        q1 = p1 + p2
        im = 1
     end if
@@ -531,7 +533,7 @@ contains
           is_swapped = .true.
        end if check_tau_sign
     end if
-       
+
 !!! TODO (Akiya Miyamoto, 25-march-2016)
 !!!   In the following code, the tau helicity (polarization vector)
 !!!   information is not stored in pyjets_spin_data(jtau)%helicity
@@ -543,7 +545,7 @@ contains
 !!!   the end of the rejection loop.
 
     if (trans_spin) then
-       if (.not. tau_pol_vec) then         
+       if (.not. tau_pol_vec) then
           pol1 = 0
           pol2 = 0
           if (pyr(0) .gt. 0.5) then
@@ -554,12 +556,12 @@ contains
              pol2(3) = 1
           end if
           call dexay (1, pol1)
-          call dexay (2, pol2)         
+          call dexay (2, pol2)
        else
           !!! Decide polarimetric vector to have a spin correlation
           REJECTION: do
              call ranmar (rrr, 1)
-             !!! tau+ decay          
+             !!! tau+ decay
              call dekay (1, hh1)
              !!! tau- decay
              call dekay (2, hh2)
@@ -570,9 +572,9 @@ contains
           call dekay(11, hh1)
           call taupi0 (0, 1, ion)
           call dekay(12, hh2)
-          call taupi0 (0, 2, ion)       
+          call taupi0 (0, 2, ion)
        end if
-       if (IFPHOT == 1)  call photos (im)       
+       if (IFPHOT == 1)  call photos (im)
     end if
 
 !!! **********************************************************
@@ -605,8 +607,8 @@ contains
           end do
        end if
 
-!!! Overwrite tau+ and tau- data in /PYJETS/, because tau+tau- momentum 
-!!! could have been changed due to photon emmision in Higgs --> tau+ tau- 
+!!! Overwrite tau+ and tau- data in /PYJETS/, because tau+tau- momentum
+!!! could have been changed due to photon emmision in Higgs --> tau+ tau-
 !!! system. Their momentum should be boosted and rotate back to the lab frame
 !!! in the calling routine, PYDCAY.
 
@@ -641,7 +643,7 @@ contains
              write (msg_buffer, "(A)") &
                   "Tau decay routine do_dexay: necessary to update " // &
                   "index of Higgs daughter in order to include photons " // &
-                  "produced by PHOTOS."             
+                  "produced by PHOTOS."
              call msg_message ()
              write (msg_buffer, "(A)") &
                   "Run continues without modifying the 2nd daughter pointer."
@@ -761,7 +763,7 @@ contains
          "ps_tauola_mix_angle   = ", taudec_settings%mix_angle
     write (u, "(3x,A,1x,L1)") &
          "ps_tauola_use_pol_vec = ", taudec_settings%use_pol_vec
-  end subroutine taudec_settings_write  
+  end subroutine taudec_settings_write
 
   function wo_tauola_get_helicity_mod (ip) result (the_helicity)
     integer, intent(in) :: ip
@@ -793,11 +795,13 @@ contains
     integer, intent(in)  :: ip
     integer, intent(out) :: the_helicity
     the_helicity = wo_tauola_get_helicity_mod(ip)
-    if ( abs(the_helicity) .gt. 1 ) then
-       write (msg_buffer, "(A,I0,A,I0,A)") &
-            "Stored helicity information is wrong: ", the_helicity, &
-            "for ip = ", ip, "."
-       call msg_warning ()
+    if (debug_active (D_TAUOLA)) then
+       if ( abs(the_helicity) .gt. 1 ) then
+          write (msg_buffer, "(A,I0,A,I0,A)") &
+               "Stored helicity information is wrong: ", the_helicity, &
+               "for ip = ", ip, "."
+          call msg_warning ()
+       end if
     end if
   end subroutine wo_tauola_get_helicity
 
@@ -811,7 +815,7 @@ contains
     type(taudec_settings_t), intent(in) :: taudec_settings
     INTEGER JAK1, JAK2, JAKP, JAKM, KTOM
     COMMON /JAKI/ JAK1, JAK2, JAKP, JAKM, KTOM
-    
+
     integer, dimension(200) :: MSTP
     double precision, dimension(200) :: PARP
     integer, dimension(200) :: MSTI
@@ -825,7 +829,7 @@ contains
     double precision, dimension(200) :: PARJ
     common /PYDAT1/ MSTU, PARU, MSTJ, PARJ
     save /PYDAT1/
-    
+
     integer :: ITDKRC, IFPHOT
     double precision :: psi, betah
     double precision :: csc, ssc
@@ -877,7 +881,7 @@ contains
     call dekay (-1, pol1x)
 
     if (debug2_active (D_TAUOLA)) then
-       call msg_debug2 (D_TAUOLA, "TAUOLA initialization")       
+       call msg_debug2 (D_TAUOLA, "TAUOLA initialization")
        call taudec_settings%write ()
        call msg_debug2 (D_TAUOLA, " check if TAUOLA common block has been set")
        call msg_debug2 (D_TAUOLA, "Tau decay modes set")

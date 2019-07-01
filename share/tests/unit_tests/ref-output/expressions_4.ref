@@ -70,7 +70,7 @@ Syntax table:
  IDENTIFIER  <process_id>
  SEQUENCE    <unary_function> = <fun_unary> <function_arg1>
  SEQUENCE    <binary_function> = <fun_binary> <function_arg2>
- ALTERNATIVE <fun_unary> = complex | real | int | nint | floor | ceiling | abs | sgn | sqrt | exp | log | log10 | sin | cos | tan | asin | acos | atan | sinh | cosh | tanh
+ ALTERNATIVE <fun_unary> = complex | real | int | nint | floor | ceiling | abs | conjg | sgn | sqrt | exp | log | log10 | sin | cos | tan | asin | acos | atan | sinh | cosh | tanh
  KEYWORD     complex
  KEYWORD     real
  KEYWORD     int
@@ -78,6 +78,7 @@ Syntax table:
  KEYWORD     floor
  KEYWORD     ceiling
  KEYWORD     abs
+ KEYWORD     conjg
  KEYWORD     sgn
  KEYWORD     sqrt
  KEYWORD     exp

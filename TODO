@@ -1,17 +1,13 @@
 WHIZARD Core
-* Release 2.5
-  - large event numbers (still a problem??)
-
-* 2.5
+* 2.6
   - EWA implementation (some progress in 2.2.0-2)
   - integration of multiple observables (cf. VAMP)
-  - jet finder (partially done)
   - reenabling underlying event 
   
-* 2.6
+* 2.7
   - Mathematica interface
   - Parton shower matching (MLM done, CKKW pending)
-  - GUI extension
+  - GUI extension (partially done)
   - parallelization (OpenMP done, MPI in progress)
   - Dark Matter
   - Use omega restrictions on diagrams for phase space
@@ -23,36 +19,32 @@ Technical stuff
   - include STAT and ERRMSG in allocate and deallocate statements (?)
 
 O'Mega
-* 2.5
+* 2.6
   - arbitrary Lorentz structure
   - flavor sums
   - model files unification
   - helicity optimization (numerically done/analytically pending)
 
 Models
-* Release 2.5 (Zhijie)
+* Release 2.6 (Zhijie,Simon)
   - Tests for 7, 8 fermions ... 
 
-* 2.5
+* 2.6
   - W-gamma couplings to resonances
   - W'
 
 VAMP
-* 2.5
+* 2.6
   - unify naming conventions for types with WHIZARD (JR will do, 
 	e.g. type :: division -> division_t (partially done)
-* 2.6
+* 2.7
   - integration of multiple observables
 
-configure
-* 2.5
-  - Windows support?
-
 Misc
-* Release 2.5
+* Release 2.6
   - Manual + O'Mega Paper (partially done)
 
-* 2.5
+* 2.6
   - review gamelan (partially done, esp. docu)
 
 

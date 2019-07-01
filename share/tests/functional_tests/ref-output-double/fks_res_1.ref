@@ -96,7 +96,7 @@ n_events = 1
 ?unweighted = false
 | Starting simulation for process 'fks_res_1_p1'
 | Simulate: using integration grids from file 'fks_res_1_p1_m2.vg'
-| Simuate: activating fixed-order NLO events
+| Simulate: activating fixed-order NLO events
 | QCD alpha: using a running strong coupling
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 2223

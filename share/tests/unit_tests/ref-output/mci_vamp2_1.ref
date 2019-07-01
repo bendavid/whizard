@@ -7,28 +7,29 @@
    Number of channels   = 1
    Number of dimensions = 1
  Grid config:
-   Number of dimensions = 0
-   Adaption power (alpha) =  1.5000000E+00
-   Max. number of bins (per dim.) = 50
-   Number of iterations = 5
+   Number of dimensions            = 0
+   Adaption power (alpha)          =  1.5000000000E+00
+   Max. number of bins (per dim.)  = 50
+   Number of iterations            = 5
    Mode (stratified or importance) = 1
-   Calls per box = 0
-   Number of calls = 0
-   Min. number of calls = 20
-   Number of bins = 1
-   Number of boxes = 1
-   Number of channels = 0
+   Calls per box                   = 0
+   Number of calls                 = 0
+   Min. number of calls            = 20
+   Number of bins                  = 1
+   Number of boxes                 = 1
+   Number of channels                               = 0
    Min. number of calls per channel (setting calls) = 20
-   Threshold number of calls (adapting weights) = 10
-   Stratified = T
-   Adaption power (beta) =  5.0000000E-01
-     integrator_defined =  F
-   integrator_from_file =  F
-            adapt_grids =  F
-          adapt_weights =  F
-          n_adapt_grids =                0
-        n_adapt_weights =                0
-                verbose =  F
+   Threshold number of calls (adapting weights)     = 10
+   Number of chains                                 = 0
+   Stratified                                       = T
+   Adaption power (beta)                            =  5.0000000000E-01
+   Integrator defined   = F
+   Integrator from file = F
+   Adapt grids          = F
+   Adapt weights        = F
+   No. of adapt grids   = 0
+   No. of adapt weights = 0
+   Verbose              = F
 
 * Initialise instance
 
@@ -48,61 +49,62 @@
    Number of channels   = 1
    Number of dimensions = 1
  Grid config:
-   Number of dimensions = 0
-   Adaption power (alpha) =  1.5000000E+00
-   Max. number of bins (per dim.) = 50
-   Number of iterations = 5
+   Number of dimensions            = 0
+   Adaption power (alpha)          =  1.5000000000E+00
+   Max. number of bins (per dim.)  = 50
+   Number of iterations            = 5
    Mode (stratified or importance) = 1
-   Calls per box = 0
-   Number of calls = 0
-   Min. number of calls = 0
-   Number of bins = 1
-   Number of boxes = 1
-   Number of channels = 0
+   Calls per box                   = 0
+   Number of calls                 = 0
+   Min. number of calls            = 0
+   Number of bins                  = 1
+   Number of boxes                 = 1
+   Number of channels                               = 0
    Min. number of calls per channel (setting calls) = 20
-   Threshold number of calls (adapting weights) = 10
-   Stratified = T
-   Adaption power (beta) =  5.0000000E-01
-     integrator_defined =  T
-   integrator_from_file =  F
-            adapt_grids =  F
-          adapt_weights =  F
-          n_adapt_grids =                0
-        n_adapt_weights =                0
-                verbose =  F
+   Threshold number of calls (adapting weights)     = 10
+   Number of chains                                 = 0
+   Stratified                                       = T
+   Adaption power (beta)                            =  5.0000000000E-01
+   Integrator defined   = T
+   Integrator from file = F
+   Adapt grids          = F
+   Adapt weights        = F
+   No. of adapt grids   = 0
+   No. of adapt weights = 0
+   Verbose              = F
  Integration pass:
-                   n_it =                1
-                n_calls =             1000
-            adapt grids =  F
-          adapt weights =  F
- Results:  [it, calls, integral, error, efficiency]
-  1 1000  1.0000525E+00  6.2176068E-05  3.3355910E-01
- MD5 sum (including result DC705FF3DC1CC964744163458CFDDEC0
+   n_it          = 1
+   n_calls       = 1000
+   adapt grids   = F
+   adapt weights = F
+   Results:  [it, calls, integral, error, efficiency]
+     1 1000  1.0000525E+00  6.2176068E-05  3.3355910E-01
+ MD5 sum (including results) = '616BC4A4C8541305ED1C2127639BC73E'
 
 * Contents of mci_instance:
 
- MCI VAMP2 instance
-        Selected channel =               0
-               Integrand =  2.9937392E+00
-              MCI weight =  1.0000000E+00
-                   Valid = T
- MCI a-priori weight
-                         1  1.0000000E+00
- MCI jacobian
-                         1  1.0000000E+00
- MCI mapped x
-         1        1  9.9895599E-01
- MCI channel weight
-                         1  1.0000000E+00
-         Number of event =               0
-         Event generated = F
-            Event weight =  0.0000000E+00
-            Event excess =  0.0000000E+00
+ MCI VAMP2 instance:
+ Selected channel        = 0
+ Integrand               =  2.9937392E+00
+ MCI weight              =  1.0000000E+00
+ Valid                   = T
+ MCI a-priori weight:
+                           1  1.0000000E+00
+ MCI jacobian:
+                           1  1.0000000E+00
+ MCI mapped x:
+           1        1  9.9895599E-01
+ MCI channel weight:
+                           1  1.0000000E+00
+ Number of event         = 0
+ Event generated         = F
+ Event weight            =  0.0000000E+00
+ Event excess            =  0.0000000E+00
  Negative (event) weight = F
  MCI event
-                         1  0.0000000E+00
+                           1  0.0000000E+00
 
-* Dump channel weights and grids
+* Dump channel weights and grids to file
 
 
 * Cleanup

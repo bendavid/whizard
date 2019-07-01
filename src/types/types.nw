@@ -1204,17 +1204,17 @@ allocatable by the caller.
        allocate (iarray (0))
     end if
   end subroutine int_array_from_pdg_array
-
-@ %def pdg_array_from_int_array pdg_array_from_int int_array_from_pdg_array
+  
+@ %def pdg_array_from_int_array pdg_array_from_int int_array_from_pdg_array 
 @ Allocate space for a PDG array
 <<PDG arrays: public>>=
   public :: pdg_array_init
 <<PDG arrays: procedures>>=
-   subroutine pdg_array_init (aval, n_elements)
-     type(pdg_array_t), intent(inout) :: aval
-     integer, intent(in) :: n_elements
-     allocate(aval%pdg(n_elements))
-   end subroutine pdg_array_init
+  subroutine pdg_array_init (aval, n_elements)
+    type(pdg_array_t), intent(inout) :: aval
+    integer, intent(in) :: n_elements
+    allocate(aval%pdg(n_elements))
+  end subroutine pdg_array_init
 
 @ %def pdg_array_init
 @ Deallocate a previously allocated pdg array

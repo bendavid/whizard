@@ -1,4 +1,4 @@
-! WHIZARD 2.4.1 Mar 24 2017
+! WHIZARD 2.5.0 May 06 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -52,6 +52,8 @@ contains
            & function with two channels", u, results)
       call test (vamp2_3, "vamp2_3", "VAMP2 intgeration of two-dimensional &
            & function with two channels", u, results)
+      call test (vamp2_4, "vamp2_4", "VAMP2 intgeration of two-dimensional &
+           & function with two channels with chains", u, results)
   end subroutine vamp2_test
 
 end module vamp2_ut

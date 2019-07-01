@@ -1,4 +1,4 @@
-! WHIZARD 2.4.1 Mar 24 2017
+! WHIZARD 2.5.0 May 06 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -96,7 +96,7 @@ module recola_wrapper
   public :: rclwrap_unselect_all_gs_powers_born_amp
   public :: rclwrap_set_resonant_squared_momentum
   public :: rclwrap_compute_running_alpha_s
-  !public :: rclwrap_set_dynamic_settings
+  public :: rclwrap_set_dynamic_settings
   public :: rclwrap_rescale_process
   public :: rclwrap_get_polarized_squared_amplitude
   public :: rclwrap_compute_color_correlation
@@ -350,9 +350,8 @@ contains
     integer, intent(in) :: nf, n_loops
   end subroutine rclwrap_compute_running_alpha_s
 
-  !!! Recola-1.1 feature, not yet active
-  !!! subroutine rclwrap_set_dynamic_settings ()
-  !!! end subroutine rclwrap_set_dynamic_settings
+  subroutine rclwrap_set_dynamic_settings ()
+  end subroutine rclwrap_set_dynamic_settings
 
   subroutine rclwrap_rescale_process (id, order, sqme)
     integer, intent(in) :: id

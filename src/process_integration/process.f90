@@ -1,4 +1,4 @@
-! WHIZARD 2.4.1 Mar 24 2017
+! WHIZARD 2.5.0 May 06 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -293,7 +293,6 @@ module process
      procedure :: create_blha_interface => process_create_blha_interface
      procedure :: create_and_load_extra_libraries &
         => process_create_and_load_extra_libraries
-     !procedure :: setup_recola => process_setup_recola
   end type process_t
 
 
@@ -653,7 +652,7 @@ contains
     integer :: i_sub = 0
     type(string_t) :: subtraction_method
     class(prc_core_t), pointer :: core => null ()
-    logical :: setup_subtraction_component
+    logical :: setup_subtraction_component, singular_real
     model => process%config%model
     n_components = process%meta%n_components
     allocate (n_entry (n_components), source = 0)
@@ -684,13 +683,16 @@ contains
          if (.not. component%active)  cycle
            allocate (component%i_term (n_entry(i)))
            do j = 1, n_entry(i)
-              setup_subtraction_component = &
-                   (component%get_nlo_type () == NLO_REAL &
-                    .and. component%component_type /= COMP_REAL_FIN &
-                    .and. j == n_entry(i))
+              singular_real = component%get_nlo_type () == NLO_REAL &
+                   .and. component%component_type /= COMP_REAL_FIN
+              setup_subtraction_component = singular_real .and. j == n_entry(i)
               i_term = k + j
               component%i_term(j) = i_term
-              process%term(i_term)%i_sub = k + n_entry(i)
+              if (singular_real) then
+                 process%term(i_term)%i_sub = k + n_entry(i)
+              else
+                 process%term(i_term)%i_sub = 0
+              end if
               process%term(i_term)%i_core = set_i_core (i, component%get_nlo_type (), &
                    setup_subtraction_component, component%config%get_def_type_string ())
               if (process%term(i_term)%i_core == 0) call msg_fatal ("Core not found!")
@@ -1599,7 +1601,6 @@ contains
     integer, intent(in) :: i_born
     integer :: n_born
     n_born = process%term(i_born)%n_allowed
-
   end function process_get_n_allowed_born
 
   function process_get_pcm_ptr (process) result (pcm)
@@ -2584,12 +2585,10 @@ contains
     type is (pcm_nlo_t)
        call data_born%get_flv_state (flavor_born)
        call data_real%get_flv_state (flavor_real)
-       call pcm%region_data%setup_fks_mappings &
-            (pcm%settings%fks_template, data_born%n_in)
        select type (model => process%config%model)
        type is (model_t)
           call pcm%region_data%init (data_born%n_in, model, &
-               flavor_born, flavor_real)
+               flavor_born, flavor_real, pcm%settings%nlo_correction_type)
           associate (template => pcm%settings%fks_template)
              if (template%mapping_type == FKS_RESONANCES) then
                 select type (phs_config => process%component(i_real)%phs_config)
@@ -2600,6 +2599,8 @@ contains
                 end select
                 if (.not. success) template%mapping_type = FKS_DEFAULT
              end if
+             call pcm%region_data%setup_fks_mappings &
+                  (pcm%settings%fks_template, data_born%n_in)
              !!! Check again, mapping_type might have changed
              if (template%mapping_type == FKS_RESONANCES) then
                 call pcm%region_data%set_resonance_mappings (resonance_histories)
@@ -2766,22 +2767,6 @@ contains
           var_str ("$method = 'threshold' is used, but you should "), &
           var_str ("have a closer look if this is not the case.")])
   end subroutine process_create_and_load_extra_libraries
-
-  !subroutine process_setup_recola (process)
-  !  class(process_t), intent(inout) :: process
-  !  integer :: i, i_recola
-  !  i_recola = 0
-  !  do i = 1, process%cm%n_cores
-  !     select type (core => process%cm%cores(i)%core)
-  !     type is (prc_recola_t)
-  !        if (process%cm%nlo_type(i) == NLO_VIRTUAL) then
-  !           call core%set_nlo ()
-  !        end if
-  !        call core%register_processes (i_recola)
-  !        call core%replace_helicity_and_color_arrays ()
-  !     end select
-  !  end do
-  !end subroutine process_setup_recola
 
 
 end module process

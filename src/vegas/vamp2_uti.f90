@@ -1,4 +1,4 @@
-! WHIZARD 2.4.1 Mar 24 2017
+! WHIZARD 2.5.0 May 06 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -50,6 +50,7 @@ module vamp2_uti
   public :: vamp2_1
   public :: vamp2_2
   public :: vamp2_3
+  public :: vamp2_4
 
    type, extends (vamp2_func_t) :: vamp2_test_func_t
      !
@@ -158,13 +159,6 @@ contains
     call mc_integrator%integrate (func, rng, 3, result=result, abserr=abserr)
     write (u,  "(2x,A," // FMT_12 // ",A," // FMT_12 // ")") "Result: ", result, " +/- ", abserr
 
-
-    write (u, "(A)")
-    write (u, "(A)") "* Write grids"
-    write (u, "(A)")
-
-    call mc_integrator%write_grids (u)
-
     write (u, "(A)")
     write (u, "(A)") "* Cleanup"
 
@@ -226,13 +220,6 @@ contains
     call mc_integrator%integrate (func, rng, 3, opt_verbose = .true., result=result, abserr=abserr)
     write (u,  "(2x,A," // FMT_12 // ",A," // FMT_12 // ")") "Result: ", result, " +/- ", abserr
 
-
-    write (u, "(A)")
-    write (u, "(A)") "* Write grids"
-    write (u, "(A)")
-
-    call mc_integrator%write_grids (u)
-
     write (u, "(A)")
     write (u, "(A)") "* Cleanup"
 
@@ -274,11 +261,96 @@ contains
     call mc_integrator%write (u)
 
     write (u, "(A)")
-    write (u, "(A)") "* Initialise grid with n_calls = 10000"
+    write (u, "(A)") "* Initialise grid with n_calls = 20000"
     write (u, "(A)")
 
     call mc_integrator%set_limits (x_lower, x_upper)
-    call mc_integrator%set_calls (1000)
+    call mc_integrator%set_calls (20000)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Integrate with n_it = 3 and n_calls = 20000 (Adaptation)"
+    write (u, "(A)")
+
+    call mc_integrator%integrate (func, rng, 3, result=result, abserr=abserr)
+    write (u,  "(2x,A," // FMT_12 // ",A," // FMT_12 // ")") "Result: ", result, " +/- ", abserr
+
+    write (u, "(A)")
+    write (u, "(A)") "* Write grid to file vamp2_3.grids"
+    write (u, "(A)")
+
+    unit = free_unit ()
+    open (unit, file = "vamp2_3.grids", &
+         action = "write", status = "replace")
+    call mc_integrator%write_grids (unit)
+    close (unit)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Read grid from file vamp2_3.grids"
+    write (u, "(A)")
+
+    call mc_integrator%final ()
+
+    unit = free_unit ()
+    open (unit, file = "vamp2_3.grids", &
+         action = "read", status = "old")
+    call mc_integrator%read_grids (unit)
+    close (unit)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Integrate with n_it = 3 and n_calls = 5000 (Precision)"
+    write (u, "(A)")
+
+    call mc_integrator%set_calls (5000)
+    call mc_integrator%integrate (func, rng, 3, result=result, abserr=abserr)
+    write (u,  "(2x,A," // FMT_12 // ",A," // FMT_12 // ")") "Result: ", result, " +/- ", abserr
+
+    write (u, "(A)")
+    write (u, "(A)") "* Cleanup"
+
+    call mc_integrator%final ()
+    call rng%final ()
+    deallocate (rng)
+  end subroutine vamp2_3
+
+  subroutine vamp2_4 (u)
+    integer, intent(in) :: u
+    type(vamp2_t) :: mc_integrator
+    class(rng_t), allocatable :: rng
+    class(vamp2_func_t), allocatable :: func
+    real(default), dimension(2), parameter :: x_lower = 0., &
+         x_upper = 1.
+    real(default) :: result, abserr
+    integer :: unit
+
+    write (u, "(A)") "* Test output: vamp2_4"
+    write (u, "(A)") "*   Purpose:  intgeration of two-dimensional &
+       & function with two channels with chains"
+    write (u, "(A)")
+
+    write (u, "(A)") "* Initialise random number generator (default seed)"
+    write (u, "(A)")
+
+    allocate (rng_stream_t :: rng)
+    call rng%init ()
+
+    call rng%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Initialise MC integrator with n_channel = 2 and n_dim = 2"
+    write (u, "(A)")
+
+    allocate (vamp2_test_func_2_t :: func)
+    call func%init (n_dim = 2, n_channel = 2)
+    mc_integrator = vamp2_t (2, 2)
+    call mc_integrator%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Initialise grid with n_calls = 20000 and set chains"
+    write (u, "(A)")
+
+    call mc_integrator%set_limits (x_lower, x_upper)
+    call mc_integrator%set_calls (20000)
+    call mc_integrator%set_chain (2, [1, 2])
 
     write (u, "(A)")
     write (u, "(A)") "* Integrate with n_it = 3 and n_calls = 10000 (Adaptation)"
@@ -288,39 +360,34 @@ contains
     write (u,  "(2x,A," // FMT_12 // ",A," // FMT_12 // ")") "Result: ", result, " +/- ", abserr
 
     write (u, "(A)")
-    write (u, "(A)") "* Write grid to file vegas_io.grid"
+    write (u, "(A)") "* Write grid to file vamp2_4.grids"
     write (u, "(A)")
 
     unit = free_unit ()
-    open (unit, file = "vamp2_io.grids", &
+    open (unit, file = "vamp2_4.grids", &
          action = "write", status = "replace")
     call mc_integrator%write_grids (unit)
     close (unit)
 
     write (u, "(A)")
-    write (u, "(A)") "* Read grid from file vegas_io.grid"
+    write (u, "(A)") "* Read grid from file vamp2_4.grids"
     write (u, "(A)")
 
     call mc_integrator%final ()
-    open (unit, file = "vamp2_io.grids", &
+
+    unit = free_unit ()
+    open (unit, file = "vamp2_4.grids", &
          action = "read", status = "old")
     call mc_integrator%read_grids (unit)
     close (unit)
 
     write (u, "(A)")
-    write (u, "(A)") "* Integrate with n_it = 3 and n_calls = 2000 (Precision)"
+    write (u, "(A)") "* Integrate with n_it = 3 and n_calls = 5000 (Precision)"
     write (u, "(A)")
 
-    call mc_integrator%set_calls (200)
+    call mc_integrator%set_calls (5000)
     call mc_integrator%integrate (func, rng, 3, result=result, abserr=abserr)
     write (u,  "(2x,A," // FMT_12 // ",A," // FMT_12 // ")") "Result: ", result, " +/- ", abserr
-
-
-    write (u, "(A)")
-    write (u, "(A)") "* Write grids"
-    write (u, "(A)")
-
-    call mc_integrator%write_grids (u)
 
     write (u, "(A)")
     write (u, "(A)") "* Cleanup"
@@ -328,6 +395,6 @@ contains
     call mc_integrator%final ()
     call rng%final ()
     deallocate (rng)
-  end subroutine vamp2_3
+  end subroutine vamp2_4
 
 end module vamp2_uti

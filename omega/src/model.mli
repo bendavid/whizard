@@ -145,11 +145,11 @@ module type Mutable =
         goldstone:(flavor -> (flavor * constant Coupling.expr) option) ->
         conjugate:(flavor -> flavor) ->
         fermion:(flavor -> int) ->
-        max_degree:int ->
         vertices:
-            ((((flavor * flavor * flavor) * constant Coupling.vertex3 * constant) list)
-               * (((flavor * flavor * flavor * flavor) * constant Coupling.vertex4 * constant) list)
-               * (((flavor list) * constant Coupling.vertexn * constant) list)) ->
+          (unit ->
+           ((((flavor * flavor * flavor) * constant Coupling.vertex3 * constant) list)
+            * (((flavor * flavor * flavor * flavor) * constant Coupling.vertex4 * constant) list)
+            * (((flavor list) * constant Coupling.vertexn * constant) list))) ->
         flavors:((string * flavor list) list) ->
         parameters:(unit -> constant Coupling.parameters) ->
         flavor_of_string:(string -> flavor) ->

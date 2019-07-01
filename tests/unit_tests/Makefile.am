@@ -234,7 +234,6 @@ commands.run: sps1ap_decays.slha
 sps1ap_decays.slha: $(top_builddir)/share/susy/sps1ap_decays.slha
 	cp $< $@
 
-WT_OMEGA_CACHE_SUFFIX=vertices
 WT_OCAML_NATIVE_EXT=opt
 
 if MPOST_AVAILABLE
@@ -244,6 +243,18 @@ gamelan.sty: $(top_builddir)/src/gamelan/gamelan.sty
 
 $(top_builddir)/src/gamelan/gamelan.sty:
 	$(MAKE) -C $(top_builddir)/src/gamelan gamelan.sty
+endif
+
+if OCAML_AVAILABLE
+
+UFO_TAG_FILE = __init__.py
+UFO_MODELPATH = ../models/UFO
+
+models.run: $(UFO_MODELPATH)/SM/$(UFO_TAG_FILE)
+
+$(UFO_MODELPATH)/SM/$(UFO_TAG_FILE): $(top_srcdir)/omega/tests/UFO/SM/$(UFO_TAG_FILE)
+	$(MAKE) -C $(UFO_MODELPATH)/SM all
+
 endif
 
 BUILT_SOURCES = \
@@ -340,8 +351,14 @@ notestflag:
 	rm -f TESTFLAG
 .PHONY: notestflag
 
+### Remove DWARF debug information on MAC OS X
+clean-macosx:
+	-rm -rf compilations_static_1.dSYM
+	-rm -rf compilations_static_2.dSYM
+.PHONY: clean-macosx
+
 ## Remove generated files
-clean-local:
+clean-local: clean-macosx
 	rm -f gamelan.sty
 	rm -f TESTFLAG GAMELAN_FLAG 
 	rm -f OCAML_FLAG FASTJET_FLAG HEPMC_FLAG LCIO_FLAG RECOLA_FLAG
@@ -363,7 +380,7 @@ clean-local:
 	rm -f *.ltp *.aux *.dvi *.ps *.pdf so_test.*
 	rm -f *.tbl sps1ap_decays.slha bar structure_6[a-b].out
 	rm -f *.vg2 *.vegas *.grids
-	rm -f *.$(WT_OMEGA_CACHE_SUFFIX)
+	rm -rf *.dSYM
 if FC_SUBMODULES
 	rm -f *.smod
 endif

@@ -1,4 +1,4 @@
-! WHIZARD 2.4.1 Mar 24 2017
+! WHIZARD 2.5.0 May 06 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -59,9 +59,9 @@ module vamp2
      integer_fmt =       "(1X,A18,1X,I15)", &
      integer_array_fmt = "(1X,I18,1X,I15)", &
      logical_fmt =       "(1X,A18,1X,L1)", &
-     double_fmt =        "(1X,A18,1X," // FMT_14 // ")", &
-     double_array_fmt =  "(1X,I18,1X," // FMT_14 // ")", &
-     double_array2_fmt =  "(1X,2(1X,I8),1X," // FMT_14 // ")"
+     double_fmt =        "(1X,A18,1X," // FMT_17 // ")", &
+     double_array_fmt =  "(1X,I18,1X," // FMT_17 // ")", &
+     double_array2_fmt =  "(1X,2(1X,I8),1X," // FMT_17 // ")"
 
   type, abstract, extends(vegas_func_t) :: vamp2_func_t
      integer :: current_channel = 0
@@ -90,6 +90,7 @@ module vamp2
      integer :: n_channel = 0
      integer :: n_calls_min_per_channel = 20
      integer :: n_calls_threshold = 10
+     integer :: n_chains = 0
      logical :: stratified = .true.
      real(default) :: beta = 0.5_default
      real(default) :: accuracy_goal = 0._default
@@ -108,6 +109,7 @@ module vamp2
      private
      type(vamp2_config_t) :: config
      type(vegas_t), dimension(:), allocatable :: integrator
+     integer, dimension(:), allocatable :: chain
      real(default), dimension(:), allocatable :: weight
      real(default), dimension(:), allocatable :: integral
      real(default), dimension(:), allocatable :: variance
@@ -120,6 +122,7 @@ module vamp2
      procedure, public :: set_config => vamp2_set_config
      procedure, public :: set_calls => vamp2_set_n_calls
      procedure, public :: set_limits => vamp2_set_limits
+     procedure, public :: set_chain => vamp2_set_chain
      procedure, public :: get_integral => vamp2_get_integral
      procedure, public :: get_variance => vamp2_get_variance
      procedure, public :: get_efficiency => vamp2_get_efficiency
@@ -227,32 +230,39 @@ contains
     ind = 0; if (present (indent)) ind = indent
     call self%vegas_config_t%write (unit, indent)
     call write_indent (u, ind)
-    write (u, "(2x,A,I0)") "Number of channels = ", self%n_channel
+    write (u, "(2x,A,I0)") &
+         & "Number of channels                               = ", self%n_channel
     call write_indent (u, ind)
-    write (u, "(2x,A,I0)") "Min. number of calls per channel (setting calls) = ", &
-         self%n_calls_min_per_channel
+    write (u, "(2x,A,I0)") &
+         & "Min. number of calls per channel (setting calls) = ", &
+         & self%n_calls_min_per_channel
     call write_indent (u, ind)
-    write (u, "(2x,A,I0)") "Threshold number of calls (adapting weights) = ", &
-         self%n_calls_threshold
+    write (u, "(2x,A,I0)") &
+         & "Threshold number of calls (adapting weights)     = ", &
+         & self%n_calls_threshold
     call write_indent (u, ind)
-    write (u, "(2x,A,L1)") "Stratified = ", self%stratified
+    write (u, "(2x,A,I0)") &
+         & "Number of chains                                 = ", self%n_chains
     call write_indent (u, ind)
-    write (u, "(2x,A," // FMT_14 // ")") "Adaption power (beta) = ", &
-         self%beta
+    write (u, "(2x,A,L1)") &
+         & "Stratified                                       = ", self%stratified
+    call write_indent (u, ind)
+    write (u, "(2x,A," // FMT_17 // ")") &
+         & "Adaption power (beta)                            = ", self%beta
     if (self%accuracy_goal > 0) then
        call write_indent (u, ind)
-       write (u, "(2x,A," // FMT_14 // ")") "accuracy_goal         = ", &
-            self%accuracy_goal
+       write (u, "(2x,A," // FMT_17 // ")") &
+            & "accuracy_goal                                 = ", self%accuracy_goal
     end if
     if (self%error_goal > 0) then
        call write_indent (u, ind)
-       write (u, "(2x,A," // FMT_14 // ")") "error_goal            = ", &
-            self%error_goal
+       write (u, "(2x,A," // FMT_17 // ")") &
+            & "error_goal                                    = ", self%error_goal
     end if
     if (self%rel_error_goal > 0) then
        call write_indent (u, ind)
-       write (u, "(2x,A," // FMT_14 // ")") "rel_error_goal        = ", &
-            self%rel_error_goal
+       write (u, "(2x,A," // FMT_17 // ")") &
+            & "rel_error_goal                                = ", self%rel_error_goal
     end if
   end subroutine vamp2_config_write
 
@@ -285,11 +295,9 @@ contains
     if (present (beta)) self%config%beta = beta
     if (present (iterations)) self%config%iterations = iterations
     if (present (mode)) self%config%mode = mode
+    allocate (self%chain(n_channel), source=0)
     allocate (self%integrator(n_channel))
     allocate (self%weight(n_channel), source=0._default)
-    allocate (self%integral(n_channel), source=0._default)
-    allocate (self%variance(n_channel), source=0._default)
-    allocate (self%efficiency(n_channel), source=0._default)
     do ch = 1, n_channel
        self%integrator(ch) = vegas_t (n_dim, alpha, n_bins_max, 1, mode)
     end do
@@ -369,6 +377,19 @@ contains
     end do
   end subroutine vamp2_set_limits
 
+  subroutine vamp2_set_chain (self, n_chains, chain)
+    class(vamp2_t), intent(inout) :: self
+    integer, intent(in) :: n_chains
+    integer, dimension(:), intent(in) :: chain
+    if (size (chain) /= self%config%n_channel) then
+       call msg_bug ("[VAMP2] set chain: size of chain array does not match n_channel.")
+    else
+       call msg_message ("[VAMP2] set chain: use chained weights.")
+    end if
+    self%config%n_chains = n_chains
+    self%chain = chain
+  end subroutine vamp2_set_chain
+
   elemental real(default) function vamp2_get_integral (self) result (integral)
     class(vamp2_t), intent(in) :: self
     integral = 0.
@@ -394,11 +415,13 @@ contains
   end function vamp2_get_efficiency
   subroutine vamp2_adapt_weights (self)
     class(vamp2_t), intent(inout) :: self
-    integer :: ch
     integer :: n_weights_underflow
     real(default) :: weight_min, sum_weights_underflow
     self%weight = self%weight * self%integrator%get_variance ()**self%config%beta
     if (sum (self%weight) == 0) self%weight = real(self%config%n_calls, default)
+    if (self%config%n_chains > 0) then
+       call chain_weights ()
+    end if
     self%weight = self%weight / sum(self%weight)
     if (self%config%n_calls_threshold /= 0) then
        weight_min = real(self%config%n_calls_threshold, default) &
@@ -413,6 +436,21 @@ contains
        end where
     end if
     call self%set_calls (self%config%n_calls)
+  contains
+    subroutine chain_weights ()
+      integer :: ch
+      real(default) :: average
+      do ch = 1, self%config%n_chains
+         average = max (sum (self%weight, self%chain == ch), 0._default)
+         if (average /= 0) then
+            average = average / count (self%chain == ch)
+            where (self%chain == ch)
+               self%weight = average
+            end where
+         end if
+      end do
+    end subroutine chain_weights
+
   end subroutine vamp2_adapt_weights
 
   subroutine vamp2_reset_result (self)
@@ -459,8 +497,6 @@ contains
        total_integral = 0._default
        total_sq_integral = 0._default
        total_variance = 0._default
-       self%integral = 0._default
-       self%variance = 0._default
        do ch = 1, self%config%n_channel
           func%wi(ch) = self%weight(ch)
           func%grids(ch) = self%integrator(ch)%get_grid ()
@@ -503,20 +539,24 @@ contains
          result%sum_wgts = result%sum_wgts + wgt
          result%sum_int_wgtd = result%sum_int_wgtd + (total_integral * wgt)
          result%sum_chi = result%sum_chi + (total_sq_integral * wgt)
-         result%max_abs_f = dot_product (self%weight * self%config%n_calls, self%integrator%get_max_abs_f ())
-         result%max_abs_f_pos = dot_product (self%weight * self%config%n_calls, self%integrator%get_max_abs_f_pos ())
-         result%max_abs_f_neg = dot_product (self%weight * self%config%n_calls, self%integrator%get_max_abs_f_neg ())
+         result%max_abs_f = dot_product (self%weight * self%config%n_calls, &
+              & self%integrator%get_max_abs_f ())
+         result%max_abs_f_pos = dot_product (self%weight * self%config%n_calls, &
+              & self%integrator%get_max_abs_f_pos ())
+         result%max_abs_f_neg = dot_product (self%weight * self%config%n_calls, &
+              & self%integrator%get_max_abs_f_neg ())
          result%efficiency = 0.
          if (result%max_abs_f > 0.) then
             result%efficiency = dot_product (self%weight, &
-                 & (self%integrator%get_efficiency () * self%weight * self%config%n_calls * self%integrator%get_max_abs_f ())) &
+                 & (self%integrator%get_efficiency () * self%weight &
+                 & * self%config%n_calls * self%integrator%get_max_abs_f ())) &
                  & / result%max_abs_f
             ! TODO pos. or. negative efficiency would be very nice.
          end if
          cumulative_int = result%sum_int_wgtd / result%sum_wgts
          cumulative_std = sqrt (1. / result%sum_wgts)
          if (verbose) then
-            write (msg_buffer, "(I0,1x,I0,1x, 4(" // FMT_14 // ",1x))") &
+            write (msg_buffer, "(I0,1x,I0,1x, 4(" // FMT_17 // ",1x))") &
                  & it, self%config%n_calls, cumulative_int, cumulative_std, &
                  & self%result%chi2, self%result%efficiency
             call msg_message ()
@@ -575,7 +615,7 @@ contains
              if (present (opt_event_excess)) then
                 opt_event_excess = event_weight / self%integrator(ch)%get_max_abs_f_pos () - 1._default
              else
-                write (msg_buffer, "(A,1X," // FMT_14 // ",A)") "[VAMP2] Event&
+                write (msg_buffer, "(A,1X," // FMT_17 // ",A)") "[VAMP2] Event&
                      & generation: weight > 1 (", self%result%max_abs_f_pos, ")"
                 call msg_warning ()
              end if
@@ -586,7 +626,7 @@ contains
              if (present (opt_event_excess)) then
                 opt_event_excess = event_weight / self%integrator(ch)%get_max_abs_f_neg () - 1._default
              else
-                write (msg_buffer, "(A,1X," // FMT_14 // ",A)") "[VAMP2] Event&
+                write (msg_buffer, "(A,1X," // FMT_17 // ",A)") "[VAMP2] Event&
                      & generation: weight > 1 (", self%result%max_abs_f_neg, ")"
                 call msg_warning ()
              end if
@@ -612,6 +652,7 @@ contains
     write (u, integer_fmt) "n_dim =", self%config%n_dim
     write (u, integer_fmt) "n_calls_min_ch =", self%config%n_calls_min_per_channel
     write (u, integer_fmt) "n_calls_thres =", self%config%n_calls_threshold
+    write (u, integer_fmt) "n_chains =", self%config%n_chains
     write (u, logical_fmt) "stratified =", self%config%stratified
     write (u, double_fmt) "alpha =", self%config%alpha
     write (u, double_fmt) "beta =", self%config%beta
@@ -638,6 +679,13 @@ contains
        write (u, double_array_fmt) ch, self%weight(ch)
     end do
     write (u, descr_fmt) "end weight"
+    if (self%config%n_chains > 0) then
+       write (u, descr_fmt) "begin chain"
+       do ch = 1, self%config%n_channel
+          write (u, integer_array_fmt) ch, self%chain(ch)
+       end do
+       write (u, descr_fmt) "end chain"
+    end if
     write (u, descr_fmt) "begin integrator"
     do ch = 1, self%config%n_channel
        call self%integrator(ch)%write_grid (unit)
@@ -661,6 +709,7 @@ contains
     end select
     read (unit, integer_fmt) buffer, self%config%n_calls_min_per_channel
     read (unit, integer_fmt) buffer, self%config%n_calls_threshold
+    read (unit, integer_fmt) buffer, self%config%n_chains
     read (unit, logical_fmt) buffer, self%config%stratified
     read (unit, double_fmt) buffer, self%config%alpha
     read (unit, double_fmt) buffer, self%config%beta
@@ -687,6 +736,13 @@ contains
        read (unit, double_array_fmt) ibuffer, self%weight(ch)
     end do
     read (unit, descr_fmt) buffer
+    if (self%config%n_chains > 0) then
+       read (unit, descr_fmt) buffer
+       do ch = 1, self%config%n_channel
+          read (unit, integer_array_fmt) ibuffer, self%chain(ch)
+       end do
+       read (unit, descr_fmt) buffer
+    end if
     read (unit, descr_fmt) buffer
     do ch = 1, self%config%n_channel
        call self%integrator(ch)%read_grid (unit)

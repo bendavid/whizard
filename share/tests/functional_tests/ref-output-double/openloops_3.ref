@@ -78,7 +78,7 @@ Warning: No cuts have been defined.
 n_events = 1
 | Starting simulation for process 'openloops_3_p1'
 | Simulate: using integration grids from file 'openloops_3_p1_m1.vg'
-| Simuate: activating fixed-order NLO events
+| Simulate: activating fixed-order NLO events
 | QCD alpha: using a running strong coupling
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 2223
@@ -177,7 +177,7 @@ n_events = 1
 | One-Loop-Provider: Using OpenLoops
 | Loading library: [...]
 | Simulate: using integration grids from file 'openloops_3_p2_m2.vg'
-| Simuate: activating fixed-order NLO events
+| Simulate: activating fixed-order NLO events
 | QCD alpha: using a running strong coupling
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 3334
@@ -276,7 +276,7 @@ n_events = 1
 | One-Loop-Provider: Using OpenLoops
 | Loading library: [...]
 | Simulate: using integration grids from file 'openloops_3_p3_m3.vg'
-| Simuate: activating fixed-order NLO events
+| Simulate: activating fixed-order NLO events
 | QCD alpha: using a running strong coupling
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 4445

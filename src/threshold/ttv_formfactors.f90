@@ -1,4 +1,4 @@
-! WHIZARD 2.4.1 Mar 24 2017
+! WHIZARD 2.5.0 May 06 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -49,7 +49,6 @@ module ttv_formfactors
   use system_dependencies
   use, intrinsic :: iso_fortran_env !NODEP!
   use diagnostics
-  use solver, only: solver_function_t, solve_qgaus
   implicit none
   private
   save
@@ -184,15 +183,6 @@ module ttv_formfactors
     procedure :: is_onshell => phase_space_point_is_onshell
     procedure :: write => phase_space_point_write
   end type phase_space_point_t
-
-  type, extends (solver_function_t) :: p0_q_integrand_t
-    real(default) :: a = 0
-    type(phase_space_point_t) :: ps
-    integer :: i = 0
-  contains
-    procedure :: update => p0_q_integrand_update
-    procedure :: evaluate => p0_q_integrand_evaluate
-  end type p0_q_integrand_t
 
 
   type(threshold_t) :: threshold
@@ -1117,7 +1107,7 @@ contains
     real*8 :: xenergy, xtm, xtg, xalphas, xscale, xc0, xc1, xc2, xim, xdi, &
         xcutn, xcutv, xkincm, xkinca, xkincv, xcdeltc, &
         xcdeltl, xcfullc, xcfulll, xcrm2
-    integer, parameter :: nmax=400
+    integer, parameter :: nmax=900
     real*8 :: xdsdp(nmax), xpp(nmax), xww(nmax)
     complex*16 :: zff(nmax)
     integer :: np, jknflg, jgcflg, jvflg
@@ -1271,7 +1261,7 @@ contains
     call msg_debug (D_THRESHOLD, "sqrts_it", sqrts_it)
     allocate (sq_grid(POINTS_SQ))
     sq_grid = [(sqrts_iter (i_sq), i_sq=1, POINTS_SQ)]
-    POINTS_P = 360
+    POINTS_P = 600
     allocate (p_grid(POINTS_P))
     p_grid = p_grid_from_TOPPIK ()
     POINTS_P0 = 1
@@ -1613,25 +1603,6 @@ contains
     character(len=1) :: c
     write (c, '(l1)') l
   end function logical_to_char
-
-  subroutine p0_q_integrand_update (solver_f, a, ps, i)
-    class(p0_q_integrand_t), intent(inout) :: solver_f
-    real(default), intent(in) :: a
-    type(phase_space_point_t), intent(in) :: ps
-    integer, intent(in) :: i
-    solver_f%a = a
-    solver_f%ps = ps
-    solver_f%i = i
-  end subroutine p0_q_integrand_update
-
-  function p0_q_integrand_evaluate (solver_f, x) result (f)
-    complex(default) :: f
-    class(p0_q_integrand_t), intent(in) :: solver_f
-    real(default), intent(in) :: x
-    f = G0p_tree (solver_f%ps%en, x, solver_f%ps%mpole, GAM) &
-          * minus_q2_V (solver_f%a, x, solver_f%ps%p, solver_f%ps%p0, solver_f%i) &
-          * ff_p_spline%interpolate (x)
-  end function p0_q_integrand_evaluate
 
   subroutine get_rest_frame (p1_in, p2_in, p1_out, p2_out)
     type(vector4_t), intent(in) :: p1_in, p2_in

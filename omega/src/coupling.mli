@@ -220,6 +220,7 @@ type 'a vertex3 =
   | BBB of int * fermionbar * boson * fermionbar
   | GBG of int * fermionbar * boson * fermion (* gravitino-boson-fermion *)
   | Gauge_Gauge_Gauge of int | Aux_Gauge_Gauge of int
+  | I_Gauge_Gauge_Gauge of int
   | Scalar_Vector_Vector of int
   | Aux_Vector_Vector of int | Aux_Scalar_Vector of int
   | Scalar_Scalar_Scalar of int | Aux_Scalar_Scalar of int

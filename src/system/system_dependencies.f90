@@ -36,8 +36,8 @@ module system_dependencies
   public
  
   ! Program version
-  character(*), parameter :: WHIZARD_VERSION = "2.4.1"
-  character(*), parameter :: WHIZARD_DATE = "Mar 24 2017"
+  character(*), parameter :: WHIZARD_VERSION = "2.5.0"
+  character(*), parameter :: WHIZARD_DATE = "May 06 2017"
 
   ! System paths
   ! These are used for testing without existing installation
@@ -75,6 +75,8 @@ module system_dependencies
        "/Users/reuter/Physik/whizard/trunk/_build/src/looptools"
   character(*), parameter :: WHIZARD_TEST_MODELPATH = &
        "/Users/reuter/Physik/whizard/trunk/share/models"
+  character(*), parameter :: WHIZARD_TEST_MODELPATH_UFO = &
+       "/Users/reuter/Physik/whizard/trunk/share/models/UFO"
   character(*), parameter :: WHIZARD_TEST_MODELS_LIBPATH = &
        "/Users/reuter/Physik/whizard/trunk/_build/src/models"
   character(*), parameter :: WHIZARD_TEST_SUSYPATH = &
@@ -110,7 +112,7 @@ module system_dependencies
        "-I" // WHIZARD_TEST_UTILITIES_MODPATH // " " // &
        "-I" // WHIZARD_TEST_BASICS_MODPATH // " " // &
        "-I/usr/local/packages/OpenLoops/lib_src/openloops/mod -I/usr/l&
-       &ocal/packages/recola/recola-collier-1.1/recola-1.1/modules" 
+       &ocal/packages/recola/recola-collier-1.2/recola-1.2/modules" 
 
   ! WHIZARD-specific link flags
   character(*), parameter :: WHIZARD_TEST_LDFLAGS = &
@@ -124,8 +126,8 @@ module system_dependencies
        "-lHepMC -llcio -L/usr/local//lib -lhoppet_v1 " // &
        "-L/usr/local/lib -looptools -Wl,-rpath,/usr/local/packages/Ope&
        &nLoops/lib -L/usr/local/packages/OpenLoops/lib -lopenloops " // &
-       "-Wl,-rpath,/usr/local/packages/recola/recola-collier-1.1/recol&
-       &a-1.1 -L/usr/local/packages/recola/recola-collier-1.1/recola-1.1 -lrec&
+       "-Wl,-rpath,/usr/local/packages/recola/recola-collier-1.2/recol&
+       &a-1.2 -L/usr/local/packages/recola/recola-collier-1.2/recola-1.2 -lrec&
        &ola"
 
   ! Libtool
@@ -177,6 +179,8 @@ module system_dependencies
        LIBDIR
   character(*), parameter :: WHIZARD_MODELPATH = &
        PKGDATADIR // "/models"
+  character(*), parameter :: WHIZARD_MODELPATH_UFO = &
+       PKGDATADIR // "/models/UFO"
   character(*), parameter :: WHIZARD_MODELS_LIBPATH = &
        PKGLIBDIR // "/models"
   character(*), parameter :: WHIZARD_SUSYPATH = &
@@ -212,7 +216,7 @@ module system_dependencies
       "-I" // WHIZARD_UTILITIES_MODPATH // " " // &
       "-I" // WHIZARD_BASICS_MODPATH // " " // &
        "-I/usr/local/packages/OpenLoops/lib_src/openloops/mod -I/usr/l&
-       &ocal/packages/recola/recola-collier-1.1/recola-1.1/modules"
+       &ocal/packages/recola/recola-collier-1.2/recola-1.2/modules"
 
   ! WHIZARD-specific link flags
   character(*), parameter :: WHIZARD_LDFLAGS = &
@@ -221,8 +225,8 @@ module system_dependencies
        "-lHepMC -llcio -L/usr/local//lib -lhoppet_v1 " // &
        "-L/usr/local/lib -looptools -Wl,-rpath,/usr/local/packages/Ope&
        &nLoops/lib -L/usr/local/packages/OpenLoops/lib -lopenloops " // &
-       "-Wl,-rpath,/usr/local/packages/recola/recola-collier-1.1/recol&
-       &a-1.1 -L/usr/local/packages/recola/recola-collier-1.1/recola-1.1 -lrec&
+       "-Wl,-rpath,/usr/local/packages/recola/recola-collier-1.2/recol&
+       &a-1.2 -L/usr/local/packages/recola/recola-collier-1.2/recola-1.2 -lrec&
        &ola"
 
   ! Libtool
@@ -320,7 +324,7 @@ module system_dependencies
   character(*), parameter :: OPENLOOPS_DIR = &
        "/usr/local/packages/OpenLoops"
   character(*), parameter :: RECOLA_DIR = &
-       "/usr/local/packages/recola/recola-collier-1.1/recola-1.1"  
+       "/usr/local/packages/recola/recola-collier-1.2/recola-1.2"  
 
   ! Hardwired options for batch-mode processing
   character(*), parameter :: OPT_LATEX  = &

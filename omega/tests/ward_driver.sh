@@ -20,6 +20,9 @@ while read module threshold n roots model unphysical mode process; do
    '')   # skip empty lines
      ;;
 
+   '!'*) break
+     ;;
+
     *)
       ########################################################################
       modules="$modules $module"

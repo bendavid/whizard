@@ -1,4 +1,4 @@
-! WHIZARD 2.4.1 Mar 24 2017
+! WHIZARD 2.5.0 May 06 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -2741,7 +2741,7 @@ contains
           intrinsic=.true.)
     call var_list%append_log (var_str ("?phs_s_mapping"), .true., &
           intrinsic=.true.)
-    call var_list%append_log (var_str ("?vis_history"), .true., &
+    call var_list%append_log (var_str ("?vis_history"), .false., &
           intrinsic=.true.)
   end subroutine var_list_set_phase_space_defaults
 
@@ -3161,8 +3161,6 @@ contains
           var_str (""), intrinsic = .true.)
     call var_list%append_log (var_str ("?openloops_use_collier"), &
          .true., intrinsic = .true.)
-    call var_list%append_real (var_str ("recola_mu_ir"), &
-         100._default, intrinsic = .true.)
     call var_list%append_log (var_str ("?disable_subtraction"), &
          .false., intrinsic = .true.)
     call var_list%append_real (var_str ("fks_dij_exp1"), &

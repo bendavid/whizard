@@ -171,7 +171,11 @@ module It (M : Model.T) =
 
     module ISet = Set.Make (struct type t = int let compare = compare end)
 
-    let nc_value =
+    (* We MUST NOT compute [nc] only once because [M.flavors]
+       might change in a mutable [Model.Mutable] after loading
+       a new model file! *)
+
+    let nc () =
       let nc_set =
         List.fold_left
           (fun nc_set f ->
@@ -183,13 +187,10 @@ module It (M : Model.T) =
       match ISet.elements nc_set with
       | [] -> 0
       | [n] -> n
-      | nc_list -> 
+      | nc_list ->
           invalid_arg
             ("Colorize.It(): more than one value of N_C: " ^
              String.concat ", " (List.map string_of_int nc_list))
-
-    let nc () =
-      nc_value
 
     let split_color_string s =
       try

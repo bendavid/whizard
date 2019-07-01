@@ -1260,7 +1260,9 @@ end module blha_olp_interfaces
        if (blha_template%include_polarizations) then
           allocate (object%i_tree (n_flv * n_hel), &
                object%i_cc (n_flv * n_hel), &
-               object%i_sc (n_flv * n_hel))
+               object%i_sc (n_flv * n_hel), &
+               object%i_hel (3 * (n_flv * n_hel * n_in), n_in))
+          object%i_hel = 0
        else
           allocate (object%i_tree (n_flv), object%i_cc (n_flv) , &
                object%i_sc (n_flv))
@@ -1269,7 +1271,10 @@ end module blha_olp_interfaces
        object%i_cc = 0
        object%i_sc = 0
     else if (blha_template%compute_real_trees () .or. blha_template%compute_born ()) then
-       if (blha_template%include_polarizations) allocate (object%i_hel (n_hel, n_in))
+       if (blha_template%include_polarizations) then
+          allocate (object%i_hel (n_flv * n_hel * n_in, n_in))
+          object%i_hel = 0
+       end if
        allocate (object%i_tree (n_flv * n_hel))
        object%i_tree = 0
     end if
@@ -1482,16 +1487,18 @@ are requested (GoSam does not support polarized matrix elements).
 <<BLHA OLP interfaces: public>>=
   public :: blha_cc_fill_offdiag
 <<BLHA OLP interfaces: procedures>>=
-  subroutine blha_cc_fill_offdiag (n, r, sqme_cc)
+  subroutine blha_cc_fill_offdiag (n, r, sqme_cc, offset)
     integer, intent(in) :: n
     real(default), intent(in), dimension(:) :: r
     real(default), intent(inout), dimension(:,:) :: sqme_cc
+    integer, intent(in), optional :: offset
     integer :: i, j, im1, jm1, pos
     do j = 1, n
        do i = 1, j
           if (i /= j) then
              im1 = i - 1; jm1 = j - 1
              pos = im1 + jm1 * (jm1 - 1) / 2 + 1
+             if (present (offset)) pos = pos + offset
              sqme_cc (i, j) = -r (pos)
           end if
           sqme_cc (j, i) = sqme_cc (i, j)
@@ -1689,15 +1696,23 @@ recursive function implemented below.
 <<BLHA OLP interfaces: prc blha: TBP>>=
   procedure :: set_helicity_list_trivial => prc_blha_set_helicity_list_trivial
 <<BLHA OLP interfaces: procedures>>=
-  subroutine prc_blha_set_helicity_list_trivial (object, n_flv, n_sub)
+  subroutine prc_blha_set_helicity_list_trivial (object, n_flv, n_hel, n_sub, loop)
     class(prc_blha_t), intent(inout) :: object
-    integer, intent(in) :: n_flv, n_sub
-    integer :: i_flv
+    integer, intent(in) :: n_flv, n_sub, n_hel
+    logical, intent(in) :: loop
+    integer :: i_flv, i_hel, i_sub, n_sub_limit
+    integer :: i
     if (allocated (object%i_whizard_to_i_olc)) &
          deallocate (object%i_whizard_to_i_olc)
-    allocate (object%i_whizard_to_i_olc (n_flv))
+    n_sub_limit = n_sub; if (.not. loop .and. n_sub_limit > 0) n_sub_limit = n_sub_limit - 1
+    allocate (object%i_whizard_to_i_olc (n_flv * n_hel))
+    object%i_whizard_to_i_olc = 0
+    i = 0
     do i_flv = 1, n_flv
-       object%i_whizard_to_i_olc (i_flv) = blha_loop_positions (i_flv, n_sub)
+       do i_hel = 1, n_hel
+          i = i + 1
+          object%i_whizard_to_i_olc(i) = i + n_sub_limit * (i_flv - 1)
+       end do
     end do
   end subroutine prc_blha_set_helicity_list_trivial
 
@@ -1706,8 +1721,7 @@ recursive function implemented below.
 <<BLHA OLP interfaces: prc blha: TBP>>=
   procedure :: set_helicity_list => prc_blha_set_helicity_list
 <<BLHA OLP interfaces: procedures>>=
-  subroutine prc_blha_set_helicity_list (object, &
-     helicities)
+  subroutine prc_blha_set_helicity_list (object, helicities)
     class(prc_blha_t), intent(inout) :: object
     integer, intent(in), dimension(:,:) :: helicities
     integer, dimension(:, :), allocatable :: hel_olc

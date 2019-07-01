@@ -115,12 +115,12 @@ module Files : Files =
       let parse stem = parse_file (Filename.concat dir (stem ^ ".py")) in
       { particles = parse "particles";
 	couplings = parse "couplings";
-	coupling_orders = parse "coupling_orders";
+	coupling_orders = (try parse "coupling_orders" with _ -> []);
 	vertices = parse "vertices";
 	lorentz = parse "lorentz";
 	parameters = parse "parameters";
-	propagators = parse "propagators";
-	decays = parse "decays" }
+	propagators = (try parse "propagators" with _ -> []);
+	decays = (try parse "decays" with _ -> []) }
 
   end
 
@@ -138,6 +138,12 @@ let charge_to_string = function
   | Q_Fraction (n, d) -> Printf.sprintf "%d/%d" n d
 
 module S = UFO_syntax
+
+let find_attrib name attribs =
+  try
+    (List.find (fun a -> name = a.S.a_name) attribs).S.a_value
+  with
+  | Not_found -> failwith ("UFO.find_attrib: \"" ^ name ^ "\" not found")
 
 let find_attrib name attribs =
   (List.find (fun a -> name = a.S.a_name) attribs).S.a_value
@@ -195,25 +201,27 @@ type value =
 let value_to_string = function
   | Integer i -> Printf.sprintf "%d" i
   | Fraction (n, d) -> Printf.sprintf "%d/%d" n d
-  | Float x -> Printf.sprintf "%f" x
+  | Float x -> string_of_float x
   | String s -> Printf.sprintf "'%s'" s
   | Name n -> name_to_string n
 
-let value_to_expr = function
+let value_to_expr substitutions = function
   | Integer i -> Printf.sprintf "%d" i
   | Fraction (n, d) -> Printf.sprintf "%d/%d" n d
-  | Float x -> Printf.sprintf "%f" x
+  | Float x -> string_of_float x
   | String s ->
-     UFOx.Value.to_string (UFOx.Value.of_expr (UFOx.Expr.of_string s))
+     UFOx.Value.to_string
+       (UFOx.Value.of_expr (substitutions (UFOx.Expr.of_string s)))
   | Name n -> name_to_string n
 
-let value_to_coupling atom = function
+let value_to_coupling substitutions atom = function
   | Integer i -> Coupling.Const i
   | Fraction (n, d) -> Coupling.Quot (Coupling.Const n, Coupling.Const d)
-  | Float x -> Coupling.Const 42
+  | Float x -> failwith "UFO.value_to_coupling: Float not supported yet!"
   | String s ->
-     UFOx.Value.to_coupling atom (UFOx.Value.of_expr (UFOx.Expr.of_string s))
-  | Name n -> Coupling.Const 42
+     UFOx.Value.to_coupling
+       atom (UFOx.Value.of_expr (substitutions (UFOx.Expr.of_string s)))
+  | Name n -> failwith "UFO.value_to_coupling: Name not supported yet!"
 
 let value_to_numeric = function
   | Integer i -> Printf.sprintf "%d" i
@@ -407,8 +415,8 @@ module Particle : Particle =
 	     charge = charge_attrib "charge" attribs;
 	     ghost_number = integer_attrib "GhostNumber" attribs;
 	     lepton_number = integer_attrib "LeptonNumber" attribs;
-	     y = integer_attrib "Y" attribs;
-	     goldstone = boolean_attrib "goldstone" attribs;
+	     y = (try integer_attrib "Y" attribs with _ -> 0);
+	     goldstone = (try boolean_attrib "goldstone" attribs with _ -> false);
 	     propagating = true;
 	     line = None;
              is_anti = false} map
@@ -532,6 +540,51 @@ module Coupling_Order : Coupling_Order =
       List.fold_left of_file1 SMap.empty coupling_orders
   end
 
+module type Lorentz =
+  sig
+
+    type t = private
+      { name : string;
+	spins : int list;
+	structure : UFOx.Lorentz.t }
+
+    val of_file : S.t -> t SMap.t
+    val to_string : string -> t -> string
+
+  end
+
+module Lorentz : Lorentz =
+  struct
+
+    type t =
+      { name : string;
+	spins : int list;
+	structure : UFOx.Lorentz.t }
+
+    let to_string symbol l =
+      Printf.sprintf
+	"lorentz: %s => [name = '%s', spins = [%s], \
+                         structure = %s]"
+	symbol l.name
+	(String.concat ", " (List.map string_of_int l.spins))
+	(UFOx.Lorentz.to_string l.structure)
+
+    let of_file1 map d =
+      let symbol = d.S.name in
+      match d.S.kind, d.S.attribs with
+      | [ "Lorentz" ], attribs ->
+	 SMap.add symbol
+	   { name = string_attrib "name" attribs;
+	     spins = integer_list_attrib "spins" attribs;
+	     structure =
+	       UFOx.Lorentz.of_string (string_attrib "structure" attribs) } map
+      | _ -> invalid_arg ("Lorentz.of_file: " ^ name_to_string d.S.kind)
+
+    let of_file lorentz =
+      List.fold_left of_file1 SMap.empty lorentz
+
+  end
+
 module type Vertex =
   sig
 
@@ -544,6 +597,8 @@ module type Vertex =
 
     val of_file : S.t -> t SMap.t
     val to_string : string -> t -> string
+    val to_string_expanded :
+      Lorentz.t SMap.t -> UFO_Coupling.t SMap.t -> t -> string
 
     val contains : Particle.t SMap.t -> (Particle.t -> bool) -> t -> bool
     val filter : (t -> bool) -> t SMap.t -> t SMap.t
@@ -576,6 +631,38 @@ module Vertex : Vertex =
 		"[" ^ (String.concat ", "
 			 (List.map
 			    (function Some s -> s | None -> "0")
+			    (Array.to_list column))) ^ "]")
+	      (Array.to_list c.couplings)))
+
+        
+    let to_string_expanded lorentz couplings c =
+      let expand_lorentz s =
+        try
+          UFOx.Lorentz.to_string (SMap.find s lorentz).Lorentz.structure
+        with
+        | Not_found -> "?" in
+      let expand_coupling s =
+        try
+          UFOx.Value.to_string
+	    (UFOx.Value.of_expr
+	       (UFOx.Expr.of_string
+                  (SMap.find s couplings).UFO_Coupling.value))
+        with
+        | Not_found -> "?" in
+      Printf.sprintf
+	"expanded: [%s] -> { color = [%s], lorentz = [%s], \
+                             couplings = [%s] }"
+	(String.concat ", " (Array.to_list c.particles))
+        (String.concat ", "
+	   (List.map UFOx.Color.to_string (Array.to_list c.color)))
+        (String.concat ", "
+	   (List.map expand_lorentz (Array.to_list c.lorentz)))
+	(String.concat ", "
+	   (List.map
+	      (fun column ->
+		"[" ^ (String.concat ", "
+			 (List.map
+			    (function Some s -> expand_coupling s | None -> "0")
 			    (Array.to_list column))) ^ "]")
 	      (Array.to_list c.couplings)))
 
@@ -621,51 +708,6 @@ module Vertex : Vertex =
 
     let filter predicate map =
       SMap.filter (fun symbol p -> predicate p) map
-
-  end
-
-module type Lorentz =
-  sig
-
-    type t = private
-      { name : string;
-	spins : int list;
-	structure : UFOx.Lorentz.t }
-
-    val of_file : S.t -> t SMap.t
-    val to_string : string -> t -> string
-
-  end
-
-module Lorentz : Lorentz =
-  struct
-    
-    type t =
-      { name : string;
-	spins : int list;
-	structure : UFOx.Lorentz.t }
-
-    let to_string symbol l =
-      Printf.sprintf
-	"lorentz: %s => [name = '%s', spins = [%s], \
-                         structure = %s]"
-	symbol l.name
-	(String.concat ", " (List.map string_of_int l.spins))
-	(UFOx.Lorentz.to_string l.structure)
-
-    let of_file1 map d =
-      let symbol = d.S.name in
-      match d.S.kind, d.S.attribs with
-      | [ "Lorentz" ], attribs ->
-	 SMap.add symbol
-	   { name = string_attrib "name" attribs;
-	     spins = integer_list_attrib "spins" attribs;
-	     structure =
-	       UFOx.Lorentz.of_string (string_attrib "structure" attribs) } map
-      | _ -> invalid_arg ("Lorentz.of_file: " ^ name_to_string d.S.kind)
-
-    let of_file lorentz =
-      List.fold_left of_file1 SMap.empty lorentz
 
   end
 
@@ -974,6 +1016,7 @@ let dump model =
   SMap.iter
     (fun symbol v ->
       (print_endline @@@ Vertex.to_string) symbol v;
+      print_endline (Vertex.to_string_expanded model.lorentz model.couplings v);
       check_color_reps_of_vertex model v;
       check_lorentz_reps_of_vertex model v)
     model.vertices;
@@ -1046,24 +1089,6 @@ module Model =
       | Coupling.BRS f -> Coupling.BRS (conjugate_lorentz f) 
       | f -> f
 
-    let propagator_of_lorentz = function
-      | Coupling.Scalar -> Coupling.Prop_Scalar
-      | Coupling.Spinor -> Coupling.Prop_Spinor
-      | Coupling.ConjSpinor -> Coupling.Prop_ConjSpinor
-      | Coupling.Majorana -> Coupling.Prop_Majorana
-      | Coupling.Maj_Ghost ->
-          invalid_arg "propagator_of_lorentz: SUSY ghosts do not propagate"
-      | Coupling.Vector -> Coupling.Prop_Feynman
-      | Coupling.Massive_Vector -> Coupling.Prop_Unitarity
-      | Coupling.Vectorspinor -> 
-          invalid_arg "propagator_of_lorentz: Vectorspinor"
-      | Coupling.Tensor_1 ->
-          invalid_arg "propagator_of_lorentz: Tensor_1"
-      | Coupling.Tensor_2 ->
-          invalid_arg "propagator_of_lorentz: Tensor_2"
-      | Coupling.BRS _ ->
-          invalid_arg "propagator_of_lorentz: no BRST"
-
     module F = Modeltools.Fusions (struct
       type f = flavor
       type c = constant
@@ -1082,33 +1107,6 @@ module Model =
       | 2, 3 | 3, 2 -> 1
       | 3, 1 | 1, 3 -> 2
       | _ -> invalid_arg "UFO.third"
-
-    let coeff q1 q2 =
-      Q.to_integer (Q.mul q1 q2)
-
-    let translate_lorentz_atom c =
-      let open UFOx.Lorentz_Atom in
-      match c with
-      | C (i, j) ->
-	 invalid_arg "charge conjugation matrix not supported yet"
-      | Epsilon (mu, nu, ka, la) ->
-	 invalid_arg "Epsilon not supported yet"
-      | Gamma (mu, i, j) ->
-	 invalid_arg "Gamma not supported yet"
-      | Gamma5 (i, j) ->
-	 invalid_arg "Gamma5 not supported yet"
-      | Identity (i, j) ->
-	 invalid_arg "Identity not supported yet"
-      | Metric (mu, nu) ->
-	 invalid_arg "Metric not supported yet"
-      | P (mu, i) ->
-	 invalid_arg "P not supported yet"
-      | ProjP (i, j) ->
-	 invalid_arg "ProjP not supported yet"
-      | ProjM (i, j) ->
-	 invalid_arg "ProjM not supported yet"
-      | Sigma (mu, nu, i, j) ->
-	 invalid_arg "sigma not supported yet"
 
     let translate_color_atom c =
       let open UFOx.Color_Atom in
@@ -1334,7 +1332,7 @@ i.e.
 	   (Printf.sprintf
 	      "translate_color4: #color structures: %d" (Array.length c))
 
-(* The Lorentz part of the thre gauge boson vertex is
+(* The Lorentz part of the three gauge boson vertex is
    \begin{equation}
        g_{\mu_1\mu_2} (k^1_{\mu_3} - k^2_{\mu_3})
      + g_{\mu_2\mu_3} (k^2_{\mu_1} - k^3_{\mu_1})
@@ -1355,7 +1353,7 @@ i.e.
 
     let triplet p = (p.(0), p.(1), p.(2))
 
-    let translate_lorentz_gauge_3 t p g kalamuiq =
+    let translate_lorentz_gauge_3 t c p g kalamuiq =
       match normalize_lorentz_gauge_3 kalamuiq with
       | [ (ka1, la1, mu1, i1, q1);
 	  (ka2, la2, mu2, i2, q2);
@@ -1367,76 +1365,94 @@ i.e.
 	   && ThoList.homogeneous [ la1; la2; mu3; mu4; ka5; ka6; i2; i5 ]
 	   && ThoList.homogeneous [ mu1; mu2; la3; la4; la5; la6; i4; i6 ]
 	   && ThoList.homogeneous [ q1; Q.neg q2; Q.neg q3; q4; q5; Q.neg q6 ]
-	 then begin
-	   (triplet p, Coupling.Gauge_Gauge_Gauge (Q.to_integer q1), g)
-	 end else
+	 then
+           begin match c with
+           | [| [([UFOx.Color_Atom.F (_, _, _)], _)] |] ->
+              (triplet p, Coupling.Gauge_Gauge_Gauge (-1), g, q1)
+(* Here we have three gluons.  The color flow Feynman rules require
+   an additional factor of $+\textrm{i}$ relative to the colorless case
+   below. *)
+(* FIXME: we actually use and need $-\textrm{i}$ to make things work.
+   Explain this!!! *)
+           | [| [([], _)] |] ->
+              (triplet p, Coupling.I_Gauge_Gauge_Gauge (-1), g, q1)
+(* Here we have three vector bosons without color.
+   [I_Gauge_Gauge_Gauge] translates to $+\textrm{i}$ times
+   \verb+g_gg+, i.\,e.~the factor of $-\textrm{i}$ inside
+   \verb+g_gg+ is cancelled and everything is real.
+   Naturally, there is no factor of $+\textrm{i}$
+   from color flow Feynman rules.  Finally, there is a
+   factor of $-1$, because all O'Mega momenta are defined as
+   \emph{outgoing}. *)
+           | _ ->
+              invalid_arg "translate_lorentz_gauge_3: unexpected colors"
+(* We probably never get here.  Or are there models
+   with mixed vectors mixing color representations? *)
+           end
+	 else
 	   invalid_arg "translate_lorentz_gauge_3"
       | _ -> invalid_arg "translate_lorentz_gauge_3: expected 6 terms"
 
-    let translate_coupling3_1 model p t qc g =
+    let half_times q1 q2 =
+      Q.mul (Q.make 1 2) (Q.mul q1 q2)
+
+    let translate_coupling3_1 model p t c qc g =
       let module L = UFOx.Lorentz_Atom in
       match t with
       | [ [], qt] ->
-	 (triplet p, Coupling.Scalar_Scalar_Scalar (Q.to_integer (Q.mul qt qc)), g)
-      | [ [L.ProjP(i,j)], qt] ->
+	 (triplet p, Coupling.Scalar_Scalar_Scalar 1, g, Q.mul qt qc)
+      | [ [L.ProjP(j,i)], qt] ->
 	 ((p.(pred i), p.(pred (third i j)), p.(pred j)),
-	  Coupling.FBF (coeff qt qc,
-			Coupling.Psibar, Coupling.SR, Coupling.Psi),
-	  g)
-      | [ [L.ProjM(i,j)], qt] ->
+	  Coupling.FBF (1, Coupling.Psibar, Coupling.SR, Coupling.Psi),
+	  g, half_times qt qc)
+      | [ [L.ProjM(j,i)], qt] ->
 	 ((p.(pred i), p.(pred (third i j)), p.(pred j)),
-	  Coupling.FBF (coeff qt qc,
-			Coupling.Psibar, Coupling.SL, Coupling.Psi),
-	  g)
-      | [ ([L.ProjM(i,j)], qm); ([L.ProjP(i',j')], qp)] as t ->
+	  Coupling.FBF (1, Coupling.Psibar, Coupling.SL, Coupling.Psi),
+	  g, half_times qt qc)
+      | [ ([L.ProjM(j,i)], qm); ([L.ProjP(j',i')], qp)] as t ->
 	 if i = i' && j = j' then begin
 	   if Q.is_null (Q.add qm qp) then 
 	     ((p.(pred i), p.(pred (third i j)), p.(pred j)),
-	      Coupling.FBF (coeff qp qc,
-			    Coupling.Psibar, Coupling.P, Coupling.Psi),
-	      g)
+	      Coupling.FBF (1, Coupling.Psibar, Coupling.P, Coupling.Psi),
+	      g, half_times qp qc)
 	   else if Q.is_null (Q.sub qp qp) then 
 	     ((p.(pred i), p.(pred (third i j)), p.(pred j)),
-	      Coupling.FBF (coeff qp qc,
-			    Coupling.Psibar, Coupling.S, Coupling.Psi),
-	      g)
+	      Coupling.FBF (1, Coupling.Psibar, Coupling.S, Coupling.Psi),
+	      g, Q.mul qp qc)
 	   else begin
 	     prerr_endline
 	       ("unhandled colorless 3-vertex: " ^ UFOx.Lorentz.to_string t);
-	     (triplet p, dummy_tensor3, g)
+	     (triplet p, dummy_tensor3, g, Q.unit)
 	   end
          end else
            invalid_arg "translate_coupling3_1: mismatched indices"
-      | [ [L.Gamma(mu,i,j)], qt] ->
+      | [ [L.Gamma(mu,j,i)], qt] ->
 	 ((p.(pred i), p.(pred mu), p.(pred j)),
-	  Coupling.FBF (coeff qt qc,
-			Coupling.Psibar, Coupling.V, Coupling.Psi),
-	  g)
-      | [ [L.Gamma(mu,i,-1); L.ProjP(-1,j)], qt] ->
+	  Coupling.FBF (1, Coupling.Psibar, Coupling.V, Coupling.Psi),
+	  g, Q.mul qt qc)
+      | [ [L.Gamma(mu,j,-1); L.ProjP(-1,i)], qt] ->
 	 ((p.(pred i), p.(pred mu), p.(pred j)),
-	  Coupling.FBF (coeff qt qc,
-			Coupling.Psibar, Coupling.VR, Coupling.Psi),
-	  g)
-      | [ [L.Gamma(mu,i,-1); L.ProjM(-1,j)], qt] ->
+	  Coupling.FBF (1, Coupling.Psibar, Coupling.VR, Coupling.Psi),
+	  g, half_times qt qc)
+      | [ [L.Gamma(mu,j,-1); L.ProjM(-1,i)], qt] ->
 	 ((p.(pred i), p.(pred mu), p.(pred j)),
-	  Coupling.FBF (coeff qt qc,
-			Coupling.Psibar, Coupling.VL, Coupling.Psi),
-	  g)
-      | [ [L.Metric(i,j)], qt] ->
+	  Coupling.FBF (1, Coupling.Psibar, Coupling.VL, Coupling.Psi),
+	  g, half_times qt qc)
+      | [ [L.Metric(j,i)], qt] ->
 	 ((p.(pred (third i j)), p.(pred i), p.(pred j)),
-	  Coupling.Scalar_Vector_Vector (coeff qt qc),
-	  g)
+	  Coupling.Scalar_Vector_Vector 1,
+	  g, Q.mul qt qc)
       | [ ([L.P(mu,i)], q1); ([L.P(mu',j')], q2) ] as t ->
 	 prerr_endline
 	   ("unhandled colorless 3-vertex: " ^ UFOx.Lorentz.to_string t);
-	 (triplet p, dummy_tensor3, g)
+	 (triplet p, dummy_tensor3, g, Q.unit)
       | [ ([L.Metric(ka1,la1); L.P(mu1,i1)], q1);
 	  ([L.Metric(ka2,la2); L.P(mu2,i2)], q2);
 	  ([L.Metric(ka3,la3); L.P(mu3,i3)], q3);
 	  ([L.Metric(ka4,la4); L.P(mu4,i4)], q4);
 	  ([L.Metric(ka5,la5); L.P(mu5,i5)], q5);
 	  ([L.Metric(ka6,la6); L.P(mu6,i6)], q6)] as t ->
-	 translate_lorentz_gauge_3 t p g
+	 translate_lorentz_gauge_3 t c p g
 	   [ (ka1, la1, mu1, i1, q1);
 	     (ka2, la2, mu2, i2, q2);
 	     (ka3, la3, mu3, i3, q3);
@@ -1446,7 +1462,7 @@ i.e.
       | t ->
 	 prerr_endline
 	   ("unhandled 3-vertex: " ^ UFOx.Lorentz.to_string t);
-	 (triplet p, dummy_tensor3, g)
+	 (triplet p, dummy_tensor3, g, Q.unit)
 
 
     let name g =
@@ -1458,23 +1474,42 @@ i.e.
       | Some g -> g.UFO_Coupling.name
       | None -> "???"
 
+    let fractional_coupling g r =
+      "(" ^ string_of_float (Q.to_float r) ^ "*" ^ name g ^ ")"
+
+    let fractional_coupling g r =
+      let g = name g in
+      match Q.to_ratio r with
+      |  0, _ -> "0.0_default"
+      |  1, 1 -> g
+      | -1, 1 -> Printf.sprintf "(-%s)" g
+      |  n, 1 -> Printf.sprintf "(%d*%s)" n g
+      |  1, d -> Printf.sprintf "(%s/%d)" g d
+      | -1, d -> Printf.sprintf "(-%s/%d)" g d
+      |  n, d -> Printf.sprintf "(%d*%s/%d)" n g d
+
     let translate_coupling3 model p t c g =
       let open Coupling in
       match t, translate_color3 c, g with
       | [| t |], qc, [| [| Some g |] |] ->
-	 [translate_coupling3_1 model p t qc (name g)]
+         begin match translate_coupling3_1 model p t c qc g with
+         | (p123, fbf, g, r) ->
+            [(p123, fbf, fractional_coupling g r)]
+         end
       | [| t |], qc, _ ->
 	 invalid_arg "translate_coupling3: too many constants"
       | [| t1; t2 |] as t, qc, [| [| Some g1; Some g2 |] |] ->
-	 begin match (translate_coupling3_1 model p t1 qc g1,
-		      translate_coupling3_1 model p t2 qc g2) with
-	 | ((p1, p2, p3), FBF (q, Psibar, l, Psi), g),
-           ((p1', p2', p3'), FBF (q', Psibar, l', Psi), g') ->
+	 begin match (translate_coupling3_1 model p t1 c qc g1,
+		      translate_coupling3_1 model p t2 c qc g2) with
+	 | ((p1, p2, p3), FBF (q, Psibar, l, Psi), g, r),
+           ((p1', p2', p3'), FBF (q', Psibar, l', Psi), g', r') ->
 	    if p1 = p1' && p2 = p2' && p3 = p3' then begin
 	      match l, l' with
 	      | P, S | S, P | SL, SR | SR, SL | V, A | A, V | VL, VR | VR, VL ->
-                 [((p1, p2, p3), FBF (q, Psibar, l, Psi), name g);
-                  ((p1, p2, p3), FBF (q, Psibar, l', Psi), name g')]
+                 [((p1, p2, p3), FBF (q, Psibar, l, Psi),
+                   fractional_coupling g r);
+                  ((p1, p2, p3), FBF (q, Psibar, l', Psi),
+                   fractional_coupling g' r')]
 	      | _, _ ->
 		 invalid_arg "translate_coupling3: incompatible Dirac matrices"
 	    end else
@@ -1506,6 +1541,10 @@ i.e.
 	(fun (c1, q1) (c2, q2) -> ThoList.lexicographic c1 c2)
 	(List.map (fun (c, q) -> (normalize_lorentz_4_1 c, q)) contractions)
 
+(* \begin{dubious}
+     Here we must verify and fix (iff necessary) the signs!
+   \end{dubious} *)
+
     let translate_lorentz_4 model p t =
       let open Coupling in
       let module L = UFOx.Lorentz_Atom in
@@ -1519,17 +1558,23 @@ i.e.
 	 | [ ([mu1; nu1; ka1; la1], q1);
 	     ([mu2; nu2; ka2; la2], q2);
 	     ([mu3; nu3; ka3; la3], q3) ] ->
-	    let minus_two q = Q.mul (Q.make (-2) 1) q in
+	    let minus_half q = Q.mul (Q.make (-1) 2) q in
 	    if   ThoList.homogeneous [mu1; mu2; mu3]
 	      && ThoList.homogeneous [nu1; ka2; ka3]
 	      && ThoList.homogeneous [ka1; nu2; la3]
 	      && ThoList.homogeneous [la1; la2; nu3] then begin
-		if ThoList.homogeneous [q1; minus_two q2; minus_two q3] then
-		  (p, q1, Vector4 [ ( 2, C_12_34); (-1, C_13_42); (-1, C_14_23) ])
-		else if ThoList.homogeneous [q2; minus_two q3; minus_two q1] then
-		  (p, q2, Vector4 [ (-1, C_12_34); ( 2, C_13_42); (-1, C_14_23) ])
-		else if ThoList.homogeneous [q3; minus_two q1; minus_two q2] then
-		  (p, q3, Vector4 [ (-1, C_12_34); (-1, C_13_42); ( 2, C_14_23) ])
+                (* $   q_1 g_{\mu\nu}g_{\kappa\lambda}
+                     + q_2 g_{\mu\kappa}g_{\nu\lambda}
+                     + q_3 g_{\mu\lambda}g_{\nu\kappa} $ a.\,k.\,a.{} *)
+                (* $   q_1 \text{\textit{C\_12\_34}}
+                     + q_2 \text{\textit{C\_13\_24}}
+                     + q_3 \text{\textit{C\_14\_23}} $ *)
+		if ThoList.homogeneous [minus_half q1; q2; q3] then
+		  (p, q2, Vector4 [ (-2, C_12_34); ( 1, C_13_42); ( 1, C_14_23) ])
+		else if ThoList.homogeneous [minus_half q2; q3; q1] then
+		  (p, q3, Vector4 [ ( 1, C_12_34); (-2, C_13_42); ( 1, C_14_23) ])
+		else if ThoList.homogeneous [minus_half q3; q1; q2] then
+		  (p, q1, Vector4 [ ( 1, C_12_34); ( 1, C_13_42); (-2, C_14_23) ])
 		else begin
 		  prerr_endline
 		    ("unexpected 4-gauge-vertex: " ^ UFOx.Lorentz.to_string t);
@@ -1631,7 +1676,8 @@ i.e.
 		and eps2 = gauge_contraction2 contraction21 contraction22
 		and eps3 = gauge_contraction3 contraction31 contraction32 in
                 if eps1 = eps2 && eps2 = eps3 then
-		  [(quartet p, gauge4 eps1, name g)]
+                  (* FIXME: why not [q1] instead of [Q.unit]??? *)
+		  [(quartet p, gauge4 eps1, fractional_coupling g Q.unit)]
                 else
 		  invalid_arg "translate_gauge_vertex4: unexpected permutations"
 	      end else
@@ -1645,7 +1691,8 @@ i.e.
 		and eps2 = gauge_contraction3 contraction21 contraction22
 		and eps3 = gauge_contraction2 contraction31 contraction32 in
                 if eps1 = eps2 && eps2 = eps3 then
-		  [(quartet p, gauge4 eps1, name g)]
+                  (* FIXME: why not [q1] instead of [Q.unit]??? *)
+		  [(quartet p, gauge4 eps1, fractional_coupling g Q.unit)]
                 else
 		  invalid_arg "translate_gauge_vertex4: unexpected permutations"
 	      end else
@@ -1660,10 +1707,10 @@ i.e.
       let module L = UFOx.Lorentz_Atom in
       match t, translate_color4 c, g with
       | [| [ [], qt] |], C3 qc, [| [| Some g |] |] ->
-	 [(quartet p, Scalar4 (coeff qt qc), name g)]
+	 [(quartet p, Scalar4 1, fractional_coupling g (Q.mul qt qc))]
       | [| t |], qc, [| [| Some g |] |] ->
 	 begin match translate_lorentz_4 model p t with
-	 | p, q, t -> [(quartet p, t, name g)]
+	 | p, q, t -> [(quartet p, t, fractional_coupling g q)]
 	 end
       | [| t |], qc, _->
 	 invalid_arg "translate_coupling4: too many constants"
@@ -1805,13 +1852,13 @@ i.e.
       | Coupling.Vector -> Coupling.Prop_Feynman
       | Coupling.Massive_Vector -> Coupling.Prop_Unitarity
       | Coupling.Vectorspinor -> invalid_arg
-	 "UFO.Model.propagator_of_lorentz: Vectorspinor"
+         "UFO.Model.propagator_of_lorentz: Vectorspinor"
       | Coupling.Tensor_1 -> invalid_arg
 	 "UFO.Model.propagator_of_lorentz: Tensor_1"
       | Coupling.Tensor_2 -> invalid_arg
 	 "UFO.Model.propagator_of_lorentz: Tensor_2"
       | Coupling.BRS _ -> invalid_arg
-	 "UFO.Model.propagator_of_lorentz: no BRST"
+         "UFO.Model.propagator_of_lorentz: no BRST"
 
     let filter_unphysical model =
       let physical_particles =
@@ -1821,6 +1868,15 @@ i.e.
 	  (not @@ (Vertex.contains model.particles (not @@ Particle.is_physical)))
 	  model.vertices in
       { model with particles = physical_particles; vertices = physical_vertices }
+
+    let whizard_constants =
+      [ "ZERO" ]
+
+    let filter_constants parameters =
+      List.filter
+        (fun p ->
+          not (List.mem (String.uppercase p.Parameter.name) whizard_constants))
+        parameters
 
     let classify_parameters model =
       let compare_parameters p1 p2 =
@@ -1832,23 +1888,36 @@ i.e.
            classify (match p.Parameter.nature with
                      | Parameter.Internal -> (input, p :: derived)
                      | Parameter.External -> (p :: input, derived)) rest in
-      classify ([], []) (values model.parameters)
+      classify ([], []) (filter_constants (values model.parameters))
 
     let translate_input p =
       (p.Parameter.name, value_to_float p.Parameter.value)
 
+    let alpha_s_half e =
+      UFOx.Expr.substitute "aS" (UFOx.Expr.half "aS") e
+
     let translate_derived p =
       let make_atom s = s in
       let c = make_atom p.Parameter.name in
-      let v = value_to_coupling make_atom p.Parameter.value in
+      let v =
+        value_to_coupling alpha_s_half make_atom p.Parameter.value in
       match p.Parameter.ptype with
       | Parameter.Real -> (Coupling.Real c, v)
       | Parameter.Complex -> (Coupling.Complex c, v)
 
+    let translate_coupling_constant c =
+      let make_atom s = s in
+      (Coupling.Complex c.UFO_Coupling.name,
+       Coupling.Quot (value_to_coupling alpha_s_half make_atom (String c.UFO_Coupling.value),
+                      Coupling.I))
+
     let translate_parameters model =
-      let input_parameters, derived_parameters = classify_parameters model in
+      let input_parameters, derived_parameters = classify_parameters model
+      and couplings = values model.couplings in
       { Coupling.input = List.map translate_input input_parameters;
-        Coupling.derived = List.map translate_derived derived_parameters;
+        Coupling.derived =
+          List.map translate_derived derived_parameters @
+            List.map translate_coupling_constant couplings;
         Coupling.derived_arrays = [] }
 
     type state =
@@ -1864,16 +1933,28 @@ i.e.
 
     let dump_raw = ref false
 
+    (* UFO requires us to look up the mass parameter to
+       distinguish between massless and massive vectors.
+
+       TODO: this is a candidate for another lookup table. *)
+
+    let lorentz_of_particle p =
+      match UFOx.Lorentz.omega p.Particle.spin with
+      | Coupling.Vector ->
+         begin match String.uppercase p.Particle.mass with
+         | "ZERO" -> Coupling.Vector
+         | _ -> Coupling.Massive_Vector
+         end
+      | s -> s
+
     let init dir =
       let model = filter_unphysical (parse_directory dir) in
       if !dump_raw then
 	dump model;
       let tables = Lookup.of_model model in
-      let (vertices3, vertices4, verticesn) as vertices =
-	translate_vertices model tables in
-      let max_degree = match vertices4 with [] -> 3 | _ -> 4 in
+      let vertices () = translate_vertices model tables in
       let particle f = tables.Lookup.particle f in
-      let lorentz f = UFOx.Lorentz.omega (particle f).Particle.spin in
+      let lorentz f = lorentz_of_particle (particle f) in
       let gauge_symbol () = "?GAUGE?" in
       let constant_symbol s = s in
       let parameters = translate_parameters model in
@@ -1886,7 +1967,7 @@ i.e.
         ~goldstone:(fun f -> None)
         ~conjugate:tables.Lookup.conjugate
         ~fermion:(fun f -> fermion_of_lorentz (lorentz f))
-        ~vertices ~max_degree
+        ~vertices
         ~flavors:[("All Flavors", tables.Lookup.flavors)]
         ~parameters:(fun () -> parameters)
         ~flavor_of_string:tables.Lookup.flavor_of_string
@@ -1907,89 +1988,102 @@ i.e.
       else
 	init !ufo_directory
 
-    let write_header dir =
-      Printf.printf "# WHIZARD Model file derived from UFO directory\n";
-      Printf.printf "#   '%s'\n\n" dir;
-      Printf.printf "model = \"%s\"\n\n" (Filename.basename dir)
+    module Whizard : sig val write : unit -> unit end =
+      struct
+        
+        let write_header dir =
+          Printf.printf "# WHIZARD Model file derived from UFO directory\n";
+          Printf.printf "#   '%s'\n\n" dir;
+          Printf.printf "model \"%s\"\n\n" (Filename.basename dir)
 
-    let write_input_parameters parameters =
-      let open Parameter in
-      Printf.printf "# Independent (input) Parameters\n";
-      List.iter
-        (fun p ->
-          Printf.printf "parameter %s = %s\n" p.name (value_to_numeric p.value))
-        parameters;
-      Printf.printf "\n"
+        let write_input_parameters parameters =
+          let open Parameter in
+          Printf.printf "# Independent (input) Parameters\n";
+          List.iter
+            (fun p ->
+              Printf.printf
+                "parameter %s = %s\n"
+                p.name (value_to_numeric p.value))
+            parameters;
+          Printf.printf "\n"
 
-    let write_derived_parameters parameters =
-      let open Parameter in
-      Printf.printf "# Dependent (derived) Parameters\n";
-      List.iter
-        (fun p ->
-          Printf.printf "parameter %s = %s\n" p.name (value_to_expr p.value))
-        parameters;
-      Printf.printf "\n"
+        let write_derived_parameters parameters =
+          let open Parameter in
+          Printf.printf "# Dependent (derived) Parameters\n";
+          List.iter
+            (fun p ->
+              Printf.printf
+                "derived %s = %s\n"
+                p.name (value_to_expr alpha_s_half p.value))
+            parameters;
+          Printf.printf "\n"
 
-    let write_particles particles =
-      let open Particle in
-      Printf.printf "# Particles\n";
-      Printf.printf "# NB: hypercharge assignments appear to be unreliable\n";
-      Printf.printf "#     therefore we can't infer the isospin\n";
-      Printf.printf "# NB: parton-, gauge- and lefthandedness are unavailable\n";
-      List.iter
-        (fun p ->
-          if not p.is_anti then begin
-            Printf.printf
-              "particle \"%s\" %d ### parton? gauge? left?\n"
-              p.name p.pdg_code;
-            Printf.printf
-              "  spin %s charge %s color %s ### isospin?\n"
-              (UFOx.Lorentz.rep_to_string p.spin)
-              (charge_to_string p.charge)
-              (UFOx.Color.rep_to_string p.color);
-            Printf.printf "  name \"%s\"\n" p.name;
-            Printf.printf "  anti \"%s\"\n" p.antiname;
-            Printf.printf "  tex_name \"%s\"\n" p.texname;
-            Printf.printf "  tex_anti \"%s\"\n" p.antitexname;
-            Printf.printf "  mass %s width %s\n\n" p.mass p.width
-          end)
-        (values particles);
-      Printf.printf "\n"
+        let write_particles particles =
+          let open Particle in
+          Printf.printf "# Particles\n";
+          Printf.printf "# NB: hypercharge assignments appear to be unreliable\n";
+          Printf.printf "#     therefore we can't infer the isospin\n";
+          Printf.printf "# NB: parton-, gauge- & handedness are unavailable\n";
+          List.iter
+            (fun p ->
+              if not p.is_anti then begin
+                  Printf.printf
+                    "particle \"%s\" %d ### parton? gauge? left?\n"
+                    p.name p.pdg_code;
+                  Printf.printf
+                    "  spin %s charge %s color %s ### isospin?\n"
+                    (UFOx.Lorentz.rep_to_string p.spin)
+                    (charge_to_string p.charge)
+                    (UFOx.Color.rep_to_string p.color);
+                  Printf.printf "  name \"%s\"\n" p.name;
+                  if p.antiname <> p.name then
+                    Printf.printf "  anti \"%s\"\n" p.antiname;
+                  Printf.printf "  tex_name \"%s\"\n" p.texname;
+                  if p.antiname <> p.name then
+                    Printf.printf "  tex_anti \"%s\"\n" p.antitexname;
+                  Printf.printf "  mass %s width %s\n\n" p.mass p.width
+                end)
+            (values particles);
+          Printf.printf "\n"
 
-    let write_vertices model vertices  =
-      Printf.printf "# Vertices (for phasespace generation only)\n";
-      Printf.printf "# NB: particles should be sorted increasing in mass.\n";
-      Printf.printf "#     This is NOT implemented yet!\n";
-      List.iter
-        (fun v ->
-          let particles =
-            String.concat " "
-              (List.map
-                 (fun s ->
-                   "\"" ^ (SMap.find s model.particles).Particle.name ^ "\"")
-                 (Array.to_list v.Vertex.particles)) in
-          Printf.printf "%s\n" particles)
-        (values vertices);
-      Printf.printf "\n"
+        let write_vertices model vertices  =
+          Printf.printf "# Vertices (for phasespace generation only)\n";
+          Printf.printf "# NB: particles should be sorted increasing in mass.\n";
+          Printf.printf "#     This is NOT implemented yet!\n";
+          List.iter
+            (fun v ->
+              let particles =
+                String.concat
+                  " "
+                  (List.map
+                     (fun s ->
+                       "\"" ^ (SMap.find s model.particles).Particle.name ^ "\"")
+                     (Array.to_list v.Vertex.particles)) in
+              Printf.printf "vertex %s\n" particles)
+            (values vertices);
+          Printf.printf "\n"
 
-    let write_WHIZARD () =
-      load_UFO ();
-      match !initialized with
-      | None -> failwith "UFO.write_WHIZARD: can't happen"
-      | Some { directory = dir; model = model } ->
-         let input_parameters, derived_parameters = classify_parameters model in
-         write_header dir;
-         write_input_parameters input_parameters;
-         write_derived_parameters derived_parameters;
-         write_particles model.particles;
-         write_vertices model model.vertices;
-         exit 0
+        let write () =
+          load_UFO ();
+          match !initialized with
+          | None -> failwith "UFO.Whizard.write: can't happen"
+          | Some { directory = dir; model = model } ->
+             let input_parameters, derived_parameters =
+               classify_parameters model in
+             write_header dir;
+             write_input_parameters input_parameters;
+             write_derived_parameters derived_parameters;
+             write_particles model.particles;
+             write_vertices model model.vertices;
+             exit 0
+
+      end
 
     let options = Options.create
         [ ("UFO_dir", Arg.String (fun name -> ufo_directory := name),
            "UFO model directory (default: " ^ !ufo_directory ^ ")");
-          ("write_WHIZARD", Arg.Unit write_WHIZARD,
-           "write the WHIZARD model files (required once per model)");
+          ("write_WHIZARD", Arg.Unit Whizard.write,
+           "write the WHIZARD model file (required once per model)");
           ("long_flavors",
            Arg.Unit (fun () -> Lookup.flavor_format := Lookup.Long),
            "write use the UFO flavor names instead of integers");

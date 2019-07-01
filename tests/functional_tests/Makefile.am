@@ -159,6 +159,8 @@ TESTS_REQ_OCAML = \
     mssmtest_1.run \
     mssmtest_2.run \
     sm_cms_1.run \
+    ufo_1.run \
+    ufo_2.run \
     nlo_1.run \
     nlo_2.run \
     nlo_3.run \
@@ -397,24 +399,32 @@ tscript.mod: $(top_builddir)/src/models/threeshl_bundle/tscript.$(FC_MODULE_EXT)
 threeshl.mod: $(top_builddir)/src/models/threeshl_bundle/threeshl.$(FC_MODULE_EXT)
 	cp $< $@
 
-WT_OMEGA_CACHE_SUFFIX=vertices
 WT_OCAML_NATIVE_EXT=opt
 
 if OCAML_AVAILABLE
-qedtest_1.run qedtest_2.run qedtest_3.run qedtest_4.run qedtest_5.run qedtest_6.run qedtest_7.run qedtest_8.run qedtest_9.run qedtest_10.run: omega_QED.$(WT_OMEGA_CACHE_SUFFIX)
 OMEGA_QED = $(top_builddir)/omega/bin/omega_QED.$(WT_OCAML_NATIVE_EXT)
-omega_QED.$(WT_OMEGA_CACHE_SUFFIX): $(OMEGA_QED)
-	$(OMEGA_QED) -initialize .
-
-qcdtest_1.run qcdtest_2.run qcdtest_3.run qcdtest_4.run qcdtest_5.run qcdtest_6.run: omega_QCD.$(WT_OMEGA_CACHE_SUFFIX)
 OMEGA_QCD = $(top_builddir)/omega/bin/omega_QCD.$(WT_OCAML_NATIVE_EXT)
-omega_QCD.$(WT_OMEGA_CACHE_SUFFIX): $(OMEGA_QCD)
-	$(OMEGA_QCD) -initialize .
-
-mssmtest_1.run mssmtest_2.run: omega_MSSM.$(WT_OMEGA_CACHE_SUFFIX)
 OMEGA_MSSM = $(top_builddir)/omega/bin/omega_MSSM.$(WT_OCAML_NATIVE_EXT)
+
 omega_MSSM.$(WT_OMEGA_CACHE_SUFFIX): $(OMEGA_MSSM)
 	$(OMEGA_MSSM) -initialize .
+
+UFO_TAG_FILE = __init__.py
+UFO_MODELPATH = ../models/UFO
+
+ufo_1.run: ufo_1_SM/$(UFO_TAG_FILE)
+ufo_2.run: ufo_2_SM/$(UFO_TAG_FILE)
+
+ufo_1_SM/$(UFO_TAG_FILE): $(UFO_MODELPATH)/SM/$(UFO_TAG_FILE)
+	mkdir -p ufo_1_SM
+	cp $(UFO_MODELPATH)/SM/*.py ufo_1_SM
+ufo_2_SM/$(UFO_TAG_FILE): $(UFO_MODELPATH)/SM/$(UFO_TAG_FILE)
+	mkdir -p ufo_2_SM
+	cp $(UFO_MODELPATH)/SM/*.py ufo_2_SM
+
+$(UFO_MODELPATH)/SM/$(UFO_TAG_FILE): $(top_srcdir)/omega/tests/UFO/SM/$(UFO_TAG_FILE)
+	$(MAKE) -C $(UFO_MODELPATH)/SM all
+
 endif OCAML_AVAILABLE
 
 if MPOST_AVAILABLE
@@ -564,8 +574,16 @@ notestflag:
 	rm -f TESTFLAG
 .PHONY: notestflag
 
+### Remove DWARF debug information on MAC OS X
+clean-macosx:
+	-rm -rf hepmc_6_rd.dSYM
+	-rm -rf lcio_rd.dSYM
+	-rm -rf static_1.exe.dSYM
+	-rm -rf static_2.exe.dSYM
+.PHONY: clean-macosx
+
 ## Remove generated files
-clean-local:
+clean-local: clean-macosx
 	rm -f gamelan.sty 
 	rm -f TESTFLAG GAMELAN_FLAG 
 	rm -f OCAML_FLAG OPENLOOPS_FLAG FASTJET_FLAG HEPMC_FLAG LCIO_FLAG
@@ -589,7 +607,9 @@ clean-local:
 	rm -f *.tbl sps1ap_decays.slha bar structure_6[a-b].out 
 	rm -f slhaspectrum.in suspect2.out suspect2_lha.out 
 	rm -f susyhit.in susyhit_slha.out suspect2_lha.in
+	rm -f -r ufo_1_SM ufo_2_SM ufo_1_SM.ufo.mdl ufo_2_SM.ufo.mdl
 	rm -f *.$(WT_OMEGA_CACHE_SUFFIX)
+	rm -rf *.dSYM
 if FC_SUBMODULES
 	rm -f *.smod
 endif

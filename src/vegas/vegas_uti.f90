@@ -1,4 +1,4 @@
-! WHIZARD 2.4.1 Mar 24 2017
+! WHIZARD 2.5.0 May 06 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -39,7 +39,7 @@ module vegas_uti
   use constants, only: pi
   use format_defs, only: FMT_10, FMT_12
   use rng_base
-  use rng_tao
+  use rng_stream
   use vegas
 
   implicit none
@@ -109,7 +109,7 @@ contains
     write (u, "(A)") "* Initialise random number generator (default seed)"
     write (u, "(A)")
 
-    allocate (rng_tao_t :: rng)
+    allocate (rng_stream_t :: rng)
     call rng%init ()
 
     call rng%write (u)
@@ -142,13 +142,6 @@ contains
     call mc_integrator%set_calls (2000)
     call mc_integrator%integrate (func, rng, 3, result=result, abserr=abserr)
     write (u, "(2x,A," // FMT_12 // ",A," // FMT_12 // ")") "Result: ", result, " +/- ", abserr
-
-
-    write (u, "(A)")
-    write (u, "(A)") "* Write grid"
-    write (u, "(A)")
-
-    call mc_integrator%write_grid (u)
 
     write (u, "(A)")
     write (u, "(A)") "* Cleanup"
@@ -195,12 +188,6 @@ contains
     call mc_integrator_result%write (u)
 
     write (u, "(A)")
-    write (u, "(A)") "* Write grid"
-    write (u, "(A)")
-
-    call mc_integrator%write_grid (u)
-
-    write (u, "(A)")
     write (u, "(A)") "* Cleanup"
 
     call mc_integrator%final ()
@@ -222,7 +209,7 @@ contains
     write (u, "(A)") "*   Purpose: Integrate gaussian distribution."
     write (u, "(A)")
 
-    allocate (rng_tao_t :: rng)
+    allocate (rng_stream_t :: rng)
     call rng%init ()
 
     call rng%write (u)
@@ -291,12 +278,6 @@ contains
     call mc_integrator_grid%write (u)
 
     write (u, "(A)")
-    write (u, "(A)") "* Write grid"
-    write (u, "(A)")
-
-    call mc_integrator%write_grid (u)
-
-    write (u, "(A)")
     write (u, "(A)") "* Cleanup"
 
     call mc_integrator%final ()
@@ -317,7 +298,7 @@ contains
     write (u, "(A)") "*   Purpose: Integrate gaussian distribution."
     write (u, "(A)")
 
-    allocate (rng_tao_t :: rng)
+    allocate (rng_stream_t :: rng)
     call rng%init ()
 
     call rng%write (u)
@@ -364,19 +345,6 @@ contains
     write (u, "(2x,A," // FMT_12 // ",A," // FMT_12 // ")") "Result: ", result, " +/- ", abserr
 
     write (u, "(A)")
-    write (u, "(A)") "* Get VEGAS result object and write out"
-    write (u, "(A)")
-
-    call mc_integrator%get_result (mc_integrator_result)
-    call mc_integrator_result%write (u)
-
-    write (u, "(A)")
-    write (u, "(A)") "* Write grid"
-    write (u, "(A)")
-
-    call mc_integrator%write_grid (u)
-
-    write (u, "(A)")
     write (u, "(A)") "* Cleanup"
 
     call mc_integrator%final ()
@@ -400,7 +368,7 @@ contains
     write (u, "(A)") "*   Purpose: Integrate gaussian distribution."
     write (u, "(A)")
 
-    allocate (rng_tao_t :: rng)
+    allocate (rng_stream_t :: rng)
     call rng%init ()
 
     call rng%write (u)
@@ -413,11 +381,11 @@ contains
     mc_integrator = vegas_t (1)
 
     write (u, "(A)")
-    write (u, "(A)") "* Initialise grid with n_calls = 10000"
+    write (u, "(A)") "* Initialise grid with n_calls = 20000"
     write (u, "(A)")
 
     call mc_integrator%set_limits (x_lower_1, x_upper_1)
-    call mc_integrator%set_calls (1000)
+    call mc_integrator%set_calls (20000)
 
     write (u, "(A)")
     write (u, "(A)") "* Integrate with n_it = 3 (Adaptation)"
@@ -429,21 +397,14 @@ contains
     write (u, "(2x,A," // FMT_12 // ",A," // FMT_12 // ")") "Result: ", result, " +/- ", abserr
 
     write (u, "(A)")
-    write (u, "(A)") "* Integrate with n_it = 3 and n_calls = 100000 (Precision)"
+    write (u, "(A)") "* Integrate with n_it = 3 and n_calls = 2000 (Precision)"
     write (u, "(A)")
 
-    call mc_integrator%set_calls (10000)
+    call mc_integrator%set_calls (2000)
     call mc_integrator%integrate (func, rng, 3, opt_verbose=.true., result=result, abserr=abserr)
     call mc_integrator%get_config (mc_integrator_config)
     call mc_integrator_config%write (u)
     write (u, "(2x,A," // FMT_12 // ",A," // FMT_12 // ")") "Result: ", result, " +/- ", abserr
-
-    write (u, "(A)")
-    write (u, "(A)") "* Get VEGAS result object and write out"
-    write (u, "(A)")
-
-    call mc_integrator%get_result (mc_integrator_result)
-    call mc_integrator_result%write (u)
 
     write (u, "(A)")
     write (u, "(A)") "* Generate 1000 events based on the adaptation."
@@ -477,7 +438,7 @@ contains
     write (u, "(A)") "*   Purpose: Write and read grid, and continue."
     write (u, "(A)")
 
-    allocate (rng_tao_t :: rng)
+    allocate (rng_stream_t :: rng)
     call rng%init ()
 
     call rng%write (u)
@@ -542,13 +503,6 @@ contains
 
     write (u, "(A)")
     write (u,  "(2x,A," // FMT_12 // ",A," // FMT_12 // ")") "Result: ", result, " +/- ", abserr
-
-    write (u, "(A)")
-    write (u, "(A)") "* Get VEGAS result object and write out"
-    write (u, "(A)")
-
-    call mc_integrator%get_result (mc_integrator_result)
-    call mc_integrator_result%write (u)
 
     write (u, "(A)")
     write (u, "(A)") "* Cleanup"

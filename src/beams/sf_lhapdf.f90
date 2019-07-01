@@ -1,4 +1,4 @@
-! WHIZARD 2.4.1 Mar 24 2017
+! WHIZARD 2.5.0 May 06 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -623,10 +623,10 @@ contains
       x = sf_int%x
       s = sf_int%s
       xx = x
-      qq = min (data% qmax, scale)
-      qq = max (data% qmin, qq)
+      qq = min (data%qmax, scale)
+      qq = max (data%qmin, qq)
       if (.not. data% photon) then
-         if (data% invert) then
+         if (data%invert) then
             if (data%has_photon) then
                if (LHAPDF5_AVAILABLE) then
                   call evolvePDFphotonM &

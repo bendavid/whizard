@@ -75,6 +75,8 @@ module system_dependencies
        "@BUILDDIR@/src/looptools"
   character(*), parameter :: WHIZARD_TEST_MODELPATH = &
        "@SRCDIR@/share/models"
+  character(*), parameter :: WHIZARD_TEST_MODELPATH_UFO = &
+       "@SRCDIR@/share/models/UFO"
   character(*), parameter :: WHIZARD_TEST_MODELS_LIBPATH = &
        "@BUILDDIR@/src/models"
   character(*), parameter :: WHIZARD_TEST_SUSYPATH = &
@@ -173,6 +175,8 @@ module system_dependencies
        LIBDIR
   character(*), parameter :: WHIZARD_MODELPATH = &
        PKGDATADIR // "/models"
+  character(*), parameter :: WHIZARD_MODELPATH_UFO = &
+       PKGDATADIR // "/models/UFO"
   character(*), parameter :: WHIZARD_MODELS_LIBPATH = &
        PKGLIBDIR // "/models"
   character(*), parameter :: WHIZARD_SUSYPATH = &

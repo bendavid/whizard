@@ -606,6 +606,7 @@ temporarily override defaults.  The data set is transparent.
      type(string_t) :: logfile
      logical :: nlo_fixed_order = .false.
      logical, dimension(0:5) :: selected_nlo_parts = .false.
+     integer, dimension(:), allocatable :: nlo_component
    contains
    <<RT data: rt data: TBP>>
   end type rt_data_t
@@ -1069,6 +1070,21 @@ global context.
   end subroutine rt_data_read_model
 
 @ %def rt_data_read_model
+@ Read a UFO model.  Create it on the fly if necessary.
+<<RT data: rt data: TBP>>=
+  procedure :: read_ufo_model => rt_data_read_ufo_model
+<<RT data: procedures>>=
+  subroutine rt_data_read_ufo_model (global, name, model)
+    class(rt_data_t), intent(inout) :: global
+    type(string_t), intent(in) :: name
+    type(model_t), pointer, intent(out) :: model
+    type(string_t) :: filename
+    filename = name // ".ufo.mdl"
+    call global%model_list%read_model &
+         (name, filename, global%os_data, model, ufo=.true.)
+  end subroutine rt_data_read_ufo_model
+
+@ %def rt_data_read_ufo_model
 @ Initialize the fallback model.  This model is used
 whenever the current model does not describe all physical particles
 (hadrons, mainly).  It is not supposed to be modified, and the pointer
@@ -1091,24 +1107,30 @@ variable list to the model variable list.
 <<RT data: rt data: TBP>>=
   procedure :: select_model => rt_data_select_model
 <<RT data: procedures>>=
-  subroutine rt_data_select_model (global, name, scheme)
+  subroutine rt_data_select_model (global, name, scheme, ufo)
     class(rt_data_t), intent(inout), target :: global
     type(string_t), intent(in) :: name
     type(string_t), intent(in), optional :: scheme
-    logical :: same_model
+    logical, intent(in), optional :: ufo
+    logical :: same_model, ufo_model
+    ufo_model = .false.;  if (present (ufo))  ufo_model = ufo
     if (associated (global%model)) then
-       same_model = global%model%matches (name, scheme)
+       same_model = global%model%matches (name, scheme, ufo)
     else
        same_model = .false.
     end if
     if (.not. same_model) then
-       global%model => global%model_list%get_model_ptr (name, scheme)
+       global%model => global%model_list%get_model_ptr (name, scheme, ufo)
        if (.not. associated (global%model)) then
-          call global%read_model (name, global%model)
+          if (ufo_model) then
+             call global%read_ufo_model (name, global%model)
+          else
+             call global%read_model (name, global%model)
+          end if
           global%model_is_copy = .false.
        else if (associated (global%context)) then
           global%model_is_copy = &
-               global%model_list%model_exists (name, scheme, &
+               global%model_list%model_exists (name, scheme, ufo, &
                follow_link=.false.)
        else
           global%model_is_copy = .false.
@@ -1118,7 +1140,10 @@ variable list to the model variable list.
        call global%model%link_var_list (global%var_list)
        call global%var_list%set_string (var_str ("$model_name"), &
             name, is_known = .true.)
-       if (global%model%has_schemes ()) then
+       if (global%model%is_ufo_model ()) then
+          call msg_message ("Switching to model '" // char (name) // "' " &
+               // "(generated from UFO source)")
+       else if (global%model%has_schemes ()) then
           call msg_message ("Switching to model '" // char (name) // "', " &
                // "scheme '" // char (global%model%get_scheme ()) // "'")
        else
@@ -2706,8 +2731,10 @@ intent(out).
     integer, intent(in), optional :: nlo_type
     type(string_t) :: method
     type(string_t) :: model_name
-    logical :: cms_scheme
+    type(string_t) :: ufo_path
     type(string_t) :: restrictions
+    logical :: ufo
+    logical :: cms_scheme
     logical :: openmp_support
     logical :: report_progress
     logical :: diags, diags_color
@@ -2718,9 +2745,12 @@ intent(out).
     if (associated (model)) then
        model_name = model%get_name ()
        cms_scheme = model%get_scheme () == "Complex_Mass_Scheme"
+       ufo = model%is_ufo_model ()
+       ufo_path = model%get_ufo_path ()
     else
        model_name = ""
        cms_scheme = .false.
+       ufo = .false.
     end if
     restrictions = var_list%get_sval (&
          var_str ("$restrictions"))
@@ -2754,20 +2784,22 @@ intent(out).
           call core_def%init (model, prt_in, prt_out, unity = .true.)
        end select
     case ("omega")
-       allocate (omega_omega_def_t :: core_def)
+       allocate (omega_def_t :: core_def)
        select type (core_def)
-       type is (omega_omega_def_t)
+       type is (omega_def_t)
           call core_def%init (model_name, prt_in, prt_out, &
-               restrictions, cms_scheme, openmp_support, &
-               report_progress, extra_options, diags, diags_color)
+               .false., ufo, ufo_path, &
+               restrictions, cms_scheme, &
+               openmp_support, report_progress, extra_options, diags, diags_color)
        end select
     case ("ovm")
-       allocate (omega_ovm_def_t :: core_def)
+       allocate (omega_def_t :: core_def)
        select type (core_def)
-       type is (omega_ovm_def_t)
+       type is (omega_def_t)
           call core_def%init (model_name, prt_in, prt_out, &
-               restrictions, cms_scheme, openmp_support, &
-               report_progress, extra_options, diags, diags_color)
+               .true., .false., var_str (""), &
+               restrictions, cms_scheme, &
+               openmp_support, report_progress, extra_options, diags, diags_color)
        end select
     case ("gosam")
       allocate (gosam_def_t :: core_def)
@@ -2991,7 +3023,7 @@ module dispatch_uti
   use prc_test_core, only: test_t
   use prc_core, only: prc_core_t
   use prc_test, only: prc_test_def_t
-  use prc_omega, only: omega_omega_def_t, prc_omega_t
+  use prc_omega, only: omega_def_t, prc_omega_t
   use sf_mappings, only: sf_channel_t
   use sf_base, only: sf_data_t, sf_config_t
   use phs_base, only: phs_channel_collection_t
@@ -3081,7 +3113,7 @@ end module dispatch_uti
          var_str ("omega"), is_known = .true.)
     call dispatch_core_def (core_def, prt_in, prt_out, global%model, global%var_list)
     select type (core_def)
-    type is (omega_omega_def_t)
+    type is (omega_def_t)
        call core_def%write (u)
     end select
 
@@ -13534,6 +13566,7 @@ it.
      private
      type(string_t) :: name
      type(string_t) :: scheme
+     logical :: ufo_model = .false.
    contains
    <<Commands: cmd model: TBP>>
   end type cmd_model_t
@@ -13549,7 +13582,14 @@ it.
     integer :: u
     u = given_output_unit (unit);  if (u < 0)  return
     call write_indent (u, indent)
-    write (u, "(1x,A,1x,'""',A,'""')")  "model =", char (cmd%name)
+    write (u, "(1x,A,1x,'""',A,'""')", advance="no")  "model =", char (cmd%name)
+    if (cmd%ufo_model) then
+       write (u, "(1x,A)")  "(ufo)"
+    else if (cmd%scheme /= "") then
+       write (u, "(1x,'(',A,')')")  char (cmd%scheme)
+    else
+       write (u, *)
+    end if
   end subroutine cmd_model_write
 
 @ %def cmd_model_write
@@ -13567,6 +13607,7 @@ Assign the model pointer in the [[global]] record, so it can be used for
     type(rt_data_t), intent(inout), target :: global
     type(parse_node_t), pointer :: pn_name, pn_arg, pn_scheme
     type(model_t), pointer :: model
+    type(string_t) :: scheme
     pn_name => cmd%pn%get_sub_ptr (3)
     pn_arg => pn_name%get_next_ptr ()
     if (associated (pn_arg)) then
@@ -13576,8 +13617,21 @@ Assign the model pointer in the [[global]] record, so it can be used for
     end if
     cmd%name = pn_name%get_string ()
     if (associated (pn_scheme)) then
-       cmd%scheme = pn_scheme%get_string ()
-       call preload_model (model, cmd%name, cmd%scheme)
+       select case (char (pn_scheme%get_rule_key ()))
+       case ("ufo")
+          cmd%ufo_model = .true.
+       case default
+          scheme = pn_scheme%get_string ()
+	  select case (char (lower_case (scheme)))
+	  case ("ufo");  cmd%ufo_model = .true.
+          case default;  cmd%scheme = scheme
+          end select
+       end select
+       if (cmd%ufo_model) then
+          call preload_ufo_model (model, cmd%name)
+       else
+          call preload_model (model, cmd%name, cmd%scheme)
+       end if
     else
        cmd%scheme = ""
        call preload_model (model, cmd%name)
@@ -13605,6 +13659,23 @@ Assign the model pointer in the [[global]] record, so it can be used for
          end if
       end if
     end subroutine preload_model
+    subroutine preload_ufo_model (model, name)
+      type(model_t), pointer, intent(out) :: model
+      type(string_t), intent(in) :: name
+      model => null ()
+      if (associated (global%model)) then
+         if (global%model%matches (name, ufo=.true.)) then
+            model => global%model
+         end if
+      end if
+      if (.not. associated (model)) then
+         if (global%model_list%model_exists (name, scheme)) then
+            model => global%model_list%get_model_ptr (name, ufo=.true.)
+         else
+            call global%read_ufo_model (name, model)
+         end if
+      end if
+    end subroutine preload_ufo_model
   end subroutine cmd_model_compile
 
 @ %def cmd_model_compile
@@ -13616,7 +13687,9 @@ the variable list.
   subroutine cmd_model_execute (cmd, global)
     class(cmd_model_t), intent(inout) :: cmd
     type(rt_data_t), intent(inout), target :: global
-    if (cmd%scheme /= "") then
+    if (cmd%ufo_model) then
+       call global%select_model (cmd%name, ufo = .true.)
+    else if (cmd%scheme /= "") then
        call global%select_model (cmd%name, cmd%scheme)
     else
        call global%select_model (cmd%name)
@@ -13972,8 +14045,14 @@ or arrays which would make the expansion ambiguous.
 <<Commands: cmd process execute procedures>>=
   subroutine determine_needed_components ()
     type(string_t) :: fks_method
+    logical :: has_active_real
 
-    if (use_real_finite) then
+    if (allocated (cmd%local%nlo_component)) then
+       has_active_real = any (cmd%local%nlo_component == NLO_REAL)
+    else
+       has_active_real = .false.
+    end if
+    if (has_active_real .and. use_real_finite) then
        call radiation_generator%get_emitter_indices (emitters)
        n_emitters = size (emitters)
     end if
@@ -14416,7 +14495,7 @@ particle-specifier expression which we can process further.
                (eval_string (pn_comp, global%var_list))
           pn_comp => parse_node_get_next_ptr (pn_comp)
        end do
-    end if    
+    end if
   end subroutine cmd_nlo_compile
 
 @ %def cmd_nlo_compile
@@ -14457,6 +14536,8 @@ particle-specifier expression which we can process further.
     end do
     global%nlo_fixed_order = any (selected_nlo_parts(1:5))
     global%selected_nlo_parts = selected_nlo_parts
+    allocate (global%nlo_component (size (cmd%nlo_component)))
+    global%nlo_component = cmd%nlo_component
   end subroutine cmd_nlo_execute
 
 @ %def cmd_nlo_execute
@@ -20588,7 +20669,8 @@ Also here, after each command we set a breakpoint.
     call ifile_append (ifile, "ALT model_name = model_id | string_literal")
     call ifile_append (ifile, "IDE model_id")
     call ifile_append (ifile, "ARG model_arg = ( model_scheme? )")
-    call ifile_append (ifile, "ALT model_scheme = scheme_id | string_literal")
+    call ifile_append (ifile, "ALT model_scheme = ufo | scheme_id | string_literal")
+    call ifile_append (ifile, "KEY ufo")
     call ifile_append (ifile, "IDE scheme_id")
     call ifile_append (ifile, "SEQ cmd_library = library '=' lib_name")
     call ifile_append (ifile, "KEY library")

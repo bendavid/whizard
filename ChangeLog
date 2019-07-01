@@ -2,7 +2,22 @@ ChangeLog -- Summary of changes to the WHIZARD package
 
 Use svn log to see detailed changes.
 
-	Version 2.4.1
+	Version 2.5.0
+
+2017-05-06
+	RELEASE: version 2.5.0
+
+2017-05-05
+	Full UFO support (SM-like models)
+	Fixed-beam ISR FKS phase space
+
+2017-04-26
+	QED splittings in radiation generator 
+
+2017-04-10
+	Retire deprecated O'Mega vertex cache files
+
+##################################################################
 
 2017-03-24
 	RELEASE: version 2.4.1

@@ -1,5 +1,13 @@
 
 digraph G {
+concentrate=true
+splines=ortho
+node[shape=record,style=filled,fillcolor=white]
+edge[color=gray50]
+subgraph cluster0 {
+ style=filled 
+ color=gray95 
+edge[color=tomato]
 blha -> qft
 blha -> combinatorics
 blha -> beams
@@ -11,6 +19,11 @@ blha -> me_methods
 blha -> parsing
 blha -> variables
 blha -> physics
+}
+subgraph cluster0 {
+ style=filled 
+ color=gray95 
+edge[color=sandybrown]
 beams -> basics
 beams -> combinatorics
 beams -> system
@@ -21,9 +34,19 @@ beams -> utilities
 beams -> rng
 beams -> physics
 beams -> types
+}
+subgraph cluster0 {
+ style=filled 
+ color=gray95 
+edge[color=sandybrown]
 combinatorics -> utilities
 combinatorics -> system
 combinatorics -> basics
+}
+subgraph cluster0 {
+ style=filled 
+ color=gray95 
+edge[color=skyblue]
 events -> particles
 events -> system
 events -> types
@@ -32,7 +55,17 @@ events -> physics
 events -> basics
 events -> qft
 events -> parsing
+}
+subgraph cluster0 {
+ style=filled 
+ color=gray95 
+edge[color=sienna]
 expr_base -> basics
+}
+subgraph cluster0 {
+ style=filled 
+ color=gray95 
+edge[color=springgreen]
 fks -> beams
 fks -> model_features
 fks -> utilities
@@ -48,6 +81,11 @@ fks -> types
 fks -> basics
 fks -> qft
 fks -> combinatorics
+}
+subgraph cluster0 {
+ style=filled 
+ color=gray95 
+edge[color=violetred]
 gosam -> me_methods
 gosam -> qft
 gosam -> physics
@@ -57,6 +95,11 @@ gosam -> types
 gosam -> basics
 gosam -> matrix_elements
 gosam -> system
+}
+subgraph cluster0 {
+ style=filled 
+ color=gray95 
+edge[color=slateblue]
 matching -> basics
 matching -> particles
 matching -> system
@@ -70,19 +113,44 @@ matching -> physics
 matching -> phase_space
 matching -> process_integration
 matching -> types
+}
+subgraph cluster0 {
+ style=filled 
+ color=gray95 
+edge[color=violet]
 matrix_elements -> system
 matrix_elements -> basics
 matrix_elements -> physics
 matrix_elements -> qft
 matrix_elements -> combinatorics
 matrix_elements -> types
+}
+subgraph cluster0 {
+ style=filled 
+ color=gray95 
+edge[color=darkseagreen]
+vegas -> utilities
+vegas -> rng
+vegas -> system
+vegas -> basics
+}
+subgraph cluster0 {
+ style=filled 
+ color=gray95 
+edge[color=darkslategray]
 mci -> phase_space
 mci -> utilities
 mci -> basics
 mci -> system
 mci -> combinatorics
 mci -> variables
+mci -> vegas
 mci -> rng
+}
+subgraph cluster0 {
+ style=filled 
+ color=gray95 
+edge[color=crimson]
 me_methods -> types
 me_methods -> matrix_elements
 me_methods -> beams
@@ -91,11 +159,15 @@ me_methods -> physics
 me_methods -> qft
 me_methods -> system
 me_methods -> variables
+}
+subgraph cluster0 {
+ style=filled 
+ color=gray95 
+edge[color=darksalmon]
 model_features -> qft
 model_features -> utilities
 model_features -> expr_base
 model_features -> threshold
-model_features -> testing
 model_features -> user
 model_features -> variables
 model_features -> system
@@ -104,8 +176,18 @@ model_features -> basics
 model_features -> parsing
 model_features -> combinatorics
 model_features -> physics
+}
+subgraph cluster0 {
+ style=filled 
+ color=gray95 
+edge[color=darkorange]
 muli -> basics
 muli -> system
+}
+subgraph cluster0 {
+ style=filled 
+ color=gray95 
+edge[color=darkorchid]
 openloops -> system
 openloops -> basics
 openloops -> qft
@@ -114,16 +196,31 @@ openloops -> me_methods
 openloops -> matrix_elements
 openloops -> physics
 openloops -> blha
+}
+subgraph cluster0 {
+ style=filled 
+ color=gray95 
+edge[color=deeppink]
 parsing -> system
 parsing -> combinatorics
 parsing -> utilities
 parsing -> basics
+}
+subgraph cluster0 {
+ style=filled 
+ color=gray95 
+edge[color=deepskyblue]
 particles -> physics
 particles -> basics
 particles -> qft
 particles -> system
 particles -> types
 particles -> utilities
+}
+subgraph cluster0 {
+ style=filled 
+ color=gray95 
+edge[color=aquamarine2]
 phase_space -> system
 phase_space -> physics
 phase_space -> utilities
@@ -137,10 +234,20 @@ phase_space -> beams
 phase_space -> qft
 phase_space -> model_features
 phase_space -> combinatorics
+}
+subgraph cluster0 {
+ style=filled 
+ color=gray95 
+edge[color=blueviolet]
 physics -> combinatorics
 physics -> basics
 physics -> system
 physics -> utilities
+}
+subgraph cluster0 {
+ style=filled 
+ color=gray95 
+edge[color=cadetblue1]
 process_integration -> beams
 process_integration -> model_features
 process_integration -> fks
@@ -162,15 +269,30 @@ process_integration -> qft
 process_integration -> rng
 process_integration -> blha
 process_integration -> combinatorics
+}
+subgraph cluster0 {
+ style=filled 
+ color=gray95 
+edge[color=chartreuse2]
 qft -> system
 qft -> basics
 qft -> physics
 qft -> expr_base
 qft -> utilities
 qft -> combinatorics
+}
+subgraph cluster0 {
+ style=filled 
+ color=gray95 
+edge[color=chocolate1]
 rng -> variables
 rng -> basics
 rng -> system
+}
+subgraph cluster0 {
+ style=filled 
+ color=gray95 
+edge[color=gold]
 shower -> beams
 shower -> variables
 shower -> rng
@@ -183,13 +305,32 @@ shower -> events
 shower -> muli
 shower -> qft
 shower -> basics
+}
+subgraph cluster0 {
+ style=filled 
+ color=gray95 
+edge[color=lightcyan]
 system -> basics
+}
+subgraph cluster0 {
+ style=filled 
+ color=gray95 
+edge[color=hotpink]
 testing -> utilities
 testing -> basics
+}
+subgraph cluster0 {
+ style=filled 
+ color=gray95 
+edge[color=brown1]
 threshold -> physics
-threshold -> combinatorics
 threshold -> system
 threshold -> basics
+}
+subgraph cluster0 {
+ style=filled 
+ color=gray95 
+edge[color=green]
 transforms -> basics
 transforms -> process_integration
 transforms -> phase_space
@@ -208,13 +349,22 @@ transforms -> particles
 transforms -> physics
 transforms -> events
 transforms -> types
-types -> testing
+}
+subgraph cluster0 {
+ style=filled 
+ color=gray95 
+edge[color=cyan]
 types -> system
 types -> utilities
 types -> combinatorics
 types -> physics
 types -> basics
 types -> parsing
+}
+subgraph cluster0 {
+ style=filled 
+ color=gray95 
+edge[color=blue]
 user -> beams
 user -> utilities
 user -> qft
@@ -223,13 +373,28 @@ user -> particles
 user -> types
 user -> physics
 user -> system
+}
+subgraph cluster0 {
+ style=filled 
+ color=gray95 
+edge[color=salmon]
 utilities -> basics
+}
+subgraph cluster0 {
+ style=filled 
+ color=gray95 
+edge[color=red]
 variables -> expr_base
 variables -> utilities
 variables -> system
 variables -> types
 variables -> basics
 variables -> physics
+}
+subgraph cluster0 {
+ style=filled 
+ color=gray95 
+edge[color=orange]
 whizard_core -> events
 whizard_core -> rng
 whizard_core -> fks
@@ -255,5 +420,6 @@ whizard_core -> openloops
 whizard_core -> recola
 whizard_core -> basics
 whizard_core -> blha
+}
  }
 

@@ -121,6 +121,8 @@ REF_OUTPUT_FILES_BASE = \
     unit_tests/ref-output/models_5.ref \
     unit_tests/ref-output/models_6.ref \
     unit_tests/ref-output/models_7.ref \
+    unit_tests/ref-output/models_8.ref \
+    unit_tests/ref-output/models_9.ref \
     unit_tests/ref-output/auto_components_1.ref \
     unit_tests/ref-output/auto_components_2.ref \
     unit_tests/ref-output/auto_components_3.ref \
@@ -242,6 +244,7 @@ REF_OUTPUT_FILES_BASE = \
     unit_tests/ref-output/phs_fks_generator_4.ref \
     unit_tests/ref-output/phs_fks_generator_5.ref \
     unit_tests/ref-output/phs_fks_generator_6.ref \
+    unit_tests/ref-output/phs_fks_generator_7.ref \
     unit_tests/ref-output/fks_regions_1.ref \
     unit_tests/ref-output/fks_regions_2.ref \
     unit_tests/ref-output/fks_regions_3.ref \
@@ -249,6 +252,7 @@ REF_OUTPUT_FILES_BASE = \
     unit_tests/ref-output/fks_regions_5.ref \
     unit_tests/ref-output/fks_regions_6.ref \
     unit_tests/ref-output/fks_regions_7.ref \
+    unit_tests/ref-output/fks_regions_8.ref \
     unit_tests/ref-output/nlo_color_data_1.ref \
     unit_tests/ref-output/nlo_color_data_2.ref \
     unit_tests/ref-output/nlo_color_data_3.ref \
@@ -270,6 +274,7 @@ REF_OUTPUT_FILES_BASE = \
     unit_tests/ref-output/vamp2_1.ref \
     unit_tests/ref-output/vamp2_2.ref \
     unit_tests/ref-output/vamp2_3.ref \
+    unit_tests/ref-output/vamp2_4.ref \
     unit_tests/ref-output/mci_base_1.ref \
     unit_tests/ref-output/mci_base_2.ref \
     unit_tests/ref-output/mci_base_3.ref \
@@ -336,6 +341,7 @@ REF_OUTPUT_FILES_BASE = \
     unit_tests/ref-output/prc_omega_3.ref \
     unit_tests/ref-output/prc_omega_4.ref \
     unit_tests/ref-output/prc_omega_5.ref \
+    unit_tests/ref-output/prc_omega_6.ref \
     unit_tests/ref-output/prc_omega_diags_1.ref \
     unit_tests/ref-output/parton_states_1.ref \
     unit_tests/ref-output/subevt_expr_1.ref \
@@ -641,6 +647,8 @@ REF_OUTPUT_FILES_BASE = \
     functional_tests/ref-output/smtest_14.ref \
     functional_tests/ref-output/smtest_15.ref \
     functional_tests/ref-output/sm_cms_1.ref \
+    functional_tests/ref-output/ufo_1.ref \
+    functional_tests/ref-output/ufo_2.ref \
     functional_tests/ref-output/nlo_1.ref \
     functional_tests/ref-output/nlo_2.ref \
     functional_tests/ref-output/real_partition_1.ref \
@@ -971,6 +979,8 @@ MISC_TESTS_SIN = \
     functional_tests/smtest_14.sin \
     functional_tests/smtest_15.sin \
     functional_tests/sm_cms_1.sin \
+    functional_tests/ufo_1.sin \
+    functional_tests/ufo_2.sin \
     functional_tests/nlo_1.sin \
     functional_tests/nlo_2.sin \
     functional_tests/nlo_3.sin \

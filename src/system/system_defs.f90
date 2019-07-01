@@ -1,4 +1,4 @@
-! WHIZARD 2.4.1 Mar 24 2017
+! WHIZARD 2.5.0 May 06 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -42,7 +42,7 @@ module system_defs
 
   integer, parameter, public :: VERSION_STRLEN = 255
   character(len=VERSION_STRLEN), parameter, public :: &
-       & VERSION_STRING = "WHIZARD version 2.4.1 (Mar 24 2017)"
+       & VERSION_STRING = "WHIZARD version 2.5.0 (May 06 2017)"
 
   integer, parameter, public :: BUFFER_SIZE = 1000
 

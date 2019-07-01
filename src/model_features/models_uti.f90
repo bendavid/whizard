@@ -1,4 +1,4 @@
-! WHIZARD 2.4.1 Mar 24 2017
+! WHIZARD 2.5.0 May 06 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -37,6 +37,7 @@ module models_uti
 
   use kinds, only: default
   use iso_varying_string, string_t => varying_string
+  use file_utils, only: delete_file
   use physics_defs, only: SCALAR, SPINOR
   use os_interface
   use model_data
@@ -54,6 +55,8 @@ module models_uti
   public :: models_5
   public :: models_6
   public :: models_7
+  public :: models_8
+  public :: models_9
 
 contains
 
@@ -522,6 +525,163 @@ contains
     end subroutine show_par_array
 
   end subroutine models_7
+
+  subroutine models_8 (u)
+    integer, intent(in) :: u
+    integer :: um
+    character(80) :: buffer
+    type(os_data_t) :: os_data
+    type(model_list_t) :: model_list
+    type(string_t) :: model_name
+    type(model_t), pointer :: model
+
+    write (u, "(A)")  "* Test output: models_8"
+    write (u, "(A)")  "*   Purpose: distinguish models marked as UFO-derived"
+    write (u, *)
+
+    call os_data_init (os_data)
+
+    call show_model_list_status ()
+    model_name = "models_8_M"
+
+    write (u, *)
+    write (u, "(A)")  "* Write WHIZARD model"
+    write (u, *)
+
+    open (newunit=um, file=char (model_name // ".mdl"), &
+         status="replace", action="readwrite")
+    write (um, "(A)")  'model "models_8_M"'
+    write (um, "(A)")  '  parameter a = 1'
+
+    rewind (um)
+    do
+       read (um, "(A)", end=1)  buffer
+       write (u, "(A)")  trim (buffer)
+    end do
+1   continue
+    close (um)
+
+    write (u, *)
+    write (u, "(A)")  "* Write UFO model"
+    write (u, *)
+
+    open (newunit=um, file=char (model_name // ".ufo.mdl"), &
+         status="replace", action="readwrite")
+    write (um, "(A)")  'model "models_8_M"'
+    write (um, "(A)")  '  parameter a = 2'
+
+    rewind (um)
+    do
+       read (um, "(A)", end=2)  buffer
+       write (u, "(A)")  trim (buffer)
+    end do
+2   continue
+    close (um)
+
+    call syntax_model_file_init ()
+    call os_data_init (os_data)
+
+    write (u, *)
+    write (u, "(A)")  "* Read WHIZARD model"
+    write (u, *)
+
+    call model_list%read_model (model_name, model_name // ".mdl", &
+         os_data, model)
+    call model%write (u, show_md5sum=.false.)
+
+    call show_model_list_status ()
+
+    write (u, *)
+    write (u, "(A)")  "* Read UFO model"
+    write (u, *)
+
+    call model_list%read_model (model_name, model_name // ".ufo.mdl", &
+         os_data, model, ufo=.true., rebuild_mdl = .false.)
+    call model%write (u, show_md5sum=.false.)
+
+    call show_model_list_status ()
+
+    write (u, *)
+    write (u, "(A)")  "* Reload WHIZARD model"
+    write (u, *)
+
+    call model_list%read_model (model_name, model_name // ".mdl", &
+         os_data, model)
+    call model%write (u, show_md5sum=.false.)
+
+    call show_model_list_status ()
+
+    write (u, *)
+    write (u, "(A)")  "* Reload UFO model"
+    write (u, *)
+
+    call model_list%read_model (model_name, model_name // ".ufo.mdl", &
+         os_data, model, ufo=.true., rebuild_mdl = .false.)
+    call model%write (u, show_md5sum=.false.)
+
+    call show_model_list_status ()
+
+    write (u, *)
+    write (u, "(A)")  "* Cleanup"
+
+    call model_list%final ()
+    call syntax_model_file_final ()
+
+    write (u, *)
+    write (u, "(A)")  "* Test output end: models_8"
+
+  contains
+
+    subroutine show_model_list_status ()
+      write (u, "(A)")  "* Model list status"
+      write (u, *)
+      write (u, "(A,1x,L1)")  "WHIZARD model exists =", &
+           model_list%model_exists (model_name)
+      write (u, "(A,1x,L1)")  "UFO model exists =", &
+           model_list%model_exists (model_name, ufo=.true.)
+    end subroutine show_model_list_status
+
+  end subroutine models_8
+
+  subroutine models_9 (u)
+    integer, intent(in) :: u
+    integer :: um
+    character(80) :: buffer
+    type(os_data_t) :: os_data
+    type(model_list_t) :: model_list
+    type(string_t) :: model_name, model_file_name
+    type(model_t), pointer :: model
+
+    write (u, "(A)")  "* Test output: models_9"
+    write (u, "(A)")  "*   Purpose: enable the UFO Standard Model (test version)"
+    write (u, *)
+
+    call os_data_init (os_data)
+    call syntax_model_file_init ()
+
+    os_data%whizard_modelpath_ufo = "../models/UFO"
+
+    model_name = "SM"
+    model_file_name = model_name // ".models_9" // ".ufo.mdl"
+
+    write (u, "(A)")  "* Generate and read UFO model"
+    write (u, *)
+
+    call delete_file (char (model_file_name))
+
+    call model_list%read_model (model_name, model_file_name, os_data, model, ufo=.true.)
+    call model%write (u, show_md5sum=.false.)
+
+    write (u, *)
+    write (u, "(A)")  "* Cleanup"
+
+    call model_list%final ()
+    call syntax_model_file_final ()
+
+    write (u, *)
+    write (u, "(A)")  "* Test output end: models_9"
+
+  end subroutine models_9
 
 
 end module models_uti

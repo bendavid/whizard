@@ -22,7 +22,7 @@ if test "$enable_recola" = "yes"; then
     WO_PATH_LIB(RECOLA, [recola], [librecola.${SHRLIB_EXT}], $LD_LIBRARY_PATH)
   fi
   if test "$RECOLA" != "no"; then
-     AC_MSG_CHECKING([for openOpenput in RECOLA])
+     AC_MSG_CHECKING([for openOutput in RECOLA])
      AC_LANG_PUSH([Fortran])
      recola_libdir=`dirname $RECOLA`
      RECOLA_DIR=$recola_libdir
@@ -51,13 +51,23 @@ if test "$enable_recola" = "yes"; then
        AC_MSG_CHECKING([for Recola])
        AC_MSG_RESULT([disabled])
      else
-       RECOLA_INCLUDES=$wo_recola_includes
-       RECOLA_VERSION=$wo_recola_version
-       LDFLAGS_RECOLA=$wo_recola_ldflags
-       AC_SUBST([RECOLA_VERSION])
-       AC_SUBST([RECOLA_DIR])
-       AC_MSG_CHECKING([for Recola version])
-       AC_MSG_RESULT([$wo_recola_version])
+       if test "$wo_recola_version" = "1.0" || test "$wo_recola_version" = "1.1"; then
+         AC_MSG_NOTICE([error: **************************************************])
+         AC_MSG_NOTICE([error: Old RECOLA versions 1.0 and 1.1 are not supported.])
+         AC_MSG_NOTICE([error: RECOLA will be disabled.                          ])
+         AC_MSG_NOTICE([error: **************************************************])
+         AC_MSG_CHECKING([for Recola])
+         AC_MSG_RESULT([(disabled)])
+         enable_recola = "no"
+       else 
+         RECOLA_INCLUDES=$wo_recola_includes
+         RECOLA_VERSION=$wo_recola_version
+         LDFLAGS_RECOLA=$wo_recola_ldflags
+         AC_SUBST([RECOLA_VERSION]) 
+         AC_SUBST([RECOLA_DIR])
+         AC_MSG_CHECKING([for Recola version])
+         AC_MSG_RESULT([$wo_recola_version])
+       fi
      fi
      AC_LANG_POP()
   else

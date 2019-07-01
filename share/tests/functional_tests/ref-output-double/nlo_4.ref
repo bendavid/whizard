@@ -84,7 +84,7 @@ n_events = 1
 ?unweighted = false
 | Starting simulation for process 'nlo_4_p1'
 | Simulate: using integration grids from file 'nlo_4_p1_m1.vg'
-| Simuate: activating fixed-order NLO events
+| Simulate: activating fixed-order NLO events
 | QCD alpha: using a running strong coupling
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 2223

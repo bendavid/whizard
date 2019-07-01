@@ -1,4 +1,4 @@
-! WHIZARD 2.4.1 Mar 24 2017
+! WHIZARD 2.5.0 May 06 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -63,6 +63,7 @@ module prc_omega_uti
   public :: prc_omega_3
   public :: prc_omega_4
   public :: prc_omega_5
+  public :: prc_omega_6
   public :: prc_omega_diags_1
 
 contains
@@ -101,10 +102,11 @@ contains
     prt_in = [var_str ("e+"), var_str ("e-")]
     prt_out = [var_str ("m+"), var_str ("m-")]
 
-    allocate (omega_omega_def_t :: def)
+    allocate (omega_def_t :: def)
     select type (def)
-    type is (omega_omega_def_t)
-       call def%init (model_name, prt_in, prt_out)
+    type is (omega_def_t)
+       call def%init (model_name, prt_in, prt_out, &
+            ufo = .false., ovm = .false.)
     end select
     allocate (entry)
     call entry%init (var_str ("omega1_a"), model_name = model_name, &
@@ -654,10 +656,11 @@ contains
     prt_in = [var_str ("u"), var_str ("ubar")]
     prt_out = [var_str ("d"), var_str ("dbar")]
 
-    allocate (omega_omega_def_t :: def)
+    allocate (omega_def_t :: def)
     select type (def)
-    type is (omega_omega_def_t)
-       call def%init (model_name, prt_in, prt_out)
+    type is (omega_def_t)
+       call def%init (model_name, prt_in, prt_out, &
+            ufo = .false., ovm = .false.)
     end select
     allocate (entry)
     call entry%init (var_str ("prc_omega_4_p"), model_name = model_name, &
@@ -789,10 +792,11 @@ contains
     prt_in = [var_str ("u"), var_str ("ubar")]
     prt_out = [var_str ("d"), var_str ("dbar")]
 
-    allocate (omega_omega_def_t :: def)
+    allocate (omega_def_t :: def)
     select type (def)
-    type is (omega_omega_def_t)
-       call def%init (model_name, prt_in, prt_out)
+    type is (omega_def_t)
+       call def%init (model_name, prt_in, prt_out, &
+            ufo = .false., ovm = .false.)
     end select
     allocate (entry)
     call entry%init (var_str ("prc_omega_5_p"), model_name = model_name, &
@@ -897,6 +901,85 @@ contains
 
   end subroutine prc_omega_5
 
+  subroutine prc_omega_6 (u)
+    integer, intent(in) :: u
+    type(process_library_t), target :: lib
+    type(process_def_entry_t), pointer :: entry
+    type(os_data_t) :: os_data
+    type(string_t) :: model_name
+    class(model_data_t), pointer :: model
+    class(vars_t), pointer :: vars
+    type(string_t), dimension(:), allocatable :: prt_in, prt_out
+    type(string_t) :: restrictions
+    type(process_component_def_t), pointer :: config
+    type(prc_omega_t) :: prc1, prc2
+    type(process_constants_t) :: data
+    integer, parameter :: cdf = c_default_float
+    integer, parameter :: ci = c_int
+    real(cdf), dimension(:), allocatable :: par
+    real(cdf), dimension(0:3,4) :: p
+    complex(c_default_complex) :: amp
+    integer :: i
+    logical :: exist
+
+    write (u, "(A)")  "* Test output: prc_omega_6"
+    write (u, "(A)")  "*   Purpose: create simple process with OMega / UFO file"
+    write (u, "(A)")
+
+    call os_data_init (os_data)
+
+    model_name = "SM"
+    model => null ()
+
+    os_data%whizard_modelpath_ufo = "../models/UFO"
+
+    write (u, "(A)")  "* Create process library entry"
+    write (u, "(A)")
+
+    allocate (prt_in (2), prt_out (2))
+    prt_in = [var_str ("e-"), var_str ("e+")]
+    prt_out = prt_in
+    restrictions = "3+4~A"
+
+    allocate (entry)
+    call entry%init (var_str ("omega_6_a"), &
+         model_name = model_name, n_in = 2, n_components = 1)
+
+    call omega_make_process_component (entry, 1, &
+         model_name, prt_in, prt_out, &
+         ufo=.true., ufo_path=os_data%whizard_modelpath_ufo, &
+         report_progress=.true.)
+
+    call entry%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Build and load library"
+
+    call lib%init (var_str ("omega_6"))
+    call lib%append (entry)
+
+    call lib%configure (os_data)
+    call lib%write_makefile (os_data, force = .true.)
+    call lib%clean (os_data, distclean = .false.)
+    call lib%write_driver (force = .true.)
+    call lib%load (os_data)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Probe library API:"
+    write (u, "(A)")
+
+    write (u, "(1x,A,L1)")  "is active                 = ", &
+         lib%is_active ()
+    write (u, "(1x,A,I0)")  "n_processes               = ", &
+         lib%get_n_processes ()
+
+    call lib%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: prc_omega_6"
+
+  end subroutine prc_omega_6
+
   subroutine prc_omega_diags_1 (u)
     integer, intent(in) :: u
     type(process_library_t) :: lib
@@ -925,10 +1008,11 @@ contains
     prt_in = [var_str ("u"), var_str ("ubar")]
     prt_out = [var_str ("d"), var_str ("dbar")]
 
-    allocate (omega_omega_def_t :: def)
+    allocate (omega_def_t :: def)
     select type (def)
-    type is (omega_omega_def_t)
+    type is (omega_def_t)
        call def%init (model_name, prt_in, prt_out, &
+            ufo = .false., ovm = .false., &
             diags = .true., diags_color = .true.)
     end select
     allocate (entry)

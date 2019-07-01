@@ -47,12 +47,12 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\def\WhizardVersion{2.4.1}
-\def\WhizardDate{Mar 24 2017}
+\def\WhizardVersion{2.5.0}
+\def\WhizardDate{May 06 2017}
 <<Version>>=
-2.4.1
+2.5.0
 <<Date>>=
-Mar 24 2017
+May 06 2017
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \title{%
@@ -72,6 +72,7 @@ Mar 24 2017
  with contributions from:
  Fabian Bach, Felix Braam, Hans-Werner Boschmann,
  Bijan Chokouf\'{e} Nejad, Christian Fleper, David Gordo Gomez,
+ Vincent Rothe, 
  Sebastian Schmidt, Marco Sekulla, So Young Shim, Christian Speckner,
  Christian Weiss, Daniel Wiesler, Zhijie Zhao
  \vspace{1cm}

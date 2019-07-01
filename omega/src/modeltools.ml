@@ -336,7 +336,7 @@ module Mutable (FGC : sig type f and g and c end) =
     let set_max_degree, max_degree =
       declare (fun () -> uninitialized "max_degree")
     let set_vertices, vertices =
-      declare (fun () -> (* ([], [], []) *) uninitialized "vertices" )
+      declare (fun () -> uninitialized "vertices" )
     let set_fuse2, fuse2 =
       declare (fun f1 f2 -> uninitialized "fuse2")
     let set_fuse3, fuse3 =
@@ -374,7 +374,7 @@ module Mutable (FGC : sig type f and g and c end) =
     end)
 
     let setup ~color ~pdg ~lorentz ~propagator ~width ~goldstone
-        ~conjugate ~fermion ~max_degree ~vertices 
+        ~conjugate ~fermion ~vertices
         ~flavors ~parameters ~flavor_of_string ~flavor_to_string
         ~flavor_to_TeX ~flavor_symbol
         ~gauge_symbol ~mass_symbol ~width_symbol ~constant_symbol =
@@ -386,9 +386,10 @@ module Mutable (FGC : sig type f and g and c end) =
       set_goldstone goldstone;
       set_conjugate conjugate;
       set_fermion fermion;
-      set_max_degree (fun () -> max_degree);
-      set_vertices (fun () -> vertices);
-      let table = F.of_vertices vertices in
+      let (_, v4, _) as v = vertices () in
+      set_max_degree (fun () -> match v4 with [] -> 3 | _ -> 4);
+      set_vertices (fun () -> v);
+      let table = F.of_vertices v in
       set_fuse2 (F.fuse2 table);
       set_fuse3 (F.fuse3 table);
       set_fuse (F.fuse table);
@@ -441,7 +442,7 @@ module Static (M : Model.T) =
     let options = M.options
     let init () = ()
     let setup ~color ~pdg ~lorentz ~propagator ~width ~goldstone
-        ~conjugate ~fermion ~max_degree ~vertices 
+        ~conjugate ~fermion ~vertices
         ~flavors ~parameters ~flavor_of_string ~flavor_to_string
         ~flavor_to_TeX ~flavor_symbol
         ~gauge_symbol ~mass_symbol ~width_symbol ~constant_symbol =

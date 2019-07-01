@@ -20,13 +20,13 @@ sqrts = 250
 scale = sqrts
 
 seed = 0
-process nlo_1_p1 = e1, E1 => u, U { nlo_calculation = "Real" }
-integrate (nlo_1_p1)
+process real_partition_1_p1 = e1, E1 => u, U { nlo_calculation = "Real" }
+integrate (real_partition_1_p1)
 
 seed = 1
 ?nlo_use_real_partition = true
 # Large scale to reduce required statistics
 real_partition_scale = 50 GeV
 
-process nlo_1_p2 = e1, E1 => u, U { nlo_calculation = "Real" }
-integrate (nlo_1_p2)
+process real_partition_1_p2 = e1, E1 => u, U { nlo_calculation = "Real" }
+integrate (real_partition_1_p2)

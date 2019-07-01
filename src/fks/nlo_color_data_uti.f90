@@ -1,4 +1,4 @@
-! WHIZARD 2.4.1 Mar 24 2017
+! WHIZARD 2.5.0 May 06 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -37,6 +37,7 @@ module nlo_color_data_uti
   use physics_defs, only: NO_FACTORIZATION
   use nlo_color_data, only: nlo_color_data_t
   use fks_regions, only: region_data_t, setup_region_data_for_test
+  use iso_varying_string, string_t => varying_string
 
   implicit none
   private
@@ -98,7 +99,7 @@ contains
    allocate (flv_real (n_legs_real, n_flv_real))
    flv_born (:, 1) = [11, -11, 2, -2]
    flv_real (:, 1) = [11, -11, 2, -2, 21]
-   call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data)
+   call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, var_str ("QCD"))
    allocate (color_data%ghost_flag_born (n_legs_born, n_col_born))
    allocate (color_data%ghost_flag_real (n_legs_real, n_col_real))
    color_data%ghost_flag_born (:, 1) = .false.
@@ -188,7 +189,7 @@ contains
    flv_real (:, 1) = [2, -2, 23, 23, 21]
    flv_real (:, 2) = [2, 21, 23, 23, 2]
    flv_real (:, 3) = [21, -2, 23, 23, -2]
-   call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data)
+   call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, var_str ("QCD"))
    allocate (color_data%ghost_flag_born (n_legs_born, n_col_born))
    allocate (color_data%ghost_flag_real (n_legs_real, n_col_real))
    color_data%ghost_flag_born (:, 1) = .false.
@@ -303,7 +304,7 @@ contains
       flv_real (:, i_flv + 2) = [21, pdg2, 23, 23, pdg2]
       pdg1 = pdg1 + 1; pdg2 = pdg2 - 1
    end do
-   call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data)
+   call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, var_str ("QCD"))
    allocate (color_data%ghost_flag_born (n_legs_born, n_col_born))
    allocate (color_data%ghost_flag_real (n_legs_real, n_col_real))
    do i_col = 1, n_col_born

@@ -37,29 +37,29 @@ sqrts = 350 GeV
 iterations = 1:1000
 
 seed = 0
-process user_prc_threshold_1_p1 = e1, E1 => Wp, Wm, b, B { $restrictions = "3+5~t && 4+6~tbar" }
+process user_prc_threshold_1_p1 = E1, e1 => Wp, Wm, b, B { $restrictions = "3+5~t && 4+6~tbar" }
 integrate (user_prc_threshold_1_p1)
 
 seed = 0
-process user_prc_threshold_1_p2 = e1, E1 => t, T
+process user_prc_threshold_1_p2 = E1, e1 => t, T
 integrate (user_prc_threshold_1_p2)
 
 seed = 0
-process user_prc_threshold_1_p3 = e1, E1 => e2, E2 { $method = "dummy" }
+process user_prc_threshold_1_p3 = E1, e1 => e2, E2 { $method = "dummy" }
 integrate (user_prc_threshold_1_p3) { error_threshold = 1E-4 }
 
 seed = 0
-process user_prc_threshold_1_p4 = e1, E1 => Wp, Wm, b, B { $restrictions = "3+5~t && 4+6~tbar" $method = "threshold" }
+process user_prc_threshold_1_p4 = E1, e1 => Wp, Wm, b, B { $restrictions = "3+5~t && 4+6~tbar" $method = "threshold" }
 integrate (user_prc_threshold_1_p4)
 expect (integral(user_prc_threshold_1_p4) == integral(user_prc_threshold_1_p1)) { tolerance = 0.0001 }
 
 seed = 0
-process user_prc_threshold_1_p5 = e1, E1 => t, T { $method = "threshold" }
+process user_prc_threshold_1_p5 = E1, e1 => t, T { $method = "threshold" }
 integrate (user_prc_threshold_1_p5)
 expect (integral(user_prc_threshold_1_p5) == integral(user_prc_threshold_1_p2)) { tolerance = 0.0001 }
 
 seed = 0
-process user_prc_threshold_1_p6 = e1, E1 => Wp, Wm, b, B { $restrictions = "3+5~t && 4+6~tbar"
+process user_prc_threshold_1_p6 = E1, e1 => Wp, Wm, b, B { $restrictions = "3+5~t && 4+6~tbar"
                                           $born_me_method = "threshold" nlo_calculation = "Born"}
 integrate (user_prc_threshold_1_p6)
 expect (integral(user_prc_threshold_1_p6) == integral(user_prc_threshold_1_p1)) { tolerance = 0.0001 }

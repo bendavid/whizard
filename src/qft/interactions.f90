@@ -1,4 +1,4 @@
-! WHIZARD 2.4.1 Mar 24 2017
+! WHIZARD 2.5.0 May 06 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -1412,8 +1412,11 @@ contains
     call int%state_matrix%freeze()
     do i = 1, n_me_orig
        call int%state_matrix%set_matrix_element (i, me_orig(i))
-       call int%state_matrix%set_matrix_element (i + n_me_orig, me_orig(i))
+       do s = 1, n_sub
+          call int%state_matrix%set_matrix_element (i + s + n_me_orig - 1, me_orig(i))
+       end do
     end do
+    deallocate (me_orig, qn)
   end subroutine interaction_declare_subtraction
 
   subroutine find_connections (int1, int2, n, connection_index)

@@ -317,8 +317,8 @@ module @ID@_threshold
 
   integer, public :: nhel_max
 
-  type(spinor) :: owf_t_4, owf_b_6, owf_e_1
-  type(conjspinor) :: owf_t_3, owf_b_5, owf_e_2
+  type(spinor) :: owf_t_4, owf_b_6, owf_e_2
+  type(conjspinor) :: owf_t_3, owf_b_5, owf_e_1
   type(vector) :: owf_Wp_3, owf_Wm_4
   type(spinor) :: owf_wb_46
   type(conjspinor) :: owf_wb_35
@@ -342,14 +342,14 @@ contains
     p12 = p_ofs(1) + p_ofs(2)
     if (process_mode == PROC_MODE_TT) then
        s_OS = table_spin_states_OS(:,hi)
-       owf_e_1 = u (mass(11), - p_ofs(1), s_OS(1))
-       owf_e_2 = vbar (mass(11), - p_ofs(2), s_OS(2))
+       owf_e_1 = vbar (mass(11), - p_ofs(1), s_OS(1))
+       owf_e_2 = u (mass(11), - p_ofs(2), s_OS(2))
        owf_t_3 = ubar (ttv_mtpole (p12 * p12), p_ofs(3), s_OS(3))
        owf_t_4 = v (ttv_mtpole (p12 * p12), p_ofs(4), s_OS(4))
-       owf_A_12 = pr_feynman (p12, v_ff (qlep, owf_e_2, owf_e_1))
+       owf_A_12 = pr_feynman (p12, v_ff (qlep, owf_e_1, owf_e_2))
        if (.not. threshold%settings%Z_disabled) then
           owf_Z_12 = pr_unitarity (p12, mass(23), wd_tl (p12, width(23)), &
-               .false., + va_ff (gnclep(1), gnclep(2), owf_e_2, owf_e_1))
+               .false., + va_ff (gnclep(1), gnclep(2), owf_e_1, owf_e_2))
        end if
     else
        if (present (hi)) then
@@ -362,12 +362,12 @@ contains
                   "Please give either helicity index or spins")
           end if
        end if
-       owf_e_1 = u (mass(11), - p_ofs(1), s(1))
-       owf_e_2 = vbar (mass(11), - p_ofs(2), s(2))
-       owf_A_12 = pr_feynman (p12, v_ff (qlep, owf_e_2, owf_e_1))
+       owf_e_1 = vbar (mass(11), - p_ofs(1), s(1))
+       owf_e_2 = u (mass(11), - p_ofs(2), s(2))
+       owf_A_12 = pr_feynman (p12, v_ff (qlep, owf_e_1, owf_e_2))
        if (.not. threshold%settings%Z_disabled) then
           owf_Z_12 = pr_unitarity (p12, mass(23), wd_tl (p12, width(23)), &
-               .false., + va_ff (gnclep(1), gnclep(2), owf_e_2, owf_e_1))
+               .false., + va_ff (gnclep(1), gnclep(2), owf_e_1, owf_e_2))
        end if
     end if
   end subroutine compute_production_owfs
@@ -1353,12 +1353,14 @@ contains
        end do
        if (process_mode == PROC_MODE_WBWB) then
           call full_proc_flavor_states (table_flavor_states)
-          if (table_flavor_states(THR_POS_WP,1) /= +24 .or. &
+          if (table_flavor_states(1,1) /= -11 .or. &
+              table_flavor_states(2,1) /= +11 .or. &
+              table_flavor_states(THR_POS_WP,1) /= +24 .or. &
               table_flavor_states(THR_POS_WM,1) /= -24 .or. &
               table_flavor_states(THR_POS_B,1) /= +5 .or. &
               table_flavor_states(THR_POS_BBAR,1) /= -5) then
              call msg_fatal ("The factorized computation requires " // &
-                  "'Wp, Wm, b, B' as final state (in this order!)")
+                  "'E1, e1 => Wp, Wm, b, B' as final state (in this order!)")
           end if
        end if
     end if

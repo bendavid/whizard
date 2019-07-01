@@ -7,7 +7,7 @@ $loop_me_method = "dummy"
 ?use_vamp_equivalences = false
 sqrts =  2.50000E+02
 seed = 0
-| Process library 'real_partition_1_lib': recorded process 'nlo_1_p1'
+| Process library 'real_partition_1_lib': recorded process 'real_partition_1_p1'
 | Integrate: current process library needs compilation
 | Process library 'real_partition_1_lib': compiling ...
 | Process library 'real_partition_1_lib': writing makefile
@@ -21,7 +21,7 @@ seed = 0
 | Integrate: compilation done
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
-| Initializing integration for process nlo_1_p1:
+| Initializing integration for process real_partition_1_p1:
 | Beam structure: [any particles]
 | Beam data (collision):
 |   e-  (mass = 5.1099700E-04 GeV)
@@ -29,19 +29,19 @@ seed = 0
 |   sqrts = 2.500000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'nlo_1_p1_i1.phs'
+| Phase space: writing configuration file 'real_partition_1_p1_i1.phs'
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'nlo_1_p1_i3.phs'
+| Phase space: writing configuration file 'real_partition_1_p1_i3.phs'
 | ------------------------------------------------------------------------
-| Process [scattering]: 'nlo_1_p1'
+| Process [scattering]: 'real_partition_1_p1'
 |   Library name  = 'real_partition_1_lib'
 |   Process index = 1
 |   Process components:
-|     1: 'nlo_1_p1_i1':   e-, e+ => u, ubar [inactive]
-|     2: 'nlo_1_p1_i2':   e-, e+ => u, ubar, gl [omega], [Real]
-|     3: 'nlo_1_p1_i3':   e-, e+ => u, ubar [inactive], [Virtual]
-|     4: 'nlo_1_p1_i4':   e-, e+ => u, ubar [inactive], [Subtraction]
+|     1: 'real_partition_1_p1_i1':   e-, e+ => u, ubar [inactive]
+|     2: 'real_partition_1_p1_i2':   e-, e+ => u, ubar, gl [omega], [Real]
+|     3: 'real_partition_1_p1_i3':   e-, e+ => u, ubar [inactive], [Virtual]
+|     4: 'real_partition_1_p1_i4':   e-, e+ => u, ubar [inactive], [Subtraction]
 | ------------------------------------------------------------------------
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 2 groves.
@@ -57,7 +57,7 @@ seed = 0
 | Phase space: wood
 Warning: No cuts have been defined.
 | Using user-defined general scale.
-| Starting integration for process 'nlo_1_p1' part 'Real'
+| Starting integration for process 'real_partition_1_p1' part 'Real'
 | Integrate: iterations = 2:5000
 | Integrator: 2 chains, 2 channels, 5 dimensions
 | Integrator: 5000 initial calls, 20 bins, stratified = T
@@ -81,7 +81,7 @@ seed = 1
 real_partition_scale =  5.00000E+01
 | Process library 'real_partition_1_lib': unloading
 | Process library 'real_partition_1_lib': open
-| Process library 'real_partition_1_lib': recorded process 'nlo_1_p2'
+| Process library 'real_partition_1_lib': recorded process 'real_partition_1_p2'
 | Integrate: current process library needs compilation
 | Process library 'real_partition_1_lib': compiling ...
 | Process library 'real_partition_1_lib': writing makefile
@@ -95,7 +95,7 @@ real_partition_scale =  5.00000E+01
 | Integrate: compilation done
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1
-| Initializing integration for process nlo_1_p2:
+| Initializing integration for process real_partition_1_p2:
 | Beam structure: [any particles]
 | Beam data (collision):
 |   e-  (mass = 5.1099700E-04 GeV)
@@ -103,23 +103,23 @@ real_partition_scale =  5.00000E+01
 |   sqrts = 2.500000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'nlo_1_p2_i1.phs'
+| Phase space: writing configuration file 'real_partition_1_p2_i1.phs'
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'nlo_1_p2_i3.phs'
+| Phase space: writing configuration file 'real_partition_1_p2_i3.phs'
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'nlo_1_p2_i5.phs'
+| Phase space: writing configuration file 'real_partition_1_p2_i5.phs'
 | ------------------------------------------------------------------------
-| Process [scattering]: 'nlo_1_p2'
+| Process [scattering]: 'real_partition_1_p2'
 |   Library name  = 'real_partition_1_lib'
 |   Process index = 2
 |   Process components:
-|     1: 'nlo_1_p2_i1':   e-, e+ => u, ubar [inactive]
-|     2: 'nlo_1_p2_i2':   e-, e+ => u, ubar, gl [omega], [Real]
-|     3: 'nlo_1_p2_i3':   e-, e+ => u, ubar [inactive], [Virtual]
-|     4: 'nlo_1_p2_i4':   e-, e+ => u, ubar [inactive], [Subtraction]
-|     5: 'nlo_1_p2_i5':   e-, e+ => u, ubar, gl [omega], [Real]
+|     1: 'real_partition_1_p2_i1':   e-, e+ => u, ubar [inactive]
+|     2: 'real_partition_1_p2_i2':   e-, e+ => u, ubar, gl [omega], [Real]
+|     3: 'real_partition_1_p2_i3':   e-, e+ => u, ubar [inactive], [Virtual]
+|     4: 'real_partition_1_p2_i4':   e-, e+ => u, ubar [inactive], [Subtraction]
+|     5: 'real_partition_1_p2_i5':   e-, e+ => u, ubar, gl [omega], [Real]
 | ------------------------------------------------------------------------
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 2 groves.
@@ -139,7 +139,7 @@ real_partition_scale =  5.00000E+01
 | Phase space: wood
 Warning: No cuts have been defined.
 | Using user-defined general scale.
-| Starting integration for process 'nlo_1_p2' part 'Real'
+| Starting integration for process 'real_partition_1_p2' part 'Real'
 | Integrate: iterations = 2:5000
 | Integrator: 2 chains, 2 channels, 5 dimensions
 | Integrator: 5000 initial calls, 20 bins, stratified = T
@@ -152,7 +152,7 @@ Warning: No cuts have been defined.
 |-----------------------------------------------------------------------------|
    2      10000    -6.007E+02   1.70E+01    2.84    2.84     3.6    1.82   2
 |=============================================================================|
-| Starting integration for process 'nlo_1_p2' part 'Real'
+| Starting integration for process 'real_partition_1_p2' part 'Real'
 | Integrate: iterations = 2:5000
 | Integrator: 2 chains, 4 channels, 5 dimensions
 | Integrator: 5000 initial calls, 20 bins, stratified = T

@@ -1,4 +1,4 @@
-! WHIZARD 2.4.1 Mar 24 2017
+! WHIZARD 2.5.0 May 06 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -67,6 +67,12 @@ contains
          u, results)
     call test (models_7, "models_7", &
          "handle schemes", &
+         u, results)
+    call test (models_8, "models_8", &
+         "handle UFO-derived models", &
+         u, results)
+    call test (models_9, "models_9", &
+         "generate UFO-derived model file", &
          u, results)
   end subroutine models_test
 

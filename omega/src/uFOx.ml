@@ -60,6 +60,31 @@ module Expr =
 	   (fun s acc -> UFOx_syntax.add (of_string s) acc)
 	   strings (of_string string)
 
+    open UFOx_syntax
+
+    let rec substitute name value = function
+      | Integer _ | Float _ as e -> e
+      | Variable s as e ->
+         if s = name then
+           value
+         else
+           e
+      | Sum (e1, e2) ->
+         Sum (substitute name value e1, substitute name value e2)
+      | Difference (e1, e2) ->
+         Difference (substitute name value e1, substitute name value e2)
+      | Product (e1, e2) ->
+         Product (substitute name value e1, substitute name value e2)
+      | Quotient (e1, e2) ->
+         Quotient (substitute name value e1, substitute name value e2)
+      | Power (e1, e2) ->
+         Power (substitute name value e1, substitute name value e2)
+      | Application (s, el) ->
+         Application (s, List.map (substitute name value) el)
+
+    let half name =
+      Quotient (Variable name, Integer 2)
+
   end
 
 let positive integers =
@@ -570,7 +595,7 @@ module Value =
       | Sqrt -> "sqrt"
       | Cos -> "cos"
       | Sin -> "sin"
-      | Conj -> "conj"
+      | Conj -> "conjg"
 
     let builtin_of_string = function
       | "cmath.sqrt" -> Sqrt
@@ -593,29 +618,52 @@ module Value =
       | Application of builtin * t list
 
     let rec to_string = function
-      | Integer i ->
-	 string_of_int i
-      | Rational q ->
-	 Q.to_string q
-      | Real x ->
-	 string_of_float x
+      | Integer i -> string_of_int i
+      | Rational q -> Q.to_string q
+      | Real x -> string_of_float x
+      | Complex (0.0, 1.0) -> "I"
+      | Complex (0.0, -1.0) -> "-I"
+      | Complex (0.0, i) -> string_of_float i ^ "*I"
+      | Complex (r, 1.0) -> string_of_float r ^ "+I"
+      | Complex (r, -1.0) -> string_of_float r ^ "-I"
       | Complex (r, i) ->
-	 Printf.sprintf "%f+I*%f" r i
+         string_of_float r ^ (if i < 0.0 then "-" else "+") ^
+           string_of_float (abs_float i) ^ "*I"
       | Variable s -> s
-      | Sum es ->
-	 "(" ^ String.concat "+" (List.map to_string es) ^ ")"
-      | Difference (e1, e2) ->
-	 "(" ^ to_string e1 ^ "-(" ^ to_string e2 ^ "))"
-      | Product es ->
-	 String.concat "*" (List.map to_string es)
-      | Quotient (e1, e2) ->
-	 to_string e1 ^ "/(" ^ to_string e2 ^ ")"
-      | Power (e1, e2) ->
-	 "(" ^ to_string e1 ^ ")^(" ^ to_string e2 ^ ")"
+      | Sum [] -> "0"
+      | Sum [e] -> to_string e
+      | Sum es -> "(" ^ String.concat "+" (List.map to_string es) ^ ")"
+      | Difference (e1, e2) -> to_string e1 ^ "-" ^ maybe_parentheses e2
+      | Product [] -> "1"
+      | Product ((Integer (-1) | Real (-1.)) :: es) ->
+         "-" ^ maybe_parentheses (Product es)
+      | Product es -> String.concat "*" (List.map maybe_parentheses es)
+      | Quotient (e1, e2) -> to_string e1 ^ "/" ^ maybe_parentheses e2
+      | Power (e1, e2) -> maybe_parentheses e1 ^ "^" ^ maybe_parentheses e2
+      | Application (f, [Integer i]) ->
+         to_string (Application (f, [Real (float i)]))
       | Application (f, es) ->
 	 builtin_to_string f ^
 	   "(" ^ String.concat "," (List.map to_string es) ^ ")"
-	 
+
+    and maybe_parentheses = function
+      | Integer i as e ->
+         if i < 0 then
+           "(" ^ to_string e ^ ")"
+         else
+           to_string e     
+      | Real x as e ->
+         if x < 0.0 then
+           "(" ^ to_string e ^ ")"
+         else
+           to_string e
+      | Complex (x, 0.0) -> to_string (Real x)
+      | Complex (0.0, 1.0) -> "I"
+      | Variable _ | Power (_, _) | Application (_, _) as e -> to_string e
+      | Sum [e] -> to_string e
+      | Product [e] -> to_string e
+      | e -> "(" ^ to_string e ^ ")"
+
     let rec to_coupling atom = function
       | Integer i -> Coupling.Const i
       | Rational q ->
@@ -656,26 +704,47 @@ module Value =
       | S.Variable name -> Variable name
       | S.Sum (e1, e2) ->
 	 begin match of_expr e1, of_expr e2 with
+	 | (Integer 0 | Real 0.), e -> e
+	 | e, (Integer 0 | Real 0.) -> e
 	 | Sum e1, Sum e2 -> Sum (e1 @ e2)
 	 | e1, Sum e2 -> Sum (e1 :: e2)
 	 | Sum e1, e2 -> Sum (e2 :: e1)
 	 | e1, e2 -> Sum [e1; e2]
 	 end
       | S.Difference (e1, e2) ->
-	 Difference (of_expr e1, of_expr e2)
+	 begin match of_expr e1, of_expr e2 with
+	 | e1, (Integer 0 | Real 0.) -> e1
+	 | e1, e2 -> Difference (e1, e2)
+         end
       | S.Product (e1, e2) ->
 	 begin match of_expr e1, of_expr e2 with
+         | (Integer 0 | Real 0.), _ -> Integer 0
+         | _, (Integer 0 | Real 0.) -> Integer 0
+         | (Integer 1 | Real 1.), e -> e
+         | e, (Integer 1 | Real 1.) -> e
 	 | Product e1, Product e2 -> Product (e1 @ e2)
 	 | e1, Product e2 -> Product (e1 :: e2)
 	 | Product e1, e2 -> Product (e2 :: e1)
 	 | e1, e2 -> Product [e1; e2]
 	 end
       | S.Quotient (e1, e2) ->
-	 Quotient (of_expr e1, of_expr e2)
+         begin match of_expr e1, of_expr e2 with
+         | e1, (Integer 0 | Real 0.) ->
+            invalid_arg "UFOx.Value: divide by 0"
+         | e1, (Integer 1 | Real 1.) -> e1
+         | e1, e2 -> Quotient (e1, e2)
+         end
       | S.Power (e, p) ->
-	 Power (of_expr e, of_expr p)
+         begin match of_expr e, of_expr p with
+         | (Integer 0 | Real 0.), (Integer 0 | Real 0.) ->
+            invalid_arg "UFOx.Value: 0^0"
+         | _, (Integer 0 | Real 0.) -> Integer 1
+         | e, (Integer 1 | Real 1.) -> e
+	 | e, p -> Power (e, p)
+         end
       | S.Application ("complex", [r; i]) ->
 	 begin match of_expr r, of_expr i with
+	 | r, (Integer 0 | Real 0.0) -> r
 	 | Real r, Real i -> Complex (r, i)
 	 | Integer r, Real i -> Complex (float_of_int r, i)
 	 | Real r, Integer i -> Complex (r, float_of_int i)

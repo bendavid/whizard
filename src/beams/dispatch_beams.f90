@@ -1,4 +1,4 @@
-! WHIZARD 2.4.1 Mar 24 2017
+! WHIZARD 2.5.0 May 06 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -129,6 +129,7 @@ contains
     logical :: beam_events_warn_eof
     type(string_t) :: beam_events_dir, beam_events_file
     logical :: escan_normalize
+    integer :: i
     lhapdf_photon_sets = [var_str ("DOG0.LHgrid"), var_str ("DOG1.LHgrid"), &
          var_str ("DGG.LHgrid"), var_str ("LACG.LHgrid"), &
          var_str ("GSG0.LHgrid"), var_str ("GSG1.LHgrid"), &
@@ -382,7 +383,9 @@ contains
     if (allocated (data)) then
        allocate (pdg_out (size (pdg_prc, 1)))
        call data%get_pdg_out (pdg_out)
-       pdg_in(i_beam) = pdg_out
+       do i = 1, size (i_beam)
+          pdg_in(i_beam(i)) = pdg_out(i)
+       end do
     end if
   end subroutine dispatch_sf_data
 

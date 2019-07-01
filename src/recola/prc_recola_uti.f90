@@ -1,4 +1,4 @@
-! WHIZARD 2.4.1 Mar 24 2017
+! WHIZARD 2.5.0 May 06 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -149,10 +149,11 @@ contains
     prt_in = [var_str ("e+"), var_str ("e-")]
     prt_out = [var_str ("mu+"), var_str ("mu-")]
 
-    allocate (omega_omega_def_t :: def)
+    allocate (omega_def_t :: def)
     select type (def)
-    type is (omega_omega_def_t)
-       call def%init (var_str ("SM"), prt_in, prt_out)
+    type is (omega_def_t)
+       call def%init (var_str ("SM"), prt_in, prt_out, &
+            ufo = .false., ovm = .false.)
     end select
 
     allocate (entry)
@@ -264,10 +265,11 @@ contains
     prt_in = [var_str ("e+"), var_str ("e-")]
     prt_out = [var_str ("mu+"), var_str ("mu-"), var_str("A")]
 
-    allocate (omega_omega_def_t :: def)
+    allocate (omega_def_t :: def)
     select type (def)
-    type is (omega_omega_def_t)
-       call def%init (var_str ("SM"), prt_in, prt_out)
+    type is (omega_def_t)
+       call def%init (var_str ("SM"), prt_in, prt_out, &
+            ufo = .false., ovm = .false.)
     end select
 
     allocate (entry)
@@ -380,10 +382,11 @@ contains
     prt_in = [var_str ("u"), var_str ("ubar")]
     prt_out = [var_str ("g"), var_str ("g")]
 
-    allocate (omega_omega_def_t :: def)
+    allocate (omega_def_t :: def)
     select type (def)
-    type is (omega_omega_def_t)
-       call def%init (var_str ("SM"), prt_in, prt_out)
+    type is (omega_def_t)
+       call def%init (var_str ("SM"), prt_in, prt_out, &
+            ufo = .false., ovm = .false.)
     end select
 
     allocate (entry)

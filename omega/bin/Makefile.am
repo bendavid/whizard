@@ -59,39 +59,9 @@ $(OCAML_NATIVE_EXT).$(OMEGA_CACHE_SUFFIX):
 .$(OMEGA_CACHE_SUFFIX).$(OMEGA_CACHE_SUFFIX_COLORED):
 	@echo $@:
 
-if OMEGA_INSTALL_ALL_CACHES
-OMEGA_INSTALLED_CACHES = $(OMEGA_CACHES)
-else
-OMEGA_INSTALLED_CACHES = $(OMEGA_MINIMAL_CACHES)
-endif
-
-install-data-local: $(OMEGA_INSTALLED_CACHES)
-	$(INSTALL) -d -m 755 $(OMEGA_USER_CACHE_DIR)
-	$(INSTALL) -d -m 755 $(DESTDIR)$(OMEGA_SYSTEM_CACHE_DIR)
-	if test -w $(DESTDIR)$(OMEGA_SYSTEM_CACHE_DIR) ; then \
-	  $(INSTALL) -m 644 -c $^ $(DESTDIR)$(OMEGA_SYSTEM_CACHE_DIR) ; \
-	elif test -w $(OMEGA_USER_CACHE_DIR) ; then \
-	  $(INSTALL) -m 644 -c $^ $(OMEGA_USER_CACHE_DIR) ; \
-	fi
-
-install-all-caches: $(OMEGA_CACHES)
-	$(INSTALL) -d -m 755 $(OMEGA_USER_CACHE_DIR)
-	$(INSTALL) -d -m 755 $(OMEGA_SYSTEM_CACHE_DIR)
-	if test -w $(OMEGA_SYSTEM_CACHE_DIR) ; then \
-	  $(INSTALL) -m 644 -c $^ $(OMEGA_SYSTEM_CACHE_DIR) ; \
-	elif test -w $(OMEGA_USER_CACHE_DIR) ; then \
-	  $(INSTALL) -m 644 -c $^ $(OMEGA_USER_CACHE_DIR) ; \
-	fi
-
-uninstall-local:
-	for cache in $(OMEGA_CACHES); do \
-	  rm -f $(DESTDIR)$(OMEGA_SYSTEM_CACHE_DIR)/$$cache $(OMEGA_USER_CACHE_DIR)/$$cache; \
-	done
-
 clean-local:
 	rm -f *.cm[iox] *.o \
-	  $(OMEGA_APPLICATIONS_BYTECODE) $(OMEGA_APPLICATIONS_NATIVE) \
-	  $(OMEGA_CACHES)
+	  $(OMEGA_APPLICATIONS_BYTECODE) $(OMEGA_APPLICATIONS_NATIVE)
 
 ########################################################################
 ## The End.

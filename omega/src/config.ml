@@ -21,14 +21,14 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
-let version = "2.4.1"
-let date = "Mar 24 2017"
+let version = "2.5.0"
+let date = "May 06 2017"
 let status = "release"
 
 let default_UFO_dir = "/Users/reuter/local/omega/share/UFO"
 
-let system_cache_dir = "/Users/reuter/local/omega/var/cache"
-let user_cache_dir = "/Users/reuter/.whizard/var/cache"
+let system_cache_dir = "@OMEGA_SYSTEM_CACHE_DIR@"
+let user_cache_dir = "@OMEGA_USER_CACHE_DIR@"
 
 (* \begin{dubious}
      This relies on the assumption that executable names are unique,
@@ -38,7 +38,7 @@ let cache_prefix =
   let basename = Filename.basename Sys.executable_name in
   try Filename.chop_extension basename with | _ -> basename
 
-let cache_suffix = "vertices"
+let cache_suffix = "@OMEGA_CACHE_SUFFIX@"
 
 let openmp = false
 

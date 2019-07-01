@@ -126,7 +126,12 @@ endif
 ########################################################################
 ## Non-standard cleanup tasks
 
-clean-local: 
+### Remove DWARF debug information on MAC OS X
+clean-macosx:
+	-rm -rf stdhep_rd.dSYM
+.PHONY: clean-macosx
+
+clean-local: clean-macosx
 	-rm -f *.$(FC_MODULE_EXT)
 if FC_SUBMODULES
 	-rm -f *.smod

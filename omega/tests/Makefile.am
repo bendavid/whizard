@@ -26,7 +26,7 @@
 #
 ########################################################################
 
-SUBDIRS =
+SUBDIRS = UFO
 
 # OMEGA_SPLIT = -target:single_function
   OMEGA_SPLIT = -target:split_function 10
@@ -34,70 +34,39 @@ SUBDIRS =
 # OMEGA_SPLIT = -target:split_file 10
 
 OMEGA_QED = $(top_builddir)/omega/bin/omega_QED$(OCAML_NATIVE_EXT)
-OMEGA_QED_CACHE = omega_QED.$(OMEGA_CACHE_SUFFIX)
 OMEGA_QED_OPTS = $(OMEGA_SPLIT) -target:parameter_module parameters_QED
-omega_QED.$(OMEGA_CACHE_SUFFIX): $(OMEGA_QED)
-	$(OMEGA_QED) -initialize .
 
 OMEGA_QCD = $(top_builddir)/omega/bin/omega_QCD$(OCAML_NATIVE_EXT)
-OMEGA_QCD_CACHE = omega_QCD.$(OMEGA_CACHE_SUFFIX)
 OMEGA_QCD_OPTS = $(OMEGA_SPLIT) -target:parameter_module parameters_QCD
-omega_QCD.$(OMEGA_CACHE_SUFFIX): $(OMEGA_QCD)
-	$(OMEGA_QCD) -initialize .
 
 OMEGA_SYM = $(top_builddir)/omega/bin/omega_SYM$(OCAML_NATIVE_EXT)
-OMEGA_SYM_CACHE = omega_SYM.$(OMEGA_CACHE_SUFFIX)
 OMEGA_SYM_OPTS = $(OMEGA_SPLIT) -target:parameter_module parameters_SYM
-omega_SYM.$(OMEGA_CACHE_SUFFIX): $(OMEGA_SYM)
-	$(OMEGA_SYM) -initialize .
 
 OMEGA_SM = $(top_builddir)/omega/bin/omega_SM$(OCAML_NATIVE_EXT)
-OMEGA_SM_CACHE = omega_SM.$(OMEGA_CACHE_SUFFIX)
 OMEGA_SM_OPTS = $(OMEGA_SPLIT) -target:parameter_module parameters_SM
-omega_SM.$(OMEGA_CACHE_SUFFIX): $(OMEGA_SM)
-	$(OMEGA_SM) -initialize .
 
 OMEGA_SM_CKM = $(top_builddir)/omega/bin/omega_SM_CKM$(OCAML_NATIVE_EXT)
-OMEGA_SM_CKM_CACHE = omega_SM_CKM.$(OMEGA_CACHE_SUFFIX)
-omega_SM_CKM.$(OMEGA_CACHE_SUFFIX): $(OMEGA_SM_CKM)
-	$(OMEGA_SM_CKM) -initialize .
 
 OMEGA_SM_Higgs = $(top_builddir)/omega/bin/omega_SM_Higgs$(OCAML_NATIVE_EXT)
-OMEGA_SM_Higgs_CACHE = omega_SM_Higgs.$(OMEGA_CACHE_SUFFIX)
-omega_SM_Higgs.$(OMEGA_CACHE_SUFFIX): $(OMEGA_SM_Higgs)
-	$(OMEGA_SM_Higgs) -initialize .
 
 OMEGA_2HDM = $(top_builddir)/omega/bin/omega_2HDM$(OCAML_NATIVE_EXT)
-OMEGA_2HDM_CACHE = omega_2HDM.$(OMEGA_CACHE_SUFFIX)
-omega_2HDM.$(OMEGA_CACHE_SUFFIX): $(OMEGA_2HDM)
-	$(OMEGA_2HDM) -initialize .
 
 OMEGA_2HDM_CKM = $(top_builddir)/omega/bin/omega_2HDM_CKM$(OCAML_NATIVE_EXT)
-OMEGA_2HDM_CKM_CACHE = omega_2HDM_CKM.$(OMEGA_CACHE_SUFFIX)
-omega_2HDM_CKM.$(OMEGA_CACHE_SUFFIX): $(OMEGA_2HDM_CKM)
-	$(OMEGA_2HDM_CKM) -initialize .
 
 OMEGA_HSExt = $(top_builddir)/omega/bin/omega_HSExt$(OCAML_NATIVE_EXT)
-OMEGA_HSExt_CACHE = omega_HSExt.$(OMEGA_CACHE_SUFFIX)
-omega_HSExt.$(OMEGA_CACHE_SUFFIX): $(OMEGA_HSExt)
-	$(OMEGA_HSExt) -initialize .
 
 OMEGA_Zprime = $(top_builddir)/omega/bin/omega_Zprime$(OCAML_NATIVE_EXT)
-OMEGA_Zprime_CACHE = omega_Zprime.$(OMEGA_CACHE_SUFFIX)
-omega_Zprime.$(OMEGA_CACHE_SUFFIX): $(OMEGA_Zprime)
-	$(OMEGA_Zprime) -initialize .
 
 OMEGA_SM_top_anom = $(top_builddir)/omega/bin/omega_SM_top_anom$(OCAML_NATIVE_EXT)
-OMEGA_SM_top_anom_CACHE = omega_SM_top_anom.$(OMEGA_CACHE_SUFFIX)
 OMEGA_SM_top_anom_OPTS = $(OMEGA_SPLIT) -target:parameter_module parameters_SM_top_anom
-omega_SM_top_anom.$(OMEGA_CACHE_SUFFIX): $(OMEGA_SM_top_anom)
-	$(OMEGA_SM_top_anom) -initialize .
 
 OMEGA_UFO = $(top_builddir)/omega/bin/omega_UFO$(OCAML_NATIVE_EXT)
 OMEGA_UFO_OPTS = -target:parameter_module parameters_UFO
 
 OMEGA_XXX = $(top_builddir)/omega/bin/omega_%%%$(OCAML_NATIVE_EXT)
 OMEGA_XXX_OPTS = -target:parameter_module parameters_%%%
+OMEGA_UFO_XXX_OPTS = \
+	"-model:UFO_dir $(top_srcdir)/omega/tests/UFO/%%%/ -model:exec"
 
 OMEGA_QED_VM = $(top_builddir)/omega/bin/omega_QED_VM$(OCAML_NATIVE_EXT)
 OMEGA_QCD_VM = $(top_builddir)/omega/bin/omega_QCD_VM$(OCAML_NATIVE_EXT)
@@ -191,7 +160,7 @@ test_qed_eemm_SOURCES = test_qed_eemm.f90 parameters_QED.f90
 nodist_test_qed_eemm_SOURCES = amplitude_qed_eemm.f90
 test_qed_eemm_LDADD = $(KINDS) $(top_builddir)/omega/src/libomega_core.la
 
-amplitude_qed_eemm.f90: $(OMEGA_QED) $(OMEGA_QED_CACHE) Makefile
+amplitude_qed_eemm.f90: $(OMEGA_QED) Makefile
 	$(OMEGA_QED) $(OMEGA_QED_OPTS) -target:module amplitude_qed_eemm \
 	-scatter "e+ e- -> m+ m-" > $@
 
@@ -215,7 +184,7 @@ EXTRA_DIST += ects_driver.sh $(EXTENDED_COLOR_TESTS)
 
 # Explicitly state dependence on model files
 
-ects.f90: $(OMEGA_QCD) $(OMEGA_SYM) $(OMEGA_SM) $(OMEGA_QCD_CACHE) $(OMEGA_SYM_CACHE) $(OMEGA_SM_CACHE)
+ects.f90: $(OMEGA_QCD) $(OMEGA_SYM) $(OMEGA_SM)
 ects.f90: ects_driver.sh $(EXTENDED_COLOR_TESTS)
 	$(SHELL) $(srcdir)/ects_driver.sh $(OMEGA_XXX) $(EXTENDED_COLOR_TESTS) > $@
 
@@ -234,7 +203,7 @@ CASCADE_TESTS = \
 	jjj-notgc.cascade \
 	vbf-noh.cascade
 
-cascade: cascade_driver.sh Makefile $(OMEGA_SM_CACHE)
+cascade: cascade_driver.sh Makefile
 	$(SED) -e 's|%%cascade_tests%%|$(CASCADE_TESTS)|' \
 	  -e 's|%%srcdir%%|$(srcdir)|' \
 	  -e 's|%%SED%%|$(SED)|' \
@@ -264,10 +233,8 @@ WARD_LIB_O = $(WARD_LIB_F90:.f90=.o)
 run_ward: ward
 	./ward
 
-ward.f90: ward_driver.sh $(OMEGA_QED) $(OMEGA_QCD) $(OMEGA_SYM) \
-	$(OMEGA_QED_CACHE) $(OMEGA_QCD_CACHE) $(OMEGA_SYM_CACHE)
-ward.f90: $(OMEGA_SM) $(OMEGA_SM_top_anom) \
-	$(OMEGA_SM_CACHE) $(OMEGA_SM_top_anom_CACHE)
+ward.f90: ward_driver.sh $(OMEGA_QED) $(OMEGA_QCD) $(OMEGA_SYM)
+ward.f90: $(OMEGA_SM) $(OMEGA_SM_top_anom)
 ward.f90: ward_identities.list
 	$(SHELL) $(srcdir)/ward_driver.sh $(OMEGA_XXX) $(OMEGA_SPLIT) < $< > $@
 
@@ -348,8 +315,7 @@ compare_split_module.f90: comparisons.list
 	"$(OMEGA_XXX) -target:split_module 10" < $< > $@
 
 compare_split_function.f90 compare_split_module.f90: \
-	compare_driver.sh $(OMEGA_QCD) $(OMEGA_QCD_CACHE) $(OMEGA_SM) \
-	$(OMEGA_SM_CACHE)
+	compare_driver.sh $(OMEGA_QCD) $(OMEGA_SM)
 
 compare_split_function_SOURCES = $(COMPARE_LIB_F90)
 nodist_compare_split_function_SOURCES = compare_split_function.f90
@@ -364,14 +330,33 @@ compare_split_function.o compare_split_module.o: $(COMPARE_LIB_O)
 ########################################################################
 
 TESTS += compare_amplitude_UFO
-XFAIL_TESTS += compare_amplitude_UFO
+# XFAIL_TESTS += compare_amplitude_UFO
 EXTRA_PROGRAMS += compare_amplitude_UFO
 EXTRA_DIST += compare_driver_UFO.sh
+EXTRA_DIST += comparisons_UFO.list
 
-compare_amplitude_UFO.f90: compare_driver_UFO.sh
-	$(SHELL) $(srcdir)/compare_driver_UFO.sh >$@
+compare_amplitude_UFO_SOURCES = \
+	parameters_SM_from_UFO.f90 \
+	compare_lib.f90 omega_testtools.f90 tao_random_numbers.f90
 
-nodist_compare_amplitude_UFO_SOURCES = compare_amplitude_UFO.f90
+compare_amplitude_UFO.f90: comparisons_UFO.list compare_driver_UFO.sh $(OMEGA_UFO)
+	$(SHELL) $(srcdir)/compare_driver_UFO.sh UFO \
+	  "$(OMEGA_XXX) -model:constant_width" \
+	  "$(OMEGA_UFO) -model:UFO_dir $(top_srcdir)/omega/tests/UFO/%%%/ -model:exec " \
+		< $< > $@
+
+parameters_SM_UFO.f90: $(OMEGA_UFO)
+	$(OMEGA_UFO) \
+	  -model:UFO_dir $(top_srcdir)/omega/tests/UFO/SM/ -model:exec \
+	  -target:parameter_module parameters_sm_ufo -params > $@
+
+nodist_compare_amplitude_UFO_SOURCES = \
+	compare_amplitude_UFO.f90 parameters_SM_UFO.f90
+compare_amplitude_UFO_LDADD = $(KINDS) $(top_builddir)/omega/src/libomega_core.la
+
+parameters_SM_from_UFO.o: parameters_SM_UFO.o
+compare_amplitude_UFO.o: parameters_SM_UFO.o parameters_SM_from_UFO.o
+compare_amplitude_UFO.o: $(COMPARE_LIB_O)
 
 ########################################################################
 
@@ -390,15 +375,15 @@ comparisons_VM.wrappers.f90: comparisons_VM.list
 
 # Explicitly state dependence on model files
 compare_amplitude_VM.f90: compare_driver_VM.sh                   \
-	$(OMEGA_QED)      $(OMEGA_QED_VM)      $(OMEGA_QED_CACHE)      \
-	$(OMEGA_QCD)      $(OMEGA_QCD_VM)      $(OMEGA_QCD_CACHE)      \
-	$(OMEGA_SM)       $(OMEGA_SM_VM)       $(OMEGA_SM_CACHE)       \
-	$(OMEGA_SM_CKM)   $(OMEGA_SM_CKM_VM)   $(OMEGA_SM_CKM_CACHE)   \
-	$(OMEGA_SM_Higgs) $(OMEGA_SM_Higgs_VM) $(OMEGA_SM_Higgs_CACHE) \
-	$(OMEGA_2HDM)     $(OMEGA_2HDM_VM)     $(OMEGA_2HDM_CACHE)     \
-	$(OMEGA_2HDM_CKM) $(OMEGA_2HDM_CKM_VM) $(OMEGA_2HDM_CKM_CACHE) \
-	$(OMEGA_HSExt)    $(OMEGA_HSExt_VM)    $(OMEGA_HSExt_CACHE)    \
-	$(OMEGA_Zprime)   $(OMEGA_Zprime_VM)   $(OMEGA_Zprime_CACHE)
+	$(OMEGA_QED)      $(OMEGA_QED_VM)      \
+	$(OMEGA_QCD)      $(OMEGA_QCD_VM)      \
+	$(OMEGA_SM)       $(OMEGA_SM_VM)       \
+	$(OMEGA_SM_CKM)   $(OMEGA_SM_CKM_VM)   \
+	$(OMEGA_SM_Higgs) $(OMEGA_SM_Higgs_VM) \
+	$(OMEGA_2HDM)     $(OMEGA_2HDM_VM)     \
+	$(OMEGA_2HDM_CKM) $(OMEGA_2HDM_CKM_VM) \
+	$(OMEGA_HSExt)    $(OMEGA_HSExt_VM)    \
+	$(OMEGA_Zprime)   $(OMEGA_Zprime_VM)   
 
 COMPARE_EXTRA_MODELS = parameters_SM_CKM.f90 parameters_SM_Higgs.f90 \
 	parameters_2HDM.f90 parameters_2HDM_CKM.f90 parameters_HSExt.f90 \
@@ -423,7 +408,7 @@ test_openmp_SOURCES = test_openmp.f90 $(TESTOPENMP_SUPPORT_F90)
 nodist_test_openmp_SOURCES = amplitude_openmp.f90
 test_openmp_LDADD = $(KINDS) $(top_builddir)/omega/src/libomega_core.la
 
-amplitude_openmp.f90: $(OMEGA_QCD) $(OMEGA_QCD_CACHE) Makefile
+amplitude_openmp.f90: $(OMEGA_QCD) Makefile
 	$(OMEGA_QCD) $(OMEGA_QCD_OPTS) -target:openmp \
 	-target:module amplitude_openmp -scatter "gl gl -> gl gl gl" > $@
 
@@ -451,9 +436,9 @@ benchmark_processes.wrappers.f90: benchmark_processes.list
 
 # Explicitly state dependence on model files
 benchmark_VM_vs_Fortran.f90: benchmark_VM_vs_Fortran_driver.sh \
-	$(OMEGA_QED) $(OMEGA_QED_VM) $(OMEGA_QED_CACHE) \
-	$(OMEGA_QCD) $(OMEGA_QCD_VM) $(OMEGA_QCD_CACHE) \
-	$(OMEGA_SM)  $(OMEGA_SM_VM)  $(OMEGA_SM_CACHE)
+	$(OMEGA_QED) $(OMEGA_QED_VM) \
+	$(OMEGA_QCD) $(OMEGA_QCD_VM) \
+	$(OMEGA_SM)  $(OMEGA_SM_VM)
 
 benchmark_VM_vs_Fortran_SOURCES = $(BENCHMARK_LIB_F90)
 nodist_benchmark_VM_vs_Fortran_SOURCES = benchmark_VM_vs_Fortran.f90 benchmark_processes.wrappers.f90
@@ -473,9 +458,9 @@ benchmark_amp_parallel.f90: benchmark_processes.list benchmark_processes.wrapper
 
 # Explicitly state dependence on model files
 benchmark_amp_parallel.f90: benchmark_amp_parallel_driver.sh \
-	$(OMEGA_QED) $(OMEGA_QED_VM) $(OMEGA_QED_CACHE) \
-	$(OMEGA_QCD) $(OMEGA_QCD_VM) $(OMEGA_QCD_CACHE) \
-	$(OMEGA_SM)  $(OMEGA_SM_VM)  $(OMEGA_SM_CACHE)
+	$(OMEGA_QED) $(OMEGA_QED_VM) \
+	$(OMEGA_QCD) $(OMEGA_QCD_VM) \
+	$(OMEGA_SM)  $(OMEGA_SM_VM)
 
 benchmark_amp_parallel_SOURCES = $(BENCHMARK_LIB_F90)
 nodist_benchmark_amp_parallel_SOURCES = benchmark_amp_parallel.f90 benchmark_processes.wrappers.f90
@@ -501,19 +486,19 @@ nodist_benchmark_SOURCES = \
 	amplitude_benchmark_v3.f90 # amplitude_benchmark_v4.f90
 benchmark_LDADD = $(KINDS) $(top_builddir)/omega/src/libomega_core.la
 
-amplitude_benchmark_v1.f90: $(OMEGA_QCD) $(OMEGA_QCD_CACHE) Makefile
+amplitude_benchmark_v1.f90: $(OMEGA_QCD) Makefile
 	$(OMEGA_QCD) $(OMEGA_QCD_OPTS) -target:module amplitude_benchmark_v1 \
 	$(BENCHMARK_PROCESS) -target:single_function > $@
 
-amplitude_benchmark_v2.f90: $(OMEGA_QCD) $(OMEGA_QCD_CACHE) Makefile
+amplitude_benchmark_v2.f90: $(OMEGA_QCD) Makefile
 	$(OMEGA_QCD) $(OMEGA_QCD_OPTS) -target:module amplitude_benchmark_v2 \
 	$(BENCHMARK_PROCESS) -target:split_function $(BENCHMARK_SPLIT_SIZE) > $@
 
-amplitude_benchmark_v3.f90: $(OMEGA_QCD) $(OMEGA_QCD_CACHE) Makefile
+amplitude_benchmark_v3.f90: $(OMEGA_QCD) Makefile
 	$(OMEGA_QCD) $(OMEGA_QCD_OPTS) -target:module amplitude_benchmark_v3 \
 	$(BENCHMARK_PROCESS) -target:split_module $(BENCHMARK_SPLIT_SIZE) > $@
 
-amplitude_benchmark_v4.f90: $(OMEGA_QCD) $(OMEGA_QCD_CACHE) Makefile
+amplitude_benchmark_v4.f90: $(OMEGA_QCD) Makefile
 	$(OMEGA_QCD) $(OMEGA_QCD_OPTS) -target:module amplitude_benchmark_v4 \
 	$(BENCHMARK_PROCESS) -target:split_file $(BENCHMARK_SPLIT_SIZE) > $@
 
@@ -579,12 +564,22 @@ installcheck-local:
 ### Remove DWARF debug information on MAC OS X
 clean-macosx:
 	-rm -rf a.out.dSYM
+	-rm -rf compare_amplitude_UFO.dSYM
+	-rm -rf compare_amplitude_VM.dSYM
+	-rm -rf compare_split_function.dSYM
+	-rm -rf compare_split_module.dSYM
+	-rm -rf ects.dSYM
+	-rm -rf test_omega95.dSYM
+	-rm -rf test_omega95_bispinors.dSYM
+	-rm -rf test_qed_eemm.dSYM
+	-rm -rf ward.dSYM
 .PHONY: clean-macosx
 
 clean-local: clean-macosx
 	rm -f a.out gmon.out *.$(FC_MODULE_EXT) \
-		*.o *.cmi *.cmo *.cmx amplitude_*.f90 *.$(OMEGA_CACHE_SUFFIX) \
+		*.o *.cmi *.cmo *.cmx amplitude_*.f90 \
 		$(EXTRA_PROGRAMS) ects.f90 ward.f90 compare_*.f90 \
+		parameters_SM_UFO.f90 \
 		omega_testtools.f90 test_omega95*.f90 benchmark*.f90 \
 		*.hbc *wrappers.f90 cascade
 if FC_SUBMODULES

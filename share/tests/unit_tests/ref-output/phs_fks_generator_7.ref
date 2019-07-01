@@ -1,0 +1,49 @@
+* Test output: phs_fks_generator_7
+* Puropse: Create real phase space for scattering ISR
+*          keeping the beam energy fixed.
+
+* Use 2 -> 2 phase space containing:
+ E =   5.0000E+02
+ P =   0.0000E+00  0.0000E+00  5.0000E+02
+ E =   5.0000E+02
+ P =   0.0000E+00  0.0000E+00 -5.0000E+02
+ E =   5.0000E+02
+ P =   1.1276E+01 -1.3589E+01  4.8693E+02
+ E =   5.0000E+02
+ P =  -1.1276E+01  1.3589E+01 -4.8693E+02
+**********************
+
+* Use random numbers:
+x1: .50 x2: .25x3:  .60
+* With these, the following radiation variables have been produced:
+xi_tilde: 0.50
+i: 1y:  0.69
+i: 2y:  0.69
+phi: 3.77
+------------------------------------------------------------------------
+Produce real momenta via initial-state emission:
+emitter: 1
+ E =   5.0000E+02
+ P =   0.0000E+00  0.0000E+00  5.0000E+02
+ E =   5.0000E+02
+ P =   0.0000E+00  0.0000E+00 -5.0000E+02
+ E =   4.0086E+02
+ P =   3.3950E+01  2.1520E+01  3.8274E+02
+ E =   4.8043E+02
+ P =   1.6718E+01  4.8219E+01 -4.6435E+02
+ E =   1.1871E+02
+ P =  -5.0669E+01 -6.9740E+01  8.1611E+01
+------------------------------------------------------------------------
+emitter: 2
+ E =   5.0000E+02
+ P =   0.0000E+00  0.0000E+00  5.0000E+02
+ E =   5.0000E+02
+ P =   0.0000E+00  0.0000E+00 -5.0000E+02
+ E =   4.0086E+02
+ P =   3.3950E+01  2.1520E+01  3.8274E+02
+ E =   4.8043E+02
+ P =   1.6718E+01  4.8219E+01 -4.6435E+02
+ E =   1.1871E+02
+ P =  -5.0669E+01 -6.9740E+01  8.1611E+01
+
+* Test output end: phs_fks_generator_7

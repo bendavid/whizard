@@ -1,4 +1,4 @@
-! WHIZARD 2.4.1 Mar 24 2017
+! WHIZARD 2.5.0 May 06 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -77,9 +77,9 @@ module fks_regions
   integer, parameter, public :: N_MAX_FLV = 50
 
   integer, parameter :: UNDEFINED_SPLITTING = 0
-  integer, parameter :: Q_TO_QG = 1
-  integer, parameter :: G_TO_GG = 2
-  integer, parameter :: G_TO_QQ = 3
+  integer, parameter :: F_TO_FV = 1
+  integer, parameter :: V_TO_VV = 2
+  integer, parameter :: V_TO_FF = 3
 
 
   type :: ftuple_t
@@ -254,7 +254,6 @@ module fks_regions
     integer :: n_legs_born = 0
     integer :: n_legs_real = 0
     integer :: n_phs = 0
-    integer, dimension(:), allocatable :: underlying_borns
     class(fks_mapping_t), allocatable :: fks_mapping
     integer, dimension(:), allocatable :: resonances
     type(resonance_contributors_t), dimension(:), allocatable :: alr_contributors
@@ -309,7 +308,6 @@ module fks_regions
     procedure :: set_alr_to_i_phs => region_data_set_alr_to_i_phs
     procedure :: set_contributors => region_data_set_contributors
     procedure :: extend_ftuples => region_data_extend_ftuples
-    procedure :: set_underlying_borns => region_data_set_underlying_borns
     procedure :: get_flavor_indices => region_data_get_flavor_indices
     procedure :: get_matrix_element_index => region_data_get_matrix_element_index
     procedure :: compute_number_of_phase_spaces &
@@ -545,14 +543,14 @@ contains
     type(flv_structure_t), intent(in) :: flv
     integer, intent(in) :: i, j
     associate (flst => flv%flst)
-       if (flst(i) == GLUON .and. flst(j) == GLUON) then
-          ftuple%splitting_type = G_TO_GG
+       if (is_massless_vector (flst(i)) .and. is_massless_vector (flst(j))) then
+          ftuple%splitting_type = V_TO_VV
        else if (flst(i)+flst(j) == 0 &
-             .and. is_quark (abs(flst(i)))) then
-          ftuple%splitting_type = G_TO_QQ
-       else if (is_quark(abs(flst(i))) .and. flst(j) == GLUON &
-             .or. is_quark(abs(flst(j))) .and. flst(i) == GLUON) then
-          ftuple%splitting_type = Q_TO_QG
+             .and. is_fermion (abs(flst(i)))) then
+          ftuple%splitting_type = V_TO_FF
+       else if (is_fermion(abs(flst(i))) .and. is_massless_vector (flst(j)) &
+             .or. is_fermion(abs(flst(j))) .and. is_massless_vector (flst(i))) then
+          ftuple%splitting_type = F_TO_FV
        else
           ftuple%splitting_type = UNDEFINED_SPLITTING
        end if
@@ -566,12 +564,12 @@ contains
     integer :: em
     em = i; if (i == 0) em = 1
     associate (flst => flv%flst)
-       if (flst(em) == GLUON .and. flst(j) == GLUON) then
-          ftuple%splitting_type = G_TO_GG
-       else if (flst(em) == GLUON .and. is_quark(abs(flst(j)))) then
-          ftuple%splitting_type = G_TO_QQ
-       else if (is_quark(abs(flst(em))) .and. flst(j) == GLUON) then
-          ftuple%splitting_type = Q_TO_QG
+       if (is_massless_vector (flst(em)) .and. is_massless_vector (flst(j))) then
+          ftuple%splitting_type = V_TO_VV
+       else if (is_massless_vector (flst(em)) .and. is_fermion(abs(flst(j)))) then
+          ftuple%splitting_type = V_TO_FF
+       else if (is_fermion(abs(flst(em))) .and. is_massless_vector (flst(j))) then
+          ftuple%splitting_type = F_TO_FV
        else
           ftuple%splitting_type = UNDEFINED_SPLITTING
        end if
@@ -1057,22 +1055,27 @@ contains
     end if
   end function flv_structure_to_string
 
-  function flv_structure_create_uborn (flv, emitter) result(flv_uborn)
+  function flv_structure_create_uborn (flv, emitter, nlo_correction_type) result(flv_uborn)
     type(flv_structure_t) :: flv_uborn
     class(flv_structure_t), intent(in) :: flv
+    type(string_t), intent(in) :: nlo_correction_type
     integer, intent(in) :: emitter
     integer n_legs
     integer :: f1, f2
+    integer :: gauge_boson
+
     n_legs = size(flv%flst)
     allocate (flv_uborn%flst (n_legs - 1), flv_uborn%tag (n_legs - 1))
+    gauge_boson = determine_gauge_boson_to_be_inserted ()
+
     if (emitter > flv%n_in) then
        f1 = flv%flst(n_legs); f2 = flv%flst(n_legs - 1)
-       if (f1 == 21) then
-          !!! Emitted particle is a gluon => just remove it
+       if (is_massless_vector (f1)) then
+          !!! Emitted particle is a gluon or photon => just remove it
           flv_uborn = flv%remove_particle(n_legs)
-       else if (is_quark (f1) .and. is_quark (f2) .and. f1 + f2 == 0) then
-          !!! Emission type is a gluon splitting into two quarks
-          flv_uborn = flv%insert_particle(n_legs - 1, n_legs, 21)
+       else if (is_fermion (f1) .and. is_fermion (f2) .and. f1 + f2 == 0) then
+          !!! Emission type is a gauge boson splitting into two fermions
+          flv_uborn = flv%insert_particle(n_legs - 1, n_legs, gauge_boson)
        else
           call msg_error ("Create underlying Born: Unsupported splitting type.")
           call msg_error (char (str (flv%flst)))
@@ -1080,16 +1083,31 @@ contains
        end if
     else if (emitter > 0) then
        f1 = flv%flst(n_legs); f2 = flv%flst(emitter)
-       if (f1 == 21) then
+       if (is_massless_vector (f1)) then
           flv_uborn = flv%remove_particle(n_legs)
-       else if (is_quark (f1) .and. is_gluon (f2)) then
+       else if (is_fermion (f1) .and. is_massless_vector (f2)) then
           flv_uborn = flv%insert_particle (emitter, n_legs, -f1)
-       else if (is_quark (f1) .and. is_quark (f2) .and. f1 == f2) then
-          flv_uborn = flv%insert_particle(emitter, n_legs, 21)
+       else if (is_fermion (f1) .and. is_fermion (f2) .and. f1 == f2) then
+          flv_uborn = flv%insert_particle(emitter, n_legs, gauge_boson)
        end if
     else
        flv_uborn = flv%remove_particle (n_legs)
     end if
+
+  contains
+    integer function determine_gauge_boson_to_be_inserted ()
+      select case (char(nlo_correction_type))
+      case ("QCD")
+         determine_gauge_boson_to_be_inserted = GLUON
+      case ("QED")
+         determine_gauge_boson_to_be_inserted = PHOTON
+      case ("Full")
+         call msg_fatal ("NLO correction type 'Full' not yet implemented!")
+      case default
+         call msg_fatal ("Invalid NLO correction type! Valid inputs are: QCD, QED, Full (default: QCD)")
+      end select
+    end function determine_gauge_boson_to_be_inserted
+
   end function flv_structure_create_uborn
 
   subroutine flv_structure_init_mass_and_color (flv, model)
@@ -1429,7 +1447,7 @@ contains
              cycle
           else
              region%soft_divergence = &
-                  ftuple(reg)%splitting_type /= G_TO_QQ
+                  ftuple(reg)%splitting_type /= V_TO_FF
 
              if (i1 == 0) then
                region%coll_divergence = .true.
@@ -1437,7 +1455,7 @@ contains
                region%coll_divergence = .not. region%flst_real%massive(i1)
              end if
 
-             if (ftuple(reg)%splitting_type == G_TO_GG) then
+             if (ftuple(reg)%splitting_type == V_TO_VV) then
                 region%double_fsr = .true.
                 exit
              else if (ftuple(reg)%splitting_type == UNDEFINED_SPLITTING) then
@@ -1680,7 +1698,7 @@ contains
   end subroutine region_data_allocate_fks_mappings
 
   subroutine region_data_init (reg_data, n_in, model, flavor_born, &
-      flavor_real)
+         flavor_real, nlo_correction_type)
     class(region_data_t), intent(inout) :: reg_data
     integer, intent(in) :: n_in
     type(model_t), intent(in) :: model
@@ -1690,6 +1708,7 @@ contains
     type(flv_structure_t), dimension(:), allocatable :: flst_alr
     integer :: i
     integer :: n_flv_real_before_check
+    type(string_t), intent(in) :: nlo_correction_type
     reg_data%n_in = n_in
     reg_data%n_flv_born = size (flavor_born, dim = 2)
     reg_data%n_legs_born = size (flavor_born, dim = 1)
@@ -1705,12 +1724,12 @@ contains
     end do
 
     call reg_data%find_regions (model, ftuples, emitter, flst_alr)
-    call reg_data%init_singular_regions (ftuples, emitter, flst_alr)
+    call reg_data%init_singular_regions (ftuples, emitter, flst_alr, nlo_correction_type)
     reg_data%n_flv_real = maxval (reg_data%regions%real_index)
     call reg_data%find_emitters ()
-    call reg_data%set_underlying_borns ()
     call reg_data%set_mass_and_color (model)
     call reg_data%set_splitting_info ()
+
   end subroutine region_data_init
 
   subroutine region_data_init_resonance_information (reg_data)
@@ -2330,7 +2349,7 @@ contains
                     (flv_real, emitter, leg)
                i_ftuple = incr_i_ftuple_if_required (i_born, i_real, i_ftuple)
                call ftuples_tmp(i_born,i_real)%append (current_ftuple)
-               ftuple_index(i_born,i_real) = i_real
+               ftuple_index(i_born,i_real) = i_ftuple
                if (i_reg > size (emitter_tmp)) &
                     call extend_integer_array (emitter_tmp, increment_list)
                emitter_tmp(i_reg) = emitter
@@ -2345,9 +2364,10 @@ contains
   end subroutine region_data_find_regions
 
   subroutine region_data_init_singular_regions &
-         (reg_data, ftuples, emitter, flv_alr)
+         (reg_data, ftuples, emitter, flv_alr, nlo_correction_type)
     class(region_data_t), intent(inout) :: reg_data
     type(ftuple_list_t), intent(inout), dimension(:), allocatable :: ftuples
+    type(string_t), intent(in) :: nlo_correction_type
     integer :: n_independent_flv
     integer, intent(in), dimension(:) :: emitter
     type(flv_structure_t), intent(in), dimension(:) :: flv_alr
@@ -2383,7 +2403,7 @@ contains
           if (i == i_first) then
              flv_alr_registered(i_reg) = flv_alr(i)
              mult(i_reg) = mult(i_reg) + 1
-             flv_uborn(i_reg) = flv_alr(i)%create_uborn (emitter(i))
+             flv_uborn(i_reg) = flv_alr(i)%create_uborn (emitter(i), nlo_correction_type)
              flst_emitter(i_reg) = emitter(i)
              index (i_reg) = region_to_index(ftuples, i)
              equiv_index (i_reg) = region_to_ftuple(i)
@@ -2391,7 +2411,7 @@ contains
           else
              !!! Check for equivalent flavor structures
              do i_reg_prev = 1, i_reg - 1
-                if (emitter(i) == emitter(i_reg_prev) .and. emitter(i) > reg_data%n_in) then
+                if (emitter(i) == flst_emitter(i_reg_prev) .and. emitter(i) > reg_data%n_in) then
                    valid_fs_splitting = check_fs_splitting (flv_alr(i)%get_last_two(n_legs), &
                           flv_alr_registered(i_reg_prev)%get_last_two(n_legs), &
                           flv_alr(i)%tag(n_legs - 1), flv_alr_registered(i_reg_prev)%tag(n_legs - 1))
@@ -2403,7 +2423,7 @@ contains
                            (equiv_index(i_reg_prev), region_to_ftuple(i))
                       exit
                    end if
-                else if (emitter(i) == emitter(i_reg_prev) .and. emitter(i) <= reg_data%n_in) then
+                else if (emitter(i) == flst_emitter(i_reg_prev) .and. emitter(i) <= reg_data%n_in) then
                    if (flv_alr(i) .equiv. flv_alr_registered(i_reg_prev)) then
                       mult(i_reg_prev) = mult(i_reg_prev) + 1
                       equiv = .true.
@@ -2416,7 +2436,7 @@ contains
              if (.not. equiv) then
                 flv_alr_registered(i_reg) = flv_alr(i)
                 mult(i_reg) = mult(i_reg) + 1
-                flv_uborn(i_reg) = flv_alr(i)%create_uborn (emitter(i))
+                flv_uborn(i_reg) = flv_alr(i)%create_uborn (emitter(i), nlo_correction_type)
                 flst_emitter(i_reg) = emitter(i)
                 index (i_reg) = region_to_index (ftuples, i)
                 equiv_index (i_reg) = region_to_ftuple(i)
@@ -2846,24 +2866,6 @@ contains
     end function count_n_new_ftuples
   end subroutine region_data_extend_ftuples
 
-  subroutine region_data_set_underlying_borns (reg_data)
-    class(region_data_t), intent(inout) :: reg_data
-    integer :: i, alr
-    integer, dimension(:), allocatable :: flst_born
-    allocate (reg_data%underlying_borns (reg_data%n_flv_born))
-    do i = 1, reg_data%n_flv_born
-       if (allocated (flst_born))  deallocate (flst_born)
-       allocate (flst_born (size (reg_data%flv_born(i)%flst)))
-       flst_born = reg_data%flv_born(i)%flst
-       do alr = 1, reg_data%n_regions
-          if (all (reg_data%regions(alr)%flst_uborn%flst == flst_born)) then
-             reg_data%underlying_borns(i) = reg_data%regions(alr)%uborn_index
-             exit
-          end if
-       end do
-    end do
-  end subroutine region_data_set_underlying_borns
-
   function region_data_get_flavor_indices (reg_data, born) result (i_flv)
     integer, dimension(:), allocatable :: i_flv
     class(region_data_t), intent(in) :: reg_data
@@ -3187,12 +3189,6 @@ contains
     reg_data_out%n_in = reg_data_in%n_in
     reg_data_out%n_legs_born = reg_data_in%n_legs_born
     reg_data_out%n_legs_real = reg_data_in%n_legs_real
-    if (allocated (reg_data_in%underlying_borns)) then
-       allocate (reg_data_out%underlying_borns (size (reg_data_in%underlying_borns)))
-       reg_data_out%underlying_borns = reg_data_in%underlying_borns
-    else
-       call msg_warning ("Copying region data without allocated underlying born flavor indices!")
-    end if
     if (allocated (reg_data_in%fks_mapping)) then
        select type (fks_mapping_in => reg_data_in%fks_mapping)
        type is (fks_mapping_default_t)
@@ -3358,7 +3354,7 @@ contains
              f2 = region%flst_real%flst(region%ftuples(alr)%ireg(2))
              valid_splitting = f1 + f2 == 0 &
                   .or. (f1 == 21 .and. f2 == 21) &
-                  .or. is_quark_gluon_splitting (f1, f2)
+                  .or. is_fermion_vector_splitting (f1, f2)
              if (.not. valid_splitting) then
                 if (no_fail(2)) then
                    call msg_error ("FAIL: ", unit = u)
@@ -3409,11 +3405,11 @@ contains
       end if
     end subroutine abort_with_message
 
-    function is_quark_gluon_splitting (pdg_1, pdg_2) result (value)
+    function is_fermion_vector_splitting (pdg_1, pdg_2) result (value)
       logical :: value
       integer, intent(in) :: pdg_1, pdg_2
-      value = (is_quark(pdg_1) .and. is_gluon (pdg_2)) .or. &
-           (is_quark(pdg_2) .and. is_gluon (pdg_1))
+      value = (is_fermion (pdg_1) .and. is_massless_vector (pdg_2)) .or. &
+           (is_fermion (pdg_2) .and. is_massless_vector (pdg_1))
     end function
   end subroutine region_data_check_consistency
 
@@ -3423,7 +3419,6 @@ contains
     if (allocated (reg_data%flv_born)) deallocate (reg_data%flv_born)
     if (allocated (reg_data%flv_real)) deallocate (reg_data%flv_real)
     if (allocated (reg_data%emitters)) deallocate (reg_data%emitters)
-    if (allocated (reg_data%underlying_borns)) deallocate (reg_data%underlying_borns)
     if (allocated (reg_data%fks_mapping)) deallocate (reg_data%fks_mapping)
     if (allocated (reg_data%resonances)) deallocate (reg_data%resonances)
     if (allocated (reg_data%alr_contributors)) deallocate (reg_data%alr_contributors)
@@ -3811,13 +3806,14 @@ contains
     res_history%resonances(2)%contributors%c = [THR_POS_WM, THR_POS_BBAR]
   end function create_resonance_histories_for_threshold
 
-  subroutine setup_region_data_for_test (n_in, flv_born, flv_real, reg_data)
+  subroutine setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, nlo_corr_type)
     integer, intent(in) :: n_in
     integer, intent(in), dimension(:,:) :: flv_born, flv_real
+    type(string_t), intent(in) :: nlo_corr_type
     type(region_data_t), intent(out) :: reg_data
     type(model_t), pointer :: test_model => null ()
     call create_test_model (var_str ("SM"), test_model)
-    call reg_data%init (n_in, test_model, flv_born, flv_real)
+    call reg_data%init (n_in, test_model, flv_born, flv_real, nlo_corr_type)
   end subroutine setup_region_data_for_test
 
 

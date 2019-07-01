@@ -58,8 +58,8 @@ $restrictions = "3+5~t && 4+6~tbar"
 | 100.0%
 | Beam structure: [any particles]
 | Beam data (collision):
-|   e-  (mass = 0.0000000E+00 GeV)
 |   e+  (mass = 0.0000000E+00 GeV)
+|   e-  (mass = 0.0000000E+00 GeV)
 |   sqrts = 3.500000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
@@ -69,7 +69,7 @@ $restrictions = "3+5~t && 4+6~tbar"
 |   Library name  = 'user_prc_threshold_1_lib'
 |   Process index = 1
 |   Process components:
-|     1: 'user_prc_threshold_1_p1_i1':   e-, e+ => W+, W-, b, bbar [omega]
+|     1: 'user_prc_threshold_1_p1_i1':   e+, e- => W+, W-, b, bbar [omega]
 | ------------------------------------------------------------------------
 | Phase space: 15 channels, 8 dimensions
 | Phase space: found 15 channels, collected in 6 groves.
@@ -85,9 +85,9 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1        990     7.535E+02   6.30E+01    8.37    2.63    13.2
+   1        990     7.852E+02   6.73E+01    8.58    2.70    12.2
 |-----------------------------------------------------------------------------|
-   1        990     7.535E+02   6.30E+01    8.37    2.63    13.2
+   1        990     7.852E+02   6.73E+01    8.58    2.70    12.2
 |=============================================================================|
 seed = 0
 | Process library 'user_prc_threshold_1_lib': unloading
@@ -122,8 +122,8 @@ seed = 0
 | Threshold setup unchanged: reusing existing threshold grid.
 | Beam structure: [any particles]
 | Beam data (collision):
-|   e-  (mass = 0.0000000E+00 GeV)
 |   e+  (mass = 0.0000000E+00 GeV)
+|   e-  (mass = 0.0000000E+00 GeV)
 |   sqrts = 3.500000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
@@ -133,7 +133,7 @@ seed = 0
 |   Library name  = 'user_prc_threshold_1_lib'
 |   Process index = 2
 |   Process components:
-|     1: 'user_prc_threshold_1_p2_i1':   e-, e+ => t, tbar [omega]
+|     1: 'user_prc_threshold_1_p2_i1':   e+, e- => t, tbar [omega]
 | ------------------------------------------------------------------------
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
@@ -149,9 +149,9 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1        800     5.582E+02   1.16E-01    0.02    0.01    81.7
+   1        800     5.571E+02   1.21E-01    0.02    0.01    80.8
 |-----------------------------------------------------------------------------|
-   1        800     5.582E+02   1.16E-01    0.02    0.01    81.7
+   1        800     5.571E+02   1.21E-01    0.02    0.01    80.8
 |=============================================================================|
 seed = 0
 $method = "dummy"
@@ -175,8 +175,8 @@ error_threshold =  1.00000E-04
 | Initializing integration for process user_prc_threshold_1_p3:
 | Beam structure: [any particles]
 | Beam data (collision):
-|   e-  (mass = 0.0000000E+00 GeV)
 |   e+  (mass = 0.0000000E+00 GeV)
+|   e-  (mass = 0.0000000E+00 GeV)
 |   sqrts = 3.500000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
@@ -186,7 +186,7 @@ error_threshold =  1.00000E-04
 |   Library name  = 'user_prc_threshold_1_lib'
 |   Process index = 3
 |   Process components:
-|     1: 'user_prc_threshold_1_p3_i1':   e-, e+ => mu-, mu+ [dummy]
+|     1: 'user_prc_threshold_1_p3_i1':   e+, e- => mu-, mu+ [dummy]
 | ------------------------------------------------------------------------
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 2 groves.
@@ -242,8 +242,8 @@ $method = "threshold"
 | Threshold setup unchanged: reusing existing threshold grid.
 | Beam structure: [any particles]
 | Beam data (collision):
-|   e-  (mass = 0.0000000E+00 GeV)
 |   e+  (mass = 0.0000000E+00 GeV)
+|   e-  (mass = 0.0000000E+00 GeV)
 |   sqrts = 3.500000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
@@ -253,7 +253,7 @@ $method = "threshold"
 |   Library name  = 'user_prc_threshold_1_lib'
 |   Process index = 4
 |   Process components:
-|     1: 'user_prc_threshold_1_p4_i1':   e-, e+ => W+, W-, b, bbar [threshold]
+|     1: 'user_prc_threshold_1_p4_i1':   e+, e- => W+, W-, b, bbar [threshold]
 | ------------------------------------------------------------------------
 | Phase space: 15 channels, 8 dimensions
 | Phase space: found 15 channels, collected in 6 groves.
@@ -269,9 +269,9 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1        990     7.535E+02   6.30E+01    8.37    2.63    13.2
+   1        990     7.852E+02   6.73E+01    8.58    2.70    12.2
 |-----------------------------------------------------------------------------|
-   1        990     7.535E+02   6.30E+01    8.37    2.63    13.2
+   1        990     7.852E+02   6.73E+01    8.58    2.70    12.2
 |=============================================================================|
 tolerance =  1.00000E-04
 | expect: success
@@ -311,8 +311,8 @@ $method = "threshold"
 | Threshold setup unchanged: reusing existing threshold grid.
 | Beam structure: [any particles]
 | Beam data (collision):
-|   e-  (mass = 0.0000000E+00 GeV)
 |   e+  (mass = 0.0000000E+00 GeV)
+|   e-  (mass = 0.0000000E+00 GeV)
 |   sqrts = 3.500000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
@@ -322,7 +322,7 @@ $method = "threshold"
 |   Library name  = 'user_prc_threshold_1_lib'
 |   Process index = 5
 |   Process components:
-|     1: 'user_prc_threshold_1_p5_i1':   e-, e+ => t, tbar [threshold]
+|     1: 'user_prc_threshold_1_p5_i1':   e+, e- => t, tbar [threshold]
 | ------------------------------------------------------------------------
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
@@ -338,9 +338,9 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1        800     5.582E+02   1.16E-01    0.02    0.01    81.7
+   1        800     5.571E+02   1.21E-01    0.02    0.01    80.8
 |-----------------------------------------------------------------------------|
-   1        800     5.582E+02   1.16E-01    0.02    0.01    81.7
+   1        800     5.571E+02   1.21E-01    0.02    0.01    80.8
 |=============================================================================|
 tolerance =  1.00000E-04
 | expect: success
@@ -382,8 +382,8 @@ $born_me_method = "threshold"
 | Threshold setup unchanged: reusing existing threshold grid.
 | Beam structure: [any particles]
 | Beam data (collision):
-|   e-  (mass = 0.0000000E+00 GeV)
 |   e+  (mass = 0.0000000E+00 GeV)
+|   e-  (mass = 0.0000000E+00 GeV)
 |   sqrts = 3.500000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
@@ -393,7 +393,7 @@ $born_me_method = "threshold"
 |   Library name  = 'user_prc_threshold_1_lib'
 |   Process index = 6
 |   Process components:
-|     1: 'user_prc_threshold_1_p6_i1':   e-, e+ => W+, W-, b, bbar [threshold]
+|     1: 'user_prc_threshold_1_p6_i1':   e+, e- => W+, W-, b, bbar [threshold]
 | ------------------------------------------------------------------------
 | Phase space: 15 channels, 8 dimensions
 | Phase space: found 15 channels, collected in 6 groves.
@@ -409,9 +409,9 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1        990     7.535E+02   6.30E+01    8.37    2.63    13.2
+   1        990     7.852E+02   6.73E+01    8.58    2.70    12.2
 |-----------------------------------------------------------------------------|
-   1        990     7.535E+02   6.30E+01    8.37    2.63    13.2
+   1        990     7.852E+02   6.73E+01    8.58    2.70    12.2
 |=============================================================================|
 tolerance =  1.00000E-04
 | expect: success

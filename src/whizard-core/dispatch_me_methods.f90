@@ -1,4 +1,4 @@
-! WHIZARD 2.4.1 Mar 24 2017
+! WHIZARD 2.5.0 May 06 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -76,8 +76,10 @@ contains
     integer, intent(in), optional :: nlo_type
     type(string_t) :: method
     type(string_t) :: model_name
-    logical :: cms_scheme
+    type(string_t) :: ufo_path
     type(string_t) :: restrictions
+    logical :: ufo
+    logical :: cms_scheme
     logical :: openmp_support
     logical :: report_progress
     logical :: diags, diags_color
@@ -88,9 +90,12 @@ contains
     if (associated (model)) then
        model_name = model%get_name ()
        cms_scheme = model%get_scheme () == "Complex_Mass_Scheme"
+       ufo = model%is_ufo_model ()
+       ufo_path = model%get_ufo_path ()
     else
        model_name = ""
        cms_scheme = .false.
+       ufo = .false.
     end if
     restrictions = var_list%get_sval (&
          var_str ("$restrictions"))
@@ -124,20 +129,22 @@ contains
           call core_def%init (model, prt_in, prt_out, unity = .true.)
        end select
     case ("omega")
-       allocate (omega_omega_def_t :: core_def)
+       allocate (omega_def_t :: core_def)
        select type (core_def)
-       type is (omega_omega_def_t)
+       type is (omega_def_t)
           call core_def%init (model_name, prt_in, prt_out, &
-               restrictions, cms_scheme, openmp_support, &
-               report_progress, extra_options, diags, diags_color)
+               .false., ufo, ufo_path, &
+               restrictions, cms_scheme, &
+               openmp_support, report_progress, extra_options, diags, diags_color)
        end select
     case ("ovm")
-       allocate (omega_ovm_def_t :: core_def)
+       allocate (omega_def_t :: core_def)
        select type (core_def)
-       type is (omega_ovm_def_t)
+       type is (omega_def_t)
           call core_def%init (model_name, prt_in, prt_out, &
-               restrictions, cms_scheme, openmp_support, &
-               report_progress, extra_options, diags, diags_color)
+               .true., .false., var_str (""), &
+               restrictions, cms_scheme, &
+               openmp_support, report_progress, extra_options, diags, diags_color)
        end select
     case ("gosam")
       allocate (gosam_def_t :: core_def)

@@ -44,20 +44,6 @@ DIST_SUBDIRS = src lib models bin share tools extensions tests scripts
 ########################################################################
 
 clean-local:
-#	rm -fr var
-
-if OCAML_AVAILABLE
-install-all-caches:
-	cd bin && $(MAKE) $(AM_MAKEFLAGS) install-all-caches
-
-install-data-local:
-	$(INSTALL) -d -m 755 $(OMEGA_USER_CACHE_DIR)
-	$(INSTALL) -d -m 755 $(DESTDIR)$(OMEGA_SYSTEM_CACHE_DIR)
-endif
-
-uninstall-local:
-	rm -f $(OMEGA_USER_CACHE_DIR)/*$(OMEGA_CACHE_SUFFIX)
-	rm -f $(OMEGA_SYSTEM_CACHE_DIR)/*$(OMEGA_CACHE_SUFFIX)
 
 ########################################################################
 ## The End.

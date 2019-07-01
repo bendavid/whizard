@@ -476,7 +476,6 @@ openloops_stability_log = 0
 ?openloops_switch_off_muon_yukawa = false
 $openloops_extra_cmd = ""
 ?openloops_use_collier = true
-recola_mu_ir =  1.000000000000E+02
 ?disable_subtraction = false
 fks_dij_exp1 =  1.000000000000E+00
 fks_dij_exp2 =  1.000000000000E+00

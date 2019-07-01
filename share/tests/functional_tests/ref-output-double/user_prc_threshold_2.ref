@@ -47,8 +47,8 @@ SM_tt_threshold.offshell_strategy =>  4.00000E+00
 | Initializing integration for process user_prc_threshold_2_sig:
 | Beam structure: [any particles]
 | Beam data (collision):
-|   e-  (mass = 5.1099700E-04 GeV)
 |   e+  (mass = 5.1099700E-04 GeV)
+|   e-  (mass = 5.1099700E-04 GeV)
 |   sqrts = 3.600000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
@@ -58,7 +58,7 @@ SM_tt_threshold.offshell_strategy =>  4.00000E+00
 |   Library name  = 'user_prc_threshold_2_lib'
 |   Process index = 1
 |   Process components:
-|     1: 'user_prc_threshold_2_sig_i1':   e-, e+ => W+, W-, b, bbar [threshold]
+|     1: 'user_prc_threshold_2_sig_i1':   e+, e- => W+, W-, b, bbar [threshold]
 | ------------------------------------------------------------------------
 | Phase space: 61 channels, 8 dimensions
 | Phase space: found 61 channels, collected in 25 groves.
@@ -75,11 +75,11 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1        976     5.101E+02   6.12E+01   11.99    3.75    22.1
-   2        934     5.340E+02   4.79E+01    8.96    2.74    10.6
-   3        912     4.670E+02   3.15E+01    6.74    2.03    12.0
+   1        976     4.475E+02   5.43E+01   12.12    3.79    19.5
+   2        937     5.842E+02   5.35E+01    9.16    2.80    12.5
+   3        913     4.977E+02   2.86E+01    5.75    1.74    15.3
 |-----------------------------------------------------------------------------|
-   3       2822     4.908E+02   2.42E+01    4.92    2.61    12.0    0.74   3
+   3       2826     5.046E+02   2.29E+01    4.53    2.41    15.3    1.69   3
 |=============================================================================|
 seed = 0
 | Process library 'user_prc_threshold_2_lib': unloading
@@ -104,8 +104,8 @@ SM_tt_threshold.offshell_strategy =>  0.00000E+00
 | Initializing integration for process user_prc_threshold_2_sig_thr:
 | Beam structure: [any particles]
 | Beam data (collision):
-|   e-  (mass = 5.1099700E-04 GeV)
 |   e+  (mass = 5.1099700E-04 GeV)
+|   e-  (mass = 5.1099700E-04 GeV)
 |   sqrts = 3.600000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
@@ -115,7 +115,7 @@ SM_tt_threshold.offshell_strategy =>  0.00000E+00
 |   Library name  = 'user_prc_threshold_2_lib'
 |   Process index = 2
 |   Process components:
-|     1: 'user_prc_threshold_2_sig_thr_i1':   e-, e+ => W+, W-, b, bbar [threshold]
+|     1: 'user_prc_threshold_2_sig_thr_i1':   e+, e- => W+, W-, b, bbar [threshold]
 | ------------------------------------------------------------------------
 | Phase space: 61 channels, 8 dimensions
 | Phase space: found 61 channels, collected in 25 groves.
@@ -132,11 +132,11 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1        976     5.101E+02   6.12E+01   11.99    3.75    22.1
-   2        934     5.340E+02   4.79E+01    8.96    2.74    10.6
-   3        912     4.670E+02   3.15E+01    6.74    2.03    12.0
+   1        976     4.475E+02   5.43E+01   12.12    3.79    19.5
+   2        937     5.842E+02   5.35E+01    9.16    2.80    12.5
+   3        913     4.977E+02   2.86E+01    5.75    1.74    15.3
 |-----------------------------------------------------------------------------|
-   3       2822     4.908E+02   2.42E+01    4.92    2.61    12.0    0.74   3
+   3       2826     5.046E+02   2.29E+01    4.53    2.41    15.3    1.69   3
 |=============================================================================|
 tolerance =  1.00000E-03
 | expect: success
@@ -165,8 +165,8 @@ SM_tt_threshold.offshell_strategy =>  0.00000E+00
 | Initializing integration for process user_prc_threshold_2_native:
 | Beam structure: [any particles]
 | Beam data (collision):
-|   e-  (mass = 5.1099700E-04 GeV)
 |   e+  (mass = 5.1099700E-04 GeV)
+|   e-  (mass = 5.1099700E-04 GeV)
 |   sqrts = 3.600000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
@@ -176,7 +176,7 @@ SM_tt_threshold.offshell_strategy =>  0.00000E+00
 |   Library name  = 'user_prc_threshold_2_lib'
 |   Process index = 3
 |   Process components:
-|     1: 'user_prc_threshold_2_native_i1':   e-, e+ => W+, W-, b, bbar [omega]
+|     1: 'user_prc_threshold_2_native_i1':   e+, e- => W+, W-, b, bbar [omega]
 | ------------------------------------------------------------------------
 | Phase space: 61 channels, 8 dimensions
 | Phase space: found 61 channels, collected in 25 groves.
@@ -193,11 +193,11 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1        976     5.101E+02   6.12E+01   11.99    3.75    22.1
-   2        934     5.340E+02   4.79E+01    8.96    2.74    10.6
-   3        912     4.670E+02   3.15E+01    6.74    2.03    12.0
+   1        976     4.475E+02   5.43E+01   12.12    3.79    19.5
+   2        937     5.842E+02   5.35E+01    9.16    2.80    12.5
+   3        913     4.977E+02   2.86E+01    5.75    1.74    15.3
 |-----------------------------------------------------------------------------|
-   3       2822     4.908E+02   2.42E+01    4.92    2.61    12.0    0.74   3
+   3       2826     5.046E+02   2.29E+01    4.53    2.41    15.3    1.69   3
 |=============================================================================|
 tolerance =  1.00000E-03
 | expect: success
@@ -226,8 +226,8 @@ SM_tt_threshold.offshell_strategy =>  2.00000E+00
 | Initializing integration for process user_prc_threshold_2_factorized:
 | Beam structure: [any particles]
 | Beam data (collision):
-|   e-  (mass = 5.1099700E-04 GeV)
 |   e+  (mass = 5.1099700E-04 GeV)
+|   e-  (mass = 5.1099700E-04 GeV)
 |   sqrts = 3.600000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
@@ -237,7 +237,7 @@ SM_tt_threshold.offshell_strategy =>  2.00000E+00
 |   Library name  = 'user_prc_threshold_2_lib'
 |   Process index = 4
 |   Process components:
-|     1: 'user_prc_threshold_2_factorized_i1':   e-, e+ => W+, W-, b, bbar [threshold]
+|     1: 'user_prc_threshold_2_factorized_i1':   e+, e- => W+, W-, b, bbar [threshold]
 | ------------------------------------------------------------------------
 | Phase space: 61 channels, 8 dimensions
 | Phase space: found 61 channels, collected in 25 groves.
@@ -254,13 +254,13 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1        976     5.081E+02   6.13E+01   12.07    3.77    22.0
-   2        933     5.260E+02   4.61E+01    8.76    2.67    10.9
-   3        909     4.672E+02   3.19E+01    6.83    2.06    10.9
+   1        976     4.453E+02   5.43E+01   12.19    3.81    19.5
+   2        937     5.779E+02   4.75E+01    8.22    2.52    15.5
+   3        912     5.090E+02   3.11E+01    6.12    1.85    15.3
 |-----------------------------------------------------------------------------|
-   3       2818     4.896E+02   2.41E+01    4.93    2.62    10.9    0.60   3
+   3       2825     5.139E+02   2.35E+01    4.57    2.43    15.3    1.72   3
 |=============================================================================|
-tolerance =  1.75612E+01
+tolerance =  1.80557E+01
 | expect: success
 | Summary of value checks:
 |   Failures: 0 / Total: 3

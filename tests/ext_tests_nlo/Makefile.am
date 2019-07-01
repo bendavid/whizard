@@ -213,7 +213,6 @@ clean-local:
 	rm -f *.tbl sps1ap_decays.slha bar structure_6[a-b].out 
 	rm -f slhaspectrum.in suspect2.out suspect2_lha.out 
 	rm -f susyhit.in susyhit_slha.out suspect2_lha.in
-	rm -f *.$(WT_OMEGA_CACHE_SUFFIX)
 	rm -f *.olc *.olp *.olp_parameters
 	rm -rf stability_log
 	rm -rf *olp_modules

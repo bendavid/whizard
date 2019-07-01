@@ -2263,87 +2263,69 @@ For the process definition we implement an extension of the
 <<Omega interface: public>>=
   public :: omega_def_t
 <<Omega interface: types>>=
-  type, abstract, extends (prc_core_def_t) :: omega_def_t
+  type, extends (prc_core_def_t) :: omega_def_t
+     logical :: ufo = .false.
+     logical :: ovm = .false.
    contains
    <<Omega interface: omega def: TBP>>
   end type omega_def_t
 
 @ %def omega_def_t
 @
-<<Omega interface: public>>=
-  public :: omega_omega_def_t
-<<Omega interface: types>>=
-  type, extends (omega_def_t) :: omega_omega_def_t
-   contains
-   <<Omega interface: omega omega def: TBP>>
-  end type omega_omega_def_t
-
-@ %def omega_omega_def_t
-@
-<<Omega interface: public>>=
-  public :: omega_ovm_def_t
-<<Omega interface: types>>=
-  type, extends (omega_def_t) :: omega_ovm_def_t
-   contains
-   <<Omega interface: omega ovm def: TBP>>
-  end type omega_ovm_def_t
-
-@ %def omega_ovm_def_t
-@
-<<Omega interface: omega omega def: TBP>>=
-  procedure, nopass :: type_string => omega_omega_def_type_string
+<<Omega interface: omega def: TBP>>=
+  procedure, nopass :: type_string => omega_def_type_string
 <<Omega interface: procedures>>=
-  function omega_omega_def_type_string () result (string)
+  function omega_def_type_string () result (string)
     type(string_t) :: string
     string = "omega"
-  end function omega_omega_def_type_string
+  end function omega_def_type_string
 
 @ %def omega_omega_def_type_string
 @
-<<Omega interface: omega ovm def: TBP>>=
-  procedure, nopass :: type_string => omega_ovm_def_type_string
-<<Omega interface: procedures>>=
-  function omega_ovm_def_type_string () result (string)
-    type(string_t) :: string
-    string = "ovm"
-  end function omega_ovm_def_type_string
-
-@ %def omega_ovm_def_type_string
-@ Initialization: allocate the writer for the \oMega\ matrix element.
+Initialization: allocate the writer for the \oMega\ matrix element.
+The writer type depends on the settings of the [[ufo]] and [[ovm]] flags.
 Also set any data for this process that the writer needs.
 <<Omega interface: omega def: TBP>>=
   procedure :: init => omega_def_init
 <<Omega interface: procedures>>=
-  subroutine omega_def_init (object, model_name, prt_in, prt_out, &
-       restrictions, cms_scheme, openmp_support, report_progress, &
-       extra_options, diags, diags_color)
+  subroutine omega_def_init (object, &
+       model_name, prt_in, prt_out, &
+       ovm, ufo, ufo_path, &
+       restrictions, cms_scheme, &
+       openmp_support, report_progress, extra_options, diags, diags_color)
     class(omega_def_t), intent(out) :: object
     type(string_t), intent(in) :: model_name
     type(string_t), dimension(:), intent(in) :: prt_in
     type(string_t), dimension(:), intent(in) :: prt_out
-    logical, intent(in), optional :: cms_scheme
+    logical, intent(in) :: ovm
+    logical, intent(in) :: ufo
+    type(string_t), intent(in), optional :: ufo_path
     type(string_t), intent(in), optional :: restrictions
+    logical, intent(in), optional :: cms_scheme
     logical, intent(in), optional :: openmp_support
     logical, intent(in), optional :: report_progress
-    logical, intent(in), optional :: diags, diags_color
     type(string_t), intent(in), optional :: extra_options
-    select type (object)
-    type is (omega_omega_def_t)
-       allocate (omega_omega_writer_t :: object%writer)
-       select type (writer => object%writer)
-       type is (omega_omega_writer_t)
-          call writer%init (model_name, prt_in, prt_out, &
-               restrictions, cms_scheme, openmp_support, &
-               report_progress, extra_options, diags, diags_color)
-       end select
-    type is (omega_ovm_def_t)
-       allocate (omega_ovm_writer_t :: object%writer)
-       select type (writer => object%writer)
-       type is (omega_ovm_writer_t)
-          call writer%init (model_name, prt_in, prt_out, &
-               restrictions, cms_scheme, openmp_support, &
-               report_progress, extra_options, diags, diags_color)
-       end select
+    logical, intent(in), optional :: diags, diags_color
+    object%ufo = ufo
+    object%ovm = ovm
+    if (object%ufo) then
+       if (object%ovm) then
+          call msg_fatal ("Omega process: OVM method does not support UFO model")
+       else
+          allocate (omega_ufo_writer_t :: object%writer)
+       end if
+    else
+       if (object%ovm) then
+          allocate (omega_ovm_writer_t :: object%writer)
+       else
+          allocate (omega_omega_writer_t :: object%writer)
+       end if
+    end if
+    select type (writer => object%writer)
+    class is (omega_writer_t)
+       call writer%init (model_name, prt_in, prt_out, &
+            ufo_path, restrictions, cms_scheme, &
+            openmp_support, report_progress, extra_options, diags, diags_color)
     end select
   end subroutine omega_def_init
 
@@ -2356,9 +2338,7 @@ Also set any data for this process that the writer needs.
     class(omega_def_t), intent(in) :: object
     integer, intent(in) :: unit
     select type (writer => object%writer)
-    type is (omega_omega_writer_t)
-       call writer%write (unit)
-    type is (omega_ovm_writer_t)
+    class is (omega_writer_t)
        call writer%write (unit)
     end select
   end subroutine omega_def_write
@@ -2532,12 +2512,22 @@ wrappers.
 @ %def omega_omega_writer_t
 @
 <<Omega interface: types>>=
+  type, extends (omega_omega_writer_t) :: omega_ufo_writer_t
+     type(string_t) :: ufo_path
+   contains
+   <<Omega interface: omega ufo writer: TBP>>
+  end type omega_ufo_writer_t
+
+@ %def omega_ufo_writer_t
+@
+<<Omega interface: types>>=
   type, extends (omega_writer_t) :: omega_ovm_writer_t
    contains
    <<Omega interface: omega ovm writer: TBP>>
   end type omega_ovm_writer_t
 
 @ %def omega_ovm_writer_t
+@
 <<Omega interface: omega omega writer: TBP>>=
   procedure, nopass :: type_name => omega_omega_writer_type_name
 <<Omega interface: procedures>>=
@@ -2547,6 +2537,16 @@ wrappers.
   end function omega_omega_writer_type_name
 
 @ %def omega_omega_writer_type_name
+@
+<<Omega interface: omega ufo writer: TBP>>=
+  procedure, nopass :: type_name => omega_ufo_writer_type_name
+<<Omega interface: procedures>>=
+  function omega_ufo_writer_type_name () result (string)
+    type(string_t) :: string
+    string = "omega/UFO"
+  end function omega_ufo_writer_type_name
+
+@ %def omega_ufo_writer_type_name
 @
 <<Omega interface: omega ovm writer: TBP>>=
   procedure, nopass :: type_name => omega_ovm_writer_type_name
@@ -2600,35 +2600,44 @@ wrappers.
   procedure :: init => omega_writer_init
 <<Omega interface: procedures>>=
   subroutine omega_writer_init (writer, model_name, prt_in, prt_out, &
-       restrictions, cms_scheme, openmp_support, report_progress, &
-       extra_options, diags, diags_color)
+       ufo_path, restrictions, cms_scheme, &
+       openmp_support, report_progress, extra_options, diags, diags_color)
     class(omega_writer_t), intent(out) :: writer
     type(string_t), intent(in) :: model_name
     type(string_t), dimension(:), intent(in) :: prt_in
     type(string_t), dimension(:), intent(in) :: prt_out
-    logical, intent(in), optional :: cms_scheme
+    type(string_t), intent(in), optional :: ufo_path
     type(string_t), intent(in), optional :: restrictions
+    logical, intent(in), optional :: cms_scheme
     logical, intent(in), optional :: openmp_support
     logical, intent(in), optional :: report_progress
-    logical, intent(in), optional :: diags, diags_color
     type(string_t), intent(in), optional :: extra_options
+    logical, intent(in), optional :: diags, diags_color
     integer :: i
     writer%model_name = model_name
+    select type (writer)
+    type is (omega_ufo_writer_t)
+       if (present (ufo_path)) then
+          writer%ufo_path = ufo_path
+       else
+          call msg_fatal ("O'Mega: UFO model option is selected, but UFO model path is unset")
+       end if
+    end select
     if (present (restrictions)) then
        writer%restrictions = restrictions
     else
        writer%restrictions = ""
     end if
+    if (present (cms_scheme))  writer%complex_mass_scheme = cms_scheme
     if (present (openmp_support))  writer%openmp_support = openmp_support
     if (present (report_progress))  writer%report_progress = report_progress
-    if (present (cms_scheme))  writer%complex_mass_scheme = cms_scheme
-    if (present (diags))  writer%diags = diags
-    if (present (diags_color))  writer%diags_color = diags_color
     if (present (extra_options)) then
        writer%extra_options = " " // extra_options
     else
        writer%extra_options = ""
     end if
+    if (present (diags))  writer%diags = diags
+    if (present (diags_color))  writer%diags_color = diags_color
     select case (size (prt_in))
     case (1);  writer%process_mode = " -decay"
     case (2);  writer%process_mode = " -scatter"
@@ -2667,12 +2676,15 @@ diagrams, at least in the testsuite.
     type(string_t) :: progress_string
     type(string_t) :: diagrams_string
     type(string_t) :: cms_string
+    type(string_t) :: parameter_module
     logical :: escape_hyperref
     escape_hyperref = .false.
     if (present (testflag))  escape_hyperref = testflag
     select type (writer)
     type is (omega_omega_writer_t)
        omega_binary = "omega_" // writer%model_name // ".opt"
+    type is (omega_ufo_writer_t)
+       omega_binary = "omega_UFO.opt"
     type is (omega_ovm_writer_t)
        select case (char (writer%model_name))
        case ("SM", "SM_CKM", "SM_Higgs", "2HDM", "2HDM_CKM", &
@@ -2758,6 +2770,37 @@ diagrams, at least in the testsuite.
             char (writer%process_mode), char (writer%process_string), &
             char (restrictions_string), char (diagrams_string), &
             char (writer%extra_options)
+    type is (omega_ufo_writer_t)
+       parameter_module = char (id) // "_par_" // char (writer%model_name)
+       write (unit, "(5A)")  char (id), ".f90: ", char (parameter_module), ".lo"
+       write (unit, "(99A)")  TAB, char (omega_path), &
+            " -o ", char (id), ".f90", &
+            " -model:UFO_dir ", &
+            char (writer%ufo_path), "/", char (writer%model_name), &
+            " -model:exec", &
+            " -target:whizard", &
+            " -target:parameter_module ", char (parameter_module), &
+            " -target:module opr_", char (id), &
+            " -target:md5sum '", writer%md5sum, "'", &
+            char (cms_string), &
+            char (openmp_string), &
+            char (progress_string), &
+            char (kmatrix_string), &
+            char (writer%process_mode), char (writer%process_string), &
+            char (restrictions_string), char (diagrams_string), &
+            char (writer%extra_options)
+       write (unit, "(5A)") "SOURCES += ", char (parameter_module), ".f90"
+       write (unit, "(5A)") "OBJECTS += ", char (parameter_module), ".lo"
+       write (unit, "(5A)")  char (parameter_module), ".f90:"
+       write (unit, "(99A)")  TAB, char (omega_path), &
+            " -model:UFO_dir ", &
+            char (writer%ufo_path), "/", char (writer%model_name), &
+            " -model:exec", &
+            " -target:parameter_module ", char (parameter_module), &
+            " -params", &
+            " -o $@"
+       write (unit, "(5A)")  char (parameter_module), ".lo: ", char (parameter_module), ".f90"
+       write (unit, "(5A)")  TAB, "$(LTFCOMPILE) $<"
     type is (omega_ovm_writer_t)
        write (unit, "(5A)")  char (id), ".hbc:"
        write (unit, "(99A)")  TAB, char (omega_path), &
@@ -2786,6 +2829,11 @@ diagrams, at least in the testsuite.
     write (unit, "(5A)")  TAB, "rm -f ", char (id), ".lo"
     write (unit, "(5A)")  "CLEAN_SOURCES += ", char (id), ".f90"
     select type (writer)
+    type is (omega_ufo_writer_t)
+       write (unit, "(5A)")  "CLEAN_SOURCES += ", char (writer%model_name), ".mdl"
+       write (unit, "(5A)")  "CLEAN_SOURCES += ", char (parameter_module), ".f90"
+       write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (parameter_module), ".mod"
+       write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (parameter_module), ".lo"
     type is (omega_ovm_writer_t)
        write (unit, "(5A)")  "CLEAN_SOURCES += ", char (id), ".hbc"
     end select
@@ -3082,26 +3130,32 @@ cause a segfault.
   public :: omega_make_process_component
 <<Omega interface: procedures>>=
   subroutine omega_make_process_component (entry, component_index, &
-         model_name, prt_in, prt_out, restrictions, openmp_support, &
-         cms_scheme, report_progress, extra_options, diags, diags_color)
+         model_name, prt_in, prt_out, &
+         ufo, ufo_path, restrictions, cms_scheme, &
+         openmp_support, report_progress, extra_options, diags, diags_color)
     class(process_def_entry_t), intent(inout) :: entry
     integer, intent(in) :: component_index
     type(string_t), intent(in) :: model_name
     type(string_t), dimension(:), intent(in) :: prt_in
     type(string_t), dimension(:), intent(in) :: prt_out
-    logical, intent(in), optional :: cms_scheme
+    logical, intent(in), optional :: ufo
+    type(string_t), intent(in), optional :: ufo_path
     type(string_t), intent(in), optional :: restrictions
+    logical, intent(in), optional :: cms_scheme
     logical, intent(in), optional :: openmp_support
     logical, intent(in), optional :: report_progress
-    logical, intent(in), optional :: diags, diags_color
     type(string_t), intent(in), optional :: extra_options
+    logical, intent(in), optional :: diags, diags_color
+    logical :: ufo_model
     class(prc_core_def_t), allocatable :: def
-    allocate (omega_omega_def_t :: def)
+    ufo_model = .false.;  if (present (ufo))  ufo_model = ufo    
+    allocate (omega_def_t :: def)
     select type (def)
-    type is (omega_omega_def_t)
+    class is (omega_def_t)
        call def%init (model_name, prt_in, prt_out, &
-            restrictions, cms_scheme, openmp_support, &
-            report_progress, extra_options, diags, diags_color)
+            .false., ufo_model, ufo_path, &
+            restrictions, cms_scheme, &
+            openmp_support, report_progress, extra_options, diags, diags_color)
     end select
     call entry%process_def_t%import_component (component_index, &
          n_out = size (prt_out), &
@@ -3626,10 +3680,11 @@ parallel make.
     prt_in = [var_str ("e+"), var_str ("e-")]
     prt_out = [var_str ("m+"), var_str ("m-")]
 
-    allocate (omega_omega_def_t :: def)
+    allocate (omega_def_t :: def)
     select type (def)
-    type is (omega_omega_def_t)
-       call def%init (model_name, prt_in, prt_out)
+    type is (omega_def_t)
+       call def%init (model_name, prt_in, prt_out, &
+            ufo = .false., ovm = .false.)
     end select
     allocate (entry)
     call entry%init (var_str ("omega1_a"), model_name = model_name, &
@@ -4228,10 +4283,11 @@ parallel make.
     prt_in = [var_str ("u"), var_str ("ubar")]
     prt_out = [var_str ("d"), var_str ("dbar")]
 
-    allocate (omega_omega_def_t :: def)
+    allocate (omega_def_t :: def)
     select type (def)
-    type is (omega_omega_def_t)
-       call def%init (model_name, prt_in, prt_out)
+    type is (omega_def_t)
+       call def%init (model_name, prt_in, prt_out, &
+            ufo = .false., ovm = .false.)
     end select
     allocate (entry)
     call entry%init (var_str ("prc_omega_4_p"), model_name = model_name, &
@@ -4376,10 +4432,11 @@ method [[compute_amplitude]].
     prt_in = [var_str ("u"), var_str ("ubar")]
     prt_out = [var_str ("d"), var_str ("dbar")]
 
-    allocate (omega_omega_def_t :: def)
+    allocate (omega_def_t :: def)
     select type (def)
-    type is (omega_omega_def_t)
-       call def%init (model_name, prt_in, prt_out)
+    type is (omega_def_t)
+       call def%init (model_name, prt_in, prt_out, &
+            ufo = .false., ovm = .false.)
     end select
     allocate (entry)
     call entry%init (var_str ("prc_omega_5_p"), model_name = model_name, &
@@ -4486,6 +4543,105 @@ method [[compute_amplitude]].
 
 @ %def prc_omega_5
 @
+\subsubsection{UFO model file support}
+Again, the process is $e^- e^+ \to e^- e^+$ for vanishing masses and
+$e=0.3$.  We build the library using the high-level procedure
+[[omega_make_process_component]] and the ``black box''
+[[prc_omega_t]] object.  OMega must be able to digest the specified
+UFO file and provide use with a fresh model file that can be read
+after producing the process code.
+
+For [[GNU make]], [[makeflags]] is set to [[-j1]].  This eliminates a
+potential clash with a [[-j<n>]] flag if this test is called from a
+parallel make.
+<<Omega interface: execute tests>>=
+  call test (prc_omega_6, "prc_omega_6", &
+       "OMega UFO support", &
+       u, results)
+<<Omega interface: test declarations>>=
+  public :: prc_omega_6
+<<Omega interface: tests>>=
+  subroutine prc_omega_6 (u)
+    integer, intent(in) :: u
+    type(process_library_t), target :: lib
+    type(process_def_entry_t), pointer :: entry
+    type(os_data_t) :: os_data
+    type(string_t) :: model_name
+    class(model_data_t), pointer :: model
+    class(vars_t), pointer :: vars
+    type(string_t), dimension(:), allocatable :: prt_in, prt_out
+    type(string_t) :: restrictions
+    type(process_component_def_t), pointer :: config
+    type(prc_omega_t) :: prc1, prc2
+    type(process_constants_t) :: data
+    integer, parameter :: cdf = c_default_float
+    integer, parameter :: ci = c_int
+    real(cdf), dimension(:), allocatable :: par
+    real(cdf), dimension(0:3,4) :: p
+    complex(c_default_complex) :: amp
+    integer :: i
+    logical :: exist
+
+    write (u, "(A)")  "* Test output: prc_omega_6"
+    write (u, "(A)")  "*   Purpose: create simple process with OMega / UFO file"
+    write (u, "(A)")
+
+    call os_data_init (os_data)
+
+    model_name = "SM"
+    model => null ()
+
+    os_data%whizard_modelpath_ufo = "../models/UFO"
+
+    write (u, "(A)")  "* Create process library entry"
+    write (u, "(A)")
+
+    allocate (prt_in (2), prt_out (2))
+    prt_in = [var_str ("e-"), var_str ("e+")]
+    prt_out = prt_in
+    restrictions = "3+4~A"
+
+    allocate (entry)
+    call entry%init (var_str ("omega_6_a"), &
+         model_name = model_name, n_in = 2, n_components = 1)
+
+    call omega_make_process_component (entry, 1, &
+         model_name, prt_in, prt_out, &
+         ufo=.true., ufo_path=os_data%whizard_modelpath_ufo, &
+         report_progress=.true.)
+
+    call entry%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Build and load library"
+
+    call lib%init (var_str ("omega_6"))
+    call lib%append (entry)
+
+    call lib%configure (os_data)
+    call lib%write_makefile (os_data, force = .true.)
+    call lib%clean (os_data, distclean = .false.)
+    call lib%write_driver (force = .true.)
+    call lib%load (os_data)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Probe library API:"
+    write (u, "(A)")
+
+    write (u, "(1x,A,L1)")  "is active                 = ", &
+         lib%is_active ()
+    write (u, "(1x,A,I0)")  "n_processes               = ", &
+         lib%get_n_processes ()
+
+    call lib%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: prc_omega_6"
+
+  end subroutine prc_omega_6
+
+@ %def prc_omega_6
+@
 \subsubsection{Generate matrix element diagrams}
 The same process as before. No amplitude is computed here, instead we just
 generate Feynman (and color flow) diagrams, and check whether PS and PDF
@@ -4526,10 +4682,11 @@ possible.
     prt_in = [var_str ("u"), var_str ("ubar")]
     prt_out = [var_str ("d"), var_str ("dbar")]
 
-    allocate (omega_omega_def_t :: def)
+    allocate (omega_def_t :: def)
     select type (def)
-    type is (omega_omega_def_t)
+    type is (omega_def_t)
        call def%init (model_name, prt_in, prt_out, &
+            ufo = .false., ovm = .false., &
             diags = .true., diags_color = .true.)
     end select
     allocate (entry)
