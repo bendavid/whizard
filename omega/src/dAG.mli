@@ -1,4 +1,4 @@
-(* $Id: dAG.mli 7444 2016-02-17 15:37:20Z jr_reuter $
+(* dAG.mli --
 
    Copyright (C) 1999-2016 by
 
@@ -280,7 +280,6 @@ module type T =
     trees. *)
     val count_trees : node -> t -> int
 
-    val rcs : RCS.t
    end
 
 module Make (F : Forest) :

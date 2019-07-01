@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -64,8 +64,6 @@ module phs_wood_uti
   public :: phs_wood_6
   public :: phs_wood_vis_1
 
-
-
 contains
 
   subroutine phs_wood_1 (u)
@@ -77,16 +75,16 @@ contains
     real(default) :: sqrts
     integer :: u_phs, iostat
     character(32) :: buffer
-    
+
     write (u, "(A)")  "* Test output: phs_wood_1"
     write (u, "(A)")  "*   Purpose: initialize and display &
          &phase-space configuration data"
     write (u, "(A)")
-    
+
     call model%init_test ()
 
     call syntax_phs_forest_init ()
-    
+
     write (u, "(A)")  "* Initialize a process"
     write (u, "(A)")
 
@@ -121,7 +119,7 @@ contains
 
     sqrts = 1000._default
     call phs_data%configure (sqrts)
-       
+
     call phs_data%write (u)
     write (u, "(A)")
 
@@ -129,14 +127,14 @@ contains
     type is (phs_wood_config_t)
        call phs_data%write_forest (u)
     end select
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
 
     close (u_phs)
     call phs_data%final ()
     call model%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: phs_wood_1"
 
@@ -152,11 +150,11 @@ contains
     class(phs_t), pointer :: phs => null ()
     type(vector4_t), dimension(2) :: p, q
     integer :: u_phs
-    
+
     write (u, "(A)")  "* Test output: phs_wood_2"
     write (u, "(A)")  "*   Purpose: test simple single-channel phase space"
     write (u, "(A)")
-    
+
     call model%init_test ()
     call flv%init (25, model)
 
@@ -181,16 +179,16 @@ contains
     call phs_data%configure (sqrts)
 
     call phs_data%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Initialize the phase-space instance"
     write (u, "(A)")
 
     call phs_data%allocate_instance (phs)
     call phs%init (phs_data)
-       
+
     call phs%write (u, verbose=.true.)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Set incoming momenta"
     write (u, "(A)")
@@ -202,7 +200,7 @@ contains
     call phs%set_incoming_momenta (p)
     call phs%compute_flux ()
     call phs%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Compute phase-space point &
          &for x = 0.125, 0.5"
@@ -216,7 +214,7 @@ contains
     type is (phs_wood_t)
        call phs%write_forest (u)
     end select
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Inverse kinematics"
     write (u, "(A)")
@@ -224,14 +222,14 @@ contains
     call phs%get_outgoing_momenta (q)
     call phs%final ()
     deallocate (phs)
-    
+
     call phs_data%allocate_instance (phs)
     call phs%init (phs_data)
-       
+
     call phs%set_incoming_momenta (p)
     call phs%compute_flux ()
     call phs%set_outgoing_momenta (q)
-    
+
     call phs%inverse ()
     call phs%write (u)
     write (u, "(A)")
@@ -239,14 +237,14 @@ contains
     type is (phs_wood_t)
        call phs%write_forest (u)
     end select
-    
+
     call phs%final ()
     deallocate (phs)
-    
+
     close (u_phs)
     call phs_data%final ()
     call model%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: phs_wood_2"
 
@@ -260,15 +258,15 @@ contains
     class(phs_config_t), allocatable :: phs_data
     integer :: iostat
     character(80) :: buffer
-   
+
     write (u, "(A)")  "* Test output: phs_wood_3"
     write (u, "(A)")  "*   Purpose: generate a phase-space configuration"
     write (u, "(A)")
-    
+
     call model%init_test ()
 
     call syntax_phs_forest_init ()
-    
+
     write (u, "(A)")  "* Initialize a process and phase-space parameters"
     write (u, "(A)")
 
@@ -298,13 +296,13 @@ contains
           write (u, "(A)") trim (buffer)
        end do
     end select
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
 
     call phs_data%final ()
     call model%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: phs_wood_3"
 
@@ -322,15 +320,15 @@ contains
     real(default) :: E, pL
     type(vector4_t), dimension(2) :: p
     type(vector4_t), dimension(3) :: q
-   
+
     write (u, "(A)")  "* Test output: phs_wood_4"
     write (u, "(A)")  "*   Purpose: generate a phase-space configuration"
     write (u, "(A)")
-    
+
     call model%init_test ()
 
     call syntax_phs_forest_init ()
-    
+
     write (u, "(A)")  "* Initialize a process and phase-space parameters"
     write (u, "(A)")
 
@@ -368,14 +366,14 @@ contains
           write (u, "(A)") trim (buffer)
        end do
     end select
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Initialize the phase-space instance"
     write (u, "(A)")
 
     call phs_data%allocate_instance (phs)
     call phs%init (phs_data)
-       
+
     write (u, "(A)")  "* Set incoming momenta"
     write (u, "(A)")
 
@@ -389,7 +387,7 @@ contains
 
     call phs%set_incoming_momenta (p)
     call phs%compute_flux ()
-    
+
     write (u, "(A)")  "* Compute phase-space point &
          &for x = 0.1, 0.2, 0.3, 0.4, 0.5"
     write (u, "(A)")
@@ -398,7 +396,7 @@ contains
          [0.1_default, 0.2_default, 0.3_default, 0.4_default, 0.5_default])
     call phs%evaluate_other_channels (1)
     call phs%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Inverse kinematics"
     write (u, "(A)")
@@ -406,17 +404,17 @@ contains
     call phs%get_outgoing_momenta (q)
     call phs%final ()
     deallocate (phs)
-    
+
     call phs_data%allocate_instance (phs)
     call phs%init (phs_data)
-       
+
     call phs%set_incoming_momenta (p)
     call phs%compute_flux ()
     call phs%set_outgoing_momenta (q)
-    
+
     call phs%inverse ()
     call phs%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
 
@@ -425,7 +423,7 @@ contains
 
     call phs_data%final ()
     call model%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: phs_wood_4"
 
@@ -437,15 +435,15 @@ contains
     type(process_constants_t) :: process_data
     type(phs_parameters_t) :: phs_par
     class(phs_config_t), allocatable :: phs_data
-   
+
     write (u, "(A)")  "* Test output: phs_wood_5"
     write (u, "(A)")  "*   Purpose: generate a phase-space configuration"
     write (u, "(A)")
-    
+
     call model%init_test ()
 
     call syntax_phs_forest_init ()
-    
+
     write (u, "(A)")  "* Initialize a process and phase-space parameters"
     write (u, "(A)")
 
@@ -478,7 +476,7 @@ contains
 
     call phs_data%final ()
     call model%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: phs_wood_5"
 
@@ -493,15 +491,15 @@ contains
     logical :: exist, found, match
     integer :: u_phs
     character(*), parameter :: filename = "phs_wood_6_p.phs"
-   
+
     write (u, "(A)")  "* Test output: phs_wood_6"
     write (u, "(A)")  "*   Purpose: generate and check  phase-space file"
     write (u, "(A)")
-    
+
     call model%init_test ()
 
     call syntax_phs_forest_init ()
-    
+
     write (u, "(A)")  "* Initialize a process and phase-space parameters"
     write (u, "(A)")
 
@@ -510,7 +508,7 @@ contains
     process_data%md5sum = "1234567890abcdef1234567890abcdef"
     allocate (phs_wood_config_t :: phs_data)
     call phs_data%init (process_data, model)
-    
+
     phs_par%sqrts = 1000
     select type (phs_data)
     type is (phs_wood_config_t)
@@ -529,7 +527,7 @@ contains
 
     write (u, "(A)")  "* Check phase-space file (should fail)"
     write (u, "(A)")
-    
+
     select type (phs_data)
     type is (phs_wood_config_t)
        call phs_data%read_phs_file (exist, found, match)
@@ -721,7 +719,7 @@ contains
 
     call phs_data%final ()
     call model%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: phs_wood_6"
 
@@ -739,17 +737,17 @@ contains
     logical :: exist, exist_pdf, exist_ps
     integer :: u_phs, iostat, u_vis
     character(95) :: buffer
-    
+
     write (u, "(A)")  "* Test output: phs_wood_vis_1"
     write (u, "(A)")  "*   Purpose: visualizing the &
          &phase-space configuration"
     write (u, "(A)")
-    
+
     call os_data_init (os_data)
     call model%init_test ()
 
     call syntax_phs_forest_init ()
-    
+
     write (u, "(A)")  "* Initialize a process"
     write (u, "(A)")
 
@@ -788,7 +786,7 @@ contains
 
     sqrts = 1000._default
     call phs_data%configure (sqrts)
-       
+
     call phs_data%write (u)
     write (u, "(A)")
 
@@ -796,10 +794,10 @@ contains
     type is (phs_wood_config_t)
        call phs_data%write_forest (u)
     end select
-    
+
     vis_file = "phs_wood_vis_1_phs.tex"
     ps_file  = "phs_wood_vis_1_phs.ps"
-    pdf_file = "phs_wood_vis_1_phs.pdf"    
+    pdf_file = "phs_wood_vis_1_phs.pdf"
     inquire (file = char (vis_file), exist = exist)
     if (exist) then
        u_vis = free_unit ()
@@ -824,15 +822,15 @@ contains
        write (u, "(A)")  "[Visualize PDF file exists and is nonempty]"
     else
        write (u, "(A)")  "[Visualize PDF file is missing/non-regular]"
-    end if        
-    
+    end if
+
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
 
     close (u_phs)
     call phs_data%final ()
     call model%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: phs_wood_vis_1"
 
@@ -851,8 +849,8 @@ contains
     write (u_phs, "(A,A)")  "   md5sum_model_par  = ", '""'
     write (u_phs, "(A,A)")  "   md5sum_phs_config = ", '""'
     write (u_phs, "(A)")  "   sqrts         = 1000"
-    write (u_phs, "(A)")  "   m_threshold_s =   50"    
-    write (u_phs, "(A)")  "   m_threshold_t =  100"    
+    write (u_phs, "(A)")  "   m_threshold_s =   50"
+    write (u_phs, "(A)")  "   m_threshold_t =  100"
     write (u_phs, "(A)")  "   off_shell = 2"
     write (u_phs, "(A)")  "   t_channel = 6"
     write (u_phs, "(A)")  "   keep_nonresonant = T"

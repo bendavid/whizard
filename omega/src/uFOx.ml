@@ -1,4 +1,4 @@
-(* $Id: vertex.ml 7444 2016-02-17 15:37:20Z jr_reuter $
+(* vertex.ml --
 
    Copyright (C) 1999-2016 by
 
@@ -562,14 +562,20 @@ module Value =
 
     type builtin =
       | Sqrt
+      | Cos
+      | Sin
       | Conj
 
     let builtin_to_string = function
       | Sqrt -> "sqrt"
+      | Cos -> "cos"
+      | Sin -> "sin"
       | Conj -> "conj"
 
     let builtin_of_string = function
-      | "cname.sqrt" -> Sqrt
+      | "cmath.sqrt" -> Sqrt
+      | "cmath.cos" -> Cos
+      | "cmath.sin" -> Sin
       | "complexconjugate" -> Conj
       | name -> failwith ("UFOx.Value: unsupported function: " ^ name)
 
@@ -610,6 +616,34 @@ module Value =
 	 builtin_to_string f ^
 	   "(" ^ String.concat "," (List.map to_string es) ^ ")"
 	 
+    let rec to_coupling atom = function
+      | Integer i -> Coupling.Const i
+      | Rational q ->
+         let n, d = Q.to_ratio q in
+         Coupling.Quot (Coupling.Const n, Coupling.Const d)
+      | Real x -> Coupling.Atom (atom (string_of_float x))
+      | Product es -> Coupling.Prod (List.map (to_coupling atom) es)
+      | Variable s -> Coupling.Atom (atom s)
+      | Complex (r, i) ->
+         Coupling.Sum [Coupling.Atom (atom (string_of_float r));
+                       Coupling.Prod [Coupling.I;
+                                      Coupling.Atom (atom (string_of_float i))]]
+      | Sum es -> Coupling.Sum (List.map (to_coupling atom) es)
+      | Difference (e1, e2) ->
+         Coupling.Diff (to_coupling atom e1, to_coupling atom e2)
+      | Quotient (e1, e2) ->
+         Coupling.Quot (to_coupling atom e1, to_coupling atom e2)
+      | Power (e1, Integer e2) ->
+         Coupling.Pow (to_coupling atom e1, e2)
+      | Application (Sin, [e]) -> Coupling.Sin (to_coupling atom e)
+      | Application (Cos, [e]) -> Coupling.Cos (to_coupling atom e)
+      | Application (Sqrt, [e]) -> Coupling.Sqrt (to_coupling atom e)
+      | Application (Conj, [e]) -> Coupling.Conj (to_coupling atom e)
+      | Power (e1, _) ->
+         invalid_arg "UFOx.Value.to_coupling: non-integer power"
+      | Application (_, _) ->
+         failwith "UFOx.Value.to_coupling: more than one argument list"
+
     let compress terms = terms
 
     let rec of_expr e =
@@ -618,6 +652,7 @@ module Value =
     and of_expr' = function
       | S.Integer i -> Integer i
       | S.Float x -> Real x
+      | S.Variable "cmath.pi" -> Variable "pi"
       | S.Variable name -> Variable name
       | S.Sum (e1, e2) ->
 	 begin match of_expr e1, of_expr e2 with

@@ -2,7 +2,7 @@
 ?vis_history = false
 ?integration_timer = false
 ?pacify = true
-SM.me =>  0.0000000E+00
+SM.me =>  0.00000E+00
 $method = "omega"
 | Process library 'pythia6_1_lib': recorded process 'pythia6_1_p1'
 | Process library 'pythia6_1_lib': compiling ...
@@ -17,7 +17,7 @@ $method = "omega"
 seed = 0
 $phs_method = "wood"
 $integration_method = "vamp"
-sqrts =  1.0000000E+03
+sqrts =  1.00000E+03
 openmp_num_threads = 1
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
@@ -119,15 +119,17 @@ Contents of pythia6_1a.debug:
    Helicity handling  = drop
    Keep correlations  = F
 ------------------------------------------------------------------------
-   Squared matrix el. =  8.0544203E-03
-   Event weight       =  1.0000000E+00
+   Squared matrix el. (ref) =  8.05442E-03
+   Squared matrix el. (prc) =  8.05442E-03
+   Event weight (ref)       =  1.00000E+00
+   Event weight (prc)       =  1.00000E+00
 ------------------------------------------------------------------------
    Selected MCI group = 1
    Selected term      = 1
    Selected channel   = 1
 ------------------------------------------------------------------------
    Passed selection   = T
-   Reweighting factor =  1.0000000E+00
+   Reweighting factor =  1.00000E+00
    Analysis flag      = T
 ========================================================================
  Event transform: trivial (hard process)
@@ -220,8 +222,9 @@ Sum of outgoing momenta: p(0:3) =         1000.000        0.000        0.000    
    ps_fsr_active                =  T
    ps_tau_dec                   =  F
    muli_active                  =  F
+   hadronization_active         =  F
  General settings:
-   shower_method                =  PYTHIA6
+   method                       =  PYTHIA6
    shower_verbose               =  F
    ps_mass_cutoff               =  1.000000000000E+00
    ps_max_n_flavors             =  5
@@ -229,8 +232,6 @@ Sum of outgoing momenta: p(0:3) =         1000.000        0.000        0.000    
  FSR settings:
    ps_fsr_lambda                =  2.900000000000E-01
    ps_fsr_alpha_s_running       =  T
- Hadronization settings:
-   hadronization_active         =  F
  Matching Settings:
    mlm_matching                 =  F
    ckkw_matching                =  F
@@ -239,19 +240,19 @@ Sum of outgoing momenta: p(0:3) =         1000.000        0.000        0.000    
 ========================================================================
  Local variables:
 ------------------------------------------------------------------------
-sqrts* =  1.0000000E+03
-sqrts_hat* =>  1.0000000E+03
+sqrts* =  1.00000E+03
+sqrts_hat* =>  1.00000E+03
 n_in* => 2
 n_out* => 32
 n_tot* => 34
 $process_id* => "pythia6_1_p1"
 process_num_id* => [unknown integer]
-sqme* =>  8.0544203E-03
-sqme_ref* =>  8.0544203E-03
+sqme* =>  8.05442E-03
+sqme_ref* =>  8.05442E-03
 event_index* => 1
-event_weight* =>  1.0000000E+00
-event_weight_ref* =>  1.0000000E+00
-event_excess* =>  0.0000000E+00
+event_weight* =>  1.00000E+00
+event_weight_ref* =>  1.00000E+00
+event_excess* =>  0.00000E+00
 ------------------------------------------------------------------------
  subevent:
  1 prt(i:11|-5.0000000E+02; 0.0000000E+00, 0.0000000E+00,-5.0000000E+02| 0.0000000E+00| 1)
@@ -298,15 +299,17 @@ Contents of pythia6_1b.debug:
    Helicity handling  = drop
    Keep correlations  = F
 ------------------------------------------------------------------------
-   Squared matrix el. =  4.4583137E-02
-   Event weight       =  1.0000000E+00
+   Squared matrix el. (ref) =  4.45831E-02
+   Squared matrix el. (prc) =  4.45831E-02
+   Event weight (ref)       =  1.00000E+00
+   Event weight (prc)       =  1.00000E+00
 ------------------------------------------------------------------------
    Selected MCI group = 1
    Selected term      = 1
    Selected channel   = 1
 ------------------------------------------------------------------------
    Passed selection   = T
-   Reweighting factor =  1.0000000E+00
+   Reweighting factor =  1.00000E+00
    Analysis flag      = T
 ========================================================================
  Event transform: trivial (hard process)
@@ -377,8 +380,9 @@ Sum of outgoing momenta: p(0:3) =         1000.000        0.000        0.000    
    ps_fsr_active                =  T
    ps_tau_dec                   =  F
    muli_active                  =  F
+   hadronization_active         =  T
  General settings:
-   shower_method                =  PYTHIA6
+   method                       =  PYTHIA6
    shower_verbose               =  F
    ps_mass_cutoff               =  1.000000000000E+00
    ps_max_n_flavors             =  5
@@ -386,8 +390,6 @@ Sum of outgoing momenta: p(0:3) =         1000.000        0.000        0.000    
  FSR settings:
    ps_fsr_lambda                =  2.900000000000E-01
    ps_fsr_alpha_s_running       =  T
- Hadronization settings:
-   hadronization_active         =  T
  Matching Settings:
    mlm_matching                 =  F
    ckkw_matching                =  F
@@ -523,8 +525,9 @@ Sum of outgoing momenta: p(0:3) =         1000.000        0.000        0.000    
    ps_fsr_active                =  T
    ps_tau_dec                   =  F
    muli_active                  =  F
+   hadronization_active         =  T
  General settings:
-   shower_method                =  PYTHIA6
+   method                       =  PYTHIA6
    shower_verbose               =  F
    ps_mass_cutoff               =  1.000000000000E+00
    ps_max_n_flavors             =  5
@@ -532,29 +535,37 @@ Sum of outgoing momenta: p(0:3) =         1000.000        0.000        0.000    
  FSR settings:
    ps_fsr_lambda                =  2.900000000000E-01
    ps_fsr_alpha_s_running       =  T
- Hadronization settings:
-   hadronization_active         =  T
  Matching Settings:
    mlm_matching                 =  F
    ckkw_matching                =  F
  PYTHIA6 specific settings:
    ps_PYTHIA_PYGIVE             = ''
+------------------------------------------------------------------------
+ Hadronization settings:
+------------------------------------------------------------------------
+ Master switches:
+   active                =  T
+ General settings:
+   hadron_method         =  PYTHIA6
+ pT generation parameters
+   enhanced_fraction     =   1.000000000000E-02
+   enhanced_width        =   2.000000000000E+00
 ========================================================================
  Local variables:
 ------------------------------------------------------------------------
-sqrts* =  1.0000000E+03
-sqrts_hat* =>  1.0000000E+03
+sqrts* =  1.00000E+03
+sqrts_hat* =>  1.00000E+03
 n_in* => 2
 n_out* => 59
 n_tot* => 61
 $process_id* => "pythia6_1_p1"
 process_num_id* => [unknown integer]
-sqme* =>  4.4583137E-02
-sqme_ref* =>  4.4583137E-02
+sqme* =>  4.45831E-02
+sqme_ref* =>  4.45831E-02
 event_index* => 1
-event_weight* =>  1.0000000E+00
-event_weight_ref* =>  1.0000000E+00
-event_excess* =>  0.0000000E+00
+event_weight* =>  1.00000E+00
+event_weight_ref* =>  1.00000E+00
+event_excess* =>  0.00000E+00
 ------------------------------------------------------------------------
  subevent:
  1 prt(i:11|-5.0000000E+02; 0.0000000E+00, 0.0000000E+00,-5.0000000E+02| 0.0000000E+00| 1)

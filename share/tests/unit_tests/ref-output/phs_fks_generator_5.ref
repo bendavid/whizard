@@ -1,51 +1,125 @@
 * Test output: phs_fks_generator_5
-* Purpose: Create FSR phase space with fixed resonances
+* Puropse: Perform threshold on-shell projection of
+*          Born momenta and create a real phase-space
+*          point from those.
 
-* Test process: e+ e- -> W+ W- b b~
 * Use four-particle phase space containing:
- E =   2.5000E+02
- P =   0.0000E+00  0.0000E+00  2.5000E+02
- E =   2.5000E+02
- P =   0.0000E+00  0.0000E+00 -2.5000E+02
- E =   1.4591E+02
- P =   5.0397E+01  8.6742E+01 -6.9036E+01
- E =   2.0811E+02
- P =  -4.4076E+01 -1.8634E+02  1.3480E+01
- E =   2.6256E+01
- P =  -2.5123E+01 -1.0954E+00 -6.2770E+00
- E =   1.1973E+02
- P =   1.8801E+01  1.0070E+02  6.1833E+01
-******************************
+ E =   1.8000E+02
+ P =   0.0000E+00  0.0000E+00  1.8000E+02
+ E =   1.8000E+02
+ P =   0.0000E+00  0.0000E+00 -1.8000E+02
+ E =   1.1712E+02
+ P =   5.6912E+01 -4.0024E+01 -4.9076E+01
+ E =   9.8919E+01
+ P =   5.6022E+01 -8.3030E+00 -1.0503E+01
+ E =   6.2259E+01
+ P =  -6.0008E+01  4.7536E+00  1.5329E+01
+ E =   8.1704E+01
+ P =  -5.2927E+01  4.3573E+01  4.4250E+01
+Momentum conservation: CHECK
+**********************
 
+Get boost projection system -> CMS:
+ L00 =   1.0465E+00
+ L0j =  -1.9527E-02 -2.2247E-01 -2.1286E-01
+ L10 =  -1.9527E-02
+ L1j =   1.0002E+00  2.1227E-03  2.0310E-03
+ L20 =  -2.2247E-01
+ L2j =   2.1227E-03  1.0242E+00  2.3140E-02
+ L30 =  -2.1286E-01
+ L3j =   2.0310E-03  2.3140E-02  1.0221E+00
+**********************
+
+* Perform onshell-projection:
+ E =   1.8000E+02
+ P =   0.0000E+00  0.0000E+00  1.8000E+02
+ E =   1.8000E+02
+ P =   0.0000E+00  0.0000E+00 -1.8000E+02
+ E =   1.1302E+02
+ P =   6.2763E+01 -2.8810E+01 -3.9215E+01
+ E =   1.2449E+02
+ P =  -4.1350E+01  6.0763E+01  6.0244E+01
+ E =   6.6977E+01
+ P =  -6.6122E+01 -9.4552E+00  2.6023E+00
+ E =   5.5507E+01
+ P =   4.4708E+01 -2.2498E+01 -2.3631E+01
+* Check momentum conservation:
+Momentum conservation: CHECK
+* Check invariant masses:
+inv(W+, b, gl): CHECK
+inv(W-, bbar): CHECK
+* Sum of energies equal to sqrts?
+Initial state: T
+Final state  : T
+ E =   1.8000E+02
+ P =   0.0000E+00  0.0000E+00  1.8000E+02
+ E =   1.8000E+02
+ P =   0.0000E+00  0.0000E+00 -1.8000E+02
+ E =   1.1302E+02
+ P =   6.2763E+01 -2.8810E+01 -3.9215E+01
+ E =   1.2449E+02
+ P =  -4.1350E+01  6.0763E+01  6.0244E+01
+ E =   6.6977E+01
+ P =  -6.6122E+01 -9.4552E+00  2.6023E+00
+ E =   5.5507E+01
+ P =   4.4708E+01 -2.2498E+01 -2.3631E+01
 * Use random numbers:
-x1: .50 x2: .25 x3: .75
- E =   2.5000E+02
- P =   0.0000E+00  0.0000E+00  2.5000E+02
- E =   2.5000E+02
- P =   0.0000E+00  0.0000E+00 -2.5000E+02
- E =   1.4174E+02
- P =   5.0990E+01  7.8075E+01 -7.0253E+01
- E =   2.0811E+02
- P =  -4.4076E+01 -1.8634E+02  1.3480E+01
- E =   1.4363E+01
- P =  -1.2874E+01 -2.0473E+00 -4.3258E+00
- E =   1.1973E+02
- P =   1.8801E+01  1.0070E+02  6.1833E+01
- E =   1.6061E+01
- P =  -1.2841E+01  9.6188E+00 -7.3444E-01
+x1: .50 x2: .25x3:  .60
+* With these, the following radiation variables have been produced:
+xi_tilde: 0.50
+xi_max:
+ 0.74 0.74
+y:
+ 0.65 0.61
+phi: 3.77
 ------------------------------------------------------------------------
- E =   2.5000E+02
- P =   0.0000E+00  0.0000E+00  2.5000E+02
- E =   2.5000E+02
- P =   0.0000E+00  0.0000E+00 -2.5000E+02
- E =   1.4591E+02
- P =   5.0397E+01  8.6742E+01 -6.9036E+01
- E =   1.5594E+02
- P =  -4.5485E+00 -1.3257E+02 -1.6109E+01
- E =   2.6256E+01
- P =  -2.5123E+01 -1.0954E+00 -6.2770E+00
- E =   7.9436E+01
- P =   3.3698E+01  6.8970E+01  2.0002E+01
- E =   9.2458E+01
- P =  -5.4424E+01 -2.2041E+01  7.1420E+01
+* Produce real momenta from on-shell phase space:
+emitter: 5
+* Check momentum conservation:
+Momentum conservation: CHECK
+* Check invariant masses:
+inv(W+, b, gl): CHECK
+inv(W-, bbar): CHECK
+* Sum of energies equal to sqrts?
+Initial state: T
+Final state  : T
+ E =   1.8000E+02
+ P =   0.0000E+00  0.0000E+00  1.8000E+02
+ E =   1.8000E+02
+ P =   0.0000E+00  0.0000E+00 -1.8000E+02
+ E =   1.0804E+02
+ P =   5.5971E+01 -2.7243E+01 -3.6480E+01
+ E =   1.2449E+02
+ P =  -4.1350E+01  6.0763E+01  6.0244E+01
+ E =   3.4117E+01
+ P =  -2.9354E+01  5.5814E+00  1.5923E+01
+ E =   5.5507E+01
+ P =   4.4708E+01 -2.2498E+01 -2.3631E+01
+ E =   3.7842E+01
+ P =  -2.9975E+01 -1.6603E+01 -1.6056E+01
+emitter: 6
+* Check momentum conservation:
+Momentum conservation: CHECK
+* Check invariant masses:
+inv(W+, b, gl): CHECK
+inv(W-, bbar): CHECK
+* Sum of energies equal to sqrts?
+Initial state: T
+Final state  : T
+ E =   1.8000E+02
+ P =   0.0000E+00  0.0000E+00  1.8000E+02
+ E =   1.8000E+02
+ P =   0.0000E+00  0.0000E+00 -1.8000E+02
+ E =   1.1302E+02
+ P =   6.2763E+01 -2.8810E+01 -3.9215E+01
+ E =   1.1772E+02
+ P =  -3.6400E+01  5.5338E+01  5.4808E+01
+ E =   6.6977E+01
+ P =  -6.6122E+01 -9.4552E+00  2.6023E+00
+ E =   3.4123E+01
+ P =   2.2530E+01 -2.5151E+01  2.5568E+00
+ E =   2.8156E+01
+ P =   1.7229E+01  8.0784E+00 -2.0752E+01
 ------------------------------------------------------------------------
+
+* Test output end: phs_fks_generator_5

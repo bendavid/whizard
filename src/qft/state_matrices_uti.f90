@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -53,6 +53,7 @@ module state_matrices_uti
   public :: state_matrix_3
   public :: state_matrix_4
   public :: state_matrix_5
+  public :: state_matrix_6
 
 contains
 
@@ -132,8 +133,6 @@ contains
     type(state_matrix_t) :: state
     type(state_matrix_t), dimension(:), allocatable :: single_state
     type(state_matrix_t) :: correlated_state
-    complex(default) :: z, val
-    complex(default), dimension(-1:1) :: v
     integer :: f, h11, h12, h21, h22, i, mode
     type(flavor_t), dimension(2) :: flv
     type(color_t), dimension(2) :: col
@@ -149,9 +148,6 @@ contains
     write (u, "(A)")  "*  Initialization"
     write (u, "(A)")    
         
-    z = 1 / 2._default
-    v(-1) = (0.6_default, 0._default)
-    v( 1) = (0._default, 0.8_default)
     call state%init ()
     do f = 1, 2
        do h11 = -1, 1, 2
@@ -163,7 +159,6 @@ contains
                    call col(2)%init ([-1])
                    call hel%init ([h11,h12], [h21, h22])
                    call qn%init (flv, col, hel)
-                   val = z * v(h11) * v(h12) * conjg (v(h21) * v(h22))
                    call state%add_state (qn)
                 end do
              end do
@@ -265,9 +260,7 @@ contains
   subroutine state_matrix_4 (u)
     integer, intent(in) :: u
     type(state_matrix_t), allocatable :: state
-    complex(default) :: z, val
-    complex(default), dimension(-1:1) :: v
-    integer :: f, h11, h12, h21, h22, i, mode
+    integer :: f, h11, h12, h21, h22, i
     type(flavor_t), dimension(2) :: flv
     type(color_t), dimension(2) :: col
     type(helicity_t), dimension(2) :: hel
@@ -284,9 +277,6 @@ contains
         
     allocate (state)
 
-    z = 1 / 2._default
-    v(-1) = (0.6_default, 0._default)
-    v( 1) = (0._default, 0.8_default)
     call state%init ()
     do f = 1, 2
        do h11 = -1, 1, 2
@@ -296,9 +286,8 @@ contains
                    call flv%init ([f, -f])
                    call col(1)%init ([1])
                    call col(2)%init ([-1])
-                   call hel%init ([h11,h12], [h21, h22])
+                   call hel%init ([h11, h12], [h21, h22])
                    call qn%init (flv, col, hel)
-                   val = z * v(h11) * v(h12) * conjg (v(h21) * v(h22))
                    call state%add_state (qn)
                 end do
              end do
@@ -479,6 +468,70 @@ contains
     end subroutine check
 
   end subroutine state_matrix_5
+
+  subroutine state_matrix_6 (u)
+    integer, intent(in) :: u
+    type(state_matrix_t), allocatable :: state_orig, state_reduced
+    type(flavor_t), dimension(4) :: flv
+    type(helicity_t), dimension(4) :: hel
+    type(color_t), dimension(4) :: col
+    type(quantum_numbers_t), dimension(4) :: qn
+    type(quantum_numbers_mask_t), dimension(4) :: qn_mask
+    integer :: h1, h2, h3 , h4
+    integer :: n_states = 0
+    
+    write (u, "(A)") "* Test output: state_matrix_6"
+    write (u, "(A)") "* Purpose: Check state matrix reduction"
+    write (u, "(A)")
+
+    write (u, "(A)") "* Set up helicity-diagonal state matrix"
+    write (u, "(A)") 
+
+    allocate (state_orig)
+    call state_orig%init ()
+
+    call flv%init ([11, -11, 1, -1])
+    call col(3)%init ([1])
+    call col(4)%init ([-1])
+    do h1 = -1, 1, 2
+       do h2 = -1, 1, 2
+          do h3 = -1, 1, 2
+             do h4 = -1, 1, 2
+                n_states = n_states + 1
+                call hel%init ([h1, h2, h3, h4], [h1, h2, h3, h4])
+                call qn%init (flv, col, hel)
+                call state_orig%add_state (qn)
+             end do
+          end do
+       end do
+    end do 
+    call state_orig%freeze ()
+
+    write (u, "(A)") "* Original state: "
+    write (u, "(A)")
+    call state_orig%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Setup quantum mask: "
+
+    call qn_mask%init ([.false., .false., .false., .false.], &
+                       [.true., .true., .true., .true.], &
+                       [.false., .false., .true., .true.])
+    call quantum_numbers_mask_write (qn_mask, u)
+    write (u, "(A)")
+    write (u, "(A)") "* Reducing the state matrix using above mask"
+    write (u, "(A)") 
+    allocate (state_reduced)
+    call state_orig%reduce (qn_mask, state_reduced)
+
+    write (u, "(A)") "* Reduced state matrix: "
+    call state_reduced%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)") "* Test output end: state_matrix_6"
+
+    
+  end subroutine state_matrix_6
 
 
 end module state_matrices_uti

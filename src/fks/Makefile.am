@@ -2,7 +2,7 @@
 ##
 ## Process this file with automake to produce Makefile.in
 #
-# Copyright (C) 1999-2016 by 
+# Copyright (C) 1999-2016 by
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -10,13 +10,13 @@
 #     Christian Speckner <cnspeckn@googlemail.com>
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
-# under the terms of the GNU General Public License as published by 
+# under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2, or (at your option)
 # any later version.
 #
 # WHIZARD is distributed in the hope that it will be useful, but
 # WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
@@ -37,13 +37,12 @@ libfks_la_SOURCES = \
   virtual.f90 \
   real_subtraction.f90 \
   dglap_remnant.f90 \
-  nlo_controller.f90 \
-  phs_fks.f90
+  nlo_color_data.f90 \
+  dispatch_fks.f90
 
 libfks_ut_la_SOURCES = \
-  phs_fks_uti.f90 phs_fks_ut.f90 \
   fks_regions_uti.f90 fks_regions_ut.f90 \
-  nlo_controller_uti.f90 nlo_controller_ut.f90
+  nlo_color_data_ut.f90 nlo_color_data_uti.f90
 
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = fks.nw
@@ -76,31 +75,32 @@ module_lists = \
   ../model_features/Modules \
   ../types/Modules \
   ../particles/Modules \
+  ../threshold/Modules \
   ../matrix_elements/Modules \
   ../beams/Modules \
   ../me_methods/Modules \
   ../phase_space/Modules \
   ../variables/Modules \
-  ../threshold/Modules
+  ../blha/Modules
 
 $(module_lists):
 	$(MAKE) -C `dirname $@` Modules
 
+Module_dependencies.sed: $(libfks_la_SOURCES) $(libfks_ut_la_SOURCES)
 Module_dependencies.sed: $(module_lists)
 	@rm -f $@
 	echo 's/, *only:.*//' >> $@
 	echo 's/, *&//' >> $@
 	echo 's/, *.*=>.*//' >> $@
 	echo 's/$$/.lo/' >> $@
-	for list in $^; do \
-	  dir="`dirname $$list`"; \
-	  for mod in `cat $$list`; do \
-	    echo 's!: '$$mod'.lo$$!': $$dir/$$mod'.lo!' >> $@; \
-	  done ; \
+	for list in $(module_lists); do \
+		dir="`dirname $$list`"; \
+		for mod in `cat $$list`; do \
+			echo 's!: '$$mod'.lo$$!': $$dir/$$mod'.lo!' >> $@; \
+		done \
 	done
 
 DISTCLEANFILES = Module_dependencies.sed
-
 
 # The following line just says
 #    include Makefile.depend
@@ -118,14 +118,14 @@ Makefile.depend: $(libfks_la_SOURCES) ${libfks_ut_la_SOURCES}
 	          -f Module_dependencies.sed; \
 	done > $@
 
-DISTCLEANFILES += Makefile.depend 
+DISTCLEANFILES += Makefile.depend
 
 # Fortran90 module files are generated at the same time as object files
 .lo.$(FC_MODULE_EXT):
 	@:
 #	touch $@
 
-AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../parsing -I../user -I../rng -I../physics -I../qft -I../model_features -I../expr_base -I../types -I../particles -I../matrix_elements -I../beams -I../me_methods -I../phase_space -I../variables -I../threshold -I../lhapdf -I../pdf_builtin -I../fastjet
+AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../parsing -I../user -I../rng -I../physics -I../qft -I../model_features -I../expr_base -I../types -I../particles -I../matrix_elements -I../beams -I../me_methods -I../phase_space -I../variables -I../blha -I../threshold -I../lhapdf -I../pdf_builtin -I../fastjet
 
 
 ########################################################################

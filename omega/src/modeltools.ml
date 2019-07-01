@@ -1,4 +1,4 @@
-(* $Id: modeltools.ml 7653 2016-07-18 11:37:04Z ohl $
+(* modeltools.ml --
 
    Copyright (C) 1999-2016 by
 
@@ -21,13 +21,6 @@
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
-
-let rcs_file = RCS.parse "Modeltools" ["Lagragians"]
-    { RCS.revision = "$Revision: 7653 $";
-      RCS.date = "$Date: 2016-07-18 13:37:04 +0200 (Mon, 18 Jul 2016) $";
-      RCS.author = "$Author: ohl $";
-      RCS.source
-        = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/omega/src/modeltools.ml $" }
 
 (* \thocwmodulesection{Compilation} *)
 
@@ -412,7 +405,6 @@ module Mutable (FGC : sig type f and g and c end) =
       set_width_symbol width_symbol;
       set_constant_symbol constant_symbol
 
-    let rcs = RCS.rename rcs_file "Models.Mutable" ["Mutable Model"]
   end
 
 module Static (M : Model.T) =
@@ -447,7 +439,6 @@ module Static (M : Model.T) =
     let width_symbol = M.width_symbol
     let constant_symbol = M.constant_symbol
     let options = M.options
-    let rcs = M.rcs
     let init () = ()
     let setup ~color ~pdg ~lorentz ~propagator ~width ~goldstone
         ~conjugate ~fermion ~max_degree ~vertices 

@@ -1,4 +1,4 @@
-(* $Id: vertex.mli 7444 2016-02-17 15:37:20Z jr_reuter $
+(* vertex.mli --
 
    Copyright (C) 1999-2016 by
 
@@ -115,6 +115,7 @@ module Value :
     type t
     val of_expr : Expr.t -> t
     val to_string : t -> string
+    val to_coupling : (string -> 'b) -> t -> 'b Coupling.expr
   end
 
 module type Test =

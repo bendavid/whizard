@@ -1,4 +1,4 @@
-(* $Id: dAG.ml 7653 2016-07-18 11:37:04Z ohl $
+(* dAG.ml --
 
    Copyright (C) 1999-2016 by
 
@@ -21,13 +21,6 @@
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
-
-let rcs_file = RCS.parse "DAG" ["Directed Acyclical Graph"]
-    { RCS.revision = "$Revision: 7653 $";
-      RCS.date = "$Date: 2016-07-18 13:37:04 +0200 (Mon, 18 Jul 2016) $";
-      RCS.author = "$Author: ohl $";
-      RCS.source
-        = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/omega/src/dAG.ml $" }
 
 module type Ord =
   sig
@@ -80,7 +73,6 @@ module type T =
     val forest : node -> t -> (node * edge option, node) Tree.t list
     val forest_memoized : node -> t -> (node * edge option, node) Tree.t list
     val count_trees : node -> t -> int
-    val rcs : RCS.t
    end
 
 module type Graded_Ord =
@@ -248,9 +240,6 @@ module Graded_Map (O : Graded_Ord) :
 
 module Maybe_Graded (GMM : Graded_Map_Maker) (F : Graded_Forest) =
   struct
-    let rcs = RCS.rename rcs_file "DAG.Graded()"
-        ["Graded directed Acyclical Graph ";
-         "representing binary or n-ary trees"]
 
     module G = F.Nodes.G
 

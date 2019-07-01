@@ -1,5 +1,4 @@
 # Makefile.am -- Makefile for O'Mega within and without WHIZARD
-# $Id: Makefile.am 7444 2016-02-17 15:37:20Z jr_reuter $
 ##
 ## Process this file with automake to produce Makefile.in
 ##
@@ -42,51 +41,6 @@ endif
 SUBDIRS = src lib $(OPT_OMEGA) tools scripts
 DIST_SUBDIRS = src lib models bin share tools extensions tests scripts
 
-## Use the same compiler and compiler flags for distcheck
-DISTCHECK_CONFIGURE_FLAGS = FC=$(FC) FCFLAGS="$(FCFLAGS)" LIBS="$(LIBS)" \
-	--enable-distribution
-
-if FC_IS_NAG
-EXTRA_DISTCHECK_CONFIGURE_FLAGS = \
-    "--disable-noweb-force" \
-    "--disable-noweb-force --disable-ocaml" \
-    "--disable-noweb-force --disable-shared" \
-    "--disable-noweb-force --disable-static"
-else
-if FC_IS_GFORTRAN
-EXTRA_DISTCHECK_CONFIGURE_FLAGS = \
-    "--disable-noweb-force" \
-    "--disable-noweb-force --disable-ocaml" \
-    "--disable-noweb-force --disable-shared" \
-    "--disable-noweb-force --disable-static" \
-    "--disable-noweb-force --with-precision=extended" \
-    "--disable-noweb-force --with-precision=quadruple"
-else
-EXTRA_DISTCHECK_CONFIGURE_FLAGS = \
-    "--disable-noweb-force" \
-    "--disable-noweb-force --disable-ocaml" \
-    "--disable-noweb-force --disable-shared" \
-    "--disable-noweb-force --disable-static" \
-    "--disable-noweb-force --with-precision=quadruple"
-endif
-endif
-
-extra-distcheck:
-	@echo "================================================="  >$@.log
-	@echo "make distcheck with additional configure options:" >>$@.log
-	for flag in $(EXTRA_DISTCHECK_CONFIGURE_FLAGS); do \
-	  if $(MAKE) $(AM_MAKEFLAGS) \
-	        DISTCHECK_CONFIGURE_FLAGS='$(DISTCHECK_CONFIGURE_FLAGS) '"$$flag" \
-	        distcheck; then \
-	    echo "PASS $$flag" >>$@.log; \
-	  else \
-	    echo "FAIL $$flag" >>$@.log; \
-	  fi; \
-	done
-	@echo "=================================================" >>$@.log
-	@cat $@.log
-	@rm -f $@.log
-
 ########################################################################
 
 clean-local:
@@ -104,12 +58,6 @@ endif
 uninstall-local:
 	rm -f $(OMEGA_USER_CACHE_DIR)/*$(OMEGA_CACHE_SUFFIX)
 	rm -f $(OMEGA_SYSTEM_CACHE_DIR)/*$(OMEGA_CACHE_SUFFIX)
-
-DISTCLEANFILES = \
-  iso_c_binding_gfortran.$(FC_MODULE_EXT) \
-  iso_fortran_env_2008.$(FC_MODULE_EXT) \
-  query_kinds.$(FC_MODULE_EXT) \
-  report_kinds.$(FC_MODULE_EXT)
 
 ########################################################################
 ## The End.

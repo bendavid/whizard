@@ -1,0 +1,14 @@
+
+digraph G {
+process_libraries -> prc_core_def
+prc_test -> process_libraries
+process_libraries -> prclib_interfaces
+prc_test -> prc_core_def
+prc_test -> process_constants
+prc_core_def -> process_constants
+prc_test -> prclib_interfaces
+process_libraries -> process_constants
+prc_core_def -> prclib_interfaces
+prclib_stacks -> process_libraries
+ }
+

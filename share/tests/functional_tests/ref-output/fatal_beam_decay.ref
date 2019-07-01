@@ -13,7 +13,7 @@ seed = 0
 | Process library 'fatal_beam_decay_lib': linking
 | Process library 'fatal_beam_decay_lib': loading
 | Process library 'fatal_beam_decay_lib': ... success.
-sqrts =  5.0000000E+02
+sqrts =  5.00000E+02
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process fatal_beam_decay_1:

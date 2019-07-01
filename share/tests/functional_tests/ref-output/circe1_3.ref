@@ -2,8 +2,8 @@
 ?vis_history = false
 ?integration_timer = false
 ?pacify = true
-SM.me =>  0.0000000E+00
-SM.mmu =>  0.0000000E+00
+SM.me =>  0.00000E+00
+SM.mmu =>  0.00000E+00
 $method = "omega"
 | Process library 'circe1_3_lib': recorded process 'circe1_3_p4'
 seed = 0
@@ -18,14 +18,14 @@ seed = 0
 | Process library 'circe1_3_lib': ... success.
 $phs_method = "wood"
 $integration_method = "vamp"
-sqrts =  5.0000000E+02
+sqrts =  5.00000E+02
 openmp_num_threads = 1
 [user variable] n = 1000
 $circe1_acc = "TESLA"
 circe1_chat = 2
-circe1_eps =  1.0000000E-05
+circe1_eps =  1.00000E-05
 ?circe1_generate = false
-circe1_mapping_slope =  2.0000000E+00
+circe1_mapping_slope =  2.00000E+00
 ?sf_allow_s_mapping = true
 ?circe1_map = true
 | RNG: Initializing TAO random-number generator

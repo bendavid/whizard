@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -54,17 +54,12 @@ contains
   subroutine fks_regions_1 (u)
     integer, intent(in) :: u
     type(flv_structure_t) :: flv_born, flv_real
-    type(os_data_t) :: os_data
-    type(model_list_t) :: model_list
     type(model_t), pointer :: test_model => null ()
     write (u, "(A)") "* Test output: fks_regions_1"
     write (u, "(A)") "* Purpose: Test utilities of flavor structure manipulation"
     write (u, "(A)")
 
-    call syntax_model_file_init ()
-    call os_data_init (os_data)
-    call model_list%read_model &
-       (var_str ("SM_rad"), var_str ("SM_rad.mdl"), os_data, test_model)
+    call create_test_model (var_str ("SM_rad"), test_model)
 
     flv_born = [11, -11, 2, -2]
     flv_real = [11, -11, 2, -2, 21]
@@ -86,7 +81,7 @@ contains
     call flv_real%final ()
 
     flv_born = [2, -2, 11, -11]
-    flv_real = [2, -2, 11, -11, 21] 
+    flv_real = [2, -2, 11, -11, 21]
     flv_born%n_in = 2; flv_real%n_in = 2
     write (u, "(A)") "* Valid splittings of uu -> ee"
     write (u, "(A)") "Born Flavors: "
@@ -100,7 +95,7 @@ contains
     write (u, "(A,L1)") "1, 5 (21, 2) : " , flv_real%valid_pair (5, 1, flv_born, test_model)
     write (u, "(A,L1)") "5, 1 (2, 21) : " , flv_real%valid_pair (1, 5, flv_born, test_model)
     call flv_real%final ()
-    flv_real = [21, -2, 11, -11, -2]  
+    flv_real = [21, -2, 11, -11, -2]
     flv_real%n_in = 2
     write (u, "(A)") "Real Flavors: "
     call flv_real%write (u)
@@ -111,7 +106,7 @@ contains
     write (u, "(A,L1)") "5, 1 (-2, 21): " , flv_real%valid_pair (5, 1, flv_born, test_model)
     write (u, "(A,L1)") "1, 5 (21, -2): " , flv_real%valid_pair (1, 5, flv_born, test_model)
     call flv_real%final ()
-    flv_real = [2, 21, 11, -11, 2]  
+    flv_real = [2, 21, 11, -11, 2]
     flv_real%n_in = 2
     write (u, "(A)") "Real Flavors: "
     call flv_real%write (u)
@@ -244,7 +239,7 @@ contains
     call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data)
     call reg_data%write (u)
 
-    
+
   end subroutine fks_regions_2
 
   subroutine fks_regions_3 (u)
@@ -294,7 +289,7 @@ contains
           i = i + 1
        end if
     end do
-        
+
     call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data)
     call reg_data%write (u)
 

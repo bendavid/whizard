@@ -1,3 +1,6 @@
+# SINDARIN file for WHIZARD self test
+# Input file for testing user defined amplitudes
+
 ?logging = true
 ?openmp_logging = false
 ?vis_history = false
@@ -36,7 +39,7 @@ $real_tree_me_method = "threshold"
 real num_diff = 0.001
 iterations = 3:1000:"gw"
 
-FF = 9        !!! tree
+FF = 10        !!! tree
 ! bits for offshell strategy :
 ! NLO|factorization|interference|onshellprojection|LOwidthinsignal
 

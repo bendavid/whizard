@@ -1,9 +1,8 @@
 % -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*- 
 % WHIZARD code as NOWEB source: text handling and parsing
-
-@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Text handling}
+\includemodulegraph{parsing}
 
 \whizard\ has to handle complex structures in input (and output) data.
 Doing this in a generic and transparent way requires a generic lexer
@@ -4532,24 +4531,24 @@ content or not.  The content itself is not stored in the data structure.
 @ Initialization.  There are different versions, depending on content.
 <<XML: tag: TBP>>=
   generic :: init => init_no_attributes
-  procedure :: init_no_attributes => tag_init_no_attributes
+  procedure :: init_no_attributes => xml_tag_init_no_attributes
 <<XML: procedures>>=
-  subroutine tag_init_no_attributes (tag, name, has_content)
+  subroutine xml_tag_init_no_attributes (tag, name, has_content)
     class(xml_tag_t), intent(out) :: tag
     type(string_t), intent(in) :: name
     logical, intent(in), optional :: has_content
     tag%name = name
     allocate (tag%attribute (0))
     if (present (has_content))  tag%has_content = has_content
-  end subroutine tag_init_no_attributes
+  end subroutine xml_tag_init_no_attributes
   
-@ %def tag_init_no_attributes
+@ %def xml_tag_init_no_attributes
 @ This version sets attributes.
 <<XML: tag: TBP>>=
   generic :: init => init_with_attributes
-  procedure :: init_with_attributes => tag_init_with_attributes
+  procedure :: init_with_attributes => xml_tag_init_with_attributes
 <<XML: procedures>>=
-  subroutine tag_init_with_attributes (tag, name, attribute, has_content)
+  subroutine xml_tag_init_with_attributes (tag, name, attribute, has_content)
     class(xml_tag_t), intent(out) :: tag
     type(string_t), intent(in) :: name
     type(attribute_t), dimension(:), intent(in) :: attribute
@@ -4558,39 +4557,39 @@ content or not.  The content itself is not stored in the data structure.
     allocate (tag%attribute (size (attribute)))
     tag%attribute = attribute
     if (present (has_content))  tag%has_content = has_content
-  end subroutine tag_init_with_attributes
+  end subroutine xml_tag_init_with_attributes
   
-@ %def tag_init_with_attributes
+@ %def xml_tag_init_with_attributes
 @ Set an attribute value explicitly.
 <<XML: tag: TBP>>=
-  procedure :: set_attribute => tag_set_attribute
+  procedure :: set_attribute => xml_tag_set_attribute
 <<XML: procedures>>=
-  subroutine tag_set_attribute (tag, i, value)
+  subroutine xml_tag_set_attribute (tag, i, value)
     class(xml_tag_t), intent(inout) :: tag
     integer, intent(in) :: i
     type(string_t), intent(in) :: value
     call tag%attribute(i)%set_value (value)
-  end subroutine tag_set_attribute
+  end subroutine xml_tag_set_attribute
   
-@ %def tag_set_attribute
+@ %def xml_tag_set_attribute
 @ Get an attribute value.
 <<XML: tag: TBP>>=
-  procedure :: get_attribute => tag_get_attribute
+  procedure :: get_attribute => xml_tag_get_attribute
 <<XML: procedures>>=
-  function tag_get_attribute (tag, i) result (value)
+  function xml_tag_get_attribute (tag, i) result (value)
     class(xml_tag_t), intent(in) :: tag
     integer, intent(in) :: i
     type(string_t) :: value
     value = tag%attribute(i)%get_value ()
-  end function tag_get_attribute
+  end function xml_tag_get_attribute
   
-@ %def tag_set_attribute
+@ %def xml_tag_set_attribute
 @ Output to an I/O unit, default STDOUT.  We use non-advancing output.
 <<XML: tag: TBP>>=
   generic :: write => write_without_content
-  procedure :: write_without_content => tag_write
+  procedure :: write_without_content => xml_tag_write
 <<XML: procedures>>=
-  subroutine tag_write (tag, unit)
+  subroutine xml_tag_write (tag, unit)
     class(xml_tag_t), intent(in) :: tag
     integer, intent(in), optional :: unit
     integer :: u, i
@@ -4605,30 +4604,30 @@ content or not.  The content itself is not stored in the data structure.
     else
        write (u, "(' />')", advance = "no")
     end if
-  end subroutine tag_write
+  end subroutine xml_tag_write
   
-@ %def tag_write
+@ %def xml_tag_write
 @ If there is content, we should write the context next (arbitrary
 format), the write the corresponding closing tag.  Again, non-advancing.
 <<XML: tag: TBP>>=
-  procedure :: close => tag_close
+  procedure :: close => xml_tag_close
 <<XML: procedures>>=
-  subroutine tag_close (tag, unit)
+  subroutine xml_tag_close (tag, unit)
     class(xml_tag_t), intent(in) :: tag
     integer, intent(in), optional :: unit
     integer :: u
     u = given_output_unit (unit)
     write (u, "('</',A,'>')", advance = "no")  char (tag%name)
-  end subroutine tag_close
+  end subroutine xml_tag_close
     
-@ %def tag_close
+@ %def xml_tag_close
 @ Given content as a single string, we can write tag, content, and
 closing at once
 <<XML: tag: TBP>>=
   generic :: write => write_with_content
-  procedure :: write_with_content => tag_write_with_content
+  procedure :: write_with_content => xml_tag_write_with_content
 <<XML: procedures>>=
-  subroutine tag_write_with_content (tag, content, unit)
+  subroutine xml_tag_write_with_content (tag, content, unit)
     class(xml_tag_t), intent(in) :: tag
     type(string_t), intent(in) :: content
     integer, intent(in), optional :: unit
@@ -4637,9 +4636,9 @@ closing at once
     call tag%write (u)
     write (u, "(A)", advance = "no")  char (content)
     call tag%close (u)
-  end subroutine tag_write_with_content
+  end subroutine xml_tag_write_with_content
   
-@ %def tag_write_with_content
+@ %def xml_tag_write_with_content
 @ Input from stream.  We know what we are looking for, so we check if
 the name matches, then fill attributes.  We report an error if (a) an
 I/O error occurs, (b) we reach EOF before encountering the tag, (c)
@@ -4651,9 +4650,9 @@ We assume that the tag is not broken across records, and that there is
 only one tag within the record.  This is more restricted than standard
 XML.
 <<XML: tag: TBP>>=
-  procedure :: read => tag_read
+  procedure :: read => xml_tag_read
 <<XML: procedures>>=
-  subroutine tag_read (tag, cstream, success)
+  subroutine xml_tag_read (tag, cstream, success)
     class(xml_tag_t), intent(inout) :: tag
     type(cstream_t), intent(inout) :: cstream
     logical, intent(out) :: success
@@ -4757,17 +4756,17 @@ XML.
       success = .false.
     end subroutine err_incomplete
     
-  end subroutine tag_read
+  end subroutine xml_tag_read
 
-@ %def tag_read
+@ %def xml_tag_read
 @ Read a single attribute.  If the attribute is valid, assign the
 value.  Setting a value twice should be an error, but is not detected.
 If the attribute is unknown, ignore it.  If we reach the closing sign,
 report this.
 <<XML: tag: TBP>>=
-  procedure :: read_attribute => tag_read_attribute
+  procedure :: read_attribute => xml_tag_read_attribute
 <<XML: procedures>>=
-  subroutine tag_read_attribute (tag, string, done)
+  subroutine xml_tag_read_attribute (tag, string, done)
     class(xml_tag_t), intent(inout) :: tag
     type(string_t), intent(inout) :: string
     logical, intent(out) :: done
@@ -4824,9 +4823,9 @@ report this.
            // "': syntax error")
     end subroutine err
     
-  end subroutine tag_read_attribute
+  end subroutine xml_tag_read_attribute
     
-@ %def tag_read_attribute
+@ %def xml_tag_read_attribute
 @ Read the content string of a tag.  We check for the appropriate
 closing tag and report it.  If a closing tag does not match in name,
 ignore it.
@@ -4835,9 +4834,9 @@ Note: this assumes that no tag with the same name is embedded in the
 current content.  Also, we do not check for XML validity inside the
 content.
 <<XML: tag: TBP>>=
-  procedure :: read_content => tag_read_content
+  procedure :: read_content => xml_tag_read_content
 <<XML: procedures>>=
-  subroutine tag_read_content (tag, cstream, content, closing)
+  subroutine xml_tag_read_content (tag, cstream, content, closing)
     class(xml_tag_t), intent(in) :: tag
     type(cstream_t), intent(inout) :: cstream
     type(string_t), intent(out) :: content
@@ -4899,9 +4898,9 @@ content.
       closing = .false.
     end subroutine err_incomplete
     
-  end subroutine tag_read_content
+  end subroutine xml_tag_read_content
           
-@ %def tag_read_content
+@ %def xml_tag_read_content
 @
 \subsection{Unit tests}
 Test module, followed by the corresponding implementation module.

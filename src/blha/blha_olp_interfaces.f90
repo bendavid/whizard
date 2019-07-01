@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -83,6 +83,8 @@ module blha_olp_interfaces
   public :: olp_print_parameter
   public :: blha_result_array_size
   public :: parameter_error_message
+  public :: blha_cc_fill_diag
+  public :: blha_cc_fill_offdiag
 
   integer, parameter, public :: OLP_PARAMETER_LIMIT = 10
   integer, parameter, public :: OLP_MOMENTUM_LIMIT = 50
@@ -104,13 +106,20 @@ module blha_olp_interfaces
     logical, dimension(0:3) :: compute_component
     logical :: include_polarizations = .false.
     logical :: switch_off_muon_yukawas = .false.
+    logical :: use_internal_color_correlations = .true.
     real(default) :: external_top_yukawa = -1._default
+    integer :: ew_scheme
   contains
+    procedure :: write => blha_template_write
     procedure :: init => blha_template_init
     procedure :: set_born => blha_template_set_born
     procedure :: set_real_trees => blha_template_set_real_trees
     procedure :: set_loop => blha_template_set_loop
     procedure :: set_subtraction => blha_template_set_subtraction
+    procedure :: set_internal_color_correlations &
+       => blha_template_set_internal_color_correlations
+    procedure :: get_internal_color_correlations &
+       => blha_template_get_internal_color_correlations
     procedure :: compute_born => blha_template_compute_born
     procedure :: compute_real_trees => blha_template_compute_real_trees
     procedure :: compute_loop => blha_template_compute_loop
@@ -121,11 +130,13 @@ module blha_olp_interfaces
 
   type, abstract, extends (prc_user_defined_base_t) :: prc_blha_t
     integer :: n_particles
-    integer, dimension(:), allocatable :: i_born, i_sc, i_cc
-    integer, dimension(:), allocatable :: i_real
+    integer :: n_proc
+    integer, dimension(:), allocatable :: i_tree, i_sc, i_cc
     integer, dimension(:), allocatable :: i_virt
     integer, dimension(:,:), allocatable :: i_hel
+    integer, dimension(:), allocatable :: i_whizard_to_i_olc
     logical, dimension(3) :: ew_parameter_mask
+    integer :: sqme_tree_pos
   contains
     procedure :: create_momentum_array => prc_blha_create_momentum_array
     procedure :: set_alpha_qed => prc_blha_set_alpha_qed
@@ -140,10 +151,8 @@ module blha_olp_interfaces
     procedure :: set_particle_properties => prc_blha_set_particle_properties
     procedure :: init_ew_parameters => prc_blha_init_ew_parameters
     procedure :: compute_sqme_virt => prc_blha_compute_sqme_virt
-    procedure(prc_blha_compute_sqme_real), deferred :: &
-        compute_sqme_real
-    procedure(prc_blha_compute_sqme_born), deferred :: &
-        compute_sqme_born
+    procedure :: compute_sqme => prc_blha_compute_sqme
+    procedure :: compute_sqme_cc_raw => prc_blha_compute_sqme_cc_raw
     procedure :: compute_sqme_cc => prc_blha_compute_sqme_cc
     generic :: get_beam_helicities => get_beam_helicities_single
     generic :: get_beam_helicities => get_beam_helicities_array
@@ -152,9 +161,17 @@ module blha_olp_interfaces
     procedure :: includes_polarization => prc_blha_includes_polarization
     procedure(prc_blha_init_driver), deferred :: &
         init_driver
+    procedure :: reset_helicity_list => prc_blha_reset_helicity_list
+    procedure :: set_helicity_list_trivial => prc_blha_set_helicity_list_trivial
+    procedure :: set_helicity_list => prc_blha_set_helicity_list
+    generic :: get_helicity_list => get_helicity_list_all
+    generic :: get_helicity_list => get_helicity_list_single
+    procedure :: get_helicity_list_all => prc_blha_get_helicity_list_all
+    procedure :: get_helicity_list_single => prc_blha_get_helicity_list_single
+    procedure :: warmup_helicities => prc_blha_warmup_helicities
   end type prc_blha_t
 
-  type, abstract, extends (user_defined_driver_t) :: blha_driver_t 
+  type, abstract, extends (user_defined_driver_t) :: blha_driver_t
     type(string_t) :: contract_file
     logical :: include_polarizations = .false.
     logical :: switch_off_muon_yukawas = .false.
@@ -214,7 +231,7 @@ module blha_olp_interfaces
   end type blha_state_t
 
 
-  interface 
+  interface
     subroutine olp_start (contract_file_name, ierr) bind (C,name = "OLP_Start")
       import
       character(kind = c_char, len = 1), intent(in) :: contract_file_name
@@ -295,7 +312,7 @@ module blha_olp_interfaces
     end subroutine olp_print_parameter
   end interface
 
-  abstract interface 
+  abstract interface
     subroutine blha_driver_set_GF (driver, GF)
       import
       class(blha_driver_t), intent(inout) :: driver
@@ -306,7 +323,7 @@ module blha_olp_interfaces
   abstract interface
     subroutine blha_driver_set_alpha_s (driver, alpha_s)
        import
-       class(blha_driver_t), intent(inout) :: driver
+       class(blha_driver_t), intent(in) :: driver
        real(default), intent(in) :: alpha_s
     end subroutine blha_driver_set_alpha_s
   end interface
@@ -344,32 +361,6 @@ module blha_olp_interfaces
       logical, intent(out) :: success
     end subroutine blha_driver_init_dlaccess_to_library
   end interface
-      
-  abstract interface
-    subroutine prc_blha_compute_sqme_real (object, i_flv, &
-          p, ren_scale, sqme, bad_point)
-      import
-      class(prc_blha_t), intent(inout) :: object
-      integer, intent(in) :: i_flv
-      type(vector4_t), intent(in), dimension(:) :: p
-      real(default), intent(in) :: ren_scale
-      real(default), intent(out) :: sqme
-      logical, intent(out) :: bad_point
-    end subroutine prc_blha_compute_sqme_real
-  end interface 
-
-  abstract interface
-    subroutine prc_blha_compute_sqme_born (object, i_born, &
-          p, mu, sqme, bad_point)
-      import
-      class(prc_blha_t), intent(inout) :: object
-      integer, intent(in) :: i_born
-      type(vector4_t), dimension(:), intent(in) :: p
-      real(default), intent(in) :: mu
-      real(default), intent(out) :: sqme
-      logical, intent(out) :: bad_point
-    end subroutine prc_blha_compute_sqme_born
-  end interface 
 
   abstract interface
     subroutine prc_blha_init_driver (object, os_data)
@@ -381,6 +372,21 @@ module blha_olp_interfaces
 
 
 contains
+
+  subroutine blha_template_write (blha_template, unit)
+    class(blha_template_t), intent(in) :: blha_template
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit)
+    write (u,"(A,4(L1))") "Compute components: ", &
+       blha_template%compute_component
+    write (u,"(A,L1)") "Include polarizations: ", &
+       blha_template%include_polarizations
+    write (u,"(A,L1)") "Switch off muon yukawas: ", &
+       blha_template%switch_off_muon_yukawas
+    write (u,"(A,L1)") "Use internal color correlations: ", &
+       blha_template%use_internal_color_correlations
+  end subroutine blha_template_write
 
   subroutine blha_state_reset_new_kinematics (object)
     class(blha_state_t), intent(inout) :: object
@@ -423,14 +429,16 @@ contains
   end function prc_blha_create_momentum_array
 
   subroutine blha_template_init (template, requires_polarizations, &
-       switch_off_muon_yukawas, external_top_yukawa)
+       switch_off_muon_yukawas, external_top_yukawa, ew_scheme)
     class(blha_template_t), intent(inout) :: template
     logical, intent(in) :: requires_polarizations, switch_off_muon_yukawas
     real(default), intent(in) :: external_top_yukawa
+    type(string_t), intent(in) :: ew_scheme
     template%compute_component = .false.
     template%include_polarizations = requires_polarizations
     template%switch_off_muon_yukawas = switch_off_muon_yukawas
     template%external_top_yukawa = external_top_yukawa
+    template%ew_scheme = ew_scheme_string_to_int (ew_scheme)
   end subroutine blha_template_init
 
   subroutine blha_template_set_born (template)
@@ -453,25 +461,37 @@ contains
     template%compute_component (template%I_SUB) = .true.
   end subroutine blha_template_set_subtraction
 
-  function blha_template_compute_born (template) result (val)
+  subroutine blha_template_set_internal_color_correlations (template)
+    class(blha_template_t), intent(inout) :: template
+    template%use_internal_color_correlations = .true.
+  end subroutine blha_template_set_internal_color_correlations
+
+  pure function blha_template_get_internal_color_correlations (template) &
+     result (val)
+    logical :: val
+    class(blha_template_t), intent(in) :: template
+    val = template%use_internal_color_correlations
+  end function blha_template_get_internal_color_correlations
+
+  pure function blha_template_compute_born (template) result (val)
     class(blha_template_t), intent(in) :: template
     logical :: val
     val = template%compute_component (template%I_BORN)
   end function blha_template_compute_born
 
-  function blha_template_compute_real_trees (template) result (val)
+  pure function blha_template_compute_real_trees (template) result (val)
     class(blha_template_t), intent(in) :: template
     logical :: val
     val = template%compute_component (template%I_REAL)
   end function blha_template_compute_real_trees
 
-  function blha_template_compute_loop (template) result (val)
+  pure function blha_template_compute_loop (template) result (val)
     class(blha_template_t), intent(in) :: template
     logical :: val
     val = template%compute_component (template%I_LOOP)
-  end function blha_template_compute_loop  
+  end function blha_template_compute_loop
 
-  function blha_template_compute_subtraction (template) result (val)
+  pure function blha_template_compute_subtraction (template) result (val)
     class(blha_template_t), intent(in) :: template
     logical :: val
     val = template%compute_component (template%I_SUB)
@@ -490,14 +510,14 @@ contains
 
   subroutine prc_blha_writer_write (writer, unit)
     class(prc_blha_writer_t), intent(in) :: writer
-    integer, intent(in) :: unit    
+    integer, intent(in) :: unit
     write (unit, "(1x,A)")  char (writer%get_process_string ())
   end subroutine prc_blha_writer_write
 
   function prc_blha_writer_get_process_string (writer) result (s_proc)
     class(prc_blha_writer_t), intent(in) :: writer
     type(string_t) :: s_proc
-    s_proc = var_str ("") 
+    s_proc = var_str ("")
   end function prc_blha_writer_get_process_string
 
   function prc_blha_writer_get_n_proc (writer) result (n_proc)
@@ -516,8 +536,8 @@ contains
      call msg_fatal (char (message))
   end subroutine parameter_error_message
 
-  subroutine blha_driver_set_mass_and_width (driver, &
-                                       i_pdg, mass, width)
+  subroutine blha_driver_set_mass_and_width &
+         (driver, i_pdg, mass, width)
     class(blha_driver_t), intent(inout) :: driver
     integer, intent(in) :: i_pdg
     real(default), intent(in), optional :: mass
@@ -562,7 +582,7 @@ contains
     c_fptr = dlaccess_get_c_funptr (dlaccess, var_str ("OLP_Start"))
     call c_f_procpointer (c_fptr, object%blha_olp_start)
     call check_for_error (var_str ("OLP_Start"))
-    
+
     c_fptr = dlaccess_get_c_funptr (dlaccess, var_str ("OLP_EvalSubProcess"))
     call c_f_procpointer (c_fptr, object%blha_olp_eval)
     call check_for_error (var_str ("OLP_EvalSubProcess"))
@@ -607,13 +627,14 @@ contains
      end subroutine check_for_error
   end subroutine blha_driver_load
 
-  subroutine blha_driver_read_contract_file (driver, flavors, amp_type, flv_index, label, helicities)
+  subroutine blha_driver_read_contract_file (driver, flavors, &
+     amp_type, flv_index, label, helicities)
     class(blha_driver_t), intent(inout) :: driver
     integer, intent(in), dimension(:,:) :: flavors
     integer, intent(out), dimension(N_MAX_FLAVORS) :: amp_type, flv_index, label
     integer, intent(out), dimension(:,:) :: helicities
     integer :: unit, filestat
-    character(len=LEN_MAX_FLAVOR_STRING) :: rd_line 
+    character(len=LEN_MAX_FLAVOR_STRING) :: rd_line
     logical :: read_flavor, born_found
     integer :: k, i_flv
     integer :: i_hel, n_in
@@ -638,7 +659,7 @@ contains
       else
          if (rd_line(1:13) == 'AmplitudeType') then
             if (i_hel > 2 * n_in - 1) i_hel = 0
-            i_next = find_next_word_index (rd_line, 13) 
+            i_next = find_next_word_index (rd_line, 13)
             if (rd_line(i_next : i_next + 4) == 'Loop') then
                amp_type(k) = BLHA_AMP_LOOP
             else if (rd_line(i_next : i_next + 4) == 'Tree') then
@@ -749,7 +770,7 @@ contains
          else
             call increment_current_position (s, current_position)
          end if
-      end do 
+      end do
     end function create_helicity_string
 
     subroutine increment_current_position (s, current_position)
@@ -783,7 +804,7 @@ contains
       valid = (buf(1 : i - 1) /= "->" .and. buf(1 : i - 1) /= "|" &
          .and. buf(1 : i - 1) /= "Process")
     end function is_particle_buffer
- 
+
     subroutine create_flavor (s, i_particle, current_position)
       character(len=LEN_MAX_FLAVOR_STRING), intent(in) :: s
       integer, intent(out) :: i_particle
@@ -888,7 +909,7 @@ contains
     class(prc_blha_t), intent(inout) :: object
     type(model_data_t), intent(in), target :: model
     real(default) :: alpha
-   
+
     alpha = one / model%get_real (var_str ('alpha_em_i'))
 
     select type (driver => object%driver)
@@ -901,7 +922,7 @@ contains
     class(prc_blha_t), intent(inout) :: object
     type(model_data_t), intent(in), target :: model
     real(default) :: GF
-    
+
     GF = model%get_real (var_str ('GF'))
     select type (driver => object%driver)
     class is (blha_driver_t)
@@ -913,7 +934,7 @@ contains
     class(prc_blha_t), intent(inout) :: object
     type(model_data_t), intent(in), target :: model
     real(default) :: sw2
-    
+
     sw2 = model%get_real (var_str ('sw2'))
     select type (driver => object%driver)
     class is (blha_driver_t)
@@ -924,7 +945,12 @@ contains
   subroutine prc_blha_set_electroweak_parameters (object, model)
      class(prc_blha_t), intent(inout) :: object
      type(model_data_t), intent(in), target :: model
-     !if (object%ew_parameter_mask (I_ALPHA)) call object%set_alpha_qed (model)
+     if (count (object%ew_parameter_mask) == 0) then
+        call msg_fatal ("Cannot decide EW parameter setting: No scheme set!")
+     else if (count (object%ew_parameter_mask) > 1) then
+        call msg_fatal ("Cannot decide EW parameter setting: More than one scheme set!")
+     end if
+     if (object%ew_parameter_mask (I_ALPHA)) call object%set_alpha_qed (model)
      if (object%ew_parameter_mask (I_GF)) call object%set_GF (model)
      if (object%ew_parameter_mask (I_SW2)) call object%set_weinberg_angle (model)
   end subroutine prc_blha_set_electroweak_parameters
@@ -940,14 +966,13 @@ contains
     class is (blha_driver_t)
        call driver%read_contract_file (flavors, amp_type, flv_index, label, helicities)
     end select
-    do i_proc = 1, size (amp_type)
+    object%n_proc = count (amp_type >= 0)
+    do i_proc = 1, object%n_proc
        if (amp_type (i_proc) < 0) exit
        select case (amp_type (i_proc))
        case (BLHA_AMP_TREE)
-          if (allocated (object%i_born)) then
-             object%i_born(flv_index(i_proc)) = label(i_proc)
-          else if (allocated (object%i_real)) then
-             object%i_real(flv_index(i_proc)) = label(i_proc)
+          if (allocated (object%i_tree)) then
+             object%i_tree(flv_index(i_proc)) = label(i_proc)
           else
              call msg_fatal ("Tree matrix element present, &
                   &but neither Born nor real indices are allocated!")
@@ -959,8 +984,6 @@ contains
              call msg_fatal ("Color-correlated matrix element present, &
                   &but cc-indices are not allocated!")
           end if
-          if (allocated (object%i_hel)) &
-             object%i_hel (flv_index(i_proc), :) = helicities (label(i_proc), :)
        case (BLHA_AMP_SC)
           if (allocated (object%i_sc)) then
              object%i_sc(flv_index(i_proc)) = label(i_proc)
@@ -975,11 +998,11 @@ contains
              call msg_fatal ("Loop matrix element present, &
                   &but virt-indices are not allocated!")
           end if
-          if (allocated (object%i_hel)) &
-             object%i_hel (flv_index(i_proc), :) = helicities (label(i_proc), :)
        case default
           call msg_fatal ("Undefined amplitude type")
        end select
+       if (allocated (object%i_hel)) &
+          object%i_hel (i_proc, :) = helicities (label(i_proc), :)
     end do
   end subroutine prc_blha_read_contract_file
 
@@ -987,7 +1010,7 @@ contains
     class(prc_blha_t), intent(in) :: object
     integer, intent(in) :: i_component
     type(string_t) :: filename
-    
+
     select type (def => object%def)
     class is (blha_def_t)
        filename = def%basename // '_' // str (i_component) // '.olp_parameters'
@@ -1018,15 +1041,20 @@ contains
 
   subroutine prc_blha_init_blha (object, blha_template)
     class(prc_blha_t), intent(inout) :: object
-    type(blha_template_t), intent(inout) :: blha_template
+    type(blha_template_t), intent(in) :: blha_template
+    integer :: n_hel
     object%n_particles = size (object%data%flv_state, 1)
     object%n_flv = size (object%data%flv_state, 2)
     if (blha_template%compute_loop ()) then
        if (blha_template%include_polarizations) then
           allocate (object%i_virt (object%n_flv * object%data%n_in * 2), &
                     object%i_cc (object%n_flv * object%data%n_in * 2))
-          allocate (object%i_hel (object%n_flv * object%data%n_in * 2, &
-               object%data%n_in))
+          if (blha_template%use_internal_color_correlations) then
+             n_hel = object%n_flv * object%data%n_in * 4
+          else
+             n_hel = object%n_flv * object%data%n_in * 2
+          end if
+          allocate (object%i_hel (n_hel, object%data%n_in))
        else
           allocate (object%i_virt (object%n_flv), &
                     object%i_cc (object%n_flv))
@@ -1034,21 +1062,29 @@ contains
        object%i_virt = 0
        object%i_cc = 0
     else if (blha_template%compute_subtraction ()) then
-       allocate (object%i_born (object%n_flv), &
-                 object%i_cc (object%n_flv) , &
-                 object%i_sc (object%n_flv))
-       object%i_born = 0
+       if (blha_template%include_polarizations) then
+          allocate (object%i_tree (object%n_flv * 4), &
+             object%i_cc (object%n_flv * 4), &
+             object%i_sc (object%n_flv * 4))
+       else
+          allocate (object%i_tree (object%n_flv), &
+             object%i_cc (object%n_flv) , object%i_sc (object%n_flv))
+       end if
+       object%i_tree = 0
        object%i_cc = 0
        object%i_sc = 0
-    else if (blha_template%compute_real_trees ()) then
-       allocate (object%i_real (object%n_flv))
-       object%i_real = 0
-    else if (blha_template%compute_born ()) then
-       allocate (object%i_born (object%n_flv))
-       object%i_born = 0
+    else if (blha_template%compute_real_trees () .or. blha_template%compute_born ()) then
+       if (blha_template%include_polarizations) then
+          n_hel = 4
+          allocate (object%i_hel (n_hel, object%data%n_in))
+       else
+          n_hel = 1
+       end if
+       allocate (object%i_tree (object%n_flv * n_hel))
+       object%i_tree = 0
     end if
 
-    call object%init_ew_parameters ()
+    call object%init_ew_parameters (blha_template%ew_scheme)
 
     select type (driver => object%driver)
     class is (blha_driver_t)
@@ -1058,7 +1094,7 @@ contains
     end select
   end subroutine prc_blha_init_blha
 
-  subroutine prc_blha_set_particle_properties (object, model) 
+  subroutine prc_blha_set_particle_properties (object, model)
     class(prc_blha_t), intent(inout) :: object
     class(model_data_t), intent(in), target :: model
     integer :: i, i_pdg
@@ -1093,144 +1129,290 @@ contains
     end do
   end subroutine prc_blha_set_particle_properties
 
-  subroutine prc_blha_init_ew_parameters (object)
+  subroutine prc_blha_init_ew_parameters (object, ew_scheme)
     class(prc_blha_t), intent(inout) :: object
-    object%ew_parameter_mask (I_ALPHA) = .true.
-    object%ew_parameter_mask (I_GF) = .true.
-    object%ew_parameter_mask (I_SW2) = .false.
+    integer, intent(in) :: ew_scheme
+    object%ew_parameter_mask = .false.
+    select case (ew_scheme)
+    case (BLHA_EW_QED)
+       object%ew_parameter_mask (I_ALPHA) = .true.
+    case (BLHA_EW_GF)
+       object%ew_parameter_mask (I_GF) = .true.
+    end select
   end subroutine prc_blha_init_ew_parameters
 
   subroutine prc_blha_compute_sqme_virt (object, &
-                i_flv, p, ren_scale, sqme, bad_point)
-    class(prc_blha_t), intent(inout) :: object
+     i_flv, p, ren_scale, sqme, bad_point)
+    class(prc_blha_t), intent(in) :: object
     integer, intent(in) :: i_flv
     type(vector4_t), dimension(:), intent(in) :: p
     real(default), intent(in) :: ren_scale
     real(default), dimension(4), intent(out) :: sqme
     logical, intent(out) :: bad_point
     real(double), dimension(5 * object%n_particles) :: mom
-    real(double), dimension(blha_result_array_size (object%n_particles, &
-                                                    BLHA_AMP_LOOP)) :: r
+    real(double), dimension(:), allocatable :: r
     real(double) :: mu_dble
     real(double) :: acc_dble
     real(default) :: acc
     real(default) :: alpha_s
+    allocate (r (blha_result_array_size (object%n_particles, BLHA_AMP_LOOP)))
     call msg_debug2 (D_VIRTUAL, "prc_blha_compute_sqme_virt")
     call msg_debug2 (D_VIRTUAL, "i_flv", i_flv)
     call msg_debug2 (D_VIRTUAL, "object%i_virt(i_flv)", object%i_virt(i_flv))
     mom = object%create_momentum_array (p)
     if (vanishes (ren_scale)) &
-       call msg_fatal ("prc_blha_compute_sqme_real: ren_scale vanishes")
+       call msg_fatal ("prc_blha_compute_sqme_virt: ren_scale vanishes")
     mu_dble = dble(ren_scale)
     alpha_s = object%qcd%alpha%get (ren_scale)
     select type (driver => object%driver)
     class is (blha_driver_t)
       call driver%set_alpha_s (alpha_s)
-      call driver%blha_olp_eval2 (object%i_virt(i_flv), &
-                                   mom, mu_dble, r, acc_dble) 
+      call driver%blha_olp_eval2 (object%i_virt(i_flv), mom, mu_dble, r, acc_dble)
     end select
     acc = acc_dble
     sqme = r(1:4)
     bad_point = acc > object%maximum_accuracy
+    !!! OpenLoops includes a factor of 1 / 4 in the amplitudes
+    !!! GoSam does not support polarization
+    if (object%includes_polarization ()) sqme = four * sqme
   end subroutine prc_blha_compute_sqme_virt
 
-  subroutine prc_blha_compute_sqme_cc &
-         (object, i_flv, p, ren_scale, &
-          born_out, born_cc, bad_point)
-    class(prc_blha_t), intent(inout) :: object
+  subroutine prc_blha_compute_sqme &
+         (object, i_flv, p, ren_scale, sqme, bad_point)
+    class(prc_blha_t), intent(in) :: object
     integer, intent(in) :: i_flv
     type(vector4_t), intent(in), dimension(:) :: p
     real(default), intent(in) :: ren_scale
-    real(default), intent(out), optional :: born_out
-    real(default), intent(inout), dimension(:,:) :: born_cc
+    real(default), intent(out) :: sqme
     logical, intent(out) :: bad_point
     real(double), dimension(5*object%n_particles) :: mom
-    real(double), dimension(blha_result_array_size (object%n_particles, &
-                                              BLHA_AMP_CC)) :: r
-    real(double) :: mu_dble
-    real(default) :: alpha_s
-    integer :: i, j, pos
-    integer :: im1, jm1
-    logical :: bad_point2 = .false.
-    real(double) :: acc_dble
-    real(default) :: acc
-    real(default) :: born
-    integer, dimension(:), allocatable :: flavors
+    real(double), dimension(OLP_RESULTS_LIMIT) :: r
+    real(double) :: mu_dble, acc_dble
+    real(default) :: acc, alpha_s
+    mom = object%create_momentum_array (p)
+    if (vanishes (ren_scale)) &
+       call msg_fatal ("prc_blha_compute_sqme: ren_scale vanishes")
+    mu_dble = dble(ren_scale)
+    alpha_s = object%qcd%alpha%get (ren_scale)
+    select type (driver => object%driver)
+    class is (blha_driver_t)
+       call driver%set_alpha_s (alpha_s)
+       call driver%blha_olp_eval2 (object%i_tree(i_flv), mom, &
+          mu_dble, r, acc_dble)
+       sqme = r(object%sqme_tree_pos)
+    end select
+    acc = acc_dble
+    bad_point = acc > object%maximum_accuracy
+    !!! OpenLoops includes a factor of 1 / 4 in the amplitudes
+    !!! GoSam does not support polarization
+    if (object%includes_polarization ()) sqme = four * sqme
+  end subroutine prc_blha_compute_sqme
 
+  subroutine blha_cc_fill_diag (sqme_born, flavors, sqme_cc)
+     real(default), intent(in) :: sqme_born
+     integer, intent(in), dimension(:) :: flavors
+     real(default), intent(inout), dimension(:,:) :: sqme_cc
+     integer :: i
+     do i = 1, size (flavors)
+        if (is_quark (flavors(i))) then
+           sqme_cc (i, i) = -cf * sqme_born
+        else if (is_gluon (flavors(i))) then
+           sqme_cc (i, i) = -ca * sqme_born
+        else
+           sqme_cc (i, i) = zero
+        end if
+     end do
+  end subroutine blha_cc_fill_diag
+
+  subroutine blha_cc_fill_offdiag (n, r, sqme_cc)
+    integer, intent(in) :: n
+    real(default), intent(in), dimension(:) :: r
+    real(default), intent(inout), dimension(:,:) :: sqme_cc
+    integer :: i, j, im1, jm1, pos
+    do j = 1, n
+       do i = 1, j
+          if (i /= j) then
+             im1 = i - 1; jm1 = j - 1
+             pos = im1 + jm1 * (jm1 - 1) / 2 + 1
+             sqme_cc (i, j) = -r (pos)
+          end if
+          sqme_cc (j, i) = sqme_cc (i, j)
+       end do
+    end do
+  end subroutine blha_cc_fill_offdiag
+
+  subroutine prc_blha_compute_sqme_cc_raw &
+     (object, i_flv, p, ren_scale, rr, bad_point)
+    class(prc_blha_t), intent(in) :: object
+    integer, intent(in) :: i_flv
+    type(vector4_t), intent(in), dimension(:) :: p
+    real(default), intent(in) :: ren_scale
+    real(default), intent(out), dimension(:) :: rr
+    logical, intent(out) :: bad_point
+    real(double), dimension(5 * object%n_particles) :: mom
+    real(double), dimension(size(rr)) :: r
+    real(default) :: alpha_s, acc
+    real(double) :: mu_dble, acc_dble
     mom = object%create_momentum_array (p)
     if (vanishes (ren_scale)) &
        call msg_fatal ("prc_blha_compute_sqme_cc: ren_scale vanishes")
     mu_dble = dble(ren_scale)
     alpha_s = object%qcd%alpha%get (ren_scale)
-    !!! !!! !!! Workaround for ifort 16.0 missing default allocate-on-assignment
-    allocate (flavors (object%get_n_flvs (i_flv)))
-    !!! !!! !!! End of workaround
-    flavors = object%get_flv_state (i_flv)
 
     select type (driver => object%driver)
     class is (blha_driver_t)
        call driver%set_alpha_s (alpha_s)
-       if (allocated (object%i_born)) then
-          call object%compute_sqme_born (i_flv, p, ren_scale, born, bad_point2)
-       else
-          born = zero
-          acc = zero
-       end if
-       if (present (born_out)) born_out = born
        call driver%blha_olp_eval2 (object%i_cc(i_flv), &
           mom, mu_dble, r, acc_dble)
     end select
-
-    do j = 1, size (p)
-      do i = 1, j
-        if (i == j) then
-          if (is_quark (abs(flavors (i)))) then
-             born_cc (i,j) = -cf * born 
-          else if (is_gluon (flavors (i))) then
-             born_cc (i,j) = -ca * born
-          else 
-             born_cc (i,j) = zero
-          end if
-        else
-          im1 = i - 1; jm1 = j - 1
-          pos = im1 + jm1 * (jm1 - 1) / 2 + 1
-          born_cc (i,j) = - r(pos)
-        end if
-        born_cc (j,i) = born_cc (i,j)
-      end do
-    end do
-
+    rr = r
     acc = acc_dble
-    bad_point = bad_point2 .or. acc > object%maximum_accuracy
+    bad_point = acc > object%maximum_accuracy
+    !!! OpenLoops includes a factor of 1 / 4 in the amplitudes
+    !!! GoSam does not support polarization
+    if (object%includes_polarization ()) rr = four * rr
+  end subroutine prc_blha_compute_sqme_cc_raw
+
+  subroutine prc_blha_compute_sqme_cc &
+         (object, i_flv, p, ren_scale, born_cc, bad_point, born_out)
+    class(prc_blha_t), intent(inout) :: object
+    integer, intent(in) :: i_flv
+    type(vector4_t), intent(in), dimension(:) :: p
+    real(default), intent(in) :: ren_scale
+    real(default), intent(inout), dimension(:,:) :: born_cc
+    real(default), intent(out), optional :: born_out
+    logical, intent(out) :: bad_point
+    real(default), dimension(:), allocatable :: r
+    logical :: bad_point2
+    real(default) :: born
+    integer, dimension(:), allocatable :: flavors
+    allocate (r (blha_result_array_size &
+         (size(born_cc, dim=1), BLHA_AMP_CC)))
+    call object%compute_sqme_cc_raw (i_flv, p, ren_scale, r, bad_point)
+
+    select type (driver => object%driver)
+    class is (blha_driver_t)
+       if (allocated (object%i_tree)) then
+          call object%compute_sqme (i_flv, p, ren_scale, born, bad_point2)
+       else
+          born = zero
+       end if
+       if (present (born_out)) born_out = born
+    end select
+    call blha_cc_fill_offdiag (object%n_particles, r, born_cc)
+    !!! !!! !!! Workaround for ifort 16.0 missing default allocate-on-assignment
+    allocate (flavors (object%get_n_flvs (i_flv)))
+    !!! !!! !!! End of workaround
+    flavors = object%get_flv_state (i_flv)
+    call blha_cc_fill_diag (born, flavors, born_cc)
+
+    bad_point = bad_point .or. bad_point2
   end subroutine prc_blha_compute_sqme_cc
 
-  function prc_blha_get_beam_helicities_single (object, i) result (hel)
+  function prc_blha_get_beam_helicities_single (object, i, invert_second) result (hel)
     integer, dimension(:), allocatable :: hel
     class(prc_blha_t), intent(in) :: object
+    logical, intent(in), optional :: invert_second
     integer, intent(in) :: i
+    logical :: inv
+    inv = .false.; if (present (invert_second)) inv = invert_second
     allocate (hel (object%data%n_in))
     hel = object%i_hel (i, :)
+    if (inv .and. object%data%n_in == 2) hel(2) = -hel(2)
   end function prc_blha_get_beam_helicities_single
 
   function prc_blha_includes_polarization (object) result (polarized)
     logical :: polarized
     class(prc_blha_t), intent(in) :: object
     select type (driver => object%driver)
-    class is (blha_driver_t) 
+    class is (blha_driver_t)
        polarized = driver%include_polarizations
     end select
   end function prc_blha_includes_polarization
 
-  function prc_blha_get_beam_helicities_array (object) result (hel)
+  function prc_blha_get_beam_helicities_array (object, invert_second) result (hel)
     integer, dimension(:,:), allocatable :: hel
     class(prc_blha_t), intent(in) :: object
-    integer :: i, n_hel
-    n_hel = object%n_flv * (2 * object%data%n_in)
-    allocate (hel (n_hel, object%data%n_in))
-    do i = 1, n_hel
-       hel(i,:) = object%get_beam_helicities (i)
+    logical, intent(in), optional :: invert_second
+    integer :: i
+    allocate (hel (object%n_proc, object%data%n_in))
+    do i = 1, object%n_proc
+       hel(i,:) = object%get_beam_helicities (i, invert_second)
     end do
   end function prc_blha_get_beam_helicities_array
+
+  subroutine prc_blha_reset_helicity_list (object)
+    class(prc_blha_t), intent(inout) :: object
+    if (allocated (object%i_whizard_to_i_olc)) &
+       deallocate (object%i_whizard_to_i_olc)
+  end subroutine prc_blha_reset_helicity_list
+
+  subroutine prc_blha_set_helicity_list_trivial (object, n_sub)
+    class(prc_blha_t), intent(inout) :: object
+    integer, intent(in) :: n_sub
+    integer :: i, k
+    allocate (object%i_whizard_to_i_olc (1 + n_sub))
+    k = 1
+    do i = 1, 1 + n_sub
+       object%i_whizard_to_i_olc (i) = k
+       k = k + 2
+    end do
+  end subroutine prc_blha_set_helicity_list_trivial
+
+  subroutine prc_blha_set_helicity_list (object, &
+     helicities)
+    class(prc_blha_t), intent(inout) :: object
+    integer, intent(in), dimension(:,:) :: helicities
+    integer, dimension(:, :), allocatable :: hel_olc
+    integer :: n1, n2
+    integer :: i, j
+    n1 = size (helicities, dim=1)
+    n2 = size (object%get_beam_helicities (), dim=1)
+    allocate (object%i_whizard_to_i_olc (n2))
+    allocate (hel_olc (n2, 2))
+    hel_olc = object%get_beam_helicities (invert_second = .true.)
+    do i = 1, n1
+       do j = 1, n2
+          if (all (helicities (i, :) == hel_olc (j, :))) &
+             object%i_whizard_to_i_olc (j) = i
+       end do
+    end do
+  end subroutine prc_blha_set_helicity_list
+
+  function prc_blha_get_helicity_list_all (object) result (i_out)
+    integer, dimension(:), allocatable :: i_out
+    class(prc_blha_t), intent(in) :: object
+    allocate (i_out (size (object%i_whizard_to_i_olc)))
+    i_out = object%i_whizard_to_i_olc
+  end function prc_blha_get_helicity_list_all
+
+  function prc_blha_get_helicity_list_single (object, i) result (i_out)
+    integer :: i_out
+    class(prc_blha_t), intent(in) :: object
+    integer, intent(in) :: i
+    i_out = object%i_whizard_to_i_olc (i)
+  end function prc_blha_get_helicity_list_single
+
+  subroutine prc_blha_warmup_helicities (object, p)
+    class(prc_blha_t), intent(inout) :: object
+    type(vector4_t), intent(in), dimension(:) :: p
+    real(double), dimension(5 * object%n_particles) :: mom
+    real(double), dimension(:), allocatable :: r
+    real(default) :: alpha_s
+    real(double) :: ren_scale, acc
+    integer :: i_hel
+    allocate (r (blha_result_array_size (object%n_particles, BLHA_AMP_LOOP)))
+    alpha_s = 0.1178_double
+    ren_scale = 200._double
+    mom = object%create_momentum_array (p)
+    select type (driver => object%driver)
+    class is (blha_driver_t)
+       call driver%set_alpha_s (alpha_s)
+       do i_hel = 1, 4
+          call driver%blha_olp_eval2 (i_hel, mom, ren_scale, r, acc)
+       end do
+    end select
+  end subroutine prc_blha_warmup_helicities
 
 
 end module blha_olp_interfaces

@@ -1,0 +1,39 @@
+
+digraph G {
+sf_epa -> sf_base
+dispatch_beams -> beam_structures
+dispatch_beams -> sf_pdf_builtin
+sf_base -> beams
+sf_circe1 -> sf_base
+dispatch_beams -> sf_epa
+sf_circe1 -> sf_mappings
+sf_ewa -> sf_base
+sf_lhapdf -> hoppet_interface
+dispatch_beams -> sf_ewa
+dispatch_beams -> sf_circe2
+sf_lhapdf -> sf_base
+sf_ewa -> sf_aux
+dispatch_beams -> sf_isr
+dispatch_beams -> sf_circe1
+beams -> beam_structures
+sf_base -> sf_aux
+sf_beam_events -> sf_base
+pdf -> beam_structures
+dispatch_beams -> sf_beam_events
+dispatch_beams -> sf_lhapdf
+sf_isr -> sf_mappings
+sf_escan -> sf_base
+sf_gaussian -> sf_base
+sf_circe2 -> sf_base
+dispatch_beams -> sf_mappings
+dispatch_beams -> sf_gaussian
+sf_isr -> sf_base
+dispatch_beams -> sf_escan
+sf_isr -> sf_aux
+sf_pdf_builtin -> hoppet_interface
+sf_epa -> sf_aux
+sf_pdf_builtin -> sf_base
+dispatch_beams -> sf_base
+sf_base -> sf_mappings
+ }
+

@@ -37,8 +37,6 @@
    Method              = test_me
    Process variant     = test_me
    MD5 sum (def)       = '                                '
- Process core:
-   test type implementing prc_test
  Referenced data:
    Terms                    = [undefined]
    MC dataset               = 1

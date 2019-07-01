@@ -18,7 +18,7 @@ int main(int argc, char** argv ){
   
   if(argc < 3 || argc > 5) {
     
-     std::cout << " usage: stdhepjob infile.stdhep outfile.slcio maxEvt " <<  std::endl 
+     std::cout << " usage: stdhep_rd infile.stdhep outfile.slcio maxEvt " <<  std::endl 
 	       << "   infile.hep    - input file name "  <<  std::endl 
 	       << "   maxEvt        - max number of events to read [-1: all]"  <<  std::endl
 	       << "   outfile       - ouput file name [optional]"  <<  std::endl; 

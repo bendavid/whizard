@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -45,6 +45,9 @@ module eio_raw_uti
 
   use eio_raw
 
+  use process, only: process_t
+  use instances, only: process_instance_t
+
   implicit none
   private
 
@@ -54,8 +57,7 @@ module eio_raw_uti
 contains
 
   subroutine eio_raw_1 (u)
-    use processes
-    use processes_ut, only: prepare_test_process
+    use processes_ut, only: prepare_test_process, cleanup_test_process
     integer, intent(in) :: u
     type(model_data_t), target :: model
     type(event_t), allocatable, target :: event
@@ -197,8 +199,7 @@ contains
   end subroutine eio_raw_1
 
   subroutine eio_raw_2 (u)
-    use processes
-    use processes_ut, only: prepare_test_process
+    use processes_ut, only: prepare_test_process, cleanup_test_process
     integer, intent(in) :: u
     type(model_data_t), target :: model
     type(var_list_t) :: var_list

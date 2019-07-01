@@ -39,7 +39,8 @@ AC_SUBST([OPENLOOPS_DIR])
 
 if test -n "$OPENLOOPS_DIR"; then
   wo_openloops_includes="-I$OPENLOOPS_DIR/lib_src/openloops/mod"
-  wo_openloops_ldflags="-L$OPENLOOPS_DIR/lib -lopenloops"
+  wo_openloops_ldflags="-Wl,-rpath,$OPENLOOPS_DIR/lib -L$OPENLOOPS_DIR/lib -lopenloops"
+  wo_openloops_versionfile="$OPENLOOPS_DIR/pyol/config/default.cfg"
 fi
 
 if test "$enable_openloops" = "yes" -a "$openloops_lib" != "no"; then
@@ -58,6 +59,13 @@ if test "$enable_openloops" = "yes" -a "$openloops_lib" != "no"; then
     fi
     OPENLOOPS_INCLUDES=$wo_openloops_includes
     LDFLAGS_OPENLOOPS=$wo_openloops_ldflags
+
+    AC_MSG_CHECKING([the OpenLoops version])
+    wo_openloops_version=`$GREP 'release = ' $wo_openloops_versionfile | $SED 's/release = //g'`
+    OPENLOOPS_VERSION=$wo_openloops_version
+    AC_MSG_RESULT([$wo_openloops_version])
+    AC_SUBST([OPENLOOPS_VERSION])
+	
 else
    OPENLOOPS_AVAILABLE_FLAG=".false."
    enable_openloops="no"

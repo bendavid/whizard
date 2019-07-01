@@ -1,4 +1,4 @@
-(* $Id: fusion.mli 7469 2016-03-13 16:44:17Z ohl $
+(* fusion.mli --
 
    Copyright (C) 1999-2016 by
 
@@ -193,7 +193,6 @@ module type T =
     val tower_to_dot : out_channel -> amplitude -> unit
     val amplitude_to_dot : out_channel -> amplitude -> unit
 
-    val rcs_list : RCS.t list
   end
 
 (* There is more than one way to make fusions.  *)

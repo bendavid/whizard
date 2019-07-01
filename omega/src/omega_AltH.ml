@@ -1,4 +1,4 @@
-(* $Id: omega_AltH.ml 3670 2014-03-21 17:07:07Z msekulla $
+(* omega_AltH.ml --
 
    Copyright (C) 1999-2016 by
 

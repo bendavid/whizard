@@ -1,0 +1,27 @@
+
+digraph G {
+process -> process_config
+parton_states -> subevt_expr
+instances -> pcm
+process -> pcm
+process -> process_mci
+process -> process_counter
+kinematics -> process_mci
+instances -> core_manager
+instances -> pcm_base
+instances -> process_config
+process -> parton_states
+instances -> kinematics
+instances -> process_mci
+process -> core_manager
+process_mci -> process_config
+instances -> parton_states
+instances -> process_counter
+pcm -> pcm_base
+process_stacks -> process
+process -> pcm_base
+instances -> process
+kinematics -> process_config
+process_mci -> process_counter
+ }
+

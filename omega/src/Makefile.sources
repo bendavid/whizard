@@ -1,5 +1,4 @@
 # Makefile.sources -- Makefile component for O'Mega
-# $Id: Makefile.sources 7655 2016-07-18 16:40:19Z ohl $
 ##
 ## Process Makefile.am with automake to include this file in Makefile.in
 ##
@@ -93,7 +92,7 @@ OMEGA_CORE_ML_PART1 = \
     oUnit.ml oUnitDiff.ml \
     config.ml partial.ml pmap.ml \
     thoList.ml thoArray.ml thoString.ml permutation.ml bundle.ml powSet.ml \
-    rCS.ml thoFilename.ml cache.ml progress.ml trie.ml linalg.ml tree2.ml \
+    thoFilename.ml cache.ml progress.ml trie.ml linalg.ml tree2.ml \
     algebra.ml options.ml product.ml combinatorics.ml partition.ml tree.ml \
     tuple.ml topology.ml dAG.ml momentum.ml phasespace.ml \
     charges.ml color.ml modeltools.ml whizard.ml

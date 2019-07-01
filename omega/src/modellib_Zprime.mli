@@ -1,4 +1,4 @@
-(* $Id: modellib_Zprime.mli 6264 2014-11-14 15:40:49Z fbach $
+(* modellib_Zprime.mli --
 
    Copyright (C) 1999-2016 by
 

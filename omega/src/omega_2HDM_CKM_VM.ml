@@ -1,4 +1,4 @@
-(* $Id: omega_2HDM_CKM.ml 4561 2013-08-29 12:37:37Z jr_reuter $
+(* omega_2HDM_CKM.ml --
 
    Copyright (C) 1999-2013 by
 

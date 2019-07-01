@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -65,6 +65,10 @@ module numeric_utils
 
 
 
+  interface nearly_equal
+     module procedure nearly_equal_real
+     module procedure nearly_equal_complex
+  end interface
 
 
 contains
@@ -174,7 +178,7 @@ contains
     yorn = (x /= x)
   end function ieee_is_nan
 
-  elemental function nearly_equal (a, b, abs_smallness, rel_smallness) result (r)
+  elemental function nearly_equal_real (a, b, abs_smallness, rel_smallness) result (r)
     logical :: r
     real(default), intent(in) :: a, b
     real(default), intent(in), optional :: abs_smallness, rel_smallness
@@ -197,7 +201,15 @@ contains
     else
        r = diff / max (abs_a, abs_b) < rel_small
     end if
-  end function nearly_equal
+  end function nearly_equal_real
+
+  elemental function nearly_equal_complex (a, b, abs_smallness, rel_smallness) result (r)
+    logical :: r
+    complex(default), intent(in) :: a, b
+    real(default), intent(in), optional :: abs_smallness, rel_smallness
+    r = nearly_equal_real (real (a), real (b), abs_smallness, rel_smallness) .and. &
+        nearly_equal_real (aimag (a), aimag(b), abs_smallness, rel_smallness)
+  end function nearly_equal_complex
 
   elemental function vanishes_real (x, abs_smallness, rel_smallness) result (r)
     logical :: r

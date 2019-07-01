@@ -45,8 +45,8 @@ LATEX_STYLES = \
     feynmp.sty feynmp.mp \
     noweb.sty emp.sty flex.cls thohacks.sty thophys.sty
 
-TEX_FLAGS = "$$TEXINPUTS:$(top_srcdir)/share/doc"
-MP_FLAGS  = "$$MPINPUTS:$(top_srcdir)/share/doc"
+TEX_FLAGS = "$$TEXINPUTS:$(top_srcdir)/vamp/share/doc"
+MP_FLAGS  = "$$MPINPUTS:$(top_srcdir)/vamp/share/doc"
 
 EXTRA_DIST = \
   tex-comments.sh \
@@ -61,7 +61,7 @@ else
 pdf-local: preview.pdf preview2.pdf
 endif
 
-VPATH = $(srcdir):$(top_builddir)/src:$(top_srcdir)/src
+VPATH = $(srcdir):$(top_builddir)/vamp/src:$(top_srcdir)/vamp/src
 
 if NOWEB_AVAILABLE
 

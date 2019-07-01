@@ -1,4 +1,4 @@
-(* $Id: targets_Kmatrix.ml 6069 2014-08-14 09:30:37Z msekulla $
+(* targets_Kmatrix.ml --
 
    Copyright (C) 1999-2015 by
 
@@ -22,13 +22,6 @@
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
-
-let rcs_file = RCS.parse "Targets_Kmatrix" ["K-Matrix Support routines"]
-    { RCS.revision = "$Revision: 6069 $";
-      RCS.date = "$Date: 2014-08-14 11:30:37 +0200 (Do, 14Aug 2014) $";
-      RCS.author = "$Author: msekulla $";
-      RCS.source
-        = "$URL: svn+ssh://msekulla@svn.hepforge.org/hepforge/svn/whizard/branches/sekulla_unitlimits/omega/src/targets_Kmatrix.ml $" }
 
 module Fortran =
   struct

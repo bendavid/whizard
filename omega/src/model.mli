@@ -1,4 +1,4 @@
-(* $Id: model.mli 7653 2016-07-18 11:37:04Z ohl $
+(* model.mli --
 
    Copyright (C) 1999-2016 by
 
@@ -119,9 +119,6 @@ module type T =
 
 (* Model specific options. *)
     val options : Options.t
-
-(* Revision control information. *)
-    val rcs : RCS.t
 
   end
 

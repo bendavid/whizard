@@ -41,8 +41,6 @@
    Process variant     = test_me
    MD5 sum (def)       = '21ED79524E14AB7F6A911E111431A595'
    MD5 sum (phs)       = '0C0E0D2300F2F5D4DBCD15436F83AC15'
- Process core:
-   test type implementing prc_test
  Referenced data:
    Terms                    = [undefined]
    MC dataset               = 1

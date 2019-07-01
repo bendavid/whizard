@@ -1,8 +1,8 @@
 % -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*-
 % WHIZARD code as NOWEB source
-
-@
 \chapter{Testing}
+\includemodulegraph{testing}
+
 This part contains tools for automatic testing.
 \begin{description}
 \item[unit\_tests]

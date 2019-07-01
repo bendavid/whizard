@@ -314,12 +314,13 @@ extern "C" void add_particle_to_collection
 }
 
 extern "C" MCParticleImpl* new_lcio_particle 
-(double px, double py, double pz, int pdg, double mass, int status) {
+(double px, double py, double pz, int pdg, double mass, double charge, int status) {
   MCParticleImpl* mcp = new MCParticleImpl() ;
   double p[3] =  { px, py, pz };
   mcp->setPDG ( pdg );
   mcp->setMomentum ( p );
   mcp->setMass ( mass );
+  mcp->setCharge ( charge );
   mcp->setGeneratorStatus ( status );
   mcp->setCreatedInSimulation (true);
   return mcp; 

@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -53,7 +53,7 @@ module commands
   use parser
   use analysis
   use pdg_arrays
-  use variables
+  use variables, only: var_list_t, V_NONE, V_LOG, V_INT, V_REAL, V_CMPLX, V_STR, V_PDG
   use observables, only: var_list_check_observable
   use observables, only: var_list_check_result_var
   use eval_trees
@@ -63,14 +63,13 @@ module commands
   use polarizations
   use particle_specifiers
   use process_libraries
-  use processes
+  use process
+  use instances
   use prclib_stacks
   use slha_interface
   use user_files
   use eio_data
   use rt_data
-
-  use dispatch, only: dispatch_slha
 
   use process_configurations
   use compilations, only: compile_library, compile_executable
@@ -136,13 +135,12 @@ module commands
    contains
      procedure :: write => cmd_process_write
      procedure :: compile => cmd_process_compile
-     procedure :: execute => cmd_process_execute  
+     procedure :: execute => cmd_process_execute
   end type cmd_process_t
 
   type, extends (command_t) :: cmd_nlo_t
     private
     type(parse_node_p), dimension(3) :: pn_components
-    logical, dimension(6) :: active_component = .false.
   contains
       procedure :: write => cmd_nlo_write
       procedure :: compile => cmd_nlo_compile
@@ -166,7 +164,7 @@ module commands
    contains
      procedure :: write => cmd_exec_write
      procedure :: compile => cmd_exec_compile
-     procedure :: execute => cmd_exec_execute  
+     procedure :: execute => cmd_exec_execute
   end type cmd_exec_t
 
   type, extends (command_t) :: cmd_var_t
@@ -190,7 +188,7 @@ module commands
    contains
      procedure :: write => cmd_slha_write
      procedure :: compile => cmd_slha_compile
-     procedure :: execute => cmd_slha_execute  
+     procedure :: execute => cmd_slha_execute
   end type cmd_slha_t
 
   type, extends (command_t) :: cmd_show_t
@@ -210,14 +208,14 @@ module commands
      procedure :: compile => cmd_clear_compile
      procedure :: execute => cmd_clear_execute
   end type cmd_clear_t
-     
+
   type, extends (command_t) :: cmd_expect_t
      private
      type(parse_node_t), pointer :: pn_lexpr => null ()
    contains
      procedure :: write => cmd_expect_write
      procedure :: compile => cmd_expect_compile
-     procedure :: execute => cmd_expect_execute  
+     procedure :: execute => cmd_expect_execute
   end type cmd_expect_t
 
   type, extends (command_t) :: cmd_beams_t
@@ -246,7 +244,7 @@ module commands
      procedure :: compile => smatrix_expr_compile
      procedure :: evaluate => smatrix_expr_evaluate
   end type smatrix_expr_t
-  
+
   type, extends (command_t) :: cmd_beams_pol_density_t
      private
      integer :: n_in = 0
@@ -296,16 +294,16 @@ module commands
 
   type, extends (command_t) :: cmd_scale_t
      private
-     type(parse_node_t), pointer :: pn_expr => null ()     
+     type(parse_node_t), pointer :: pn_expr => null ()
    contains
      procedure :: write => cmd_scale_write
-     procedure :: compile => cmd_scale_compile 
-     procedure :: execute => cmd_scale_execute   
+     procedure :: compile => cmd_scale_compile
+     procedure :: execute => cmd_scale_execute
   end type cmd_scale_t
 
   type, extends (command_t) :: cmd_fac_scale_t
      private
-     type(parse_node_t), pointer :: pn_expr => null ()     
+     type(parse_node_t), pointer :: pn_expr => null ()
    contains
      procedure :: write => cmd_fac_scale_write
      procedure :: compile => cmd_fac_scale_compile
@@ -314,7 +312,7 @@ module commands
 
   type, extends (command_t) :: cmd_ren_scale_t
      private
-     type(parse_node_t), pointer :: pn_expr => null ()     
+     type(parse_node_t), pointer :: pn_expr => null ()
    contains
      procedure :: write => cmd_ren_scale_write
      procedure :: compile => cmd_ren_scale_compile
@@ -327,7 +325,7 @@ module commands
    contains
      procedure :: write => cmd_weight_write
      procedure :: compile => cmd_weight_compile
-     procedure :: execute => cmd_weight_execute  
+     procedure :: execute => cmd_weight_execute
   end type cmd_weight_t
 
   type, extends (command_t) :: cmd_selection_t
@@ -345,7 +343,7 @@ module commands
    contains
      procedure :: write => cmd_reweight_write
      procedure :: compile => cmd_reweight_compile
-     procedure :: execute => cmd_reweight_execute  
+     procedure :: execute => cmd_reweight_execute
   end type cmd_reweight_t
 
   type, extends (command_t) :: cmd_alt_setup_t
@@ -366,7 +364,7 @@ module commands
      procedure :: compile => cmd_integrate_compile
      procedure :: execute => cmd_integrate_execute
   end type cmd_integrate_t
-     
+
   type, extends (command_t) :: cmd_observable_t
      private
      type(string_t) :: id
@@ -375,7 +373,7 @@ module commands
      procedure :: compile => cmd_observable_compile
      procedure :: execute => cmd_observable_execute
   end type cmd_observable_t
-     
+
   type, extends (command_t) :: cmd_histogram_t
      private
      type(string_t) :: id
@@ -387,7 +385,7 @@ module commands
      procedure :: compile => cmd_histogram_compile
      procedure :: execute => cmd_histogram_execute
   end type cmd_histogram_t
-     
+
   type, extends (command_t) :: cmd_plot_t
      private
      type(string_t) :: id
@@ -397,7 +395,7 @@ module commands
      procedure :: init => cmd_plot_init
      procedure :: execute => cmd_plot_execute
   end type cmd_plot_t
-     
+
   type, extends (command_t) :: cmd_graph_t
      private
      type(string_t) :: id
@@ -409,7 +407,7 @@ module commands
      procedure :: compile => cmd_graph_compile
      procedure :: execute => cmd_graph_execute
   end type cmd_graph_t
-     
+
   type :: analysis_id_t
     type(string_t) :: tag
     type(parse_node_t), pointer :: pn_sexpr => null ()
@@ -480,7 +478,7 @@ module commands
      procedure :: compile => cmd_record_compile
      procedure :: execute => cmd_record_execute
   end type cmd_record_t
-     
+
   type, extends (command_t) :: cmd_unstable_t
      private
      integer :: n_proc = 0
@@ -491,7 +489,7 @@ module commands
      procedure :: compile => cmd_unstable_compile
      procedure :: execute => cmd_unstable_execute
   end type cmd_unstable_t
-     
+
   type, extends (command_t) :: cmd_stable_t
      private
      type(parse_node_p), dimension(:), allocatable :: pn_pdg
@@ -500,19 +498,19 @@ module commands
      procedure :: compile => cmd_stable_compile
      procedure :: execute => cmd_stable_execute
   end type cmd_stable_t
-  
+
   type, extends (cmd_stable_t) :: cmd_polarized_t
    contains
      procedure :: write => cmd_polarized_write
      procedure :: execute => cmd_polarized_execute
   end type cmd_polarized_t
-  
+
   type, extends (cmd_stable_t) :: cmd_unpolarized_t
    contains
      procedure :: write => cmd_unpolarized_write
      procedure :: execute => cmd_unpolarized_execute
   end type cmd_unpolarized_t
-  
+
   type, extends (command_t) :: cmd_sample_format_t
      private
      type(string_t), dimension(:), allocatable :: format
@@ -580,7 +578,7 @@ module commands
      procedure :: get_n_iterations => range_get_n_iterations
      procedure (range_set_value), deferred :: set_value
   end type range_t
-     
+
   type, extends (range_t) :: range_int_t
      integer :: i_beg = 0
      integer :: i_end = 0
@@ -590,7 +588,7 @@ module commands
      procedure :: evaluate => range_int_evaluate
      procedure :: set_value => range_int_set_value
 end type range_int_t
-     
+
   type, extends (range_t) :: range_real_t
      real(default) :: r_beg = 0
      real(default) :: r_end = 0
@@ -603,7 +601,7 @@ end type range_int_t
      procedure :: evaluate => range_real_evaluate
      procedure :: set_value => range_real_set_value
 end type range_real_t
-     
+
   type, extends (command_t) :: cmd_scan_t
      private
      type(string_t) :: name
@@ -617,7 +615,7 @@ end type range_real_t
      procedure :: final => cmd_scan_final
      procedure :: write => cmd_scan_write
      procedure :: compile => cmd_scan_compile
-     procedure :: execute => cmd_scan_execute  
+     procedure :: execute => cmd_scan_execute
   end type cmd_scan_t
 
   type, extends (command_t) :: cmd_if_t
@@ -676,12 +674,12 @@ end type range_real_t
        DEFAULT_ANALYSIS_FILENAME = "whizard_analysis.dat"
   character(len=1), dimension(2), parameter, public :: &
        FORBIDDEN_ENDINGS1 = [ "o", "a" ]
-  character(len=2), dimension(5), parameter, public :: &       
+  character(len=2), dimension(5), parameter, public :: &
        FORBIDDEN_ENDINGS2 = [ "mp", "ps", "vg", "lo", "la" ]
   character(len=3), dimension(16), parameter, public :: &
        FORBIDDEN_ENDINGS3 = [ "aux", "dvi", "evt", "evx", "f03", "f90", &
           "f95", "log", "ltp", "mpx", "olc", "olp", "pdf", "phs", "sin", "tex" ]
-       
+
   integer, parameter :: STEP_NONE = 0
   integer, parameter :: STEP_ADD = 1
   integer, parameter :: STEP_SUB = 2
@@ -697,7 +695,7 @@ end type range_real_t
        integer, intent(in), optional :: unit, indent
      end subroutine command_write
   end interface
-  
+
   abstract interface
      subroutine command_compile (cmd, global)
        import
@@ -727,7 +725,7 @@ end type range_real_t
        class(range_t), intent(inout) :: range
      end subroutine range_evaluate
   end interface
-  
+
   abstract interface
      subroutine range_set_value (range, i)
        import
@@ -735,7 +733,7 @@ end type range_real_t
        integer, intent(in) :: i
      end subroutine range_set_value
   end interface
-  
+
 
 contains
 
@@ -869,7 +867,7 @@ contains
     ind = 1;  if (present (indent))  ind = indent + 1
     if (associated (cmd%options))  call cmd%options%write (unit, ind)
   end subroutine command_write_options
-  
+
   recursive subroutine command_compile_options (cmd, global)
     class(command_t), intent(inout) :: cmd
     type(rt_data_t), intent(inout), target :: global
@@ -885,7 +883,7 @@ contains
        cmd%local => global
     end if
   end subroutine command_compile_options
-  
+
   recursive subroutine cmd_execute_options (cmd, global)
     class(command_t), intent(inout) :: cmd
     type(rt_data_t), intent(inout), target :: global
@@ -902,7 +900,7 @@ contains
        call cmd%local%deactivate (global)
     end if
   end subroutine cmd_reset_options
-  
+
   subroutine cmd_model_write (cmd, unit, indent)
     class(cmd_model_t), intent(in) :: cmd
     integer, intent(in), optional :: unit, indent
@@ -960,7 +958,6 @@ contains
   subroutine cmd_model_execute (cmd, global)
     class(cmd_model_t), intent(inout) :: cmd
     type(rt_data_t), intent(inout), target :: global
-    type(model_t), pointer :: model
     if (cmd%scheme /= "") then
        call global%select_model (cmd%name, cmd%scheme)
     else
@@ -996,7 +993,7 @@ contains
     logical :: rebuild_library
     lib => global%prclib_stack%get_library_ptr (cmd%name)
     rebuild_library = &
-         global%var_list%get_lval (var_str ("?rebuild_library"))    
+         global%var_list%get_lval (var_str ("?rebuild_library"))
     if (.not. (associated (lib))) then
        allocate (lib_entry)
        call lib_entry%init (cmd%name)
@@ -1089,8 +1086,8 @@ contains
     real_tree_me_method = var_list%get_sval (var_str ("$real_tree_me_method"))
     loop_me_method = var_list%get_sval (var_str ("$loop_me_method"))
     correlation_me_method = var_list%get_sval (var_str ("$correlation_me_method"))
-    call check_nlo_options (nlo_fixed_order, var_list)
-    if (any (cmd%local%active_nlo_components))  &
+    call check_nlo_options (cmd%local)
+    if (any (cmd%local%selected_nlo_parts))  &
        call override_local_me_method (born_me_method)
 
     n_in = size (cmd%pn_pdg_in)
@@ -1128,7 +1125,7 @@ contains
            call setup_radiation_generator ()
 
       if (powheg_use_damping) then
-         emitters = radiation_generator%get_emitter_indices()
+         call radiation_generator%get_emitter_indices (emitters)
          n_emitters = size (emitters)
       end if
 
@@ -1192,7 +1189,7 @@ contains
          i_term(n_components) = i
          pdg_out_tab(n_components) = pdg_out
       end do SCAN
-    end subroutine scan_components 
+    end subroutine scan_components
 
     subroutine split_prt (prt, n_out, pl)
       type(prt_spec_t), intent(in), dimension(:), allocatable :: prt
@@ -1232,7 +1229,7 @@ contains
       do i = 1, n_components
          call prt_expr_out%term_to_array (prt_spec_out, i_term(i))
          if (nlo_fixed_order) then
-            associate (active_comp => cmd%local%active_nlo_components)
+            associate (selected_nlo_parts => cmd%local%selected_nlo_parts)
                call set_component_list (i_list, i, n_components, &
                     requires_pdf, requires_soft_mismatch, &
                     powheg_use_damping, n_emitters)
@@ -1243,7 +1240,7 @@ contains
                call prc_config%setup_component (i_comp, &
                     prt_spec_in, prt_spec_out, &
                     cmd%local%model, var_list, BORN, &
-                    active_in = active_comp (1))
+                    can_be_integrated = selected_nlo_parts (BORN))
 
                call radiation_generator%generate (prt_in_nlo, prt_out_nlo)
                call override_local_me_method (real_tree_me_method)
@@ -1252,7 +1249,7 @@ contains
                call prc_config%setup_component (i_comp, &
                     new_prt_spec (prt_in_nlo), new_prt_spec (prt_out_nlo), &
                     cmd%local%model, var_list, NLO_REAL, &
-                    active_in = active_comp (NLO_REAL + 1))
+                    can_be_integrated = selected_nlo_parts (NLO_REAL))
 
                call override_local_me_method (loop_me_method)
                i_comp = n_components * 2 + i
@@ -1260,7 +1257,7 @@ contains
                call prc_config%setup_component (i_comp, &
                     prt_spec_in, prt_spec_out, &
                     cmd%local%model, var_list, NLO_VIRTUAL, &
-                    active_in = active_comp (NLO_VIRTUAL + 1))
+                    can_be_integrated = selected_nlo_parts (NLO_VIRTUAL))
 
                call override_local_me_method (correlation_me_method)
                i_comp = n_components * 3 + i
@@ -1268,7 +1265,7 @@ contains
                call prc_config%setup_component (i_comp, &
                     prt_spec_in, prt_spec_out, &
                     cmd%local%model, var_list, NLO_SUBTRACTION, &
-                  active_in = active_comp (NLO_SUBTRACTION + 1))
+                    can_be_integrated = selected_nlo_parts (NLO_SUBTRACTION))
 
                if (powheg_use_damping) then
                   call override_local_me_method (real_tree_me_method)
@@ -1277,7 +1274,7 @@ contains
                   call prc_config%setup_component (i_comp, &
                        new_prt_spec (prt_in_nlo), new_prt_spec (prt_out_nlo), &
                        cmd%local%model, var_list, NLO_REAL, &
-                       active_in = active_comp (NLO_REAL + 1))
+                       can_be_integrated = selected_nlo_parts (NLO_REAL))
                end if
 
                if (requires_pdf) then
@@ -1288,7 +1285,7 @@ contains
                   call prc_config%setup_component (i_comp, &
                        prt_spec_in, prt_spec_out, &
                        cmd%local%model, var_list, NLO_DGLAP, &
-                       active_in = active_comp (NLO_DGLAP + 1))
+                       can_be_integrated = selected_nlo_parts (NLO_DGLAP))
                end if
 
                if (requires_soft_mismatch) then
@@ -1297,9 +1294,10 @@ contains
                   i_comp = n_components * 4 + i
                   call msg_debug (D_CORE, "Setting up this NLO component:", i_comp)
                   call prc_config%setup_component (i_comp, &
-                     new_prt_spec (prt_in_nlo), new_prt_spec (prt_out_nlo), &
+                     !new_prt_spec (prt_in_nlo), new_prt_spec (prt_out_nlo), &
+                     prt_spec_in, prt_spec_out, &
                      cmd%local%model, var_list, NLO_MISMATCH, &
-                     active_in = active_comp (NLO_MISMATCH + 1))
+                     can_be_integrated = selected_nlo_parts (NLO_MISMATCH))
                end if
 
                call prc_config%set_component_associations (i_list, &
@@ -1308,18 +1306,18 @@ contains
          else if (gks_active) then
             call override_local_me_method (var_str ("omega"))
             call prc_config%setup_component (i, prt_spec_in, prt_spec_out, &
-                 cmd%local%model, var_list, BORN, active_in = .true.)
+                 cmd%local%model, var_list, BORN, can_be_integrated = .true.)
             call radiation_generator%reset_queue ()
             do j = 1, n_components_extra
                prt_out_nlo =  radiation_generator%get_next_state ()
                call prc_config%setup_component (i + j, &
                   new_prt_spec (prt_in), new_prt_spec (prt_out_nlo), &
-                  cmd%local%model, var_list, GKS, active_in = .false.)
+                  cmd%local%model, var_list, GKS, can_be_integrated = .false.)
             end do
          else
             call prc_config%setup_component (i, &
                  prt_spec_in, prt_spec_out, &
-                 cmd%local%model, var_list)
+                 cmd%local%model, var_list, can_be_integrated = .true.)
          end if
       end do
     end subroutine setup_components
@@ -1327,32 +1325,43 @@ contains
 
   end subroutine cmd_process_execute
 
-  subroutine check_nlo_options (nlo, var_list)
-    logical, intent(in) :: nlo
-    type(var_list_t), intent(in) :: var_list
-    logical :: combined, powheg
+  subroutine check_nlo_options (local)
+    type(rt_data_t), intent(in) :: local
+    type(var_list_t), pointer :: var_list => null ()
+    logical :: nlo, combined, powheg
     logical :: case_lo_but_any_other
     logical :: case_nlo_powheg_but_not_combined
     logical :: vamp_equivalences_enabled
+    logical :: fixed_order_nlo_events
+    var_list => local%get_var_list_ptr ()
+    nlo = local%nlo_fixed_order
     combined = var_list%get_lval (var_str ('?combined_nlo_integration'))
     powheg = var_list%get_lval (var_str ('?powheg_matching'))
     case_lo_but_any_other = .not. nlo .and. any ([combined, powheg])
     case_nlo_powheg_but_not_combined = &
          nlo .and. powheg .and. .not. combined
     if (case_lo_but_any_other) then
-        call msg_fatal ("Option mismatch: Leading order process is selected &
-                        &but either powheg_matching or combined_nlo_integration &
-                        &is set to true.")
+       call msg_fatal ("Option mismatch: Leading order process is selected &
+            &but either powheg_matching or combined_nlo_integration &
+            &is set to true.")
     else if (case_nlo_powheg_but_not_combined) then
-        call msg_fatal ("POWHEG requires the 'combined_nlo_integration'-option &
-                        &to be set to true.")
+       call msg_fatal ("POWHEG requires the 'combined_nlo_integration'-option &
+            &to be set to true.")
     end if
+    fixed_order_nlo_events = var_list%get_lval (var_str ('?fixed_order_nlo_events'))
+    if (fixed_order_nlo_events .and. .not. combined .and. &
+         all (local%selected_nlo_parts)) &
+       call msg_fatal ("Option mismatch: Fixed order NLO events of the full ", &
+            [var_str ("process are requested, but ?combined_nlo_integration"), &
+            var_str ("is false. You can either switch to the combined NLO"), &
+            var_str ("integration mode or choose one individual NLO component"), &
+            var_str ("to generate events with.")])
     vamp_equivalences_enabled = var_list%get_lval &
-       (var_str ('?use_vamp_equivalences'))
+         (var_str ('?use_vamp_equivalences'))
     if (nlo .and. vamp_equivalences_enabled) &
-       call msg_warning ("You have switched on VAMP equivalences. ", &
-                         [var_str ("Note that they are automatically switched off "), &
-                          var_str ("for NLO calculations.")])
+         call msg_warning ("You have not disabled VAMP equivalences. ", &
+              [var_str ("   Note that they are automatically switched off "), &
+               var_str ("   for NLO calculations.")])
   end subroutine check_nlo_options
 
   pure subroutine set_component_list (i_list, i, n_components, &
@@ -1481,7 +1490,7 @@ contains
        call msg_bug ("compile prt expr: impossible syntax rule")
     end select
   end subroutine compile_prt_expr
-          
+
   subroutine cmd_nlo_write (cmd, unit, indent)
     class(cmd_nlo_t), intent(in) :: cmd
     integer, intent(in), optional :: unit, indent
@@ -1496,7 +1505,7 @@ contains
     cmd%pn_components(1)%ptr => parse_node_get_sub_ptr (pn_arg)
     pn_comp => parse_node_get_next_ptr (cmd%pn_components(1)%ptr)
     i = 2
-    do 
+    do
       if (associated (pn_comp)) then
          cmd%pn_components(i)%ptr => pn_comp
          pn_comp => parse_node_get_next_ptr (cmd%pn_components(i)%ptr)
@@ -1514,22 +1523,20 @@ contains
     type(string_t) :: component_type
     type(string_t) :: string
     integer :: i, comp, j
-
-    cmd%active_component = .false.
+    logical, dimension(0:5) :: selected_nlo_parts
+    selected_nlo_parts = .false.
 
     current_component => cmd%pn_components(1)%ptr
-    i = 2
+    i = 2 !!! i = 1 is Born, which is skipped
     do while (associated (current_component))
        component_type = eval_string (current_component, global%var_list)
        comp = component_status (component_type)
        select case (comp)
-       case (BORN, NLO_VIRTUAL, NLO_MISMATCH, NLO_DGLAP)
-          cmd%active_component(comp + 1) = .true.
-       case (NLO_REAL)
-         cmd%active_component(comp + 1) = .true.
-         cmd%active_component(NLO_SUBTRACTION + 1) = .true.
+       case (BORN, NLO_VIRTUAL, NLO_MISMATCH, NLO_DGLAP, NLO_REAL)
+          selected_nlo_parts(comp) = .true.
        case (NLO_FULL)
-          cmd%active_component = .true.
+          selected_nlo_parts = .true.
+          selected_nlo_parts (NLO_SUBTRACTION) = .false.
        case default
           string = var_str ("")
           do j = BORN, NLO_DGLAP
@@ -1542,8 +1549,8 @@ contains
        current_component => cmd%pn_components(i)%ptr
        i = i + 1
     end do
-    global%nlo_fixed_order = any (cmd%active_component(2:5))
-    global%active_nlo_components = cmd%active_component
+    global%nlo_fixed_order = any (selected_nlo_parts(1:5))
+    global%selected_nlo_parts = selected_nlo_parts
   end subroutine cmd_nlo_execute
 
   subroutine cmd_compile_write (cmd, unit, indent)
@@ -1624,7 +1631,7 @@ contains
        end do
     end if
   end subroutine cmd_compile_execute
-    
+
   subroutine cmd_exec_write (cmd, unit, indent)
     class(cmd_exec_t), intent(in) :: cmd
     integer, intent(in), optional :: unit, indent
@@ -1634,7 +1641,7 @@ contains
     if (associated (cmd%pn_command)) then
        write (u, "(1x,A)")  "exec: [command associated]"
     else
-       write (u, "(1x,A)")  "exec: [undefined]"       
+       write (u, "(1x,A)")  "exec: [undefined]"
     end if
   end subroutine cmd_exec_write
 
@@ -1662,7 +1669,7 @@ contains
              call msg_message ()
              call msg_error ("System command returned with nonzero status code")
           end if
-       end if 
+       end if
     end if
   end subroutine cmd_exec_execute
 
@@ -1712,7 +1719,7 @@ contains
     select case (char (parse_node_get_rule_key (cmd%pn)))
     case ("cmd_log_decl");    type = V_LOG
        pn_var => parse_node_get_sub_ptr (cmd%pn, 2)
-       if (.not. associated (pn_var)) then   ! handle masked syntax error 
+       if (.not. associated (pn_var)) then   ! handle masked syntax error
           cmd%type = V_NONE; return
        end if
        pn_name => parse_node_get_sub_ptr (pn_var, 2)
@@ -1732,7 +1739,7 @@ contains
        pn_name => parse_node_get_sub_ptr (cmd%pn)
     case ("cmd_string_decl"); type = V_STR
        pn_var => parse_node_get_sub_ptr (cmd%pn, 2)
-       if (.not. associated (pn_var)) then   ! handle masked syntax error 
+       if (.not. associated (pn_var)) then   ! handle masked syntax error
           cmd%type = V_NONE; return
        end if
        pn_name => parse_node_get_sub_ptr (pn_var, 2)
@@ -1750,7 +1757,7 @@ contains
        call parse_node_mismatch &
             ("logical|int|real|complex|?|$|alias|var_name", cmd%pn)  ! $
     end select
-    if (.not. associated (pn_name)) then   ! handle masked syntax error 
+    if (.not. associated (pn_name)) then   ! handle masked syntax error
        cmd%type = V_NONE; return
     end if
     if (.not. associated (pn_result)) then
@@ -1770,7 +1777,7 @@ contains
     end if
     call var_list_check_observable (global%var_list, var_name, type)
     call var_list_check_result_var (global%var_list, var_name, type)
-    call var_list_check_user_var (global%var_list, var_name, type, new)
+    call global%var_list%check_user_var (var_name, type, new)
     cmd%name = var_name
     cmd%pn_value => parse_node_get_next_ptr (pn_name, 2)
     if (global%var_list%contains (cmd%name, follow_link = .false.)) then
@@ -1813,22 +1820,22 @@ contains
        else
           select case (cmd%type)
           case (V_LOG)
-             call var_list_append_log (global%var_list, cmd%name, &
+             call global%var_list%append_log (cmd%name, &
                   intrinsic=cmd%is_intrinsic, user=.true.)
           case (V_INT)
-             call var_list_append_int (global%var_list, cmd%name, &
+             call global%var_list%append_int (cmd%name, &
                   intrinsic=cmd%is_intrinsic, user=.true.)
           case (V_REAL)
-             call var_list_append_real (global%var_list, cmd%name, &
+             call global%var_list%append_real (cmd%name, &
                   intrinsic=cmd%is_intrinsic, user=.true.)
           case (V_CMPLX)
-             call var_list_append_cmplx (global%var_list, cmd%name, &
+             call global%var_list%append_cmplx (cmd%name, &
                   intrinsic=cmd%is_intrinsic, user=.true.)
           case (V_PDG)
-             call var_list_append_pdg_array (global%var_list, cmd%name, &
+             call global%var_list%append_pdg_array (cmd%name, &
                   intrinsic=cmd%is_intrinsic, user=.true.)
           case (V_STR)
-             call var_list_append_string (global%var_list, cmd%name, &
+             call global%var_list%append_string (cmd%name, &
                   intrinsic=cmd%is_intrinsic, user=.true.)
           end select
        end if
@@ -1843,7 +1850,7 @@ contains
     logical :: is_known, pacified
     var_list => global%get_var_list_ptr ()
     if (cmd%is_model_var) then
-       pacified = var_list%get_lval (var_str ("?pacify"))     
+       pacified = var_list%get_lval (var_str ("?pacify"))
        rval = eval_real (cmd%pn_value, var_list, is_known=is_known)
        call global%model_set_real &
             (cmd%name, rval, verbose=.true., pacified=pacified)
@@ -1864,7 +1871,7 @@ contains
     type(pdg_array_t) :: aval
     type(string_t) :: sval
     logical :: is_known
-    pacified = var_list%get_lval (var_str ("?pacify"))     
+    pacified = var_list%get_lval (var_str ("?pacify"))
     select case (var%type)
     case (V_LOG)
        lval = eval_log (var%pn_value, var_list, is_known=is_known)
@@ -1894,7 +1901,7 @@ contains
             sval, is_known, verbose=verbose, model_name=model_name)
     end select
   end subroutine cmd_var_set_value
-  
+
   subroutine cmd_slha_write (cmd, unit, indent)
     class(cmd_slha_t), intent(in) :: cmd
     integer, intent(in), optional :: unit, indent
@@ -1945,7 +1952,7 @@ contains
           call msg_fatal ("SLHA: global model not associated")
           return
        end if
-       call dispatch_slha (cmd%local, &
+       call dispatch_slha (cmd%local%var_list, &
             input = input, spectrum = spectrum, decays = decays)
        call global%ensure_model_copy ()
        call slha_read_file &
@@ -1959,8 +1966,8 @@ contains
     integer, intent(in), optional :: unit, indent
     integer :: u, i
     u = given_output_unit (unit);  if (u < 0)  return
-    call write_indent (u, indent)  
-    write (u, "(1x,A)", advance="no")  "show: "  
+    call write_indent (u, indent)
+    write (u, "(1x,A)", advance="no")  "show: "
     if (allocated (cmd%name)) then
        do i = 1, size (cmd%name)
           write (u, "(1x,A)", advance="no")  char (cmd%name(i))
@@ -2069,10 +2076,10 @@ contains
     end if
     if (size (cmd%name) == 0) then
        if (associated (model_vars)) then
-          call var_list_write (model_vars, model_name = name, &
+          call model_vars%write (model_name = name, &
                unit = u, pacified = pacified, follow_link = .false.)
        end if
-       call var_list_write (var_list, unit = u, pacified = pacified)
+       call var_list%write (unit = u, pacified = pacified)
     else
        do i = 1, size (cmd%name)
           select case (char (cmd%name(i)))
@@ -2123,55 +2130,55 @@ contains
           case ("expect")
              call expect_summary (force = .true.)
           case ("intrinsic")
-             call var_list_write (var_list, &
-                  intrinsic=.true., unit=u, pacified = pacified)
+             call var_list%write (intrinsic=.true., unit=u, &
+                  pacified = pacified)
           case ("logical")
              if (associated (model_vars)) then
-                call var_list_write (model_vars, only_type=V_LOG, &
+                call model_vars%write (only_type=V_LOG, &
                      model_name = name, unit=u, pacified = pacified, &
                      follow_link=.false.)
              end if
-             call var_list_write (var_list, &
+             call var_list%write (&
                   only_type=V_LOG, unit=u, pacified = pacified)
           case ("int")
              if (associated (model_vars)) then
-                call var_list_write (model_vars, only_type=V_INT, &
+                call model_vars%write (only_type=V_INT, &
                      model_name = name, unit=u, pacified = pacified, &
                      follow_link=.false.)
              end if
-             call var_list_write (var_list, only_type=V_INT, &
+             call var_list%write (only_type=V_INT, &
                   unit=u, pacified = pacified)
           case ("real")
              if (associated (model_vars)) then
-                call var_list_write (model_vars, only_type=V_REAL, &
+                call model_vars%write (only_type=V_REAL, &
                      model_name = name, unit=u, pacified = pacified, &
                      follow_link=.false.)
              end if
-             call var_list_write (var_list, only_type=V_REAL, &
+             call var_list%write (only_type=V_REAL, &
                   unit=u, pacified = pacified)
           case ("complex")
              if (associated (model_vars)) then
-                call var_list_write (model_vars, only_type=V_CMPLX, &
+                call model_vars%write (only_type=V_CMPLX, &
                      model_name = name, unit=u, pacified = pacified, &
                      follow_link=.false.)
              end if
-             call var_list_write (var_list, only_type=V_CMPLX, &
+             call var_list%write (only_type=V_CMPLX, &
                   unit=u, pacified = pacified)
           case ("pdg")
              if (associated (model_vars)) then
-                call var_list_write (model_vars, only_type=V_PDG, &
+                call model_vars%write (only_type=V_PDG, &
                      model_name = name, unit=u, pacified = pacified, &
                      follow_link=.false.)
              end if
-             call var_list_write (var_list, only_type=V_PDG, &
+             call var_list%write (only_type=V_PDG, &
                   unit=u, pacified = pacified)
-          case ("string") 
+          case ("string")
              if (associated (model_vars)) then
-                call var_list_write (model_vars, only_type=V_STR, &
+                call model_vars%write (only_type=V_STR, &
                      model_name = name, unit=u, pacified = pacified, &
                      follow_link=.false.)
              end if
-             call var_list_write (var_list, only_type=V_STR, &
+             call var_list%write (only_type=V_STR, &
                   unit=u, pacified = pacified)
           case default
              if (analysis_exists (cmd%name(i))) then
@@ -2185,17 +2192,17 @@ contains
                 call prc_lib%show (u)
              else if (associated (model_vars)) then
                 if (model_vars%contains (cmd%name(i), follow_link=.false.)) then
-                   call var_list_write_var (model_vars, cmd%name(i), &
+                   call model_vars%write_var (cmd%name(i), &
                         unit = u, model_name = name, pacified = pacified)
                 else if (var_list%contains (cmd%name(i))) then
-                   call var_list_write_var (var_list, cmd%name(i), &
+                   call var_list%write_var (cmd%name(i), &
                         unit = u, pacified = pacified)
                 else
                    call msg_error ("show: object '" // char (cmd%name(i)) &
                         // "' not found")
                 end if
              else if (var_list%contains (cmd%name(i))) then
-                call var_list_write_var (var_list, cmd%name(i), &
+                call var_list%write_var (cmd%name(i), &
                      unit = u, pacified = pacified)
              else
                 call msg_error ("show: object '" // char (cmd%name(i)) &
@@ -2222,8 +2229,8 @@ contains
     integer, intent(in), optional :: unit, indent
     integer :: u, i
     u = given_output_unit (unit);  if (u < 0)  return
-    call write_indent (u, indent)  
-    write (u, "(1x,A)", advance="no")  "clear: "  
+    call write_indent (u, indent)
+    write (u, "(1x,A)", advance="no")  "clear: "
     if (allocated (cmd%name)) then
        do i = 1, size (cmd%name)
           write (u, "(1x,A)", advance="no")  char (cmd%name(i))
@@ -2361,7 +2368,7 @@ contains
     if (associated (cmd%pn_lexpr)) then
        write (u, "(1x,A)")  "expect: [expression associated]"
     else
-       write (u, "(1x,A)")  "expect: [undefined]"       
+       write (u, "(1x,A)")  "expect: [undefined]"
     end if
   end subroutine cmd_expect_write
 
@@ -2519,7 +2526,7 @@ contains
        end do
     end if
   end subroutine sentry_expr_compile
-    
+
   subroutine sentry_expr_evaluate (sentry, index, value, global)
     class(sentry_expr_t), intent(inout) :: sentry
     integer, dimension(:), intent(out) :: index
@@ -2529,7 +2536,7 @@ contains
     integer :: i, n_expr, n_index
     type(eval_tree_t) :: eval_tree
     var_list => global%get_var_list_ptr ()
-    n_expr = size (sentry%expr) 
+    n_expr = size (sentry%expr)
     n_index = size (index)
     if (n_expr <= n_index + 1) then
        do i = 1, min (n_expr, n_index)
@@ -2598,7 +2605,7 @@ contains
        call smatrix%set_entry (i, idx, value)
     end do
   end subroutine smatrix_expr_evaluate
-    
+
   subroutine cmd_beams_pol_density_write (cmd, unit, indent)
     class(cmd_beams_pol_density_t), intent(in) :: cmd
     integer, intent(in), optional :: unit, indent
@@ -2819,7 +2826,7 @@ contains
     call write_indent (u, indent)
     write (u, "(1x,A)")  "cuts: [defined]"
   end subroutine cmd_cuts_write
-  
+
   subroutine cmd_cuts_compile (cmd, global)
     class(cmd_cuts_t), intent(inout) :: cmd
     type(rt_data_t), intent(inout), target :: global
@@ -2840,7 +2847,7 @@ contains
     call write_indent (u, indent)
     write (u, "(1x,A)")  "scale: [defined]"
   end subroutine cmd_scale_write
-  
+
   subroutine cmd_fac_scale_write (cmd, unit, indent)
     class(cmd_fac_scale_t), intent(in) :: cmd
     integer, intent(in), optional :: unit, indent
@@ -2849,7 +2856,7 @@ contains
     call write_indent (u, indent)
     write (u, "(1x,A)")  "factorization scale: [defined]"
   end subroutine cmd_fac_scale_write
-  
+
   subroutine cmd_ren_scale_write (cmd, unit, indent)
     class(cmd_ren_scale_t), intent(in) :: cmd
     integer, intent(in), optional :: unit, indent
@@ -2858,7 +2865,7 @@ contains
     call write_indent (u, indent)
     write (u, "(1x,A)")  "renormalization scale: [defined]"
   end subroutine cmd_ren_scale_write
-  
+
   subroutine cmd_scale_compile (cmd, global)
     class(cmd_scale_t), intent(inout) :: cmd
     type(rt_data_t), intent(inout), target :: global
@@ -2892,7 +2899,7 @@ contains
   subroutine cmd_ren_scale_execute (cmd, global)
     class(cmd_ren_scale_t), intent(inout) :: cmd
     type(rt_data_t), intent(inout), target :: global
-    global%pn%ren_scale_expr => cmd%pn_expr    
+    global%pn%ren_scale_expr => cmd%pn_expr
   end subroutine cmd_ren_scale_execute
 
   subroutine cmd_weight_write (cmd, unit, indent)
@@ -2903,7 +2910,7 @@ contains
     call write_indent (u, indent)
     write (u, "(1x,A)")  "weight expression: [defined]"
   end subroutine cmd_weight_write
-  
+
   subroutine cmd_weight_compile (cmd, global)
     class(cmd_weight_t), intent(inout) :: cmd
     type(rt_data_t), intent(inout), target :: global
@@ -2924,7 +2931,7 @@ contains
     call write_indent (u, indent)
     write (u, "(1x,A)")  "selection expression: [defined]"
   end subroutine cmd_selection_write
-  
+
   subroutine cmd_selection_compile (cmd, global)
     class(cmd_selection_t), intent(inout) :: cmd
     type(rt_data_t), intent(inout), target :: global
@@ -2945,7 +2952,7 @@ contains
     call write_indent (u, indent)
     write (u, "(1x,A)")  "reweight expression: [defined]"
   end subroutine cmd_reweight_write
-  
+
   subroutine cmd_reweight_compile (cmd, global)
     class(cmd_reweight_t), intent(inout) :: cmd
     type(rt_data_t), intent(inout), target :: global
@@ -2966,7 +2973,7 @@ contains
     call write_indent (u, indent)
     write (u, "(1x,A,I0,A)")  "alt_setup: ", size (cmd%setup), " entries"
   end subroutine cmd_alt_setup_write
-  
+
   subroutine cmd_alt_setup_compile (cmd, global)
     class(cmd_alt_setup_t), intent(inout) :: cmd
     type(rt_data_t), intent(inout), target :: global
@@ -3048,7 +3055,7 @@ contains
     call write_indent (u, indent)
     write (u, "(1x,A,A)")  "observable: ", char (cmd%id)
   end subroutine cmd_observable_write
-  
+
   subroutine cmd_observable_compile (cmd, global)
     class(cmd_observable_t), intent(inout) :: cmd
     type(rt_data_t), intent(inout), target :: global
@@ -3056,7 +3063,7 @@ contains
     pn_tag => parse_node_get_sub_ptr (cmd%pn, 2)
     if (associated (pn_tag)) then
        cmd%pn_opt => parse_node_get_next_ptr (pn_tag)
-    end if       
+    end if
     call cmd%compile_options (global)
     select case (char (parse_node_get_rule_key (pn_tag)))
     case ("analysis_id")
@@ -3088,7 +3095,7 @@ contains
     call write_indent (u, indent)
     write (u, "(1x,A,A)")  "histogram: ", char (cmd%id)
   end subroutine cmd_histogram_write
-  
+
   subroutine cmd_histogram_compile (cmd, global)
     class(cmd_histogram_t), intent(inout) :: cmd
     type(rt_data_t), intent(inout), target :: global
@@ -3104,7 +3111,7 @@ contains
        if (.not. associated (pn_arg2)) call msg_fatal (e_illegal_use)
        pn_arg3 => parse_node_get_next_ptr (pn_arg2)
        cmd%pn_opt => parse_node_get_next_ptr (pn_args)
-    end if       
+    end if
     call cmd%compile_options (global)
     select case (char (parse_node_get_rule_key (pn_tag)))
     case ("analysis_id")
@@ -3293,7 +3300,7 @@ contains
     call write_indent (u, indent)
     write (u, "(1x,A,A)")  "plot: ", char (cmd%id)
   end subroutine cmd_plot_write
-  
+
   subroutine cmd_plot_compile (cmd, global)
     class(cmd_plot_t), intent(inout) :: cmd
     type(rt_data_t), intent(inout), target :: global
@@ -3341,7 +3348,7 @@ contains
     write (u, "(1x,A,A,A,I0,A)")  "graph: ", char (cmd%id), &
          " (", cmd%n_elements, " entries)"
   end subroutine cmd_graph_write
-  
+
   subroutine cmd_graph_compile (cmd, global)
     class(cmd_graph_t), intent(inout) :: cmd
     type(rt_data_t), intent(inout), target :: global
@@ -3419,7 +3426,7 @@ contains
     call write_indent (u, indent)
     write (u, "(1x,A)")  "analysis: [defined]"
   end subroutine cmd_analysis_write
-  
+
   subroutine cmd_analysis_compile (cmd, global)
     class(cmd_analysis_t), intent(inout) :: cmd
     type(rt_data_t), intent(inout), target :: global
@@ -3440,7 +3447,7 @@ contains
     call write_indent (u, indent)
     write (u, "(1x,A)")  "write_analysis"
   end subroutine cmd_write_analysis_write
-  
+
   subroutine cmd_write_analysis_compile (cmd, global)
     class(cmd_write_analysis_t), intent(inout) :: cmd
     type(rt_data_t), intent(inout), target :: global
@@ -3456,7 +3463,7 @@ contains
        do i = 1, n
            pn_id => parse_node_get_sub_ptr (pn_args, i)
            if (char (parse_node_get_rule_key (pn_id)) == "analysis_id") then
-              cmd%id(i)%tag = parse_node_get_string (pn_id)              
+              cmd%id(i)%tag = parse_node_get_string (pn_id)
            else
               cmd%id(i)%pn_sexpr => pn_id
            end if
@@ -3478,20 +3485,20 @@ contains
   subroutine write_analysis_wrap (var_list, out_files, id, tag, data_file)
     type(var_list_t), intent(inout), target :: var_list
     type(file_list_t), intent(inout), target :: out_files
-    type(analysis_id_t), dimension(:), intent(in), target :: id 
+    type(analysis_id_t), dimension(:), intent(in), target :: id
     type(string_t), dimension(:), allocatable, intent(out) :: tag
     type(string_t), intent(out), optional :: data_file
     type(string_t) :: defaultfile, file
-    integer :: i   
-    logical :: keep_open !, custom, header, columns    
-    type(string_t) :: extension !, comment_prefix, separator 
-!!! JRR: WK please check (#542)           
+    integer :: i
+    logical :: keep_open !, custom, header, columns
+    type(string_t) :: extension !, comment_prefix, separator
+!!! JRR: WK please check (#542)
 !     integer :: type
 !     type(ifile_t) :: ifile
     logical :: one_file !, has_writer
 !     type(analysis_iterator_t) :: iterator
 !     type(rt_data_t), target :: sandbox
-!     type(command_list_t) :: writer    
+!     type(command_list_t) :: writer
     defaultfile = var_list%get_sval (var_str ("$out_file"))
     if (present (data_file)) then
        if (defaultfile == "" .or. defaultfile == ".") then
@@ -3501,7 +3508,7 @@ contains
              call split (defaultfile, extension, ".", back=.true.)
              if (any (lower_case (char(extension)) == FORBIDDEN_ENDINGS1) .or. &
                  any (lower_case (char(extension)) == FORBIDDEN_ENDINGS2) .or. &
-                 any (lower_case (char(extension)) == FORBIDDEN_ENDINGS3)) & 
+                 any (lower_case (char(extension)) == FORBIDDEN_ENDINGS3)) &
                  call msg_fatal ("The ending " // char(extension) // &
                  " is internal and not allowed as data file.")
              if (extension /= "") then
@@ -3537,9 +3544,9 @@ contains
           call file_list_open (out_files, file, &
                action = "write", status = "replace", position = "asis")
           call msg_message ("Writing analysis data to file '" &
-               // char (file) // "'")          
+               // char (file) // "'")
        end if
-    end if    
+    end if
 
 !!! JRR: WK please check. Custom data output. Ticket #542
 !     if (present (data_file)) then
@@ -3557,17 +3564,17 @@ contains
 !     write_xerr = var_list%get_lval (&
 !          var_str ("?out_xerr"))
 
-    call get_analysis_tags (tag, id, var_list)       
+    call get_analysis_tags (tag, id, var_list)
     do i = 1, size (tag)
        call file_list_write_analysis &
             (out_files, file, tag(i))
     end do
     if (one_file .and. .not. keep_open) then
        call file_list_close (out_files, file)
-    end if       
+    end if
 
   contains
-    
+
     subroutine get_analysis_tags (analysis_tag, id, var_list)
       type(string_t), dimension(:), intent(out), allocatable :: analysis_tag
       type(analysis_id_t), dimension(:), intent(in) :: id
@@ -3582,12 +3589,12 @@ contains
             end if
          end do
       else
-         call analysis_store_get_ids (tag)                
+         call analysis_store_get_ids (tag)
       end if
     end subroutine get_analysis_tags
-    
+
   end subroutine write_analysis_wrap
-  
+
   subroutine cmd_compile_analysis_write (cmd, unit, indent)
     class(cmd_compile_analysis_t), intent(in) :: cmd
     integer, intent(in), optional :: unit, indent
@@ -3596,7 +3603,7 @@ contains
     call write_indent (u, indent)
     write (u, "(1x,A)")  "compile_analysis"
   end subroutine cmd_compile_analysis_write
-  
+
   subroutine cmd_compile_analysis_compile (cmd, global)
     class(cmd_compile_analysis_t), intent(inout) :: cmd
     type(rt_data_t), intent(inout), target :: global
@@ -3618,7 +3625,7 @@ contains
            end if
        end do
     else
-       allocate (cmd%id (0))       
+       allocate (cmd%id (0))
     end if
   end subroutine cmd_compile_analysis_compile
 
@@ -3634,7 +3641,7 @@ contains
     call write_analysis_wrap (var_list, &
          global%out_files, cmd%id, tag = cmd%tag, &
             data_file = file)
-    basename = file    
+    basename = file
     if (scan (".", basename) > 0) then
       call split (basename, extension, ".", back=.true.)
     else
@@ -3662,7 +3669,7 @@ contains
     call msg_message ("Compiling analysis results display in '" &
          // char (driver_file) // "'")
     call msg_message ("Providing analysis steering makefile '" &
-         // char (makefile) // "'")    
+         // char (makefile) // "'")
     only_file = global%var_list%get_lval &
          (var_str ("?analysis_file_only"))
     if (.not. only_file)  call analysis_compile_tex &
@@ -3672,16 +3679,16 @@ contains
   subroutine cmd_open_out_final (object)
     class(cmd_open_out_t), intent(inout) :: object
   end subroutine cmd_open_out_final
-  
+
   subroutine cmd_open_out_write (cmd, unit, indent)
     class(cmd_open_out_t), intent(in) :: cmd
     integer, intent(in), optional :: unit, indent
     integer :: u
     u = given_output_unit (unit);  if (u < 0)  return
-    call write_indent (u, indent)  
-    write (u, "(1x,A)", advance="no")  "open_out: <filename>"  
+    call write_indent (u, indent)
+    write (u, "(1x,A)", advance="no")  "open_out: <filename>"
   end subroutine cmd_open_out_write
-  
+
   subroutine cmd_open_out_compile (cmd, global)
     class(cmd_open_out_t), intent(inout) :: cmd
     type(rt_data_t), intent(inout), target :: global
@@ -3749,7 +3756,7 @@ contains
     call write_indent (u, indent)
     write (u, "(1x,A)")  "printf:"
   end subroutine cmd_printf_write
-  
+
   subroutine cmd_printf_compile (cmd, global)
     class(cmd_printf_t), intent(inout) :: cmd
     type(rt_data_t), intent(inout), target :: global
@@ -3816,7 +3823,7 @@ contains
     call write_indent (u, indent)
     write (u, "(1x,A)")  "record"
   end subroutine cmd_record_write
-  
+
   subroutine cmd_record_compile (cmd, global)
     class(cmd_record_t), intent(inout) :: cmd
     type(rt_data_t), intent(inout), target :: global
@@ -3875,7 +3882,7 @@ contains
           cmd%pn_opt => pn_list
           pn_list => null ()
        end select
-    end if       
+    end if
     call cmd%compile_options (global)
     if (associated (pn_list)) then
        allocate (cmd%process_id (cmd%n_proc))
@@ -4053,14 +4060,14 @@ contains
                // ": partial width vanishes for all decay channels")
        end if
     else
-       inquire (unit = u, opened = opened)       
+       inquire (unit = u, opened = opened)
        if (opened .and. .not. mask_fatal_errors)  close (u)
        call msg_fatal ("Unstable particle " &
                // char (flv%get_name ()) &
                // ": partial width is negative")
     end if
   end subroutine show_unstable
-    
+
   subroutine err_unstable (global, pdg)
     type(rt_data_t), intent(in), target :: global
     integer, intent(in) :: pdg
@@ -4069,7 +4076,7 @@ contains
     call msg_error ("Unstable: no allowed decays found for particle " &
          // char (flv%get_name ()) // ", keeping as stable")
   end subroutine err_unstable
-    
+
   subroutine create_auto_decays &
        (pdg_in, mult, rad, libname_dec, process_id, global)
     integer, intent(in) :: pdg_in
@@ -4116,7 +4123,7 @@ contains
     else
        call msg_message ("Creating decay process library for particle " &
             // char (prt_in))
-       libname_cur = global%prclib%get_name () 
+       libname_cur = global%prclib%get_name ()
        write (buffer, "(A,A,I0)")  "_d", p_or_a, abs (pdg_in)
        libname_dec = libname_cur // trim (buffer)
        lib => global%prclib_stack%get_library_ptr (libname_dec)
@@ -4149,7 +4156,7 @@ contains
           end do
           call msg_message (char (process_string))
           call prc_config%init (process_id(i), 1, 1, global)
-          !!! Causes runtime error with gfortran 4.9.1 
+          !!! Causes runtime error with gfortran 4.9.1
           ! call prc_config%setup_component (1, &
           !      new_prt_spec ([prt_in]), new_prt_spec (prt_out), global%model, global%var_list)
           !!! Workaround:
@@ -4164,7 +4171,7 @@ contains
     end if
     call ds_table%final ()
   end subroutine create_auto_decays
-    
+
   subroutine cmd_stable_write (cmd, unit, indent)
     class(cmd_stable_t), intent(in) :: cmd
     integer, intent(in), optional :: unit, indent
@@ -4217,7 +4224,7 @@ contains
             // " declared as stable")
     end do
   end subroutine cmd_stable_execute
-  
+
   subroutine cmd_polarized_write (cmd, unit, indent)
     class(cmd_polarized_t), intent(in) :: cmd
     integer, intent(in), optional :: unit, indent
@@ -4260,7 +4267,7 @@ contains
             // " declared as polarized")
     end do
   end subroutine cmd_polarized_execute
-  
+
   subroutine cmd_unpolarized_execute (cmd, global)
     class(cmd_unpolarized_t), intent(inout) :: cmd
     type(rt_data_t), target, intent(inout) :: global
@@ -4285,7 +4292,7 @@ contains
             // " declared as unpolarized")
     end do
   end subroutine cmd_unpolarized_execute
-  
+
   subroutine cmd_sample_format_write (cmd, unit, indent)
     class(cmd_sample_format_t), intent(in) :: cmd
     integer, intent(in), optional :: unit, indent
@@ -4299,7 +4306,7 @@ contains
     end do
     write (u, "(A)")
   end subroutine cmd_sample_format_write
-  
+
   subroutine cmd_sample_format_compile (cmd, global)
     class(cmd_sample_format_t), intent(inout) :: cmd
     type(rt_data_t), intent(inout), target :: global
@@ -4388,7 +4395,7 @@ contains
     end if
     if (signal_is_pending ())  return
     if (sim%is_valid ()) then
-       call sim%init_process_selector ()    
+       call sim%init_process_selector ()
        call openmp_set_num_threads_verbose &
             (var_list%get_ival (var_str ("openmp_num_threads")), &
             var_list%get_lval (var_str ("?openmp_logging")))
@@ -4477,7 +4484,7 @@ contains
     call alt_env%deactivate (global, keep_local = .true.)
     call alt_options%final ()
   end subroutine build_alt_setup
-            
+
   subroutine cmd_rescan_write (cmd, unit, indent)
     class(cmd_rescan_t), intent(in) :: cmd
     integer, intent(in), optional :: unit, indent
@@ -4517,7 +4524,7 @@ contains
     type(var_list_t), pointer :: var_list
     type(rt_data_t), dimension(:), allocatable, target :: alt_env
     type(string_t) :: sample
-    logical :: exist, write_raw, update_event, update_sqme, update_weight
+    logical :: exist, write_raw, update_event, update_sqme
     type(simulation_t), target :: sim
     type(event_sample_data_t) :: input_data, data
     type(string_t) :: input_sample
@@ -4570,8 +4577,6 @@ contains
          var_list%get_lval (var_str ("?update_event"))
     update_sqme = &
          var_list%get_lval (var_str ("?update_sqme"))
-    update_weight = &
-         var_list%get_lval (var_str ("?update_weight"))
     if (update_event .or. update_sqme) then
        call msg_message ("Recalculating observables")
        if (update_sqme) then
@@ -4692,7 +4697,7 @@ contains
                             var_list, is_known = custom_adapt(i))
        else
           custom_adapt(i) = .false.
-       end if        
+       end if
     end do
     call global%it_list%init (n_it, n_calls, custom_adapt, adapt_code)
   end subroutine cmd_iterations_execute
@@ -4712,7 +4717,7 @@ contains
        deallocate (object%pn_literal)
     end if
   end subroutine range_final
-  
+
   subroutine range_write (object, unit)
     class(range_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -4761,7 +4766,7 @@ contains
     write (u, "(3x,A,I0)")  "i_step = ", object%i_step
     write (u, "(3x,A,I0)")  "n_step = ", object%n_step
   end subroutine range_int_write
-  
+
   subroutine range_real_write (object, unit)
     class(range_real_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -4774,7 +4779,7 @@ contains
     write (u, "(3x,A," // FMT_19 // ")")  "r_step = ", object%r_end
     write (u, "(3x,A,I0)")  "n_step = ", object%n_step
   end subroutine range_real_write
-  
+
   subroutine range_init (range, pn)
     class(range_t), intent(out) :: range
     type(parse_node_t), intent(in), target :: pn
@@ -4815,7 +4820,7 @@ contains
             // "' not implemented")
     end select
   end subroutine range_init
-  
+
   subroutine range_create_value_node (range)
     class(range_t), intent(inout) :: range
     allocate (range%pn_literal)
@@ -4854,7 +4859,7 @@ contains
     call parse_node_append_sub (range%pn_expr, range%pn_term)
     call parse_node_freeze_branch (range%pn_expr)
   end subroutine range_create_value_node
-  
+
   subroutine range_compile (range, global)
     class(range_t), intent(inout) :: range
     type(rt_data_t), intent(in), target :: global
@@ -4870,7 +4875,7 @@ contains
        end if
     end if
   end subroutine range_compile
-  
+
   subroutine range_int_evaluate (range)
     class(range_int_t), intent(inout) :: range
     integer :: ival
@@ -5106,7 +5111,7 @@ contains
     integer :: n
     n = range%n_step
   end function range_get_n_iterations
-  
+
   subroutine range_int_set_value (range, i)
     class(range_int_t), intent(inout) :: range
     integer, intent(in) :: i
@@ -5132,7 +5137,7 @@ contains
     end select
     call parse_node_set_value (range%pn_literal, ival = ival)
   end subroutine range_int_set_value
-  
+
   subroutine range_real_set_value (range, i)
     class(range_real_t), intent(inout) :: range
     integer, intent(in) :: i
@@ -5161,7 +5166,7 @@ contains
     end select
     call parse_node_set_value (range%pn_literal, rval = rval)
   end subroutine range_real_set_value
-  
+
   recursive subroutine cmd_scan_final (cmd)
     class(cmd_scan_t), intent(inout) :: cmd
     type(parse_node_t), pointer :: pn_var_single, pn_decl_single
@@ -5347,7 +5352,7 @@ contains
           !!!  allocate (range_int_t :: cmd%range (cmd%n_values))
           allocate (cmd%range_int (cmd%n_values))
        case (V_REAL)
-          !!! !!! gfortran 4.7.x memory corruption          
+          !!! !!! gfortran 4.7.x memory corruption
           !!!  allocate (range_real_t :: cmd%range (cmd%n_values))
           allocate (cmd%range_real (cmd%n_values))
        case (V_CMPLX)
@@ -5358,7 +5363,7 @@ contains
           call msg_bug ("scan: impossible variable type")
        end select
     case ("scan_int")
-       !!! !!! gfortran 4.7.x memory corruption       
+       !!! !!! gfortran 4.7.x memory corruption
        !!!  allocate (range_int_t :: cmd%range (cmd%n_values))
        allocate (cmd%range_int (cmd%n_values))
     case ("scan_real")
@@ -5390,13 +5395,13 @@ contains
             "scan_model", "scan_library")
           if (allocated (cmd%range_int)) then
              call cmd%range_int(i)%init (pn_rhs)
-             !!! !!! gfortran 4.7.x memory corruption             
+             !!! !!! gfortran 4.7.x memory corruption
              !!!  call cmd%range_int(i)%compile (global)
              call parse_node_replace_last_sub &
                   (pn_var_single, cmd%range_int(i)%pn_expr)
           else if (allocated (cmd%range_real)) then
              call cmd%range_real(i)%init (pn_rhs)
-             !!! !!! gfortran 4.7.x memory corruption 
+             !!! !!! gfortran 4.7.x memory corruption
              !!!  call cmd%range_real(i)%compile (global)
              call parse_node_replace_last_sub &
                   (pn_var_single, cmd%range_real(i)%pn_expr)
@@ -5514,7 +5519,7 @@ contains
        call cmd%else_body%write (unit, ind + 1)
     end if
   end subroutine cmd_if_write
-  
+
   recursive subroutine cmd_if_compile (cmd, global)
     class(cmd_if_t), intent(inout) :: cmd
     type(rt_data_t), intent(inout), target :: global
@@ -5630,7 +5635,7 @@ contains
        call cmd%command_list%write (u, ind + 1)
     end if
   end subroutine cmd_include_write
-  
+
   subroutine cmd_include_compile (cmd, global)
     class(cmd_include_t), intent(inout) :: cmd
     type(rt_data_t), intent(inout), target :: global
@@ -5725,7 +5730,7 @@ contains
        cmd => cmd%next
     end do
   end subroutine command_list_write
-  
+
   subroutine command_list_append (cmd_list, command)
     class(command_list_t), intent(inout) :: cmd_list
     class(command_t), intent(inout), pointer :: command
@@ -5819,7 +5824,7 @@ contains
          // "cmd_scan | cmd_if | cmd_include | cmd_quit | " &
          // "cmd_polarized | cmd_unpolarized | " &
          // "cmd_open_out | cmd_close_out | cmd_printf | " &
-         // "cmd_write_analysis | cmd_compile_analysis | cmd_nlo | cmd_components") 
+         // "cmd_write_analysis | cmd_compile_analysis | cmd_nlo | cmd_components")
     call ifile_append (ifile, "GRO options = '{' local_command_list '}'")
     call ifile_append (ifile, "SEQ local_command_list = local_command*")
     call ifile_append (ifile, "ALT local_command = " &
@@ -5862,7 +5867,7 @@ contains
     call ifile_append (ifile, "SEQ cmd_string = " &
          // "'$' var_name '=' sexpr") ! $
     call ifile_append (ifile, "SEQ cmd_alias = alias var_name '=' cexpr")
-    call ifile_append (ifile, "SEQ cmd_result = result '=' expr") 
+    call ifile_append (ifile, "SEQ cmd_result = result '=' expr")
     call ifile_append (ifile, "SEQ cmd_slha = slha_action slha_arg options?")
     call ifile_append (ifile, "ALT slha_action = " &
          // "read_slha | write_slha")
@@ -5875,25 +5880,25 @@ contains
     call ifile_append (ifile, "ALT showable = " &
          // "model | library | beams | iterations | " &
          // "cuts | weight | logical | string | pdg | " &
-         // "scale | factorization_scale | renormalization_scale | " & 
+         // "scale | factorization_scale | renormalization_scale | " &
          // "selection | reweight | analysis | " &
          // "stable | unstable | polarized | unpolarized | " &
          // "expect | intrinsic | int | real | complex | " &
          // "alias_var | string | results | result_var | " &
          // "log_var | string_var | var_name")
     call ifile_append (ifile, "KEY results")
-    call ifile_append (ifile, "KEY intrinsic")    
+    call ifile_append (ifile, "KEY intrinsic")
     call ifile_append (ifile, "SEQ alias_var = alias var_name")
     call ifile_append (ifile, "SEQ result_var = result_key result_arg?")
     call ifile_append (ifile, "SEQ log_var = '?' var_name")
     call ifile_append (ifile, "SEQ string_var = '$' var_name")  ! $
-    call ifile_append (ifile, "SEQ cmd_clear = clear clear_arg options?")    
+    call ifile_append (ifile, "SEQ cmd_clear = clear clear_arg options?")
     call ifile_append (ifile, "KEY clear")
     call ifile_append (ifile, "ARG clear_arg = ( clearable* )")
     call ifile_append (ifile, "ALT clearable = " &
          // "beams | iterations | " &
          // "cuts | weight | " &
-         // "scale | factorization_scale | renormalization_scale | " & 
+         // "scale | factorization_scale | renormalization_scale | " &
          // "selection | reweight | analysis | " &
          // "unstable | polarized | " &
          // "expect | " &
@@ -5902,7 +5907,7 @@ contains
     call ifile_append (ifile, "KEY expect")
     call ifile_append (ifile, "ARG expect_arg = ( lexpr )")
     call ifile_append (ifile, "SEQ cmd_cuts = cuts '=' lexpr")
-    call ifile_append (ifile, "SEQ cmd_scale = scale '=' expr")    
+    call ifile_append (ifile, "SEQ cmd_scale = scale '=' expr")
     call ifile_append (ifile, "SEQ cmd_fac_scale = " &
          // "factorization_scale '=' expr")
     call ifile_append (ifile, "SEQ cmd_ren_scale = " &
@@ -5911,9 +5916,9 @@ contains
     call ifile_append (ifile, "SEQ cmd_selection = selection '=' lexpr")
     call ifile_append (ifile, "SEQ cmd_reweight = reweight '=' expr")
     call ifile_append (ifile, "KEY cuts")
-    call ifile_append (ifile, "KEY scale")    
+    call ifile_append (ifile, "KEY scale")
     call ifile_append (ifile, "KEY factorization_scale")
-    call ifile_append (ifile, "KEY renormalization_scale")    
+    call ifile_append (ifile, "KEY renormalization_scale")
     call ifile_append (ifile, "KEY weight")
     call ifile_append (ifile, "KEY selection")
     call ifile_append (ifile, "KEY reweight")
@@ -5977,13 +5982,13 @@ contains
           // "gaussian | beam_events | user_sf_spec")
     call ifile_append (ifile, "KEY none")
     call ifile_append (ifile, "KEY lhapdf")
-    call ifile_append (ifile, "KEY lhapdf_photon")    
-    call ifile_append (ifile, "KEY pdf_builtin")    
-    call ifile_append (ifile, "KEY pdf_builtin_photon")        
+    call ifile_append (ifile, "KEY lhapdf_photon")
+    call ifile_append (ifile, "KEY pdf_builtin")
+    call ifile_append (ifile, "KEY pdf_builtin_photon")
     call ifile_append (ifile, "KEY isr")
     call ifile_append (ifile, "KEY epa")
-    call ifile_append (ifile, "KEY ewa")    
-    call ifile_append (ifile, "KEY circe1")        
+    call ifile_append (ifile, "KEY ewa")
+    call ifile_append (ifile, "KEY circe1")
     call ifile_append (ifile, "KEY circe2")
     call ifile_append (ifile, "KEY energy_scan")
     call ifile_append (ifile, "KEY gaussian")
@@ -5991,7 +5996,7 @@ contains
     call ifile_append (ifile, "SEQ user_sf_spec = user_strfun user_arg")
     call ifile_append (ifile, "KEY user_strfun")
     call ifile_append (ifile, "SEQ cmd_integrate = " &
-         // "integrate proc_arg options?") 
+         // "integrate proc_arg options?")
     call ifile_append (ifile, "KEY integrate")
     call ifile_append (ifile, "ARG proc_arg = ( proc_id* )")
     call ifile_append (ifile, "IDE proc_id")
@@ -6016,7 +6021,7 @@ contains
          // "observable analysis_tag options?")
     call ifile_append (ifile, "KEY observable")
     call ifile_append (ifile, "SEQ cmd_histogram = " &
-         // "histogram analysis_tag histogram_arg " & 
+         // "histogram analysis_tag histogram_arg " &
          // "options?")
     call ifile_append (ifile, "KEY histogram")
     call ifile_append (ifile, "ARG histogram_arg = (expr, expr, expr?)")

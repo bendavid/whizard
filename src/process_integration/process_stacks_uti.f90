@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -42,9 +42,10 @@ module process_stacks_uti
   use process_libraries
   use rng_base
   use prc_test, only: prc_test_create_library
-  use processes
+  use process, only: process_t
+  use instances, only: process_instance_t
   use processes_ut, only: prepare_test_process
-  
+
   use process_stacks
 
   use rng_base_ut, only: rng_test_factory_t
@@ -68,12 +69,12 @@ contains
     write (u, "(A)")
 
     call stack%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: process_stacks_1"
-    
+
   end subroutine process_stacks_1
-  
+
   subroutine process_stacks_2 (u)
     integer, intent(in) :: u
     type(process_stack_t) :: stack
@@ -106,20 +107,20 @@ contains
     allocate (process)
     run_id = "run1"
     call process%init (procname, run_id, &
-         lib, os_data, qcd, rng_factory, model) 
+         lib, os_data, qcd, rng_factory, model)
     call stack%push (process)
-    
+
     allocate (model)
     call model%init_test ()
 
     allocate (process)
     run_id = "run2"
     call process%init (procname, run_id, &
-         lib, os_data, qcd, rng_factory, model) 
+         lib, os_data, qcd, rng_factory, model)
     call stack%push (process)
-    
+
     call stack%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
 
@@ -127,9 +128,9 @@ contains
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: process_stacks_2"
-    
+
   end subroutine process_stacks_2
-  
+
   subroutine process_stacks_3 (u)
     integer, intent(in) :: u
     type(process_stack_t) :: stack
@@ -161,29 +162,29 @@ contains
 
     allocate (process)
     call prepare_test_process (process%process_t, process_instance, model)
-    call process%integrate (process_instance, 1, 1, 1000)
+    call process_instance%integrate (1, 1, 1000)
     call process_instance%final ()
     call process%final_integration (1)
     call stack%push (process)
-    
+
     write (u, "(A)")  "* Fill process variables"
     write (u, "(A)")
 
     call stack%fill_result_vars (procname)
     call stack%write_var_list (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
 
     call stack%final ()
 
     call model%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: process_stacks_3"
-    
+
   end subroutine process_stacks_3
-  
+
   subroutine process_stacks_4 (u)
     integer, intent(in) :: u
     type(process_library_t), target :: lib
@@ -221,9 +222,9 @@ contains
     allocate (process)
     run_id = "run1"
     call process%init (procname, run_id, &
-         lib, os_data, qcd, rng_factory, model) 
+         lib, os_data, qcd, rng_factory, model)
     call stack1%push (process)
-    
+
     write (u, "(A)")  "* Initialize second process"
     write (u, "(A)")
 
@@ -238,14 +239,14 @@ contains
     allocate (process)
     run_id = "run2"
     call process%init (procname, run_id, &
-         lib, os_data, qcd, rng_factory, model) 
+         lib, os_data, qcd, rng_factory, model)
     call stack2%push (process)
-    
+
     write (u, "(A)")  "* Show linked stacks"
     write (u, "(A)")
 
     call stack2%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
 
@@ -254,9 +255,9 @@ contains
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: process_stacks_4"
-    
+
   end subroutine process_stacks_4
-  
+
 
 end module process_stacks_uti
-  
+

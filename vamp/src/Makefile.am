@@ -72,7 +72,7 @@ NOWEB_FILES = \
     vampi.nw mpi90.nw vamp_test.nw vamp_test0.nw \
     application.nw sample.nw
 
-moduleexecincludedir = $(pkgincludedir)
+moduleexecincludedir = $(pkgincludedir)/../vamp
 if FC_MPI
 lib_LTLIBRARIES = libvamp.la libvampi.la
 libvamp_la_SOURCES = $(SOURCE_FILES)

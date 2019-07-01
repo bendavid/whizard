@@ -1,4 +1,4 @@
-! $Id: test_openmp.f90 7444 2016-02-17 15:37:20Z jr_reuter $
+! test_openmp.f90 --
 ! driver.f90 -- O'Mega self test driver
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !

@@ -1,4 +1,4 @@
-! $Id: benchmark.f90 7444 2016-02-17 15:37:20Z jr_reuter $
+! benchmark.f90 --
 ! benchmark.f90 -- race O'Mega matrix elements
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !

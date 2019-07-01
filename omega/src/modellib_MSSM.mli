@@ -1,4 +1,4 @@
-(* $Id: modellib_MSSM.mli 7667 2016-07-29 17:37:42Z jr_reuter $
+(* modellib_MSSM.mli --
 
    Copyright (C) 1999-2016 by
 

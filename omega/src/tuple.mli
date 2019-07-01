@@ -1,4 +1,4 @@
-(* $Id: tuple.mli 7444 2016-02-17 15:37:20Z jr_reuter $
+(* tuple.mli --
 
    Copyright (C) 1999-2016 by
 
@@ -124,7 +124,6 @@ module type Mono =
    \end{dubious} *)
     val of2_kludge : 'a -> 'a -> 'a t
 
-    val rcs : RCS.t
   end
 
 module type Poly =

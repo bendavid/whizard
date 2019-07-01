@@ -4,7 +4,7 @@
 ?pacify = true
 | Switching to model 'SM', scheme 'default'
 | Process library 'beam_setup_5_lib': recorded process 'beam_setup_5p'
-sqrts =  5.0000000E+02
+sqrts =  5.00000E+02
 seed = 1
 ?rebuild_grids = true
 | Integrate: current process library needs compilation
@@ -229,7 +229,7 @@ Warning: No cuts have been defined.
 |-----------------------------------------------------------------------------|
    1        100     2.876E-07   3.51E-11    0.01    0.00    99.9
 |=============================================================================|
-sqrts =  5.0000000E+02
+sqrts =  5.00000E+02
 circe1_ver = 10
 $circe1_acc = "ILC"
 seed = 1
@@ -470,7 +470,7 @@ Warning: No cuts have been defined.
    1        100     2.872E-07   8.02E-09    2.79    0.28    59.3
 |=============================================================================|
 $beam_events_file = "uniform_spread_2.5%.dat"
-sqrts =  5.0000000E+02
+sqrts =  5.00000E+02
 seed = 1
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1

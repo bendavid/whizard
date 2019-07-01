@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -40,7 +40,7 @@ module auto_components_uti
   use pdg_arrays
   use model_data
   use model_testbed, only: prepare_model, cleanup_model
-  
+
   use auto_components
 
   implicit none
@@ -108,7 +108,7 @@ contains
 
     write (u, *)
     write (u, "(A)")  "* Cleanup"
-    
+
     call cleanup_model (model)
 
     write (u, *)
@@ -138,7 +138,7 @@ contains
     write (u, *)
     write (u, "(A)")  "* LO final state"
     write (u, *)
-    
+
     allocate (pl (2))
     call pl(1)%init (2)
     call pl(1)%set (1, 1)
@@ -153,26 +153,26 @@ contains
     write (u, *)
     write (u, "(A)")  "* Initialize FS table"
     write (u, *)
-    
+
     call constraints%init (1)
     call constraints%set (1, constrain_n_tot (3))
 
     call fs_table%init (model, pl, constraints)
     call fs_table%write (u)
-    
+
     write (u, *)
     write (u, "(A)")  "* Generate NLO corrections, unconstrained"
     write (u, *)
-    
+
     call fs_table%radiate (constraints)
     call fs_table%write (u)
     call fs_table%final ()
-    
+
     write (u, *)
     write (u, "(A)")  "* Generate NLO corrections, &
          &complete but mass-constrained"
     write (u, *)
-    
+
     sqrts = 50
 
     call constraints%init (2)
@@ -183,13 +183,13 @@ contains
     call fs_table%radiate (constraints)
     call fs_table%write (u)
     call fs_table%final ()
-    
+
     write (u, *)
     write (u, "(A)")  "* Generate NLO corrections, restricted"
     write (u, *)
-    
+
     call pl_match%init ([1, -1, 21])
-    
+
     call constraints%init (2)
     call constraints%set (1, constrain_n_tot (3))
     call constraints%set (2, constrain_insert (pl_match))
@@ -198,13 +198,13 @@ contains
     call fs_table%radiate (constraints)
     call fs_table%write (u)
     call fs_table%final ()
-    
+
     write (u, *)
     write (u, "(A)")  "* Generate NNLO corrections, restricted, with one loop"
     write (u, *)
-    
+
     call pl_match%init ([1, -1, 21])
-    
+
     call constraints%init (3)
     call constraints%set (1, constrain_n_tot (4))
     call constraints%set (2, constrain_n_loop (1))
@@ -215,11 +215,11 @@ contains
     call fs_table%radiate (constraints)
     call fs_table%write (u)
     call fs_table%final ()
-    
+
     write (u, *)
     write (u, "(A)")  "* Generate NNLO corrections, restricted, with loops"
     write (u, *)
-    
+
     call constraints%init (2)
     call constraints%set (1, constrain_n_tot (4))
     call constraints%set (2, constrain_insert (pl_match))
@@ -229,12 +229,12 @@ contains
     call fs_table%radiate (constraints)
     call fs_table%write (u)
     call fs_table%final ()
-    
+
     write (u, *)
     write (u, "(A)")  "* Generate NNLO corrections, restricted, to Z Z H, &
          &no loops"
     write (u, *)
-    
+
     allocate (pl_zzh (1))
     call pl_zzh(1)%init (3)
     call pl_zzh(1)%set (1, 23)
@@ -250,7 +250,7 @@ contains
     call fs_table%radiate (constraints)
     call fs_table%write (u)
     call fs_table%final ()
-    
+
     call cleanup_model (model)
 
     write (u, *)
@@ -279,7 +279,7 @@ contains
     write (u, *)
     write (u, "(A)")  "* LO initial state"
     write (u, *)
-    
+
     allocate (pl_in (2))
     call pl_in(1)%init (2)
     call pl_in(1)%set (1, 1)
@@ -294,7 +294,7 @@ contains
     write (u, *)
     write (u, "(A)")  "* LO final state"
     write (u, *)
-    
+
     allocate (pl_out (1))
     call pl_out(1)%init (1)
     call pl_out(1)%set (1, 23)
@@ -303,41 +303,41 @@ contains
     write (u, *)
     write (u, "(A)")  "* Initialize FS table"
     write (u, *)
-    
+
     call constraints%init (1)
     call constraints%set (1, constrain_n_tot (4))
-    
+
     call if_table%init (model, pl_in, pl_out, constraints)
     call if_table%write (u)
-    
+
     write (u, *)
     write (u, "(A)")  "* Generate NLO corrections, unconstrained"
     write (u, *)
-    
+
     call if_table%radiate (constraints)
     call if_table%write (u)
     call if_table%final ()
-    
+
     write (u, *)
     write (u, "(A)")  "* Generate NLO corrections, &
          &complete but mass-constrained"
     write (u, *)
-    
+
     sqrts = 100
     call constraints%init (2)
     call constraints%set (1, constrain_n_tot (4))
     call constraints%set (2, constrain_mass_sum (sqrts))
-    
+
     call if_table%init (model, pl_in, pl_out, constraints)
     call if_table%radiate (constraints)
     call if_table%write (u)
     call if_table%final ()
-    
+
     write (u, *)
     write (u, "(A)")  "* Generate NLO corrections, &
          &mass-constrained, restricted beams"
     write (u, *)
-    
+
     call pl_beam%init (3)
     call pl_beam%set (1, 1)
     call pl_beam%set (2, -1)
@@ -352,34 +352,34 @@ contains
     call if_table%radiate (constraints)
     call if_table%write (u)
     call if_table%final ()
-    
+
     write (u, *)
     write (u, "(A)")  "* Generate NLO corrections, restricted"
     write (u, *)
-    
+
     call pl_match%init ([1, -1, 21])
-    
+
     call constraints%init (4)
     call constraints%set (1, constrain_n_tot (4))
     call constraints%set (2, constrain_in_state (pl_beam))
     call constraints%set (3, constrain_mass_sum (sqrts))
-    call constraints%set (4, constrain_insert (pl_match)) 
+    call constraints%set (4, constrain_insert (pl_match))
 
     call if_table%init (model, pl_in, pl_out, constraints)
     call if_table%radiate (constraints)
     call if_table%write (u)
     call if_table%final ()
-    
+
     write (u, *)
     write (u, "(A)")  "* Generate NNLO corrections, restricted, Z preserved, &
          &with loops"
     write (u, *)
-    
+
     call constraints%init (5)
     call constraints%set (1, constrain_n_tot (5))
     call constraints%set (2, constrain_in_state (pl_beam))
     call constraints%set (3, constrain_mass_sum (sqrts))
-    call constraints%set (4, constrain_insert (pl_match)) 
+    call constraints%set (4, constrain_insert (pl_match))
     call constraints%set (5, constrain_require (pl_out(1)))
 
     call if_table%init (model, pl_in, pl_out, constraints)
@@ -387,7 +387,7 @@ contains
     call if_table%radiate (constraints)
     call if_table%write (u)
     call if_table%final ()
-    
+
     call cleanup_model (model)
 
     write (u, *)

@@ -1,4 +1,4 @@
-(* $Id: config.mli 7653 2016-07-18 11:37:04Z ohl $
+(* config.mli --
 
    Copyright (C) 1999-2016 by
 
@@ -21,6 +21,10 @@
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
+
+val version : string
+val date : string
+val status : string
 
 val default_UFO_dir : string
 

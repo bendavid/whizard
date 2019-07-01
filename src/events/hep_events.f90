@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -408,11 +408,10 @@ contains
   end subroutine hepmc_event_to_particle_set
 
   subroutine hepmc_to_event &
-       (event, hepmc_event, default_model, fallback_model, process_index, &
+       (event, hepmc_event, fallback_model, process_index, &
        recover_beams, use_alpha_s, use_scale)
     class(generic_event_t), intent(inout), target :: event
     type(hepmc_event_t), intent(inout) :: hepmc_event
-    class(model_data_t), intent(in), target :: default_model
     class(model_data_t), intent(in), target :: fallback_model
     integer, intent(out), optional :: process_index
     logical, intent(in), optional :: recover_beams
@@ -422,7 +421,6 @@ contains
     real(default) :: scale, alpha_qcd
     type(particle_set_t) :: particle_set
     model => event%get_model_ptr ()
-    if (.not. associated (model))  model => default_model
     call hepmc_event_to_particle_set (particle_set, &
          hepmc_event, model, fallback_model, PRT_DEFINITE_HELICITY)
     call event%set_hard_particle_set (particle_set)
@@ -471,6 +469,7 @@ contains
     call lcio_particle_init (lprt, &
          prt%get_momentum (), &
          prt%get_pdg (), &
+         prt%flv%get_charge (), &
          lcio_status)
     call lcio_particle_set_color (lprt, prt%get_color ())
     vtx = prt%get_vertex ()
@@ -569,7 +568,7 @@ contains
        allocate (parents (n_parents))
        if (n_children > 0) then
           do j = 1, n_children
-             daughters(j) = lcio_get_n_children (evt,i,j)          
+             daughters(j) = lcio_get_n_children (evt,i,j)
           end do
        end if
        if (n_parents > 0) then

@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -49,7 +49,7 @@ module radiation_generator
   private
 
   public :: radiation_generator_t
-  
+
   type :: pdg_sorter_t
      integer :: pdg
      logical :: checked = .false.
@@ -77,7 +77,7 @@ module radiation_generator
   contains
     procedure :: null => prt_queue_null
     procedure :: append => prt_queue_append
-    procedure :: get => prt_queue_get 
+    procedure :: get => prt_queue_get
     procedure :: get_last => prt_queue_get_last
     procedure :: reset => prt_queue_reset
     procedure :: check_for_same_prt_strings => prt_queue_check_for_same_prt_strings
@@ -89,7 +89,7 @@ module radiation_generator
      integer, dimension(:), allocatable :: ii
      type(reshuffle_list_t), pointer :: next => null ()
   contains
-    procedure :: append => reshuffle_list_append 
+    procedure :: append => reshuffle_list_append
     procedure :: get => reshuffle_list_get
   end type reshuffle_list_t
 
@@ -120,7 +120,7 @@ module radiation_generator
     procedure :: setup_if_table => radiation_generator_setup_if_table
     generic :: reset_particle_content => reset_particle_content_pdg_array, &
                                          reset_particle_content_pdg_list
-    procedure :: reset_particle_content_pdg_list => & 
+    procedure :: reset_particle_content_pdg_list => &
       radiation_generator_reset_particle_content_pdg_list
     procedure :: reset_particle_content_pdg_array => &
       radiation_generator_reset_particle_content_pdg_array
@@ -131,10 +131,10 @@ module radiation_generator
     procedure :: generate => radiation_generator_generate
     procedure :: generate_multiple => radiation_generator_generate_multiple
     procedure :: first_emission => radiation_generator_first_emission
-    procedure :: append_emissions => radiation_generator_append_emissions 
+    procedure :: append_emissions => radiation_generator_append_emissions
     procedure :: reset_queue => radiation_generator_reset_queue
     procedure :: get_n_gks_states => radiation_generator_get_n_gks_states
-    procedure :: get_next_state => radiation_generator_get_next_state 
+    procedure :: get_next_state => radiation_generator_get_next_state
     procedure :: get_emitter_indices => radiation_generator_get_emitter_indices
     procedure :: get_raw_states => radiation_generator_get_raw_states
     procedure :: save_born_raw => radiation_generator_save_born_raw
@@ -258,7 +258,7 @@ contains
     integer :: n_u, n_ubar, n_gl
     integer :: i, j
     call queue%reset ()
-    allocate (i_particle (queue%n_lists, 3))   
+    allocate (i_particle (queue%n_lists, 3))
     do i = 1, queue%n_lists
        call queue%get (prt_string)
        n_u = count_particle (prt_string, 2)
@@ -288,7 +288,7 @@ contains
          prt_ref = "u"
       case (-2)
          prt_ref = "ubar"
-      case (21) 
+      case (21)
          prt_ref = "gl"
       end select
       do i = 1, size (prt_string)
@@ -309,7 +309,7 @@ contains
        call msg_fatal ("Trying to access empty particle queue")
     end if
     val = .false.
-    do 
+    do
        if (size (current%prt_string) == size (prt_string)) then
           if (all (current%prt_string == prt_string)) then
              val = .true.
@@ -342,7 +342,7 @@ contains
        do i = 1, size (current%prt_string)
           write (u, "(A,1X)", advance = 'no') char (current%prt_string(i))
        end do
-       write (u, "(A)") 
+       write (u, "(A)")
        if (associated (current%next)) then
           current => current%next
           j = j+1
@@ -365,7 +365,7 @@ contains
        prt(i) = flv%get_name ()
     end do
   end subroutine sort_prt
-    
+
   subroutine sort_pdg (pdg)
     type(pdg_array_t), dimension(:), intent(inout) :: pdg
     integer, dimension(:), allocatable :: i_pdg
@@ -381,7 +381,7 @@ contains
        call pdg(i)%set (1, i_pdg(i))
     end do
   end subroutine sort_pdg
- 
+
   subroutine create_pdg_array (prt, radiation_model, pdg)
     type (string_t), dimension(:), intent(in) :: prt
     class (model_data_t), intent(in), target :: radiation_model
@@ -389,13 +389,13 @@ contains
     type(flavor_t) :: flv
     integer :: i
     allocate (pdg (size (prt)))
-    do i = 1, size (prt) 
+    do i = 1, size (prt)
        call flv%init (prt(i), radiation_model)
        pdg(i) = flv%get_pdg ()
     end do
   end subroutine create_pdg_array
 
-  subroutine reshuffle_list_append (rlist, ii) 
+  subroutine reshuffle_list_append (rlist, ii)
      class(reshuffle_list_t), intent(inout) :: rlist
      integer, dimension(:), allocatable, intent(in) :: ii
      type(reshuffle_list_t), pointer :: current
@@ -436,7 +436,7 @@ contains
           call msg_fatal ("Index exceeds size of reshuffling list")
        end if
     end do
-    allocate (ii (size (current%ii))) 
+    allocate (ii (size (current%ii)))
     ii = current%ii
   end function reshuffle_list_get
 
@@ -464,7 +464,7 @@ contains
     logical, intent(in), optional :: qcd, qed
     type(pdg_list_t) :: pl_in, pl_out
     integer :: i
-    call pl_in%init(size (pdg_in))    
+    call pl_in%init(size (pdg_in))
     call pl_out%init(size (pdg_out))
     do i = 1, size (pdg_in)
        call pl_in%set (i, pdg_in(i))
@@ -531,7 +531,7 @@ contains
        (generator, set_n_loop, set_mass_sum, &
         set_selected_particles, set_required_particles)
     class(radiation_generator_t), intent(inout), target :: generator
-    logical, intent(in) :: set_n_loop   
+    logical, intent(in) :: set_n_loop
     logical, intent(in) :: set_mass_sum
     logical, intent(in) :: set_selected_particles
     logical, intent(in) :: set_required_particles
@@ -543,7 +543,7 @@ contains
     integer :: last_index
     integer :: n_new_particles, n_skip
     integer, dimension(:), allocatable :: i_skip
-    
+
     allocate (i_skip (generator%n_tot))
     i_skip = -1
 
@@ -557,7 +557,7 @@ contains
       if (set_n_loop) then
          call constraints%set (n, constrain_n_loop(generator%n_loops))
          n = n + 1
-      end if 
+      end if
       if (set_mass_sum) then
         call constraints%set (n, constrain_mass_sum(generator%mass_sum))
         n = n + 1
@@ -581,7 +581,7 @@ contains
             if (any (i == i_skip)) cycle
             call pl_req%set (j, generator%pl_out%get(i))
             j = j + 1
-         end do          
+         end do
          call constraints%set (n, constrain_require (pl_req))
          n = n + 1
       end if
@@ -640,10 +640,10 @@ contains
     allocate (pl_in (1), pl_out (1))
     found = .false.
     flv = 0
- 
+
     pl_in(1) = generator%pl_in
     pl_out(1) = generator%pl_out
-    
+
     call pl_in(1)%create_pdg_array (pdg_in)
     call pl_out(1)%create_pdg_array (pdg_out)
 
@@ -680,7 +680,7 @@ contains
          end do
       end do
       prt_tot_in = buf(1 : generator%n_in)
-      
+
       do j = 1, flv
          reshuffle_list_local = reshuffle_list%get(j)
          do i = 1, size (reshuffle_list_local)
@@ -702,7 +702,7 @@ contains
       type(pdg_sorter_t), dimension(:), allocatable :: sort_real
       integer :: i_min, n_in, n_born, n_real
       integer :: ib, ir
- 
+
       n_in = generator%n_in
       n_born = size (pdg_born)
       n_real = size (pdg_real)
@@ -729,7 +729,7 @@ contains
 
       list = sort_real%associated_born
 
-    end subroutine pdg_reshuffle 
+    end subroutine pdg_reshuffle
 
     subroutine associate_born_indices (sort_born, sort_real, ib, n_real)
       type(pdg_sorter_t), intent(in) :: sort_born
@@ -745,7 +745,7 @@ contains
             exit
         end if
       end do
-    end subroutine associate_born_indices            
+    end subroutine associate_born_indices
 
     subroutine fill_buffer (buffer, particle)
       type(string_t), intent(inout) :: buffer
@@ -767,7 +767,7 @@ contains
       integer :: i_first, i_last
       exist = .false.
       i_first = 1; i_last = 1
-      do  
+      do
          if (buffer(i_last:i_last) == ":") then
             buffer_internal = buffer (i_first:i_last-1)
             if (buffer_internal == substring) then
@@ -816,7 +816,7 @@ contains
     type(string_t), dimension(:), allocatable :: prt_out1, prt_out2
     type(pdg_array_t), dimension(:), allocatable :: pdg_new_out
     integer :: current_multiplicity
-    do 
+    do
        call generator%prt_queue%get (prt_fetched)
        current_multiplicity = size (prt_fetched)
        if (current_multiplicity == max_multiplicity) exit
@@ -834,12 +834,12 @@ contains
        if (.not. any (prt_out1 == " ")) then
           call sort_prt (prt_out1, generator%radiation_model)
           if (.not. generator%prt_queue%contains (prt_out1)) &
-             call generator%prt_queue%append (prt_out1) 
+             call generator%prt_queue%append (prt_out1)
        end if
     end do
 
   contains
-  
+
     subroutine separate_particles (prt1, prt2)
       type(string_t), intent(inout), dimension(:) :: prt1
       type(string_t), intent(out), dimension(:), allocatable :: prt2
@@ -877,15 +877,15 @@ contains
     call generator%prt_queue%get (prt_string)
   end function radiation_generator_get_next_state
 
-  function radiation_generator_get_emitter_indices (generator) result (indices)
-     integer, dimension(:), allocatable :: indices
+  subroutine radiation_generator_get_emitter_indices (generator, indices)
      class(radiation_generator_t), intent(in) :: generator
+     integer, dimension(:), allocatable, intent(out) :: indices
      type(pdg_array_t), dimension(:), allocatable :: pdg_in, pdg_out
      integer, dimension(:), allocatable :: flv_in, flv_out
      integer, dimension(:), allocatable :: emitters
      integer :: i, j
      integer :: n_in, n_out
-     
+
      call generator%pl_in%create_pdg_array (pdg_in)
      call generator%pl_out%create_pdg_array (pdg_out)
 
@@ -894,24 +894,24 @@ contains
      forall (i=1:n_in) flv_in(i) = pdg_in(i)%get()
      forall (i=1:n_out) flv_out(i) = pdg_out(i)%get()
 
-     emitters = generator%if_table%get_emitters (generator%constraints) 
+     call generator%if_table%get_emitters (generator%constraints, emitters)
      allocate (indices (size (emitters)))
-     
+
      j = 1
      do i = 1, n_in + n_out
         if (i <= n_in) then
            if (any (flv_in(i) == emitters)) then
               indices (j) = i
-              j = j+1
+              j = j + 1
            end if
         else
            if (any (flv_out(i-n_in) == emitters)) then
               indices (j) = i
-              j = j+1
+              j = j + 1
            end if
         end if
      end do
-  end function radiation_generator_get_emitter_indices
+  end subroutine radiation_generator_get_emitter_indices
 
   function radiation_generator_get_raw_states (generator) result (raw_states)
     class(radiation_generator_t), intent(in), target :: generator
@@ -935,16 +935,16 @@ contains
   subroutine radiation_generator_save_born_raw (generator, pdg_in, pdg_out)
     class(radiation_generator_t), intent(inout) :: generator
     type(pdg_array_t), dimension(:), allocatable, intent(in) :: pdg_in, pdg_out
-    integer :: i 
-    !!! !!! !!! Explicit allocation due to gfortran 4.7.4  
-    allocate (generator%pdg_in_born (size (pdg_in))) 
-    do i = 1, size (pdg_in) 
-       generator%pdg_in_born(i) = pdg_in(i) 
-    end do 
-    allocate (generator%pdg_out_born (size (pdg_out))) 
-    do i = 1, size (pdg_out) 
-       generator%pdg_out_born(i) = pdg_out(i) 
-    end do 
+    integer :: i
+    !!! !!! !!! Explicit allocation due to gfortran 4.7.4
+    allocate (generator%pdg_in_born (size (pdg_in)))
+    do i = 1, size (pdg_in)
+       generator%pdg_in_born(i) = pdg_in(i)
+    end do
+    allocate (generator%pdg_out_born (size (pdg_out)))
+    do i = 1, size (pdg_out)
+       generator%pdg_out_born(i) = pdg_out(i)
+    end do
   end subroutine radiation_generator_save_born_raw
   function radiation_generator_get_born_raw (generator) result (flv_born)
     class(radiation_generator_t), intent(in) :: generator

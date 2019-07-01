@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -159,6 +159,8 @@ module particles
      procedure :: get_momenta_all => particle_set_get_momenta_all
      procedure :: get_momenta_indices => particle_set_get_momenta_indices
      procedure :: set_momenta => particle_set_set_momenta
+     procedure :: replace_incoming_momenta => particle_set_replace_incoming_momenta
+     procedure :: replace_outgoing_momenta => particle_set_replace_outgoing_momenta
      procedure :: parent_add_child => particle_set_parent_add_child
      procedure :: build_radiation => particle_set_build_radiation
      procedure :: write => particle_set_write
@@ -189,6 +191,7 @@ module particles
      procedure :: assign_vertices => particle_set_assign_vertices
      procedure :: to_subevt => particle_set_to_subevt
      procedure :: replace => particle_set_replace
+     procedure :: order_color_lines => particle_set_order_color_lines
   end type particle_set_t
 
 
@@ -845,9 +848,10 @@ contains
          (FM_IGNORE_HELICITY, x(1), is_valid, flavor_state)
     allocate (qn (n_tot,1))
     do i = 1, n_tot
-       qn(i,:) = flavor_state(i)%get_quantum_numbers (1)
+       qn(i,:) = flavor_state(i)%get_quantum_number (1)
     end do
     if (keep_correlations .and. keep_virtual) then
+       call particle_set%correlated_state%final ()
        call int_flows%factorize (mode, x(2), ok, &
             single_state, particle_set%correlated_state, qn(:,1))
     else
@@ -883,10 +887,10 @@ contains
        call particle_set_resonance_flag &
             (particle_set%prt, int%get_resonance_flags ())
     end if
-    do i = i, size(flavor_state)
+    do i = 1, size(flavor_state)
        call flavor_state(i)%final ()
     end do
-    do i = i, size(single_state)
+    do i = 1, size(single_state)
        call single_state(i)%final ()
     end do
   end subroutine particle_set_init_interaction
@@ -907,7 +911,7 @@ contains
           pset_out%prt(i) = pset_in%prt(i)
        end do
     end if
-    pset_out%correlated_state = pset_in%correlated_state      
+    pset_out%correlated_state = pset_in%correlated_state
   end subroutine particle_set_init_particle_set
 
   subroutine particle_set_set_model (particle_set, model)
@@ -919,7 +923,7 @@ contains
     end do
     call particle_set%correlated_state%set_model (model)
   end subroutine particle_set_set_model
-    
+
   subroutine particle_set_final (particle_set)
     class(particle_set_t), intent(inout) :: particle_set
     integer :: i
@@ -959,6 +963,33 @@ contains
     particle_set%prt%p = p
   end subroutine particle_set_set_momenta
 
+  subroutine particle_set_replace_incoming_momenta (particle_set, p)
+    class(particle_set_t), intent(inout) :: particle_set
+    type(vector4_t), intent(in), dimension(:) :: p
+    integer :: i, j
+    i = 1
+    do j = 1, particle_set%get_n_tot ()
+       if (particle_set%prt(j)%get_status () == PRT_INCOMING) then
+          particle_set%prt(j)%p = p(i)
+          i = i + 1
+          if (i > particle_set%n_in) exit
+       end if
+    end do
+  end subroutine particle_set_replace_incoming_momenta
+
+  subroutine particle_set_replace_outgoing_momenta (particle_set, p)
+    class(particle_set_t), intent(inout) :: particle_set
+    type(vector4_t), intent(in), dimension(:) :: p
+    integer :: i, j
+    i = particle_set%n_in + 1
+    do j = 1, particle_set%n_tot
+       if (particle_set%prt(j)%get_status () == PRT_OUTGOING) then
+          particle_set%prt(j)%p = p(i)
+          i = i + 1
+       end if
+    end do
+  end subroutine particle_set_replace_outgoing_momenta
+
   subroutine particle_set_parent_add_child (particle_set, parent, child)
     class(particle_set_t), intent(inout) :: particle_set
     integer, intent(in) :: parent, child
@@ -996,7 +1027,6 @@ contains
      do i = 1, n
         status_mask(i) = particle_set%prt(i)%get_status () == PRT_INCOMING
      end do
-     !!! status_mask = particle_set%prt%get_status () == PRT_INCOMING     
      n_in1 = count (status_mask)
      allocate (i_in1 (n_in1))
      i_in1 = particle_set%get_indices (status_mask)
@@ -1436,10 +1466,14 @@ contains
      n_tot = pset%n_tot
   end function particle_set_get_n_tot
 
-  function particle_set_get_n_remnants (pset) result (n_rad)
+  function particle_set_get_n_remnants (pset) result (n_remn)
     class(particle_set_t), intent(in) :: pset
-    integer :: n_rad
-    n_rad = count (pset%prt%get_status () == PRT_BEAM_REMNANT)
+    integer :: n_remn
+    if (allocated (pset%prt)) then
+       n_remn = count (pset%prt%get_status () == PRT_BEAM_REMNANT)
+    else
+       n_remn = 0
+    end if
   end function particle_set_get_n_remnants
 
   function particle_set_get_particle (pset, index) result (particle)
@@ -1607,12 +1641,17 @@ contains
     integer, intent(in) :: pdg
     type(vector4_t), intent(in) :: momentum
     real(default), intent(in), optional :: abs_smallness, rel_smallness
-    integer :: i
+    integer :: i, j
+    logical, dimension(0:3) :: equals
     idx = 0
     do i = 1, size (particle_set%prt)
        if (particle_set%prt(i)%flv%get_pdg () == pdg) then
-          if (all (nearly_equal (particle_set%prt(i)%p%p, momentum%p, &
-                                 abs_smallness, rel_smallness))) then
+          !!! Workaround for gfortran 4.8.3 with overloaded elemental function
+          do j = 0, 3
+            equals(j) = nearly_equal (particle_set%prt(i)%p%p(j), momentum%p(j), &
+                                   abs_smallness, rel_smallness)
+          end do
+          if (all (equals)) then
              idx = i
              return
           end if
@@ -1632,7 +1671,7 @@ contains
     do i = size (particle_set%prt), 1, -1
        if (particle_set%prt(i)%flv%get_pdg () == pdg) then
           if (all (nearly_equal (particle_set%prt(i)%p%p, momentum%p, &
-                                 abs_smallness, rel_smallness))) then
+               abs_smallness, rel_smallness))) then
              idx = i
              return
           end if
@@ -2097,7 +2136,7 @@ contains
     subroutine find_hard_process_in_pset (p_in, p_out)
       integer, dimension(:), allocatable, intent(out) :: p_in, p_out
       integer, dimension(:), allocatable :: p_status, p_idx
-      integer :: n_in_p, n_out_p
+      integer :: n_out_p
       integer :: i
       allocate (p_status (pset%n_tot), p_idx (pset%n_tot))
       !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
@@ -2106,7 +2145,6 @@ contains
          p_status(i) = pset%prt(i)%get_status ()
       end do
       p_idx = [(i, i = 1, pset%n_tot)]
-      n_in_p = count (p_status == PRT_INCOMING)
       allocate (p_in (n_in))
       p_in = pack (p_idx, p_status == PRT_INCOMING)
       if (size (p_in) == 0)  call err_pset_hard
@@ -2442,6 +2480,53 @@ contains
     particle_set%n_vir = particle_set%n_tot &
          - particle_set%n_beam - particle_set%n_in - particle_set%n_out
   end subroutine particle_set_replace
+
+  subroutine particle_set_order_color_lines (pset_out, pset_in)
+    class(particle_set_t), intent(inout) :: pset_out
+    type(particle_set_t), intent(in) :: pset_in
+    integer :: i, n, n_col_rem, remnant1, remnant2
+    n_col_rem = 0
+    do i = 1, pset_in%n_tot
+       if (pset_in%prt(i)%get_status () == PRT_BEAM_REMNANT .and. &
+            any (pset_in%prt(i)%get_color () /= 0)) then
+          if (n == 0) then
+             remnant1 = i
+          else
+             remnant2 = i
+          end if
+          n_col_rem = n_col_rem + 1
+       end if
+    end do
+    pset_out%n_beam = pset_in%n_beam
+    pset_out%n_in   = pset_in%n_in
+    pset_out%n_vir  = pset_in%n_vir + pset_in%n_out + n_col_rem
+    pset_out%n_out  = pset_in%n_out
+    pset_out%n_tot  = pset_in%n_tot + pset_in%n_out + n_col_rem
+    pset_out%correlated_state = pset_in%correlated_state
+    pset_out%factorization_mode = pset_in%factorization_mode    
+    allocate (pset_out%prt (pset_out%n_tot))
+    do i = 1, pset_in%n_tot
+       call pset_out%prt(i)%init (pset_in%prt(i))
+       call pset_out%prt(i)%set_children (pset_in%prt(i)%child)
+       call pset_out%prt(i)%set_parents (pset_in%prt(i)%parent)
+    end do
+    n = pset_in%n_tot
+    do i = 1, pset_in%n_tot
+       if (pset_out%prt(i)%get_status () == PRT_OUTGOING .and. &
+           all (pset_out%prt(i)%get_color () == 0) .and. &
+           .not. pset_out%prt(i)%has_children ()) then
+          n = n + 1
+          call pset_out%prt(n)%init (pset_out%prt(i))
+          call pset_out%prt(i)%reset_status (PRT_VIRTUAL)
+          call pset_out%prt(i)%add_child (n)
+          call pset_out%prt(i)%set_parents ([i])
+       end if
+    end do
+    if (n_col_rem > 0) then
+       do i = 1, n_col_rem
+       end do
+    end if
+  end subroutine particle_set_order_color_lines
 
   subroutine pacify_particle (prt)
     class(particle_t), intent(inout) :: prt

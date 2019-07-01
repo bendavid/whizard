@@ -1,4 +1,4 @@
-(* $Id: partial.mli 4015 2013-01-03 16:04:18Z jr_reuter $
+(* partial.mli --
 
    Copyright (C) 1999-2015 by
 

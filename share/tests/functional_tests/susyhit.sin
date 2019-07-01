@@ -1,4 +1,3 @@
-# $Id: susyhit.sin 7076 2015-06-29 00:09:21Z jr_reuter $
 # Test the interaction with the external spectrum/decay program SUSYHIT
 
 model = MSSM_Grav

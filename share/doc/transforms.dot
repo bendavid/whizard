@@ -1,0 +1,19 @@
+
+digraph G {
+tau_decays -> event_transforms
+shower -> event_transforms
+dispatch_transforms -> evt_nlo
+events -> decays
+dispatch_transforms -> shower
+evt_nlo -> event_transforms
+events -> event_transforms
+hadrons -> event_transforms
+dispatch_transforms -> hadrons
+eio_raw -> events
+decays -> event_transforms
+dispatch_transforms -> decays
+dispatch_transforms -> event_transforms
+events -> evt_nlo
+dispatch_transforms -> eio_raw
+ }
+

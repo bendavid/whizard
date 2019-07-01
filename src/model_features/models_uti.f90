@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -135,17 +135,17 @@ contains
     call model_list%read_model (var_str ("Test"), var_str ("Test.mdl"), &
          os_data, model)
     call model_list%write (u)
-    
+
     write (u, *)
     write (u, "(A)")  "* Variable list"
     write (u, *)
-    
+
     var_list => model%get_var_list_ptr ()
     call var_list%write (u)
 
     write (u, *)
     write (u, "(A)")  "* Cleanup"
-    
+
     call model_list%final ()
     call syntax_model_file_final ()
 
@@ -173,22 +173,22 @@ contains
          os_data, model)
     allocate (instance)
     call instance%init_instance (model)
-    
+
     call model%write (u)
-    
+
     write (u, *)
     write (u, "(A)")  "* Variable list"
     write (u, *)
-    
+
     var_list => instance%get_var_list_ptr ()
     call var_list%write (u)
 
     write (u, *)
     write (u, "(A)")  "* Cleanup"
-    
+
     call instance%final ()
     deallocate (instance)
-    
+
     call model_list%final ()
     call syntax_model_file_final ()
 
@@ -249,7 +249,7 @@ contains
     call model%set_stable (-6)
 
     call model%write (u)
-    
+
     md5sum = model%get_parameters_md5sum ()
     write (u, *)
     write (u, "(1x,3A)")  "MD5 sum (parameters) = '", md5sum, "'"
@@ -266,7 +266,7 @@ contains
 
     write (u, *)
     write (u, "(A)")  "* Cleanup"
-    
+
     call model_instance%final ()
     deallocate (model_instance)
     call model_list%final ()
@@ -322,7 +322,7 @@ contains
     write (u, *)
     write (u, "(A)")  "* Modify parameter"
     write (u, *)
-    
+
     call model%set_real (var_str ("ff"), 1._default)
 
     call model%write (u, &
@@ -334,7 +334,7 @@ contains
 
     write (u, *)
     write (u, "(A)")  "* Cleanup"
-    
+
     call model_list%final ()
     call syntax_model_file_final ()
 
@@ -371,7 +371,7 @@ contains
     end do
 1   continue
     close (um)
-    
+
     call syntax_model_file_init ()
     call os_data_init (os_data)
 
@@ -381,13 +381,13 @@ contains
     write (u, *)
     write (u, "(A)")  "* Variable list"
     write (u, *)
-    
+
     var_list => model%get_var_list_ptr ()
     call var_list%write (u)
 
     write (u, *)
     write (u, "(A)")  "* Cleanup"
-    
+
     call model_list%final ()
     call syntax_model_file_final ()
 
@@ -439,14 +439,14 @@ contains
     end do
 1   continue
     close (um)
-    
+
     call syntax_model_file_init ()
     call os_data_init (os_data)
 
     write (u, *)
     write (u, "(A)")  "* Model output, default scheme (= foo)"
     write (u, *)
-    
+
     call model_list%read_model (var_str ("Test7"), var_str ("Test7.mdl"), &
          os_data, model)
     call model%write (u, show_md5sum=.false.)
@@ -458,7 +458,7 @@ contains
     write (u, *)
     write (u, "(A)")  "* Model output, scheme foo"
     write (u, *)
-    
+
     call model_list%read_model (var_str ("Test7"), var_str ("Test7.mdl"), &
          os_data, model, scheme = var_str ("foo"))
     call model%write (u, show_md5sum=.false.)
@@ -470,7 +470,7 @@ contains
     write (u, *)
     write (u, "(A)")  "* Model output, scheme bar"
     write (u, *)
-    
+
     call model_list%read_model (var_str ("Test7"), var_str ("Test7.mdl"), &
          os_data, model, scheme = var_str ("bar"))
     call model%write (u, show_md5sum=.false.)
@@ -482,7 +482,7 @@ contains
     write (u, *)
     write (u, "(A)")  "* Model output, scheme gee"
     write (u, *)
-    
+
     call model_list%read_model (var_str ("Test7"), var_str ("Test7.mdl"), &
          os_data, model, scheme = var_str ("gee"))
     call model%write (u, show_md5sum=.false.)
@@ -491,7 +491,7 @@ contains
 
     write (u, *)
     write (u, "(A)")  "* Cleanup"
-    
+
     call model_list%final ()
     call syntax_model_file_final ()
 
@@ -499,7 +499,7 @@ contains
     write (u, "(A)")  "* Test output end: models_7"
 
   contains
-    
+
     subroutine show_var_list ()
       write (u, *)
       write (u, "(A)")  "* Variable list"

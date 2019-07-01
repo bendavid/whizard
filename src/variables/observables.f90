@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -166,7 +166,7 @@ contains
   end subroutine var_list_set_observables_binary
 
   subroutine var_list_check_observable (var_list, name, type)
-    type(var_list_t), intent(in), target :: var_list
+    class(var_list_t), intent(in), target :: var_list
     type(string_t), intent(in) :: name
     integer, intent(inout) :: type
     if (string_is_observable_id (name)) then
@@ -176,7 +176,7 @@ contains
        return
     end if
   end subroutine var_list_check_observable
-  
+
   function string_is_observable_id (string) result (flag)
     logical :: flag
     type(string_t), intent(in) :: string
@@ -190,7 +190,7 @@ contains
   end function string_is_observable_id
 
   subroutine var_list_check_result_var (var_list, name, type)
-    type(var_list_t), intent(in), target :: var_list
+    class(var_list_t), intent(in), target :: var_list
     type(string_t), intent(in) :: name
     integer, intent(inout) :: type
     if (string_is_integer_result_var (name))  type = V_INT

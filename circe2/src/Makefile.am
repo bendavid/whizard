@@ -97,8 +97,8 @@ all-local:
 bytecode:
 endif
 
-include $(top_srcdir)/src/Makefile.ocaml
-include $(top_srcdir)/src/Makefile.sources
+include $(top_srcdir)/circe2/src/Makefile.ocaml
+include $(top_srcdir)/circe2/src/Makefile.sources
 
 EXTRA_DIST = $(NOWEB_FILES) $(SOURCE_FILES) $(CIRCE2_CAML) \
 	$(EXTRA_SOURCE_FILES) $(circe2_moments_SOURCES) \
@@ -111,8 +111,7 @@ MYPRECIOUS = $(CIRCE2_DERIVED)
 	@:
 #	touch $@
 
-# There are no module files for the FORTRAN 77 code
-moduleexecincludedir = $(pkgincludedir)
+moduleexecincludedir = $(pkgincludedir)/../circe2
 nodist_moduleexecinclude_HEADERS = $(MODULE_FILES)
 
 AM_FFLAGS = 
@@ -140,7 +139,7 @@ endif
 TRIPLE = $(srcdir)/prelude.nw $< $(srcdir)/postlude.nw
 WEBS = $(srcdir)/prelude.nw $(srcdir)/circe2.nw $(srcdir)/postlude.nw
 NOTANGLE_IT = \
-  cat $(TRIPLE) | $(NOTANGLE) -R'[[$@]]' | $(CPIF) $@
+  cat $(TRIPLE) | $(NOTANGLE) -R'[[$@]]' > $@
 
 SUFFIXES += .nw .$(FC_MODULE_EXT)
 
@@ -149,16 +148,16 @@ if NOWEB_AVAILABLE
 	$(NOTANGLE_IT)
 
 circe2_ls.f90: circe2.nw
-	cat $(WEBS) | $(NOTANGLE) -R'[[$@]]' | $(CPIF) $@
+	cat $(WEBS) | $(NOTANGLE) -R'[[$@]]' > $@
 
 circe2_generate.f90: circe2.nw
-	cat $(WEBS) | $(NOTANGLE) -R'[[$@]]' | $(CPIF) $@
+	cat $(WEBS) | $(NOTANGLE) -R'[[$@]]' > $@
 
 circe2_moments.f90: circe2.nw
-	cat $(WEBS) | $(NOTANGLE) -R'[[$@]]' | $(CPIF) $@
+	cat $(WEBS) | $(NOTANGLE) -R'[[$@]]' > $@
 
 tao_random_objects.f90: circe2.nw
-	cat $(WEBS) | $(NOTANGLE) -R'[[$@]]' | $(CPIF) $@
+	cat $(WEBS) | $(NOTANGLE) -R'[[$@]]' > $@
 
 endif NOWEB_AVAILABLE
 

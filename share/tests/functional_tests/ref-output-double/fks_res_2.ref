@@ -1,0 +1,191 @@
+?openmp_logging = false
+?vis_history = false
+?integration_timer = false
+?pacify = true
+openmp_num_threads = 1
+SM.mb =>  4.20000E+00
+SM.mmu =>  5.00000E+00
+?use_vamp_equivalences = false
+?alpha_s_is_fixed = false
+?alpha_s_from_mz = true
+$fks_mapping_type = "resonances"
+| Process library 'fks_res_2_lib': recorded process 'fks_res_2_p1'
+seed = 2222
+sqrts =  5.00000E+02
+| Integrate: current process library needs compilation
+| Process library 'fks_res_2_lib': compiling ...
+| Process library 'fks_res_2_lib': writing makefile
+| Process library 'fks_res_2_lib': removing old files
+| Process library 'fks_res_2_lib': writing driver
+| Process library 'fks_res_2_lib': creating source code
+| Process library 'fks_res_2_lib': compiling sources
+| Process library 'fks_res_2_lib': linking
+| Process library 'fks_res_2_lib': loading
+| Process library 'fks_res_2_lib': ... success.
+| Integrate: compilation done
+| QCD alpha: using a running strong coupling
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 2222
+| Initializing integration for process fks_res_2_p1:
+| ------------------------------------------------------------------------
+| Process [scattering]: 'fks_res_2_p1'
+|   Library name  = 'fks_res_2_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'fks_res_2_p1_i1':   e+, e- => b, bbar, mu-, mu+ [inactive]
+|     2: 'fks_res_2_p1_i2':   e+, e- => b, bbar, mu-, mu+, gl [inactive], [Real]
+|     3: 'fks_res_2_p1_i3':   e+, e- => b, bbar, mu-, mu+ [inactive], [Virtual]
+|     4: 'fks_res_2_p1_i4':   e+, e- => b, bbar, mu-, mu+ [inactive], [Subtraction]
+|     5: 'fks_res_2_p1_i5':   e+, e- => b, bbar, mu-, mu+ [omega], [Mismatch]
+| ------------------------------------------------------------------------
+| Beam structure: [any particles]
+| Beam data (collision):
+|   e+  (mass = 5.1099700E-04 GeV)
+|   e-  (mass = 5.1099700E-04 GeV)
+|   sqrts = 5.000000000000E+02 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'fks_res_2_p1_i1.phs'
+| Phase space: 54 channels, 8 dimensions
+| Phase space: found 54 channels, collected in 12 groves.
+| Phase space: no equivalences between channels used.
+| Phase space: wood
+| Phase space: 54 channels, 11 dimensions
+| Phase space: found 54 channels, collected in 12 groves.
+| Phase space: no equivalences between channels used.
+| Phase space: wood
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'fks_res_2_p1_i3.phs'
+| Phase space: 54 channels, 8 dimensions
+| Phase space: found 54 channels, collected in 12 groves.
+| Phase space: no equivalences between channels used.
+| Phase space: wood
+| Phase space: 54 channels, 11 dimensions
+| Phase space: found 54 channels, collected in 12 groves.
+| Phase space: no equivalences between channels used.
+| Phase space: wood
+Warning: No cuts have been defined.
+| Starting integration for process 'fks_res_2_p1' part 'Mismatch'
+| Integrate: iterations = 2:10000:"gw"
+| Integrator: 12 chains, 54 channels, 11 dimensions
+| Integrator: 10000 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1       9990    -3.158E+00   1.51E-01    4.78    4.78     4.1
+   2       9963    -3.419E+00   9.10E-02    2.66    2.66     4.2
+|-----------------------------------------------------------------------------|
+   2      19953    -3.349E+00   7.79E-02    2.33    3.29     4.2    2.19   2
+|=============================================================================|
+n_events = 1
+?debug_decay = false
+?debug_process = false
+?debug_verbose = false
+?sample_pacify = true
+?write_raw = false
+?fixed_order_nlo_events = true
+?negative_weights = true
+?unweighted = false
+| Starting simulation for process 'fks_res_2_p1'
+| Simulate: using integration grids from file 'fks_res_2_p1_m4.vg'
+| Simuate: activating fixed-order NLO events
+| QCD alpha: using a running strong coupling
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 2223
+| Events: writing to ASCII file 'fks_res_2_p1.debug'
+| Events: generating 1 weighted, unpolarized events ...
+| Events: event normalization mode 'sigma'
+|         ... event sample complete.
+| Events: closing ASCII file 'fks_res_2_p1.debug'
+| There were no errors and    1 warning(s).
+| WHIZARD run finished.
+|=============================================================================|
+========================================================================
+ Event
+------------------------------------------------------------------------
+   Unweighted         = F
+   Normalization      = 'sigma'
+   Helicity handling  = drop
+   Keep correlations  = F
+------------------------------------------------------------------------
+   Squared matrix el. (ref) = -7.76805E-08
+   Squared matrix el. (prc) = -7.76805E-08
+   Event weight (ref)       = -2.44229E+01
+   Event weight (prc)       = -2.44229E+01
+------------------------------------------------------------------------
+   Selected MCI group = 4
+   Selected term      = 6
+   Selected channel   = 28
+------------------------------------------------------------------------
+   Passed selection   = T
+   Reweighting factor =  1.00000E+00
+   Analysis flag      = T
+========================================================================
+ Event transform: trivial (hard process)
+------------------------------------------------------------------------
+   Associated process: 'fks_res_2_p1'
+   TAO random-number generator:
+     seed  = 145620997
+     calls = 3
+   Number of tries = 1
+------------------------------------------------------------------------
+ Particle set:
+------------------------------------------------------------------------
+ Particle 1 [i] f(-11)
+ E =   2.500000E+02
+ P =   0.000000E+00  0.000000E+00  2.500000E+02
+ T =   2.611179340E-07
+ Children: 3 4 5 6
+ Particle 2 [i] f(11)
+ E =   2.500000E+02
+ P =   0.000000E+00  0.000000E+00 -2.500000E+02
+ T =   2.611179340E-07
+ Children: 3 4 5 6
+ Particle 3 [o] f(5)c(1 )
+ E =   1.496099E+02
+ P =   9.902644E+01  1.109673E+02  1.566877E+01
+ T =   1.764000000E+01
+ Parents:  1 2
+ Particle 4 [o] f(-5)c(-1 )
+ E =   1.088319E+02
+ P =   1.116468E+01  1.030339E+02 -3.295599E+01
+ T =   1.764000000E+01
+ Parents:  1 2
+ Particle 5 [o] f(13)
+ E =   1.127974E+02
+ P =  -5.141402E+01 -1.000748E+02  6.316414E+00
+ T =   2.500000000E+01
+ Parents:  1 2
+ Particle 6 [o] f(-13)
+ E =   1.287608E+02
+ P =  -5.877709E+01 -1.139264E+02  1.097080E+01
+ T =   2.500000000E+01
+ Parents:  1 2
+========================================================================
+========================================================================
+ Local variables:
+------------------------------------------------------------------------
+sqrts* =  5.00000E+02
+sqrts_hat* =>  5.00000E+02
+n_in* => 2
+n_out* => 4
+n_tot* => 6
+$process_id* => "fks_res_2_p1"
+process_num_id* => [unknown integer]
+sqme* => -7.76805E-08
+sqme_ref* => -7.76805E-08
+event_index* => 1
+event_weight* => -2.44229E+01
+event_weight_ref* => -2.44229E+01
+event_excess* =>  0.00000E+00
+------------------------------------------------------------------------
+ subevent:
+ 1 prt(i:-11|-2.5000000E+02; 0.0000000E+00, 0.0000000E+00,-2.5000000E+02| 2.6111793E-07| 1)
+ 2 prt(i:11|-2.5000000E+02; 0.0000000E+00, 0.0000000E+00, 2.5000000E+02| 2.6111793E-07| 2)
+ 3 prt(o:5| 1.4960990E+02; 9.9026436E+01, 1.1096727E+02, 1.5668774E+01| 1.7640000E+01| 3)
+ 4 prt(o:-5| 1.0883189E+02; 1.1164679E+01, 1.0303394E+02,-3.2955993E+01| 1.7640000E+01| 4)
+ 5 prt(o:13| 1.1279743E+02;-5.1414020E+01,-1.0007478E+02, 6.3164144E+00| 2.5000000E+01| 5)
+ 6 prt(o:-13| 1.2876078E+02;-5.8777095E+01,-1.1392644E+02, 1.0970805E+01| 2.5000000E+01| 6)
+========================================================================

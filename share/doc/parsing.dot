@@ -1,0 +1,11 @@
+
+digraph G {
+parser -> lexers
+xml -> ifiles
+parser -> syntax_rules
+lexers -> ifiles
+syntax_rules -> lexers
+syntax_rules -> ifiles
+xml -> lexers
+ }
+

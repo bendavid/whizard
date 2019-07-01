@@ -1,4 +1,3 @@
-# $Id: helicity.sin 7076 2015-06-29 00:09:21Z jr_reuter $
 # Validating the helicity selection rule heuristics
 
 ?logging = true

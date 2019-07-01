@@ -1,6 +1,5 @@
 # SINDARIN input for WHIZARD self-test
-# Testing complete NLO-calculation using OpenLoops for virtual matrix elements
-# in the combined-integration mode and producing an NLO event
+# Testing integration of non-polarized OpenLoops matrix elements.
 
 model = "SM"
 
@@ -11,7 +10,6 @@ model = "SM"
 ?pacify = true
 
 $loop_me_method = "openloops"
-?combined_nlo_integration = true
 
 !!! Tests should be run single-threaded
 openmp_num_threads = 1
@@ -24,26 +22,13 @@ mb = 4.2 GeV
 
 ### The OpenLoops version installed might not be new enough to support Collier
 ?openloops_use_collier = false
-process openloops_1_p1 = E1, e1 => b, B { nlo_calculation = "Full" }
+process openloops_1_p1 = E1, e1 => b, B { nlo_calculation = "Virtual" }
 
 seed = 2222
 
 sqrts = 500 GeV
 
 integrate (openloops_1_p1) { iterations = 1:1000:"gw" }
-
-n_events = 1
-sample_format = debug
-?debug_decay = false
-?debug_process = false
-?debug_verbose = false
-?sample_pacify = true
-?write_raw = false
-
-?fixed_order_nlo_events = true
-?unweighted = false
-
-simulate (openloops_1_p1)
 
 !!! Also test massless case
 mb = 0.0 GeV

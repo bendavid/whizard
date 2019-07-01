@@ -15,7 +15,7 @@ $method = "omega"
 | Process library 'circe1_10_lib': ... success.
 $phs_method = "wood"
 $integration_method = "vamp"
-sqrts =  5.0000000E+02
+sqrts =  5.00000E+02
 openmp_num_threads = 1
 [user variable] n = 1000
 seed = 0
@@ -160,8 +160,10 @@ Contents of circe1_10_p1_1.evt
    Helicity handling  = drop
    Keep correlations  = F
 ------------------------------------------------------------------------
-   Squared matrix el. =  2.119056465343E-02
-   Event weight       =  1.000000000000E+00
+   Squared matrix el. (ref) =  2.119056465343E-02
+   Squared matrix el. (prc) =  2.119056465343E-02
+   Event weight (ref)       =  1.000000000000E+00
+   Event weight (prc)       =  1.000000000000E+00
 ------------------------------------------------------------------------
    Selected MCI group = 1
    Selected term      = 1
@@ -204,8 +206,10 @@ Contents of circe1_10_p1_2.evt
    Helicity handling  = drop
    Keep correlations  = F
 ------------------------------------------------------------------------
-   Squared matrix el. =  2.119056465343E-02
-   Event weight       =  1.000000000000E+00
+   Squared matrix el. (ref) =  2.119056465343E-02
+   Squared matrix el. (prc) =  2.119056465343E-02
+   Event weight (ref)       =  1.000000000000E+00
+   Event weight (prc)       =  1.000000000000E+00
 ------------------------------------------------------------------------
    Selected MCI group = 1
    Selected term      = 1

@@ -1,4 +1,4 @@
-(* $Id: fusion.ml 7653 2016-07-18 11:37:04Z ohl $
+(* fusion.ml --
 
    Copyright (C) 1999-2016 by
 
@@ -22,13 +22,6 @@
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
-
-let rcs_file = RCS.parse "Fusion" ["General Fusions"]
-    { RCS.revision = "$Revision: 7653 $";
-      RCS.date = "$Date: 2016-07-18 13:37:04 +0200 (Mon, 18 Jul 2016) $";
-      RCS.author = "$Author: ohl $";
-      RCS.source
-        = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/omega/src/fusion.ml $" }
 
 module type T =
   sig
@@ -86,7 +79,6 @@ module type T =
     val s_channel : amplitude -> wf list
     val tower_to_dot : out_channel -> amplitude -> unit
     val amplitude_to_dot : out_channel -> amplitude -> unit
-    val rcs_list : RCS.t list
   end
 
 module type Maker =
@@ -107,7 +99,6 @@ module type Stat =
     val stat : flavor -> int -> stat
     val stat_fuse : stat -> stat -> flavor -> stat
     val stat_sign : stat -> int
-    val rcs : RCS.t
   end
 
 module type Stat_Maker = functor (M : Model.T) ->
@@ -117,9 +108,6 @@ module type Stat_Maker = functor (M : Model.T) ->
 
 module Stat_Dirac (M : Model.T) : (Stat with type flavor = M.flavor) =
   struct 
-    let rcs = RCS.rename rcs_file "Fusion.Stat_Dirac()"
-        [ "Fermi statistics for Dirac fermions"]
-
     type flavor = M.flavor
 
 (* \begin{equation}
@@ -292,8 +280,6 @@ module Tagged (Tagger : Tagger) (PT : Tuple.Poly)
     (Stat : Stat_Maker) (T : Topology.T with type 'a children = 'a PT.t)
     (P : Momentum.T) (M : Model.T) =
   struct 
-    let rcs = RCS.rename rcs_file "Fusion.Make()"
-        [ "Fusions for arbitrary topologies" ]
 
     type cache_mode = Cache_Use | Cache_Ignore | Cache_Overwrite
     let cache_option = ref Cache_Use
@@ -674,7 +660,7 @@ module Tagged (Tagger : Tagger) (PT : Tuple.Poly)
           * (A.flavor list * constant Coupling.vertexn * constant) list
 
     module VCache =
-      Cache.Make (struct type t = vertex_table end) (struct type t = RCS.t * vertices end)
+      Cache.Make (struct type t = vertex_table end) (struct type t = vertices end)
 
     let vertices_cache = ref None
     let hash () = VCache.hash (M.vertices ())
@@ -693,11 +679,11 @@ module Tagged (Tagger : Tagger) (PT : Tuple.Poly)
 
     let initialize_cache dir =
       Printf.eprintf
-        " >>> Initializing vertex table for model %s.  This may take some time ... "
-        (RCS.name M.rcs);
+        " >>> Initializing vertex table %s.  This may take some time ... "
+        !cache_name;
       flush stderr;
       VCache.write_dir (hash ()) dir !cache_name
-        (M.rcs, vertices_nocache  (M.max_degree ()) (M.flavors()));
+        (vertices_nocache  (M.max_degree ()) (M.flavors()));
       Printf.eprintf "done. <<< \n"
 
     let vertices max_degree flavors : vertices =
@@ -706,27 +692,26 @@ module Tagged (Tagger : Tagger) (PT : Tuple.Poly)
           begin match !cache_option with
           | Cache_Use ->
               begin match VCache.maybe_read (hash ()) !cache_name with
-              | VCache.Hit (rcs, result) ->
-                  result
+              | VCache.Hit result -> result
               | VCache.Miss ->
                   Printf.eprintf
-                    " >>> Initializing vertex table for model %s.  This may take some time ... "
-                    (RCS.name M.rcs);
+                    " >>> Initializing vertex table %s.  This may take some time ... "
+                    !cache_name;
                   flush stderr;
                   let result = vertices_nocache max_degree flavors in
-                  VCache.write (hash ()) !cache_name (M.rcs, result);
+                  VCache.write (hash ()) !cache_name (result);
                   vertices_cache := Some result;
                   Printf.eprintf "done. <<< \n";
                   flush stderr;
                   result
               | VCache.Stale file ->
                   Printf.eprintf
-                    " >>> Re-initializing stale vertex table for model %s in file %s.  "
-                    (RCS.name M.rcs) file;
+                    " >>> Re-initializing stale vertex table %s in file %s.  "
+                    !cache_name file;
                   Printf.eprintf "This may take some time ... ";
                   flush stderr;
                   let result = vertices_nocache max_degree flavors in
-                  VCache.write (hash ()) !cache_name (M.rcs, result);
+                  VCache.write (hash ()) !cache_name (result);
                   vertices_cache := Some result;
                   Printf.eprintf "done. <<< \n";
                   flush stderr;
@@ -734,19 +719,19 @@ module Tagged (Tagger : Tagger) (PT : Tuple.Poly)
               end
           | Cache_Overwrite ->
               Printf.eprintf
-                " >>> Overwriting vertex table for model %s.  This may take some time ... "
-                (RCS.name M.rcs);
+                " >>> Overwriting vertex table %s.  This may take some time ... "
+                !cache_name;
               flush stderr;
               let result = vertices_nocache max_degree flavors in
-              VCache.write (hash ()) !cache_name (M.rcs, result);
+              VCache.write (hash ()) !cache_name (result);
               vertices_cache := Some result;
               Printf.eprintf "done. <<< \n";
               flush stderr;
               result
           | Cache_Ignore ->
               Printf.eprintf
-                " >>> Ignoring vertex table for model %s.  This may take some time ... "
-                (RCS.name M.rcs);
+                " >>> Ignoring vertex table %s.  This may take some time ... "
+                !cache_name;
               flush stderr;
               let result = vertices_nocache max_degree flavors in
               vertices_cache := Some result;
@@ -1829,9 +1814,6 @@ i*)
     let amplitude_to_dot ch a =
       dag_to_dot ch a.CA.brakets a.CA.fusion_dag
 
-
-    let rcs_list = [CA.D.rcs; T.rcs; P.rcs; CM.rcs; rcs]
-
   end
 
 module Make = Tagged(Order_Tags)
@@ -1844,8 +1826,6 @@ module Tagged_Binary (T : Tagger) =
 
 module Stat_Majorana (M : Model.T) : (Stat with type flavor = M.flavor) =
   struct 
-    let rcs = RCS.rename rcs_file "Fusion.Stat_Majorana()"
-        [ "Fermi statistics with fermion number violation"]
 
     type flavor = M.flavor
 

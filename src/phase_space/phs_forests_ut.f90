@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -36,21 +36,21 @@
 module phs_forests_ut
   use unit_tests
   use phs_forests_uti
-  
+
   implicit none
   private
 
   public :: phs_forests_test
 
 contains
-  
+
   subroutine phs_forests_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
     call test (phs_forest_1, "phs_forest_1", &
          "check phs forest setup", &
-         u, results)  
+         u, results)
   end subroutine phs_forests_test
-  
+
 
 end module phs_forests_ut

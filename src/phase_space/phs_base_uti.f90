@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -83,7 +83,7 @@ module phs_base_uti
      procedure :: evaluate_other_channels => phs_test_evaluate_other_channels
      procedure :: inverse => phs_test_inverse
   end type phs_test_t
-  
+
 
 contains
 
@@ -92,12 +92,12 @@ contains
     type(model_data_t), target :: model
     type(process_constants_t) :: process_data
     class(phs_config_t), allocatable :: phs_data
-    
+
     write (u, "(A)")  "* Test output: phs_base_1"
     write (u, "(A)")  "*   Purpose: initialize and display &
          &test phase-space configuration data"
     write (u, "(A)")
-    
+
     call model%init_test ()
 
     write (u, "(A)")  "* Initialize a process and a matching &
@@ -108,12 +108,12 @@ contains
 
     allocate (phs_test_config_t :: phs_data)
     call phs_data%init (process_data, model)
-       
+
     call phs_data%write (u)
-    
+
     call phs_data%final ()
     call model%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: phs_base_1"
 
@@ -128,11 +128,11 @@ contains
     class(phs_config_t), allocatable, target :: phs_data
     class(phs_t), pointer :: phs => null ()
     type(vector4_t), dimension(2) :: p, q
-    
+
     write (u, "(A)")  "* Test output: phs_base_2"
     write (u, "(A)")  "*   Purpose: test simple two-channel phase space"
     write (u, "(A)")
-    
+
     call model%init_test ()
     call flv%init (25, model)
 
@@ -149,7 +149,7 @@ contains
     call phs_data%configure (sqrts)
 
     call phs_data%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Initialize the phase-space instance"
     write (u, "(A)")
@@ -159,9 +159,9 @@ contains
     type is (phs_test_t)
        call phs%init (phs_data)
     end select
-       
+
     call phs%write (u, verbose=.true.)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Set incoming momenta"
     write (u, "(A)")
@@ -173,7 +173,7 @@ contains
     call phs%set_incoming_momenta (p)
     call phs%compute_flux ()
     call phs%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Compute phase-space point in channel 1 &
          &for x = 0.5, 0.125"
@@ -182,7 +182,7 @@ contains
     call phs%evaluate_selected_channel (1, [0.5_default, 0.125_default])
     call phs%evaluate_other_channels (1)
     call phs%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Compute phase-space point in channel 2 &
          &for x = 0.125, 0.125"
@@ -191,7 +191,7 @@ contains
     call phs%evaluate_selected_channel (2, [0.125_default, 0.125_default])
     call phs%evaluate_other_channels (2)
     call phs%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Inverse kinematics"
     write (u, "(A)")
@@ -200,7 +200,7 @@ contains
     deallocate (phs)
     call phs_data%allocate_instance (phs)
     call phs%init (phs_data)
-       
+
     sqrts = 1000._default
     select type (phs_data)
     type is (phs_test_config_t)
@@ -210,16 +210,16 @@ contains
     call phs%set_incoming_momenta (p)
     call phs%compute_flux ()
     call phs%set_outgoing_momenta (q)
-    
+
     call phs%inverse ()
     call phs%write (u)
-    
+
     call phs%final ()
     deallocate (phs)
-    
+
     call phs_data%final ()
     call model%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: phs_base_2"
 
@@ -230,12 +230,12 @@ contains
     type(model_data_t), target :: model
     type(process_constants_t) :: process_data
     class(phs_config_t), allocatable :: phs_data
-    
+
     write (u, "(A)")  "* Test output: phs_base_3"
     write (u, "(A)")  "*   Purpose: construct phase-space configuration data &
          &with equivalences"
     write (u, "(A)")
-    
+
     call model%init_test ()
 
     write (u, "(A)")  "* Initialize a process and a matching &
@@ -250,13 +250,13 @@ contains
     type is (phs_test_config_t)
        phs_data%create_equivalences = .true.
     end select
-       
+
     call phs_data%configure (1000._default)
     call phs_data%write (u)
-    
+
     call phs_data%final ()
     call model%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: phs_base_3"
 
@@ -267,11 +267,11 @@ contains
     type(model_data_t), target :: model
     type(process_constants_t) :: process_data
     class(phs_config_t), allocatable :: phs_data
-    
+
     write (u, "(A)")  "* Test output: phs_base_4"
     write (u, "(A)")  "*   Purpose: compute and compare MD5 sums"
     write (u, "(A)")
-    
+
     call model%init_test ()
 
     write (u, "(A)")  "* Model parameters"
@@ -291,10 +291,10 @@ contains
 
     allocate (phs_test_config_t :: phs_data)
     call phs_data%init (process_data, model)
-    
+
     call phs_data%compute_md5sum ()
     call phs_data%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Modify model parameter"
     write (u, "(A)")
@@ -312,7 +312,7 @@ contains
 
     call phs_data%final ()
     call model%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: phs_base_4"
 
@@ -323,11 +323,11 @@ contains
     type(phs_channel_t), dimension(:), allocatable :: channel
     type(phs_channel_collection_t) :: coll
     integer :: i, n
-    
+
     write (u, "(A)")  "* Test output: phs_base_5"
     write (u, "(A)")  "*   Purpose: collect channel properties"
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Set up an array of channels"
     write (u, "(A)")
 
@@ -343,11 +343,11 @@ contains
        write (u, "(1x,I0)", advance="no")  i
        call channel(i)%write (u)
     end do
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Collect distinct properties"
     write (u, "(A)")
-    
+
     do i = 1, n
        call coll%push (channel(i))
     end do
@@ -365,10 +365,10 @@ contains
        write (u, "(1x,I0)", advance="no")  i
        call channel(i)%write (u)
     end do
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
-    
+
     call coll%final ()
 
     write (u, "(A)")
@@ -378,7 +378,7 @@ contains
 
 
   subroutine init_test_process_data (id, data)
-    type(process_constants_t), intent(out) :: data 
+    type(process_constants_t), intent(out) :: data
     type(string_t), intent(in), optional :: id
     if (present (id)) then
        data%id = id
@@ -394,7 +394,7 @@ contains
   end subroutine init_test_process_data
 
   subroutine init_test_decay_data (id, data)
-    type(process_constants_t), intent(out) :: data 
+    type(process_constants_t), intent(out) :: data
     type(string_t), intent(in), optional :: id
     if (present (id)) then
        data%id = id
@@ -413,15 +413,16 @@ contains
     class(phs_test_config_t), intent(inout) :: object
   end subroutine phs_test_config_final
 
-  subroutine phs_test_config_write (object, unit)
+  subroutine phs_test_config_write (object, unit, include_id)
     class(phs_test_config_t), intent(in) :: object
     integer, intent(in), optional :: unit
+    logical, intent(in), optional :: include_id
     integer :: u
     u = given_output_unit (unit)
     write (u, "(1x,A)")  "Partonic phase-space configuration:"
     call object%base_write (unit)
   end subroutine phs_test_config_write
-  
+
   subroutine phs_test_config_configure (phs_config, sqrts, &
        sqrts_fixed, cm_frame, azimuthal_dependence, rebuild, &
        ignore_mismatch, nlo_type)
@@ -472,14 +473,14 @@ contains
       end associate
     end associate
   end subroutine setup_test_equivalences
-      
+
   subroutine setup_test_channel_props (phs_config)
     class(phs_test_config_t), intent(inout) :: phs_config
     associate (channel => phs_config%channel(2))
       call channel%set_resonant (140._default, 3.1415_default)
     end associate
   end subroutine setup_test_channel_props
-      
+
   subroutine phs_test_config_startup_message (phs_config, unit)
     class(phs_test_config_t), intent(in) :: phs_config
     integer, intent(in), optional :: unit
@@ -487,12 +488,12 @@ contains
     write (msg_buffer, "(A)") "Phase space: Test"
     call msg_message (unit = unit)
   end subroutine phs_test_config_startup_message
-  
+
   subroutine phs_test_config_allocate_instance (phs)
     class(phs_t), intent(inout), pointer :: phs
     allocate (phs_test_t :: phs)
   end subroutine phs_test_config_allocate_instance
-  
+
   subroutine phs_test_write (object, unit, verbose)
     class(phs_test_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -507,11 +508,11 @@ contains
     end if
     call object%base_write (u)
   end subroutine phs_test_write
-    
+
   subroutine phs_test_final (object)
     class(phs_test_t), intent(inout) :: object
   end subroutine phs_test_final
-  
+
   subroutine phs_test_init (phs, phs_config)
     class(phs_test_t), intent(out) :: phs
     class(phs_config_t), intent(in), target :: phs_config
@@ -519,7 +520,7 @@ contains
     phs%m = phs%config%flv(1,1)%get_mass ()
     allocate (phs%x (phs_config%n_par), source = 0._default)
   end subroutine phs_test_init
-  
+
   subroutine phs_test_evaluate_selected_channel (phs, c_in, r_in)
     class(phs_test_t), intent(inout) :: phs
     integer, intent(in) :: c_in
@@ -534,12 +535,12 @@ contains
           phs%x(1) = r_in(1) ** (1 / 3._default)
           phs%x(2) = r_in(2)
        end select
-       call compute_kinematics_solid_angle (phs%p, phs%q, phs%x) 
+       call compute_kinematics_solid_angle (phs%p, phs%q, phs%x)
        phs%volume = 1
        phs%q_defined = .true.
     end if
   end subroutine phs_test_evaluate_selected_channel
-  
+
   subroutine phs_test_evaluate_other_channels (phs, c_in)
     class(phs_test_t), intent(inout) :: phs
     integer, intent(in) :: c_in
@@ -567,7 +568,7 @@ contains
        phs%r_defined = .true.
     end if
   end subroutine phs_test_evaluate_other_channels
-  
+
   subroutine phs_test_inverse (phs)
     class(phs_test_t), intent(inout) :: phs
     integer :: c, n_channel
@@ -596,6 +597,6 @@ contains
        phs%r_defined = .true.
     end if
   end subroutine phs_test_inverse
-  
+
 
 end module phs_base_uti

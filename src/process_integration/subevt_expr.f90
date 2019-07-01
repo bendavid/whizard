@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -38,7 +38,6 @@ module subevt_expr
   use iso_varying_string, string_t => varying_string
   use io_units
   use format_utils, only: write_separator
-  use constants, only: zero
   use diagnostics
   use lorentz
   use subevents
@@ -53,8 +52,6 @@ module subevt_expr
   private
 
   public :: parton_expr_t
-!  public :: interaction_to_subevt
-!  public :: interaction_momenta_to_subevt
   public :: event_expr_t
 
   type, extends (subevt_t), abstract :: subevt_expr_t
@@ -79,7 +76,7 @@ module subevt_expr
      procedure :: base_reset => subevt_expr_reset
      procedure :: base_evaluate => subevt_expr_evaluate
   end type subevt_expr_t
-  
+
   type, extends (subevt_expr_t) :: parton_expr_t
      integer, dimension(:), allocatable :: i_beam
      integer, dimension(:), allocatable :: i_in
@@ -106,7 +103,7 @@ module subevt_expr
      procedure :: get_beam_index => parton_expr_get_beam_index
      procedure :: get_in_index => parton_expr_get_in_index
   end type parton_expr_t
-     
+
   type, extends (subevt_expr_t) :: event_expr_t
      logical :: has_reweight = .false.
      logical :: has_analysis = .false.
@@ -147,7 +144,7 @@ module subevt_expr
      procedure :: fill_subevt => event_expr_fill_subevt
      procedure :: evaluate => event_expr_evaluate
   end type event_expr_t
-     
+
 
   interface interaction_momenta_to_subevt
      module procedure interaction_momenta_to_subevt_id
@@ -156,7 +153,7 @@ module subevt_expr
 
 
 contains
-  
+
   subroutine subevt_expr_write (object, unit, pacified)
     class(subevt_expr_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -180,7 +177,7 @@ contains
        write (u, "(1x,A)")  "subevt: [undefined]"
     end if
   end subroutine subevt_expr_write
-    
+
   subroutine subevt_expr_final (object)
     class(subevt_expr_t), intent(inout) :: object
     call object%var_list%final ()
@@ -188,7 +185,7 @@ contains
        call object%selection%final ()
     end if
   end subroutine subevt_expr_final
-  
+
   subroutine subevt_expr_setup_vars (expr, sqrts)
     class(subevt_expr_t), intent(inout), target :: expr
     real(default), intent(in) :: sqrts
@@ -213,7 +210,7 @@ contains
          is_known = expr%subevt_filled, &
          locked = .true., verbose = .false., intrinsic = .true.)
   end subroutine subevt_expr_setup_vars
-    
+
   subroutine subevt_expr_setup_var_self (expr)
     class(subevt_expr_t), intent(inout), target :: expr
     if (.not. expr%var_list%contains (var_str ("@evt"))) then
@@ -224,7 +221,7 @@ contains
             locked = .true., verbose = .false., intrinsic=.true.)
     end if
   end subroutine subevt_expr_setup_var_self
-  
+
   subroutine subevt_expr_link_var_list (expr, var_list)
     class(subevt_expr_t), intent(inout) :: expr
     type(var_list_t), intent(in), target :: var_list
@@ -246,10 +243,10 @@ contains
     class(subevt_expr_t), intent(inout) :: expr
     expr%subevt_filled = .false.
   end subroutine subevt_expr_reset
-  
+
   subroutine subevt_expr_evaluate (expr, passed)
     class(subevt_expr_t), intent(inout) :: expr
-    logical, intent(out) :: passed 
+    logical, intent(out) :: passed
     if (expr%has_selection) then
        call expr%selection%evaluate ()
        if (expr%selection%is_known ()) then
@@ -262,7 +259,7 @@ contains
        passed = .true.
     end if
   end subroutine subevt_expr_evaluate
-  
+
   subroutine parton_expr_final (object)
     class(parton_expr_t), intent(inout) :: object
     call object%base_final ()
@@ -315,7 +312,7 @@ contains
        end if
     end if
   end subroutine parton_expr_write
-    
+
   subroutine parton_expr_setup_vars (expr, sqrts)
     class(parton_expr_t), intent(inout), target :: expr
     real(default), intent(in) :: sqrts
@@ -457,7 +454,7 @@ contains
     expr%sqrts_hat = subevt_get_sqrts_hat (expr%subevt_t)
     expr%subevt_filled = .true.
   end subroutine parton_expr_fill_subevt
-    
+
   subroutine parton_expr_evaluate &
        (expr, passed, scale, fac_scale, ren_scale, weight, scale_forced, force_evaluation)
     class(parton_expr_t), intent(inout) :: expr
@@ -528,19 +525,19 @@ contains
        end if
     end if
   end subroutine parton_expr_evaluate
-  
+
   subroutine parton_expr_get_beam_index (expr, i_beam)
     class(parton_expr_t), intent(in) :: expr
     integer, dimension(:), intent(out) :: i_beam
     i_beam = expr%i_beam
   end subroutine parton_expr_get_beam_index
-  
+
   subroutine parton_expr_get_in_index (expr, i_in)
     class(parton_expr_t), intent(in) :: expr
     integer, dimension(:), intent(out) :: i_in
     i_in = expr%i_in
   end subroutine parton_expr_get_in_index
-  
+
   subroutine event_expr_final (object)
     class(event_expr_t), intent(inout) :: object
     call object%base_final ()
@@ -575,7 +572,7 @@ contains
        end if
     end if
   end subroutine event_expr_write
-    
+
   subroutine event_expr_init (expr, n_alt)
     class(event_expr_t), intent(out) :: expr
     integer, intent(in), optional :: n_alt
@@ -585,7 +582,7 @@ contains
        allocate (expr%weight_alt (n_alt), source = 0._default)
     end if
   end subroutine event_expr_init
-  
+
   subroutine event_expr_setup_vars (expr, sqrts)
     class(event_expr_t), intent(inout), target :: expr
     real(default), intent(in) :: sqrts
@@ -652,14 +649,14 @@ contains
     expr%id = id
     expr%has_id = .true.
   end subroutine event_expr_set_process_id
-    
+
   subroutine event_expr_set_process_num_id (expr, num_id)
     class(event_expr_t), intent(inout) :: expr
     integer, intent(in) :: num_id
     expr%num_id = num_id
     expr%has_num_id = .true.
   end subroutine event_expr_set_process_num_id
-    
+
   subroutine event_expr_reset (expr)
     class(event_expr_t), intent(inout) :: expr
     call expr%base_reset ()
@@ -671,7 +668,7 @@ contains
     expr%has_weight_alt = .false.
     expr%has_excess_prc = .false.
   end subroutine event_expr_reset
-  
+
   subroutine event_expr_set (expr, &
        weight_ref, weight_prc, weight_alt, &
        excess_prc, &
@@ -688,7 +685,7 @@ contains
     if (present (sqme_prc)) then
        expr%has_sqme_prc = .true.
        expr%sqme_prc = sqme_prc
-    end if 
+    end if
     if (present (sqme_alt)) then
        expr%has_sqme_alt = .true.
        expr%sqme_alt = sqme_alt
@@ -710,7 +707,7 @@ contains
        expr%excess_prc = excess_prc
     end if
   end subroutine event_expr_set
-  
+
   subroutine event_expr_fill_subevt (expr, particle_set)
     class(event_expr_t), intent(inout) :: expr
     type(particle_set_t), intent(in) :: particle_set
@@ -727,7 +724,7 @@ contains
        expr%has_index = .true.
     end if
   end subroutine event_expr_fill_subevt
-  
+
   subroutine event_expr_evaluate (expr, passed, reweight, analysis_flag)
     class(event_expr_t), intent(inout) :: expr
     logical, intent(out) :: passed
@@ -761,6 +758,6 @@ contains
        end if
     end if
   end subroutine event_expr_evaluate
-  
+
 
 end module subevt_expr

@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -38,12 +38,14 @@ module format_utils
   use kinds, only: default
   use iso_varying_string, string_t => varying_string
   use string_utils, only: lower_case
+  use io_units, only: given_output_unit
 
   implicit none
   private
 
   public :: write_separator
   public :: write_indent
+  public :: write_integer_array
   public :: quote_underscore
   public :: tex_format
   public :: mp_format
@@ -74,6 +76,26 @@ contains
        write (unit, "(1x,A)", advance="no")  repeat ("  ", indent)
     end if
   end subroutine write_indent
+
+  subroutine write_integer_array (array, unit, n_max)
+    integer, intent(in), dimension(:) :: array
+    integer, intent(in), optional :: unit
+    integer, intent(in), optional :: n_max
+    integer :: u, i, n
+    u = given_output_unit (unit)
+    if (present (n_max)) then
+       n = n_max
+    else
+       n = size (array)
+    end if
+    do i = 1, n
+       if (i < n) then
+          write (u, "(I0, A)", advance = "no") array(i), ", "
+       else
+          write (u, "(I0)") array(i)
+       end if
+    end do
+  end subroutine write_integer_array
 
   function quote_underscore (string) result (quoted)
     type(string_t) :: quoted

@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -34,7 +34,7 @@
 ! to the source 'whizard.nw'
 
 module commands_uti
-  
+
     use kinds, only: default
     use kinds, only: i64
     use iso_varying_string, string_t => varying_string
@@ -44,14 +44,14 @@ module commands_uti
     use interactions, only: reset_interaction_counter
     use prclib_stacks
     use analysis
-    use variables
+    use variables, only: var_list_t
     use models
     use slha_interface
     use rt_data
     use event_base, only: generic_event_t, event_callback_t
 
     use commands
-    
+
   implicit none
   private
 
@@ -97,7 +97,7 @@ module commands_uti
      procedure :: write => event_callback_34_write
      procedure :: proc => event_callback_34
   end type event_callback_34_t
-  
+
 
 contains
 
@@ -120,7 +120,7 @@ contains
 
     write (u, "(A)")  "*  Parse empty file"
     write (u, "(A)")
-    
+
     call parse_ifile (ifile, pn_root, u)
 
     write (u, "(A)")
@@ -171,14 +171,14 @@ contains
 
     write (u, "(A)")  "*  Input file"
     write (u, "(A)")
-    
+
     call ifile_append (ifile, 'model = "Test"')
-    
+
     call ifile_write (ifile, u)
 
     write (u, "(A)")  "*  Parse file"
     write (u, "(A)")
-    
+
     call parse_ifile (ifile, pn_root, u)
 
     write (u, "(A)")
@@ -232,19 +232,19 @@ contains
     allocate (lib)
     call lib%init (var_str ("lib_cmd3"))
     call global%add_prclib (lib)
-    
+
     write (u, "(A)")  "*  Input file"
     write (u, "(A)")
-    
+
     call ifile_append (ifile, 'model = "Test"')
     call ifile_append (ifile, 'process t3 = s, s => s, s')
-    
+
     call ifile_write (ifile, u)
 
     write (u, "(A)")
     write (u, "(A)")  "*  Parse file"
     write (u, "(A)")
-    
+
     call parse_ifile (ifile, pn_root, u)
 
     write (u, "(A)")
@@ -301,20 +301,20 @@ contains
     allocate (lib)
     call lib%init (var_str ("lib_cmd4"))
     call global%add_prclib (lib)
-    
+
     write (u, "(A)")  "*  Input file"
     write (u, "(A)")
-    
+
     call ifile_append (ifile, 'model = "Test"')
     call ifile_append (ifile, 'process t4 = s, s => s, s')
     call ifile_append (ifile, 'compile ("lib_cmd4")')
-    
+
     call ifile_write (ifile, u)
 
     write (u, "(A)")
     write (u, "(A)")  "*  Parse file"
     write (u, "(A)")
-    
+
     call parse_ifile (ifile, pn_root, u)
 
     write (u, "(A)")
@@ -372,32 +372,32 @@ contains
     call global%var_list%set_string (var_str ("$integration_method"),&
          var_str ("midpoint"), is_known=.true.)
     call global%var_list%set_log (var_str ("?vis_history"),&
-         .false., is_known=.true.)        
+         .false., is_known=.true.)
     call global%var_list%set_log (var_str ("?integration_timer"),&
-         .false., is_known = .true.)    
+         .false., is_known = .true.)
     call global%var_list%set_real (var_str ("sqrts"), &
          1000._default, is_known=.true.)
     call global%var_list%set_int (var_str ("seed"), 0, is_known=.true.)
-    
+
     allocate (lib)
     call lib%init (var_str ("lib_cmd5"))
     call global%add_prclib (lib)
-    
+
     write (u, "(A)")  "*  Input file"
     write (u, "(A)")
-    
+
     call ifile_append (ifile, 'model = "Test"')
     call ifile_append (ifile, 'process t5 = s, s => s, s')
     call ifile_append (ifile, 'compile')
     call ifile_append (ifile, 'iterations = 1:1000')
     call ifile_append (ifile, 'integrate (t5)')
-    
+
     call ifile_write (ifile, u)
 
     write (u, "(A)")
     write (u, "(A)")  "*  Parse file"
     write (u, "(A)")
-    
+
     call parse_ifile (ifile, pn_root, u)
 
     write (u, "(A)")
@@ -457,7 +457,7 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "*  Input file"
     write (u, "(A)")
-    
+
     call ifile_append (ifile, '$run_id = "run1"')
     call ifile_append (ifile, '?unweighted = false')
     call ifile_append (ifile, 'sqrts = 1000')
@@ -466,13 +466,13 @@ contains
     call ifile_append (ifile, 'complex z = 5')
     call ifile_append (ifile, 'string $text = "abcd"')
     call ifile_append (ifile, 'logical ?flag = true')
-    
+
     call ifile_write (ifile, u)
 
     write (u, "(A)")
     write (u, "(A)")  "*  Parse file"
     write (u, "(A)")
-    
+
     call parse_ifile (ifile, pn_root, u)
 
     write (u, "(A)")
@@ -537,17 +537,17 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "*  Input file"
     write (u, "(A)")
-    
+
     call ifile_append (ifile, 'library = "lib_cmd7_1"')
     call ifile_append (ifile, 'library = "lib_cmd7_2"')
     call ifile_append (ifile, 'library = "lib_cmd7_1"')
-    
+
     call ifile_write (ifile, u)
 
     write (u, "(A)")
     write (u, "(A)")  "*  Parse file"
     write (u, "(A)")
-    
+
     call parse_ifile (ifile, pn_root, u)
 
     write (u, "(A)")
@@ -607,19 +607,19 @@ contains
     call global%var_list%set_string (var_str ("$integration_method"),&
          var_str ("midpoint"), is_known=.true.)
     call global%var_list%set_log (var_str ("?vis_history"),&
-         .false., is_known=.true.)        
+         .false., is_known=.true.)
     call global%var_list%set_log (var_str ("?integration_timer"),&
-         .false., is_known = .true.)    
+         .false., is_known = .true.)
     call global%var_list%set_real (var_str ("sqrts"), &
          1000._default, is_known=.true.)
 
     allocate (lib)
     call lib%init (var_str ("lib_cmd8"))
     call global%add_prclib (lib)
-    
+
     write (u, "(A)")  "*  Input file"
     write (u, "(A)")
-    
+
     call ifile_append (ifile, 'model = "Test"')
     call ifile_append (ifile, 'process commands_8_p = s, s => s, s')
     call ifile_append (ifile, 'compile')
@@ -629,13 +629,13 @@ contains
     call ifile_append (ifile, 'n_events = 3')
     call ifile_append (ifile, '?read_raw = false')
     call ifile_append (ifile, 'simulate (commands_8_p)')
-    
+
     call ifile_write (ifile, u)
 
     write (u, "(A)")
     write (u, "(A)")  "*  Parse file"
     write (u, "(A)")
-    
+
     call parse_ifile (ifile, pn_root, u)
 
     write (u, "(A)")
@@ -685,15 +685,15 @@ contains
 
     write (u, "(A)")  "*  Input file"
     write (u, "(A)")
-    
+
     call ifile_append (ifile, 'cuts = all Pt > 0 [particle]')
-    
+
     call ifile_write (ifile, u)
 
     write (u, "(A)")
     write (u, "(A)")  "*  Parse file"
     write (u, "(A)")
-    
+
     call parse_ifile (ifile, pn_root, u)
 
     write (u, "(A)")
@@ -746,17 +746,17 @@ contains
 
     write (u, "(A)")  "*  Input file"
     write (u, "(A)")
-    
+
     call ifile_append (ifile, 'model = QCD')
     call ifile_append (ifile, 'sqrts = 1000')
     call ifile_append (ifile, 'beams = p, p')
-    
+
     call ifile_write (ifile, u)
 
     write (u, "(A)")
     write (u, "(A)")  "*  Parse file"
     write (u, "(A)")
-    
+
     call parse_ifile (ifile, pn_root, u)
 
     write (u, "(A)")
@@ -809,17 +809,17 @@ contains
 
     write (u, "(A)")  "*  Input file"
     write (u, "(A)")
-    
+
     call ifile_append (ifile, 'model = QCD')
     call ifile_append (ifile, 'sqrts = 1100')
     call ifile_append (ifile, 'beams = p, p => lhapdf => pdf_builtin, isr')
-    
+
     call ifile_write (ifile, u)
 
     write (u, "(A)")
     write (u, "(A)")  "*  Parse file"
     write (u, "(A)")
-    
+
     call parse_ifile (ifile, pn_root, u)
 
     write (u, "(A)")
@@ -871,10 +871,10 @@ contains
     call syntax_model_file_init ()
 
     call global%global_init ()
-    call var_list_append_log (global%var_list, &
+    call global%var_list%append_log (&
          var_str ("?rebuild_phase_space"), .false., &
          intrinsic=.true.)
-    call var_list_append_log (global%var_list, &
+    call global%var_list%append_log (&
          var_str ("?rebuild_grids"), .false., &
          intrinsic=.true.)
     call global%init_fallback_model &
@@ -887,19 +887,19 @@ contains
     call global%var_list%set_string (var_str ("$integration_method"),&
          var_str ("midpoint"), is_known=.true.)
     call global%var_list%set_log (var_str ("?vis_history"),&
-         .false., is_known=.true.)        
+         .false., is_known=.true.)
     call global%var_list%set_log (var_str ("?integration_timer"),&
-         .false., is_known = .true.)    
+         .false., is_known = .true.)
     call global%var_list%set_real (var_str ("sqrts"), &
          1000._default, is_known=.true.)
 
     allocate (lib)
     call lib%init (var_str ("lib_cmd12"))
     call global%add_prclib (lib)
-    
+
     write (u, "(A)")  "*  Input file"
     write (u, "(A)")
-    
+
     call ifile_append (ifile, 'model = "Test"')
     call ifile_append (ifile, 'process commands_12_p = s, s => s, s')
     call ifile_append (ifile, 'compile')
@@ -911,13 +911,13 @@ contains
     call ifile_append (ifile, 'simulate (commands_12_p)')
     call ifile_append (ifile, '?write_raw = false')
     call ifile_append (ifile, 'rescan "commands_12_p" (commands_12_p)')
-    
+
     call ifile_write (ifile, u)
 
     write (u, "(A)")
     write (u, "(A)")  "*  Parse file"
     write (u, "(A)")
-    
+
     call parse_ifile (ifile, pn_root, u)
 
     write (u, "(A)")
@@ -978,17 +978,17 @@ contains
     call global%var_list%set_real (var_str ("sqrts"), &
          1000._default, is_known=.true.)
     call global%var_list%set_log (var_str ("?vis_history"),&
-         .false., is_known=.true.)    
+         .false., is_known=.true.)
     call global%var_list%set_log (var_str ("?integration_timer"),&
-         .false., is_known = .true.)    
+         .false., is_known = .true.)
 
     allocate (lib)
     call lib%init (var_str ("lib_cmd13"))
     call global%add_prclib (lib)
-    
+
     write (u, "(A)")  "*  Input file"
     write (u, "(A)")
-    
+
     call ifile_append (ifile, 'model = "Test"')
     call ifile_append (ifile, 'process commands_13_p = s, s => s, s')
     call ifile_append (ifile, 'compile')
@@ -999,13 +999,13 @@ contains
     call ifile_append (ifile, '?read_raw = false')
     call ifile_append (ifile, 'sample_format = weight_stream')
     call ifile_append (ifile, 'simulate (commands_13_p)')
-    
+
     call ifile_write (ifile, u)
 
     write (u, "(A)")
     write (u, "(A)")  "*  Parse file"
     write (u, "(A)")
-    
+
     call parse_ifile (ifile, pn_root, u)
 
     write (u, "(A)")
@@ -1066,18 +1066,18 @@ contains
 
     write (u, "(A)")  "* Input file"
     write (u, "(A)")
-    
+
     call ifile_append (ifile, 'model = "Test"')
     call ifile_append (ifile, 'library = "lib1"')
     call ifile_append (ifile, 'library = "lib2"')
     call ifile_append (ifile, 'compile ()')
-    
+
     call ifile_write (ifile, u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Parse file"
     write (u, "(A)")
-    
+
     call parse_ifile (ifile, pn_root)
 
     write (u, "(A)")  "* Compile command list"
@@ -1135,28 +1135,28 @@ contains
     call global%var_list%set_real (var_str ("sqrts"), &
          1000._default, is_known=.true.)
     call global%var_list%set_log (var_str ("?vis_history"),&
-         .false., is_known=.true.)    
+         .false., is_known=.true.)
     call global%var_list%set_log (var_str ("?integration_timer"),&
-         .false., is_known = .true.)    
-    
+         .false., is_known = .true.)
+
     allocate (lib)
     call lib%init (var_str ("lib_cmd15"))
     call global%add_prclib (lib)
-    
+
     write (u, "(A)")  "* Input file"
     write (u, "(A)")
-    
+
     call ifile_append (ifile, 'model = "Test"')
     call ifile_append (ifile, 'process t15 = s, s => s, s')
     call ifile_append (ifile, 'iterations = 1:1000')
     call ifile_append (ifile, 'integrate (t15)')
-    
+
     call ifile_write (ifile, u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Parse file"
     write (u, "(A)")
-    
+
     call parse_ifile (ifile, pn_root)
 
     write (u, "(A)")  "* Compile command list"
@@ -1202,22 +1202,22 @@ contains
 
     call syntax_cmd_list_init ()
     call global%global_init ()
-    
+
     write (u, "(A)")  "* Input file"
     write (u, "(A)")
-    
+
     call ifile_append (ifile, '$obs_label = "foo"')
     call ifile_append (ifile, '$obs_unit = "cm"')
     call ifile_append (ifile, '$title = "Observable foo"')
     call ifile_append (ifile, '$description = "This is observable foo"')
     call ifile_append (ifile, 'observable foo')
-    
+
     call ifile_write (ifile, u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Parse file"
     write (u, "(A)")
-    
+
     call parse_ifile (ifile, pn_root)
 
     write (u, "(A)")  "* Compile command list"
@@ -1278,10 +1278,10 @@ contains
 
     call syntax_cmd_list_init ()
     call global%global_init ()
-    
+
     write (u, "(A)")  "* Input file"
     write (u, "(A)")
-    
+
     call ifile_append (ifile, '$obs_label = "foo"')
     call ifile_append (ifile, '$obs_unit = "cm"')
     call ifile_append (ifile, '$title = "Histogram foo"')
@@ -1295,13 +1295,13 @@ contains
     call ifile_append (ifile, '$description = "This is histogram gee"')
     call ifile_append (ifile, '?normalize_bins = true')
     call ifile_append (ifile, 'histogram gee (0,5)')
-    
+
     call ifile_write (ifile, u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Parse file"
     write (u, "(A)")
-    
+
     call parse_ifile (ifile, pn_root)
 
     write (u, "(A)")  "* Compile command list"
@@ -1323,7 +1323,7 @@ contains
     name(1) = "foo"
     name(2) = "bar"
     name(3) = "gee"
-    
+
     do i = 1, 3
        call analysis_record_data (name(i), 0.1_default, &
             weight = 0.25_default)
@@ -1370,10 +1370,10 @@ contains
 
     call syntax_cmd_list_init ()
     call global%global_init ()
-    
+
     write (u, "(A)")  "* Input file"
     write (u, "(A)")
-    
+
     call ifile_append (ifile, '$obs_label = "foo"')
     call ifile_append (ifile, '$obs_unit = "cm"')
     call ifile_append (ifile, '$title = "Plot foo"')
@@ -1387,13 +1387,13 @@ contains
     call ifile_append (ifile, 'y_min = 0.1')
     call ifile_append (ifile, 'y_max = 1000')
     call ifile_append (ifile, 'plot foo')
-    
+
     call ifile_write (ifile, u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Parse file"
     write (u, "(A)")
-    
+
     call parse_ifile (ifile, pn_root)
 
     write (u, "(A)")  "* Compile command list"
@@ -1455,22 +1455,22 @@ contains
 
     call syntax_cmd_list_init ()
     call global%global_init ()
-    
+
     write (u, "(A)")  "* Input file"
     write (u, "(A)")
-    
+
     call ifile_append (ifile, 'plot a')
     call ifile_append (ifile, 'plot b')
     call ifile_append (ifile, '$title = "Graph foo"')
     call ifile_append (ifile, '$description = "This is graph foo"')
     call ifile_append (ifile, 'graph foo = a & b')
-    
+
     call ifile_write (ifile, u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Parse file"
     write (u, "(A)")
-    
+
     call parse_ifile (ifile, pn_root)
 
     write (u, "(A)")  "* Compile command list"
@@ -1523,25 +1523,25 @@ contains
 
     call syntax_cmd_list_init ()
     call global%global_init ()
-    
+
     call analysis_init_observable (var_str ("o"))
     call analysis_init_histogram (var_str ("h"), 0._default, 1._default, 3, &
          normalize_bins = .false.)
     call analysis_init_plot (var_str ("p"))
-    
+
     write (u, "(A)")  "* Input file"
     write (u, "(A)")
-    
+
     call ifile_append (ifile, 'record o (1.234)')
     call ifile_append (ifile, 'record h (0.5)')
     call ifile_append (ifile, 'record p (1, 2)')
-    
+
     call ifile_write (ifile, u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Parse file"
     write (u, "(A)")
-    
+
     call parse_ifile (ifile, pn_root)
 
     write (u, "(A)")  "* Compile command list"
@@ -1606,21 +1606,21 @@ contains
     call global%var_list%set_string (var_str ("$integration_method"),&
          var_str ("midpoint"), is_known=.true.)
     call global%var_list%set_log (var_str ("?vis_history"),&
-         .false., is_known=.true.)        
+         .false., is_known=.true.)
     call global%var_list%set_log (var_str ("?integration_timer"),&
-         .false., is_known = .true.)    
+         .false., is_known = .true.)
     call global%var_list%set_real (var_str ("sqrts"), &
          1000._default, is_known=.true.)
 
     allocate (lib)
     call lib%init (var_str ("lib_cmd8"))
     call global%add_prclib (lib)
-    
+
     call analysis_init_observable (var_str ("m"))
-    
+
     write (u, "(A)")  "* Input file"
     write (u, "(A)")
-    
+
     call ifile_append (ifile, 'model = "Test"')
     call ifile_append (ifile, 'process commands_21_p = s, s => s, s')
     call ifile_append (ifile, 'compile')
@@ -1632,13 +1632,13 @@ contains
     call ifile_append (ifile, 'observable m')
     call ifile_append (ifile, 'analysis = record m (eval M [s])')
     call ifile_append (ifile, 'simulate (commands_21_p)')
-    
+
     call ifile_write (ifile, u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Parse file"
     write (u, "(A)")
-    
+
     call parse_ifile (ifile, pn_root)
 
     write (u, "(A)")  "* Compile command list"
@@ -1694,22 +1694,22 @@ contains
 
     call syntax_cmd_list_init ()
     call global%global_init ()
-    
+
     call analysis_init_observable (var_str ("m"))
     call analysis_record_data (var_str ("m"), 125._default)
-    
+
     write (u, "(A)")  "* Input file"
     write (u, "(A)")
-    
+
     call ifile_append (ifile, '$out_file = "commands_22.dat"')
     call ifile_append (ifile, 'write_analysis')
-    
+
     call ifile_write (ifile, u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Parse file"
     write (u, "(A)")
-    
+
     call parse_ifile (ifile, pn_root)
 
     write (u, "(A)")  "* Compile command list"
@@ -1733,7 +1733,7 @@ contains
        write (u, "(A)")  "ERROR: File commands_22.dat not found"
        return
     end if
-    
+
     u_file = free_unit ()
     open (u_file, file = "commands_22.dat", &
          action = "read", status = "old")
@@ -1780,7 +1780,7 @@ contains
 
     call syntax_cmd_list_init ()
     call global%global_init ()
-    
+
     call graph_options_init (graph_options)
     call graph_options_set (graph_options, &
          title = var_str ("Histogram for test: commands 23"), &
@@ -1808,19 +1808,19 @@ contains
     call analysis_record_data (var_str ("h"), 9._default)
     call analysis_record_data (var_str ("h"), 9._default)
     call analysis_record_data (var_str ("h"), 9._default)
-    
+
     write (u, "(A)")  "* Input file"
     write (u, "(A)")
-    
+
     call ifile_append (ifile, '$out_file = "commands_23.dat"')
     call ifile_append (ifile, 'compile_analysis')
-    
+
     call ifile_write (ifile, u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Parse file"
     write (u, "(A)")
-    
+
     call parse_ifile (ifile, pn_root)
 
     write (u, "(A)")  "* Compile command list"
@@ -1833,7 +1833,7 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Delete Postscript output"
     write (u, "(A)")
-    
+
     inquire (file = "commands_23.ps", exist = exist)
     if (exist) then
        u_file = free_unit ()
@@ -1857,7 +1857,7 @@ contains
        write (u, "(A)")  "ERROR: File commands_23.tex not found"
        return
     end if
-    
+
     u_file = free_unit ()
     open (u_file, file = "commands_23.tex", &
          action = "read", status = "old")
@@ -1868,7 +1868,7 @@ contains
     end do
     close (u_file)
     write (u, *)
-    
+
     inquire (file = "commands_23.ps", exist = exist)
     write (u, "(1x,A,L1)")  "Postcript output exists = ", exist
 
@@ -1904,10 +1904,10 @@ contains
 
     call syntax_cmd_list_init ()
     call global%global_init ()
-    
+
     write (u, "(A)")  "* Input file"
     write (u, "(A)")
-    
+
     call ifile_append (ifile, '$title = "Title"')
     call ifile_append (ifile, '$description = "Description"')
     call ifile_append (ifile, '$x_label = "X Label"')
@@ -1926,13 +1926,13 @@ contains
     call ifile_append (ifile, '$symbol = "Symbol"')
     call ifile_append (ifile, 'histogram foo (0,1)')
     call ifile_append (ifile, 'plot bar')
-    
+
     call ifile_write (ifile, u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Parse file"
     write (u, "(A)")
-    
+
     call parse_ifile (ifile, pn_root)
 
     write (u, "(A)")  "* Compile command list"
@@ -1985,21 +1985,21 @@ contains
     call global%global_init ()
     call global%var_list%set_log (var_str ("?omega_openmp"), &
          .false., is_known = .true.)
-    
+
     write (u, "(A)")  "* Input file"
     write (u, "(A)")
-    
+
     call ifile_append (ifile, 'library = "commands_25_lib"')
     call ifile_append (ifile, 'model = "Test"')
     call ifile_append (ifile, 'process commands_25_p1 = g, g => g, g &
          &{ model = "QCD" }')
-    
+
     call ifile_write (ifile, u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Parse file"
     write (u, "(A)")
-    
+
     call parse_ifile (ifile, pn_root)
 
     write (u, "(A)")  "* Compile command list"
@@ -2043,19 +2043,19 @@ contains
 
     call syntax_cmd_list_init ()
     call global%global_init ()
-    
+
     write (u, "(A)")  "* Input file"
     write (u, "(A)")
-    
+
     call ifile_append (ifile, 'int i = 0')
     call ifile_append (ifile, 'alt_setup = ({ i = 1 }, { i = 2 })')
-    
+
     call ifile_write (ifile, u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Parse file"
     write (u, "(A)")
-    
+
     call parse_ifile (ifile, pn_root)
 
     write (u, "(A)")  "* Compile command list"
@@ -2071,7 +2071,7 @@ contains
     call command_list%execute (global)
 
     call global%write_expr (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
 
@@ -2108,29 +2108,29 @@ contains
     call global%var_list%set_string (var_str ("$integration_method"),&
          var_str ("midpoint"), is_known=.true.)
     call global%var_list%set_log (var_str ("?vis_history"),&
-         .false., is_known=.true.)    
+         .false., is_known=.true.)
     call global%var_list%set_log (var_str ("?integration_timer"),&
-         .false., is_known = .true.)    
-    
+         .false., is_known = .true.)
+
     allocate (lib)
     call lib%init (var_str ("commands_27_lib"))
     call global%add_prclib (lib)
 
     write (u, "(A)")  "* Input file"
     write (u, "(A)")
-    
+
     call ifile_append (ifile, 'model = "Test"')
     call ifile_append (ifile, 'ff = 0.4')
     call ifile_append (ifile, 'process d1 = s => f, fbar')
     call ifile_append (ifile, 'unstable s (d1)')
     call ifile_append (ifile, 'polarized f, fbar')
-    
+
     call ifile_write (ifile, u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Parse file"
     write (u, "(A)")
-    
+
     call parse_ifile (ifile, pn_root)
 
     write (u, "(A)")  "* Compile command list"
@@ -2147,23 +2147,23 @@ contains
 
     write (u, "(A)")  "* Show model"
     write (u, "(A)")
-    
+
     call global%model%write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Extra Input"
     write (u, "(A)")
-    
+
     call ifile_final (ifile)
     call ifile_append (ifile, '?diagonal_decay = true')
     call ifile_append (ifile, 'unstable s (d1)')
-    
+
     call ifile_write (ifile, u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Parse file"
     write (u, "(A)")
-    
+
     call parse_ifile (ifile, pn_root)
 
     write (u, "(A)")  "* Compile command list"
@@ -2181,23 +2181,23 @@ contains
 
     write (u, "(A)")  "* Show model"
     write (u, "(A)")
-    
+
     call global%model%write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Extra Input"
     write (u, "(A)")
-    
+
     call ifile_final (ifile)
     call ifile_append (ifile, '?isotropic_decay = true')
     call ifile_append (ifile, 'unstable s (d1)')
-    
+
     call ifile_write (ifile, u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Parse file"
     write (u, "(A)")
-    
+
     call parse_ifile (ifile, pn_root)
 
     write (u, "(A)")  "* Compile command list"
@@ -2215,23 +2215,23 @@ contains
 
     write (u, "(A)")  "* Show model"
     write (u, "(A)")
-    
+
     call global%model%write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Extra Input"
     write (u, "(A)")
-    
+
     call ifile_final (ifile)
     call ifile_append (ifile, 'stable s')
     call ifile_append (ifile, 'unpolarized f')
-    
+
     call ifile_write (ifile, u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Parse file"
     write (u, "(A)")
-    
+
     call parse_ifile (ifile, pn_root)
 
     write (u, "(A)")  "* Compile command list"
@@ -2249,7 +2249,7 @@ contains
 
     write (u, "(A)")  "* Show model"
     write (u, "(A)")
-    
+
     call global%model%write (u)
 
     write (u, "(A)")
@@ -2283,19 +2283,19 @@ contains
     write (u, "(A)")
 
     call syntax_cmd_list_init ()
-    call global%global_init ()    
-    
+    call global%global_init ()
+
     write (u, "(A)")  "*  Input file: quit without code"
     write (u, "(A)")
-    
-    call ifile_append (ifile, 'quit')    
-    
+
+    call ifile_append (ifile, 'quit')
+
     call ifile_write (ifile, u)
 
     write (u, "(A)")
     write (u, "(A)")  "*  Parse file"
     write (u, "(A)")
-    
+
     call parse_ifile (ifile, pn_root1, u)
 
     write (u, "(A)")
@@ -2316,17 +2316,17 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "*  Input file: quit with code"
     write (u, "(A)")
-    
+
     call ifile_final (ifile)
     call command_list%final ()
-    call ifile_append (ifile, 'quit ( 3 + 4 )')        
-   
+    call ifile_append (ifile, 'quit ( 3 + 4 )')
+
     call ifile_write (ifile, u)
 
     write (u, "(A)")
     write (u, "(A)")  "*  Parse file"
     write (u, "(A)")
-    
+
     call parse_ifile (ifile, pn_root2, u)
 
     write (u, "(A)")
@@ -2352,7 +2352,7 @@ contains
     call command_list%final ()
     call global%final ()
     call syntax_cmd_list_final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: commands_28"
 
@@ -2377,20 +2377,20 @@ contains
     call syntax_model_file_init ()
     call syntax_slha_init ()
     call global%global_init ()
-    
+
     write (u, "(A)")  "*  Model MSSM, read SLHA file"
     write (u, "(A)")
-    
+
     call ifile_append (ifile, 'model = "MSSM"')
-    call ifile_append (ifile, '?slha_read_decays = true')    
-    call ifile_append (ifile, 'read_slha ("sps1ap_decays.slha")')    
-    
+    call ifile_append (ifile, '?slha_read_decays = true')
+    call ifile_append (ifile, 'read_slha ("sps1ap_decays.slha")')
+
     call ifile_write (ifile, u)
 
     write (u, "(A)")
     write (u, "(A)")  "*  Parse file"
     write (u, "(A)")
-    
+
     call parse_ifile (ifile, pn_root, u)
 
     write (u, "(A)")
@@ -2399,22 +2399,22 @@ contains
 
     call command_list%compile (pn_root, global)
     call command_list%write (u)
-           
+
     write (u, "(A)")
     write (u, "(A)")  "* Model MSSM, default values:"
-    write (u, "(A)")    
-        
+    write (u, "(A)")
+
     call global%model%write (u, verbose = .false., &
          show_vertices = .false., show_particles = .false.)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Selected global variables"
     write (u, "(A)")
 
     model_vars => global%model%get_var_list_ptr ()
 
-    call var_list_write_var (model_vars, var_str ("mch1"), u)
-    call var_list_write_var (model_vars, var_str ("wch1"), u)
+    call model_vars%write_var (var_str ("mch1"), u)
+    call model_vars%write_var (var_str ("wch1"), u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Execute command list"
@@ -2424,7 +2424,7 @@ contains
 
     write (u, "(A)")  "* Model MSSM, values from SLHA file"
     write (u, "(A)")
-        
+
     call global%model%write (u, verbose = .false., &
          show_vertices = .false., show_particles = .false.)
 
@@ -2434,8 +2434,8 @@ contains
 
     model_vars => global%model%get_var_list_ptr ()
 
-    call var_list_write_var (model_vars, var_str ("mch1"), u)
-    call var_list_write_var (model_vars, var_str ("wch1"), u)
+    call model_vars%write_var (var_str ("mch1"), u)
+    call model_vars%write_var (var_str ("wch1"), u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
@@ -2447,7 +2447,7 @@ contains
     call syntax_slha_final ()
     call syntax_model_file_final ()
     call syntax_cmd_list_final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: commands_29"
 
@@ -2472,19 +2472,19 @@ contains
 
     write (u, "(A)")  "*  Input file"
     write (u, "(A)")
-    
+
     call ifile_append (ifile, 'scale = 200 GeV')
     call ifile_append (ifile, &
          'factorization_scale = eval Pt [particle]')
     call ifile_append (ifile, &
          'renormalization_scale = eval E [particle]')
-    
+
     call ifile_write (ifile, u)
 
     write (u, "(A)")
     write (u, "(A)")  "*  Parse file"
     write (u, "(A)")
-    
+
     call parse_ifile (ifile, pn_root, u)
 
     write (u, "(A)")
@@ -2535,16 +2535,16 @@ contains
 
     write (u, "(A)")  "*  Input file"
     write (u, "(A)")
-    
+
     call ifile_append (ifile, 'weight = eval Pz [particle]')
-    call ifile_append (ifile, 'reweight = eval M2 [particle]')    
-    
+    call ifile_append (ifile, 'reweight = eval M2 [particle]')
+
     call ifile_write (ifile, u)
 
     write (u, "(A)")
     write (u, "(A)")  "*  Parse file"
     write (u, "(A)")
-    
+
     call parse_ifile (ifile, pn_root, u)
 
     write (u, "(A)")
@@ -2596,15 +2596,15 @@ contains
 
     write (u, "(A)")  "*  Input file"
     write (u, "(A)")
-    
+
     call ifile_append (ifile, 'selection = any PDG == 13 [particle]')
-    
+
     call ifile_write (ifile, u)
 
     write (u, "(A)")
     write (u, "(A)")  "*  Parse file"
     write (u, "(A)")
-    
+
     call parse_ifile (ifile, pn_root, u)
 
     write (u, "(A)")
@@ -2657,15 +2657,15 @@ contains
 
     write (u, "(A)")  "*  Input file"
     write (u, "(A)")
-    
+
     call ifile_append (ifile, 'exec ("echo foo >> bar")')
-    
+
     call ifile_write (ifile, u)
 
     write (u, "(A)")
     write (u, "(A)")  "*  Parse file"
     write (u, "(A)")
-    
+
     call parse_ifile (ifile, pn_root, u)
 
     write (u, "(A)")
@@ -2683,13 +2683,13 @@ contains
     u_file = free_unit ()
     open (u_file, file = "bar", &
          action = "read", status = "old")
-    do 
+    do
        read (u_file, "(A)", iostat = iostat)  buffer
-       if (iostat /= 0) exit        
+       if (iostat /= 0) exit
     end do
-    write (u, "(A,A)")  "should be 'foo': ", trim (buffer)           
+    write (u, "(A,A)")  "should be 'foo': ", trim (buffer)
     close (u_file)
-        
+
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
 
@@ -2712,9 +2712,6 @@ contains
     type(parse_node_t), pointer :: pn_root
     type(prclib_entry_t), pointer :: lib
     type(event_callback_34_t) :: event_callback
-    integer :: u_file, iostat
-    logical :: exist
-    character(80) :: buffer
 
     write (u, "(A)")  "* Test output: commands_34"
     write (u, "(A)")  "*   Purpose: write analysis data"
@@ -2725,7 +2722,7 @@ contains
 
     call syntax_cmd_list_init ()
     call global%global_init ()
-    
+
     call syntax_model_file_init ()
     call global%global_init ()
     call global%init_fallback_model &
@@ -2740,23 +2737,23 @@ contains
     call global%var_list%set_real (var_str ("sqrts"), &
          1000._default, is_known=.true.)
     call global%var_list%set_log (var_str ("?vis_history"),&
-         .false., is_known=.true.)    
+         .false., is_known=.true.)
     call global%var_list%set_log (var_str ("?integration_timer"),&
-         .false., is_known = .true.)    
+         .false., is_known = .true.)
 
     allocate (lib)
     call lib%init (var_str ("lib_cmd34"))
     call global%add_prclib (lib)
-    
+
     write (u, "(A)")  "* Prepare callback for writing analysis to I/O unit"
     write (u, "(A)")
-    
+
     event_callback%u = u
     call global%set_event_callback (event_callback)
 
     write (u, "(A)")  "* Input file"
     write (u, "(A)")
-    
+
     call ifile_append (ifile, 'model = "Test"')
     call ifile_append (ifile, 'process commands_34_p = s, s => s, s')
     call ifile_append (ifile, 'compile')
@@ -2767,13 +2764,13 @@ contains
     call ifile_append (ifile, 'n_events = 4')
     call ifile_append (ifile, 'event_callback_interval = 3')
     call ifile_append (ifile, 'simulate (commands_34_p)')
-    
+
     call ifile_write (ifile, u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Parse file"
     write (u, "(A)")
-    
+
     call parse_ifile (ifile, pn_root)
 
     write (u, "(A)")  "* Compile command list"
@@ -2834,14 +2831,14 @@ contains
     class(event_callback_34_t), intent(in) :: event_callback
     integer, intent(in), optional :: unit
   end subroutine event_callback_34_write
-  
+
   subroutine event_callback_34 (event_callback, i, event)
     class(event_callback_34_t), intent(in) :: event_callback
     integer(i64), intent(in) :: i
     class(generic_event_t), intent(in) :: event
     call analysis_write (event_callback%u)
   end subroutine event_callback_34
-  
+
 
 end module commands_uti
-  
+

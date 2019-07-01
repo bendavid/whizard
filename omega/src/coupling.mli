@@ -1,4 +1,4 @@
-(* $Id: coupling.mli 7506 2016-04-05 14:39:23Z jr_reuter $
+(* coupling.mli --
 
    Copyright (C) 1999-2016 by
 
@@ -8,7 +8,7 @@
        with contributions from
        Christian Speckner <cnspeckn@googlemail.com>
        Marco Sekulla <marco.sekulla@kit.edu>
-       Soyoung Shim <soyoung.shim@desy.de> (only parts of this file)
+       So Young Shim <soyoung.shim@desy.de> (only parts of this file)
 
    WHIZARD is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by

@@ -1,4 +1,3 @@
-# SINDARIN input for WHIZARD self-test
 # Process e-, e+ -> W+, W- with 3-comp. decay W+ -> Ex, nx
 
 model = SM

@@ -120,8 +120,6 @@ model "Test"
    Process variant     = test_me
    MD5 sum (def)       = 'A87D12F2A6AC65A5D040A10548C83E83'
    MD5 sum (phs)       = '0449C9E1A0A0BD43DC0DD15CDAFB6646'
- Process core:
-   test type implementing prc_test
  Referenced data:
    Terms                    = 1
    MC dataset               = 1
@@ -150,7 +148,6 @@ model "Test"
  Term #1
    Process component index      = 1
    Term index w.r.t. component  = 1
-   Rearrange partons            = F
 ------------------------------------------------------------------------
  Hard interaction:
 ------------------------------------------------------------------------

@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -74,19 +74,19 @@ module xml
      logical :: has_content = .false.
    contains
      generic :: init => init_no_attributes
-     procedure :: init_no_attributes => tag_init_no_attributes
+     procedure :: init_no_attributes => xml_tag_init_no_attributes
      generic :: init => init_with_attributes
-     procedure :: init_with_attributes => tag_init_with_attributes
-     procedure :: set_attribute => tag_set_attribute
-     procedure :: get_attribute => tag_get_attribute
+     procedure :: init_with_attributes => xml_tag_init_with_attributes
+     procedure :: set_attribute => xml_tag_set_attribute
+     procedure :: get_attribute => xml_tag_get_attribute
      generic :: write => write_without_content
-     procedure :: write_without_content => tag_write
-     procedure :: close => tag_close
+     procedure :: write_without_content => xml_tag_write
+     procedure :: close => xml_tag_close
      generic :: write => write_with_content
-     procedure :: write_with_content => tag_write_with_content
-     procedure :: read => tag_read
-     procedure :: read_attribute => tag_read_attribute
-     procedure :: read_content => tag_read_content
+     procedure :: write_with_content => xml_tag_write_with_content
+     procedure :: read => xml_tag_read
+     procedure :: read_attribute => xml_tag_read_attribute
+     procedure :: read_content => xml_tag_read_content
   end type xml_tag_t
   
 
@@ -165,16 +165,16 @@ contains
     end if
   end function attribute_get_value
   
-  subroutine tag_init_no_attributes (tag, name, has_content)
+  subroutine xml_tag_init_no_attributes (tag, name, has_content)
     class(xml_tag_t), intent(out) :: tag
     type(string_t), intent(in) :: name
     logical, intent(in), optional :: has_content
     tag%name = name
     allocate (tag%attribute (0))
     if (present (has_content))  tag%has_content = has_content
-  end subroutine tag_init_no_attributes
+  end subroutine xml_tag_init_no_attributes
   
-  subroutine tag_init_with_attributes (tag, name, attribute, has_content)
+  subroutine xml_tag_init_with_attributes (tag, name, attribute, has_content)
     class(xml_tag_t), intent(out) :: tag
     type(string_t), intent(in) :: name
     type(attribute_t), dimension(:), intent(in) :: attribute
@@ -183,23 +183,23 @@ contains
     allocate (tag%attribute (size (attribute)))
     tag%attribute = attribute
     if (present (has_content))  tag%has_content = has_content
-  end subroutine tag_init_with_attributes
+  end subroutine xml_tag_init_with_attributes
   
-  subroutine tag_set_attribute (tag, i, value)
+  subroutine xml_tag_set_attribute (tag, i, value)
     class(xml_tag_t), intent(inout) :: tag
     integer, intent(in) :: i
     type(string_t), intent(in) :: value
     call tag%attribute(i)%set_value (value)
-  end subroutine tag_set_attribute
+  end subroutine xml_tag_set_attribute
   
-  function tag_get_attribute (tag, i) result (value)
+  function xml_tag_get_attribute (tag, i) result (value)
     class(xml_tag_t), intent(in) :: tag
     integer, intent(in) :: i
     type(string_t) :: value
     value = tag%attribute(i)%get_value ()
-  end function tag_get_attribute
+  end function xml_tag_get_attribute
   
-  subroutine tag_write (tag, unit)
+  subroutine xml_tag_write (tag, unit)
     class(xml_tag_t), intent(in) :: tag
     integer, intent(in), optional :: unit
     integer :: u, i
@@ -214,17 +214,17 @@ contains
     else
        write (u, "(' />')", advance = "no")
     end if
-  end subroutine tag_write
+  end subroutine xml_tag_write
   
-  subroutine tag_close (tag, unit)
+  subroutine xml_tag_close (tag, unit)
     class(xml_tag_t), intent(in) :: tag
     integer, intent(in), optional :: unit
     integer :: u
     u = given_output_unit (unit)
     write (u, "('</',A,'>')", advance = "no")  char (tag%name)
-  end subroutine tag_close
+  end subroutine xml_tag_close
     
-  subroutine tag_write_with_content (tag, content, unit)
+  subroutine xml_tag_write_with_content (tag, content, unit)
     class(xml_tag_t), intent(in) :: tag
     type(string_t), intent(in) :: content
     integer, intent(in), optional :: unit
@@ -233,9 +233,9 @@ contains
     call tag%write (u)
     write (u, "(A)", advance = "no")  char (content)
     call tag%close (u)
-  end subroutine tag_write_with_content
+  end subroutine xml_tag_write_with_content
   
-  subroutine tag_read (tag, cstream, success)
+  subroutine xml_tag_read (tag, cstream, success)
     class(xml_tag_t), intent(inout) :: tag
     type(cstream_t), intent(inout) :: cstream
     logical, intent(out) :: success
@@ -339,9 +339,9 @@ contains
       success = .false.
     end subroutine err_incomplete
     
-  end subroutine tag_read
+  end subroutine xml_tag_read
 
-  subroutine tag_read_attribute (tag, string, done)
+  subroutine xml_tag_read_attribute (tag, string, done)
     class(xml_tag_t), intent(inout) :: tag
     type(string_t), intent(inout) :: string
     logical, intent(out) :: done
@@ -398,9 +398,9 @@ contains
            // "': syntax error")
     end subroutine err
     
-  end subroutine tag_read_attribute
+  end subroutine xml_tag_read_attribute
     
-  subroutine tag_read_content (tag, cstream, content, closing)
+  subroutine xml_tag_read_content (tag, cstream, content, closing)
     class(xml_tag_t), intent(in) :: tag
     type(cstream_t), intent(inout) :: cstream
     type(string_t), intent(out) :: content
@@ -462,7 +462,7 @@ contains
       closing = .false.
     end subroutine err_incomplete
     
-  end subroutine tag_read_content
+  end subroutine xml_tag_read_content
           
 
 end module xml

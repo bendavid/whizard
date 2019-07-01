@@ -1,4 +1,4 @@
-(* $Id: omega_SM_top.ml,v 1.3.10.2 2006/05/15 09:06:23 ohl Exp $ 
+(* omega_SM_top.ml --
 
    Copyright (C) 1999-2016 by
 
@@ -22,13 +22,6 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
-let rcs_file = RCS.parse "omega_SM_top" ["Standard Model with charge -4/3 top"]
-    { RCS.revision = "$Revision: $";
-      RCS.date = "$Date: 2009/05/08 16:35:21 $";
-      RCS.author = "$Author: jr_reuter $";
-      RCS.source
-        = "$Source: xxx $" }
-
 (* \thocwmodulesection{SM with charge $_4/3$ top} *)
 
 module type SM_flags =
@@ -51,7 +44,6 @@ module SM_gluons : SM_flags =
 
 module Anomtop (Flags : SM_flags) =
   struct
-    let rcs = rcs_file 
 
     open Coupling
 

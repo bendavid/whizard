@@ -63,17 +63,18 @@ module_lists = \
 $(module_lists):
 	$(MAKE) -C `dirname $@` Modules
 
+Module_dependencies.sed: $(FC_SOURCE)
 Module_dependencies.sed: $(module_lists)
 	@rm -f $@
 	echo 's/, *only:.*//' >> $@
 	echo 's/, *&//' >> $@
 	echo 's/, *.*=>.*//' >> $@
 	echo 's/$$/.lo/' >> $@
-	for list in $^; do \
-	  dir="`dirname $$list`"; \
-	  for mod in `cat $$list`; do \
-	    echo 's!: '$$mod'.lo$$!': $$dir/$$mod'.lo!' >> $@; \
-	  done ; \
+	for list in $(module_lists); do \
+		dir="`dirname $$list`"; \
+		for mod in `cat $$list`; do \
+			echo 's!: '$$mod'.lo$$!': $$dir/$$mod'.lo!' >> $@; \
+		done \
 	done
 
 DISTCLEANFILES = Module_dependencies.sed

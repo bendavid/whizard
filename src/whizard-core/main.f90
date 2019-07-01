@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -36,7 +36,6 @@
 program main
 
   use iso_varying_string, string_t => varying_string
-  use unit_tests
   use system_dependencies
   use diagnostics
   use ifiles
@@ -90,7 +89,7 @@ program main
   model = "SM"
   default_lib = "default_lib"
   library = ""
-  libraries = ""  
+  libraries = ""
   banner = .true.
   logging = .true.
   msg_level = RESULT
@@ -177,7 +176,7 @@ program main
            case ("--no-library")
               call no_option_value (long_option, value)
               default_lib = ""
-              library = ""              
+              library = ""
               libraries = ""
               cycle SCAN_CMDLINE
            case ("--localprefix")
@@ -333,7 +332,7 @@ program main
                     else
                        library = trim (arg(j+1:))
                     end if
-                    libraries = libraries // " " // library                    
+                    libraries = libraries // " " // library
                     cycle SCAN_CMDLINE
                  case ("-L")
                     if (j == len_trim (arg)) then
@@ -375,7 +374,7 @@ program main
   ! Overall initialization
   if (logfile /= "")  call logfile_init (logfile)
   if (banner)  call msg_banner ()
-   
+
    allocate (options)
    allocate (whizard_instance)
 
@@ -387,13 +386,13 @@ program main
       options%preload_libraries = libraries
       options%rebuild_library = rebuild_library
       options%recompile_library = recompile_library
-      options%rebuild_user = rebuild_user 
+      options%rebuild_user = rebuild_user
       options%rebuild_phs = rebuild_phs
       options%rebuild_grids = rebuild_grids
       options%rebuild_events = rebuild_events
-      
+
       call whizard_instance%init (options, paths, logfile)
-      
+
       call mask_term_signals ()
 
    end if
@@ -419,7 +418,7 @@ program main
 
       end if
   end if
- 
+
   ! Enter an interactive shell if requested
   if (.not. quit .and. interactive) then
      call whizard_instance%shell (quit_code)
@@ -432,7 +431,7 @@ program main
 
   call whizard_instance%final ()
   deallocate (whizard_instance)
-  
+
   call terminate_now_if_signal ()
   call release_term_signals ()
   call msg_terminate (quit_code = quit_code)
@@ -441,7 +440,7 @@ program main
 contains
 
   subroutine print_version ()
-    print "(A)", "WHIZARD " // WHIZARD_VERSION 
+    print "(A)", "WHIZARD " // WHIZARD_VERSION
     print "(A)", "Copyright (C) 1999-2016 Wolfgang Kilian, Thorsten Ohl, Juergen Reuter"
     print "(A)", "              ---------------------------------------                "
     print "(A)", "This is free software; see the source for copying conditions.  There is NO"

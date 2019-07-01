@@ -1,4 +1,4 @@
-! $Id: parameters.SM_top_anom.f90,v 1.4 2006/06/16 13:31:48 kilian Exp $
+! parameters.SM_top_anom.f90 --
 !
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>

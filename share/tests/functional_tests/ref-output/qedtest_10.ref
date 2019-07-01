@@ -68,7 +68,7 @@ Warning: No cuts have been defined.
 ?pacify = true
 checkpoint = 10
 n_events = 0
-luminosity =  0.0000000E+00
+luminosity =  0.00000E+00
 | Starting simulation for process 'qedtest_10_p'
 | Simulate: using integration grids from file 'qedtest_10_p_m1.vg'
 | RNG: Initializing TAO random-number generator
@@ -79,7 +79,7 @@ luminosity =  0.0000000E+00
 | Events: event normalization mode '1'
 |         ... event sample complete.
 n_events = 10
-luminosity =  0.0000000E+00
+luminosity =  0.00000E+00
 | Starting simulation for process 'qedtest_10_p'
 | Simulate: using integration grids from file 'qedtest_10_p_m1.vg'
 | RNG: Initializing TAO random-number generator
@@ -99,7 +99,7 @@ luminosity =  0.0000000E+00
 |         ... event sample complete.
 | Events: actual unweighting efficiency =  83.33 %
 n_events = 0
-luminosity =  1.0000000E-01
+luminosity =  1.00000E-01
 | Starting simulation for process 'qedtest_10_p'
 | Simulate: using integration grids from file 'qedtest_10_p_m1.vg'
 | RNG: Initializing TAO random-number generator
@@ -121,7 +121,7 @@ luminosity =  1.0000000E-01
 |         ... event sample complete.
 | Events: actual unweighting efficiency =  87.50 %
 n_events = 100
-luminosity =  1.0000000E-01
+luminosity =  1.00000E-01
 | Starting simulation for process 'qedtest_10_p'
 | Simulate: using integration grids from file 'qedtest_10_p_m1.vg'
 | RNG: Initializing TAO random-number generator

@@ -2,6 +2,7 @@
 % WHIZARD code as NOWEB source: common types and objects
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 \chapter{Sindarin Built-In Types}
+\includemodulegraph{types}
 
 Here, we define a couple of types and objects which are useful both
 internally for \whizard, and visible to the user, so they correspond

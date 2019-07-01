@@ -17,7 +17,7 @@ seed = 0
 | Process library 'beam_events_2_lib': ... success.
 $phs_method = "wood"
 $integration_method = "vamp"
-sqrts =  5.0000000E+02
+sqrts =  5.00000E+02
 openmp_num_threads = 1
 [user variable] n = 1000
 | RNG: Initializing TAO random-number generator

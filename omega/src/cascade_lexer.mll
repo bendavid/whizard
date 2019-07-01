@@ -1,4 +1,4 @@
-(* $Id: cascade_lexer.mll 7469 2016-03-13 16:44:17Z ohl $
+(* cascade_lexer.mll --
 
    Copyright (C) 1999-2016 by
 

@@ -1,4 +1,4 @@
-(* $Id: cache.ml 7444 2016-02-17 15:37:20Z jr_reuter $
+(* cache.ml --
 
    Copyright (C) 1999-2016 by
 

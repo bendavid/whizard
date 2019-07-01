@@ -131,8 +131,6 @@ weight = n_tot * n_in * n_out * (eval Phi / pi [s])
    Method              = test_me
    Process variant     = test_me
    MD5 sum (def)       = '                                '
- Process core:
-   test type implementing prc_test
  Referenced data:
    Terms                    = 1
    MC dataset               = 1
@@ -161,7 +159,6 @@ weight = n_tot * n_in * n_out * (eval Phi / pi [s])
  Term #1
    Process component index      = 1
    Term index w.r.t. component  = 1
-   Rearrange partons            = F
 ------------------------------------------------------------------------
  Hard interaction:
 ------------------------------------------------------------------------
@@ -245,20 +242,15 @@ weight = n_tot * n_in * n_out * (eval Phi / pi [s])
  [f(25)]
    [f(25)] => ME(1) = ( 1.000000000000E+00, 0.000000000000E+00)
 ========================================================================
- Active components:
+========================================================================
+ Active terms:
 ------------------------------------------------------------------------
- Component #1
- Seed momenta:
- E =   5.000000000000E+02
- P =   0.000000000000E+00  0.000000000000E+00  4.841229182759E+02
- E =   5.000000000000E+02
- P =   0.000000000000E+00  0.000000000000E+00 -4.841229182759E+02
- E =   5.000000000000E+02
- P =   3.423265984407E+02  3.423265984407E+02  0.000000000000E+00
- E =   5.000000000000E+02
- P =  -3.423265984407E+02 -3.423265984407E+02  0.000000000000E+00
- Squared matrix element:
-   4.000000000000E+00
+ Term #1 (component #1)
+   passed cuts           = T
+   overall scale         =  9.000000000000E+02
+   factorization scale   =  1.000000000000E+03
+   renormalization scale =  1.000000000000E+03
+   reweighting factor    =  4.000000000000E+00
  Flux * PHS volume:
    3.133842031921E+08
  Jacobian factors per channel:
@@ -308,15 +300,6 @@ weight = n_tot * n_in * n_out * (eval Phi / pi [s])
  P =   3.423265984407E+02  3.423265984407E+02  0.000000000000E+00
  E =   5.000000000000E+02
  P =  -3.423265984407E+02 -3.423265984407E+02  0.000000000000E+00
-========================================================================
- Active terms:
-------------------------------------------------------------------------
- Term #1 (component #1)
-   passed cuts           = T
-   overall scale         =  9.000000000000E+02
-   factorization scale   =  1.000000000000E+03
-   renormalization scale =  1.000000000000E+03
-   reweighting factor    =  4.000000000000E+00
 ------------------------------------------------------------------------
  Amplitude (transition matrix of the hard interaction):
 ------------------------------------------------------------------------

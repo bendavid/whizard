@@ -7,7 +7,7 @@ module features
   use system_dependencies, only: GOSAM_AVAILABLE
   use system_dependencies, only: OPENLOOPS_AVAILABLE
   use system_dependencies, only: LHAPDF5_AVAILABLE
-  use system_dependencies, only: LHAPDF6_AVAILABLE  
+  use system_dependencies, only: LHAPDF6_AVAILABLE
   use system_dependencies, only: HOPPET_AVAILABLE
   use jets, only: fastjet_available
   use system_dependencies, only: PYTHIA6_AVAILABLE
@@ -22,7 +22,7 @@ module features
   public :: print_features
 
 contains
-  
+
   subroutine print_features ()
     print "(A)", "WHIZARD " // WHIZARD_VERSION
     print "(A)", "Build configuration:"
@@ -41,7 +41,7 @@ contains
     call print_check ("LCIO")
     call print_check ("MetaPost")
   end subroutine print_features
-  
+
   subroutine check (feature, recognized, result, help)
     character(*), intent(in) :: feature
     logical, intent(out) :: recognized
@@ -114,7 +114,7 @@ contains
        recognized = .false.
     end select
   end subroutine check
-  
+
   subroutine print_check (feature)
     character(*), intent(in) :: feature
     character(16) :: f
@@ -129,6 +129,6 @@ contains
     f = feature
     print "(2x,A,1x,A,'(',A,')')", f, result, trim (help)
   end subroutine print_check
-    
+
 
 end module features

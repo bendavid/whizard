@@ -2,7 +2,7 @@
 ##
 ## Process this file with automake to produce Makefile.in
 #
-# Copyright (C) 1999-2016 by 
+# Copyright (C) 1999-2016 by
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -10,13 +10,13 @@
 #     Christian Speckner <cnspeckn@googlemail.com>
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
-# under the terms of the GNU General Public License as published by 
+# under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2, or (at your option)
 # any later version.
 #
 # WHIZARD is distributed in the hope that it will be useful, but
 # WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
@@ -46,7 +46,8 @@ libbeams_la_SOURCES = \
   hoppet_interface.f90 \
   sf_pdf_builtin.f90 \
   sf_lhapdf.f90 \
-  pdf.f90
+  pdf.f90 \
+  dispatch_beams.f90
 
 libbeams_ut_la_SOURCES = \
   beam_structures_uti.f90 beam_structures_ut.f90 \
@@ -93,7 +94,8 @@ module_lists = \
   ../physics/Modules \
   ../qft/Modules \
   ../types/Modules \
-  ../particles/Modules
+  ../particles/Modules \
+  ../variables/Modules
 
 # Explicit dependencies, not automatically generated
 sf_circe1.lo: ../../circe1/src/circe1.$(FC_MODULE_EXT)
@@ -106,17 +108,18 @@ sf_lhapdf.lo:  ../lhapdf/lhapdf.$(FC_MODULE_EXT)
 $(module_lists):
 	$(MAKE) -C `dirname $@` Modules
 
+Module_dependencies.sed: $(libbeams_la_SOURCES) $(libbeams_ut_la_SOURCES)
 Module_dependencies.sed: $(module_lists)
 	@rm -f $@
 	echo 's/, *only:.*//' >> $@
 	echo 's/, *&//' >> $@
 	echo 's/, *.*=>.*//' >> $@
 	echo 's/$$/.lo/' >> $@
-	for list in $^; do \
-	  dir="`dirname $$list`"; \
-	  for mod in `cat $$list`; do \
-	    echo 's!: '$$mod'.lo$$!': $$dir/$$mod'.lo!' >> $@; \
-	  done ; \
+	for list in $(module_lists); do \
+		dir="`dirname $$list`"; \
+		for mod in `cat $$list`; do \
+			echo 's!: '$$mod'.lo$$!': $$dir/$$mod'.lo!' >> $@; \
+		done \
 	done
 
 DISTCLEANFILES = Module_dependencies.sed
@@ -130,21 +133,21 @@ Makefile.depend: Module_dependencies.sed
 Makefile.depend: $(libbeams_la_SOURCES) $(libbeams_ut_la_SOURCES)
 	@rm -f $@
 	for src in $^; do \
-	  module="`basename $$src | sed 's/\.f[90][0358]//'`"; \
-	  grep '^ *use ' $$src \
-	    | grep -v '!NODEP!' \
-	    | sed -e 's/^ *use */'$$module'.lo: /' \
-	          -f Module_dependencies.sed; \
+		module="`basename $$src | sed 's/\.f[90][0358]//'`"; \
+		grep '^ *use ' $$src \
+			| grep -v '!NODEP!' \
+			| sed -e 's/^ *use */'$$module'.lo: /' \
+						-f Module_dependencies.sed; \
 	done > $@
 
-DISTCLEANFILES += Makefile.depend 
+DISTCLEANFILES += Makefile.depend
 
 # Fortran90 module files are generated at the same time as object files
 .lo.$(FC_MODULE_EXT):
 	@:
 #	touch $@
 
-AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../rng -I../physics -I../fastjet -I../qft -I../types -I../particles -I../../circe1/src -I../../circe2/src -I../pdf_builtin -I../lhapdf
+AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../rng -I../physics -I../fastjet -I../qft -I../types -I../particles -I../../circe1/src -I../../circe2/src -I../pdf_builtin -I../lhapdf -I../variables -I../expr_base -I../user -I../parsing
 
 
 ########################################################################

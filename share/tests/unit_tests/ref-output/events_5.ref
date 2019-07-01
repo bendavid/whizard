@@ -11,8 +11,10 @@
    Helicity handling  = drop
    Keep correlations  = F
 ------------------------------------------------------------------------
-   Squared matrix el. =  1.000000000000E+00
-   Event weight       =  3.057406860410E+08
+   Squared matrix el. (ref) =  1.000000000000E+00
+   Squared matrix el. (prc) =  1.000000000000E+00
+   Event weight (ref)       =  3.057406860410E+08
+   Event weight (prc)       =  3.057406860410E+08
 ------------------------------------------------------------------------
    Selected MCI group = 1
    Selected term      = 1
@@ -180,8 +182,10 @@ event_excess* =>  0.000000000000E+00
    Helicity handling  = drop
    Keep correlations  = F
 ------------------------------------------------------------------------
-   Squared matrix el. =  1.000000000000E+00
-   Event weight       =  3.057406860410E+08
+   Squared matrix el. (ref) =  1.000000000000E+00
+   Squared matrix el. (prc) =  1.000000000000E+00
+   Event weight (ref)       =  3.057406860410E+08
+   Event weight (prc)       =  3.057406860410E+08
 ------------------------------------------------------------------------
    Selected MCI group = 1
    Selected term      = 1

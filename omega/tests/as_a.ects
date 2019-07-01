@@ -1,4 +1,4 @@
-! $Id: as_a.ects 6004 2014-07-09 15:46:54Z cweiss $
+! as_a.ects --
 !ects:model SYM
 !ects:scatter
 !ects:process g1 phi -> g1

@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -306,9 +306,9 @@ contains
     u = given_output_unit (unit)
     write (u, "(1x,A,1x,A)", advance="no")  char (par%name), "= "
     select type (par)
-    class is (modelpar_real_t)
+    type is (modelpar_real_t)
        write (u, "(" // FMT_19 // ")", advance="no")  par%value
-    class is (modelpar_complex_t)
+    type is (modelpar_complex_t)
        write (u, "(" // FMT_19 // ",1x,'+',1x," // FMT_19 // ",1x,'I')", &
             advance="no")  par%value
     end select
@@ -320,9 +320,9 @@ contains
     character(len=l) :: buffer
     buffer = par%name
     select type (par)
-    class is (modelpar_real_t)
+    type is (modelpar_real_t)
        write (u, "(4x,A,1x,'=',1x," // FMT_19 // ")")  buffer, par%value
-    class is (modelpar_complex_t)
+    type is (modelpar_complex_t)
        write (u, "(4x,A,1x,'=',1x," // FMT_19 // ",1x,'+',1x," &
             // FMT_19 // ",1x,'I')")  buffer, par%value
     end select
@@ -348,9 +348,9 @@ contains
     class(modelpar_data_t), intent(inout) :: par
     real(default), intent(in) :: value
     select type (par)
-    class is (modelpar_real_t)
+    type is (modelpar_real_t)
        par%value = value
-    class is (modelpar_complex_t)
+    type is (modelpar_complex_t)
        par%value = value
     end select
   end subroutine modelpar_data_set_real
@@ -359,9 +359,9 @@ contains
     class(modelpar_data_t), intent(inout) :: par
     complex(default), intent(in) :: value
     select type (par)
-    class is (modelpar_real_t)
+    type is (modelpar_real_t)
        par%value = value
-    class is (modelpar_complex_t)
+    type is (modelpar_complex_t)
        par%value = value
     end select
   end subroutine modelpar_data_set_complex
@@ -376,9 +376,9 @@ contains
     class(modelpar_data_t), intent(in), target :: par
     real(default) :: value
     select type (par)
-    class is (modelpar_real_t)
+    type is (modelpar_real_t)
        value = par%value
-    class is (modelpar_complex_t)
+    type is (modelpar_complex_t)
        value = par%value
     end select
   end function modelpar_data_get_real
@@ -387,9 +387,9 @@ contains
     class(modelpar_data_t), intent(in), target :: par
     complex(default) :: value
     select type (par)
-    class is (modelpar_real_t)
+    type is (modelpar_real_t)
        value = par%value
-    class is (modelpar_complex_t)
+    type is (modelpar_complex_t)
        value = par%value
     end select
   end function modelpar_data_get_complex
@@ -398,7 +398,7 @@ contains
     class(modelpar_data_t), intent(in), target :: par
     real(default), pointer :: ptr
     select type (par)
-    class is (modelpar_real_t)
+    type is (modelpar_real_t)
        ptr => par%value
     class default
        ptr => null ()
@@ -409,7 +409,7 @@ contains
     class(modelpar_data_t), intent(in), target :: par
     complex(default), pointer :: ptr
     select type (par)
-    class is (modelpar_complex_t)
+    type is (modelpar_complex_t)
        ptr => par%value
     class default
        ptr => null ()

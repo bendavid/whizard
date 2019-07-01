@@ -17,14 +17,21 @@ if test "$enable_fastjet" = "yes"; then
      enable_fastjet="no"
   else
      wo_require_stdcpp="yes"
+     AC_MSG_CHECKING([the FastJet version])
+     FASTJET_VERSION=`${fjconfig} --version`
+     AC_MSG_RESULT([$FASTJET_VERSION])
+     AC_SUBST([FASTJET_VERSION])
   fi
 else
   AC_MSG_CHECKING([for FASTJET])
   AC_MSG_RESULT([(disabled)])
 fi
 
+FASTJET_AVAILABLE_FLAG=$enable_fastjet
+
 AC_SUBST([FASTJET_CXXFLAGS])
 AC_SUBST([FASTJET_LIBS])
+AC_SUBST([FASTJET_AVAILABLE_FLAG])
 
 AM_CONDITIONAL([FASTJET_AVAILABLE], [test "$enable_fastjet" = "yes"])
 ])

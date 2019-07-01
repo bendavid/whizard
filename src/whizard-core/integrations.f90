@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -45,7 +45,7 @@ module integrations
   use physics_defs
   use model_data
   use pdg_arrays
-  use variables
+  use variables, only: var_list_t
   use eval_trees
   use sf_mappings
   use sf_base
@@ -56,23 +56,25 @@ module integrations
   use mci_base
   use process_libraries
   use prc_core
-  use processes
+  !  TODO: (bcn 2016-09-13) details of process config should not be necessary here
+  use process_config
+  use process
+  use instances
   use process_stacks
   use models
   use iterations
   use rt_data
-  
-  use dispatch, only: dispatch_qcd
-  use dispatch, only: dispatch_rng_factory
-  use dispatch, only: dispatch_core
-  use dispatch, only: sf_prop_t
-  use dispatch, only: dispatch_sf_channels, dispatch_sf_config
-  use dispatch, only: dispatch_phs
-  use dispatch, only: dispatch_mci
+
+  use dispatch_rng, only: dispatch_rng_factory
+  use dispatch_me_methods, only: dispatch_core
+  use dispatch_beams, only: dispatch_qcd, sf_prop_t, dispatch_sf_config
+  use dispatch_phase_space, only: dispatch_sf_channels
+  use dispatch_phase_space, only: dispatch_phs
+  use dispatch_mci, only: dispatch_mci_s
 
   use compilations, only: compile_library
 
-  use dispatch, only: dispatch_fks
+  use dispatch_fks, only: dispatch_fks_s
   use blha_olp_interfaces
   use nlo_data
 
@@ -99,6 +101,7 @@ module integrations
     type(string_t) :: log_filename
     logical :: combined_integration = .false.
     type(iteration_multipliers_t) :: iteration_multipliers
+    type(nlo_settings_t) :: nlo_settings
    contains
      procedure :: create_process => integration_create_process
      procedure :: init_process => integration_init_process
@@ -109,11 +112,10 @@ module integrations
      procedure :: apply_call_multipliers => integration_apply_call_multipliers
      procedure :: init => integration_init
      procedure :: integrate => integration_integrate
-     procedure :: setup_component_cores => integration_setup_component_cores
      procedure :: setup_process_mci => integration_setup_process_mci
-     procedure :: integrate_dummy => integration_integrate_dummy 
+     procedure :: integrate_dummy => integration_integrate_dummy
      procedure :: sampler_test => integration_sampler_test
-     procedure :: get_process_ptr => integration_get_process_ptr 
+     procedure :: get_process_ptr => integration_get_process_ptr
   end type integration_t
 
 
@@ -151,8 +153,8 @@ contains
     end if
     intg%run_id = &
          local%var_list%get_sval (var_str ("$run_id"))
-    call dispatch_qcd (intg%qcd, local)
-    call dispatch_rng_factory (rng_factory, local)
+    call dispatch_qcd (intg%qcd, local%get_var_list_ptr (), local%os_data)
+    call dispatch_rng_factory (rng_factory, local%var_list)
     model_name = local%prclib%get_model_name (intg%process_id)
     if (local%get_sval (var_str ("$model_name")) == model_name) then
        model => local%model
@@ -176,204 +178,110 @@ contains
     logical, intent(in), optional :: verbose
     type(var_list_t), pointer :: var_list
     class(prc_core_t), allocatable :: core_template
+    class(prc_core_t), pointer :: core => null ()
     class(phs_config_t), allocatable :: phs_config_template
-    class(phs_config_t), allocatable :: phs_config_template_other
     type(phs_parameters_t) :: phs_par
     type(mapping_defaults_t) :: mapping_defs
     class(mci_t), allocatable :: mci_template
-    integer :: n_components, n_in, i_component
-    type(pdg_array_t), dimension(:,:), allocatable :: pdg_prc
+    integer :: n_components, i_component
     type(process_component_def_t), pointer :: config
     type(helicity_selection_t) :: helicity_selection
-    real(default) :: sqrts
-    logical :: decay_rest_frame, use_color_factors
+    logical :: use_color_factors
     type(sf_config_t), dimension(:), allocatable :: sf_config
     type(sf_prop_t) :: sf_prop
     type(sf_channel_t), dimension(:), allocatable :: sf_channel
     type(phs_channel_collection_t) :: phs_channel_collection
     logical :: sf_trace
-    type(string_t) :: sf_string, sf_trace_file
     logical :: verb
-    type(fks_template_t) :: fks_template
     type(blha_template_t) :: blha_template
-    type(string_t) :: me_method
-    type(eval_tree_factory_t) :: expr_factory
-    logical :: powheg_use_damping
-    logical :: first_real
-    first_real = .true.
-    call msg_debug (D_CORE, "integration_setup_process")
+    type(fks_template_t) :: fks_template
+    type(string_t) :: sf_string
+    class(phs_config_t), allocatable :: phs_config_template_other
+    integer :: i_real = 0
+    integer :: i_core
+    integer :: i_core_born, i_core_real
     verb = .true.; if (present (verbose))  verb = verbose
     call intg%process%set_var_list (local%get_var_list_ptr ())
     var_list => intg%process%get_var_list_ptr ()
 
-    intg%rebuild_phs = &
-         var_list%get_lval (var_str ("?rebuild_phase_space"))
-    intg%ignore_phs_mismatch = &
-         .not. var_list%get_lval (var_str ("?check_phs_file"))
-    intg%phs_only = &
-         var_list%get_lval (var_str ("?phs_only"))
-    phs_par%m_threshold_s = &
-         var_list%get_rval (var_str ("phs_threshold_s"))
-    phs_par%m_threshold_t = &
-         var_list%get_rval (var_str ("phs_threshold_t"))
-    phs_par%off_shell = &
-         var_list%get_ival (var_str ("phs_off_shell"))
-    phs_par%keep_nonresonant = &
-         var_list%get_lval (var_str ("?phs_keep_nonresonant"))
-    phs_par%t_channel = &
-         var_list%get_ival (var_str ("phs_t_channel"))
-    mapping_defs%energy_scale = &
-         var_list%get_rval (var_str ("phs_e_scale"))
-    mapping_defs%invariant_mass_scale = &
-         var_list%get_rval (var_str ("phs_m_scale"))
-    mapping_defs%momentum_transfer_scale = &
-         var_list%get_rval (var_str ("phs_q_scale"))
-    mapping_defs%step_mapping = &
-         var_list%get_lval (var_str ("?phs_step_mapping"))
-    mapping_defs%step_mapping_exp = &
-         var_list%get_lval (var_str ("?phs_step_mapping_exp"))
-    mapping_defs%enable_s_mapping = &
-         var_list%get_lval (var_str ("?phs_s_mapping"))
-
-    call dispatch_phs (phs_config_template, local, &
-         intg%process_id, mapping_defs, phs_par)
+    call setup_phase_space ()
 
     intg%n_calls_test = &
          var_list%get_ival (var_str ("n_calls_test"))
 
-    !!! We avoid two dots in the filename due to a bug in certain MetaPost versions.
-    if (intg%run_id /= "") then
-       intg%history_filename = intg%process_id // "." // intg%run_id &
-            // "-history"
-       intg%log_filename = intg%process_id // "." // intg%run_id // ".log"
-    else
-       intg%history_filename = intg%process_id // "-history"
-       intg%log_filename = intg%process_id // ".log"
-    end if
+    call setup_log_and_history ()
 
-    call dispatch_mci (mci_template, local, intg%process_id, &
+    call dispatch_mci_s (mci_template, local%get_var_list_ptr (), intg%process_id, &
        intg%process%is_nlo_calculation ())
 
-    if (verb) then
-       call msg_message ("Initializing integration for process " &
-            // char (intg%process_id) // ":")
-       if (intg%run_id /= "") then
-          call msg_message ("Run ID = " // '"' // char (intg%run_id) // '"')
-       end if
-    end if
-
-    helicity_selection = local%get_helicity_selection ()
-
-    intg%vis_history = &
-         var_list%get_lval (var_str ("?vis_history"))
-    use_color_factors = var_list%get_lval &
-         (var_str ("?read_color_factors"))
+    call display_init_message (verb)
 
     n_components = intg%process%get_n_components ()
-    n_in = intg%process%get_n_in ()
 
     call blha_template%init (local%beam_structure%has_polarized_beams(), &
        var_list%get_lval (var_str ("?openloops_switch_off_muon_yukawa")), &
-       var_list%get_rval (var_str ("blha_use_top_yukawa")))
+       var_list%get_rval (var_str ("blha_use_top_yukawa")), &
+       var_list%get_sval (var_str ("$blha_ew_scheme")))
 
     intg%combined_integration = var_list%get_lval &
-       (var_str ('?combined_nlo_integration')) .and. intg%process%is_nlo_calculation ()
+       (var_str ('?combined_nlo_integration')) .and. &
+        intg%process%is_nlo_calculation ()
 
+    helicity_selection = local%get_helicity_selection ()
+    use_color_factors = var_list%get_lval &
+         (var_str ("?read_color_factors"))
     do i_component = 1, n_components
+       config => intg%process%get_component_def_ptr (i_component)
+       call intg%process%core_manager_register &
+          (config%get_nlo_type (), i_component, config%get_def_type_string ())
+    end do
+    call intg%process%allocate_cm_arrays (n_components)
+    do i_core = 1, intg%process%get_n_cores ()
+       i_component = intg%process%get_core_manager_index (i_core)
        config => intg%process%get_component_def_ptr (i_component)
        call dispatch_core (core_template, config%get_core_def_ptr (), &
             intg%process%get_model_ptr (), &
             helicity_selection, intg%qcd, &
             use_color_factors)
+       call intg%process%allocate_core (i_core, core_template)
+       deallocate (core_template)
+    end do
+
+    do i_core = 1, intg%process%get_n_cores ()
+       call fill_blha_template (intg%process%get_nlo_type (i_core))
+       call intg%process%init_core (i_core, blha_template)
+       call blha_template%reset ()
+    end do
+
+    do i_component = 1, n_components
+       config => intg%process%get_component_def_ptr (i_component)
+       core => intg%process%get_core_nlo_type ( &
+            intg%process%get_md5sum_constants (i_component, &
+            config%get_def_type_string (), config%get_nlo_type ()))
        select case (config%get_nlo_type ())
        case (NLO_VIRTUAL)
-         me_method = var_list%get_sval (var_str ("$loop_me_method"))
-         select case (char (me_method)) 
-         case ('gosam', 'openloops')
-            call blha_template%set_loop ()
-         end select
-         call intg%process%init_component &
-            (i_component, core_template, mci_template, phs_config_template, &
-             blha_template = blha_template)
-         if (intg%combined_integration) &
-            call intg%process%set_component_type (i_component, COMP_VIRT)
+          call setup_virtual_component ()
        case (NLO_REAL)
-         me_method = var_list%get_sval (var_str ("$real_tree_me_method"))
-         powheg_use_damping = var_list%get_lval (var_str ("?powheg_use_damping"))
-         select case (char (me_method))
-         case ('gosam', 'openloops')
-            call blha_template%set_real_trees ()
-         end select
-         call dispatch_phs (phs_config_template_other, local, &
-             intg%process_id, mapping_defs, phs_par, &
-             var_str ('fks'))
-         call dispatch_fks (fks_template, local)
-         call intg%process%init_component &
-            (i_component, core_template, mci_template, &
-             phs_config_template_other, fks_template = fks_template, &
-             blha_template = blha_template)
-         if (intg%combined_integration) then
-            if (powheg_use_damping) then
-               if (first_real) then
-                  call intg%process%set_component_type (i_component, COMP_REAL_SING)
-                  first_real = .false.
-               else
-                  call intg%process%set_component_type (i_component, COMP_REAL_FIN)
-               end if
-            else
-               call intg%process%set_component_type (i_component, COMP_REAL)
-            end if
-         end if
+          call setup_real_component ()
+          if (intg%process%get_component_type (i_component) /= COMP_REAL_FIN) &
+             i_real = i_component
        case (NLO_MISMATCH)
-         call dispatch_phs (phs_config_template_other, local, &
-            intg%process_id, mapping_defs, phs_par, var_str ('fks')) 
-         call intg%process%init_component & 
-            (i_component, core_template, mci_template, &
-            phs_config_template_other)
-         if (intg%combined_integration) &
-            call intg%process%set_component_type (i_component, COMP_MISMATCH)
+          call setup_mismatch_component ()
        case (NLO_DGLAP)
-         call dispatch_phs (phs_config_template_other, local, &
-             intg%process_id, mapping_defs, phs_par, &
-             var_str ('fks'))
-         call intg%process%init_component &
-           (i_component, core_template, mci_template, phs_config_template_other)
-         if (intg%combined_integration) &
-            call intg%process%set_component_type (i_component, COMP_PDF)
+          call setup_dglap_component ()
        case (BORN)
-         me_method = var_list%get_sval (var_str ("$born_me_method"))
-         select case (char (me_method))
-         case ('gosam', 'openloops')
-            call blha_template%set_born ()
-            call intg%process%init_component &
-               (i_component, core_template, mci_template, phs_config_template, &
-                blha_template = blha_template)
-         case default
-            call intg%process%init_component &
-               (i_component, core_template, mci_template, phs_config_template)
-         end select
-         if (intg%combined_integration) &
-            call intg%process%set_component_type (i_component, COMP_MASTER)
+          call setup_born_component ()
        case (NLO_SUBTRACTION)
-         me_method = var_list%get_sval (var_str ("$correlation_me_method"))
-         select case (char (me_method))
-         case ('gosam', 'openloops')
-            call blha_template%set_subtraction ()
-         end select
-         call intg%process%init_component &
-             (i_component, core_template, mci_template, phs_config_template, &
-              blha_template = blha_template)
-         if (intg%combined_integration) &
-            call intg%process%set_component_type (i_component, COMP_SUB)
+          call setup_subtraction_component ()
        case (GKS)
-         call intg%process%init_component &
-             (i_component, core_template, mci_template, phs_config_template)
+          call intg%process%init_component &
+             (i_component, core%has_matrix_element (), &
+             mci_template, phs_config_template)
        case default
-         call msg_fatal ("setup_process: NLO type not implemented!")
+          call msg_fatal ("setup_process: NLO type not implemented!")
        end select
-       call blha_template%reset ()
-       deallocate (core_template)
-       if (allocated (phs_config_template_other)) deallocate (phs_config_template_other)
+       if (allocated (phs_config_template_other)) &
+          deallocate (phs_config_template_other)
     end do
 
     if (verb)  call intg%process%write (screen = .true.)
@@ -384,40 +292,26 @@ contains
             // char (intg%process_id) // "': matrix element vanishes")
     end if
 
-    sqrts = local%get_sqrts ()
-    decay_rest_frame = &
-         var_list%get_lval (var_str ("?decay_rest_frame"))    
-    if (intg%process_has_me) then
-       call intg%process%setup_beams_beam_structure &
-            (local%beam_structure, sqrts, decay_rest_frame)
-    end if
-    call intg%process%check_masses ()
-    if (verb .and. intg%process_has_me) then
-       call intg%process%beams_startup_message &
-            (beam_structure = local%beam_structure)
+    call setup_beams ()
+    call setup_structure_functions ()
+
+    call intg%process%configure_phs &
+         (intg%rebuild_phs, intg%ignore_phs_mismatch, verbose=verbose, &
+          combined_integration = intg%combined_integration)
+
+    if (intg%process%is_nlo_calculation ()) then
+       call intg%process%check_if_threshold_method ()
+       call intg%process%init_nlo_settings (var_list, fks_template)
+       i_core_real = intg%process%get_i_core_nlo_type (NLO_REAL)
+       i_core_born = intg%process%get_i_core_nlo_type (BORN)
+       call intg%process%setup_region_data (i_real, &
+            intg%process%get_constants(i_core_born), &
+            intg%process%get_constants(i_core_real))
     end if
 
-    if (intg%process_has_me) then
-       call intg%process%get_pdg_in (pdg_prc)
-    else
-       allocate (pdg_prc (n_in, n_components))
-       pdg_prc = 0
-    end if
-    call dispatch_sf_config (sf_config, sf_prop, local, pdg_prc)
-    sf_trace = &
-         var_list%get_lval (var_str ("?sf_trace"))
-    sf_trace_file = &
-         var_list%get_sval (var_str ("$sf_trace_file"))
-    if (sf_trace) then
-       call intg%process%init_sf_chain (sf_config, sf_trace_file)
-    else
-       call intg%process%init_sf_chain (sf_config)
-    end if
+    call intg%process%setup_terms (with_beams = local%beam_structure%is_set ())
 
     if (intg%process_has_me) then
-       call intg%process%configure_phs &
-            (intg%rebuild_phs, intg%ignore_phs_mismatch, verbose=verbose, &
-             combined_integration=intg%combined_integration)
        if (size (sf_config) > 0) then
           call intg%process%collect_channels (phs_channel_collection)
        else if (intg%process%contains_trivial_component ()) then
@@ -425,48 +319,272 @@ contains
                &with fixed-energy beams")
        end if
        call dispatch_sf_channels &
-            (sf_channel, sf_string, sf_prop, phs_channel_collection, local)
+            (sf_channel, sf_string, sf_prop, phs_channel_collection, &
+            local%var_list, local%get_sqrts(), local%beam_structure)
        if (allocated (sf_channel)) then
           if (size (sf_channel) > 0) then
              call intg%process%set_sf_channel (sf_channel)
           end if
        end if
        call phs_channel_collection%final ()
-       if (verb)  call intg%process%sf_startup_message (sf_string)    
+       if (verb)  call intg%process%sf_startup_message (sf_string)
     end if
 
     call intg%setup_process_mci ()
-    call intg%process%setup_terms ()
 
-    if (associated (local%pn%cuts_lexpr)) then
-       if (verb)  call msg_message ("Applying user-defined cuts.")
-       call expr_factory%init (local%pn%cuts_lexpr)
-       call intg%process%set_cuts (expr_factory)
-    else
-       if (verb)  call msg_warning ("No cuts have been defined.")
-    end if
-    if (associated (local%pn%scale_expr)) then
-       if (verb) call msg_message ("Using user-defined general scale.")
-       call expr_factory%init (local%pn%scale_expr)
-       call intg%process%set_scale (expr_factory)
-    end if
-    if (associated (local%pn%fac_scale_expr)) then
-       if (verb) call msg_message ("Using user-defined factorization scale.")
-       call expr_factory%init (local%pn%fac_scale_expr)
-       call intg%process%set_fac_scale (expr_factory)
-    end if
-    if (associated (local%pn%ren_scale_expr)) then
-       if (verb) call msg_message ("Using user-defined renormalization scale.")
-       call expr_factory%init (local%pn%ren_scale_expr)
-       call intg%process%set_ren_scale (expr_factory)
-    end if
-    if (associated (local%pn%weight_expr)) then
-       if (verb) call msg_message ("Using user-defined reweighting factor.")
-       call expr_factory%init (local%pn%weight_expr)
-       call intg%process%set_weight (expr_factory)
-    end if
+    call setup_expressions ()
 
     call intg%process%compute_md5sum ()
+  contains
+    subroutine setup_phase_space ()
+      intg%rebuild_phs = &
+           var_list%get_lval (var_str ("?rebuild_phase_space"))
+      intg%ignore_phs_mismatch = &
+           .not. var_list%get_lval (var_str ("?check_phs_file"))
+      intg%phs_only = &
+           var_list%get_lval (var_str ("?phs_only"))
+      phs_par%m_threshold_s = &
+           var_list%get_rval (var_str ("phs_threshold_s"))
+      phs_par%m_threshold_t = &
+           var_list%get_rval (var_str ("phs_threshold_t"))
+      phs_par%off_shell = &
+           var_list%get_ival (var_str ("phs_off_shell"))
+      phs_par%keep_nonresonant = &
+           var_list%get_lval (var_str ("?phs_keep_nonresonant"))
+      phs_par%t_channel = &
+           var_list%get_ival (var_str ("phs_t_channel"))
+      mapping_defs%energy_scale = &
+           var_list%get_rval (var_str ("phs_e_scale"))
+      mapping_defs%invariant_mass_scale = &
+           var_list%get_rval (var_str ("phs_m_scale"))
+      mapping_defs%momentum_transfer_scale = &
+           var_list%get_rval (var_str ("phs_q_scale"))
+      mapping_defs%step_mapping = &
+           var_list%get_lval (var_str ("?phs_step_mapping"))
+      mapping_defs%step_mapping_exp = &
+           var_list%get_lval (var_str ("?phs_step_mapping_exp"))
+      mapping_defs%enable_s_mapping = &
+           var_list%get_lval (var_str ("?phs_s_mapping"))
+
+      call dispatch_phs (phs_config_template, local%var_list, &
+           local%os_data, intg%process_id, mapping_defs, phs_par)
+    end subroutine setup_phase_space
+
+    subroutine setup_log_and_history ()
+       !!! We avoid two dots in the filename due to a bug in certain MetaPost versions.
+       if (intg%run_id /= "") then
+          intg%history_filename = intg%process_id // "." // intg%run_id &
+               // "-history"
+          intg%log_filename = intg%process_id // "." // intg%run_id // ".log"
+       else
+          intg%history_filename = intg%process_id // "-history"
+          intg%log_filename = intg%process_id // ".log"
+       end if
+       intg%vis_history = &
+          var_list%get_lval (var_str ("?vis_history"))
+    end subroutine setup_log_and_history
+
+    subroutine display_init_message (verb)
+      logical, intent(in) :: verb
+      if (verb) then
+         call msg_message ("Initializing integration for process " &
+            // char (intg%process_id) // ":")
+         if (intg%run_id /= "") &
+          call msg_message ("Run ID = " // '"' // char (intg%run_id) // '"')
+      end if
+    end subroutine display_init_message
+
+    function get_me_method (nlo_type) result (me_method)
+      type(string_t) :: me_method
+      integer, intent(in) :: nlo_type
+      select case (nlo_type)
+      case (BORN)
+         me_method = var_list%get_sval (var_str ("$born_me_method"))
+      case (NLO_REAL)
+         me_method = var_list%get_sval (var_str ("$real_tree_me_method"))
+      case (NLO_VIRTUAL)
+         me_method = var_list%get_sval (var_str ("$loop_me_method"))
+      case (NLO_SUBTRACTION)
+         me_method = var_list%get_sval (var_str ("$correlation_me_method"))
+      end select
+    end function get_me_method
+
+    subroutine setup_born_component ()
+      call intg%process%init_component &
+         (i_component, core%has_matrix_element (), &
+          mci_template, phs_config_template)
+      if (intg%combined_integration) &
+         call intg%process%set_component_type (i_component, COMP_MASTER)
+    end subroutine setup_born_component
+
+    subroutine setup_virtual_component ()
+      call intg%process%init_component &
+         (i_component, core%has_matrix_element (), &
+          mci_template, phs_config_template)
+      if (intg%combined_integration) &
+         call intg%process%set_component_type (i_component, COMP_VIRT)
+    end subroutine setup_virtual_component
+
+    subroutine setup_real_component ()
+      logical :: use_powheg_damping
+      logical :: setup_real_fin
+      integer :: i = 0
+      use_powheg_damping = var_list%get_lval (var_str ("?powheg_use_damping"))
+      setup_real_fin = i > 0
+      if (.not. setup_real_fin) then
+         call dispatch_phs (phs_config_template_other, local%var_list, &
+            local%os_data, intg%process_id, mapping_defs, phs_par, &
+            var_str ('fks'))
+         call dispatch_fks_s (fks_template, local%var_list)
+      else
+         call dispatch_phs (phs_config_template_other, local%var_list, &
+            local%os_data, intg%process_id, mapping_defs, phs_par, &
+            var_str ('wood'))
+      end if
+      call intg%process%init_component &
+         (i_component, core%has_matrix_element (), mci_template, &
+          phs_config_template_other)
+      if (intg%combined_integration) then
+         if (use_powheg_damping) then
+            if (i == 0) then
+               call intg%process%set_component_type (i_component, COMP_REAL_SING)
+               i = i + 1
+            else
+               call intg%process%set_component_type (i_component, COMP_REAL_FIN)
+            end if
+         else
+            call intg%process%set_component_type (i_component, COMP_REAL)
+         end if
+      end if
+    end subroutine setup_real_component
+
+    subroutine setup_mismatch_component ()
+      call dispatch_phs (phs_config_template_other, local%var_list, &
+           local%os_data, intg%process_id, mapping_defs, phs_par, var_str ('fks'))
+      call intg%process%init_component &
+         (i_component, core%has_matrix_element (), mci_template, &
+         phs_config_template_other)
+      if (intg%combined_integration) &
+         call intg%process%set_component_type (i_component, COMP_MISMATCH)
+    end subroutine setup_mismatch_component
+
+    subroutine setup_dglap_component ()
+      call dispatch_phs (phs_config_template_other, local%var_list, local%os_data, &
+          intg%process_id, mapping_defs, phs_par, &
+          var_str ('fks'))
+      call intg%process%init_component &
+        (i_component, core%has_matrix_element (), &
+         mci_template, phs_config_template_other)
+      if (intg%combined_integration) &
+         call intg%process%set_component_type (i_component, COMP_PDF)
+    end subroutine setup_dglap_component
+
+    subroutine setup_subtraction_component ()
+      call intg%process%init_component &
+          (i_component, .false., &
+           mci_template, phs_config_template)
+      if (intg%combined_integration) &
+         call intg%process%set_component_type (i_component, COMP_SUB)
+    end subroutine setup_subtraction_component
+
+    function needs_entry (me_method) result (val)
+      logical :: val
+      type(string_t), intent(in) :: me_method
+      val = char (me_method) == 'gosam' .or. char (me_method) == 'openloops'
+    end function needs_entry
+
+    subroutine fill_blha_template (nlo_type)
+      integer, intent(in) :: nlo_type
+      select case (nlo_type)
+      case (BORN)
+         if (needs_entry (var_list%get_sval (var_str ("$born_me_method")))) &
+            call blha_template%set_born ()
+      case (NLO_REAL)
+         if (needs_entry (var_list%get_sval (var_str ("$real_tree_me_method")))) &
+            call blha_template%set_real_trees ()
+      case (NLO_VIRTUAL)
+         if (needs_entry (var_list%get_sval (var_str ("$loop_me_method")))) &
+            call blha_template%set_loop ()
+      case (NLO_SUBTRACTION)
+         if (needs_entry (var_list%get_sval (var_str ("$correlation_me_method")))) then
+            call blha_template%set_subtraction ()
+            call blha_template%set_internal_color_correlations ()
+         end if
+      end select
+    end subroutine fill_blha_template
+
+    subroutine setup_beams ()
+      real(default) :: sqrts
+      logical :: decay_rest_frame
+      sqrts = local%get_sqrts ()
+      decay_rest_frame = &
+           var_list%get_lval (var_str ("?decay_rest_frame"))
+      if (intg%process_has_me) then
+         call intg%process%setup_beams_beam_structure &
+              (local%beam_structure, sqrts, decay_rest_frame)
+      end if
+      call intg%process%check_masses ()
+      if (verb .and. intg%process_has_me) then
+         call intg%process%beams_startup_message &
+              (beam_structure = local%beam_structure)
+      end if
+    end subroutine setup_beams
+
+    subroutine setup_structure_functions ()
+      integer :: n_in
+      type(pdg_array_t), dimension(:,:), allocatable :: pdg_prc
+      type(string_t) :: sf_trace_file
+      if (intg%process_has_me) then
+         call intg%process%get_pdg_in (pdg_prc)
+      else
+         n_in = intg%process%get_n_in ()
+         allocate (pdg_prc (n_in, n_components))
+         pdg_prc = 0
+      end if
+      call dispatch_sf_config (sf_config, sf_prop, local%beam_structure, &
+         local%get_var_list_ptr (), local%var_list, &
+         local%model, local%os_data, local%get_sqrts (), pdg_prc)
+      sf_trace = &
+           var_list%get_lval (var_str ("?sf_trace"))
+      sf_trace_file = &
+           var_list%get_sval (var_str ("$sf_trace_file"))
+      if (sf_trace) then
+         call intg%process%init_sf_chain (sf_config, sf_trace_file)
+      else
+         call intg%process%init_sf_chain (sf_config)
+      end if
+    end subroutine setup_structure_functions
+
+    subroutine setup_expressions ()
+      type(eval_tree_factory_t) :: expr_factory
+      if (associated (local%pn%cuts_lexpr)) then
+         if (verb)  call msg_message ("Applying user-defined cuts.")
+         call expr_factory%init (local%pn%cuts_lexpr)
+         call intg%process%set_cuts (expr_factory)
+      else
+         if (verb)  call msg_warning ("No cuts have been defined.")
+      end if
+      if (associated (local%pn%scale_expr)) then
+         if (verb) call msg_message ("Using user-defined general scale.")
+         call expr_factory%init (local%pn%scale_expr)
+         call intg%process%set_scale (expr_factory)
+      end if
+      if (associated (local%pn%fac_scale_expr)) then
+         if (verb) call msg_message ("Using user-defined factorization scale.")
+         call expr_factory%init (local%pn%fac_scale_expr)
+         call intg%process%set_fac_scale (expr_factory)
+      end if
+      if (associated (local%pn%ren_scale_expr)) then
+         if (verb) call msg_message ("Using user-defined renormalization scale.")
+         call expr_factory%init (local%pn%ren_scale_expr)
+         call intg%process%set_ren_scale (expr_factory)
+      end if
+      if (associated (local%pn%weight_expr)) then
+         if (verb) call msg_message ("Using user-defined reweighting factor.")
+         call expr_factory%init (local%pn%weight_expr)
+         call intg%process%set_weight (expr_factory)
+      end if
+    end subroutine setup_expressions
   end subroutine integration_setup_process
 
   subroutine integration_evaluate &
@@ -479,17 +597,14 @@ contains
     logical, intent(in), optional :: pacify
     integer :: n_calls, n_it
     logical :: adapt_grids, adapt_weights, final
-        
     n_it = it_list%get_n_it (pass)
     n_calls = it_list%get_n_calls (pass)
     adapt_grids = it_list%adapt_grids (pass)
     adapt_weights = it_list%adapt_weights (pass)
     final = pass == it_list%get_n_pass ()
-    
-    call intg%process%integrate (process_instance, &
+    call process_instance%integrate ( &
          i_mci, n_it, n_calls, adapt_grids, adapt_weights, &
          final, pacify)
-
   end subroutine integration_evaluate
 
   subroutine integration_make_iterations_list (intg, it_list)
@@ -510,7 +625,7 @@ contains
     call it_list%init (n_it, n_calls, &
          adapt_grids = adapt_grids, adapt_weights = adapt_weights)
   end subroutine integration_make_iterations_list
-  
+
   subroutine integration_init_iteration_multipliers (intg, local)
     class(integration_t), intent(inout) :: intg
     type(rt_data_t), intent(in) :: local
@@ -520,7 +635,7 @@ contains
     if (n_pass == 0) then
        call intg%make_iterations_list (it_list)
        n_pass = it_list%get_n_pass ()
-    end if 
+    end if
     associate (it_multipliers => intg%iteration_multipliers)
        allocate (it_multipliers%n_calls0 (n_pass))
        do pass = 1, n_pass
@@ -599,21 +714,17 @@ contains
     integer :: nlo_type
     logical :: display_summed
     logical :: nlo_active
-    type(nlo_settings_t) :: nlo_settings
     type(string_t) :: component_output
 
-    var_list => intg%process%get_var_list_ptr ()
-    call nlo_settings%init (var_list, &
-             combined_integration=intg%combined_integration)
-
     allocate (process_instance)
-    call process_instance%init (intg%process, nlo_settings)
+    call process_instance%init (intg%process)
 
-    if (process_instance%needs_extra_code ()) then
+    if (intg%process%needs_extra_code ()) then
        call process_instance%create_and_load_extra_libraries &
                (local%beam_structure, local%os_data)
     end if
 
+    var_list => intg%process%get_var_list_ptr ()
     call openmp_set_num_threads_verbose &
          (var_list%get_ival (var_str ("openmp_num_threads")), &
           var_list%get_lval (var_str ("?openmp_logging")))
@@ -627,18 +738,13 @@ contains
             char (intg%process%get_id ()), "'"
        call msg_message ()
     end if
-    call intg%setup_component_cores ()
 
     nlo_active = any (intg%process%get_component_nlo_type &
          ([(i_mci, i_mci = 1, n_mci)]) /= BORN)
     do i_mci = 1, n_mci
        i_component = intg%process%i_mci_to_i_component (i_mci)
        nlo_type = intg%process%get_component_nlo_type (i_component)
-       if (intg%process%is_active_component (i_component)) then
-          select type (pcm => process_instance%pcm)
-          class is (pcm_instance_nlo_t)
-             if (pcm%collect_matrix_elements)  call pcm%collector%reset ()
-          end select
+       if (intg%process%component_can_be_integrated (i_component)) then
           if (n_mci > 1) then
              if (nlo_active) then
                 if (intg%combined_integration .and. nlo_type == BORN) then
@@ -698,20 +804,13 @@ contains
 
     if (n_mci > 1 .and. display_summed) then
        call msg_message ("Integrate: sum of all components")
-       call intg%process%display_summed_results ()
+       call intg%process%display_summed_results (pacify)
     end if
 
     call process_instance%final ()
     deallocate (process_instance)
 
   end subroutine integration_integrate
-  
-  subroutine integration_setup_component_cores (intg)
-    class(integration_t), intent(inout) :: intg
-    associate (process => intg%process)
-       call setup_nlo_component_cores (process)
-    end associate
-  end subroutine integration_setup_component_cores
 
   subroutine integration_setup_process_mci (intg)
     class(integration_t), intent(inout) :: intg
@@ -747,8 +846,7 @@ contains
           call msg_message ()
        end if
        call timer_mci%start ()
-       call intg%process%sampler_test &
-            (process_instance, i_mci, intg%n_calls_test)
+       call process_instance%sampler_test (i_mci, intg%n_calls_test)
        call timer_mci%stop ()
        t_mci = timer_mci
        write (msg_buffer, "(A,ES12.5)")  "Test: " &

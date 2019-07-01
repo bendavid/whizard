@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -76,25 +76,25 @@ contains
 
     write (u, "(A)")  "* Test output: PHS forest"
     write (u, "(A)")  "*   Purpose: test PHS forest routines"
-    write (u, "(A)")      
-    
+    write (u, "(A)")
+
     write (u, "(A)")  "* Reading model file"
-    
+
     call model%init_sm_test ()
 
     write (u, "(A)")
     write (u, "(A)")  "* Create phase-space file 'phs_forest_test.phs'"
     write (u, "(A)")
-    
+
     call flv%init ([11, -11, 11, -11, 22], model)
     open (file="phs_forest_test.phs", unit=unit_fix, action="write")
     write (unit_fix, *) "process foo"
     write (unit_fix, *) 'md5sum_process    = "6ABA33BC2927925D0F073B1C1170780A"'
     write (unit_fix, *) 'md5sum_model_par  = "1A0B151EE6E2DEB92D880320355A3EAB"'
     write (unit_fix, *) 'md5sum_phs_config = "B6A8877058809A8BDD54753CDAB83ACE"'
-    write (unit_fix, *) "sqrts         =    100.00000000000000"     
-    write (unit_fix, *) "m_threshold_s =    50.000000000000000"     
-    write (unit_fix, *) "m_threshold_t =    100.00000000000000"     
+    write (unit_fix, *) "sqrts         =    100.00000000000000"
+    write (unit_fix, *) "m_threshold_s =    50.000000000000000"
+    write (unit_fix, *) "m_threshold_t =    100.00000000000000"
     write (unit_fix, *) "off_shell =            2"
     write (unit_fix, *) "t_channel =            6"
     write (unit_fix, *) "keep_nonresonant =  F"
@@ -120,8 +120,8 @@ contains
 
     write (u, "(A)")
     write (u, "(A)")  "* Set parameters, flavors, equiv, momenta"
-    write (u, "(A)") 
-    
+    write (u, "(A)")
+
     call phs_forest_set_flavors (forest, flv)
     call phs_forest_set_parameters (forest, mapping_defaults, .false.)
     call phs_forest_setup_prt_combinations (forest)
@@ -165,19 +165,19 @@ contains
     call phs_forest_get_equivalences (forest, &
          channel, .true.)
     do i = 1, n_channel
-       write (u, "(1x,I0,':')", advance = "no")  ch       
+       write (u, "(1x,I0,':')", advance = "no")  ch
        call channel(i)%write (u)
     end do
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
 
     call model%final ()
     call phs_forest_final (forest)
     call syntax_phs_forest_final ()
-        
+
     write (u, "(A)")
-    write (u, "(A)")  "* Test output end: phs_forest_1"    
+    write (u, "(A)")  "* Test output end: phs_forest_1"
 
   end subroutine phs_forest_1
 

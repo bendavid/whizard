@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -63,6 +63,7 @@ module particles_uti
   public :: particles_6
   public :: particles_7
   public :: particles_8
+  public :: particles_9
 
 contains
 
@@ -919,7 +920,7 @@ contains
     call particle_set%without_hadronic_remnants &
          (particles, n_particles, 3)
     call particle_set%replace (particles)
-    write (u, "(A)")    
+    write (u, "(A)")
     call particle_set%write (u)
 
     call assert_equal (u, n_particles, 7)
@@ -946,10 +947,10 @@ contains
     call assert_equal (u, size (particle_set%prt(2)%get_children ()), &
          1, "get children of 2")
 
-    call assert_equal(u, particle_set%find_particle &
+    call assert_equal (u, particle_set%find_particle &
          (particle_set%prt(1)%get_pdg (), particle_set%prt(1)%p), &
          1, "find 1st particle")
-    call assert_equal(u, particle_set%find_particle &
+    call assert_equal (u, particle_set%find_particle &
          (particle_set%prt(2)%get_pdg (), particle_set%prt(2)%p * &
           (one + tiny_07), rel_smallness=1.0E-6_default), &
          2, "find 2nd particle fuzzy")
@@ -957,6 +958,14 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: particles_8"
   end subroutine particles_8
+
+  subroutine particles_9 (u)
+    integer, intent(in) :: u
+    write (u, "(A)")  "* Test output: particles_9"
+    write (u, "(A)")  "*   Purpose: Order into Lund strings, "
+    write (u, "(A)")  "*              uncolored beam remnants"    
+    write (u, "(A)")    
+  end subroutine particles_9
 
 
   subroutine create_test_particle_set_1 (pset)

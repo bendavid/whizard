@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -34,7 +34,7 @@
 ! to the source 'whizard.nw'
 
 module process_configurations_uti
-  
+
   use iso_varying_string, string_t => varying_string
   use particle_specifiers, only: new_prt_spec
   use prclib_stacks
@@ -42,7 +42,7 @@ module process_configurations_uti
   use rt_data
 
   use process_configurations
-    
+
   implicit none
   private
 
@@ -93,7 +93,7 @@ contains
        call prc_config%record (global)
 
        deallocate (prt_in, prt_out)
-       
+
     end if
 
     if (btest (mode, 1)) then
@@ -119,9 +119,9 @@ contains
        call prc_config%record (global)
 
        deallocate (prt_in, prt_out)
-       
+
     end if
-    
+
     if (btest (mode, 2)) then
 
        call global%select_model (var_str ("Test"))
@@ -145,16 +145,16 @@ contains
        call prc_config%record (global)
 
        deallocate (prt_in, prt_out)
-       
+
     end if
 
   end subroutine prepare_test_library
-    
+
 
   subroutine process_configurations_1 (u)
     integer, intent(in) :: u
     type(rt_data_t), target :: global
-    
+
     write (u, "(A)")  "* Test output: process_configurations_1"
     write (u, "(A)")  "*   Purpose: configure test processes"
     write (u, "(A)")
@@ -180,16 +180,16 @@ contains
 
     call global%final ()
     call syntax_model_file_final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: process_configurations_1"
-    
+
   end subroutine process_configurations_1
-  
+
   subroutine process_configurations_2 (u)
     integer, intent(in) :: u
     type(rt_data_t), target :: global
-    
+
     type(string_t) :: libname
     type(prclib_entry_t), pointer :: lib
     type(string_t) :: prc_name
@@ -204,12 +204,12 @@ contains
     call syntax_model_file_init ()
 
     call global%global_init ()
-    
+
     write (u, "(A)")  "* Configure processes as omega, model QED"
     write (u, *)
 
     libname = "prc_config_lib_2"
-    
+
     allocate (lib)
     call lib%init (libname)
     call global%add_prclib (lib)
@@ -245,11 +245,11 @@ contains
          is_known = .true.)
     call prc_config%setup_component (2, &
          new_prt_spec (prt_in), new_prt_spec (prt_out), global%model, global%var_list)
-    
+
     call prc_config%record (global)
 
     deallocate (prt_in, prt_out)
-    
+
     global%os_data%fc = "Fortran-compiler"
     global%os_data%fcflags = "Fortran-flags"
 
@@ -264,12 +264,12 @@ contains
 
     call global%final ()
     call syntax_model_file_final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: process_configurations_2"
-    
+
   end subroutine process_configurations_2
-  
+
 
 end module process_configurations_uti
-  
+

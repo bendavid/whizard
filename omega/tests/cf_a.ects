@@ -1,4 +1,4 @@
-! $Id: cf_a.ects 6004 2014-07-09 15:46:54Z cweiss $
+! cf_a.ects --
 !ects:model QCD
 !ects:scatter
 !ects:process ubar u -> gl

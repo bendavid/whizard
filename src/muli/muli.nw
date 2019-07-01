@@ -2,6 +2,7 @@
 % WHIZARD multiple interactions code as NOWEB source
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Multiple Interactions (MPI) Code}
+\includemodulegraph{muli}
 
 This is the code for the \whizard\ module for multiple interactions (MPI)
 in hadron collisions. It also provides the interleaved shower with together

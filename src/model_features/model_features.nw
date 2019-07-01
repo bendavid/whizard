@@ -1,7 +1,8 @@
-% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*- 
-@ 
+% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*-
+% WHIZARD code as NOWEB source: model features
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Model Handling and Features}
+\includemodulegraph{model_features}
 
 These modules deal with process definitions and physics models.
 
@@ -23,7 +24,7 @@ Model construction:
 \item[eval\_trees]
   Implementation of the generic [[expr_t]] type for the concrete
   evaluation of expressions that access user variables.
-  
+
   This module is actually part of the Sindarin language implementation, and
   should be moved elsewhere.  Currently, the [[models]] module relies
   on it.
@@ -34,7 +35,7 @@ Model construction:
   Read/write a SUSY model in the standardized SLHA format.  The format
   defines fields and parameters, but no vertices.
 \end{description}
-  
+
 \clearpage
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Automatic generation of process components}
@@ -95,7 +96,7 @@ during the splitting algorithm.
     logical, intent(out) :: passed
     passed = .true.
   end subroutine split_constraint_check_before_split
-  
+
   subroutine split_constraint_check_before_insert (c, table, pa, pl, passed)
     class(split_constraint_t), intent(in) :: c
     class(ps_table_t), intent(in) :: table
@@ -104,7 +105,7 @@ during the splitting algorithm.
     logical, intent(out) :: passed
     passed = .true.
   end subroutine split_constraint_check_before_insert
-  
+
   subroutine split_constraint_check_before_record (c, table, pl, n_loop, passed)
     class(split_constraint_t), intent(in) :: c
     class(ps_table_t), intent(in) :: table
@@ -113,7 +114,7 @@ during the splitting algorithm.
     logical, intent(out) :: passed
     passed = .true.
   end subroutine split_constraint_check_before_record
-  
+
 @ %def check_before_split
 @ %def check_before_insert
 @ %def check_before_record
@@ -122,7 +123,7 @@ during the splitting algorithm.
   type :: split_constraint_wrap_t
      class(split_constraint_t), allocatable :: c
   end type split_constraint_wrap_t
-  
+
 @ %def split_constraint_wrap_t
 @ A collection of constraints.
 <<Auto components: public>>=
@@ -133,7 +134,7 @@ during the splitting algorithm.
    contains
    <<Auto components: split constraints: TBP>>
   end type split_constraints_t
-  
+
 @ %def split_constraints_t
 @ Initialize the constraints set with a specific number of elements.
 <<Auto components: split constraints: TBP>>=
@@ -144,7 +145,7 @@ during the splitting algorithm.
     integer, intent(in) :: n
     allocate (constraints%cc (n))
   end subroutine split_constraints_init
-  
+
 @ %def split_constraints_init
 @ Set a constraint.
 <<Auto components: split constraints: TBP>>=
@@ -156,7 +157,7 @@ during the splitting algorithm.
     class(split_constraint_t), intent(in) :: c
     allocate (constraints%cc(i)%c, source = c)
   end subroutine split_constraints_set
-  
+
 @ %def split_constraints_set
 @ Apply checks.
 
@@ -188,7 +189,7 @@ results from splitting before it is recorded.
        if (.not. passed)  return
     end do
   end subroutine split_constraints_check_before_split
-    
+
   subroutine split_constraints_check_before_insert &
        (constraints, table, pa, pl, passed)
     class(split_constraints_t), intent(in) :: constraints
@@ -203,7 +204,7 @@ results from splitting before it is recorded.
        if (.not. passed)  return
     end do
   end subroutine split_constraints_check_before_insert
-    
+
   subroutine split_constraints_check_before_record &
        (constraints, table, pl, n_loop, passed)
     class(split_constraints_t), intent(in) :: constraints
@@ -218,11 +219,11 @@ results from splitting before it is recorded.
        if (.not. passed)  return
     end do
   end subroutine split_constraints_check_before_record
-    
+
 @ %def split_constraints_check_before_split
 @ %def split_constraints_check_before_insert
 @ %def split_constraints_check_before_record
-@ 
+@
 \subsection{Specific constraints}
 \subsubsection{Number of particles}
 Specific constraint: The number of particles plus the number of loops, if
@@ -236,7 +237,7 @@ defined only when we are recording the entry.
      procedure :: check_before_split => constraint_n_tot_check_before_split
      procedure :: check_before_record => constraint_n_tot_check_before_record
   end type constraint_n_tot
-  
+
 @ %def constraint_n_tot
 <<Auto components: public>>=
   public :: constrain_n_tot
@@ -246,7 +247,7 @@ defined only when we are recording the entry.
     type(constraint_n_tot) :: c
     c%n_max = n_max
   end function constrain_n_tot
-  
+
   subroutine constraint_n_tot_check_before_split (c, table, pl, k, passed)
     class(constraint_n_tot), intent(in) :: c
     class(ps_table_t), intent(in) :: table
@@ -267,7 +268,7 @@ defined only when we are recording the entry.
 
 @ %def constrain_n_tot
 @ %def constraint_n_tot_check_before_insert
-@ 
+@
 \subsubsection{Number of loops}
 Specific constraint: The number of loops is limited, independent of the
 total number of particles.
@@ -278,7 +279,7 @@ total number of particles.
    contains
      procedure :: check_before_record => constraint_n_loop_check_before_record
   end type constraint_n_loop
-  
+
 @ %def constraint_n_loop
 <<Auto components: public>>=
   public :: constrain_n_loop
@@ -301,7 +302,7 @@ total number of particles.
 
 @ %def constrain_n_loop
 @ %def constraint_n_loop_check_before_insert
-@ 
+@
 \subsubsection{Particles allowed in splitting}
 Specific constraint: The entries in the particle list ready for insertion
 are matched to a given list of particle patterns.  If a match occurs, the
@@ -314,7 +315,7 @@ check fails.
    contains
      procedure :: check_before_insert => constraint_insert_check_before_insert
   end type constraint_insert
-  
+
 @ %def constraint_insert
 <<Auto components: public>>=
   public :: constrain_insert
@@ -324,7 +325,7 @@ check fails.
     type(constraint_insert) :: c
     c%pl_match = pl_match
   end function constrain_insert
-  
+
   subroutine constraint_insert_check_before_insert (c, table, pa, pl, passed)
     class(constraint_insert), intent(in) :: c
     class(ps_table_t), intent(in) :: table
@@ -336,7 +337,7 @@ check fails.
 
 @ %def constrain_insert
 @ %def constraint_insert_check_before_insert
-@ 
+@
 \subsubsection{Particles required in final state}
 Specific constraint: The entries in the recorded state must be a superset of
 the entries in the given list (for instance, the lowest-order
@@ -348,7 +349,7 @@ state).
    contains
      procedure :: check_before_record => constraint_require_check_before_record
   end type constraint_require
-  
+
 @ %def constraint_require
 @ We check the current state by matching all particle entries against the
 stored particle list, and crossing out the particles in the latter list when a
@@ -363,7 +364,7 @@ For an [[if_table]] in particular, we check the final state only.
     type(constraint_require) :: c
     c%pl = pl
   end function constrain_require
-  
+
   subroutine constraint_require_check_before_record &
        (c, table, pl, n_loop, passed)
     class(constraint_require), intent(in) :: c
@@ -398,7 +399,7 @@ For an [[if_table]] in particular, we check the final state only.
 
 @ %def constrain_require
 @ %def constraint_require_check_before_record
-@ 
+@
 \subsubsection{Radiation}
 Specific constraint: We have radiation pattern if the original particle
 matches an entry in the list of particles that should replace it.  The
@@ -412,13 +413,13 @@ constraint prohibits this situation.
      procedure :: check_before_insert => &
           constraint_radiation_check_before_insert
   end type constraint_radiation
-  
+
 @ %def constraint_radiation
 <<Auto components: procedures>>=
   function constrain_radiation () result (c)
     type(constraint_radiation) :: c
   end function constrain_radiation
-  
+
   subroutine constraint_radiation_check_before_insert (c, table, pa, pl, passed)
     class(constraint_radiation), intent(in) :: c
     class(ps_table_t), intent(in) :: table
@@ -430,7 +431,7 @@ constraint prohibits this situation.
 
 @ %def constrain_radiation
 @ %def constraint_radiation_check_before_insert
-@ 
+@
 \subsubsection{Mass sum}
 Specific constraint: The sum of masses within the particle list must
 be smaller than a given limit.  For in/out state combinations, we
@@ -450,7 +451,7 @@ zero).  If not, equality is allowed.
    contains
      procedure :: check_before_record => constraint_mass_sum_check_before_record
   end type constraint_mass_sum
-  
+
 @ %def contraint_mass_sum
 <<Auto components: procedures>>=
   function constrain_mass_sum (mass_limit, margin) result (c)
@@ -463,7 +464,7 @@ zero).  If not, equality is allowed.
        c%margin = margin
     end if
   end function constrain_mass_sum
-  
+
   subroutine constraint_mass_sum_check_before_record &
        (c, table, pl, n_loop, passed)
     class(constraint_mass_sum), intent(in) :: c
@@ -495,7 +496,7 @@ zero).  If not, equality is allowed.
 
 @ %def constrain_mass_sum
 @ %def constraint_mass_sum_check_before_record
-@ 
+@
 \subsubsection{Initial state particles}
 Specific constraint: The two incoming particles must both match the given
 particle list.  This is checked for the generated particle list, just before
@@ -535,7 +536,7 @@ it is recorded.
     end select
     passed = .true.
   end subroutine constraint_in_state_check_before_record
-  
+
 @ %def constrain_in_state
 @ %def constraint_in_state_check_before_record
 @
@@ -577,7 +578,7 @@ states and the final array.  First, an abstract base type:
    contains
    <<Auto components: ps table: TBP>>
   end type ps_table_t
-     
+
 @ %def ps_table_t
 @ The extensions: one for decay, one for generic final states.  The decay-state
 table stores the initial particle.  The final-state table is
@@ -620,7 +621,7 @@ particles in its list as incoming antiparticles.
     end do
     nullify (object%last)
   end subroutine ps_table_final
-  
+
 @ %def ps_table_final
 @ Write the table.  A base writer for the body and specific writers
 for the headers.
@@ -690,7 +691,7 @@ the output, and we write an arrow if [[n_in]] is present.
        entry => entry%next
     end do
   end subroutine ps_table_base_write
-          
+
   subroutine ds_table_write (object, unit)
     class(ds_table_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -702,7 +703,7 @@ the output, and we write an arrow if [[n_in]] is present.
          char (prt%get_name (object%pdg_in < 0))
     call object%base_write (u)
   end subroutine ds_table_write
-          
+
   subroutine fs_table_write (object, unit)
     class(fs_table_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -711,7 +712,7 @@ the output, and we write an arrow if [[n_in]] is present.
     write (u, "(1x,A)")  "Table of final states:"
     call object%base_write (u)
   end subroutine fs_table_write
-          
+
   subroutine if_table_write (object, unit)
     class(if_table_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -725,7 +726,7 @@ the output, and we write an arrow if [[n_in]] is present.
        call object%base_write (u, n_in = 2)
      end select
   end subroutine if_table_write
-          
+
 @ %def ps_table_write ds_table_write fs_table_write
 @ Obtain a particle string for a given index in the pdg list
 <<Auto components: ps table: TBP>>=
@@ -740,7 +741,7 @@ the output, and we write an arrow if [[n_in]] is present.
     type(ps_entry_t), pointer :: entry
     integer, dimension(:), allocatable :: pdg
     integer :: n0
-    integer :: i, j 
+    integer :: i, j
     entry => object%first
     i = 1
     do while (i < index)
@@ -786,7 +787,7 @@ the output, and we write an arrow if [[n_in]] is present.
       end do
     end do
   end subroutine ps_table_get_particle_string
-                        
+
 @ %def ps_table_get_particle_string
 @ Initialize with a predefined set of final states, or in/out state lists.
 <<Auto components: ps table: TBP>>=
@@ -808,11 +809,11 @@ the output, and we write an arrow if [[n_in]] is present.
 
     if (present (n_in)) then
        select case (n_in)
-       case (1) 
+       case (1)
           table%proc_type = PROC_DECAY
-       case (2) 
+       case (2)
           table%proc_type = PROC_SCATTER
-       case default 
+       case default
           table%proc_type = PROC_UNDEFINED
        end select
     else
@@ -826,7 +827,7 @@ the output, and we write an arrow if [[n_in]] is present.
        end if
     end do
   end subroutine ps_table_init
-    
+
   subroutine if_table_init (table, model, pl_in, pl_out, constraints)
     class(if_table_t), intent(out) :: table
     class(model_data_t), intent(in), target :: model
@@ -859,7 +860,7 @@ the output, and we write an arrow if [[n_in]] is present.
     n_in = size (pl_in(1)%a)
     call table%init (model, pl, constraints, n_in)
   end subroutine if_table_init
-    
+
 @ %def ps_table_init if_table_init
 @ Enable loops for the table.  This affects both splitting and output.
 <<Auto components: ps table: TBP>>=
@@ -869,9 +870,9 @@ the output, and we write an arrow if [[n_in]] is present.
     class(ps_table_t), intent(inout) :: table
     table%loops = .true.
   end subroutine ps_table_enable_loops
-    
+
 @ %def ps_table_enable_loops
-@ 
+@
 \subsection{Top-level methods}
 Create a table for a single-particle decay.  Construct all possible final
 states from a single particle with PDG code [[pdg_in]].  The construction is
@@ -892,7 +893,7 @@ limited by the given [[constraints]].
     call pl_in%set (1, [pdg_in])
     call table%split (pl_in, 0, constraints)
   end subroutine ds_table_make
-    
+
 @ %def ds_table_make
 @ Split all entries in a growing table, starting from a table that may already
 contain states.  Add and record split states on the fly.
@@ -911,7 +912,7 @@ contain states.  Add and record split states on the fly.
   end subroutine fs_table_radiate
 
 @ %def fs_table_radiate
-@ 
+@
 \subsection{Splitting algorithm}
 Recursive splitting.  First of all, we record the current [[pdg_list]] in
 the table, subject to [[constraints]], if requested.  We also record copies of
@@ -967,7 +968,7 @@ greater than $n_\text{max}$.
        end if
     end do
   end subroutine ps_table_split
-    
+
 @ %def ps_table_split
 @ The worker part: insert the list of particles found by vertex matching in
 place of entry [[i]] in the PDG list.  Then split/record further.
@@ -999,7 +1000,7 @@ particles after entry [[n_in]].  Otherwise, they follow index [[i]].
             constraints, record = .true.)
     end if
   end subroutine ps_table_insert
-    
+
 @ %def ps_table_insert
 @ Special case:
 If we are splitting an initial particle, there is slightly more to
@@ -1063,7 +1064,7 @@ allowed in the [[pl_beam]] PDG list, if that is provided.
     logical, intent(out) :: passed
     call table%record (pl%sort_abs (), n_loop, n_rad, constraints, passed)
   end subroutine ps_table_record_sorted
-  
+
   subroutine if_table_record_sorted &
        (table, pl, n_loop, n_rad, constraints, passed)
     class(if_table_t), intent(inout) :: table
@@ -1092,6 +1093,7 @@ available energy.  This restriction is removed by setting
     logical, intent(out) :: passed
     type(ps_entry_t), pointer :: current
     passed = .false.
+    call pl%write ()
     if (.not. pl%is_regular ()) then
        call msg_warning ("Record ps_table entry: Irregular pdg-list encountered!")
        return
@@ -1138,7 +1140,7 @@ available energy.  This restriction is removed by setting
       end if
     end subroutine insert
   end subroutine ps_table_record
-    
+
 @ %def ps_table_record
 @
 \subsection{Tools}
@@ -1161,7 +1163,7 @@ if an entry is a PDG array, this array must be degenerate in mass.
        m = m + prt%get_mass ()
     end do
   end function mass_sum
-  
+
 @ %def mass_sum
 @ Invert a PDG array, replacing particles by antiparticles.  This
 depends on the model.
@@ -1179,9 +1181,9 @@ depends on the model.
        if (prt%has_antiparticle ())  call pa_inv%set (i, -pdg)
     end do
   end function invert_pdg_array
-          
+
 @ %def invert_pdg_array
-@ 
+@
 \subsection{Access results}
 Return the number of generated decays.
 <<Auto components: ps table: TBP>>=
@@ -1204,10 +1206,10 @@ Return the number of generated decays.
 <<Auto components: ps table: TBP>>=
   procedure :: get_emitters => ps_table_get_emitters
 <<Auto components: procedures>>=
-  function ps_table_get_emitters (table, constraints) result (emitters)
-     integer, dimension(:), allocatable :: emitters
+  subroutine ps_table_get_emitters (table, constraints, emitters)
      class(ps_table_t), intent(in) :: table
      type(split_constraints_t), intent(in) :: constraints
+     integer, dimension(:), allocatable, intent(out) :: emitters
      class(pdg_list_t), pointer :: pl
      integer :: i
      logical :: passed
@@ -1215,7 +1217,6 @@ Return the number of generated decays.
      integer, dimension(:), allocatable :: pdg1, pdg2
      integer :: n_emitters
      integer, dimension(20) :: emitters_tmp
-
      n_emitters = 0
      pl => table%first
      do i = 1, pl%get_size ()
@@ -1223,20 +1224,20 @@ Return the number of generated decays.
         if (passed) then
            pdg1 = pl%get(i)
            call vit%init (table%model, pdg1)
-           do 
-               call vit%get_next_match(pdg2)
-               if (allocated (pdg2)) then
-                  emitters_tmp (n_emitters+1) = pdg1(1)
-                  n_emitters = n_emitters + 1
-               else
-                  exit
-               end if
+           do
+              call vit%get_next_match(pdg2)
+              if (allocated (pdg2)) then
+                 emitters_tmp (n_emitters + 1) = pdg1(1)
+                 n_emitters = n_emitters + 1
+              else
+                 exit
+              end if
            end do
         end if
      end do
      allocate (emitters (n_emitters))
      emitters = emitters_tmp (1:n_emitters)
-  end function ps_table_get_emitters
+  end subroutine ps_table_get_emitters
 
 @ %def ps_table_get_emitters
 @ Return an allocated array of decay products (PDG codes).  If
@@ -1267,7 +1268,7 @@ requested, return also the loop and radiation order count.
        entry => entry%next
     end do FIND_ENTRY
   end subroutine ps_table_get_pdg_out
-  
+
 @ %def ps_table_get_pdg_out
 @
 \subsection{Unit tests}
@@ -1278,13 +1279,13 @@ Test module, followed by the corresponding implementation module.
 module auto_components_ut
   use unit_tests
   use auto_components_uti
-  
+
 <<Standard module head>>
 
 <<Auto components: public test>>
 
 contains
-  
+
 <<Auto components: test driver>>
 
 end module auto_components_ut
@@ -1300,7 +1301,7 @@ module auto_components_uti
   use pdg_arrays
   use model_data
   use model_testbed, only: prepare_model, cleanup_model
-  
+
   use auto_components
 
 <<Standard module head>>
@@ -1391,7 +1392,7 @@ using default parameter values.
 
     write (u, *)
     write (u, "(A)")  "* Cleanup"
-    
+
     call cleanup_model (model)
 
     write (u, *)
@@ -1433,7 +1434,7 @@ of particles that is allowed to occur in the generated final states.
     write (u, *)
     write (u, "(A)")  "* LO final state"
     write (u, *)
-    
+
     allocate (pl (2))
     call pl(1)%init (2)
     call pl(1)%set (1, 1)
@@ -1448,26 +1449,26 @@ of particles that is allowed to occur in the generated final states.
     write (u, *)
     write (u, "(A)")  "* Initialize FS table"
     write (u, *)
-    
+
     call constraints%init (1)
     call constraints%set (1, constrain_n_tot (3))
 
     call fs_table%init (model, pl, constraints)
     call fs_table%write (u)
-    
+
     write (u, *)
     write (u, "(A)")  "* Generate NLO corrections, unconstrained"
     write (u, *)
-    
+
     call fs_table%radiate (constraints)
     call fs_table%write (u)
     call fs_table%final ()
-    
+
     write (u, *)
     write (u, "(A)")  "* Generate NLO corrections, &
          &complete but mass-constrained"
     write (u, *)
-    
+
     sqrts = 50
 
     call constraints%init (2)
@@ -1478,13 +1479,13 @@ of particles that is allowed to occur in the generated final states.
     call fs_table%radiate (constraints)
     call fs_table%write (u)
     call fs_table%final ()
-    
+
     write (u, *)
     write (u, "(A)")  "* Generate NLO corrections, restricted"
     write (u, *)
-    
+
     call pl_match%init ([1, -1, 21])
-    
+
     call constraints%init (2)
     call constraints%set (1, constrain_n_tot (3))
     call constraints%set (2, constrain_insert (pl_match))
@@ -1493,13 +1494,13 @@ of particles that is allowed to occur in the generated final states.
     call fs_table%radiate (constraints)
     call fs_table%write (u)
     call fs_table%final ()
-    
+
     write (u, *)
     write (u, "(A)")  "* Generate NNLO corrections, restricted, with one loop"
     write (u, *)
-    
+
     call pl_match%init ([1, -1, 21])
-    
+
     call constraints%init (3)
     call constraints%set (1, constrain_n_tot (4))
     call constraints%set (2, constrain_n_loop (1))
@@ -1510,11 +1511,11 @@ of particles that is allowed to occur in the generated final states.
     call fs_table%radiate (constraints)
     call fs_table%write (u)
     call fs_table%final ()
-    
+
     write (u, *)
     write (u, "(A)")  "* Generate NNLO corrections, restricted, with loops"
     write (u, *)
-    
+
     call constraints%init (2)
     call constraints%set (1, constrain_n_tot (4))
     call constraints%set (2, constrain_insert (pl_match))
@@ -1524,12 +1525,12 @@ of particles that is allowed to occur in the generated final states.
     call fs_table%radiate (constraints)
     call fs_table%write (u)
     call fs_table%final ()
-    
+
     write (u, *)
     write (u, "(A)")  "* Generate NNLO corrections, restricted, to Z Z H, &
          &no loops"
     write (u, *)
-    
+
     allocate (pl_zzh (1))
     call pl_zzh(1)%init (3)
     call pl_zzh(1)%set (1, 23)
@@ -1545,7 +1546,7 @@ of particles that is allowed to occur in the generated final states.
     call fs_table%radiate (constraints)
     call fs_table%write (u)
     call fs_table%final ()
-    
+
     call cleanup_model (model)
 
     write (u, *)
@@ -1586,7 +1587,7 @@ of particles that is allowed to occur in the generated final states.
     write (u, *)
     write (u, "(A)")  "* LO initial state"
     write (u, *)
-    
+
     allocate (pl_in (2))
     call pl_in(1)%init (2)
     call pl_in(1)%set (1, 1)
@@ -1601,7 +1602,7 @@ of particles that is allowed to occur in the generated final states.
     write (u, *)
     write (u, "(A)")  "* LO final state"
     write (u, *)
-    
+
     allocate (pl_out (1))
     call pl_out(1)%init (1)
     call pl_out(1)%set (1, 23)
@@ -1610,41 +1611,41 @@ of particles that is allowed to occur in the generated final states.
     write (u, *)
     write (u, "(A)")  "* Initialize FS table"
     write (u, *)
-    
+
     call constraints%init (1)
     call constraints%set (1, constrain_n_tot (4))
-    
+
     call if_table%init (model, pl_in, pl_out, constraints)
     call if_table%write (u)
-    
+
     write (u, *)
     write (u, "(A)")  "* Generate NLO corrections, unconstrained"
     write (u, *)
-    
+
     call if_table%radiate (constraints)
     call if_table%write (u)
     call if_table%final ()
-    
+
     write (u, *)
     write (u, "(A)")  "* Generate NLO corrections, &
          &complete but mass-constrained"
     write (u, *)
-    
+
     sqrts = 100
     call constraints%init (2)
     call constraints%set (1, constrain_n_tot (4))
     call constraints%set (2, constrain_mass_sum (sqrts))
-    
+
     call if_table%init (model, pl_in, pl_out, constraints)
     call if_table%radiate (constraints)
     call if_table%write (u)
     call if_table%final ()
-    
+
     write (u, *)
     write (u, "(A)")  "* Generate NLO corrections, &
          &mass-constrained, restricted beams"
     write (u, *)
-    
+
     call pl_beam%init (3)
     call pl_beam%set (1, 1)
     call pl_beam%set (2, -1)
@@ -1659,34 +1660,34 @@ of particles that is allowed to occur in the generated final states.
     call if_table%radiate (constraints)
     call if_table%write (u)
     call if_table%final ()
-    
+
     write (u, *)
     write (u, "(A)")  "* Generate NLO corrections, restricted"
     write (u, *)
-    
+
     call pl_match%init ([1, -1, 21])
-    
+
     call constraints%init (4)
     call constraints%set (1, constrain_n_tot (4))
     call constraints%set (2, constrain_in_state (pl_beam))
     call constraints%set (3, constrain_mass_sum (sqrts))
-    call constraints%set (4, constrain_insert (pl_match)) 
+    call constraints%set (4, constrain_insert (pl_match))
 
     call if_table%init (model, pl_in, pl_out, constraints)
     call if_table%radiate (constraints)
     call if_table%write (u)
     call if_table%final ()
-    
+
     write (u, *)
     write (u, "(A)")  "* Generate NNLO corrections, restricted, Z preserved, &
          &with loops"
     write (u, *)
-    
+
     call constraints%init (5)
     call constraints%set (1, constrain_n_tot (5))
     call constraints%set (2, constrain_in_state (pl_beam))
     call constraints%set (3, constrain_mass_sum (sqrts))
-    call constraints%set (4, constrain_insert (pl_match)) 
+    call constraints%set (4, constrain_insert (pl_match))
     call constraints%set (5, constrain_require (pl_out(1)))
 
     call if_table%init (model, pl_in, pl_out, constraints)
@@ -1694,7 +1695,7 @@ of particles that is allowed to occur in the generated final states.
     call if_table%radiate (constraints)
     call if_table%write (u)
     call if_table%final ()
-    
+
     call cleanup_model (model)
 
     write (u, *)
@@ -1725,7 +1726,7 @@ module radiation_generator
   private
 
 <<radiation generator: public>>
-  
+
 <<radiation generator: types>>
 
 contains
@@ -1873,7 +1874,7 @@ end module radiation_generator
 @ [[gfortran 4.7.4]] does not support allocate-on-assignment for the
 caller when this is a function.
 <<radiation generator: prt queue: TBP>>=
-  procedure :: get => prt_queue_get 
+  procedure :: get => prt_queue_get
 <<radiation generator: procedures>>=
   subroutine prt_queue_get (queue, prt_string)
     class(prt_queue_t), intent(inout) :: queue
@@ -1927,7 +1928,7 @@ caller when this is a function.
     integer :: n_u, n_ubar, n_gl
     integer :: i, j
     call queue%reset ()
-    allocate (i_particle (queue%n_lists, 3))   
+    allocate (i_particle (queue%n_lists, 3))
     do i = 1, queue%n_lists
        call queue%get (prt_string)
        n_u = count_particle (prt_string, 2)
@@ -1957,7 +1958,7 @@ caller when this is a function.
          prt_ref = "u"
       case (-2)
          prt_ref = "ubar"
-      case (21) 
+      case (21)
          prt_ref = "gl"
       end select
       do i = 1, size (prt_string)
@@ -1983,7 +1984,7 @@ caller when this is a function.
        call msg_fatal ("Trying to access empty particle queue")
     end if
     val = .false.
-    do 
+    do
        if (size (current%prt_string) == size (prt_string)) then
           if (all (current%prt_string == prt_string)) then
              val = .true.
@@ -2021,7 +2022,7 @@ caller when this is a function.
        do i = 1, size (current%prt_string)
           write (u, "(A,1X)", advance = 'no') char (current%prt_string(i))
        end do
-       write (u, "(A)") 
+       write (u, "(A)")
        if (associated (current%next)) then
           current => current%next
           j = j+1
@@ -2047,7 +2048,7 @@ caller when this is a function.
        prt(i) = flv%get_name ()
     end do
   end subroutine sort_prt
-    
+
   subroutine sort_pdg (pdg)
     type(pdg_array_t), dimension(:), intent(inout) :: pdg
     integer, dimension(:), allocatable :: i_pdg
@@ -2063,7 +2064,7 @@ caller when this is a function.
        call pdg(i)%set (1, i_pdg(i))
     end do
   end subroutine sort_pdg
- 
+
   subroutine create_pdg_array (prt, radiation_model, pdg)
     type (string_t), dimension(:), intent(in) :: prt
     class (model_data_t), intent(in), target :: radiation_model
@@ -2071,7 +2072,7 @@ caller when this is a function.
     type(flavor_t) :: flv
     integer :: i
     allocate (pdg (size (prt)))
-    do i = 1, size (prt) 
+    do i = 1, size (prt)
        call flv%init (prt(i), radiation_model)
        pdg(i) = flv%get_pdg ()
     end do
@@ -2090,7 +2091,7 @@ caller when this is a function.
     end do
     write (u, "(A)")
   end subroutine write_pdg_array
- 
+
   subroutine write_particle_string (prt, u)
   <<Use strings>>
     type(string_t), dimension(:), intent(in) :: prt
@@ -2099,7 +2100,7 @@ caller when this is a function.
     do i = 1, size (prt)
        write (u, "(A,1X)", advance = "no") char (prt(i))
     end do
-    write (u, "(A)") 
+    write (u, "(A)")
   end subroutine write_particle_string
 
 @ %def write_pdg_array write_particle_string
@@ -2114,9 +2115,9 @@ caller when this is a function.
 @ %def reshuffle_list_t
 @
 <<radiation generator: reshuffle list: TBP>>=
-  procedure :: append => reshuffle_list_append 
+  procedure :: append => reshuffle_list_append
 <<radiation generator: procedures>>=
-  subroutine reshuffle_list_append (rlist, ii) 
+  subroutine reshuffle_list_append (rlist, ii)
      class(reshuffle_list_t), intent(inout) :: rlist
      integer, dimension(:), allocatable, intent(in) :: ii
      type(reshuffle_list_t), pointer :: current
@@ -2162,12 +2163,12 @@ caller when this is a function.
           call msg_fatal ("Index exceeds size of reshuffling list")
        end if
     end do
-    allocate (ii (size (current%ii))) 
+    allocate (ii (size (current%ii)))
     ii = current%ii
   end function reshuffle_list_get
 
 @ %def reshuffle_list_get
-@    
+@
 <<radiation generator: public>>=
   public :: radiation_generator_t
 <<radiation generator: types>>=
@@ -2194,7 +2195,7 @@ caller when this is a function.
   end type radiation_generator_t
 
 @
-@ %def radiation_generator_t 
+@ %def radiation_generator_t
 <<radiation generator: radiation generator: TBP>>=
   generic :: init => init_pdg_list, init_pdg_array
   procedure :: init_pdg_list => radiation_generator_init_pdg_list
@@ -2224,7 +2225,7 @@ caller when this is a function.
     logical, intent(in), optional :: qcd, qed
     type(pdg_list_t) :: pl_in, pl_out
     integer :: i
-    call pl_in%init(size (pdg_in))    
+    call pl_in%init(size (pdg_in))
     call pl_out%init(size (pdg_out))
     do i = 1, size (pdg_in)
        call pl_in%set (i, pdg_in(i))
@@ -2269,7 +2270,7 @@ caller when this is a function.
 <<radiation generator: radiation generator: TBP>>=
   generic :: reset_particle_content => reset_particle_content_pdg_array, &
                                        reset_particle_content_pdg_list
-  procedure :: reset_particle_content_pdg_list => & 
+  procedure :: reset_particle_content_pdg_list => &
     radiation_generator_reset_particle_content_pdg_list
   procedure :: reset_particle_content_pdg_array => &
     radiation_generator_reset_particle_content_pdg_array
@@ -2328,7 +2329,7 @@ caller when this is a function.
        (generator, set_n_loop, set_mass_sum, &
         set_selected_particles, set_required_particles)
     class(radiation_generator_t), intent(inout), target :: generator
-    logical, intent(in) :: set_n_loop   
+    logical, intent(in) :: set_n_loop
     logical, intent(in) :: set_mass_sum
     logical, intent(in) :: set_selected_particles
     logical, intent(in) :: set_required_particles
@@ -2340,7 +2341,7 @@ caller when this is a function.
     integer :: last_index
     integer :: n_new_particles, n_skip
     integer, dimension(:), allocatable :: i_skip
-    
+
     allocate (i_skip (generator%n_tot))
     i_skip = -1
 
@@ -2354,7 +2355,7 @@ caller when this is a function.
       if (set_n_loop) then
          call constraints%set (n, constrain_n_loop(generator%n_loops))
          n = n + 1
-      end if 
+      end if
       if (set_mass_sum) then
         call constraints%set (n, constrain_mass_sum(generator%mass_sum))
         n = n + 1
@@ -2378,7 +2379,7 @@ caller when this is a function.
             if (any (i == i_skip)) cycle
             call pl_req%set (j, generator%pl_out%get(i))
             j = j + 1
-         end do          
+         end do
          call constraints%set (n, constrain_require (pl_req))
          n = n + 1
       end if
@@ -2442,10 +2443,10 @@ caller when this is a function.
     allocate (pl_in (1), pl_out (1))
     found = .false.
     flv = 0
- 
+
     pl_in(1) = generator%pl_in
     pl_out(1) = generator%pl_out
-    
+
     call pl_in(1)%create_pdg_array (pdg_in)
     call pl_out(1)%create_pdg_array (pdg_out)
 
@@ -2482,7 +2483,7 @@ caller when this is a function.
          end do
       end do
       prt_tot_in = buf(1 : generator%n_in)
-      
+
       do j = 1, flv
          reshuffle_list_local = reshuffle_list%get(j)
          do i = 1, size (reshuffle_list_local)
@@ -2504,7 +2505,7 @@ caller when this is a function.
       type(pdg_sorter_t), dimension(:), allocatable :: sort_real
       integer :: i_min, n_in, n_born, n_real
       integer :: ib, ir
- 
+
       n_in = generator%n_in
       n_born = size (pdg_born)
       n_real = size (pdg_real)
@@ -2531,7 +2532,7 @@ caller when this is a function.
 
       list = sort_real%associated_born
 
-    end subroutine pdg_reshuffle 
+    end subroutine pdg_reshuffle
 
     subroutine associate_born_indices (sort_born, sort_real, ib, n_real)
       type(pdg_sorter_t), intent(in) :: sort_born
@@ -2547,7 +2548,7 @@ caller when this is a function.
             exit
         end if
       end do
-    end subroutine associate_born_indices            
+    end subroutine associate_born_indices
 
     subroutine fill_buffer (buffer, particle)
       type(string_t), intent(inout) :: buffer
@@ -2569,7 +2570,7 @@ caller when this is a function.
       integer :: i_first, i_last
       exist = .false.
       i_first = 1; i_last = 1
-      do  
+      do
          if (buffer(i_last:i_last) == ":") then
             buffer_internal = buffer (i_first:i_last-1)
             if (buffer_internal == substring) then
@@ -2623,7 +2624,7 @@ caller when this is a function.
 @ %def radiation_generator_first_emission
 @
 <<radiation generator: radiation generator: TBP>>=
-  procedure :: append_emissions => radiation_generator_append_emissions 
+  procedure :: append_emissions => radiation_generator_append_emissions
 <<radiation generator: procedures>>=
   subroutine radiation_generator_append_emissions (generator, max_multiplicity)
     class(radiation_generator_t), intent(inout) :: generator
@@ -2633,7 +2634,7 @@ caller when this is a function.
     type(string_t), dimension(:), allocatable :: prt_out1, prt_out2
     type(pdg_array_t), dimension(:), allocatable :: pdg_new_out
     integer :: current_multiplicity
-    do 
+    do
        call generator%prt_queue%get (prt_fetched)
        current_multiplicity = size (prt_fetched)
        if (current_multiplicity == max_multiplicity) exit
@@ -2651,12 +2652,12 @@ caller when this is a function.
        if (.not. any (prt_out1 == " ")) then
           call sort_prt (prt_out1, generator%radiation_model)
           if (.not. generator%prt_queue%contains (prt_out1)) &
-             call generator%prt_queue%append (prt_out1) 
+             call generator%prt_queue%append (prt_out1)
        end if
     end do
 
   contains
-  
+
     subroutine separate_particles (prt1, prt2)
       type(string_t), intent(inout), dimension(:) :: prt1
       type(string_t), intent(out), dimension(:), allocatable :: prt2
@@ -2701,7 +2702,7 @@ caller when this is a function.
 @ %def radiation_generator_get_n_fks_states
 @
 <<radiation generator: radiation generator: TBP>>=
-  procedure :: get_next_state => radiation_generator_get_next_state 
+  procedure :: get_next_state => radiation_generator_get_next_state
 <<radiation generator: procedures>>=
   function radiation_generator_get_next_state (generator) result (prt_string)
     class(radiation_generator_t), intent(inout) :: generator
@@ -2714,15 +2715,15 @@ caller when this is a function.
 <<radiation generator: radiation generator: TBP>>=
   procedure :: get_emitter_indices => radiation_generator_get_emitter_indices
 <<radiation generator: procedures>>=
-  function radiation_generator_get_emitter_indices (generator) result (indices)
-     integer, dimension(:), allocatable :: indices
+  subroutine radiation_generator_get_emitter_indices (generator, indices)
      class(radiation_generator_t), intent(in) :: generator
+     integer, dimension(:), allocatable, intent(out) :: indices
      type(pdg_array_t), dimension(:), allocatable :: pdg_in, pdg_out
      integer, dimension(:), allocatable :: flv_in, flv_out
      integer, dimension(:), allocatable :: emitters
      integer :: i, j
      integer :: n_in, n_out
-     
+
      call generator%pl_in%create_pdg_array (pdg_in)
      call generator%pl_out%create_pdg_array (pdg_out)
 
@@ -2731,24 +2732,24 @@ caller when this is a function.
      forall (i=1:n_in) flv_in(i) = pdg_in(i)%get()
      forall (i=1:n_out) flv_out(i) = pdg_out(i)%get()
 
-     emitters = generator%if_table%get_emitters (generator%constraints) 
+     call generator%if_table%get_emitters (generator%constraints, emitters)
      allocate (indices (size (emitters)))
-     
+
      j = 1
      do i = 1, n_in + n_out
         if (i <= n_in) then
            if (any (flv_in(i) == emitters)) then
               indices (j) = i
-              j = j+1
+              j = j + 1
            end if
         else
            if (any (flv_out(i-n_in) == emitters)) then
               indices (j) = i
-              j = j+1
+              j = j + 1
            end if
         end if
      end do
-  end function radiation_generator_get_emitter_indices
+  end subroutine radiation_generator_get_emitter_indices
 
 @ %def radiation_generator_get_emitter_indices
 @
@@ -2782,16 +2783,16 @@ caller when this is a function.
   subroutine radiation_generator_save_born_raw (generator, pdg_in, pdg_out)
     class(radiation_generator_t), intent(inout) :: generator
     type(pdg_array_t), dimension(:), allocatable, intent(in) :: pdg_in, pdg_out
-    integer :: i 
-    !!! !!! !!! Explicit allocation due to gfortran 4.7.4  
-    allocate (generator%pdg_in_born (size (pdg_in))) 
-    do i = 1, size (pdg_in) 
-       generator%pdg_in_born(i) = pdg_in(i) 
-    end do 
-    allocate (generator%pdg_out_born (size (pdg_out))) 
-    do i = 1, size (pdg_out) 
-       generator%pdg_out_born(i) = pdg_out(i) 
-    end do 
+    integer :: i
+    !!! !!! !!! Explicit allocation due to gfortran 4.7.4
+    allocate (generator%pdg_in_born (size (pdg_in)))
+    do i = 1, size (pdg_in)
+       generator%pdg_in_born(i) = pdg_in(i)
+    end do
+    allocate (generator%pdg_out_born (size (pdg_out)))
+    do i = 1, size (pdg_out)
+       generator%pdg_out_born(i) = pdg_out(i)
+    end do
   end subroutine radiation_generator_save_born_raw
 @ %def radiation_generator_save_born_raw
 @
@@ -2821,13 +2822,13 @@ Test module, followed by the corresponding implementation module.
 module radiation_generator_ut
   use unit_tests
   use radiation_generator_uti
-  
+
 <<Standard module head>>
 
 <<radiation generator: public test>>
 
 contains
-  
+
 <<radiation generator: test driver>>
 
 end module radiation_generator_ut
@@ -2885,7 +2886,7 @@ end module radiation_generator_uti
     type(os_data_t) :: os_data
     type(model_list_t) :: model_list
     type(model_t), pointer :: radiation_model => null ()
-    
+
     write (u, "(A)") "* Test output: radiation_generator_1"
     write (u, "(A)") "* Purpose: Create N+1-particle flavor structures from predefined N-particle flavor structures"
     write (u, "(A)") "* One additional strong coupling, no additional electroweak coupling"
@@ -2898,13 +2899,13 @@ end module radiation_generator_uti
        (var_str ("SM_rad"), var_str ("SM_rad.mdl"), &
         os_data, radiation_model)
     call generator%set_radiation_model (radiation_model)
-    write (u, "(A)") "* Success"    
+    write (u, "(A)") "* Success"
 
     allocate (pdg_in (2))
-    pdg_in(1) = 11; pdg_in(2) = -11    
-    
+    pdg_in(1) = 11; pdg_in(2) = -11
+
     write (u, "(A)") "* Start checking processes"
-    call write_separator (u)    
+    call write_separator (u)
 
     write (u, "(A)") "* Process 1: Quark-antiquark production"
     allocate (pdg_out(2))
@@ -2914,7 +2915,7 @@ end module radiation_generator_uti
 
     write (u, "(A)") "* Process 2: Quark-antiquark production with additional gluon"
     allocate (pdg_out(3))
-    pdg_out(1) = 2; pdg_out(2) = -2; pdg_out(3) = 21 
+    pdg_out(1) = 2; pdg_out(2) = -2; pdg_out(3) = 21
     call test_process (generator, pdg_in, pdg_out, u)
     deallocate (pdg_out)
 
@@ -2923,7 +2924,7 @@ end module radiation_generator_uti
     pdg_out(1) = 2; pdg_out(2) = -2; pdg_out(3) = 23
     call test_process (generator, pdg_in, pdg_out, u)
     deallocate (pdg_out)
-    
+
     write (u, "(A)") "* Process 4: Top Decay"
     allocate (pdg_out(4))
     pdg_out(1) = 24; pdg_out(2) = -24
@@ -2980,7 +2981,7 @@ end module radiation_generator_uti
       write (u, "(A)") "* Incoming: "
       call write_particle_string (prt_strings_in, u)
       write (u, "(A)") "* Outgoing: "
-      call write_particle_string (prt_strings_out, u) 
+      call write_particle_string (prt_strings_out, u)
       call write_separator(u)
     end subroutine test_process
 
@@ -3004,7 +3005,7 @@ end module radiation_generator_uti
     write (u, "(A)") "* Test output: radiation_generator_2"
     write (u, "(A)") "* Purpose: Test the repeated application of a radiation generator splitting"
     write (u, "(A)") "* Only Final state emissions! "
-    write (u, "(A)") 
+    write (u, "(A)")
     write (u, "(A)") "* Loading radiation model: SM_rad.mdl"
 
     call syntax_model_file_init ()
@@ -3033,7 +3034,7 @@ end module radiation_generator_uti
     call write_separator (u)
     write (u, "(A)") "Generate higher-multiplicity states"
     write (u, "(A,I0)") "Desired multiplicity: ", max_multiplicity
-    call generator%generate_multiple (max_multiplicity)    
+    call generator%generate_multiple (max_multiplicity)
     call generator%prt_queue%write (u)
     call write_separator (u)
     write (u, "(A,I0)") "Number of higher-multiplicity states: ", generator%prt_queue%n_lists
@@ -3113,7 +3114,7 @@ contains
 
 end module eval_trees
 @ %def eval_trees
-@ 
+@
 \subsection{Tree nodes}
 The evaluation tree consists of branch nodes (unary and binary) and of
 leaf nodes, originating from a common root.  The node object should be
@@ -3279,7 +3280,7 @@ pointers are ignored.
   end subroutine eval_node_final_rec
 
 @ %def eval_node_final_rec
-@ 
+@
 \subsubsection{Leaf nodes}
 Initialize a leaf node with a literal constant.
 <<Eval trees: procedures>>=
@@ -3312,7 +3313,7 @@ Initialize a leaf node with a literal constant.
     node%rval = rval
     node%value_is_known = .true.
   end subroutine eval_node_init_real
-    
+
   subroutine eval_node_init_cmplx (node, cval)
     type(eval_node_t), intent(out) :: node
     complex(default), intent(in) :: cval
@@ -3354,7 +3355,7 @@ Initialize a leaf node with a literal constant.
   end subroutine eval_node_init_string
 
 @ %def eval_node_init_log eval_node_init_int eval_node_init_real
-@ %def eval_node_init_cmplx eval_node_init_prt eval_node_init_subevt 
+@ %def eval_node_init_cmplx eval_node_init_prt eval_node_init_subevt
 @ %def eval_node_init_pdg_array eval_node_init_string
 @ Initialize a leaf node with a pointer to a named parameter
 <<Eval trees: procedures>>=
@@ -3393,7 +3394,7 @@ Initialize a leaf node with a literal constant.
     node%rval => rval
     node%value_is_known => is_known
   end subroutine eval_node_init_real_ptr
-  
+
   subroutine eval_node_init_cmplx_ptr (node, name, cval, is_known)
     type(eval_node_t), intent(out) :: node
     type(string_t), intent(in) :: name
@@ -3442,7 +3443,7 @@ Initialize a leaf node with a literal constant.
     node%value_is_known => is_known
   end subroutine eval_node_init_string_ptr
 
-@ %def eval_node_init_log_ptr eval_node_init_int_ptr 
+@ %def eval_node_init_log_ptr eval_node_init_int_ptr
 @ %def eval_node_init_real_ptr eval_node_init_cmplx_ptr
 @ %def eval_node_init_subevt_ptr eval_node_init_string_ptr
 @ The procedure-pointer cases:
@@ -3563,7 +3564,7 @@ Initialize a leaf node with a literal constant.
 @ %def eval_node_init_uobs2_int
 @ %def eval_node_init_uobs1_real
 @ %def eval_node_init_uobs2_real
-@ 
+@
 \subsubsection{Branch nodes}
 Initialize a branch node, sub-nodes are given.
 <<Eval trees: procedures>>=
@@ -3741,13 +3742,13 @@ sub-nodes.
        end if
     end if
   end subroutine eval_node_init_record_cmd
-    
+
 @ %def eval_node_init_record_cmd
 @ Initialize a node for operations on subevents.  The particle
 lists (one or two) are inserted as [[arg1]] and [[arg2]].  We
 allocated particle pointers as temporaries for iterating over particle
 lists.  The procedure pointer which holds the function to evaluate for
-the subevents (e.g., combine, select) is also initialized.  
+the subevents (e.g., combine, select) is also initialized.
 <<Eval trees: procedures>>=
   subroutine eval_node_init_prt_fun_unary (node, arg1, name, proc)
     type(eval_node_t), intent(out) :: node
@@ -3968,7 +3969,7 @@ pseudo-observable is always known when it is referred to.
   end subroutine eval_node_set_observables
 
 @ %def eval_node_set_observables
-@ 
+@
 \subsubsection{Output}
 <<Eval trees: eval node: TBP>>=
   procedure :: write => eval_node_write
@@ -4118,7 +4119,7 @@ pseudo-observable is always known when it is referred to.
   end subroutine eval_node_write_rec
 
 @ %def eval_node_write eval_node_write_rec
-@ 
+@
 \subsection{Operation types}
 For the operations associated to evaluation tree nodes, we define
 abstract interfaces for all cases.
@@ -4284,7 +4285,7 @@ bug in nagfor 5.2(649) [invalid C code].)
     procedure(unary_log) :: op
     en%op1_log => op
     end subroutine eval_node_set_op1_log
-  
+
   subroutine eval_node_set_op1_int (en, op)
     type(eval_node_t), intent(inout) :: en
     procedure(unary_int) :: op
@@ -4296,7 +4297,7 @@ bug in nagfor 5.2(649) [invalid C code].)
     procedure(unary_real) :: op
     en%op1_real => op
   end subroutine eval_node_set_op1_real
-  
+
   subroutine eval_node_set_op1_cmplx (en, op)
     type(eval_node_t), intent(inout) :: en
     procedure(unary_cmplx) :: op
@@ -4338,7 +4339,7 @@ bug in nagfor 5.2(649) [invalid C code].)
     procedure(binary_real) :: op
     en%op2_real => op
   end subroutine eval_node_set_op2_real
-  
+
   subroutine eval_node_set_op2_cmplx (en, op)
     type(eval_node_t), intent(inout) :: en
     procedure(binary_cmplx) :: op
@@ -4364,7 +4365,7 @@ bug in nagfor 5.2(649) [invalid C code].)
   end subroutine eval_node_set_op2_str
 
 @ %def eval_node_set_operator
-@ 
+@
 \subsection{Specific operators}
 
 Our expression syntax contains all Fortran functions that make sense.
@@ -4430,7 +4431,7 @@ expense of some overhead.
   real(default) function sub_ri (en1, en2) result (y)
     type(eval_node_t), intent(in) :: en1, en2
     y = en1%rval - en2%ival
-  end function sub_ri  
+  end function sub_ri
   complex(default) function sub_ic (en1, en2) result (y)
     type(eval_node_t), intent(in) :: en1, en2
     y = en1%ival - en2%cval
@@ -4438,7 +4439,7 @@ expense of some overhead.
   complex(default) function sub_ci (en1, en2) result (y)
     type(eval_node_t), intent(in) :: en1, en2
     y = en1%cval - en2%ival
-  end function sub_ci  
+  end function sub_ci
   complex(default) function sub_cr (en1, en2) result (y)
     type(eval_node_t), intent(in) :: en1, en2
     y = en1%cval - en2%rval
@@ -4668,7 +4669,7 @@ expense of some overhead.
     y = modulo (en1%rval, en2%rval)
   end function modulo_rr
 
-@ 
+@
 \subsubsection{Unary numeric functions}
 <<Eval trees: procedures>>=
   real(default) function real_i (en) result (y)
@@ -4690,11 +4691,11 @@ expense of some overhead.
   integer function int_c (en) result (y)
     type(eval_node_t), intent(in) :: en
     y = en%cval
-  end function int_c 
+  end function int_c
   complex(default) function cmplx_r (en) result (y)
     type(eval_node_t), intent(in) :: en
     y = en%rval
-  end function cmplx_r  
+  end function cmplx_r
   integer function nint_r (en) result (y)
     type(eval_node_t), intent(in) :: en
     y = nint (en%rval)
@@ -4757,7 +4758,7 @@ expense of some overhead.
     type(eval_node_t), intent(in) :: en
     y = log10 (en%rval)
   end function log10_r
-  
+
   complex(default) function sqrt_c (en) result (y)
     type(eval_node_t), intent(in) :: en
     y = sqrt (en%cval)
@@ -4795,7 +4796,7 @@ expense of some overhead.
     type(eval_node_t), intent(in) :: en
     y = atan (en%rval)
   end function atan_r
-  
+
   complex(default) function sin_c (en) result (y)
     type(eval_node_t), intent(in) :: en
     y = sin (en%cval)
@@ -4804,7 +4805,7 @@ expense of some overhead.
     type(eval_node_t), intent(in) :: en
     y = cos (en%cval)
   end function cos_c
-  
+
   real(default) function sinh_r (en) result (y)
     type(eval_node_t), intent(in) :: en
     y = sinh (en%rval)
@@ -4831,7 +4832,7 @@ expense of some overhead.
 !     type(eval_node_t), intent(in) :: en
 !     y = atanh (en%rval)
 !   end function atanh_r
-  
+
 @
 \subsubsection{Binary logical functions}
 Logical expressions:
@@ -4867,7 +4868,7 @@ Logical expressions:
     type(eval_node_t), intent(in) :: en1, en2
     y = en1%rval < en2%rval
   end function comp_lt_rr
-  
+
   logical function comp_gt_ii (en1, en2) result (y)
     type(eval_node_t), intent(in) :: en1, en2
     y = en1%ival > en2%ival
@@ -4884,7 +4885,7 @@ Logical expressions:
     type(eval_node_t), intent(in) :: en1, en2
     y = en1%rval > en2%rval
   end function comp_gt_rr
-  
+
   logical function comp_le_ii (en1, en2) result (y)
     type(eval_node_t), intent(in) :: en1, en2
     y = en1%ival <= en2%ival
@@ -4901,7 +4902,7 @@ Logical expressions:
     type(eval_node_t), intent(in) :: en1, en2
     y = en1%rval <= en2%rval
   end function comp_le_rr
-  
+
   logical function comp_ge_ii (en1, en2) result (y)
     type(eval_node_t), intent(in) :: en1, en2
     y = en1%ival >= en2%ival
@@ -4918,7 +4919,7 @@ Logical expressions:
     type(eval_node_t), intent(in) :: en1, en2
     y = en1%rval >= en2%rval
   end function comp_ge_rr
-  
+
   logical function comp_eq_ii (en1, en2) result (y)
     type(eval_node_t), intent(in) :: en1, en2
     y = en1%ival == en2%ival
@@ -4939,7 +4940,7 @@ Logical expressions:
     type(eval_node_t), intent(in) :: en1, en2
     y = en1%sval == en2%sval
   end function comp_eq_ss
-  
+
   logical function comp_ne_ii (en1, en2) result (y)
     type(eval_node_t), intent(in) :: en1, en2
     y = en1%ival /= en2%ival
@@ -4960,7 +4961,7 @@ Logical expressions:
     type(eval_node_t), intent(in) :: en1, en2
     y = en1%sval /= en2%sval
   end function comp_ne_ss
-  
+
 @ Comparisons with tolerance:
 <<Eval trees: procedures>>=
   logical function comp_se_ii (en1, en2) result (y)
@@ -5027,7 +5028,7 @@ Logical expressions:
        y = en1%rval /= en2%rval
     end if
   end function comp_ns_rr
-  
+
   logical function comp_ls_ii (en1, en2) result (y)
     type(eval_node_t), intent(in) :: en1, en2
     if (associated (en1%tolerance)) then
@@ -5160,7 +5161,7 @@ Logical expressions:
     end if
   end function comp_gg_rr
 
-@ 
+@
 \subsubsection{Unary logical functions}
 <<Eval trees: procedures>>=
   logical function not_l (en) result (y)
@@ -5178,7 +5179,7 @@ Make a PDG-array object from an integer.
     pdg_array = en%ival
   end subroutine pdg_i
 
-@ 
+@
 \subsubsection{Binary PDG-array functions}
 Concatenate two PDG-array objects.
 <<Eval trees: procedures>>=
@@ -5229,7 +5230,6 @@ test.
     !!! Should not be initialized for every event
     type(jet_definition_t) :: jet_def
     logical :: keep_jets
-    integer :: pdg
     call jet_def%init (en1%jet_algorithm, en1%jet_r, en1%jet_p, en1%jet_ycut)
     n = subevt_get_length (en1%pval)
     allocate (mask1 (n))
@@ -5362,7 +5362,7 @@ subevent.  [[any]] and [[no]] are analogous.
        if (.not. lval)  exit
     end do
   end function all_p
-       
+
   function any_p (en1, en0) result (lval)
     logical :: lval
     type(eval_node_t), intent(in) :: en1
@@ -5378,7 +5378,7 @@ subevent.  [[any]] and [[no]] are analogous.
        if (lval)  exit
     end do
   end function any_p
-       
+
   function no_p (en1, en0) result (lval)
     logical :: lval
     type(eval_node_t), intent(in) :: en1
@@ -5394,7 +5394,7 @@ subevent.  [[any]] and [[no]] are analogous.
        if (lval)  exit
     end do
   end function no_p
-       
+
 @ %def all_p any_p no_p
 @ This is the interface to user-supplied observables.  The node [[en0]]
 evaluates to a string that indicates the procedure name.  We search for the
@@ -5499,7 +5499,7 @@ interface [[unary_evi]].)
        ival = n
     end if
   end subroutine count_a
-       
+
 @ %def count_a
 @ This evaluates a user-defined event-shape observable for the current
 subevent.
@@ -5523,7 +5523,7 @@ subevent.
     rval = user_event_shape (c_prt (en1%pval), &
                              int (subevt_get_length (en1%pval), kind=c_int))
   end subroutine user_event_shape_a
-       
+
 @ %def user_event_shape_a
 @
 \subsubsection{Binary particle-list functions}
@@ -5532,7 +5532,7 @@ and [[en2]].  If [[en0]] is also present, it amounts to a logical test
 returning true or false for every pair of particles.  A particle of
 the second list gets a mask entry only if it passes the test for all
 particles of the first list.
-<<Eval trees: procedures>>= 
+<<Eval trees: procedures>>=
   subroutine join_pp (subevt, en1, en2, en0)
     type(subevt_t), intent(inout) :: subevt
     type(eval_node_t), intent(in) :: en1, en2
@@ -5562,7 +5562,7 @@ particles of the first list.
 built from all possible particle pairs from the two lists.  If [[en0]]
 is present, create a mask which is true only for those pairs that pass
 the test.
-<<Eval trees: procedures>>= 
+<<Eval trees: procedures>>=
   subroutine combine_pp (subevt, en1, en2, en0)
     type(subevt_t), intent(inout) :: subevt
     type(eval_node_t), intent(in) :: en1, en2
@@ -5716,7 +5716,7 @@ ignored.
        end do
     end do LOOP1
   end function all_pp
-       
+
   function any_pp (en1, en2, en0) result (lval)
     logical :: lval
     type(eval_node_t), intent(in) :: en1, en2
@@ -5738,7 +5738,7 @@ ignored.
        end do
     end do LOOP1
   end function any_pp
-       
+
   function no_pp (en1, en2, en0) result (lval)
     logical :: lval
     type(eval_node_t), intent(in) :: en1, en2
@@ -5760,7 +5760,7 @@ ignored.
        end do
     end do LOOP1
   end function no_pp
-       
+
 @ %def all_pp any_pp no_pp
 @ This function evaluates an observable for a pair of particles.  From the two
 particle lists, we take the first pair without [[src]] overlap.  If there is
@@ -5887,7 +5887,7 @@ interface [[binary_num]].)
     end if
     ival = count
   end subroutine count_pp
-       
+
 @ %def count_pp
 @ This function makes up a subevent from the second argument
 which consists only of particles which match the PDG code array (first
@@ -5905,7 +5905,7 @@ argument).
   end subroutine select_pdg_ca
 
 @ %def select_pdg_ca
-@ 
+@
 \subsubsection{Binary string functions}
 Currently, the only string operation is concatenation.
 <<Eval trees: procedures>>=
@@ -5952,7 +5952,7 @@ argument; default is numeric (integer or real).
        print *, "done genexpr"
     end if
   end subroutine eval_node_compile_genexpr
-  
+
 @ %def eval_node_compile_genexpr
 @
 \subsubsection{Numeric expressions}
@@ -6033,26 +6033,26 @@ immediately do the calculation and allocate a constant node.
                 select case (t2)
                 case (V_INT);  call eval_node_init_int  (en, sub_ii (en1, en2))
                 case (V_REAL); call eval_node_init_real (en, sub_ir (en1, en2))
-                case (V_CMPLX); call eval_node_init_cmplx (en, sub_ic (en1, en2))                
+                case (V_CMPLX); call eval_node_init_cmplx (en, sub_ic (en1, en2))
                 end select
              case (V_REAL)
                 select case (t2)
                 case (V_INT);  call eval_node_init_real (en, sub_ri (en1, en2))
                 case (V_REAL); call eval_node_init_real (en, sub_rr (en1, en2))
-                case (V_CMPLX); call eval_node_init_cmplx (en, sub_rc (en1, en2))                
+                case (V_CMPLX); call eval_node_init_cmplx (en, sub_rc (en1, en2))
                 end select
              case (V_CMPLX)
                 select case (t2)
                 case (V_INT);  call eval_node_init_cmplx (en, sub_ci (en1, en2))
                 case (V_REAL); call eval_node_init_cmplx (en, sub_cr (en1, en2))
-                case (V_CMPLX); call eval_node_init_cmplx (en, sub_cc (en1, en2))                
+                case (V_CMPLX); call eval_node_init_cmplx (en, sub_cc (en1, en2))
                 end select
              end select
           end select
           call eval_node_final_rec (en1)
           call eval_node_final_rec (en2)
           deallocate (en1, en2)
-       else   
+       else
           call eval_node_init_branch (en, key, t, en1, en2)
           select case (char (key))
           case ("+")
@@ -6197,13 +6197,13 @@ immediately do the calculation and allocate a constant node.
                 select case (t2)
                 case (V_INT);   call eval_node_set_op2_real (en, mul_ri)
                 case (V_REAL);  call eval_node_set_op2_real (en, mul_rr)
-                case (V_CMPLX);  call eval_node_set_op2_cmplx (en, mul_rc)                
+                case (V_CMPLX);  call eval_node_set_op2_cmplx (en, mul_rc)
                 end select
              case (V_CMPLX)
                 select case (t2)
                 case (V_INT);   call eval_node_set_op2_cmplx (en, mul_ci)
                 case (V_REAL);  call eval_node_set_op2_cmplx (en, mul_cr)
-                case (V_CMPLX);  call eval_node_set_op2_cmplx (en, mul_cc)                
+                case (V_CMPLX);  call eval_node_set_op2_cmplx (en, mul_cc)
                 end select
              end select
           case ("/")
@@ -6212,19 +6212,19 @@ immediately do the calculation and allocate a constant node.
                 select case (t2)
                 case (V_INT);   call eval_node_set_op2_int  (en, div_ii)
                 case (V_REAL);  call eval_node_set_op2_real (en, div_ir)
-                case (V_CMPLX);  call eval_node_set_op2_cmplx (en, div_ic)                
+                case (V_CMPLX);  call eval_node_set_op2_cmplx (en, div_ic)
                 end select
              case (V_REAL)
                 select case (t2)
                 case (V_INT);   call eval_node_set_op2_real (en, div_ri)
                 case (V_REAL);  call eval_node_set_op2_real (en, div_rr)
-                case (V_CMPLX);  call eval_node_set_op2_cmplx (en, div_rc)                
+                case (V_CMPLX);  call eval_node_set_op2_cmplx (en, div_rc)
                 end select
              case (V_CMPLX)
                 select case (t2)
                 case (V_INT);   call eval_node_set_op2_cmplx (en, div_ci)
                 case (V_REAL);  call eval_node_set_op2_cmplx (en, div_cr)
-                case (V_CMPLX);  call eval_node_set_op2_cmplx (en, div_cc)                
+                case (V_CMPLX);  call eval_node_set_op2_cmplx (en, div_cc)
                 end select
              end select
           end select
@@ -6339,7 +6339,7 @@ immediately do the calculation and allocate a constant node.
           select case (t)
           case (V_INT);  call eval_node_init_int  (en, neg_i (en1))
           case (V_REAL); call eval_node_init_real (en, neg_r (en1))
-          case (V_CMPLX); call eval_node_init_cmplx (en, neg_c (en1))          
+          case (V_CMPLX); call eval_node_init_cmplx (en, neg_c (en1))
           end select
           call eval_node_final_rec (en1)
           deallocate (en1)
@@ -6348,7 +6348,7 @@ immediately do the calculation and allocate a constant node.
           select case (t)
           case (V_INT);  call eval_node_set_op1_int  (en, neg_i)
           case (V_REAL); call eval_node_set_op1_real (en, neg_r)
-          case (V_CMPLX); call eval_node_set_op1_cmplx (en, neg_c)          
+          case (V_CMPLX); call eval_node_set_op1_cmplx (en, neg_c)
           end select
        end if
     case default
@@ -6378,7 +6378,7 @@ a real constant.
     case ("pi")
        call eval_node_compile_constant (en, pn)
     case ("I")
-       call eval_node_compile_constant (en, pn)       
+       call eval_node_compile_constant (en, pn)
     case ("variable")
        call eval_node_compile_variable (en, pn, var_list)
     case ("result")
@@ -6471,7 +6471,7 @@ signed versions of complex values.
        ("integer_value|real_value|complex_value|neg_real_value|pos_real_value", pn)
     end select
   end subroutine eval_node_compile_numeric_value
-    
+
 @ %def eval_node_compile_numeric_value
 @ These are the units, predefined and hardcoded.  The default energy
 unit is GeV, the default angular unit is radians.  We include units
@@ -6482,7 +6482,7 @@ normalized in inverse femtobarns.
     real(default) :: factor
     real(default) :: unit
     type(parse_node_t), intent(in) :: pn
-    type(parse_node_t), pointer :: pn_unit, pn_unit_power 
+    type(parse_node_t), pointer :: pn_unit, pn_unit_power
     type(parse_node_t), pointer :: pn_frac, pn_num, pn_int, pn_div, pn_den
     integer :: num, den
     pn_unit => parse_node_get_sub_ptr (pn)
@@ -6547,7 +6547,7 @@ normalized in inverse femtobarns.
     allocate (en)
     select case (char (parse_node_get_key (pn)))
     case ("pi");     call eval_node_init_real (en, pi)
-    case ("I");      call eval_node_init_cmplx (en, imago)    
+    case ("I");      call eval_node_init_cmplx (en, imago)
     case default
        call parse_node_mismatch ("pi or I", pn)
     end select
@@ -6573,7 +6573,7 @@ allocate an ordinary expression node in the eval tree.
 
 Variables of type [[V_PDG]] (pdg-code array) are not treated here.
 They are handled by [[eval_node_compile_cvariable]].
-<<Eval trees: procedures>>=    
+<<Eval trees: procedures>>=
   recursive subroutine eval_node_compile_variable (en, pn, var_list, var_type)
     type(eval_node_t), pointer :: en
     type(parse_node_t), intent(in), target :: pn
@@ -6907,14 +6907,14 @@ for functions which convert their argument to a different type.
           case (V_INT);  call eval_node_init_cmplx (en, cmplx_i (en1))
           case (V_REAL); call eval_node_init_cmplx (en, cmplx_r (en1))
           case (V_CMPLX); deallocate (en);  en => en1;  en1 => null ()
-          case default;  call eval_type_error (pn, char (key), t)          
+          case default;  call eval_type_error (pn, char (key), t)
           end select
        case ("real")
           select case (t)
           case (V_INT);  call eval_node_init_real (en, real_i (en1))
           case (V_REAL); deallocate (en);  en => en1;  en1 => null ()
           case (V_CMPLX); call eval_node_init_real (en, real_c (en1))
-          case default;  call eval_type_error (pn, char (key), t)          
+          case default;  call eval_type_error (pn, char (key), t)
           end select
        case ("int")
           select case (t)
@@ -6925,14 +6925,14 @@ for functions which convert their argument to a different type.
        case ("nint")
           select case (t)
           case (V_INT);  deallocate (en);  en => en1;  en1 => null ()
-          case (V_REAL); call eval_node_init_int  (en, nint_r (en1))          
+          case (V_REAL); call eval_node_init_int  (en, nint_r (en1))
           case default;  call eval_type_error (pn, char (key), t)
           end select
        case ("floor")
           select case (t)
           case (V_INT);  deallocate (en);  en => en1;  en1 => null ()
           case (V_REAL); call eval_node_init_int  (en, floor_r (en1))
-          case default;  call eval_type_error (pn, char (key), t)          
+          case default;  call eval_type_error (pn, char (key), t)
           end select
        case ("ceiling")
           select case (t)
@@ -6944,7 +6944,7 @@ for functions which convert their argument to a different type.
           select case (t)
           case (V_INT);  call eval_node_init_int  (en, abs_i (en1))
           case (V_REAL); call eval_node_init_real (en, abs_r (en1))
-          case (V_CMPLX); call eval_node_init_real (en, abs_c (en1))          
+          case (V_CMPLX); call eval_node_init_real (en, abs_c (en1))
           end select
        case ("sgn")
           select case (t)
@@ -6955,7 +6955,7 @@ for functions which convert their argument to a different type.
        case ("sqrt")
           select case (t)
           case (V_REAL); call eval_node_init_real (en, sqrt_r (en1))
-          case (V_CMPLX); call eval_node_init_cmplx (en, sqrt_c (en1))          
+          case (V_CMPLX); call eval_node_init_cmplx (en, sqrt_c (en1))
           case default;  call eval_type_error (pn, char (key), t)
           end select
        case ("exp")
@@ -6967,7 +6967,7 @@ for functions which convert their argument to a different type.
        case ("log")
           select case (t)
           case (V_REAL); call eval_node_init_real (en, log_r (en1))
-          case (V_CMPLX); call eval_node_init_cmplx (en, log_c (en1))          
+          case (V_CMPLX); call eval_node_init_cmplx (en, log_c (en1))
           case default;  call eval_type_error (pn, char (key), t)
           end select
        case ("log10")
@@ -6978,13 +6978,13 @@ for functions which convert their argument to a different type.
        case ("sin")
           select case (t)
           case (V_REAL); call eval_node_init_real (en, sin_r (en1))
-          case (V_CMPLX); call eval_node_init_cmplx (en, sin_c (en1))          
+          case (V_CMPLX); call eval_node_init_cmplx (en, sin_c (en1))
           case default;  call eval_type_error (pn, char (key), t)
           end select
        case ("cos")
           select case (t)
           case (V_REAL); call eval_node_init_real (en, cos_r (en1))
-          case (V_CMPLX); call eval_node_init_cmplx (en, cos_c (en1))          
+          case (V_CMPLX); call eval_node_init_cmplx (en, cos_c (en1))
           case default;  call eval_type_error (pn, char (key), t)
           end select
        case ("tan")
@@ -7059,7 +7059,7 @@ for functions which convert their argument to a different type.
           select case (t)
           case (V_INT);  deallocate (en);  en => en1
           case (V_REAL); call eval_node_set_op1_int (en, int_r)
-          case (V_CMPLX); call eval_node_set_op1_int (en, int_c)          
+          case (V_CMPLX); call eval_node_set_op1_int (en, int_c)
           end select
        case ("nint")
           select case (t)
@@ -7083,7 +7083,7 @@ for functions which convert their argument to a different type.
           select case (t)
           case (V_INT);  call eval_node_set_op1_int  (en, abs_i)
           case (V_REAL); call eval_node_set_op1_real (en, abs_r)
-          case (V_CMPLX); 
+          case (V_CMPLX);
              call eval_node_init_branch (en, key, V_REAL, en1)
              call eval_node_set_op1_real (en, abs_c)
           end select
@@ -7096,19 +7096,19 @@ for functions which convert their argument to a different type.
        case ("sqrt")
           select case (t)
           case (V_REAL); call eval_node_set_op1_real (en, sqrt_r)
-          case (V_CMPLX); call eval_node_set_op1_cmplx (en, sqrt_c)          
+          case (V_CMPLX); call eval_node_set_op1_cmplx (en, sqrt_c)
           case default;  call eval_type_error (pn, char (key), t)
           end select
        case ("exp")
           select case (t)
           case (V_REAL); call eval_node_set_op1_real (en, exp_r)
-          case (V_CMPLX); call eval_node_set_op1_cmplx (en, exp_c)          
+          case (V_CMPLX); call eval_node_set_op1_cmplx (en, exp_c)
           case default;  call eval_type_error (pn, char (key), t)
           end select
        case ("log")
           select case (t)
           case (V_REAL); call eval_node_set_op1_real (en, log_r)
-          case (V_CMPLX); call eval_node_set_op1_cmplx (en, log_c)          
+          case (V_CMPLX); call eval_node_set_op1_cmplx (en, log_c)
           case default;  call eval_type_error (pn, char (key), t)
           end select
        case ("log10")
@@ -7119,13 +7119,13 @@ for functions which convert their argument to a different type.
        case ("sin")
           select case (t)
           case (V_REAL); call eval_node_set_op1_real (en, sin_r)
-          case (V_CMPLX); call eval_node_set_op1_cmplx (en, sin_c)          
+          case (V_CMPLX); call eval_node_set_op1_cmplx (en, sin_c)
           case default;  call eval_type_error (pn, char (key), t)
           end select
        case ("cos")
           select case (t)
           case (V_REAL); call eval_node_set_op1_real (en, cos_r)
-          case (V_CMPLX); call eval_node_set_op1_cmplx (en, cos_c)          
+          case (V_CMPLX); call eval_node_set_op1_cmplx (en, cos_c)
           case default;  call eval_type_error (pn, char (key), t)
           end select
        case ("tan")
@@ -7205,15 +7205,15 @@ for functions which convert their argument to a different type.
              select case (t2)
              case (V_INT);  call eval_node_init_int  (en, max_ii (en1, en2))
              case (V_REAL); call eval_node_init_real (en, max_ir (en1, en2))
-             case default;  call eval_type_error (pn, char (key), t2)      
+             case default;  call eval_type_error (pn, char (key), t2)
              end select
           case (V_REAL)
              select case (t2)
              case (V_INT);  call eval_node_init_real (en, max_ri (en1, en2))
              case (V_REAL); call eval_node_init_real (en, max_rr (en1, en2))
-             case default;  call eval_type_error (pn, char (key), t2) 
+             case default;  call eval_type_error (pn, char (key), t2)
              end select
-           case default;  call eval_type_error (pn, char (key), t1)             
+           case default;  call eval_type_error (pn, char (key), t1)
          end select
        case ("min")
           select case (t1)
@@ -7221,15 +7221,15 @@ for functions which convert their argument to a different type.
              select case (t2)
              case (V_INT);  call eval_node_init_int  (en, min_ii (en1, en2))
              case (V_REAL); call eval_node_init_real (en, min_ir (en1, en2))
-             case default;  call eval_type_error (pn, char (key), t2)             
+             case default;  call eval_type_error (pn, char (key), t2)
              end select
           case (V_REAL)
              select case (t2)
              case (V_INT);  call eval_node_init_real (en, min_ri (en1, en2))
              case (V_REAL); call eval_node_init_real (en, min_rr (en1, en2))
-             case default;  call eval_type_error (pn, char (key), t2)                          
+             case default;  call eval_type_error (pn, char (key), t2)
              end select
-           case default;  call eval_type_error (pn, char (key), t1)             
+           case default;  call eval_type_error (pn, char (key), t1)
          end select
        case ("mod")
           select case (t1)
@@ -7237,15 +7237,15 @@ for functions which convert their argument to a different type.
              select case (t2)
              case (V_INT);  call eval_node_init_int  (en, mod_ii (en1, en2))
              case (V_REAL); call eval_node_init_real (en, mod_ir (en1, en2))
-             case default;  call eval_type_error (pn, char (key), t2)             
+             case default;  call eval_type_error (pn, char (key), t2)
              end select
           case (V_REAL)
              select case (t2)
              case (V_INT);  call eval_node_init_real (en, mod_ri (en1, en2))
              case (V_REAL); call eval_node_init_real (en, mod_rr (en1, en2))
-             case default;  call eval_type_error (pn, char (key), t2)                          
+             case default;  call eval_type_error (pn, char (key), t2)
              end select
-           case default;  call eval_type_error (pn, char (key), t1)             
+           case default;  call eval_type_error (pn, char (key), t1)
           end select
        case ("modulo")
           select case (t1)
@@ -7253,15 +7253,15 @@ for functions which convert their argument to a different type.
              select case (t2)
              case (V_INT);  call eval_node_init_int  (en, modulo_ii (en1, en2))
              case (V_REAL); call eval_node_init_real (en, modulo_ir (en1, en2))
-             case default;  call eval_type_error (pn, char (key), t2)             
+             case default;  call eval_type_error (pn, char (key), t2)
              end select
           case (V_REAL)
              select case (t2)
              case (V_INT);  call eval_node_init_real (en, modulo_ri (en1, en2))
              case (V_REAL); call eval_node_init_real (en, modulo_rr (en1, en2))
-             case default;  call eval_type_error (pn, char (key), t2)                          
+             case default;  call eval_type_error (pn, char (key), t2)
              end select
-           case default;  call eval_type_error (pn, char (key), t2)             
+           case default;  call eval_type_error (pn, char (key), t2)
          end select
        case default
           call parse_node_mismatch ("function name", pn_fname)
@@ -7277,15 +7277,15 @@ for functions which convert their argument to a different type.
              select case (t2)
              case (V_INT);  call eval_node_set_op2_int  (en, max_ii)
              case (V_REAL); call eval_node_set_op2_real (en, max_ir)
-             case default;  call eval_type_error (pn, char (key), t2)             
+             case default;  call eval_type_error (pn, char (key), t2)
              end select
           case (V_REAL)
              select case (t2)
              case (V_INT);  call eval_node_set_op2_real (en, max_ri)
              case (V_REAL); call eval_node_set_op2_real (en, max_rr)
-             case default;  call eval_type_error (pn, char (key), t2)                          
+             case default;  call eval_type_error (pn, char (key), t2)
              end select
-           case default;  call eval_type_error (pn, char (key), t2)               
+           case default;  call eval_type_error (pn, char (key), t2)
          end select
        case ("min")
           select case (t1)
@@ -7293,15 +7293,15 @@ for functions which convert their argument to a different type.
              select case (t2)
              case (V_INT);  call eval_node_set_op2_int  (en, min_ii)
              case (V_REAL); call eval_node_set_op2_real (en, min_ir)
-             case default;  call eval_type_error (pn, char (key), t2)             
+             case default;  call eval_type_error (pn, char (key), t2)
              end select
           case (V_REAL)
              select case (t2)
              case (V_INT);  call eval_node_set_op2_real (en, min_ri)
              case (V_REAL); call eval_node_set_op2_real (en, min_rr)
-             case default;  call eval_type_error (pn, char (key), t2)                          
+             case default;  call eval_type_error (pn, char (key), t2)
              end select
-           case default;  call eval_type_error (pn, char (key), t2)            
+           case default;  call eval_type_error (pn, char (key), t2)
          end select
        case ("mod")
           select case (t1)
@@ -7309,15 +7309,15 @@ for functions which convert their argument to a different type.
              select case (t2)
              case (V_INT);  call eval_node_set_op2_int  (en, mod_ii)
              case (V_REAL); call eval_node_set_op2_real (en, mod_ir)
-             case default;  call eval_type_error (pn, char (key), t2)                          
+             case default;  call eval_type_error (pn, char (key), t2)
              end select
           case (V_REAL)
              select case (t2)
              case (V_INT);  call eval_node_set_op2_real (en, mod_ri)
              case (V_REAL); call eval_node_set_op2_real (en, mod_rr)
-             case default;  call eval_type_error (pn, char (key), t2)                          
+             case default;  call eval_type_error (pn, char (key), t2)
              end select
-           case default;  call eval_type_error (pn, char (key), t2)                          
+           case default;  call eval_type_error (pn, char (key), t2)
         end select
        case ("modulo")
           select case (t1)
@@ -7325,15 +7325,15 @@ for functions which convert their argument to a different type.
              select case (t2)
              case (V_INT);  call eval_node_set_op2_int  (en, modulo_ii)
              case (V_REAL); call eval_node_set_op2_real (en, modulo_ir)
-             case default;  call eval_type_error (pn, char (key), t2)                          
+             case default;  call eval_type_error (pn, char (key), t2)
              end select
           case (V_REAL)
              select case (t2)
              case (V_INT);  call eval_node_set_op2_real (en, modulo_ri)
              case (V_REAL); call eval_node_set_op2_real (en, modulo_rr)
-             case default;  call eval_type_error (pn, char (key), t2)                          
+             case default;  call eval_type_error (pn, char (key), t2)
              end select
-           case default;  call eval_type_error (pn, char (key), t2)                          
+           case default;  call eval_type_error (pn, char (key), t2)
          end select
        case default
           call parse_node_mismatch ("function name", pn_fname)
@@ -7346,7 +7346,7 @@ for functions which convert their argument to a different type.
   end subroutine eval_node_compile_binary_function
 
 @ %def eval_node_compile_binary_function
-@ 
+@
 \subsubsection{Variable definition}
 A block expression contains a variable definition (first argument) and
 an expression where the definition can be used (second argument).  The
@@ -7431,7 +7431,7 @@ conversion.
        print *, "done block expr"
     end if
   end subroutine eval_node_compile_block_expr
-    
+
 @ %def eval_node_compile_block_expr
 @ Insert a conversion node for integer/real/complex transformation if necessary.
 What shall we do for the complex to integer/real conversion?
@@ -7452,7 +7452,7 @@ What shall we do for the complex to integer/real conversion?
           allocate (en_conv)
           call eval_node_init_branch (en_conv, var_str ("complex"), V_CMPLX, en)
           call eval_node_set_op1_cmplx (en_conv, cmplx_i)
-          en => en_conv          
+          en => en_conv
        end select
     case (V_REAL)
        select case (result_type)
@@ -7466,7 +7466,7 @@ What shall we do for the complex to integer/real conversion?
           call eval_node_init_branch (en_conv, var_str ("complex"), V_CMPLX, en)
           call eval_node_set_op1_cmplx (en_conv, cmplx_r)
           en => en_conv
-       end select          
+       end select
     case (V_CMPLX)
        select case (result_type)
        case (V_INT)
@@ -7479,13 +7479,13 @@ What shall we do for the complex to integer/real conversion?
           call eval_node_init_branch (en_conv, var_str ("real"), V_REAL, en)
           call eval_node_set_op1_real (en_conv, real_c)
           en => en_conv
-       end select          
-     case default     
-     end select    
+       end select
+     case default
+     end select
   end subroutine insert_conversion_node
 
 @ %def insert_conversion_node
-@ 
+@
 \subsubsection{Conditionals}
 A conditional has the structure if lexpr then expr else expr.  So we
 first evaluate the logical expression, then depending on the result
@@ -7598,7 +7598,7 @@ the main conditional.
        call eval_node_compile_default_else (en2, result_type)
     end if
     call eval_node_create_conditional (en, en0, en1, en2, result_type)
-  end subroutine eval_node_compile_elsif       
+  end subroutine eval_node_compile_elsif
 
 @ %def eval_node_compile_elsif
 @ This makes a default 'else' branch in case it was omitted.  The default value
@@ -7652,7 +7652,7 @@ branching.
     end if
   end subroutine eval_node_create_conditional
 
-@ %def eval_node_create_conditional    
+@ %def eval_node_create_conditional
 @ Return the numerical result type which should be used for the combination of
 the two result types.
 <<Eval trees: procedures>>=
@@ -7714,7 +7714,7 @@ the two result types.
   end subroutine conditional_insert_conversion_nodes
 
 @ %def conditional_insert_conversion_nodes
-@ 
+@
 \subsubsection{Logical expressions}
 A logical expression consists of one or more singlet logical expressions
 concatenated by [[;]].  This is for allowing side-effects, only the last value
@@ -7742,7 +7742,7 @@ is used.
           call eval_node_final_rec (en1)
           call eval_node_final_rec (en2)
           deallocate (en1, en2)
-       else   
+       else
           call eval_node_init_branch &
                (en, var_str ("lsequel"), V_LOG, en1, en2)
           call eval_node_set_op2_log (en, ignore_first_ll)
@@ -7781,7 +7781,7 @@ concatenated by [[or]].
           call eval_node_final_rec (en1)
           call eval_node_final_rec (en2)
           deallocate (en1, en2)
-       else   
+       else
           call eval_node_init_branch &
                (en, var_str ("alternative"), V_LOG, en1, en2)
           call eval_node_set_op2_log (en, or_ll)
@@ -7820,7 +7820,7 @@ concatenated by [[and]].
           call eval_node_final_rec (en1)
           call eval_node_final_rec (en2)
           deallocate (en1, en2)
-       else   
+       else
           call eval_node_init_branch &
                (en, var_str ("coincidence"), V_LOG, en1, en2)
           call eval_node_set_op2_log (en, and_ll)
@@ -8240,7 +8240,7 @@ becomes a branch node which refers to [[en1]] and [[en2]].
   end subroutine eval_node_compile_comparison
 
 @ %def eval_node_compile_comparison
-@ 
+@
 \subsubsection{Recording analysis data}
 The [[record]] command is actually a logical expression which always
 evaluates [[true]].
@@ -8317,7 +8317,7 @@ evaluates [[true]].
   end subroutine eval_node_compile_record_cmd
 
 @ %def eval_node_compile_record_cmd
-@ 
+@
 \subsubsection{Particle-list expressions}
 A particle expression is a subevent or a concatenation of
 particle-list terms (using \verb|join|).
@@ -8348,7 +8348,7 @@ particle-list terms (using \verb|join|).
           call eval_node_final_rec (en1)
           call eval_node_final_rec (en2)
           deallocate (en1, en2)
-       else   
+       else
           call eval_node_init_branch &
                (en, var_str ("join"), V_SEV, en1, en2)
           call eval_node_set_op2_sev (en, join_pp)
@@ -8391,7 +8391,7 @@ particle-list values (using \verb|combine|).
           call eval_node_final_rec (en1)
           call eval_node_final_rec (en2)
           deallocate (en1, en2)
-       else   
+       else
           call eval_node_init_branch &
                (en, var_str ("combine"), V_SEV, en1, en2)
           call eval_node_set_op2_sev (en, combine_pp)
@@ -8478,7 +8478,7 @@ array.
   end subroutine eval_node_compile_pvalue
 
 @ %def eval_node_compile_pvalue
-@ 
+@
 \subsubsection{Particle functions}
 This combines the treatment of 'join', 'combine', 'collect', 'cluster',
 'select', and 'extract' which all have the same syntax.  The one or two
@@ -8677,7 +8677,7 @@ is mandatory, and the whole thing evaluates to a numeric value.
           call eval_node_compile_lexpr (en0, pn_arg0, en%var_list)
        case ("user_cut")
           call eval_node_compile_sexpr (en0, pn_arg0, en%var_list)
-       case default		       
+       case default
           call msg_bug ("Compiling logical particle function: missing mode")
        end select
        call eval_node_set_expr (en, en0, V_LOG)
@@ -8762,7 +8762,7 @@ is mandatory, and the whole thing evaluates to a numeric value.
   end subroutine eval_node_compile_numeric_function
 
 @ %def eval_node_compile_numeric_function
-@ 
+@
 \subsubsection{PDG-code arrays}
 A PDG-code expression is either prefixed by [[incoming]] or
 [[outgoing]], a block, or a conditional.  In any case, it evaluates to
@@ -8955,10 +8955,10 @@ user.
   end subroutine eval_node_compile_cvariable
 
 @ %def eval_node_compile_cvariable
-@ 
+@
 \subsubsection{String expressions}
 A string expression is either a string value or a concatenation of
-string values. 
+string values.
 <<Eval trees: procedures>>=
   recursive subroutine eval_node_compile_sexpr (en, pn, var_list)
     type(eval_node_t), pointer :: en
@@ -8986,7 +8986,7 @@ string values.
           call eval_node_final_rec (en1)
           call eval_node_final_rec (en2)
           deallocate (en1, en2)
-       else   
+       else
           call eval_node_init_branch &
                (en, var_str ("concat"), V_STR, en1, en2)
           call eval_node_set_op2_str (en, concat_ss)
@@ -9000,7 +9000,7 @@ string values.
   end subroutine eval_node_compile_sexpr
 
 @ %def eval_node_compile_sexpr
-@ A string value is a string literal, a 
+@ A string value is a string literal, a
 variable, a (grouped) sexpr, a block sexpr, or a conditional.
 <<Eval trees: procedures>>=
   recursive subroutine eval_node_compile_svalue (en, pn, var_list)
@@ -9113,7 +9113,7 @@ formatted.
 
 @ %def eval_node_compile_sprintf_args
 @ Evaluation.  We allocate the argument list and apply the Fortran wrapper for
-the [[sprintf]] function. 
+the [[sprintf]] function.
 <<Eval trees: procedures>>=
   subroutine evaluate_sprintf (string, n_args, en_fmt, en_arg)
     type(string_t), intent(out) :: string
@@ -9179,7 +9179,7 @@ the [[sprintf]] function.
   end subroutine evaluate_sprintf
 
 @ %def evaluate_sprintf
-@ 
+@
 \subsection{Auxiliary functions for the compiler}
 Issue an error that the current node could not be compiled because of
 type mismatch:
@@ -9194,7 +9194,7 @@ type mismatch:
     case (V_LOG);  type = "'logical'"
     case (V_INT);  type = "'integer'"
     case (V_REAL); type = "'real'"
-    case (V_CMPLX); type = "'complex'"    
+    case (V_CMPLX); type = "'complex'"
     case default;  type = "(unknown)"
     end select
     call parse_node_write (pn)
@@ -9219,7 +9219,7 @@ are real, than its argument is real, otherwise complex.
     else if (t1 == V_REAL .and. t2 == V_INT) then
        t = V_REAL
     else if (t1 == V_REAL .and. t2 == V_REAL) then
-       t = V_REAL   
+       t = V_REAL
     else
        t = V_CMPLX
     end if
@@ -9256,8 +9256,8 @@ determine the result.
           case (V_LOG);  en%lval = en%op1_log  (en%arg1)
           case (V_INT);  en%ival = en%op1_int  (en%arg1)
           case (V_REAL); en%rval = en%op1_real (en%arg1)
-          case (V_CMPLX); en%cval = en%op1_cmplx (en%arg1)          
-          case (V_PDG);  
+          case (V_CMPLX); en%cval = en%op1_cmplx (en%arg1)
+          case (V_PDG);
              call en%op1_pdg  (en%aval, en%arg1)
           case (V_SEV)
              if (associated (en%arg0)) then
@@ -9283,7 +9283,7 @@ determine the result.
           case (V_LOG);  en%lval = en%op2_log  (en%arg1, en%arg2)
           case (V_INT);  en%ival = en%op2_int  (en%arg1, en%arg2)
           case (V_REAL); en%rval = en%op2_real (en%arg1, en%arg2)
-          case (V_CMPLX); en%cval = en%op2_cmplx (en%arg1, en%arg2)          
+          case (V_CMPLX); en%cval = en%op2_cmplx (en%arg1, en%arg2)
           case (V_PDG)
              call en%op2_pdg  (en%aval, en%arg1, en%arg2)
           case (V_SEV)
@@ -9309,7 +9309,7 @@ determine the result.
           case (V_LOG);  en%lval = en%arg0%lval
           case (V_INT);  en%ival = en%arg0%ival
           case (V_REAL); en%rval = en%arg0%rval
-          case (V_CMPLX); en%cval = en%arg0%cval          
+          case (V_CMPLX); en%cval = en%arg0%cval
           case (V_PDG);  en%aval = en%arg0%aval
           case (V_SEV);  en%pval = en%arg0%pval
           case (V_STR);  en%sval = en%arg0%sval
@@ -9331,7 +9331,7 @@ determine the result.
                 case (V_LOG);  en%lval = en%arg1%lval
                 case (V_INT);  en%ival = en%arg1%ival
                 case (V_REAL); en%rval = en%arg1%rval
-                case (V_CMPLX); en%cval = en%arg1%cval                
+                case (V_CMPLX); en%cval = en%arg1%cval
                 case (V_PDG);  en%aval = en%arg1%aval
                 case (V_SEV);  en%pval = en%arg1%pval
                 case (V_STR);  en%sval = en%arg1%sval
@@ -9345,7 +9345,7 @@ determine the result.
                 case (V_LOG);  en%lval = en%arg2%lval
                 case (V_INT);  en%ival = en%arg2%ival
                 case (V_REAL); en%rval = en%arg2%rval
-                case (V_CMPLX); en%cval = en%arg2%cval                
+                case (V_CMPLX); en%cval = en%arg2%cval
                 case (V_PDG);  en%aval = en%arg2%aval
                 case (V_SEV);  en%pval = en%arg2%pval
                 case (V_STR);  en%sval = en%arg2%sval
@@ -9383,7 +9383,7 @@ determine the result.
                                           exist=exist, success=en%lval)
                                   end if
                                end if
-                            else                                   
+                            else
                                if (associated (en%rval)) then
                                   call analysis_record_data (en%arg0%sval, &
                                        en%arg1%rval, en%arg2%rval, &
@@ -9556,7 +9556,7 @@ determine the result.
              en%arg0%prt2 => en%prt2
              call en%op2_evi (en%ival, en%arg1, en%arg2, en%arg0)
           else
-             call en%op2_evi (en%ival, en%arg1, en%arg2) 
+             call en%op2_evi (en%ival, en%arg1, en%arg2)
           end if
        end if
     case (EN_REAL_FUN_UNARY)
@@ -9584,7 +9584,7 @@ determine the result.
              en%arg0%prt2 => en%prt2
              call en%op2_evr (en%rval, en%arg1, en%arg2, en%arg0)
           else
-             call en%op2_evr (en%rval, en%arg1, en%arg2) 
+             call en%op2_evr (en%rval, en%arg1, en%arg2)
           end if
        end if
     case (EN_FORMAT_STR)
@@ -9629,9 +9629,9 @@ This is called from a unit test: initialize a particular observable.
     call var_list%get_obs1_iptr (var_name, obs1_iptr, p1)
     call eval_node_init_obs1_int_ptr (node, var_name, obs1_iptr, p1)
   end subroutine eval_node_test_obs
-  
+
 @ %def eval_node_test_obs
-@ 
+@
 \subsection{Evaluation syntax}
 We have two different flavors of the syntax: with and without particles.
 <<Eval trees: public>>=
@@ -9730,7 +9730,7 @@ We have two different flavors of the syntax: with and without particles.
          // "real_value | complex_value")
     call ifile_append (ifile, "SEQ integer_value = integer_literal unit_expr?")
     call ifile_append (ifile, "SEQ real_value = real_literal unit_expr?")
-    call ifile_append (ifile, "SEQ complex_value = complex_literal unit_expr?")    
+    call ifile_append (ifile, "SEQ complex_value = complex_literal unit_expr?")
     call ifile_append (ifile, "INT integer_literal")
     call ifile_append (ifile, "REA real_literal")
     call ifile_append (ifile, "COM complex_literal")
@@ -10132,7 +10132,7 @@ We have two different flavors of the syntax: with and without particles.
   end subroutine lexer_init_eval_tree
 
 @ %def lexer_init_eval_tree
-@ 
+@
 \subsection{Set up appropriate parse trees}
 Parse an input stream as a specific flavor of expression.  The
 appropriate expression syntax has to be available.
@@ -10305,7 +10305,7 @@ optional.
     call eval_node_compile_expr &
          (expr%root, parse_node, expr%var_list)
   end subroutine eval_tree_init_expr
-    
+
   subroutine eval_tree_init_lexpr &
       (expr, parse_node, var_list, subevt)
     class(eval_tree_t), intent(out), target :: expr
@@ -10354,9 +10354,9 @@ optional.
          (expr%root, parse_node, expr%var_list)
   end subroutine eval_tree_init_sexpr
 
-@ %def eval_tree_init_expr    
-@ %def eval_tree_init_lexpr    
-@ %def eval_tree_init_pexpr    
+@ %def eval_tree_init_expr
+@ %def eval_tree_init_lexpr
+@ %def eval_tree_init_pexpr
 @ %def eval_tree_init_cexpr
 @ %def eval_tree_init_sexpr
 @ Alternative: set up the expression using the parse node that has already
@@ -10375,7 +10375,7 @@ may be referred to has already been added to the local variable list.
     call eval_tree_link_var_list (expr, vars)
     call eval_node_compile_expr (expr%root, expr%pn, expr%var_list)
   end subroutine eval_tree_setup_expr
-    
+
   subroutine eval_tree_setup_lexpr (expr, vars)
     class(eval_tree_t), intent(inout), target :: expr
     class(vars_t), intent(in), target :: vars
@@ -10404,9 +10404,9 @@ may be referred to has already been added to the local variable list.
     call eval_node_compile_sexpr (expr%root, expr%pn, expr%var_list)
   end subroutine eval_tree_setup_sexpr
 
-@ %def eval_tree_setup_expr    
-@ %def eval_tree_setup_lexpr    
-@ %def eval_tree_setup_pexpr    
+@ %def eval_tree_setup_expr
+@ %def eval_tree_setup_lexpr
+@ %def eval_tree_setup_pexpr
 @ %def eval_tree_setup_cexpr
 @ %def eval_tree_setup_sexpr
 @ This extra API function handles numerical constant expressions only.
@@ -10457,7 +10457,7 @@ to this as variable [[@evt]] in the local variable list.
   end subroutine eval_tree_final
 
 @ %def eval_tree_final
-@ 
+@
 <<Eval trees: eval tree: TBP>>=
   procedure :: evaluate => eval_tree_evaluate
 <<Eval trees: procedures>>=
@@ -10526,7 +10526,7 @@ safe against real/integer mismatch.
        type = V_NONE
     end if
   end function eval_tree_get_result_type
-    
+
   function eval_tree_result_is_known (expr) result (flag)
     logical :: flag
     class(eval_tree_t), intent(in) :: expr
@@ -10563,7 +10563,7 @@ safe against real/integer mismatch.
     class(eval_tree_t), intent(in) :: expr
     if (associated (expr%root))  lval = expr%root%lval
   end function eval_tree_get_log
-    
+
   function eval_tree_get_int (expr) result (ival)
     integer :: ival
     class(eval_tree_t), intent(in) :: expr
@@ -10571,11 +10571,11 @@ safe against real/integer mismatch.
        select case (expr%root%result_type)
        case (V_INT);  ival = expr%root%ival
        case (V_REAL); ival = expr%root%rval
-       case (V_CMPLX); ival = expr%root%cval       
+       case (V_CMPLX); ival = expr%root%cval
        end select
     end if
   end function eval_tree_get_int
-    
+
   function eval_tree_get_real (expr) result (rval)
     real(default) :: rval
     class(eval_tree_t), intent(in) :: expr
@@ -10583,11 +10583,11 @@ safe against real/integer mismatch.
        select case (expr%root%result_type)
        case (V_REAL); rval = expr%root%rval
        case (V_INT);  rval = expr%root%ival
-       case (V_CMPLX);  rval = expr%root%cval       
+       case (V_CMPLX);  rval = expr%root%cval
        end select
     end if
   end function eval_tree_get_real
-      
+
   function eval_tree_get_cmplx (expr) result (cval)
     complex(default) :: cval
     class(eval_tree_t), intent(in) :: expr
@@ -10626,10 +10626,10 @@ safe against real/integer mismatch.
 
 @ %def eval_tree_get_result_type
 @ %def eval_tree_result_is_known
-@ %def eval_tree_get_log eval_tree_get_int eval_tree_get_real 
+@ %def eval_tree_get_log eval_tree_get_int eval_tree_get_real
 @ %def eval_tree_get_cmplx
 @ %def eval_tree_get_pdg_expr
-@ %def eval_tree_get_pdg_array 
+@ %def eval_tree_get_pdg_array
 @ %def eval_tree_get_subevt
 @ %def eval_tree_get_string
 @ Return a pointer to the value of the top node.
@@ -10643,7 +10643,7 @@ safe against real/integer mismatch.
        lval => null ()
     end if
   end function eval_tree_get_log_ptr
-    
+
   function eval_tree_get_int_ptr (eval_tree) result (ival)
     integer, pointer :: ival
     type(eval_tree_t), intent(in) :: eval_tree
@@ -10653,7 +10653,7 @@ safe against real/integer mismatch.
        ival => null ()
     end if
   end function eval_tree_get_int_ptr
-    
+
   function eval_tree_get_real_ptr (eval_tree) result (rval)
     real(default), pointer :: rval
     type(eval_tree_t), intent(in) :: eval_tree
@@ -10663,7 +10663,7 @@ safe against real/integer mismatch.
        rval => null ()
     end if
   end function eval_tree_get_real_ptr
-    
+
   function eval_tree_get_cmplx_ptr (eval_tree) result (cval)
     complex(default), pointer :: cval
     type(eval_tree_t), intent(in) :: eval_tree
@@ -10683,7 +10683,7 @@ safe against real/integer mismatch.
        pval => null ()
     end if
   end function eval_tree_get_subevt_ptr
-    
+
   function eval_tree_get_pdg_array_ptr (eval_tree) result (aval)
     type(pdg_array_t), pointer :: aval
     type(eval_tree_t), intent(in) :: eval_tree
@@ -10693,7 +10693,7 @@ safe against real/integer mismatch.
        aval => null ()
     end if
   end function eval_tree_get_pdg_array_ptr
-    
+
   function eval_tree_get_string_ptr (eval_tree) result (sval)
     type(string_t), pointer :: sval
     type(eval_tree_t), intent(in) :: eval_tree
@@ -10703,7 +10703,7 @@ safe against real/integer mismatch.
        sval => null ()
     end if
   end function eval_tree_get_string_ptr
-    
+
 @ %def eval_tree_get_log_ptr eval_tree_get_int_ptr eval_tree_get_real_ptr
 @ %def eval_tree_get_cmplx_ptr
 @ %def eval_tree_get_subevt_ptr eval_tree_get_pdg_array_ptr
@@ -10820,7 +10820,7 @@ the [[is_known]] flag is present, which will be set accordingly.
        rval = eval_tree_get_real (eval_tree)
     else if (present (is_known)) then
        is_known = .false.
-    else 
+    else
        call eval_tree_unknown (eval_tree, parse_node)
        rval = 0
     end if
@@ -10982,7 +10982,7 @@ matching factory type and build method.
    contains
   <<Eval trees: eval tree factory: TBP>>
   end type eval_tree_factory_t
-  
+
 @ %def eval_tree_factory_t
 @ Output: delegate to the output of the embedded parse node.
 <<Eval trees: eval tree factory: TBP>>=
@@ -10995,7 +10995,7 @@ matching factory type and build method.
        call parse_node_write_rec (expr_factory%pn, unit)
     end if
   end subroutine eval_tree_factory_write
-       
+
 @ %def eval_tree_factory_write
 @ Initializer: take a parse node and hide it thus from the environment.
 <<Eval trees: eval tree factory: TBP>>=
@@ -11006,7 +11006,7 @@ matching factory type and build method.
     type(parse_node_t), intent(in), pointer :: pn
     expr_factory%pn => pn
   end subroutine eval_tree_factory_init
-  
+
 @ %def eval_tree_factory_init
 @ Factory method: allocate expression with correct eval tree type.  If the
 stored parse node is not associate, don't allocate.
@@ -11024,9 +11024,9 @@ stored parse node is not associate, don't allocate.
        end select
     end if
   end subroutine eval_tree_factory_build
-  
+
 @ %def eval_tree_factory_build
-@ 
+@
 \subsection{Unit tests}
 Test module, followed by the corresponding implementation module.
 <<[[eval_trees_ut.f90]]>>=
@@ -11035,13 +11035,13 @@ Test module, followed by the corresponding implementation module.
 module eval_trees_ut
   use unit_tests
   use eval_trees_uti
-  
+
 <<Standard module head>>
 
 <<Eval trees: public test>>
 
 contains
-  
+
 <<Eval trees: test driver>>
 
 end module eval_trees_ut
@@ -11083,7 +11083,7 @@ end module eval_trees_uti
   subroutine expressions_test (u, results)
     integer, intent(in) :: u
     type (test_results_t), intent(inout) :: results
-  <<Eval trees: execute tests>>  
+  <<Eval trees: execute tests>>
   end subroutine expressions_test
 
 @ %def expressions_test
@@ -11092,10 +11092,10 @@ observable and the node evaluation.
 <<Eval trees: execute tests>>=
   call test (expressions_1, "expressions_1", &
        "check simple observable", &
-       u, results) 
+       u, results)
 <<Eval trees: test declarations>>=
   public :: expressions_1
-<<Eval trees: tests>>=     
+<<Eval trees: tests>>=
   subroutine expressions_1 (u)
     integer, intent(in) :: u
     type(var_list_t), pointer :: var_list => null ()
@@ -11105,19 +11105,19 @@ observable and the node evaluation.
 
     write (u, "(A)")  "* Test output: Expressions"
     write (u, "(A)")  "*   Purpose: test simple observable and node evaluation"
-    write (u, "(A)")       
+    write (u, "(A)")
 
     write (u, "(A)")  "* Setting a unary observable:"
-    write (u, "(A)")    
-    
+    write (u, "(A)")
+
     allocate (var_list)
     allocate (prt)
     call var_list_set_observables_unary (var_list, prt)
     call var_list%write (u)
-    
+
     write (u, "(A)")  "* Evaluating the observable node:"
-    write (u, "(A)")        
-    
+    write (u, "(A)")
+
     var_name = "PDG"
 
     allocate (node)
@@ -11125,28 +11125,28 @@ observable and the node evaluation.
     call node%write (u)
 
     write (u, "(A)")  "* Cleanup"
-    write (u, "(A)")        
-    
+    write (u, "(A)")
+
     call node%final_rec ()
     deallocate (node)
     call var_list%final ()
     deallocate (var_list)
     deallocate (prt)
-       
+
     write (u, "(A)")
-    write (u, "(A)")  "* Test output end: expressions_1"        
-    
+    write (u, "(A)")  "* Test output end: expressions_1"
+
   end subroutine expressions_1
-  
+
 @  %def expressions_1
 @ Parse a complicated expression, transfer it to a parse tree and evaluate.
 <<Eval trees: execute tests>>=
   call test (expressions_2, "expressions_2", &
        "check expression transfer to parse tree", &
-       u, results) 
+       u, results)
 <<Eval trees: test declarations>>=
   public :: expressions_2
-<<Eval trees: tests>>=  
+<<Eval trees: tests>>=
   subroutine expressions_2 (u)
     integer, intent(in) :: u
     type(ifile_t) :: ifile
@@ -11154,13 +11154,13 @@ observable and the node evaluation.
     type(eval_tree_t) :: eval_tree
     type(string_t) :: expr_text
     type(var_list_t), pointer :: var_list => null ()
-    
+
     write (u, "(A)")  "* Test output: Expressions"
     write (u, "(A)")  "*   Purpose: test parse routines"
-    write (u, "(A)")       
-    
+    write (u, "(A)")
+
     call syntax_expr_init ()
-    call syntax_write (syntax_expr, u)     
+    call syntax_write (syntax_expr, u)
     allocate (var_list)
     call var_list_append_real (var_list, var_str ("tolerance"), 0._default)
     call var_list_append_real (var_list, var_str ("x"), -5._default)
@@ -11177,44 +11177,44 @@ observable and the node evaluation.
     call eval_tree%init_stream (stream, var_list=var_list)
     call eval_tree%evaluate ()
     call eval_tree%write (u)
-    
+
     write (u, "(A)")  "* Input string:"
     write (u, "(A,A)")  "     ", char (expr_text)
-    write (u, "(A)") 
+    write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
-    
-    call stream_final (stream) 
+
+    call stream_final (stream)
     call ifile_final (ifile)
     call eval_tree%final ()
     call var_list%final ()
     deallocate (var_list)
-    call syntax_expr_final ()     
-    
+    call syntax_expr_final ()
+
     write (u, "(A)")
-    write (u, "(A)")  "* Test output end: expressions_2"        
-    
-  end subroutine expressions_2 
-  
+    write (u, "(A)")  "* Test output end: expressions_2"
+
+  end subroutine expressions_2
+
 @  %def expressions_2
 @ Test a subevent expression.
 <<Eval trees: execute tests>>=
   call test (expressions_3, "expressions_3", &
        "check subevent expressions", &
-       u, results) 
+       u, results)
 <<Eval trees: test declarations>>=
   public :: expressions_3
-<<Eval trees: tests>>=       
+<<Eval trees: tests>>=
   subroutine expressions_3 (u)
     integer, intent(in) :: u
     type(subevt_t) :: subevt
 
     write (u, "(A)")  "* Test output: Expressions"
     write (u, "(A)")  "*   Purpose: test subevent expressions"
-    write (u, "(A)")       
+    write (u, "(A)")
 
     write (u, "(A)")  "* Initialize subevent:"
-    write (u, "(A)")       
-            
+    write (u, "(A)")
+
     call subevt_init (subevt)
     call subevt_reset (subevt, 1)
     call subevt_set_incoming (subevt, 1, &
@@ -11234,21 +11234,21 @@ observable and the node evaluation.
          vector4_moving (-1.e3_default, 0._default, 3), &
          [2, 7])
     call subevt_write (subevt, u)
-    
+
     write (u, "(A)")
-    write (u, "(A)")  "* Test output end: expressions_3"        
-    
+    write (u, "(A)")  "* Test output end: expressions_3"
+
   end subroutine expressions_3
-  
+
 @  %def expressions_3
 @ Test expressions from a PDG array.
 <<Eval trees: execute tests>>=
   call test (expressions_4, "expressions_4", &
        "check pdg array expressions", &
-       u, results) 
+       u, results)
 <<Eval trees: test declarations>>=
   public :: expressions_4
-<<Eval trees: tests>>=          
+<<Eval trees: tests>>=
   subroutine expressions_4 (u)
     integer, intent(in) :: u
     type(subevt_t), target :: subevt
@@ -11261,11 +11261,11 @@ observable and the node evaluation.
 
     write (u, "(A)")  "* Test output: Expressions"
     write (u, "(A)")  "*   Purpose: test pdg array expressions"
-    write (u, "(A)")       
+    write (u, "(A)")
 
     write (u, "(A)")  "* Initialization:"
-    write (u, "(A)")       
-    
+    write (u, "(A)")
+
     call syntax_pexpr_init ()
     call syntax_write (syntax_pexpr, u)
     allocate (var_list)
@@ -11307,11 +11307,11 @@ observable and the node evaluation.
          "  count [incoming photon] * 3 > 0"
     write (u, "(A,A)")  "     ", char (expr_text)
     write (u, "(A)")
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Extract the evaluation tree:"
     write (u, "(A)")
-    
+
     call ifile_append (ifile, expr_text)
     call stream_init (stream, ifile)
     call eval_tree%init_stream (stream, var_list, subevt, V_LOG)
@@ -11327,17 +11327,17 @@ observable and the node evaluation.
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
     write (u, "(A)")
-    
+
     call stream_final (stream)
     call ifile_final (ifile)
     call eval_tree%final ()
     call var_list%final ()
     deallocate (var_list)
-    call syntax_pexpr_final ()  
-    
+    call syntax_pexpr_final ()
+
     write (u, "(A)")
-    write (u, "(A)")  "* Test output end: expressions_4"        
-        
+    write (u, "(A)")  "* Test output end: expressions_4"
+
   end subroutine expressions_4
 
 @ %def expressions_4
@@ -11380,7 +11380,7 @@ the global variable list.
 module models
 
   use, intrinsic :: iso_c_binding !NODEP!
-  
+
 <<Use kinds>>
   use kinds, only: c_default_float
 <<Use strings>>
@@ -11390,7 +11390,7 @@ module models
   use os_interface
   use physics_defs, only: UNDEFINED
   use model_data
-  
+
   use ifiles
   use syntax_rules
   use lexers
@@ -11440,7 +11440,7 @@ copies (instances) of the parameter object.
   integer, parameter :: PAR_EXTERNAL = 3
 
 @ %def PAR_NONE PAR_INDEPENDENT PAR_DERIVED PAR_EXTERNAL PAR_UNUSED
-<<Models: types>>= 
+<<Models: types>>=
   type :: parameter_t
      private
      integer :: type  = PAR_NONE
@@ -11613,9 +11613,9 @@ suitable for input and output!]
        call par%data%show (l, u)
     end if
   end subroutine parameter_show
-    
+
 @ %def parameter_show
-@ 
+@
 \subsection{Model Object}
 A model object holds all information about parameters, particles,
 and vertices.  For models that require an external program for
@@ -11738,7 +11738,7 @@ core of the full initializer above.
     allocate (model%par (n_par))
     call model%model_data_t%init (name, n_par, 0, n_prt, n_vtx)
   end subroutine model_basic_init
-    
+
 @ %def model_basic_init
 @ Finalization: The variable list contains allocated pointers, also the parse
 tree.  We also close the DL access object, if any, that enables external
@@ -11886,7 +11886,7 @@ tree) is displayed, and the vertex hash table is shown.
        call field%show (l, u)
     end do
   end subroutine model_show_fields
-  
+
 @ %def model_data_show_fields
 @ Show the list of stable, unstable, polarized, or unpolarized
 particles, respectively.
@@ -11916,7 +11916,7 @@ particles, respectively.
     end do
     write (u, *)
   end subroutine model_show_stable
-  
+
   subroutine model_show_unstable (model, unit)
     class(model_t), intent(in), target :: model
     integer, intent(in), optional :: unit
@@ -11937,7 +11937,7 @@ particles, respectively.
     end do
     write (u, *)
   end subroutine model_show_unstable
-  
+
   subroutine model_show_polarized (model, unit)
     class(model_t), intent(in), target :: model
     integer, intent(in), optional :: unit
@@ -11958,7 +11958,7 @@ particles, respectively.
     end do
     write (u, *)
   end subroutine model_show_polarized
-  
+
   subroutine model_show_unpolarized (model, unit)
     class(model_t), intent(in), target :: model
     integer, intent(in), optional :: unit
@@ -11980,7 +11980,7 @@ particles, respectively.
     end do
     write (u, *)
   end subroutine model_show_unpolarized
-  
+
 @ %def model_show_stable
 @ %def model_show_unstable
 @ %def model_show_polarized
@@ -12114,7 +12114,7 @@ which also take care of the building a new variable list.
        call model%set_parameter_unused (i, name)
     end select
   end subroutine model_copy_parameter
-  
+
 @ %def model_copy_parameter
 @ Recalculate all derived parameters.
 <<Models: model: TBP>>=
@@ -12149,7 +12149,7 @@ which also take care of the building a new variable list.
     field => model%get_field_ptr_by_index (i)
     call field%init (longname, pdg)
   end subroutine model_init_field
-    
+
 @ %def model_init_field
 @ Copy field data for index [[i]] from another particle which serves
 as a template.  The name should be the unique long name.
@@ -12179,7 +12179,7 @@ Write the model variable list.
     logical, intent(in), optional :: follow_link
     call var_list_write (model%var_list, unit, follow_link)
   end subroutine model_write_var_list
-  
+
 @ %def model_write_var_list
 @ Link a variable list to the model variables.
 <<Models: model: TBP>>=
@@ -12192,7 +12192,7 @@ Write the model variable list.
   end subroutine model_link_var_list
 
 @ %def model_link_var_list
-@ 
+@
 Check if the model contains a named variable.
 <<Models: model: TBP>>=
   procedure :: var_exists => model_var_exists
@@ -12203,7 +12203,7 @@ Check if the model contains a named variable.
     logical :: flag
     flag = model%var_list%contains (name, follow_link=.false.)
   end function model_var_exists
-  
+
 @ %def model_var_exists
 @ Check if the model variable is a derived parameter, i.e., locked.
 <<Models: model: TBP>>=
@@ -12215,7 +12215,7 @@ Check if the model contains a named variable.
     logical :: flag
     flag = model%var_list%is_locked (name, follow_link=.false.)
   end function model_var_is_locked
-  
+
 @ %def model_var_is_locked
 @ Set a model parameter via the named variable.  We assume that the
 variable exists and is writable, i.e., non-locked.  We update the
@@ -12234,7 +12234,7 @@ always synchronized.
          verbose=verbose, model_name=model%get_name (), pacified=pacified)
     call model%update_parameters ()
   end subroutine model_var_set_real
-    
+
 @ %def model_var_set_real
 @ Retrieve a model parameter value.
 <<Models: model: TBP>>=
@@ -12246,7 +12246,7 @@ always synchronized.
     real(default) :: rval
     rval = model%var_list%get_rval (name, follow_link=.false.)
   end function model_var_get_rval
-  
+
 @ %def model_var_get_rval
 @
 [To be deleted] Return a pointer to the variable list.
@@ -12281,8 +12281,8 @@ The model supports schemes if the scheme array is allocated.
     class(model_t), intent(in) :: model
     flag = allocated (model%schemes)
   end function model_has_schemes
-  
-@ %def model_has_schemes 
+
+@ %def model_has_schemes
 @
 Enable schemes: fix the list of allowed schemes.
 <<Models: model: TBP>>=
@@ -12293,7 +12293,7 @@ Enable schemes: fix the list of allowed schemes.
     type(string_t), dimension(:), intent(in) :: scheme
     allocate (model%schemes (size (scheme)), source = scheme)
   end subroutine model_enable_schemes
-  
+
 @ %def model_enable_schemes
 @
 Find the scheme.  Check if the scheme is allowed.  The numeric index of the
@@ -12338,7 +12338,7 @@ model without schemes retains $0$.
        end if
     end if
   end subroutine model_set_scheme
-  
+
 @ %def model_set_scheme
 @
 Get the scheme.  Note that the base [[model_data_t]] provides a
@@ -12355,7 +12355,7 @@ Get the scheme.  Note that the base [[model_data_t]] provides a
        scheme = ""
     end if
   end function model_get_scheme
-  
+
 @ %def model_get_scheme
 @
 Check if a model has been set up with a specific name and (if
@@ -12382,9 +12382,9 @@ model object.
        end if
     end if
   end function model_matches
-  
+
 @ %def model_matches
-@ 
+@
 \subsection{Reading models from file}
 This procedure defines the model-file syntax for the parser, returning
 an internal file (ifile).
@@ -12446,7 +12446,7 @@ expression syntax, so we exclude them here.
     call ifile_append (ifile, "SEQ prt_src = like prt_longname prt_properties")
     call ifile_append (ifile, "KEY like")
     call ifile_append (ifile, "SEQ prt_properties = prt_property*")
-    call ifile_append (ifile, "ALT prt_property = " // & 
+    call ifile_append (ifile, "ALT prt_property = " // &
          "parton | invisible | gauge | left | right | " // &
          "prt_name | prt_anti | prt_tex_name | prt_tex_anti | " // &
          "prt_spin | prt_isospin | prt_charge | " // &
@@ -12553,9 +12553,8 @@ module variables:
     type(parse_node_t), pointer :: nd_external_pars
     type(parse_node_t), pointer :: nd_particles, nd_vertices
     type(string_t) :: model_name, lib_name
-    integer :: n_schemes, n_parblock, n_par, i_par, n_ext, n_prt, n_vtx
+    integer :: n_parblock, n_par, i_par, n_ext, n_prt, n_vtx
     type(parse_node_t), pointer :: nd_par_def
-    type(parse_node_t), pointer :: nd_der_def
     type(parse_node_t), pointer :: nd_ext_def
     type(parse_node_t), pointer :: nd_prt
     type(parse_node_t), pointer :: nd_vtx
@@ -12583,7 +12582,7 @@ module variables:
     open (file=char(file), unit=unit, action="read", status="old")
     model_md5sum = md5sum (unit)
     close (unit)
-    
+
     call lexer_init_model_file (lexer)
     call stream_init (stream, char (file))
     call lexer_assign_stream (lexer, stream)
@@ -12607,7 +12606,7 @@ module variables:
          ("particles", nd_particles, nd_prt, n_prt, nd_vertices)
     call find_block &
          ("vertices", nd_vertices, nd_vtx, n_vtx)
-    
+
     if (associated (nd_external_pars)) then
        lib_name = "external." // model_name
     else
@@ -12638,12 +12637,12 @@ module variables:
     if (associated (nd_vtx)) then
        call handle_vertices (nd_vtx, n_vtx)
     end if
-    
+
     call model%freeze_vertices ()
     call model%append_field_vars ()
 
   contains
-    
+
     subroutine find_block (key, nd, nd_item, n_item, nd_next)
       character(*), intent(in) :: key
       type(parse_node_t), pointer, intent(inout) :: nd
@@ -12810,12 +12809,12 @@ module variables:
     subroutine handle_external (nd_ext_def, n_par, n_ext)
       type(parse_node_t), pointer, intent(inout) :: nd_ext_def
       integer, intent(in) :: n_par, n_ext
-      real(c_default_float), dimension(:), allocatable :: par
       integer :: i
       do i = n_par + 1, n_par + n_ext
          call model%read_external (i, nd_ext_def)
          nd_ext_def => parse_node_get_next_ptr (nd_ext_def)
       end do
+!     real(c_default_float), dimension(:), allocatable :: par
 !       if (associated (model%init_external_parameters)) then
 !          allocate (par (model%get_n_real ()))
 !          call model%real_parameters_to_c_array (par)
@@ -12823,7 +12822,7 @@ module variables:
 !          call model%real_parameters_from_c_array (par)
 !       end if
     end subroutine handle_external
-    
+
     subroutine handle_fields (nd_prt, n_prt)
       type(parse_node_t), pointer, intent(inout) :: nd_prt
       integer, intent(in) :: n_prt
@@ -12843,7 +12842,7 @@ module variables:
          nd_vtx => parse_node_get_next_ptr (nd_vtx)
       end do
     end subroutine handle_vertices
-      
+
   end subroutine model_read
 
 @ %def model_read
@@ -12882,7 +12881,7 @@ Don't evaluate the expression, yet.
 
 @ %def model_read_derived
 @ External parameters have no definition; they are handled by an
-external library. 
+external library.
 <<Models: model: TBP>>=
   procedure, private :: read_external => model_read_external
 <<Models: procedures>>=
@@ -12924,7 +12923,7 @@ external library.
     type(string_t), dimension(:), allocatable :: name
     type(field_data_t), pointer :: field, field_src
     longname = parse_node_get_string (parse_node_get_sub_ptr (node, 2))
-    pdg = parse_node_get_integer (parse_node_get_sub_ptr (node, 3)) 
+    pdg = parse_node_get_integer (parse_node_get_sub_ptr (node, 3))
     field => model%get_field_ptr_by_index (i)
     call field%init (longname, pdg)
     nd_src => parse_node_get_sub_ptr (node, 4)
@@ -13128,7 +13127,7 @@ the field content.
     aval = pack (pdg, mask)
     call var_list_append_pdg_array &
          (model%var_list, var_str ("neutral"), &
-          aval, locked = .true., intrinsic=.true.)    
+          aval, locked = .true., intrinsic=.true.)
     do i = 1, size (pdg)
        field => model%get_field_ptr (pdg(i))
        mask(i) = field%get_color_type () /= 1
@@ -13138,9 +13137,26 @@ the field content.
          (model%var_list, var_str ("colored"), &
           aval, locked = .true., intrinsic=.true.)
   end subroutine model_append_field_vars
-    
+
 @ %def model_append_field_vars
-@ 
+@
+\subsection{Test models}
+<<Models: public>>=
+  public :: create_test_model
+<<Models: procedures>>=
+  subroutine create_test_model (model_name, test_model)
+    type(string_t), intent(in) :: model_name
+    type(model_t), intent(out), pointer :: test_model
+    type(os_data_t) :: os_data
+    type(model_list_t) :: model_list
+    call syntax_model_file_init ()
+    call os_data_init (os_data)
+    call model_list%read_model &
+       (model_name, model_name // var_str (".mdl"), os_data, test_model)
+  end subroutine create_test_model
+
+@ %def create_test_model
+@
 \subsection{Model list}
 List of currently active models
 <<Models: types>>=
@@ -13199,13 +13215,13 @@ from the global context.
     type(model_list_t), intent(in), target :: context
     model_list%context => context
   end subroutine model_list_link
-  
+
 @ %def model_list_link
 @ (Private, used below:)
 Append an existing model, for which we have allocated a pointer entry, to
 the model list.  The original pointer becomes disassociated, and the model
 should now be considered as part of the list.  We assume that this model is
-not yet part of the list.  
+not yet part of the list.
 
 If we provide a [[model]] argument, this returns a pointer to the new entry.
 <<Models: model list: TBP>>=
@@ -13226,7 +13242,7 @@ If we provide a [[model]] argument, this returns a pointer to the new entry.
        current => null ()
     end if
   end subroutine model_list_import
-       
+
 @ %def model_list_import
 @ Currently test only:
 
@@ -13311,7 +13327,7 @@ pointer to the new entry.
     call copy%init_instance (orig)
     call model_list%import (copy, model)
   end subroutine model_list_append_copy
-    
+
 @ %def model_list_append_copy
 @ Check if a model exists by examining the list.  Check recursively unless
 told otherwise.
@@ -13439,7 +13455,7 @@ part of the [[model_data_t]] base type and are copied afterwards via its
     model%max_par_name_length = orig%max_par_name_length
     call model%append_field_vars ()
   end subroutine model_copy
-  
+
 @ %def model_copy
 @
 \subsection{Unit tests}
@@ -13450,13 +13466,13 @@ Test module, followed by the corresponding implementation module.
 module models_ut
   use unit_tests
   use models_uti
-  
+
 <<Standard module head>>
 
 <<Models: public test>>
 
 contains
-  
+
 <<Models: test driver>>
 
 end module models_ut
@@ -13596,17 +13612,17 @@ Read a predefined model from file.
     call model_list%read_model (var_str ("Test"), var_str ("Test.mdl"), &
          os_data, model)
     call model_list%write (u)
-    
+
     write (u, *)
     write (u, "(A)")  "* Variable list"
     write (u, *)
-    
+
     var_list => model%get_var_list_ptr ()
     call var_list%write (u)
 
     write (u, *)
     write (u, "(A)")  "* Cleanup"
-    
+
     call model_list%final ()
     call syntax_model_file_final ()
 
@@ -13645,22 +13661,22 @@ Read a predefined model from file and create an instance.
          os_data, model)
     allocate (instance)
     call instance%init_instance (model)
-    
+
     call model%write (u)
-    
+
     write (u, *)
     write (u, "(A)")  "* Variable list"
     write (u, *)
-    
+
     var_list => instance%get_var_list_ptr ()
     call var_list%write (u)
 
     write (u, *)
     write (u, "(A)")  "* Cleanup"
-    
+
     call instance%final ()
     deallocate (instance)
-    
+
     call model_list%final ()
     call syntax_model_file_final ()
 
@@ -13732,7 +13748,7 @@ Read a predefined model from file and define decays and polarization.
     call model%set_stable (-6)
 
     call model%write (u)
-    
+
     md5sum = model%get_parameters_md5sum ()
     write (u, *)
     write (u, "(1x,3A)")  "MD5 sum (parameters) = '", md5sum, "'"
@@ -13749,7 +13765,7 @@ Read a predefined model from file and define decays and polarization.
 
     write (u, *)
     write (u, "(A)")  "* Cleanup"
-    
+
     call model_instance%final ()
     deallocate (model_instance)
     call model_list%final ()
@@ -13818,7 +13834,7 @@ Note that the MD5 sum is not modified by this.
     write (u, *)
     write (u, "(A)")  "* Modify parameter"
     write (u, *)
-    
+
     call model%set_real (var_str ("ff"), 1._default)
 
     call model%write (u, &
@@ -13830,7 +13846,7 @@ Note that the MD5 sum is not modified by this.
 
     write (u, *)
     write (u, "(A)")  "* Cleanup"
-    
+
     call model_list%final ()
     call syntax_model_file_final ()
 
@@ -13879,7 +13895,7 @@ parameters is non-canonical.
     end do
 1   continue
     close (um)
-    
+
     call syntax_model_file_init ()
     call os_data_init (os_data)
 
@@ -13889,13 +13905,13 @@ parameters is non-canonical.
     write (u, *)
     write (u, "(A)")  "* Variable list"
     write (u, *)
-    
+
     var_list => model%get_var_list_ptr ()
     call var_list%write (u)
 
     write (u, *)
     write (u, "(A)")  "* Cleanup"
-    
+
     call model_list%final ()
     call syntax_model_file_final ()
 
@@ -13959,14 +13975,14 @@ parameter list.
     end do
 1   continue
     close (um)
-    
+
     call syntax_model_file_init ()
     call os_data_init (os_data)
 
     write (u, *)
     write (u, "(A)")  "* Model output, default scheme (= foo)"
     write (u, *)
-    
+
     call model_list%read_model (var_str ("Test7"), var_str ("Test7.mdl"), &
          os_data, model)
     call model%write (u, show_md5sum=.false.)
@@ -13978,7 +13994,7 @@ parameter list.
     write (u, *)
     write (u, "(A)")  "* Model output, scheme foo"
     write (u, *)
-    
+
     call model_list%read_model (var_str ("Test7"), var_str ("Test7.mdl"), &
          os_data, model, scheme = var_str ("foo"))
     call model%write (u, show_md5sum=.false.)
@@ -13990,7 +14006,7 @@ parameter list.
     write (u, *)
     write (u, "(A)")  "* Model output, scheme bar"
     write (u, *)
-    
+
     call model_list%read_model (var_str ("Test7"), var_str ("Test7.mdl"), &
          os_data, model, scheme = var_str ("bar"))
     call model%write (u, show_md5sum=.false.)
@@ -14002,7 +14018,7 @@ parameter list.
     write (u, *)
     write (u, "(A)")  "* Model output, scheme gee"
     write (u, *)
-    
+
     call model_list%read_model (var_str ("Test7"), var_str ("Test7.mdl"), &
          os_data, model, scheme = var_str ("gee"))
     call model%write (u, show_md5sum=.false.)
@@ -14011,7 +14027,7 @@ parameter list.
 
     write (u, *)
     write (u, "(A)")  "* Cleanup"
-    
+
     call model_list%final ()
     call syntax_model_file_final ()
 
@@ -14019,7 +14035,7 @@ parameter list.
     write (u, "(A)")  "* Test output end: models_7"
 
   contains
-    
+
     subroutine show_var_list ()
       write (u, *)
       write (u, "(A)")  "* Variable list"
@@ -14092,7 +14108,7 @@ contains
 
 end module slha_interface
 @ %def slha_interface
-@ 
+@
 \subsection{Preprocessor}
 SLHA is a mixed-format standard.  It should be read in assuming free
 format (but line-oriented), but it has some fixed-format elements.
@@ -14270,7 +14286,7 @@ are not quoted, must be parsed somehow.  The hack for this problem is
 to allow essentially all characters as special characters, so the
 string can be read before it is discarded.
 <<SLHA: public>>=
-  public :: lexer_init_slha 
+  public :: lexer_init_slha
 <<SLHA: procedures>>=
   subroutine lexer_init_slha (lexer)
     type(lexer_t), intent(out) :: lexer
@@ -14285,13 +14301,13 @@ string can be read before it is discarded.
   end subroutine lexer_init_slha
 
 @ %def lexer_init_slha
-@ 
+@
 \subsection{Interpreter}
 \subsubsection{Find blocks}
 From the parse tree, find the node that represents a particular
 block.  If [[required]] is true, issue an error if not found.
-Since [[block_name]] is always invoked with capital letters, we 
-have to capitalize [[pn_block_name]]. 
+Since [[block_name]] is always invoked with capital letters, we
+have to capitalize [[pn_block_name]].
 <<SLHA: procedures>>=
   function slha_get_block_ptr &
        (parse_tree, block_name, required) result (pn_block)
@@ -14308,7 +14324,7 @@ have to capitalize [[pn_block_name]].
           pn_block_spec => parse_node_get_sub_ptr (pn_block, 2)
           pn_block_name => parse_node_get_sub_ptr (pn_block_spec)
           if (trim (adjustl (upper_case (parse_node_get_string &
-	           (pn_block_name)))) == block_name) then
+               (pn_block_name)))) == block_name) then
              return
           end if
        end select
@@ -14351,7 +14367,7 @@ have to capitalize [[pn_block_name]].
   end function slha_get_next_decay_ptr
 
 @ %def slha_get_next_decay_ptr
-@ 
+@
 \subsubsection{Extract and transfer data from blocks}
 Given the parse node of a block, find the parse node of a particular
 switch or data line.  Return this node and the node of the data item
@@ -14432,7 +14448,7 @@ given integer code pair.
   end subroutine slha_next_index_pair_ptr
 
 @ %def slha_next_index_pair_ptr
-@ 
+@
 \subsubsection{Handle info data}
 Return all strings with index [[i]].  The result is an allocated
 string array.  Since we do not know the number of matching entries in
@@ -14483,7 +14499,7 @@ final array and deleted before exiting.
   end subroutine retrieve_strings_in_block
 
 @ %def retrieve_strings_in_block
-@ 
+@
 \subsubsection{Transfer data from SLHA to variables}
 Extract real parameter with index [[i]].  If it does not
 exist, retrieve it from the variable list, using the given name.
@@ -14540,7 +14556,7 @@ the variable is not present in the variable list, ignore it.
   end subroutine set_matrix_element
 
 @ %def set_matrix_element
-@ 
+@
 \subsubsection{Transfer data from variables to SLHA}
 Get a real/integer parameter with index [[i]] from the variable list and write
 it to the current output file.  In the integer case, we account for
@@ -14591,7 +14607,7 @@ nothing.
   end subroutine write_matrix_element
 
 @ %def write_matrix_element
-@ 
+@
 \subsection{Auxiliary function}
 Write a block header.
 <<SLHA: procedures>>=
@@ -14697,7 +14713,7 @@ using the required output format.
   end subroutine write_real_matrix_element
 
 @ %def write_real_matrix_element
-@ 
+@
 \subsubsection{The concrete SLHA interpreter}
 SLHA codes for particular physics models
 <<SLHA: parameters>>=
@@ -14752,7 +14768,7 @@ Public for use in unit test.
   end subroutine slha_interpret_parse_tree
 
 @ %def slha_interpret_parse_tree
-@ 
+@
 \subsubsection{Info blocks}
 Handle the informational blocks SPINFO and DCINFO.  The first two
 items are program name and version.  Items with index 3 are warnings.
@@ -14800,7 +14816,7 @@ and errors.
   end subroutine slha_handle_info_block
 
 @ %def slha_handle_info_block
-@ 
+@
 \subsubsection{MODSEL}
 Handle the overall model definition.  Only certain models are
 recognized.  The soft-breaking model templates that determine the set
@@ -14841,11 +14857,11 @@ of input parameters:
     end if
     call slha_find_index_ptr (pn_block, pn_data, pn_item, 4)
     if (associated (pn_item)) then
-      call msg_fatal (" R-parity violation is currently not supported by WHIZARD.")	
+      call msg_fatal (" R-parity violation is currently not supported by WHIZARD.")
     end	if
     call slha_find_index_ptr (pn_block, pn_data, pn_item, 5)
     if (associated (pn_item)) then
-      call msg_fatal (" CP violation is currently not supported by WHIZARD.")	
+      call msg_fatal (" CP violation is currently not supported by WHIZARD.")
     end	if
     select case (char (model_name))
     case ("MSSM")
@@ -14855,17 +14871,17 @@ of input parameters:
        case default
           call msg_fatal ("Selected model '" &
                // char (model%get_name ()) // "' does not match model '" &
-               // char (model_name) // "' in SLHA input file.")	
+               // char (model_name) // "' in SLHA input file.")
           return
        end select
-    case ("NMSSM") 	 
+    case ("NMSSM")
        select case (char (model%get_name ()))
        case ("NMSSM","NMSSM_CKM","NMSSM_Hgg")
           model_name = model%get_name ()
        case default
           call msg_fatal ("Selected model '" &
                // char (model%get_name ()) // "' does not match model '" &
-               // char (model_name) // "' in SLHA input file.")	
+               // char (model_name) // "' in SLHA input file.")
           return
        end select
     case default
@@ -14915,9 +14931,9 @@ of input parameters:
     call write_integer_parameter (u, 3, model_id, &
          "SUSY model type: " // char (model%get_name ()))
   end subroutine slha_write_MODSEL
-    
+
 @ %def slha_write_MODSEL
-@ 
+@
 \subsubsection{SMINPUTS}
 Read SM parameters and update the variable list accordingly.  If a
 parameter is not defined in the block, we use the previous value from
@@ -14991,7 +15007,7 @@ while \whizard\ derives them from $G_F$, $m_W$, and $m_Z$.
   end subroutine slha_write_SMINPUTS
 
 @ %def slha_write_SMINPUTS
-@ 
+@
 \subsubsection{MINPAR}
 The block of SUSY input parameters.  They are accessible to WHIZARD,
 but they only get used when an external spectrum generator is
@@ -15085,7 +15101,7 @@ breaking, which by itself is one of the parameters.
             "tan(beta)")
     end select
   end subroutine slha_write_MINPAR
-    
+
 @ %def slha_write_MINPAR
 @
 \subsubsection{Mass spectrum}
@@ -15125,7 +15141,7 @@ mass was included.
   end subroutine slha_handle_MASS
 
 @ %def slha_handle_MASS
-@ 
+@
 \subsubsection{Widths}
 Set widths.  For each DECAY block, extract the header, read the PDG
 code and width, and try to set the appropriate particle width in the
@@ -15150,12 +15166,12 @@ current model.
   end subroutine slha_handle_decays
 
 @ %def slha_handle_decays
-@ 
+@
 \subsubsection{Mixing matrices}
 Read mixing matrices.  We can treat all matrices by a single
 procedure if we just know the block name, variable prefix, and matrix
-dimension.  The matrix dimension must be less than 10. 
-For the pseudoscalar Higgses in NMSSM-type models we need off-diagonal 
+dimension.  The matrix dimension must be less than 10.
+For the pseudoscalar Higgses in NMSSM-type models we need off-diagonal
 matrices, so we generalize the definition.
 <<SLHA: procedures>>=
   subroutine slha_handle_matrix_block &
@@ -15181,7 +15197,7 @@ matrices, so we generalize the definition.
   end subroutine slha_handle_matrix_block
 
 @ %def slha_handle_matrix_block
-@ 
+@
 \subsubsection{Higgs data}
 Read the block ALPHA which holds just the Higgs mixing angle.
 <<SLHA: procedures>>=
@@ -15235,13 +15251,13 @@ Read the block ALPHA which holds just the Higgs mixing angle.
     if (.not. (associated (pn_block)))  return
     call set_data_item (pn_block, 1, var_str ("ls"), var_list)
     call set_data_item (pn_block, 2, var_str ("ks"), var_list)
-    call set_data_item (pn_block, 3, var_str ("a_ls"), var_list)    
-    call set_data_item (pn_block, 4, var_str ("a_ks"), var_list)        
-    call set_data_item (pn_block, 5, var_str ("nmu"), var_list)    
+    call set_data_item (pn_block, 3, var_str ("a_ls"), var_list)
+    call set_data_item (pn_block, 4, var_str ("a_ks"), var_list)
+    call set_data_item (pn_block, 5, var_str ("nmu"), var_list)
     end subroutine slha_handle_NMSSMRUN
 
 @ %def slha_handle_NMSSMRUN
-@ 
+@
 \subsection{Parser}
 Read a SLHA file from stream, including preprocessing, and make up a
 parse tree.
@@ -15294,7 +15310,7 @@ Required for test:
   end subroutine slha_parse_file
 
 @ %def slha_parse_file
-@ 
+@
 \subsection{API}
 Read the SLHA file, parse it, and interpret the parse tree.  The model
 parameters retrieved from the file will be inserted into the
@@ -15351,6 +15367,20 @@ The pointer to this model is returned as the last argument.
 
 @ %def slha_write_file
 @
+\subsection{Dispatch}
+<<SLHA: public>>=
+  public :: dispatch_slha
+<<SLHA: procedures>>=
+  subroutine dispatch_slha (var_list, input, spectrum, decays)
+    type(var_list_t), intent(inout), target :: var_list
+    logical, intent(out) :: input, spectrum, decays
+    input = var_list%get_lval (var_str ("?slha_read_input"))
+    spectrum = var_list%get_lval (var_str ("?slha_read_spectrum"))
+    decays = var_list%get_lval (var_str ("?slha_read_decays"))
+  end subroutine dispatch_slha
+
+@ %def dispatch_slha
+@
 \subsection{Unit tests}
 Test module, followed by the corresponding implementation module.
 <<[[slha_interface_ut.f90]]>>=
@@ -15359,13 +15389,13 @@ Test module, followed by the corresponding implementation module.
 module slha_interface_ut
   use unit_tests
   use slha_interface_uti
-  
+
 <<Standard module head>>
 
 <<SLHA: public test>>
 
 contains
-  
+
 <<SLHA: test driver>>
 
 end module slha_interface_ut
@@ -15403,7 +15433,7 @@ end module slha_interface_uti
   subroutine slha_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
-  <<SLHA: execute tests>>  
+  <<SLHA: execute tests>>
   end subroutine slha_test
 
 @  %def slha_test
@@ -15414,8 +15444,8 @@ end module slha_interface_uti
        u, results)
 <<SLHA: test declarations>>=
   public :: slha_1
-<<SLHA: tests>>=   
-  subroutine slha_1 (u) 
+<<SLHA: tests>>=
+  subroutine slha_1 (u)
     integer, intent(in) :: u
     type(os_data_t), pointer :: os_data => null ()
     type(parse_tree_t), pointer :: parse_tree => null ()
@@ -15424,14 +15454,14 @@ end module slha_interface_uti
     character(*), parameter :: file_slha = "slha_test.dat"
     type(model_list_t) :: model_list
     type(model_t), pointer :: model => null ()
-    
+
     write (u, "(A)")  "* Test output: SLHA Interface"
     write (u, "(A)")  "*   Purpose: test SLHA file reading and writing"
-    write (u, "(A)")            
+    write (u, "(A)")
 
     write (u, "(A)")  "* Initializing"
-    write (u, "(A)")    
-    
+    write (u, "(A)")
+
     allocate (os_data)
     allocate (parse_tree)
     call os_data_init (os_data)
@@ -15441,32 +15471,32 @@ end module slha_interface_uti
     call syntax_slha_init ()
 
     write (u, "(A)")  "* Reading SLHA file sps1ap_decays.slha"
-    write (u, "(A)")    
-    
+    write (u, "(A)")
+
     call slha_parse_file (var_str ("sps1ap_decays.slha"), os_data, parse_tree)
 
     write (u, "(A)")  "* Writing the parse tree:"
-    write (u, "(A)")    
+    write (u, "(A)")
 
     call parse_tree_write (parse_tree, u)
-    
+
     write (u, "(A)")  "* Interpreting the parse tree"
-    write (u, "(A)")    
-    
+    write (u, "(A)")
+
     call slha_interpret_parse_tree (parse_tree, model, &
-         input=.true., spectrum=.true., decays=.true.)    
+         input=.true., spectrum=.true., decays=.true.)
     call parse_tree_final (parse_tree)
 
     write (u, "(A)")  "* Writing out the list of variables (reals only):"
-    write (u, "(A)")    
-    
+    write (u, "(A)")
+
     call var_list_write (model%get_var_list_ptr (), &
          only_type = V_REAL, unit = u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Writing SLHA output to '" // file_slha // "'"
-    write (u, "(A)")    
-        
+    write (u, "(A)")
+
     call slha_write_file (var_str (file_slha), model, input=.true., &
          spectrum=.false., decays=.false.)
     u_file = free_unit ()
@@ -15484,15 +15514,74 @@ end module slha_interface_uti
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
     write (u, "(A)")
-    
+
     call parse_tree_final (parse_tree)
     deallocate (parse_tree)
     deallocate (os_data)
 
     write (u, "(A)")  "* Test output end: slha_1"
     write (u, "(A)")
-    
+
   end subroutine slha_1
 
 @ %def slha_1
+@
+\subsubsection{SLHA interface}
+This rather trivial sets all input values for the SLHA interface
+to [[false]].
+<<SLHA: execute tests>>=
+  call test (slha_2, "slha_2", &
+       "SLHA interface", &
+       u, results)
+<<SLHA: test declarations>>=
+  public :: slha_2
+<<SLHA: tests>>=
+  subroutine slha_2 (u)
+    integer, intent(in) :: u
+    type(var_list_t) :: var_list
+    logical :: input, spectrum, decays
 
+    write (u, "(A)")  "* Test output: slha_2"
+    write (u, "(A)")  "*   Purpose: SLHA interface settings"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Default settings"
+    write (u, "(A)")
+
+    call var_list%init_defaults (0)
+    call dispatch_slha (var_list, &
+         input = input, spectrum = spectrum, decays = decays)
+
+    write (u, "(A,1x,L1)")  " slha_read_input     =", input
+    write (u, "(A,1x,L1)")  " slha_read_spectrum  =", spectrum
+    write (u, "(A,1x,L1)")  " slha_read_decays    =", decays
+
+    call var_list%final ()
+    call var_list%init_defaults (0)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Set all entries to [false]"
+    write (u, "(A)")
+
+    call var_list%set_log (var_str ("?slha_read_input"), &
+         .false., is_known = .true.)
+    call var_list%set_log (var_str ("?slha_read_spectrum"), &
+         .false., is_known = .true.)
+    call var_list%set_log (var_str ("?slha_read_decays"), &
+         .false., is_known = .true.)
+
+    call dispatch_slha (var_list, &
+         input = input, spectrum = spectrum, decays = decays)
+
+    write (u, "(A,1x,L1)")  " slha_read_input     =", input
+    write (u, "(A,1x,L1)")  " slha_read_spectrum  =", spectrum
+    write (u, "(A,1x,L1)")  " slha_read_decays    =", decays
+
+    call var_list%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: slha_2"
+
+  end subroutine slha_2
+
+@ %def slha_2

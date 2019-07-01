@@ -1,9 +1,9 @@
 #! /bin/sh
 ########################################################################
 
-src_builddir=@top_builddir@/src
-test_srcdir=@top_srcdir@/share/tests
-data_srcdir=@top_srcdir@/share/data
+src_builddir=@top_builddir@/circe2/src
+test_srcdir=@top_srcdir@/circe2/share/tests
+data_srcdir=@top_srcdir@/circe2/share/data
 circe2_generate=$src_builddir/circe2_generate
 output=generate.output
 

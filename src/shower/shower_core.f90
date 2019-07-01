@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -136,13 +136,6 @@ module shower_core
   end type shower_t
 
 
-  interface
-     subroutine evolvePDFM (set, x, q, ff)
-       integer, intent(in) :: set
-       double precision, intent(in) :: x, q
-       double precision, dimension(-6:6), intent(out) :: ff
-     end subroutine evolvePDFM
-  end interface
 
 
 contains
@@ -306,7 +299,7 @@ contains
        call msg_debug (D_SHOWER, "Generate ISR with FSR")
        i = 0
        BRANCHINGS: do
-          i = i+1
+          i = i + 1
           if (signal_is_pending ()) return
           if (shower%settings%muli_active) then
           call shower%mi%generate_gev2_pt2 &
@@ -1824,7 +1817,7 @@ contains
       do i = 1, size (particles)
          hard_colored_mask(i) = (particles(i)%get_status () == PRT_INCOMING .or. &
               particles(i)%get_status () == PRT_OUTGOING) .and. &
-              particles(i)%is_colored ()    
+              particles(i)%is_colored ()
       end do
       !!! hard_colored_mask = (particles%get_status () == PRT_INCOMING .or. &
       !!!                      particles%get_status () == PRT_OUTGOING) .and. &

@@ -1,9 +1,8 @@
 % -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*- 
 % WHIZARD code as NOWEB source: user plugins for cuts and structure functions
-
-@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{User Plugin Support}
+\includemodulegraph{user}
 
 Here we collect interface code that enables the user to inject his own
 code into the WHIZARD workflow.  The code uses data types defined elsewhere, and

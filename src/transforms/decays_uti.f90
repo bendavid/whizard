@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -51,7 +51,8 @@ module decays_uti
   use phs_single
   use prc_core
   use prc_test, only: prc_test_create_library
-  use processes
+  use process, only: process_t
+  use instances, only: process_instance_t
   use process_stacks
 
   use decays
@@ -315,7 +316,6 @@ contains
     type(decay_root_config_t), target :: decay_root_config
     type(decay_root_t) :: decay_root
     type(decay_chain_t) :: decay_chain
-    integer :: i
 
     write (u, "(A)")  "* Test output: decays_5"
     write (u, "(A)")  "*   Purpose: Handle a process with subsequent decays"
@@ -375,8 +375,7 @@ contains
     write (u, "(A)")  "* Generate event"
     write (u, "(A)")
 
-    call process%generate_unweighted_event (process_instance, &
-         decay_root%get_mci ())
+    call process_instance%generate_unweighted_event (decay_root%get_mci ())
     call process_instance%evaluate_event_data ()
 
     call decay_root%generate ()
@@ -464,7 +463,7 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Generate scattering event"
 
-    call process%generate_unweighted_event (process_instance, 1)
+    call process_instance%generate_unweighted_event (1)
     call process_instance%evaluate_event_data ()
 
     write (u, "(A)")
@@ -512,7 +511,6 @@ contains
     class(rng_factory_t), allocatable :: rng_factory
     type(process_entry_t), pointer :: process
     type(process_instance_t), allocatable, target :: process_instance
-    class(prc_core_t), allocatable :: core_template
     class(mci_t), allocatable :: mci_template
     class(phs_config_t), allocatable :: phs_config_template
     type(field_data_t), pointer :: field_data
@@ -539,7 +537,6 @@ contains
 
     call reset_interaction_counter ()
 
-    allocate (test_t :: core_template)
     allocate (mci_midpoint_t :: mci_template)
     allocate (phs_single_config_t :: phs_config_template)
 
@@ -557,17 +554,18 @@ contains
        allocate (process)
        call process%init (procname1, &
             run_id, lib, os_data, qcd, rng_factory, model_copy)
+       call process%setup_test_cores ()
        call process%init_component &
-            (1, core_template, mci_template, phs_config_template)
+          (1, .true., mci_template, phs_config_template)
        sqrts = 1000
-       call process%setup_beams_sqrts (sqrts)
+       call process%setup_beams_sqrts (sqrts, i_core = 1)
        call process%configure_phs ()
        call process%setup_mci ()
        call process%setup_terms ()
 
        allocate (process_instance)
        call process_instance%init (process%process_t)
-       call process%integrate (process_instance, 1, n_it=1, n_calls=100)
+       call process_instance%integrate (1, n_it = 1, n_calls = 100)
        call process%final_integration (1)
        call process_instance%final ()
        deallocate (process_instance)
@@ -589,12 +587,13 @@ contains
        allocate (process)
        call process%init (procname2, &
             run_id, lib, os_data, qcd, rng_factory, model_copy)
+       call process%setup_test_cores ()
        call process%init_component &
-            (1, core_template, mci_template, phs_config_template)
+          (1, .true., mci_template, phs_config_template)
        if (present (decay_rest_frame)) then
-          call process%setup_beams_decay (rest_frame = decay_rest_frame)
+          call process%setup_beams_decay (rest_frame = decay_rest_frame, i_core = 1)
        else
-          call process%setup_beams_decay (rest_frame = .not. scattering)
+          call process%setup_beams_decay (rest_frame = .not. scattering, i_core = 1)
        end if
        call process%configure_phs ()
        call process%setup_mci ()
@@ -602,7 +601,7 @@ contains
 
        allocate (process_instance)
        call process_instance%init (process%process_t)
-       call process%integrate (process_instance, 1, n_it=1, n_calls=100)
+       call process_instance%integrate (1, n_it=1, n_calls=100)
        call process%final_integration (1)
        call process_instance%final ()
        deallocate (process_instance)

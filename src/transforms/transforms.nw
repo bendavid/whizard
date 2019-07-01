@@ -1,9 +1,8 @@
 % -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*-
 % WHIZARD event transforms and event API
-
-@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Event Implementation}
+\includemodulegraph{transforms}
 
 With a process object and the associated methods at hand, we can
 generate events for elementary processes and, by subsequent
@@ -54,7 +53,8 @@ module event_transforms
   use particles
   use subevents
   use rng_base
-  use processes
+  use process, only: process_t
+  use instances, only: process_instance_t
   use process_stacks
 
 <<Standard module head>>
@@ -379,7 +379,7 @@ instance.  The [[generate]] methods do nothing.
   end type evt_trivial_t
 
 @ %def evt_trivial_t
-@ 
+@
 <<Event transforms: evt trivial: TBP>>=
   procedure :: write_name => evt_trivial_write_name
 <<Event transforms: procedures>>=
@@ -390,7 +390,7 @@ instance.  The [[generate]] methods do nothing.
     u = given_output_unit (unit)
     write (u, "(1x,A)")  "Event transform: trivial (hard process)"
   end subroutine evt_trivial_write_name
-   
+
 @ %def evt_trivial_write_name
 @ The finalizer is trivial.  Some output:
 <<Event transforms: evt trivial: TBP>>=
@@ -445,7 +445,7 @@ instance as-is.
     integer :: i_term
     type(interaction_t), pointer :: int_matrix, int_flows
     if (evt%process_instance%is_complete_event ()) then
-       call evt%process_instance%select_i_term (i_term)
+       i_term = evt%process_instance%select_i_term ()
        int_matrix => evt%process_instance%get_matrix_int_ptr (i_term)
        int_flows  => evt%process_instance%get_flows_int_ptr (i_term)
        call evt%factorize_interactions (int_matrix, int_flows, &
@@ -499,7 +499,9 @@ module event_transforms_uti
   use phs_single
   use prc_core
   use prc_test, only: prc_test_create_library
-  use processes
+
+  use process, only: process_t
+  use instances, only: process_instance_t
 
   use event_transforms
 
@@ -546,7 +548,6 @@ nothing but to trigger event generation for an elementary process.
     class(model_data_t), pointer :: model
     type(process_library_t), target :: lib
     type(string_t) :: libname, procname1, run_id
-    class(prc_core_t), allocatable :: core_template
     class(mci_t), allocatable :: mci_template
     class(phs_config_t), allocatable :: phs_config_template
     real(default) :: sqrts
@@ -580,22 +581,22 @@ nothing but to trigger event generation for an elementary process.
     allocate (process)
     call process%init (procname1, run_id, &
          lib, os_data, qcd, rng_factory, model)
+    call process%setup_test_cores ()
 
-    allocate (test_t :: core_template)
     allocate (mci_midpoint_t :: mci_template)
     allocate (phs_single_config_t :: phs_config_template)
     call process%init_component &
-         (1, core_template, mci_template, phs_config_template)
+       (1, .true., mci_template, phs_config_template)
 
     sqrts = 1000
-    call process%setup_beams_sqrts (sqrts)
+    call process%setup_beams_sqrts (sqrts, i_core = 1)
     call process%configure_phs ()
     call process%setup_mci ()
     call process%setup_terms ()
 
     allocate (process_instance)
     call process_instance%init (process)
-    call process%integrate (process_instance, 1, n_it=1, n_calls=100)
+    call process_instance%integrate (1, n_it=1, n_calls=100)
     call process%final_integration (1)
     call process_instance%final ()
     deallocate (process_instance)
@@ -615,7 +616,7 @@ nothing but to trigger event generation for an elementary process.
     write (u, "(A)")  "* Generate event and subsequent transform"
     write (u, "(A)")
 
-    call process%generate_unweighted_event (process_instance, 1)
+    call process_instance%generate_unweighted_event (1)
     call process_instance%evaluate_event_data ()
 
     call evt%prepare_new_event (1, 1)
@@ -665,23 +666,28 @@ module hadrons
   use format_utils, only: write_separator
   use diagnostics
   use sm_qcd
+  use lorentz
+  use subevents, only: PRT_OUTGOING
   use particles
+  use variables
   use model_data
   use models
+  use rng_base
   use hep_common
   use event_transforms
   use shower_base
   use shower_pythia6
-
+  use process
+  
 <<Standard module head>>
 
 <<Hadrons: public>>
 
+<<Hadrons: parameters>>
+
 <<Hadrons: types>>
 
 <<Hadrons: interfaces>>
-
-<<Hadrons: parameters>>
 
 contains
 
@@ -692,16 +698,17 @@ end module hadrons
 @
 \subsection{Hadronization implementations}
 <<Hadrons: public>>=
-  public :: HADRONS_PYTHIA6, HADRONS_PYTHIA8, HADRONS_UNDEFINED
+  public :: HADRONS_UNDEFINED, HADRONS_WHIZARD, HADRONS_PYTHIA6, HADRONS_PYTHIA8
 <<Hadrons: parameters>>=
-  integer, parameter :: HADRONS_PYTHIA6 = 1
-  integer, parameter :: HADRONS_PYTHIA8 = 2
-  integer, parameter :: HADRONS_UNDEFINED = 17
-@ %def HADRONS_PYTHIA6 HADRONS_PYTHIA8 HADRONS_UNDEFINED
+  integer, parameter :: HADRONS_UNDEFINED = 0  
+  integer, parameter :: HADRONS_WHIZARD = 1
+  integer, parameter :: HADRONS_PYTHIA6 = 2
+  integer, parameter :: HADRONS_PYTHIA8 = 3
+@ %def HADRONS_UNDEFINED HADRONS_WHIZARD HADRONS_PYTHIA6 HADRONS_PYTHIA8 
 @ A dictionary
-<<Shower base: public>>=
+<<Hadrons: public>>=
   public :: hadrons_method
-<<Shower base: interfaces>>=
+<<Hadrons: interfaces>>=
   interface hadrons_method
      module procedure hadrons_method_of_string
      module procedure hadrons_method_to_string
@@ -711,6 +718,8 @@ end module hadrons
     integer :: i
     type(string_t), intent(in) :: string
     select case (char(string))
+    case ("WHIZARD")
+       i = HADRONS_WHIZARD
     case ("PYTHIA6")
        i = HADRONS_PYTHIA6
     case ("PYTHIA8")
@@ -724,6 +733,8 @@ end module hadrons
     type(string_t) :: string
     integer, intent(in) :: i
     select case (i)
+    case (HADRONS_WHIZARD)
+       string = "WHIZARD"
     case (HADRONS_PYTHIA6)
        string = "PYTHIA6"
     case (HADRONS_PYTHIA8)
@@ -735,12 +746,79 @@ end module hadrons
 
 @ %def hadrons_method
 @
+\subsection{Hadronization settings}
+These are the general settings and parameters for the different shower
+methods. 
+<<Hadrons: public>>=
+  public :: hadron_settings_t
+<<Hadrons: types>>=
+  type :: hadron_settings_t
+     logical :: active = .false.
+     integer :: method = HADRONS_UNDEFINED
+     real(default) :: enhanced_fraction = 0
+     real(default) :: enhanced_width = 0
+   contains
+   <<Hadrons: hadron settings: TBP>>
+  end type hadron_settings_t
+
+@ %def hadron_settings_t 
+@ Read in the hadronization settings.
+<<Hadrons: hadron settings: TBP>>=
+  procedure :: init => hadron_settings_init
+<<Hadrons: procedures>>=
+  subroutine hadron_settings_init (hadron_settings, var_list)
+    class(hadron_settings_t), intent(out) :: hadron_settings
+    type(var_list_t), intent(in) :: var_list
+    hadron_settings%active = &
+         var_list%get_lval (var_str ("?hadronization_active"))
+    hadron_settings%method = hadrons_method_of_string ( &
+         var_list%get_sval (var_str ("$hadronization_method")))
+    hadron_settings%enhanced_fraction = &
+         var_list%get_rval (var_str ("hadron_enhanced_fraction"))
+    hadron_settings%enhanced_width = &
+         var_list%get_rval (var_str ("hadron_enhanced_width"))
+  end subroutine hadron_settings_init
+
+@ %def hadron_settings_init 
+@
+<<Hadrons: hadron settings: TBP>>=
+  procedure :: write => hadron_settings_write
+<<Hadrons: procedures>>=
+  subroutine hadron_settings_write (settings, unit)
+    class(hadron_settings_t), intent(in) :: settings
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit);  if (u < 0)  return
+    write (u, "(1x,A)")  "Hadronization settings:"
+    call write_separator (u)
+    write (u, "(1x,A)")  "Master switches:"
+    write (u, "(3x,A,1x,L1)") &
+         "active                = ", settings%active
+    write (u, "(1x,A)")  "General settings:"
+    if (settings%active) then
+       write (u, "(3x,A)") &
+            "hadron_method         =  " // &
+            char (hadrons_method_to_string (settings%method))
+    else
+       write (u, "(3x,A)") " [Hadronization off]"
+    end if
+    write (u, "(1x,A)")  "pT generation parameters"
+    write (u, "(3x,A,1x,ES19.12)") &
+         "enhanced_fraction     = ", settings%enhanced_fraction
+    write (u, "(3x,A,1x,ES19.12)") &
+         "enhanced_width        = ", settings%enhanced_width    
+  end subroutine hadron_settings_write
+
+@ %def hadron_settings_write
+@
 \subsection{Abstract Hadronization Type}
 The [[model]] is the fallback model including all hadrons
 <<Hadrons: types>>=
   type, abstract :: hadrons_t
-   type(shower_settings_t) :: settings
-   type(model_t), pointer :: model => null()
+     class(rng_t), allocatable :: rng
+     type(shower_settings_t) :: shower_settings
+     type(hadron_settings_t) :: hadron_settings
+     type(model_t), pointer :: model => null()
    contains
    <<Hadrons: hadrons: TBP>>
   end type hadrons_t
@@ -751,10 +829,12 @@ The [[model]] is the fallback model including all hadrons
   procedure (hadrons_init), deferred :: init
 <<Hadrons: interfaces>>=
   abstract interface
-    subroutine hadrons_init (hadrons, settings, model_hadrons)
+    subroutine hadrons_init &
+         (hadrons, shower_settings, hadron_settings, model_hadrons)
       import
       class(hadrons_t), intent(out) :: hadrons
-      type(shower_settings_t), intent(in) :: settings
+      type(shower_settings_t), intent(in) :: shower_settings
+      type(hadron_settings_t), intent(in) :: hadron_settings
       type(model_t), target, intent(in) :: model_hadrons
     end subroutine hadrons_init
    end interface
@@ -790,9 +870,211 @@ The [[model]] is the fallback model including all hadrons
 
 @ %def hadrons_make_particle_set
 @
+<<Hadrons: hadrons: TBP>>=
+  procedure :: import_rng => hadrons_import_rng
+<<Hadrons: procedures>>=
+  pure subroutine hadrons_import_rng (hadrons, rng)
+    class(hadrons_t), intent(inout) :: hadrons
+    class(rng_t), intent(inout), allocatable :: rng
+    call move_alloc (from = rng, to = hadrons%rng)
+  end subroutine hadrons_import_rng
+
+@ %def hadrons_import_rng
+@
+\subsection{[[WHIZARD]] Hadronization Type}
+Hadronization can be (incompletely) performed through \whizard's internal
+routine.
+<<Hadrons: public>>=
+  public :: hadrons_hadrons_t
+<<Hadrons: types>>=
+  type, extends (hadrons_t) :: hadrons_hadrons_t
+     contains
+       <<Hadrons: hadrons hadrons: TBP>>
+    end type hadrons_hadrons_t
+
+@ %def hadrons_hadrons_t
+@
+<<Hadrons: hadrons hadrons: TBP>>=
+  procedure :: init => hadrons_hadrons_init
+<<Hadrons: procedures>>=
+  subroutine hadrons_hadrons_init &
+       (hadrons, shower_settings, hadron_settings, model_hadrons)
+    class(hadrons_hadrons_t), intent(out) :: hadrons
+    type(shower_settings_t), intent(in) :: shower_settings
+    type(hadron_settings_t), intent(in) :: hadron_settings
+    type(model_t), intent(in), target :: model_hadrons
+    hadrons%model => model_hadrons
+    hadrons%shower_settings = shower_settings
+    hadrons%hadron_settings = hadron_settings
+    call msg_message &
+         ("Hadronization: WHIZARD model for hadronization and decays")
+  end subroutine hadrons_hadrons_init
+
+@ %def hadrons_hadrons_init 
+@
+<<Hadrons: hadrons hadrons: TBP>>=
+  procedure :: hadronize => hadrons_hadrons_hadronize
+<<Hadrons: procedures>>=
+  subroutine hadrons_hadrons_hadronize (hadrons, particle_set, valid)
+    class(hadrons_hadrons_t), intent(inout) :: hadrons
+    type(particle_set_t), intent(in) :: particle_set
+    logical, intent(out) :: valid
+    integer, dimension(:), allocatable :: cols, acols, octs
+    integer :: n
+    if (signal_is_pending ()) return
+    call msg_debug (D_TRANSFORMS, "hadrons_hadrons_hadronize")
+    call particle_set%write (6, compressed=.true.)
+    n = particle_set%get_n_tot ()
+    allocate (cols (n), acols (n), octs (n))
+    call extract_color_systems (particle_set, cols, acols, octs)
+    print *, "size(cols)  = ", size (cols)
+    if (size(cols) > 0) then
+       print *, "cols  = ", cols
+    end if
+    print *, "size(acols) = ", size(acols)    
+    if (size(acols) > 0) then
+       print *, "acols = ", acols
+    end if
+    print *, "size(octs)  = ", size(octs)    
+    if (size (octs) > 0) then
+       print *, "octs  = ", octs
+    end if
+    !!! if all arrays are empty, i.e. zero particles found, nothing to do
+  end subroutine hadrons_hadrons_hadronize
+
+@ %def hadrons_hadrons_hadronize
+@ This type contains a flavor selector for the creation of hadrons,
+including parameters for the special handling of baryons.
+<<Hadrons: public>>=
+  public :: had_flav_t
+<<Hadrons: types>>=
+  type had_flav_t
+  end type had_flav_t  
+
+@ %def had_flav_t 
+@ This is the type for the ends of Lund strings.
+<<Hadrons: public>>=
+  public :: lund_end
+<<Hadrons: types>>=
+  type lund_end
+     logical :: from_pos
+     integer :: i_end
+     integer :: i_max
+     integer :: id_had
+     integer :: i_pos_old
+     integer :: i_neg_old
+     integer :: i_pos_new
+     integer :: i_neg_new
+     real(default) :: px_old
+     real(default) :: py_old
+     real(default) :: px_new
+     real(default) :: py_new
+     real(default) :: px_had
+     real(default) :: py_had
+     real(default) :: m_had
+     real(default) :: mT2_had
+     real(default) :: z_had
+     real(default) :: gamma_old
+     real(default) :: gamma_new
+     real(default) :: x_pos_old
+     real(default) :: x_pos_new
+     real(default) :: x_pos_had
+     real(default) :: x_neg_old
+     real(default) :: x_neg_new
+     real(default) :: x_neg_had     
+     type(had_flav_t) :: old_flav
+     type(had_flav_t) :: new_flav
+     type(vector4_t) :: p_had
+     type(vector4_t) :: p_pre
+  end type lund_end
+
+@ %def lund_end 
+@ Generator for transverse momentum for the fragmentation.
+<<Hadrons: public>>=
+  public :: lund_pt_t
+<<Hadrons: types>>=
+  type lund_pt_t
+     real(default) :: sigma_min
+     real(default) :: sigma_q
+     real(default) :: enhanced_frac
+     real(default) :: enhanced_width
+     real(default) :: sigma_to_had
+     class(rng_t), allocatable :: rng
+   contains
+   <<Hadrons: lund pT: TBP>>  
+  end type lund_pt_t
+
+@ %def lund_pt
+<<Hadrons: lund pT: TBP>>=
+  procedure :: init => lund_pt_init
+<<Hadrons: procedures>>=
+  subroutine lund_pt_init (lund_pt, settings)
+    class (lund_pt_t), intent(out) :: lund_pt
+    type(hadron_settings_t), intent(in) :: settings
+  end subroutine lund_pt_init
+
+@ %def lund_pt_init
+@
+<<Hadrons: hadrons hadrons: TBP>>=
+  procedure :: make_particle_set => hadrons_hadrons_make_particle_set
+<<Hadrons: procedures>>=
+  subroutine hadrons_hadrons_make_particle_set &
+         (hadrons, particle_set, model, valid)
+    class(hadrons_hadrons_t), intent(in) :: hadrons
+    type(particle_set_t), intent(inout) :: particle_set
+    class(model_data_t), intent(in), target :: model
+    logical, intent(out) :: valid
+    if (signal_is_pending ()) return
+    valid = .false.
+    if (valid) then
+    else
+       call msg_fatal ("WHIZARD hadronization not yet implemented")
+    end if
+  end subroutine hadrons_hadrons_make_particle_set
+
+@ %def hadrons_hadrons_make_particle_set
+@ 
+<<Hadrons: procedures>>=
+  subroutine extract_color_systems (p_set, cols, acols, octs)
+    type(particle_set_t), intent(in) :: p_set
+    integer, dimension(:), allocatable, intent(out) :: cols, acols, octs
+    logical, dimension(:), allocatable :: mask
+    integer :: i, n, n_cols, n_acols, n_octs
+    n = p_set%get_n_tot ()
+    allocate (mask (n))
+    do i = 1, n
+       mask(i) = p_set%prt(i)%col%get_col () /= 0 .and. &
+            p_set%prt(i)%col%get_acl () == 0 .and. &
+            p_set%prt(i)%get_status () == PRT_OUTGOING
+    end do
+    n_cols = count (mask)
+    allocate (cols (n_cols))
+    cols = p_set%get_indices (mask)
+    do i = 1, n
+       mask(i) = p_set%prt(i)%col%get_col () == 0 .and. &
+            p_set%prt(i)%col%get_acl () /= 0 .and. &
+            p_set%prt(i)%get_status () == PRT_OUTGOING
+    end do
+    n_acols = count (mask)
+    allocate (acols (n_acols))    
+    acols = p_set%get_indices (mask)
+    do i = 1, n
+       mask(i) = p_set%prt(i)%col%get_col () /= 0 .and. &
+            p_set%prt(i)%col%get_acl () /= 0 .and. &
+            p_set%prt(i)%get_status () == PRT_OUTGOING
+    end do
+    n_octs = count (mask)
+    allocate (octs (n_octs))
+    octs = p_set%get_indices (mask)
+  end subroutine extract_color_systems
+
+@ %def extract_color_systems
+@
 \subsection{[[PYTHIA6]] Hadronization Type}
-Hadronization via [[PYTHIA6]] is at the moment the only option for
+Hadronization via [[PYTHIA6]] is at another option for
 hadronization within \whizard.
+<<Hadrons: public>>=
+  public :: hadrons_pythia6_t
 <<Hadrons: types>>=
   type, extends (hadrons_t) :: hadrons_pythia6_t
    contains
@@ -803,18 +1085,21 @@ hadronization within \whizard.
 <<Hadrons: hadrons pythia6: TBP>>=
   procedure :: init => hadrons_pythia6_init
 <<Hadrons: procedures>>=
-  subroutine hadrons_pythia6_init (hadrons, settings, model_hadrons)
+  subroutine hadrons_pythia6_init &
+       (hadrons, shower_settings, hadron_settings, model_hadrons)
     class(hadrons_pythia6_t), intent(out) :: hadrons
-    type(shower_settings_t), intent(in) :: settings
+    type(shower_settings_t), intent(in) :: shower_settings
+    type(hadron_settings_t), intent(in) :: hadron_settings
     type(model_t), intent(in), target :: model_hadrons
     logical :: pygive_not_set_by_shower
     hadrons%model => model_hadrons
-    hadrons%settings = settings
-    pygive_not_set_by_shower = .not. (settings%method == PS_PYTHIA6 &
-         .and. (settings%isr_active .or. settings%fsr_active))
+    hadrons%shower_settings = shower_settings
+    hadrons%hadron_settings = hadron_settings
+    pygive_not_set_by_shower = .not. (shower_settings%method == PS_PYTHIA6 &
+         .and. (shower_settings%isr_active .or. shower_settings%fsr_active))
     if (pygive_not_set_by_shower) then
-       call pythia6_set_verbose (settings%verbose)
-       call pythia6_set_config (settings%pythia6_pygive)
+       call pythia6_set_verbose (shower_settings%verbose)
+       call pythia6_set_config (shower_settings%pythia6_pygive)
     end if
     call msg_message &
          ("Hadronization: Using PYTHIA6 interface for hadronization and decays")
@@ -839,7 +1124,7 @@ transferred there by the WHIZARD or PYTHIA6 shower routines.
     call pygive ("MSTP(111)=1")    !!! Switch on hadronization and decays
     call pygive ("MSTJ(1)=1")      !!! String fragmentation
     call pygive ("MSTJ(21)=2")     !!! String fragmentation keeping resonance momentum
-    call pygive ("MSTJ(28)=0")     !!! Switch off tau decays   
+    call pygive ("MSTJ(28)=0")     !!! Switch off tau decays
     if (debug_active (D_TRANSFORMS)) then
        call msg_debug (D_TRANSFORMS, "N", N)
        call pylist(2)
@@ -867,7 +1152,7 @@ transferred there by the WHIZARD or PYTHIA6 shower routines.
     valid = pythia6_handle_errors ()
     if (valid) then
        call pythia6_combine_with_particle_set &
-            (particle_set, model, hadrons%model, hadrons%settings)
+            (particle_set, model, hadrons%model, hadrons%shower_settings)
     end if
   end subroutine hadrons_pythia6_make_particle_set
 
@@ -887,14 +1172,17 @@ transferred there by the WHIZARD or PYTHIA6 shower routines.
 <<Hadrons: hadrons pythia8: TBP>>=
   procedure :: init => hadrons_pythia8_init
 <<Hadrons: procedures>>=
-  subroutine hadrons_pythia8_init (hadrons, settings, model_hadrons)
+  subroutine hadrons_pythia8_init &
+       (hadrons, shower_settings, hadron_settings, model_hadrons)
     class(hadrons_pythia8_t), intent(out) :: hadrons
-    type(shower_settings_t), intent(in) :: settings
+    type(shower_settings_t), intent(in) :: shower_settings
+    type(hadron_settings_t), intent(in) :: hadron_settings
     type(model_t), intent(in), target :: model_hadrons
     logical :: options_not_set_by_shower
-    hadrons%settings = settings
-    options_not_set_by_shower = .not. (settings%method == PS_PYTHIA8 &
-         .and. (settings%isr_active .or. settings%fsr_active))
+    hadrons%shower_settings = shower_settings
+    hadrons%hadron_settings = hadron_settings
+    options_not_set_by_shower = .not. (shower_settings%method == PS_PYTHIA8 &
+         .and. (shower_settings%isr_active .or. shower_settings%fsr_active))
     if (options_not_set_by_shower) then
        !call pythia8_set_verbose (settings%verbose)
        !call pythia8_set_config (settings%pythia8_config)
@@ -957,23 +1245,10 @@ shower.
 <<Hadrons: evt hadrons: TBP>>=
   procedure :: init => evt_hadrons_init
 <<Hadrons: procedures>>=
-  subroutine evt_hadrons_init (evt, settings, model_hadrons, method)
+  subroutine evt_hadrons_init (evt, model_hadrons)
     class(evt_hadrons_t), intent(out) :: evt
-    type(shower_settings_t), intent(in) :: settings
     type(model_t), intent(in), target :: model_hadrons
-    type(string_t), intent(in) :: method
     evt%model_hadrons => model_hadrons
-    !!! TODO: (bcn 2015-03-27) method should be part of hadronization settings
-    select case (char (method))
-    case ("PYTHIA6")
-       allocate (hadrons_pythia6_t :: evt%hadrons)
-    case ("PYTHIA8")
-       allocate (hadrons_pythia8_t :: evt%hadrons)
-    case default
-       call msg_fatal ("Hadronization method " // char (method) // &
-            " not implemented.")
-    end select
-    call evt%hadrons%init (settings, model_hadrons)
     evt%is_first_event = .true.
   end subroutine evt_hadrons_init
 
@@ -989,7 +1264,7 @@ shower.
     u = given_output_unit (unit)
     write (u, "(1x,A)")  "Event transform: hadronization"
   end subroutine evt_hadrons_write_name
-   
+
 @ %def evt_hadrons_write_name
 @ Output.
 <<Hadrons: evt hadrons: TBP>>=
@@ -1009,7 +1284,9 @@ shower.
          call evt%particle_set%write &
          (u, summary = .true., compressed = .true., testflag = testflag)
     call write_separator (u)
-    call evt%hadrons%settings%write (u)
+    call evt%hadrons%shower_settings%write (u)
+    call write_separator (u)
+    call evt%hadrons%hadron_settings%write (u)    
   end subroutine evt_hadrons_write
 
 @ %def evt_hadrons_write
@@ -1020,7 +1297,7 @@ shower.
   subroutine evt_hadrons_first_event (evt)
     class(evt_hadrons_t), intent(inout) :: evt
     call msg_debug (D_TRANSFORMS, "evt_hadrons_first_event")
-    associate (settings => evt%hadrons%settings)
+    associate (settings => evt%hadrons%shower_settings)
        settings%hadron_collision = .false.
        !!! !!! !!! Workaround for PGF90 16.1
        !!! if (all (evt%particle_set%prt(1:2)%flv%get_pdg_abs () <= 39)) then
@@ -1083,6 +1360,19 @@ invalid.
   end subroutine evt_hadrons_make_particle_set
 
 @ %def event_hadrons_make_particle_set
+@ Create RNG instances, spawned by the process object.
+<<Hadrons: evt hadrons: TBP>>=
+  procedure :: make_rng => evt_hadrons_make_rng
+<<Hadrons: procedures>>=
+  subroutine evt_hadrons_make_rng (evt, process)
+    class(evt_hadrons_t), intent(inout) :: evt
+    type(process_t), intent(inout) :: process
+    class(rng_t), allocatable :: rng
+    call process%make_rng (rng)
+    call evt%hadrons%import_rng (rng)
+  end subroutine evt_hadrons_make_rng
+
+@ %def evt_hadrons_make_rng
 @
 <<Hadrons: evt hadrons: TBP>>=
   procedure :: prepare_new_event => evt_hadrons_prepare_new_event
@@ -1145,7 +1435,7 @@ This is the type for the tau decay event transform.
     u = given_output_unit (unit)
     write (u, "(1x,A)")  "Event transform: tau decays"
   end subroutine evt_tau_decays_write_name
-   
+
 @ %def evt_tau_decays_write_name
 @ Output.
 <<Tau decays: evt tau decays: TBP>>=
@@ -1238,7 +1528,8 @@ module decays
   use rng_base
   use selectors
   use parton_states
-  use processes
+  use process, only: process_t
+  use instances, only: process_instance_t, pacify
   use process_stacks
   use event_transforms
 
@@ -1828,13 +2119,13 @@ versions are available for comparison.
        !!! m_prod = flv(:,1)%get_mass ()
        call flv%set_model (model)
        allocate (m_dec (size (flv(:,1)%get_mass ())))
-       !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug       
+       !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
        do j = 1, size (flv(:,1)%get_mass ())
           m_dec(j) = flv(j,1)%get_mass ()
        end do
        !!! m_dec = flv(:,1)%get_mass ()
        allocate (stable (size (flv, 1)))
-       !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug       
+       !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
        do j = 1, size (flv, 1)
           stable(j) = flv(j,1)%is_stable ()
        end do
@@ -2382,7 +2673,7 @@ generators.  We do not generate momenta, yet.
     call decay%rng%generate (x)
     decay%selected_mci = decay%config%mci_selector%select (x)
     call decay%process_instance%choose_mci (decay%selected_mci)
-    call decay%process_instance%select_i_term (decay%selected_term)
+    decay%selected_term = decay%process_instance%select_i_term ()
     do i = 1, size (decay%term)
        call decay%term(i)%select_chain ()
     end do
@@ -2406,8 +2697,7 @@ chain afterwards.
     type(isolated_state_t), pointer :: isolated_state
     integer :: i
     call decay%process_instance%receive_beam_momenta ()
-    call decay%config%process%generate_unweighted_event &
-         (decay%process_instance, decay%selected_mci)
+    call decay%process_instance%generate_unweighted_event (decay%selected_mci)
     if (signal_is_pending ())  return
     call decay%process_instance%evaluate_event_data ()
     isolated_state => &
@@ -3382,7 +3672,8 @@ module decays_uti
   use phs_single
   use prc_core
   use prc_test, only: prc_test_create_library
-  use processes
+  use process, only: process_t
+  use instances, only: process_instance_t
   use process_stacks
 
   use decays
@@ -3441,7 +3732,6 @@ generation.
     class(rng_factory_t), allocatable :: rng_factory
     type(process_entry_t), pointer :: process
     type(process_instance_t), allocatable, target :: process_instance
-    class(prc_core_t), allocatable :: core_template
     class(mci_t), allocatable :: mci_template
     class(phs_config_t), allocatable :: phs_config_template
     type(field_data_t), pointer :: field_data
@@ -3468,7 +3758,6 @@ generation.
 
     call reset_interaction_counter ()
 
-    allocate (test_t :: core_template)
     allocate (mci_midpoint_t :: mci_template)
     allocate (phs_single_config_t :: phs_config_template)
 
@@ -3486,17 +3775,18 @@ generation.
        allocate (process)
        call process%init (procname1, &
             run_id, lib, os_data, qcd, rng_factory, model_copy)
+       call process%setup_test_cores ()
        call process%init_component &
-            (1, core_template, mci_template, phs_config_template)
+          (1, .true., mci_template, phs_config_template)
        sqrts = 1000
-       call process%setup_beams_sqrts (sqrts)
+       call process%setup_beams_sqrts (sqrts, i_core = 1)
        call process%configure_phs ()
        call process%setup_mci ()
        call process%setup_terms ()
 
        allocate (process_instance)
        call process_instance%init (process%process_t)
-       call process%integrate (process_instance, 1, n_it=1, n_calls=100)
+       call process_instance%integrate (1, n_it = 1, n_calls = 100)
        call process%final_integration (1)
        call process_instance%final ()
        deallocate (process_instance)
@@ -3518,12 +3808,13 @@ generation.
        allocate (process)
        call process%init (procname2, &
             run_id, lib, os_data, qcd, rng_factory, model_copy)
+       call process%setup_test_cores ()
        call process%init_component &
-            (1, core_template, mci_template, phs_config_template)
+          (1, .true., mci_template, phs_config_template)
        if (present (decay_rest_frame)) then
-          call process%setup_beams_decay (rest_frame = decay_rest_frame)
+          call process%setup_beams_decay (rest_frame = decay_rest_frame, i_core = 1)
        else
-          call process%setup_beams_decay (rest_frame = .not. scattering)
+          call process%setup_beams_decay (rest_frame = .not. scattering, i_core = 1)
        end if
        call process%configure_phs ()
        call process%setup_mci ()
@@ -3531,7 +3822,7 @@ generation.
 
        allocate (process_instance)
        call process_instance%init (process%process_t)
-       call process%integrate (process_instance, 1, n_it=1, n_calls=100)
+       call process_instance%integrate (1, n_it=1, n_calls=100)
        call process%final_integration (1)
        call process_instance%final ()
        deallocate (process_instance)
@@ -3847,7 +4138,6 @@ f$.
     type(decay_root_config_t), target :: decay_root_config
     type(decay_root_t) :: decay_root
     type(decay_chain_t) :: decay_chain
-    integer :: i
 
     write (u, "(A)")  "* Test output: decays_5"
     write (u, "(A)")  "*   Purpose: Handle a process with subsequent decays"
@@ -3907,8 +4197,7 @@ f$.
     write (u, "(A)")  "* Generate event"
     write (u, "(A)")
 
-    call process%generate_unweighted_event (process_instance, &
-         decay_root%get_mci ())
+    call process_instance%generate_unweighted_event (decay_root%get_mci ())
     call process_instance%evaluate_event_data ()
 
     call decay_root%generate ()
@@ -4008,7 +4297,7 @@ $s\to f\bar f$.
     write (u, "(A)")
     write (u, "(A)")  "* Generate scattering event"
 
-    call process%generate_unweighted_event (process_instance, 1)
+    call process_instance%generate_unweighted_event (1)
     call process_instance%evaluate_event_data ()
 
     write (u, "(A)")
@@ -4070,7 +4359,8 @@ module shower
   use event_transforms
   use models
   use hep_common
-  use processes
+  use process, only: process_t
+  use instances, only: process_instance_t
   use process_stacks
 
 <<Standard module head>>
@@ -4128,7 +4418,7 @@ hadrons that can be generated in the shower.
     u = given_output_unit (unit)
     write (u, "(1x,A)")  "Event transform: shower"
   end subroutine evt_shower_write_name
-    
+
 @ %def evt_shower_write_name
 @ Output.
 <<Shower: evt shower: TBP>>=
@@ -4231,7 +4521,7 @@ transformation chain is evaluated.
            evt%particle_set%prt(2)%flv%get_pdg_abs () <= 39) then
           settings%hadron_collision = .false.
        !!! else if (all (evt%particle_set%prt(1:2)%flv%get_pdg_abs () >= 100)) then
-       else if (evt%particle_set%prt(1)%flv%get_pdg_abs () >= 100 .and. & 
+       else if (evt%particle_set%prt(1)%flv%get_pdg_abs () >= 100 .and. &
                 evt%particle_set%prt(2)%flv%get_pdg_abs () >= 100) then
           settings%hadron_collision = .true.
        else
@@ -4373,7 +4663,7 @@ outgoing particles or add to the beam remnant.
   end function evt_shower_contains_powheg_matching
 
 @ %def evt_shower_contains_powheg_matching
-@ 
+@
 <<Shower: evt shower: TBP>>=
   procedure :: disable_powheg_matching => evt_shower_disable_powheg_matching
 <<Shower: procedures>>=
@@ -4382,7 +4672,7 @@ outgoing particles or add to the beam remnant.
      select type (matching => evt%matching)
      type is (powheg_matching_t)
         matching%active = .false.
-     class default 
+     class default
         call msg_fatal ("Trying to disable powheg but no powheg matching is allocated!")
      end select
   end subroutine evt_shower_disable_powheg_matching
@@ -4397,7 +4687,7 @@ outgoing particles or add to the beam remnant.
      select type (matching => evt%matching)
      type is (powheg_matching_t)
         matching%active = .true.
-     class default 
+     class default
         call msg_fatal ("Trying to enable powheg but no powheg matching is allocated!")
      end select
   end subroutine evt_shower_enable_powheg_matching
@@ -4445,6 +4735,7 @@ module shower_uti
   use format_utils, only: write_separator
   use os_interface
   use sm_qcd
+  use physics_defs, only: BORN
   use model_data
   use state_matrices, only: FM_IGNORE_HELICITY
   use process_libraries
@@ -4458,9 +4749,11 @@ module shower_uti
   use prc_omega
   use variables
   use models
-  use processes
   use event_transforms
   use tauola_interface !NODEP!
+
+  use process, only: process_t
+  use instances, only: process_instance_t
 
   use pdf
   use shower_base
@@ -4564,22 +4857,26 @@ This sequence sets up a two-jet process, ready for generating events.
     type is (prc_omega_t)
        call core_template%set_parameters (model = model)
     end select
+    call process%core_manager_register (BORN, 1, var_str ("omega"))
+    call process%allocate_cm_arrays (1)
+    call process%allocate_core (1, core_template)
+    call process%init_core (1)
     call process%init_component &
-         (1, core_template, mci_template, phs_config_template)
+       (1, .true., mci_template, phs_config_template)
 
     sqrts = 1000
-    call process%setup_beams_sqrts (sqrts)
+    call process%setup_beams_sqrts (sqrts, i_core = 1)
     call process%configure_phs ()
     call process%setup_mci ()
     call process%setup_terms ()
 
     call process_instance%init (process)
-    call process%integrate (process_instance, 1, 1, 1000)
+    call process_instance%integrate (1, 1, 1000)
     call process%final_integration (1)
 
-    call process_instance%setup_event_data ()
+    call process_instance%setup_event_data (i_core = 1)
     call process_instance%init_simulation (1)
-    call process%generate_weighted_event (process_instance, 1)
+    call process_instance%generate_weighted_event (1)
     call process_instance%evaluate_event_data ()
 
   end subroutine setup_testbed
@@ -4831,17 +5128,20 @@ module evt_nlo
   use constants
   use lorentz
   use diagnostics
+  use physics_defs, only: NLO_REAL
   use sm_qcd
   use model_data
   use particles
-  use processes
+  use instances, only: process_instance_t
+  ! TODO (cw-2016-09-16): Ideally, only pcm_base
+  use pcm, only: pcm_nlo_t, pcm_instance_nlo_t
   use process_stacks
   use event_transforms
 
-  use nlo_data, only: sqme_collector_t, phs_identifier_t, phs_point_set_t
+  use phs_fks, only: phs_fks_t, phs_fks_generator_t
+  use phs_fks, only: phs_identifier_t, phs_point_set_t
   use cascades, only: resonance_contributors_t
-  use phs_fks
-  use nlo_controller, only: nlo_controller_t
+  use fks_regions, only: region_data_t
 
 <<Standard module head>>
 
@@ -4900,7 +5200,9 @@ it would be unretrievable if the usual particle set of the event object was used
     type(nlo_event_deps_t) :: event_deps
     integer :: mode = EVT_NLO_UNDEFINED
     integer, dimension(:), allocatable :: &
-       i_evaluation_to_i_phs, i_evaluation_to_i_flv, i_evaluation_to_emitter
+       i_evaluation_to_i_phs, i_evaluation_to_i_flv, i_evaluation_to_emitter, &
+       i_evaluation_to_i_term
+    logical :: keep_failed_events = .false.
   contains
   <<Evt Nlo: evt nlo: TBP>>
   end type evt_nlo_t
@@ -4932,7 +5234,7 @@ it would be unretrievable if the usual particle set of the event object was used
 @ %def evt_nlo_write
 @ Connects the event transform to the process. Here also the phase space
 is set up by making [[real_kinematics]] point to the corresponding
-object in [[nlo_controller]].
+object in the [[pcm_instance]].
 <<Evt Nlo: evt nlo: TBP>>=
   procedure :: connect => evt_nlo_connect
 <<Evt Nlo: procedures>>=
@@ -4941,20 +5243,22 @@ object in [[nlo_controller]].
     type(process_instance_t), intent(in), target :: process_instance
     class(model_data_t), intent(in), target :: model
     type(process_stack_t), intent(in), optional :: process_stack
-    real(default) :: sqrts
     call msg_debug (D_TRANSFORMS, "evt_nlo_connect")
     call evt%base_connect (process_instance, model, process_stack)
     select type (pcm => process_instance%pcm)
     class is (pcm_instance_nlo_t)
-       associate (generator => evt%phs_fks_generator)
-         sqrts = process_instance%get_sqrts ()
-         call pcm%controller%setup_generator (generator, sqrts)
-       end associate
-       call evt%set_i_evaluation_mappings (pcm%controller)
+       select type (config => pcm%config)
+       type is (pcm_nlo_t)
+          call config%setup_phs_generator (pcm, evt%phs_fks_generator, &
+             process_instance%get_sqrts ())
+          call evt%set_i_evaluation_mappings (config%region_data, &
+             pcm%real_kinematics%alr_to_i_phs)
+       end select
     end select
-    call evt%set_mode (process_instance) 
+    call evt%set_mode (process_instance)
+    call evt%setup_general_event_kinematics (process_instance)
     if (evt%mode > EVT_NLO_SEPARATE_BORNLIKE) &
-       call evt%setup_event_kinematics (process_instance)
+       call evt%setup_real_event_kinematics (process_instance)
     call msg_debug2 (D_TRANSFORMS, "evt_nlo_connect: success")
   end subroutine evt_nlo_connect
 
@@ -4963,38 +5267,38 @@ object in [[nlo_controller]].
 <<Evt Nlo: evt nlo: TBP>>=
   procedure :: set_i_evaluation_mappings => evt_nlo_set_i_evaluation_mappings
 <<Evt Nlo: procedures>>=
-  subroutine evt_nlo_set_i_evaluation_mappings (evt, controller)
+  subroutine evt_nlo_set_i_evaluation_mappings (evt, reg_data, alr_to_i_phs)
     class(evt_nlo_t), intent(inout) :: evt
-    type(nlo_controller_t), intent(in) :: controller
+    type(region_data_t), intent(in) :: reg_data
+    integer, intent(in), dimension(:) :: alr_to_i_phs
     integer :: n_flv, n_phs, alr
     integer :: i_evaluation, i_phs, i_flv, emitter
-    integer, parameter :: N_MAX_PHS = 10, N_MAX_FLV = 100, N_MAX_EMITTER = 10
     logical :: checked
     type :: registered_triple_t
       integer, dimension(3) :: phs_flv_em
       type(registered_triple_t), pointer :: next => null ()
     end type registered_triple_t
-    type(registered_triple_t), pointer :: check_list => null ()
+    type(registered_triple_t), allocatable, target :: check_list
     i_evaluation = 1
-    associate (reg_data => controller%reg_data)
-       n_phs = reg_data%n_phs; n_flv = reg_data%n_flv_real
-       evt%weight_multiplier = n_phs * n_flv + 1
-       allocate (evt%i_evaluation_to_i_phs (n_phs * n_flv), source = 0)
-       allocate (evt%i_evaluation_to_i_flv (n_phs * n_flv), source = 0)
-       allocate (evt%i_evaluation_to_emitter (n_phs * n_flv), source = -1)
-       do alr = 1, reg_data%n_regions
-          i_phs = controller%real_kinematics%alr_to_i_phs (alr)
-          i_flv = reg_data%regions(alr)%real_index 
-          emitter = reg_data%regions(alr)%emitter 
-          call search_check_list (checked)
-          if (.not. checked) then
-             evt%i_evaluation_to_i_phs (i_evaluation) = i_phs
-             evt%i_evaluation_to_i_flv (i_evaluation) = i_flv
-             evt%i_evaluation_to_emitter (i_evaluation) = emitter
-             i_evaluation = i_evaluation + 1
-          end if
-       end do 
-    end associate
+    n_phs = reg_data%n_phs; n_flv = reg_data%n_flv_real
+    evt%weight_multiplier = n_phs * n_flv + 1
+    allocate (evt%i_evaluation_to_i_phs (n_phs * n_flv), source = 0)
+    allocate (evt%i_evaluation_to_i_flv (n_phs * n_flv), source = 0)
+    allocate (evt%i_evaluation_to_emitter (n_phs * n_flv), source = -1)
+    allocate (evt%i_evaluation_to_i_term (0 : n_phs * n_flv), source = 0)
+    do alr = 1, reg_data%n_regions
+       i_phs = alr_to_i_phs (alr)
+       i_flv = reg_data%regions(alr)%real_index
+       emitter = reg_data%regions(alr)%emitter
+       call search_check_list (checked)
+       if (.not. checked) then
+          evt%i_evaluation_to_i_phs (i_evaluation) = i_phs
+          evt%i_evaluation_to_i_flv (i_evaluation) = i_flv
+          evt%i_evaluation_to_emitter (i_evaluation) = emitter
+          i_evaluation = i_evaluation + 1
+       end if
+    end do
+    call fill_i_evaluation_to_i_term ()
     if (.not. (all (evt%i_evaluation_to_i_phs > 0) &
        .and. all (evt%i_evaluation_to_i_flv > 0) &
        .and. all (evt%i_evaluation_to_emitter > -1))) then
@@ -5008,16 +5312,32 @@ object in [[nlo_controller]].
        end if
     end if
   contains
+    subroutine fill_i_evaluation_to_i_term ()
+      integer :: i_term, i_evaluation, term_emitter
+      !!! First find subtraction component
+      i_evaluation = 1
+      do i_term = 1, evt%process%get_n_terms ()
+         if (evt%process_instance%term(i_term)%nlo_type /= NLO_REAL) cycle
+         term_emitter = evt%process_instance%term(i_term)%k_term%emitter
+         if (term_emitter < 0) then
+            evt%i_evaluation_to_i_term (0) = i_term
+         else if (evt%i_evaluation_to_emitter(i_evaluation) == term_emitter) then
+            evt%i_evaluation_to_i_term (i_evaluation) = i_term
+            i_evaluation = i_evaluation + 1
+         end if
+      end do
+    end subroutine fill_i_evaluation_to_i_term
+
     subroutine search_check_list (found)
       logical, intent(out) :: found
       type(registered_triple_t), pointer :: current_triple => null ()
-      if (associated (check_list)) then
+      if (allocated (check_list)) then
          current_triple => check_list
          do
             if (all (current_triple%phs_flv_em == [i_phs, i_flv, emitter])) then
                found = .true.
                exit
-            end if 
+            end if
             if (.not. associated (current_triple%next)) then
                allocate (current_triple%next)
                current_triple%next%phs_flv_em = [i_phs, i_flv, emitter]
@@ -5079,6 +5399,20 @@ object in [[nlo_controller]].
   end subroutine evt_nlo_prepare_new_event
 
 @ %def evt_nlo_prepare_new_event
+@
+<<Evt Nlo: evt nlo: TBP>>=
+  procedure :: copy_previous_particle_set => evt_nlo_copy_previous_particle_set
+<<Evt Nlo: procedures>>=
+  subroutine evt_nlo_copy_previous_particle_set (evt)
+    class(evt_nlo_t), intent(inout) :: evt
+    if (associated (evt%previous)) then
+       evt%particle_set = evt%previous%particle_set
+    else
+       call msg_fatal ("evt_nlo requires one preceeding evt_trivial!")
+    end if
+  end subroutine evt_nlo_copy_previous_particle_set
+
+@ %def evt_nlo_copy_previous_particle_set
 @ The event transform has a variable which counts the number of times it
 has already been called for one generation point. If [[i_evaluation]] is
 zero, this means that [[evt_nlo_generate]] is called for the first time,
@@ -5098,7 +5432,6 @@ is distributed over the real and Born subevents.
     real(default), intent(inout) :: probability
     real(default) :: weight
     call print_debug_info ()
-    evt%particle_set = evt%previous%particle_set
     if (evt%mode > EVT_NLO_SEPARATE_BORNLIKE) then
        if (evt%i_evaluation == 0) then
           call evt%reset_phs_identifiers ()
@@ -5131,7 +5464,7 @@ is distributed over the real and Born subevents.
          smode = var_str ("Real")
       case (EVT_NLO_COMBINED)
          smode = var_str ("Combined")
-      end select  
+      end select
     end function status_code_to_string
 
     subroutine print_debug_info ()
@@ -5196,24 +5529,23 @@ mother-daughter relations and color information.
     evt%particle_set_radiated(i_event) = evt%particle_set
     select type (pcm => evt%process_instance%pcm)
     class is (pcm_instance_nlo_t)
-       if (evt%i_evaluation /= 0) then
-          i_flv = evt%get_i_flv ()
-          allocate (flv_radiated (size (pcm%controller%get_flv_state_real (i_flv))))
-          flv_radiated = pcm%controller%get_flv_state_real (i_flv)
-          call evt%rng%generate (r_col)
-          call msg_debug2 (D_TRANSFORMS, "r_col", r_col)
-          if (debug2_active (D_TRANSFORMS))  print *, 'flv_radiated =    ', flv_radiated
-          i_phs = evt%get_i_phs()
-          emitter = evt%get_emitter ()
-          if (emitter == 0) emitter = choose_in_or_out ()
-          call msg_debug (D_TRANSFORMS, "emitter", emitter)
-          allocate (p_new (size (pcm%controller%get_momenta &
-             (born_phsp = .false., i_phs = i_phs))))
-          p_new = pcm%controller%get_momenta (born_phsp = .false., i_phs = i_phs)
-          call evt%particle_set_radiated(i_event)%build_radiation (p_new, emitter, flv_radiated, &
-             evt%process_instance%process%get_model_ptr (), r_col)
-       end if
-       evt%i_evaluation = evt%i_evaluation + 1
+       select type (config => pcm%config)
+       type is (pcm_nlo_t)
+             i_flv = evt%get_i_flv ()
+             allocate (flv_radiated (size (config%region_data%get_flv_states_real (i_flv))))
+             flv_radiated = config%region_data%get_flv_states_real (i_flv)
+             call evt%rng%generate (r_col)
+             call msg_debug2 (D_TRANSFORMS, "r_col", r_col)
+             if (debug2_active (D_TRANSFORMS))  print *, 'flv_radiated =    ', flv_radiated
+             i_phs = evt%get_i_phs()
+             emitter = evt%get_emitter ()
+             if (emitter == 0) emitter = choose_in_or_out ()
+             call msg_debug (D_TRANSFORMS, "emitter", emitter)
+             allocate (p_new (size (pcm%get_momenta (i_phs = i_phs, born_phsp = .false.))))
+             p_new = pcm%get_momenta (i_phs = i_phs, born_phsp = .false.)
+             call evt%particle_set_radiated(i_event)%build_radiation (p_new, emitter, flv_radiated, &
+                evt%process_instance%process%get_model_ptr (), r_col)
+       end select
     end select
   contains
     function choose_in_or_out () result (em)
@@ -5231,6 +5563,28 @@ mother-daughter relations and color information.
 @ %def evt_nlo_build_radiated_particle_set
 @
 <<Evt Nlo: evt nlo: TBP>>=
+  procedure :: keep_and_boost_born_particle_set => &
+       evt_nlo_keep_and_boost_born_particle_set
+<<Evt Nlo: procedures>>=
+  subroutine evt_nlo_keep_and_boost_born_particle_set (evt, i_event)
+    class(evt_nlo_t), intent(inout) :: evt
+    integer, intent(in) :: i_event
+    evt%particle_set_radiated(i_event) = evt%particle_set
+    if (evt%event_deps%cm_frame) then
+       evt%event_deps%p_born_cms%phs_point(1) = &
+          evt%particle_set%get_in_and_out_momenta ()
+       evt%event_deps%p_born_lab%phs_point(1) = &
+          evt%boost_to_lab (evt%event_deps%p_born_cms%phs_point(1))
+       call evt%particle_set_radiated(i_event)%replace_incoming_momenta &
+          (evt%event_deps%p_born_lab%phs_point(1)%p)
+       call evt%particle_set_radiated(i_event)%replace_outgoing_momenta &
+          (evt%event_deps%p_born_lab%phs_point(1)%p)
+    end if
+  end subroutine evt_nlo_keep_and_boost_born_particle_set
+
+@ %def evt_nlo_keep_and_boost_born_particle_set
+@
+<<Evt Nlo: evt nlo: TBP>>=
   procedure :: evaluate_real_kinematics => evt_nlo_evaluate_real_kinematics
 <<Evt Nlo: procedures>>=
   subroutine evt_nlo_evaluate_real_kinematics (evt)
@@ -5241,22 +5595,21 @@ mother-daughter relations and color information.
 
     select type (pcm => evt%process_instance%pcm)
     class is (pcm_instance_nlo_t)
-       x_rad = pcm%controller%real_kinematics%x_rad
+       x_rad = pcm%real_kinematics%x_rad
        associate (event_deps => evt%event_deps)
           event_deps%p_born_lab%phs_point(1) = &
              evt%particle_set%get_in_and_out_momenta ()
           event_deps%p_born_cms%phs_point(1) &
-             = evt%boost_to_cms (event_deps%p_born_lab%phs_point(1)) 
+             = evt%boost_to_cms (event_deps%p_born_lab%phs_point(1))
           call evt%phs_fks_generator%set_sqrts_hat &
              (event_deps%p_born_cms%get_energy (1, 1))
           use_contributors = allocated (event_deps%contributors)
           do alr = 1, size (event_deps%i_evaluation_to_i_phs)
              i_phs = event_deps%i_evaluation_to_i_phs(alr)
              if (event_deps%phs_identifiers(i_phs)%evaluated) cycle
-             emitter = event_deps%phs_identifiers(i_phs)%emitter 
+             emitter = event_deps%phs_identifiers(i_phs)%emitter
              associate (generator => evt%phs_fks_generator)
                 if (emitter <= 2) then
-                   !!!call msg_fatal ("NLO Events only supply final-state emissions")
                    call generator%prepare_generation (x_rad, i_phs, emitter, &
                       event_deps%p_born_cms%phs_point(1)%p, event_deps%phs_identifiers)
                    call generator%generate_isr (i_phs, &
@@ -5280,15 +5633,13 @@ mother-daughter relations and color information.
                          event_deps%p_born_cms%phs_point(1)%p, &
                          event_deps%p_real_cms%phs_point(i_phs))
                    end if
+                   event_deps%p_real_lab%phs_point(i_phs) &
+                        = evt%boost_to_lab (event_deps%p_real_cms%phs_point(i_phs))
                 end if
-                event_deps%p_real_lab%phs_point(i_phs) &
-                   = evt%boost_to_lab (event_deps%p_real_cms%phs_point(i_phs))
              end associate
-             call pcm%controller%set_momenta &
-                (event_deps%p_born_lab%phs_point(1)%p, &
+             call pcm%set_momenta (event_deps%p_born_lab%phs_point(1)%p, &
                 event_deps%p_real_lab%phs_point(i_phs)%p, i_phs)
-             call pcm%controller%set_momenta &
-                (event_deps%p_born_cms%phs_point(1)%p, &
+             call pcm%set_momenta (event_deps%p_born_cms%phs_point(1)%p, &
                 event_deps%p_real_cms%phs_point(i_phs)%p, i_phs, cms = .true.)
              event_deps%phs_identifiers(i_phs)%evaluated = .true.
           end do
@@ -5296,7 +5647,7 @@ mother-daughter relations and color information.
     end select
   end subroutine evt_nlo_evaluate_real_kinematics
 
-@ %def evt_nlo_evaluate_real_kinematics 
+@ %def evt_nlo_evaluate_real_kinematics
 @ This routine calls the evaluation of the singular regions only for the
 subtraction terms.
 <<Evt Nlo: evt nlo: TBP>>=
@@ -5305,21 +5656,15 @@ subtraction terms.
   function evt_nlo_compute_subtraction_weights (evt) result (weight)
     class(evt_nlo_t), intent(inout) :: evt
     real(default) :: weight
-    integer :: i_phs
+    integer :: i_phs, i_term
     call msg_debug (D_TRANSFORMS, "evt_nlo_compute_subtraction_weights")
     weight = zero
     select type (pcm => evt%process_instance%pcm)
     class is (pcm_instance_nlo_t)
        associate (event_deps => evt%event_deps)
-          do i_phs = 1, evt%event_deps%n_phs           
-             call evt%process_instance%compute_sqme_real_sub (i_phs)
-             if (debug2_active (D_TRANSFORMS)) then
-                call msg_debug (D_TRANSFORMS, &
-                   "instance%sqme_collector%sqme_real_per_phs(:, i_phs)")
-                print *, pcm%collector%sqme_real_per_phs(:, i_phs)
-             end if
-             weight = weight + sum (pcm%collector%sqme_real_per_phs (:, i_phs))
-          end do
+          i_phs = 1; i_term = evt%i_evaluation_to_i_term(0)
+          call evt%process_instance%compute_sqme_rad (i_term, i_phs, .true.)
+          weight = weight + evt%process_instance%get_sqme (i_term)
        end associate
     end select
   end function evt_nlo_compute_subtraction_weights
@@ -5332,18 +5677,15 @@ emission matrix elements.
 <<Evt Nlo: procedures>>=
   subroutine evt_nlo_compute_real (evt)
     class(evt_nlo_t), intent(inout) :: evt
-    integer :: i_phs, i_flv
+    integer :: i_phs, i_term
     call msg_debug (D_TRANSFORMS, "evt_nlo_compute_real")
     i_phs = evt%get_i_phs ()
-    i_flv = evt%get_i_flv ()
+    i_term = evt%i_evaluation_to_i_term (evt%i_evaluation)
     select type (pcm => evt%process_instance%pcm)
     class is (pcm_instance_nlo_t)
        associate (event_deps => evt%event_deps)
-          call evt%process_instance%compute_sqme_real_rad (i_phs, i_flv)
-          call msg_debug (D_TRANSFORMS, &
-               "instance%sqme_collector%sqme_real_per_phs(i_flv, i_phs)", &
-               pcm%collector%sqme_real_per_phs(i_flv, i_phs))
-          evt%sqme_rad = pcm%collector%sqme_real_per_phs (i_flv, i_phs)
+          call evt%process_instance%compute_sqme_rad (i_term, i_phs, .false.)
+          evt%sqme_rad = evt%process_instance%get_sqme (i_term)
        end associate
     end select
   end subroutine evt_nlo_compute_real
@@ -5358,12 +5700,16 @@ emission matrix elements.
     class(evt_nlo_t), intent(in) :: evt
     type(phs_point_t) :: p_cms
     type(lorentz_transformation_t) :: lt_lab_to_cms
-    integer :: i_real
+    integer :: i_boost
     if (evt%event_deps%cm_frame) then
        lt_lab_to_cms = identity
     else
-       i_real = evt%process_instance%get_associated_real ()
-       lt_lab_to_cms = inverse (evt%process_instance%get_lorentz_transformation (i_real))
+       if (evt%mode == EVT_NLO_COMBINED) then
+          i_boost = 1
+       else
+          i_boost = evt%process_instance%select_i_term ()
+       end if
+       lt_lab_to_cms = evt%process_instance%get_boost_to_cms (i_boost)
     end if
     p_cms = lt_lab_to_cms * p_lab
   end function evt_nlo_boost_to_cms
@@ -5378,12 +5724,16 @@ emission matrix elements.
     class(evt_nlo_t), intent(in) :: evt
     type(phs_point_t), intent(in) :: p_cms
     type(lorentz_transformation_t) :: lt_cms_to_lab
-    integer :: i_real
-    if (evt%event_deps%cm_frame) then
+    integer :: i_boost
+    if (.not. evt%event_deps%cm_frame) then
        lt_cms_to_lab = identity
     else
-       i_real = evt%process_instance%get_associated_real ()
-       lt_cms_to_lab = evt%process_instance%get_lorentz_transformation (i_real)
+       if (evt%mode == EVT_NLO_COMBINED) then
+          i_boost = 1
+       else
+          i_boost = evt%process_instance%select_i_term ()
+       end if
+       lt_cms_to_lab = evt%process_instance%get_boost_to_lab (i_boost)
     end if
     p_lab = lt_cms_to_lab * p_cms
   end function evt_nlo_boost_to_lab
@@ -5391,22 +5741,38 @@ emission matrix elements.
 @ %def evt_nlo_boost_to_lab
 @
 <<Evt Nlo: evt nlo: TBP>>=
-  procedure :: setup_event_kinematics => evt_nlo_setup_event_kinematics
+  procedure :: setup_general_event_kinematics => evt_nlo_setup_general_event_kinematics
 <<Evt Nlo: procedures>>=
-  subroutine evt_nlo_setup_event_kinematics (evt, process_instance)
+  subroutine evt_nlo_setup_general_event_kinematics (evt, process_instance)
     class(evt_nlo_t), intent(inout) :: evt
     type(process_instance_t), intent(in) :: process_instance
-    integer :: n_born, n_real, n_phs 
-    integer :: i_real
+    integer :: n_born
     associate (event_deps => evt%event_deps)
        event_deps%cm_frame = process_instance%is_cm_frame (1)
        select type (pcm => process_instance%pcm)
-       class is (pcm_instance_nlo_t)
-          n_born = pcm%controller%get_n_particles ()
-          n_real = pcm%controller%get_n_particles_real ()
+       type is (pcm_instance_nlo_t)
+          n_born = pcm%get_n_born ()
        end select
        call event_deps%p_born_cms%init (n_born, 1)
        call event_deps%p_born_lab%init (n_born, 1)
+    end associate
+  end subroutine evt_nlo_setup_general_event_kinematics
+
+@ %def evt_nlo_setup_general_event_kinematics
+@
+<<Evt Nlo: evt nlo: TBP>>=
+  procedure :: setup_real_event_kinematics => evt_nlo_setup_real_event_kinematics
+<<Evt Nlo: procedures>>=
+  subroutine evt_nlo_setup_real_event_kinematics (evt, process_instance)
+    class(evt_nlo_t), intent(inout) :: evt
+    type(process_instance_t), intent(in) :: process_instance
+    integer :: n_real, n_phs
+    integer :: i_real
+    associate (event_deps => evt%event_deps)
+       select type (pcm => process_instance%pcm)
+       class is (pcm_instance_nlo_t)
+          n_real = pcm%get_n_real ()
+       end select
        i_real = process_instance%get_associated_real ()
        select type (phs => process_instance%term(i_real)%k_term%phs)
        type is (phs_fks_t)
@@ -5417,24 +5783,28 @@ emission matrix elements.
        n_phs = size (event_deps%phs_identifiers)
        call event_deps%p_real_cms%init (n_real, n_phs)
        call event_deps%p_real_lab%init (n_real, n_phs)
-       associate (nlo_controller => process_instance%component(i_real)%nlo_controller)
-          allocate (event_deps%i_evaluation_to_i_phs &
-             (size (nlo_controller%real_kinematics%alr_to_i_phs)))
-          event_deps%i_evaluation_to_i_phs = nlo_controller%real_kinematics%alr_to_i_phs
-          if (allocated (nlo_controller%reg_data%alr_contributors)) then
-             allocate (event_deps%contributors (size (nlo_controller%reg_data%alr_contributors)))
-             event_deps%contributors = nlo_controller%reg_data%alr_contributors
-          end if
-          if (allocated (nlo_controller%reg_data%alr_to_i_contributor)) then
-             allocate (event_deps%alr_to_i_con &
-                (size (nlo_controller%reg_data%alr_to_i_contributor)))
-             event_deps%alr_to_i_con = nlo_controller%reg_data%alr_to_i_contributor
-          end if
-       end associate
+       select type (pcm => process_instance%pcm)
+       type is (pcm_instance_nlo_t)
+          select type (config => pcm%config)
+          type is (pcm_nlo_t)
+             allocate (event_deps%i_evaluation_to_i_phs &
+                (size (pcm%real_kinematics%alr_to_i_phs)))
+             event_deps%i_evaluation_to_i_phs = pcm%real_kinematics%alr_to_i_phs
+             if (allocated (config%region_data%alr_contributors)) then
+                allocate (event_deps%contributors (size (config%region_data%alr_contributors)))
+                event_deps%contributors = config%region_data%alr_contributors
+             end if
+             if (allocated (config%region_data%alr_to_i_contributor)) then
+                allocate (event_deps%alr_to_i_con &
+                   (size (config%region_data%alr_to_i_contributor)))
+                event_deps%alr_to_i_con = config%region_data%alr_to_i_contributor
+             end if
+          end select
+       end select
     end associate
-  end subroutine evt_nlo_setup_event_kinematics
+  end subroutine evt_nlo_setup_real_event_kinematics
 
-@ %def evt_nlo_setup_event_kinematics
+@ %def evt_nlo_setup_real_event_kinematics
 @
 <<Evt Nlo: evt nlo: TBP>>=
   procedure :: set_mode => evt_nlo_set_mode
@@ -5445,18 +5815,19 @@ emission matrix elements.
     integer :: i_real
     select type (pcm => process_instance%pcm)
     type is (pcm_instance_nlo_t)
-       associate (nlo_settings => pcm%controller%settings)
-          if (nlo_settings%combined_integration) then
+       select type (config => pcm%config)
+       type is (pcm_nlo_t)
+          if (config%settings%combined_integration) then
              evt%mode = EVT_NLO_COMBINED
           else
              i_real = evt%process_instance%get_associated_real ()
-             if (i_real == evt%process%extract_active_component ()) then
+             if (i_real == evt%process%extract_fixed_mci ()) then
                 evt%mode = EVT_NLO_SEPARATE_REAL
              else
                 evt%mode = EVT_NLO_SEPARATE_BORNLIKE
              end if
           end if
-       end associate
+       end select
     end select
   end subroutine evt_nlo_set_mode
 
@@ -5465,21 +5836,11 @@ emission matrix elements.
 <<Evt Nlo: evt nlo: TBP>>=
   procedure :: is_valid_event => evt_nlo_is_valid_event
 <<Evt Nlo: procedures>>=
-  function evt_nlo_is_valid_event (evt) result (valid)
+  function evt_nlo_is_valid_event (evt, i_term) result (valid)
     logical :: valid
     class(evt_nlo_t), intent(in) :: evt
-    select type (pcm => evt%process_instance%pcm)
-    type is (pcm_instance_nlo_t)
-       associate (nlo_cuts => pcm%controller%nlo_cuts)
-          if (evt%i_evaluation == 0) then
-             valid = nlo_cuts%passed_born 
-          else
-             valid = nlo_cuts%passed_real (evt%get_i_phs ())
-          end if
-       end associate
-    class default
-       valid = .true.
-    end select
+    integer, intent(in) :: i_term
+    valid = evt%process_instance%term(i_term)%passed
   end function evt_nlo_is_valid_event
 
 @ %def evt_nlo_is_valid_event
@@ -5498,7 +5859,7 @@ module events
   use constants, only: one
   use io_units
   use format_utils, only: pac_fmt, write_separator
-  use format_defs, only: FMT_12, FMT_14, FMT_19
+  use format_defs, only: FMT_12, FMT_19
   use numeric_utils
   use diagnostics
   use variables
@@ -5509,7 +5870,9 @@ module events
   use particles
   use subevt_expr
   use rng_base
-  use processes
+  use process, only: process_t
+  use instances, only: process_instance_t
+  use pcm, only: pcm_instance_nlo_t
   use process_stacks
   use event_base
   use event_transforms
@@ -5679,6 +6042,44 @@ and should be written to file, including copies of [[sqme]] and [[weight]].
   end type event_t
 
 @ %def event_t
+@
+<<Events: event: TBP>>=
+  procedure :: clone => event_clone
+<<Events: procedures>>=
+  subroutine event_clone (event, event_new)
+    class(event_t), intent(in), target :: event
+    class(event_t), intent(out), target:: event_new
+    type(string_t) :: id
+    integer :: num_id
+    event_new%config = event%config
+    event_new%process => event%process
+    event_new%instance => event%instance
+    if (allocated (event%rng)) &
+         allocate(event_new%rng, source=event%rng)
+    event_new%selected_i_mci = event%selected_i_mci
+    event_new%selected_i_term = event%selected_i_term
+    event_new%selected_channel = event%selected_channel
+    event_new%is_complete = event%is_complete
+    event_new%transform_first => event%transform_first
+    event_new%transform_last => event%transform_last
+    event_new%selection_evaluated = event%selection_evaluated
+    event_new%passed = event%passed
+    if (allocated (event%alpha_qcd_forced)) &
+         allocate(event_new%alpha_qcd_forced, source=event%alpha_qcd_forced)
+    if (allocated (event%scale_forced)) &
+         allocate(event_new%scale_forced, source=event%scale_forced)
+    event_new%reweight = event%reweight
+    event_new%analysis_flag = event%analysis_flag
+    event_new%i_event = event%i_event
+    id = event_new%process%get_id ()
+    if (id /= "")  call event_new%expr%set_process_id (id)
+    num_id = event_new%process%get_num_id ()
+    if (num_id /= 0)  call event_new%expr%set_process_num_id (num_id)
+    call event_new%expr%setup_vars (event_new%process%get_sqrts ())
+    call event_new%expr%link_var_list (event_new%process%get_var_list_ptr ())
+  end subroutine event_clone
+
+@ %def event_clone
 @ Finalizer: the list of event transforms is deleted iteratively.
 <<Events: event: TBP>>=
   procedure :: final => event_final
@@ -5715,7 +6116,7 @@ should suffice to print the latter.
     class(evt_t), pointer :: evt
     character(len=7) :: fmt
     integer :: u, i
-    call pac_fmt (fmt, FMT_19, FMT_14, testflag)
+    call pac_fmt (fmt, FMT_19, FMT_12, testflag)
     u = given_output_unit (unit)
     prc = .true.;  if (present (show_process))  prc = show_process
     trans = .true.;  if (present (show_transforms))  trans = show_transforms
@@ -5734,7 +6135,7 @@ should suffice to print the latter.
     end if
     if (object%sqme_ref_is_known ()) then
        write (u, "(3x,A," // fmt // ")") &
-            "Squared matrix el. = ", object%get_sqme_ref ()
+            "Squared matrix el. (ref) = ", object%get_sqme_ref ()
        if (object%sqme_alt_is_known ()) then
           do i = 1, object%get_n_alt ()
              write (u, "(5x,A," // fmt // ",1x,I0)")  &
@@ -5742,16 +6143,24 @@ should suffice to print the latter.
           end do
        end if
     end if
+    if (object%sqme_prc_is_known ()) &
+       write (u, "(3x,A," // fmt // ")") &
+            "Squared matrix el. (prc) = ", object%get_sqme_prc ()
+
     if (object%weight_ref_is_known ()) then
        write (u, "(3x,A," // fmt // ")") &
-            "Event weight       = ", object%get_weight_ref ()
+            "Event weight (ref)       = ", object%get_weight_ref ()
        if (object%weight_alt_is_known ()) then
           do i = 1, object%get_n_alt ()
              write (u, "(5x,A," // fmt // ",1x,I0)")  &
-                  "alternate weight = ", object%get_weight_alt(i), i
+                  "alternate weight      = ", object%get_weight_alt(i), i
           end do
        end if
     end if
+    if (object%weight_prc_is_known ()) &
+       write (u, "(3x,A," // fmt // ")") &
+            "Event weight (prc)       = ", object%get_weight_prc ()
+
     if (object%selected_i_mci /= 0) then
        call write_separator (u)
        write (u, "(3x,A,I0)")  "Selected MCI group = ", object%selected_i_mci
@@ -6028,11 +6437,12 @@ For testing purpose, we allow for providing them explicitly, as an option.
     class(evt_t), pointer :: evt
     real(default) :: sigma_over_sqme
     integer :: i_term
+    logical :: failed_but_keep = .false.
     call msg_debug (D_TRANSFORMS, "event_evaluate_transforms")
     call event%discard_particle_set ()
     call event%check ()
     if (event%instance%is_complete_event ()) then
-       call event%instance%select_i_term (i_term)
+       i_term = event%instance%select_i_term ()
        event%selected_i_term = i_term
        evt => event%transform_first
        do while (associated (evt))
@@ -6049,12 +6459,17 @@ For testing purpose, we allow for providing them explicitly, as an option.
           if (evt%only_weighted_events) then
              select type (evt)
              type is (evt_nlo_t)
-                if (.not. evt%is_valid_event ()) return
+                failed_but_keep = .not. evt%is_valid_event (i_term) .and. evt%keep_failed_events
+                call evt%copy_previous_particle_set ()
+                if (.not. evt%is_valid_event (i_term) .and. .not. failed_but_keep) &
+                   return
              end select
              if (abs (event%weight_prc) > 0._default) then
                 sigma_over_sqme = event%weight_prc / event%sqme_prc
                 call evt%generate_weighted (event%sqme_prc)
                 event%weight_prc = sigma_over_sqme * event%sqme_prc
+             else
+                if (.not. failed_but_keep) exit
              end if
           else
              call evt%generate_unweighted ()
@@ -6067,11 +6482,16 @@ For testing purpose, we allow for providing them explicitly, as an option.
           evt => evt%next
        end do
        evt => event%transform_last
-       if (associated (evt) .and. evt%particle_set_exists) then
-          if (event%is_nlo_event()) then
+       if ((associated (evt) .and. evt%particle_set_exists) .or. failed_but_keep) then
+          if (event%is_nlo ()) then
              select type (evt)
              type is (evt_nlo_t)
-                call evt%build_radiated_particle_set (event%i_event + 1)
+                if (evt%i_evaluation > 0) then
+                   call evt%build_radiated_particle_set (event%i_event + 1)
+                else
+                   call evt%keep_and_boost_born_particle_set (event%i_event + 1)
+                end if
+                evt%i_evaluation = evt%i_evaluation + 1
                 call event%link_particle_set &
                    (evt%particle_set_radiated(event%i_event + 1))
              end select
@@ -6163,6 +6583,26 @@ values.
   end subroutine event_store_alt_values
 
 @ %def event_store_alt_values
+@
+<<Events: event: TBP>>=
+  procedure :: is_nlo => event_is_nlo
+<<Events: procedures>>=
+  function event_is_nlo (event) result (is_nlo)
+    logical :: is_nlo
+    class(event_t), intent(in) :: event
+    if (associated (event%instance)) then
+       select type (pcm => event%instance%pcm)
+       type is (pcm_instance_nlo_t)
+          is_nlo = pcm%is_fixed_order_nlo_events ()
+       class default
+          is_nlo = .false.
+       end select
+    else
+       is_nlo = .false.
+    end if
+  end function event_is_nlo
+
+@ %def event_is_nlo
 @
 \subsection{Reset to empty state}
 Applying this, current event contents are marked as incomplete but
@@ -6339,13 +6779,13 @@ for deterministic testing.
     if (generate_new) call event%reset ()
     event%selected_i_mci = i_mci
     if (event%config%unweighted) then
-       call event%process%generate_unweighted_event (event%instance, i_mci)
+       call event%instance%generate_unweighted_event (i_mci)
        if (signal_is_pending ()) return
        call event%instance%evaluate_event_data ()
        call event%instance%normalize_weight ()
     else
        if (generate_new) &
-          call event%process%generate_weighted_event (event%instance, i_mci)
+          call event%instance%generate_weighted_event (i_mci)
        if (signal_is_pending ()) return
        call event%instance%evaluate_event_data ()
     end if
@@ -6519,7 +6959,7 @@ Evaluating event expressions must also be done separately.
           call event%instance%evaluate_event_data &
                (weight = event%get_weight_ref ())
        else
-          call event%process%recover_event (event%instance, i_term)
+          call event%instance%recover_event ()
           if (signal_is_pending ())  return
           call event%instance%evaluate_event_data ()
           if (event%config%unweighted) then
@@ -6688,7 +7128,7 @@ and squared matrix element.
        n = 0
     end if
   end function event_get_actual_calls_total
-  
+
 @ %def event_get_actual_calls_total
 @
 Eliminate numerical noise in the [[subevt]] expression and in the event
@@ -6747,11 +7187,13 @@ module events_uti
   use model_data
   use particles
   use process_libraries
-  use processes
   use process_stacks
   use event_transforms
   use decays
   use decays_ut, only: prepare_testbed
+
+  use process, only: process_t
+  use instances, only: process_instance_t
 
   use events
 
@@ -6812,7 +7254,7 @@ end module events_uti
   public :: events_2
 <<Events: tests>>=
   subroutine events_2 (u)
-    use processes_ut, only: prepare_test_process
+    use processes_ut, only: prepare_test_process, cleanup_test_process
     integer, intent(in) :: u
     type(event_t), allocatable, target :: event
     type(process_t), allocatable, target :: process
@@ -6842,7 +7284,7 @@ end module events_uti
     write (u, "(A)")
     write (u, "(A)")  "* Generate test process event"
 
-    call process%generate_weighted_event (process_instance, 1)
+    call process_instance%generate_weighted_event (1)
 
     write (u, "(A)")
     write (u, "(A)")  "* Fill event object"
@@ -6885,7 +7327,7 @@ memory corruption in gfortran 4.7.
   public :: events_4
 <<Events: tests>>=
   subroutine events_4 (u)
-    use processes_ut, only: prepare_test_process
+    use processes_ut, only: prepare_test_process, cleanup_test_process
     integer, intent(in) :: u
     type(event_t), allocatable, target :: event
     type(process_t), allocatable, target :: process
@@ -6995,7 +7437,7 @@ without recomputing the squared matrix element.
   public :: events_5
 <<Events: tests>>=
   subroutine events_5 (u)
-    use processes_ut, only: prepare_test_process
+    use processes_ut, only: prepare_test_process, cleanup_test_process
     integer, intent(in) :: u
     type(event_t), allocatable, target :: event
     type(process_t), allocatable, target :: process
@@ -7225,7 +7667,7 @@ Generate a decay event with varying options.
     call process_instance%setup_event_data (model)
     call process_instance%init_simulation (1)
 
-    call process%generate_weighted_event (process_instance, 1)
+    call process_instance%generate_weighted_event (1)
     call process_instance%write (u)
 
     call process_instance%final ()
@@ -7244,7 +7686,7 @@ Generate a decay event with varying options.
     call process_instance%setup_event_data (model)
     call process_instance%init_simulation (1)
 
-    call process%generate_weighted_event (process_instance, 1)
+    call process_instance%generate_weighted_event (1)
     call process_instance%write (u)
 
     call process_instance%final ()
@@ -7266,7 +7708,7 @@ Generate a decay event with varying options.
     call process_instance%setup_event_data (model)
     call process_instance%init_simulation (1)
 
-    call process%generate_weighted_event (process_instance, 1)
+    call process_instance%generate_weighted_event (1)
     call process_instance%write (u)
 
     call process_instance%final ()
@@ -7813,6 +8255,9 @@ module eio_raw_uti
 
   use eio_raw
 
+  use process, only: process_t
+  use instances, only: process_instance_t
+
 <<Standard module head>>
 
 <<EIO raw: test declarations>>
@@ -7846,8 +8291,7 @@ We test the implementation of all I/O methods.
   public :: eio_raw_1
 <<EIO raw: tests>>=
   subroutine eio_raw_1 (u)
-    use processes
-    use processes_ut, only: prepare_test_process
+    use processes_ut, only: prepare_test_process, cleanup_test_process
     integer, intent(in) :: u
     type(model_data_t), target :: model
     type(event_t), allocatable, target :: event
@@ -8000,8 +8444,7 @@ We test the implementation of all I/O methods.
   public :: eio_raw_2
 <<EIO raw: tests>>=
   subroutine eio_raw_2 (u)
-    use processes
-    use processes_ut, only: prepare_test_process
+    use processes_ut, only: prepare_test_process, cleanup_test_process
     integer, intent(in) :: u
     type(model_data_t), target :: model
     type(var_list_t) :: var_list
@@ -8115,3 +8558,750 @@ We test the implementation of all I/O methods.
 
 @ %def eio_raw_2
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Dispatch}
+An event transform is responsible for dressing a partonic event.
+Since event transforms are not mutually exclusive but are
+concatenated, we provide individual dispatchers for each of them.
+
+<<[[dispatch_transforms.f90]]>>=
+<<File header>>
+
+module dispatch_transforms
+
+<<Use strings>>
+  use process
+  use variables
+  use system_defs, only: LF
+  use system_dependencies, only: LHAPDF6_AVAILABLE
+  use sf_lhapdf, only: lhapdf_initialize
+  use diagnostics
+  use models
+  use os_interface
+  use beam_structures
+
+  use event_base, only: event_callback_t, event_callback_nop_t
+  use eio_base
+  use eio_raw
+  use eio_checkpoints
+  use eio_callback
+  use eio_lhef
+  use eio_hepmc
+  use eio_lcio
+  use eio_stdhep
+  use eio_ascii
+  use eio_weights
+  use eio_dump
+
+  use event_transforms
+  use decays
+  use shower_base
+  use shower_core
+  use shower
+  use shower_pythia6
+  use hadrons
+  use mlm_matching
+  use powheg_matching
+  use ckkw_matching
+  use tauola_interface !NODEP!
+  use evt_nlo
+
+<<Standard module head>>
+
+<<Dispatch transforms: public>>
+
+contains
+
+<<Dispatch transforms: procedures>>
+
+end module dispatch_transforms
+@ %def dispatch_transforms
+@
+<<Dispatch transforms: public>>=
+  public :: dispatch_evt_nlo
+<<Dispatch transforms: procedures>>=
+  subroutine dispatch_evt_nlo (evt, keep_failed_events)
+    class(evt_t), intent(out), pointer :: evt
+    logical, intent(in) :: keep_failed_events
+    call msg_message ("Simuate: activating fixed-order NLO events")
+    allocate (evt_nlo_t :: evt)
+    evt%only_weighted_events = .true.
+    select type (evt)
+    type is (evt_nlo_t)
+       evt%i_evaluation = 0
+       evt%keep_failed_events = keep_failed_events
+    end select
+  end subroutine dispatch_evt_nlo
+
+@ %def dispatch_evt_nlo
+@
+<<Dispatch transforms: public>>=
+  public :: dispatch_evt_decay
+<<Dispatch transforms: procedures>>=
+  subroutine dispatch_evt_decay (evt, var_list)
+    class(evt_t), intent(out), pointer :: evt
+    type(var_list_t), intent(in) :: var_list
+    logical :: allow_decays
+    allow_decays = var_list%get_lval (var_str ("?allow_decays"))
+    if (allow_decays) then
+       allocate (evt_decay_t :: evt)
+       call msg_message ("Simulate: activating decays")
+    else
+       evt => null ()
+    end if
+  end subroutine dispatch_evt_decay
+
+@ %def dispatch_evt_decay
+@
+<<Dispatch transforms: public>>=
+  public :: dispatch_evt_shower
+<<Dispatch transforms: procedures>>=
+  subroutine dispatch_evt_shower (evt, var_list, model, fallback_model, &
+       os_data, beam_structure, process)
+    class(evt_t), intent(out), pointer :: evt
+    type(var_list_t), intent(in) :: var_list
+    type(model_t), pointer, intent(in) :: model, fallback_model
+    type(os_data_t), intent(in) :: os_data
+    type(beam_structure_t), intent(in) :: beam_structure
+    type(process_t), intent(in), optional :: process
+    type(string_t) :: lhapdf_file, lhapdf_dir, process_name
+    integer :: lhapdf_member
+    type(shower_settings_t) :: settings
+    type(taudec_settings_t) :: taudec_settings
+    call msg_message ("Simulate: activating parton shower")
+    allocate (evt_shower_t :: evt)
+    call settings%init (var_list)
+    if (associated (model)) then
+       call taudec_settings%init (var_list, model)
+    else
+       call taudec_settings%init (var_list, fallback_model)
+    end if
+    if (present (process)) then
+       process_name = process%get_id ()
+    else
+       process_name = 'dispatch_testing'
+    end if
+    select type (evt)
+    type is (evt_shower_t)
+       call evt%init (fallback_model, os_data)
+       lhapdf_member = &
+            var_list%get_ival (var_str ("lhapdf_member"))
+       if (LHAPDF6_AVAILABLE) then
+          lhapdf_dir = &
+               var_list%get_sval (var_str ("$lhapdf_dir"))
+          lhapdf_file = &
+               var_list%get_sval (var_str ("$lhapdf_file"))
+          call lhapdf_initialize &
+               (1, lhapdf_dir, lhapdf_file, lhapdf_member, evt%pdf_data%pdf)
+       end if
+       if (present (process))  call evt%pdf_data%setup ("Shower", &
+            beam_structure, lhapdf_member, process%get_pdf_set ())
+       select case (settings%method)
+       case (PS_WHIZARD)
+          allocate (shower_t :: evt%shower)
+       case (PS_PYTHIA6)
+          allocate (shower_pythia6_t :: evt%shower)
+       case default
+          call msg_fatal ('Shower: Method ' // &
+            char (var_list%get_sval (var_str ("$shower_method"))) // &
+            'not implemented!')
+       end select
+       call evt%shower%init (settings, taudec_settings, evt%pdf_data)
+    end select
+    call dispatch_matching (evt, settings, var_list, process_name)
+  end subroutine dispatch_evt_shower
+
+@ %def dispatch_evt_shower
+@
+<<Dispatch transforms: public>>=
+  public :: dispatch_matching
+<<Dispatch transforms: procedures>>=
+  subroutine dispatch_matching (evt, settings, var_list, process_name)
+    class(evt_t), intent(inout) :: evt
+    type(var_list_t), intent(in) :: var_list
+    type(string_t), intent(in) :: process_name
+    type(shower_settings_t), intent(in) :: settings
+    select type (evt)
+    type is (evt_shower_t)
+       if (settings%mlm_matching .and. settings%ckkw_matching) then
+          call msg_fatal ("Both MLM and CKKW matching activated," // &
+               LF // "     aborting simulation")
+       end if
+       if (settings%powheg_matching) then
+          call msg_message ("Simulate: applying POWHEG matching")
+          allocate (powheg_matching_t :: evt%matching)
+       end if
+       if (settings%mlm_matching) then
+          call msg_message ("Simulate: applying MLM matching")
+          allocate (mlm_matching_t :: evt%matching)
+       end if
+       if (settings%ckkw_matching) then
+          call msg_warning ("Simulate: CKKW(-L) matching not yet supported")
+          allocate (ckkw_matching_t :: evt%matching)
+       end if
+       if (allocated (evt%matching)) &
+            call evt%matching%init (var_list, process_name)
+    end select
+  end subroutine dispatch_matching
+
+@ %def dispatch_matching
+@
+<<Dispatch transforms: public>>=
+  public :: dispatch_evt_hadrons
+<<Dispatch transforms: procedures>>=
+  subroutine dispatch_evt_hadrons (evt, var_list, fallback_model)
+    class(evt_t), intent(out), pointer :: evt
+    type(var_list_t), intent(in) :: var_list
+    type(model_t), pointer, intent(in) :: fallback_model
+    type(string_t) :: method
+    type(shower_settings_t) :: shower_settings
+    type(hadron_settings_t) :: hadron_settings    
+    allocate (evt_hadrons_t :: evt)
+    call msg_message ("Simulate: activating hadronization")
+    call shower_settings%init (var_list)
+    call hadron_settings%init (var_list)
+    select type (evt)
+    type is (evt_hadrons_t)
+       call evt%init (fallback_model)
+       select case (hadron_settings%method)
+       case (HADRONS_WHIZARD)
+          allocate (hadrons_hadrons_t :: evt%hadrons)
+       case (HADRONS_PYTHIA6)
+          allocate (hadrons_pythia6_t :: evt%hadrons)
+       case (HADRONS_PYTHIA8)
+          allocate (hadrons_pythia8_t :: evt%hadrons)
+       case default
+          call msg_fatal ('Hadronization: Method ' // &
+            char (var_list%get_sval (var_str ("hadronization_method"))) // &
+            'not implemented!')          
+       end select
+       call evt%hadrons%init &
+            (shower_settings, hadron_settings, fallback_model)       
+    end select
+  end subroutine dispatch_evt_hadrons
+
+@ %def dispatch_evt_hadrons
+@ We cannot put this in the [[events]] subdir due to [[eio_raw_t]],
+which is defined here.
+<<Dispatch transforms: public>>=
+  public :: dispatch_eio
+<<Dispatch transforms: procedures>>=
+  subroutine dispatch_eio (eio, method, var_list, fallback_model, &
+         event_callback)
+    class(eio_t), allocatable, intent(inout) :: eio
+    type(string_t), intent(in) :: method
+    type(var_list_t), intent(in) :: var_list
+    type(model_t), target, intent(in) :: fallback_model
+    class(event_callback_t), allocatable, intent(in) :: event_callback
+    logical :: check, keep_beams, keep_remnants, recover_beams
+    logical :: use_alpha_s_from_file, use_scale_from_file
+    logical :: write_sqme_prc, write_sqme_ref, write_sqme_alt
+    logical :: output_cross_section, ensure_order
+    type(string_t) :: lhef_version, lhef_extension, raw_version
+    type(string_t) :: extension_default, debug_extension, dump_extension, &
+         extension_hepmc, &
+         extension_lha, extension_hepevt, extension_ascii_short, &
+         extension_ascii_long, extension_athena, extension_mokka, &
+         extension_stdhep, extension_stdhep_up, extension_stdhep_ev4, &
+         extension_raw, extension_hepevt_verb, extension_lha_verb, &
+         extension_lcio
+    integer :: checkpoint
+    logical :: show_process, show_transforms, show_decay, verbose, pacified
+    logical :: dump_weights, dump_compressed, dump_summary, dump_screen
+    keep_beams = &
+         var_list%get_lval (var_str ("?keep_beams"))
+    keep_remnants = &
+         var_list%get_lval (var_str ("?keep_remnants"))
+    ensure_order = &
+         var_list%get_lval (var_str ("?hepevt_ensure_order"))
+    recover_beams = &
+         var_list%get_lval (var_str ("?recover_beams"))
+    use_alpha_s_from_file = &
+         var_list%get_lval (var_str ("?use_alpha_s_from_file"))
+    use_scale_from_file = &
+         var_list%get_lval (var_str ("?use_scale_from_file"))
+    select case (char (method))
+    case ("raw")
+       allocate (eio_raw_t :: eio)
+       select type (eio)
+       type is (eio_raw_t)
+          check = &
+               var_list%get_lval (var_str ("?check_event_file"))
+          raw_version = &
+               var_list%get_sval (var_str ("$event_file_version"))
+          extension_raw = &
+               var_list%get_sval (var_str ("$extension_raw"))
+          call eio%set_parameters (check, raw_version, extension_raw)
+       end select
+    case ("checkpoint")
+       allocate (eio_checkpoints_t :: eio)
+       select type (eio)
+       type is (eio_checkpoints_t)
+          checkpoint = &
+               var_list%get_ival (var_str ("checkpoint"))
+          pacified = &
+               var_list%get_lval (var_str ("?pacify"))
+          call eio%set_parameters (checkpoint, blank = pacified)
+       end select
+    case ("callback")
+       allocate (eio_callback_t :: eio)
+       select type (eio)
+       type is (eio_callback_t)
+          checkpoint = &
+               var_list%get_ival (var_str ("event_callback_interval"))
+          if (allocated (event_callback)) then
+             call eio%set_parameters (event_callback, checkpoint)
+          else
+             call eio%set_parameters (event_callback_nop_t (), 0)
+          end if
+       end select
+    case ("lhef")
+       allocate (eio_lhef_t :: eio)
+       select type (eio)
+       type is (eio_lhef_t)
+          lhef_version = &
+               var_list%get_sval (var_str ("$lhef_version"))
+          lhef_extension = &
+               var_list%get_sval (var_str ("$lhef_extension"))
+          write_sqme_prc = &
+               var_list%get_lval (var_str ("?lhef_write_sqme_prc"))
+          write_sqme_ref = &
+               var_list%get_lval (var_str ("?lhef_write_sqme_ref"))
+          write_sqme_alt = &
+               var_list%get_lval (var_str ("?lhef_write_sqme_alt"))
+          call eio%set_parameters ( &
+               keep_beams, keep_remnants, recover_beams, &
+               use_alpha_s_from_file, use_scale_from_file, &
+               char (lhef_version), lhef_extension, &
+               write_sqme_ref, write_sqme_prc, write_sqme_alt)
+       end select
+    case ("hepmc")
+       allocate (eio_hepmc_t :: eio)
+       select type (eio)
+       type is (eio_hepmc_t)
+          output_cross_section = &
+               var_list%get_lval (var_str ("?hepmc_output_cross_section"))
+          extension_hepmc = &
+               var_list%get_sval (var_str ("$extension_hepmc"))
+          call eio%set_parameters (recover_beams, &
+               use_alpha_s_from_file, use_scale_from_file, &
+               extension_hepmc, output_cross_section)
+       end select
+    case ("lcio")
+       allocate (eio_lcio_t :: eio)
+       select type (eio)
+       type is (eio_lcio_t)
+          extension_lcio = &
+               var_list%get_sval (var_str ("$extension_lcio"))
+          call eio%set_parameters (recover_beams, &
+               use_alpha_s_from_file, use_scale_from_file, &
+               extension_lcio)
+       end select
+    case ("stdhep")
+       allocate (eio_stdhep_hepevt_t :: eio)
+       select type (eio)
+       type is (eio_stdhep_hepevt_t)
+          extension_stdhep = &
+               var_list%get_sval (var_str ("$extension_stdhep"))
+          call eio%set_parameters &
+               (keep_beams, keep_remnants, ensure_order, recover_beams, &
+                use_alpha_s_from_file, use_scale_from_file, extension_stdhep)
+       end select
+    case ("stdhep_up")
+       allocate (eio_stdhep_hepeup_t :: eio)
+       select type (eio)
+       type is (eio_stdhep_hepeup_t)
+          extension_stdhep_up = &
+               var_list%get_sval (var_str ("$extension_stdhep_up"))
+          call eio%set_parameters (keep_beams, keep_remnants, ensure_order, &
+               recover_beams, use_alpha_s_from_file, &
+               use_scale_from_file, extension_stdhep_up)
+       end select
+    case ("stdhep_ev4")
+       allocate (eio_stdhep_hepev4_t :: eio)
+       select type (eio)
+       type is (eio_stdhep_hepev4_t)
+          extension_stdhep_ev4 = &
+               var_list%get_sval (var_str ("$extension_stdhep_ev4"))
+          call eio%set_parameters &
+               (keep_beams, keep_remnants, ensure_order, recover_beams, &
+                use_alpha_s_from_file, use_scale_from_file, extension_stdhep_ev4)
+       end select
+    case ("ascii")
+       allocate (eio_ascii_ascii_t :: eio)
+       select type (eio)
+       type is (eio_ascii_ascii_t)
+          extension_default = &
+               var_list%get_sval (var_str ("$extension_default"))
+          call eio%set_parameters &
+               (keep_beams, keep_remnants, ensure_order, extension_default)
+       end select
+    case ("athena")
+       allocate (eio_ascii_athena_t :: eio)
+       select type (eio)
+       type is (eio_ascii_athena_t)
+          extension_athena = &
+               var_list%get_sval (var_str ("$extension_athena"))
+          call eio%set_parameters &
+               (keep_beams, keep_remnants, ensure_order, extension_athena)
+       end select
+    case ("debug")
+       allocate (eio_ascii_debug_t :: eio)
+       select type (eio)
+       type is (eio_ascii_debug_t)
+          debug_extension = &
+               var_list%get_sval (var_str ("$debug_extension"))
+          show_process = &
+               var_list%get_lval (var_str ("?debug_process"))
+          show_transforms = &
+               var_list%get_lval (var_str ("?debug_transforms"))
+          show_decay = &
+               var_list%get_lval (var_str ("?debug_decay"))
+          verbose = &
+               var_list%get_lval (var_str ("?debug_verbose"))
+          call eio%set_parameters ( &
+               extension = debug_extension, &
+               show_process = show_process, &
+               show_transforms = show_transforms, &
+               show_decay = show_decay, &
+               verbose = verbose)
+       end select
+    case ("dump")
+       allocate (eio_dump_t :: eio)
+       select type (eio)
+       type is (eio_dump_t)
+          dump_extension = &
+               var_list%get_sval (var_str ("$dump_extension"))
+          pacified = &
+               var_list%get_lval (var_str ("?pacify"))
+          dump_weights = &
+               var_list%get_lval (var_str ("?dump_weights"))
+          dump_compressed = &
+               var_list%get_lval (var_str ("?dump_compressed"))
+          dump_summary = &
+               var_list%get_lval (var_str ("?dump_summary"))
+          dump_screen = &
+               var_list%get_lval (var_str ("?dump_screen"))
+          call eio%set_parameters ( &
+               extension = dump_extension, &
+               pacify = pacified, &
+               weights = dump_weights, &
+               compressed = dump_compressed, &
+               summary = dump_summary, &
+               screen = dump_screen)
+       end select
+    case ("hepevt")
+       allocate (eio_ascii_hepevt_t :: eio)
+       select type (eio)
+       type is (eio_ascii_hepevt_t)
+          extension_hepevt = &
+               var_list%get_sval (var_str ("$extension_hepevt"))
+          call eio%set_parameters &
+               (keep_beams, keep_remnants, ensure_order, extension_hepevt)
+       end select
+    case ("hepevt_verb")
+       allocate (eio_ascii_hepevt_verb_t :: eio)
+       select type (eio)
+       type is (eio_ascii_hepevt_verb_t)
+          extension_hepevt_verb = &
+               var_list%get_sval (var_str ("$extension_hepevt_verb"))
+          call eio%set_parameters &
+               (keep_beams, keep_remnants, ensure_order, extension_hepevt_verb)
+       end select
+    case ("lha")
+       allocate (eio_ascii_lha_t :: eio)
+       select type (eio)
+       type is (eio_ascii_lha_t)
+          extension_lha = &
+               var_list%get_sval (var_str ("$extension_lha"))
+          call eio%set_parameters &
+               (keep_beams, keep_remnants, ensure_order, extension_lha)
+       end select
+    case ("lha_verb")
+       allocate (eio_ascii_lha_verb_t :: eio)
+       select type (eio)
+       type is (eio_ascii_lha_verb_t)
+          extension_lha_verb = var_list%get_sval ( &
+               var_str ("$extension_lha_verb"))
+          call eio%set_parameters &
+               (keep_beams, keep_remnants, ensure_order, extension_lha_verb)
+       end select
+    case ("long")
+       allocate (eio_ascii_long_t :: eio)
+       select type (eio)
+       type is (eio_ascii_long_t)
+          extension_ascii_long = &
+               var_list%get_sval (var_str ("$extension_ascii_long"))
+          call eio%set_parameters &
+               (keep_beams, keep_remnants, ensure_order, extension_ascii_long)
+       end select
+    case ("mokka")
+       allocate (eio_ascii_mokka_t :: eio)
+       select type (eio)
+       type is (eio_ascii_mokka_t)
+          extension_mokka = &
+               var_list%get_sval (var_str ("$extension_mokka"))
+          call eio%set_parameters &
+               (keep_beams, keep_remnants, ensure_order, extension_mokka)
+       end select
+    case ("short")
+       allocate (eio_ascii_short_t :: eio)
+       select type (eio)
+       type is (eio_ascii_short_t)
+          extension_ascii_short = &
+               var_list%get_sval (var_str ("$extension_ascii_short"))
+          call eio%set_parameters &
+               (keep_beams, keep_remnants, ensure_order, extension_ascii_short)
+       end select
+    case ("weight_stream")
+       allocate (eio_weights_t :: eio)
+       select type (eio)
+       type is (eio_weights_t)
+          pacified = &
+               var_list%get_lval (var_str ("?pacify"))
+          call eio%set_parameters (pacify = pacified)
+       end select
+    case default
+       call msg_fatal ("Event I/O method '" // char (method) &
+            // "' not implemented")
+    end select
+    call eio%set_fallback_model (fallback_model)
+  end subroutine dispatch_eio
+
+@ %def dispatch_eio
+@
+@
+\subsection{Unit tests}
+Test module, followed by the corresponding implementation module.
+<<[[dispatch_transforms_ut.f90]]>>=
+<<File header>>
+
+module dispatch_transforms_ut
+  use unit_tests
+  use dispatch_transforms_uti
+
+<<Standard module head>>
+
+<<Dispatch transforms: public test>>
+
+contains
+
+<<Dispatch transforms: test driver>>
+
+end module dispatch_transforms_ut
+@ %def dispatch_transforms_ut
+@
+<<[[dispatch_transforms_uti.f90]]>>=
+<<File header>>
+
+module dispatch_transforms_uti
+
+<<Use strings>>
+  use format_utils, only: write_separator
+  use variables
+  use event_base, only: event_callback_t
+  use models, only: model_t, model_list_t
+  use models, only: syntax_model_file_init, syntax_model_file_final
+  use beam_structures, only: beam_structure_t
+  use eio_base, only: eio_t
+  use os_interface, only: os_data_t, os_data_init
+  use event_transforms, only: evt_t
+  use dispatch_transforms
+
+<<Standard module head>>
+
+<<Dispatch transforms: test declarations>>
+
+contains
+
+<<Dispatch transforms: tests>>
+
+end module dispatch_transforms_uti
+@ %def dispatch_transforms_ut
+@ API: driver for the unit tests below.
+<<Dispatch transforms: public test>>=
+  public ::dispatch_transforms_test
+<<Dispatch transforms: test driver>>=
+  subroutine dispatch_transforms_test (u, results)
+    integer, intent(in) :: u
+    type(test_results_t), intent(inout) :: results
+  <<Dispatch transforms: execute tests>>
+  end subroutine dispatch_transforms_test
+
+@  %def dispatch_transforms_test
+@
+\subsubsection{Event I/O}
+<<Dispatch transforms: execute tests>>=
+  call test (dispatch_transforms_1, "dispatch_transforms_1", &
+       "event I/O", &
+       u, results)
+<<Dispatch transforms: test declarations>>=
+  public :: dispatch_transforms_1
+<<Dispatch transforms: tests>>=
+  subroutine dispatch_transforms_1 (u)
+    integer, intent(in) :: u
+    type(var_list_t) :: var_list
+    type(model_list_t) :: model_list
+    type(model_t), pointer :: model
+    type(os_data_t) :: os_data
+    class(event_callback_t), allocatable :: event_callback
+    class(eio_t), allocatable :: eio
+
+    write (u, "(A)")  "* Test output: dispatch_transforms_1"
+    write (u, "(A)")  "*   Purpose: allocate an event I/O (eio) stream"
+    write (u, "(A)")
+
+    call var_list%init_defaults (0)
+    call os_data_init (os_data)
+    call syntax_model_file_init ()
+    call model_list%read_model (var_str ("SM_hadrons"), &
+         var_str ("SM_hadrons.mdl"), os_data, model)
+
+    write (u, "(A)")  "* Allocate as raw"
+    write (u, "(A)")
+
+    call dispatch_eio (eio, var_str ("raw"), var_list, &
+         model, event_callback)
+
+    call eio%write (u)
+
+    call eio%final ()
+    deallocate (eio)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Allocate as checkpoints:"
+    write (u, "(A)")
+
+    call dispatch_eio (eio, var_str ("checkpoint"), var_list, &
+         model, event_callback)
+
+    call eio%write (u)
+
+    call eio%final ()
+    deallocate (eio)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Allocate as LHEF:"
+    write (u, "(A)")
+
+    call var_list%set_string (var_str ("$lhef_extension"), &
+         var_str ("lhe_custom"), is_known = .true.)
+    call dispatch_eio (eio, var_str ("lhef"), var_list, &
+         model, event_callback)
+
+    call eio%write (u)
+
+    call eio%final ()
+    deallocate (eio)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Allocate as HepMC:"
+    write (u, "(A)")
+
+    call dispatch_eio (eio, var_str ("hepmc"), var_list, &
+         model, event_callback)
+
+    call eio%write (u)
+
+    call eio%final ()
+    deallocate (eio)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Allocate as weight_stream"
+    write (u, "(A)")
+
+    call dispatch_eio (eio, var_str ("weight_stream"), var_list, &
+         model, event_callback)
+
+    call eio%write (u)
+
+    call eio%final ()
+    deallocate (eio)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Allocate as debug format"
+    write (u, "(A)")
+
+    call var_list%set_log (var_str ("?debug_verbose"), &
+         .false., is_known = .true.)
+    call dispatch_eio (eio, var_str ("debug"), var_list, &
+         model, event_callback)
+
+    call eio%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+
+    call eio%final ()
+    call var_list%final ()
+    call syntax_model_file_final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: dispatch_transforms_1"
+
+  end subroutine dispatch_transforms_1
+
+@ %def dispatch_transforms_1
+@
+\subsubsection{Event transforms}
+This test dispatches an [[evt]] (event transform) object.  Currently,
+the only nontrivial transform is the partonic decay chain..
+<<Dispatch transforms: execute tests>>=
+  call test (dispatch_transforms_2, "dispatch_transforms_2", &
+       "event transforms", &
+       u, results)
+<<Dispatch transforms: test declarations>>=
+  public :: dispatch_transforms_2
+<<Dispatch transforms: tests>>=
+  subroutine dispatch_transforms_2 (u)
+    integer, intent(in) :: u
+    type(var_list_t) :: var_list
+    type(model_list_t) :: model_list
+    type(model_t), pointer :: model
+    type(os_data_t) :: os_data
+    type(beam_structure_t) :: beam_structure
+    class(evt_t), pointer :: evt
+
+    write (u, "(A)")  "* Test output: dispatch_transforms_2"
+    write (u, "(A)")  "*   Purpose: configure event transform"
+    write (u, "(A)")
+
+    call syntax_model_file_init ()
+    call var_list%init_defaults (0)
+    call os_data_init (os_data)
+    call model_list%read_model (var_str ("SM_hadrons"), &
+         var_str ("SM_hadrons.mdl"), os_data, model)
+
+    write (u, "(A)")  "* Partonic decays"
+    write (u, "(A)")
+
+    call dispatch_evt_decay (evt, var_list)
+    call evt%write (u, verbose = .true., more_verbose = .true.)
+
+    call evt%final ()
+    deallocate (evt)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Shower"
+    write (u, "(A)")
+
+    call var_list%set_log (var_str ("?allow_shower"), .true., &
+         is_known = .true.)
+    call var_list%set_string (var_str ("$shower_method"), &
+         var_str ("WHIZARD"), is_known = .true.)
+    call dispatch_evt_shower (evt, var_list, model, &
+         model, os_data, beam_structure)
+    call evt%write (u)
+    call write_separator (u, 2)
+
+    call evt%final ()
+    deallocate (evt)
+
+    call var_list%final ()
+    call syntax_model_file_final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: dispatch_transforms_2"
+
+  end subroutine dispatch_transforms_2
+
+@ %def dispatch_transforms_2

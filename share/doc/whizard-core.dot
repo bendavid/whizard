@@ -1,0 +1,32 @@
+
+digraph G {
+commands -> rt_data
+compilations -> rt_data
+main -> whizard
+event_streams -> rt_data
+simulations -> event_streams
+whizard -> rt_data
+commands -> simulations
+whizard_c_interface -> commands
+whizard_c_interface -> whizard
+commands -> integrations
+whizard_c_interface -> rt_data
+simulations -> dispatch_me_methods
+simulations -> integrations
+main -> cmdline_options
+whizard_c_interface -> simulations
+commands -> user_files
+integrations -> dispatch_me_methods
+rt_data -> user_files
+process_configurations -> dispatch_me_methods
+whizard -> commands
+process_configurations -> rt_data
+integrations -> rt_data
+commands -> process_configurations
+commands -> event_streams
+main -> features
+commands -> compilations
+integrations -> compilations
+simulations -> rt_data
+ }
+

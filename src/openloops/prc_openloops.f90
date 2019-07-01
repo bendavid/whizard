@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -42,7 +42,6 @@ module prc_openloops
   use iso_varying_string, string_t => varying_string
   use constants
   use numeric_utils
-  use system_defs, only: TAB
   use diagnostics
   use system_dependencies
   use physics_defs
@@ -85,6 +84,7 @@ module prc_openloops
   end type openloops_writer_t
 
   type, extends (blha_def_t) :: openloops_def_t
+     integer :: verbosity
   contains
     procedure :: init => openloops_def_init
     procedure, nopass :: type_string => openloops_def_type_string
@@ -119,24 +119,18 @@ module prc_openloops
     procedure :: allocate_workspace => prc_openloops_allocate_workspace
     procedure :: init_driver => prc_openloops_init_driver
     procedure :: write => prc_openloops_write
+    procedure :: write_name => prc_openloops_write_name
     procedure :: prepare_library => prc_openloops_prepare_library
     procedure :: load_driver => prc_openloops_load_driver
     procedure :: start => prc_openloops_start
     procedure :: set_n_external => prc_openloops_set_n_external
     procedure :: reset_parameters => prc_openloops_reset_parameters
     procedure :: set_verbosity => prc_openloops_set_verbosity
-    procedure :: compute_sqme_born => prc_openloops_compute_sqme_born
-    procedure :: compute_sqme_real => prc_openloops_compute_sqme_real
+    procedure :: create_and_load_extra_libraries => &
+         prc_openloops_create_and_load_extra_libraries
     procedure :: compute_sqme_sc => prc_openloops_compute_sqme_sc
   end type prc_openloops_t
 
-
-  abstract interface
-     subroutine omega_update_alpha_s (alpha_s) bind(C)
-       import
-       real(c_default_float), intent(in) :: alpha_s
-     end subroutine omega_update_alpha_s
-  end interface
 
   abstract interface
      subroutine ol_evaluate_sc (id, pp, emitter, polvect, res) bind(C)
@@ -156,11 +150,12 @@ contains
   end function openloops_writer_type_name
 
   subroutine openloops_def_init (object, basename, model_name, &
-                                 prt_in, prt_out, nlo_type)
+                                 prt_in, prt_out, nlo_type, var_list)
     class(openloops_def_t), intent(inout) :: object
     type(string_t), intent(in) :: basename, model_name
     type(string_t), dimension(:), intent(in) :: prt_in, prt_out
-    integer :: nlo_type
+    integer, intent(in) :: nlo_type
+    type(var_list_t), intent(in) :: var_list
     object%basename = basename
     allocate (openloops_writer_t :: object%writer)
     select case (nlo_type)
@@ -177,6 +172,7 @@ contains
     class is (prc_blha_writer_t)
        call writer%init (model_name, prt_in, prt_out)
     end select
+    object%verbosity = var_list%get_ival (var_str ("openloops_verbosity"))
   end subroutine openloops_def_init
 
   function openloops_def_type_string () result (string)
@@ -215,7 +211,7 @@ contains
   end subroutine openloops_driver_init_dlaccess_to_library 
 
   subroutine openloops_driver_set_alpha_s (driver, alpha_s)
-    class(openloops_driver_t), intent(inout) :: driver
+    class(openloops_driver_t), intent(in) :: driver
     real(default), intent(in) :: alpha_s
     integer :: ierr
     if (associated (driver%blha_olp_set_parameter)) then
@@ -335,18 +331,26 @@ contains
     call msg_message (unit = unit, string = "OpenLoops")
   end subroutine prc_openloops_write
 
-  subroutine prc_openloops_prepare_library (object, os_data, model, var_list)
+  subroutine prc_openloops_write_name (object, unit)
+    class(prc_openloops_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit)
+    write (u,"(1x,A)") "Core: OpenLoops"
+  end subroutine prc_openloops_write_name
+
+  subroutine prc_openloops_prepare_library (object, os_data, model)
     class(prc_openloops_t), intent(inout) :: object
     type(os_data_t), intent(in) :: os_data
     type(model_data_t), intent(in), target :: model
-    type(var_list_t), intent(in) :: var_list
-    integer :: verbosity
     call object%load_driver (os_data)
     call object%reset_parameters ()
     call object%set_particle_properties (model)
     call object%set_electroweak_parameters (model)
-    verbosity = var_list%get_ival (var_str ("openloops_verbosity"))
-    call object%set_verbosity (verbosity)
+    select type(def => object%def)
+    type is (openloops_def_t)
+       call object%set_verbosity (def%verbosity)
+    end select
   end subroutine prc_openloops_prepare_library
 
   subroutine prc_openloops_load_driver (object, os_data)
@@ -412,72 +416,21 @@ contains
     end select
   end subroutine prc_openloops_set_verbosity
 
-  subroutine prc_openloops_compute_sqme_born &
-         (object, i_born, p, mu, sqme, bad_point)
-    class(prc_openloops_t), intent(inout) :: object
-    integer, intent(in) :: i_born
-    type(vector4_t), dimension(:), intent(in) :: p
-    real(default), intent(in) :: mu
-    real(default), intent(out) :: sqme
-    logical, intent(out) :: bad_point
-    real(double), dimension(5*object%n_particles) :: mom
-    real(default) :: acc_born 
-    real(double), dimension(blha_result_array_size (object%n_particles, &
-                                                     BLHA_AMP_TREE)) :: r
-    real(double) :: mu_dble
-    real(double) :: acc_dble
-    real(default) :: alpha_s
-
-    mu_dble = dble(mu)
-    alpha_s = object%qcd%alpha%get (mu)
-
-    select type (driver => object%driver)
-    type is (openloops_driver_t)
-       call driver%set_alpha_s (alpha_s)
-       if (allocated (object%i_born)) then
-          mom = object%create_momentum_array (p)
-          call driver%blha_olp_eval2 (object%i_born(i_born), mom, mu_dble, r, acc_dble)
-          sqme = r(1)
-       else
-          sqme = 0._default
-          acc_dble = 0._default
-       end if
-    end select
-    acc_born = acc_dble
-    bad_point = acc_born > object%maximum_accuracy
-  end subroutine prc_openloops_compute_sqme_born
-
-  subroutine prc_openloops_compute_sqme_real &
-         (object, i_flv, p, ren_scale, sqme, bad_point)
-    class(prc_openloops_t), intent(inout) :: object
-    integer, intent(in) :: i_flv
-    type(vector4_t), intent(in), dimension(:) :: p
-    real(default), intent(in) :: ren_scale
-    real(default), intent(out) :: sqme
-    logical, intent(out) :: bad_point
-    real(double), dimension(5*object%n_particles) :: mom
-    real(double), dimension(blha_result_array_size (object%n_particles, &
-                                                    BLHA_AMP_TREE)) :: r
-    real(double) :: mu_dble
-    real(double) :: acc_dble
-    real(default) :: acc
-    real(default) :: alpha_s
-    mom = object%create_momentum_array (p)
-    if (vanishes (ren_scale)) &
-       call msg_fatal ("prc_openloops_compute_sqme_real: ren_scale vanishes")
-    mu_dble = dble (ren_scale)
-
-    alpha_s = object%qcd%alpha%get (ren_scale)
-    select type (driver => object%driver)
-    type is (openloops_driver_t)
-       call driver%set_alpha_s (alpha_s)
-       call driver%blha_olp_eval2 (object%i_real(i_flv), mom, &
-                                    mu_dble, r, acc_dble)
-       sqme = r(1)
-    end select
-    acc = acc_dble
-    if (acc > object%maximum_accuracy) bad_point = .true.
-  end subroutine prc_openloops_compute_sqme_real
+  subroutine prc_openloops_create_and_load_extra_libraries ( &
+         core, os_data, libname, model, i_core)
+    class(prc_openloops_t), intent(inout) :: core
+    type(os_data_t), intent(in) :: os_data
+    type(string_t), intent(in) :: libname
+    type(model_data_t), intent(in), target :: model
+    integer, intent(in) :: i_core
+    core%sqme_tree_pos = 1
+    call core%set_n_external (core%data%get_n_tot ())
+    call core%prepare_library (os_data, model)
+    call core%start ()
+    call core%read_contract_file (core%data%flv_state)
+    call core%print_parameter_file (i_core)
+    call core%reset_helicity_list ()
+  end subroutine prc_openloops_create_and_load_extra_libraries
 
   subroutine prc_openloops_compute_sqme_sc (object, &
                 i_flv, em, p, ren_scale, pol_vects, &
@@ -514,6 +467,8 @@ contains
 
     me_sc = me_sc / CA
     bad_point = .false.
+    !!! OpenLoops includes a factor of 1 / 4 in the amplitudes
+    if (object%includes_polarization ()) me_sc = four * me_sc
 
   end subroutine prc_openloops_compute_sqme_sc
 

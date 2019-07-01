@@ -1,4 +1,4 @@
-(* $Id: partition.mli 7444 2016-02-17 15:37:20Z jr_reuter $
+(* partition.mli --
 
    Copyright (C) 1999-2016 by
 
@@ -34,8 +34,6 @@ val triples : int -> int -> int -> (int * int * int) list
      \sum_{i=1}^d n_i = n
    \end{equation} *)
 val tuples : int -> int -> int -> int -> int list list
-
-val rcs : RCS.t
 
 (*i
  *  Local Variables:

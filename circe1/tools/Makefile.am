@@ -33,28 +33,28 @@ bin_PROGRAMS = circe1_plot circe1_fit circe1_sample \
 bin_SCRIPTS = circe1_fit.run circe1_minuit1.run circe1_minuit2.run \
 	circe1_int.run
 
-KINDS=$(top_builddir)/src/kinds.lo
+KINDS=$(top_builddir)/circe1/src/kinds.lo
 
 circe1_plot_SOURCES = circe1_plot.f90
-circe1_plot_LDADD = $(KINDS) $(top_builddir)/src/libcirce1.la
+circe1_plot_LDADD = $(KINDS) $(top_builddir)/circe1/src/libcirce1.la
 
 circe1_sample_SOURCES = circe1_sample.f90
-circe1_sample_LDADD = $(KINDS) $(top_builddir)/src/libcirce1.la
+circe1_sample_LDADD = $(KINDS) $(top_builddir)/circe1/src/libcirce1.la
 
 circe1_fit_SOURCES = circe1_fit.f90
-circe1_fit_LDADD = $(KINDS) $(top_builddir)/minuit/libminuit.la \
-	$(top_builddir)/src/libcirce1.la
+circe1_fit_LDADD = $(KINDS) $(top_builddir)/circe1/minuit/libminuit.la \
+	$(top_builddir)/circe1/src/libcirce1.la
 
 circe1_int_SOURCES = circe1_int.f90
-circe1_int_LDADD = $(KINDS) $(top_builddir)/src/libcirce1.la
+circe1_int_LDADD = $(KINDS) $(top_builddir)/circe1/src/libcirce1.la
 
 circe1_minuit1_SOURCES = circe1_minuit1.f90
-circe1_minuit1_LDADD = $(KINDS) $(top_builddir)/minuit/libminuit.la \
-	$(top_builddir)/src/libcirce1.la
+circe1_minuit1_LDADD = $(KINDS) $(top_builddir)/circe1/minuit/libminuit.la \
+	$(top_builddir)/circe1/src/libcirce1.la
 
 circe1_minuit2_SOURCES = circe1_minuit2.f90
-circe1_minuit2_LDADD = $(KINDS) $(top_builddir)/minuit/libminuit.la \
-	$(top_builddir)/src/libcirce1.la
+circe1_minuit2_LDADD = $(KINDS) $(top_builddir)/circe1/minuit/libminuit.la \
+	$(top_builddir)/circe1/src/libcirce1.la
 
 EXTRA_DIST = $(circe1_plot_SOURCES) $(circe1_fit_SOURCES) \
 	$(circe1_sample_SOURCES) $(circe1_int_SOURCES) \
@@ -72,7 +72,7 @@ SUFFIXES = .nw .lo .$(FC_MODULE_EXT) .sh. .run
 	@:
 
 AM_FFLAGS = 
-AM_FCFLAGS = -I$(top_builddir)/src
+AM_FCFLAGS = -I$(top_builddir)/circe1/src
 
 ########################################################################
 ## Default Fortran compiler options
@@ -93,42 +93,42 @@ endif
 # noweb
 ########################################################################
 
-BRACKET = $(top_srcdir)/src/prelude.nw $(top_srcdir)/src/postlude.nw
-TRIPLE = $(top_srcdir)/src/prelude.nw $< $(top_srcdir)/src/postlude.nw
+BRACKET = $(top_srcdir)/circe1/src/prelude.nw $(top_srcdir)/circe1/src/postlude.nw
+TRIPLE = $(top_srcdir)/circe1/src/prelude.nw $< $(top_srcdir)/circe1/src/postlude.nw
 
 if NOWEB_AVAILABLE
-circe1_plot.f90: $(top_srcdir)/src/circe1.nw $(BRACKET)
+circe1_plot.f90: $(top_srcdir)/circe1/src/circe1.nw $(BRACKET)
 	cat $(TRIPLE) | $(NOTANGLE) -R'[[$@]]' | $(CPIF) $@
 
-circe1_sample.f90: $(top_srcdir)/src/circe1.nw $(BRACKET)
+circe1_sample.f90: $(top_srcdir)/circe1/src/circe1.nw $(BRACKET)
 	cat $(TRIPLE) | $(NOTANGLE) -R'[[$@]]' | $(CPIF) $@
 endif
 
 ########################################################################
 
 if NOWEB_AVAILABLE
-circe1_fit.f90: $(top_srcdir)/src/minuit.nw $(BRACKET)
+circe1_fit.f90: $(top_srcdir)/circe1/src/minuit.nw $(BRACKET)
 	cat $(TRIPLE) | $(NOTANGLE) -R'[[$@]]' | $(CPIF) $@
 
-circe1_fit.sh: $(top_srcdir)/src/minuit.nw $(BRACKET)
+circe1_fit.sh: $(top_srcdir)/circe1/src/minuit.nw $(BRACKET)
 	cat $(TRIPLE) | $(NOTANGLE) -R'[[$@]]' | $(CPIF) $@
 
-circe1_minuit1.f90: $(top_srcdir)/src/minuit.nw $(BRACKET)
+circe1_minuit1.f90: $(top_srcdir)/circe1/src/minuit.nw $(BRACKET)
 	cat $(TRIPLE) | $(NOTANGLE) -R'[[$@]]' | $(CPIF) $@
 
-circe1_minuit2.f90: $(top_srcdir)/src/minuit.nw $(BRACKET)
+circe1_minuit2.f90: $(top_srcdir)/circe1/src/minuit.nw $(BRACKET)
 	cat $(TRIPLE) | $(NOTANGLE) -R'[[$@]]' | $(CPIF) $@
 
-circe1_minuit1.sh: $(top_srcdir)/src/minuit.nw $(BRACKET)
+circe1_minuit1.sh: $(top_srcdir)/circe1/src/minuit.nw $(BRACKET)
 	cat $(TRIPLE) | $(NOTANGLE) -R'[[$@]]' | $(CPIF) $@
 
-circe1_minuit2.sh: $(top_srcdir)/src/minuit.nw $(BRACKET)
+circe1_minuit2.sh: $(top_srcdir)/circe1/src/minuit.nw $(BRACKET)
 	cat $(TRIPLE) | $(NOTANGLE) -R'[[$@]]' | $(CPIF) $@
 
-circe1_int.f90: $(top_srcdir)/src/interpol.nw $(BRACKET)
+circe1_int.f90: $(top_srcdir)/circe1/src/interpol.nw $(BRACKET)
 	cat $(TRIPLE) | $(NOTANGLE) -R'[[$@]]' | $(CPIF) $@
 
-circe1_int.sh: $(top_srcdir)/src/interpol.nw $(BRACKET)
+circe1_int.sh: $(top_srcdir)/circe1/src/interpol.nw $(BRACKET)
 	cat $(TRIPLE) | $(NOTANGLE) -R'[[$@]]' | $(CPIF) $@
 endif
 

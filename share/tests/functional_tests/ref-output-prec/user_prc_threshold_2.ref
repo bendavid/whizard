@@ -4,32 +4,32 @@
 ?pacify = true
 openmp_num_threads = 1
 | Switching to model 'SM_tt_threshold'
-sqrts =  3.6000000E+02
-SM_tt_threshold.sqrtsstepsize =>  1.0000000E-01
-SM_tt_threshold.sqrtsmin =>  3.5990000E+02
-SM_tt_threshold.sqrtsmax =>  3.6010000E+02
-SM_tt_threshold.mZ =>  9.1188000E+01
-SM_tt_threshold.mW =>  8.0419000E+01
-SM_tt_threshold.mb =>  4.2000000E+00
-SM_tt_threshold.alphas =>  1.1800000E-01
-SM_tt_threshold.alpha_em_i =>  1.2592400E+02
-SM_tt_threshold.m1S =>  1.7200000E+02
-SM_tt_threshold.mpole_fixed =>  1.0000000E+00
-SM_tt_threshold.nrqcd_order =>  0.0000000E+00
-SM_tt_threshold.sh =>  1.0000000E+00
-SM_tt_threshold.sf =>  1.0000000E+00
-SM_tt_threshold.Vtb =>  1.0000000E+00
+sqrts =  3.60000E+02
+SM_tt_threshold.sqrtsstepsize =>  1.00000E-01
+SM_tt_threshold.sqrtsmin =>  3.59900E+02
+SM_tt_threshold.sqrtsmax =>  3.60100E+02
+SM_tt_threshold.mZ =>  9.11880E+01
+SM_tt_threshold.mW =>  8.04190E+01
+SM_tt_threshold.mb =>  4.20000E+00
+SM_tt_threshold.alphas =>  1.18000E-01
+SM_tt_threshold.alpha_em_i =>  1.25924E+02
+SM_tt_threshold.m1S =>  1.72000E+02
+SM_tt_threshold.mpole_fixed =>  1.00000E+00
+SM_tt_threshold.nrqcd_order =>  0.00000E+00
+SM_tt_threshold.sh =>  1.00000E+00
+SM_tt_threshold.sf =>  1.00000E+00
+SM_tt_threshold.Vtb =>  1.00000E+00
 $method = "threshold"
 $born_me_method = "threshold"
 $loop_me_method = "threshold"
 $correlation_me_method = "threshold"
 $real_tree_me_method = "threshold"
-[user variable] num_diff =  1.0000000E-03
-SM_tt_threshold.FF =>  9.0000000E+00
+[user variable] num_diff =  1.00000E-03
+SM_tt_threshold.FF =>  1.00000E+01
 seed = 0
 $restrictions = "3+5~t && 4+6~tbar"
 | Process library 'user_prc_threshold_2_lib': recorded process 'user_prc_threshold_2_sig'
-SM_tt_threshold.offshell_strategy =>  4.0000000E+00
+SM_tt_threshold.offshell_strategy =>  4.00000E+00
 | Integrate: current process library needs compilation
 | Process library 'user_prc_threshold_2_lib': compiling ...
 | Process library 'user_prc_threshold_2_lib': writing makefile
@@ -85,7 +85,7 @@ seed = 0
 | Process library 'user_prc_threshold_2_lib': unloading
 | Process library 'user_prc_threshold_2_lib': open
 | Process library 'user_prc_threshold_2_lib': recorded process 'user_prc_threshold_2_sig_thr'
-SM_tt_threshold.offshell_strategy =>  0.0000000E+00
+SM_tt_threshold.offshell_strategy =>  0.00000E+00
 | Integrate: current process library needs compilation
 | Process library 'user_prc_threshold_2_lib': compiling ...
 | Process library 'user_prc_threshold_2_lib': writing makefile
@@ -138,7 +138,7 @@ Warning: No cuts have been defined.
 |-----------------------------------------------------------------------------|
    3       2829     4.837E+02   2.69E+01    5.56    2.96    13.0    1.15   3
 |=============================================================================|
-tolerance =  1.0000000E-03
+tolerance =  1.00000E-03
 | expect: success
 seed = 0
 $method = "omega"
@@ -146,7 +146,7 @@ $restrictions = "3+5~t && 4+6~tbar"
 | Process library 'user_prc_threshold_2_lib': unloading
 | Process library 'user_prc_threshold_2_lib': open
 | Process library 'user_prc_threshold_2_lib': recorded process 'user_prc_threshold_2_native'
-SM_tt_threshold.offshell_strategy =>  0.0000000E+00
+SM_tt_threshold.offshell_strategy =>  0.00000E+00
 | Integrate: current process library needs compilation
 | Process library 'user_prc_threshold_2_lib': compiling ...
 | Process library 'user_prc_threshold_2_lib': writing makefile
@@ -199,14 +199,14 @@ Warning: No cuts have been defined.
 |-----------------------------------------------------------------------------|
    3       2829     4.837E+02   2.69E+01    5.56    2.96    13.0    1.15   3
 |=============================================================================|
-tolerance =  1.0000000E-03
+tolerance =  1.00000E-03
 | expect: success
 $method = "threshold"
 seed = 0
 | Process library 'user_prc_threshold_2_lib': unloading
 | Process library 'user_prc_threshold_2_lib': open
 | Process library 'user_prc_threshold_2_lib': recorded process 'user_prc_threshold_2_factorized'
-SM_tt_threshold.offshell_strategy =>  2.0000000E+00
+SM_tt_threshold.offshell_strategy =>  2.00000E+00
 | Integrate: current process library needs compilation
 | Process library 'user_prc_threshold_2_lib': compiling ...
 | Process library 'user_prc_threshold_2_lib': writing makefile
@@ -260,7 +260,7 @@ Warning: No cuts have been defined.
 |-----------------------------------------------------------------------------|
    3       2813     4.977E+02   2.66E+01    5.35    2.84    10.4    0.62   3
 |=============================================================================|
-tolerance =  1.7309697E+01
+tolerance =  1.73097E+01
 | expect: success
 | Summary of value checks:
 |   Failures: 0 / Total: 3

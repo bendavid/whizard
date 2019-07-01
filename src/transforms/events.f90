@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -40,7 +40,7 @@ module events
   use constants, only: one
   use io_units
   use format_utils, only: pac_fmt, write_separator
-  use format_defs, only: FMT_12, FMT_14, FMT_19
+  use format_defs, only: FMT_12, FMT_19
   use numeric_utils
   use diagnostics
   use variables
@@ -51,7 +51,9 @@ module events
   use particles
   use subevt_expr
   use rng_base
-  use processes
+  use process, only: process_t
+  use instances, only: process_instance_t
+  use pcm, only: pcm_instance_nlo_t
   use process_stacks
   use event_base
   use event_transforms
@@ -99,6 +101,7 @@ module events
      logical :: analysis_flag = .false.
      integer :: i_event = 0
    contains
+     procedure :: clone => event_clone
      procedure :: final => event_final
      procedure :: write => event_write
      procedure :: basic_init => event_init
@@ -114,6 +117,7 @@ module events
      procedure :: evaluate_expressions => event_evaluate_expressions
      procedure :: passed_selection => event_passed_selection
      procedure :: store_alt_values => event_store_alt_values
+     procedure :: is_nlo => event_is_nlo
      procedure :: reset => event_reset
      procedure :: import_instance_results => event_import_instance_results
      procedure :: accept_sqme_ref => event_accept_sqme_ref
@@ -195,6 +199,39 @@ contains
     end if
   end subroutine event_config_write
 
+  subroutine event_clone (event, event_new)
+    class(event_t), intent(in), target :: event
+    class(event_t), intent(out), target:: event_new
+    type(string_t) :: id
+    integer :: num_id
+    event_new%config = event%config
+    event_new%process => event%process
+    event_new%instance => event%instance
+    if (allocated (event%rng)) &
+         allocate(event_new%rng, source=event%rng)
+    event_new%selected_i_mci = event%selected_i_mci
+    event_new%selected_i_term = event%selected_i_term
+    event_new%selected_channel = event%selected_channel
+    event_new%is_complete = event%is_complete
+    event_new%transform_first => event%transform_first
+    event_new%transform_last => event%transform_last
+    event_new%selection_evaluated = event%selection_evaluated
+    event_new%passed = event%passed
+    if (allocated (event%alpha_qcd_forced)) &
+         allocate(event_new%alpha_qcd_forced, source=event%alpha_qcd_forced)
+    if (allocated (event%scale_forced)) &
+         allocate(event_new%scale_forced, source=event%scale_forced)
+    event_new%reweight = event%reweight
+    event_new%analysis_flag = event%analysis_flag
+    event_new%i_event = event%i_event
+    id = event_new%process%get_id ()
+    if (id /= "")  call event_new%expr%set_process_id (id)
+    num_id = event_new%process%get_num_id ()
+    if (num_id /= 0)  call event_new%expr%set_process_num_id (num_id)
+    call event_new%expr%setup_vars (event_new%process%get_sqrts ())
+    call event_new%expr%link_var_list (event_new%process%get_var_list_ptr ())
+  end subroutine event_clone
+
   subroutine event_final (object)
     class(event_t), intent(inout) :: object
     class(evt_t), pointer :: evt
@@ -219,7 +256,7 @@ contains
     class(evt_t), pointer :: evt
     character(len=7) :: fmt
     integer :: u, i
-    call pac_fmt (fmt, FMT_19, FMT_14, testflag)
+    call pac_fmt (fmt, FMT_19, FMT_12, testflag)
     u = given_output_unit (unit)
     prc = .true.;  if (present (show_process))  prc = show_process
     trans = .true.;  if (present (show_transforms))  trans = show_transforms
@@ -238,7 +275,7 @@ contains
     end if
     if (object%sqme_ref_is_known ()) then
        write (u, "(3x,A," // fmt // ")") &
-            "Squared matrix el. = ", object%get_sqme_ref ()
+            "Squared matrix el. (ref) = ", object%get_sqme_ref ()
        if (object%sqme_alt_is_known ()) then
           do i = 1, object%get_n_alt ()
              write (u, "(5x,A," // fmt // ",1x,I0)")  &
@@ -246,16 +283,24 @@ contains
           end do
        end if
     end if
+    if (object%sqme_prc_is_known ()) &
+       write (u, "(3x,A," // fmt // ")") &
+            "Squared matrix el. (prc) = ", object%get_sqme_prc ()
+
     if (object%weight_ref_is_known ()) then
        write (u, "(3x,A," // fmt // ")") &
-            "Event weight       = ", object%get_weight_ref ()
+            "Event weight (ref)       = ", object%get_weight_ref ()
        if (object%weight_alt_is_known ()) then
           do i = 1, object%get_n_alt ()
              write (u, "(5x,A," // fmt // ",1x,I0)")  &
-                  "alternate weight = ", object%get_weight_alt(i), i
+                  "alternate weight      = ", object%get_weight_alt(i), i
           end do
        end if
     end if
+    if (object%weight_prc_is_known ()) &
+       write (u, "(3x,A," // fmt // ")") &
+            "Event weight (prc)       = ", object%get_weight_prc ()
+
     if (object%selected_i_mci /= 0) then
        call write_separator (u)
        write (u, "(3x,A,I0)")  "Selected MCI group = ", object%selected_i_mci
@@ -434,11 +479,12 @@ contains
     class(evt_t), pointer :: evt
     real(default) :: sigma_over_sqme
     integer :: i_term
+    logical :: failed_but_keep = .false.
     call msg_debug (D_TRANSFORMS, "event_evaluate_transforms")
     call event%discard_particle_set ()
     call event%check ()
     if (event%instance%is_complete_event ()) then
-       call event%instance%select_i_term (i_term)
+       i_term = event%instance%select_i_term ()
        event%selected_i_term = i_term
        evt => event%transform_first
        do while (associated (evt))
@@ -455,12 +501,17 @@ contains
           if (evt%only_weighted_events) then
              select type (evt)
              type is (evt_nlo_t)
-                if (.not. evt%is_valid_event ()) return
+                failed_but_keep = .not. evt%is_valid_event (i_term) .and. evt%keep_failed_events
+                call evt%copy_previous_particle_set ()
+                if (.not. evt%is_valid_event (i_term) .and. .not. failed_but_keep) &
+                   return
              end select
              if (abs (event%weight_prc) > 0._default) then
                 sigma_over_sqme = event%weight_prc / event%sqme_prc
                 call evt%generate_weighted (event%sqme_prc)
                 event%weight_prc = sigma_over_sqme * event%sqme_prc
+             else
+                if (.not. failed_but_keep) exit
              end if
           else
              call evt%generate_unweighted ()
@@ -473,11 +524,16 @@ contains
           evt => evt%next
        end do
        evt => event%transform_last
-       if (associated (evt) .and. evt%particle_set_exists) then
-          if (event%is_nlo_event()) then
+       if ((associated (evt) .and. evt%particle_set_exists) .or. failed_but_keep) then
+          if (event%is_nlo ()) then
              select type (evt)
              type is (evt_nlo_t)
-                call evt%build_radiated_particle_set (event%i_event + 1)
+                if (evt%i_evaluation > 0) then
+                   call evt%build_radiated_particle_set (event%i_event + 1)
+                else
+                   call evt%keep_and_boost_born_particle_set (event%i_event + 1)
+                end if
+                evt%i_evaluation = evt%i_evaluation + 1
                 call event%link_particle_set &
                    (evt%particle_set_radiated(event%i_event + 1))
              end select
@@ -543,6 +599,21 @@ contains
        call event%expr%set (sqme_alt = event%get_sqme_alt ())
     end if
   end subroutine event_store_alt_values
+
+  function event_is_nlo (event) result (is_nlo)
+    logical :: is_nlo
+    class(event_t), intent(in) :: event
+    if (associated (event%instance)) then
+       select type (pcm => event%instance%pcm)
+       type is (pcm_instance_nlo_t)
+          is_nlo = pcm%is_fixed_order_nlo_events ()
+       class default
+          is_nlo = .false.
+       end select
+    else
+       is_nlo = .false.
+    end if
+  end function event_is_nlo
 
   subroutine event_reset (event)
     class(event_t), intent(inout) :: event
@@ -659,13 +730,13 @@ contains
     if (generate_new) call event%reset ()
     event%selected_i_mci = i_mci
     if (event%config%unweighted) then
-       call event%process%generate_unweighted_event (event%instance, i_mci)
+       call event%instance%generate_unweighted_event (i_mci)
        if (signal_is_pending ()) return
        call event%instance%evaluate_event_data ()
        call event%instance%normalize_weight ()
     else
        if (generate_new) &
-          call event%process%generate_weighted_event (event%instance, i_mci)
+          call event%instance%generate_weighted_event (i_mci)
        if (signal_is_pending ()) return
        call event%instance%evaluate_event_data ()
     end if
@@ -768,7 +839,7 @@ contains
           call event%instance%evaluate_event_data &
                (weight = event%get_weight_ref ())
        else
-          call event%process%recover_event (event%instance, i_term)
+          call event%instance%recover_event ()
           if (signal_is_pending ())  return
           call event%instance%evaluate_event_data ()
           if (event%config%unweighted) then
@@ -881,7 +952,7 @@ contains
        n = 0
     end if
   end function event_get_actual_calls_total
-  
+
   subroutine pacify_event (event)
     class(event_t), intent(inout) :: event
     class(evt_t), pointer :: evt

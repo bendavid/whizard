@@ -101,7 +101,7 @@ g95)
   wo_cv_fc_version=[`echo $FC_ID_STRING | $SED -e 's/.*g95 \([0-9][0-9]*\.[0-9][0-9]*\).*$/\1/'`]
   ;;
 NAG)
-  wo_cv_fc_version=[`echo $FC_ID_STRING | $SED -e 's/.* Release \([0-9][0-9]*\.[0-9][0-9]*.*$\)/\1/'`]
+  wo_cv_fc_version=[`echo $FC_ID_STRING | $SED -e 's/.* Release \([0-9][0-9]*\.[0-9][0-9]*\).*$/\1/'`]
   ;;
 Intel)
   wo_cv_fc_version=[`echo $FC_ID_STRING | $SED -e 's/[a-zA-Z\(\)]//g;s/[0-9]\{8\}$//g'`]
@@ -121,20 +121,12 @@ FC_VERSION="$wo_cv_fc_version"
 AC_SUBST([FC_VERSION])
 
 ### Catch insufficient object-orientation in gfortran 4.5/4.6
-if test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.5.0" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.5.1" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.5.2" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.5.3" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.5.4" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.6.0" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.6.1" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.6.2" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.6.3" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.6.4"; then
-FC_IS_GFORTRAN_456="yes"  
+if test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.5.0" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.5.1" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.5.2" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.5.3" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.5.4" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.6.0" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.6.1" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.6.2" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.6.3" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.6.4" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.7.0" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.7.1" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.7.2" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.7.3" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.7.4"; then
+FC_IS_GFORTRAN_4567="yes"
   else
-FC_IS_GFORTRAN_456="no"
+FC_IS_GFORTRAN_4567="no"
 fi
-AC_SUBST([FC_IS_GFORTRAN_456])
-
-### Catch compiler bug for static builds in gfortran 4.7
-if test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.7.0" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.7.1" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.7.2" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.7.3" ; then
-FC_IS_GFORTRAN_470123="yes"  
-  else
-FC_IS_GFORTRAN_470123="no"
-fi
-AC_SUBST([FC_IS_GFORTRAN_470123])
+AC_SUBST([FC_IS_GFORTRAN_4567])
 
 AC_CACHE_CHECK([the major version],
 [wo_cv_fc_major_version],
@@ -145,32 +137,12 @@ AC_SUBST([FC_MAJOR_VERSION])
 ])
 ### end WO_FC_GET_VENDOR_AND_VERSION
 
-AC_DEFUN([WO_FC_VETO_GFORTRAN_456],
+AC_DEFUN([WO_FC_VETO_GFORTRAN_4567],
 [dnl
-if test "$FC_IS_GFORTRAN_456" = "yes"; then
+if test "$FC_IS_GFORTRAN_4567" = "yes"; then
 AC_MSG_NOTICE([error: ***************************************************************])
-AC_MSG_NOTICE([error: gfortran 4.5/4.6 object orientation support insufficient.])
+AC_MSG_NOTICE([error: gfortran 4.5/4.6/4.7 object orientation support insufficient.])
 AC_MSG_ERROR([***************************************************************])
-fi 
-])
-
-AC_DEFUN([WO_FC_VETO_GFORTRAN_470123],
-[dnl
-if test "$FC_IS_GFORTRAN_470123" = "yes"; then
-AC_MSG_NOTICE([error: *************************************************************])
-AC_MSG_NOTICE([error: gfortran 4.7.[[0-3]] due to a major bugs in object-orientation.])
-AC_MSG_ERROR([*************************************************************])
-fi 
-])
-
-### This actually obsolete, but we keep the code, in case there 
-### are further issues with gfortran 4.7
-AC_DEFUN([WO_FC_WARN_GFORTRAN_47],
-[dnl
-if test "$FC_IS_GFORTRAN_47" = "yes" -a "$FC_PRECISION" = "extended"; then
-AC_MSG_NOTICE([WARNING: ***************************************************************])
-AC_MSG_NOTICE([WARNING: gfortran 4.7 scanning with extended precision might fail.])
-AC_MSG_WARN([***************************************************************])
 fi 
 ])
 

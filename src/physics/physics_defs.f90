@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -132,9 +132,24 @@ module physics_defs
   integer, parameter, public :: GKS = 7
   integer, parameter, public :: COMPONENT_UNDEFINED = 99
 
+  integer, parameter, public :: THR_POS_WP = 3
+  integer, parameter, public :: THR_POS_WM = 4
+  integer, parameter, public :: THR_POS_B = 5
+  integer, parameter, public :: THR_POS_BBAR = 6
+  integer, parameter, public :: THR_POS_GLUON = 7
+
+  integer, parameter, public :: THR_EMITTER_OFFSET = 4
+
+  integer, parameter, public :: NO_FACTORIZATION = 0
+  integer, parameter, public :: FACTORIZATION_THRESHOLD = 1
+
+  integer, dimension(2), parameter, public :: ass_quark = [5, 6]
+  integer, dimension(2), parameter, public :: ass_boson = [3, 4]
+
 
   public :: component_status
   public :: is_nlo_component
+  public :: thr_leg
 
   interface component_status
      module procedure component_status_of_string
@@ -203,6 +218,12 @@ contains
        is_nlo = .false.
     end select
   end function is_nlo_component
+
+  function thr_leg (emitter) result (leg)
+    integer :: leg
+    integer, intent(in) :: emitter
+    leg = emitter - THR_EMITTER_OFFSET
+  end function thr_leg
 
 
 end module physics_defs

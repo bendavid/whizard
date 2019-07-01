@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -384,7 +384,6 @@ contains
     class(polarization_t), intent(out) :: pol
     type(flavor_t), intent(in) :: flv
     real(default), dimension(3), intent(in) :: alpha
-    integer :: i
     call pol%init (flv)
     select case (pol%chirality)
     case (0)
@@ -462,7 +461,6 @@ contains
   function polarization_get_axis (pol) result (alpha)
     class(polarization_t), intent(in), target :: pol
     real(default), dimension(3) :: alpha
-    integer :: i
     select case (pol%chirality)
     case (0)
        call pol%bv%to_vector (alpha)
@@ -522,7 +520,7 @@ contains
     type(polarization_t), intent(in), target :: pol
     logical, intent(in), optional :: all_states
     real(default), intent(in), optional :: tolerance
-    integer :: i, d
+    integer :: d
     logical :: only_max_weight
     it%pol => pol
     if (present (all_states)) then

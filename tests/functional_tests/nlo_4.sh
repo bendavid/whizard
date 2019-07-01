@@ -1,11 +1,13 @@
 #!/bin/sh
-### Check WHIZARD POWHEG matching with dummy virtual matrix-elements
+# Testing complete NLO-calculation using dummy-output for virtual matrix elements
+# in the combined-integration mode and producing an NLO event
 echo "Running script $0"
 if test -f OCAML_FLAG; then
     name=`basename @script@`
     ./run_whizard.sh @script@ --no-logging
     echo "Contents of ${name}_p1.debug:" >> $name.log
     cat ${name}_p1.debug >> $name.log
+    cat ${name}_p1_fks_regions.log >> $name.log
     diff ref-output/$name.ref $name.log
 else
     echo "|=============================================================================|"

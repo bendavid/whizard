@@ -1,4 +1,4 @@
-(* $Id: config.ml.in 7653 2016-07-18 11:37:04Z ohl $
+(* config.ml.in --
 
    Copyright (C) 1999-2016 by
 
@@ -21,9 +21,13 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
-let default_UFO_dir = "/Users/reuter/local/share/UFO"
+let version = "2.4.0"
+let date = "Nov 28 2016"
+let status = "alpha"
 
-let system_cache_dir = "/Users/reuter/local/var/cache"
+let default_UFO_dir = "/Users/reuter/local/omega/share/UFO"
+
+let system_cache_dir = "/Users/reuter/local/omega/var/cache"
 let user_cache_dir = "/Users/reuter/.whizard/var/cache"
 
 (* \begin{dubious}

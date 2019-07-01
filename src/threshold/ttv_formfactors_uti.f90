@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -96,9 +96,9 @@ contains
 
     write (u, "(A)") "Check that the mass is fixed"
     call ps%init (m1s**2, m1s**2, sqrts**2, mpole)
-    call assert (u, m1s_to_mpole (350.0_default) == m1s, &
+    call assert_equal (u, m1s_to_mpole (350.0_default), m1s, &
          "m1s_to_mpole (350.0_default) == m1s")
-    call assert (u, m1s_to_mpole (550.0_default) == m1s, &
+    call assert_equal (u, m1s_to_mpole (550.0_default), m1s, &
          "m1s_to_mpole (550.0_default) == m1s")
     write (u, "(A)") ""
 

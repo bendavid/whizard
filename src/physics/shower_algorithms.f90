@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -38,7 +38,6 @@ module shower_algorithms
   use kinds, only: default
   use diagnostics
   use constants
-  use rng_base
 
   implicit none
   private
@@ -62,20 +61,20 @@ module shower_algorithms
 
 contains
 
-  subroutine generate_vetoed (x, rng, overestimator, true_function, &
+  subroutine generate_vetoed (x, overestimator, true_function, &
          sudakov, inverse_sudakov, scale_min)
     real(default), dimension(:), intent(out) :: x
-    class(rng_t), intent(inout) :: rng
+    !class(rng_t), intent(inout) :: rng
     procedure(XXX_function), pointer, intent(in) :: overestimator, true_function
     procedure(sudakov_p), pointer, intent(in) :: sudakov, inverse_sudakov
     real(default), intent(in) :: scale_min
     real(default) :: random, scale_max, scale
     scale_max = inverse_sudakov (one)
     do while (scale_max > scale_min)
-       call rng%generate (random)
+       !call rng%generate (random)
        scale = inverse_sudakov (random * sudakov (scale_max))
        call generate_on_hypersphere (x, overestimator, scale)
-       call rng%generate (random)
+       !call rng%generate (random)
        if (random < true_function (x) / overestimator (x)) then
           return !!! accept x
        end if

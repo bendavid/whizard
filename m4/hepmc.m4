@@ -68,8 +68,11 @@ if test "$enable_hepmc" = "yes"; then
   LDFLAGS_HEPMC=$wo_hepmc_ldflags
 fi
 
+HEPMC_AVAILABLE_FLAG=$enable_hepmc
+
 AC_SUBST([HEPMC_INCLUDES])
 AC_SUBST([LDFLAGS_HEPMC])
+AC_SUBST([HEPMC_AVAILABLE_FLAG])
 
 AM_CONDITIONAL([HEPMC_AVAILABLE], [test "$enable_hepmc" = "yes"])
 ])

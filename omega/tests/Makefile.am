@@ -1,5 +1,4 @@
 # Makefile.am -- Makefile for O'Mega within and without WHIZARD
-# $Id: Makefile.am 7655 2016-07-18 16:40:19Z ohl $
 ##
 ## Process this file with automake to produce Makefile.in
 ##
@@ -27,90 +26,93 @@
 #
 ########################################################################
 
-SUBDIRS = MSSM SM people
+SUBDIRS =
 
 # OMEGA_SPLIT = -target:single_function
   OMEGA_SPLIT = -target:split_function 10
 # OMEGA_SPLIT = -target:split_module 10
 # OMEGA_SPLIT = -target:split_file 10
 
-OMEGA_QED = $(top_builddir)/bin/omega_QED$(OCAML_NATIVE_EXT)
+OMEGA_QED = $(top_builddir)/omega/bin/omega_QED$(OCAML_NATIVE_EXT)
 OMEGA_QED_CACHE = omega_QED.$(OMEGA_CACHE_SUFFIX)
 OMEGA_QED_OPTS = $(OMEGA_SPLIT) -target:parameter_module parameters_QED
 omega_QED.$(OMEGA_CACHE_SUFFIX): $(OMEGA_QED)
 	$(OMEGA_QED) -initialize .
 
-OMEGA_QCD = $(top_builddir)/bin/omega_QCD$(OCAML_NATIVE_EXT)
+OMEGA_QCD = $(top_builddir)/omega/bin/omega_QCD$(OCAML_NATIVE_EXT)
 OMEGA_QCD_CACHE = omega_QCD.$(OMEGA_CACHE_SUFFIX)
 OMEGA_QCD_OPTS = $(OMEGA_SPLIT) -target:parameter_module parameters_QCD
 omega_QCD.$(OMEGA_CACHE_SUFFIX): $(OMEGA_QCD)
 	$(OMEGA_QCD) -initialize .
 
-OMEGA_SYM = $(top_builddir)/bin/omega_SYM$(OCAML_NATIVE_EXT)
+OMEGA_SYM = $(top_builddir)/omega/bin/omega_SYM$(OCAML_NATIVE_EXT)
 OMEGA_SYM_CACHE = omega_SYM.$(OMEGA_CACHE_SUFFIX)
 OMEGA_SYM_OPTS = $(OMEGA_SPLIT) -target:parameter_module parameters_SYM
 omega_SYM.$(OMEGA_CACHE_SUFFIX): $(OMEGA_SYM)
 	$(OMEGA_SYM) -initialize .
 
-OMEGA_SM = $(top_builddir)/bin/omega_SM$(OCAML_NATIVE_EXT)
+OMEGA_SM = $(top_builddir)/omega/bin/omega_SM$(OCAML_NATIVE_EXT)
 OMEGA_SM_CACHE = omega_SM.$(OMEGA_CACHE_SUFFIX)
 OMEGA_SM_OPTS = $(OMEGA_SPLIT) -target:parameter_module parameters_SM
 omega_SM.$(OMEGA_CACHE_SUFFIX): $(OMEGA_SM)
 	$(OMEGA_SM) -initialize .
 
-OMEGA_SM_CKM = $(top_builddir)/bin/omega_SM_CKM$(OCAML_NATIVE_EXT)
+OMEGA_SM_CKM = $(top_builddir)/omega/bin/omega_SM_CKM$(OCAML_NATIVE_EXT)
 OMEGA_SM_CKM_CACHE = omega_SM_CKM.$(OMEGA_CACHE_SUFFIX)
 omega_SM_CKM.$(OMEGA_CACHE_SUFFIX): $(OMEGA_SM_CKM)
 	$(OMEGA_SM_CKM) -initialize .
 
-OMEGA_SM_Higgs = $(top_builddir)/bin/omega_SM_Higgs$(OCAML_NATIVE_EXT)
+OMEGA_SM_Higgs = $(top_builddir)/omega/bin/omega_SM_Higgs$(OCAML_NATIVE_EXT)
 OMEGA_SM_Higgs_CACHE = omega_SM_Higgs.$(OMEGA_CACHE_SUFFIX)
 omega_SM_Higgs.$(OMEGA_CACHE_SUFFIX): $(OMEGA_SM_Higgs)
 	$(OMEGA_SM_Higgs) -initialize .
 
-OMEGA_2HDM = $(top_builddir)/bin/omega_2HDM$(OCAML_NATIVE_EXT)
+OMEGA_2HDM = $(top_builddir)/omega/bin/omega_2HDM$(OCAML_NATIVE_EXT)
 OMEGA_2HDM_CACHE = omega_2HDM.$(OMEGA_CACHE_SUFFIX)
 omega_2HDM.$(OMEGA_CACHE_SUFFIX): $(OMEGA_2HDM)
 	$(OMEGA_2HDM) -initialize .
 
-OMEGA_2HDM_CKM = $(top_builddir)/bin/omega_2HDM_CKM$(OCAML_NATIVE_EXT)
+OMEGA_2HDM_CKM = $(top_builddir)/omega/bin/omega_2HDM_CKM$(OCAML_NATIVE_EXT)
 OMEGA_2HDM_CKM_CACHE = omega_2HDM_CKM.$(OMEGA_CACHE_SUFFIX)
 omega_2HDM_CKM.$(OMEGA_CACHE_SUFFIX): $(OMEGA_2HDM_CKM)
 	$(OMEGA_2HDM_CKM) -initialize .
 
-OMEGA_HSExt = $(top_builddir)/bin/omega_HSExt$(OCAML_NATIVE_EXT)
+OMEGA_HSExt = $(top_builddir)/omega/bin/omega_HSExt$(OCAML_NATIVE_EXT)
 OMEGA_HSExt_CACHE = omega_HSExt.$(OMEGA_CACHE_SUFFIX)
 omega_HSExt.$(OMEGA_CACHE_SUFFIX): $(OMEGA_HSExt)
 	$(OMEGA_HSExt) -initialize .
 
-OMEGA_Zprime = $(top_builddir)/bin/omega_Zprime$(OCAML_NATIVE_EXT)
+OMEGA_Zprime = $(top_builddir)/omega/bin/omega_Zprime$(OCAML_NATIVE_EXT)
 OMEGA_Zprime_CACHE = omega_Zprime.$(OMEGA_CACHE_SUFFIX)
 omega_Zprime.$(OMEGA_CACHE_SUFFIX): $(OMEGA_Zprime)
 	$(OMEGA_Zprime) -initialize .
 
-OMEGA_SM_top_anom = $(top_builddir)/bin/omega_SM_top_anom$(OCAML_NATIVE_EXT)
+OMEGA_SM_top_anom = $(top_builddir)/omega/bin/omega_SM_top_anom$(OCAML_NATIVE_EXT)
 OMEGA_SM_top_anom_CACHE = omega_SM_top_anom.$(OMEGA_CACHE_SUFFIX)
 OMEGA_SM_top_anom_OPTS = $(OMEGA_SPLIT) -target:parameter_module parameters_SM_top_anom
 omega_SM_top_anom.$(OMEGA_CACHE_SUFFIX): $(OMEGA_SM_top_anom)
 	$(OMEGA_SM_top_anom) -initialize .
 
-OMEGA_XXX = $(top_builddir)/bin/omega_%%%$(OCAML_NATIVE_EXT)
+OMEGA_UFO = $(top_builddir)/omega/bin/omega_UFO$(OCAML_NATIVE_EXT)
+OMEGA_UFO_OPTS = -target:parameter_module parameters_UFO
+
+OMEGA_XXX = $(top_builddir)/omega/bin/omega_%%%$(OCAML_NATIVE_EXT)
 OMEGA_XXX_OPTS = -target:parameter_module parameters_%%%
 
-OMEGA_QED_VM = $(top_builddir)/bin/omega_QED_VM$(OCAML_NATIVE_EXT)
-OMEGA_QCD_VM = $(top_builddir)/bin/omega_QCD_VM$(OCAML_NATIVE_EXT)
-OMEGA_SM_VM = $(top_builddir)/bin/omega_SM_VM$(OCAML_NATIVE_EXT)
-OMEGA_SM_CKM_VM = $(top_builddir)/bin/omega_SM_CKM_VM$(OCAML_NATIVE_EXT)
-OMEGA_2HDM_VM = $(top_builddir)/bin/omega_2HDM_VM$(OCAML_NATIVE_EXT)
-OMEGA_2HDM_CKM_VM = $(top_builddir)/bin/omega_2HDM_CKM_VM$(OCAML_NATIVE_EXT)
-OMEGA_HSExt_VM = $(top_builddir)/bin/omega_HSExt_VM$(OCAML_NATIVE_EXT)
-OMEGA_Zprime_VM = $(top_builddir)/bin/omega_Zprime_VM$(OCAML_NATIVE_EXT)
-OMEGA_SM_Higgs_VM = $(top_builddir)/bin/omega_SM_Higgs_VM$(OCAML_NATIVE_EXT)
-OMEGA_XXX_VM = $(top_builddir)/bin/omega_%%%_VM$(OCAML_NATIVE_EXT)
+OMEGA_QED_VM = $(top_builddir)/omega/bin/omega_QED_VM$(OCAML_NATIVE_EXT)
+OMEGA_QCD_VM = $(top_builddir)/omega/bin/omega_QCD_VM$(OCAML_NATIVE_EXT)
+OMEGA_SM_VM = $(top_builddir)/omega/bin/omega_SM_VM$(OCAML_NATIVE_EXT)
+OMEGA_SM_CKM_VM = $(top_builddir)/omega/bin/omega_SM_CKM_VM$(OCAML_NATIVE_EXT)
+OMEGA_2HDM_VM = $(top_builddir)/omega/bin/omega_2HDM_VM$(OCAML_NATIVE_EXT)
+OMEGA_2HDM_CKM_VM = $(top_builddir)/omega/bin/omega_2HDM_CKM_VM$(OCAML_NATIVE_EXT)
+OMEGA_HSExt_VM = $(top_builddir)/omega/bin/omega_HSExt_VM$(OCAML_NATIVE_EXT)
+OMEGA_Zprime_VM = $(top_builddir)/omega/bin/omega_Zprime_VM$(OCAML_NATIVE_EXT)
+OMEGA_SM_Higgs_VM = $(top_builddir)/omega/bin/omega_SM_Higgs_VM$(OCAML_NATIVE_EXT)
+OMEGA_XXX_VM = $(top_builddir)/omega/bin/omega_%%%_VM$(OCAML_NATIVE_EXT)
 OMEGA_XXX_VM_PARAMS_OPTS = -params -target:parameter_module_external \
 	parameters_%%% -target:wrapper_module %% -target:bytecode_file %
 
-AM_FCFLAGS = -I$(top_builddir)/src
+AM_FCFLAGS = -I$(top_builddir)/omega/src
 AM_LDFLAGS =
 
 ########################################################################
@@ -130,13 +132,13 @@ EXTRA_DIST =
 
 ########################################################################
 
-include $(top_srcdir)/src/Makefile.ocaml
+include $(top_srcdir)/omega/src/Makefile.ocaml
 
 if OCAML_AVAILABLE
 
-OCAMLFLAGS += -I $(top_builddir)/src
-OMEGA_CORE = $(top_builddir)/src/omega_core.cmxa
-OMEGA_MODELS = $(top_builddir)/src/omega_models.cmxa
+OCAMLFLAGS += -I $(top_builddir)/omega/src
+OMEGA_CORE = $(top_builddir)/omega/src/omega_core.cmxa
+OMEGA_MODELS = $(top_builddir)/omega/src/omega_models.cmxa
 
 TESTS += omega_unit
 EXTRA_PROGRAMS += omega_unit
@@ -156,26 +158,26 @@ endif
 
 ########################################################################
 
-KINDS = $(top_builddir)/src/kinds.lo
+KINDS = $(top_builddir)/omega/src/kinds.lo
 
 TESTS += test_omega95 test_omega95_bispinors
 EXTRA_PROGRAMS += test_omega95 test_omega95_bispinors
 
 test_omega95_SOURCES = test_omega95.f90 omega_testtools.f90
-test_omega95_LDADD = $(KINDS) $(top_builddir)/src/libomega_core.la
+test_omega95_LDADD = $(KINDS) $(top_builddir)/omega/src/libomega_core.la
 
 test_omega95_bispinors_SOURCES = test_omega95_bispinors.f90 omega_testtools.f90
-test_omega95_bispinors_LDADD = $(KINDS) $(top_builddir)/src/libomega_core.la
+test_omega95_bispinors_LDADD = $(KINDS) $(top_builddir)/omega/src/libomega_core.la
 
 test_omega95.o test_omega95_bispinors.o: omega_testtools.o
 
 if NOWEB_AVAILABLE
 
-test_omega95.f90: $(top_srcdir)/src/omegalib.nw
+test_omega95.f90: $(top_srcdir)/omega/src/omegalib.nw
 	$(NOTANGLE) -R[[$@]] $< | $(CPIF) $@
-test_omega95_bispinors.f90: $(top_srcdir)/src/omegalib.nw
+test_omega95_bispinors.f90: $(top_srcdir)/omega/src/omegalib.nw
 	$(NOTANGLE) -R[[$@]] $< | $(CPIF) $@
-omega_testtools.f90: $(top_srcdir)/src/omegalib.nw
+omega_testtools.f90: $(top_srcdir)/omega/src/omegalib.nw
 	$(NOTANGLE) -R[[$@]] $< | $(CPIF) $@
 
 endif NOWEB_AVAILABLE
@@ -187,7 +189,7 @@ EXTRA_PROGRAMS += test_qed_eemm
 
 test_qed_eemm_SOURCES = test_qed_eemm.f90 parameters_QED.f90
 nodist_test_qed_eemm_SOURCES = amplitude_qed_eemm.f90
-test_qed_eemm_LDADD = $(KINDS) $(top_builddir)/src/libomega_core.la
+test_qed_eemm_LDADD = $(KINDS) $(top_builddir)/omega/src/libomega_core.la
 
 amplitude_qed_eemm.f90: $(OMEGA_QED) $(OMEGA_QED_CACHE) Makefile
 	$(OMEGA_QED) $(OMEGA_QED_OPTS) -target:module amplitude_qed_eemm \
@@ -220,7 +222,7 @@ ects.f90: ects_driver.sh $(EXTENDED_COLOR_TESTS)
 ects_SOURCES = color_test_lib.f90 \
 	parameters_SM.f90 parameters_QED.f90 parameters_QCD.f90 parameters_SYM.f90
 nodist_ects_SOURCES = ects.f90
-ects_LDADD = $(KINDS) $(top_builddir)/src/libomega_core.la
+ects_LDADD = $(KINDS) $(top_builddir)/omega/src/libomega_core.la
 
 ########################################################################
 
@@ -271,7 +273,7 @@ ward.f90: ward_identities.list
 
 ward_SOURCES = $(WARD_LIB_F90)
 nodist_ward_SOURCES = ward.f90
-ward_LDADD = $(top_builddir)/src/libomega_core.la
+ward_LDADD = $(top_builddir)/omega/src/libomega_core.la
 
 ward.o: $(WARD_LIB_O)
 
@@ -289,7 +291,7 @@ ward_long.f90: ward_identities_long.list
 
 ward_long_SOURCES = $(WARD_LIB_F90)
 nodist_ward_long_SOURCES = ward_long.f90
-ward_long_LDADD = $(top_builddir)/src/libomega_core.la
+ward_long_LDADD = $(top_builddir)/omega/src/libomega_core.la
 
 # ward_long.o: ward_long.f90
 # 	$(FCCOMPILE) -c -o $@ $(FCFLAGS_f90) -O0 $<
@@ -310,7 +312,7 @@ ward_fail.f90: ward_identities_fail.list
 
 ward_fail_SOURCES = $(WARD_LIB_F90)
 nodist_ward_fail_SOURCES = ward_fail.f90
-ward_fail_LDADD = $(top_builddir)/src/libomega_core.la
+ward_fail_LDADD = $(top_builddir)/omega/src/libomega_core.la
 
 ward_fail.o: ward_fail.f90
 	$(FCCOMPILE) -c -o $@ $(FCFLAGS_f90) -O0 $<
@@ -351,13 +353,25 @@ compare_split_function.f90 compare_split_module.f90: \
 
 compare_split_function_SOURCES = $(COMPARE_LIB_F90)
 nodist_compare_split_function_SOURCES = compare_split_function.f90
-compare_split_function_LDADD = $(top_builddir)/src/libomega_core.la
+compare_split_function_LDADD = $(top_builddir)/omega/src/libomega_core.la
 
 compare_split_module_SOURCES = $(COMPARE_LIB_F90)
 nodist_compare_split_module_SOURCES = compare_split_module.f90
-compare_split_module_LDADD = $(top_builddir)/src/libomega_core.la
+compare_split_module_LDADD = $(top_builddir)/omega/src/libomega_core.la
 
 compare_split_function.o compare_split_module.o: $(COMPARE_LIB_O)
+
+########################################################################
+
+TESTS += compare_amplitude_UFO
+XFAIL_TESTS += compare_amplitude_UFO
+EXTRA_PROGRAMS += compare_amplitude_UFO
+EXTRA_DIST += compare_driver_UFO.sh
+
+compare_amplitude_UFO.f90: compare_driver_UFO.sh
+	$(SHELL) $(srcdir)/compare_driver_UFO.sh >$@
+
+nodist_compare_amplitude_UFO_SOURCES = compare_amplitude_UFO.f90
 
 ########################################################################
 
@@ -391,7 +405,7 @@ COMPARE_EXTRA_MODELS = parameters_SM_CKM.f90 parameters_SM_Higgs.f90 \
 	parameters_Zprime.f90
 compare_amplitude_VM_SOURCES = $(COMPARE_LIB_F90) $(COMPARE_EXTRA_MODELS)
 nodist_compare_amplitude_VM_SOURCES = compare_amplitude_VM.f90 comparisons_VM.wrappers.f90
-compare_amplitude_VM_LDADD = $(top_builddir)/src/libomega_core.la
+compare_amplitude_VM_LDADD = $(top_builddir)/omega/src/libomega_core.la
 
 compare_amplitude_VM.o: $(COMPARE_LIB_O)
 
@@ -407,7 +421,7 @@ TESTOPENMP_SUPPORT_O = $(WARD_SUPPORT_O)
 
 test_openmp_SOURCES = test_openmp.f90 $(TESTOPENMP_SUPPORT_F90)
 nodist_test_openmp_SOURCES = amplitude_openmp.f90
-test_openmp_LDADD = $(top_builddir)/src/libomega_core.la
+test_openmp_LDADD = $(top_builddir)/omega/src/libomega_core.la
 
 amplitude_openmp.f90: $(OMEGA_QCD) $(OMEGA_QCD_CACHE) Makefile
 	$(OMEGA_QCD) $(OMEGA_QCD_OPTS) -target:openmp \
@@ -443,7 +457,7 @@ benchmark_VM_vs_Fortran.f90: benchmark_VM_vs_Fortran_driver.sh \
 
 benchmark_VM_vs_Fortran_SOURCES = $(BENCHMARK_LIB_F90)
 nodist_benchmark_VM_vs_Fortran_SOURCES = benchmark_VM_vs_Fortran.f90 benchmark_processes.wrappers.f90
-benchmark_VM_vs_Fortran_LDADD = $(top_builddir)/src/libomega_core.la
+benchmark_VM_vs_Fortran_LDADD = $(top_builddir)/omega/src/libomega_core.la
 
 benchmark_VM_vs_Fortran.o: $(BENCHMARK_LIB_O)
 
@@ -465,7 +479,7 @@ benchmark_amp_parallel.f90: benchmark_amp_parallel_driver.sh \
 
 benchmark_amp_parallel_SOURCES = $(BENCHMARK_LIB_F90)
 nodist_benchmark_amp_parallel_SOURCES = benchmark_amp_parallel.f90 benchmark_processes.wrappers.f90
-benchmark_amp_parallel_LDADD = $(top_builddir)/src/libomega_core.la
+benchmark_amp_parallel_LDADD = $(top_builddir)/omega/src/libomega_core.la
 
 benchmark_amp_parallel.o: $(BENCHMARK_LIB_O)
 
@@ -485,7 +499,7 @@ benchmark_SOURCES = benchmark.f90 parameters_QCD.f90
 nodist_benchmark_SOURCES = \
 	amplitude_benchmark_v1.f90 amplitude_benchmark_v2.f90 \
 	amplitude_benchmark_v3.f90 # amplitude_benchmark_v4.f90
-benchmark_LDADD = $(top_builddir)/src/libomega_core.la
+benchmark_LDADD = $(top_builddir)/omega/src/libomega_core.la
 
 amplitude_benchmark_v1.f90: $(OMEGA_QCD) $(OMEGA_QCD_CACHE) Makefile
 	$(OMEGA_QCD) $(OMEGA_QCD_OPTS) -target:module amplitude_benchmark_v1 \

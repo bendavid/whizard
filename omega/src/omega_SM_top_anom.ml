@@ -1,4 +1,4 @@
-(* $Id: omega_SM_top_anom.ml 1340 2009-12-02 23:45:04Z ohl $
+(* omega_SM_top_anom.ml --
 
    Copyright (C) 1999-2016 by
 

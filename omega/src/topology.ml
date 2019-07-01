@@ -1,4 +1,4 @@
-(* $Id: topology.ml 7444 2016-02-17 15:37:20Z jr_reuter $
+(* topology.ml --
 
    Copyright (C) 1999-2016 by
 
@@ -22,13 +22,6 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
-let rcs_file = RCS.parse "Topology" ["Topologies"]
-    { RCS.revision = "$Revision: 7444 $";
-      RCS.date = "$Date: 2016-02-17 16:37:20 +0100 (Wed, 17 Feb 2016) $";
-      RCS.author = "$Author: jr_reuter $";
-      RCS.source
-        = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/omega/src/topology.ml $" }
-
 module type T =
   sig
     type partition
@@ -37,16 +30,12 @@ module type T =
     val keystones : 'a list -> ('a list * 'a list children list) list
     val max_subtree : int -> int
     val inspect_partition : partition -> int list
-    val rcs : RCS.t
   end
 
 (* \thocwmodulesection{Factorizing Diagrams for $\phi^3$} *)
 
 module Binary =
   struct
-    let rcs = RCS.rename rcs_file "Topology.Binary"
-        ["phi**3 topology"]
-
     type partition = int * int * int
     let inspect_partition (n1, n2, n3) = [n1; n2; n3]
 
@@ -349,9 +338,6 @@ module Binary =
 
 module Nary (B : Tuple.Bound) =
   struct
-    let rcs = RCS.rename rcs_file "Topology.Nary"
-        ["phi**n topology"]
-
     type partition = int list
     let inspect_partition p = p
 
@@ -438,9 +424,6 @@ module Nary4 = Nary (struct let max_arity = 3 end)
 
 module Ternary =
   struct
-    let rcs = RCS.rename rcs_file "Topology.Ternary"
-        ["phi**4 topology"]
-    let rcs = rcs_file
     type partition = int * int * int * int
     let inspect_partition (n1, n2, n3, n4) = [n1; n2; n3; n4]
     type 'a children = 'a Tuple.Ternary.t
@@ -462,8 +445,6 @@ module Ternary =
 
 module Mixed23 =
   struct
-    let rcs = RCS.rename rcs_file "Topology.Mixed23"
-        ["phi**3 + phi**4 topology"]
     type partition =
       | P3 of int * int * int
       | P4 of int * int * int * int
@@ -553,7 +534,6 @@ module type Count =
 
 module Count (I : Integer) =
   struct
-    let rcs = rcs_file
     let description = ["(still inoperational) phi^n topology"]
 
     type integer = I.t
@@ -813,8 +793,6 @@ i*)
 
 module Helac (B : Tuple.Bound) =
   struct
-    let rcs = RCS.rename rcs_file "Topology.Helac"
-        ["phi**n topology, Helac style"]
     module Tuple = Tuple.Nary(B)
 
     type partition = int list
@@ -855,9 +833,6 @@ module Helac (B : Tuple.Bound) =
 
 module Helac_Binary =
   struct
-    let rcs = RCS.rename rcs_file "Topology.Helac_Binary"
-        ["phi**3 topology, Helac style"]
-
     type partition = int * int * int
     let inspect_partition (n1, n2, n3) = [n1; n2; n3]
 

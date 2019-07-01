@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -89,20 +89,20 @@ contains
     ! $p\to q$ splittings
     call particle_init (prt1, &
          0._default, 0._default, 7000._default, 7000._default, &
-         2212, 3)
+         2212, 1._default, 3)
     call particle_init (prt2, &
          0._default, 0._default,-7000._default, 7000._default, &
-         2212, 3)
+         2212, 1._default, 3)
     call particle_init (prt3, &
           .750_default, -1.569_default, 32.191_default, 32.238_default, &
-          1, 3)
+          1, -1._default/3._default, 3)
     call color_init_from_array (col, [501])
     call lcio_particle_set_color (prt3, col)
     call lcio_particle_set_parent (prt3, prt1)
     call lcio_particle_set_parent (prt3, prt2)
     call particle_init (prt4, &
          -3.047_default, -19._default, -54.629_default, 57.920_default, &
-         -2, 3)
+         -2, -2._default/3._default, 3)
     call color_init_from_array (col, [-501])
     call lcio_particle_set_color (prt4, col)
     call lcio_particle_set_parent (prt4, prt1)
@@ -114,11 +114,11 @@ contains
     ! Hard interaction
     call particle_init (prt6, &
          -3.813_default, 0.113_default, -1.833_default, 4.233_default, &
-         22, 1)
+         22, 0._default, 1)
     call lcio_polarization_init (prt6, pol)
     call particle_init (prt5, &
          1.517_default, -20.68_default, -20.605_default, 85.925_default, &
-         -24, 3)
+         -24, -1._default, 3)
     call lcio_particle_set_parent (prt5, prt3)
     call lcio_particle_set_parent (prt5, prt4)
     call lcio_particle_set_parent (prt6, prt3)
@@ -127,10 +127,10 @@ contains
     ! $W^-$ decay    
     call particle_init (prt7, &
          -2.445_default, 28.816_default, 6.082_default, 29.552_default, &
-         1, 1)
+         1, -1._default/3._default, 1)
     call particle_init (prt8, &
          3.962_default, -49.498_default, -26.687_default, 56.373_default, &
-         -2, 1)
+         -2, -2._default/3._default, 1)
     call lcio_particle_set_t (prt7, 0.12_default)
     call lcio_particle_set_t (prt8, 0.12_default)    
     call lcio_particle_set_vtx &
@@ -188,13 +188,13 @@ contains
   contains
 
     subroutine particle_init &
-         (prt, px, py, pz, E, pdg, status)
+         (prt, px, py, pz, E, pdg, charge, status)
       type(lcio_particle_t), intent(out) :: prt
-      real(default), intent(in) :: px, py, pz, E
+      real(default), intent(in) :: px, py, pz, E, charge
       integer, intent(in) :: pdg, status
       type(vector4_t) :: p
       p = vector4_moving (E, vector3_moving ([px, py, pz]))
-      call lcio_particle_init (prt, p, pdg, status)
+      call lcio_particle_init (prt, p, pdg, charge, status)
     end subroutine particle_init
 
   end subroutine lcio_interface_1

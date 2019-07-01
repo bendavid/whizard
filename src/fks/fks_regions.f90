@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -39,7 +39,6 @@ module fks_regions
   use format_utils, only: write_separator
   use numeric_utils, only: remove_duplicates_from_list
   use io_units
-  use os_interface, only: os_data_t, os_data_init
   use iso_varying_string, string_t => varying_string
   use constants
   use diagnostics
@@ -50,13 +49,9 @@ module fks_regions
   use models
   use physics_defs
   use cascades
-  use nlo_data, only: phs_identifier_t, check_for_phs_identifier
-  use nlo_data, only: FKS_DEFAULT, FKS_RESONANCES
-  use nlo_data, only: NO_FACTORIZATION, FACTORIZATION_THRESHOLD
+  use phs_fks, only: phs_identifier_t, check_for_phs_identifier
 
-  use ttv_formfactors, only: THR_POS_B, THR_POS_BBAR
-  use ttv_formfactors, only: THR_POS_WP, THR_POS_WM
-
+  use nlo_data
 
   implicit none
   private
@@ -168,12 +163,14 @@ module fks_regions
     procedure :: write => resonance_mapping_write
     procedure :: get_resonance_value => resonance_mapping_get_resonance_value
     procedure :: get_resonance_all => resonance_mapping_get_resonance_all
+    procedure :: get_weight => resonance_mapping_get_weight
     procedure :: get_resonance_alr => resonance_mapping_get_resonance_alr
   end type resonance_mapping_t
 
   type, abstract :: fks_mapping_t
      real(default) :: sumdij
      real(default) :: sumdij_soft
+     logical :: pseudo_isr = .false.
   contains
     procedure (fks_mapping_dij), deferred :: dij
     procedure (fks_mapping_compute_sumdij), deferred :: compute_sumdij
@@ -200,11 +197,11 @@ module fks_regions
     real(default) :: exp_1, exp_2
     type(resonance_mapping_t) :: res_map
     integer :: i_con = 0
-    logical :: pseudo_isr = .false.
   contains
     procedure :: dij => fks_mapping_resonances_dij
     procedure :: compute_sumdij => fks_mapping_resonances_compute_sumdij
     procedure :: svalue => fks_mapping_resonances_svalue
+    procedure :: get_resonance_weight => fks_mapping_resonances_get_resonance_weight
     procedure :: dij_soft => fks_mapping_resonances_dij_soft
     procedure :: compute_sumdij_soft => fks_mapping_resonances_compute_sumdij_soft
     procedure :: svalue_soft => fks_mapping_resonances_svalue_soft
@@ -217,25 +214,32 @@ module fks_regions
     type(flv_structure_t), dimension(:), allocatable :: flv_born
     type(flv_structure_t), dimension(:), allocatable :: flv_real
     integer, dimension(:), allocatable :: emitters
-    integer :: n_regions
-    integer :: n_emitters
-    integer :: n_flv_born, n_flv_real
-    integer :: n_in
-    integer :: n_legs_born, n_legs_real
+    integer :: n_regions = 0
+    integer :: n_emitters = 0
+    integer :: n_flv_born = 0
+    integer :: n_flv_real = 0
+    integer :: n_in = 0
+    integer :: n_legs_born = 0
+    integer :: n_legs_real = 0
+    integer :: n_phs = 0
     integer, dimension(:), allocatable :: underlying_borns
     type(flavor_t) :: flv_extra
     class(fks_mapping_t), allocatable :: fks_mapping
     integer, dimension(:), allocatable :: resonances
-    integer :: n_phs
     type(resonance_contributors_t), dimension(:), allocatable :: alr_contributors
     integer, dimension(:), allocatable :: alr_to_i_contributor
+    integer, dimension(:), allocatable :: i_phs_to_i_con
   contains
     procedure :: allocate_fks_mappings => region_data_allocate_fks_mappings
     procedure :: init => region_data_init
     procedure :: init_resonance_information => region_data_init_resonance_information
+    procedure :: set_resonance_mappings => region_data_set_resonance_mappings
+    procedure :: setup_fks_mappings => region_data_setup_fks_mappings
     procedure :: enlarge_singular_regions_with_resonances &
        => region_data_enlarge_singular_regions_with_resonances
     procedure :: set_isr_pseudo_regions => region_data_set_isr_pseudo_regions
+    procedure :: split_up_interference_regions_for_threshold => &
+         region_data_split_up_interference_regions_for_threshold
     procedure :: evaluate_flavors => region_data_evaluate_flavors
     procedure :: uses_resonances => region_data_uses_resonances
     procedure :: get_emitter_list => region_data_get_emitter_list
@@ -248,30 +252,47 @@ module fks_regions
     procedure :: get_underlying_born_index => region_data_get_underlying_born_index
     procedure :: get_uborn_group_size => region_data_get_uborn_group_size
     procedure :: get_uborn_group => region_data_get_uborn_group
+    procedure :: get_real_index => region_data_get_real_index
     procedure :: get_emitter_group_size => region_data_get_emitter_group_size
     procedure :: get_emitter_group => region_data_get_emitter_group
+    generic :: get_flv_states_born => get_flv_states_born_single, get_flv_states_born_array
+    procedure :: get_flv_states_born_single => region_data_get_flv_states_born_single
+    procedure :: get_flv_states_born_array => region_data_get_flv_states_born_array
+    generic :: get_flv_states_real => get_flv_states_real_single, get_flv_states_real_array
+    procedure :: get_flv_states_real_single => region_data_get_flv_states_real_single
+    procedure :: get_flv_states_real_array => region_data_get_flv_states_real_array
     procedure :: get_svalue => region_data_get_svalue
     procedure :: get_svalue_soft => region_data_get_svalue_soft
     procedure :: find_regions => region_data_find_regions
     procedure :: init_singular_regions => region_data_init_singular_regions
     procedure :: find_emitters => region_data_find_emitters
     procedure :: find_resonances => region_data_find_resonances
+    procedure :: set_i_phs_to_i_con => region_data_set_i_phs_to_i_con
+    procedure :: set_alr_to_i_phs => region_data_set_alr_to_i_phs
     procedure :: set_contributors => region_data_set_contributors
     procedure :: extend_ftuples => region_data_extend_ftuples
     procedure :: set_underlying_borns => region_data_set_underlying_borns
+    procedure :: get_uborn_indices => region_data_get_uborn_indices
     procedure :: compute_number_of_phase_spaces &
        => region_data_compute_number_of_phase_spaces
+    procedure :: get_n_phs => region_data_get_n_phs
     procedure :: set_splitting_info => region_data_set_splitting_info
+    procedure :: init_phs_identifiers => region_data_init_phs_identifiers
     procedure :: write_to_file => region_data_write_to_file
     procedure :: write => region_data_write
+    procedure :: has_pseudo_isr => region_data_has_pseudo_isr
     procedure :: final => region_data_final
   end type region_data_t
 
 
   interface assignment(=)
+     module procedure ftuple_assign
+  end interface
+
+  interface assignment(=)
      module procedure singular_region_assign
   end interface
- 
+
   interface assignment(=)
      module procedure resonance_mapping_assign
   end interface
@@ -279,7 +300,7 @@ module fks_regions
   interface operator(==)
     module procedure flv_structure_equivalent
   end interface
-  
+
   interface assignment(=)
     module procedure flv_structure_assign_flv
     module procedure flv_structure_assign_integer
@@ -363,6 +384,15 @@ module fks_regions
 
 
 contains
+
+  subroutine ftuple_assign (ftuple_out, ftuple_in)
+    type(ftuple_t), intent(out) :: ftuple_out
+    type(ftuple_t), intent(in) :: ftuple_in
+    ftuple_out%ireg = ftuple_in%ireg
+    ftuple_out%i_res = ftuple_in%i_res
+    ftuple_out%splitting_type = ftuple_in%splitting_type
+    ftuple_out%pseudo_isr = ftuple_in%pseudo_isr
+  end subroutine ftuple_assign
 
   subroutine ftuple_write (ftuple, unit)
     class(ftuple_t), intent(in) :: ftuple
@@ -704,7 +734,7 @@ contains
        flv_new = flv%insert_particle (i1, i2, flv_add)
     end if
   end function flv_structure_insert_particle_fsr
-    
+
   function flv_structure_insert_particle_isr (flv, i_in, i_out, flv_add) result (flv_new)
     type(flv_structure_t) :: flv_new
     class(flv_structure_t), intent(in) :: flv
@@ -715,7 +745,7 @@ contains
        flv_new = flv%insert_particle (i_in, i_out, flv_add)
     end if
   end function flv_structure_insert_particle_isr
-    
+
   function flv_structure_insert_particle (flv, i1, i2, particle) result (flv_new)
     type(flv_structure_t) :: flv_new
     class(flv_structure_t), intent(in) :: flv
@@ -1058,6 +1088,7 @@ contains
     type(singular_region_t), intent(out) :: reg_out
     type(singular_region_t), intent(in) :: reg_in
     reg_out%alr = reg_in%alr
+    reg_out%i_res = reg_in%i_res
     reg_out%flst_real = reg_in%flst_real
     reg_out%flst_uborn = reg_in%flst_uborn
     reg_out%mult = reg_in%mult
@@ -1079,7 +1110,6 @@ contains
   subroutine resonance_mapping_init (res_map, res_hist)
     class(resonance_mapping_t), intent(inout) :: res_map
     type(resonance_history_t), intent(in), dimension(:) :: res_hist
-    integer :: nleg_out
     integer :: n_hist, i_hist1, i_hist2, n_contributors
     n_contributors = 0
     n_hist = size (res_hist)
@@ -1188,6 +1218,20 @@ contains
     end do
   end function resonance_mapping_get_resonance_all
 
+  function resonance_mapping_get_weight (res_map, alr, p) result (pfr)
+    real(default) :: pfr
+    class(resonance_mapping_t), intent(in) :: res_map
+    integer, intent(in) :: alr
+    type(vector4_t), intent(in), dimension(:) :: p
+    real(default) :: sumpfr
+    integer :: i_res, i_alr
+    sumpfr = zero
+    do i_res = 1, size (res_map%res_histories)
+       sumpfr = sumpfr + res_map%get_resonance_value (i_res, p)
+    end do
+    pfr = res_map%get_resonance_value (res_map%alr_to_i_res (alr), p) / sumpfr
+  end function resonance_mapping_get_weight
+
   function resonance_mapping_get_resonance_alr (res_map, alr, p, i_gluon) result (p_map)
     real(default) :: p_map
     class(resonance_mapping_t), intent(in) :: res_map
@@ -1269,32 +1313,44 @@ contains
     call reg_data%set_splitting_info ()
   end subroutine region_data_init
 
-  subroutine region_data_init_resonance_information (reg_data, factorization_mode)
+  subroutine region_data_init_resonance_information (reg_data)
     class(region_data_t), intent(inout) :: reg_data
-    integer, intent(in) :: factorization_mode
     call reg_data%enlarge_singular_regions_with_resonances ()
     call reg_data%find_resonances ()
+  end subroutine region_data_init_resonance_information
+
+  subroutine region_data_set_resonance_mappings (reg_data, resonance_histories)
+    class(region_data_t), intent(inout) :: reg_data
+    type(resonance_history_t), intent(in), dimension(:) :: resonance_histories
     select type (map => reg_data%fks_mapping)
     type is (fks_mapping_resonances_t)
-       call map%res_map%write ()
+       call map%res_map%init (resonance_histories)
     end select
-    if (factorization_mode == FACTORIZATION_THRESHOLD) &
-       call reg_data%set_isr_pseudo_regions ()
-  end subroutine region_data_init_resonance_information
+  end subroutine region_data_set_resonance_mappings
+
+  subroutine region_data_setup_fks_mappings (reg_data, template, n_in)
+    class(region_data_t), intent(inout) :: reg_data
+    type(fks_template_t), intent(in) :: template
+    integer, intent(in) :: n_in
+    call reg_data%allocate_fks_mappings (template%mapping_type)
+    select type (map => reg_data%fks_mapping)
+    type is (fks_mapping_default_t)
+       call map%set_parameter (n_in, template%fks_dij_exp1, template%fks_dij_exp2)
+    end select
+  end subroutine region_data_setup_fks_mappings
 
   subroutine region_data_enlarge_singular_regions_with_resonances (reg_data)
     class(region_data_t), intent(inout) :: reg_data
     integer :: alr
     integer, dimension(:), allocatable :: alr_new_to_old
     integer :: n_alr_new
-    integer, parameter :: n_max_resonances = 10
     type(singular_region_t), dimension(:), allocatable :: save_regions
     call msg_debug (D_SUBTRACTION, "region_data_enlarge_singular_regions_with_resonances")
     call debug_input_values ()
     select type (fks_mapping => reg_data%fks_mapping)
     type is (fks_mapping_default_t)
        return
-    type is (fks_mapping_resonances_t) 
+    type is (fks_mapping_resonances_t)
        allocate (save_regions (reg_data%n_regions))
        do alr = 1, reg_data%n_regions
           save_regions(alr) = reg_data%regions(alr)
@@ -1329,35 +1385,21 @@ contains
     integer :: n_alr_new
     !!! Subroutine called for threshold factorization ->
     !!! Size of singular regions at this point is fixed
-    type(singular_region_t), dimension(2) :: save_regions 
+    type(singular_region_t), dimension(2) :: save_regions
     integer, dimension(4) :: alr_new_to_old
-    integer, dimension(2) :: alr_to_i_con_old
     do alr = 1, reg_data%n_regions
        save_regions(alr) = reg_data%regions(alr)
     end do
     n_alr_new = reg_data%n_regions * 2
     alr_new_to_old = [1, 1, 2, 2]
-    alr_to_i_con_old = reg_data%alr_to_i_contributor
     deallocate (reg_data%regions)
-    deallocate (reg_data%alr_to_i_contributor)
     allocate (reg_data%regions (n_alr_new))
-    allocate (reg_data%alr_to_i_contributor (n_alr_new))
     reg_data%n_regions = n_alr_new
     do alr = 1, n_alr_new
        reg_data%regions(alr) = save_regions(alr_new_to_old (alr))
        call add_pseudo_emitters (reg_data%regions(alr))
        if (mod (alr, 2) == 0) reg_data%regions(alr)%pseudo_isr = .true.
-       reg_data%regions(alr)%i_res = 1
-       reg_data%alr_to_i_contributor(alr) = alr_to_i_con_old (alr_new_to_old (alr))
-       allocate (reg_data%regions(alr)%i_reg_to_i_con(4))
-       reg_data%regions(alr)%i_reg_to_i_con = [1, 1, 2, 2]
     end do
-    select type (fks_mapping => reg_data%fks_mapping)
-    type is (fks_mapping_resonances_t)
-       deallocate (fks_mapping%res_map%alr_to_i_res)
-       allocate (fks_mapping%res_map%alr_to_i_res (4))
-       fks_mapping%res_map%alr_to_i_res = [1, 1, 1, 1]
-    end select
   contains
     subroutine add_pseudo_emitters (sregion)
       type(singular_region_t), intent(inout) :: sregion
@@ -1375,6 +1417,32 @@ contains
       end do
     end subroutine add_pseudo_emitters
   end subroutine region_data_set_isr_pseudo_regions
+
+  subroutine region_data_split_up_interference_regions_for_threshold (reg_data)
+    class(region_data_t), intent(inout) :: reg_data
+    integer :: alr, i_ftuple
+    integer :: current_emitter
+    integer :: i1, i2
+    integer :: n_new_reg
+    type(ftuple_t), dimension(2) :: ftuples
+    do alr = 1, reg_data%n_regions
+       associate (region => reg_data%regions(alr))
+          current_emitter = region%emitter
+          n_new_reg = 0
+          do i_ftuple = 1, region%nregions
+             call region%ftuples(i_ftuple)%get (i1, i2)
+             if (i1 == current_emitter) then
+                n_new_reg = n_new_reg + 1
+                ftuples(n_new_reg) = region%ftuples(i_ftuple)
+             end if
+          end do
+          deallocate (region%ftuples)
+          allocate (region%ftuples(n_new_reg))
+          region%ftuples = ftuples (1 : n_new_reg)
+          region%nregions = n_new_reg
+       end associate
+    end do
+  end subroutine region_data_split_up_interference_regions_for_threshold
 
   subroutine region_data_evaluate_flavors (reg_data, model)
     class(region_data_t), intent(inout) :: reg_data
@@ -1555,6 +1623,23 @@ contains
     end if
   end function region_data_get_uborn_group
 
+  function region_data_get_real_index (reg_data, i_phs) result (i_flv)
+    integer :: i_flv
+    class(region_data_t), intent(in) :: reg_data
+    integer, intent(in) :: i_phs
+    type(phs_identifier_t), dimension(:), allocatable :: phs_id
+    integer :: i
+    i_flv = 0
+    call reg_data%init_phs_identifiers (phs_id)
+    do i = 1, reg_data%n_regions
+       if (reg_data%regions(i)%emitter == phs_id(i_phs)%emitter) then
+          i_flv = reg_data%regions(i)%real_index
+          exit
+       end if
+    end do
+    deallocate (phs_id)
+  end function region_data_get_real_index
+
   function region_data_get_emitter_group_size (reg_data, emitter) result (n_emitter)
     integer :: n_emitter
     class(region_data_t), intent(in) :: reg_data
@@ -1585,6 +1670,42 @@ contains
        end do
     end if
   end function region_data_get_emitter_group
+
+  function region_data_get_flv_states_born_array (reg_data) result (flv_states)
+    integer, dimension(:,:), allocatable :: flv_states
+    class(region_data_t), intent(in) :: reg_data
+    integer :: i_flv
+    allocate (flv_states (reg_data%n_legs_born, reg_data%n_flv_born))
+    do i_flv = 1, reg_data%n_flv_born
+       flv_states (:, i_flv) = reg_data%flv_born(i_flv)%flst
+    end do
+  end function region_data_get_flv_states_born_array
+
+  function region_data_get_flv_states_born_single (reg_data, i) result (flv_states)
+    integer, dimension(:), allocatable :: flv_states
+    class(region_data_t), intent(in) :: reg_data
+    integer, intent(in) :: i
+    allocate (flv_states (reg_data%n_legs_born))
+    flv_states = reg_data%flv_born(i)%flst
+  end function region_data_get_flv_states_born_single
+
+  function region_data_get_flv_states_real_array (reg_data) result (flv_states)
+    integer, dimension(:,:), allocatable :: flv_states
+    class(region_data_t), intent(in) :: reg_data
+    integer :: i_flv
+    allocate (flv_states (reg_data%n_legs_real, reg_data%n_flv_real))
+    do i_flv = 1, reg_data%n_flv_real
+       flv_states (:, i_flv) = reg_data%flv_real(i_flv)%flst
+    end do
+  end function region_data_get_flv_states_real_array
+
+  function region_data_get_flv_states_real_single (reg_data, i) result (flv_states)
+    integer, dimension(:), allocatable :: flv_states
+    class(region_data_t), intent(in) :: reg_data
+    integer, intent(in) :: i
+    allocate (flv_states (reg_data%n_legs_real))
+    flv_states = reg_data%flv_real(i)%flst
+  end function region_data_get_flv_states_real_single
 
   function region_data_get_svalue (reg_data, p, alr, emitter, i_res) result (sval)
     class(region_data_t), intent(inout) :: reg_data
@@ -1653,7 +1774,7 @@ contains
     allocate (emitter (nreg))
     flst_alr(1 : nreg) = flst_alr_tmp(1 : nreg)
     emitter(1 : nreg) = emitter_tmp(1 : nreg)
-       
+
   contains
     subroutine check_final_state_emissions (i_real, i_reg)
       integer, intent(in) :: i_real
@@ -1672,14 +1793,14 @@ contains
                      i_reg = i_reg + 1
                      if(valid1) then
                         flst_alr_tmp(i_reg) = &
-                           create_alr (flv_real, reg_data%n_in, leg1, leg2)
+                             create_alr (flv_real, reg_data%n_in, leg1, leg2)
                      else
                         flst_alr_tmp(i_reg) = &
-                           create_alr (flv_real, reg_data%n_in, leg2, leg1)
+                             create_alr (flv_real, reg_data%n_in, leg2, leg1)
                      end if
                      call current_ftuple%set (leg1, leg2)
                      call current_ftuple%determine_splitting_type_fsr &
-                        (flv_real, leg1, leg2)
+                          (flv_real, leg1, leg2)
                      call ftuples(i_real)%append (current_ftuple)
                      emitter_tmp(i_reg) = nlegreal - 1
                      exit
@@ -1697,7 +1818,7 @@ contains
       type(flv_structure_t) :: born_flavor
       logical :: valid1, valid2
       do leg = reg_data%n_in + 1, nlegreal
-         do i_born = 1, nborn 
+         do i_born = 1, nborn
             born_flavor = reg_data%flv_born (i_born)
             associate (flv_real => reg_data%flv_real(i_real))
                valid1 = flv_real%valid_pair(1, leg, born_flavor, model)
@@ -1747,7 +1868,7 @@ contains
     integer :: i, j, k, l
     integer :: nlegs
     logical :: equiv
-    integer :: i_first, j_first, i_res
+    integer :: i_first, j_first
     integer, dimension(:), allocatable :: &
          region_to_ftuple, ftuple_limits, k_index
     type(flv_structure_t) :: flv_save
@@ -1952,7 +2073,7 @@ contains
           !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
           call reg_data%get_contributors (i_res, emitter, contributors%c, share_emitter)
           if (.not. share_emitter) cycle
-          if (.not. any (contributors_count == contributors)) then 
+          if (.not. any (contributors_count == contributors)) then
              n_contr = n_contr + 1
              contributors_count(alr) = contributors
           end if
@@ -1981,14 +2102,95 @@ contains
     end select
     call reg_data%extend_ftuples (n_res)
     call reg_data%set_contributors ()
-    
+
   end subroutine region_data_find_resonances
+
+  subroutine region_data_set_i_phs_to_i_con (reg_data)
+    class(region_data_t), intent(inout) :: reg_data
+    integer :: alr
+    integer :: i_res, emitter, i_con, i_phs, i_em
+    type(phs_identifier_t), dimension(:), allocatable :: phs_id_tmp
+    logical :: share_emitter, phs_exist
+    type(resonance_contributors_t) :: contributors
+    allocate (phs_id_tmp (reg_data%n_phs))
+    if (allocated (reg_data%resonances)) then
+       allocate (reg_data%i_phs_to_i_con (reg_data%n_phs))
+       do i_em = 1, size (reg_data%emitters)
+          emitter = reg_data%emitters(i_em)
+          do i_res = 1, size (reg_data%resonances)
+             if (reg_data%emitter_is_compatible_with_resonance (i_res, emitter)) then
+                alr = find_alr (emitter, i_res)
+                if (alr == 0) call msg_fatal ("Could not find requested alpha region!")
+                i_con = reg_data%alr_to_i_contributor (alr)
+                call reg_data%get_contributors (i_res, emitter, contributors%c, share_emitter)
+                if (.not. share_emitter) cycle
+                call check_for_phs_identifier &
+                   (phs_id_tmp, reg_data%n_in, emitter, contributors%c, phs_exist, i_phs)
+                if (phs_id_tmp(i_phs)%emitter < 0) then
+                   phs_id_tmp(i_phs)%emitter = emitter
+                   allocate (phs_id_tmp(i_phs)%contributors (size (contributors%c)))
+                   phs_id_tmp(i_phs)%contributors = contributors%c
+                end if
+                reg_data%i_phs_to_i_con (i_phs) = i_con
+             end if
+             if (allocated (contributors%c)) deallocate (contributors%c)
+          end do
+       end do
+    end if
+  contains
+    function find_alr (emitter, i_res) result (alr)
+       integer :: alr
+       integer, intent(in) :: emitter, i_res
+       integer :: i
+       do i = 1, reg_data%n_regions
+          if (reg_data%regions(i)%emitter == emitter .and. &
+              reg_data%regions(i)%i_res == i_res) then
+             alr = i
+             return
+          end if
+       end do
+       alr = 0
+    end function find_alr
+  end subroutine region_data_set_i_phs_to_i_con
+
+  subroutine region_data_set_alr_to_i_phs (reg_data, phs_identifiers, alr_to_i_phs)
+    class(region_data_t), intent(inout) :: reg_data
+    type(phs_identifier_t), intent(in), dimension(:) :: phs_identifiers
+    integer, intent(out), dimension(:) :: alr_to_i_phs
+    integer :: alr, i_phs
+    integer :: emitter, i_res
+    type(resonance_contributors_t) :: contributors
+    logical :: share_emitter, phs_exist
+    do alr = 1, reg_data%n_regions
+       associate (region => reg_data%regions(alr))
+          emitter = region%emitter
+          i_res = region%i_res
+          if (i_res /= 0) then
+             !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
+             call reg_data%get_contributors (i_res, emitter, &
+                contributors%c, share_emitter)
+             if (.not. share_emitter) cycle
+          end if
+          if (allocated (contributors%c)) then
+             call check_for_phs_identifier (phs_identifiers, reg_data%n_in, &
+                emitter, contributors%c, phs_exist = phs_exist, i_phs = i_phs)
+          else
+             call check_for_phs_identifier (phs_identifiers, reg_data%n_in, &
+                emitter, phs_exist = phs_exist, i_phs = i_phs)
+          end if
+          if (.not. phs_exist) &
+             call msg_fatal ("phs identifiers are not set up correctly!")
+          alr_to_i_phs(alr) = i_phs
+       end associate
+       if (allocated (contributors%c)) deallocate (contributors%c)
+    end do
+  end subroutine region_data_set_alr_to_i_phs
 
   subroutine region_data_set_contributors (reg_data)
      class(region_data_t), intent(inout) :: reg_data
      integer :: alr, i_res, i_reg, i_con
      integer :: i1, i2, i_em
-     integer, dimension(:), allocatable :: contributors 
+     integer, dimension(:), allocatable :: contributors
      logical :: share_emitter
      do alr = 1, size (reg_data%regions)
         associate (sregion => reg_data%regions(alr))
@@ -2017,7 +2219,7 @@ contains
           i_em = i2
        else
           i_em = i1
-       end if 
+       end if
      end function get_emitter_index
   end subroutine region_data_set_contributors
 
@@ -2032,7 +2234,7 @@ contains
        associate (sregion => reg_data%regions(alr))
           n_reg_save = sregion%nregions
           allocate (ftuple_save (n_reg_save))
-          ftuple_save = sregion%ftuples 
+          ftuple_save = sregion%ftuples
           n_new = count_n_new_ftuples (sregion, n_res)
           deallocate (sregion%ftuples)
           sregion%nregions = n_new
@@ -2050,7 +2252,7 @@ contains
                    end if
                 end associate
              end do
-          end do    
+          end do
        end associate
        deallocate (ftuple_save)
     end do
@@ -2062,7 +2264,7 @@ contains
       integer :: i_reg, i_res, i_em
       n_new = 0
       do i_reg = 1, sregion%nregions
-         do i_res = 1, n_res 
+         do i_res = 1, n_res
             i_em = sregion%ftuples(i_reg)%ireg(1)
             if (reg_data%emitter_is_in_resonance (i_res, i_em)) &
                n_new = n_new + 1
@@ -2074,20 +2276,27 @@ contains
   subroutine region_data_set_underlying_borns (reg_data)
     class(region_data_t), intent(inout) :: reg_data
     integer :: i, alr
-    integer, dimension(:), allocatable :: flst_real
-    allocate (reg_data%underlying_borns (reg_data%n_flv_real))
-    do i = 1, reg_data%n_flv_real
-       if (allocated (flst_real))  deallocate (flst_real)
-       allocate (flst_real (size (reg_data%flv_real(i)%flst)))
-       flst_real = reg_data%flv_real(i)%flst
+    integer, dimension(:), allocatable :: flst_born
+    allocate (reg_data%underlying_borns (reg_data%n_flv_born))
+    do i = 1, reg_data%n_flv_born
+       if (allocated (flst_born))  deallocate (flst_born)
+       allocate (flst_born (size (reg_data%flv_born(i)%flst)))
+       flst_born = reg_data%flv_born(i)%flst
        do alr = 1, reg_data%n_regions
-          if (all (reg_data%regions(alr)%flst_real%flst == flst_real)) then
+          if (all (reg_data%regions(alr)%flst_uborn%flst == flst_born)) then
              reg_data%underlying_borns(i) = reg_data%regions(alr)%uborn_index
              exit
           end if
        end do
     end do
   end subroutine region_data_set_underlying_borns
+
+  function region_data_get_uborn_indices (reg_data) result (uborn_indices)
+    integer, dimension(:), allocatable :: uborn_indices
+    class(region_data_t), intent(in) :: reg_data
+    allocate (uborn_indices (reg_data%n_flv_born))
+    uborn_indices = reg_data%underlying_borns
+  end function region_data_get_uborn_indices
 
   subroutine region_data_compute_number_of_phase_spaces (reg_data)
     class(region_data_t), intent(inout) :: reg_data
@@ -2102,7 +2311,7 @@ contains
        do i_em = 1, size (reg_data%emitters)
           emitter = reg_data%emitters(i_em)
           do i_res = 1, size (reg_data%resonances)
-             if (reg_data%emitter_is_compatible_with_resonance (i_res, emitter)) then 
+             if (reg_data%emitter_is_compatible_with_resonance (i_res, emitter)) then
                 !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
                 call reg_data%get_contributors (i_res, emitter, contributors%c, share_emitter)
                 if (.not. share_emitter) cycle
@@ -2119,10 +2328,15 @@ contains
           end do
        end do
     else
-       reg_data%n_phs = count (remove_duplicates_from_list (reg_data%emitters) > reg_data%n_in)
-       if (any (reg_data%emitters <= reg_data%n_in)) reg_data%n_phs = reg_data%n_phs + 1
+       reg_data%n_phs = size (remove_duplicates_from_list (reg_data%emitters))
     end if
   end subroutine region_data_compute_number_of_phase_spaces
+
+  function region_data_get_n_phs (reg_data) result (n_phs)
+    integer :: n_phs
+    class(region_data_t), intent(in) :: reg_data
+    n_phs = reg_data%n_phs
+  end function region_data_get_n_phs
 
   subroutine region_data_set_splitting_info (reg_data)
      class(region_data_t), intent(inout) :: reg_data
@@ -2131,6 +2345,35 @@ contains
         call reg_data%regions(alr)%set_splitting_info ()
      end do
    end subroutine region_data_set_splitting_info
+
+  subroutine region_data_init_phs_identifiers (reg_data, phs_id)
+    class(region_data_t), intent(in) :: reg_data
+    type(phs_identifier_t), intent(out), dimension(:), allocatable :: phs_id
+    integer :: i_em, i_res, i_phs
+    integer :: emitter
+    type(resonance_contributors_t) :: contributors
+    logical :: share_emitter, phs_exist
+    allocate (phs_id (reg_data%n_phs))
+    do i_em = 1, size (reg_data%emitters)
+       emitter = reg_data%emitters(i_em)
+       if (allocated (reg_data%resonances)) then
+          do i_res = 1, size (reg_data%resonances)
+             !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
+             call reg_data%get_contributors (i_res, emitter, contributors%c, share_emitter)
+             if (.not. share_emitter) cycle
+             call check_for_phs_identifier &
+                (phs_id, reg_data%n_in, emitter, contributors%c, phs_exist, i_phs)
+             if (.not. phs_exist) &
+                call phs_id(i_phs)%init (emitter, contributors%c)
+             if (allocated (contributors%c)) deallocate (contributors%c)
+          end do
+       else
+          call check_for_phs_identifier (phs_id, reg_data%n_in, emitter, &
+             phs_exist = phs_exist, i_phs = i_phs)
+          if (.not. phs_exist) call phs_id(i_phs)%init (emitter)
+       end if
+    end do
+  end subroutine region_data_init_phs_identifiers
 
   subroutine region_data_write_to_file (reg_data, proc_id)
      class(region_data_t), intent(inout) :: reg_data
@@ -2151,9 +2394,6 @@ contains
      integer :: j
      integer :: maxnregions
      type(string_t) :: flst_title, ftuple_title
-     character(len=7), parameter :: flst_format = "(I3,A1)"
-     character(len=16), parameter :: ireg_format = "(A1,I3,A1,I3,A2)"
-     character(len=7), parameter :: ireg_space_format = "(7X,A1)"
      integer :: n_res, u
      u = given_output_unit (unit); if (u < 0) return
      maxnregions = 1
@@ -2442,6 +2682,13 @@ contains
     end do
   end subroutine fks_apply_perm
 
+  function region_data_has_pseudo_isr (reg_data) result (val)
+    logical :: val
+    class(region_data_t), intent(in) :: reg_data
+    val = any (reg_data%regions%pseudo_isr)
+    !val = .true.
+  end function region_data_has_pseudo_isr
+
   subroutine region_data_final (reg_data)
     class(region_data_t), intent(inout) :: reg_data
     if (allocated (reg_data%regions)) deallocate (reg_data%regions)
@@ -2470,37 +2717,67 @@ contains
     type(vector4_t), intent(in), dimension(:) :: p
     integer, intent(in) :: i, j
     integer, intent(in), optional :: i_con
-    real(default) :: y, E1, E2
-    d = 0
-    !!! FSR Region
+    d = zero
     if (i /= j) then
-        if (i > map%n_in .and. j > map%n_in) then
-           E1 = p(i)%p(0); E2 = p(j)%p(0)
-           d = (two * p(i) * p(j) * E1 * E2 / (E1 + E2)**2)**map%exp_1
+        if (map%pseudo_isr) then
+           d = dij_threshold_gluon_from_top (i, j, p, map%exp_1)
+        else if (i > map%n_in .and. j > map%n_in) then
+           d = dij_fsr (p(i), p(j), map%exp_1)
         else
-           select case (map%n_in)
-           case (1)
-              call get_emitter_variables (1, i, j, p, E1, y)
-              d = ( E1**2 * (one - y**2) )**map%exp_2
-           case (2)
-              if ((i == 0 .and. j > 2) .or. (j == 0 .and. i > 2)) then
-                 call get_emitter_variables (0, i, j, p, E1, y)
-                 d = ( E1**2 * (one - y**2) )**map%exp_2
-              else if ((i == 1 .and. j > 2) .or. (j == 1 .and. i > 2)) then
-                 call get_emitter_variables (1, i, j, p, E1, y)
-                 d = ( 2 * E1**2 * (one - y) )**map%exp_2
-              else if ((i == 2 .and. j > 2) .or. (j == 2 .and. i > 2)) then
-                 call get_emitter_variables (2, i, j, p, E1, y)
-                 d = (2 * E1**2 * (one + y) )**map%exp_2
-              else
-                 call msg_fatal ("FKS: Region with i, j <= 2 encountered")
-              end if
-           end select
+           d = dij_isr (map%n_in, i, j, p, map%exp_2)
         end if
     else
       call msg_fatal ("Invalid FKS region: Emitter equals FKS parton!")
     end if
   contains
+
+    function dij_fsr (p1, p2, expo) result (d_ij)
+      real(default) :: d_ij
+      type(vector4_t), intent(in) :: p1, p2
+      real(default), intent(in) :: expo
+      real(default) :: E1, E2
+      E1 = p1%p(0); E2 = p2%p(0)
+      d_ij = (two * p1 * p2 * E1 * E2 / (E1 + E2)**2)**expo
+    end function dij_fsr
+
+    function dij_threshold_gluon_from_top (i, j, p, expo) result (d_ij)
+      real(default) :: d_ij
+      integer, intent(in) :: i, j
+      type(vector4_t), intent(in), dimension(:) :: p
+      real(default), intent(in) :: expo
+      type(vector4_t) :: p_top
+      if (i == THR_POS_B) then
+         p_top = p(THR_POS_WP) + p(THR_POS_B)
+      else
+         p_top = p(THR_POS_WM) + p(THR_POS_BBAR)
+      end if
+      d_ij = dij_fsr (p_top, p(j), expo)
+    end function dij_threshold_gluon_from_top
+
+    function dij_isr (n_in, i, j, p, expo) result (d_ij)
+      real(default) :: d_ij
+      integer, intent(in) :: n_in, i, j
+      type(vector4_t), intent(in), dimension(:) :: p
+      real(default), intent(in) :: expo
+      real(default) :: E, y
+      select case (n_in)
+      case (1)
+         call get_emitter_variables (1, i, j, p, E, y)
+         d_ij = (E**2 * (one - y**2))**expo
+      case (2)
+         if ((i == 0 .and. j > 2) .or. (j == 0 .and. i > 2)) then
+            call get_emitter_variables (0, i, j, p, E, y)
+            d_ij = (E**2 * (one - y**2))**expo
+         else if ((i == 1 .and. j > 2) .or. (j == 1 .and. i > 2)) then
+            call get_emitter_variables (1, i, j, p, E, y)
+            d_ij = (two * E**2 * (one - y))**expo
+         else if ((i == 2 .and. j > 2) .or. (j == 2 .and. i > 2)) then
+            call get_emitter_variables (2, i, j, p, E, y)
+            d_ij = (two * E**2 * (one + y))**expo
+         end if
+      end select
+    end function dij_isr
+
     subroutine get_emitter_variables (i_check, i, j, p, E, y)
        integer, intent(in) :: i_check, i, j
        type(vector4_t), intent(in), dimension(:) :: p
@@ -2520,16 +2797,15 @@ contains
     class(fks_mapping_default_t), intent(inout) :: map
     type(singular_region_t), intent(in) :: sregion
     type(vector4_t), intent(in), dimension(:) :: p
-    real(default) :: d, dij
+    real(default) :: d
     integer :: alr, i, j
-    integer :: nlegreal
 
     associate (ftuples => sregion%ftuples)
       d = zero
       do alr = 1, sregion%nregions
-        call ftuples(alr)%get (i, j)
-        dij = map%dij (p, i, j)
-        d = d + one / dij
+         call ftuples(alr)%get (i, j)
+         map%pseudo_isr = ftuples(alr)%pseudo_isr
+         d = d + one / map%dij (p, i, j)
       end do
     end associate
     map%sumdij = d
@@ -2551,32 +2827,65 @@ contains
     type(vector4_t), intent(in) :: p_soft
     integer, intent(in) :: em
     integer, intent(in), optional :: i_con
-    real(default) :: y
-    if (em <= map%n_in) then
+    if (map%pseudo_isr) then
+       d = dij_soft_threshold_gluon_from_top (em, p_born, p_soft, map%exp_1)
+    else if (em <= map%n_in) then
+       d = dij_soft_isr (map%n_in, p_soft, map%exp_2)
+    else
+       d = dij_soft_fsr (p_born(em), p_soft, map%exp_1)
+    end if
+  contains
+
+    function dij_soft_threshold_gluon_from_top (em, p, p_soft, expo) result (dij_soft)
+      real(default) :: dij_soft
+      integer, intent(in) :: em
+      type(vector4_t), intent(in), dimension(:) :: p
+      type(vector4_t), intent(in) :: p_soft
+      real(default), intent(in) :: expo
+      type(vector4_t) :: p_top
+      if (em == THR_POS_B) then
+         p_top = p(THR_POS_WP) + p(THR_POS_B)
+      else
+         p_top = p(THR_POS_WM) + p(THR_POS_BBAR)
+      end if
+      dij_soft = dij_soft_fsr (p_top, p_soft, expo)
+    end function dij_soft_threshold_gluon_from_top
+
+    function dij_soft_fsr (p_em, p_soft, expo) result (dij_soft)
+      real(default) :: dij_soft
+      type(vector4_t), intent(in) :: p_em, p_soft
+      real(default), intent(in) :: expo
+      dij_soft = (two * p_em * p_soft / p_em%p(0))**expo
+    end function dij_soft_fsr
+
+    function dij_soft_isr (n_in, p_soft, expo) result (dij_soft)
+       real(default) :: dij_soft
+       integer, intent(in) :: n_in
+       type(vector4_t), intent(in) :: p_soft
+       real(default), intent(in) :: expo
+       real(default) :: y
        y = polar_angle_ct (p_soft)
-       select case (map%n_in)
+       select case (n_in)
        case (1)
-          d = one - y**2
+          dij_soft = one - y**2
        case (2)
           select case (em)
           case (0)
-             d = one - y**2
+             dij_soft = one - y**2
           case (1)
-             d = two * (one - y)
+             dij_soft = two * (one - y)
           case (2)
-             d = two * (one + y)
+             dij_soft = two * (one + y)
           case default
-             d = zero
+             dij_soft = zero
              call msg_fatal ("fks_mappings_default_dij_soft: n_in > 2")
           end select
        case default
-          d = zero
+          dij_soft = zero
           call msg_fatal ("fks_mappings_default_dij_soft: n_in > 2")
        end select
-       d = d**map%exp_2
-    else
-       d = (two * p_born(em) * p_soft / p_born(em)%p(0))**map%exp_1
-    end if
+       dij_soft = dij_soft**expo
+    end function dij_soft_isr
   end function fks_mapping_default_dij_soft
 
   subroutine fks_mapping_default_compute_sumdij_soft (map, sregion, p_born, p_soft)
@@ -2584,18 +2893,18 @@ contains
     type(singular_region_t), intent(in) :: sregion
     type(vector4_t), intent(in), dimension(:) :: p_born
     type(vector4_t), intent(in) :: p_soft
-    real(default) :: d, dij
+    real(default) :: d
     integer :: alr, i, j
     integer :: nlegs
     d = zero
     nlegs = size (sregion%flst_real%flst)
     associate (ftuples => sregion%ftuples)
       do alr = 1, sregion%nregions
-        call ftuples(alr)%get (i ,j)
-        if (j == nlegs) then
-          dij = map%dij_soft (p_born, p_soft, i)
-          d = d + one / dij
-        end if
+         call ftuples(alr)%get (i ,j)
+         if (j == nlegs) then
+            map%pseudo_isr = ftuples(alr)%pseudo_isr
+            d = d + one / map%dij_soft (p_born, p_soft, i)
+         end if
       end do
     end associate
     map%sumdij_soft = d
@@ -2633,22 +2942,15 @@ contains
        call msg_fatal ("Resonance mappings require resonance index as input!")
     end if
     d = 0
-    if (map%pseudo_isr) then
-       associate (p_res => map%res_map%p_res (ii_con))
-          E1 = p_res**2; E2 = p(j) * p_res
-          d = two * p_res * p(j) * E1 * E2 / (E1 + E2)**2
-       end associate
-    else
-       if (i /= j) then
-          if (i > 2 .and. j > 2) then
-             associate (p_res => map%res_map%p_res (ii_con))
-                E1 = p(i) * p_res
-                E2 = p(j) * p_res
-                d = two * p(i) * p(j) * E1 * E2 / (E1 + E2)**2 
-             end associate
-          else
-             call msg_fatal ("Resonance mappings are not implemented for ISR")
-          end if
+    if (i /= j) then
+       if (i > 2 .and. j > 2) then
+          associate (p_res => map%res_map%p_res (ii_con))
+             E1 = p(i) * p_res
+             E2 = p(j) * p_res
+             d = two * p(i) * p(j) * E1 * E2 / (E1 + E2)**2
+          end associate
+       else
+          call msg_fatal ("Resonance mappings are not implemented for ISR")
        end if
     end if
   end function fks_mapping_resonances_dij
@@ -2657,7 +2959,7 @@ contains
     class(fks_mapping_resonances_t), intent(inout) :: map
     type(singular_region_t), intent(in) :: sregion
     type(vector4_t), intent(in), dimension(:) :: p
-    real(default) :: d, dij, pfr
+    real(default) :: d, pfr
     integer :: i_res, i_reg, i, j, i_con
     integer :: nlegreal
 
@@ -2668,9 +2970,8 @@ contains
           call ftuple%get (i, j)
           i_res = ftuple%i_res
        end associate
-       pfr = map%res_map%get_resonance_value (i_res, p, nlegreal) 
-       i_con = sregion%i_reg_to_i_con (i_reg) 
-       map%pseudo_isr = sregion%pseudo_isr
+       pfr = map%res_map%get_resonance_value (i_res, p, nlegreal)
+       i_con = sregion%i_reg_to_i_con (i_reg)
        d = d + pfr / map%dij (p, i, j, i_con)
     end do
     map%sumdij = d
@@ -2689,6 +2990,14 @@ contains
     value = pfr / (map%dij (p, i, j, map%i_con) * map%sumdij)
   end function fks_mapping_resonances_svalue
 
+  function fks_mapping_resonances_get_resonance_weight (map, alr, p) result (pfr)
+    real(default) :: pfr
+    class(fks_mapping_resonances_t), intent(in) :: map
+    integer, intent(in) :: alr
+    type(vector4_t), intent(in), dimension(:) :: p
+    pfr = map%res_map%get_weight (alr, p)
+  end function fks_mapping_resonances_get_resonance_weight
+
   function fks_mapping_resonances_dij_soft (map, p_born, p_soft, em, i_con) result (d)
      real(default) :: d
      class(fks_mapping_resonances_t), intent(in) :: map
@@ -2698,7 +3007,6 @@ contains
      integer, intent(in), optional :: i_con
      real(default) :: E1, E2
      integer :: ii_con
-     integer :: i
      type(vector4_t) :: pb
      if (present (i_con)) then
         ii_con = i_con
@@ -2706,11 +3014,7 @@ contains
         call msg_fatal ("fks_mapping_resonances requires resonance index")
      end if
      associate (p_res => map%res_map%p_res(ii_con))
-        if (map%pseudo_isr) then
-           pb = p_res
-        else
-           pb = p_born(em)
-        end if
+        pb = p_born(em)
         E1 = pb * p_res
         E2 = p_soft * p_res
         d = two * pb * p_soft * E1 * E2 / E1**2
@@ -2724,7 +3028,7 @@ contains
     type(vector4_t), intent(in) :: p_soft
     real(default) :: d
     real(default) :: pfr
-    integer :: i_res, i_alr, i, j, i_reg, i_con
+    integer :: i_res, i, j, i_reg, i_con
     integer :: nlegs
 
     d = zero
@@ -2734,9 +3038,8 @@ contains
           call ftuple%get(i, j)
           i_res = ftuple%i_res
        end associate
-       pfr = map%res_map%get_resonance_value (i_res, p_born) 
+       pfr = map%res_map%get_resonance_value (i_res, p_born)
        i_con = sregion%i_reg_to_i_con (i_reg)
-       map%pseudo_isr = sregion%pseudo_isr
        if (j == nlegs) d = d + pfr / map%dij_soft (p_born, p_soft, i, i_con)
     end do
     map%sumdij_soft = d
@@ -2776,25 +3079,20 @@ contains
 
   function create_resonance_histories_for_threshold () result (res_history)
     type(resonance_history_t) :: res_history
-    res_history%n_resonances = 2  
+    res_history%n_resonances = 2
     allocate (res_history%resonances (2))
     allocate (res_history%resonances(1)%contributors%c(2))
     allocate (res_history%resonances(2)%contributors%c(2))
     res_history%resonances(1)%contributors%c = [THR_POS_WP, THR_POS_B]
     res_history%resonances(2)%contributors%c = [THR_POS_WM, THR_POS_BBAR]
   end function create_resonance_histories_for_threshold
-    
+
   subroutine setup_region_data_for_test (n_in, flv_born, flv_real, reg_data)
     integer, intent(in) :: n_in
     integer, intent(in), dimension(:,:) :: flv_born, flv_real
     type(region_data_t), intent(out) :: reg_data
-    type(os_data_t) :: os_data
-    type(model_list_t) :: model_list
     type(model_t), pointer :: test_model => null ()
-    call syntax_model_file_init ()
-    call os_data_init (os_data)
-    call model_list%read_model &
-       (var_str ("SM_rad"), var_str ("SM_rad.mdl"), os_data, test_model)
+    call create_test_model (var_str ("SM_rad"), test_model)
     call reg_data%init (n_in, test_model, flv_born, flv_real)
   end subroutine setup_region_data_for_test
 

@@ -34,16 +34,25 @@
 \newcommand{\vamp}{\texttt{VAMP}}
 \newcommand{\pythia}{\texttt{PYTHIA}}
 \newcommand{\gosam}{\texttt{GoSam}}
+\newcommand{\includemodulegraph}{\begingroup
+  \catcode`_=12 \doincludemodulegraph}
+\newcommand{\doincludemodulegraph}[1]{%
+  \begin{figure}
+  \includegraphics[width=\textwidth]{#1}%
+  \caption{Module dependencies in \texttt{src/#1}.}
+  \end{figure}
+  \endgroup
+}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\def\WhizardVersion{2.3.1}
-\def\WhizardDate{Aug 25 2016}
+\def\WhizardVersion{2.4.0}
+\def\WhizardDate{Nov 28 2016}
 <<Version>>=
-2.3.1
+2.4.0
 <<Date>>=
-Aug 25 2016
+Nov 28 2016
 @ 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \title{%
@@ -63,7 +72,7 @@ Aug 25 2016
  with contributions from:
  Fabian Bach, Felix Braam, Hans-Werner Boschmann, 
  Bijan Chokouf\'{e} Nejad, Christian Fleper, David Gordo Gomez,
- Sebastian Schmidt, Marco Sekulla, Soyoung Shim, Christian Speckner,
+ Sebastian Schmidt, Marco Sekulla, So Young Shim, Christian Speckner,
  Christian Weiss, Daniel Wiesler, Zhijie Zhao
  \vspace{1cm}
  \begin{center}
@@ -83,6 +92,14 @@ arbitrary complex final states [well, in principle\ldots] can be
 integrated and \emph{unweighted} events be generated.  
 \end{abstract}
 
+
+\newpage
+
+\begin{figure}
+\centering
+\includegraphics[angle=90,width=\textwidth,height=\textheight,keepaspectratio]{overview}
+\caption{Overall folder structure}
+\end{figure}
 
 \newpage
 
@@ -110,7 +127,7 @@ The WHIZARD file header:
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 

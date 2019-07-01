@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -403,7 +403,7 @@ contains
     call tag_gen_n%write (var_str ("WHIZARD"), unit)
     write (unit, *)
     write (unit, "(2x)", advance = "no")      
-    call tag_gen_v%write (var_str ("2.3.1"), unit)
+    call tag_gen_v%write (var_str ("2.4.0"), unit)
     write (unit, *)
     call tag_head%close (unit); write (unit, *)
     call tag_init%write (unit); write (unit, *)
@@ -772,7 +772,6 @@ contains
     type(polarization_t), intent(in), optional :: pol
     type(vector4_t), intent(in) :: vtx
     logical :: hepev4
-    real(default) :: r, theta, phi
     hepev4 = .false.; if (present (fill_hepev4))  hepev4 = fill_hepev4
     IDHEP(i) = pdg
     select case (status)

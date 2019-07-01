@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -243,7 +243,6 @@ contains
              end do
           end do
        end if
-       ! print *, size (eval%pairing_array)     !!! Debugging
     end if
   end subroutine evaluator_write
 
@@ -264,6 +263,7 @@ contains
     type(index_map_t), intent(out) :: map
     integer, intent(in) :: n
     allocate (map%entry (n))
+    map%entry = 0
   end subroutine index_map_init
     
   function index_map_exists (map) result (flag)
@@ -507,19 +507,15 @@ contains
     integer, intent(in) :: index1, index2
     integer, intent(in), optional :: nc
     integer :: i1, i2
-    ! print *, "compute color factor ", index1, index2   !!! Debugging
     i1 = color_table%index(index1)
     i2 = color_table%index(index2)
-    ! print *, "  indices = ", i1, i2                    !!! Debugging
     if (color_table%factor_is_known(i1,i2)) then
        factor = color_table%factor(i1,i2)
-       ! print *, "  is known : ", factor                !!! Debugging
     else
        factor = compute_color_factor &
             (color_table%col(:,i1), color_table%col(:,i2), nc)
        color_table%factor(i1,i2) = factor
        color_table%factor_is_known(i1,i2) = .true.
-       ! print *, "  computed : ", factor                !!! Debugging 
     end if
   end function color_table_get_color_factor
 
@@ -566,13 +562,6 @@ contains
     eval%type = EVAL_PRODUCT
     eval%int_in1 => int_in1
     eval%int_in2 => int_in2
-    ! print *, "Evaluator product"          !!! Debugging      
-    ! print *, "First interaction"          !!! Debugging      
-    ! call int_in1%basic_write ()           !!! Debugging      
-    ! print *                               !!! Debugging      
-    ! print *, "Second interaction"         !!! Debugging      
-    ! call int_in2%basic_write ()           !!! Debugging      
-    ! print *                               !!! Debugging      
 
     state_in1 => int_in1%get_state_matrix_ptr ()
     state_in2 => int_in2%get_state_matrix_ptr ()
@@ -604,9 +593,6 @@ contains
     do i = 1, n_conn
        qn_mask_conn_initial(i) = int_in1_mask(i) .or. int_in2_mask(i)
     end do
-    !!! qn_mask_conn_initial = &
-    !!!      int_in1%get_mask (connection_index(:,1)) .or. &
-    !!!      int_in2%get_mask (connection_index(:,2))
     allocate (qn_mask_in(1)%mask (int_in1%get_n_tot ()))
     allocate (qn_mask_in(2)%mask (int_in2%get_n_tot ()))
     qn_mask_in(1)%mask = int_in1%get_mask ()
@@ -626,7 +612,6 @@ contains
          prt_map_in, prt_is_connected, &
          qn_mask_in, qn_mask_conn_initial, &
          qn_mask_conn, qn_filter_conn, qn_mask_rest)
-    ! call connection_table_write (connection_table)    !!! Debugging
     call make_pairing_array (eval%pairing_array, &
          eval%get_n_matrix_elements (), &
          connection_table)
@@ -635,8 +620,6 @@ contains
          prt_is_connected, connections_are_resonant)
     call connection_table_final (connection_table)
 
-    ! print *, "Result evaluator"                !!! Debugging
-    ! call eval%write ()                         !!! Debugging
 
     if (eval%get_n_matrix_elements () == 0) then
        print *, "Evaluator product"
@@ -689,17 +672,17 @@ contains
       index = [ (i, i = 1, n_tot) ]
       prt_map_in(1)%entry(1 : n_in1) = index(  1 :   n_in1)
       k =     n_in1
-      prt_map_in(2)%entry(1 : n_in2) = index(k+1 : k+n_in2)
+      prt_map_in(2)%entry(1 : n_in2) = index(k + 1 : k + n_in2)
       k = k + n_in2
-      prt_map_in(1)%entry(n_in1+1 : n_in1+n_vir1) = index(k+1 : k+n_vir1)
+      prt_map_in(1)%entry(n_in1 + 1 : n_in1 + n_vir1) = index(k + 1 : k + n_vir1)
       k = k + n_vir1
-      prt_map_in(2)%entry(n_in2+1 : n_in2+n_vir2) = index(k+1 : k+n_vir2)
+      prt_map_in(2)%entry(n_in2 + 1 : n_in2 + n_vir2) = index(k + 1 : k + n_vir2)
       k = k + n_vir2
-      prt_map_conn%entry = index(k+1 : k+n_conn)
+      prt_map_conn%entry = index(k + 1 : k + n_conn)
       k = k + n_conn
-      prt_map_in(1)%entry(n_in1+n_vir1+1 : n_rest(1)) = index(k+1 : k+n_out1)
+      prt_map_in(1)%entry(n_in1 + n_vir1 + 1 : n_rest(1)) = index(k + 1 : k + n_out1)
       k = k + n_out1
-      prt_map_in(2)%entry(n_in2+n_vir2+1 : n_rest(2)) = index(k+1 : k+n_out2)
+      prt_map_in(2)%entry(n_in2 + n_vir2 + 1 : n_rest(2)) = index(k + 1 : k + n_out2)
     end subroutine compute_index_bounds_and_mappings
 
     subroutine connection_table_init &
@@ -725,7 +708,7 @@ contains
       allocate (connection_table%index_conn (2))
       call index_map_init (connection_table%index_conn, n_me_in)
       connection_table%index_conn = 0
-      call connection_table%state%init (n_counters=2)
+      call connection_table%state%init (n_counters = 2)
       do i = 1, 2
          select case (i)
          case (1);  call it%init (state_in1)
@@ -910,7 +893,7 @@ contains
          end if
       end do
       qn_mask(prt_index_conn%entry) = qn_mask_conn_initial .or. qn_mask_conn
-      call eval%interaction_t%basic_init (n_in, n_vir, n_out, mask=qn_mask)
+      call eval%interaction_t%basic_init (n_in, n_vir, n_out, mask = qn_mask)
       m = 1
       do i = 1, connection_table%n_me_conn
          entry => connection_table%entry(i)
@@ -1077,10 +1060,6 @@ contains
     end if
     eval%int_in1 => int_in
 
-    ! print *, "Interaction square with color factors (diag)"  !!! Debugging
-    ! print *, "Input interaction"                             !!! Debugging
-    ! call int_in%basic_write ()                               !!! Debugging
-    
     n_in  = int_in%get_n_in  ()
     n_vir = int_in%get_n_vir ()
     n_out = int_in%get_n_out ()
@@ -1098,7 +1077,6 @@ contains
           call color_table_set_color_factors &
                (color_table, col_flow_index, col_factor, col_index_hi)
        end if
-       ! call color_table_write (color_table)     !!! Debugging
     end if
 
     call connection_table_init (connection_table, state_in, &
@@ -1112,11 +1090,9 @@ contains
          connection_table, sum_colors, color_table, n_in, n_tot, nc)
     call record_links (eval, int_in, n_tot)
     call connection_table_final (connection_table)
-    ! print *, "Result evaluator:"     !!! Debugging
-    ! call eval%write ()               !!! Debugging
 
   contains
-    
+
     subroutine connection_table_init &
          (connection_table, state_in, qn_mask_in, qn_mask, n_tot)
       type(connection_table_t), intent(out) :: connection_table
@@ -1163,7 +1139,7 @@ contains
          call it%advance ()
       end do
     end subroutine connection_table_init
-         
+
     subroutine connection_table_final (connection_table)
       type(connection_table_t), intent(inout) :: connection_table
       call connection_table%state%final ()
@@ -1375,9 +1351,6 @@ contains
     end if
     eval%int_in1 => int_in
 
-    ! print *, "Interaction square with color factors (nondiag)"  !!! Debugging
-    ! print *, "Input interaction"                                !!! Debugging
-    ! call int_int%basic_write ()                                 !!! Debugging
     n_in  = int_in%get_n_in  ()
     n_vir = int_in%get_n_vir ()
     n_out = int_in%get_n_out ()
@@ -1395,7 +1368,6 @@ contains
           call color_table_set_color_factors &
                (color_table, col_flow_index, col_factor, col_index_hi)
        end if
-       ! call color_table_write (color_table)    !!! Debugging
     end if
 
     call connection_table_init (connection_table, state_in, &
@@ -1404,15 +1376,11 @@ contains
     call make_squared_interaction (eval%interaction_t, &
          n_in, n_vir, n_out, n_tot, &
          connection_table, sum_colors, qn_mask_initial .or. qn_mask)
-    ! call connection_table_write (connection_table)     !!! Debugging
     call make_pairing_array (eval%pairing_array, &
          eval%get_n_matrix_elements (), &
          connection_table, sum_colors, color_table, n_in, n_tot, nc)
     call record_links (eval, int_in, n_tot)
     call connection_table_final (connection_table)
-
-    ! print *, "Result evaluator:"     !!! Debugging
-    ! call eval%write ()               !!! Debugging
 
   contains
     
@@ -1657,9 +1625,6 @@ contains
     integer, dimension(:), allocatable :: result_index
     eval%type = EVAL_COLOR_CONTRACTION
     eval%int_in1 => int_in
-    ! print *, "Interaction with additional color contractions"  !!! Debugging
-    ! print *, "Input interaction"                               !!! Debugging
-    ! call int_in%basic_write ()                                 !!! Debugging
     n_in  = int_in%get_n_in  ()
     n_vir = int_in%get_n_vir ()
     n_out = int_in%get_n_out ()
@@ -1673,8 +1638,6 @@ contains
     call make_pairing_array (eval%pairing_array, me_index, result_index)
     call record_links (eval, int_in, n_tot)
     call state_with_contractions%final ()
-    ! print *, "Result evaluator:"     !!! Debugging
-    ! call eval%write ()               !!! Debugging
 
   contains
 
@@ -1803,8 +1766,8 @@ contains
     n_vir = int%get_n_vir ()
     n_tot = int%get_n_tot ()
     call eval%interaction_t%basic_init (n_in, n_vir, n_out, &
-       mask=int%get_mask (), &
-       resonant=int%get_resonance_flags ())
+       mask = int%get_mask (), &
+       resonant = int%get_resonance_flags ())
     do i = 1, n_tot
        call eval%set_source_link (i, int, i)
     end do

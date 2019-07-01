@@ -1,0 +1,10 @@
+
+digraph G {
+mci_midpoint -> mci_base
+mci_vamp -> mci_base
+dispatch_mci -> mci_midpoint
+integration_results -> mci_base
+dispatch_mci -> mci_vamp
+dispatch_mci -> mci_base
+ }
+

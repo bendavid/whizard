@@ -1,4 +1,4 @@
-! $Id:$
+! fc_s.ects --
 !ects:model SM
 !ects:scatter
 !ects:process u ubar -> A

@@ -1,0 +1,28 @@
+
+digraph G {
+quantum_numbers -> helicities
+evaluators -> helicities
+evaluators -> state_matrices
+model_testbed -> model_data
+interactions -> colors
+state_matrices -> quantum_numbers
+interactions -> helicities
+interactions -> state_matrices
+evaluators -> colors
+state_matrices -> model_data
+interactions -> flavors
+quantum_numbers -> flavors
+state_matrices -> flavors
+state_matrices -> colors
+evaluators -> interactions
+evaluators -> model_data
+evaluators -> quantum_numbers
+flavors -> colors
+interactions -> quantum_numbers
+state_matrices -> helicities
+quantum_numbers -> colors
+evaluators -> flavors
+quantum_numbers -> model_data
+flavors -> model_data
+ }
+

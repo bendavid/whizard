@@ -14,12 +14,14 @@
    Helicity handling  = drop
    Keep correlations  = F
 ------------------------------------------------------------------------
-   Squared matrix el. =  1.000000000000E+00
+   Squared matrix el. (ref) =  1.000000000000E+00
      alternate sqme   =  2.000000000000E+00 1
      alternate sqme   =  3.000000000000E+00 2
-   Event weight       =  3.057406860410E+08
-     alternate weight =  6.114813720821E+08 1
-     alternate weight =  9.172220581231E+08 2
+   Squared matrix el. (prc) =  1.000000000000E+00
+   Event weight (ref)       =  3.057406860410E+08
+     alternate weight      =  6.114813720821E+08 1
+     alternate weight      =  9.172220581231E+08 2
+   Event weight (prc)       =  3.057406860410E+08
 ------------------------------------------------------------------------
    Selected MCI group = 1
    Selected term      = 1
@@ -133,12 +135,12 @@ event_excess* =>  0.000000000000E+00
    Helicity handling  = drop
    Keep correlations  = F
 ------------------------------------------------------------------------
-   Squared matrix el. =  1.000000000000E+00
+   Squared matrix el. (ref) =  1.000000000000E+00
      alternate sqme   =  2.000000000000E+00 1
      alternate sqme   =  3.000000000000E+00 2
-   Event weight       =  3.057406860410E+08
-     alternate weight =  6.114813720821E+08 1
-     alternate weight =  9.172220581231E+08 2
+   Event weight (ref)       =  3.057406860410E+08
+     alternate weight      =  6.114813720821E+08 1
+     alternate weight      =  9.172220581231E+08 2
 ------------------------------------------------------------------------
    Selected MCI group = 1
    Selected term      = 1

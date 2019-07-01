@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -52,6 +52,7 @@ module flavors
   private
 
   public :: flavor_t
+  public :: flavor_write_array
   public :: operator(.merge.)
   public :: color_from_flavor
 
@@ -222,6 +223,18 @@ contains
     end if
     write (u, "(A)", advance="no")  ")"
   end subroutine flavor_write
+
+  subroutine flavor_write_array (flv, unit)
+    type(flavor_t), intent(in), dimension(:) :: flv
+    integer, intent(in), optional :: unit
+    integer :: u, i_flv
+    u = given_output_unit (unit); if (u < 0) return
+    do i_flv = 1, size (flv)
+       call flv(i_flv)%write (u)
+       if (i_flv /= size (flv)) write (u,"(A)", advance = "no") " / "
+    end do
+    write (u,"(A)")
+  end subroutine flavor_write_array
 
   subroutine flavor_write_raw (flv, u)
     class(flavor_t), intent(in) :: flv
@@ -534,15 +547,21 @@ contains
   elemental function flavor_get_charge (flv) result (charge)
     real(default) :: charge
     class(flavor_t), intent(in) :: flv
+    integer :: charge_type
     if (associated (flv%field_data)) then
-       if (flavor_is_antiparticle (flv)) then
-          charge = flv%field_data%get_charge ()
+       charge_type = flv%get_charge_type ()
+       if (charge_type == 0 .or. charge_type == 1) then
+          charge = 0
        else
-          charge = - flv%field_data%get_charge ()
+          if (flavor_is_antiparticle (flv)) then
+             charge = - flv%field_data%get_charge ()
+          else
+             charge = flv%field_data%get_charge ()
+          end if
        end if
     else
        charge = 0
-    end if
+    end if       
   end function flavor_get_charge
 
   elemental function flavor_get_mass (flv) result (mass)
@@ -570,9 +589,9 @@ contains
     class(flavor_t), intent(in) :: flv
     if (associated (flv%field_data)) then
        if (flavor_is_antiparticle (flv)) then
-          isospin = flv%field_data%get_isospin ()
-       else
           isospin = - flv%field_data%get_isospin ()
+       else
+          isospin = flv%field_data%get_isospin ()
        end if
     else
        isospin = 0

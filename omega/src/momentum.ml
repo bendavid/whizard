@@ -1,4 +1,4 @@
-(* $Id: momentum.ml 7444 2016-02-17 15:37:20Z jr_reuter $
+(* momentum.ml --
 
    Copyright (C) 1999-2016 by
 
@@ -21,13 +21,6 @@
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
-
-let rcs_file = RCS.parse "Momentum" ["Finite disjoint sums of momenta"]
-    { RCS.revision = "$Revision: 7444 $";
-      RCS.date = "$Date: 2016-02-17 16:37:20 +0100 (Wed, 17 Feb 2016) $";
-      RCS.author = "$Author: jr_reuter $";
-      RCS.source
-        = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/omega/src/momentum.ml $" }
 
 module type T =
   sig
@@ -72,7 +65,6 @@ module type T =
           val timelike : t -> bool
           val spacelike : t -> bool
         end
-    val rcs : RCS.t
   end
 
 (* \thocwmodulesection{Lists of Integers} *)
@@ -87,9 +79,6 @@ module type T =
 
 module Lists =
   struct
-    let rcs = RCS.rename rcs_file "Momentum.Lists()"
-        (RCS.description rcs_file @
-         ["using lists as representation."])
 
     type t = { d : int; r : int; p : int list }
 
@@ -404,9 +393,6 @@ module Lists =
 
 module Bits =
   struct
-    let rcs = RCS.rename rcs_file "Momentum.Bits()"
-        (RCS.description rcs_file @
-         [ "using bitfields as representation." ])
 
     type t = int
 

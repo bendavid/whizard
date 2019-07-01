@@ -1,4 +1,4 @@
-(* $Id: omega_HSExt.ml 4926 2013-12-04 12:35:06Z jr_reuter $
+(* omega_HSExt.ml --
 
    Copyright (C) 1999-2016 by
 

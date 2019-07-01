@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -34,7 +34,7 @@
 ! to the source 'whizard.nw'
 
 module simulations_uti
-  
+
     use kinds, only: default
     use kinds, only: i64
     use iso_varying_string, string_t => varying_string
@@ -63,7 +63,7 @@ module simulations_uti
     use integrations, only: integrate_process
 
     use simulations
-    
+
   implicit none
   private
 
@@ -87,7 +87,7 @@ module simulations_uti
      procedure :: write => simulations_13_callback_write
      procedure :: proc => simulations_13_callback
   end type simulations_13_callback_t
-  
+
 
 contains
 
@@ -96,7 +96,7 @@ contains
     type(string_t) :: libname, procname1, procname2
     type(rt_data_t), target :: global
     type(simulation_t), target :: simulation
-    
+
     write (u, "(A)")  "* Test output: simulations_1"
     write (u, "(A)")  "*   Purpose: initialize simulation"
     write (u, "(A)")
@@ -110,11 +110,11 @@ contains
     call global%set_log (var_str ("?omega_openmp"), &
          .false., is_known = .true.)
     call global%set_int (var_str ("seed"), &
-         0, is_known = .true.)    
-    
+         0, is_known = .true.)
+
     libname = "simulation_1a"
     procname1 = "simulation_1p"
-    
+
     call prepare_test_library (global, libname, 1, [procname1])
     call compile_library (libname, global)
 
@@ -125,12 +125,12 @@ contains
     call global%set_string (var_str ("$integration_method"),&
          var_str ("midpoint"), is_known = .true.)
     call global%set_log (var_str ("?vis_history"),&
-         .false., is_known = .true.)    
+         .false., is_known = .true.)
     call global%set_log (var_str ("?integration_timer"),&
-         .false., is_known = .true.)    
+         .false., is_known = .true.)
     call global%set_log (var_str ("?recover_beams"), &
          .false., is_known = .true.)
-    
+
     call global%set_real (var_str ("sqrts"),&
          1000._default, is_known = .true.)
 
@@ -141,7 +141,7 @@ contains
     call integrate_process (procname1, global, local_stack=.true.)
 
     procname2 = "sim_extra"
-    
+
     call prepare_test_library (global, libname, 1, [procname2])
     call compile_library (libname, global)
     call global%set_string (var_str ("$run_id"), &
@@ -162,7 +162,7 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Write the event record for the first process"
     write (u, "(A)")
-    
+
     call simulation%write_event (u, i_prc = 1)
 
     write (u, "(A)")
@@ -170,19 +170,19 @@ contains
 
     call simulation%final ()
     call global%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: simulations_1"
-    
+
   end subroutine simulations_1
-  
+
   subroutine simulations_2 (u)
     integer, intent(in) :: u
     type(string_t) :: libname, procname1
     type(rt_data_t), target :: global
     type(simulation_t), target :: simulation
     type(event_sample_data_t) :: data
-    
+
     write (u, "(A)")  "* Test output: simulations_2"
     write (u, "(A)")  "*   Purpose: generate events for a single process"
     write (u, "(A)")
@@ -196,11 +196,11 @@ contains
     call global%set_log (var_str ("?omega_openmp"), &
          .false., is_known = .true.)
     call global%set_int (var_str ("seed"), &
-         0, is_known = .true.)    
-    
+         0, is_known = .true.)
+
     libname = "simulation_2a"
     procname1 = "simulation_2p"
-    
+
     call prepare_test_library (global, libname, 1, [procname1])
     call compile_library (libname, global)
 
@@ -214,9 +214,9 @@ contains
     call global%set_string (var_str ("$integration_method"),&
          var_str ("midpoint"), is_known = .true.)
     call global%set_log (var_str ("?vis_history"),&
-         .false., is_known = .true.)    
+         .false., is_known = .true.)
     call global%set_log (var_str ("?integration_timer"),&
-         .false., is_known = .true.)    
+         .false., is_known = .true.)
     call global%set_log (var_str ("?recover_beams"), &
          .false., is_known = .true.)
 
@@ -250,7 +250,7 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Write the event record for the last event"
     write (u, "(A)")
-    
+
     call simulation%write_event (u)
 
     write (u, "(A)")
@@ -258,19 +258,19 @@ contains
 
     call simulation%final ()
     call global%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: simulations_2"
-    
+
   end subroutine simulations_2
-  
+
   subroutine simulations_3 (u)
     integer, intent(in) :: u
     type(string_t) :: libname, procname1
     type(rt_data_t), target :: global
     type(simulation_t), target :: simulation
     type(event_sample_data_t) :: data
-    
+
     write (u, "(A)")  "* Test output: simulations_3"
     write (u, "(A)")  "*   Purpose: generate unweighted events &
          &for a single process"
@@ -285,11 +285,11 @@ contains
     call global%set_log (var_str ("?omega_openmp"), &
          .false., is_known = .true.)
     call global%set_int (var_str ("seed"), &
-         0, is_known = .true.)    
-    
+         0, is_known = .true.)
+
     libname = "simulation_3a"
     procname1 = "simulation_3p"
-    
+
     call prepare_test_library (global, libname, 1, [procname1])
     call compile_library (libname, global)
 
@@ -303,9 +303,9 @@ contains
     call global%set_string (var_str ("$integration_method"),&
          var_str ("midpoint"), is_known = .true.)
     call global%set_log (var_str ("?vis_history"),&
-         .false., is_known = .true.)    
+         .false., is_known = .true.)
     call global%set_log (var_str ("?integration_timer"),&
-         .false., is_known = .true.)    
+         .false., is_known = .true.)
     call global%set_log (var_str ("?recover_beams"), &
          .false., is_known = .true.)
 
@@ -337,7 +337,7 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Write the event record for the last event"
     write (u, "(A)")
-    
+
     call simulation%write_event (u)
 
     write (u, "(A)")
@@ -345,12 +345,12 @@ contains
 
     call simulation%final ()
     call global%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: simulations_3"
-    
+
   end subroutine simulations_3
-  
+
   subroutine simulations_4 (u)
     integer, intent(in) :: u
     type(string_t) :: libname, procname1
@@ -359,7 +359,7 @@ contains
     type(string_t) :: name
     type(simulation_t), target :: simulation
     type(event_sample_data_t) :: data
-    
+
     write (u, "(A)")  "* Test output: simulations_4"
     write (u, "(A)")  "*   Purpose: generate events for a single process &
          &with structure functions"
@@ -375,11 +375,11 @@ contains
     call global%set_log (var_str ("?omega_openmp"), &
          .false., is_known = .true.)
     call global%set_int (var_str ("seed"), &
-         0, is_known = .true.)    
-    
+         0, is_known = .true.)
+
     libname = "simulation_4a"
     procname1 = "simulation_4p"
-    
+
     call prepare_test_library (global, libname, 1, [procname1])
     call compile_library (libname, global)
 
@@ -405,17 +405,17 @@ contains
     call global%model_set_real (var_str ("ms"), &
          0._default)
     call global%set_log (var_str ("?vis_history"),&
-         .false., is_known = .true.)    
+         .false., is_known = .true.)
     call global%set_log (var_str ("?integration_timer"),&
-         .false., is_known = .true.)    
+         .false., is_known = .true.)
     call global%set_log (var_str ("?recover_beams"), &
          .false., is_known = .true.)
-    
+
     call reset_interaction_counter ()
 
     call flv%init (25, global%model)
     name = flv%get_name ()
-    
+
     call global%beam_structure%init_sf ([name, name], [1])
     call global%beam_structure%set_sf (1, 1, var_str ("sf_test_1"))
 
@@ -451,7 +451,7 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Write the event record for the last event"
     write (u, "(A)")
-    
+
     call simulation%write_event (u)
 
     write (u, "(A)")
@@ -459,19 +459,19 @@ contains
 
     call simulation%final ()
     call global%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: simulations_4"
-    
+
   end subroutine simulations_4
-  
+
   subroutine simulations_5 (u)
     integer, intent(in) :: u
     type(string_t) :: libname, procname1, sample
     type(rt_data_t), target :: global
     class(eio_t), allocatable :: eio
     type(simulation_t), allocatable, target :: simulation
-    
+
     write (u, "(A)")  "* Test output: simulations_5"
     write (u, "(A)")  "*   Purpose: generate events for a single process"
     write (u, "(A)")  "*            write to file and reread"
@@ -486,11 +486,11 @@ contains
     call global%set_log (var_str ("?omega_openmp"), &
          .false., is_known = .true.)
     call global%set_int (var_str ("seed"), &
-         0, is_known = .true.)    
-    
+         0, is_known = .true.)
+
     libname = "simulation_5a"
     procname1 = "simulation_5p"
-    
+
     call prepare_test_library (global, libname, 1, [procname1])
     call compile_library (libname, global)
 
@@ -502,11 +502,11 @@ contains
     call global%set_string (var_str ("$phs_method"), &
          var_str ("single"), is_known = .true.)
     call global%set_string (var_str ("$integration_method"),&
-         var_str ("midpoint"), is_known = .true.)   
+         var_str ("midpoint"), is_known = .true.)
     call global%set_log (var_str ("?vis_history"),&
-         .false., is_known = .true.)    
+         .false., is_known = .true.)
     call global%set_log (var_str ("?integration_timer"),&
-         .false., is_known = .true.)    
+         .false., is_known = .true.)
     call global%set_log (var_str ("?recover_beams"), &
          .false., is_known = .true.)
 
@@ -536,7 +536,7 @@ contains
 
     allocate (eio_raw_t :: eio)
     call eio%init_out (sample)
-    
+
     write (u, "(A)")  "* Generate an event"
     write (u, "(A)")
 
@@ -548,11 +548,11 @@ contains
     deallocate (eio)
     call simulation%final ()
     deallocate (simulation)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Re-read the event from file"
     write (u, "(A)")
-    
+
     call global%set_log (var_str ("?update_sqme"), &
          .true., is_known = .true.)
     call global%set_log (var_str ("?update_weight"), &
@@ -565,7 +565,7 @@ contains
     call simulation%init_process_selector ()
     allocate (eio_raw_t :: eio)
     call eio%init_in (sample)
-    
+
     call simulation%read_event (eio)
     call simulation%write_event (u)
 
@@ -583,12 +583,12 @@ contains
     call eio%final ()
     call simulation%final ()
     call global%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: simulations_5"
-    
+
   end subroutine simulations_5
-  
+
   subroutine simulations_6 (u)
     integer, intent(in) :: u
     type(string_t) :: libname, procname1, sample
@@ -597,7 +597,7 @@ contains
     type(simulation_t), allocatable, target :: simulation
     type(flavor_t) :: flv
     type(string_t) :: name
-    
+
     write (u, "(A)")  "* Test output: simulations_6"
     write (u, "(A)")  "*   Purpose: generate events for a single process"
     write (u, "(A)")  "*            write to file and reread"
@@ -612,11 +612,11 @@ contains
     call global%set_log (var_str ("?omega_openmp"), &
          .false., is_known = .true.)
     call global%set_int (var_str ("seed"), &
-         0, is_known = .true.)    
-    
+         0, is_known = .true.)
+
     libname = "simulation_6"
     procname1 = "simulation_6p"
-    
+
     call prepare_test_library (global, libname, 1, [procname1])
     call compile_library (libname, global)
 
@@ -636,9 +636,9 @@ contains
     call global%set_log (var_str ("?use_vamp_equivalences"),&
          .true., is_known = .true.)
     call global%set_log (var_str ("?vis_history"),&
-         .false., is_known = .true.)    
+         .false., is_known = .true.)
     call global%set_log (var_str ("?integration_timer"),&
-         .false., is_known = .true.)    
+         .false., is_known = .true.)
     call global%set_log (var_str ("?recover_beams"), &
          .false., is_known = .true.)
 
@@ -649,7 +649,7 @@ contains
 
     call flv%init (25, global%model)
     name = flv%get_name ()
-    
+
     call global%beam_structure%init_sf ([name, name], [1])
     call global%beam_structure%set_sf (1, 1, var_str ("sf_test_1"))
 
@@ -663,7 +663,7 @@ contains
     write (u, "(A)")
 
     call reset_interaction_counter ()
-    
+
     call global%set_log (var_str ("?unweighted"), &
          .false., is_known = .true.)
     sample = "simulations6"
@@ -678,7 +678,7 @@ contains
 
     allocate (eio_raw_t :: eio)
     call eio%init_out (sample)
-    
+
     write (u, "(A)")  "* Generate an event"
     write (u, "(A)")
 
@@ -691,13 +691,13 @@ contains
     deallocate (eio)
     call simulation%final ()
     deallocate (simulation)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Re-read the event from file"
     write (u, "(A)")
-    
+
     call reset_interaction_counter ()
-    
+
     call global%set_log (var_str ("?update_sqme"), &
          .true., is_known = .true.)
     call global%set_log (var_str ("?update_weight"), &
@@ -708,7 +708,7 @@ contains
     call simulation%init_process_selector ()
     allocate (eio_raw_t :: eio)
     call eio%init_in (sample)
-    
+
     call simulation%read_event (eio)
     call simulation%write_event (u, verbose = .true., testflag = .true.)
 
@@ -726,12 +726,12 @@ contains
     call eio%final ()
     call simulation%final ()
     call global%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: simulations_6"
-    
+
   end subroutine simulations_6
-  
+
   subroutine simulations_7 (u)
     integer, intent(in) :: u
     type(string_t) :: libname, procname1, sample
@@ -742,7 +742,7 @@ contains
     type(simulation_t), allocatable, target :: simulation
     type(flavor_t) :: flv
     type(string_t) :: name
-    
+
     write (u, "(A)")  "* Test output: simulations_7"
     write (u, "(A)")  "*   Purpose: generate events for a single process"
     write (u, "(A)")  "*            write to file and reread"
@@ -760,11 +760,11 @@ contains
     call global%set_log (var_str ("?omega_openmp"), &
          .false., is_known = .true.)
     call global%set_int (var_str ("seed"), &
-         0, is_known = .true.)    
-    
+         0, is_known = .true.)
+
     libname = "simulation_7"
     procname1 = "simulation_7p"
-    
+
     call prepare_test_library (global, libname, 1, [procname1])
     call compile_library (libname, global)
 
@@ -784,9 +784,9 @@ contains
     call global%set_log (var_str ("?use_vamp_equivalences"),&
          .true., is_known = .true.)
     call global%set_log (var_str ("?vis_history"),&
-         .false., is_known = .true.)    
+         .false., is_known = .true.)
     call global%set_log (var_str ("?integration_timer"),&
-         .false., is_known = .true.)    
+         .false., is_known = .true.)
     call global%set_log (var_str ("?recover_beams"), &
          .false., is_known = .true.)
 
@@ -797,7 +797,7 @@ contains
 
     call flv%init (25, global%model)
     name = flv%get_name ()
-    
+
     call global%beam_structure%init_sf ([name, name], [1])
     call global%beam_structure%set_sf (1, 1, var_str ("sf_test_1"))
 
@@ -811,7 +811,7 @@ contains
     write (u, "(A)")
 
     call reset_interaction_counter ()
-    
+
     call global%set_log (var_str ("?unweighted"), &
          .false., is_known = .true.)
     sample = "simulations7"
@@ -827,7 +827,7 @@ contains
     data%md5sum_prc = simulation%get_md5sum_prc ()
     data%md5sum_cfg = simulation%get_md5sum_cfg ()
     call es_array%init (sample, [var_str ("raw")], global, data)
-    
+
     write (u, "(A)")  "* Generate an event"
     write (u, "(A)")
 
@@ -836,15 +836,15 @@ contains
     call es_array%final ()
     call simulation%final ()
     deallocate (simulation)
-    
+
     write (u, "(A)")  "* Re-read the event from file and generate another one"
     write (u, "(A)")
-    
+
     call global%set_log (&
          var_str ("?rebuild_events"), .false., is_known = .true.)
 
     call reset_interaction_counter ()
-    
+
     allocate (simulation)
     call simulation%init ([procname1], .true., .true., global)
     call simulation%init_process_selector ()
@@ -853,23 +853,23 @@ contains
     data%md5sum_cfg = simulation%get_md5sum_cfg ()
     call es_array%init (sample, empty_string_array, global, data, &
          input = var_str ("raw"))
-    
+
     call simulation%generate (2, es_array)
-    
+
     call pacify (simulation)
     call simulation%write_event (u, verbose = .true.)
 
     call es_array%final ()
     call simulation%final ()
     deallocate (simulation)
-    
-    
+
+
     write (u, "(A)")
     write (u, "(A)")  "* Re-read both events from file"
     write (u, "(A)")
-    
+
     call reset_interaction_counter ()
-    
+
     allocate (simulation)
     call simulation%init ([procname1], .true., .true., global)
     call simulation%init_process_selector ()
@@ -880,7 +880,7 @@ contains
          input = var_str ("raw"))
 
     call simulation%generate (2, es_array)
-    
+
     call pacify (simulation)
     call simulation%write_event (u, verbose = .true.)
 
@@ -890,12 +890,12 @@ contains
     call es_array%final ()
     call simulation%final ()
     call global%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: simulations_7"
-    
+
   end subroutine simulations_7
-  
+
   subroutine simulations_8 (u)
     integer, intent(in) :: u
     type(string_t) :: libname, procname1, sample
@@ -906,7 +906,7 @@ contains
     type(simulation_t), allocatable, target :: simulation
     type(flavor_t) :: flv
     type(string_t) :: name
-    
+
     write (u, "(A)")  "* Test output: simulations_8"
     write (u, "(A)")  "*   Purpose: generate events for a single process"
     write (u, "(A)")  "*            write to file and rescan"
@@ -924,11 +924,11 @@ contains
     call global%set_log (var_str ("?omega_openmp"), &
          .false., is_known = .true.)
     call global%set_int (var_str ("seed"), &
-         0, is_known = .true.)        
+         0, is_known = .true.)
 
     libname = "simulation_8"
     procname1 = "simulation_8p"
-    
+
     call prepare_test_library (global, libname, 1, [procname1])
     call compile_library (libname, global)
 
@@ -946,11 +946,11 @@ contains
     call global%set_string (var_str ("$integration_method"),&
          var_str ("vamp"), is_known = .true.)
     call global%set_log (var_str ("?use_vamp_equivalences"),&
-         .true., is_known = .true.)   
+         .true., is_known = .true.)
     call global%set_log (var_str ("?vis_history"),&
-         .false., is_known = .true.)    
+         .false., is_known = .true.)
     call global%set_log (var_str ("?integration_timer"),&
-         .false., is_known = .true.)    
+         .false., is_known = .true.)
     call global%set_log (var_str ("?recover_beams"), &
          .false., is_known = .true.)
 
@@ -961,7 +961,7 @@ contains
 
     call flv%init (25, global%model)
     name = flv%get_name ()
-    
+
     call global%beam_structure%init_sf ([name, name], [1])
     call global%beam_structure%set_sf (1, 1, var_str ("sf_test_1"))
 
@@ -975,7 +975,7 @@ contains
     write (u, "(A)")
 
     call reset_interaction_counter ()
-    
+
     call global%set_log (var_str ("?unweighted"), &
          .false., is_known = .true.)
     sample = "simulations8"
@@ -994,7 +994,7 @@ contains
     write (u, "(1x,A,A,A)")  "MD5 sum (config) = '", data%md5sum_cfg, "'"
     call es_array%init (sample, [var_str ("raw")], global, &
          data)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Generate an event"
     write (u, "(A)")
@@ -1007,13 +1007,13 @@ contains
     call es_array%final ()
     call simulation%final ()
     deallocate (simulation)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Re-read the event from file"
     write (u, "(A)")
-    
+
     call reset_interaction_counter ()
-    
+
     allocate (simulation)
     call simulation%init ([procname1], .false., .false., global)
     call simulation%init_process_selector ()
@@ -1024,9 +1024,9 @@ contains
     write (u, "(1x,A,A,A)")  "MD5 sum (config) = '", data%md5sum_cfg, "'"
     call es_array%init (sample, empty_string_array, global, data, &
          input = var_str ("raw"), input_sample = sample, allow_switch = .false.)
-    
+
     call simulation%rescan (1, es_array, global = global)
-    
+
     write (u, "(A)")
 
     call pacify (simulation)
@@ -1035,13 +1035,13 @@ contains
     call es_array%final ()
     call simulation%final ()
     deallocate (simulation)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Re-read again and recalculate"
     write (u, "(A)")
-    
+
     call reset_interaction_counter ()
-    
+
     call global%set_log (var_str ("?update_sqme"), &
          .true., is_known = .true.)
     call global%set_log (var_str ("?update_event"), &
@@ -1057,9 +1057,9 @@ contains
     write (u, "(1x,A,A,A)")  "MD5 sum (config) = '", data%md5sum_cfg, "'"
     call es_array%init (sample, empty_string_array, global, data, &
          input = var_str ("raw"), input_sample = sample, allow_switch = .false.)
-    
+
     call simulation%rescan (1, es_array, global = global)
-    
+
     write (u, "(A)")
 
     call pacify (simulation)
@@ -1071,12 +1071,12 @@ contains
     call es_array%final ()
     call simulation%final ()
     call global%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: simulations_8"
-    
+
   end subroutine simulations_8
-  
+
   subroutine simulations_9 (u)
     integer, intent(in) :: u
     type(string_t) :: libname, procname1, sample
@@ -1088,7 +1088,7 @@ contains
     type(flavor_t) :: flv
     type(string_t) :: name
     logical :: error
-    
+
     write (u, "(A)")  "* Test output: simulations_9"
     write (u, "(A)")  "*   Purpose: generate events for a single process"
     write (u, "(A)")  "*            write to file and rescan"
@@ -1106,11 +1106,11 @@ contains
     call global%set_log (var_str ("?omega_openmp"), &
          .false., is_known = .true.)
     call global%set_int (var_str ("seed"), &
-         0, is_known = .true.)    
-    
+         0, is_known = .true.)
+
     libname = "simulation_9"
     procname1 = "simulation_9p"
-    
+
     call prepare_test_library (global, libname, 1, [procname1])
     call compile_library (libname, global)
 
@@ -1130,9 +1130,9 @@ contains
     call global%set_log (var_str ("?use_vamp_equivalences"),&
          .true., is_known = .true.)
     call global%set_log (var_str ("?vis_history"),&
-         .false., is_known = .true.)    
+         .false., is_known = .true.)
     call global%set_log (var_str ("?integration_timer"),&
-         .false., is_known = .true.)    
+         .false., is_known = .true.)
     call global%set_log (var_str ("?recover_beams"), &
          .false., is_known = .true.)
 
@@ -1143,7 +1143,7 @@ contains
 
     call flv%init (25, global%model)
     name = flv%get_name ()
-    
+
     call global%beam_structure%init_sf ([name, name], [1])
     call global%beam_structure%set_sf (1, 1, var_str ("sf_test_1"))
 
@@ -1157,7 +1157,7 @@ contains
     write (u, "(A)")
 
     call reset_interaction_counter ()
-    
+
     call global%set_log (var_str ("?unweighted"), &
          .false., is_known = .true.)
     sample = "simulations9"
@@ -1179,7 +1179,7 @@ contains
     write (u, "(1x,A,A,A)")  "MD5 sum (config) = '", data%md5sum_cfg, "'"
     call es_array%init (sample, [var_str ("raw")], global, &
          data)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Generate an event"
     write (u, "(A)")
@@ -1189,16 +1189,16 @@ contains
     call es_array%final ()
     call simulation%final ()
     deallocate (simulation)
-    
+
     write (u, "(A)")  "* Initialize event generation for different parameters"
     write (u, "(A)")
-    
+
     call reset_interaction_counter ()
-    
+
     allocate (simulation)
     call simulation%init ([procname1, procname1], .false., .false., global)
     call simulation%init_process_selector ()
-    
+
     call simulation%write (u)
 
     write (u, "(A)")
@@ -1212,20 +1212,20 @@ contains
     call es_array%init (sample, empty_string_array, global, data, &
          input = var_str ("raw"), input_sample = sample, &
          allow_switch = .false., error = error)
-    
+
     write (u, "(1x,A,L1)")  "error = ", error
-    
+
     call simulation%rescan (1, es_array, global = global)
 
     call es_array%final ()
     call simulation%final ()
     call global%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: simulations_9"
-    
+
   end subroutine simulations_9
-  
+
   subroutine simulations_10 (u)
     integer, intent(in) :: u
     type(string_t) :: libname, procname1, expr_text
@@ -1236,7 +1236,7 @@ contains
     type(parse_tree_t) :: pt_weight
     type(simulation_t), target :: simulation
     type(event_sample_data_t) :: data
-    
+
     write (u, "(A)")  "* Test output: simulations_10"
     write (u, "(A)")  "*   Purpose: reweight event"
     write (u, "(A)")
@@ -1251,11 +1251,11 @@ contains
     call global%set_log (var_str ("?omega_openmp"), &
          .false., is_known = .true.)
     call global%set_int (var_str ("seed"), &
-         0, is_known = .true.)    
-    
+         0, is_known = .true.)
+
     libname = "simulation_10a"
     procname1 = "simulation_10p"
-    
+
     call prepare_test_library (global, libname, 1, [procname1])
     call compile_library (libname, global)
 
@@ -1273,9 +1273,9 @@ contains
     call global%set_string (var_str ("$integration_method"),&
          var_str ("midpoint"), is_known = .true.)
     call global%set_log (var_str ("?vis_history"),&
-         .false., is_known = .true.)    
+         .false., is_known = .true.)
     call global%set_log (var_str ("?integration_timer"),&
-         .false., is_known = .true.)    
+         .false., is_known = .true.)
     call global%set_log (var_str ("?recover_beams"), &
          .false., is_known = .true.)
 
@@ -1290,14 +1290,14 @@ contains
 
     write (u, "(A)")  "* Initialize alternative environment with custom weight"
     write (u, "(A)")
-    
+
     call alt_env(1)%local_init (global)
     call alt_env(1)%activate ()
 
     expr_text = "2"
     write (u, "(A,A)")  "weight = ", char (expr_text)
     write (u, *)
-    
+
     call ifile_clear (ifile)
     call ifile_append (ifile, expr_text)
     call stream_init (stream, ifile)
@@ -1328,13 +1328,13 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Write the event record for the last event"
     write (u, "(A)")
-    
+
     call simulation%write_event (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Write the event record for the alternative setup"
     write (u, "(A)")
-    
+
     call simulation%write_alt_event (u)
 
     write (u, "(A)")
@@ -1342,22 +1342,22 @@ contains
 
     call simulation%final ()
     call global%final ()
-    
+
     call syntax_model_file_final ()
     call syntax_pexpr_final ()
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: simulations_10"
-    
+
   end subroutine simulations_10
-  
+
   subroutine simulations_11 (u)
     integer, intent(in) :: u
     type(rt_data_t), target :: global
     type(prclib_entry_t), pointer :: lib
     type(string_t) :: prefix, procname1, procname2
     type(simulation_t), target :: simulation
-    
+
     write (u, "(A)")  "* Test output: simulations_11"
     write (u, "(A)")  "*   Purpose: apply decay"
     write (u, "(A)")
@@ -1366,16 +1366,16 @@ contains
     write (u, "(A)")
 
     call syntax_model_file_init ()
-        
+
     call global%global_init ()
     allocate (lib)
     call global%add_prclib (lib)
 
     call global%set_int (var_str ("seed"), &
-         0, is_known = .true.)        
+         0, is_known = .true.)
     call global%set_log (var_str ("?recover_beams"), &
          .false., is_known = .true.)
-    
+
     prefix = "simulation_11"
     procname1 = prefix // "_p"
     procname2 = prefix // "_d"
@@ -1404,7 +1404,7 @@ contains
     call simulation%write (u)
 
     write (u, *)
-    
+
     call simulation%write_event (u)
 
     write (u, "(A)")
@@ -1413,14 +1413,14 @@ contains
 
     call simulation%final ()
     call global%final ()
-    
+
     call syntax_model_file_final ()
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: simulations_11"
-    
+
   end subroutine simulations_11
-  
+
   subroutine simulations_12 (u)
     integer, intent(in) :: u
     type(string_t) :: libname, procname1, sample
@@ -1429,7 +1429,7 @@ contains
     type(simulation_t), allocatable, target :: simulation
     type(flavor_t) :: flv
     integer :: i_evt
-    
+
     write (u, "(A)")  "* Test output: simulations_12"
     write (u, "(A)")  "*   Purpose: generate events for a single process"
     write (u, "(A)")  "*            and write to split event files"
@@ -1444,11 +1444,11 @@ contains
     call global%set_log (var_str ("?omega_openmp"), &
          .false., is_known = .true.)
     call global%set_int (var_str ("seed"), &
-         0, is_known = .true.)    
-    
+         0, is_known = .true.)
+
     libname = "simulation_12"
     procname1 = "simulation_12p"
-    
+
     call prepare_test_library (global, libname, 1, [procname1])
     call compile_library (libname, global)
 
@@ -1466,9 +1466,9 @@ contains
     call global%set_string (var_str ("$integration_method"),&
          var_str ("midpoint"), is_known = .true.)
     call global%set_log (var_str ("?vis_history"),&
-         .false., is_known = .true.)    
+         .false., is_known = .true.)
     call global%set_log (var_str ("?integration_timer"),&
-         .false., is_known = .true.)    
+         .false., is_known = .true.)
     call global%set_log (var_str ("?recover_beams"), &
          .false., is_known = .true.)
 
@@ -1512,7 +1512,7 @@ contains
     class is (eio_ascii_t);  call eio%set_parameters ()
     end select
     call eio%init_out (sample, data = simulation%get_data ())
-    
+
     write (u, "(A)")  "* Generate 5 events, distributed among three files"
 
     do i_evt = 1, 5
@@ -1524,7 +1524,7 @@ contains
     deallocate (eio)
     call simulation%final ()
     deallocate (simulation)
-    
+
     write (u, *)
     call display_file ("simulations_12.42.short.evt", u)
     write (u, *)
@@ -1536,12 +1536,12 @@ contains
     write (u, "(A)")  "* Cleanup"
 
     call global%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: simulations_12"
-    
+
   end subroutine simulations_12
-  
+
   subroutine simulations_13 (u)
     integer, intent(in) :: u
     type(string_t) :: libname, procname1, sample
@@ -1551,7 +1551,7 @@ contains
     type(flavor_t) :: flv
     integer :: i_evt
     type(simulations_13_callback_t) :: event_callback
-    
+
     write (u, "(A)")  "* Test output: simulations_13"
     write (u, "(A)")  "*   Purpose: generate events for a single process"
     write (u, "(A)")  "*            and execute callback"
@@ -1566,11 +1566,11 @@ contains
     call global%set_log (var_str ("?omega_openmp"), &
          .false., is_known = .true.)
     call global%set_int (var_str ("seed"), &
-         0, is_known = .true.)    
-    
+         0, is_known = .true.)
+
     libname = "simulation_13"
     procname1 = "simulation_13p"
-    
+
     call prepare_test_library (global, libname, 1, [procname1])
     call compile_library (libname, global)
 
@@ -1588,9 +1588,9 @@ contains
     call global%set_string (var_str ("$integration_method"),&
          var_str ("midpoint"), is_known = .true.)
     call global%set_log (var_str ("?vis_history"),&
-         .false., is_known = .true.)    
+         .false., is_known = .true.)
     call global%set_log (var_str ("?integration_timer"),&
-         .false., is_known = .true.)    
+         .false., is_known = .true.)
     call global%set_log (var_str ("?recover_beams"), &
          .false., is_known = .true.)
 
@@ -1620,7 +1620,7 @@ contains
 
     write (u, "(A)")  "* Prepare callback object"
     write (u, "(A)")
-    
+
     event_callback%u = u
     call global%set_event_callback (event_callback)
 
@@ -1629,12 +1629,12 @@ contains
 
     allocate (eio_callback_t :: eio)
     select type (eio)
-    class is (eio_callback_t);  
+    class is (eio_callback_t)
        call eio%set_parameters (callback = event_callback, &
             count_interval = 3)
     end select
     call eio%init_out (sample, data = simulation%get_data ())
-    
+
     write (u, "(A)")  "* Generate 7 events, with callback every 3 events"
     write (u, "(A)")
 
@@ -1647,17 +1647,17 @@ contains
     deallocate (eio)
     call simulation%final ()
     deallocate (simulation)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
 
     call global%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: simulations_13"
-    
+
   end subroutine simulations_13
-  
+
 
   subroutine display_file (file, u)
     use io_units, only: free_unit
@@ -1683,14 +1683,14 @@ contains
     u = given_output_unit (unit)
     write (u, "(1x,A)")  "Hello"
   end subroutine simulations_13_callback_write
-  
+
   subroutine simulations_13_callback (event_callback, i, event)
     class(simulations_13_callback_t), intent(in) :: event_callback
     integer(i64), intent(in) :: i
     class(generic_event_t), intent(in) :: event
     write (event_callback%u, "(A,I0)")  "hello event #", i
   end subroutine simulations_13_callback
-  
+
 
 end module simulations_uti
-  
+

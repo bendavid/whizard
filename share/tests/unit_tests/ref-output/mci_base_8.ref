@@ -19,15 +19,11 @@
 
 * Stop timer
 
- Test integrator:
-   Time in seconds =  0.000E+00
-   Number of channels   = 2
-   Number of dimensions = 2
-   Number of divisions  = 10
+ (ok)
 
 * Readout
 
- Time =  0.000
+ (ok)
 
 * Deactivate timer
 

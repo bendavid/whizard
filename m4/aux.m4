@@ -145,5 +145,173 @@ AC_SUBST($1_DIR)
 AC_SUBST($1_LIB)
 ])
 
-
-
+dnl WHIZARD summary 
+AC_DEFUN([WO_SUMMARY],[dnl
+WO_VERSION=AC_PACKAGE_VERSION()
+echo "|=============================================================================|"
+echo "|                                                                             |"
+echo "|    WW             WW  WW   WW  WW  WWWWWW      WW      WWWWW    WWWW        |"
+echo "|     WW    WW     WW   WW   WW  WW     WW      WWWW     WW  WW   WW  WW      |"
+echo "|      WW  WW WW  WW    WWWWWWW  WW    WW      WW  WW    WWWWW    WW   WW     |"
+echo "|       WWWW   WWWW     WW   WW  WW   WW      WWWWWWWW   WW  WW   WW  WW      |"
+echo "|        WW     WW      WW   WW  WW  WWWWWW  WW      WW  WW   WW  WWWW        |"
+echo "|                                                                             |"
+echo "|                                                                             |"
+echo "|                                        W                                    |"
+echo "|                                       sW                                    |"
+echo "|                                       WW                                    |"
+echo "|                                      sWW                                    |"
+echo "|                                      WWW                                    |"
+echo "|                                     wWWW                                    |"
+echo "|                                    wWWWW                                    |"
+echo "|                                    WW WW                                    |"
+echo "|                                    WW WW                                    |"
+echo "|                                   wWW WW                                    |"
+echo "|                                  wWW  WW                                    |"
+echo "|                                  WW   WW                                    |"
+echo "|                                  WW   WW                                    |"
+echo "|                                 WW    WW                                    |"
+echo "|                                 WW    WW                                    |"
+echo "|                                WW     WW                                    |"
+echo "|                                WW     WW                                    |"
+echo "|           wwwwww              WW      WW                                    |"
+echo "|              WWWWWww          WW      WW                                    |"
+echo "|                 WWWWWwwwww   WW       WW                                    |"
+echo "|                     wWWWwwwwwWW       WW                                    |"
+echo "|                 wWWWWWWWWWWwWWW       WW                                    |"
+echo "|                wWWWWW       wW        WWWWWWW                               |"
+echo "|                  WWWW       wW        WW  wWWWWWWWwww                       |"
+echo "|                   WWWW                      wWWWWWWWwwww                    |"
+echo "|                     WWWW                      WWWW     WWw                  |"
+echo "|                       WWWWww                   WWWW                         |"
+echo "|                           WWWwwww              WWWW                         |"
+echo "|                               wWWWWwww       wWWWWW                         |"
+echo "|                                     WwwwwwwwwWWW                            |"
+echo "|                                                                             |"
+echo "|                                                                             |"
+echo "|                                                                             |"
+echo "|  by:   Wolfgang Kilian, Thorsten Ohl, Juergen Reuter                        |"
+echo "|        with contributions from Christian Speckner                           |"
+echo "|        Contact: <whizard@desy.de>                                           |"
+echo "|                                                                             |"
+echo "|  if you use WHIZARD please cite:                                            |"   
+echo "|        W. Kilian, T. Ohl, J. Reuter,  Eur.Phys.J.C71 (2011) 1742            |"
+echo "|                                          @<:@arXiv: 0708.4233 @<:@hep-ph@:>@@:>@        |"   
+echo "|        M. Moretti, T. Ohl, J. Reuter, arXiv: hep-ph/0102195                 |"
+echo "|                                                                             |"
+echo "|=============================================================================|"
+echo "**************************************************************"
+echo "--------------------------------------------------------------"
+echo "---      AC_PACKAGE_NAME() CONFIGURATION SUMMARY      ---"
+echo "**************************************************************"
+echo "Package name: AC_PACKAGE_NAME()"
+echo "Version:      AC_PACKAGE_VERSION()"
+echo "Date:         $PACKAGE_DATE"
+echo "Status:       $PACKAGE_STATUS"
+echo "**************************************************************"
+echo "---      Compilers      ---"
+echo "--------------------------------------------------------------"
+echo "Fortran compiler: --- $FC_VENDOR ---"
+echo "         Version: --- $FC_VERSION ---"
+echo "           Flags: --- $FCFLAGS ---"
+echo " float precision: --- $FC_PRECISION ---"
+if test "$FC_OPENMP_OFF" = "!" ; then
+   echo "          OpenMP: --- on with max. $FC_OPENMP_DEFAULT_MAX_THREADS threads"
+elif test "$FC_OPENMP_ON" = "!" ; then
+     echo "          OpenMP: --- off ---"
+fi
+echo "--------------------------------------------------------------"
+echo "  OCaml compiler: --- $OCAMLOPT ---"
+echo "         Version: --- $OCAMLVERSION ---"
+echo "           Flags: --- $OCAMLFLAGS ---"
+echo "--------------------------------------------------------------"
+echo "    C++ compiler: --- $CXX ---      @<:@interfaces only@:>@"
+echo "           Flags: --- $CXXFLAGS ---"
+echo "**************************************************************"
+echo "---      Internal and shipped packages      ---"
+echo "--------------------------------------------------------------"
+echo "VAMP  (multi-channel adapative integrator) :   yes, v$WO_VERSION"
+if test "$OCAMLOPT" != "no" ; then
+   echo "O'Mega (matrix element generator)          :   yes, v$WO_VERSION"
+else
+   echo "O'Mega (matrix element generator)          :   no"
+fi
+echo "CIRCE1 (lepton beam spectra, parameterized):   yes, v$WO_VERSION"
+echo "CIRCE2 (lepton beam spectra, sampled)      :   yes, v$WO_VERSION"
+if test "$OCAMLOPT" != "no" ; then
+   echo "    incl. tools for generating new spectra :   yes"
+else
+   echo "    incl. tools for generating new spectra :   no"
+fi
+echo "--------------------------------------------------------------"
+if test "$PYTHIA6_AVAILABLE_FLAG" = ".true." ; then
+   echo "PYTHIA6 (parton showering & hadronization) :   yes, v6.427"
+   echo "TAUOLA (tau decays)                        :   yes"
+else
+   echo "PYTHIA6 (parton showering & hadronization) :   no"
+   echo "TAUOLA (tau decays)                        :   no"
+fi
+echo "StdHEP (event format)                      :   yes, v5.06.01"
+echo "--------------------------------------------------------------"
+echo "---      External packages      ---"
+echo "--------------------------------------------------------------"
+if test "$HEPMC_AVAILABLE_FLAG" = "yes" ; then
+   echo "HepMC (event format):   yes, v$HEPMC_VERSION"
+else
+   echo "HepMC (event format):   no"
+fi
+if test "$LCIO_AVAILABLE_FLAG" = "yes" ; then
+   echo "LCIO (event format) :   yes, v$LCIO_VERSION"
+else
+   echo "LCIO (event format) :   no"
+fi
+if test "$LHAPDF5_AVAILABLE_FLAG" = ".true." ; then
+   echo "LHAPDF (PDF sets)   :   yes, v$LHAPDF_FULL_VERSION"
+elif test "$LHAPDF6_AVAILABLE_FLAG" = ".true." ; then
+   echo "LHAPDF (PDF sets)   :   yes, v$LHAPDF_FULL_VERSION"
+   echo "        PDF set path:   $LHAPDF_PDFSETS_PATH"
+else
+   echo "LHAPDF (PDF sets)   :   no"
+fi
+if test "$HOPPET_AVAILABLE_FLAG" = ".true." ; then
+   echo "HOPPET (PDF match.) :   yes, v$HOPPET_VERSION"
+else
+   echo "HOPPET (PDF match.) :   no"
+fi   
+if test "$FASTJET_AVAILABLE_FLAG" = "yes" ; then
+   echo "FastJet (clustering):   yes, v$FASTJET_VERSION"
+else
+   echo "FastJet (clustering):   no"
+fi
+if test "$PYTHIA8_AVAILABLE_FLAG" = ".true." ; then
+   echo "PYTHIA8 (QCD)       :   yes, v$PYTHIA8_VERSION  @<:@not yet functional@:>@"
+else
+   echo "PYTHIA8 (QCD)       :   no"
+fi
+if test "$GOSAM_AVAILABLE_FLAG" = ".true." ; then
+   echo "GoSam (OLP)         :   yes, v$GOSAM_VERSION"
+else
+   echo "GoSam (OLP)         :   no"
+fi
+if test "$OPENLOOPS_AVAILABLE_FLAG" = ".true." ; then
+   echo "OpenLoops (OLP)     :   yes, v$OPENLOOPS_VERSION"
+   echo "           path     :   $OPENLOOPS_DIR"
+else
+   echo "OpenLoops (OLP)     :   no"
+fi
+if test "$LOOPTOOLS_AVAILABLE_FLAG" = ".true." ; then
+   echo "LoopTools           :   yes"
+else
+   echo "LoopTools           :   no"
+fi
+echo "--------------------------------------------------------------"
+if test "$SIP_ACTIVE" = "yes" ; then
+echo "**************************************************************"
+echo "***              MAC OS X Darwin system with               ***"
+echo "***    Security Integrity Protection (SIP) enabled.        ***"
+echo "***  'make check' will not work, and most likely also      ***"
+echo "***  'make installcheck' will not work. The installed      ***"
+echo "***            WHIZARD will work as intended.              ***"
+echo "**************************************************************"
+fi
+])

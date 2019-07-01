@@ -2,6 +2,7 @@
 % WHIZARD code as NOWEB source: Matching and Merging
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Matching}
+\includemodulegraph{matching}
 
 <<[[matching_base.f90]]>>=
 <<File header>>
@@ -15,7 +16,7 @@ module matching_base
   use particles
   use variables
   use shower_base
-  use processes
+  use instances, only: process_instance_t
   use rng_base
 
 <<Standard module head>>
@@ -819,7 +820,6 @@ module ckkw_matching
   use shower_core
   use variables
   use matching_base
-  use processes
 
 <<Standard module head>>
 
@@ -1350,16 +1350,14 @@ module powheg_matching
 <<Use kinds>>
 <<Use strings>>
   use diagnostics
-  use constants, only: ZERO, ONE, TWO, FIVE
-  use constants, only: TINY_07
-  use constants, only: PI, TWOPI
+  use constants, only: ZERO, ONE, TWO, FIVE, TINY_07, PI, TWOPI
   use numeric_utils
   use io_units, only: given_output_unit, free_unit
   use format_utils, only: write_separator
   use format_defs, only: FMT_16, FMT_19
   use string_utils, only: str
   use os_interface, only: os_file_exist
-  use physics_defs, only: CA
+  use physics_defs, only: CA, BORN, NLO_REAL
   use lorentz
   use sm_qcd, only: qcd_t, alpha_qcd_from_scale_t, alpha_qcd_from_lambda_t
   use sm_physics, only: Li2
@@ -1371,12 +1369,11 @@ module powheg_matching
   use rng_base
   use variables
 
-  use nlo_data, only: compute_dalitz_bounds, FSR_SIMPLE, FSR_MASSIVE
-  use nlo_data, only: phs_point_set_t, phs_identifier_t
-  use phs_fks
+  use phs_fks, only: phs_fks_generator_t, compute_dalitz_bounds, beta_emitter
+  use phs_fks, only: phs_point_set_t, phs_identifier_t, phs_fks_t
+  use phs_fks, only: I_XI, I_Y, FSR_SIMPLE, FSR_MASSIVE
   use matching_base
-  use processes, only: pcm_instance_nlo_t
-  use pcm_base, only: pcm_instance_t
+  use pcm, only: pcm_nlo_t, pcm_instance_nlo_t
 
 <<Standard module head>>
 
@@ -1411,6 +1408,7 @@ $\alpha_s^\text{rad}$ is still larger than the true $\alpha_s$.
      integer :: upper_bound_func = UBF_SIMPLE
      logical :: rebuild_grids = .false.
      logical :: test_sudakov = .false.
+     logical :: disable_sudakov = .false.
      logical :: singular_jacobian = .false.
   contains
    <<POWHEG matching: powheg settings: TBP>>
@@ -1446,6 +1444,8 @@ used to decide which ubf object is allocated.
          var_list%get_lval (var_str ("?powheg_use_singular_jacobian"))
     settings%test_sudakov = &
          var_list%get_lval (var_str ("?powheg_test_sudakov"))
+    settings%disable_sudakov = &
+         var_list%get_lval (var_str ("?powheg_disable_sudakov"))
   end subroutine powheg_settings_init
 
 @ %def powheg_settings_init
@@ -1510,6 +1510,8 @@ functions.
      logical :: cm_frame = .true.
      type(phs_identifier_t), dimension(:), allocatable :: phs_identifiers
      integer, dimension(:), allocatable :: alr_to_i_phs
+     integer :: i_born
+     integer, dimension(:), allocatable :: i_real
   contains
    <<POWHEG matching: process deps: TBP>>
   end type process_deps_t
@@ -2018,7 +2020,7 @@ using the second random number $r_2$.
     logical :: success
     r = 0._default
     do
-       r = r+dr
+       r = r + dr
        sudakov%random = r
        pt2 = solve_interval (sudakov, &
          sudakov%powheg_settings%pt2_min, &
@@ -2479,13 +2481,11 @@ where $\xi_m = \rm{min}\left(\xi_{\rm{max}}, \xi_1\right)$.
   subroutine sudakov_massive_fsr_generate_xi_and_y_and_phi (sudakov, r)
     class(sudakov_massive_fsr_t), intent(inout) :: sudakov
     type(radiation_t), intent(inout) :: r
-    integer :: i_phs
     real(default) :: q0
     real(default) :: m2, mrec2, k0_rec_max
     real(default) :: E_em
     type(vector4_t) :: p_emitter
 
-    i_phs = sudakov%process_deps%alr_to_i_phs (r%alr)
     q0 = sqrt (sudakov%event_deps%s_hat)
     p_emitter = sudakov%event_deps%p_born_lab%get_momentum &
        (1, sudakov%associated_emitter())
@@ -2540,7 +2540,6 @@ where $\xi_m = \rm{min}\left(\xi_{\rm{max}}, \xi_1\right)$.
      q = sqrt(s_hat)
      E_em = sudakov%event_deps%p_born_lab%get_energy &
         (1, sudakov%associated_emitter())
-     !xi_max = sqrt(sudakov%xi2_max)
      xi_max = sudakov%xi_max_extended
      z2 = sudakov%z2
      kt2_max = (xi_max**2 * q**3 * (one - z2)) / (two * E_em - z2 * xi_max * q)
@@ -2719,7 +2718,9 @@ Implements the function $G(a,b,\xi)$ given in eq. (\ref{GPlusMassiveFSR}) and eq
        call matching%test_sudakov ()
        stop
     end if
-    call matching%generate_emission (particle_set = particle_set)
+    if (.not. matching%settings%disable_sudakov) then
+       call matching%generate_emission (particle_set = particle_set)
+    end if
     vetoed = .false.
   end subroutine powheg_matching_before_shower
 
@@ -2863,7 +2864,7 @@ Implements the function $G(a,b,\xi)$ given in eq. (\ref{GPlusMassiveFSR}) and eq
 <<POWHEG matching: procedures>>=
   subroutine powheg_matching_setup_sudakovs (powheg)
     class(powheg_matching_t), intent(inout), target :: powheg
-    integer :: alr, emitter
+    integer :: alr
     logical :: is_fsr, is_massive
     integer :: ubf_type
     allocate (powheg%sudakov (powheg%process_deps%n_alr))
@@ -2873,8 +2874,11 @@ Implements the function $G(a,b,\xi)$ given in eq. (\ref{GPlusMassiveFSR}) and eq
           ubf_type = powheg%settings%upper_bound_func
           select type (pcm => powheg%process_instance%pcm)
           class is (pcm_instance_nlo_t)
-             emitter = pcm%controller%get_emitter (alr)
-             is_massive = powheg%phs_fks_generator%is_massive (emitter)
+             select type (config => pcm%config)
+             type is (pcm_nlo_t)
+                is_massive = powheg%phs_fks_generator%is_massive &
+                   (config%region_data%get_emitter (alr))
+             end select
           end select
           if (is_massive) ubf_type = UBF_MASSIVE
           select case (ubf_type)
@@ -2920,13 +2924,14 @@ Implements the function $G(a,b,\xi)$ given in eq. (\ref{GPlusMassiveFSR}) and eq
     class(powheg_matching_t), intent(inout) :: powheg
     type(vector4_t), dimension(:), intent(in) :: p_born
     type(lorentz_transformation_t) :: lt_lab_to_cms
+    real(default) :: sqme_born
     
+    sqme_born = powheg%process_instance%get_sqme (powheg%process_deps%i_born)
     if (.not. powheg%process_deps%cm_frame) then
-       lt_lab_to_cms = inverse (powheg%process_instance%get_lorentz_transformation (1))
-       call powheg%update_event_deps (powheg%process_instance%pcm, &
-          p_born, lt_lab_to_cms)
+       lt_lab_to_cms = powheg%process_instance%get_boost_to_cms (1)
+       call powheg%update_event_deps (sqme_born, p_born, lt_lab_to_cms)
     else
-       call powheg%update_event_deps (powheg%process_instance%pcm, p_born)
+       call powheg%update_event_deps (sqme_born, p_born)
     end if
   end subroutine powheg_matching_update_momenta
 
@@ -2951,16 +2956,12 @@ Implements the function $G(a,b,\xi)$ given in eq. (\ref{GPlusMassiveFSR}) and eq
 <<POWHEG matching: powheg matching: TBP>>=
   procedure :: update_event_deps => powheg_matching_update_event_deps 
 <<POWHEG matching: procedures>>=
-  subroutine powheg_matching_update_event_deps (powheg, pcm, p_born, lt_lab_to_cms)
+  subroutine powheg_matching_update_event_deps (powheg, sqme_born, p_born, lt_lab_to_cms)
     class(powheg_matching_t), intent(inout) :: powheg
-    class(pcm_instance_t), intent(in) :: pcm
+    real(default), intent(in) :: sqme_born
     type(vector4_t), dimension(:), intent(in) :: p_born
     type(lorentz_transformation_t), intent(in), optional :: lt_lab_to_cms
-    select type (pcm => powheg%process_instance%pcm)
-    class is (pcm_instance_nlo_t)
-       call powheg%event_deps%update &
-          (pcm%collector%get_sqme_born(1), p_born, lt_lab_to_cms)
-    end select
+    call powheg%event_deps%update (sqme_born, p_born, lt_lab_to_cms)
   end subroutine powheg_matching_update_event_deps
 
 @ %def powheg_matching_update_event_deps
@@ -2976,7 +2977,7 @@ Implements the function $G(a,b,\xi)$ given in eq. (\ref{GPlusMassiveFSR}) and eq
        if (powheg%process_deps%cm_frame) then
           event_deps%p_real_lab%phs_point(i_phs) = event_deps%p_real_cms%phs_point(i_phs)
        else
-          lt_cms_to_lab = powheg%process_instance%get_lorentz_transformation (1)
+          lt_cms_to_lab = powheg%process_instance%get_boost_to_lab (1)
           event_deps%p_real_lab%phs_point(i_phs) = &
              lt_cms_to_lab * event_deps%p_real_cms%phs_point(i_phs)
        end if
@@ -3001,7 +3002,10 @@ Implements the function $G(a,b,\xi)$ given in eq. (\ref{GPlusMassiveFSR}) and eq
     class is (pcm_instance_nlo_t)
        call powheg%rng%generate (random)
        i_phs = powheg%process_deps%alr_to_i_phs (r%alr)
-       emitter = pcm%controller%get_emitter (r%alr)
+       select type (config => pcm%config)
+       type is (pcm_nlo_t)
+          emitter = config%region_data%get_emitter (r%alr)
+       end select
        call powheg%phs_fks_generator%generate_fsr_from_xi_and_y (r%xi, r%y, &
           r%phi, emitter, i_phs, powheg%event_deps%p_born_cms%get_momenta(1), &
           powheg%event_deps%p_real_cms%phs_point(i_phs))
@@ -3048,20 +3052,19 @@ Jacobian.
   procedure :: compute_sqme_real => powheg_matching_compute_sqme_real
 <<POWHEG matching: procedures>>=
   function powheg_matching_compute_sqme_real (powheg, alr, alpha_s) result (sqme)
+    real(default) :: sqme
     class(powheg_matching_t), intent(inout) :: powheg
     integer, intent(in) :: alr
     real(default), intent(in) :: alpha_s
-    integer :: i_phs
-    real(default) :: sqme
+    integer :: i_phs, i_term
     select type (pcm => powheg%process_instance%pcm)
     class is (pcm_instance_nlo_t)
        i_phs = powheg%process_deps%alr_to_i_phs (alr)
+       i_term = powheg%process_deps%i_real(i_phs)
        associate (instance => powheg%process_instance)
-          call instance%compute_sqme_real_rad (i_phs, 1, alpha_s)
-          call instance%apply_fks_factors_for_powheg (i_phs)
+          call instance%compute_sqme_rad (i_term, i_phs, .false., alpha_s)
+          sqme = instance%get_sqme (i_term)
        end associate
-       !!!sqme = pcm%collector%sqme_real_per_phs (1, i_phs)
-       sqme = pcm%collector%current_sqme_real
     end select
   end function powheg_matching_compute_sqme_real
 
@@ -3208,8 +3211,9 @@ The following is valid for one underlying Born.
             fks => powheg%phs_fks_generator, &
             process => powheg%process_instance%process)
           do
-             call process%generate_weighted_event (powheg%process_instance, 1)
-             call powheg%update (pcm%controller%int_born%get_momenta ())
+             call powheg%process_instance%generate_weighted_event (1)
+             call powheg%update (pcm%get_momenta (i_phs = 1, &
+                born_phsp = .true., cms = .false.))
              call powheg%rng%generate (radiation_randoms)
              do alr = 1, powheg%process_deps%n_alr
                 i_phs = powheg%process_deps%alr_to_i_phs (alr)
@@ -3344,7 +3348,7 @@ values $(f_B)$
     real(default), intent(out), optional :: pt2_generated
     type(radiation_t) :: r, r_max
     real(default) :: xi2_max
-    integer :: alr
+    integer :: alr, emitter
     logical :: accepted
     type(vector4_t), dimension(:), allocatable :: p_real_max
     if (signal_is_pending ())  return
@@ -3353,11 +3357,14 @@ values $(f_B)$
     call msg_debug (D_MATCHING, "powheg_matching_generate_emission")
     select type (pcm => powheg%process_instance%pcm)
     class is (pcm_instance_nlo_t)
-       allocate (p_real_max (pcm%controller%get_n_particles_real ()))
+       select type (config => pcm%config)
+       type is (pcm_nlo_t)
+          allocate (p_real_max (config%region_data%n_legs_real))
+       end select
        do alr = 1, powheg%process_deps%n_alr
           if (signal_is_pending ())  return
           associate (sudakov => powheg%sudakov(alr)%s)
-            xi2_max = pcm%controller%get_xi_max (alr)**2
+            xi2_max = pcm%get_xi_max (alr)**2
             call sudakov%update (xi2_max)
             select type (sudakov)
             type is (sudakov_massive_fsr_t)
@@ -3390,10 +3397,15 @@ values $(f_B)$
        if (r_max%pt2 > powheg%settings%pt2_min) then
           powheg%n_emissions = powheg%n_emissions + 1
           call powheg%set_scale (r_max%pt2)
-          if (present (particle_set)) &
-               call powheg%build_particle_set (particle_set, &
-                  powheg%event_deps%p_born_lab%get_momenta (1), &
-                  p_real_max, pcm%controller%get_emitter (r_max%alr))
+          if (present (particle_set)) then
+             select type (config => pcm%config)
+             type is (pcm_nlo_t)
+                emitter = config%region_data%get_emitter (r_max%alr) 
+                call powheg%build_particle_set (particle_set, &
+                   powheg%event_deps%p_born_lab%get_momenta (1), &
+                   p_real_max, emitter)
+             end select
+          end if
           if (present (pt2_generated)) pt2_generated = r_max%pt2
        else
           call powheg%set_scale (powheg%settings%pt2_min)
@@ -3417,10 +3429,11 @@ values $(f_B)$
     real(default) :: r_col
     select type (pcm => powheg%process_instance%pcm)
     class is (pcm_instance_nlo_t)
-       !!! !!! !!! Workaround for ifort 16.0 missing default allocate-on-assignment
-       allocate (flv_radiated (size (pcm%controller%get_flv_state_real (1))))
-       !!! !!! !!! End of workaround
-       flv_radiated = pcm%controller%get_flv_state_real (1)
+       select type (config => pcm%config)
+       type is (pcm_nlo_t)
+          allocate (flv_radiated (size (config%region_data%get_flv_states_real (1))))
+          flv_radiated = config%region_data%get_flv_states_real (1)
+       end select
        call powheg%rng%generate (r_col)
        call particle_set%build_radiation (p_real, emitter, flv_radiated, &
             powheg%process_instance%process%get_model_ptr (), r_col)
@@ -3509,8 +3522,7 @@ $p_{T,\text{min}}^2$.
     call msg_debug (D_MATCHING, "powheg_matching_prepare_for_events")
     call matching%setup_nlo_environment ()
     call matching%grid%init ([matching%settings%size_grid_xi, &
-                              matching%settings%size_grid_y, &
-                              matching%process_deps%n_alr])
+       matching%settings%size_grid_y, matching%process_deps%n_alr])
     call matching%compute_lambda2_gen ()
     call matching%setup_sudakovs ()
   end subroutine powheg_matching_prepare_for_events
@@ -3536,22 +3548,26 @@ $p_{T,\text{min}}^2$.
 <<POWHEG matching: procedures>>=
   subroutine powheg_matching_setup_nlo_environment (matching)
     class(powheg_matching_t), intent(inout) :: matching
-    integer :: n_in, n_out_born, n_out_real
-    integer :: i_real
-    integer :: n_phs
+    integer :: n_tot_born, n_tot_real
+    integer :: i, i_real, i_real_fin, i_term
+    integer :: n_phs, nlo_type
     call msg_debug (D_MATCHING, "powheg_matching_setup_nlo_environment")
     select type (pcm => matching%process_instance%pcm)
     class is (pcm_instance_nlo_t)
-       matching%process_deps%n_alr = pcm%controller%get_n_alr ()
-       n_in = pcm%controller%particle_data%n_in
-       n_out_born = pcm%controller%particle_data%n_out_born
-       n_out_real = pcm%controller%particle_data%n_out_real
        matching%process_deps%sqrts = matching%process_instance%get_sqrts ()
-       call pcm%controller%setup_generator &
-            (matching%phs_fks_generator, &
-            matching%process_deps%sqrts, &
-            matching%settings%singular_jacobian)
-       i_real = matching%process_instance%get_associated_real ()
+       select type (config => pcm%config)
+       type is (pcm_nlo_t)
+          matching%process_deps%n_alr = config%region_data%n_regions
+          n_tot_born = config%region_data%n_legs_born
+          n_tot_real = config%region_data%n_legs_real
+          call config%setup_phs_generator (pcm, &
+               matching%phs_fks_generator, matching%process_deps%sqrts, &
+               singular_jacobian = matching%settings%singular_jacobian)
+       end select
+       associate (process => matching%process_instance%process)
+           i_real = process%get_associated_real_component (1)
+           i_real_fin = process%get_associated_real_fin (1)
+       end associate
        associate (process_deps => matching%process_deps)
           select type (phs => matching%process_instance%term(i_real)%k_term%phs)
           type is (phs_fks_t)
@@ -3559,16 +3575,27 @@ $p_{T,\text{min}}^2$.
              allocate (process_deps%phs_identifiers (n_phs))
              process_deps%phs_identifiers = phs%phs_identifiers
           end select
-          associate (nlo_controller => matching%process_instance%component(i_real)%nlo_controller)
-             allocate (matching%process_deps%alr_to_i_phs &
-                (size (nlo_controller%real_kinematics%alr_to_i_phs)))
-             process_deps%alr_to_i_phs = nlo_controller%real_kinematics%alr_to_i_phs
-          end associate
+          allocate (matching%process_deps%alr_to_i_phs &
+             (size (pcm%real_kinematics%alr_to_i_phs)))
+          process_deps%alr_to_i_phs = pcm%real_kinematics%alr_to_i_phs
+          allocate (process_deps%i_real (n_phs))
+          i = 1
+          do i_term = 1, size (matching%process_instance%term)
+             nlo_type = matching%process_instance%term(i_term)%nlo_type
+             if (nlo_type == BORN) then
+                process_deps%i_born = i_term
+             else if (nlo_type == NLO_REAL) then
+                if (matching%process_instance%term(i_term)%k_term%emitter >= 0) then
+                   process_deps%i_real(i) = i_term
+                   i = i + 1
+                end if
+             end if
+          end do 
        end associate
-       call matching%event_deps%p_born_lab%init (n_in + n_out_born, 1)
-       call matching%event_deps%p_born_cms%init (n_in + n_out_born, 1)
-       call matching%event_deps%p_real_lab%init (n_in + n_out_real, n_phs)
-       call matching%event_deps%p_real_cms%init (n_in + n_out_real, n_phs)
+       call matching%event_deps%p_born_lab%init (n_tot_born, 1)
+       call matching%event_deps%p_born_cms%init (n_tot_born, 1)
+       call matching%event_deps%p_real_lab%init (n_tot_real, n_phs)
+       call matching%event_deps%p_real_cms%init (n_tot_real, n_phs)
     end select
   end subroutine powheg_matching_setup_nlo_environment
 
@@ -3586,9 +3613,9 @@ the lab frame, i.e. for FSR processes without beamstrahlung or structure functio
      class is (pcm_instance_nlo_t)
         !!! Too much redundance!
         do i_phs = 1, matching%event_deps%p_real_cms%get_n_phs ()
-           call pcm%controller%real_kinematics%p_real_cms%set_momenta &
+           call pcm%real_kinematics%p_real_cms%set_momenta &
               (i_phs, matching%event_deps%p_real_cms%get_momenta (i_phs))
-           call pcm%controller%real_kinematics%p_real_lab%set_momenta &
+           call pcm%real_kinematics%p_real_lab%set_momenta &
               (i_phs,  matching%event_deps%p_real_lab%get_momenta (i_phs))
         end do
      end select
@@ -3720,7 +3747,6 @@ module powheg_matching_uti
   use particles
   use rng_base
   use variables
-  use processes
   use shower_base
   use shower_core
 
@@ -3817,12 +3843,12 @@ singularities are included).
          do i_call = 1, n_calls1
             do alr = 1, powheg%process_deps%n_alr
                call powheg%rng%generate (random)
-               emitter = pcm%controller%get_emitter (alr)
+               select type (config => pcm%config)
+               type is (pcm_nlo_t)
+                  emitter = config%region_data%get_emitter (alr)
+               end select
                !!! The sudakov test works only with lepton collisions without beam spectria
                !!! so we can identify the cms and lab momenta.
-               ! TODO: (cw 2015-12-29) Use correct i_phs and phs_identifiers
-               !!! powheg%event_deps%p_real_cms = fks%generate_fsr_from_x &
-               !!!   (random, emitter, i_phs, p_born)
                powheg%event_deps%p_real_lab = powheg%event_deps%p_real_cms
                call powheg%copy_momenta ()
                call fks%get_radiation_variables (emitter, xi, y)
@@ -3830,7 +3856,7 @@ singularities are included).
                if (kT2 >= pt2_min .and. xi < one - tiny_07) then
                   alpha_s = get_alpha (powheg%qcd, kT2)
                   sqme_real_x_jacobian = powheg%compute_sqme_real (alr, alpha_s)
-                  random_jacobian = pcm%controller%real_kinematics%jac_rand (emitter)
+                  random_jacobian = pcm%real_kinematics%jac_rand (emitter)
                   weight = sqme_real_x_jacobian * random_jacobian / sqme_born
                   do i_bin = 1, n_bins
                      if (kT2 > binning(i_bin)) then

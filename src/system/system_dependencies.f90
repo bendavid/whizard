@@ -36,51 +36,51 @@ module system_dependencies
   public
  
   ! Program version
-  character(*), parameter :: WHIZARD_VERSION = "2.3.1"
-  character(*), parameter :: WHIZARD_DATE = "Aug 25 2016"
+  character(*), parameter :: WHIZARD_VERSION = "2.4.0"
+  character(*), parameter :: WHIZARD_DATE = "Nov 28 2016"
 
   ! System paths
   ! These are used for testing without existing installation
   character(*), parameter :: WHIZARD_TEST_BASICS_MODPATH = &
-       "/Users/reuter/Physik/whizard/trunk/build/src/basics"
+       "/Users/reuter/Physik/whizard/trunk/_build/src/basics"
   character(*), parameter :: WHIZARD_TEST_UTILITIES_MODPATH = &
-       "/Users/reuter/Physik/whizard/trunk/build/src/utilities"
+       "/Users/reuter/Physik/whizard/trunk/_build/src/utilities"
   character(*), parameter :: WHIZARD_TEST_COMBINATORICS_MODPATH = &
-       "/Users/reuter/Physik/whizard/trunk/build/src/combinatorics"
+       "/Users/reuter/Physik/whizard/trunk/_build/src/combinatorics"
   character(*), parameter :: WHIZARD_TEST_SYSTEM_MODPATH = &
-       "/Users/reuter/Physik/whizard/trunk/build/src/system"
+       "/Users/reuter/Physik/whizard/trunk/_build/src/system"
   character(*), parameter :: WHIZARD_TEST_PHYSICS_MODPATH = &
-       "/Users/reuter/Physik/whizard/trunk/build/src/physics"
+       "/Users/reuter/Physik/whizard/trunk/_build/src/physics"
   character(*), parameter :: WHIZARD_TEST_ME_MODPATH = &
-       "/Users/reuter/Physik/whizard/trunk/build/src/matrix_elements"
+       "/Users/reuter/Physik/whizard/trunk/_build/src/matrix_elements"
   character(*), parameter :: WHIZARD_TEST_MODELS_MODPATH = &
-       "/Users/reuter/Physik/whizard/trunk/build/src/models"
+       "/Users/reuter/Physik/whizard/trunk/_build/src/models"
   character(*), parameter :: WHIZARD_TEST_THRESHOLD_MODPATH = &
-       "/Users/reuter/Physik/whizard/trunk/build/src/threshold"
+       "/Users/reuter/Physik/whizard/trunk/_build/src/threshold"
   character(*), parameter :: WHIZARD_TEST_OMEGA_MODPATH = &
-       "/Users/reuter/Physik/whizard/trunk/build/omega/src"
+       "/Users/reuter/Physik/whizard/trunk/_build/omega/src"
   character(*), parameter :: WHIZARD_TEST_CORE_LIBPATH = &
-       "/Users/reuter/Physik/whizard/trunk/build/src/whizard-core"
+       "/Users/reuter/Physik/whizard/trunk/_build/src/whizard-core"
   character(*), parameter :: WHIZARD_TEST_OMEGA_BINPATH = &
-       "/Users/reuter/Physik/whizard/trunk/build/omega/bin"
+       "/Users/reuter/Physik/whizard/trunk/_build/omega/bin"
   character(*), parameter :: WHIZARD_TEST_SRC_LIBPATH = &
-       "/Users/reuter/Physik/whizard/trunk/build/src"
+       "/Users/reuter/Physik/whizard/trunk/_build/src"
   character(*), parameter :: WHIZARD_TEST_HEPMC_LIBPATH = &
-       "/Users/reuter/Physik/whizard/trunk/build/src/hepmc"
+       "/Users/reuter/Physik/whizard/trunk/_build/src/hepmc"
   character(*), parameter :: WHIZARD_TEST_LCIO_LIBPATH = &
-       "/Users/reuter/Physik/whizard/trunk/build/src/lcio"
+       "/Users/reuter/Physik/whizard/trunk/_build/src/lcio"
   character(*), parameter :: WHIZARD_TEST_HOPPET_LIBPATH = &
-       "/Users/reuter/Physik/whizard/trunk/build/src/hoppet"
+       "/Users/reuter/Physik/whizard/trunk/_build/src/hoppet"
   character(*), parameter :: WHIZARD_TEST_LOOPTOOLS_LIBPATH = &
-       "/Users/reuter/Physik/whizard/trunk/build/src/looptools"
+       "/Users/reuter/Physik/whizard/trunk/_build/src/looptools"
   character(*), parameter :: WHIZARD_TEST_MODELPATH = &
        "/Users/reuter/Physik/whizard/trunk/share/models"
   character(*), parameter :: WHIZARD_TEST_MODELS_LIBPATH = &
-       "/Users/reuter/Physik/whizard/trunk/build/src/models"
+       "/Users/reuter/Physik/whizard/trunk/_build/src/models"
   character(*), parameter :: WHIZARD_TEST_SUSYPATH = &
        "/Users/reuter/Physik/whizard/trunk/share/susy"
   character(*), parameter :: WHIZARD_TEST_GMLPATH= &
-       "/Users/reuter/Physik/whizard/trunk/build/src/gamelan"
+       "/Users/reuter/Physik/whizard/trunk/_build/src/gamelan"
   character(*), parameter :: WHIZARD_TEST_CUTSPATH = &
        "/Users/reuter/Physik/whizard/trunk/share/cuts"
   character(*), parameter :: WHIZARD_TEST_SHAREPATH = &
@@ -121,12 +121,12 @@ module system_dependencies
       "-L" // WHIZARD_TEST_LOOPTOOLS_LIBPATH // " " // &
        "-lwhizard_main -lwhizard -lomega " // &
        "-lHepMC -llcio -L/usr/local//lib -lhoppet_v1 " // &
-       "-L/usr/local/ -looptools -L/usr/local/packages/OpenLoops/lib -&
-       &lopenloops"
+       "-L/usr/local/lib -looptools -Wl,-rpath,/usr/local/packages/Ope&
+       &nLoops/lib -L/usr/local/packages/OpenLoops/lib -lopenloops"
 
   ! Libtool
   character(*), parameter :: WHIZARD_LIBTOOL_TEST = &
-       "/Users/reuter/Physik/whizard/trunk/build/libtool"
+       "/Users/reuter/Physik/whizard/trunk/_build/libtool"
 
 
   ! System paths
@@ -214,8 +214,8 @@ module system_dependencies
       "-L" // WHIZARD_OMEGA_LIBPATH // " " // &
        "-lwhizard_main -lwhizard -lomega " // &
        "-lHepMC -llcio -L/usr/local//lib -lhoppet_v1 " // &
-       "-L/usr/local/ -looptools -L/usr/local/packages/OpenLoops/lib -&
-       &lopenloops"
+       "-L/usr/local/lib -looptools -Wl,-rpath,/usr/local/packages/Ope&
+       &nLoops/lib -L/usr/local/packages/OpenLoops/lib -lopenloops"
 
   ! Libtool
   character(*), parameter :: WHIZARD_LIBTOOL = &
@@ -263,7 +263,7 @@ module system_dependencies
   character(*), parameter :: DEFAULT_LDFLAGS_HOPPET = &
        "-L/usr/local//lib -lhoppet_v1"
   character(*), parameter :: DEFAULT_LDFLAGS_LOOPTOOLS = &
-       "-L/usr/local/ -looptools"
+       "-L/usr/local/lib -looptools"
   character(*), parameter :: DEFAULT_SHRLIB_EXT = "dylib"
   character(*), parameter :: DEFAULT_FC_SHRLIB_EXT = "so"
 
@@ -331,7 +331,7 @@ module system_dependencies
   logical, parameter :: HOPPET_AVAILABLE = .true.
 
   logical, parameter :: PYTHIA6_AVAILABLE = .true.
-  logical, parameter :: PYTHIA8_AVAILABLE = .false.
+  logical, parameter :: PYTHIA8_AVAILABLE = .true.
 
   logical, parameter :: GOSAM_AVAILABLE = .true.
   logical, parameter :: OPENLOOPS_AVAILABLE = .true.

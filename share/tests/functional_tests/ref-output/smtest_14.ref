@@ -3,9 +3,9 @@
 ?integration_timer = false
 ?pacify = true
 seed = 0
-SM.me =>  0.0000000E+00
+SM.me =>  0.00000E+00
 | Process library 'smtest_14_lib': recorded process 'smtest_14_1'
-sqrts =  2.0000000E+02
+sqrts =  2.00000E+02
 openmp_num_threads = 1
 | Integrate: current process library needs compilation
 | Process library 'smtest_14_lib': compiling ...

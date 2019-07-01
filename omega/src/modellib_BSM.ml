@@ -1,4 +1,4 @@
-(* $Id: modellib_BSM.ml 7667 2016-07-29 17:37:42Z jr_reuter $
+(* modellib_BSM.ml --
 
    Copyright (C) 1999-2016 by
 
@@ -23,13 +23,6 @@
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
-
-let rcs_file = RCS.parse "Modellib_BSM" ["BSM Models"]
-    { RCS.revision = "$Revision: 7667 $";
-      RCS.date = "$Date: 2016-07-29 19:37:42 +0200 (Fri, 29 Jul 2016) $";
-      RCS.author = "$Author: jr_reuter $";
-      RCS.source
-        = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/omega/src/modellib_BSM.ml $" }
 
 (* \thocwmodulesection{Littlest Higgs Model} *)
 
@@ -59,7 +52,6 @@ module BSM_anom : BSM_flags =
 
 module Littlest (Flags : BSM_flags) =
   struct
-    let rcs = rcs_file 
 
     open Coupling
 
@@ -1253,7 +1245,6 @@ module Littlest (Flags : BSM_flags) =
 
 module Littlest_Tpar (Flags : BSM_flags) =
   struct
-    let rcs = rcs_file 
 
     open Coupling
 
@@ -2362,7 +2353,6 @@ module Littlest_Tpar (Flags : BSM_flags) =
 
 module Simplest (Flags : BSM_flags) =
   struct
-    let rcs = rcs_file 
 
     open Coupling
 
@@ -3111,8 +3101,6 @@ module Simplest (Flags : BSM_flags) =
 
 module Xdim (Flags : BSM_flags) =
   struct
-    let rcs = RCS.rename rcs_file "Modellib_BSM.Xdim"
-        [ "SM with extradimensional resonances"]
 
     open Coupling
 
@@ -3707,8 +3695,6 @@ module Xdim (Flags : BSM_flags) =
  
 module UED (Flags : BSM_flags) =
   struct
-    let rcs = RCS.rename rcs_file "Modellib_BSM.UED"
-        [ "Universal Extra Dimensions"]
 
     open Coupling
 
@@ -4682,8 +4668,6 @@ module UED (Flags : BSM_flags) =
 
 module GravTest (Flags : BSM_flags) =
   struct
-    let rcs = RCS.rename rcs_file "Modellib_BSM.GravTest"
-        [ "Testing of Gravitinos"]
 
     open Coupling
 
@@ -5298,8 +5282,6 @@ module GravTest (Flags : BSM_flags) =
 
 module Template (Flags : BSM_flags) =
   struct
-    let rcs = RCS.rename rcs_file "Modellib_BSM.Template"
-        [ "Template for user-defined BSM model"]
 
     open Coupling
 
@@ -5834,8 +5816,6 @@ module Template (Flags : BSM_flags) =
 
 module HSExt (Flags : BSM_flags) =
   struct
-    let rcs = RCS.rename rcs_file "Modellib_BSM.HSExt"
-        [ "Higgs Singlet Extension of the SM"]
 
     open Coupling
 
@@ -6460,16 +6440,6 @@ module Threeshl (Module_options: Threeshl_options) =
       open Coupling
 
       let modname = "Modellib_BSM.Threeshl"
-
-      let rcs =
-      let renderbool = function true -> "true" | false -> "false"
-      in RCS.rename rcs_file "Modellib_BSM.Threeshl"
-         ["Three-Site Higgsless Model, " ^
-            "flavor mixing: " ^ (renderbool Module_options.include_ckm) ^
-            ", heavy fermions: " ^ (renderbool Module_options.include_hf) ^
-            ", reduced set of couplings: " ^ (renderbool Module_options.diet)
-         ]
-
 
       (* Shamelessly stolen from Modellib.SM3, but with no support for fudged width yet *)
       let default_width = ref Timelike
@@ -7154,8 +7124,6 @@ module THDM_CKM : THDM_flags =
 
 module TwoHiggsDoublet (Flags : THDM_flags) =
   struct
-    let rcs = rcs_file
-
     open Coupling
 
     let default_width = ref Timelike
@@ -8118,9 +8086,6 @@ module SSC_kmatrix_2: SSC_flags =
 
 module SSC (Flags : SSC_flags) =
   struct
-    let rcs = RCS.rename rcs_file "Modellib_BSM.SSC"
-        [ "minimal electroweak standard model in unitarity gauge with additional Vectorboson Resonances"]
-
     open Coupling
 
     let default_width = ref Timelike
@@ -9966,9 +9931,6 @@ effective operators:
 
 module SSC_AltT (Flags : SSC_flags) =
   struct
-    let rcs = RCS.rename rcs_file "Modellib_BSM.SSC_AltT"
-        [ "minimal electroweak standard model in unitarity gauge with additional Vectorboson Resonances (alternate Tensor)"]
-
     open Coupling
 
     let default_width = ref Timelike

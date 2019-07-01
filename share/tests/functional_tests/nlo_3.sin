@@ -1,4 +1,3 @@
-# $Id: nlo_3.sin 4873 2013-11-26 19:52:40Z jr_reuter $
 # SINDARIN input for WHIZARD self-test
 # Testing complete NLO-calculation using dummy-output for virtual matrix elements 
 # in the combined-integration mode
@@ -29,6 +28,11 @@ process nlo_3_p1 = E1, e1 => t, T { nlo_calculation = "Full" }
 
 seed = 2222
 
+iterations = 2:1000:"gw"
 sqrts = 500 GeV
 
-integrate (nlo_3_p1) { iterations = 1:50000:"gw" }
+scale = sqrts
+integrate (nlo_3_p1)
+
+scale = eval Pt [sort by -Pt [colored]]
+integrate (nlo_3_p1)

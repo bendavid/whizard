@@ -1,4 +1,4 @@
-(* $Id: omega_UFO.ml $
+(* omega_UFO.ml --
 
    Copyright (C) 1999-2016 by
 

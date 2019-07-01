@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -34,7 +34,7 @@
 ! to the source 'whizard.nw'
 
 module process_configurations
-  
+
   use iso_varying_string, string_t => varying_string
   use diagnostics
   use models
@@ -42,10 +42,11 @@ module process_configurations
   use particle_specifiers
   use process_libraries
   use rt_data
-  use variables
+  use variables, only: var_list_t
 
-  use dispatch, only: dispatch_core_def
-  
+  use dispatch_me_methods, only: dispatch_core_def
+  use prc_user_defined, only: user_defined_def_t
+
   implicit none
   private
 
@@ -64,16 +65,16 @@ module process_configurations
           process_configuration_set_component_associations
      procedure :: record => process_configuration_record
   end type process_configuration_t
-  
+
 
 contains
-  
+
   subroutine process_configuration_init &
        (config, prc_name, n_in, n_components, global)
     class(process_configuration_t), intent(out) :: config
     type(string_t), intent(in) :: prc_name
     integer, intent(in) :: n_in
-    integer, intent(in) :: n_components 
+    integer, intent(in) :: n_components
     type(rt_data_t), intent(in) :: global
     type(model_t), pointer :: model
     logical :: nlo_process
@@ -93,10 +94,10 @@ contains
             nlo_process = nlo_process)
     end if
   end subroutine process_configuration_init
-    
+
   subroutine process_configuration_setup_component &
        (config, i_component, prt_in, prt_out, model, var_list, &
-        nlo_type, active_in)
+        nlo_type, can_be_integrated)
     class(process_configuration_t), intent(inout) :: config
     integer, intent(in) :: i_component
     type(prt_spec_t), dimension(:), intent(in) :: prt_in
@@ -104,26 +105,28 @@ contains
     type(model_t), pointer, intent(in) :: model
     type(var_list_t), intent(in) :: var_list
     integer, intent(in), optional :: nlo_type
-    logical, intent(in), optional :: active_in
+    logical, intent(in), optional :: can_be_integrated
     type(string_t), dimension(:), allocatable :: prt_str_in
     type(string_t), dimension(:), allocatable :: prt_str_out
     class(prc_core_def_t), allocatable :: core_def
     type(string_t) :: method
     integer :: i
-    logical :: active
 
     allocate (prt_str_in  (size (prt_in)))
     allocate (prt_str_out (size (prt_out)))
     forall (i = 1:size (prt_in))  prt_str_in(i)  = prt_in(i)% get_name ()
     forall (i = 1:size (prt_out)) prt_str_out(i) = prt_out(i)%get_name ()
-    if (present (active_in)) then
-      active = active_in
-    else
-      active = .true.
-    end if
 
     call dispatch_core_def (core_def, prt_str_in, prt_str_out, &
                             model, var_list, config%id, nlo_type)
+    select type (core_def)
+    class is (user_defined_def_t)
+       if (present (can_be_integrated)) then
+          call core_def%set_active_writer (can_be_integrated)
+       else
+          call msg_fatal ("Cannot decide if user-defined core is integrated!")
+       end if
+    end select
     method = var_list%get_sval (var_str ("$method"))
     call config%entry%import_component (i_component, &
        n_out = size (prt_out), &
@@ -132,9 +135,9 @@ contains
        method = method, &
        variant = core_def, &
        nlo_type = nlo_type, &
-       active = active)
+       can_be_integrated = can_be_integrated)
   end subroutine process_configuration_setup_component
-  
+
   subroutine process_configuration_set_fixed_emitter (config, i, emitter)
      class(process_configuration_t), intent(inout) :: config
      integer, intent(in) :: i, emitter
@@ -159,8 +162,6 @@ contains
              call config%entry%set_associated_components (i_component, &
                     i_list(1), i_list(2), i_list(3), i_list(4), i_pdf = i_list(5))
           else if (mismatch) then
-             !!! TODO: (bcn 2016-07-21) this is not a typo. mismatch
-             !!!               seems to need no extra component type
              call config%entry%set_associated_components (i_component, &
                     i_list(1), i_list(2), i_list(3), i_list(4), i_pdf = i_list(5))
           else if (damping) then
@@ -188,7 +189,7 @@ contains
        else
           write (msg_buffer, "(5A)") "Process library '", &
                char (global%prclib%get_name ()), &
-               "': recorded process '", char (config%id), "'"          
+               "': recorded process '", char (config%id), "'"
        end if
        call msg_message ()
     else
@@ -196,6 +197,6 @@ contains
             // "': active process library undefined")
     end if
   end subroutine process_configuration_record
-  
+
 
 end module process_configurations

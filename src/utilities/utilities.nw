@@ -1,8 +1,7 @@
 % -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*-
 % WHIZARD code as NOWEB source: Utilities
-
-@
 \chapter{Utilities}
+\includemodulegraph{utilities}
 
 These modules are intended as part of WHIZARD, but in fact they are
 generic and could be useful for any purpose.
@@ -539,8 +538,8 @@ Create an array of strings using a separator.
 <<String utils: public>>=
   public :: split_string
 <<String utils: procedures>>=
-  function split_string (str, separator) result (str_array)
-    type(string_t), dimension(:), allocatable :: str_array
+  subroutine split_string (str, separator, str_array)
+    type(string_t), dimension(:), allocatable, intent(out) :: str_array
     type(string_t), intent(in) :: str, separator
     type(string_t) :: str_tmp, str_out
     integer :: n_str
@@ -564,7 +563,7 @@ Create an array of strings using a separator.
       call split (str_tmp, str_out, word)
       val = str_out /= "" 
     end function contains_word
-  end function split_string      
+  end subroutine split_string
 
 @ %def split_string
 @
@@ -593,6 +592,7 @@ module format_utils
 <<Use kinds>>
 <<Use strings>>
   use string_utils, only: lower_case
+  use io_units, only: given_output_unit
 
 <<Standard module head>>
 
@@ -640,6 +640,33 @@ Indent the line with given number of blanks.
   end subroutine write_indent
 
 @ %def write_indent
+@
+\subsection{Array Output}
+Write an array of integers.
+<<Format utils: public>>=
+  public :: write_integer_array
+<<Format utils: procedures>>=
+  subroutine write_integer_array (array, unit, n_max)
+    integer, intent(in), dimension(:) :: array
+    integer, intent(in), optional :: unit
+    integer, intent(in), optional :: n_max
+    integer :: u, i, n
+    u = given_output_unit (unit)
+    if (present (n_max)) then
+       n = n_max
+    else
+       n = size (array)
+    end if
+    do i = 1, n
+       if (i < n) then
+          write (u, "(I0, A)", advance = "no") array(i), ", "
+       else
+          write (u, "(I0)") array(i)
+       end if
+    end do
+  end subroutine write_integer_array
+
+@ %def write_integer_array
 @
 \subsection{\TeX-compatible Output}
 Quote underscore characters for use in \TeX\ output.
@@ -1016,8 +1043,14 @@ numbers close to zero defined by [[abs_smallness]].  Both might need
 adaption to specific use cases but have reasonable defaults.
 <<Numeric utils: public>>=
   public :: nearly_equal
+<<Numeric utils: interfaces>>=
+  interface nearly_equal
+     module procedure nearly_equal_real
+     module procedure nearly_equal_complex
+  end interface
+
 <<Numeric utils: procedures>>=
-  elemental function nearly_equal (a, b, abs_smallness, rel_smallness) result (r)
+  elemental function nearly_equal_real (a, b, abs_smallness, rel_smallness) result (r)
     logical :: r
     real(default), intent(in) :: a, b
     real(default), intent(in), optional :: abs_smallness, rel_smallness
@@ -1040,9 +1073,19 @@ adaption to specific use cases but have reasonable defaults.
     else
        r = diff / max (abs_a, abs_b) < rel_small
     end if
-  end function nearly_equal
+  end function nearly_equal_real
 
-@ %def nearly_equal
+@ %def nearly_equal_real
+<<Numeric utils: procedures>>=
+  elemental function nearly_equal_complex (a, b, abs_smallness, rel_smallness) result (r)
+    logical :: r
+    complex(default), intent(in) :: a, b
+    real(default), intent(in), optional :: abs_smallness, rel_smallness
+    r = nearly_equal_real (real (a), real (b), abs_smallness, rel_smallness) .and. &
+        nearly_equal_real (aimag (a), aimag(b), abs_smallness, rel_smallness)
+  end function nearly_equal_complex
+
+@ %def neary_equal_complex
 @ Often we will need to check whether floats vanish:
 <<Numeric utils: public>>=
   public:: vanishes

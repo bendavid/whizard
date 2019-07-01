@@ -1,7 +1,7 @@
 #! /bin/sh
 ########################################################################
 
-src_builddir=@top_builddir@/src
+src_builddir=@top_builddir@/circe2/src
 
 if test -f OCAML_FLAG; then
     if test -x $src_builddir/circe2_tool.opt; then

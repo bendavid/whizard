@@ -1,4 +1,4 @@
-(* $Id: omega_unit.ml 4015 2013-01-03 16:04:18Z jr_reuter $
+(* omega_unit.ml --
 
    Copyright (C) 1999-2014 by
 

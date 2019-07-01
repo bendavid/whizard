@@ -1,4 +1,4 @@
-(* $Id: combinatorics.ml 7654 2016-07-18 15:45:57Z ohl $
+(* combinatorics.ml --
 
    Copyright (C) 1999-2016 by
 

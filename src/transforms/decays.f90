@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -51,7 +51,8 @@ module decays
   use rng_base
   use selectors
   use parton_states
-  use processes
+  use process, only: process_t
+  use instances, only: process_instance_t, pacify
   use process_stacks
   use event_transforms
 
@@ -628,13 +629,13 @@ contains
        !!! m_prod = flv(:,1)%get_mass ()
        call flv%set_model (model)
        allocate (m_dec (size (flv(:,1)%get_mass ())))
-       !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug       
+       !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
        do j = 1, size (flv(:,1)%get_mass ())
           m_dec(j) = flv(j,1)%get_mass ()
        end do
        !!! m_dec = flv(:,1)%get_mass ()
        allocate (stable (size (flv, 1)))
-       !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug       
+       !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
        do j = 1, size (flv, 1)
           stable(j) = flv(j,1)%is_stable ()
        end do
@@ -957,7 +958,7 @@ contains
     call decay%rng%generate (x)
     decay%selected_mci = decay%config%mci_selector%select (x)
     call decay%process_instance%choose_mci (decay%selected_mci)
-    call decay%process_instance%select_i_term (decay%selected_term)
+    decay%selected_term = decay%process_instance%select_i_term ()
     do i = 1, size (decay%term)
        call decay%term(i)%select_chain ()
     end do
@@ -968,8 +969,7 @@ contains
     type(isolated_state_t), pointer :: isolated_state
     integer :: i
     call decay%process_instance%receive_beam_momenta ()
-    call decay%config%process%generate_unweighted_event &
-         (decay%process_instance, decay%selected_mci)
+    call decay%process_instance%generate_unweighted_event (decay%selected_mci)
     if (signal_is_pending ())  return
     call decay%process_instance%evaluate_event_data ()
     isolated_state => &

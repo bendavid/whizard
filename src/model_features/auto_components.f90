@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -73,7 +73,7 @@ module auto_components
   type :: split_constraint_wrap_t
      class(split_constraint_t), allocatable :: c
   end type split_constraint_wrap_t
-  
+
   type :: split_constraints_t
      class(split_constraint_wrap_t), dimension(:), allocatable :: cc
    contains
@@ -83,7 +83,7 @@ module auto_components
      procedure :: check_before_insert => split_constraints_check_before_insert
      procedure :: check_before_record => split_constraints_check_before_record
   end type split_constraints_t
-  
+
   type, extends (split_constraint_t) :: constraint_n_tot
      private
      integer :: n_max = 0
@@ -91,35 +91,35 @@ module auto_components
      procedure :: check_before_split => constraint_n_tot_check_before_split
      procedure :: check_before_record => constraint_n_tot_check_before_record
   end type constraint_n_tot
-  
+
   type, extends (split_constraint_t) :: constraint_n_loop
      private
      integer :: n_loop_max = 0
    contains
      procedure :: check_before_record => constraint_n_loop_check_before_record
   end type constraint_n_loop
-  
+
   type, extends (split_constraint_t) :: constraint_insert
      private
      type(pdg_list_t) :: pl_match
    contains
      procedure :: check_before_insert => constraint_insert_check_before_insert
   end type constraint_insert
-  
+
   type, extends (split_constraint_t) :: constraint_require
      private
      type(pdg_list_t) :: pl
    contains
      procedure :: check_before_record => constraint_require_check_before_record
   end type constraint_require
-  
+
   type, extends (split_constraint_t) :: constraint_radiation
      private
    contains
      procedure :: check_before_insert => &
           constraint_radiation_check_before_insert
   end type constraint_radiation
-  
+
   type, extends (split_constraint_t) :: constraint_mass_sum
      private
      real(default) :: mass_limit = 0
@@ -128,7 +128,7 @@ module auto_components
    contains
      procedure :: check_before_record => constraint_mass_sum_check_before_record
   end type constraint_mass_sum
-  
+
   type, extends (split_constraint_t) :: constraint_in_state
      private
      type(pdg_list_t) :: pl
@@ -166,7 +166,7 @@ module auto_components
      procedure :: get_emitters => ps_table_get_emitters
      procedure :: get_pdg_out => ps_table_get_pdg_out
   end type ps_table_t
-     
+
   type, extends (ps_table_t) :: ds_table_t
      private
      integer :: pdg_in = 0
@@ -209,7 +209,7 @@ contains
     logical, intent(out) :: passed
     passed = .true.
   end subroutine split_constraint_check_before_split
-  
+
   subroutine split_constraint_check_before_insert (c, table, pa, pl, passed)
     class(split_constraint_t), intent(in) :: c
     class(ps_table_t), intent(in) :: table
@@ -218,7 +218,7 @@ contains
     logical, intent(out) :: passed
     passed = .true.
   end subroutine split_constraint_check_before_insert
-  
+
   subroutine split_constraint_check_before_record (c, table, pl, n_loop, passed)
     class(split_constraint_t), intent(in) :: c
     class(ps_table_t), intent(in) :: table
@@ -227,20 +227,20 @@ contains
     logical, intent(out) :: passed
     passed = .true.
   end subroutine split_constraint_check_before_record
-  
+
   subroutine split_constraints_init (constraints, n)
     class(split_constraints_t), intent(out) :: constraints
     integer, intent(in) :: n
     allocate (constraints%cc (n))
   end subroutine split_constraints_init
-  
+
   subroutine split_constraints_set (constraints, i, c)
     class(split_constraints_t), intent(inout) :: constraints
     integer, intent(in) :: i
     class(split_constraint_t), intent(in) :: c
     allocate (constraints%cc(i)%c, source = c)
   end subroutine split_constraints_set
-  
+
   subroutine split_constraints_check_before_split &
        (constraints, table, pl, k, passed)
     class(split_constraints_t), intent(in) :: constraints
@@ -255,7 +255,7 @@ contains
        if (.not. passed)  return
     end do
   end subroutine split_constraints_check_before_split
-    
+
   subroutine split_constraints_check_before_insert &
        (constraints, table, pa, pl, passed)
     class(split_constraints_t), intent(in) :: constraints
@@ -270,7 +270,7 @@ contains
        if (.not. passed)  return
     end do
   end subroutine split_constraints_check_before_insert
-    
+
   subroutine split_constraints_check_before_record &
        (constraints, table, pl, n_loop, passed)
     class(split_constraints_t), intent(in) :: constraints
@@ -285,13 +285,13 @@ contains
        if (.not. passed)  return
     end do
   end subroutine split_constraints_check_before_record
-    
+
   function constrain_n_tot (n_max) result (c)
     integer, intent(in) :: n_max
     type(constraint_n_tot) :: c
     c%n_max = n_max
   end function constrain_n_tot
-  
+
   subroutine constraint_n_tot_check_before_split (c, table, pl, k, passed)
     class(constraint_n_tot), intent(in) :: c
     class(ps_table_t), intent(in) :: table
@@ -331,7 +331,7 @@ contains
     type(constraint_insert) :: c
     c%pl_match = pl_match
   end function constrain_insert
-  
+
   subroutine constraint_insert_check_before_insert (c, table, pa, pl, passed)
     class(constraint_insert), intent(in) :: c
     class(ps_table_t), intent(in) :: table
@@ -346,7 +346,7 @@ contains
     type(constraint_require) :: c
     c%pl = pl
   end function constrain_require
-  
+
   subroutine constraint_require_check_before_record &
        (c, table, pl, n_loop, passed)
     class(constraint_require), intent(in) :: c
@@ -382,7 +382,7 @@ contains
   function constrain_radiation () result (c)
     type(constraint_radiation) :: c
   end function constrain_radiation
-  
+
   subroutine constraint_radiation_check_before_insert (c, table, pa, pl, passed)
     class(constraint_radiation), intent(in) :: c
     class(ps_table_t), intent(in) :: table
@@ -402,7 +402,7 @@ contains
        c%margin = margin
     end if
   end function constrain_mass_sum
-  
+
   subroutine constraint_mass_sum_check_before_record &
        (c, table, pl, n_loop, passed)
     class(constraint_mass_sum), intent(in) :: c
@@ -455,7 +455,7 @@ contains
     end select
     passed = .true.
   end subroutine constraint_in_state_check_before_record
-  
+
   subroutine ps_table_final (object)
     class(ps_table_t), intent(inout) :: object
     type(ps_entry_t), pointer :: current
@@ -466,7 +466,7 @@ contains
     end do
     nullify (object%last)
   end subroutine ps_table_final
-  
+
   subroutine ps_table_base_write (object, unit, n_in)
     class(ps_table_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -513,7 +513,7 @@ contains
        entry => entry%next
     end do
   end subroutine ps_table_base_write
-          
+
   subroutine ds_table_write (object, unit)
     class(ds_table_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -525,7 +525,7 @@ contains
          char (prt%get_name (object%pdg_in < 0))
     call object%base_write (u)
   end subroutine ds_table_write
-          
+
   subroutine fs_table_write (object, unit)
     class(fs_table_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -534,7 +534,7 @@ contains
     write (u, "(1x,A)")  "Table of final states:"
     call object%base_write (u)
   end subroutine fs_table_write
-          
+
   subroutine if_table_write (object, unit)
     class(if_table_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -548,7 +548,7 @@ contains
        call object%base_write (u, n_in = 2)
      end select
   end subroutine if_table_write
-          
+
   subroutine ps_table_get_particle_string (object, index, prt_in, prt_out)
     class(ps_table_t), intent(in) :: object
     integer, intent(in) :: index
@@ -558,7 +558,7 @@ contains
     type(ps_entry_t), pointer :: entry
     integer, dimension(:), allocatable :: pdg
     integer :: n0
-    integer :: i, j 
+    integer :: i, j
     entry => object%first
     i = 1
     do while (i < index)
@@ -604,7 +604,7 @@ contains
       end do
     end do
   end subroutine ps_table_get_particle_string
-                        
+
   subroutine ps_table_init (table, model, pl, constraints, n_in)
     class(ps_table_t), intent(out) :: table
     class(model_data_t), intent(in), target :: model
@@ -617,11 +617,11 @@ contains
 
     if (present (n_in)) then
        select case (n_in)
-       case (1) 
+       case (1)
           table%proc_type = PROC_DECAY
-       case (2) 
+       case (2)
           table%proc_type = PROC_SCATTER
-       case default 
+       case default
           table%proc_type = PROC_UNDEFINED
        end select
     else
@@ -635,7 +635,7 @@ contains
        end if
     end do
   end subroutine ps_table_init
-    
+
   subroutine if_table_init (table, model, pl_in, pl_out, constraints)
     class(if_table_t), intent(out) :: table
     class(model_data_t), intent(in), target :: model
@@ -668,12 +668,12 @@ contains
     n_in = size (pl_in(1)%a)
     call table%init (model, pl, constraints, n_in)
   end subroutine if_table_init
-    
+
   subroutine ps_table_enable_loops (table)
     class(ps_table_t), intent(inout) :: table
     table%loops = .true.
   end subroutine ps_table_enable_loops
-    
+
   subroutine ds_table_make (table, model, pdg_in, constraints)
     class(ds_table_t), intent(out) :: table
     class(model_data_t), intent(in), target :: model
@@ -687,7 +687,7 @@ contains
     call pl_in%set (1, [pdg_in])
     call table%split (pl_in, 0, constraints)
   end subroutine ds_table_make
-    
+
   subroutine fs_table_radiate (table, constraints)
     class(fs_table_t), intent(inout) :: table
     type(split_constraints_t) :: constraints
@@ -738,7 +738,7 @@ contains
        end if
     end do
   end subroutine ps_table_split
-    
+
   recursive subroutine ps_table_insert &
        (table, pl, n_rad, i, pdg, constraints, n_in)
     class(ps_table_t), intent(inout) :: table
@@ -761,7 +761,7 @@ contains
             constraints, record = .true.)
     end if
   end subroutine ps_table_insert
-    
+
   recursive subroutine if_table_insert  &
        (table, pl, n_rad, i, pdg, constraints, n_in)
     class(if_table_t), intent(inout) :: table
@@ -801,7 +801,7 @@ contains
     logical, intent(out) :: passed
     call table%record (pl%sort_abs (), n_loop, n_rad, constraints, passed)
   end subroutine ps_table_record_sorted
-  
+
   subroutine if_table_record_sorted &
        (table, pl, n_loop, n_rad, constraints, passed)
     class(if_table_t), intent(inout) :: table
@@ -820,6 +820,7 @@ contains
     logical, intent(out) :: passed
     type(ps_entry_t), pointer :: current
     passed = .false.
+    call pl%write ()
     if (.not. pl%is_regular ()) then
        call msg_warning ("Record ps_table entry: Irregular pdg-list encountered!")
        return
@@ -866,7 +867,7 @@ contains
       end if
     end subroutine insert
   end subroutine ps_table_record
-    
+
   function mass_sum (pl, n1, n2, model) result (m)
     type(pdg_list_t), intent(in) :: pl
     integer, intent(in) :: n1, n2
@@ -882,7 +883,7 @@ contains
        m = m + prt%get_mass ()
     end do
   end function mass_sum
-  
+
   function invert_pdg_array (pa, model) result (pa_inv)
     type(pdg_array_t), intent(in) :: pa
     class(model_data_t), intent(in), target :: model
@@ -896,7 +897,7 @@ contains
        if (prt%has_antiparticle ())  call pa_inv%set (i, -pdg)
     end do
   end function invert_pdg_array
-          
+
   function ps_table_get_length (ps_table) result (n)
     class(ps_table_t), intent(in) :: ps_table
     integer :: n
@@ -909,10 +910,10 @@ contains
     end do
   end function ps_table_get_length
 
-  function ps_table_get_emitters (table, constraints) result (emitters)
-     integer, dimension(:), allocatable :: emitters
+  subroutine ps_table_get_emitters (table, constraints, emitters)
      class(ps_table_t), intent(in) :: table
      type(split_constraints_t), intent(in) :: constraints
+     integer, dimension(:), allocatable, intent(out) :: emitters
      class(pdg_list_t), pointer :: pl
      integer :: i
      logical :: passed
@@ -920,7 +921,6 @@ contains
      integer, dimension(:), allocatable :: pdg1, pdg2
      integer :: n_emitters
      integer, dimension(20) :: emitters_tmp
-
      n_emitters = 0
      pl => table%first
      do i = 1, pl%get_size ()
@@ -928,20 +928,20 @@ contains
         if (passed) then
            pdg1 = pl%get(i)
            call vit%init (table%model, pdg1)
-           do 
-               call vit%get_next_match(pdg2)
-               if (allocated (pdg2)) then
-                  emitters_tmp (n_emitters+1) = pdg1(1)
-                  n_emitters = n_emitters + 1
-               else
-                  exit
-               end if
+           do
+              call vit%get_next_match(pdg2)
+              if (allocated (pdg2)) then
+                 emitters_tmp (n_emitters + 1) = pdg1(1)
+                 n_emitters = n_emitters + 1
+              else
+                 exit
+              end if
            end do
         end if
      end do
      allocate (emitters (n_emitters))
      emitters = emitters_tmp (1:n_emitters)
-  end function ps_table_get_emitters
+  end subroutine ps_table_get_emitters
 
   subroutine ps_table_get_pdg_out (ps_table, i, pa_out, n_loop, n_rad)
     class(ps_table_t), intent(in) :: ps_table
@@ -966,6 +966,6 @@ contains
        entry => entry%next
     end do FIND_ENTRY
   end subroutine ps_table_get_pdg_out
-  
+
 
 end module auto_components

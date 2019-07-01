@@ -40,8 +40,6 @@
    Method              = test_me
    Process variant     = test_me
    MD5 sum (def)       = '                                '
- Process core:
-   test type implementing prc_test
  Referenced data:
    Terms                    = 1
    MC dataset               = 1
@@ -70,7 +68,6 @@
  Term #1
    Process component index      = 1
    Term index w.r.t. component  = 1
-   Rearrange partons            = F
 ------------------------------------------------------------------------
  Hard interaction:
 ------------------------------------------------------------------------
@@ -157,8 +154,6 @@
    Method              = test_me
    Process variant     = test_me
    MD5 sum (def)       = '                                '
- Process core:
-   test type implementing prc_test
  Referenced data:
    Terms                    = 1
    MC dataset               = 1
@@ -187,7 +182,6 @@
  Term #1
    Process component index      = 1
    Term index w.r.t. component  = 1
-   Rearrange partons            = F
 ------------------------------------------------------------------------
  Hard interaction:
 ------------------------------------------------------------------------

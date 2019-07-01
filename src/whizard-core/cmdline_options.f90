@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -34,7 +34,7 @@
 ! to the source 'whizard.nw'
 
 module cmdline_options
-  
+
   use iso_varying_string, string_t => varying_string
   use diagnostics
 
@@ -84,7 +84,7 @@ contains
     if (has_value) then
        string = value
     else
-       i = i + 1 
+       i = i + 1
        call get_command_argument (i, arg_value, arg_len, arg_status)
        select case (arg_status)
        case (0)
@@ -102,6 +102,6 @@ contains
        string = trim (arg_value)
     end if
   end function get_option_value
-  
+
 end module cmdline_options
 

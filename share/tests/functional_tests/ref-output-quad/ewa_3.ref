@@ -17,16 +17,16 @@ seed = 0
 | Process library 'ewa_3_lib': ... success.
 $phs_method = "wood"
 $integration_method = "vamp"
-sqrts =  1.0000000E+03
+sqrts =  1.00000E+03
 openmp_num_threads = 1
 [user variable] n = 1000
 $circe1_acc = "TESLA"
 circe1_chat = 2
-circe1_eps =  1.0000000E-05
+circe1_eps =  1.00000E-05
 ?circe1_generate = true
 ?circe1_map = true
-ewa_x_min =  1.0000000E-02
-ewa_mass =  5.1099700E-04
+ewa_x_min =  1.00000E-02
+ewa_mass =  5.10997E-04
 [user variable] n = 1000
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0

@@ -118,8 +118,10 @@ Contents of smtest_12p.evt:
    Helicity handling  = drop
    Keep correlations  = F
 ------------------------------------------------------------------------
-   Squared matrix el. =  2.641333844291E-02
-   Event weight       =  5.905155897757E+02
+   Squared matrix el. (ref) =  2.641333844291E-02
+   Squared matrix el. (prc) =  2.641333844291E-02
+   Event weight (ref)       =  5.905155897757E+02
+   Event weight (prc)       =  5.905155897757E+02
 ------------------------------------------------------------------------
    Selected MCI group = 1
    Selected term      = 1

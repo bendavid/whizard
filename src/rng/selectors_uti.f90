@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -39,7 +39,7 @@ module selectors_uti
   use rng_base
 
   use selectors
-  
+
   use rng_base_ut, only: rng_test_t
 
   implicit none
@@ -58,7 +58,7 @@ contains
     write (u, "(A)")  "* Test output: selectors_1"
     write (u, "(A)")  "*   Purpose: initialize a selector and test it"
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Initialize selector"
     write (u, "(A)")
 
@@ -82,7 +82,7 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Select numbers using real input number"
     write (u, "(A)")
-    
+
     write (u, "(1x,A,I0)")  "select(0.00) = ", selector%select (0._default)
     write (u, "(1x,A,I0)")  "select(0.77) = ", selector%select (0.77_default)
     write (u, "(1x,A,I0)")  "select(1.00) = ", selector%select (1._default)
@@ -90,19 +90,19 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Get weight"
     write (u, "(A)")
-    
+
     write (u, "(1x,A,ES19.12)")  "weight(2) =", selector%get_weight(2)
     write (u, "(1x,A,ES19.12)")  "weight(3) =", selector%get_weight(3)
-        
+
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
-        
+
     call rng%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: selectors_1"
-    
+
   end subroutine selectors_1
-    
+
 
 end module selectors_uti

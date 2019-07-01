@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -84,7 +84,7 @@ contains
     logical(c_bool) :: flag
     complex(c_default_complex) :: amp
     integer :: i
-    
+
     write (u, "(A)")  "* Test output: prc_omega_1"
     write (u, "(A)")  "*   Purpose: create a simple process with OMega"
     write (u, "(A)")  "*            build a library, link, load, and &
@@ -100,7 +100,7 @@ contains
     allocate (prt_in (2), prt_out (2))
     prt_in = [var_str ("e+"), var_str ("e-")]
     prt_out = [var_str ("m+"), var_str ("m-")]
-    
+
     allocate (omega_omega_def_t :: def)
     select type (def)
     type is (omega_omega_def_t)
@@ -115,11 +115,11 @@ contains
          method  = var_str ("omega"), &
          variant = def)
     call lib%append (entry)
-    
+
     write (u, "(A)")  "* Configure library"
     write (u, "(A)")
     call lib%configure (os_data)
-    
+
     write (u, "(A)")  "* Write makefile"
     write (u, "(A)")
     call lib%write_makefile (os_data, force = .true.)
@@ -137,11 +137,11 @@ contains
     call lib%load (os_data)
 
     call lib%write (u, libpath = .false.)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Probe library API:"
     write (u, "(A)")
-       
+
     write (u, "(1x,A,L1)")  "is active                 = ", &
          lib%is_active ()
     write (u, "(1x,A,I0)")  "n_processes               = ", &
@@ -187,7 +187,7 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Set kinematics:"
     write (u, "(A)")
-    
+
     p = reshape ([ &
          1.0_cdf, 0.0_cdf, 0.0_cdf, 1.0_cdf, &
          1.0_cdf, 0.0_cdf, 0.0_cdf,-1.0_cdf, &
@@ -210,18 +210,18 @@ contains
 
        call driver%is_allowed (1_ci, 6_ci, 1_ci, flag)
        write (u, "(1x,A,L1)") "is_allowed (1, 6, 1) = ", flag
-       
+
        call driver%get_amplitude (1_ci, 6_ci, 1_ci, amp)
        write (u, "(1x,A,1x,E11.4)") "|amp (1, 6, 1)| =", abs (amp)
     end select
 
     call lib%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: prc_omega_1"
-    
+
   end subroutine prc_omega_1
-  
+
   subroutine prc_omega_2 (u)
     integer, intent(in) :: u
     type(process_library_t), target :: lib
@@ -242,7 +242,7 @@ contains
     complex(c_default_complex) :: amp
     integer :: i
     logical :: exist
-    
+
     write (u, "(A)")  "* Test output: prc_omega_2"
     write (u, "(A)")  "*   Purpose: create simple processes with OMega"
     write (u, "(A)")  "*            use the prc_omega wrapper for this"
@@ -280,7 +280,7 @@ contains
          extra_options=var_str ("-fusion:progress_file omega2.log"))
 
     call lib%append (entry)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Remove left-over file"
     write (u, "(A)")
@@ -297,7 +297,7 @@ contains
     call lib%clean (os_data, distclean = .false.)
     call lib%write_driver (force = .true.)
     call lib%load (os_data)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Check extra output of OMega"
     write (u, "(A)")
@@ -308,7 +308,7 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Probe library API:"
     write (u, "(A)")
-       
+
     write (u, "(1x,A,L1)")  "is active                 = ", &
          lib%is_active ()
     write (u, "(1x,A,I0)")  "n_processes               = ", &
@@ -368,7 +368,7 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Set kinematics:"
     write (u, "(A)")
-    
+
     p = reshape ([ &
          1.0_cdf, 0.0_cdf, 0.0_cdf, 1.0_cdf, &
          1.0_cdf, 0.0_cdf, 0.0_cdf,-1.0_cdf, &
@@ -400,7 +400,7 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Set kinematics:"
     write (u, "(A)")
-    
+
     p = reshape ([ &
          1.0_cdf, 0.0_cdf, 0.0_cdf, 1.0_cdf, &
          1.0_cdf, 0.0_cdf, 0.0_cdf,-1.0_cdf, &
@@ -434,9 +434,9 @@ contains
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: prc_omega_2"
-    
+
   end subroutine prc_omega_2
-  
+
   subroutine prc_omega_3 (u)
     integer, intent(in) :: u
     type(process_library_t), target :: lib
@@ -454,7 +454,7 @@ contains
     real(cdf), dimension(0:3,4) :: p
     type(helicity_selection_t) :: helicity_selection
     integer :: i, h
-    
+
     write (u, "(A)")  "* Test output: prc_omega_3"
     write (u, "(A)")  "*   Purpose: create simple process with OMega"
     write (u, "(A)")  "*            and check helicity selection"
@@ -480,7 +480,7 @@ contains
     call omega_make_process_component (entry, 1, &
          model_name, prt_in, prt_out)
     call lib%append (entry)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Build and load library"
 
@@ -489,11 +489,11 @@ contains
     call lib%clean (os_data, distclean = .false.)
     call lib%write_driver (force = .true.)
     call lib%load (os_data)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Probe library API:"
     write (u, "(A)")
-       
+
     write (u, "(1x,A,L1)")  "is active                 = ", &
          lib%is_active ()
     write (u, "(1x,A,I0)")  "n_processes               = ", &
@@ -533,14 +533,14 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Initially allowed helicities:"
     write (u, "(A)")
-    
+
     write (u, "(4x,16(1x,I2))")  [(h, h = 1, data%n_hel)]
     write (u, "(4x)", advance = "no")
     do h = 1, data%n_hel
        write (u, "(2x,L1)", advance = "no")  prc1%is_allowed (1, 1, h, 1)
     end do
     write (u, "(A)")
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Reset helicity selection (cutoff = 4)"
     write (u, "(A)")
@@ -549,25 +549,25 @@ contains
     helicity_selection%threshold = 1e10_default
     helicity_selection%cutoff = 4
     call helicity_selection%write (u)
-    
+
     call prc1%set_parameters (model, helicity_selection=helicity_selection)
     call prc1%reset_helicity_selection ()
 
     write (u, "(A)")
     write (u, "(A)")  "* Allowed helicities:"
     write (u, "(A)")
-    
+
     write (u, "(4x,16(1x,I2))")  [(h, h = 1, data%n_hel)]
     write (u, "(4x)", advance = "no")
     do h = 1, data%n_hel
        write (u, "(2x,L1)", advance = "no")  prc1%is_allowed (1, 1, h, 1)
     end do
     write (u, "(A)")
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Set kinematics:"
     write (u, "(A)")
-    
+
     p = reshape ([ &
          1.0_cdf, 0.0_cdf, 0.0_cdf, 1.0_cdf, &
          1.0_cdf, 0.0_cdf, 0.0_cdf,-1.0_cdf, &
@@ -604,22 +604,22 @@ contains
 
     write (u, "(A)")  "* Allowed helicities:"
     write (u, "(A)")
-    
+
     write (u, "(4x,16(1x,I2))")  [(h, h = 1, data%n_hel)]
     write (u, "(4x)", advance = "no")
     do h = 1, data%n_hel
        write (u, "(2x,L1)", advance = "no")  prc1%is_allowed (1, 1, h, 1)
     end do
     write (u, "(A)")
-    
+
     call lib%final ()
     call cleanup_model (model)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: prc_omega_3"
-    
+
   end subroutine prc_omega_3
-  
+
   subroutine prc_omega_4 (u)
     integer, intent(in) :: u
     type(process_library_t) :: lib
@@ -638,7 +638,7 @@ contains
     complex(c_default_complex) :: amp
     integer :: i
     real(cdf) :: alpha_s
-    
+
     write (u, "(A)")  "* Test output: prc_omega_4"
     write (u, "(A)")  "*   Purpose: create a QCD process with OMega"
     write (u, "(A)")  "*            and check alpha_s dependence"
@@ -653,7 +653,7 @@ contains
     allocate (prt_in (2), prt_out (2))
     prt_in = [var_str ("u"), var_str ("ubar")]
     prt_out = [var_str ("d"), var_str ("dbar")]
-    
+
     allocate (omega_omega_def_t :: def)
     select type (def)
     type is (omega_omega_def_t)
@@ -668,7 +668,7 @@ contains
          method  = var_str ("omega"), &
          variant = def)
     call lib%append (entry)
-    
+
     write (u, "(A)")  "* Configure and compile process"
     write (u, "(A)")
     call lib%configure (os_data)
@@ -676,10 +676,10 @@ contains
     call lib%clean (os_data, distclean = .false.)
     call lib%write_driver (force = .true.)
     call lib%load (os_data)
-    
+
     write (u, "(A)")  "* Probe library API:"
     write (u, "(A)")
-       
+
     write (u, "(1x,A,L1)")  "is active = ", lib%is_active ()
 
     write (u, "(A)")
@@ -687,7 +687,7 @@ contains
     write (u, "(A)")
 
     alpha_s = 0.1178_cdf
-    
+
     par = [alpha_s, &
          0._cdf, 0._cdf, 0._cdf, 0._cdf, 0._cdf, 173.1_cdf, 1.523_cdf]
     write (u, "(2x,A,F8.4)")  "alpha_s = ", par(1)
@@ -702,7 +702,7 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Set kinematics:"
     write (u, "(A)")
-    
+
     p = reshape ([ &
          100.0_cdf, 0.0_cdf, 0.0_cdf, 100.0_cdf, &
          100.0_cdf, 0.0_cdf, 0.0_cdf,-100.0_cdf, &
@@ -727,7 +727,7 @@ contains
 
        call driver%is_allowed (1_ci, 6_ci, 1_ci, flag)
        write (u, "(1x,A,L1)") "is_allowed (1, 6, 1) = ", flag
-       
+
        call driver%get_amplitude (1_ci, 6_ci, 1_ci, amp)
        write (u, "(1x,A,1x,E11.4)") "|amp (1, 6, 1)| =", abs (amp)
 
@@ -740,18 +740,18 @@ contains
 
        call driver%is_allowed (1_ci, 6_ci, 1_ci, flag)
        write (u, "(1x,A,L1)") "is_allowed (1, 6, 1) = ", flag
-       
+
        call driver%get_amplitude (1_ci, 6_ci, 1_ci, amp)
        write (u, "(1x,A,1x,E11.4)") "|amp (1, 6, 1)| =", abs (amp)
     end select
 
     call lib%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: prc_omega_4"
-    
+
   end subroutine prc_omega_4
-  
+
   subroutine prc_omega_5 (u)
     integer, intent(in) :: u
     type(process_library_t) :: lib
@@ -771,7 +771,7 @@ contains
     real(default) :: fac_scale
     real(default), allocatable :: alpha_qcd_forced
     integer :: i
-    
+
     write (u, "(A)")  "* Test output: prc_omega_5"
     write (u, "(A)")  "*   Purpose: create a QCD process with OMega"
     write (u, "(A)")  "*            and check alpha_s dependence"
@@ -788,7 +788,7 @@ contains
     allocate (prt_in (2), prt_out (2))
     prt_in = [var_str ("u"), var_str ("ubar")]
     prt_out = [var_str ("d"), var_str ("dbar")]
-    
+
     allocate (omega_omega_def_t :: def)
     select type (def)
     type is (omega_omega_def_t)
@@ -803,7 +803,7 @@ contains
          method  = var_str ("omega"), &
          variant = def)
     call lib%append (entry)
-    
+
     write (u, "(A)")  "* Configure and compile process"
     write (u, "(A)")
     call lib%configure (os_data)
@@ -811,16 +811,16 @@ contains
     call lib%clean (os_data, distclean = .false.)
     call lib%write_driver (force = .true.)
     call lib%load (os_data)
-    
+
     write (u, "(A)")  "* Probe library API"
     write (u, "(A)")
-       
+
     write (u, "(1x,A,L1)")  "is active = ", lib%is_active ()
 
     write (u, "(A)")
     write (u, "(A)")  "* Set kinematics"
     write (u, "(A)")
-    
+
     p(1) = vector4_moving (100._default, 100._default, 3)
     p(2) = vector4_moving (100._default,-100._default, 3)
     p(3) = vector4_moving (100._default, 100._default, 1)
@@ -832,12 +832,12 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Setup QCD data"
     write (u, "(A)")
-    
+
     allocate (alpha_qcd_from_scale_t :: qcd%alpha)
-    
+
     write (u, "(A)")  "* Setup process core"
     write (u, "(A)")
-    
+
     allocate (prc_omega_t :: core)
     cdef_ptr => lib%get_component_def_ptr (var_str ("prc_omega_5_p"), 1)
     def_ptr => cdef_ptr%get_core_def_ptr ()
@@ -891,12 +891,12 @@ contains
 
     call lib%final ()
     call cleanup_model (model)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: prc_omega_5"
-    
+
   end subroutine prc_omega_5
-  
+
   subroutine prc_omega_diags_1 (u)
     integer, intent(in) :: u
     type(process_library_t) :: lib
@@ -908,8 +908,8 @@ contains
     type(string_t) :: diags_file, pdf_file, ps_file
     logical :: exist, exist_pdf, exist_ps
     integer :: iostat, u_diags
-    character(128) :: buffer    
-    
+    character(128) :: buffer
+
     write (u, "(A)")  "* Test output: prc_omega_diags_1"
     write (u, "(A)")  "*   Purpose: generate Feynman diagrams"
     write (u, "(A)")
@@ -924,7 +924,7 @@ contains
     allocate (prt_in (2), prt_out (2))
     prt_in = [var_str ("u"), var_str ("ubar")]
     prt_out = [var_str ("d"), var_str ("dbar")]
-    
+
     allocate (omega_omega_def_t :: def)
     select type (def)
     type is (omega_omega_def_t)
@@ -940,7 +940,7 @@ contains
          method  = var_str ("omega"), &
          variant = def)
     call lib%append (entry)
-    
+
     write (u, "(A)")  "* Configure and compile process"
     write (u, "(A)")  "    and generate diagrams"
     write (u, "(A)")
@@ -949,18 +949,18 @@ contains
     call lib%clean (os_data, distclean = .false.)
     call lib%write_driver (force = .true.)
     call lib%load (os_data)
-    
+
     write (u, "(A)")  "* Probe library API"
     write (u, "(A)")
-       
+
     write (u, "(1x,A,L1)")  "is active = ", lib%is_active ()
 
     write (u, "(A)")  "* Check produced diagram files"
-    write (u, "(A)")        
+    write (u, "(A)")
 
     diags_file = "prc_omega_diags_1_p_i1_diags.tex"
     ps_file  = "prc_omega_diags_1_p_i1_diags.ps"
-    pdf_file = "prc_omega_diags_1_p_i1_diags.pdf"    
+    pdf_file = "prc_omega_diags_1_p_i1_diags.pdf"
     inquire (file = char (diags_file), exist = exist)
     if (exist) then
        u_diags = free_unit ()
@@ -985,18 +985,18 @@ contains
        write (u, "(A)")  "[Feynman diagrams PDF file exists and is nonempty]"
     else
        write (u, "(A)")  "[Feynman diagrams PDF file is missing/non-regular]"
-    end if               
-    
+    end if
+
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
-    write (u, "(A)")    
-    
+    write (u, "(A)")
+
     call lib%final ()
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: prc_omega_diags_1"
-    
+
   end subroutine prc_omega_diags_1
-  
+
 
 end module prc_omega_uti

@@ -21,8 +21,8 @@ fi
 
 ########################################################################
 
-src_builddir=@top_builddir@/src
-test_srcdir=@top_srcdir@/share/tests
+src_builddir=@top_builddir@/circe2/src
+test_srcdir=@top_srcdir@/circe2/share/tests
 grep=@GREP@
 circe2_moments=$src_builddir/circe2_moments
 circe2_tool=$src_builddir/circe2_tool.opt

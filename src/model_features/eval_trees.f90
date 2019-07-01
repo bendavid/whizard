@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -201,7 +201,7 @@ module eval_trees
     procedure :: init => eval_tree_factory_init
     procedure :: build => eval_tree_factory_build
   end type eval_tree_factory_t
-  
+
 
   abstract interface
      logical function unary_log (arg)
@@ -449,7 +449,7 @@ contains
     node%rval = rval
     node%value_is_known = .true.
   end subroutine eval_node_init_real
-    
+
   subroutine eval_node_init_cmplx (node, cval)
     type(eval_node_t), intent(out) :: node
     complex(default), intent(in) :: cval
@@ -525,7 +525,7 @@ contains
     node%rval => rval
     node%value_is_known => is_known
   end subroutine eval_node_init_real_ptr
-  
+
   subroutine eval_node_init_cmplx_ptr (node, name, cval, is_known)
     type(eval_node_t), intent(out) :: node
     type(string_t), intent(in) :: name
@@ -815,7 +815,7 @@ contains
        end if
     end if
   end subroutine eval_node_init_record_cmd
-    
+
   subroutine eval_node_init_prt_fun_unary (node, arg1, name, proc)
     type(eval_node_t), intent(out) :: node
     type(eval_node_t), intent(in), target :: arg1
@@ -1154,7 +1154,7 @@ contains
     procedure(unary_log) :: op
     en%op1_log => op
     end subroutine eval_node_set_op1_log
-  
+
   subroutine eval_node_set_op1_int (en, op)
     type(eval_node_t), intent(inout) :: en
     procedure(unary_int) :: op
@@ -1166,7 +1166,7 @@ contains
     procedure(unary_real) :: op
     en%op1_real => op
   end subroutine eval_node_set_op1_real
-  
+
   subroutine eval_node_set_op1_cmplx (en, op)
     type(eval_node_t), intent(inout) :: en
     procedure(unary_cmplx) :: op
@@ -1208,7 +1208,7 @@ contains
     procedure(binary_real) :: op
     en%op2_real => op
   end subroutine eval_node_set_op2_real
-  
+
   subroutine eval_node_set_op2_cmplx (en, op)
     type(eval_node_t), intent(inout) :: en
     procedure(binary_cmplx) :: op
@@ -1281,7 +1281,7 @@ contains
   real(default) function sub_ri (en1, en2) result (y)
     type(eval_node_t), intent(in) :: en1, en2
     y = en1%rval - en2%ival
-  end function sub_ri  
+  end function sub_ri
   complex(default) function sub_ic (en1, en2) result (y)
     type(eval_node_t), intent(in) :: en1, en2
     y = en1%ival - en2%cval
@@ -1289,7 +1289,7 @@ contains
   complex(default) function sub_ci (en1, en2) result (y)
     type(eval_node_t), intent(in) :: en1, en2
     y = en1%cval - en2%ival
-  end function sub_ci  
+  end function sub_ci
   complex(default) function sub_cr (en1, en2) result (y)
     type(eval_node_t), intent(in) :: en1, en2
     y = en1%cval - en2%rval
@@ -1538,11 +1538,11 @@ contains
   integer function int_c (en) result (y)
     type(eval_node_t), intent(in) :: en
     y = en%cval
-  end function int_c 
+  end function int_c
   complex(default) function cmplx_r (en) result (y)
     type(eval_node_t), intent(in) :: en
     y = en%rval
-  end function cmplx_r  
+  end function cmplx_r
   integer function nint_r (en) result (y)
     type(eval_node_t), intent(in) :: en
     y = nint (en%rval)
@@ -1605,7 +1605,7 @@ contains
     type(eval_node_t), intent(in) :: en
     y = log10 (en%rval)
   end function log10_r
-  
+
   complex(default) function sqrt_c (en) result (y)
     type(eval_node_t), intent(in) :: en
     y = sqrt (en%cval)
@@ -1643,7 +1643,7 @@ contains
     type(eval_node_t), intent(in) :: en
     y = atan (en%rval)
   end function atan_r
-  
+
   complex(default) function sin_c (en) result (y)
     type(eval_node_t), intent(in) :: en
     y = sin (en%cval)
@@ -1652,7 +1652,7 @@ contains
     type(eval_node_t), intent(in) :: en
     y = cos (en%cval)
   end function cos_c
-  
+
   real(default) function sinh_r (en) result (y)
     type(eval_node_t), intent(in) :: en
     y = sinh (en%rval)
@@ -1679,7 +1679,7 @@ contains
 !     type(eval_node_t), intent(in) :: en
 !     y = atanh (en%rval)
 !   end function atanh_r
-  
+
   logical function ignore_first_ll (en1, en2) result (y)
     type(eval_node_t), intent(in) :: en1, en2
     y = en2%lval
@@ -1709,7 +1709,7 @@ contains
     type(eval_node_t), intent(in) :: en1, en2
     y = en1%rval < en2%rval
   end function comp_lt_rr
-  
+
   logical function comp_gt_ii (en1, en2) result (y)
     type(eval_node_t), intent(in) :: en1, en2
     y = en1%ival > en2%ival
@@ -1726,7 +1726,7 @@ contains
     type(eval_node_t), intent(in) :: en1, en2
     y = en1%rval > en2%rval
   end function comp_gt_rr
-  
+
   logical function comp_le_ii (en1, en2) result (y)
     type(eval_node_t), intent(in) :: en1, en2
     y = en1%ival <= en2%ival
@@ -1743,7 +1743,7 @@ contains
     type(eval_node_t), intent(in) :: en1, en2
     y = en1%rval <= en2%rval
   end function comp_le_rr
-  
+
   logical function comp_ge_ii (en1, en2) result (y)
     type(eval_node_t), intent(in) :: en1, en2
     y = en1%ival >= en2%ival
@@ -1760,7 +1760,7 @@ contains
     type(eval_node_t), intent(in) :: en1, en2
     y = en1%rval >= en2%rval
   end function comp_ge_rr
-  
+
   logical function comp_eq_ii (en1, en2) result (y)
     type(eval_node_t), intent(in) :: en1, en2
     y = en1%ival == en2%ival
@@ -1781,7 +1781,7 @@ contains
     type(eval_node_t), intent(in) :: en1, en2
     y = en1%sval == en2%sval
   end function comp_eq_ss
-  
+
   logical function comp_ne_ii (en1, en2) result (y)
     type(eval_node_t), intent(in) :: en1, en2
     y = en1%ival /= en2%ival
@@ -1802,7 +1802,7 @@ contains
     type(eval_node_t), intent(in) :: en1, en2
     y = en1%sval /= en2%sval
   end function comp_ne_ss
-  
+
   logical function comp_se_ii (en1, en2) result (y)
     type(eval_node_t), intent(in) :: en1, en2
     if (associated (en1%tolerance)) then
@@ -1867,7 +1867,7 @@ contains
        y = en1%rval /= en2%rval
     end if
   end function comp_ns_rr
-  
+
   logical function comp_ls_ii (en1, en2) result (y)
     type(eval_node_t), intent(in) :: en1, en2
     if (associated (en1%tolerance)) then
@@ -2047,7 +2047,6 @@ contains
     !!! Should not be initialized for every event
     type(jet_definition_t) :: jet_def
     logical :: keep_jets
-    integer :: pdg
     call jet_def%init (en1%jet_algorithm, en1%jet_r, en1%jet_p, en1%jet_ycut)
     n = subevt_get_length (en1%pval)
     allocate (mask1 (n))
@@ -2156,7 +2155,7 @@ contains
        if (.not. lval)  exit
     end do
   end function all_p
-       
+
   function any_p (en1, en0) result (lval)
     logical :: lval
     type(eval_node_t), intent(in) :: en1
@@ -2172,7 +2171,7 @@ contains
        if (lval)  exit
     end do
   end function any_p
-       
+
   function no_p (en1, en0) result (lval)
     logical :: lval
     type(eval_node_t), intent(in) :: en1
@@ -2188,7 +2187,7 @@ contains
        if (lval)  exit
     end do
   end function no_p
-       
+
   function user_obs_int_p (en0, prt1) result (ival)
     integer :: ival
     type(eval_node_t), intent(inout) :: en0
@@ -2271,7 +2270,7 @@ contains
        ival = n
     end if
   end subroutine count_a
-       
+
   subroutine user_event_shape_a (rval, en1, en0)
     real(default), intent(out) :: rval
     type(eval_node_t), intent(in) :: en1
@@ -2291,7 +2290,7 @@ contains
     rval = user_event_shape (c_prt (en1%pval), &
                              int (subevt_get_length (en1%pval), kind=c_int))
   end subroutine user_event_shape_a
-       
+
   subroutine join_pp (subevt, en1, en2, en0)
     type(subevt_t), intent(inout) :: subevt
     type(eval_node_t), intent(in) :: en1, en2
@@ -2442,7 +2441,7 @@ contains
        end do
     end do LOOP1
   end function all_pp
-       
+
   function any_pp (en1, en2, en0) result (lval)
     logical :: lval
     type(eval_node_t), intent(in) :: en1, en2
@@ -2464,7 +2463,7 @@ contains
        end do
     end do LOOP1
   end function any_pp
-       
+
   function no_pp (en1, en2, en0) result (lval)
     logical :: lval
     type(eval_node_t), intent(in) :: en1, en2
@@ -2486,7 +2485,7 @@ contains
        end do
     end do LOOP1
   end function no_pp
-       
+
   subroutine eval_pp (en1, en2, en0, rval, is_known)
     type(eval_node_t), intent(in) :: en1, en2
     type(eval_node_t), intent(inout) :: en0
@@ -2589,7 +2588,7 @@ contains
     end if
     ival = count
   end subroutine count_pp
-       
+
   subroutine select_pdg_ca (subevt, en1, en2, en0)
     type(subevt_t), intent(inout) :: subevt
     type(eval_node_t), intent(in) :: en1, en2
@@ -2637,7 +2636,7 @@ contains
        print *, "done genexpr"
     end if
   end subroutine eval_node_compile_genexpr
-  
+
   recursive subroutine eval_node_compile_expr (en, pn, var_list)
     type(eval_node_t), pointer :: en
     type(parse_node_t), intent(in) :: pn
@@ -2710,26 +2709,26 @@ contains
                 select case (t2)
                 case (V_INT);  call eval_node_init_int  (en, sub_ii (en1, en2))
                 case (V_REAL); call eval_node_init_real (en, sub_ir (en1, en2))
-                case (V_CMPLX); call eval_node_init_cmplx (en, sub_ic (en1, en2))                
+                case (V_CMPLX); call eval_node_init_cmplx (en, sub_ic (en1, en2))
                 end select
              case (V_REAL)
                 select case (t2)
                 case (V_INT);  call eval_node_init_real (en, sub_ri (en1, en2))
                 case (V_REAL); call eval_node_init_real (en, sub_rr (en1, en2))
-                case (V_CMPLX); call eval_node_init_cmplx (en, sub_rc (en1, en2))                
+                case (V_CMPLX); call eval_node_init_cmplx (en, sub_rc (en1, en2))
                 end select
              case (V_CMPLX)
                 select case (t2)
                 case (V_INT);  call eval_node_init_cmplx (en, sub_ci (en1, en2))
                 case (V_REAL); call eval_node_init_cmplx (en, sub_cr (en1, en2))
-                case (V_CMPLX); call eval_node_init_cmplx (en, sub_cc (en1, en2))                
+                case (V_CMPLX); call eval_node_init_cmplx (en, sub_cc (en1, en2))
                 end select
              end select
           end select
           call eval_node_final_rec (en1)
           call eval_node_final_rec (en2)
           deallocate (en1, en2)
-       else   
+       else
           call eval_node_init_branch (en, key, t, en1, en2)
           select case (char (key))
           case ("+")
@@ -2872,13 +2871,13 @@ contains
                 select case (t2)
                 case (V_INT);   call eval_node_set_op2_real (en, mul_ri)
                 case (V_REAL);  call eval_node_set_op2_real (en, mul_rr)
-                case (V_CMPLX);  call eval_node_set_op2_cmplx (en, mul_rc)                
+                case (V_CMPLX);  call eval_node_set_op2_cmplx (en, mul_rc)
                 end select
              case (V_CMPLX)
                 select case (t2)
                 case (V_INT);   call eval_node_set_op2_cmplx (en, mul_ci)
                 case (V_REAL);  call eval_node_set_op2_cmplx (en, mul_cr)
-                case (V_CMPLX);  call eval_node_set_op2_cmplx (en, mul_cc)                
+                case (V_CMPLX);  call eval_node_set_op2_cmplx (en, mul_cc)
                 end select
              end select
           case ("/")
@@ -2887,19 +2886,19 @@ contains
                 select case (t2)
                 case (V_INT);   call eval_node_set_op2_int  (en, div_ii)
                 case (V_REAL);  call eval_node_set_op2_real (en, div_ir)
-                case (V_CMPLX);  call eval_node_set_op2_cmplx (en, div_ic)                
+                case (V_CMPLX);  call eval_node_set_op2_cmplx (en, div_ic)
                 end select
              case (V_REAL)
                 select case (t2)
                 case (V_INT);   call eval_node_set_op2_real (en, div_ri)
                 case (V_REAL);  call eval_node_set_op2_real (en, div_rr)
-                case (V_CMPLX);  call eval_node_set_op2_cmplx (en, div_rc)                
+                case (V_CMPLX);  call eval_node_set_op2_cmplx (en, div_rc)
                 end select
              case (V_CMPLX)
                 select case (t2)
                 case (V_INT);   call eval_node_set_op2_cmplx (en, div_ci)
                 case (V_REAL);  call eval_node_set_op2_cmplx (en, div_cr)
-                case (V_CMPLX);  call eval_node_set_op2_cmplx (en, div_cc)                
+                case (V_CMPLX);  call eval_node_set_op2_cmplx (en, div_cc)
                 end select
              end select
           end select
@@ -3010,7 +3009,7 @@ contains
           select case (t)
           case (V_INT);  call eval_node_init_int  (en, neg_i (en1))
           case (V_REAL); call eval_node_init_real (en, neg_r (en1))
-          case (V_CMPLX); call eval_node_init_cmplx (en, neg_c (en1))          
+          case (V_CMPLX); call eval_node_init_cmplx (en, neg_c (en1))
           end select
           call eval_node_final_rec (en1)
           deallocate (en1)
@@ -3019,7 +3018,7 @@ contains
           select case (t)
           case (V_INT);  call eval_node_set_op1_int  (en, neg_i)
           case (V_REAL); call eval_node_set_op1_real (en, neg_r)
-          case (V_CMPLX); call eval_node_set_op1_cmplx (en, neg_c)          
+          case (V_CMPLX); call eval_node_set_op1_cmplx (en, neg_c)
           end select
        end if
     case default
@@ -3044,7 +3043,7 @@ contains
     case ("pi")
        call eval_node_compile_constant (en, pn)
     case ("I")
-       call eval_node_compile_constant (en, pn)       
+       call eval_node_compile_constant (en, pn)
     case ("variable")
        call eval_node_compile_variable (en, pn, var_list)
     case ("result")
@@ -3129,12 +3128,12 @@ contains
        ("integer_value|real_value|complex_value|neg_real_value|pos_real_value", pn)
     end select
   end subroutine eval_node_compile_numeric_value
-    
+
   function parse_node_get_unit (pn) result (factor)
     real(default) :: factor
     real(default) :: unit
     type(parse_node_t), intent(in) :: pn
-    type(parse_node_t), pointer :: pn_unit, pn_unit_power 
+    type(parse_node_t), pointer :: pn_unit, pn_unit_power
     type(parse_node_t), pointer :: pn_frac, pn_num, pn_int, pn_div, pn_den
     integer :: num, den
     pn_unit => parse_node_get_sub_ptr (pn)
@@ -3196,7 +3195,7 @@ contains
     allocate (en)
     select case (char (parse_node_get_key (pn)))
     case ("pi");     call eval_node_init_real (en, pi)
-    case ("I");      call eval_node_init_cmplx (en, imago)    
+    case ("I");      call eval_node_init_cmplx (en, imago)
     case default
        call parse_node_mismatch ("pi or I", pn)
     end select
@@ -3514,14 +3513,14 @@ contains
           case (V_INT);  call eval_node_init_cmplx (en, cmplx_i (en1))
           case (V_REAL); call eval_node_init_cmplx (en, cmplx_r (en1))
           case (V_CMPLX); deallocate (en);  en => en1;  en1 => null ()
-          case default;  call eval_type_error (pn, char (key), t)          
+          case default;  call eval_type_error (pn, char (key), t)
           end select
        case ("real")
           select case (t)
           case (V_INT);  call eval_node_init_real (en, real_i (en1))
           case (V_REAL); deallocate (en);  en => en1;  en1 => null ()
           case (V_CMPLX); call eval_node_init_real (en, real_c (en1))
-          case default;  call eval_type_error (pn, char (key), t)          
+          case default;  call eval_type_error (pn, char (key), t)
           end select
        case ("int")
           select case (t)
@@ -3532,14 +3531,14 @@ contains
        case ("nint")
           select case (t)
           case (V_INT);  deallocate (en);  en => en1;  en1 => null ()
-          case (V_REAL); call eval_node_init_int  (en, nint_r (en1))          
+          case (V_REAL); call eval_node_init_int  (en, nint_r (en1))
           case default;  call eval_type_error (pn, char (key), t)
           end select
        case ("floor")
           select case (t)
           case (V_INT);  deallocate (en);  en => en1;  en1 => null ()
           case (V_REAL); call eval_node_init_int  (en, floor_r (en1))
-          case default;  call eval_type_error (pn, char (key), t)          
+          case default;  call eval_type_error (pn, char (key), t)
           end select
        case ("ceiling")
           select case (t)
@@ -3551,7 +3550,7 @@ contains
           select case (t)
           case (V_INT);  call eval_node_init_int  (en, abs_i (en1))
           case (V_REAL); call eval_node_init_real (en, abs_r (en1))
-          case (V_CMPLX); call eval_node_init_real (en, abs_c (en1))          
+          case (V_CMPLX); call eval_node_init_real (en, abs_c (en1))
           end select
        case ("sgn")
           select case (t)
@@ -3562,7 +3561,7 @@ contains
        case ("sqrt")
           select case (t)
           case (V_REAL); call eval_node_init_real (en, sqrt_r (en1))
-          case (V_CMPLX); call eval_node_init_cmplx (en, sqrt_c (en1))          
+          case (V_CMPLX); call eval_node_init_cmplx (en, sqrt_c (en1))
           case default;  call eval_type_error (pn, char (key), t)
           end select
        case ("exp")
@@ -3574,7 +3573,7 @@ contains
        case ("log")
           select case (t)
           case (V_REAL); call eval_node_init_real (en, log_r (en1))
-          case (V_CMPLX); call eval_node_init_cmplx (en, log_c (en1))          
+          case (V_CMPLX); call eval_node_init_cmplx (en, log_c (en1))
           case default;  call eval_type_error (pn, char (key), t)
           end select
        case ("log10")
@@ -3585,13 +3584,13 @@ contains
        case ("sin")
           select case (t)
           case (V_REAL); call eval_node_init_real (en, sin_r (en1))
-          case (V_CMPLX); call eval_node_init_cmplx (en, sin_c (en1))          
+          case (V_CMPLX); call eval_node_init_cmplx (en, sin_c (en1))
           case default;  call eval_type_error (pn, char (key), t)
           end select
        case ("cos")
           select case (t)
           case (V_REAL); call eval_node_init_real (en, cos_r (en1))
-          case (V_CMPLX); call eval_node_init_cmplx (en, cos_c (en1))          
+          case (V_CMPLX); call eval_node_init_cmplx (en, cos_c (en1))
           case default;  call eval_type_error (pn, char (key), t)
           end select
        case ("tan")
@@ -3666,7 +3665,7 @@ contains
           select case (t)
           case (V_INT);  deallocate (en);  en => en1
           case (V_REAL); call eval_node_set_op1_int (en, int_r)
-          case (V_CMPLX); call eval_node_set_op1_int (en, int_c)          
+          case (V_CMPLX); call eval_node_set_op1_int (en, int_c)
           end select
        case ("nint")
           select case (t)
@@ -3690,7 +3689,7 @@ contains
           select case (t)
           case (V_INT);  call eval_node_set_op1_int  (en, abs_i)
           case (V_REAL); call eval_node_set_op1_real (en, abs_r)
-          case (V_CMPLX); 
+          case (V_CMPLX);
              call eval_node_init_branch (en, key, V_REAL, en1)
              call eval_node_set_op1_real (en, abs_c)
           end select
@@ -3703,19 +3702,19 @@ contains
        case ("sqrt")
           select case (t)
           case (V_REAL); call eval_node_set_op1_real (en, sqrt_r)
-          case (V_CMPLX); call eval_node_set_op1_cmplx (en, sqrt_c)          
+          case (V_CMPLX); call eval_node_set_op1_cmplx (en, sqrt_c)
           case default;  call eval_type_error (pn, char (key), t)
           end select
        case ("exp")
           select case (t)
           case (V_REAL); call eval_node_set_op1_real (en, exp_r)
-          case (V_CMPLX); call eval_node_set_op1_cmplx (en, exp_c)          
+          case (V_CMPLX); call eval_node_set_op1_cmplx (en, exp_c)
           case default;  call eval_type_error (pn, char (key), t)
           end select
        case ("log")
           select case (t)
           case (V_REAL); call eval_node_set_op1_real (en, log_r)
-          case (V_CMPLX); call eval_node_set_op1_cmplx (en, log_c)          
+          case (V_CMPLX); call eval_node_set_op1_cmplx (en, log_c)
           case default;  call eval_type_error (pn, char (key), t)
           end select
        case ("log10")
@@ -3726,13 +3725,13 @@ contains
        case ("sin")
           select case (t)
           case (V_REAL); call eval_node_set_op1_real (en, sin_r)
-          case (V_CMPLX); call eval_node_set_op1_cmplx (en, sin_c)          
+          case (V_CMPLX); call eval_node_set_op1_cmplx (en, sin_c)
           case default;  call eval_type_error (pn, char (key), t)
           end select
        case ("cos")
           select case (t)
           case (V_REAL); call eval_node_set_op1_real (en, cos_r)
-          case (V_CMPLX); call eval_node_set_op1_cmplx (en, cos_c)          
+          case (V_CMPLX); call eval_node_set_op1_cmplx (en, cos_c)
           case default;  call eval_type_error (pn, char (key), t)
           end select
        case ("tan")
@@ -3809,15 +3808,15 @@ contains
              select case (t2)
              case (V_INT);  call eval_node_init_int  (en, max_ii (en1, en2))
              case (V_REAL); call eval_node_init_real (en, max_ir (en1, en2))
-             case default;  call eval_type_error (pn, char (key), t2)      
+             case default;  call eval_type_error (pn, char (key), t2)
              end select
           case (V_REAL)
              select case (t2)
              case (V_INT);  call eval_node_init_real (en, max_ri (en1, en2))
              case (V_REAL); call eval_node_init_real (en, max_rr (en1, en2))
-             case default;  call eval_type_error (pn, char (key), t2) 
+             case default;  call eval_type_error (pn, char (key), t2)
              end select
-           case default;  call eval_type_error (pn, char (key), t1)             
+           case default;  call eval_type_error (pn, char (key), t1)
          end select
        case ("min")
           select case (t1)
@@ -3825,15 +3824,15 @@ contains
              select case (t2)
              case (V_INT);  call eval_node_init_int  (en, min_ii (en1, en2))
              case (V_REAL); call eval_node_init_real (en, min_ir (en1, en2))
-             case default;  call eval_type_error (pn, char (key), t2)             
+             case default;  call eval_type_error (pn, char (key), t2)
              end select
           case (V_REAL)
              select case (t2)
              case (V_INT);  call eval_node_init_real (en, min_ri (en1, en2))
              case (V_REAL); call eval_node_init_real (en, min_rr (en1, en2))
-             case default;  call eval_type_error (pn, char (key), t2)                          
+             case default;  call eval_type_error (pn, char (key), t2)
              end select
-           case default;  call eval_type_error (pn, char (key), t1)             
+           case default;  call eval_type_error (pn, char (key), t1)
          end select
        case ("mod")
           select case (t1)
@@ -3841,15 +3840,15 @@ contains
              select case (t2)
              case (V_INT);  call eval_node_init_int  (en, mod_ii (en1, en2))
              case (V_REAL); call eval_node_init_real (en, mod_ir (en1, en2))
-             case default;  call eval_type_error (pn, char (key), t2)             
+             case default;  call eval_type_error (pn, char (key), t2)
              end select
           case (V_REAL)
              select case (t2)
              case (V_INT);  call eval_node_init_real (en, mod_ri (en1, en2))
              case (V_REAL); call eval_node_init_real (en, mod_rr (en1, en2))
-             case default;  call eval_type_error (pn, char (key), t2)                          
+             case default;  call eval_type_error (pn, char (key), t2)
              end select
-           case default;  call eval_type_error (pn, char (key), t1)             
+           case default;  call eval_type_error (pn, char (key), t1)
           end select
        case ("modulo")
           select case (t1)
@@ -3857,15 +3856,15 @@ contains
              select case (t2)
              case (V_INT);  call eval_node_init_int  (en, modulo_ii (en1, en2))
              case (V_REAL); call eval_node_init_real (en, modulo_ir (en1, en2))
-             case default;  call eval_type_error (pn, char (key), t2)             
+             case default;  call eval_type_error (pn, char (key), t2)
              end select
           case (V_REAL)
              select case (t2)
              case (V_INT);  call eval_node_init_real (en, modulo_ri (en1, en2))
              case (V_REAL); call eval_node_init_real (en, modulo_rr (en1, en2))
-             case default;  call eval_type_error (pn, char (key), t2)                          
+             case default;  call eval_type_error (pn, char (key), t2)
              end select
-           case default;  call eval_type_error (pn, char (key), t2)             
+           case default;  call eval_type_error (pn, char (key), t2)
          end select
        case default
           call parse_node_mismatch ("function name", pn_fname)
@@ -3881,15 +3880,15 @@ contains
              select case (t2)
              case (V_INT);  call eval_node_set_op2_int  (en, max_ii)
              case (V_REAL); call eval_node_set_op2_real (en, max_ir)
-             case default;  call eval_type_error (pn, char (key), t2)             
+             case default;  call eval_type_error (pn, char (key), t2)
              end select
           case (V_REAL)
              select case (t2)
              case (V_INT);  call eval_node_set_op2_real (en, max_ri)
              case (V_REAL); call eval_node_set_op2_real (en, max_rr)
-             case default;  call eval_type_error (pn, char (key), t2)                          
+             case default;  call eval_type_error (pn, char (key), t2)
              end select
-           case default;  call eval_type_error (pn, char (key), t2)               
+           case default;  call eval_type_error (pn, char (key), t2)
          end select
        case ("min")
           select case (t1)
@@ -3897,15 +3896,15 @@ contains
              select case (t2)
              case (V_INT);  call eval_node_set_op2_int  (en, min_ii)
              case (V_REAL); call eval_node_set_op2_real (en, min_ir)
-             case default;  call eval_type_error (pn, char (key), t2)             
+             case default;  call eval_type_error (pn, char (key), t2)
              end select
           case (V_REAL)
              select case (t2)
              case (V_INT);  call eval_node_set_op2_real (en, min_ri)
              case (V_REAL); call eval_node_set_op2_real (en, min_rr)
-             case default;  call eval_type_error (pn, char (key), t2)                          
+             case default;  call eval_type_error (pn, char (key), t2)
              end select
-           case default;  call eval_type_error (pn, char (key), t2)            
+           case default;  call eval_type_error (pn, char (key), t2)
          end select
        case ("mod")
           select case (t1)
@@ -3913,15 +3912,15 @@ contains
              select case (t2)
              case (V_INT);  call eval_node_set_op2_int  (en, mod_ii)
              case (V_REAL); call eval_node_set_op2_real (en, mod_ir)
-             case default;  call eval_type_error (pn, char (key), t2)                          
+             case default;  call eval_type_error (pn, char (key), t2)
              end select
           case (V_REAL)
              select case (t2)
              case (V_INT);  call eval_node_set_op2_real (en, mod_ri)
              case (V_REAL); call eval_node_set_op2_real (en, mod_rr)
-             case default;  call eval_type_error (pn, char (key), t2)                          
+             case default;  call eval_type_error (pn, char (key), t2)
              end select
-           case default;  call eval_type_error (pn, char (key), t2)                          
+           case default;  call eval_type_error (pn, char (key), t2)
         end select
        case ("modulo")
           select case (t1)
@@ -3929,15 +3928,15 @@ contains
              select case (t2)
              case (V_INT);  call eval_node_set_op2_int  (en, modulo_ii)
              case (V_REAL); call eval_node_set_op2_real (en, modulo_ir)
-             case default;  call eval_type_error (pn, char (key), t2)                          
+             case default;  call eval_type_error (pn, char (key), t2)
              end select
           case (V_REAL)
              select case (t2)
              case (V_INT);  call eval_node_set_op2_real (en, modulo_ri)
              case (V_REAL); call eval_node_set_op2_real (en, modulo_rr)
-             case default;  call eval_type_error (pn, char (key), t2)                          
+             case default;  call eval_type_error (pn, char (key), t2)
              end select
-           case default;  call eval_type_error (pn, char (key), t2)                          
+           case default;  call eval_type_error (pn, char (key), t2)
          end select
        case default
           call parse_node_mismatch ("function name", pn_fname)
@@ -4025,7 +4024,7 @@ contains
        print *, "done block expr"
     end if
   end subroutine eval_node_compile_block_expr
-    
+
   subroutine insert_conversion_node (en, result_type)
     type(eval_node_t), pointer :: en
     integer, intent(in) :: result_type
@@ -4042,7 +4041,7 @@ contains
           allocate (en_conv)
           call eval_node_init_branch (en_conv, var_str ("complex"), V_CMPLX, en)
           call eval_node_set_op1_cmplx (en_conv, cmplx_i)
-          en => en_conv          
+          en => en_conv
        end select
     case (V_REAL)
        select case (result_type)
@@ -4056,7 +4055,7 @@ contains
           call eval_node_init_branch (en_conv, var_str ("complex"), V_CMPLX, en)
           call eval_node_set_op1_cmplx (en_conv, cmplx_r)
           en => en_conv
-       end select          
+       end select
     case (V_CMPLX)
        select case (result_type)
        case (V_INT)
@@ -4069,9 +4068,9 @@ contains
           call eval_node_init_branch (en_conv, var_str ("real"), V_REAL, en)
           call eval_node_set_op1_real (en_conv, real_c)
           en => en_conv
-       end select          
-     case default     
-     end select    
+       end select
+     case default
+     end select
   end subroutine insert_conversion_node
 
   recursive subroutine eval_node_compile_conditional &
@@ -4171,7 +4170,7 @@ contains
        call eval_node_compile_default_else (en2, result_type)
     end if
     call eval_node_create_conditional (en, en0, en1, en2, result_type)
-  end subroutine eval_node_compile_elsif       
+  end subroutine eval_node_compile_elsif
 
   subroutine eval_node_compile_default_else (en, result_type)
     type(eval_node_t), pointer :: en
@@ -4292,7 +4291,7 @@ contains
           call eval_node_final_rec (en1)
           call eval_node_final_rec (en2)
           deallocate (en1, en2)
-       else   
+       else
           call eval_node_init_branch &
                (en, var_str ("lsequel"), V_LOG, en1, en2)
           call eval_node_set_op2_log (en, ignore_first_ll)
@@ -4327,7 +4326,7 @@ contains
           call eval_node_final_rec (en1)
           call eval_node_final_rec (en2)
           deallocate (en1, en2)
-       else   
+       else
           call eval_node_init_branch &
                (en, var_str ("alternative"), V_LOG, en1, en2)
           call eval_node_set_op2_log (en, or_ll)
@@ -4362,7 +4361,7 @@ contains
           call eval_node_final_rec (en1)
           call eval_node_final_rec (en2)
           deallocate (en1, en2)
-       else   
+       else
           call eval_node_init_branch &
                (en, var_str ("coincidence"), V_LOG, en1, en2)
           call eval_node_set_op2_log (en, and_ll)
@@ -4833,7 +4832,7 @@ contains
           call eval_node_final_rec (en1)
           call eval_node_final_rec (en2)
           deallocate (en1, en2)
-       else   
+       else
           call eval_node_init_branch &
                (en, var_str ("join"), V_SEV, en1, en2)
           call eval_node_set_op2_sev (en, join_pp)
@@ -4872,7 +4871,7 @@ contains
           call eval_node_final_rec (en1)
           call eval_node_final_rec (en2)
           deallocate (en1, en2)
-       else   
+       else
           call eval_node_init_branch &
                (en, var_str ("combine"), V_SEV, en1, en2)
           call eval_node_set_op2_sev (en, combine_pp)
@@ -5130,7 +5129,7 @@ contains
           call eval_node_compile_lexpr (en0, pn_arg0, en%var_list)
        case ("user_cut")
           call eval_node_compile_sexpr (en0, pn_arg0, en%var_list)
-       case default                    
+       case default
           call msg_bug ("Compiling logical particle function: missing mode")
        end select
        call eval_node_set_expr (en, en0, V_LOG)
@@ -5400,7 +5399,7 @@ contains
           call eval_node_final_rec (en1)
           call eval_node_final_rec (en2)
           deallocate (en1, en2)
-       else   
+       else
           call eval_node_init_branch &
                (en, var_str ("concat"), V_STR, en1, en2)
           call eval_node_set_op2_str (en, concat_ss)
@@ -5586,7 +5585,7 @@ contains
     case (V_LOG);  type = "'logical'"
     case (V_INT);  type = "'integer'"
     case (V_REAL); type = "'real'"
-    case (V_CMPLX); type = "'complex'"    
+    case (V_CMPLX); type = "'complex'"
     case default;  type = "(unknown)"
     end select
     call parse_node_write (pn)
@@ -5605,7 +5604,7 @@ contains
     else if (t1 == V_REAL .and. t2 == V_INT) then
        t = V_REAL
     else if (t1 == V_REAL .and. t2 == V_REAL) then
-       t = V_REAL   
+       t = V_REAL
     else
        t = V_CMPLX
     end if
@@ -5627,8 +5626,8 @@ contains
           case (V_LOG);  en%lval = en%op1_log  (en%arg1)
           case (V_INT);  en%ival = en%op1_int  (en%arg1)
           case (V_REAL); en%rval = en%op1_real (en%arg1)
-          case (V_CMPLX); en%cval = en%op1_cmplx (en%arg1)          
-          case (V_PDG);  
+          case (V_CMPLX); en%cval = en%op1_cmplx (en%arg1)
+          case (V_PDG);
              call en%op1_pdg  (en%aval, en%arg1)
           case (V_SEV)
              if (associated (en%arg0)) then
@@ -5654,7 +5653,7 @@ contains
           case (V_LOG);  en%lval = en%op2_log  (en%arg1, en%arg2)
           case (V_INT);  en%ival = en%op2_int  (en%arg1, en%arg2)
           case (V_REAL); en%rval = en%op2_real (en%arg1, en%arg2)
-          case (V_CMPLX); en%cval = en%op2_cmplx (en%arg1, en%arg2)          
+          case (V_CMPLX); en%cval = en%op2_cmplx (en%arg1, en%arg2)
           case (V_PDG)
              call en%op2_pdg  (en%aval, en%arg1, en%arg2)
           case (V_SEV)
@@ -5680,7 +5679,7 @@ contains
           case (V_LOG);  en%lval = en%arg0%lval
           case (V_INT);  en%ival = en%arg0%ival
           case (V_REAL); en%rval = en%arg0%rval
-          case (V_CMPLX); en%cval = en%arg0%cval          
+          case (V_CMPLX); en%cval = en%arg0%cval
           case (V_PDG);  en%aval = en%arg0%aval
           case (V_SEV);  en%pval = en%arg0%pval
           case (V_STR);  en%sval = en%arg0%sval
@@ -5702,7 +5701,7 @@ contains
                 case (V_LOG);  en%lval = en%arg1%lval
                 case (V_INT);  en%ival = en%arg1%ival
                 case (V_REAL); en%rval = en%arg1%rval
-                case (V_CMPLX); en%cval = en%arg1%cval                
+                case (V_CMPLX); en%cval = en%arg1%cval
                 case (V_PDG);  en%aval = en%arg1%aval
                 case (V_SEV);  en%pval = en%arg1%pval
                 case (V_STR);  en%sval = en%arg1%sval
@@ -5716,7 +5715,7 @@ contains
                 case (V_LOG);  en%lval = en%arg2%lval
                 case (V_INT);  en%ival = en%arg2%ival
                 case (V_REAL); en%rval = en%arg2%rval
-                case (V_CMPLX); en%cval = en%arg2%cval                
+                case (V_CMPLX); en%cval = en%arg2%cval
                 case (V_PDG);  en%aval = en%arg2%aval
                 case (V_SEV);  en%pval = en%arg2%pval
                 case (V_STR);  en%sval = en%arg2%sval
@@ -5754,7 +5753,7 @@ contains
                                           exist=exist, success=en%lval)
                                   end if
                                end if
-                            else                                   
+                            else
                                if (associated (en%rval)) then
                                   call analysis_record_data (en%arg0%sval, &
                                        en%arg1%rval, en%arg2%rval, &
@@ -5927,7 +5926,7 @@ contains
              en%arg0%prt2 => en%prt2
              call en%op2_evi (en%ival, en%arg1, en%arg2, en%arg0)
           else
-             call en%op2_evi (en%ival, en%arg1, en%arg2) 
+             call en%op2_evi (en%ival, en%arg1, en%arg2)
           end if
        end if
     case (EN_REAL_FUN_UNARY)
@@ -5955,7 +5954,7 @@ contains
              en%arg0%prt2 => en%prt2
              call en%op2_evr (en%rval, en%arg1, en%arg2, en%arg0)
           else
-             call en%op2_evr (en%rval, en%arg1, en%arg2) 
+             call en%op2_evr (en%rval, en%arg1, en%arg2)
           end if
        end if
     case (EN_FORMAT_STR)
@@ -5993,7 +5992,7 @@ contains
     call var_list%get_obs1_iptr (var_name, obs1_iptr, p1)
     call eval_node_init_obs1_int_ptr (node, var_name, obs1_iptr, p1)
   end subroutine eval_node_test_obs
-  
+
   subroutine syntax_expr_init ()
     type(ifile_t) :: ifile
     call define_expr_syntax (ifile, particles=.false., analysis=.false.)
@@ -6063,7 +6062,7 @@ contains
          // "real_value | complex_value")
     call ifile_append (ifile, "SEQ integer_value = integer_literal unit_expr?")
     call ifile_append (ifile, "SEQ real_value = real_literal unit_expr?")
-    call ifile_append (ifile, "SEQ complex_value = complex_literal unit_expr?")    
+    call ifile_append (ifile, "SEQ complex_value = complex_literal unit_expr?")
     call ifile_append (ifile, "INT integer_literal")
     call ifile_append (ifile, "REA real_literal")
     call ifile_append (ifile, "COM complex_literal")
@@ -6565,7 +6564,7 @@ contains
     call eval_node_compile_expr &
          (expr%root, parse_node, expr%var_list)
   end subroutine eval_tree_init_expr
-    
+
   subroutine eval_tree_init_lexpr &
       (expr, parse_node, var_list, subevt)
     class(eval_tree_t), intent(out), target :: expr
@@ -6620,7 +6619,7 @@ contains
     call eval_tree_link_var_list (expr, vars)
     call eval_node_compile_expr (expr%root, expr%pn, expr%var_list)
   end subroutine eval_tree_setup_expr
-    
+
   subroutine eval_tree_setup_lexpr (expr, vars)
     class(eval_tree_t), intent(inout), target :: expr
     class(vars_t), intent(in), target :: vars
@@ -6719,7 +6718,7 @@ contains
        type = V_NONE
     end if
   end function eval_tree_get_result_type
-    
+
   function eval_tree_result_is_known (expr) result (flag)
     logical :: flag
     class(eval_tree_t), intent(in) :: expr
@@ -6756,7 +6755,7 @@ contains
     class(eval_tree_t), intent(in) :: expr
     if (associated (expr%root))  lval = expr%root%lval
   end function eval_tree_get_log
-    
+
   function eval_tree_get_int (expr) result (ival)
     integer :: ival
     class(eval_tree_t), intent(in) :: expr
@@ -6764,11 +6763,11 @@ contains
        select case (expr%root%result_type)
        case (V_INT);  ival = expr%root%ival
        case (V_REAL); ival = expr%root%rval
-       case (V_CMPLX); ival = expr%root%cval       
+       case (V_CMPLX); ival = expr%root%cval
        end select
     end if
   end function eval_tree_get_int
-    
+
   function eval_tree_get_real (expr) result (rval)
     real(default) :: rval
     class(eval_tree_t), intent(in) :: expr
@@ -6776,11 +6775,11 @@ contains
        select case (expr%root%result_type)
        case (V_REAL); rval = expr%root%rval
        case (V_INT);  rval = expr%root%ival
-       case (V_CMPLX);  rval = expr%root%cval       
+       case (V_CMPLX);  rval = expr%root%cval
        end select
     end if
   end function eval_tree_get_real
-      
+
   function eval_tree_get_cmplx (expr) result (cval)
     complex(default) :: cval
     class(eval_tree_t), intent(in) :: expr
@@ -6826,7 +6825,7 @@ contains
        lval => null ()
     end if
   end function eval_tree_get_log_ptr
-    
+
   function eval_tree_get_int_ptr (eval_tree) result (ival)
     integer, pointer :: ival
     type(eval_tree_t), intent(in) :: eval_tree
@@ -6836,7 +6835,7 @@ contains
        ival => null ()
     end if
   end function eval_tree_get_int_ptr
-    
+
   function eval_tree_get_real_ptr (eval_tree) result (rval)
     real(default), pointer :: rval
     type(eval_tree_t), intent(in) :: eval_tree
@@ -6846,7 +6845,7 @@ contains
        rval => null ()
     end if
   end function eval_tree_get_real_ptr
-    
+
   function eval_tree_get_cmplx_ptr (eval_tree) result (cval)
     complex(default), pointer :: cval
     type(eval_tree_t), intent(in) :: eval_tree
@@ -6866,7 +6865,7 @@ contains
        pval => null ()
     end if
   end function eval_tree_get_subevt_ptr
-    
+
   function eval_tree_get_pdg_array_ptr (eval_tree) result (aval)
     type(pdg_array_t), pointer :: aval
     type(eval_tree_t), intent(in) :: eval_tree
@@ -6876,7 +6875,7 @@ contains
        aval => null ()
     end if
   end function eval_tree_get_pdg_array_ptr
-    
+
   function eval_tree_get_string_ptr (eval_tree) result (sval)
     type(string_t), pointer :: sval
     type(eval_tree_t), intent(in) :: eval_tree
@@ -6886,7 +6885,7 @@ contains
        sval => null ()
     end if
   end function eval_tree_get_string_ptr
-    
+
   subroutine eval_tree_write (expr, unit, write_vars)
     class(eval_tree_t), intent(in) :: expr
     integer, intent(in), optional :: unit
@@ -6978,7 +6977,7 @@ contains
        rval = eval_tree_get_real (eval_tree)
     else if (present (is_known)) then
        is_known = .false.
-    else 
+    else
        call eval_tree_unknown (eval_tree, parse_node)
        rval = 0
     end if
@@ -7122,13 +7121,13 @@ contains
        call parse_node_write_rec (expr_factory%pn, unit)
     end if
   end subroutine eval_tree_factory_write
-       
+
   subroutine eval_tree_factory_init (expr_factory, pn)
     class(eval_tree_factory_t), intent(out) :: expr_factory
     type(parse_node_t), intent(in), pointer :: pn
     expr_factory%pn => pn
   end subroutine eval_tree_factory_init
-  
+
   subroutine eval_tree_factory_build (expr_factory, expr)
     class(eval_tree_factory_t), intent(in) :: expr_factory
     class(expr_t), intent(out), allocatable :: expr
@@ -7140,6 +7139,6 @@ contains
        end select
     end if
   end subroutine eval_tree_factory_build
-  
+
 
 end module eval_trees

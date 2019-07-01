@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -40,6 +40,7 @@ module ttv_formfactors
   use numeric_utils
   use physics_defs, only: CF, CA, TR
   use sm_physics
+  use lorentz
   use interpolation
   use nr_tools
   use io_units, only: free_unit, given_output_unit
@@ -71,11 +72,8 @@ module ttv_formfactors
   public :: init_threshold_grids
   public :: v_matching
   public :: f_switch_off
+  public :: generate_on_shell_decay_threshold
 
-  integer, parameter, public :: THR_POS_WP = 3
-  integer, parameter, public :: THR_POS_WM = 4
-  integer, parameter, public :: THR_POS_B = 5
-  integer, parameter, public :: THR_POS_BBAR = 6
   integer, parameter :: VECTOR = 1
   integer, parameter :: AXIAL = 2
   integer, parameter, public :: MATCHED_EXPANDED = - 3, &
@@ -89,7 +87,7 @@ module ttv_formfactors
                                 EXPANDED_SOFT_SWITCHOFF_P0CONSTANT = 6, &
                                 RESUMMED_ANALYTIC_LL = 7, &
                                 EXPANDED_SOFT_HARD_P0CONSTANT = 8, &
-                                EXTRA_TREE = 9
+                                TREE = 9
   real(default), parameter :: NF = 5.0_default
 
   real(default), parameter :: z3 = 1.20205690315959428539973816151_default
@@ -125,9 +123,12 @@ module ttv_formfactors
      integer :: offshell_strategy
      logical :: factorized_computation
      logical :: interference
+     logical :: factorized_interference_term
      type(onshell_projection_t) :: onshell_projection
      logical :: nlo
      logical :: no_nlo_width_in_signal_propagators
+     logical :: force_minus_one
+     logical :: flip_relative_sign
   contains
      procedure :: setup_flags => settings_setup_flags
      procedure :: use_nlo_width => settings_use_nlo_width
@@ -250,6 +251,9 @@ contains
     settings%onshell_projection%width = .not. btest(offshell_strategy_in, 8)
     settings%onshell_projection%boost_decay = btest(offshell_strategy_in, 9)
     settings%helicity_approximated_extra = btest(offshell_strategy_in, 10)
+    settings%force_minus_one = btest(offshell_strategy_in, 11)
+    settings%flip_relative_sign = btest(offshell_strategy_in, 12)
+    settings%factorized_interference_term = btest(offshell_strategy_in, 13)
     call msg_debug (D_THRESHOLD, "SWITCHOFF_RESUMMED", SWITCHOFF_RESUMMED)
     call msg_debug (D_THRESHOLD, "TOPPIK_RESUMMED", TOPPIK_RESUMMED)
     call msg_debug (D_THRESHOLD, "P0_DEPENDENT_RESUMMED", P0_DEPENDENT_RESUMMED)
@@ -258,6 +262,8 @@ contains
          settings%factorized_computation)
     call msg_debug (D_THRESHOLD, "settings%interference", &
          settings%interference)
+    call msg_debug (D_THRESHOLD, "settings%factorized_interference_term", &
+         settings%factorized_interference_term)
     call settings%onshell_projection%debug_write ()
     call msg_debug (D_THRESHOLD, "settings%no_nlo_width_in_signal_propagators", &
          settings%no_nlo_width_in_signal_propagators)
@@ -320,6 +326,8 @@ contains
                f * alphas_soft (ps%sqrts), ps, vec_type, no_p0=.true.)
        case (RESUMMED_ANALYTIC_LL)
           FF = formfactor_LL_analytic_p0 (alphas_soft (ps%sqrts), ps, vec_type)
+       case (TREE)
+          FF = two
        case default
           FF = one
        end select
@@ -796,12 +804,10 @@ contains
     coeff = matching_c * c1
   end function current_coeff
 
-  !!! matching parameter as a function of the phase space point
   pure function v_matching (sqrts, gamma) result (v)
-    real(default), intent(in) :: sqrts, gamma
     real(default) :: v
-    !  TODO: (bcn 2016-07-20) we should also switch off for low sqrts
-    v = real (sqrts_to_v (sqrts, gamma))
+    real(default), intent(in) :: sqrts, gamma
+    v = abs (sqrts_to_v (sqrts, gamma))
   end function v_matching
 
   !!! smooth transition from f1 to f2 between v1 and v2 (2 combined parabolas)
@@ -1311,8 +1317,8 @@ contains
   end subroutine handle_TOPPIK_instabilities
 
   pure function sqrts_to_v (sqrts, gamma) result (v)
-    real(default), intent(in) :: sqrts, gamma
     complex(default) :: v
+    real(default), intent(in) :: sqrts, gamma
     real(default) :: m
     m = m1s_to_mpole (sqrts)
     v = sqrt ((sqrts - two * m + imago * gamma) / m)
@@ -1730,6 +1736,81 @@ contains
           * minus_q2_V (solver_f%a, x, solver_f%ps%p, solver_f%ps%p0, solver_f%i) &
           * ff_p_spline%interpolate (x)
   end function p0_q_integrand_evaluate
+
+  subroutine get_rest_frame (p1_in, p2_in, p1_out, p2_out)
+    type(vector4_t), intent(in) :: p1_in, p2_in
+    type(vector4_t), intent(out) :: p1_out, p2_out
+    type(lorentz_transformation_t) :: L
+    L = inverse (boost (p1_in + p2_in, (p1_in + p2_in)**1))
+    p1_out = L * p1_in; p2_out = L * p2_in
+  end subroutine get_rest_frame
+
+  function shift_momentum (p_in, E, p) result (p_out)
+    type(vector4_t) :: p_out
+    type(vector4_t), intent(in) :: p_in
+    real(default), intent(in) :: E, p
+    type(vector3_t) :: vec
+    vec = p_in%p(1:3) / space_part_norm (p_in)
+    p_out = vector4_moving (E, p * vec)
+  end function shift_momentum
+
+  subroutine evaluate_one_to_two_splitting_threshold (p_origin, &
+      p1_in, p2_in, p1_out, p2_out, msq_in, jac)
+    type(vector4_t), intent(in) :: p_origin
+    type(vector4_t), intent(in) :: p1_in, p2_in
+    type(vector4_t), intent(inout) :: p1_out, p2_out
+    real(default), intent(in), optional :: msq_in
+    real(default), intent(inout), optional :: jac
+    type(lorentz_transformation_t) :: L
+    type(vector4_t) :: p1_rest, p2_rest
+    real(default) :: msq, msq1, msq2
+    real(default) :: m
+    real(default) :: E1, E2, E_max
+    real(default) :: p, lda
+    real(default), parameter :: E_offset = 0.001_default
+    !!! (TODO-cw-2016-10-13) Find a better way to get masses
+    real(default), parameter :: mb = 4.2_default
+    real(default), parameter :: mw = 80.419_default 
+
+    call get_rest_frame (p1_in, p2_in, p1_rest, p2_rest)
+
+    msq = p_origin**2; m = sqrt(msq)
+    msq1 = p1_in**2
+    msq2 = m * (m - two * p1_rest%p(0))
+    E1 = (msq + msq1 - msq2) / (two * m)
+    E_max = (msq - (mb + mw)**2) / (two * m)
+    E_max = E_max - E_offset
+    if (E1 > E_max) then
+       E1 = E_max
+       msq2 = m * (m - two * E_max)
+    end if
+
+    lda = lambda (msq, msq1, msq2)
+    if (lda < zero) call msg_fatal &
+         ("Threshold Splitting: lambda < 0 encountered! Use a higher offset.")
+    p = sqrt(lda) / (two * m)
+
+    E1 = sqrt (msq1 + p**2)
+    E2 = sqrt (msq2 + p**2)
+
+    p1_out = shift_momentum (p1_rest, E1, p)
+    p2_out = shift_momentum (p2_rest, E2, p)
+
+    L = boost (p_origin, p_origin**1)
+    p1_out = L  * p1_out
+    p2_out = L  * p2_out
+  end subroutine evaluate_one_to_two_splitting_threshold
+
+  subroutine generate_on_shell_decay_threshold (p_decay, p_top, p_decay_onshell)
+    !!! Gluon must be on first position in this array
+    type(vector4_t), intent(in), dimension(:) :: p_decay
+    type(vector4_t), intent(inout) :: p_top
+    type(vector4_t), intent(inout), dimension(:) :: p_decay_onshell 
+    procedure(evaluate_one_to_two_splitting_special), pointer :: ppointer
+    ppointer => evaluate_one_to_two_splitting_threshold
+    call generate_on_shell_decay (p_top, p_decay, p_decay_onshell, 1, &
+         evaluate_special = ppointer)
+  end subroutine generate_on_shell_decay_threshold
 
 
 end module ttv_formfactors

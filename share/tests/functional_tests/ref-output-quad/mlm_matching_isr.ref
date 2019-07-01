@@ -18,9 +18,9 @@
 | Process library 'mlm_matching_isr_lib': loading
 | Process library 'mlm_matching_isr_lib': ... success.
 seed = 0
-sqrts =  1.9600000E+03
-ps_isr_primordial_kt_width =  0.0000000E+00
-ps_isr_tscalefactor =  1.0000000E+00
+sqrts =  1.96000E+03
+ps_isr_primordial_kt_width =  0.00000E+00
+ps_isr_tscalefactor =  1.00000E+00
 ?allow_shower = true
 ?ps_fsr_active = true
 ?ps_isr_active = true
@@ -29,11 +29,11 @@ $shower_method = "WHIZARD"
 ?ps_isr_pt_ordered = false
 ?ps_isr_only_onshell_emitted_partons = true
 ps_max_n_flavors = 5
-ps_mass_cutoff =  5.0000000E-01
+ps_mass_cutoff =  5.00000E-01
 ?mlm_matching = true
-mlm_ptmin =  5.0000000E+00
-mlm_etamax =  2.5000000E+00
-mlm_Rmin =  1.0000000E+00
+mlm_ptmin =  5.00000E+00
+mlm_etamax =  2.50000E+00
+mlm_Rmin =  1.00000E+00
 mlm_nmaxMEjets = 1
 openmp_num_threads = 1
 | RNG: Initializing TAO random-number generator

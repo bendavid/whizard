@@ -1,4 +1,4 @@
-! $Id: ca_c.ects 6004 2014-07-09 15:46:54Z cweiss $
+! ca_c.ects --
 !ects:model QCD
 !ects:scatter
 !ects:process ubar gl -> ubar

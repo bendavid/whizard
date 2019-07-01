@@ -268,7 +268,7 @@ Parameter & Value & Default & Description \\
 }
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %END LATEX
-\newcommand{\thisversion}{2.3.1}
+\newcommand{\thisversion}{2.4.0}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -277,9 +277,9 @@ Parameter & Value & Default & Description \\
 %%%\preprintno{arXiv:0708.4233 (also based on LC-TOOL-2001-039 (revised))}
 %END LATEX
 \title{%
-%HEVEA WHIZARD 2.3 \\
+%HEVEA WHIZARD 2.4 \\
 %BEGIN LATEX
- \texttt{\huge WHIZARD 2.3} \\[\baselineskip]
+ \texttt{\huge WHIZARD 2.4} \\[\baselineskip]
 %END LATEX
  A generic \\ Monte-Carlo integration and event generation package \\
  for multi-particle processes\\[\baselineskip]
@@ -651,6 +651,8 @@ of \whizard:
   ($\alpha$ version); ILC v1.9x-v2.x final validation \\
   2.3.1 & 08/2016 & Complex mass scheme
   \\\hline
+  2.4.0 & 11/2016 & Refactoring of NLO setup
+  \\\hline
 \end{tabular}
 \end{center}
 
@@ -895,7 +897,7 @@ this subset is supported by, at least, the following compilers:
   \ttt{ifort} (Intel). You will need version 16.0.0 or higher.
 \end{itemize}
 There are some commercial compilers that might be able to compile
-\whizard\ 2.3 in the near future, but at the time of writing, all of
+\whizard\ 2.4 in the near future, but at the time of writing, all of
 the compilers listed below contained compiler bugs. Consult the
 \whizard\ website for updates on this situation. 
 \begin{itemize}
@@ -2364,7 +2366,7 @@ named \verb|hello.sin|.
 		|        M. Moretti, T. Ohl, J. Reuter, arXiv: hep-ph/0102195                 |
 		|                                                                             |
 		|=============================================================================|
-		|                               WHIZARD 2.3.1
+		|                               WHIZARD 2.4.0
 		|=============================================================================|
 		| Reading model file '/usr/local/share/whizard/models/SM.mdl'
 		| Preloaded model: SM
@@ -2395,7 +2397,7 @@ including the \whizard\ banner is shown in Fig.~\ref{fig:helloworld})
 \centerline{[... here a banner is displayed]}
 \begin{Verbatim}
 |=============================================================================|
-|                               WHIZARD 2.3.1
+|                               WHIZARD 2.4.0
 |=============================================================================|
 | Reading model file '/usr/local/share/whizard/models/SM.mdl'
 | Preloaded model: SM
@@ -2454,7 +2456,7 @@ This produces a lot of output which looks similar to this:
  | Writing log to 'whizard.log'
 [... banner ...]
  |=============================================================================|
- |                               WHIZARD 2.3.1
+ |                               WHIZARD 2.4.0
  |=============================================================================|
  | Reading model file '/usr/local/share/whizard/models/SM.mdl'
  | Preloaded model: SM
@@ -9618,7 +9620,7 @@ This is the modern version of the Les Houches accord event format
 <LesHouchesEvents version="1.0">
 <header>
   <generator_name>WHIZARD</generator_name>
-  <generator_version>2.3.1</generator_version>
+  <generator_version>2.4.0</generator_version>
 </header>
 <init>
  25 25  5.0000000000E+02  5.0000000000E+02 -1 -1 -1 -1 3 1

@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -45,7 +45,8 @@ module event_transforms
   use particles
   use subevents
   use rng_base
-  use processes
+  use process, only: process_t
+  use instances, only: process_instance_t
   use process_stacks
 
   implicit none
@@ -257,7 +258,7 @@ contains
     u = given_output_unit (unit)
     write (u, "(1x,A)")  "Event transform: trivial (hard process)"
   end subroutine evt_trivial_write_name
-   
+
   subroutine evt_trivial_write (evt, unit, verbose, more_verbose, testflag)
     class(evt_trivial_t), intent(in) :: evt
     integer, intent(in), optional :: unit
@@ -291,7 +292,7 @@ contains
     integer :: i_term
     type(interaction_t), pointer :: int_matrix, int_flows
     if (evt%process_instance%is_complete_event ()) then
-       call evt%process_instance%select_i_term (i_term)
+       i_term = evt%process_instance%select_i_term ()
        int_matrix => evt%process_instance%get_matrix_int_ptr (i_term)
        int_flows  => evt%process_instance%get_flows_int_ptr (i_term)
        call evt%factorize_interactions (int_matrix, int_flows, &

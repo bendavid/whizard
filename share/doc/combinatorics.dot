@@ -1,0 +1,6 @@
+
+digraph G {
+hashes -> bytes
+md5 -> bytes
+ }
+

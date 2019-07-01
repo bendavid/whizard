@@ -1,0 +1,8 @@
+
+digraph G {
+shower_core -> shower_partons
+shower_partons -> shower_base
+shower_core -> shower_base
+shower_pythia6 -> shower_base
+ }
+

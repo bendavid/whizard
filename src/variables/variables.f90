@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -39,12 +39,16 @@ module variables
   use iso_varying_string, string_t => varying_string
   use io_units
   use format_utils, only: pac_fmt
-  use format_defs, only: FMT_14, FMT_19
+  use format_defs, only: FMT_12, FMT_19
   use constants, only: eps0
+  use os_interface, only: paths_t
+  use physics_defs, only: LAMBDA_QCD_REF
+  use system_dependencies
+  use fastjet !NODEP!
   use diagnostics
   use pdg_arrays
   use subevents
-  
+
   use var_base
 
   implicit none
@@ -126,8 +130,37 @@ module variables
      type(var_list_t), pointer :: next => null ()
    contains
      procedure :: link => var_list_link
+     generic :: append_log => var_list_append_log_s, var_list_append_log_c
+     procedure, private :: var_list_append_log_s
+     procedure, private :: var_list_append_log_c
+     generic :: append_int => var_list_append_int_s, var_list_append_int_c
+     procedure, private :: var_list_append_int_s
+     procedure, private :: var_list_append_int_c
+     generic :: append_real => var_list_append_real_s, var_list_append_real_c
+     procedure, private :: var_list_append_real_s
+     procedure, private :: var_list_append_real_c
+     generic :: append_cmplx => var_list_append_cmplx_s, var_list_append_cmplx_c
+     procedure, private :: var_list_append_cmplx_s
+     procedure, private :: var_list_append_cmplx_c
+     generic :: append_subevt => var_list_append_subevt_s, var_list_append_subevt_c
+     procedure, private :: var_list_append_subevt_s
+     procedure, private :: var_list_append_subevt_c
+     generic :: append_pdg_array => var_list_append_pdg_array_s, var_list_append_pdg_array_c
+     procedure, private :: var_list_append_pdg_array_s
+     procedure, private :: var_list_append_pdg_array_c
+     generic :: append_string => var_list_append_string_s, var_list_append_string_c
+     procedure, private :: var_list_append_string_s
+     procedure, private :: var_list_append_string_c
+     procedure :: append_log_ptr => var_list_append_log_ptr
+     procedure :: append_int_ptr => var_list_append_int_ptr
+     procedure :: append_real_ptr => var_list_append_real_ptr
+     procedure :: append_cmplx_ptr => var_list_append_cmplx_ptr
+     procedure :: append_pdg_array_ptr => var_list_append_pdg_array_ptr
+     procedure :: append_subevt_ptr => var_list_append_subevt_ptr
+     procedure :: append_string_ptr => var_list_append_string_ptr
      procedure :: final => var_list_final
      procedure :: write => var_list_write
+     procedure :: write_var => var_list_write_var
      procedure :: get_type => var_list_get_type
      procedure :: contains => var_list_exists
      procedure :: is_intrinsic => var_list_is_intrinsic
@@ -165,6 +198,25 @@ module variables
      procedure :: set_subevt => var_list_set_subevt
      procedure :: set_pdg_array => var_list_set_pdg_array
      procedure :: set_string => var_list_set_string
+     procedure :: import => var_list_import
+     procedure :: undefine => var_list_undefine
+     procedure :: init_snapshot => var_list_init_snapshot
+     procedure :: check_user_var => var_list_check_user_var
+     procedure :: init_defaults => var_list_init_defaults
+     procedure :: set_beams_defaults => var_list_set_beams_defaults
+     procedure :: set_core_defaults => var_list_set_core_defaults
+     procedure :: set_integration_defaults => var_list_set_integration_defaults
+     procedure :: set_phase_space_defaults => var_list_set_phase_space_defaults
+     procedure :: set_gamelan_defaults => var_list_set_gamelan_defaults
+     procedure :: set_clustering_defaults => var_list_set_clustering_defaults
+     procedure :: set_eio_defaults => var_list_set_eio_defaults
+     procedure :: set_shower_defaults => var_list_set_shower_defaults
+     procedure :: set_hadronization_defaults => var_list_set_hadronization_defaults
+     procedure :: set_tauola_defaults => var_list_set_tauola_defaults
+     procedure :: set_mlm_matching_defaults => var_list_set_mlm_matching_defaults
+     procedure :: set_powheg_matching_defaults => var_list_set_powheg_matching_defaults
+     procedure :: set_openmp_defaults => var_list_set_openmp_defaults
+     procedure :: set_nlo_defaults => var_list_set_nlo_defaults
   end type var_list_t
 
 
@@ -287,7 +339,7 @@ contains
     if (present (user))  var%is_user_var = user
     var%is_allocated = .true.
   end subroutine var_entry_init_real
-  
+
   subroutine var_entry_init_cmplx (var, name, cval, intrinsic, user)
     type(var_entry_t), intent(out) :: var
     type(string_t), intent(in) :: name
@@ -409,7 +461,7 @@ contains
     if (present (intrinsic))  var%is_intrinsic = intrinsic
     var%is_defined = .true.
   end subroutine var_entry_init_real_ptr
- 
+
   subroutine var_entry_init_cmplx_ptr (var, name, cval, is_known, intrinsic)
     type(var_entry_t), intent(out) :: var
     type(string_t), intent(in) :: name
@@ -529,9 +581,9 @@ contains
     logical :: num_pac
     real(default) :: rval
     complex(default) :: cval
-    integer :: u    
-    character(len=7) :: fmt   
-    call pac_fmt (fmt, FMT_19, FMT_14, pacified)
+    integer :: u
+    character(len=7) :: fmt
+    call pac_fmt (fmt, FMT_19, FMT_12, pacified)
     u = given_output_unit (unit);  if (u < 0)  return
     if (present (intrinsic)) then
        if (var%is_intrinsic .neqv. intrinsic)  return
@@ -577,7 +629,7 @@ contains
           if (num_pac) then
              call pacify (rval, 10 * eps0)
           end if
-          write (u, "(" // fmt // ")")  rval          
+          write (u, "(" // fmt // ")")  rval
        else
           write (u, "(A)")  "[unknown real]"
        end if
@@ -587,7 +639,7 @@ contains
           if (num_pac) then
              call pacify (cval, 10 * eps0)
           end if
-          write (u, "('('," // fmt // ",','," // fmt // ",')')")  cval 
+          write (u, "('('," // fmt // ",','," // fmt // ",')')")  cval
        else
           write (u, "(A)")  "[unknown complex]"
        end if
@@ -680,7 +732,7 @@ contains
     type(var_entry_t), intent(in) :: var
     rval = var%rval
   end function var_entry_get_rval
-  
+
   function var_entry_get_cval (var) result (cval)
     complex(default) :: cval
     type(var_entry_t), intent(in) :: var
@@ -728,7 +780,7 @@ contains
     type(var_entry_t), intent(in), target :: var
     ptr => var%rval
   end function var_entry_get_rval_ptr
-  
+
   function var_entry_get_cval_ptr (var) result (ptr)
     complex(default), pointer :: ptr
     type(var_entry_t), intent(in), target :: var
@@ -858,7 +910,7 @@ contains
        end if
     end if
   end subroutine var_entry_set_real
-  
+
   recursive subroutine var_entry_set_cmplx &
        (var, cval, is_known, verbose, model_name, pacified)
     type(var_entry_t), intent(inout) :: var
@@ -1024,7 +1076,7 @@ contains
 
   subroutine var_list_append_log_s &
        (var_list, name, lval, locked, verbose, intrinsic, user)
-    type(var_list_t), intent(inout) :: var_list
+    class(var_list_t), intent(inout) :: var_list
     type(string_t), intent(in) :: name
     logical, intent(in), optional :: lval
     logical, intent(in), optional :: locked, verbose, intrinsic, user
@@ -1037,7 +1089,7 @@ contains
 
   subroutine var_list_append_int_s &
        (var_list, name, ival, locked, verbose, intrinsic, user)
-    type(var_list_t), intent(inout) :: var_list
+    class(var_list_t), intent(inout) :: var_list
     type(string_t), intent(in) :: name
     integer, intent(in), optional :: ival
     logical, intent(in), optional :: locked, verbose, intrinsic, user
@@ -1050,7 +1102,7 @@ contains
 
   subroutine var_list_append_real_s &
        (var_list, name, rval, locked, verbose, intrinsic, user)
-    type(var_list_t), intent(inout) :: var_list
+    class(var_list_t), intent(inout) :: var_list
     type(string_t), intent(in) :: name
     real(default), intent(in), optional :: rval
     logical, intent(in), optional :: locked, verbose, intrinsic, user
@@ -1060,10 +1112,10 @@ contains
     if (present (locked))  call var_entry_lock (var, locked)
     call var_list_append (var_list, var, verbose)
   end subroutine var_list_append_real_s
-  
+
   subroutine var_list_append_cmplx_s &
        (var_list, name, cval, locked, verbose, intrinsic, user)
-    type(var_list_t), intent(inout) :: var_list
+    class(var_list_t), intent(inout) :: var_list
     type(string_t), intent(in) :: name
     complex(default), intent(in), optional :: cval
     logical, intent(in), optional :: locked, verbose, intrinsic, user
@@ -1076,7 +1128,7 @@ contains
 
   subroutine var_list_append_subevt_s &
        (var_list, name, pval, locked, verbose, intrinsic, user)
-    type(var_list_t), intent(inout) :: var_list
+    class(var_list_t), intent(inout) :: var_list
     type(string_t), intent(in) :: name
     type(subevt_t), intent(in), optional :: pval
     logical, intent(in), optional :: locked, verbose, intrinsic, user
@@ -1089,7 +1141,7 @@ contains
 
   subroutine var_list_append_pdg_array_s &
        (var_list, name, aval, locked, verbose, intrinsic, user)
-    type(var_list_t), intent(inout) :: var_list
+    class(var_list_t), intent(inout) :: var_list
     type(string_t), intent(in) :: name
     type(pdg_array_t), intent(in), optional :: aval
     logical, intent(in), optional :: locked, verbose, intrinsic, user
@@ -1102,7 +1154,7 @@ contains
 
   subroutine var_list_append_string_s &
        (var_list, name, sval, locked, verbose, intrinsic, user)
-    type(var_list_t), intent(inout) :: var_list
+    class(var_list_t), intent(inout) :: var_list
     type(string_t), intent(in) :: name
     type(string_t), intent(in), optional :: sval
     logical, intent(in), optional :: locked, verbose, intrinsic, user
@@ -1115,7 +1167,7 @@ contains
 
   subroutine var_list_append_log_c &
        (var_list, name, lval, locked, verbose, intrinsic, user)
-    type(var_list_t), intent(inout) :: var_list
+    class(var_list_t), intent(inout) :: var_list
     character(*), intent(in) :: name
     logical, intent(in), optional :: lval
     logical, intent(in), optional :: locked, verbose, intrinsic, user
@@ -1125,7 +1177,7 @@ contains
 
   subroutine var_list_append_int_c &
        (var_list, name, ival, locked, verbose, intrinsic, user)
-    type(var_list_t), intent(inout) :: var_list
+    class(var_list_t), intent(inout) :: var_list
     character(*), intent(in) :: name
     integer, intent(in), optional :: ival
     logical, intent(in), optional :: locked, verbose, intrinsic, user
@@ -1135,17 +1187,17 @@ contains
 
   subroutine var_list_append_real_c &
        (var_list, name, rval, locked, verbose, intrinsic, user)
-    type(var_list_t), intent(inout) :: var_list
+    class(var_list_t), intent(inout) :: var_list
     character(*), intent(in) :: name
     real(default), intent(in), optional :: rval
     logical, intent(in), optional :: locked, verbose, intrinsic, user
     call var_list_append_real_s &
          (var_list, var_str (name), rval, locked, verbose, intrinsic, user)
   end subroutine var_list_append_real_c
-  
+
   subroutine var_list_append_cmplx_c &
        (var_list, name, cval, locked, verbose, intrinsic, user)
-    type(var_list_t), intent(inout) :: var_list
+    class(var_list_t), intent(inout) :: var_list
     character(*), intent(in) :: name
     complex(default), intent(in), optional :: cval
     logical, intent(in), optional :: locked, verbose, intrinsic, user
@@ -1155,7 +1207,7 @@ contains
 
   subroutine var_list_append_subevt_c &
        (var_list, name, pval, locked, verbose, intrinsic, user)
-    type(var_list_t), intent(inout) :: var_list
+    class(var_list_t), intent(inout) :: var_list
     character(*), intent(in) :: name
     type(subevt_t), intent(in), optional :: pval
     logical, intent(in), optional :: locked, verbose, intrinsic, user
@@ -1165,7 +1217,7 @@ contains
 
   subroutine var_list_append_pdg_array_c &
        (var_list, name, aval, locked, verbose, intrinsic, user)
-    type(var_list_t), intent(inout) :: var_list
+    class(var_list_t), intent(inout) :: var_list
     character(*), intent(in) :: name
     type(pdg_array_t), intent(in), optional :: aval
     logical, intent(in), optional :: locked, verbose, intrinsic, user
@@ -1175,7 +1227,7 @@ contains
 
   subroutine var_list_append_string_c &
        (var_list, name, sval, locked, verbose, intrinsic, user)
-    type(var_list_t), intent(inout) :: var_list
+    class(var_list_t), intent(inout) :: var_list
     character(*), intent(in) :: name
     character(*), intent(in), optional :: sval
     logical, intent(in), optional :: locked, verbose, intrinsic, user
@@ -1192,7 +1244,7 @@ contains
 
   subroutine var_list_append_log_ptr &
        (var_list, name, lval, is_known, locked, verbose, intrinsic)
-    type(var_list_t), intent(inout) :: var_list
+    class(var_list_t), intent(inout) :: var_list
     type(string_t), intent(in) :: name
     logical, intent(in), target :: lval
     logical, intent(in), target :: is_known
@@ -1206,7 +1258,7 @@ contains
 
   subroutine var_list_append_int_ptr &
        (var_list, name, ival, is_known, locked, verbose, intrinsic)
-    type(var_list_t), intent(inout) :: var_list
+    class(var_list_t), intent(inout) :: var_list
     type(string_t), intent(in) :: name
     integer, intent(in), target :: ival
     logical, intent(in), target :: is_known
@@ -1220,7 +1272,7 @@ contains
 
   subroutine var_list_append_real_ptr &
        (var_list, name, rval, is_known, locked, verbose, intrinsic)
-    type(var_list_t), intent(inout) :: var_list
+    class(var_list_t), intent(inout) :: var_list
     type(string_t), intent(in) :: name
     real(default), intent(in), target :: rval
     logical, intent(in), target :: is_known
@@ -1234,7 +1286,7 @@ contains
 
   subroutine var_list_append_cmplx_ptr &
        (var_list, name, cval, is_known, locked, verbose, intrinsic)
-    type(var_list_t), intent(inout) :: var_list
+    class(var_list_t), intent(inout) :: var_list
     type(string_t), intent(in) :: name
     complex(default), intent(in), target :: cval
     logical, intent(in), target :: is_known
@@ -1245,10 +1297,10 @@ contains
     if (present (locked))  call var_entry_lock (var, locked)
     call var_list_append (var_list, var, verbose)
   end subroutine var_list_append_cmplx_ptr
-    
+
   subroutine var_list_append_pdg_array_ptr &
        (var_list, name, aval, is_known, locked, verbose, intrinsic)
-    type(var_list_t), intent(inout) :: var_list
+    class(var_list_t), intent(inout) :: var_list
     type(string_t), intent(in) :: name
     type(pdg_array_t), intent(in), target :: aval
     logical, intent(in), target :: is_known
@@ -1262,7 +1314,7 @@ contains
 
   subroutine var_list_append_subevt_ptr &
        (var_list, name, pval, is_known, locked, verbose, intrinsic)
-    type(var_list_t), intent(inout) :: var_list
+    class(var_list_t), intent(inout) :: var_list
     type(string_t), intent(in) :: name
     type(subevt_t), intent(in), target :: pval
     logical, intent(in), target :: is_known
@@ -1276,7 +1328,7 @@ contains
 
   subroutine var_list_append_string_ptr &
        (var_list, name, sval, is_known, locked, verbose, intrinsic)
-    type(var_list_t), intent(inout) :: var_list
+    class(var_list_t), intent(inout) :: var_list
     type(string_t), intent(in) :: name
     type(string_t), intent(in), target :: sval
     logical, intent(in), target :: is_known
@@ -1318,7 +1370,6 @@ contains
     integer, intent(in), optional :: only_type
     character(*), intent(in), optional :: prefix
     type(string_t), intent(in), optional :: model_name
-!     logical, intent(in), optional :: show_ptr
     logical, intent(in), optional :: intrinsic
     logical, intent(in), optional :: pacified
     type(var_entry_t), pointer :: var
@@ -1361,7 +1412,7 @@ contains
   recursive subroutine var_list_write_var &
        (var_list, name, unit, type, follow_link, &
        model_name, pacified)
-    type(var_list_t), intent(in), target :: var_list
+    class(var_list_t), intent(in), target :: var_list
     type(string_t), intent(in) :: name
     integer, intent(in), optional :: unit
     integer, intent(in), optional :: type
@@ -1512,7 +1563,7 @@ contains
        if (present (is_locked))  is_locked = .false.
     end if
   end subroutine var_list_get_var_properties
-    
+
   function var_list_get_lval (vars, name, follow_link) result (lval)
     logical :: lval
     type(string_t), intent(in) :: name
@@ -1531,7 +1582,7 @@ contains
        lval = .false.
     end if
   end function var_list_get_lval
-  
+
   function var_list_get_ival (vars, name, follow_link) result (ival)
     integer :: ival
     type(string_t), intent(in) :: name
@@ -1550,7 +1601,7 @@ contains
        ival = 0
     end if
   end function var_list_get_ival
-  
+
   function var_list_get_rval (vars, name, follow_link) result (rval)
     real(default) :: rval
     type(string_t), intent(in) :: name
@@ -1569,7 +1620,7 @@ contains
        rval = 0
     end if
   end function var_list_get_rval
-    
+
   function var_list_get_cval (vars, name, follow_link) result (cval)
     complex(default) :: cval
     type(string_t), intent(in) :: name
@@ -1601,9 +1652,9 @@ contains
        if (var_has_value (var)) then
           aval = var%aval
        end if
-    end if    
+    end if
   end function var_list_get_aval
-  
+
   function var_list_get_pval (vars, name, follow_link) result (pval)
     type(subevt_t) :: pval
     type(string_t), intent(in) :: name
@@ -1618,7 +1669,7 @@ contains
        end if
     end if
   end function var_list_get_pval
-  
+
   function var_list_get_sval (vars, name, follow_link) result (sval)
     type(string_t) :: sval
     type(string_t), intent(in) :: name
@@ -1637,7 +1688,7 @@ contains
        sval = ""
     end if
   end function var_list_get_sval
-  
+
   function var_has_value (var) result (valid)
     logical :: valid
     type(var_entry_t), pointer :: var
@@ -1671,7 +1722,7 @@ contains
        if (present (known))  known => null ()
     end if
   end subroutine var_list_get_lptr
-    
+
   subroutine var_list_get_iptr (var_list, name, iptr, known)
     class(var_list_t), intent(in) :: var_list
     type(string_t), intent(in) :: name
@@ -1687,7 +1738,7 @@ contains
        if (present (known))  known => null ()
     end if
   end subroutine var_list_get_iptr
-    
+
   subroutine var_list_get_rptr (var_list, name, rptr, known)
     class(var_list_t), intent(in) :: var_list
     type(string_t), intent(in) :: name
@@ -1703,7 +1754,7 @@ contains
        if (present (known))  known => null ()
     end if
   end subroutine var_list_get_rptr
-    
+
   subroutine var_list_get_cptr (var_list, name, cptr, known)
     class(var_list_t), intent(in) :: var_list
     type(string_t), intent(in) :: name
@@ -1719,7 +1770,7 @@ contains
        if (present (known))  known => null ()
     end if
   end subroutine var_list_get_cptr
-    
+
   subroutine var_list_get_aptr (var_list, name, aptr, known)
     class(var_list_t), intent(in) :: var_list
     type(string_t), intent(in) :: name
@@ -1735,7 +1786,7 @@ contains
        if (present (known))  known => null ()
     end if
   end subroutine var_list_get_aptr
-    
+
   subroutine var_list_get_pptr (var_list, name, pptr, known)
     class(var_list_t), intent(in) :: var_list
     type(string_t), intent(in) :: name
@@ -1751,7 +1802,7 @@ contains
        if (present (known))  known => null ()
     end if
   end subroutine var_list_get_pptr
-    
+
   subroutine var_list_get_sptr (var_list, name, sptr, known)
     class(var_list_t), intent(in) :: var_list
     type(string_t), intent(in) :: name
@@ -1767,7 +1818,7 @@ contains
        if (present (known))  known => null ()
     end if
   end subroutine var_list_get_sptr
-    
+
   subroutine var_list_get_obs1_iptr (var_list, name, obs1_iptr, p1)
     class(var_list_t), intent(in) :: var_list
     type(string_t), intent(in) :: name
@@ -1783,7 +1834,7 @@ contains
        p1 => null ()
     end if
   end subroutine var_list_get_obs1_iptr
-  
+
   subroutine var_list_get_obs2_iptr (var_list, name, obs2_iptr, p1, p2)
     class(var_list_t), intent(in) :: var_list
     type(string_t), intent(in) :: name
@@ -1801,7 +1852,7 @@ contains
        p2 => null ()
     end if
   end subroutine var_list_get_obs2_iptr
-  
+
   subroutine var_list_get_obs1_rptr (var_list, name, obs1_rptr, p1)
     class(var_list_t), intent(in) :: var_list
     type(string_t), intent(in) :: name
@@ -1817,7 +1868,7 @@ contains
        p1 => null ()
     end if
   end subroutine var_list_get_obs1_rptr
-  
+
   subroutine var_list_get_obs2_rptr (var_list, name, obs2_rptr, p1, p2)
     class(var_list_t), intent(in) :: var_list
     type(string_t), intent(in) :: name
@@ -1835,7 +1886,7 @@ contains
        p2 => null ()
     end if
   end subroutine var_list_get_obs2_rptr
-  
+
   subroutine var_list_set_procvar_int (var_list, proc_id, name, ival)
     type(var_list_t), intent(inout) :: var_list
     type(string_t), intent(in) :: proc_id
@@ -1846,7 +1897,7 @@ contains
     var_name = name // "(" // proc_id // ")"
     var => var_list_get_var_ptr (var_list, var_name)
     if (.not. associated (var)) then
-       call var_list_append_int (var_list, var_name, ival, intrinsic=.true.)
+       call var_list%append_int (var_name, ival, intrinsic=.true.)
     else if (present (ival)) then
        call var_list%set_int (var_name, ival, is_known=.true.)
     end if
@@ -1862,7 +1913,7 @@ contains
     var_name = name // "(" // proc_id // ")"
     var => var_list_get_var_ptr (var_list, var_name)
     if (.not. associated (var)) then
-       call var_list_append_real (var_list, var_name, rval, intrinsic=.true.)
+       call var_list%append_real (var_name, rval, intrinsic=.true.)
     else if (present (rval)) then
        call var_list%set_real (var_name, rval, is_known=.true.)
     end if
@@ -1879,7 +1930,7 @@ contains
     var%obs1_int => obs1_iptr
     call var_list_append (var_list, var)
   end subroutine var_list_append_obs1_iptr
-  
+
   subroutine var_list_append_obs2_iptr (var_list, name, obs2_iptr, p1, p2)
     type(var_list_t), intent(inout) :: var_list
     type(string_t), intent(in) :: name
@@ -1891,7 +1942,7 @@ contains
     var%obs2_int => obs2_iptr
     call var_list_append (var_list, var)
   end subroutine var_list_append_obs2_iptr
-  
+
   subroutine var_list_append_obs1_rptr (var_list, name, obs1_rptr, p1)
     type(var_list_t), intent(inout) :: var_list
     type(string_t), intent(in) :: name
@@ -1903,7 +1954,7 @@ contains
     var%obs1_real => obs1_rptr
     call var_list_append (var_list, var)
   end subroutine var_list_append_obs1_rptr
-  
+
   subroutine var_list_append_obs2_rptr (var_list, name, obs2_rptr, p1, p2)
     type(var_list_t), intent(inout) :: var_list
     type(string_t), intent(in) :: name
@@ -1915,7 +1966,7 @@ contains
     var%obs2_real => obs2_rptr
     call var_list_append (var_list, var)
   end subroutine var_list_append_obs2_rptr
-  
+
   subroutine var_list_append_uobs_int (var_list, name, p1, p2)
     type(var_list_t), intent(inout) :: var_list
     type(string_t), intent(in) :: name
@@ -1930,7 +1981,7 @@ contains
     end if
     call var_list_append (var_list, var)
   end subroutine var_list_append_uobs_int
-  
+
   subroutine var_list_append_uobs_real (var_list, name, p1, p2)
     type(var_list_t), intent(inout) :: var_list
     type(string_t), intent(in) :: name
@@ -1945,7 +1996,7 @@ contains
     end if
     call var_list_append (var_list, var)
   end subroutine var_list_append_uobs_real
-  
+
   subroutine var_list_clear (vars, name, follow_link)
     class(var_list_t), intent(inout) :: vars
     type(string_t), intent(in) :: name
@@ -1956,7 +2007,7 @@ contains
        call var_entry_clear (var)
     end if
   end subroutine var_list_clear
-  
+
   subroutine var_list_set_ival (vars, name, ival, follow_link)
     class(var_list_t), intent(inout) :: vars
     type(string_t), intent(in) :: name
@@ -1968,7 +2019,7 @@ contains
        call var_entry_set_int (var, ival, is_known=.true.)
     end if
   end subroutine var_list_set_ival
-  
+
   subroutine var_list_set_rval (vars, name, rval, follow_link)
     class(var_list_t), intent(inout) :: vars
     type(string_t), intent(in) :: name
@@ -1980,7 +2031,7 @@ contains
        call var_entry_set_real (var, rval, is_known=.true.)
     end if
   end subroutine var_list_set_rval
-  
+
   subroutine var_list_set_cval (vars, name, cval, follow_link)
     class(var_list_t), intent(inout) :: vars
     type(string_t), intent(in) :: name
@@ -1992,7 +2043,7 @@ contains
        call var_entry_set_cmplx (var, cval, is_known=.true.)
     end if
   end subroutine var_list_set_cval
-  
+
   subroutine var_list_set_lval (vars, name, lval, follow_link)
     class(var_list_t), intent(inout) :: vars
     type(string_t), intent(in) :: name
@@ -2004,7 +2055,7 @@ contains
        call var_entry_set_log (var, lval, is_known=.true.)
     end if
   end subroutine var_list_set_lval
-  
+
   subroutine var_list_set_sval (vars, name, sval, follow_link)
     class(var_list_t), intent(inout) :: vars
     type(string_t), intent(in) :: name
@@ -2016,7 +2067,7 @@ contains
        call var_entry_set_string (var, sval, is_known=.true.)
     end if
   end subroutine var_list_set_sval
-  
+
   subroutine var_list_set_log &
        (var_list, name, lval, is_known, ignore, force, verbose, model_name)
     class(var_list_t), intent(inout), target :: var_list
@@ -2042,7 +2093,7 @@ contains
        call var_missing_error (name, ignore)
     end if
   end subroutine var_list_set_log
-          
+
   subroutine var_list_set_int &
        (var_list, name, ival, is_known, ignore, force, verbose, model_name)
     class(var_list_t), intent(inout), target :: var_list
@@ -2053,7 +2104,7 @@ contains
     type(string_t), intent(in), optional :: model_name
     type(var_entry_t), pointer :: var
     var => var_list_get_var_ptr (var_list, name, V_INT)
-    if (associated (var)) then 
+    if (associated (var)) then
        if (.not. var_entry_is_locked (var, force)) then
           select case (var%type)
           case (V_INT)
@@ -2068,7 +2119,7 @@ contains
        call var_missing_error (name, ignore)
     end if
   end subroutine var_list_set_int
-          
+
   subroutine var_list_set_real &
        (var_list, name, rval, is_known, ignore, force, &
         verbose, model_name, pacified)
@@ -2096,7 +2147,7 @@ contains
        call var_missing_error (name, ignore)
     end if
   end subroutine var_list_set_real
-          
+
   subroutine var_list_set_cmplx &
        (var_list, name, cval, is_known, ignore, force, &
         verbose, model_name, pacified)
@@ -2124,7 +2175,7 @@ contains
        call var_missing_error (name, ignore)
     end if
   end subroutine var_list_set_cmplx
-          
+
   subroutine var_list_set_pdg_array &
        (var_list, name, aval, is_known, ignore, force, verbose, model_name)
     class(var_list_t), intent(inout), target :: var_list
@@ -2151,7 +2202,7 @@ contains
        call var_missing_error (name, ignore)
     end if
   end subroutine var_list_set_pdg_array
-          
+
   subroutine var_list_set_subevt &
        (var_list, name, pval, is_known, ignore, force, verbose, model_name)
     class(var_list_t), intent(inout), target :: var_list
@@ -2178,7 +2229,7 @@ contains
        call var_missing_error (name, ignore)
     end if
   end subroutine var_list_set_subevt
-          
+
   subroutine var_list_set_string &
        (var_list, name, sval, is_known, ignore, force, verbose, model_name)
     class(var_list_t), intent(inout), target :: var_list
@@ -2205,7 +2256,7 @@ contains
        call var_missing_error (name, ignore)
     end if
   end subroutine var_list_set_string
-          
+
   subroutine var_mismatch_error (name)
     type(string_t), intent(in) :: name
     call msg_fatal ("Type mismatch for variable '" // char (name) // "'")
@@ -2231,7 +2282,7 @@ contains
   end subroutine var_missing_error
 
   subroutine var_list_import (var_list, src_list)
-    type(var_list_t), intent(inout) :: var_list
+    class(var_list_t), intent(inout) :: var_list
     type(var_list_t), intent(in) :: src_list
     type(var_entry_t), pointer :: var, src
     var => var_list%first
@@ -2243,9 +2294,9 @@ contains
        var => var%next
     end do
   end subroutine var_list_import
-          
+
   recursive subroutine var_list_undefine (var_list, follow_link)
-    type(var_list_t), intent(inout) :: var_list
+    class(var_list_t), intent(inout) :: var_list
     logical, intent(in), optional :: follow_link
     type(var_entry_t), pointer :: var
     logical :: rec
@@ -2261,7 +2312,7 @@ contains
   end subroutine var_list_undefine
 
   recursive subroutine var_list_init_snapshot (var_list, vars_in, follow_link)
-    type(var_list_t), intent(out) :: var_list
+    class(var_list_t), intent(out) :: var_list
     type(var_list_t), intent(in) :: vars_in
     logical, intent(in), optional :: follow_link
     type(var_entry_t), pointer :: var, var_in
@@ -2284,7 +2335,7 @@ contains
   end subroutine var_list_init_snapshot
 
   subroutine var_list_check_user_var (var_list, name, type, new)
-    type(var_list_t), intent(in), target :: var_list
+    class(var_list_t), intent(in), target :: var_list
     type(string_t), intent(in) :: name
     integer, intent(inout) :: type
     logical, intent(in) :: new
@@ -2315,6 +2366,847 @@ contains
        end if
     end if
   end subroutine var_list_check_user_var
+
+  subroutine var_list_init_defaults (var_list, seed, paths)
+    class(var_list_t), intent(out) :: var_list
+    integer, intent(in) :: seed
+    type(paths_t), intent(in), optional :: paths
+    call var_list%set_beams_defaults (paths)
+    call var_list%set_core_defaults (seed)
+    call var_list%set_integration_defaults ()
+    call var_list%set_phase_space_defaults ()
+    call var_list%set_gamelan_defaults ()
+    call var_list%set_clustering_defaults ()
+    call var_list%set_eio_defaults ()
+    call var_list%set_shower_defaults ()
+    call var_list%set_hadronization_defaults ()
+    call var_list%set_tauola_defaults  ()
+    call var_list%set_mlm_matching_defaults ()
+    call var_list%set_powheg_matching_defaults ()
+    call var_list%append_log (var_str ("?ckkw_matching"), .false., &
+            intrinsic=.true.)
+    call var_list%set_openmp_defaults ()
+    call var_list%set_nlo_defaults ()
+  end subroutine var_list_init_defaults
+
+  subroutine var_list_set_beams_defaults (var_list, paths)
+    type(paths_t), intent(in), optional :: paths
+    class(var_list_t), intent(inout) :: var_list
+    call var_list%append_real (var_str ("sqrts"), &
+          intrinsic=.true.)
+    call var_list%append_real (var_str ("luminosity"), 0._default, &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?sf_trace"), .false., &
+          intrinsic=.true.)
+    call var_list%append_string (var_str ("$sf_trace_file"), var_str (""), &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?sf_allow_s_mapping"), .true., &
+          intrinsic=.true.)
+    if (present (paths)) then
+       call var_list%append_string (var_str ("$lhapdf_dir"), paths%lhapdfdir, &
+             intrinsic=.true.)
+    else
+       call var_list%append_string (var_str ("$lhapdf_dir"), var_str(""), &
+             intrinsic=.true.)
+    end if
+    call var_list%append_string (var_str ("$lhapdf_file"), var_str (""), &
+          intrinsic=.true.)
+    call var_list%append_string (var_str ("$lhapdf_photon_file"), var_str (""), &
+          intrinsic=.true.)
+    call var_list%append_int (var_str ("lhapdf_member"), 0, &
+          intrinsic=.true.)
+    call var_list%append_int (var_str ("lhapdf_photon_scheme"), 0, &
+          intrinsic=.true.)
+    call var_list%append_string (var_str ("$pdf_builtin_set"), var_str ("CTEQ6L"), &
+         intrinsic=.true.)
+    call var_list%append_log (var_str ("?hoppet_b_matching"), .false., &
+          intrinsic=.true.)
+    call var_list%append_real (var_str ("isr_alpha"), 0._default, &
+          intrinsic=.true.)
+    call var_list%append_real (var_str ("isr_q_max"), 0._default, &
+          intrinsic=.true.)
+    call var_list%append_real (var_str ("isr_mass"), 0._default, &
+          intrinsic=.true.)
+    call var_list%append_int (var_str ("isr_order"), 3, &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?isr_recoil"), .false., &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?isr_keep_energy"), .false., &
+          intrinsic=.true.)
+    call var_list%append_real (var_str ("epa_alpha"), 0._default, &
+          intrinsic=.true.)
+    call var_list%append_real (var_str ("epa_x_min"), 0._default, &
+          intrinsic=.true.)
+    call var_list%append_real (var_str ("epa_q_min"), 0._default, &
+          intrinsic=.true.)
+    call var_list%append_real (var_str ("epa_e_max"), 0._default, &
+          intrinsic=.true.)
+    call var_list%append_real (var_str ("epa_mass"), 0._default, &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?epa_recoil"), .false., &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?epa_keep_energy"), .false., &
+          intrinsic=.true.)
+    call var_list%append_real (var_str ("ewa_x_min"), 0._default, &
+          intrinsic=.true.)
+    call var_list%append_real (var_str ("ewa_pt_max"), 0._default, &
+          intrinsic=.true.)
+    call var_list%append_real (var_str ("ewa_mass"), 0._default, &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?ewa_recoil"), .false., &
+         intrinsic=.true.)
+    call var_list%append_log (var_str ("?ewa_keep_energy"), .false., &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?circe1_photon1"), .false., &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?circe1_photon2"), .false., &
+          intrinsic=.true.)
+    call var_list%append_real (var_str ("circe1_sqrts"), &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?circe1_generate"), .true., &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?circe1_map"), .true., &
+          intrinsic=.true.)
+    call var_list%append_real (var_str ("circe1_mapping_slope"), 2._default, &
+          intrinsic=.true.)
+    call var_list%append_real (var_str ("circe1_eps"), 1e-5_default, &
+          intrinsic=.true.)
+    call var_list%append_int (var_str ("circe1_ver"), 0, intrinsic=.true.)
+    call var_list%append_int (var_str ("circe1_rev"), 0, intrinsic=.true.)
+    call var_list%append_string (var_str ("$circe1_acc"), var_str ("SBAND"), &
+          intrinsic=.true.)
+    call var_list%append_int (var_str ("circe1_chat"), 0, intrinsic=.true.)
+    call var_list%append_log (var_str ("?circe1_with_radiation"), .false., &
+         intrinsic=.true.)
+    call var_list%append_log (var_str ("?circe2_polarized"), .true., &
+          intrinsic=.true.)
+    call var_list%append_string (var_str ("$circe2_file"), &
+          intrinsic=.true.)
+    call var_list%append_string (var_str ("$circe2_design"), var_str ("*"), &
+          intrinsic=.true.)
+    call var_list%append_real (var_str ("gaussian_spread1"), 0._default, &
+          intrinsic=.true.)
+    call var_list%append_real (var_str ("gaussian_spread2"), 0._default, &
+          intrinsic=.true.)
+    call var_list%append_string (var_str ("$beam_events_file"), &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?beam_events_warn_eof"), .true., &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?energy_scan_normalize"), .false., &
+          intrinsic=.true.)
+  end subroutine var_list_set_beams_defaults
+
+  subroutine var_list_set_core_defaults (var_list, seed)
+    class(var_list_t), intent(inout) :: var_list
+    integer, intent(in) :: seed
+    logical, target, save :: known = .true.     !!! ??????
+    real(default), parameter :: real_specimen = 1.
+    call var_list_append_log_ptr &
+         (var_list, var_str ("?logging"), logging, known, &
+         intrinsic=.true.)
+    call var_list%append_int (var_str ("seed"), seed, &
+          intrinsic=.true.)
+    call var_list%append_string (var_str ("$model_name"), &
+          intrinsic=.true.)
+    call var_list%append_int (var_str ("process_num_id"), &
+         intrinsic=.true.)
+    call var_list%append_string (var_str ("$method"), var_str ("omega"), &
+         intrinsic=.true.)
+    call var_list%append_log (var_str ("?report_progress"), .true., &
+          intrinsic=.true.)
+    call var_list%append_string (var_str ("$restrictions"), var_str (""), &
+         intrinsic=.true.)
+    call var_list%append_string (var_str ("$omega_flags"), var_str (""), &
+         intrinsic=.true.)
+    call var_list%append_log (var_str ("?read_color_factors"), .true., &
+          intrinsic=.true.)
+!!! JRR: WK please check (#529)
+!     call var_list_append_string &
+!          (var_list, var_str ("$user_procs_cut"), var_str (""), &
+!           intrinsic=.true.)
+!     call var_list_append_string &
+!          (var_list, var_str ("$user_procs_event_shape"), var_str (""), &
+!           intrinsic=.true.)
+!     call var_list_append_string &
+!          (var_list, var_str ("$user_procs_obs1"), var_str (""), &
+!           intrinsic=.true.)
+!     call var_list_append_string &
+!          (var_list, var_str ("$user_procs_obs2"), var_str (""), &
+!           intrinsic=.true.)
+!     call var_list_append_string &
+!          (var_list, var_str ("$user_procs_sf"), var_str (""), &
+!           intrinsic=.true.)
+    call var_list%append_log (var_str ("?slha_read_input"), .true., &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?slha_read_spectrum"), .true., &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?slha_read_decays"), .false., &
+          intrinsic=.true.)
+    call var_list%append_string (var_str ("$library_name"), &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?alpha_s_is_fixed"), .true., &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?alpha_s_from_lhapdf"), .false., &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?alpha_s_from_pdf_builtin"), .false., &
+          intrinsic=.true.)
+    call var_list%append_int (var_str ("alpha_s_order"), 0, &
+          intrinsic=.true.)
+    call var_list%append_int (var_str ("alpha_s_nf"), 5, &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?alpha_s_from_mz"), .false., &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?alpha_s_from_lambda_qcd"), .false., &
+          intrinsic=.true.)
+    call var_list%append_real (var_str ("lambda_qcd"), 200.e-3_default, &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?fatal_beam_decay"), .true., &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?helicity_selection_active"), .true., &
+          intrinsic=.true.)
+    call var_list%append_real (var_str ("helicity_selection_threshold"), &
+          1E10_default, &
+          intrinsic=.true.)
+    call var_list%append_int (var_str ("helicity_selection_cutoff"), 1000, &
+          intrinsic=.true.)
+    call var_list%append_string (var_str ("$rng_method"), var_str ("tao"), &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?vis_diags"), .false., &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?vis_diags_color"), .false., &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?check_event_file"), .true., &
+          intrinsic=.true.)
+    call var_list%append_string (var_str ("$event_file_version"), var_str (""), &
+          intrinsic=.true.)
+    call var_list%append_int (var_str ("n_events"), 0, &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?unweighted"), .true., &
+          intrinsic=.true.)
+    call var_list%append_real (var_str ("safety_factor"), 1._default, &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?negative_weights"), .false., &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?keep_beams"), .false., &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?keep_remnants"), .true., &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?recover_beams"), .true., &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?update_event"), .false., &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?update_sqme"), .false., &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?update_weight"), .false., &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?use_alpha_s_from_file"), .false., &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?use_scale_from_file"), .false., &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?allow_decays"), .true., &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?auto_decays"), .false., &
+          intrinsic=.true.)
+    call var_list%append_int (var_str ("auto_decays_multiplicity"), 2, &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?auto_decays_radiative"), .false., &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?decay_rest_frame"), .false., &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?isotropic_decay"), .false., &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?diagonal_decay"), .false., &
+          intrinsic=.true.)
+    call var_list%append_int (var_str ("decay_helicity"), &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?polarized_events"), .false., &
+            intrinsic=.true.)
+    call var_list%append_string (var_str ("$polarization_mode"), &
+         var_str ("helicity"), &
+         intrinsic=.true.)
+    call var_list%append_real (var_str ("tolerance"), 0._default, &
+          intrinsic=.true.)
+    call var_list%append_int (var_str ("checkpoint"), 0, &
+         intrinsic = .true.)
+    call var_list%append_int (var_str ("event_callback_interval"), 0, &
+         intrinsic = .true.)
+    call var_list%append_log (var_str ("?pacify"), .false., &
+         intrinsic=.true.)
+    call var_list%append_string (var_str ("$out_file"), var_str (""), &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?out_advance"), .true., &
+          intrinsic=.true.)
+!!! JRR: WK please check (#542)
+!     call var_list%append_log (var_str ("?out_custom"), .false., &
+!           intrinsic=.true.)
+!     call var_list%append_string (var_str ("$out_comment"), var_str ("# "), &
+!           intrinsic=.true.)
+!     call var_list%append_log (var_str ("?out_header"), .true., &
+!           intrinsic=.true.)
+!     call var_list%append_log (var_str ("?out_yerr"), .true., &
+!           intrinsic=.true.)
+!     call var_list%append_log (var_str ("?out_xerr"), .true., &
+!           intrinsic=.true.)
+    call var_list%append_int (var_str ("real_range"), &
+         range (real_specimen), intrinsic = .true., locked = .true.)
+    call var_list%append_int (var_str ("real_precision"), &
+         precision (real_specimen), intrinsic = .true., locked = .true.)
+    call var_list%append_real (var_str ("real_epsilon"), &
+         epsilon (real_specimen), intrinsic = .true., locked = .true.)
+    call var_list%append_real (var_str ("real_tiny"), &
+         tiny (real_specimen), intrinsic = .true., locked = .true.)
+  end subroutine var_list_set_core_defaults
+
+  subroutine var_list_set_integration_defaults (var_list)
+    class(var_list_t), intent(inout) :: var_list
+    call var_list%append_string (var_str ("$integration_method"), var_str ("vamp"), &
+          intrinsic=.true.)
+    call var_list%append_int (var_str ("threshold_calls"), 10, &
+          intrinsic=.true.)
+    call var_list%append_int (var_str ("min_calls_per_channel"), 10, &
+          intrinsic=.true.)
+    call var_list%append_int (var_str ("min_calls_per_bin"), 10, &
+          intrinsic=.true.)
+    call var_list%append_int (var_str ("min_bins"), 3, &
+          intrinsic=.true.)
+    call var_list%append_int (var_str ("max_bins"), 20, &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?stratified"), .true., &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?use_vamp_equivalences"), .true., &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?vamp_verbose"), .false., &
+         intrinsic=.true.)
+    call var_list%append_log (var_str ("?vamp_history_global"), &
+         .true., intrinsic=.true.)
+    call var_list%append_log (var_str ("?vamp_history_global_verbose"), &
+         .false., intrinsic=.true.)
+    call var_list%append_log (var_str ("?vamp_history_channels"), &
+         .false., intrinsic=.true.)
+    call var_list%append_log (var_str ("?vamp_history_channels_verbose"), &
+         .false., intrinsic=.true.)
+    call var_list%append_string (var_str ("$run_id"), var_str (""), &
+          intrinsic=.true.)
+    call var_list%append_int (var_str ("n_calls_test"), 0, &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?integration_timer"), .true., &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?check_grid_file"), .true., &
+          intrinsic=.true.)
+    call var_list%append_real (var_str ("accuracy_goal"), 0._default, &
+          intrinsic=.true.)
+    call var_list%append_real (var_str ("error_goal"), 0._default, &
+          intrinsic=.true.)
+    call var_list%append_real (var_str ("relative_error_goal"), 0._default, &
+          intrinsic=.true.)
+    call var_list%append_real (var_str ("error_threshold"), &
+         0._default, intrinsic=.true.)
+    call var_list%append_real (var_str ("channel_weights_power"), 0.25_default, &
+          intrinsic=.true.)
+  end subroutine var_list_set_integration_defaults
+
+  subroutine var_list_set_phase_space_defaults (var_list)
+    class(var_list_t), intent(inout) :: var_list
+    call var_list%append_string (var_str ("$phs_method"), var_str ("default"), &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?vis_channels"), .false., &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?check_phs_file"), .true., &
+          intrinsic=.true.)
+    call var_list%append_string (var_str ("$phs_file"), var_str (""), &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?phs_only"), .false., &
+          intrinsic=.true.)
+    call var_list%append_real (var_str ("phs_threshold_s"), 50._default, &
+          intrinsic=.true.)
+    call var_list%append_real (var_str ("phs_threshold_t"), 100._default, &
+          intrinsic=.true.)
+    call var_list%append_int (var_str ("phs_off_shell"), 2, &
+          intrinsic=.true.)
+    call var_list%append_int (var_str ("phs_t_channel"), 6, &
+          intrinsic=.true.)
+    call var_list%append_real (var_str ("phs_e_scale"), 10._default, &
+          intrinsic=.true.)
+    call var_list%append_real (var_str ("phs_m_scale"), 10._default, &
+          intrinsic=.true.)
+    call var_list%append_real (var_str ("phs_q_scale"), 10._default, &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?phs_keep_nonresonant"), .true., &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?phs_step_mapping"), .true., &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?phs_step_mapping_exp"), .true., &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?phs_s_mapping"), .true., &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?vis_history"), .true., &
+          intrinsic=.true.)
+  end subroutine var_list_set_phase_space_defaults
+
+  subroutine var_list_set_gamelan_defaults (var_list)
+    class(var_list_t), intent(inout) :: var_list
+    call var_list%append_int (&
+         var_str ("n_bins"), 20, &
+         intrinsic=.true.)
+    call var_list%append_log (&
+         var_str ("?normalize_bins"), .false., &
+         intrinsic=.true.)
+    call var_list%append_string (var_str ("$obs_label"), var_str (""), &
+         intrinsic=.true.)
+    call var_list%append_string (var_str ("$obs_unit"), var_str (""), &
+          intrinsic=.true.)
+    call var_list%append_string (var_str ("$title"), var_str (""), &
+          intrinsic=.true.)
+    call var_list%append_string (var_str ("$description"), var_str (""), &
+          intrinsic=.true.)
+    call var_list%append_string (var_str ("$x_label"), var_str (""), &
+          intrinsic=.true.)
+    call var_list%append_string (var_str ("$y_label"), var_str (""), &
+          intrinsic=.true.)
+    call var_list%append_int (var_str ("graph_width_mm"), 130, &
+          intrinsic=.true.)
+    call var_list%append_int (var_str ("graph_height_mm"), 90, &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?y_log"), .false., &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?x_log"), .false., &
+          intrinsic=.true.)
+    call var_list%append_real (var_str ("x_min"),  &
+          intrinsic=.true.)
+    call var_list%append_real (var_str ("x_max"),  &
+          intrinsic=.true.)
+    call var_list%append_real (var_str ("y_min"),  &
+          intrinsic=.true.)
+    call var_list%append_real (var_str ("y_max"),  &
+          intrinsic=.true.)
+    call var_list%append_string (var_str ("$gmlcode_bg"), var_str (""), &
+          intrinsic=.true.)
+    call var_list%append_string (var_str ("$gmlcode_fg"), var_str (""), &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?draw_histogram"), &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?draw_base"), &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?draw_piecewise"), &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?fill_curve"), &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?draw_curve"), &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?draw_errors"), &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?draw_symbols"), &
+          intrinsic=.true.)
+    call var_list%append_string (var_str ("$fill_options"), &
+          intrinsic=.true.)
+    call var_list%append_string (var_str ("$draw_options"), &
+          intrinsic=.true.)
+    call var_list%append_string (var_str ("$err_options"), &
+          intrinsic=.true.)
+    call var_list%append_string (var_str ("$symbol"), &
+          intrinsic=.true.)
+    call var_list%append_log (&
+         var_str ("?analysis_file_only"), .false., &
+         intrinsic=.true.)
+  end subroutine var_list_set_gamelan_defaults
+
+  subroutine var_list_set_clustering_defaults (var_list)
+    class(var_list_t), intent(inout) :: var_list
+    call var_list%append_int (&
+         var_str ("kt_algorithm"), &
+         kt_algorithm, &
+         intrinsic = .true., locked = .true.)
+    call var_list%append_int (&
+         var_str ("cambridge_algorithm"), &
+         cambridge_algorithm, intrinsic = .true., locked = .true.)
+    call var_list%append_int (&
+         var_str ("antikt_algorithm"), &
+         antikt_algorithm, &
+         intrinsic = .true., locked = .true.)
+    call var_list%append_int (&
+         var_str ("genkt_algorithm"), &
+         genkt_algorithm, &
+         intrinsic = .true., locked = .true.)
+    call var_list%append_int (&
+         var_str ("cambridge_for_passive_algorithm"), &
+         cambridge_for_passive_algorithm, &
+         intrinsic = .true., locked = .true.)
+    call var_list%append_int (&
+         var_str ("genkt_for_passive_algorithm"), &
+         genkt_for_passive_algorithm, &
+         intrinsic = .true., locked = .true.)
+    call var_list%append_int (&
+         var_str ("ee_kt_algorithm"), &
+         ee_kt_algorithm, &
+         intrinsic = .true., locked = .true.)
+    call var_list%append_int (&
+         var_str ("ee_genkt_algorithm"), &
+         ee_genkt_algorithm, &
+         intrinsic = .true., locked = .true.)
+    call var_list%append_int (&
+         var_str ("plugin_algorithm"), &
+         plugin_algorithm, &
+         intrinsic = .true., locked = .true.)
+    call var_list%append_int (&
+         var_str ("undefined_jet_algorithm"), &
+         undefined_jet_algorithm, &
+         intrinsic = .true., locked = .true.)
+    call var_list%append_int (&
+         var_str ("jet_algorithm"), undefined_jet_algorithm, &
+         intrinsic = .true.)
+    call var_list%append_real (&
+         var_str ("jet_r"), 0._default, &
+         intrinsic = .true.)
+    call var_list%append_real (&
+         var_str ("jet_p"), 0._default, &
+         intrinsic = .true.)
+    call var_list%append_real (&
+         var_str ("jet_ycut"), 0._default, &
+         intrinsic = .true.)
+    call var_list%append_log (&
+         var_str ("?keep_flavors_when_clustering"), .false., &
+         intrinsic = .true.)
+  end subroutine var_list_set_clustering_defaults
+
+  subroutine var_list_set_eio_defaults (var_list)
+    class(var_list_t), intent(inout) :: var_list
+    call var_list%append_string (var_str ("$sample"), var_str (""), &
+          intrinsic=.true.)
+    call var_list%append_string (var_str ("$sample_normalization"), var_str ("auto"),&
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?sample_pacify"), .false., &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?sample_select"), .true., &
+          intrinsic=.true.)
+    call var_list%append_int (var_str ("sample_max_tries"), 10000, &
+         intrinsic = .true.)
+    call var_list%append_int (var_str ("sample_split_n_evt"), 0, &
+         intrinsic = .true.)
+    call var_list%append_int (var_str ("sample_split_n_kbytes"), 0, &
+         intrinsic = .true.)
+    call var_list%append_int (var_str ("sample_split_index"), 0, &
+         intrinsic = .true.)
+    call var_list%append_string (var_str ("$rescan_input_format"), var_str ("raw"), &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?read_raw"), .true., &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?write_raw"), .true., &
+          intrinsic=.true.)
+    call var_list%append_string (var_str ("$extension_raw"), var_str ("evx"), &
+         intrinsic=.true.)
+    call var_list%append_string (var_str ("$extension_default"), var_str ("evt"), &
+         intrinsic=.true.)
+    call var_list%append_string (var_str ("$debug_extension"), var_str ("debug"), &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?debug_process"), .true., &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?debug_transforms"), .true., &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?debug_decay"), .true., &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?debug_verbose"), .true., &
+          intrinsic=.true.)
+    call var_list%append_string (var_str ("$dump_extension"), var_str ("pset"), &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?dump_compressed"), .true., &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?dump_weights"), .false., &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?dump_summary"), .false., &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?dump_screen"), .false., &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?hepevt_ensure_order"), .false., &
+          intrinsic=.true.)
+    call var_list%append_string (var_str ("$extension_hepevt"), var_str ("hepevt"), &
+          intrinsic=.true.)
+    call var_list%append_string (var_str ("$extension_ascii_short"), &
+          var_str ("short.evt"), intrinsic=.true.)
+    call var_list%append_string (var_str ("$extension_ascii_long"), &
+          var_str ("long.evt"), intrinsic=.true.)
+    call var_list%append_string (var_str ("$extension_athena"), &
+          var_str ("athena.evt"), intrinsic=.true.)
+    call var_list%append_string (var_str ("$extension_mokka"), &
+           var_str ("mokka.evt"), intrinsic=.true.)
+    call var_list%append_string (var_str ("$lhef_version"), var_str ("2.0"), &
+         intrinsic = .true.)
+    call var_list%append_string (var_str ("$lhef_extension"), var_str ("lhe"), &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?lhef_write_sqme_prc"), .true., &
+         intrinsic = .true.)
+    call var_list%append_log (var_str ("?lhef_write_sqme_ref"), .false., &
+         intrinsic = .true.)
+    call var_list%append_log (var_str ("?lhef_write_sqme_alt"), .true., &
+         intrinsic = .true.)
+    call var_list%append_string (var_str ("$extension_lha"), var_str ("lha"), &
+          intrinsic=.true.)
+    call var_list%append_string (var_str ("$extension_hepmc"), var_str ("hepmc"), &
+          intrinsic=.true.)
+    call var_list%append_log (var_str ("?hepmc_output_cross_section"), .false., &
+         intrinsic = .true.)
+    call var_list%append_string (var_str ("$extension_lcio"), var_str ("slcio"), &
+          intrinsic=.true.)
+    call var_list%append_string (var_str ("$extension_stdhep"), var_str ("hep"), &
+          intrinsic=.true.)
+    call var_list%append_string (var_str ("$extension_stdhep_up"), &
+          var_str ("up.hep"), intrinsic=.true.)
+    call var_list%append_string (var_str ("$extension_stdhep_ev4"), &
+          var_str ("ev4.hep"), intrinsic=.true.)
+    call var_list%append_string (var_str ("$extension_hepevt_verb"), &
+          var_str ("hepevt.verb"), intrinsic=.true.)
+    call var_list%append_string (var_str ("$extension_lha_verb"), &
+          var_str ("lha.verb"), intrinsic=.true.)
+  end subroutine var_list_set_eio_defaults
+
+  subroutine var_list_set_shower_defaults (var_list)
+    class(var_list_t), intent(inout) :: var_list
+    call var_list%append_log (var_str ("?allow_shower"), .true., &
+            intrinsic=.true.)
+    call var_list%append_log (var_str ("?ps_fsr_active"), .false., &
+            intrinsic=.true.)
+    call var_list%append_log (var_str ("?ps_isr_active"), .false., &
+            intrinsic=.true.)
+    call var_list%append_log (var_str ("?ps_taudec_active"), .false., &
+            intrinsic=.true.)
+    call var_list%append_log (var_str ("?muli_active"), .false., &
+            intrinsic=.true.)
+    call var_list%append_string (var_str ("$shower_method"), var_str ("WHIZARD"), &
+            intrinsic=.true.)
+    call var_list%append_log (var_str ("?shower_verbose"), .false., &
+            intrinsic=.true.)
+    call var_list%append_string (var_str ("$ps_PYTHIA_PYGIVE"), var_str (""), &
+          intrinsic=.true.)
+    call var_list%append_real (&
+         var_str ("ps_mass_cutoff"), 1._default, intrinsic = .true.)
+    call var_list%append_real (&
+         var_str ("ps_fsr_lambda"), 0.29_default, intrinsic = .true.)
+    call var_list%append_real (&
+         var_str ("ps_isr_lambda"), 0.29_default, intrinsic = .true.)
+    call var_list%append_int (&
+         var_str ("ps_max_n_flavors"), 5, intrinsic = .true.)
+    call var_list%append_log (var_str ("?ps_isr_alpha_s_running"), .true., &
+            intrinsic=.true.)
+    call var_list%append_log (var_str ("?ps_fsr_alpha_s_running"), .true., &
+            intrinsic=.true.)
+    call var_list%append_real (var_str ("ps_fixed_alpha_s"), &
+         0._default, intrinsic = .true.)
+    call var_list%append_log (var_str ("?ps_isr_pt_ordered"), .false., &
+            intrinsic=.true.)
+    call var_list%append_log (var_str ("?ps_isr_angular_ordered"), .true., &
+            intrinsic=.true.)
+    call var_list%append_real (var_str &
+         ("ps_isr_primordial_kt_width"), 0._default, intrinsic = .true.)
+    call var_list%append_real (var_str &
+         ("ps_isr_primordial_kt_cutoff"), 5._default, intrinsic = .true.)
+    call var_list%append_real (var_str &
+         ("ps_isr_z_cutoff"), 0.999_default, intrinsic = .true.)
+    call var_list%append_real (var_str &
+         ("ps_isr_minenergy"), 1._default, intrinsic = .true.)
+    call var_list%append_real (var_str &
+         ("ps_isr_tscalefactor"), 1._default, intrinsic = .true.)
+    call var_list%append_log (var_str &
+         ("?ps_isr_only_onshell_emitted_partons"), .false., intrinsic=.true.)
+  end subroutine var_list_set_shower_defaults
+
+  subroutine var_list_set_hadronization_defaults (var_list)
+    class(var_list_t), intent(inout) :: var_list
+    call var_list%append_log &
+         (var_str ("?allow_hadronization"), .true., intrinsic=.true.)
+    call var_list%append_log &
+         (var_str ("?hadronization_active"), .false., intrinsic=.true.)
+    call var_list%append_string &
+         (var_str ("$hadronization_method"), var_str ("PYTHIA6"), intrinsic = .true.)
+    call var_list%append_real &
+         (var_str ("hadron_enhanced_fraction"), 0.01_default, intrinsic = .true.)        
+    call var_list%append_real &
+         (var_str ("hadron_enhanced_width"), 2.0_default, intrinsic = .true.)
+  end subroutine var_list_set_hadronization_defaults
+
+  subroutine var_list_set_tauola_defaults (var_list)
+    class(var_list_t), intent(inout) :: var_list
+    call var_list%append_log (&
+         var_str ("?ps_tauola_photos"), .false., intrinsic=.true.)
+    call var_list%append_log (&
+         var_str ("?ps_tauola_transverse"), .false., intrinsic=.true.)
+    call var_list%append_log (&
+         var_str ("?ps_tauola_dec_rad_cor"), .true., intrinsic=.true.)
+    call var_list%append_int (&
+         var_str ("ps_tauola_dec_mode1"), 0, intrinsic = .true.)
+    call var_list%append_int (&
+         var_str ("ps_tauola_dec_mode2"), 0, intrinsic = .true.)
+    call var_list%append_real (&
+         var_str ("ps_tauola_mh"), 125._default, intrinsic = .true.)
+    call var_list%append_real (&
+         var_str ("ps_tauola_mix_angle"), 90._default, intrinsic = .true.)
+    call var_list%append_log (&
+         var_str ("?ps_tauola_pol_vector"), .false., intrinsic = .true.)
+  end subroutine var_list_set_tauola_defaults
+
+  subroutine var_list_set_mlm_matching_defaults (var_list)
+    class(var_list_t), intent(inout) :: var_list
+    call var_list%append_log (var_str ("?mlm_matching"), .false., &
+            intrinsic=.true.)
+    call var_list%append_real (var_str &
+         ("mlm_Qcut_ME"), 0._default, intrinsic = .true.)
+    call var_list%append_real (var_str &
+         ("mlm_Qcut_PS"), 0._default, intrinsic = .true.)
+    call var_list%append_real (var_str &
+         ("mlm_ptmin"), 0._default, intrinsic = .true.)
+    call var_list%append_real (var_str &
+         ("mlm_etamax"), 0._default, intrinsic = .true.)
+    call var_list%append_real (var_str &
+         ("mlm_Rmin"), 0._default, intrinsic = .true.)
+    call var_list%append_real (var_str &
+         ("mlm_Emin"), 0._default, intrinsic = .true.)
+    call var_list%append_int (var_str &
+         ("mlm_nmaxMEjets"), 0, intrinsic = .true.)
+    call var_list%append_real (var_str &
+         ("mlm_ETclusfactor"), 0.2_default, intrinsic = .true.)
+    call var_list%append_real (var_str &
+         ("mlm_ETclusminE"), 5._default, intrinsic = .true.)
+    call var_list%append_real (var_str &
+         ("mlm_etaclusfactor"), 1._default, intrinsic = .true.)
+    call var_list%append_real (var_str &
+         ("mlm_Rclusfactor"), 1._default, intrinsic = .true.)
+    call var_list%append_real (var_str &
+         ("mlm_Eclusfactor"), 1._default, intrinsic = .true.)
+
+  end subroutine var_list_set_mlm_matching_defaults
+
+  subroutine var_list_set_powheg_matching_defaults (var_list)
+    class(var_list_t), intent(inout) :: var_list
+    call var_list%append_log (var_str ("?powheg_matching"), &
+         .false., intrinsic = .true.)
+    call var_list%append_real (var_str ("powheg_damping_scale"), &
+          10._default, intrinsic = .true.)
+    call var_list%append_log (var_str ("?powheg_use_singular_jacobian"), &
+         .false., intrinsic = .true.)
+    call var_list%append_int (var_str ("powheg_grid_size_xi"), &
+         5, intrinsic = .true.)
+    call var_list%append_int (var_str ("powheg_grid_size_y"), &
+         5, intrinsic = .true.)
+    call var_list%append_int (var_str ("powheg_grid_sampling_points"), &
+         500000, intrinsic = .true.)
+    call var_list%append_real (var_str ("powheg_pt_min"), &
+          1._default, intrinsic = .true.)
+    call var_list%append_real (var_str ("powheg_lambda"), &
+          LAMBDA_QCD_REF, intrinsic = .true.)
+    call var_list%append_log (var_str ("?powheg_rebuild_grids"), &
+          .false., intrinsic = .true.)
+    call var_list%append_log (var_str ("?powheg_use_damping"), &
+          .false., intrinsic = .true.)
+    call var_list%append_log (var_str ("?powheg_test_sudakov"), &
+          .false., intrinsic = .true.)
+    call var_list%append_log (var_str ("?powheg_disable_sudakov"), &
+          .false., intrinsic = .true.)
+  end subroutine var_list_set_powheg_matching_defaults
+
+  subroutine var_list_set_openmp_defaults (var_list)
+    class(var_list_t), intent(inout) :: var_list
+    call var_list%append_log (var_str ("?omega_openmp"), &
+         openmp_is_active (), &
+         intrinsic=.true.)
+    call var_list%append_log (var_str ("?openmp_is_active"), &
+         openmp_is_active (), &
+         locked=.true., intrinsic=.true.)
+    call var_list%append_int (var_str ("openmp_num_threads_default"), &
+         openmp_get_default_max_threads (), &
+         locked=.true., intrinsic=.true.)
+    call var_list%append_int (var_str ("openmp_num_threads"), &
+         openmp_get_max_threads (), &
+         intrinsic=.true.)
+    call var_list%append_log (var_str ("?openmp_logging"), &
+         .true., intrinsic=.true.)
+  end subroutine var_list_set_openmp_defaults
+
+  subroutine var_list_set_nlo_defaults (var_list)
+    class(var_list_t), intent(inout) :: var_list
+    call var_list%append_string (var_str ("$born_me_method"), &
+         var_str ("omega"), intrinsic = .true.)
+    call var_list%append_string (var_str ("$loop_me_method"), &
+         var_str ("openloops"), intrinsic = .true.)
+    call var_list%append_string (var_str ("$correlation_me_method"), &
+         var_str ("omega"), intrinsic = .true.)
+    call var_list%append_string (var_str ("$real_tree_me_method"), &
+         var_str ("omega"), intrinsic = .true.)
+    call var_list%append_log (&
+         var_str ("?test_soft_limit"), .false., intrinsic = .true.)
+    call var_list%append_log (&
+         var_str ("?test_coll_limit"), .false., intrinsic = .true.)
+    call var_list%append_log (&
+         var_str ("?test_anti_coll_limit"), .false., intrinsic = .true.)
+    call var_list%append_int (&
+         var_str ("fixed_alpha_region"), 0, intrinsic = .true.)
+    call var_list%append_log (&
+         var_str ("?switch_off_virtual_subtraction"), .false., intrinsic = .true.)
+    call var_list%append_real (&
+         var_str ("blha_use_top_yukawa"), -1._default, intrinsic = .true.)
+    call var_list%append_string (var_str ("$blha_ew_scheme"), &
+         var_str ("alpha_qed"), intrinsic = .true.)
+    call var_list%append_int (var_str ("openloops_verbosity"), 1, &
+         intrinsic = .true.)
+    call var_list%append_log (var_str ("?openloops_use_cms"), &
+         .false., intrinsic = .true.)
+    call var_list%append_int (var_str ("openloops_phs_tolerance"), 7, &
+         intrinsic = .true.)
+    call var_list%append_int (var_str ("openloops_stability_log"), 0, &
+         intrinsic = .true.)
+    call var_list%append_log (var_str ("?openloops_switch_off_muon_yukawa"), &
+         .false., intrinsic = .true.)
+    call var_list%append_string (var_str ("$openloops_extra_cmd"), &
+          var_str (""), intrinsic = .true.)
+    call var_list%append_log (var_str ("?openloops_use_collier"), &
+         .true., intrinsic = .true.)
+    call var_list%append_log (var_str ("?disable_subtraction"), &
+         .false., intrinsic = .true.)
+    call var_list%append_real (var_str ("fks_dij_exp1"), &
+         1._default, intrinsic = .true.)
+    call var_list%append_real (var_str ("fks_dij_exp2"), &
+         1._default, intrinsic = .true.)
+    call var_list%append_real (var_str ("fks_xi_min"), &
+         0.0000001_default, intrinsic = .true.)
+    call var_list%append_real (var_str ("fks_y_max"), &
+         1._default, intrinsic = .true.)
+    call var_list%append_string (var_str ("$fks_mapping_type"), &
+         var_str ("default"), intrinsic = .true.)
+    call var_list%append_string (var_str ("$resonances_exclude_particles"), &
+         var_str ("default"), intrinsic = .true.)
+    call var_list%append_int (var_str ("alpha_power"), &
+         2, intrinsic = .true.)
+    call var_list%append_int (var_str ("alphas_power"), &
+         0, intrinsic = .true.)
+    call var_list%append_log (var_str ("?combined_nlo_integration"), &
+         .false., intrinsic = .true.)
+    call var_list%append_log (var_str ("?fixed_order_nlo_events"), &
+         .false., intrinsic = .true.)
+    call var_list%append_log (var_str ("?check_event_weights_against_xsection"), &
+         .false., intrinsic = .true.)
+    call var_list%append_log (var_str ("?keep_failed_events"), &
+         .false., intrinsic = .true.)
+    call var_list%append_int (var_str ("gks_multiplicity"), &
+         0, intrinsic = .true.)
+    call var_list%append_string (var_str ("$gosam_filter_lo"), &
+         var_str (""), intrinsic = .true.)
+    call var_list%append_string (var_str ("$gosam_filter_nlo"), &
+         var_str (""), intrinsic = .true.)
+    call var_list%append_string (var_str ("$gosam_symmetries"), &
+         var_str ("family,generation"), intrinsic = .true.)
+    call var_list%append_int (var_str ("form_threads"), &
+         2, intrinsic = .true.)
+    call var_list%append_int (var_str ("form_workspace"), &
+         1000, intrinsic = .true.)
+    call var_list%append_string (var_str ("$gosam_fc"), &
+         var_str (""), intrinsic = .true.)
+    call var_list%append_real (&
+         var_str ("mult_call_real"), 1._default, &
+         intrinsic = .true.)
+    call var_list%append_real (&
+         var_str ("mult_call_virt"), 1._default, &
+         intrinsic = .true.)
+    call var_list%append_real (&
+         var_str ("mult_call_dglap"), 1._default, &
+         intrinsic = .true.)
+  end subroutine var_list_set_nlo_defaults
 
 
 end module variables

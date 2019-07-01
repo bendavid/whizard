@@ -1,4 +1,4 @@
-(* $Id: cascade_syntax.ml 7469 2016-03-13 16:44:17Z ohl $
+(* cascade_syntax.ml --
 
    Copyright (C) 1999-2016 by
 

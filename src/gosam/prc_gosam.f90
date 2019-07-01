@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -70,13 +70,6 @@ module prc_gosam
   implicit none
   private
 
-  character(10), dimension(5), parameter ::  &
-             lib_suffix = [character(10) :: &
-             '.a', '.la', '.so', '.so.0', '.so.0.0.0']
-
-  integer, parameter :: Q_TO_QG = 1
-  integer, parameter :: G_TO_GG = 2
-  integer, parameter :: G_TO_QQ = 3
 
 
   public :: gosam_def_t
@@ -134,16 +127,17 @@ module prc_gosam
     logical :: initialized = .false.
   contains
     procedure :: prepare_library => prc_gosam_prepare_library
+    procedure :: create_and_load_extra_libraries => &
+         prc_gosam_create_and_load_extra_libraries
     procedure :: write_makefile => prc_gosam_write_makefile
     procedure :: execute_makefile => prc_gosam_execute_makefile
     procedure :: create_olp_library => prc_gosam_create_olp_library
     procedure :: load_driver => prc_gosam_load_driver
     procedure :: start => prc_gosam_start
     procedure :: write => prc_gosam_write
+    procedure :: write_name => prc_gosam_write_name
     procedure :: init_driver => prc_gosam_init_driver
     procedure :: set_initialized => prc_gosam_set_initialized
-    procedure :: compute_sqme_born => prc_gosam_compute_sqme_born
-    procedure :: compute_sqme_real => prc_gosam_compute_sqme_real
     procedure :: compute_sqme_sc => prc_gosam_compute_sqme_sc
     procedure :: allocate_workspace => prc_gosam_allocate_workspace
   end type prc_gosam_t
@@ -161,8 +155,8 @@ contains
   subroutine gosam_def_init (object, basename, model_name, &
      prt_in, prt_out, nlo_type, var_list)
     class(gosam_def_t), intent(inout) :: object
-    type(string_t), intent(in) :: model_name
     type(string_t), intent(in) :: basename
+    type(string_t), intent(in) :: model_name
     type(string_t), dimension(:), intent(in) :: prt_in, prt_out
     integer, intent(in) :: nlo_type
     type(var_list_t), intent(in) :: var_list
@@ -368,7 +362,7 @@ contains
          "$(dir $(abspath $(lastword $(MAKEFILE_LIST))))"
   end subroutine gosam_driver_write_makefile
   subroutine gosam_driver_set_alpha_s (driver, alpha_s)
-     class(gosam_driver_t), intent(inout) :: driver
+     class(gosam_driver_t), intent(in) :: driver
      real(default), intent(in) :: alpha_s
      integer :: ierr
      call driver%blha_olp_set_parameter &
@@ -415,7 +409,6 @@ contains
     class(prc_gosam_t), intent(inout) :: object
     type(os_data_t), intent(in) :: os_data
     type(string_t), intent(in) :: libname
-    logical :: lib_found
     select type (writer => object%def%writer)
     type is (gosam_writer_t)
        call writer%write_config ()
@@ -423,6 +416,22 @@ contains
     call object%create_olp_library (libname)
     call object%load_driver (os_data)
   end subroutine prc_gosam_prepare_library
+
+  subroutine prc_gosam_create_and_load_extra_libraries ( &
+         core, os_data, libname, model, i_core)
+    class(prc_gosam_t), intent(inout) :: core
+    type(os_data_t), intent(in) :: os_data
+    type(string_t), intent(in) :: libname
+    type(model_data_t), intent(in), target :: model
+    integer, intent(in) :: i_core
+    core%sqme_tree_pos = 4
+    call core%prepare_library (os_data, libname)
+    call core%start ()
+    call core%read_contract_file (core%data%flv_state)
+    call core%set_particle_properties (model)
+    call core%set_electroweak_parameters (model)
+    call core%print_parameter_file (i_core)
+  end subroutine prc_gosam_create_and_load_extra_libraries
 
   subroutine prc_gosam_write_makefile (object, unit, libname)
     class(prc_gosam_t), intent(in) :: object
@@ -468,13 +477,15 @@ contains
     type is (gosam_driver_t)
        call driver%load (os_data, dl_success)
        if (.not. dl_success) &
-          call msg_fatal ("Error: GoSam Libraries could not be loaded")
+          call msg_fatal ("GoSam Libraries could not be loaded")
     end select
   end subroutine prc_gosam_load_driver
 
   subroutine prc_gosam_start (object)
     class(prc_gosam_t), intent(inout) :: object
     integer :: ierr
+    if (object%includes_polarization())  &
+         call msg_fatal ('GoSam does not support polarized beams!')
     select type (driver => object%driver)
     type is (gosam_driver_t)
        call driver%blha_olp_start (string_f2c (driver%contract_file), ierr)
@@ -486,6 +497,14 @@ contains
     integer, intent(in), optional :: unit
     call msg_message (unit = unit, string = "GOSAM")
   end subroutine prc_gosam_write
+
+  subroutine prc_gosam_write_name (object, unit)
+    class(prc_gosam_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit)
+    write (u,"(1x,A)") "Core: GoSam"
+  end subroutine prc_gosam_write_name
 
   subroutine prc_gosam_init_driver (object, os_data)
     class(prc_gosam_t), intent(inout) :: object
@@ -512,69 +531,6 @@ contains
     class(prc_gosam_t), intent(inout) :: prc_gosam
     prc_gosam%initialized = .true.
   end subroutine prc_gosam_set_initialized
-
-  subroutine prc_gosam_compute_sqme_born &
-         (object, i_born, p, mu, sqme, bad_point)
-    class(prc_gosam_t), intent(inout) :: object
-    integer, intent(in) :: i_born
-    type(vector4_t), dimension(:), intent(in) :: p
-    real(default), intent(in) :: mu
-    real(default), intent(out) :: sqme
-    logical, intent(out) :: bad_point
-    real(double), dimension(5*object%n_particles) :: mom
-    real(default) :: acc_born
-    real(double), dimension(OLP_RESULTS_LIMIT) :: r
-
-    real(double) :: mu_dble
-    real(double) :: acc_dble
-    real(default) :: alpha_s
-
-    mom = object%create_momentum_array (p)
-    mu_dble = dble(mu)
-    alpha_s = object%qcd%alpha%get (mu)
-
-    select type (driver => object%driver)
-    type is (gosam_driver_t)
-       call driver%set_alpha_s (alpha_s)
-       if (allocated (object%i_born)) then
-          call driver%blha_olp_eval2 (object%i_born(i_born), mom, mu_dble, r, acc_dble)
-          sqme = r(4)
-       else
-          sqme = 0._default
-          acc_dble = 0._default
-       end if
-    end select
-    acc_born = acc_dble
-    bad_point = acc_born > object%maximum_accuracy
-  end subroutine prc_gosam_compute_sqme_born
-
-  subroutine prc_gosam_compute_sqme_real &
-         (object, i_flv, p, ren_scale, sqme, bad_point)
-    class(prc_gosam_t), intent(inout) :: object
-    integer, intent(in) :: i_flv
-    type(vector4_t), intent(in), dimension(:) :: p
-    real(default), intent(in) :: ren_scale
-    real(default), intent(out) :: sqme
-    logical, intent(out) :: bad_point
-    real(double), dimension(5*object%n_particles) :: mom
-    real(double), dimension(OLP_RESULTS_LIMIT) :: r
-    real(double) :: mu_dble, acc_dble
-    real(default) :: acc, alpha_s
-    mom = object%create_momentum_array (p)
-    if (vanishes (ren_scale)) &
-       call msg_fatal ("prc_gosam_compute_sqme_real: ren_scale vanishes")
-    mu_dble = dble(ren_scale)
-    alpha_s = object%qcd%alpha%get (ren_scale)
-    select type (driver => object%driver)
-    type is (gosam_driver_t)
-       call driver%set_alpha_s (alpha_s)
-       call driver%blha_olp_eval2 (object%i_real(i_flv), mom, &
-                                    mu_dble, r, acc_dble)
-       sqme = r(4)
-    end select
-    acc = acc_dble
-    if (acc > object%maximum_accuracy) bad_point = .true.
-  end subroutine prc_gosam_compute_sqme_real
 
   subroutine prc_gosam_compute_sqme_sc (object, &
                 i_flv, em, p, ren_scale, &
@@ -606,7 +562,6 @@ contains
        call driver%blha_olp_eval2 (object%i_sc(i_flv), &
             mom, ren_scale_dble, r, acc_dble)
     end select
-
     igm1 = em - 1
     n = size(p)
     do i = 0, n - 1

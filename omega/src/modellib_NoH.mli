@@ -1,4 +1,4 @@
-(* $Id: modellib_NoH.mli 5045 2014-03-21 17:09:34Z msekulla $
+(* modellib_NoH.mli --
 
    Copyright (C) 1999-2016 by
 

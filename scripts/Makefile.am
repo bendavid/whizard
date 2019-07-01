@@ -27,5 +27,4 @@
 ## Help users find an installed WHIZARD and libs + additional info for building
 #  external models
 nodist_bin_SCRIPTS = \
-  whizard-setup.sh whizard-setup.csh whizard-config \
-  libtool-config.sh libtool-relocate.sh whizard-relocate.sh
+  whizard-setup.sh whizard-setup.csh whizard-config

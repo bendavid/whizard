@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -44,7 +44,7 @@ module simulations
   use diagnostics
   use sm_qcd
   use md5
-  use variables
+  use variables, only: var_list_t
   use eval_trees
   use model_data
   use flavors
@@ -56,7 +56,12 @@ module simulations
   use selectors
   use process_libraries, only: process_library_t
   use prc_core
-  use processes
+  !  TODO: (bcn 2016-09-13) should be ideally only pcm_base
+  use pcm, only: pcm_nlo_t, pcm_instance_nlo_t
+  !  TODO: (bcn 2016-09-13) details of process config should not be necessary here
+  use process_config, only: COMP_REAL_FIN
+  use process
+  use instances
   use event_base
   use events
   use event_transforms
@@ -65,19 +70,18 @@ module simulations
   use eio_base
   use rt_data
 
-  use dispatch, only: dispatch_qcd
-  use dispatch, only: dispatch_rng_factory
-  use dispatch, only: dispatch_core_update, dispatch_core_restore
-  use dispatch, only: dispatch_evt_decay
-  use dispatch, only: dispatch_evt_shower
-  use dispatch, only: dispatch_evt_hadrons
+  use dispatch_beams, only: dispatch_qcd
+  use dispatch_rng, only: dispatch_rng_factory
+  use dispatch_me_methods, only: dispatch_core_update, dispatch_core_restore
+  use dispatch_transforms, only: dispatch_evt_decay
+  use dispatch_transforms, only: dispatch_evt_shower
+  use dispatch_transforms, only: dispatch_evt_hadrons
+  use dispatch_transforms, only: dispatch_evt_nlo
 
   use integrations
   use event_streams
 
-  use nlo_data, only: nlo_settings_t
   use evt_nlo
-  use dispatch, only: dispatch_evt_nlo
 
   implicit none
   private
@@ -107,7 +111,7 @@ module simulations
      procedure :: record_mean_and_variance => &
         counter_record_mean_and_variance
   end type counter_t
-  
+
   type :: mci_set_t
      private
      integer :: n_components = 0
@@ -122,11 +126,11 @@ module simulations
      procedure :: write => mci_set_write
      procedure :: init => mci_set_init
   end type mci_set_t
-     
+
   type :: core_safe_t
      class(prc_core_t), allocatable :: core
   end type core_safe_t
-  
+
   type, extends (event_t) :: entry_t
      private
      type(string_t) :: process_id
@@ -163,12 +167,11 @@ module simulations
           => entry_import_process_results
      procedure, private :: prepare_expressions &
           => entry_prepare_expressions
-     procedure :: set_fixed_mci => entry_set_fixed_mci
      procedure :: setup_additional_entries => entry_setup_additional_entries
      procedure :: get_first => entry_get_first
      procedure :: get_next => entry_get_next
      procedure :: count_nlo_entries => entry_count_nlo_entries
-     procedure :: reset_nlo_counter => entry_reset_nlo_counter 
+     procedure :: reset_nlo_counter => entry_reset_nlo_counter
      procedure :: determine_if_powheg_matching => entry_determine_if_powheg_matching
      procedure, private :: setup_event_transforms &
           => entry_setup_event_transforms
@@ -185,7 +188,7 @@ module simulations
      procedure :: init_alt => alt_entry_init
      procedure :: fill_particle_set => entry_fill_particle_set
   end type alt_entry_t
-  
+
   type :: simulation_t
      private
      type(rt_data_t), pointer :: local => null ()
@@ -259,7 +262,7 @@ module simulations
      procedure :: is_valid => simulation_is_valid
      procedure :: evaluate_expressions => simulation_evaluate_expressions
   end type simulation_t
-  
+
 
   interface pacify
      module procedure pacify_simulation
@@ -303,13 +306,13 @@ contains
        call msg_message ()
     end if
   end subroutine counter_show_excess
-    
+
   subroutine counter_show_mean_and_variance (counter)
     class(counter_t), intent(in) :: counter
-    if (counter%reproduce_xsection) then
+    if (counter%reproduce_xsection .and. counter%nlo_weight_counter > 1) then
        print *,  "Reconstructed cross-section from event weights: "
        print *,  counter%mean, '+-', sqrt (counter%varsq / (counter%nlo_weight_counter - 1))
-    end if 
+    end if
   end subroutine counter_show_mean_and_variance
 
   subroutine counter_record (counter, weight, excess, from_file)
@@ -345,7 +348,7 @@ contains
        end if
     end if
   end subroutine counter_record
-    
+
   subroutine counter_record_mean_and_variance (counter, weight, i_nlo)
     class(counter_t), intent(inout) :: counter
     real(default), intent(in) :: weight
@@ -363,10 +366,10 @@ contains
     end if
   contains
     subroutine flush_weight_buffer (w, n_nlo)
-      real(default), intent(in) :: w 
+      real(default), intent(in) :: w
       integer, intent(in) :: n_nlo
       integer :: n
-      real(default) :: mean_new 
+      real(default) :: mean_new
       counter%nlo_weight_counter = counter%nlo_weight_counter + 1
       !!! Minus 1 to take into account offset from initialization
       n = counter%nlo_weight_counter - 1
@@ -375,7 +378,7 @@ contains
          if (n > 1) &
             counter%varsq = counter%varsq - counter%varsq / (n - 1) + &
                n * (mean_new - counter%mean)**2
-         counter%mean = mean_new 
+         counter%mean = mean_new
       end if
     end subroutine flush_weight_buffer
   end subroutine counter_record_mean_and_variance
@@ -399,7 +402,7 @@ contains
     end if
     call object%counter%write (u)
   end subroutine mci_set_write
-  
+
   subroutine mci_set_init (object, i_mci, process)
     class(mci_set_t), intent(out) :: object
     integer, intent(in) :: i_mci
@@ -418,7 +421,7 @@ contains
        object%has_integral = .true.
     end if
   end subroutine mci_set_init
-    
+
   subroutine prepare_process &
        (process, process_id, use_process, integrate, local, global)
     type(process_t), pointer, intent(out) :: process
@@ -465,7 +468,7 @@ contains
                // char (process_id) // "': enabled for rescan only")
     end if
   end subroutine prepare_process
-    
+
   subroutine entry_write_config (object, unit)
     class(entry_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -496,7 +499,7 @@ contains
        end do
     end if
   end subroutine entry_write_config
-  
+
   subroutine entry_final (object)
     class(entry_t), intent(inout) :: object
     integer :: i
@@ -509,14 +512,14 @@ contains
     end if
     call object%event_t%final ()
   end subroutine entry_final
-  
+
   subroutine entry_copy_entry (entry1, entry2)
-    class(entry_t), intent(in) :: entry1
-    type(entry_t), intent(inout) :: entry2
-    entry2%event_t = entry1%event_t
+    class(entry_t), intent(in), target :: entry1
+    type(entry_t), intent(inout), target :: entry2
+    call entry1%event_t%clone (entry2%event_t)
     entry2%process_id = entry1%process_id
     entry2%library = entry1%library
-    entry2%run_id = entry1%run_id 
+    entry2%run_id = entry1%run_id
     entry2%has_integral = entry1%has_integral
     entry2%integral = entry1%integral
     entry2%error = entry1%error
@@ -536,7 +539,6 @@ contains
     end if
     entry2%model => entry1%model
     entry2%qcd = entry1%qcd
-!    entry2%first => entry1%first
   end subroutine entry_copy_entry
 
   subroutine entry_init &
@@ -604,23 +606,15 @@ contains
     do i = 1, size (entry%mci_sets)
        call entry%mci_sets(i)%init (i, master_process)
     end do
-    call entry%set_nlo_event (local%get_lval (var_str ("?fixed_order_nlo_events")))
-    if (entry%is_nlo_event()) then
-       call entry%init_sample_formats ()
-       if (allocated (local%sample_fmt)) then
-          call entry%check_supported_sample_formats (local%sample_fmt(1))
-       else
-          call msg_fatal ("NLO Events: Sample format must be specified!")
-       end if
-    end if
 
     call entry%import_process_results (master_process)
     call entry%prepare_expressions (local)
 
+    if (process%is_nlo_calculation ()) call process%init_nlo_settings (global%var_list)
     combined_integration = local%get_lval (var_str ("?combined_nlo_integration"))
     if (.not. combined_integration &
        .and. local%get_lval (var_str ("?fixed_order_nlo_events"))) then
-       fixed_mci = process%extract_active_component ()
+       fixed_mci = process%extract_fixed_mci ()
     end if
     call prepare_process_instance (process_instance, process, local%model, &
          local = local)
@@ -640,16 +634,18 @@ contains
        end if
     end if
     call entry%setup_event_transforms (process, local)
-    call dispatch_qcd (entry%qcd, local)
+    call dispatch_qcd (entry%qcd, local%get_var_list_ptr (), local%os_data)
 
     call entry%connect_qcd ()
 
-    if (entry%is_nlo_event ()) then
-       select type (pcm => process_instance%pcm)
-       class is (pcm_instance_nlo_t)
-          call pcm%controller%set_fixed_order_event_mode ()
+    select type (pcm => process_instance%pcm)
+    class is (pcm_instance_nlo_t)
+        select type (config => pcm%config)
+        type is (pcm_nlo_t)
+           if (config%settings%fixed_order_nlo) &
+                call pcm%set_fixed_order_event_mode ()
        end select
-    end if
+    end select
 
     if (present (global)) then
        call entry%connect (process_instance, local%model, global%process_stack)
@@ -666,19 +662,15 @@ contains
   subroutine entry_set_active_real_components (entry, i_mci)
     class(entry_t), intent(inout) :: entry
     integer, intent(in) :: i_mci
-    class(evt_t), pointer :: current_transform
     integer :: i
     if (.not. entry%requires_real_switch_off) return
     select type (pcm => entry%instance%pcm)
     class is (pcm_instance_nlo_t)
-       pcm%active_real_component = &
-            entry%instance%process%get_associated_real_component (i_mci)
        i = pcm%active_real_component
        if (associated (entry%evt_powheg)) then
           select type (evt => entry%evt_powheg)
           type is (evt_shower_t)
-             if (entry%instance%component(i)%get_component_type() &
-                  == COMP_REAL_FIN) then
+             if (entry%process%get_component_type(i) == COMP_REAL_FIN) then
                 call evt%disable_powheg_matching ()
              else
                 call evt%enable_powheg_matching ()
@@ -688,9 +680,10 @@ contains
           end select
        end if
     end select
-    if (entry%is_nlo_event()) then
-       if (entry%get_fixed_mci () > 0) then 
-          call entry%process%deactivate_components (entry%get_fixed_mci ())
+    if (entry%is_nlo () .and. .not. entry%process%is_combined_nlo_integration ()) then
+       if (entry%process%extract_fixed_mci () > 0) then
+          call entry%process%deactivate_components &
+               (entry%process%extract_fixed_mci ())
        else
           call entry%process%deactivate_real_component ()
        end if
@@ -708,35 +701,30 @@ contains
     call intg%setup_process (local, verbose=.false.)
     process => intg%get_process_ptr ()
   end subroutine prepare_local_process
-  
+
   subroutine prepare_process_instance &
     (process_instance, process, model, local)
     type(process_instance_t), pointer, intent(inout) :: process_instance
     type(process_t), intent(inout), target :: process
     class(model_data_t), intent(in), optional :: model
     type(rt_data_t), intent(in), optional, target :: local
-    type(nlo_settings_t) :: nlo_settings
-    type(string_t) :: color_method
     allocate (process_instance)
+    call process_instance%init (process)
     if (process%is_nlo_calculation ()) then
-       associate (var_list => local%var_list)
-          call nlo_settings%init (var_list)
-       end associate
-       call process_instance%init (process, nlo_settings)
        select type (pcm => process_instance%pcm)
        type is (pcm_instance_nlo_t)
-          pcm%collect_matrix_elements = .true.
-          if (.not. nlo_settings%combined_integration) call pcm%controller%disable_subtraction ()
+          select type (config => pcm%config)
+          type is (pcm_nlo_t)
+             if (.not. config%settings%combined_integration) &
+                call pcm%disable_subtraction ()
+          end select
        end select
-       if (process_instance%needs_extra_code () .and. present (local)) &
+       if (process%needs_extra_code () .and. present (local)) &
           call process_instance%create_and_load_extra_libraries &
                (local%beam_structure, local%os_data)
-       call setup_nlo_component_cores (process)
-    else
-       call process_instance%init (process)
     end if
     call process_instance%setup_event_data (model)
-  end subroutine prepare_process_instance 
+  end subroutine prepare_process_instance
 
   subroutine entry_import_process_characteristics (entry, process)
     class(entry_t), intent(inout) :: entry
@@ -777,11 +765,6 @@ contains
     call entry%set_analysis (expr_factory)
   end subroutine entry_prepare_expressions
 
-  subroutine entry_set_fixed_mci (entry)
-     class(entry_t), intent(inout) :: entry
-     entry%nlo_info%fixed_mci = entry%process%extract_active_component ()
-  end subroutine entry_set_fixed_mci
-
   subroutine entry_setup_additional_entries (entry)
     class(entry_t), intent(inout), target :: entry
     type(entry_t), pointer :: current_entry
@@ -791,8 +774,11 @@ contains
     evt => null ()
     select type (pcm => entry%instance%pcm)
     class is (pcm_instance_nlo_t)
-       n_phs = pcm%controller%reg_data%n_phs 
-       n_flv = pcm%controller%reg_data%n_flv_real
+       select type (config => pcm%config)
+       type is (pcm_nlo_t)
+          n_phs = config%region_data%n_phs
+          n_flv = config%region_data%n_flv_real
+       end select
     end select
     select type (entry)
     type is (entry_t)
@@ -825,11 +811,11 @@ contains
       do
          select type (current_evt)
          type is (evt_nlo_t)
-            evt => current_evt 
+            evt => current_evt
             mode = evt%mode
             exit
          end select
-         if (associated (current_evt%next)) then 
+         if (associated (current_evt%next)) then
             current_evt => current_evt%next
          else
             call msg_fatal ("evt_nlo not in list of event transforms")
@@ -844,7 +830,7 @@ contains
     entry_out => null ()
     select type (entry)
     type is (entry_t)
-       if (entry%is_nlo_event()) then
+       if (entry%is_nlo ()) then
           entry_out => entry%first
        else
           entry_out => entry
@@ -861,7 +847,7 @@ contains
      else
         call msg_fatal ("Get next entry: No next entry")
      end if
-  end function entry_get_next 
+  end function entry_get_next
 
   function entry_count_nlo_entries (entry) result (n)
     class(entry_t), intent(in), target :: entry
@@ -884,7 +870,7 @@ contains
     class(entry_t), intent(inout) :: entry
     class(evt_t), pointer :: evt
     evt => entry%transform_first
-    do 
+    do
        select type (evt)
        type is (evt_nlo_t)
           evt%i_evaluation = 0
@@ -914,15 +900,17 @@ contains
         end do
      end if
   end subroutine entry_determine_if_powheg_matching
-  
+
   subroutine entry_setup_event_transforms (entry, process, local)
     class(entry_t), intent(inout) :: entry
     type(process_t), intent(inout), target :: process
     type(rt_data_t), intent(in), target :: local
     class(evt_t), pointer :: evt
+    type(var_list_t), pointer :: var_list
     logical :: enable_fixed_order, enable_shower
+    var_list => local%get_var_list_ptr ()
     if (process%contains_unstable (local%model)) then
-       call dispatch_evt_decay (evt, local)
+       call dispatch_evt_decay (evt, local%var_list)
        if (associated (evt))  call entry%import_transform (evt)
     end if
     enable_fixed_order = local%get_lval (var_str ("?fixed_order_nlo_events"))
@@ -930,7 +918,7 @@ contains
        if (local%get_lval (var_str ("?unweighted"))) &
           call msg_fatal ("NLO Fixed Order events have to be generated with &
                           &?unweighted = false")
-       call dispatch_evt_nlo (evt)
+       call dispatch_evt_nlo (evt, local%get_lval (var_str ("?keep_failed_events")))
        call entry%import_transform (evt)
     end if
     enable_shower = local%get_lval (var_str ("?allow_shower")) .and. &
@@ -941,11 +929,13 @@ contains
             .or. local%get_lval (var_str ("?ckkw_matching")) &
             .or. local%get_lval (var_str ("?powheg_matching")))
     if (enable_shower) then
-       call dispatch_evt_shower (evt, local, process)
+       call dispatch_evt_shower (evt, var_list, local%model, &
+            local%fallback_model, local%os_data, local%beam_structure, &
+            process)
        call entry%import_transform (evt)
     end if
     if (local%get_lval (var_str ("?hadronization_active"))) then
-       call dispatch_evt_hadrons (evt, local, process)
+       call dispatch_evt_hadrons (evt, var_list, local%fallback_model)
        call entry%import_transform (evt)
     end if
   end subroutine entry_setup_event_transforms
@@ -981,14 +971,14 @@ contains
     class(entry_t), intent(inout) :: entry
     integer :: i_mci
     call msg_debug2 (D_CORE, "entry_select_mci")
-    if (entry%nlo_info%fixed_mci > 0) then
-       i_mci = entry%nlo_info%fixed_mci
+    if (entry%process%extract_fixed_mci () > 0) then
+       i_mci = entry%process%extract_fixed_mci ()
     else
        call entry%mci_selector%generate (entry%rng, i_mci)
     end if
     call msg_debug2 (D_CORE, "i_mci", i_mci)
   end function entry_select_mci
-  
+
   subroutine entry_record (entry, i_mci, from_file)
     class(entry_t), intent(inout) :: entry
     integer, intent(in) :: i_mci
@@ -1001,7 +991,7 @@ contains
        call entry%mci_sets(i_mci)%counter%record (weight, excess)
     end if
   end subroutine entry_record
-    
+
   subroutine entry_update_process &
        (entry, model, qcd, helicity_selection)
     class(entry_t), intent(inout) :: entry
@@ -1010,7 +1000,7 @@ contains
     type(helicity_selection_t), intent(in), optional :: helicity_selection
     type(process_t), pointer :: process
     class(prc_core_t), allocatable :: core
-    integer :: i, n_components
+    integer :: i, n_terms
     class(model_data_t), pointer :: model_local
     type(qcd_t) :: qcd_local
     if (present (model)) then
@@ -1024,36 +1014,37 @@ contains
        qcd_local = entry%qcd
     end if
     process => entry%get_process_ptr ()
-    n_components = process%get_n_components ()
-    allocate (entry%core_safe (n_components))
-    do i = 1, n_components
-       if (process%has_matrix_element (i)) then
-          call process%extract_component_core (i, core)
+
+    n_terms = process%get_n_terms ()
+    allocate (entry%core_safe (n_terms))
+    do i = 1, n_terms
+       if (process%has_matrix_element (i, is_term_index = .true.)) then
+          call process%extract_core (i, core)
           call dispatch_core_update (core, &
                model_local, helicity_selection, qcd_local, &
                entry%core_safe(i)%core)
-          call process%restore_component_core (i, core)
+          call process%restore_core (i, core)
        end if
     end do
   end subroutine entry_update_process
-  
+
   subroutine entry_restore_process (entry)
     class(entry_t), intent(inout) :: entry
     type(process_t), pointer :: process
     class(prc_core_t), allocatable :: core
-    integer :: i, n_components
+    integer :: i, n_terms
     process => entry%get_process_ptr ()
-    n_components = process%get_n_components ()
-    do i = 1, n_components
-       if (process%has_matrix_element (i)) then
-          call process%extract_component_core (i, core)
+    n_terms = process%get_n_terms ()
+    do i = 1, n_terms
+       if (process%has_matrix_element (i, is_term_index = .true.)) then
+          call process%extract_core (i, core)
           call dispatch_core_restore (core, entry%core_safe(i)%core)
-          call process%restore_component_core (i, core)
+          call process%restore_core (i, core)
        end if
     end do
     deallocate (entry%core_safe)
   end subroutine entry_restore_process
-  
+
   subroutine entry_connect_qcd (entry)
     class(entry_t), intent(inout), target :: entry
     class(evt_t), pointer :: evt
@@ -1090,15 +1081,15 @@ contains
          .false., is_known = .true.)
     call local%set_log (var_str ("?rebuild_grids"), &
          .false., is_known = .true.)
-    
+
     call entry%basic_init (local%var_list)
-    
+
     call prepare_local_process (process, process_id, local)
     entry%process_id = process_id
     entry%run_id = run_id
 
     call entry%import_process_characteristics (process)
-    
+
     allocate (entry%mci_sets (entry%n_mci))
     do i = 1, size (entry%mci_sets)
        call entry%mci_sets(i)%init (i, master_process)
@@ -1127,7 +1118,7 @@ contains
     call alt_entry%set_hard_particle_set (pset)
     call pset%final ()
   end subroutine entry_fill_particle_set
-    
+
   subroutine simulation_write (object, unit)
     class(simulation_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -1203,7 +1194,7 @@ contains
     end if
     call write_separator (u, 2)
   end subroutine simulation_write
-  
+
   subroutine simulation_write_event_unit &
        (object, unit, i_prc, verbose, testflag)
     class(simulation_t), intent(in) :: object
@@ -1276,7 +1267,7 @@ contains
     end if
     if (allocated (object%rng))  call object%rng%final ()
   end subroutine simulation_final
-  
+
   subroutine simulation_init (simulation, &
        process_id, integrate, generate, local, global, alt_env)
     class(simulation_t), intent(out), target :: simulation
@@ -1385,31 +1376,27 @@ contains
           end do
        end do
        call simulation%restore_processes ()
-    else       
+    else
        do i = 1, simulation%n_prc
           call simulation%entry(i)%init &
                (process_id(i), &
                use_process, integrate, generate, simulation%update_sqme, &
                local, global)
           call simulation%entry(i)%determine_if_powheg_matching ()
-          if (signal_is_pending ())  return          
-          if (simulation%entry(i)%is_nlo_event()) then
-             if (.not. simulation%local%get_lval (&
-                  var_str ("?combined_nlo_integration"))) &
-                call simulation%entry(i)%set_fixed_mci ()
+          if (signal_is_pending ())  return
+          if (simulation%entry(i)%is_nlo ()) &
              call simulation%entry(i)%setup_additional_entries ()
-          end if
        end do
        simulation%valid = any (simulation%entry%valid)
        if (.not. simulation%valid) then
           call msg_error ("Simulate: " &
-               // "no process has a valid matrix element.") 
+               // "no process has a valid matrix element.")
           return
        end if
     end if
 !!! if this becomes conditional, some ref files will need update (seed change)
 !    if (generate) then
-       call dispatch_rng_factory (rng_factory, local)
+       call dispatch_rng_factory (rng_factory, local%var_list)
        call rng_factory%make (simulation%rng)
 !    end if
     if (all (simulation%entry%has_integral)) then
@@ -1425,7 +1412,7 @@ contains
              end if
           end do
        end if
-    else 
+    else
        if (integrate .and. generate) &
             call msg_error ("Simulation contains undefined integrals.")
     end if
@@ -1475,7 +1462,7 @@ contains
              if (.not. vanishes (simulation%integral)) then
                 write (msg_buffer, "(A,1x,ES11.4)") &
                      "            corr. to luminosity [fb-1] = ", &
-                     n_events / simulation%integral        
+                     n_events / simulation%integral
                 call msg_message ()
              end if
           end if
@@ -1496,7 +1483,7 @@ contains
        call msg_message ()
     end if
   end subroutine simulation_show_efficiency
-  
+
   function simulation_get_n_nlo_entries (simulation, i_prc) result (n_extra)
     class(simulation_t), intent(in) :: simulation
     integer, intent(in) :: i_prc
@@ -1572,7 +1559,7 @@ contains
        end do
     end if
   end subroutine simulation_init_process_selector
-    
+
   function simulation_select_prc (simulation) result (i_prc)
     class(simulation_t), intent(inout) :: simulation
     integer :: i_prc
@@ -1613,16 +1600,16 @@ contains
     if (simulation%entry(1)%config%factorization_mode == &
          FM_IGNORE_HELICITY) then
        str3 = ", unpolarized"
-    else 
+    else
        str3 = ", polarized"
-    end if    
+    end if
     if (n_events == n) then
        write (msg_buffer, "(A,1x,I0,1x,A,1x,A)")  char (str1), n, &
             char (str2) // char(str3), "events ..."
     else
        write (msg_buffer, "(A,1x,I0,1x,A,1x,A)") char (str1), n_events, &
             char (str2) // char(str3), "NLO events ..."
-    end if 
+    end if
     call msg_message ()
     write (msg_buffer, "(A,1x,A)") "Events: event normalization mode", &
          char (event_normalization_string (simulation%norm_mode))
@@ -1652,14 +1639,12 @@ contains
                           "matrix element vanishes, no events can be generated.")
                   call current_entry%generate (simulation%i_mci, i_nlo = k)
                   if (signal_is_pending ()) return
-                  if (current_entry%has_valid_particle_set ()) then
-                     call simulation%counter%record_mean_and_variance (&
-                        current_entry%weight_prc, k)
-                     exit
-                  end if
+                  call simulation%counter%record_mean_and_variance &
+                       (current_entry%weight_prc, k)
+                  if (current_entry%has_valid_particle_set ()) exit
                end do
             end do
-            if (entry%is_nlo_event()) call entry%reset_nlo_counter ()
+            if (entry%is_nlo ()) call entry%reset_nlo_counter ()
             if (.not. entry%has_valid_particle_set ()) then
                write (msg_buffer, "(A,I0,A)")  "Simulation: failed to &
                     &generate valid event after ", &
@@ -1715,7 +1700,7 @@ contains
     call simulation%counter%show_excess ()
     call simulation%counter%show_mean_and_variance ()
   end subroutine simulation_generate
-  
+
   subroutine simulation_calculate_alt_entries (simulation)
     class(simulation_t), intent(inout) :: simulation
     real(default) :: factor
@@ -1773,7 +1758,7 @@ contains
     simulation%n_evt_requested = n
     call simulation%entry%set_n (n)
     if (simulation%update_sqme .or. simulation%update_weight) then
-       call dispatch_qcd (qcd, global)
+       call dispatch_qcd (qcd, global%get_var_list_ptr (), global%os_data)
        call simulation%update_processes &
             (global%model, qcd, global%get_helicity_selection ())
        str3 = "(process parameters updated) "
@@ -1823,7 +1808,7 @@ contains
        call simulation%restore_processes ()
     end if
   end subroutine simulation_rescan
-  
+
   subroutine simulation_update_processes (simulation, &
        model, qcd, helicity_selection)
     class(simulation_t), intent(inout) :: simulation
@@ -1836,7 +1821,7 @@ contains
             (model, qcd, helicity_selection)
     end do
   end subroutine simulation_update_processes
-  
+
   subroutine simulation_restore_processes (simulation)
     class(simulation_t), intent(inout) :: simulation
     integer :: i
@@ -1844,7 +1829,7 @@ contains
        call simulation%entry(i)%restore_process ()
     end do
   end subroutine simulation_restore_processes
-  
+
   subroutine simulation_write_event_eio (object, eio, i_prc)
     class(simulation_t), intent(in) :: object
     class(eio_t), intent(inout) :: eio
@@ -1993,20 +1978,20 @@ contains
     character(32) :: md5sum
     md5sum = simulation%md5sum_prc
   end function simulation_get_md5sum_prc
-    
+
   function simulation_get_md5sum_cfg (simulation) result (md5sum)
     class(simulation_t), intent(in) :: simulation
     character(32) :: md5sum
     md5sum = simulation%md5sum_cfg
   end function simulation_get_md5sum_cfg
-    
+
   function simulation_get_md5sum_alt (simulation, i) result (md5sum)
     class(simulation_t), intent(in) :: simulation
     integer, intent(in) :: i
     character(32) :: md5sum
     md5sum = simulation%md5sum_alt(i)
   end function simulation_get_md5sum_alt
-    
+
   function simulation_get_data (simulation, alt) result (sdata)
     class(simulation_t), intent(in) :: simulation
     logical, intent(in), optional :: alt
@@ -2021,7 +2006,7 @@ contains
     class(model_data_t), pointer :: model
     logical :: decay_rest_frame
     type(string_t) :: process_id
-    enable_alt = .true.;  if (present (alt))  enable_alt = alt    
+    enable_alt = .true.;  if (present (alt))  enable_alt = alt
     if (enable_alt) then
        call sdata%init (simulation%n_prc, simulation%n_alt)
        do i = 1, simulation%n_alt
@@ -2046,7 +2031,7 @@ contains
           allocate (beam_data)
           model => simulation%local%model
           decay_rest_frame = &
-               simulation%local%get_lval (var_str ("?decay_rest_frame"))    
+               simulation%local%get_lval (var_str ("?decay_rest_frame"))
           call beam_data%init_structure (beam_structure, &
                sqrts, model, decay_rest_frame)
        else
@@ -2093,7 +2078,7 @@ contains
        sdata%split_index = simulation%split_index
     end if
   end function simulation_get_data
-    
+
   function simulation_get_default_sample_name (simulation) result (sample)
     class(simulation_t), intent(in) :: simulation
     type(string_t) :: sample
@@ -2124,11 +2109,11 @@ contains
        end do
     end if
   end subroutine pacify_simulation
-  
+
   subroutine simulation_evaluate_expressions (simulation)
     class(simulation_t), intent(inout) :: simulation
     call simulation%entry(simulation%i_prc)%evaluate_expressions ()
   end subroutine simulation_evaluate_expressions
-  
+
 
 end module simulations

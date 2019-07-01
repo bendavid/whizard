@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -254,7 +254,6 @@ contains
        do i = 1, beam_data%n          
           e(i) = energy (beam_data%p(i))
        end do
-       !!! e = energy (beam_data%p)       
     else
        e = 0
     end if
@@ -282,9 +281,6 @@ contains
        call pol(i)%init_pmatrix (beam_data%pmatrix(i))
     end do
     call combine_polarization_states (pol, state_hel)
-    ! do i = 1, beam_data%n   !!! Obsolete
-       ! call pol(i)%final ()
-    ! end do
   end function beam_data_get_helicity_state_matrix
 
   function beam_data_is_initialized (beam_data) result (initialized)
@@ -530,10 +526,11 @@ contains
     call beam%int%final ()
   end subroutine beam_final
 
-  subroutine beam_write (beam, unit, verbose, show_momentum_sum, show_mass)
+  subroutine beam_write (beam, unit, verbose, show_momentum_sum, show_mass, col_verbose)
     type(beam_t), intent(in) :: beam
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: verbose, show_momentum_sum, show_mass
+    logical, intent(in), optional :: col_verbose
     integer :: u
     u = given_output_unit (unit);  if (u < 0)  return
     select case (beam%int%get_n_out ())
@@ -542,7 +539,8 @@ contains
     end select
     call beam%int%basic_write &
          (unit, verbose = verbose, show_momentum_sum = &
-            show_momentum_sum, show_mass = show_mass)
+          show_momentum_sum, show_mass = show_mass, &
+          col_verbose = col_verbose)
   end subroutine beam_write
 
   subroutine beam_assign (beam_out, beam_in)

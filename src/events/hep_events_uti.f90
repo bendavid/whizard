@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -73,12 +73,10 @@ contains
     type(evaluator_t), target :: eval
     type(interaction_t), pointer :: int
     type(particle_set_t) :: particle_set1, particle_set2
-    type(subevt_t) :: subevt
     type(hepmc_event_t) :: hepmc_event
     type(hepmc_iostream_t) :: iostream
     real(default) :: cross_section, error, weight
     logical :: ok
-    integer :: unit, iostat
 
     write (u, "(A)")  "* Test output: HEP events"
     write (u, "(A)")  "*   Purpose: test HepMC event routines"

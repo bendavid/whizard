@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -102,7 +102,7 @@ module mappings
      real(default) :: b3 = 0
      logical :: variable_limits = .true.
   end type mapping_t
-  
+
 
   interface operator(==)
      module procedure mapping_equal
@@ -127,7 +127,7 @@ contains
          object%step_mapping_exp
     write (u, "(3x,A,L1)") "allow s mapping  = ", &
          object%enable_s_mapping
-  end subroutine mapping_defaults_write    
+  end subroutine mapping_defaults_write
 
   function mapping_defaults_md5sum (mapping_defaults) result (md5sum_map)
     character(32) :: md5sum_map
@@ -345,14 +345,14 @@ contains
           msq0 = map%mass ** 2
           map%a1 = atan ((msq_min - msq0) / (map%mass * map%width))
           map%a2 = atan ((msq_max - msq0) / (map%mass * map%width))
-          map%a3 = (map%a2 - map%a1) * (map%mass * map%width) / s 
+          map%a3 = (map%a2 - map%a1) * (map%mass * map%width) / s
           map%a_unknown = .false.
        end if
        z = (1-x) * map%a1 + x * map%a2
        if (-pi/2 < z .and. z < pi/2) then
           tmp = tan (z)
           msq = map%mass * (map%mass + map%width * tmp)
-          f = map%a3 * (1 + tmp**2) 
+          f = map%a3 * (1 + tmp**2)
        else
           msq = 0
           f = 0
@@ -370,7 +370,7 @@ contains
           map%a_unknown = .false.
        end if
        msq1 = map%a1 * exp (x * map%a2)
-       msq = msq1 - map%a1 + msq_min 
+       msq = msq1 - map%a1 + msq_min
        f = map%a3 * msq1
     case (T_CHANNEL, U_CHANNEL)
        if (map%variable_limits .or. map%a_unknown) then
@@ -448,7 +448,7 @@ contains
           msq0 = map%mass ** 2
           map%a1 = atan ((msq_min - msq0) / (map%mass * map%width))
           map%a2 = atan ((msq_max - msq0) / (map%mass * map%width))
-          map%a3 = (map%a2 - map%a1) * (map%mass * map%width) / s 
+          map%a3 = (map%a2 - map%a1) * (map%mass * map%width) / s
           map%a_unknown = .false.
        end if
        tmp = (msq - msq0) / (map%mass * map%width)

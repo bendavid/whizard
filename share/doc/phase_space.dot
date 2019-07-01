@@ -1,0 +1,23 @@
+
+digraph G {
+phs_fks -> cascades
+phs_fks -> phs_base
+phs_trees -> mappings
+dispatch_phase_space -> phs_fks
+dispatch_phase_space -> phs_wood
+phs_wood -> phs_forests
+phs_forests -> phs_trees
+phs_wood -> cascades
+phs_forests -> phs_base
+phs_wood -> phs_base
+phs_wood -> mappings
+dispatch_phase_space -> phs_single
+cascades -> phs_forests
+phs_forests -> mappings
+dispatch_phase_space -> phs_forests
+phs_fks -> phs_wood
+dispatch_phase_space -> phs_base
+phs_single -> phs_base
+dispatch_phase_space -> mappings
+ }
+

@@ -1,4 +1,4 @@
-(* $Id: omega_WZW.ml 7405 2015-12-17 17:56:41Z jr_reuter $
+(* omega_WZW.ml --
 
    Copyright (C) 1999-2015 by
 

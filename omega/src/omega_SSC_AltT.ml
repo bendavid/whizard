@@ -1,4 +1,4 @@
-(* $Id: omega_SSC.ml 3670 2014-03-22 14:07:07Z msekulla $
+(* omega_SSC.ml --
 
    Copyright (C) 1999-2015 by
 

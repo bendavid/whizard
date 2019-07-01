@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -34,7 +34,7 @@
 ! to the source 'whizard.nw'
 
 module event_streams
-  
+
   use iso_varying_string, string_t => varying_string
   use io_units
   use diagnostics
@@ -43,8 +43,8 @@ module event_streams
   use eio_base
   use rt_data
 
-  use dispatch, only: dispatch_eio
-  
+  use dispatch_transforms, only: dispatch_eio
+
   implicit none
   private
 
@@ -53,7 +53,7 @@ module event_streams
   type :: event_stream_entry_t
      class(eio_t), allocatable :: eio
   end type event_stream_entry_t
-  
+
   type :: event_stream_array_t
      type(event_stream_entry_t), dimension(:), allocatable :: entry
      integer :: i_in = 0
@@ -68,7 +68,7 @@ module event_streams
      procedure :: skip_eio_entry => event_stream_array_skip_eio_entry
      procedure :: has_input => event_stream_array_has_input
   end type event_stream_array_t
-  
+
 
 contains
 
@@ -157,16 +157,22 @@ contains
     allocate (es_array%entry (n))
     if (i_checkpoint > 0) then
        call dispatch_eio &
-            (es_array%entry(i_checkpoint)%eio, var_str ("checkpoint"), global)
+            (es_array%entry(i_checkpoint)%eio, var_str ("checkpoint"), &
+            global%var_list, global%fallback_model, &
+            global%event_callback)
        call es_array%entry(i_checkpoint)%eio%init_out (sample, data)
     end if
     if (i_callback > 0) then
        call dispatch_eio &
-            (es_array%entry(i_callback)%eio, var_str ("callback"), global)
+            (es_array%entry(i_callback)%eio, var_str ("callback"), &
+            global%var_list, global%fallback_model, &
+            global%event_callback)
        call es_array%entry(i_callback)%eio%init_out (sample, data)
     end if
     if (i_input > 0) then
-       call dispatch_eio (es_array%entry(i_input)%eio, input, global)
+       call dispatch_eio (es_array%entry(i_input)%eio, input, &
+            global%var_list, global%fallback_model, &
+            global%event_callback)
        if (present (input_data)) then
           call es_array%entry(i_input)%eio%init_in &
                (sample_in, input_data, success)
@@ -194,11 +200,13 @@ contains
        end if
     end if
     do i = 1, n_output
-       call dispatch_eio (es_array%entry(i)%eio, stream_fmt(i), global)
+       call dispatch_eio (es_array%entry(i)%eio, stream_fmt(i), &
+            global%var_list, global%fallback_model, &
+            global%event_callback)
        call es_array%entry(i)%eio%init_out (sample, data)
     end do
   end subroutine event_stream_array_init
-  
+
   subroutine event_stream_array_switch_inout (es_array)
     class(event_stream_array_t), intent(inout) :: es_array
     integer :: n
@@ -210,7 +218,7 @@ contains
        call msg_bug ("Reading events: switch_inout: no input stream selected")
     end if
   end subroutine event_stream_array_switch_inout
-  
+
   subroutine event_stream_array_output (es_array, event, i_prc, &
                                         event_index, passed, pacify)
     class(event_stream_array_t), intent(inout) :: es_array
@@ -239,7 +247,7 @@ contains
        end if
     end do
   end subroutine event_stream_array_output
-  
+
   subroutine event_stream_array_input_i_prc (es_array, i_prc, iostat)
     class(event_stream_array_t), intent(inout) :: es_array
     integer, intent(out) :: i_prc
@@ -252,7 +260,7 @@ contains
        call msg_fatal ("Reading events: no input stream selected")
     end if
   end subroutine event_stream_array_input_i_prc
-  
+
   subroutine event_stream_array_input_event (es_array, event, iostat)
     class(event_stream_array_t), intent(inout) :: es_array
     type(event_t), intent(inout), target :: event
@@ -265,7 +273,7 @@ contains
        call msg_fatal ("Reading events: no input stream selected")
     end if
   end subroutine event_stream_array_input_event
-  
+
   subroutine event_stream_array_skip_eio_entry (es_array, iostat)
     class(event_stream_array_t), intent(inout) :: es_array
     integer, intent(out) :: iostat
@@ -283,6 +291,6 @@ contains
     logical :: flag
     flag = es_array%i_in /= 0
   end function event_stream_array_has_input
-  
+
 
 end module event_streams

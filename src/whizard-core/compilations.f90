@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -40,7 +40,7 @@ module compilations
   use system_defs, only: TAB
   use diagnostics
   use os_interface
-  use variables
+  use variables, only: var_list_t
   use model_data
   use process_libraries
   use prclib_stacks
@@ -181,7 +181,7 @@ contains
     end do
     write (u, *)
   end subroutine compilation_write
-  
+
   subroutine compilation_init (compilation, exe_name, lib_name)
     class(compilation_t), intent(out) :: compilation
     type(string_t), intent(in) :: exe_name
@@ -190,7 +190,7 @@ contains
     allocate (compilation%lib_name (size (lib_name)))
     compilation%lib_name = lib_name
   end subroutine compilation_init
-    
+
   subroutine compilation_write_dispatcher (compilation)
     class(compilation_t), intent(in) :: compilation
     type(string_t) :: file
@@ -245,7 +245,7 @@ contains
     write (u, "(A)")  "end subroutine get_prclib_static"
     close (u)
   end subroutine compilation_write_dispatcher
-    
+
   subroutine compilation_write_makefile (compilation, os_data, ext_libtag)
     class(compilation_t), intent(in) :: compilation
     type(os_data_t), intent(in) :: os_data
@@ -278,10 +278,10 @@ contains
     write (u, "(A)") "# Compiler flags"
     write (u, "(A)") "FCFLAGS = " // char (os_data%fcflags)
     write (u, "(A)") "LDFLAGS = " // char (os_data%ldflags)
-    write (u, "(A)") "LDFLAGS_STATIC = " // char (os_data%ldflags_static)   
+    write (u, "(A)") "LDFLAGS_STATIC = " // char (os_data%ldflags_static)
     write (u, "(A)") "LDFLAGS_HEPMC = " // char (os_data%ldflags_hepmc)
     write (u, "(A)") "LDFLAGS_LCIO = " // char (os_data%ldflags_lcio)
-    write (u, "(A)") "LDFLAGS_HOPPET = " // char (os_data%ldflags_hoppet)    
+    write (u, "(A)") "LDFLAGS_HOPPET = " // char (os_data%ldflags_hoppet)
     write (u, "(A)") "LDFLAGS_LOOPTOOLS = " // char (os_data%ldflags_looptools)
     write (u, "(A)") "LDWHIZARD = " // char (os_data%whizard_ldflags)
     write (u, "(A)") ""
@@ -313,7 +313,7 @@ contains
     write (u, "(A)") "# Executable"
     write (u, "(A)") "$(EXE): $(DISP).lo $(LIBRARIES)"
     write (u, "(A)") TAB // "$(LINK) $(FC) -static-libtool-libs $(FCFLAGS) \"
-    write (u, "(A)") TAB // "   $(LDWHIZARD) $(LDFLAGS) \" 
+    write (u, "(A)") TAB // "   $(LDWHIZARD) $(LDFLAGS) \"
     write (u, "(A)") TAB // "   -o $(EXE) $^ \"
     write (u, "(A)") TAB // "   $(LDFLAGS_HEPMC) $(LDFLAGS_LCIO) $(LDFLAGS_HOPPET) \"
     write (u, "(A)") TAB // "   $(LDFLAGS_LOOPTOOLS) $(LDFLAGS_STATIC)" // char (ext_tag)
@@ -338,31 +338,31 @@ contains
     write (u, "(A)") ".PHONY: clean distclean"
     close (u)
   end subroutine compilation_write_makefile
-    
+
   subroutine compilation_make_compile (compilation, os_data)
     class(compilation_t), intent(in) :: compilation
     type(os_data_t), intent(in) :: os_data
     call os_system_call ("make compile " // os_data%makeflags &
          // " -f " // compilation%exe_name // ".makefile")
   end subroutine compilation_make_compile
-  
+
   subroutine compilation_make_link (compilation, os_data)
     class(compilation_t), intent(in) :: compilation
     type(os_data_t), intent(in) :: os_data
     call os_system_call ("make link " // os_data%makeflags &
          // " -f " // compilation%exe_name // ".makefile")
   end subroutine compilation_make_link
-  
+
   subroutine compilation_make_clean_exe (compilation, os_data)
     class(compilation_t), intent(in) :: compilation
     type(os_data_t), intent(in) :: os_data
     call os_system_call ("make clean-exe " // os_data%makeflags &
          // " -f " // compilation%exe_name // ".makefile")
   end subroutine compilation_make_clean_exe
-  
+
   subroutine compile_executable (exename, libname, global)
     type(string_t), intent(in) :: exename
-    type(string_t), dimension(:), intent(in) :: libname    
+    type(string_t), dimension(:), intent(in) :: libname
     type(rt_data_t), intent(inout), target :: global
     type(compilation_t) :: compilation
     type(compilation_item_t) :: item
@@ -382,12 +382,12 @@ contains
        call item%init (libname(i), global%prclib_stack, global%var_list)
        call item%compile (global%model, global%os_data, &
             force=force, recompile=recompile)
-       ext_libtag = "" // item%lib%get_static_modelname (global%os_data)       
+       ext_libtag = "" // item%lib%get_static_modelname (global%os_data)
        if (signal_is_pending ())  return
        call item%success ()
     end do
     call compilation%write_makefile (global%os_data, ext_libtag)
-    if (signal_is_pending ())  return    
+    if (signal_is_pending ())  return
     call compilation%make_compile (global%os_data)
     if (signal_is_pending ())  return
     call compilation%make_link (global%os_data)

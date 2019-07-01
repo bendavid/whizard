@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -34,9 +34,9 @@
 ! to the source 'whizard.nw'
 
 module prc_omega
-  
+
   use, intrinsic :: iso_c_binding !NODEP!
-  
+
   use kinds
   use iso_varying_string, string_t => varying_string
   use io_units
@@ -76,17 +76,17 @@ module prc_omega
      procedure, nopass :: get_features => omega_def_get_features
      procedure :: connect => omega_def_connect
   end type omega_def_t
-  
+
   type, extends (omega_def_t) :: omega_omega_def_t
    contains
      procedure, nopass :: type_string => omega_omega_def_type_string
   end type omega_omega_def_t
-  
+
   type, extends (omega_def_t) :: omega_ovm_def_t
    contains
      procedure, nopass :: type_string => omega_ovm_def_type_string
   end type omega_ovm_def_t
-  
+
   type, extends (prc_writer_f_module_t), abstract :: omega_writer_t
      type(string_t) :: model_name
      type(string_t) :: process_mode
@@ -144,28 +144,26 @@ module prc_omega
    contains
      procedure :: allocate_workspace => prc_omega_allocate_workspace
      procedure :: write => prc_omega_write
+     procedure :: write_name => prc_omega_write_name
      procedure :: set_parameters => prc_omega_set_parameters
      procedure :: init => prc_omega_init
      procedure :: activate_parameters => prc_omega_activate_parameters
-     procedure :: needs_mcset => prc_omega_needs_mcset
-     procedure :: get_n_terms => prc_omega_get_n_terms
      procedure :: is_allowed => prc_omega_is_allowed
      procedure :: compute_hard_kinematics => prc_omega_compute_hard_kinematics
      procedure :: compute_eff_kinematics => prc_omega_compute_eff_kinematics
-     procedure :: recover_kinematics => prc_omega_recover_kinematics
      procedure :: reset_helicity_selection => prc_omega_reset_helicity_selection
      procedure :: compute_amplitude => prc_omega_compute_amplitude
      procedure :: get_alpha_s => prc_omega_get_alpha_s
   end type prc_omega_t
-  
+
   type, extends (prc_core_state_t) :: omega_state_t
      logical :: new_kinematics = .true.
      real(default) :: alpha_qcd = -1
    contains
-     procedure :: write => omega_state_write
-     procedure :: reset_new_kinematics => omega_state_reset_new_kinematics
+    procedure :: write => omega_state_write
+    procedure :: reset_new_kinematics => omega_state_reset_new_kinematics
   end type omega_state_t
-  
+
 
   abstract interface
      subroutine init_t (par, scheme) bind(C)
@@ -174,14 +172,14 @@ module prc_omega
        integer(c_int), intent(in) :: scheme
      end subroutine init_t
   end interface
-  
+
   abstract interface
      subroutine update_alpha_s_t (alpha_s) bind(C)
        import
        real(c_default_float), intent(in) :: alpha_s
      end subroutine update_alpha_s_t
   end interface
-  
+
   abstract interface
      subroutine reset_helicity_selection_t (threshold, cutoff) bind(C)
        import
@@ -204,7 +202,7 @@ module prc_omega
        real(c_default_float), dimension(0:3,*), intent(in) :: p
      end subroutine new_event_t
   end interface
-  
+
   abstract interface
      subroutine get_amplitude_t (flv, hel, col, amp) bind(C)
        import
@@ -215,7 +213,7 @@ module prc_omega
 
 
 contains
-  
+
   function omega_omega_def_type_string () result (string)
     type(string_t) :: string
     string = "omega"
@@ -234,7 +232,7 @@ contains
     type(string_t), dimension(:), intent(in) :: prt_in
     type(string_t), dimension(:), intent(in) :: prt_out
     logical, intent(in), optional :: cms_scheme
-    type(string_t), intent(in), optional :: restrictions    
+    type(string_t), intent(in), optional :: restrictions
     logical, intent(in), optional :: openmp_support
     logical, intent(in), optional :: report_progress
     logical, intent(in), optional :: diags, diags_color
@@ -269,25 +267,25 @@ contains
        call writer%write (unit)
     end select
   end subroutine omega_def_write
-  
+
   subroutine omega_def_read (object, unit)
     class(omega_def_t), intent(out) :: object
     integer, intent(in) :: unit
     call msg_bug ("O'Mega process definition: input not supported yet")
   end subroutine omega_def_read
-  
+
   subroutine omega_def_allocate_driver (object, driver, basename)
     class(omega_def_t), intent(in) :: object
     class(prc_core_driver_t), intent(out), allocatable :: driver
     type(string_t), intent(in) :: basename
     allocate (omega_driver_t :: driver)
   end subroutine omega_def_allocate_driver
-  
+
   function omega_def_needs_code () result (flag)
     logical :: flag
     flag = .true.
   end function omega_def_needs_code
-  
+
   subroutine omega_def_get_features (features)
     type(string_t), dimension(:), allocatable, intent(out) :: features
     allocate (features (6))
@@ -362,7 +360,7 @@ contains
     write (unit, "(5x,A,L1)")  "Report progress   = ", object%report_progress
     write (unit, "(5x,A,A)")  "Extra options     = ", &
          '"' // char (object%extra_options) // '"'
-    write (unit, "(5x,A,L1)")  "Write diagrams    = ", object%diags    
+    write (unit, "(5x,A,L1)")  "Write diagrams    = ", object%diags
     write (unit, "(5x,A,L1)")  "Write color diag. = ", object%diags_color
     write (unit, "(5x,A,L1)")  "Complex Mass S.   = ", &
          object%complex_mass_scheme
@@ -379,7 +377,7 @@ contains
     type(string_t), intent(in), optional :: restrictions
     logical, intent(in), optional :: openmp_support
     logical, intent(in), optional :: report_progress
-    logical, intent(in), optional :: diags, diags_color    
+    logical, intent(in), optional :: diags, diags_color
     type(string_t), intent(in), optional :: extra_options
     integer :: i
     writer%model_name = model_name
@@ -455,7 +453,7 @@ contains
        openmp_string = " -target:openmp"
     else
        openmp_string = ""
-    end if    
+    end if
     if (writer%report_progress) then
        progress_string = " -fusion:progress"
     else
@@ -469,10 +467,10 @@ contains
           diagrams_string = " -diagrams " // char(id) // &
                "_diags -diagrams_LaTeX"
        end if
-    else 
+    else
        if (writer%diags_color) then
           diagrams_string = " -diagrams:c " // char(id) // &
-               "_diags -diagrams_LaTeX"        
+               "_diags -diagrams_LaTeX"
        else
           diagrams_string = ""
        end if
@@ -496,17 +494,17 @@ contains
        write (unit, "(5A)")  "SOURCES += ", char (id), ".hbc"
     end select
     if (writer%diags .or. writer%diags_color) then
-       write (unit, "(5A)")  "TEX_SOURCES += ", char (id), "_diags.tex"    
+       write (unit, "(5A)")  "TEX_SOURCES += ", char (id), "_diags.tex"
        if (os_data%event_analysis_pdf) then
           write (unit, "(5A)")  "TEX_OBJECTS += ", char (id), "_diags.pdf"
        else
           write (unit, "(5A)")  "TEX_OBJECTS += ", char (id), "_diags.ps"
        end if
     end if
-    write (unit, "(5A)")  "OBJECTS += ", char (id), ".lo"    
+    write (unit, "(5A)")  "OBJECTS += ", char (id), ".lo"
     select type (writer)
-    type is (omega_omega_writer_t)       
-       write (unit, "(5A)")  char (id), ".f90:"       
+    type is (omega_omega_writer_t)
+       write (unit, "(5A)")  char (id), ".f90:"
        write (unit, "(99A)")  TAB, char (omega_path), &
             " -o ", char (id), ".f90", &
             " -target:whizard", &
@@ -546,7 +544,7 @@ contains
     write (unit, "(5A)")  TAB, "rm -f ", char (id), ".f90"
     write (unit, "(5A)")  TAB, "rm -f opr_", char (id), ".mod"
     write (unit, "(5A)")  TAB, "rm -f ", char (id), ".lo"
-    write (unit, "(5A)")  "CLEAN_SOURCES += ", char (id), ".f90"    
+    write (unit, "(5A)")  "CLEAN_SOURCES += ", char (id), ".f90"
     select type (writer)
     type is (omega_ovm_writer_t)
        write (unit, "(5A)")  "CLEAN_SOURCES += ", char (id), ".hbc"
@@ -554,26 +552,26 @@ contains
     if (writer%diags .or. writer%diags_color) then
        write (unit, "(5A)")  "CLEAN_SOURCES += ", char (id), "_diags.tex"
     end if
-    write (unit, "(5A)")  "CLEAN_OBJECTS += opr_", char (id), ".mod"       
+    write (unit, "(5A)")  "CLEAN_OBJECTS += opr_", char (id), ".mod"
     write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), ".lo"
-    if (writer%diags .or. writer%diags_color) then    
-       write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), "_diags.aux"  
-       write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), "_diags.log"         
-       write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), "_diags.dvi"                
-       write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), "_diags.toc"                       
-       write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), "_diags.out"       
-       write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), "_diags-fmf.[1-9]"       
-       write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), "_diags-fmf.[1-9][0-9]"    
-       write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), "_diags-fmf.[1-9][0-9][0-9]"   
-       write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), "_diags-fmf.t[1-9]"       
+    if (writer%diags .or. writer%diags_color) then
+       write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), "_diags.aux"
+       write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), "_diags.log"
+       write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), "_diags.dvi"
+       write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), "_diags.toc"
+       write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), "_diags.out"
+       write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), "_diags-fmf.[1-9]"
+       write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), "_diags-fmf.[1-9][0-9]"
+       write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), "_diags-fmf.[1-9][0-9][0-9]"
+       write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), "_diags-fmf.t[1-9]"
        write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), "_diags-fmf.t[1-9][0-9]"
        write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), "_diags-fmf.t[1-9][0-9][0-9]"
        write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), "_diags-fmf.mp"
-       write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), "_diags-fmf.log"       
-       write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), "_diags.dvi"              
-       write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), "_diags.ps"                     
+       write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), "_diags-fmf.log"
+       write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), "_diags.dvi"
+       write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), "_diags.ps"
        if (os_data%event_analysis_pdf) &
-            write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), "_diags.pdf" 
+            write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), "_diags.pdf"
     end if
     write (unit, "(5A)")  char (id), ".lo: ", char (id), ".f90"
     write (unit, "(5A)")  TAB, "$(LTFCOMPILE) $<"
@@ -585,7 +583,7 @@ contains
              write (unit, "(5A)")  char (id), "_diags.ps: ", char (id), "_diags.tex"
           end if
           if (escape_hyperref) then
-             write (unit, "(5A)")  TAB, "-cat ", char (id), "_diags.tex | \" 
+             write (unit, "(5A)")  TAB, "-cat ", char (id), "_diags.tex | \"
              write (unit, "(5A)")  TAB, "   sed -e" // &
                 "'s/\\usepackage\[colorlinks\]{hyperref}.*/%\\usepackage" // &
                 "\[colorlinks\]{hyperref}/' > \"
@@ -598,7 +596,7 @@ contains
           write (unit, "(5A)")  TAB, "MPINPUTS=$(MP_FLAGS) $(MPOST) " // &
                char (id) // "_diags-fmf.mp"
           write (unit, "(5A)")  TAB, "TEXINPUTS=$(TEX_FLAGS) $(LATEX) " // &
-               char (id) // "_diags.tex"  
+               char (id) // "_diags.tex"
           write (unit, "(5A)")  TAB, "$(DVIPS) -o " // char (id) // "_diags.ps " // &
                char (id) // "_diags.dvi"
           if (os_data%event_analysis_pdf) then
@@ -631,7 +629,7 @@ contains
        name = feature
     end select
   end function omega_writer_get_procname
-  
+
   subroutine omega_write_interface (writer, unit, id, feature)
     class(omega_writer_t), intent(in) :: writer
     integer, intent(in) :: unit
@@ -666,7 +664,7 @@ contains
             &(flv, hel, col, flag) bind(C)"
        write (unit, "(7x,9A)")  "import"
        write (unit, "(7x,9A)")  "integer(c_int), intent(in) :: flv, hel, col"
-       write (unit, "(7x,9A)")  "logical(c_bool), intent(out) :: flag"    
+       write (unit, "(7x,9A)")  "logical(c_bool), intent(out) :: flag"
        write (unit, "(5x,9A)")  "end subroutine ", char (name)
     case ("new_event")
        write (unit, "(5x,9A)")  "subroutine ", char (name), " (p) bind(C)"
@@ -680,7 +678,7 @@ contains
        write (unit, "(7x,9A)")  "import"
        write (unit, "(7x,9A)")  "integer(c_int), intent(in) :: flv, hel, col"
        write (unit, "(7x,9A)")  "complex(c_default_complex), intent(out) &
-            &:: amp"    
+            &:: amp"
        write (unit, "(5x,9A)")  "end subroutine ", char (name)
     end select
     write (unit, "(2x,9A)")  "end interface"
@@ -739,7 +737,7 @@ contains
        write (unit, "(2x,9A)")  "use kinds"
        write (unit, "(2x,9A)")  "use opr_", char (id)
        write (unit, "(2x,9A)")  "integer(c_int), intent(in) :: flv, hel, col"
-       write (unit, "(2x,9A)")  "logical(c_bool), intent(out) :: flag"    
+       write (unit, "(2x,9A)")  "logical(c_bool), intent(out) :: flag"
        write (unit, "(2x,9A)")  "flag = ", char (feature), &
             " (int (flv), int (hel), int (col))"
        write (unit, "(9A)")  "end subroutine ", char (name)
@@ -762,7 +760,7 @@ contains
        write (unit, "(2x,9A)")  "use opr_", char (id)
        write (unit, "(2x,9A)")  "integer(c_int), intent(in) :: flv, hel, col"
        write (unit, "(2x,9A)")  "complex(c_default_complex), intent(out) &
-            &:: amp"    
+            &:: amp"
        write (unit, "(2x,9A)")  "amp = ", char (feature), &
             " (int (flv), int (hel), int (col))"
        write (unit, "(9A)")  "end subroutine ", char (name)
@@ -803,7 +801,7 @@ contains
          method = var_str ("omega"), &
          variant = def)
   end subroutine omega_make_process_component
-    
+
   subroutine omega_state_write (object, unit)
     class(omega_state_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -812,7 +810,7 @@ contains
     write (u, "(3x,A,L1)")  "O'Mega state: new kinematics = ", &
          object%new_kinematics
   end subroutine omega_state_write
-  
+
   subroutine omega_state_reset_new_kinematics (object)
     class(omega_state_t), intent(inout) :: object
     object%new_kinematics = .true.
@@ -823,7 +821,7 @@ contains
     class(prc_core_state_t), intent(inout), allocatable :: core_state
     allocate (omega_state_t :: core_state)
   end subroutine prc_omega_allocate_workspace
-  
+
   subroutine prc_omega_write (object, unit)
     class(prc_omega_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -844,7 +842,15 @@ contains
     call object%helicity_selection%write (u)
     call object%qcd%write (u)
   end subroutine prc_omega_write
-  
+
+  subroutine prc_omega_write_name (object, unit)
+    class(prc_omega_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit)
+    write (u,"(1x,A)") "Core: O'Mega"
+  end subroutine prc_omega_write_name
+
   subroutine prc_omega_set_parameters (prc_omega, model, &
        helicity_selection, qcd, use_color_factors)
     class(prc_omega_t), intent(inout) :: prc_omega
@@ -868,7 +874,7 @@ contains
        prc_omega%use_color_factors = use_color_factors
     end if
   end subroutine prc_omega_set_parameters
-  
+
   subroutine prc_omega_init (object, def, lib, id, i_component)
     class(prc_omega_t), intent(inout) :: object
     class(prc_core_def_t), intent(in), target :: def
@@ -878,7 +884,7 @@ contains
     call object%base_init (def, lib, id, i_component)
     call object%activate_parameters ()
   end subroutine prc_omega_init
-    
+
   subroutine prc_omega_activate_parameters (object)
     class (prc_omega_t), intent(inout) :: object
     if (allocated (object%driver)) then
@@ -897,18 +903,6 @@ contains
        call msg_bug ("prc_omega_activate: driver is not allocated")
     end if
   end subroutine prc_omega_activate_parameters
-    
-  function prc_omega_needs_mcset (object) result (flag)
-    class(prc_omega_t), intent(in) :: object
-    logical :: flag
-    flag = .true.
-  end function prc_omega_needs_mcset
-  
-  function prc_omega_get_n_terms (object) result (n)
-    class(prc_omega_t), intent(in) :: object
-    integer :: n
-    n = 1
-  end function prc_omega_get_n_terms
 
  function prc_omega_is_allowed (object, i_term, f, h, c) result (flag)
     class(prc_omega_t), intent(in) :: object
@@ -921,7 +915,7 @@ contains
        flag = cflag
     end select
   end function prc_omega_is_allowed
- 
+
   subroutine prc_omega_compute_hard_kinematics &
        (object, p_seed, i_term, int_hard, core_state)
     class(prc_omega_t), intent(in) :: object
@@ -931,7 +925,7 @@ contains
     class(prc_core_state_t), intent(inout), allocatable :: core_state
     call int_hard%set_momenta (p_seed)
   end subroutine prc_omega_compute_hard_kinematics
-  
+
   subroutine prc_omega_compute_eff_kinematics &
        (object, i_term, int_hard, int_eff, core_state)
     class(prc_omega_t), intent(in) :: object
@@ -940,20 +934,7 @@ contains
     type(interaction_t), intent(inout) :: int_eff
     class(prc_core_state_t), intent(inout), allocatable :: core_state
   end subroutine prc_omega_compute_eff_kinematics
-  
-  subroutine prc_omega_recover_kinematics &
-       (object, p_seed, int_hard, int_eff, core_state)
-    class(prc_omega_t), intent(in) :: object
-    type(vector4_t), dimension(:), intent(inout) :: p_seed
-    type(interaction_t), intent(inout) :: int_hard
-    type(interaction_t), intent(inout) :: int_eff
-    class(prc_core_state_t), intent(inout), allocatable :: core_state
-    integer :: n_in
-    n_in = int_eff%get_n_in ()
-    call int_eff%set_momenta (p_seed(1:n_in), outgoing = .false.)
-    p_seed(n_in+1:) = int_eff%get_momenta (outgoing = .true.)
-  end subroutine prc_omega_recover_kinematics
-    
+
   subroutine prc_omega_reset_helicity_selection (object)
     class(prc_omega_t), intent(inout) :: object
     select type (driver => object%driver)
@@ -971,7 +952,7 @@ contains
        end if
     end select
   end subroutine prc_omega_reset_helicity_selection
-  
+
   function prc_omega_compute_amplitude &
        (object, j, p, f, h, c, fac_scale, ren_scale, alpha_qcd_forced, &
        core_state)  result (amp)
@@ -1017,7 +998,7 @@ contains
                 end if
              end if
           end if
-          n_tot = object%data%n_in + object%data%n_out
+          n_tot = object%data%get_n_tot ()
           allocate (parray (0:3, n_tot))
           do i = 1, n_tot
              parray(:,i) = vector4_get_components (p(i))
@@ -1046,6 +1027,6 @@ contains
        end select
     end if
   end function prc_omega_get_alpha_s
-  
+
 
 end module prc_omega

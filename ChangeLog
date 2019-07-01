@@ -2,8 +2,47 @@ ChangeLog -- Summary of changes to the WHIZARD package
 
 Use svn log to see detailed changes.
 
-	Version 2.3.1
+	Version 2.4.0
 
+2016-11-28
+	RELEASE: version 2.4.0
+
+2016-11-24
+	Bugfix for OpenLoops interface: EW scheme
+	   is set by WHIZARD
+	Bugfixes for top threshold implementation
+	
+2016-11-11
+	Refactoring of dispatching
+	
+2016-10-18
+	Bug fix for LCIO output
+
+2016-10-10
+	First implementation for collinear soft terms
+	
+2016-10-06
+	First full WHIZARD models from UFO files
+	
+2016-10-05
+	WHIZARD does not support legacy gcc 4.7.4 any longer
+
+2016-09-30
+	Major refactoring of process core and NLO components
+	
+2016-09-23
+	WHIZARD homogeneous entity: discarding subconfigures
+	  for CIRCE1/2, O'Mega, VAMP subpackages; these are
+	  reconstructable by script projectors
+	
+2016-09-06
+	Introduce main configure summary
+	
+2016-08-26
+	Fix memory leak in event generation
+	
+##################################################################
+	
 2016-08-25
 	RELEASE: version 2.3.1
 
@@ -14,7 +53,7 @@ Use svn log to see detailed changes.
 	Beta version of complex mass scheme support
 
 2016-07-26
-	Fix bug in POWHEG daming for the matching
+	Fix bug in POWHEG damping for the matching
 
 ##################################################################
 
@@ -343,6 +382,9 @@ Use svn log to see detailed changes.
 2014-02-03
 	PRE-RELEASE: version 2.2.0_beta
 
+2014-01-26
+	O'Mega: Feynman diagram generation possible (again)
+	
 2013-12-16
 	HOPPET interface for b parton matching
 	
@@ -854,6 +896,9 @@ Use svn log to see detailed changes.
 	finished
 	Forbidden processes are warned about, but treated as non-fatal 
 
+2010-02-14 
+	Color correlation computation in O'Mega finalized
+	
 2010-02-10 
 	Improving phase space mappings for identical particles in
 	initial and final states
@@ -866,10 +911,6 @@ Use svn log to see detailed changes.
 2010-02-07 
 	First MLM matching with e+ e- -> jets 
 
-
-2010-02-04 
-	Color correlation computation in O'Mega finalized
-
 ##################################################################
 
 2010-02-06 
@@ -879,6 +920,9 @@ Use svn log to see detailed changes.
 	Reconsidered the Makefile structure and more extended tests
 	Catch a crash between WHIZARD and O'Mega for forbidden processes
 	Tensor products of arbitrary color structures in jet definitions
+
+2010-02-04 
+	Color correlation computation in O'Mega finalized
 
 ##################################################################
 
@@ -973,7 +1017,8 @@ Use svn log to see detailed changes.
 2006-02-07 
 	RELEASE: version 1.50
         To avoid confusion: Mention outdated manual example in BUGS file
-
+        O'Mega becomes part of the WHIZARD generator
+	
 2006-02-02   [bug fix update]
 	Bug fix: spurious error when writing event files for weighted events
 	Bug fix: 'r' option for omega produced garbage for some particle names
@@ -990,6 +1035,13 @@ Use svn log to see detailed changes.
 	Fixed color-flow code: was broken for omega with option 'c' and 'w'
 	Workaround hacks for g95 compatibility
 
+2005-11-07 
+	O'Mega RELEASE: version 0.10
+	O'Mega, merged JRR's and WK's color hack for WHiZard
+        O'Mega, EXPERIMENTAL: cache fusion tables (required for colors 
+	  a la JRR/WK)
+        O'Mega, make JRR's MSSM official
+	
 ##################################################################
 
 2005-10-25 
@@ -1096,6 +1148,14 @@ Use svn log to see detailed changes.
 	removed obsolete warning in circe1
 	manual update (essentially) finished
 
+2004-08-03
+	O'Mega RELEASE: version 0.9
+	O'Mega, src/trie.mli, src/trie.ml: make interface compatible with
+          the O'Caml 3.08 library (remains compatible with older
+          versions).  Implementation of unused functions still
+          incomplete.
+
+	
 2004-07-26 
 	minor fixes and improvements in make process
 
@@ -1109,6 +1169,10 @@ Use svn log to see detailed changes.
         ww-strong model file extended
         Model files particle name fixes, chep SM vertices included
 
+2004-06-22 
+	O'Mega RELEASE: version 0.8
+	O'Mega MSSM: sign of W+/W-/A and W+/W-/Z couplings
+	
 2004-05-05 
 	Fixed bug in PDFLIB interface: p+pbar was initialized as p+p (ThO)
 	NAG compiler: set number of continuation lines to 200 as default
@@ -1375,6 +1439,18 @@ Use svn log to see detailed changes.
 	parameter interface written by PERL script
 	SM_ac model file: fixed error in continuation line
 
+2001-03-13 
+	O'Mega, O'Caml 3.01: incompatible changes	
+	O'Mega, src/trie.mli: add covariance annotation to T.t
+	  This breaks O'Caml 3.00, but is required for O'Caml 3.01.
+	O'Mega, many instances: replace `sig include Module.T end' by
+	  `Module.T', since the bug is fixed in O'Caml 3.01
+	
+2001-02-28 	   
+	O'Mega, src/model.mli: 
+            new field Model.vertices required for model functors, will
+	    retire Model.fuse2, Model.fuse3, Model.fusen soon.
+	
 ##################################################################
 
 2001-03-27 
@@ -1389,7 +1465,6 @@ Use svn log to see detailed changes.
 
 2000-12-01 
 	RELEASE of first public version: version 1.00beta
-
 
 
 

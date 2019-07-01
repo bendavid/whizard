@@ -17,7 +17,7 @@
 | Process library 'jets_xsec_lib': loading
 | Process library 'jets_xsec_lib': ... success.
 seed = 0
-sqrts =  5.0000000E+02
+sqrts =  5.00000E+02
 openmp_num_threads = 1
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
@@ -171,21 +171,21 @@ openmp_num_threads = 1
 |-----------------------------------------------------------------------------|
    3      52920     1.256E+05   2.59E+02    0.21    0.47    21.1    0.47   3
 |=============================================================================|
-[user variable] sigma_jj =  1.4064202E+06
-[user variable] error_jj =  8.1503318E+03
-[user variable] sigma___ =  1.4052305E+06
-[user variable] error___ =  5.1137037E+03
-[user variable] errorsum =  9.6217397E+03
-[user variable] pull =  1.2364388E-01
-tolerance =  4.8108698E+04
+[user variable] sigma_jj =  1.40642E+06
+[user variable] error_jj =  8.15033E+03
+[user variable] sigma___ =  1.40523E+06
+[user variable] error___ =  5.11370E+03
+[user variable] errorsum =  9.62174E+03
+[user variable] pull =  1.23644E-01
+tolerance =  4.81087E+04
 Comparing results:
-[user variable] pull =  1.2364388E-01
-[user variable] sigma_jj =  1.4064202E+06
-[user variable] sigma___ =  1.4052305E+06
-[user variable] errorsum =  9.6217397E+03
-[user variable] error_jj =  8.1503318E+03
-[user variable] error___ =  5.1137037E+03
-tolerance =  4.8108698E+04
+[user variable] pull =  1.23644E-01
+[user variable] sigma_jj =  1.40642E+06
+[user variable] sigma___ =  1.40523E+06
+[user variable] errorsum =  9.62174E+03
+[user variable] error_jj =  8.15033E+03
+[user variable] error___ =  5.11370E+03
+tolerance =  4.81087E+04
 | expect: success
 | Summary of value checks:
 |   Failures: 0 / Total: 1

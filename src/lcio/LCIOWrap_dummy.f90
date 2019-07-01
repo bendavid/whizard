@@ -206,10 +206,10 @@ end subroutine add_particle_to_collection
      
 ! extern "C" MCParticleImpl* new_lcio_particle(void* momentum, int pdg_id, int status)
 type(c_ptr) function new_lcio_particle &
-     (px, py, pz, pdg_id, mass, status) bind(C)
+     (px, py, pz, pdg_id, mass, charge, status) bind(C)
   use iso_c_binding
   integer(c_int), value :: pdg_id, status
-  real(c_double), value :: px, py, pz, mass
+  real(c_double), value :: px, py, pz, mass, charge
   new_lcio_particle = c_null_ptr
   write (0, "(A)")  "***********************************************************"
   write (0, "(A)")  "*** LCIO: Error: library not linked, WHIZARD terminates ***"

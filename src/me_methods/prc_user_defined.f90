@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -58,7 +58,7 @@ module prc_user_defined
   use sf_pdf_builtin, only: pdf_builtin_t
   use sf_lhapdf, only: lhapdf_t
   use pdg_arrays, only: is_gluon, is_quark
- 
+
   implicit none
   private
 
@@ -117,25 +117,29 @@ module prc_user_defined
     procedure :: compute_sqme => prc_user_defined_base_compute_sqme
     procedure :: compute_sqme_virt => prc_user_defined_base_compute_sqme_virt
     procedure :: compute_sqme_cc => prc_user_defined_base_compute_sqme_cc
+    procedure :: compute_alpha_s => prc_user_defined_base_compute_alpha_s
     procedure :: get_alpha_s => prc_user_defined_base_get_alpha_s
-    procedure :: needs_mcset => prc_user_defined_base_needs_mcset
-    procedure :: get_n_terms => prc_user_defined_base_get_n_terms
     procedure :: is_allowed => prc_user_defined_base_is_allowed
     procedure :: get_nflv => prc_user_defined_base_get_nflv
     procedure :: compute_hard_kinematics => prc_user_defined_base_compute_hard_kinematics
     procedure :: compute_eff_kinematics => prc_user_defined_base_compute_eff_kinematics
-    procedure :: recover_kinematics => prc_user_defined_base_recover_kinematics
     procedure :: set_parameters => prc_user_defined_base_set_parameters
     procedure :: update_alpha_s => prc_user_defined_base_update_alpha_s
     procedure :: init_sf_handler => prc_user_defined_base_init_sf_handler
     procedure :: init_sf_handler_dummy => prc_user_defined_base_init_sf_handler_dummy
     procedure :: apply_structure_functions => prc_user_defined_base_apply_structure_functions
     procedure :: get_sf_value => prc_user_defined_base_get_sf_value
+    procedure :: get_helicity_list_base => prc_user_defined_base_get_helicity_list
+    procedure(prc_user_defined_base_includes_polarization), deferred :: &
+      includes_polarization
+    procedure(prc_user_defined_base_create_and_load_extra_libraries), deferred :: &
+      create_and_load_extra_libraries
   end type prc_user_defined_base_t
 
   type, abstract, extends (prc_core_def_t) :: user_defined_def_t
     type(string_t) :: basename
   contains
+    procedure :: set_active_writer => user_defined_def_set_active_writer
     procedure, nopass :: get_features => user_defined_def_get_features
     procedure :: connect => user_defined_def_connect
     procedure :: omega_connect => user_defined_def_connect
@@ -147,9 +151,10 @@ module prc_user_defined
     type(string_t) :: process_mode
     type(string_t) :: process_string
     type(string_t) :: restrictions
+    logical :: active = .true.
   contains
-    procedure :: init => user_defined_writer_init 
-    procedure :: base_init => user_defined_writer_init 
+    procedure :: init => user_defined_writer_init
+    procedure :: base_init => user_defined_writer_init
     procedure, nopass :: get_module_name => prc_user_defined_writer_get_module_name
     procedure :: write_wrapper => prc_user_defined_writer_write_wrapper
     procedure :: write_interface => prc_user_defined_writer_write_interface
@@ -186,10 +191,34 @@ module prc_user_defined
   type, extends (prc_user_defined_base_t) :: prc_user_defined_test_t
   contains
     procedure :: write => prc_user_defined_test_write
+    procedure :: write_name => prc_user_defined_test_write_name
     procedure :: compute_amplitude => prc_user_defined_test_compute_amplitude
     procedure :: allocate_workspace => prc_user_defined_test_allocate_workspace
+    procedure :: includes_polarization => prc_user_defined_test_includes_polarization
+    procedure :: create_and_load_extra_libraries => &
+         prc_user_defined_test_create_and_load_extra_libraries
   end type prc_user_defined_test_t
 
+
+  abstract interface
+    function prc_user_defined_base_includes_polarization (object) result (polarized)
+      import
+      logical :: polarized
+      class(prc_user_defined_base_t), intent(in) :: object
+    end function prc_user_defined_base_includes_polarization
+  end interface
+
+  abstract interface
+    subroutine prc_user_defined_base_create_and_load_extra_libraries ( &
+         core, os_data, libname, model, i_core)
+      import
+      class(prc_user_defined_base_t), intent(inout) :: core
+      type(os_data_t), intent(in) :: os_data
+      type(string_t), intent(in) :: libname
+      type(model_data_t), intent(in), target :: model
+      integer, intent(in) :: i_core
+    end subroutine prc_user_defined_base_create_and_load_extra_libraries
+  end interface
 
   abstract interface
      subroutine omega_update_alpha_s (alpha_s) bind(C)
@@ -213,7 +242,7 @@ contains
     class(sf_handler_t), intent(out) :: sf_handler
     type(sf_chain_instance_t), intent(in) :: sf_chain
     integer :: i
-    sf_handler%n_sf = size (sf_chain%sf) 
+    sf_handler%n_sf = size (sf_chain%sf)
     if (sf_handler%n_sf == 0) then
        sf_handler%initial_state_type = LEPTONS
     else
@@ -265,7 +294,7 @@ contains
      integer :: k
      real(default), dimension(:), allocatable :: ff
      integer, parameter :: n_flv_light = 6
-     
+
      call sf_chain%get_matrix_elements (i, ff)
 
      if (is_gluon (flavor)) then
@@ -305,17 +334,21 @@ contains
     flv = object%data%flv_state (:,i_flv)
   end function prc_user_defined_base_get_flv_state
 
-  function prc_user_defined_base_compute_sqme (object, i_flv, p) result (sqme)
-     real(default) :: sqme
+  subroutine prc_user_defined_base_compute_sqme (object, i_flv, p, &
+         ren_scale, sqme, bad_point)
      class(prc_user_defined_base_t), intent(in) :: object
      integer, intent(in) :: i_flv
      type(vector4_t), dimension(:), intent(in) :: p
+     real(default), intent(in) :: ren_scale
+     real(default), intent(out) :: sqme
+     logical, intent(out) :: bad_point
      sqme = one
-  end function prc_user_defined_base_compute_sqme
+     bad_point = .false.
+  end subroutine prc_user_defined_base_compute_sqme
 
   subroutine prc_user_defined_base_compute_sqme_virt (object, i_flv, &
      p, ren_scale, sqme, bad_point)
-    class(prc_user_defined_base_t), intent(inout) :: object
+    class(prc_user_defined_base_t), intent(in) :: object
     integer, intent(in) :: i_flv
     type(vector4_t), dimension(:), intent(in) :: p
     real(default), intent(in) :: ren_scale
@@ -330,14 +363,14 @@ contains
   end subroutine prc_user_defined_base_compute_sqme_virt
 
   subroutine prc_user_defined_base_compute_sqme_cc (object, i_flv, p, &
-     ren_scale, born_out, born_cc, bad_point) 
+     ren_scale, born_cc, bad_point, born_out)
     class(prc_user_defined_base_t), intent(inout) :: object
     integer, intent(in) :: i_flv
     type(vector4_t), intent(in), dimension(:) :: p
     real(default), intent(in) :: ren_scale
-    real(default), intent(out), optional :: born_out
     real(default), intent(inout), dimension(:,:) :: born_cc
     logical, intent(out) :: bad_point
+    real(default), intent(out), optional :: born_out
     call msg_debug2 (D_ME_METHODS, "prc_user_defined_base_compute_sqme_cc")
     if (present (born_out))  born_out = 0.0015_default
     born_cc = zero
@@ -347,6 +380,13 @@ contains
     born_cc(4,3) = born_cc(3,4)
     bad_point = .false.
   end subroutine prc_user_defined_base_compute_sqme_cc
+
+  subroutine prc_user_defined_base_compute_alpha_s (object, core_state, fac_scale)
+    class(prc_user_defined_base_t), intent(in) :: object
+    class(user_defined_state_t), intent(inout) :: core_state
+    real(default), intent(in) :: fac_scale
+    core_state%alpha_qcd = object%qcd%alpha%get (fac_scale)
+  end subroutine prc_user_defined_base_compute_alpha_s
 
   function prc_user_defined_base_get_alpha_s (object, core_state) result (alpha)
     class(prc_user_defined_base_t), intent(in) :: object
@@ -366,18 +406,6 @@ contains
     end if
   end function prc_user_defined_base_get_alpha_s
 
-  function prc_user_defined_base_needs_mcset (object) result (flag)
-    class(prc_user_defined_base_t), intent(in) :: object
-    logical :: flag
-    flag = .true.
-  end function prc_user_defined_base_needs_mcset
-
-  function prc_user_defined_base_get_n_terms (object) result (n)
-    class(prc_user_defined_base_t), intent(in) :: object
-    integer :: n
-    n = 1
-  end function prc_user_defined_base_get_n_terms
-
   function prc_user_defined_base_is_allowed (object, i_term, f, h, c) result (flag)
     class(prc_user_defined_base_t), intent(in) :: object
     integer, intent(in) :: i_term, f, h, c
@@ -385,10 +413,10 @@ contains
     logical(c_bool) :: cflag
     select type (driver => object%driver)
     class is (user_defined_driver_t)
-       call driver%is_allowed (f, h, c, cflag) 
+       call driver%is_allowed (f, h, c, cflag)
        flag = cflag
     class default
-       call msg_fatal & 
+       call msg_fatal &
           ("Driver does not fit to user_defined_base_t")
     end select
   end function prc_user_defined_base_is_allowed
@@ -405,7 +433,7 @@ contains
     type(vector4_t), dimension(:), intent(in) :: p_seed
     integer, intent(in) :: i_term
     type(interaction_t), intent(inout) :: int_hard
-    class(prc_core_state_t), intent(inout), allocatable :: core_state 
+    class(prc_core_state_t), intent(inout), allocatable :: core_state
     call int_hard%set_momenta (p_seed)
     if (allocated (core_state)) then
       select type (core_state)
@@ -423,26 +451,11 @@ contains
     class(prc_core_state_t), intent(inout), allocatable :: core_state
   end subroutine prc_user_defined_base_compute_eff_kinematics
 
-  subroutine prc_user_defined_base_recover_kinematics &
-       (object, p_seed, int_hard, int_eff, core_state)
-    class(prc_user_defined_base_t), intent(in) :: object
-    type(vector4_t), dimension(:), intent(inout) :: p_seed
-    type(interaction_t), intent(inout) :: int_hard, int_eff
-    class(prc_core_state_t), intent(inout), allocatable :: core_state
-    integer :: n_in
-    n_in = int_eff%get_n_in ()
-    call int_eff%set_momenta (p_seed(1:n_in), outgoing = .false.)
-    p_seed(n_in+1:) = int_eff%get_momenta (outgoing = .true.)
-  end subroutine prc_user_defined_base_recover_kinematics
-
-  subroutine prc_user_defined_base_set_parameters &
-       (object, qcd, use_color_factors, model)
+  subroutine prc_user_defined_base_set_parameters (object, qcd, model)
     class(prc_user_defined_base_t), intent(inout) :: object
     type(qcd_t), intent(in) :: qcd
-    logical, intent(in) :: use_color_factors
     class(model_data_t), intent(in), target, optional :: model
     object%qcd = qcd
-    object%use_color_factors = use_color_factors
     if (present (model)) then
        if (.not. allocated (object%par)) &
             allocate (object%par (model%get_n_real ()))
@@ -451,7 +464,7 @@ contains
     end if
   end subroutine prc_user_defined_base_set_parameters
 
-  subroutine prc_user_defined_base_update_alpha_s (object, core_state, fac_scale) 
+  subroutine prc_user_defined_base_update_alpha_s (object, core_state, fac_scale)
     class(prc_user_defined_base_t), intent(in) :: object
     class(prc_core_state_t), intent(inout), allocatable :: core_state
     real(default), intent(in) :: fac_scale
@@ -461,7 +474,7 @@ contains
        select type (driver => object%driver)
        class is (user_defined_driver_t)
           call driver%update_alpha_s (alpha_qcd)
-       end select 
+       end select
        select type (core_state)
        class is (user_defined_state_t)
           core_state%alpha_qcd = alpha_qcd
@@ -489,7 +502,7 @@ contains
   subroutine prc_user_defined_base_apply_structure_functions (core, sf_chain, flavors)
     class(prc_user_defined_base_t), intent(inout) :: core
     type(sf_chain_instance_t), intent(in) :: sf_chain
-    integer, dimension(2), intent(in) :: flavors 
+    integer, dimension(2), intent(in) :: flavors
     call core%sf_handler%apply_structure_functions (sf_chain, flavors)
   end subroutine prc_user_defined_base_apply_structure_functions
 
@@ -498,6 +511,22 @@ contains
     class(prc_user_defined_base_t), intent(in) :: core
     val = core%sf_handler%val
   end function prc_user_defined_base_get_sf_value
+
+  function prc_user_defined_base_get_helicity_list (object, i) result (i_out)
+    integer :: i_out
+    class(prc_user_defined_base_t), intent(in) :: object
+    integer, intent(in) :: i
+    i_out = i
+  end function prc_user_defined_base_get_helicity_list
+
+  subroutine user_defined_def_set_active_writer (def, active)
+    class(user_defined_def_t), intent(inout) :: def
+    logical, intent(in) :: active
+    select type (writer => def%writer)
+    class is (prc_user_defined_writer_t)
+       writer%active = active
+    end select
+  end subroutine user_defined_def_set_active_writer
 
   subroutine user_defined_def_get_features (features)
     type(string_t), dimension(:), allocatable, intent(out) :: features
@@ -509,7 +538,7 @@ contains
          var_str ("is_allowed"), &
          var_str ("new_event"), &
          var_str ("get_amplitude")]
-  end subroutine user_defined_def_get_features 
+  end subroutine user_defined_def_get_features
 
   subroutine user_defined_def_connect (def, lib_driver, i, proc_driver)
     class(user_defined_def_t), intent(in) :: def
@@ -519,7 +548,7 @@ contains
     integer :: pid, fid
     type(c_funptr) :: fptr
     select type (proc_driver)
-    class is (user_defined_driver_t)       
+    class is (user_defined_driver_t)
        pid = i
        fid = 2
        call lib_driver%get_fptr (pid, fid, fptr)
@@ -553,7 +582,7 @@ contains
        case(2); writer%process_mode = " -scatter"
     end select
     associate (s => writer%process_string)
-      s = " '" 
+      s = " '"
       do i = 1, size (prt_in)
          if (i > 1) s = s // " "
          s = s // prt_in(i)
@@ -575,7 +604,7 @@ contains
   subroutine prc_user_defined_writer_write_wrapper (writer, unit, id, feature)
     class(prc_user_defined_writer_t), intent(in) :: writer
     integer, intent(in) :: unit
-    type(string_t), intent(in) :: id, feature    
+    type(string_t), intent(in) :: id, feature
     type(string_t) :: name
     name = writer%get_c_procname (id, feature)
     write (unit, *)
@@ -625,7 +654,7 @@ contains
        write (unit, "(2x,9A)")  "use kinds"
        write (unit, "(2x,9A)")  "use opr_", char (id)
        write (unit, "(2x,9A)")  "integer(c_int), intent(in) :: flv, hel, col"
-       write (unit, "(2x,9A)")  "logical(c_bool), intent(out) :: flag"    
+       write (unit, "(2x,9A)")  "logical(c_bool), intent(out) :: flag"
        write (unit, "(2x,9A)")  "flag = ", char (feature), &
             " (int (flv), int (hel), int (col))"
        write (unit, "(9A)")  "end subroutine ", char (name)
@@ -690,7 +719,7 @@ contains
             &(flv, hel, col, flag) bind(C)"
        write (unit, "(7x,9A)")  "import"
        write (unit, "(7x,9A)")  "integer(c_int), intent(in) :: flv, hel, col"
-       write (unit, "(7x,9A)")  "logical(c_bool), intent(out) :: flag"    
+       write (unit, "(7x,9A)")  "logical(c_bool), intent(out) :: flag"
        write (unit, "(5x,9A)")  "end subroutine ", char (name)
     case ("new_event")
        write (unit, "(5x,9A)")  "subroutine ", char (name), " (p) bind(C)"
@@ -704,7 +733,7 @@ contains
        write (unit, "(7x,9A)")  "import"
        write (unit, "(7x,9A)")  "integer(c_int), intent(in) :: flv, hel, col"
        write (unit, "(7x,9A)")  "complex(c_default_complex), intent(out) &
-            &:: amp"    
+            &:: amp"
        write (unit, "(5x,9A)")  "end subroutine ", char (name)
     end select
     write (unit, "(2x,9A)")  "end interface"
@@ -745,8 +774,8 @@ contains
     write (unit, "(5A)")  TAB, "rm -f ", char (id), ".f90"
     write (unit, "(5A)")  TAB, "rm -f opr_", char (id), ".mod"
     write (unit, "(5A)")  TAB, "rm -f ", char (id), ".lo"
-    write (unit, "(5A)")  "CLEAN_SOURCES += ", char (id), ".f90"    
-    write (unit, "(5A)")  "CLEAN_OBJECTS += opr_", char (id), ".mod"       
+    write (unit, "(5A)")  "CLEAN_SOURCES += ", char (id), ".f90"
+    write (unit, "(5A)")  "CLEAN_OBJECTS += opr_", char (id), ".mod"
     write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), ".lo"
     write (unit, "(5A)")  char (id), ".lo: ", char (id), ".f90"
     write (unit, "(5A)")  TAB, "$(LTFCOMPILE) $<"
@@ -828,6 +857,14 @@ contains
     call msg_message ("Test user-defined matrix elements")
   end subroutine prc_user_defined_test_write
 
+  subroutine prc_user_defined_test_write_name (object, unit)
+    class(prc_user_defined_test_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit)
+    write (u,"(1x,A)") "Core: user defined test"
+  end subroutine prc_user_defined_test_write_name
+
   function prc_user_defined_test_compute_amplitude &
        (object, j, p, f, h, c, fac_scale, ren_scale, alpha_qcd_forced, &
        core_state)  result (amp)
@@ -851,6 +888,21 @@ contains
     class(prc_core_state_t), intent(inout), allocatable :: core_state
     allocate (user_defined_test_state_t :: core_state)
   end subroutine prc_user_defined_test_allocate_workspace
+
+  function prc_user_defined_test_includes_polarization (object) result (polarized)
+    logical :: polarized
+    class(prc_user_defined_test_t), intent(in) :: object
+    polarized = .false.
+  end function prc_user_defined_test_includes_polarization
+
+  subroutine prc_user_defined_test_create_and_load_extra_libraries ( &
+         core, os_data, libname, model, i_core)
+    class(prc_user_defined_test_t), intent(inout) :: core
+    type(os_data_t), intent(in) :: os_data
+    type(string_t), intent(in) :: libname
+    type(model_data_t), intent(in), target :: model
+    integer, intent(in) :: i_core
+  end subroutine prc_user_defined_test_create_and_load_extra_libraries
 
 
 end module prc_user_defined

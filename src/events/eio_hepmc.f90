@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -64,7 +64,6 @@ module eio_hepmc
      type(hepmc_iostream_t) :: iostream
      type(hepmc_event_t) :: hepmc_event
      integer, dimension(:), allocatable :: proc_num_id
-     class(model_data_t), pointer :: default_model => null ()
    contains
      procedure :: set_parameters => eio_hepmc_set_parameters
      procedure :: write => eio_hepmc_write
@@ -83,20 +82,16 @@ module eio_hepmc
 
 contains
   
-  ! subroutine eio_hepmc_set_parameters (eio, keep_beams, recover_beams, extension)
   subroutine eio_hepmc_set_parameters &
-       (eio, default_model, &
+       (eio, &
        recover_beams, use_alpha_s_from_file, use_scale_from_file, &
        extension, output_cross_section)
     class(eio_hepmc_t), intent(inout) :: eio
-    class(model_data_t), intent(in), optional, target :: default_model
-    logical, intent(in), optional :: recover_beams 
+    logical, intent(in), optional :: recover_beams
     logical, intent(in), optional :: use_alpha_s_from_file
     logical, intent(in), optional :: use_scale_from_file
     logical, intent(in), optional :: output_cross_section
-    type(string_t), intent(in), optional :: extension    
-    if (present (default_model)) &
-         eio%default_model => default_model
+    type(string_t), intent(in), optional :: extension
     if (present (recover_beams)) &
          eio%recover_beams = recover_beams
     if (present (use_alpha_s_from_file)) &
@@ -309,7 +304,7 @@ contains
     call event%reset ()
     call event%select (1, 1, 1)
     call hepmc_to_event (event, eio%hepmc_event, &
-         eio%default_model, eio%fallback_model, &
+         eio%fallback_model, &
          recover_beams = eio%recover_beams, &
          use_alpha_s = eio%use_alpha_s_from_file, &
          use_scale = eio%use_scale_from_file) 

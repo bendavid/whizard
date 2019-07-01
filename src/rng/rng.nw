@@ -1,10 +1,10 @@
-% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*- 
+% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*-
 % WHIZARD code as NOWEB source: random number generator and such
-
 \chapter{Random-Number Generator}
+\includemodulegraph{rng}
 
 These modules implement abstract types and tools for random-number
-generation. 
+generation.
 \begin{description}
 \item[rng\_base]
   Abstract random-number generator and factory
@@ -83,7 +83,7 @@ The seed may be omitted.  The behavior without seed is not defined, however.
        integer, intent(in), optional :: seed
      end subroutine rng_init
   end interface
-  
+
 @ %def init
 @ The [[final]] method deallocates memory where necessary and allows
 for another call of [[init]] to reset the generator.
@@ -96,8 +96,8 @@ for another call of [[init]] to reset the generator.
        class(rng_t), intent(inout) :: rng
      end subroutine rng_final
   end interface
-  
-@ %def final 
+
+@ %def final
 @ Output.  We should, at least, identify the generator.
 <<RNG base: rng: TBP>>=
   procedure (rng_write), deferred :: write
@@ -109,7 +109,7 @@ for another call of [[init]] to reset the generator.
        integer, intent(in), optional :: unit, indent
      end subroutine rng_write
   end interface
-  
+
 @ %def rng_write
 @ These routines generate a single and an array of uniformly distributed
 default-precision random numbers, respectively.
@@ -125,7 +125,7 @@ default-precision random numbers, respectively.
        real(default), intent(out) :: x
      end subroutine rng_generate_single
   end interface
-  
+
   abstract interface
      subroutine rng_generate_array (rng, x)
        import
@@ -133,7 +133,7 @@ default-precision random numbers, respectively.
        real(default), dimension(:), intent(out) :: x
      end subroutine rng_generate_array
   end interface
-  
+
 @ %def generate_single generate_array
 @ These routines generate a single and an array of Gaussian (normal)
 distributed default-precision random numbers, respectively.  Mean is 0 and
@@ -155,7 +155,7 @@ from the PDG review.
     call rng%generate (u)
     x = sin (twopi * u(1)) * sqrt (- 2 * log (u(2)))
   end subroutine rng_generate_gaussian_single
-  
+
   subroutine rng_generate_gaussian_array (rng, x)
     class(rng_t), intent(inout) :: rng
     real(default), dimension(:), intent(out) :: x
@@ -164,7 +164,7 @@ from the PDG review.
        call rng%generate_gaussian (x(i))
     end do
   end subroutine rng_generate_gaussian_array
-  
+
 @ %def generate_gaussian_single generate_gaussian_array
 @
 \subsection{RNG Factory}
@@ -180,7 +180,7 @@ different seeds, the sequences should also be independent.
    contains
    <<RNG base: rng factory: TBP>>
   end type rng_factory_t
-  
+
 @ %def rng_factory_t
 @ Output.  Should be short, just report the seed and current state of
 the factory.
@@ -194,7 +194,7 @@ the factory.
        integer, intent(in), optional :: unit
      end subroutine rng_factory_write
   end interface
-  
+
 @ %def rng_factory_write
 @ Initialize.  It should be possible to do this repeatedly, resetting the
 state.  The default seed should be 0.
@@ -208,7 +208,7 @@ state.  The default seed should be 0.
        integer(i16), intent(in), optional :: seed
      end subroutine rng_factory_init
   end interface
-       
+
 @ %def rng_factory_init
 @ Spawn a new generator.
 <<RNG base: rng factory: TBP>>=
@@ -221,7 +221,7 @@ state.  The default seed should be 0.
        class(rng_t), intent(out), allocatable :: rng
      end subroutine rng_factory_make
   end interface
-  
+
 @ %def rng_factory_make
 @
 \subsection{Unit tests}
@@ -232,7 +232,7 @@ Test module, followed by the corresponding implementation module.
 module rng_base_ut
   use unit_tests
   use rng_base_uti
-  
+
 <<Standard module head>>
 
 <<RNG base: public test>>
@@ -240,7 +240,7 @@ module rng_base_ut
 <<RNG base: public test auxiliary>>
 
 contains
-  
+
 <<RNG base: test driver>>
 
 end module rng_base_ut
@@ -283,7 +283,7 @@ end module rng_base_uti
     type(test_results_t), intent(inout) :: results
   <<RNG base: execute tests>>
   end subroutine rng_base_test
-  
+
 @ %def rng_base_test
 @
 \subsubsection{Test generator}
@@ -302,7 +302,7 @@ integer must be one of $1,3,5,7,9$.
      procedure :: generate_single => rng_test_generate_single
      procedure :: generate_array => rng_test_generate_array
   end type rng_test_t
-  
+
 @ %def rng_test_t
 @ Output.  The state is a single number, so print it.
 <<RNG base: test auxiliary>>=
@@ -316,7 +316,7 @@ integer must be one of $1,3,5,7,9$.
     write (u, "(A,I0,A)")  "Random-number generator: &
          &test (state = ", rng%state, ")"
   end subroutine rng_test_write
-  
+
 @ %def rng_test_write
 @ The default seed is 1.
 <<RNG base: test auxiliary>>=
@@ -325,14 +325,14 @@ integer must be one of $1,3,5,7,9$.
     integer, intent(in), optional :: seed
     if (present (seed))  rng%state = seed
   end subroutine rng_test_init
-  
+
 @ %def rng_test_init
 @ Nothing to finalize:
 <<RNG base: test auxiliary>>=
   subroutine rng_test_final (rng)
     class(rng_test_t), intent(inout) :: rng
   end subroutine rng_test_final
-  
+
 @ %def rng_test_final
 @ Generate a single number and advance the state.
 <<RNG base: test auxiliary>>=
@@ -342,7 +342,7 @@ integer must be one of $1,3,5,7,9$.
     x = rng%state / 10._default
     rng%state = mod (rng%state + 2, 10)
   end subroutine rng_test_generate_single
-  
+
 @ %def rng_generate_single
 @ The array generator calls the single-item generator multiple times.
 <<RNG base: test auxiliary>>=
@@ -354,7 +354,7 @@ integer must be one of $1,3,5,7,9$.
        call rng%generate (x(i))
     end do
   end subroutine rng_test_generate_array
-  
+
 @ %def rng_generate_array
 @
 \subsubsection{Test Factory}
@@ -369,7 +369,7 @@ generators within one sequence are all identical, however.
    contains
    <<RNG base: rng test factory: TBP>>
   end type rng_test_factory_t
-  
+
 @ %def rng_test_factory_t
 @ Output.
 <<RNG base: rng test factory: TBP>>=
@@ -393,7 +393,7 @@ generators within one sequence are all identical, however.
     integer(i16), intent(in), optional :: seed
     if (present (seed))  factory%seed = mod (seed * 2 + 1, 10)
   end subroutine rng_test_factory_init
-    
+
 @ %def rng_test_factory_init
 <<RNG base: rng test factory: TBP>>=
   procedure :: make => rng_test_factory_make
@@ -425,12 +425,12 @@ Initialize the generator and draw random numbers.
 
     real(default) :: x
     real(default), dimension(2) :: x2
-    
+
     write (u, "(A)")  "* Test output: rng_base_1"
     write (u, "(A)")  "*   Purpose: initialize and call a test random-number &
          &generator"
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Initialize generator"
     write (u, "(A)")
 
@@ -438,31 +438,31 @@ Initialize the generator and draw random numbers.
     call rng%init (3)
 
     call rng%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Get random number"
     write (u, "(A)")
-    
+
     call rng%generate (x)
     write (u, "(A,2(1x,F9.7))")  "x =", x
 
     write (u, "(A)")
     write (u, "(A)")  "* Get random number pair"
     write (u, "(A)")
-    
+
     call rng%generate (x2)
     write (u, "(A,2(1x,F9.7))")  "x =", x2
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
-        
+
     call rng%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: rng_base_1"
-    
+
   end subroutine rng_base_1
-    
+
 @ %def rng_base_1
 @
 \subsubsection{Factory check}
@@ -478,11 +478,11 @@ Set up a factory and spawn generators.
     integer, intent(in) :: u
     type(rng_test_factory_t) :: rng_factory
     class(rng_t), allocatable :: rng
-    
+
     write (u, "(A)")  "* Test output: rng_base_2"
     write (u, "(A)")  "*   Purpose: initialize and use a rng factory"
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Initialize factory"
     write (u, "(A)")
 
@@ -498,14 +498,14 @@ Set up a factory and spawn generators.
 
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
-        
+
     call rng%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: rng_base_2"
-    
+
   end subroutine rng_base_2
-    
+
 @ %def rng_base_2
 @
 \clearpage
@@ -528,7 +528,7 @@ module selectors
 <<Selectors: types>>
 
 contains
-  
+
 <<Selectors: procedures>>
 
 end module selectors
@@ -568,7 +568,7 @@ end type selector_t
        write (u, "(3x,A)")  "[undefined]"
     end if
   end subroutine selector_write
- 
+
 @ %def selector_write
 @ We pack the input weight array such that zero-weight entries are
 removed.  We also normalize it.  This makes a [[map]] array for
@@ -615,7 +615,7 @@ entry.
        allocate (selector%acc (1), source = 1._default)
     end if
   end subroutine selector_init
-    
+
 @ %def selector_init
 @ Select an entry based upon the number [[x]], which should be a
 uniformly distributed random number between 0 and 1.
@@ -685,13 +685,13 @@ Test module, followed by the corresponding implementation module.
 module selectors_ut
   use unit_tests
   use selectors_uti
-  
+
 <<Standard module head>>
 
 <<Selectors: public test>>
 
 contains
-  
+
 <<Selectors: test driver>>
 
 end module selectors_ut
@@ -706,7 +706,7 @@ module selectors_uti
   use rng_base
 
   use selectors
-  
+
   use rng_base_ut, only: rng_test_t
 
 <<Standard module head>>
@@ -728,7 +728,7 @@ end module selectors_uti
     type(test_results_t), intent(inout) :: results
   <<Selectors: execute tests>>
   end subroutine selectors_test
-  
+
 @ %def selectors_test
 @
 \subsubsection{Basic check}
@@ -749,7 +749,7 @@ Initialize the selector and draw random numbers.
     write (u, "(A)")  "* Test output: selectors_1"
     write (u, "(A)")  "*   Purpose: initialize a selector and test it"
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Initialize selector"
     write (u, "(A)")
 
@@ -773,7 +773,7 @@ Initialize the selector and draw random numbers.
     write (u, "(A)")
     write (u, "(A)")  "* Select numbers using real input number"
     write (u, "(A)")
-    
+
     write (u, "(1x,A,I0)")  "select(0.00) = ", selector%select (0._default)
     write (u, "(1x,A,I0)")  "select(0.77) = ", selector%select (0.77_default)
     write (u, "(1x,A,I0)")  "select(1.00) = ", selector%select (1._default)
@@ -781,20 +781,20 @@ Initialize the selector and draw random numbers.
     write (u, "(A)")
     write (u, "(A)")  "* Get weight"
     write (u, "(A)")
-    
+
     write (u, "(1x,A,ES19.12)")  "weight(2) =", selector%get_weight(2)
     write (u, "(1x,A,ES19.12)")  "weight(3) =", selector%get_weight(3)
-        
+
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
-        
+
     call rng%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: selectors_1"
-    
+
   end subroutine selectors_1
-    
+
 @ %def selectors_1
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -813,7 +813,7 @@ module rng_tao
   use tao_random_numbers !NODEP!
 
   use rng_base
-  
+
 <<Standard module head>>
 
 <<RNG tao: public>>
@@ -821,7 +821,7 @@ module rng_tao
 <<RNG tao: types>>
 
 contains
-  
+
 <<RNG tao: procedures>>
 
 end module rng_tao
@@ -862,7 +862,7 @@ number of calls since seeding.
     call write_indent (u, ind)
     write (u, "(2x,A,I0)")  "calls = ", rng%n_calls
   end subroutine rng_tao_write
-  
+
 @ %def rng_tao_write
 @ The [[init]] method initializes the generator and sets a seed.
 We should implement the interface such that a single integer is
@@ -878,7 +878,7 @@ The seed may be omitted.  The default seed is 0.
     if (present (seed))  rng%seed = seed
     call tao_random_create (rng%state, rng%seed)
   end subroutine rng_tao_init
-  
+
 @ %def rng_tao_init
 @ The [[final]] method deallocates memory where necessary and allows
 for another call of [[init]] to reset the generator.
@@ -889,8 +889,8 @@ for another call of [[init]] to reset the generator.
     class(rng_tao_t), intent(inout) :: rng
     call tao_random_destroy (rng%state)
   end subroutine rng_tao_final
-  
-@ %def rng_tao_final 
+
+@ %def rng_tao_final
 @ These routines generate a single and an array of default-precision
 random numbers, respectively.
 
@@ -910,7 +910,7 @@ an interface for [[tao_random_numbers]].
     x = r
     rng%n_calls = rng%n_calls + 1
   end subroutine rng_tao_generate_single
-  
+
   subroutine rng_tao_generate_array (rng, x)
     class(rng_tao_t), intent(inout) :: rng
     real(default), dimension(:), intent(out) :: x
@@ -922,7 +922,7 @@ an interface for [[tao_random_numbers]].
     end do
     rng%n_calls = rng%n_calls + size (x)
   end subroutine rng_tao_generate_array
-  
+
 @ %def rng_tao_generate_single rng_tao_generate_array
 @
 \subsubsection{Factory}
@@ -942,7 +942,7 @@ starting with zero.
    contains
    <<RNG tao: rng tao factory: TBP>>
   end type rng_tao_factory_t
-  
+
 @ %def rng_tao_factory_t
 @ Output.
 <<RNG tao: rng tao factory: TBP>>=
@@ -967,7 +967,7 @@ starting with zero.
     integer(i16), intent(in), optional :: seed
     if (present (seed))  factory%s = seed
   end subroutine rng_tao_factory_init
-    
+
 @ %def rng_tao_factory_init
 <<RNG tao: rng tao factory: TBP>>=
   procedure :: make => rng_tao_factory_make
@@ -993,13 +993,13 @@ Test module, followed by the corresponding implementation module.
 module rng_tao_ut
   use unit_tests
   use rng_tao_uti
-  
+
 <<Standard module head>>
 
 <<RNG tao: public test>>
 
 contains
-  
+
 <<RNG tao: test driver>>
 
 end module rng_tao_ut
@@ -1035,7 +1035,7 @@ end module rng_tao_uti
     type(test_results_t), intent(inout) :: results
   <<RNG tao: execute tests>>
   end subroutine rng_tao_test
-  
+
 @ %def rng_tao_test
 @
 \subsubsection{Generator check}
@@ -1053,47 +1053,47 @@ Initialize the generator and draw random numbers.
 
     real(default) :: x
     real(default), dimension(2) :: x2
-    
+
     write (u, "(A)")  "* Test output: rng_tao_1"
     write (u, "(A)")  "*   Purpose: initialize and call the TAO random-number &
          &generator"
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Initialize generator (default seed)"
     write (u, "(A)")
 
     allocate (rng_tao_t :: rng)
     call rng%init ()
-    
+
     call rng%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Get random number"
     write (u, "(A)")
-    
+
     call rng%generate (x)
     write (u, "(A,2(1x,F9.7))")  "x =", x
 
     write (u, "(A)")
     write (u, "(A)")  "* Get random number pair"
     write (u, "(A)")
-    
+
     call rng%generate (x2)
     write (u, "(A,2(1x,F9.7))")  "x =", x2
-    
+
     write (u, "(A)")
     call rng%write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
-        
+
     call rng%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: rng_tao_1"
-    
+
   end subroutine rng_tao_1
-    
+
 @ %def rng_tao_1
 @
 \subsubsection{Factory check}
@@ -1110,11 +1110,11 @@ Set up a factory and spawn generators.
     type(rng_tao_factory_t) :: rng_factory
     class(rng_t), allocatable :: rng
     real(default) :: x
-    
+
     write (u, "(A)")  "* Test output: rng_tao_2"
     write (u, "(A)")  "*   Purpose: initialize and use a rng factory"
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Initialize factory"
     write (u, "(A)")
 
@@ -1166,13 +1166,240 @@ Set up a factory and spawn generators.
     write (u, "(1x,A,F7.5)")  "x = ", x
     call rng%final ()
     deallocate (rng)
-    
+
     write (u, *)
     call rng_factory%write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: rng_tao_2"
-    
+
   end subroutine rng_tao_2
-    
+
 @ %def rng_tao_2
+\section{Dispatch}
+@
+<<[[dispatch_rng.f90]]>>=
+<<File header>>
+
+module dispatch_rng
+
+  use kinds, only: i16
+<<Use strings>>
+  use diagnostics
+  use variables
+
+  use rng_base
+  use rng_tao
+
+<<Standard module head>>
+
+<<Dispatch rng: public>>
+
+<<Dispatch rng: variables>>
+
+contains
+
+<<Dispatch rng: procedures>>
+
+end module dispatch_rng
+@ %def dispatch_rng
+Allocate a random-number generator factory according to the variable
+[[$rng_method]], using the current seed in the global record.  We take
+only the lower 15 bits of the seed, so the actual value fits into a
+positive 16-bit signed integer.
+
+Since we want to guarantee that all random-number generators in a run
+are independent, we increment the global seed by one after creating
+the rng factory.  If the user wants to have identical sequences, he
+can always set the seed manually, before it is used.
+<<Dispatch rng: public>>=
+  public :: dispatch_rng_factory
+<<Dispatch rng: procedures>>=
+  subroutine dispatch_rng_factory (rng_factory, var_list_global, var_list_local)
+    class(rng_factory_t), allocatable, intent(inout) :: rng_factory
+    type(var_list_t), intent(inout) :: var_list_global
+    type(var_list_t), intent(in), optional :: var_list_local
+    type(var_list_t) :: local
+    type(string_t) :: rng_method
+    integer :: seed
+    character(30) :: buffer
+    integer(i16) :: s
+    if (present (var_list_local)) then
+       local = var_list_local
+    else
+       local = var_list_global
+    end if
+    rng_method = local%get_sval (var_str ("$rng_method"))
+    seed = local%get_ival (var_str ("seed"))
+    s = int (mod (seed, 32768), i16)
+    select case (char (rng_method))
+    case ("tao")
+       allocate (rng_tao_factory_t :: rng_factory)
+       call msg_message ("RNG: Initializing TAO random-number generator")
+    case default
+       if (associated (dispatch_rng_factory_extra)) then
+          call dispatch_rng_factory_extra (rng_factory, var_list_global, var_list_local)
+       end if
+       if (.not. allocated (rng_factory)) then
+          call msg_fatal ("Random-number generator '" &
+               // char (rng_method) // "' not implemented")
+       end if
+    end select
+    write (buffer, "(I0)")  s
+    call msg_message ("RNG: Setting seed for random-number generator to " &
+            // trim (buffer))
+    call rng_factory%init (s)
+    call var_list_global%set_int (var_str ("seed"), seed + 1, &
+         is_known = .true.)
+  end subroutine dispatch_rng_factory
+
+@ %def dispatch_rng_factory
+@ This is a hook that allows us to inject further handlers for
+RNG factory objects, in particular a test RNG.
+<<Dispatch rng: public>>=
+  public :: dispatch_rng_factory_extra
+<<Dispatch rng: variables>>=
+  procedure (dispatch_rng_factory), pointer :: &
+       dispatch_rng_factory_extra => null ()
+@ %def dispatch_rng_factory_extra
+@
+@
+\subsection{Unit tests}
+Test module, followed by the corresponding implementation module.
+<<[[dispatch_rng_ut.f90]]>>=
+<<File header>>
+
+module dispatch_rng_ut
+  use unit_tests
+  use dispatch_rng_uti
+
+<<Standard module head>>
+
+<<Dispatch rng: public test>>
+
+<<Dispatch rng: public test auxiliary>>
+
+contains
+
+<<Dispatch rng: test driver>>
+
+end module dispatch_rng_ut
+@ %def dispatch_rng_ut
+@
+<<[[dispatch_rng_uti.f90]]>>=
+<<File header>>
+
+module dispatch_rng_uti
+
+<<Use strings>>
+  use variables
+  use diagnostics
+  use rng_base
+  use dispatch_rng
+
+<<Standard module head>>
+
+<<Dispatch rng: public test auxiliary>>
+
+<<Dispatch rng: test declarations>>
+
+contains
+
+<<Dispatch rng: tests>>
+
+<<Dispatch rng: test auxiliary>>
+
+end module dispatch_rng_uti
+@ %def dispatch_rng_ut
+@ API: driver for the unit tests below.
+<<Dispatch rng: public test>>=
+  public ::dispatch_rng_test
+<<Dispatch rng: test driver>>=
+  subroutine dispatch_rng_test (u, results)
+    integer, intent(in) :: u
+    type(test_results_t), intent(inout) :: results
+  <<Dispatch rng: execute tests>>
+  end subroutine dispatch_rng_test
+
+@  %def dispatch_rng_test
+\subsubsection{Select type: random number generator}
+This is an extra dispatcher that enables the test RNG.  This procedure
+should be assigned to the [[dispatch_rng_factory_extra]] hook before
+any tests are executed.
+<<Dispatch rng: public test auxiliary>>=
+  public :: dispatch_rng_factory_test
+<<Dispatch rng: test auxiliary>>=
+  subroutine dispatch_rng_factory_test (rng_factory, var_list_global, var_list_local)
+    use rng_base
+    use rng_base_ut, only: rng_test_factory_t
+    class(rng_factory_t), allocatable, intent(inout) :: rng_factory
+    type(var_list_t), intent(inout) :: var_list_global
+    type(var_list_t), intent(in), optional :: var_list_local
+    type(var_list_t) :: local
+    type(string_t) :: rng_method
+    if (present (var_list_local)) then
+       local = var_list_local
+    else
+       local = var_list_global
+    end if
+    rng_method = &
+         local%get_sval (var_str ("$rng_method"))
+    select case (char (rng_method))
+    case ("unit_test")
+       allocate (rng_test_factory_t :: rng_factory)
+       call msg_message ("RNG: Initializing Test random-number generator")
+    end select
+  end subroutine dispatch_rng_factory_test
+
+@ %def dispatch_rng_factory_test
+@
+<<Dispatch rng: execute tests>>=
+  call test (dispatch_rng_1, "dispatch_rng_1", &
+       "random-number generator", &
+       u, results)
+<<Dispatch rng: test declarations>>=
+  public :: dispatch_rng_1
+<<Dispatch rng: tests>>=
+  subroutine dispatch_rng_1 (u)
+    integer, intent(in) :: u
+    type(var_list_t) :: var_list
+    class(rng_factory_t), allocatable :: rng_factory
+
+    write (u, "(A)")  "* Test output: dispatch_rng_1"
+    write (u, "(A)")  "*   Purpose: select random-number generator"
+    write (u, "(A)")
+
+    call var_list%init_defaults (0)
+
+    write (u, "(A)")  "* Allocate RNG factory as rng_test_factory_t"
+    write (u, "(A)")
+
+    call var_list%set_string (&
+         var_str ("$rng_method"), &
+         var_str ("unit_test"), is_known = .true.)
+    call var_list%set_int (&
+         var_str ("seed"), 1, is_known = .true.)
+    call dispatch_rng_factory (rng_factory, var_list)
+    call rng_factory%write (u)
+    deallocate (rng_factory)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Allocate RNG factory as rng_tao_factory_t"
+    write (u, "(A)")
+
+    call var_list%set_string (&
+         var_str ("$rng_method"), &
+         var_str ("tao"), is_known = .true.)
+    call dispatch_rng_factory (rng_factory, var_list)
+    call rng_factory%write (u)
+    deallocate (rng_factory)
+
+    call var_list%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: dispatch_rng_1"
+
+  end subroutine dispatch_rng_1
+
+@ %def dispatch_rng_1
+@

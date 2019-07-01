@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -41,11 +41,13 @@ module events_uti
   use model_data
   use particles
   use process_libraries
-  use processes
   use process_stacks
   use event_transforms
   use decays
   use decays_ut, only: prepare_testbed
+
+  use process, only: process_t
+  use instances, only: process_instance_t
 
   use events
 
@@ -77,7 +79,7 @@ contains
   end subroutine events_1
 
   subroutine events_2 (u)
-    use processes_ut, only: prepare_test_process
+    use processes_ut, only: prepare_test_process, cleanup_test_process
     integer, intent(in) :: u
     type(event_t), allocatable, target :: event
     type(process_t), allocatable, target :: process
@@ -107,7 +109,7 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Generate test process event"
 
-    call process%generate_weighted_event (process_instance, 1)
+    call process_instance%generate_weighted_event (1)
 
     write (u, "(A)")
     write (u, "(A)")  "* Fill event object"
@@ -135,7 +137,7 @@ contains
   end subroutine events_2
 
   subroutine events_4 (u)
-    use processes_ut, only: prepare_test_process
+    use processes_ut, only: prepare_test_process, cleanup_test_process
     integer, intent(in) :: u
     type(event_t), allocatable, target :: event
     type(process_t), allocatable, target :: process
@@ -232,7 +234,7 @@ contains
   end subroutine events_4
 
   subroutine events_5 (u)
-    use processes_ut, only: prepare_test_process
+    use processes_ut, only: prepare_test_process, cleanup_test_process
     integer, intent(in) :: u
     type(event_t), allocatable, target :: event
     type(process_t), allocatable, target :: process
@@ -440,7 +442,7 @@ contains
     call process_instance%setup_event_data (model)
     call process_instance%init_simulation (1)
 
-    call process%generate_weighted_event (process_instance, 1)
+    call process_instance%generate_weighted_event (1)
     call process_instance%write (u)
 
     call process_instance%final ()
@@ -459,7 +461,7 @@ contains
     call process_instance%setup_event_data (model)
     call process_instance%init_simulation (1)
 
-    call process%generate_weighted_event (process_instance, 1)
+    call process_instance%generate_weighted_event (1)
     call process_instance%write (u)
 
     call process_instance%final ()
@@ -481,7 +483,7 @@ contains
     call process_instance%setup_event_data (model)
     call process_instance%init_simulation (1)
 
-    call process%generate_weighted_event (process_instance, 1)
+    call process_instance%generate_weighted_event (1)
     call process_instance%write (u)
 
     call process_instance%final ()

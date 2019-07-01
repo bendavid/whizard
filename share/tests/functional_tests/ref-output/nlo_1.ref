@@ -7,7 +7,7 @@ $loop_me_method = "dummy"
 ?use_vamp_equivalences = false
 | Process library 'nlo_1_lib': recorded process 'nlo_1_p1'
 seed = 0
-sqrts =  2.5000000E+02
+sqrts =  2.50000E+02
 | Integrate: current process library needs compilation
 | Process library 'nlo_1_lib': compiling ...
 | Process library 'nlo_1_lib': writing makefile
@@ -55,27 +55,77 @@ sqrts =  2.5000000E+02
 | Phase space: found 2 channels, collected in 2 groves.
 | Phase space: no equivalences between channels used.
 | Phase space: wood
+Warning: No cuts have been defined.
+| Using user-defined general scale.
+| Starting integration for process 'nlo_1_p1' part 'Real'
+| Integrate: iterations = 2:500
+| Integrator: 2 chains, 2 channels, 5 dimensions
+| Integrator: 500 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1        500     2.239E+02   9.72E+00    4.34    0.97    16.7
+   2        500     2.171E+02   1.11E+01    5.12    1.14     9.9
+|-----------------------------------------------------------------------------|
+   2       1000     2.209E+02   7.31E+00    3.31    1.05     9.9    0.21   2
+|=============================================================================|
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 1
+| Initializing integration for process nlo_1_p1:
+| ------------------------------------------------------------------------
+| Process [scattering]: 'nlo_1_p1'
+|   Library name  = 'nlo_1_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'nlo_1_p1_i1':   e-, e+ => u, ubar [inactive]
+|     2: 'nlo_1_p1_i2':   e-, e+ => u, ubar, gl [omega], [Real]
+|     3: 'nlo_1_p1_i3':   e-, e+ => u, ubar [inactive], [Virtual]
+|     4: 'nlo_1_p1_i4':   e-, e+ => u, ubar [inactive], [Subtraction]
+| ------------------------------------------------------------------------
+| Beam structure: [any particles]
+| Beam data (collision):
+|   e-  (mass = 5.1099700E-04 GeV)
+|   e+  (mass = 5.1099700E-04 GeV)
+|   sqrts = 2.500000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'nlo_1_p1_i4.phs'
+| Phase space: writing configuration file 'nlo_1_p1_i1.phs'
+| Phase space: 2 channels, 2 dimensions
+| Phase space: found 2 channels, collected in 2 groves.
+| Phase space: no equivalences between channels used.
+| Phase space: wood
+| Phase space: 2 channels, 5 dimensions
+| Phase space: found 2 channels, collected in 2 groves.
+| Phase space: no equivalences between channels used.
+| Phase space: wood
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'nlo_1_p1_i3.phs'
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 2 groves.
 | Phase space: no equivalences between channels used.
 | Phase space: wood
 Warning: No cuts have been defined.
+| Using user-defined general scale.
 | Starting integration for process 'nlo_1_p1' part 'Real'
-| Integrate: iterations = 2:9000
+| Integrate: iterations = 2:500
 | Integrator: 2 chains, 2 channels, 5 dimensions
-| Integrator: 9000 initial calls, 20 bins, stratified = T
+| Integrator: 500 initial calls, 20 bins, stratified = T
 | Integrator: VAMP
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1       9000     2.300E+02   3.26E+00    1.42    1.34     2.2
-   2       9000     2.314E+02   2.69E+00    1.16    1.10     2.1
+   1        500     2.204E+02   1.03E+01    4.68    1.05    15.0
+   2        500     2.503E+02   1.13E+01    4.52    1.01    12.1
 |-----------------------------------------------------------------------------|
-   2      18000     2.308E+02   2.07E+00    0.90    1.21     2.1    0.10   2
+   2       1000     2.340E+02   7.63E+00    3.26    1.03    12.1    3.82   2
 |=============================================================================|
-| There were no errors and    1 warning(s).
+| There were no errors and    2 warning(s).
 | WHIZARD run finished.
 |=============================================================================|
+Total number of regions:   2
+alr ||             flst_real ||  em || mul || nreg ||               ftuples ||         flst_born || i_uborn
+  1 || [ 11,-11,  2, -2, 21] ||   3 ||   1 ||    2 || {(3,5)  (4,5)}  || [ 11,-11,  2, -2] ||       1
+  2 || [ 11,-11,  2, -2, 21] ||   4 ||   1 ||    2 || {(3,5)  (4,5)}  || [ 11,-11,  2, -2] ||       1
+------------------------------------------------------------------------

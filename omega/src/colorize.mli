@@ -1,4 +1,4 @@
-(* $Id: colorize.mli 7444 2016-02-17 15:37:20Z jr_reuter $
+(* colorize.mli --
 
    Copyright (C) 1999-2016 by
 

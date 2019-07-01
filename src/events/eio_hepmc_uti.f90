@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -220,11 +220,10 @@ contains
     allocate (eio_hepmc_t :: eio)
     select type (eio)
     type is (eio_hepmc_t)
-       call eio%set_parameters (default_model = &
-            fallback_model, recover_beams = .false.)
-    end select            
+       call eio%set_parameters (recover_beams = .false.)
+    end select
     call eio%set_fallback_model (fallback_model)
-    
+
     call data%init (1)
     data%n_beam = 2
     data%unweighted = .true.
@@ -234,13 +233,13 @@ contains
     data%proc_num_id = [42]
     call data%write (u)
 
-    write (u, "(A)")    
+    write (u, "(A)")
     write (u, "(A)")  "* Initialize"
     write (u, "(A)")
-             
+
     call eio%init_in (sample, data)
-    call eio%write (u)    
-    
+    call eio%write (u)
+
     write (u, "(A)")
     write (u, "(A)")  "* Read event"
     write (u, "(A)")

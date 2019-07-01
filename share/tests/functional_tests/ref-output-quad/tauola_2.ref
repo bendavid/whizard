@@ -27,8 +27,8 @@ $shower_method = "PYTHIA6"
 | Particle W- declared as polarized
 | Particle Z declared as polarized
 ?polarized_events = true
-sqrts =  2.5000000E+02
-error_threshold =  1.0000000E-08
+sqrts =  2.50000E+02
+error_threshold =  1.00000E-08
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process tauola_2_dec1:
@@ -63,7 +63,7 @@ Warning: No cuts have been defined.
 |-----------------------------------------------------------------------------|
    1         10     2.588E-04   0.00E+00    0.00    0.00   100.0
 |=============================================================================|
-error_threshold =  1.0000000E-08
+error_threshold =  1.00000E-08
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1
 | Initializing integration for process tauola_2_dec2:

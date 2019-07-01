@@ -14,7 +14,7 @@
 | Process library 'ilc_lib': loading
 | Process library 'ilc_lib': ... success.
 seed = 1
-sqrts =  5.0000000E+02
+sqrts =  5.00000E+02
 openmp_num_threads = 1
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1
@@ -208,8 +208,8 @@ Warning: No cuts have been defined.
 |-----------------------------------------------------------------------------|
    6      30000     6.710E+01   1.02E-01    0.15    0.26    40.6    0.20   3
 |=============================================================================|
-epa_x_min =  1.0000000E-01
-epa_mass =  5.1099700E-04
+epa_x_min =  1.00000E-01
+epa_mass =  5.10997E-04
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 7
 | Initializing integration for process ilc_ww:

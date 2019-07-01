@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -58,11 +58,12 @@ module slha_interface
   public :: syntax_slha_init
   public :: syntax_slha_final
   public :: syntax_slha_write
-  public :: lexer_init_slha 
+  public :: lexer_init_slha
   public :: slha_interpret_parse_tree
   public :: slha_parse_file
   public :: slha_read_file
   public :: slha_write_file
+  public :: dispatch_slha
 
   integer, parameter :: MODE_SKIP = 0, MODE_DATA = 1, MODE_INFO = 2
 
@@ -234,7 +235,7 @@ contains
           pn_block_spec => parse_node_get_sub_ptr (pn_block, 2)
           pn_block_name => parse_node_get_sub_ptr (pn_block_spec)
           if (trim (adjustl (upper_case (parse_node_get_string &
-                   (pn_block_name)))) == block_name) then
+               (pn_block_name)))) == block_name) then
              return
           end if
        end select
@@ -650,11 +651,11 @@ contains
     end if
     call slha_find_index_ptr (pn_block, pn_data, pn_item, 4)
     if (associated (pn_item)) then
-      call msg_fatal (" R-parity violation is currently not supported by WHIZARD.")     
+      call msg_fatal (" R-parity violation is currently not supported by WHIZARD.")
     end if
     call slha_find_index_ptr (pn_block, pn_data, pn_item, 5)
     if (associated (pn_item)) then
-      call msg_fatal (" CP violation is currently not supported by WHIZARD.")   
+      call msg_fatal (" CP violation is currently not supported by WHIZARD.")
     end if
     select case (char (model_name))
     case ("MSSM")
@@ -664,17 +665,17 @@ contains
        case default
           call msg_fatal ("Selected model '" &
                // char (model%get_name ()) // "' does not match model '" &
-               // char (model_name) // "' in SLHA input file.") 
+               // char (model_name) // "' in SLHA input file.")
           return
        end select
-    case ("NMSSM")       
+    case ("NMSSM")
        select case (char (model%get_name ()))
        case ("NMSSM","NMSSM_CKM","NMSSM_Hgg")
           model_name = model%get_name ()
        case default
           call msg_fatal ("Selected model '" &
                // char (model%get_name ()) // "' does not match model '" &
-               // char (model_name) // "' in SLHA input file.") 
+               // char (model_name) // "' in SLHA input file.")
           return
        end select
     case default
@@ -721,7 +722,7 @@ contains
     call write_integer_parameter (u, 3, model_id, &
          "SUSY model type: " // char (model%get_name ()))
   end subroutine slha_write_MODSEL
-    
+
   subroutine slha_handle_SMINPUTS (parse_tree, model)
     type(parse_tree_t), intent(in) :: parse_tree
     type(model_t), intent(inout), target :: model
@@ -868,7 +869,7 @@ contains
             "tan(beta)")
     end select
   end subroutine slha_write_MINPAR
-    
+
   subroutine slha_handle_MASS (parse_tree, model)
     type(parse_tree_t), intent(in) :: parse_tree
     type(model_t), intent(inout), target :: model
@@ -983,9 +984,9 @@ contains
     if (.not. (associated (pn_block)))  return
     call set_data_item (pn_block, 1, var_str ("ls"), var_list)
     call set_data_item (pn_block, 2, var_str ("ks"), var_list)
-    call set_data_item (pn_block, 3, var_str ("a_ls"), var_list)    
-    call set_data_item (pn_block, 4, var_str ("a_ks"), var_list)        
-    call set_data_item (pn_block, 5, var_str ("nmu"), var_list)    
+    call set_data_item (pn_block, 3, var_str ("a_ls"), var_list)
+    call set_data_item (pn_block, 4, var_str ("a_ks"), var_list)
+    call set_data_item (pn_block, 5, var_str ("nmu"), var_list)
     end subroutine slha_handle_NMSSMRUN
 
   subroutine slha_parse_stream (stream, parse_tree)
@@ -1068,8 +1069,16 @@ contains
     close (u)
   end subroutine slha_write_file
 
+  subroutine dispatch_slha (var_list, input, spectrum, decays)
+    type(var_list_t), intent(inout), target :: var_list
+    logical, intent(out) :: input, spectrum, decays
+    input = var_list%get_lval (var_str ("?slha_read_input"))
+    spectrum = var_list%get_lval (var_str ("?slha_read_spectrum"))
+    decays = var_list%get_lval (var_str ("?slha_read_decays"))
+  end subroutine dispatch_slha
 
-  subroutine slha_1 (u) 
+
+  subroutine slha_1 (u)
     integer, intent(in) :: u
     type(os_data_t), pointer :: os_data => null ()
     type(parse_tree_t), pointer :: parse_tree => null ()
@@ -1078,14 +1087,14 @@ contains
     character(*), parameter :: file_slha = "slha_test.dat"
     type(model_list_t) :: model_list
     type(model_t), pointer :: model => null ()
-    
+
     write (u, "(A)")  "* Test output: SLHA Interface"
     write (u, "(A)")  "*   Purpose: test SLHA file reading and writing"
-    write (u, "(A)")            
+    write (u, "(A)")
 
     write (u, "(A)")  "* Initializing"
-    write (u, "(A)")    
-    
+    write (u, "(A)")
+
     allocate (os_data)
     allocate (parse_tree)
     call os_data_init (os_data)
@@ -1095,32 +1104,32 @@ contains
     call syntax_slha_init ()
 
     write (u, "(A)")  "* Reading SLHA file sps1ap_decays.slha"
-    write (u, "(A)")    
-    
+    write (u, "(A)")
+
     call slha_parse_file (var_str ("sps1ap_decays.slha"), os_data, parse_tree)
 
     write (u, "(A)")  "* Writing the parse tree:"
-    write (u, "(A)")    
+    write (u, "(A)")
 
     call parse_tree_write (parse_tree, u)
-    
+
     write (u, "(A)")  "* Interpreting the parse tree"
-    write (u, "(A)")    
-    
+    write (u, "(A)")
+
     call slha_interpret_parse_tree (parse_tree, model, &
-         input=.true., spectrum=.true., decays=.true.)    
+         input=.true., spectrum=.true., decays=.true.)
     call parse_tree_final (parse_tree)
 
     write (u, "(A)")  "* Writing out the list of variables (reals only):"
-    write (u, "(A)")    
-    
+    write (u, "(A)")
+
     call var_list_write (model%get_var_list_ptr (), &
          only_type = V_REAL, unit = u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Writing SLHA output to '" // file_slha // "'"
-    write (u, "(A)")    
-        
+    write (u, "(A)")
+
     call slha_write_file (var_str (file_slha), model, input=.true., &
          spectrum=.false., decays=.false.)
     u_file = free_unit ()
@@ -1138,15 +1147,63 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
     write (u, "(A)")
-    
+
     call parse_tree_final (parse_tree)
     deallocate (parse_tree)
     deallocate (os_data)
 
     write (u, "(A)")  "* Test output end: slha_1"
     write (u, "(A)")
-    
+
   end subroutine slha_1
+
+  subroutine slha_2 (u)
+    integer, intent(in) :: u
+    type(var_list_t) :: var_list
+    logical :: input, spectrum, decays
+
+    write (u, "(A)")  "* Test output: slha_2"
+    write (u, "(A)")  "*   Purpose: SLHA interface settings"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Default settings"
+    write (u, "(A)")
+
+    call var_list%init_defaults (0)
+    call dispatch_slha (var_list, &
+         input = input, spectrum = spectrum, decays = decays)
+
+    write (u, "(A,1x,L1)")  " slha_read_input     =", input
+    write (u, "(A,1x,L1)")  " slha_read_spectrum  =", spectrum
+    write (u, "(A,1x,L1)")  " slha_read_decays    =", decays
+
+    call var_list%final ()
+    call var_list%init_defaults (0)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Set all entries to [false]"
+    write (u, "(A)")
+
+    call var_list%set_log (var_str ("?slha_read_input"), &
+         .false., is_known = .true.)
+    call var_list%set_log (var_str ("?slha_read_spectrum"), &
+         .false., is_known = .true.)
+    call var_list%set_log (var_str ("?slha_read_decays"), &
+         .false., is_known = .true.)
+
+    call dispatch_slha (var_list, &
+         input = input, spectrum = spectrum, decays = decays)
+
+    write (u, "(A,1x,L1)")  " slha_read_input     =", input
+    write (u, "(A,1x,L1)")  " slha_read_spectrum  =", spectrum
+    write (u, "(A,1x,L1)")  " slha_read_decays    =", decays
+
+    call var_list%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: slha_2"
+
+  end subroutine slha_2
 
 
 end module slha_interface

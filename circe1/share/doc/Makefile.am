@@ -48,8 +48,8 @@ PICTURES_PDF = $(PICTURES_EPS:.eps=.pdf)
 LATEX_STYLES = \
     noweb.sty thohacks.sty thopp.sty
 
-TEX_FLAGS = "$$TEXINPUTS:$(top_srcdir)/share/doc"
-MP_FLAGS  = "$$MPINPUTS:$(top_srcdir)/share/doc"
+TEX_FLAGS = "$$TEXINPUTS:$(top_srcdir)/circe1/share/doc"
+MP_FLAGS  = "$$MPINPUTS:$(top_srcdir)/circe1/share/doc"
 
 MP4_FILES = \
     circemacs.mp4 dist.mp4 fit.mp4 graphx.mp
@@ -66,7 +66,7 @@ if NOWEB_AVAILABLE
 pdf-local: circe1.pdf 
 endif
 
-VPATH = $(srcdir):$(top_builddir)/src:$(top_srcdir)/src
+VPATH = $(srcdir):$(top_builddir)/circe1/src:$(top_srcdir)/circe1/src
 
 if NOWEB_AVAILABLE
 
@@ -80,7 +80,7 @@ circe1.tex: tex-comments
 endif NOWEB_AVAILABLE
 
 .mp4.mp: circemacs.mp4
-	$(M4) -I$(top_srcdir)/share/doc $< >$@
+	$(M4) -I$(top_srcdir)/circe1/share/doc $< >$@
 
 ########################################################################
 # Old targets for the fit plots
@@ -120,91 +120,91 @@ dist.1: dist.mp \
 # Generating CIRCE data
 ########################################################################
 
-de-sband.dat: $(top_builddir)/tools/circe1_plot
+de-sband.dat: $(top_builddir)/circe1/tools/circe1_plot
 	echo 1 0.001 1.0 50 -1.0 11 11 500.0 1 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
 
-dg-sband.dat: $(top_builddir)/tools/circe1_plot
+dg-sband.dat: $(top_builddir)/circe1/tools/circe1_plot
 	echo 1 0.001 1.0 50 -1.0 22 11 500.0 1 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
 
-de-tesla.dat: $(top_builddir)/tools/circe1_plot
+de-tesla.dat: $(top_builddir)/circe1/tools/circe1_plot
 	echo 1 0.001 1.0 50 -1.0 11 11 500.0 2 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
 
-dg-tesla.dat: $(top_builddir)/tools/circe1_plot
+dg-tesla.dat: $(top_builddir)/circe1/tools/circe1_plot
 	echo 1 0.001 1.0 50 -1.0 22 11 500.0 2 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
 
-de-xband.dat: $(top_builddir)/tools/circe1_plot
+de-xband.dat: $(top_builddir)/circe1/tools/circe1_plot
 	echo 1 0.001 1.0 50 -1.0 11 11 500.0 3 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
 
-dg-xband.dat: $(top_builddir)/tools/circe1_plot
+dg-xband.dat: $(top_builddir)/circe1/tools/circe1_plot
 	echo 1 0.001 1.0 50 -1.0 22 11 500.0 3 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
 
-de-sbandt.dat: $(top_builddir)/tools/circe1_plot
+de-sbandt.dat: $(top_builddir)/circe1/tools/circe1_plot
 	echo 1 0.001 1.0 50 -1.0 11 11 1000.0 1 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
 
-dg-sbandt.dat: $(top_builddir)/tools/circe1_plot
+dg-sbandt.dat: $(top_builddir)/circe1/tools/circe1_plot
 	echo 1 0.001 1.0 50 -1.0 22 11 1000.0 1 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
 
-de-teslat.dat: $(top_builddir)/tools/circe1_plot
+de-teslat.dat: $(top_builddir)/circe1/tools/circe1_plot
 	echo 1 0.001 1.0 50 -1.0 11 11 1000.0 2 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
 
-dg-teslat.dat: $(top_builddir)/tools/circe1_plot
+dg-teslat.dat: $(top_builddir)/circe1/tools/circe1_plot
 	echo 1 0.001 1.0 50 -1.0 22 11 1000.0 2 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
 
-de-xbandt.dat: $(top_builddir)/tools/circe1_plot
+de-xbandt.dat: $(top_builddir)/circe1/tools/circe1_plot
 	echo 1 0.001 1.0 50 -1.0 11 11 1000.0 3 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
 
-dg-xbandt.dat: $(top_builddir)/tools/circe1_plot
+dg-xbandt.dat: $(top_builddir)/circe1/tools/circe1_plot
 	echo 1 0.001 1.0 50 -1.0 22 11 1000.0 3 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
 
-de-tesla3.dat: $(top_builddir)/tools/circe1_plot
+de-tesla3.dat: $(top_builddir)/circe1/tools/circe1_plot
 	echo 1 0.001 1.0 50 -1.0 11 11 350.0 2 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
 
-dg-tesla3.dat: $(top_builddir)/tools/circe1_plot
+dg-tesla3.dat: $(top_builddir)/circe1/tools/circe1_plot
 	echo 1 0.001 1.0 50 -1.0 22 11 350.0 2 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
 
-de-tesla8.dat: $(top_builddir)/tools/circe1_plot
+de-tesla8.dat: $(top_builddir)/circe1/tools/circe1_plot
 	echo 1 0.001 1.0 50 -1.0 11 11 800.0 2 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
 
-dg-tesla8.dat: $(top_builddir)/tools/circe1_plot
+dg-tesla8.dat: $(top_builddir)/circe1/tools/circe1_plot
 	echo 1 0.001 1.0 50 -1.0 22 11 800.0 2 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
 
-de-sband-ee.dat: $(top_builddir)/tools/circe1_plot
+de-sband-ee.dat: $(top_builddir)/circe1/tools/circe1_plot
 	echo 1 0.001 1.0 50 -1.0 11 11 500.0 4 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
 
-dg-sband-ee.dat: $(top_builddir)/tools/circe1_plot
+dg-sband-ee.dat: $(top_builddir)/circe1/tools/circe1_plot
 	echo 1 0.001 1.0 50 -1.0 22 11 500.0 4 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
 
-de-tesla-ee.dat: $(top_builddir)/tools/circe1_plot
+de-tesla-ee.dat: $(top_builddir)/circe1/tools/circe1_plot
 	echo 1 0.001 1.0 50 -1.0 11 11 500.0 5 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
 
-dg-tesla-ee.dat: $(top_builddir)/tools/circe1_plot
+dg-tesla-ee.dat: $(top_builddir)/circe1/tools/circe1_plot
 	echo 1 0.001 1.0 50 -1.0 22 11 500.0 5 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
 
-de-xband-ee.dat: $(top_builddir)/tools/circe1_plot
+de-xband-ee.dat: $(top_builddir)/circe1/tools/circe1_plot
 	echo 1 0.001 1.0 50 -1.0 11 11 500.0 6 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
 
-dg-xband-ee.dat: $(top_builddir)/tools/circe1_plot
+dg-xband-ee.dat: $(top_builddir)/circe1/tools/circe1_plot
 	echo 1 0.001 1.0 50 -1.0 22 11 500.0 6 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
 
-de-sbandt-ee.dat: $(top_builddir)/tools/circe1_plot
+de-sbandt-ee.dat: $(top_builddir)/circe1/tools/circe1_plot
 	echo 1 0.001 1.0 50 -1.0 11 11 1000.0 4 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
 
-dg-sbandt-ee.dat: $(top_builddir)/tools/circe1_plot
+dg-sbandt-ee.dat: $(top_builddir)/circe1/tools/circe1_plot
 	echo 1 0.001 1.0 50 -1.0 22 11 1000.0 4 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
 
-de-teslat-ee.dat: $(top_builddir)/tools/circe1_plot
+de-teslat-ee.dat: $(top_builddir)/circe1/tools/circe1_plot
 	echo 1 0.001 1.0 50 -1.0 11 11 1000.0 5 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
 
-dg-teslat-ee.dat: $(top_builddir)/tools/circe1_plot
+dg-teslat-ee.dat: $(top_builddir)/circe1/tools/circe1_plot
 	echo 1 0.001 1.0 50 -1.0 22 11 1000.0 5 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
 
-de-xbandt-ee.dat: $(top_builddir)/tools/circe1_plot
+de-xbandt-ee.dat: $(top_builddir)/circe1/tools/circe1_plot
 	echo 1 0.001 1.0 50 -1.0 11 11 1000.0 6 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
 
-dg-xbandt-ee.dat: $(top_builddir)/tools/circe1_plot
+dg-xbandt-ee.dat: $(top_builddir)/circe1/tools/circe1_plot
 	echo 1 0.001 1.0 50 -1.0 22 11 1000.0 6 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
 
-CPLOT = $(top_builddir)/tools/circe1_plot | $(GREP) -v circe1: | $(SED) 's/E/e/g' | $(CPIF) $@
+CPLOT = $(top_builddir)/circe1/tools/circe1_plot | $(GREP) -v circe1: | $(SED) 's/E/e/g' > $@
 
 tex-comments: tex-comments.sh
 	cp $< $@
@@ -244,7 +244,11 @@ endif DISTRIBUTION
 if DISTRIBUTION
 if SUPP_PDF_AVAILABLE
 if PDFLATEX_AVAILABLE
+if !NOWEB_AVAILABLE
 circe1.pdf: $(PICTURES_PDF) dist.1
+else NOWEB_AVAILABLE
+circe1.pdf: $(PICTURES_PDF) dist.1 circe1.tex
+endif NOWEB_AVAILABLE
 endif PDFLATEX_AVAILABLE
 endif SUPP_PDF_AVAILABLE
 endif DISTRIBUTION

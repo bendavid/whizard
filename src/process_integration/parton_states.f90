@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -76,6 +76,7 @@ module parton_states
      procedure :: receive_kinematics => parton_state_receive_kinematics
      procedure :: send_kinematics => parton_state_send_kinematics
      procedure :: evaluate_trace => parton_state_evaluate_trace
+     procedure :: evaluate_matrix => parton_state_evaluate_matrix
      procedure :: evaluate_event_data => parton_state_evaluate_event_data
      procedure :: normalize_matrix_by_trace => &
           parton_state_normalize_matrix_by_trace
@@ -91,8 +92,9 @@ module parton_states
      logical :: int_is_allocated = .false.
      type(interaction_t), pointer :: int_eff => null ()
    contains
-     procedure :: init => isolated_state_init_pointers
+     procedure :: init => isolated_state_init
      procedure :: setup_square_trace => isolated_state_setup_square_trace
+     procedure :: setup_identity_trace => isolated_state_setup_identity_trace
      procedure :: setup_square_matrix => isolated_state_setup_square_matrix
      procedure :: setup_square_flows => isolated_state_setup_square_flows
      procedure :: evaluate_sf_chain => isolated_state_evaluate_sf_chain
@@ -123,10 +125,10 @@ module parton_states
      procedure :: get_beam_index => connected_state_get_beam_index
      procedure :: get_in_index => connected_state_get_in_index
   end type connected_state_t
-     
+
 
 contains
-  
+
   subroutine parton_state_write (state, unit, testflag)
     class(parton_state_t), intent(in) :: state
     integer, intent(in), optional :: unit
@@ -185,7 +187,7 @@ contains
        end if
     end select
   end subroutine parton_state_write
-    
+
   subroutine parton_state_final (state)
     class(parton_state_t), intent(inout) :: state
     if (state%has_flows) then
@@ -218,28 +220,30 @@ contains
        end if
     end select
   end subroutine parton_state_final
-    
-  subroutine isolated_state_init_pointers (state, sf_chain, int)
+
+  subroutine isolated_state_init (state, sf_chain, int)
     class(isolated_state_t), intent(out) :: state
     type(sf_chain_instance_t), intent(in), target :: sf_chain
     type(interaction_t), intent(in), target :: int
     state%sf_chain_eff => sf_chain
     state%int_eff => int
-  end subroutine isolated_state_init_pointers
-    
-  subroutine isolated_state_setup_square_trace (state, core, qn_mask_in, &
-       col)
+  end subroutine isolated_state_init
+
+  subroutine isolated_state_setup_square_trace (state, core, &
+       qn_mask_in, col)
     class(isolated_state_t), intent(inout), target :: state
     class(prc_core_t), intent(in) :: core
-    type(quantum_numbers_mask_t), dimension(:), intent(in) :: qn_mask_in
-    integer, dimension(:), intent(in) :: col
-    type(quantum_numbers_mask_t), dimension(:), allocatable :: qn_mask    
+    type(quantum_numbers_mask_t), intent(in), dimension(:) :: qn_mask_in
+    !!! Actually need allocatable attribute here fore once because col might
+    !!! enter the subroutine non-allocated.
+    integer, intent(in), dimension(:), allocatable :: col
+    type(quantum_numbers_mask_t), dimension(:), allocatable :: qn_mask
     associate (data => core%data)
       allocate (qn_mask (data%n_in + data%n_out))
-      qn_mask(:data%n_in) = &
+      qn_mask( : data%n_in) = &
               quantum_numbers_mask (.false., .true., .false.) &
               .or. qn_mask_in
-      qn_mask(data%n_in+1:) = &
+      qn_mask(data%n_in + 1 : ) = &
            quantum_numbers_mask (.true., .true., .true.)
     if (core%use_color_factors) then
        call state%trace%init_square (state%int_eff, qn_mask, &
@@ -253,7 +257,30 @@ contains
     end associate
     state%has_trace = .true.
   end subroutine isolated_state_setup_square_trace
-    
+
+  subroutine isolated_state_setup_identity_trace (state, core, qn_mask_in, &
+      keep_fs_flavors, keep_colors)
+     class(isolated_state_t), intent(inout), target :: state
+     class(prc_core_t), intent(in) :: core
+     type(quantum_numbers_mask_t), intent(in), dimension(:) :: qn_mask_in
+     logical, intent(in), optional :: keep_fs_flavors, keep_colors
+     type(quantum_numbers_mask_t), dimension(:), allocatable :: qn_mask
+     logical :: fs_flv_flag, col_flag
+     fs_flv_flag = .true.; col_flag = .true.
+     if (present(keep_fs_flavors)) fs_flv_flag = .not. keep_fs_flavors
+     if (present(keep_colors)) col_flag = .not. keep_colors
+     associate (data => core%data)
+        allocate (qn_mask (data%n_in + data%n_out))
+        qn_mask( : data%n_in) = &
+           quantum_numbers_mask (.false., col_flag, .false.) .or. qn_mask_in
+        qn_mask(data%n_in + 1 : ) = &
+           quantum_numbers_mask (fs_flv_flag, col_flag, .true.)
+     end associate
+     call state%int_eff%set_mask (qn_mask)
+     call state%trace%init_identity (state%int_eff)
+     state%has_trace = .true.
+  end subroutine isolated_state_setup_identity_trace
+
   subroutine isolated_state_setup_square_matrix &
        (state, core, model, qn_mask_in, col)
     class(isolated_state_t), intent(inout), target :: state
@@ -268,7 +295,7 @@ contains
     associate (data => core%data)
       allocate (qn_mask (data%n_in + data%n_out))
       allocate (flv (data%n_flv))
-      do i = 1, data%n_in + data%n_out      
+      do i = 1, data%n_in + data%n_out
          call flv%init (data%flv_state(i,:), model)
          if ((data%n_in == 1 .or. i > data%n_in) &
               .and. any (.not. flv%is_stable ())) then
@@ -284,17 +311,17 @@ contains
               .or. qn_mask_in(i)
          end if
       end do
-    if (core%use_color_factors) then
-       call state%matrix%init_square (state%int_eff, qn_mask, &
-            col_flow_index = data%cf_index, &
-            col_factor = data%color_factors, &
-            col_index_hi = col, &
-            nc = core%nc)
-    else
-       call state%matrix%init_square (state%int_eff, &
-            qn_mask, &
-            nc = core%nc)
-    end if
+      if (core%use_color_factors) then
+         call state%matrix%init_square (state%int_eff, qn_mask, &
+              col_flow_index = data%cf_index, &
+              col_factor = data%color_factors, &
+              col_index_hi = col, &
+              nc = core%nc)
+      else
+         call state%matrix%init_square (state%int_eff, &
+              qn_mask, &
+              nc = core%nc)
+      end if
     end associate
     state%has_matrix = .true.
   end subroutine isolated_state_setup_square_matrix
@@ -334,26 +361,51 @@ contains
   end subroutine isolated_state_setup_square_flows
 
   subroutine connected_state_setup_connected_trace &
-       (state, isolated, int, resonant)
+       (state, isolated, int, resonant, undo_helicities, n_sub, &
+        keep_fs_flavors)
     class(connected_state_t), intent(inout), target :: state
     type(isolated_state_t), intent(in), target :: isolated
     type(interaction_t), intent(in), optional, target :: int
     logical, intent(in), optional :: resonant
+    logical, intent(in), optional :: undo_helicities
+    integer, intent(in), optional :: n_sub
+    logical, intent(in), optional :: keep_fs_flavors
     type(quantum_numbers_mask_t) :: mask
     type(interaction_t), pointer :: src_int
-    mask = quantum_numbers_mask (.true., .true., .true.)
+    logical :: reduce, fs_flv_flag
+    reduce = .false.; fs_flv_flag = .true.
+    if (present (undo_helicities)) reduce = undo_helicities
+    if (present (keep_fs_flavors)) fs_flv_flag = .not. keep_fs_flavors
+    mask = quantum_numbers_mask (fs_flv_flag, .true., .true.)
     if (present (int)) then
        src_int => int
     else
        src_int => isolated%sf_chain_eff%get_out_int_ptr ()
     end if
+    if (present (n_sub)) then
+       if (n_sub > 0) call interaction_declare_subtraction (src_int, n_sub)
+    end if
+    if (reduce) call undo_qn_hel (src_int, mask, src_int%get_n_tot (), &
+       isolated%sf_chain_eff%config%n_strfun == 0)
+
     call state%trace%init_product (src_int, isolated%trace, &
           qn_mask_conn = mask, &
           qn_mask_rest = mask, &
           connections_are_resonant = resonant)
     state%has_trace = .true.
+  contains
+    subroutine undo_qn_hel (int_in, mask, n_tot, replace_sf)
+      type(interaction_t), intent(inout) :: int_in
+      type(quantum_numbers_mask_t), intent(in) :: mask
+      integer, intent(in) :: n_tot
+      logical, intent(in) :: replace_sf
+      type(quantum_numbers_mask_t), dimension(n_tot) :: mask_in
+      mask_in = mask
+      call int_in%set_mask (mask_in)
+      if (replace_sf) call int_in%set_matrix_element (cmplx (1, 0, default))
+    end subroutine undo_qn_hel
   end subroutine connected_state_setup_connected_trace
-    
+
   subroutine connected_state_setup_connected_matrix &
        (state, isolated, int, resonant, qn_filter_conn)
     class(connected_state_t), intent(inout), target :: state
@@ -375,7 +427,7 @@ contains
           connections_are_resonant = resonant)
     state%has_matrix = .true.
   end subroutine connected_state_setup_connected_matrix
-  
+
   subroutine connected_state_setup_connected_flows &
        (state, isolated, int, resonant, qn_filter_conn)
     class(connected_state_t), intent(inout), target :: state
@@ -399,20 +451,20 @@ contains
           connections_are_resonant = resonant)
     state%has_flows = .true.
   end subroutine connected_state_setup_connected_flows
-  
+
   subroutine connected_state_setup_state_flv (state, n_out_hard)
     class(connected_state_t), intent(inout), target :: state
     integer, intent(in) :: n_out_hard
     call interaction_get_flv_content &
          (state%matrix%interaction_t, state%state_flv, n_out_hard)
   end subroutine connected_state_setup_state_flv
-  
+
   function connected_state_get_state_flv (state) result (state_flv)
     class(connected_state_t), intent(in) :: state
     type(state_flv_content_t) :: state_flv
     state_flv = state%state_flv
   end function connected_state_get_state_flv
-  
+
   subroutine connected_state_setup_subevt (state, sf_chain, f_beam, f_in, f_out)
     class(connected_state_t), intent(inout), target :: state
     type(sf_chain_instance_t), intent(in), target :: sf_chain
@@ -447,42 +499,42 @@ contains
     call state%expr%setup_vars (beam_data%get_sqrts ())
     call state%expr%link_var_list (process_var_list)
   end subroutine connected_state_setup_var_list
-  
+
   subroutine connected_state_setup_cuts (state, ef_cuts)
     class(connected_state_t), intent(inout), target :: state
     class(expr_factory_t), intent(in) :: ef_cuts
     call state%expr%setup_selection (ef_cuts)
   end subroutine connected_state_setup_cuts
-    
+
   subroutine connected_state_setup_scale (state, ef_scale)
     class(connected_state_t), intent(inout), target :: state
     class(expr_factory_t), intent(in) :: ef_scale
     call state%expr%setup_scale (ef_scale)
   end subroutine connected_state_setup_scale
-    
+
   subroutine connected_state_setup_fac_scale (state, ef_fac_scale)
     class(connected_state_t), intent(inout), target :: state
     class(expr_factory_t), intent(in) :: ef_fac_scale
     call state%expr%setup_fac_scale (ef_fac_scale)
   end subroutine connected_state_setup_fac_scale
-    
+
   subroutine connected_state_setup_ren_scale (state, ef_ren_scale)
     class(connected_state_t), intent(inout), target :: state
     class(expr_factory_t), intent(in) :: ef_ren_scale
     call state%expr%setup_ren_scale (ef_ren_scale)
   end subroutine connected_state_setup_ren_scale
-    
+
   subroutine connected_state_setup_weight (state, ef_weight)
     class(connected_state_t), intent(inout), target :: state
     class(expr_factory_t), intent(in) :: ef_weight
     call state%expr%setup_weight (ef_weight)
   end subroutine connected_state_setup_weight
-    
+
   subroutine connected_state_reset_expressions (state)
     class(connected_state_t), intent(inout) :: state
     if (state%has_expr)  call state%expr%reset ()
   end subroutine connected_state_reset_expressions
-  
+
   subroutine parton_state_receive_kinematics (state)
     class(parton_state_t), intent(inout), target :: state
     if (state%has_trace) then
@@ -519,7 +571,7 @@ contains
             scale_forced, force_evaluation)
     end if
   end subroutine connected_state_evaluate_expressions
-    
+
   subroutine isolated_state_evaluate_sf_chain (state, fac_scale)
     class(isolated_state_t), intent(inout) :: state
     real(default), intent(in) :: fac_scale
@@ -527,13 +579,20 @@ contains
        call state%sf_chain_eff%evaluate (fac_scale)
     end if
   end subroutine isolated_state_evaluate_sf_chain
-  
+
   subroutine parton_state_evaluate_trace (state)
     class(parton_state_t), intent(inout) :: state
     if (state%has_trace) then
        call state%trace%evaluate ()
     end if
   end subroutine parton_state_evaluate_trace
+
+  subroutine parton_state_evaluate_matrix (state)
+    class(parton_state_t), intent(inout) :: state
+    if (state%has_matrix) then
+       call state%matrix%evaluate ()
+    end if
+  end subroutine parton_state_evaluate_matrix
 
   subroutine parton_state_evaluate_event_data (state)
     class(parton_state_t), intent(inout) :: state
@@ -560,7 +619,7 @@ contains
        call state%matrix%normalize_by_trace ()
     end if
   end subroutine parton_state_normalize_matrix_by_trace
-  
+
   function parton_state_get_trace_int_ptr (state) result (ptr)
     class(parton_state_t), intent(in), target :: state
     type(interaction_t), pointer :: ptr
@@ -570,7 +629,7 @@ contains
        ptr => null ()
     end if
   end function parton_state_get_trace_int_ptr
-  
+
   function parton_state_get_matrix_int_ptr (state) result (ptr)
     class(parton_state_t), intent(in), target :: state
     type(interaction_t), pointer :: ptr
@@ -580,7 +639,7 @@ contains
        ptr => null ()
     end if
   end function parton_state_get_matrix_int_ptr
-  
+
   function parton_state_get_flows_int_ptr (state) result (ptr)
     class(parton_state_t), intent(in), target :: state
     type(interaction_t), pointer :: ptr
@@ -590,24 +649,24 @@ contains
        ptr => null ()
     end if
   end function parton_state_get_flows_int_ptr
-  
+
   subroutine connected_state_get_beam_index (state, i_beam)
     class(connected_state_t), intent(in) :: state
     integer, dimension(:), intent(out) :: i_beam
     call state%expr%get_beam_index (i_beam)
   end subroutine connected_state_get_beam_index
-  
+
   subroutine connected_state_get_in_index (state, i_in)
     class(connected_state_t), intent(in) :: state
     integer, dimension(:), intent(out) :: i_in
     call state%expr%get_in_index (i_in)
   end subroutine connected_state_get_in_index
-  
+
   function parton_state_get_n_out (state) result (n)
     class(parton_state_t), intent(in), target :: state
     integer :: n
     n = state%trace%get_n_out ()
   end function parton_state_get_n_out
-  
+
 
 end module parton_states

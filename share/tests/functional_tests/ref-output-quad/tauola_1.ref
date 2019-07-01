@@ -24,7 +24,7 @@ $shower_method = "PYTHIA6"
 | Particle W- declared as polarized
 | Particle Z declared as polarized
 ?polarized_events = true
-sqrts =  2.5000000E+02
+sqrts =  2.50000E+02
 $beam_events_file = "uniform_spread_2.5%.dat"
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0

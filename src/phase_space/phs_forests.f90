@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -90,7 +90,7 @@ module phs_forests
   public :: phs_forest_get_prt_out
   public :: phs_forest_get_momenta_out
   public :: phs_forest_set_equivalences
-  public :: phs_forest_get_equivalences 
+  public :: phs_forest_get_equivalences
   public :: phs_forest_evaluate_selected_channel
   public :: phs_forest_evaluate_other_channels
   public :: phs_forest_recover_channel
@@ -317,7 +317,7 @@ contains
             write (u, "(1x,A)", advance="no") "-"
          end if
       end do
-      write (u, *) 
+      write (u, *)
       if (associated (eq%next))  call equivalence_write_rec (eq%next, u)
     end subroutine equivalence_write_rec
   end subroutine equivalence_list_write
@@ -1114,7 +1114,7 @@ contains
     p = phs_prt_get_momentum (forest%prt_out)
     if (present (lt_cm_to_lab)) p = p * lt_cm_to_lab
   end function phs_forest_get_momenta_out
-  
+
   subroutine phs_grove_set_equivalences (grove, perm_array)
     type(phs_grove_t), intent(inout) :: grove
     type(permutation_t), dimension(:), intent(in) :: perm_array
@@ -1237,7 +1237,7 @@ contains
     call phs_prt_set_undefined (forest%prt)
     call phs_prt_set_undefined (forest%prt_out)
     k_in = forest%n_tot
-    
+
     do k = 1,forest%n_in
        forest%prt(ibset(0,k_in-k)) = forest%prt_in(k)
     end do

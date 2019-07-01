@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -75,10 +75,10 @@ contains
     logical(c_bool) :: flag
     complex(c_default_complex) :: amp
     integer :: i
-    
+
     write (u, "(A)")  "* Test output: prc_template_me_1"
     write (u, "(A)")  "*   Purpose: create a template matrix element,"
-    write (u, "(A)")  "*            normalized to give unit integral,"    
+    write (u, "(A)")  "*            normalized to give unit integral,"
     write (u, "(A)")  "*            build a library, link, load, and &
          &access the matrix element"
     write (u, "(A)")
@@ -94,7 +94,7 @@ contains
     allocate (prt_in (2), prt_out (2))
     prt_in = [var_str ("e+"), var_str ("e-")]
     prt_out = [var_str ("m+"), var_str ("m-")]
-    
+
     allocate (template_me_def_t :: def)
     select type (def)
     type is (template_me_def_t)
@@ -109,11 +109,11 @@ contains
          method  = var_str ("template"), &
          variant = def)
     call lib%append (entry)
-    
+
     write (u, "(A)")  "* Configure library"
     write (u, "(A)")
     call lib%configure (os_data)
-    
+
     write (u, "(A)")  "* Write makefile"
     write (u, "(A)")
     call lib%write_makefile (os_data, force = .true.)
@@ -131,11 +131,11 @@ contains
     call lib%load (os_data)
 
     call lib%write (u, libpath = .false.)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Probe library API:"
     write (u, "(A)")
-       
+
     write (u, "(1x,A,L1)")  "is active                 = ", &
          lib%is_active ()
     write (u, "(1x,A,I0)")  "n_processes               = ", &
@@ -180,7 +180,7 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Set kinematics:"
     write (u, "(A)")
-    
+
     p = reshape ([ &
          1.0_cdf, 0.0_cdf, 0.0_cdf, 1.0_cdf, &
          1.0_cdf, 0.0_cdf, 0.0_cdf,-1.0_cdf, &
@@ -203,19 +203,19 @@ contains
 
        call driver%is_allowed (1_ci, 6_ci, 1_ci, flag)
        write (u, "(1x,A,L1)") "is_allowed (1, 6, 1) = ", flag
-       
+
        call driver%get_amplitude (1_ci, 6_ci, 1_ci, amp)
        write (u, "(1x,A,1x,E11.4)") "|amp (1, 6, 1)| =", abs (amp)
     end select
 
     call lib%final ()
     call cleanup_model (model)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: prc_template_me_1"
-    
+
   end subroutine prc_template_me_1
-  
+
   subroutine prc_template_me_2 (u)
     integer, intent(in) :: u
     type(process_library_t) :: lib
@@ -234,10 +234,10 @@ contains
     logical(c_bool) :: flag
     complex(c_default_complex) :: amp
     integer :: i
-    
+
     write (u, "(A)")  "* Test output: prc_template_me_1"
     write (u, "(A)")  "*   Purpose: create a template matrix element,"
-    write (u, "(A)")  "*            being identical to unity,"    
+    write (u, "(A)")  "*            being identical to unity,"
     write (u, "(A)")  "*            build a library, link, load, and &
          &access the matrix element"
     write (u, "(A)")
@@ -246,14 +246,14 @@ contains
     write (u, "(A)")
     call lib%init (var_str ("template_me2"))
     call os_data_init (os_data)
-    
+
     model_name = "QED"
     call prepare_model (model, model_name)
 
     allocate (prt_in (2), prt_out (2))
     prt_in = [var_str ("e+"), var_str ("e-")]
     prt_out = [var_str ("m+"), var_str ("m-")]
-    
+
     allocate (template_me_def_t :: def)
     select type (def)
     type is (template_me_def_t)
@@ -268,11 +268,11 @@ contains
          method  = var_str ("template_unity"), &
          variant = def)
     call lib%append (entry)
-    
+
     write (u, "(A)")  "* Configure library"
     write (u, "(A)")
     call lib%configure (os_data)
-    
+
     write (u, "(A)")  "* Write makefile"
     write (u, "(A)")
     call lib%write_makefile (os_data, force = .true.)
@@ -290,11 +290,11 @@ contains
     call lib%load (os_data)
 
     call lib%write (u, libpath = .false.)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Probe library API:"
     write (u, "(A)")
-       
+
     write (u, "(1x,A,L1)")  "is active                 = ", &
          lib%is_active ()
     write (u, "(1x,A,I0)")  "n_processes               = ", &
@@ -339,7 +339,7 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Set kinematics:"
     write (u, "(A)")
-    
+
     p = reshape ([ &
          1.0_cdf, 0.0_cdf, 0.0_cdf, 1.0_cdf, &
          1.0_cdf, 0.0_cdf, 0.0_cdf,-1.0_cdf, &
@@ -362,18 +362,18 @@ contains
 
        call driver%is_allowed (1_ci, 6_ci, 1_ci, flag)
        write (u, "(1x,A,L1)") "is_allowed (1, 6, 1) = ", flag
-       
+
        call driver%get_amplitude (1_ci, 6_ci, 1_ci, amp)
        write (u, "(1x,A,1x,E11.4)") "|amp (1, 6, 1)| =", abs (amp)
     end select
 
     call lib%final ()
     call cleanup_model (model)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: prc_template_me_2"
-    
+
   end subroutine prc_template_me_2
-  
+
 
 end module prc_template_me_uti

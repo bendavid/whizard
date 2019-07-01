@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -723,20 +723,20 @@ contains
     end if
   end subroutine sf_int_recover_x
   
-  function sf_int_get_n_in (object) result (n_in)
+  pure function sf_int_get_n_in (object) result (n_in)
     class(sf_int_t), intent(in) :: object
     integer :: n_in
     n_in = object%interaction_t%get_n_in ()
   end function sf_int_get_n_in
   
-  function sf_int_get_n_rad (object) result (n_rad)
+  pure function sf_int_get_n_rad (object) result (n_rad)
     class(sf_int_t), intent(in) :: object
     integer :: n_rad
     n_rad = object%interaction_t%get_n_out () &
          - object%interaction_t%get_n_in ()
   end function sf_int_get_n_rad
   
-  function sf_int_get_n_out (object) result (n_out)
+  pure function sf_int_get_n_out (object) result (n_out)
     class(sf_int_t), intent(in) :: object
     integer :: n_out
     n_out = object%interaction_t%get_n_in ()
@@ -1006,9 +1006,10 @@ contains
     call beam_final (object%beam_t)
   end subroutine sf_chain_instance_final
 
-  subroutine sf_chain_instance_write (object, unit)
+  subroutine sf_chain_instance_write (object, unit, col_verbose)
     class(sf_chain_instance_t), intent(in) :: object
     integer, intent(in), optional :: unit
+    logical, intent(in), optional :: col_verbose
     integer :: u, i, c
     u = given_output_unit (unit)
     write (u, "(1x,A)", advance="no")  "Structure-function chain instance:"
@@ -1052,7 +1053,7 @@ contains
        end if
     end if
     call write_separator (u)
-    call beam_write (object%beam_t, u)
+    call beam_write (object%beam_t, u, col_verbose = col_verbose)
     if (allocated (object%sf)) then
        do i = 1, size (object%sf)
           associate (sf => object%sf(i))
@@ -1073,9 +1074,9 @@ contains
                   end do
                   write (u, "(3x,A,9(1x,F9.7))")  "x =", sf%x
                end if
-               call sf%int%write (u)
+               call sf%int%write(u)
                if (.not. sf%eval%is_empty ()) then
-                     call sf%eval%write (u)
+                     call sf%eval%write (u, col_verbose = col_verbose)
                end if
             end if
           end associate

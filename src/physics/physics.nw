@@ -1,7 +1,7 @@
 % -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*-
 % WHIZARD code as NOWEB source: physics and such
-
 \chapter{Physics}
+\includemodulegraph{physics}
 
 Here we collect definitions and functions that we need for (particle)
 physics in general, to make them available for the more specific needs
@@ -182,7 +182,7 @@ We need an UNDEFINED value:
 
 @ %def BEAM_REMNANT HADRON_REMNANT
 @ %def HADRON_REMNANT_SINGLET HADRON_REMNANT_TRIPLET HADRON_REMNANT_OCTET
-@ 
+@
 Further particle codes for internal use:
 <<Physics defs: public parameters>>=
   integer, parameter, public :: INTERNAL = 94
@@ -302,6 +302,36 @@ convenient.
   end function is_nlo_component
 
 @ %def is_nlo_component
+@
+\subsection{Threshold}
+Some commonly used variables for the threshold computation
+<<Physics defs: public parameters>>=
+  integer, parameter, public :: THR_POS_WP = 3
+  integer, parameter, public :: THR_POS_WM = 4
+  integer, parameter, public :: THR_POS_B = 5
+  integer, parameter, public :: THR_POS_BBAR = 6
+  integer, parameter, public :: THR_POS_GLUON = 7
+
+  integer, parameter, public :: THR_EMITTER_OFFSET = 4
+
+  integer, parameter, public :: NO_FACTORIZATION = 0
+  integer, parameter, public :: FACTORIZATION_THRESHOLD = 1
+
+  integer, dimension(2), parameter, public :: ass_quark = [5, 6]
+  integer, dimension(2), parameter, public :: ass_boson = [3, 4]
+
+@
+@
+<<Physics defs: public>>=
+  public :: thr_leg
+<<Physics defs: procedures>>=
+  function thr_leg (emitter) result (leg)
+    integer :: leg
+    integer, intent(in) :: emitter
+    leg = emitter - THR_EMITTER_OFFSET
+  end function thr_leg
+
+@ %def thr_leg
 @
 \clearpage
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -986,11 +1016,11 @@ positive for timelike and negative for spacelike vectors.  Note that
     real(default) :: s
     type(vector4_t), intent(in) :: p
     integer, intent(in) :: e
-    s = p*p
-    if (e/=2) then
-       if (mod(e,2)==0) then
-          s = s**(e/2)
-       elseif (s>=0) then
+    s = p * p
+    if (e /= 2) then
+       if (mod(e, 2) == 0) then
+          s = s**(e / 2)
+       else if (s >= 0) then
           s = sqrt(s)**e
        else
           s = -(sqrt(abs(s))**e)
@@ -1122,6 +1152,16 @@ return a null vector.
   end function vector4_get_direction
 
 @ %def direction
+@ Change the sign of the spatial part of a four-vector
+<<Lorentz: public>>=
+  public :: vector4_invert_direction
+<<Lorentz: procedures>>=
+  elemental subroutine vector4_invert_direction (p)
+    type(vector4_t), intent(inout) :: p
+    p%p(1:3) = -p%p(1:3)
+  end subroutine vector4_invert_direction
+
+@ %def vector4_invert_direction
 @ This function returns the four-vector as an ordinary array.  A
 second version for an array of four-vectors.
 <<Lorentz: public>>=
@@ -1176,6 +1216,17 @@ second version for an array of four-vectors.
   end subroutine vector3_from_array
 
 @ %def array_from_vector4 array_from_vector3
+@
+<<Lorentz: public>>=
+  public :: vector4
+<<Lorentz: procedures>>=
+  pure function vector4 (a) result (p)
+    type(vector4_t) :: p
+    real(default), intent(in), dimension(4) :: a
+    p%p = a
+  end function vector4
+
+@ %def vector4
 @
 <<Lorentz: vector4: TBP>>=
   procedure :: to_pythia6 => vector4_to_pythia6
@@ -1299,7 +1350,7 @@ optional mass-squared value instead.
   end subroutine phs_point_from_n
 
 @ %def phs_point_init_from_n
-@ 
+@
 <<Lorentz: phs point: TBP>>=
 <<Lorentz: procedures>>=
   pure subroutine phs_point_from_vector4 (phs_point, p)
@@ -1334,7 +1385,7 @@ optional mass-squared value instead.
 @ %def phs_point_final
 @
 <<Lorentz: phs point: TBP>>=
-  procedure :: write => phs_point_write 
+  procedure :: write => phs_point_write
 <<Lorentz: procedures>>=
   subroutine phs_point_write (phs_point, unit, show_mass, testflag, &
       check_conservation, ultra, n_in)
@@ -1345,8 +1396,8 @@ optional mass-squared value instead.
     logical, intent(in), optional :: check_conservation
     integer, intent(in), optional :: n_in
     call vector4_write_set (phs_point%p, unit = unit, show_mass = show_mass, &
-       testflag = testflag, check_conservation = check_conservation, &
-       ultra = ultra, n_in = n_in)
+         testflag = testflag, check_conservation = check_conservation, &
+         ultra = ultra, n_in = n_in)
   end subroutine phs_point_write
 
 @ %def phs_point_write
@@ -1915,18 +1966,27 @@ also is negative.
 <<Lorentz: lorentz transformation: TBP>>=
   procedure :: write => lorentz_transformation_write
 <<Lorentz: procedures>>=
-  subroutine lorentz_transformation_write (L, unit)
+  subroutine lorentz_transformation_write (L, unit, testflag, ultra)
     class(lorentz_transformation_t), intent(in) :: L
     integer, intent(in), optional :: unit
-    integer :: u
-    integer :: i
+    logical, intent(in), optional :: testflag, ultra
+    integer :: u, i
+    logical :: tf, extreme
+    character(len=7) :: fmt
+    tf = .false.; if (present (testflag)) tf = testflag
+    extreme = .false.; if (present (ultra)) extreme = ultra
+    if (extreme) then
+       call pac_fmt (fmt, FMT_19, FMT_11, testflag)
+    else
+       call pac_fmt (fmt, FMT_19, FMT_13, testflag)
+    end if
     u = given_output_unit (unit);  if (u < 0)  return
-    write (u, "(1x,A,3(1x," // FMT_19 // "))")  "L00 = ", L%L(0,0)
-    write (u, "(1x,A,3(1x," // FMT_19 // "))")  "L0j = ", L%L(0,1:3)
+    write (u, "(1x,A,3(1x," // fmt // "))")  "L00 = ", L%L(0,0)
+    write (u, "(1x,A,3(1x," // fmt // "))")  "L0j = ", L%L(0,1:3)
     do i = 1, 3
-       write (u, "(1x,A,I0,A,3(1x," // FMT_19 // "))")  &
+       write (u, "(1x,A,I0,A,3(1x," // fmt // "))")  &
             "L", i, "0 = ", L%L(i,0)
-       write (u, "(1x,A,I0,A,3(1x," // FMT_19 // "))")  &
+       write (u, "(1x,A,I0,A,3(1x," // fmt // "))")  &
             "L", i, "j = ", L%L(i,1:3)
     end do
   end subroutine lorentz_transformation_write
@@ -2037,9 +2097,9 @@ epsilon.
     type(vector3_t) :: p_out
     real(default) :: abs
     abs = space_part_norm (p_in)
-    p_out%p(1) = p_in%p(1)/abs
-    p_out%p(2) = p_in%p(2)/abs
-    p_out%p(3) = p_in%p(3)/abs
+    p_out%p(1) = p_in%p(1) / abs
+    p_out%p(2) = p_in%p(2) / abs
+    p_out%p(3) = p_in%p(3) / abs
   end function create_unit_vector
 
 @ %def create_unit_vector
@@ -2047,12 +2107,13 @@ epsilon.
 <<Lorentz: public functions>>=
   public :: normalize
 <<Lorentz: procedures>>=
-  subroutine normalize(p)
-    type(vector3_t), intent(inout) :: p
+  function normalize(p) result (p_norm)
+    type(vector3_t) :: p_norm
+    type(vector3_t), intent(in) :: p
     real(default) :: abs
     abs = sqrt (p%p(1)**2 + p%p(2)**2 + p%p(3)**2)
-    p = p / abs
-  end subroutine normalize
+    p_norm = p / abs
+  end function normalize
 
 @ %def normalize
 @ Computes the invariant mass of the momenta sum given by the indices in
@@ -2089,6 +2150,216 @@ epsilon.
   end function get_resonance_momentum
 
 @ %def get_resonance_momentum
+@
+<<Lorentz: public>>=
+  public :: create_two_particle_decay
+<<Lorentz: procedures>>=
+  function create_two_particle_decay (s, p1, p2) result (p_rest)
+    type(vector4_t), dimension(3) :: p_rest
+    real(default), intent(in) :: s
+    type(vector4_t), intent(in) :: p1, p2
+    real(default) :: m1_sq, m2_sq
+    real(default) :: E1, E2, p
+    m1_sq = p1**2; m2_sq = p2**2
+    p = sqrt (lambda (s, m1_sq, m2_sq)) / (two * sqrt (s))
+    E1 = sqrt (m1_sq + p**2); E2 = sqrt (m2_sq + p**2) 
+    p_rest(1)%p = [sqrt (s), zero, zero, zero]
+    p_rest(2)%p(0) = E1
+    p_rest(2)%p(1:3) = p * p1%p(1:3) / space_part_norm (p1)
+    p_rest(3)%p(0) = E2; p_rest(3)%p(1:3) = -p_rest(2)%p(1:3)
+  end function create_two_particle_decay
+
+@ %def create_two_particle_decay
+@ This function creates a phase-space point for a $1 \to 3$ decay in
+the decaying particle's rest frame. There are three rest frames for
+this system, corresponding to $s$-, $t$,- and $u$-channel momentum
+exchange, also referred to as Gottfried-Jackson frames. Below, we choose
+the momentum with index 1 to be aligned along the $z$-axis. We then
+have
+\begin{align*}
+  s_1 &= \left(p_1 + p_2\right)^2, \\
+  s_2 &= \left(p_2 + p_3\right)^2, \\
+  s_3 &= \left(p_1 + p_3\right)^2, \\
+  s_1 + s_2 + s_3 &= s + m_1^2 + m_2^2 + m_3^2.
+\end{align*}
+From these we can construct
+\begin{align*}
+  E_1^{R23} = \frac{s - s_2 - m_1^2}{2\sqrt{s_2}} &\quad P_1^{R23} = \frac{\lambda^{1/2}(s, s_2, m_1^2)}{2\sqrt{s_2}},\\
+  E_2^{R23} = \frac{s_2 + m_2^2 - m_3^2}{2\sqrt{s_2}} &\quad P_2^{R23} = \frac{\lambda^{1/2}(s_2, m_2^2, m_3^2)}{2\sqrt{s_2}},\\
+  E_3^{R23} = \frac{s_2 + m_3^2 - m_2^2}{2\sqrt{s_2}} &\quad P_3^{R23} = P_2^{R23},
+\end{align*}
+where $R23$ denotes the Gottfried-Jackson frame of our choice. Finally, the scattering angle $\theta_{12}^{R23}$ between
+momentum $1$ and $2$ can be determined to be
+\begin{equation*}
+  \cos\theta_{12}^{R23} = \frac{(s - s_2 - m_1^2)(s_2 + m_2^2 - m_3^2) + 2s_2 (m_1^2 + m_2^2 - s_1)}
+                               {\lambda^{1/2}(s, s_2, m_1^2) \lambda^{1/2}(s_2, m_2^2, m_3^2)}
+\end{equation*}
+<<Lorentz: public>>=
+  public :: create_three_particle_decay
+<<Lorentz: procedures>>=
+  function create_three_particle_decay (p1, p2, p3) result (p_rest)
+    type(vector4_t), dimension(4) :: p_rest
+    type(vector4_t), intent(in) :: p1, p2, p3
+    real(default) :: E1, E2, E3
+    real(default) :: pr1, pr2, pr3
+    real(default) :: s, s1, s2, s3
+    real(default) :: m1_sq, m2_sq, m3_sq
+    real(default) :: cos_theta_12
+    type(vector3_t) :: v3_unit
+    type(lorentz_transformation_t) :: rot
+    m1_sq = p1**2 
+    m2_sq = p2**2
+    m3_sq = p3**2
+    s1 = (p1 + p2)**2
+    s2 = (p2 + p3)**2
+    s3 = (p3 + p1)**2
+    s = s1 + s2 + s3 - m1_sq - m2_sq - m3_sq 
+    E1 = (s - s2 - m1_sq) / (two * sqrt (s2))
+    E2 = (s2 + m2_sq - m3_sq) / (two * sqrt (s2))
+    E3 = (s2 + m3_sq - m2_sq) / (two * sqrt (s2))
+    pr1 = sqrt (lambda (s, s2, m1_sq)) / (two * sqrt (s2))
+    pr2 = sqrt (lambda (s2, m2_sq, m3_sq)) / (two * sqrt(s2))
+    pr3 = pr2
+    cos_theta_12 = ((s - s2 - m1_sq) * (s2 + m2_sq - m3_sq) + two * s2 * (m1_sq + m2_sq - s1)) / &
+         sqrt (lambda (s, s2, m1_sq) * lambda (s2, m2_sq, m3_sq))
+    v3_unit%p = [zero, zero, one]
+    p_rest(1)%p(0) = E1
+    p_rest(1)%p(1:3) = v3_unit%p * pr1
+    p_rest(2)%p(0) = E2
+    p_rest(2)%p(1:3) = v3_unit%p * pr2
+    p_rest(3)%p(0) = E3
+    p_rest(3)%p(1:3) = v3_unit%p * pr3
+    p_rest(4)%p(0) = (s + s2 - m1_sq) / (2 * sqrt (s2))
+    p_rest(4)%p(1:3) = - p_rest(1)%p(1:3)
+    rot = rotation (cos_theta_12, sqrt (one - cos_theta_12**2), 2)
+    p_rest(2) = rot * p_rest(2)
+    p_rest(3)%p(1:3) = - p_rest(2)%p(1:3)
+  end function create_three_particle_decay
+
+@ %def create_three_particle_decay
+@
+<<Lorentz: public>>=
+  public :: evaluate_one_to_two_splitting_special
+<<Lorentz: interfaces>>=
+  abstract interface
+     subroutine evaluate_one_to_two_splitting_special (p_origin, &
+          p1_in, p2_in, p1_out, p2_out, msq_in, jac)
+       import
+       type(vector4_t), intent(in) :: p_origin
+       type(vector4_t), intent(in) :: p1_in, p2_in
+       type(vector4_t), intent(inout) :: p1_out, p2_out
+       real(default), intent(in), optional :: msq_in
+       real(default), intent(inout), optional :: jac
+     end subroutine evaluate_one_to_two_splitting_special
+  end interface
+
+@ %def evaluate_one_to_two_splitting_special
+@
+<<Lorentz: public>>=
+  public :: generate_on_shell_decay
+<<Lorentz: procedures>>=
+  recursive subroutine generate_on_shell_decay (p_dec, &
+      p_in, p_out, i_real, msq_in, jac, evaluate_special) 
+    type(vector4_t), intent(in) :: p_dec
+    type(vector4_t), intent(in), dimension(:) :: p_in
+    type(vector4_t), intent(inout), dimension(:) :: p_out
+    integer, intent(in) :: i_real
+    real(default), intent(in), optional :: msq_in
+    real(default), intent(inout), optional :: jac
+    procedure(evaluate_one_to_two_splitting_special), intent(in), &
+          pointer, optional :: evaluate_special
+    type(vector4_t) :: p_dec_new
+    integer :: n_recoil
+    real(default), dimension(4) :: inv_masses
+    n_recoil = size (p_in) - 1
+    if (n_recoil > 1) then
+       if (present (evaluate_special)) then
+          call evaluate_special (p_dec, p_in(1), sum (p_in (2 : n_recoil + 1)), &
+               p_out(i_real), p_dec_new)
+          call generate_on_shell_decay (p_dec_new, p_in (2 : ), p_out, &
+               i_real + 1, msq_in, jac, evaluate_special)
+       else
+          call evaluate_one_to_two_splitting (p_dec, p_in(1), &
+               sum (p_in (2 : n_recoil + 1)), p_out(i_real), p_dec_new, msq_in, jac)
+          call generate_on_shell_decay (p_dec_new, p_in (2 : ), p_out, &
+               i_real + 1, msq_in, jac)
+       end if
+    else
+       call evaluate_one_to_two_splitting (p_dec, p_in(1), p_in(2), &
+            p_out(i_real), p_out(i_real + 1), msq_in, jac)
+    end if
+
+  end subroutine generate_on_shell_decay
+
+  subroutine evaluate_one_to_two_splitting (p_origin, &
+      p1_in, p2_in, p1_out, p2_out, msq_in, jac)
+    type(vector4_t), intent(in) :: p_origin
+    type(vector4_t), intent(in) :: p1_in, p2_in
+    type(vector4_t), intent(inout) :: p1_out, p2_out
+    real(default), intent(in), optional :: msq_in
+    real(default), intent(inout), optional :: jac
+    type(lorentz_transformation_t) :: L
+    type(vector4_t) :: p1_rest, p2_rest
+    real(default) :: m, msq, msq1, msq2
+    real(default) :: E1, E2, p
+    real(default) :: lda, rlda_soft
+
+    call get_rest_frame (p1_in, p2_in, p1_rest, p2_rest)
+
+    msq = p_origin**2; m = sqrt(msq)
+    msq1 = p1_in**2; msq2 = p2_in**2
+
+    lda = lambda (msq, msq1, msq2)
+    if (lda < zero) then
+       print *, 'Encountered lambda < 0 in 1 -> 2 splitting! '
+       print *, 'lda: ', lda
+       print *, 'm: ', m, 'msq: ', msq
+       print *, 'm1: ', sqrt (msq1), 'msq1: ', msq1
+       print *, 'm2: ', sqrt (msq2), 'msq2: ', msq2
+       stop
+    end if
+    p = sqrt (lda) / (two * m)
+
+    E1 = sqrt (msq1 + p**2)
+    E2 = sqrt (msq2 + p**2)
+
+    p1_out = shift_momentum (p1_rest, E1, p)
+    p2_out = shift_momentum (p2_rest, E2, p)
+
+    L = boost (p_origin, p_origin**1)
+    p1_out = L  * p1_out
+    p2_out = L  * p2_out
+
+    if (present (jac) .and. present (msq_in)) then
+       jac = jac * sqrt(lda) / msq
+       rlda_soft = sqrt (lambda (msq_in, msq1, msq2))
+       !!! We have to undo the Jacobian which has already been
+       !!! supplied by the Born phase space.
+       jac = jac * msq_in / rlda_soft
+    end if
+
+  contains
+
+   subroutine get_rest_frame (p1_in, p2_in, p1_out, p2_out)
+     type(vector4_t), intent(in) :: p1_in, p2_in
+     type(vector4_t), intent(out) :: p1_out, p2_out
+     type(lorentz_transformation_t) :: L
+     L = inverse (boost (p1_in + p2_in, (p1_in + p2_in)**1))
+     p1_out = L * p1_in; p2_out = L * p2_in
+   end subroutine get_rest_frame
+
+   function shift_momentum (p_in, E, p) result (p_out)
+     type(vector4_t) :: p_out
+     type(vector4_t), intent(in) :: p_in
+     real(default), intent(in) :: E, p
+     type(vector3_t) :: vec
+     vec = p_in%p(1:3) / space_part_norm (p_in)
+     p_out = vector4_moving (E, p * vec)
+   end function shift_momentum 
+
+  end subroutine evaluate_one_to_two_splitting
+
+@ %def generate_on_shell_decay
 @
 \subsection{Boosts}
 We build Lorentz transformations from boosts and rotations.  In both
@@ -2280,9 +2551,9 @@ Reconstruct the rotation that rotates it into the second three-vector.
        a = direction (p)
        b = direction (q)
        ab = cross_product(a,b)
-       ct = a*b;  st = ab**1
+       ct = a * b;  st = ab**1
        if (abs(st) > eps0) then
-          R = rotation_generic_cs (ct, st, ab/st)
+          R = rotation_generic_cs (ct, st, ab / st)
        else if (ct < 0) then
           R = space_reflection
        else
@@ -2314,7 +2585,7 @@ rotates the $k$-axis into the direction of $p$.
        end do
        ct = b%p(k);  st = ab**1
        if (abs(st) > eps0) then
-          R = rotation_generic_cs (ct, st, ab/st)
+          R = rotation_generic_cs (ct, st, ab / st)
        else if (ct < 0) then
           R = space_reflection
        else
@@ -2666,7 +2937,7 @@ transformations.
       end if
       call vector4_write (p(i), u, show_mass=show_mass, &
            testflag=testflag, ultra=ultra)
-    end do 
+    end do
     if (extreme) then
        call pac_fmt (fmt, FMT_19, FMT_11, testflag)
     else
@@ -2685,14 +2956,19 @@ transformations.
 <<Lorentz: public>>=
   public :: vector4_check_momentum_conservation
 <<Lorentz: procedures>>=
-  subroutine vector4_check_momentum_conservation (p, n_in, unit, abs_smallness, rel_smallness)
+  subroutine vector4_check_momentum_conservation (p, n_in, unit, &
+     abs_smallness, rel_smallness, verbose)
     type(vector4_t), dimension(:), intent(in) :: p
     integer, intent(in) :: n_in
     integer, intent(in), optional :: unit
     real(default), intent(in), optional :: abs_smallness, rel_smallness
+    logical, intent(in), optional :: verbose
     integer :: u, i
     type(vector4_t) :: psum_in, psum_out
+    logical, dimension(0:3) :: p_diff
+    logical :: verb
     u = given_output_unit (unit);  if (u < 0)  return
+    verb = .false.; if (present (verbose)) verb = verbose
     psum_in = vector4_null
     do i = 1, n_in
        psum_in = psum_in + p(i)
@@ -2701,12 +2977,21 @@ transformations.
     do i = n_in + 1, size (p)
        psum_out = psum_out + p(i)
     end do
-    if (.not. all (nearly_equal (psum_in%p, psum_out%p, abs_smallness, rel_smallness))) then
-       call msg_warning ("Momentum conservation violated!")
-       write (u, "(A)") "Incoming:"
-       call vector4_write (psum_in, u)
-       write (u, "(A)") "Outgoing:"
-       call vector4_write (psum_out, u)
+    !!! !!! !!! Workaround for gfortran-4.8.4 bug
+    do i = 0, 3
+       p_diff(i) = vanishes (psum_in%p(i) - psum_out%p(i), &
+            abs_smallness = abs_smallness, rel_smallness = rel_smallness)
+    end do
+    if (.not. all (p_diff)) then
+       call msg_warning ("Momentum conservation: FAIL", unit = u)
+       if (verb) then
+          write (u, "(A)") "Incoming:"
+          call vector4_write (psum_in, u)
+          write (u, "(A)") "Outgoing:"
+          call vector4_write (psum_out, u)
+       end if
+    else
+       write (u, "(A)") "Momentum conservation: CHECK"
     end if
   end subroutine vector4_check_momentum_conservation
 
@@ -3926,8 +4211,8 @@ We start with the LO-expression for the top width given by the decay
 $t\,\to\,W^+,b$, cf. [[doi:10.1016/0550-3213(91)90530-B]]:\\
 The analytic formula given there is
 \begin{equation*}
-  \Gamma = \frac{G_F m_t^2}{16\sqrt{2}\pi} \left[\mathcal{F}_0(\varepsilon, \xi^{-1/2}) - \frac{2\alpha_s}{3\pi} 
-           \mathcal{F}_1 (\varepsilon, \xi^{-1/2})\right], 
+  \Gamma = \frac{G_F m_t^2}{16\sqrt{2}\pi} \left[\mathcal{F}_0(\varepsilon, \xi^{-1/2}) - \frac{2\alpha_s}{3\pi}
+           \mathcal{F}_1 (\varepsilon, \xi^{-1/2})\right],
 \end{equation*}
 with
 \begin{align*}
@@ -3945,16 +4230,16 @@ and
 \end{equation*}
 the factor $\mathcal{F}_1$ can be expressed as
 \begin{align*}
-  \mathcal{F}_1 = \frac{1}{2}f_0(1+\varepsilon^2-w^2) 
+  \mathcal{F}_1 = \frac{1}{2}f_0(1+\varepsilon^2-w^2)
                 & \left[\pi^2 + 2Li_2(u_w) - 2Li_2(1-u_w) - 4Li_2(u_q) \right. \\
                 & -4Li_2(u_q u_w) + \log\left(\frac{1-u_q}{w^2}\right)\log(1-u_q) + \log^2(1-u_q u_w) \\
                 & \left.+\frac{1}{4}\log^2\left(\frac{w^2}{u_w}\right) - \log(u_w) \log\left[\frac{(1-u_q u_w)^2}{1-u_q}\right]
                   -2\log(u_q)\log\left[(1-u_q)(1-u_q u_w)\right]\right] \\
                 & -\sqrt{\lambda}f_0(2\log(w) + 3\log(\varepsilon) - 2\log{\lambda}) \\
                 &  +4(1-\varepsilon)\left[(1-\varepsilon^2)^2 + w^2(1+\varepsilon^2) - 4w^4\right]\log(u_w) \\
-                & \left[(3 - \varepsilon^2 + 11\varepsilon^4 - \varepsilon^6) 
+                & \left[(3 - \varepsilon^2 + 11\varepsilon^4 - \varepsilon^6)
                   + w^2(6 - 12\varepsilon +2\varepsilon^4) - w^4(21 + 5\varepsilon^2) + 12w^6\right] \log(u_q) \\
-                & 6\sqrt{\lambda} (1-\varepsilon^2) (1 + \varepsilon^2 - w^2) \log(\varepsilon) 
+                & 6\sqrt{\lambda} (1-\varepsilon^2) (1 + \varepsilon^2 - w^2) \log(\varepsilon)
                   + \sqrt{\lambda}\left[-5 + 22\varepsilon^2 - 5\varepsilon^4 - 9w^2(1+\varepsilon^2) + 6w^4\right].
 \end{align*}
 @
@@ -4132,13 +4417,13 @@ Test module, followed by the corresponding implementation module.
 module sm_physics_ut
   use unit_tests
   use sm_physics_uti
-  
+
 <<Standard module head>>
 
 <<SM physics: public test>>
 
 contains
-  
+
 <<SM physics: test driver>>
 
 end module sm_physics_ut
@@ -4606,13 +4891,13 @@ Test module, followed by the corresponding implementation module.
 module sm_qcd_ut
   use unit_tests
   use sm_qcd_uti
-  
+
 <<Standard module head>>
 
 <<SM qcd: public test>>
 
 contains
-  
+
 <<SM qcd: test driver>>
 
 end module sm_qcd_ut
@@ -4788,7 +5073,6 @@ We check two different implementations of the abstract QCD coupling.
 \clearpage
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Shower algorithms}
-% TODO: (bcn 2015-01-21) DESCRIPTION
 <<[[shower_algorithms.f90]]>>=
 <<File header>>
 
@@ -4797,7 +5081,6 @@ module shower_algorithms
 <<Use kinds>>
   use diagnostics
   use constants
-  use rng_base
 
 <<Standard module head>>
 
@@ -4827,20 +5110,20 @@ algorithm is described in Appendix B of 0709.2092 and is proven e.g.~in
 emission probability and can therefore set [[scale_max = scale]] if the
 emission is rejected.
 <<shower algorithms: procedures>>=
-  subroutine generate_vetoed (x, rng, overestimator, true_function, &
+  subroutine generate_vetoed (x, overestimator, true_function, &
          sudakov, inverse_sudakov, scale_min)
     real(default), dimension(:), intent(out) :: x
-    class(rng_t), intent(inout) :: rng
+    !class(rng_t), intent(inout) :: rng
     procedure(XXX_function), pointer, intent(in) :: overestimator, true_function
     procedure(sudakov_p), pointer, intent(in) :: sudakov, inverse_sudakov
     real(default), intent(in) :: scale_min
     real(default) :: random, scale_max, scale
     scale_max = inverse_sudakov (one)
     do while (scale_max > scale_min)
-       call rng%generate (random)
+       !call rng%generate (random)
        scale = inverse_sudakov (random * sudakov (scale_max))
        call generate_on_hypersphere (x, overestimator, scale)
-       call rng%generate (random)
+       !call rng%generate (random)
        if (random < true_function (x) / overestimator (x)) then
           return !!! accept x
        end if

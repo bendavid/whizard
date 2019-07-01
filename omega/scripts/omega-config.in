@@ -1,6 +1,5 @@
 #!/bin/sh
 
-# $Id: omega-config.in 1986 2010-03-04 16:34:20Z cnspeckn $
 ##
 ## Gives information on the build-time O'Mega configuration.
 ##

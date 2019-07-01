@@ -15,14 +15,14 @@
 | Process library 'mlm_matching_fsr_lib': loading
 | Process library 'mlm_matching_fsr_lib': ... success.
 seed = 0
-SM.me =>  1.0000000E+00
-sqrts =  9.1000000E+01
+SM.me =>  1.00000E+00
+sqrts =  9.10000E+01
 ?allow_shower = true
 ?ps_fsr_active = true
 $shower_method = "WHIZARD"
 ps_max_n_flavors = 5
-ps_mass_cutoff =  1.0000000E+00
-ps_fsr_lambda =  2.9000000E-01
+ps_mass_cutoff =  1.00000E+00
+ps_fsr_lambda =  2.90000E-01
 ?mlm_matching = false
 openmp_num_threads = 1
 | RNG: Initializing TAO random-number generator
@@ -84,19 +84,19 @@ $sample = "mlm_matching_fsr_1"
 | Events: closing raw file 'mlm_matching_fsr_1.evx'
 mlm_matching_fsr_eeuu:
    7.0170233E+06 +- 7.72E+02 fb
-SM.ms =>  0.0000000E+00
-SM.mc =>  0.0000000E+00
-sqrts =  9.1000000E+01
+SM.ms =>  0.00000E+00
+SM.mc =>  0.00000E+00
+sqrts =  9.10000E+01
 ?ps_fsr_active = true
 $shower_method = "WHIZARD"
 ps_max_n_flavors = 5
-ps_mass_cutoff =  1.0000000E+00
-ps_fsr_lambda =  2.9000000E-01
+ps_mass_cutoff =  1.00000E+00
+ps_fsr_lambda =  2.90000E-01
 ?mlm_matching = true
 mlm_nmaxMEjets = 2
-mlm_Rmin =  1.0000000E+00
-mlm_ETclusminE =  1.0000000E+01
-[user variable] ycut =  1.0000000E+02
+mlm_Rmin =  1.00000E+00
+mlm_ETclusminE =  1.00000E+01
+[user variable] ycut =  1.00000E+02
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 2
 | Initializing integration for process mlm_matching_fsr_eeuu:
@@ -170,32 +170,34 @@ Contents of mlm_matching_fsr_1.evt:
    Helicity handling  = drop
    Keep correlations  = F
 ------------------------------------------------------------------------
-   Squared matrix el. =  1.0824188E+01
-   Event weight       =  1.0000000E+00
+   Squared matrix el. (ref) =  1.08242E+01
+   Squared matrix el. (prc) =  1.08242E+01
+   Event weight (ref)       =  1.00000E+00
+   Event weight (prc)       =  1.00000E+00
 ------------------------------------------------------------------------
    Selected MCI group = 1
    Selected term      = 1
    Selected channel   = 1
 ------------------------------------------------------------------------
    Passed selection   = T
-   Reweighting factor =  1.0000000E+00
+   Reweighting factor =  1.00000E+00
    Analysis flag      = T
 ========================================================================
  Local variables:
 ------------------------------------------------------------------------
-sqrts* =  9.1000000E+01
-sqrts_hat* =>  9.1000000E+01
+sqrts* =  9.10000E+01
+sqrts_hat* =>  9.10000E+01
 n_in* => 2
 n_out* => 7
 n_tot* => 9
 $process_id* => "mlm_matching_fsr_eeuu"
 process_num_id* => [unknown integer]
-sqme* =>  1.0824188E+01
-sqme_ref* =>  1.0824188E+01
+sqme* =>  1.08242E+01
+sqme_ref* =>  1.08242E+01
 event_index* => 1
-event_weight* =>  1.0000000E+00
-event_weight_ref* =>  1.0000000E+00
-event_excess* =>  0.0000000E+00
+event_weight* =>  1.00000E+00
+event_weight_ref* =>  1.00000E+00
+event_excess* =>  0.00000E+00
 ------------------------------------------------------------------------
  subevent:
  1 prt(i:11|-4.5500000E+01; 0.0000000E+00, 0.0000000E+00,-4.5489010E+01| 1.0000000E+00| 1)
@@ -217,32 +219,34 @@ Contents of mlm_matching_fsr_2.evt:
    Helicity handling  = drop
    Keep correlations  = F
 ------------------------------------------------------------------------
-   Squared matrix el. =  5.5166758E+00
-   Event weight       =  1.0000000E+00
+   Squared matrix el. (ref) =  5.51668E+00
+   Squared matrix el. (prc) =  5.51668E+00
+   Event weight (ref)       =  1.00000E+00
+   Event weight (prc)       =  1.00000E+00
 ------------------------------------------------------------------------
    Selected MCI group = 1
    Selected term      = 1
    Selected channel   = 1
 ------------------------------------------------------------------------
    Passed selection   = T
-   Reweighting factor =  1.0000000E+00
+   Reweighting factor =  1.00000E+00
    Analysis flag      = T
 ========================================================================
  Local variables:
 ------------------------------------------------------------------------
-sqrts* =  9.1000000E+01
-sqrts_hat* =>  9.1000000E+01
+sqrts* =  9.10000E+01
+sqrts_hat* =>  9.10000E+01
 n_in* => 2
 n_out* => 7
 n_tot* => 9
 $process_id* => "mlm_matching_fsr_eeuu"
 process_num_id* => [unknown integer]
-sqme* =>  5.5166758E+00
-sqme_ref* =>  5.5166758E+00
+sqme* =>  5.51668E+00
+sqme_ref* =>  5.51668E+00
 event_index* => 1
-event_weight* =>  1.0000000E+00
-event_weight_ref* =>  1.0000000E+00
-event_excess* =>  0.0000000E+00
+event_weight* =>  1.00000E+00
+event_weight_ref* =>  1.00000E+00
+event_excess* =>  0.00000E+00
 ------------------------------------------------------------------------
  subevent:
  1 prt(i:11|-4.5500000E+01; 0.0000000E+00, 0.0000000E+00,-4.5489010E+01| 1.0000000E+00| 1)

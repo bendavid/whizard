@@ -1,4 +1,3 @@
-# $Id: vars.sin 7076 2015-06-29 00:09:21Z jr_reuter $
 # SINDARIN file for WHIZARD self test
 
 printf ("# Test run for" & " variable and loop handling")

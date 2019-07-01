@@ -2,6 +2,7 @@
 % WHIZARD code as NOWEB source: common types and objects
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 \chapter{Abstract variables and expressions}
+\includemodulegraph{expr_base}
 
 The two modules introduce abstract variable collections and abstract
 expressions, where the latter uses the former.  These modules allow us

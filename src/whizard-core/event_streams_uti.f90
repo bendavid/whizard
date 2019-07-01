@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -34,19 +34,19 @@
 ! to the source 'whizard.nw'
 
 module event_streams_uti
-  
+
   use kinds, only: default
   use iso_varying_string, string_t => varying_string
   use model_data
   use eio_data
-  use processes
+  use process, only: process_t
+  use instances, only: process_instance_t
   use models
   use rt_data
-  use processes_ut, only: prepare_test_process
   use events
 
   use event_streams
-    
+
   implicit none
   private
 
@@ -75,13 +75,14 @@ contains
     call es_array%output (event, 42, 1)
     call es_array%write (u)
     call es_array%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: event_streams_1"
-    
+
   end subroutine event_streams_1
-  
+
   subroutine event_streams_2 (u)
+    use processes_ut, only: prepare_test_process
     integer, intent(in) :: u
     type(event_stream_array_t) :: es_array
     type(rt_data_t) :: global
@@ -129,7 +130,7 @@ contains
     call es_array%output (event, 1, 1)
     call es_array%write (u)
     call es_array%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)") "* Reallocate raw eio stream for reading"
     write (u, "(A)")
@@ -142,16 +143,16 @@ contains
     write (u, "(A)")
     write (u, "(A)") "* Reread event"
     write (u, "(A)")
-    
+
     call es_array%input_i_prc (i_prc, iostat)
-    
+
     write (u, "(1x,A,I0)")  "i_prc = ", i_prc
     write (u, "(A)")
     call es_array%input_event (event, iostat)
     call es_array%final ()
-    
+
     call event%write (u)
-    
+
     call global%final ()
 
     call model%final ()
@@ -159,10 +160,11 @@ contains
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: event_streams_2"
-    
+
   end subroutine event_streams_2
-  
+
   subroutine event_streams_3 (u)
+    use processes_ut, only: prepare_test_process
     integer, intent(in) :: u
     type(event_stream_array_t) :: es_array
     type(rt_data_t) :: global
@@ -208,7 +210,7 @@ contains
     call es_array%output (event, 1, 1)
     call es_array%write (u)
     call es_array%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)") "* Reallocate raw eio stream for reading"
     write (u, "(A)")
@@ -220,13 +222,13 @@ contains
     write (u, "(A)")
     write (u, "(A)") "* Reread event"
     write (u, "(A)")
-    
+
     call es_array%input_i_prc (i_prc, iostat)
     call es_array%input_event (event, iostat)
 
     write (u, "(A)") "* Attempt to read another event (fail), then generate"
     write (u, "(A)")
-    
+
     call es_array%input_i_prc (i_prc, iostat)
     if (iostat < 0) then
        call es_array%switch_inout ()
@@ -236,7 +238,7 @@ contains
     end if
     call es_array%write (u)
     call es_array%final ()
-    
+
     write (u, "(A)")
     call event%write (u)
 
@@ -251,26 +253,26 @@ contains
     write (u, "(A)")
     write (u, "(A)") "* Reread two events and display 2nd event"
     write (u, "(A)")
-    
+
     call es_array%input_i_prc (i_prc, iostat)
     call es_array%input_event (event, iostat)
     call es_array%input_i_prc (i_prc, iostat)
-    
+
     call es_array%input_event (event, iostat)
     call es_array%final ()
 
     call event%write (u)
-    
+
     call global%final ()
-    
+
     call model%final ()
     call syntax_model_file_final ()
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: event_streams_3"
-    
+
   end subroutine event_streams_3
-  
+
   subroutine event_streams_4 (u)
     integer, intent(in) :: u
     type(event_stream_array_t) :: es_array
@@ -291,7 +293,7 @@ contains
     call global%global_init ()
     call global%init_fallback_model &
          (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"))
-    
+
     call global%set_log (var_str ("?check_event_file"), &
          .true., is_known = .true.)
 
@@ -306,7 +308,7 @@ contains
     call es_array%init (sample, [var_str ("raw")], global, data)
     call es_array%write (u)
     call es_array%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)") "* Reallocate raw eio stream for reading"
     write (u, "(A)")
@@ -325,7 +327,7 @@ contains
          data, input = var_str ("raw"))
     call es_array%write (u)
     call es_array%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)") "* Repeat ignoring checksum"
     write (u, "(A)")
@@ -336,15 +338,15 @@ contains
          data, input = var_str ("raw"))
     call es_array%write (u)
     call es_array%final ()
-    
+
     call global%final ()
     call syntax_model_file_final ()
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: event_streams_4"
-    
+
   end subroutine event_streams_4
-  
+
 
 end module event_streams_uti
-  
+

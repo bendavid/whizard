@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -177,12 +177,12 @@ contains
     write (u, "(A)")  "* Test output: eio_lcio_2"
     write (u, "(A)")  "*   Purpose: read a LCIO event"
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Initialize test process" 
-    
+
     call eio_prepare_fallback_model (fallback_model)
     call eio_prepare_test (event)
-    
+
     call data%init (1)
     data%n_beam = 2
     data%unweighted = .true.
@@ -197,16 +197,16 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Generate and write an event"
     write (u, "(A)")
- 
+
     sample = "eio_lcio_2"
- 
+
     allocate (eio_lcio_t :: eio)
     select type (eio)
     type is (eio_lcio_t)
        call eio%set_parameters (recover_beams = .false.)
-    end select            
+    end select
     call eio%set_fallback_model (fallback_model)
-    
+
     call eio%init_out (sample, data)
     call event%generate (1, [0._default, 0._default])
     call event%evaluate_expressions ()
@@ -216,18 +216,18 @@ contains
     call eio%write (u)
     call eio%final ()
     deallocate (eio)
-    
-    write (u, "(A)")    
+
+    write (u, "(A)")
     write (u, "(A)")  "* Initialize"
     write (u, "(A)")
-             
+
     allocate (eio_lcio_t :: eio)
     select type (eio)
     type is (eio_lcio_t)
        call eio%set_parameters (recover_beams = .false.)
     end select
     call eio%set_fallback_model (fallback_model)
-    
+
     call data%init (1)
     data%n_beam = 2
     data%unweighted = .true.

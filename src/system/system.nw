@@ -1,8 +1,8 @@
 % -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*- 
 % WHIZARD code as NOWEB source: system interfaces
-
-@ 
 \chapter{System: Interfaces and Handlers}
+\includemodulegraph{system}
+
 Here, we collect modules that deal with the ``system'':
 operating-system interfaces, error handlers and diagnostics.
 \begin{description}

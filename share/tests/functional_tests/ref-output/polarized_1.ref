@@ -13,7 +13,7 @@
 | Process library 'polarized_1_lib': linking
 | Process library 'polarized_1_lib': loading
 | Process library 'polarized_1_lib': ... success.
-sqrts =  5.0000000E+02
+sqrts =  5.00000E+02
 openmp_num_threads = 1
 seed = 0
 | RNG: Initializing TAO random-number generator

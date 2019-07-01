@@ -1,4 +1,4 @@
-(* $Id: colorize.ml 7444 2016-02-17 15:37:20Z jr_reuter $
+(* colorize.ml --
 
    Copyright (C) 1999-2016 by
 
@@ -8,7 +8,7 @@
        with contributions from
        Christian Speckner <cnspeckn@googlemail.com>
        Marco Sekulla <marco.sekulla@kit.edu>
-       Soyoung Shim <soyoung.shim@desy.de>
+       So Young Shim <soyoung.shim@desy.de>
 
    WHIZARD is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by
@@ -24,20 +24,10 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
-let rcs_file = RCS.parse "Colorize" ["Colorizing Monochrome Models"]
-    { RCS.revision = "$Revision: 7444 $";
-      RCS.date = "$Date: 2016-02-17 16:37:20 +0100 (Wed, 17 Feb 2016) $";
-      RCS.author = "$Author: jr_reuter $";
-      RCS.source
-        = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/omega/src/colorize.ml $" }
-
 (* \thocwmodulesection{Colorizing a Monochrome Model} *)
 
 module It (M : Model.T) = 
   struct
-
-    let rcs = RCS.rename rcs_file "Colorize.It()"
-        [ "Colorizing Generic Monochrome Models"]
 
     open Coupling
 
@@ -1541,9 +1531,6 @@ module It (M : Model.T) =
 
 module Gauge (M : Model.Gauge) = 
   struct
-
-    let rcs = RCS.rename rcs_file "Colorize.Gauge()"
-        [ "Colorizing Monochrome Gauge Models"]
 
     module CM = It(M)
 

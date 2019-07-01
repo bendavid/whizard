@@ -1,4 +1,4 @@
-(* $Id: omega_SM_dim6.ml 7283 2015-09-27 15:12:43Z jr_reuter $
+(* omega_SM_dim6.ml --
 
    Copyright (C) 1999-2015 by
 

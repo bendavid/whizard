@@ -1,4 +1,3 @@
-# $Id: model_test.sin 7405 2015-12-17 17:56:41Z jr_reuter $
 # SINDARIN input for WHIZARD self-test
 
 library = "model_test_1_lib"

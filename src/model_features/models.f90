@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -36,7 +36,7 @@
 module models
 
   use, intrinsic :: iso_c_binding !NODEP!
-  
+
   use kinds, only: default
   use kinds, only: c_default_float
   use iso_varying_string, string_t => varying_string
@@ -46,7 +46,7 @@ module models
   use os_interface
   use physics_defs, only: UNDEFINED
   use model_data
-  
+
   use ifiles
   use syntax_rules
   use lexers
@@ -63,6 +63,7 @@ module models
   public :: syntax_model_file_init
   public :: syntax_model_file_final
   public :: syntax_model_file_write
+  public :: create_test_model
   public :: model_list_t
 
   integer, parameter :: PAR_NONE = 0, PAR_UNUSED = -1
@@ -304,7 +305,7 @@ contains
        call par%data%show (l, u)
     end if
   end subroutine parameter_show
-    
+
   subroutine model_init &
        (model, name, libname, os_data, n_par, n_prt, n_vtx)
     class(model_t), intent(inout) :: model
@@ -363,7 +364,7 @@ contains
     allocate (model%par (n_par))
     call model%model_data_t%init (name, n_par, 0, n_prt, n_vtx)
   end subroutine model_basic_init
-    
+
   subroutine model_final (model)
     class(model_t), intent(inout) :: model
     integer :: i
@@ -487,7 +488,7 @@ contains
        call field%show (l, u)
     end do
   end subroutine model_show_fields
-  
+
   subroutine model_show_stable (model, unit)
     class(model_t), intent(in), target :: model
     integer, intent(in), optional :: unit
@@ -508,7 +509,7 @@ contains
     end do
     write (u, *)
   end subroutine model_show_stable
-  
+
   subroutine model_show_unstable (model, unit)
     class(model_t), intent(in), target :: model
     integer, intent(in), optional :: unit
@@ -529,7 +530,7 @@ contains
     end do
     write (u, *)
   end subroutine model_show_unstable
-  
+
   subroutine model_show_polarized (model, unit)
     class(model_t), intent(in), target :: model
     integer, intent(in), optional :: unit
@@ -550,7 +551,7 @@ contains
     end do
     write (u, *)
   end subroutine model_show_polarized
-  
+
   subroutine model_show_unpolarized (model, unit)
     class(model_t), intent(in), target :: model
     integer, intent(in), optional :: unit
@@ -572,7 +573,7 @@ contains
     end do
     write (u, *)
   end subroutine model_show_unpolarized
-  
+
   function model_get_md5sum (model) result (md5sum)
     character(32) :: md5sum
     class(model_t), intent(in) :: model
@@ -671,7 +672,7 @@ contains
        call model%set_parameter_unused (i, name)
     end select
   end subroutine model_copy_parameter
-  
+
   subroutine model_parameters_update (model)
     class(model_t), intent(inout) :: model
     integer :: i
@@ -696,7 +697,7 @@ contains
     field => model%get_field_ptr_by_index (i)
     call field%init (longname, pdg)
   end subroutine model_init_field
-    
+
   subroutine model_copy_field (model, i, name_src)
     class(model_t), intent(inout), target :: model
     integer, intent(in) :: i
@@ -713,7 +714,7 @@ contains
     logical, intent(in), optional :: follow_link
     call var_list_write (model%var_list, unit, follow_link)
   end subroutine model_write_var_list
-  
+
   subroutine model_link_var_list (model, var_list)
     class(model_t), intent(inout) :: model
     type(var_list_t), intent(in), target :: var_list
@@ -726,14 +727,14 @@ contains
     logical :: flag
     flag = model%var_list%contains (name, follow_link=.false.)
   end function model_var_exists
-  
+
   function model_var_is_locked (model, name) result (flag)
     class(model_t), intent(in) :: model
     type(string_t), intent(in) :: name
     logical :: flag
     flag = model%var_list%is_locked (name, follow_link=.false.)
   end function model_var_is_locked
-  
+
   subroutine model_var_set_real (model, name, rval, verbose, pacified)
     class(model_t), intent(inout) :: model
     type(string_t), intent(in) :: name
@@ -744,14 +745,14 @@ contains
          verbose=verbose, model_name=model%get_name (), pacified=pacified)
     call model%update_parameters ()
   end subroutine model_var_set_real
-    
+
   function model_var_get_rval (model, name) result (rval)
     class(model_t), intent(in) :: model
     type(string_t), intent(in) :: name
     real(default) :: rval
     rval = model%var_list%get_rval (name, follow_link=.false.)
   end function model_var_get_rval
-  
+
   function model_get_var_list_ptr (model) result (var_list)
     type(var_list_t), pointer :: var_list
     class(model_t), intent(in), target :: model
@@ -763,13 +764,13 @@ contains
     class(model_t), intent(in) :: model
     flag = allocated (model%schemes)
   end function model_has_schemes
-  
+
   subroutine model_enable_schemes (model, scheme)
     class(model_t), intent(inout) :: model
     type(string_t), dimension(:), intent(in) :: scheme
     allocate (model%schemes (size (scheme)), source = scheme)
   end subroutine model_enable_schemes
-  
+
   subroutine model_set_scheme (model, scheme)
     class(model_t), intent(inout) :: model
     type(string_t), intent(in), optional :: scheme
@@ -803,7 +804,7 @@ contains
        end if
     end if
   end subroutine model_set_scheme
-  
+
   function model_get_scheme (model) result (scheme)
     class(model_t), intent(in) :: model
     type(string_t) :: scheme
@@ -813,7 +814,7 @@ contains
        scheme = ""
     end if
   end function model_get_scheme
-  
+
   function model_matches (model, name, scheme) result (flag)
     logical :: flag
     class(model_t), intent(in) :: model
@@ -832,7 +833,7 @@ contains
        end if
     end if
   end function model_matches
-  
+
   subroutine define_model_file_syntax (ifile)
     type(ifile_t), intent(inout) :: ifile
     call ifile_append (ifile, "SEQ model_def = model_name_def " // &
@@ -887,7 +888,7 @@ contains
     call ifile_append (ifile, "SEQ prt_src = like prt_longname prt_properties")
     call ifile_append (ifile, "KEY like")
     call ifile_append (ifile, "SEQ prt_properties = prt_property*")
-    call ifile_append (ifile, "ALT prt_property = " // & 
+    call ifile_append (ifile, "ALT prt_property = " // &
          "parton | invisible | gauge | left | right | " // &
          "prt_name | prt_anti | prt_tex_name | prt_tex_anti | " // &
          "prt_spin | prt_isospin | prt_charge | " // &
@@ -970,9 +971,8 @@ contains
     type(parse_node_t), pointer :: nd_external_pars
     type(parse_node_t), pointer :: nd_particles, nd_vertices
     type(string_t) :: model_name, lib_name
-    integer :: n_schemes, n_parblock, n_par, i_par, n_ext, n_prt, n_vtx
+    integer :: n_parblock, n_par, i_par, n_ext, n_prt, n_vtx
     type(parse_node_t), pointer :: nd_par_def
-    type(parse_node_t), pointer :: nd_der_def
     type(parse_node_t), pointer :: nd_ext_def
     type(parse_node_t), pointer :: nd_prt
     type(parse_node_t), pointer :: nd_vtx
@@ -1000,7 +1000,7 @@ contains
     open (file=char(file), unit=unit, action="read", status="old")
     model_md5sum = md5sum (unit)
     close (unit)
-    
+
     call lexer_init_model_file (lexer)
     call stream_init (stream, char (file))
     call lexer_assign_stream (lexer, stream)
@@ -1024,7 +1024,7 @@ contains
          ("particles", nd_particles, nd_prt, n_prt, nd_vertices)
     call find_block &
          ("vertices", nd_vertices, nd_vtx, n_vtx)
-    
+
     if (associated (nd_external_pars)) then
        lib_name = "external." // model_name
     else
@@ -1055,12 +1055,12 @@ contains
     if (associated (nd_vtx)) then
        call handle_vertices (nd_vtx, n_vtx)
     end if
-    
+
     call model%freeze_vertices ()
     call model%append_field_vars ()
 
   contains
-    
+
     subroutine find_block (key, nd, nd_item, n_item, nd_next)
       character(*), intent(in) :: key
       type(parse_node_t), pointer, intent(inout) :: nd
@@ -1227,12 +1227,12 @@ contains
     subroutine handle_external (nd_ext_def, n_par, n_ext)
       type(parse_node_t), pointer, intent(inout) :: nd_ext_def
       integer, intent(in) :: n_par, n_ext
-      real(c_default_float), dimension(:), allocatable :: par
       integer :: i
       do i = n_par + 1, n_par + n_ext
          call model%read_external (i, nd_ext_def)
          nd_ext_def => parse_node_get_next_ptr (nd_ext_def)
       end do
+!     real(c_default_float), dimension(:), allocatable :: par
 !       if (associated (model%init_external_parameters)) then
 !          allocate (par (model%get_n_real ()))
 !          call model%real_parameters_to_c_array (par)
@@ -1240,7 +1240,7 @@ contains
 !          call model%real_parameters_from_c_array (par)
 !       end if
     end subroutine handle_external
-    
+
     subroutine handle_fields (nd_prt, n_prt)
       type(parse_node_t), pointer, intent(inout) :: nd_prt
       integer, intent(in) :: n_prt
@@ -1260,7 +1260,7 @@ contains
          nd_vtx => parse_node_get_next_ptr (nd_vtx)
       end do
     end subroutine handle_vertices
-      
+
   end subroutine model_read
 
   subroutine model_read_parameter (model, i, node)
@@ -1315,7 +1315,7 @@ contains
     type(string_t), dimension(:), allocatable :: name
     type(field_data_t), pointer :: field, field_src
     longname = parse_node_get_string (parse_node_get_sub_ptr (node, 2))
-    pdg = parse_node_get_integer (parse_node_get_sub_ptr (node, 3)) 
+    pdg = parse_node_get_integer (parse_node_get_sub_ptr (node, 3))
     field => model%get_field_ptr_by_index (i)
     call field%init (longname, pdg)
     nd_src => parse_node_get_sub_ptr (node, 4)
@@ -1505,7 +1505,7 @@ contains
     aval = pack (pdg, mask)
     call var_list_append_pdg_array &
          (model%var_list, var_str ("neutral"), &
-          aval, locked = .true., intrinsic=.true.)    
+          aval, locked = .true., intrinsic=.true.)
     do i = 1, size (pdg)
        field => model%get_field_ptr (pdg(i))
        mask(i) = field%get_color_type () /= 1
@@ -1515,7 +1515,18 @@ contains
          (model%var_list, var_str ("colored"), &
           aval, locked = .true., intrinsic=.true.)
   end subroutine model_append_field_vars
-    
+
+  subroutine create_test_model (model_name, test_model)
+    type(string_t), intent(in) :: model_name
+    type(model_t), intent(out), pointer :: test_model
+    type(os_data_t) :: os_data
+    type(model_list_t) :: model_list
+    call syntax_model_file_init ()
+    call os_data_init (os_data)
+    call model_list%read_model &
+       (model_name, model_name // var_str (".mdl"), os_data, test_model)
+  end subroutine create_test_model
+
   recursive subroutine model_list_write (object, unit, verbose, follow_link)
     class(model_list_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -1544,7 +1555,7 @@ contains
     type(model_list_t), intent(in), target :: context
     model_list%context => context
   end subroutine model_list_link
-  
+
   subroutine model_list_import (model_list, current, model)
     class(model_list_t), intent(inout) :: model_list
     type(model_entry_t), pointer, intent(inout) :: current
@@ -1560,7 +1571,7 @@ contains
        current => null ()
     end if
   end subroutine model_list_import
-       
+
   subroutine model_list_add (model_list, &
        name, os_data, n_par, n_prt, n_vtx, model)
     class(model_list_t), intent(inout) :: model_list
@@ -1619,7 +1630,7 @@ contains
     call copy%init_instance (orig)
     call model_list%import (copy, model)
   end subroutine model_list_append_copy
-    
+
   recursive function model_list_model_exists &
        (model_list, name, scheme, follow_link) result (exists)
     class(model_list_t), intent(in) :: model_list
@@ -1709,6 +1720,6 @@ contains
     model%max_par_name_length = orig%max_par_name_length
     call model%append_field_vars ()
   end subroutine model_copy
-  
+
 
 end module models

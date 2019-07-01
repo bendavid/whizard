@@ -5,7 +5,7 @@
 $method = "omega"
 | Process library 'beam_events_4_lib': recorded process 'beam_events_4_p1'
 | Process library 'beam_events_4_lib': recorded process 'beam_events_4_p2'
-sqrts =  5.0000000E+02
+sqrts =  5.00000E+02
 $beam_events_file = "uniform_spread_2.5%.dat"
 openmp_num_threads = 1
 seed = 0

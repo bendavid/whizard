@@ -1,5 +1,4 @@
 # Makefile.am -- Makefile for O'Mega within and without WHIZARD
-# $Id: Makefile.am 7653 2016-07-18 11:37:04Z ohl $
 ##
 ## Process this file with automake to produce Makefile.in
 ##
@@ -31,7 +30,7 @@
 # Build the O'Mega Fortran library using libtool
 # (?use pkglib_ instead of lib_ to make the -rpath and *.lai business work ...)
 lib_LTLIBRARIES = libomega_core.la
-moduleexecincludedir = $(pkgincludedir)
+moduleexecincludedir = $(pkgincludedir)/../omega
 nodist_moduleexecinclude_DATA = $(OMEGALIB_MOD)
 
 libomega_core_la_SOURCES = $(OMEGALIB_F90)
@@ -53,18 +52,18 @@ endif
 
 # Compiled interfaces and libraries for out-of-tree compilation of models
 if OCAML_AVAILABLE
-camllibdir = $(pkglibdir)/caml
+camllibdir = $(pkglibdir)/../omega/caml
 nodist_camllib_DATA = \
 	omega.cmi fusion.cmi targets.cmi coupling.cmi modeltools.cmi color.cmi \
-	options.cmi rCS.cmi model.cmi \
+	options.cmi model.cmi \
 	omega_core.cmxa omega_core.a omega_targets.cmxa omega_targets.a \
 	charges.cmi
 endif
 
 ########################################################################
 
-include $(top_srcdir)/src/Makefile.ocaml
-include $(top_srcdir)/src/Makefile.sources
+include $(top_srcdir)/omega/src/Makefile.ocaml
+include $(top_srcdir)/omega/src/Makefile.sources
 
 if OCAML_AVAILABLE 
 omega_core.a: omega_core.cmxa

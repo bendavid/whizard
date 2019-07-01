@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -122,7 +122,6 @@ module phs_trees
      real(default), dimension(:), allocatable :: effective_mass
      real(default), dimension(:), allocatable :: effective_width
      logical :: real_phsp = .false.
-     integer(TC) :: emitter = 0
      integer, dimension(:), allocatable :: momentum_link
   end type phs_tree_t
 
@@ -383,7 +382,7 @@ contains
           s = tree%branch(k)%sibling
           if (s==0) call find_orphan(s)
           d = tree%branch(k)%daughter(1)
-          n = ior(d,s)  
+          n = ior(d,s)
           tree%branch(k)%set = .false.
           tree%branch(n)%set = .true.
           tree%branch(n)%origin = k
@@ -476,7 +475,7 @@ contains
     integer(TC) :: k
     do k = 1, tree%n_branches_out
        call mapping_set_parameters &
-            (tree%mapping(k), mapping_defaults, variable_limits) 
+            (tree%mapping(k), mapping_defaults, variable_limits)
     end do
   end subroutine phs_tree_set_mapping_parameters
 
@@ -506,7 +505,7 @@ contains
        end do
     end do
   end subroutine phs_tree_set_mass_sum
-  
+
   subroutine phs_tree_set_effective_masses (tree)
     type(phs_tree_t), intent(inout) :: tree
     tree%effective_mass = 0
@@ -1004,7 +1003,7 @@ contains
          factor = f1 * f2 * factor
       end if
       msq1 = phs_prt_get_msq (prt(k1))
-      msq2 = phs_prt_get_msq (prt(k2))  
+      msq2 = phs_prt_get_msq (prt(k2))
       lda = lambda (msq, msq1, msq2)
       if (lda > 0) then
          rlda = sqrt (lda)
@@ -1158,7 +1157,7 @@ contains
       end if
     end subroutine setup_prt_combinations_x
   end subroutine phs_tree_setup_prt_combinations
-      
+
   subroutine phs_tree_reshuffle_mappings (tree)
    type(phs_tree_t), intent(inout) :: tree
    integer(TC) :: k0, k_old, k_new, k2

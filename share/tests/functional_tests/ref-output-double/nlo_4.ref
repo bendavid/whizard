@@ -5,14 +5,14 @@
 $loop_me_method = "dummy"
 ?combined_nlo_integration = true
 openmp_num_threads = 1
-SM.wtop =>  0.0000000E+00
-SM.mtop =>  1.7500000E+02
+SM.wtop =>  0.00000E+00
+SM.mtop =>  1.75000E+02
 ?use_vamp_equivalences = false
 ?alpha_s_is_fixed = false
 ?alpha_s_from_mz = true
 | Process library 'nlo_4_lib': recorded process 'nlo_4_p1'
 seed = 2222
-sqrts =  5.0000000E+02
+sqrts =  5.00000E+02
 | Integrate: current process library needs compilation
 | Process library 'nlo_4_lib': compiling ...
 | Process library 'nlo_4_lib': writing makefile
@@ -61,25 +61,18 @@ sqrts =  5.0000000E+02
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: no equivalences between channels used.
 | Phase space: wood
-| Phase space: generating configuration ...
-| Phase space: ... success.
-| Phase space: writing configuration file 'nlo_4_p1_i4.phs'
-| Phase space: 1 channels, 2 dimensions
-| Phase space: found 1 channel, collected in 1 grove.
-| Phase space: no equivalences between channels used.
-| Phase space: wood
 Warning: No cuts have been defined.
 | Starting integration for process 'nlo_4_p1'
-| Integrate: iterations = 1:30000:"gw"
+| Integrate: iterations = 1:100:"gw"
 | Integrator: 1 chains, 1 channels, 5 dimensions
-| Integrator: 30000 initial calls, 20 bins, stratified = T
+| Integrator: 100 initial calls, 20 bins, stratified = T
 | Integrator: VAMP
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1      30000     4.916E+02   1.33E+00    0.27    0.47    43.7
+   1        100     5.409E+02   2.40E+01    4.44    0.44    50.6
 |-----------------------------------------------------------------------------|
-   1      30000     4.916E+02   1.33E+00    0.27    0.47    43.7
+   1        100     5.409E+02   2.40E+01    4.44    0.44    50.6
 |=============================================================================|
 n_events = 1
 ?debug_decay = false
@@ -112,15 +105,17 @@ Contents of nlo_4_p1.debug:
    Helicity handling  = drop
    Keep correlations  = F
 ------------------------------------------------------------------------
-   Squared matrix el. =  2.8698082E-02
-   Event weight       =  6.3504040E+02
+   Squared matrix el. (ref) =  2.68767E-02
+   Squared matrix el. (prc) =  6.42033E-02
+   Event weight (ref)       =  5.94737E+02
+   Event weight (prc)       =  1.42071E+03
 ------------------------------------------------------------------------
    Selected MCI group = 1
    Selected term      = 1
    Selected channel   = 1
 ------------------------------------------------------------------------
    Passed selection   = T
-   Reweighting factor =  1.0000000E+00
+   Reweighting factor =  1.00000E+00
    Analysis flag      = T
 ========================================================================
  Event transform: trivial (hard process)
@@ -145,37 +140,37 @@ Contents of nlo_4_p1.debug:
  Children: 3 4
  Particle 3 [o] f(6)c(1 )
  E =   2.500000E+02
- P =   1.097492E+02  1.322056E+02 -4.849520E+01
+ P =   2.880001E+01 -1.621148E+02 -6.902439E+01
  T =   3.062500000E+04
  Parents:  1 2
  Particle 4 [o] f(-6)c(-1 )
  E =   2.500000E+02
- P =  -1.097492E+02 -1.322056E+02  4.849520E+01
+ P =  -2.880001E+01  1.621148E+02  6.902439E+01
  T =   3.062500000E+04
  Parents:  1 2
 ========================================================================
 ========================================================================
  Local variables:
 ------------------------------------------------------------------------
-sqrts* =  5.0000000E+02
-sqrts_hat* =>  5.0000000E+02
+sqrts* =  5.00000E+02
+sqrts_hat* =>  5.00000E+02
 n_in* => 2
 n_out* => 2
 n_tot* => 4
 $process_id* => "nlo_4_p1"
 process_num_id* => [unknown integer]
-sqme* =>  5.7391434E-02
-sqme_ref* =>  2.8698082E-02
+sqme* =>  6.42033E-02
+sqme_ref* =>  2.68767E-02
 event_index* => 1
-event_weight* =>  1.2699761E+03
-event_weight_ref* =>  6.3504040E+02
-event_excess* =>  0.0000000E+00
+event_weight* =>  1.42071E+03
+event_weight_ref* =>  5.94737E+02
+event_excess* =>  0.00000E+00
 ------------------------------------------------------------------------
  subevent:
  1 prt(i:-11|-2.5000000E+02; 0.0000000E+00, 0.0000000E+00,-2.5000000E+02| 2.6111793E-07| 1)
  2 prt(i:11|-2.5000000E+02; 0.0000000E+00, 0.0000000E+00, 2.5000000E+02| 2.6111793E-07| 2)
- 3 prt(o:6| 2.5000000E+02; 1.0974918E+02, 1.3220565E+02,-4.8495197E+01| 3.0625000E+04| 3)
- 4 prt(o:-6| 2.5000000E+02;-1.0974918E+02,-1.3220565E+02, 4.8495197E+01| 3.0625000E+04| 4)
+ 3 prt(o:6| 2.5000000E+02; 2.8800007E+01,-1.6211475E+02,-6.9024390E+01| 3.0625000E+04| 3)
+ 4 prt(o:-6| 2.5000000E+02;-2.8800007E+01, 1.6211475E+02, 6.9024390E+01| 3.0625000E+04| 4)
 ========================================================================
 ========================================================================
  Event
@@ -185,15 +180,17 @@ event_excess* =>  0.0000000E+00
    Helicity handling  = drop
    Keep correlations  = F
 ------------------------------------------------------------------------
-   Squared matrix el. =  2.8698082E-02
-   Event weight       =  6.3504040E+02
+   Squared matrix el. (ref) =  2.68767E-02
+   Squared matrix el. (prc) =  1.08062E-03
+   Event weight (ref)       =  5.94737E+02
+   Event weight (prc)       =  2.39122E+01
 ------------------------------------------------------------------------
    Selected MCI group = 1
    Selected term      = 1
    Selected channel   = 1
 ------------------------------------------------------------------------
    Passed selection   = T
-   Reweighting factor =  1.0000000E+00
+   Reweighting factor =  1.00000E+00
    Analysis flag      = T
 ========================================================================
  Event transform: trivial (hard process)
@@ -218,38 +215,38 @@ event_excess* =>  0.0000000E+00
  Children: 3 4
  Particle 3 [o] f(6)c(1 )
  E =   2.500000E+02
- P =   1.097492E+02  1.322056E+02 -4.849520E+01
+ P =   2.880001E+01 -1.621148E+02 -6.902439E+01
  T =   3.062500000E+04
  Parents:  1 2
  Particle 4 [o] f(-6)c(-1 )
  E =   2.500000E+02
- P =  -1.097492E+02 -1.322056E+02  4.849520E+01
+ P =  -2.880001E+01  1.621148E+02  6.902439E+01
  T =   3.062500000E+04
  Parents:  1 2
 ========================================================================
 ========================================================================
  Local variables:
 ------------------------------------------------------------------------
-sqrts* =  5.0000000E+02
-sqrts_hat* =>  5.0000000E+02
+sqrts* =  5.00000E+02
+sqrts_hat* =>  5.00000E+02
 n_in* => 2
-n_out* => 2
-n_tot* => 4
+n_out* => 3
+n_tot* => 5
 $process_id* => "nlo_4_p1"
 process_num_id* => [unknown integer]
-sqme* =>  5.7391434E-02
-sqme_ref* =>  2.8698082E-02
+sqme* =>  1.08062E-03
+sqme_ref* =>  2.68767E-02
 event_index* => 1
-event_weight* =>  1.2699761E+03
-event_weight_ref* =>  6.3504040E+02
-event_excess* =>  0.0000000E+00
+event_weight* =>  2.39122E+01
+event_weight_ref* =>  5.94737E+02
+event_excess* =>  0.00000E+00
 ------------------------------------------------------------------------
  subevent:
  1 prt(i:-11|-2.5000000E+02; 0.0000000E+00, 0.0000000E+00,-2.5000000E+02| 2.6111793E-07| 1)
  2 prt(i:11|-2.5000000E+02; 0.0000000E+00, 0.0000000E+00, 2.5000000E+02| 2.6111793E-07| 2)
- 3 prt(o:6| 2.2408083E+02; 8.4477901E+01, 8.1327748E+01,-7.6396980E+01| 3.0625000E+04| 3)
- 4 prt(o:-6| 2.2942004E+02;-9.1195198E+01,-1.0985521E+02, 4.0296693E+01| 3.0625000E+04| 4)
- 5 prt(o:21| 4.6499131E+01; 6.7172969E+00, 2.8527467E+01, 3.6100287E+01| 0.0000000E+00| 5)
+ 3 prt(o:6| 1.8423295E+02; 4.9173464E+01,-1.9323717E+01,-2.2920411E+01| 3.0625000E+04| 3)
+ 4 prt(o:-6| 2.1464015E+02;-2.0047812E+01, 1.1284880E+02, 4.8048184E+01| 3.0625000E+04| 4)
+ 5 prt(o:21| 1.0112690E+02;-2.9125651E+01,-9.3525082E+01,-2.5127773E+01| 0.0000000E+00| 5)
 ========================================================================
 ========================================================================
  Event
@@ -259,15 +256,17 @@ event_excess* =>  0.0000000E+00
    Helicity handling  = drop
    Keep correlations  = F
 ------------------------------------------------------------------------
-   Squared matrix el. =  2.8698082E-02
-   Event weight       =  6.3504040E+02
+   Squared matrix el. (ref) =  2.68767E-02
+   Squared matrix el. (prc) =  9.41185E-04
+   Event weight (ref)       =  5.94737E+02
+   Event weight (prc)       =  2.08269E+01
 ------------------------------------------------------------------------
    Selected MCI group = 1
    Selected term      = 1
    Selected channel   = 1
 ------------------------------------------------------------------------
    Passed selection   = T
-   Reweighting factor =  1.0000000E+00
+   Reweighting factor =  1.00000E+00
    Analysis flag      = T
 ========================================================================
  Event transform: trivial (hard process)
@@ -292,36 +291,41 @@ event_excess* =>  0.0000000E+00
  Children: 3 4
  Particle 3 [o] f(6)c(1 )
  E =   2.500000E+02
- P =   1.097492E+02  1.322056E+02 -4.849520E+01
+ P =   2.880001E+01 -1.621148E+02 -6.902439E+01
  T =   3.062500000E+04
  Parents:  1 2
  Particle 4 [o] f(-6)c(-1 )
  E =   2.500000E+02
- P =  -1.097492E+02 -1.322056E+02  4.849520E+01
+ P =  -2.880001E+01  1.621148E+02  6.902439E+01
  T =   3.062500000E+04
  Parents:  1 2
 ========================================================================
 ========================================================================
  Local variables:
 ------------------------------------------------------------------------
-sqrts* =  5.0000000E+02
-sqrts_hat* =>  5.0000000E+02
+sqrts* =  5.00000E+02
+sqrts_hat* =>  5.00000E+02
 n_in* => 2
-n_out* => 2
-n_tot* => 4
+n_out* => 3
+n_tot* => 5
 $process_id* => "nlo_4_p1"
 process_num_id* => [unknown integer]
-sqme* =>  5.7391434E-02
-sqme_ref* =>  2.8698082E-02
+sqme* =>  9.41185E-04
+sqme_ref* =>  2.68767E-02
 event_index* => 1
-event_weight* =>  1.2699761E+03
-event_weight_ref* =>  6.3504040E+02
-event_excess* =>  0.0000000E+00
+event_weight* =>  2.08269E+01
+event_weight_ref* =>  5.94737E+02
+event_excess* =>  0.00000E+00
 ------------------------------------------------------------------------
  subevent:
  1 prt(i:-11|-2.5000000E+02; 0.0000000E+00, 0.0000000E+00,-2.5000000E+02| 2.6111793E-07| 1)
  2 prt(i:11|-2.5000000E+02; 0.0000000E+00, 0.0000000E+00, 2.5000000E+02| 2.6111793E-07| 2)
- 3 prt(o:6| 2.2942004E+02; 9.1195198E+01, 1.0985521E+02,-4.0296693E+01| 3.0625000E+04| 3)
- 4 prt(o:-6| 2.2408083E+02;-9.9006793E+01,-9.8829486E+01,-4.1957947E+00| 3.0625000E+04| 4)
- 5 prt(o:21| 4.6499131E+01; 7.8115943E+00,-1.1025729E+01, 4.4492488E+01| 0.0000000E+00| 5)
+ 3 prt(o:6| 2.1464015E+02; 2.0047812E+01,-1.1284880E+02,-4.8048184E+01| 3.0625000E+04| 3)
+ 4 prt(o:-6| 1.8423295E+02;-5.0587778E+01, 2.7284870E+01, 3.6322620E+00| 3.0625000E+04| 4)
+ 5 prt(o:21| 1.0112690E+02; 3.0539966E+01, 8.5563928E+01, 4.4415922E+01| 0.0000000E+00| 5)
 ========================================================================
+Total number of regions:   2
+alr ||             flst_real ||  em || mul || nreg ||               ftuples ||         flst_born || i_uborn
+  1 || [-11, 11,  6, -6, 21] ||   3 ||   1 ||    2 || {(3,5)  (4,5)}  || [-11, 11,  6, -6] ||       1
+  2 || [-11, 11,  6, -6, 21] ||   4 ||   1 ||    2 || {(3,5)  (4,5)}  || [-11, 11,  6, -6] ||       1
+------------------------------------------------------------------------

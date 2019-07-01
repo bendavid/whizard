@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -273,7 +273,7 @@ contains
        allocate (eio%tag_generator)
        call eio%tag_generator%init ( &
             var_str ("generator"), &
-            [xml_attribute (var_str ("version"), var_str ("2.3.1"))], &
+            [xml_attribute (var_str ("version"), var_str ("2.4.0"))], &
             .true.)
        allocate (eio%tag_xsecinfo)
        call eio%tag_xsecinfo%init ( &
@@ -521,8 +521,8 @@ contains
        write (u, '(A)') "<event>"
        call hepeup_write_lhef (eio%unit)
        select case (eio%version)
-       case ("2.0");  call eio%write_event_20 (event)
-       case ("3.0");  call eio%write_event_30 (event)
+         case ("2.0");  call eio%write_event_20 (event)
+         case ("3.0");  call eio%write_event_30 (event)
        end select
        write (u, '(A)') "</event>"
     else
@@ -634,7 +634,7 @@ contains
        call eio%tag_gen_n%write (var_str ("WHIZARD"), u)
        write (u, *)
        write (u, "(2x)", advance = "no")
-       call eio%tag_gen_v%write (var_str ("2.3.1"), u)
+       call eio%tag_gen_v%write (var_str ("2.4.0"), u)
        write (u, *)
     end select
     call eio%tag_head%close (u);  write (u, *)
@@ -821,7 +821,6 @@ contains
   subroutine eio_lhef_write_init_30 (eio, data)
     class(eio_lhef_t), intent(in) :: eio
     type(event_sample_data_t), intent(in) :: data
-    real(default), parameter :: pb_per_fb = 1.e-3_default
     integer :: u, i
     u = given_output_unit (eio%unit)
     call eio%tag_generator%write (u)

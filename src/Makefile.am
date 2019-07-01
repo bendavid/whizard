@@ -32,44 +32,28 @@
 ########################################################################
 
 ## Subdirectories to configure
+## directories in one line do not depend on each other
 SUBDIRS = \
   noweb-frame \
   basics \
-  utilities \
-  testing \
+  hepmc lcio lhapdf lhapdf5 looptools pythia8 xdr\
+  expr_base utilities\
   system \
-  combinatorics parsing rng expr_base \
-  sindarin \
-  physics qft \
-  fastjet \
-  types \
-  matrix_elements \
-  hepmc lcio particles \
-  lhapdf \
-  lhapdf5 \
-  pdf_builtin \
+  combinatorics pdf_builtin testing\
   hoppet \
-  beams \
-  me_methods \
-  xdr events \
-  phase_space \
-  mci variables \
-  pythia8 \
-  tauola \
-  muli shower \
-  user \
-  threshold \
-  blha \
-  gosam openloops \
-  looptools \
-  model_features \
-  fks \
+  muli parsing physics \
+  fastjet qft threshold types\
+  models particles matrix_elements variables \
+  events prebuilt rng\
+  beams tauola \
+  me_methods shower user \
+  blha model_features \
+  gosam openloops phase_space \
+  fks mci \
   process_integration \
   matching \
   transforms \
-  whizard-core \
-  prebuilt \
-  models
+  whizard-core
 
 if MPOST_AVAILABLE
 SUBDIRS += gamelan feynmf
@@ -121,7 +105,6 @@ libwhizard_la_LIBADD = \
   types/libtypes.la \
   qft/libqft.la \
   physics/libphysics.la \
-  sindarin/libsindarin.la \
   expr_base/libexpr_base.la \
   rng/librng.la \
   parsing/libparsing.la \
@@ -192,6 +175,7 @@ libwhizard_test_la_LIBADD = \
   transforms/libtransforms_ut.la \
   matching/libmatching_ut.la \
   fks/libfks_ut.la \
+  shower/libshower_ut.la \
   process_integration/libprocess_integration_ut.la \
   blha/libblha_ut.la \
   model_features/libmodel_features_ut.la \
@@ -205,7 +189,6 @@ libwhizard_test_la_LIBADD = \
   types/libtypes_ut.la \
   qft/libqft_ut.la \
   physics/libphysics_ut.la \
-  sindarin/libsindarin_ut.la \
   rng/librng_ut.la \
   parsing/libparsing_ut.la \
   combinatorics/libcombinatorics_ut.la \

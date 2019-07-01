@@ -29,9 +29,9 @@
 
 DISTCLEANFILES =
 
-include $(top_srcdir)/src/Makefile.sources
+include $(top_srcdir)/circe2/src/Makefile.sources
 
-VPATH = $(srcdir):$(top_builddir)/src:$(srcdir):$(top_srcdir)/src
+VPATH = $(srcdir):$(top_builddir)/circe2/src:$(srcdir):$(top_srcdir)/circe2/src
 
 WEBS = prelude.nw circe2.nw postlude.nw
 
@@ -44,8 +44,8 @@ endif
 LATEX_STYLES = \
     emp.sty noweb.sty thohacks.sty thopp.sty ocamlweb.sty
 
-TEX_FLAGS = "$$TEXINPUTS:$(top_srcdir)/share/doc"
-MP_FLAGS  = "$$MPINPUTS:$(top_srcdir)/share/doc"
+TEX_FLAGS = "$$TEXINPUTS:$(top_srcdir)/circe2/share/doc"
+MP_FLAGS  = "$$MPINPUTS:$(top_srcdir)/circe2/share/doc"
 
 CIRCE2_HISTOS = \
   x.20.histo x.20m.histo x.20q.histo x.20qm.histo x.input.histo \
@@ -77,7 +77,7 @@ if NOWEB_AVAILABLE
 circe2.tex: $(WEBS)
 	$(NOWEAVE) -filter ./tex-comments -delay -index \
 	    `for i in  $^; do case $$i in *.nw) echo $$i;; esac done` \
-	  | $(CPIF) $@
+	  > $@
 
 circe2.tex: tex-comments
 
@@ -103,12 +103,39 @@ SUFFIXES = \
   .data .histo .tex .pdf \
   .nw .dvi .eps .ps
 
-if !OCAMLWEB_AVAILABLE
+if !NOWEB_AVAILABLE
+
 circe2.pdf:
-else
+
+else NOWEB_AVAILABLE
+
 circe2.pdf: $(CIRCE2_INTERFACE) $(CIRCE2_IMPLEMENTATION) \
-		$(CIRCE2TOOL_IMPLEMENTATION) index.tex $(CIRCE2_HISTOS)
-endif
+		$(CIRCE2TOOL_IMPLEMENTATION) circe2.tex \
+		index.tex $(CIRCE2_HISTOS)
+
+if DISTRIBUTION
+if OCAMLWEB_AVAILABLE
+
+.mll.implementation:
+	$(OCAMLWEB) --no-preamble --noweb --no-index $< >$@
+
+.mly.implementation:
+	$(OCAMLWEB) --no-preamble --noweb --no-index $< >$@
+
+.ml.implementation:
+	$(OCAMLWEB) --no-preamble --noweb --no-index $< >$@
+
+.mli.interface:
+	$(OCAMLWEB) --no-preamble --noweb --no-index $< >$@
+
+index.tex: $(CIRCE2_CAML) $(CIRCE2_DERIVED)
+	$(OCAMLWEB) --no-preamble --noweb $^ | \
+	   sed -n '/\\ocwbeginindex{}/,/\\ocwendindex{}/p' >$@
+
+endif OCAMLWEB_AVAILABLE
+endif DISTRIBUTION
+
+endif NOWEB_AVAILABLE
 
 if DISTRIBUTION
 if PDFLATEX_AVAILABLE
@@ -138,24 +165,6 @@ endif SUPP_PDF_AVAILABLE
 endif MPOST_AVAILABLE
 endif PDFLATEX_AVAILABLE
 endif DISTRIBUTION
-
-if OCAMLWEB_AVAILABLE
-.mll.implementation:
-	$(OCAMLWEB) --no-preamble --noweb --no-index $< >$@
-
-.mly.implementation:
-	$(OCAMLWEB) --no-preamble --noweb --no-index $< >$@
-
-.ml.implementation:
-	$(OCAMLWEB) --no-preamble --noweb --no-index $< >$@
-
-.mli.interface:
-	$(OCAMLWEB) --no-preamble --noweb --no-index $< >$@
-
-index.tex: $(CIRCE2_CAML) $(CIRCE2_DERIVED)
-	$(OCAMLWEB) --no-preamble --noweb $^ | \
-	   sed -n '/\\ocwbeginindex{}/,/\\ocwendindex{}/p' >$@
-endif OCAMLWEB_AVAILABLE
 
 ## Cleanup tasks
 mostlyclean-latex:

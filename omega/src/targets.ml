@@ -1,4 +1,4 @@
-(* $Id: targets.ml 7676 2016-08-19 13:40:57Z jr_reuter $
+(* targets.ml --
 
    Copyright (C) 1999-2016 by
 
@@ -10,7 +10,7 @@
        Fabian Bach <fabian.bach@t-online.de> (only parts of this file)
        Marco Sekulla <marco.sekulla@kit.edu> (only parts of this file)
        Bijan Chokoufe Nejad <bijan.chokoufe@desy.de> (only parts of this file)
-       Soyoung Shim <soyoung.shim@desy.de>
+       So Young Shim <soyoung.shim@desy.de>
 
    WHIZARD is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by
@@ -26,16 +26,8 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
-let rcs_file = RCS.parse "Targets" ["Code Generation"]
-    { RCS.revision = "$Revision: 7676 $";
-      RCS.date = "$Date: 2016-08-19 15:40:57 +0200 (Fri, 19 Aug 2016) $";
-      RCS.author = "$Author: jr_reuter $";
-      RCS.source
-        = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/omega/src/targets.ml $" }
-
 module Dummy (F : Fusion.Maker) (P : Momentum.T) (M : Model.T) =
   struct
-    let rcs_list = []
     type amplitudes = Fusion.Multi(F)(P)(M).amplitudes
     type diagnostic = All | Arguments | Momenta | Gauge
     let options = Options.empty
@@ -49,9 +41,6 @@ module Dummy (F : Fusion.Maker) (P : Momentum.T) (M : Model.T) =
 
 module VM (Fusion_Maker : Fusion.Maker) (P : Momentum.T) (M : Model.T) =
   struct
-    let rcs_list =
-      [RCS.rename rcs_file "Targets.VM"
-                  ["Virtual Machine able to compute amplitudes from byte code"]]
 
     open Coupling
     open Format
@@ -461,12 +450,19 @@ module VM (Fusion_Maker : Fusion.Maker) (P : Momentum.T) (M : Model.T) =
      module doesn't seem to be loaded on default.
    \end{dubious} *)
 
-    let version_string x = RCS.name x ^ "-rev" ^ RCS.revision x
+    let version =
+      String.concat " " [Config.version; Config.status; Config.date]
+    let model_name =
+      let basename = Filename.basename Sys.executable_name in
+      try
+        Filename.chop_extension basename
+      with
+      | _ -> basename
+
 
     let print_description cmdline  =
-      rcs_list @ [M.rcs] |> List.map version_string
-                         |> List.iter (printf "%s\n");
-
+      printf "Model %s\n" model_name;
+      printf "OVM %s\n" version;
       printf "@\nBytecode file generated automatically by O'Mega for OVM";
       printf "@\nDo not delete any lines. You called O'Mega with";
       printf "@\n  %s" cmdline;
@@ -1701,10 +1697,6 @@ module VM (Fusion_Maker : Fusion.Maker) (P : Momentum.T) (M : Model.T) =
         print_line "  end function get_amplitude";
         nl();
       end in
-      let rcs_str s = String.sub s 0 (String.length s - 1) in
-      let rcs_tags = rcs_list @ [M.rcs] |> List.map version_string
-                                        |> List.map rcs_str in
-
       print_line ("module " ^ !wrapper_module);
       print_line ("  use " ^ !parameter_module_external);
       print_line "  use iso_varying_string, string_t => varying_string";
@@ -1742,8 +1734,8 @@ module VM (Fusion_Maker : Fusion.Maker) (P : Momentum.T) (M : Model.T) =
       print_line "    type(string_t), intent(in) :: bytecode_file";
       print_line "    type(string_t) :: version";
       print_line "    type(string_t) :: model";
-      print_line ("    version = '" ^ List.nth rcs_tags 0 ^ "'");
-      print_line ("    model = '" ^ List.nth rcs_tags 1 ^ "'");
+      print_line ("    version = 'OVM " ^ version ^ "'");
+      print_line ("    model = 'Model " ^ model_name ^ "'");
       print_line "    call setup_couplings ()";
       print_line "    call vm%init (bytecode_file, version, model, verbose=.False., &";
       print_line "      coupl_cmplx=ovm_coupl_cmplx, &";
@@ -1758,10 +1750,7 @@ module VM (Fusion_Maker : Fusion.Maker) (P : Momentum.T) (M : Model.T) =
       print_interface !whizard;
       print_lookup_functions ();
 
-      print_line ("end module " ^ !wrapper_module);
-      print_line "! O'Mega revision control information:";
-      ThoList.flatmap RCS.summary (M.rcs :: rcs_list) |>
-        List.iter (fun s -> printf "!    %s" s; nl ())
+      print_line ("end module " ^ !wrapper_module)
 
     let parameters_to_channel oc =
       parameters_to_fortran oc (CM.parameters ())
@@ -1825,15 +1814,10 @@ module type Fermions =
     val reverse_braket : lorentz -> bool
     val use_module : string
     val require_library : string list
-    val rcs : RCS.t
    end
 
 module Fortran_Fermions : Fermions =
   struct
-    let rcs = RCS.rename rcs_file "Targets.Fortran_Fermions()"
-        [ "generates Fortran95 code for Dirac fermions";
-          "using revision 2000_10_A of module omega95" ]
-
     open Coupling
     open Format
 
@@ -2057,11 +2041,6 @@ module Fortran_Fermions : Fermions =
 module Make_Fortran (Fermions : Fermions)
     (Fusion_Maker : Fusion.Maker) (P : Momentum.T) (M : Model.T) =
   struct
-    let rcs_list =
-      [ RCS.rename rcs_file "Targets.Make_Fortran()"
-          [ "Interface for Whizard 2.X";
-            "NB: non-gauge vector couplings are not available yet" ];
-        Fermions.rcs ]
 
     let require_library =
       Fermions.require_library @
@@ -2551,8 +2530,6 @@ i*)
       end;
       printf "end module %s" !parameter_module; nl ();
       printf "! O'Mega revision control information:"; nl ();
-      List.iter (fun s -> printf "!    %s" s; nl ())
-        (ThoList.flatmap RCS.summary (M.rcs :: rcs_list));
       printf "!!! program test_parameters"; nl ();
       printf "!!!   use %s" !parameter_module; nl ();
       printf "!!!   call setup_parameters ()"; nl ();
@@ -5975,7 +5952,9 @@ i*)
       | powers -> String.concat " " (List.map format_power_of_nc powers)
 
     let print_description cmdline amplitudes () =
-      printf "! File generated automatically by O'Mega"; nl ();
+      printf
+        "! File generated automatically by O'Mega %s %s %s"
+        Config.version Config.status Config.date; nl ();
       printf "!"; nl ();
       printf "!   %s" cmdline; nl ();
       printf "!"; nl ();
@@ -6028,18 +6007,7 @@ i*)
             printf "!     %s" s; nl ();
             printf "!"; nl ()
       end;
-      begin match RCS.description M.rcs with
-      | line1 :: lines ->
-          printf "! in %s" line1; nl ();
-          List.iter (fun s -> printf "!    %s" s; nl ()) lines
-      | [] -> printf "! in %s" (RCS.name M.rcs); nl ()
-      end;
       printf "!"; nl ()
-
-    let print_version () =
-      printf "! O'Mega revision control information:"; nl ();
-      List.iter (fun s -> printf "!    %s" s; nl ())
-        (ThoList.flatmap RCS.summary (M.rcs :: rcs_list @ F.rcs_list))
 
 (* \thocwmodulesubsection{Printing Modules} *)
 
@@ -6133,7 +6101,6 @@ i*)
 
     let print_modules modules =
       List.iter print_module modules;
-      print_version ();
       print_flush ()
 
     let module_to_file line_length oc prelude m =
@@ -6580,10 +6547,6 @@ module Fortran = Make_Fortran(Fortran_Fermions)
 
 module Fortran_Majorana_Fermions : Fermions =
   struct
-    let rcs = RCS.rename rcs_file "Targets.Fortran_Majorana_Fermions()"
-        [ "generates Fortran95 code for Dirac and Majorana fermions";
-          " using revision 2003_03_A of module omega95_bispinors" ]
-
     open Coupling
     open Format
 

@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -36,14 +36,14 @@
 module selectors_ut
   use unit_tests
   use selectors_uti
-  
+
   implicit none
   private
 
   public :: selectors_test
 
 contains
-  
+
   subroutine selectors_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -51,6 +51,6 @@ contains
          "rng initialization and call", &
          u, results)
   end subroutine selectors_test
-  
+
 
 end module selectors_ut

@@ -2,6 +2,7 @@
 % WHIZARD shower code as NOWEB source
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Parton shower and interface to PYTHIA6}
+\includemodulegraph{shower}
 
 This is the code for the \whizard\ QCD parton shower for final state
 radiation (FSR) and initial state radiation (ISR) as well as the interface
@@ -13,7 +14,7 @@ to the \pythia\ module for showering and hadronization.
 
 module shower_base
 
-<<Use kinds with double>>
+<<Use kinds>>
 <<Use strings>>
   use io_units
   use constants
@@ -33,9 +34,9 @@ module shower_base
 
 <<Standard module head>>
 
-<<Shower base: parameters>>
-
 <<Shower base: public>>
+
+<<Shower base: parameters>>
 
 <<Shower base: types>>
 
@@ -52,11 +53,11 @@ end module shower_base
 <<Shower base: public>>=
   public :: PS_WHIZARD, PS_PYTHIA6, PS_PYTHIA8, PS_UNDEFINED
 <<Shower base: parameters>>=
+  integer, parameter :: PS_UNDEFINED = 0  
   integer, parameter :: PS_WHIZARD = 1
   integer, parameter :: PS_PYTHIA6 = 2
   integer, parameter :: PS_PYTHIA8 = 3
-  integer, parameter :: PS_UNDEFINED = 17
-@ %def PS_WHIZARD PS_PYTHIA6 PS_PYTHIA8 PS_UNDEFINED
+@ %def PS_UNDEFINED PS_WHIZARD PS_PYTHIA6 PS_PYTHIA8 
 @ A dictionary
 <<Shower base: public>>=
   public :: shower_method_of_string
@@ -113,7 +114,10 @@ $alpha_s$ in the form of the function $D\_{alpha_s} (t)$ for the FSR
 and ISR ([[MSTJ(44)]], [[MSTP(64)]]), respectively. The next
 parameter, [[fixed_alpha_s]] is the parameter [[PARU(111)]], which
 sets the value for constant $\alpha_s$, and the flag whether to use
-$P_t$-ordered ISR is [[isr_pt_ordered]].
+$P_t$-ordered ISR is [[isr_pt_ordered]]. From the entry [[min_voirtuality]]
+on, parameters have meanings both for the \pythia\ and
+\whizard\ parton shower(s), where \pythia\ values are denoted at the
+end of the line.
 <<Shower base: public>>=
   public :: shower_settings_t
 <<Shower base: types>>=
@@ -122,18 +126,16 @@ $P_t$-ordered ISR is [[isr_pt_ordered]].
      logical :: isr_active = .false.
      logical :: fsr_active = .false.
      logical :: muli_active = .false.
+     logical :: hadronization_active = .false.
      logical :: tau_dec = .false.
      logical :: verbose = .false.
      integer :: method = PS_UNDEFINED
-     logical :: hadronization_active = .false.
      logical :: hadron_collision = .false.
      logical :: mlm_matching = .false.
      logical :: ckkw_matching = .false.
      logical :: powheg_matching = .false.
      type(string_t) :: pythia6_pygive
-     !!! values present in PYTHIA and WHIZARDs PS,
-     !!! comments denote corresponding PYTHIA values
-     real(default) :: min_virtuality = 1._default          ! PARJ(82)^2
+     real(default) :: min_virtuality = 1._default   ! PARJ(82)^2
      real(default) :: fsr_lambda = 0.29_default     ! PARP(72)
      real(default) :: isr_lambda = 0.29_default     ! PARP(61)
      integer :: max_n_flavors = 5                   ! MSTJ(45)
@@ -159,71 +161,67 @@ hadronization are switched on).
 <<Shower base: shower settings: TBP>>=
   procedure :: init => shower_settings_init
 <<Shower base: procedures>>=
-  subroutine shower_settings_init (shower_settings, var_list)
-    class(shower_settings_t), intent(out) :: shower_settings
+  subroutine shower_settings_init (settings, var_list)
+    class(shower_settings_t), intent(out) :: settings
     type(var_list_t), intent(in) :: var_list
-
-    shower_settings%fsr_active = &
+    
+    settings%fsr_active = &
          var_list%get_lval (var_str ("?ps_fsr_active"))
-    shower_settings%isr_active = &
+    settings%isr_active = &
          var_list%get_lval (var_str ("?ps_isr_active"))
-    shower_settings%tau_dec = &
-         var_list%get_lval (var_str ("?ps_taudec_active"))    
-    shower_settings%muli_active = &
+    settings%tau_dec = &
+         var_list%get_lval (var_str ("?ps_taudec_active"))
+    settings%muli_active = &
          var_list%get_lval (var_str ("?muli_active"))
-    shower_settings%hadronization_active = &
+    settings%hadronization_active = &
          var_list%get_lval (var_str ("?hadronization_active"))
-    shower_settings%mlm_matching = &
+    settings%mlm_matching = &
          var_list%get_lval (var_str ("?mlm_matching"))
-    shower_settings%ckkw_matching = &
+    settings%ckkw_matching = &
          var_list%get_lval (var_str ("?ckkw_matching"))
-    shower_settings%powheg_matching = &
+    settings%powheg_matching = &
          var_list%get_lval (var_str ("?powheg_matching"))
-
-    shower_settings%method = shower_method_of_string ( &
+    settings%method = shower_method_of_string ( &
          var_list%get_sval (var_str ("$shower_method")))
-
-    !!! We have to split off hadronization settings at some point.
-
-    shower_settings%active = shower_settings%isr_active .or. &
-         shower_settings%fsr_active .or. &
-         shower_settings%powheg_matching .or. &
-         shower_settings%muli_active .or. &
-         shower_settings%hadronization_active
-    if (.not. shower_settings%active)  return
-    shower_settings%verbose = &
+    settings%active = settings%isr_active .or. &
+         settings%fsr_active .or. &
+         settings%powheg_matching .or. &
+         settings%muli_active .or. &
+         settings%hadronization_active
+    if (.not. settings%active)  return
+    settings%verbose = &
          var_list%get_lval (var_str ("?shower_verbose"))
-    shower_settings%pythia6_pygive = &
+    settings%pythia6_pygive = &
          var_list%get_sval (var_str ("$ps_PYTHIA_PYGIVE"))
-    shower_settings%min_virtuality = &
+    settings%min_virtuality = &
          (var_list%get_rval (var_str ("ps_mass_cutoff"))**2)
-    shower_settings%fsr_lambda = &
+    settings%fsr_lambda = &
          var_list%get_rval (var_str ("ps_fsr_lambda"))
-    shower_settings%isr_lambda = &
+    settings%isr_lambda = &
          var_list%get_rval (var_str ("ps_isr_lambda"))
-    shower_settings%max_n_flavors = &
+    settings%max_n_flavors = &
          var_list%get_ival (var_str ("ps_max_n_flavors"))
-    shower_settings%isr_alpha_s_running = &
+    settings%isr_alpha_s_running = &
          var_list%get_lval (var_str ("?ps_isr_alpha_s_running"))
-    shower_settings%fsr_alpha_s_running = &
+    settings%fsr_alpha_s_running = &
          var_list%get_lval (var_str ("?ps_fsr_alpha_s_running"))
-    shower_settings%fixed_alpha_s = &
+    settings%fixed_alpha_s = &
          var_list%get_rval (var_str ("ps_fixed_alpha_s"))
-    shower_settings%isr_pt_ordered = &
+    settings%isr_pt_ordered = &
          var_list%get_lval (var_str ("?ps_isr_pt_ordered"))
-    shower_settings%isr_angular_ordered = &
+    settings%isr_angular_ordered = &
          var_list%get_lval (var_str ("?ps_isr_angular_ordered"))
-    shower_settings%isr_primordial_kt_width = &
+    settings%isr_primordial_kt_width = &
          var_list%get_rval (var_str ("ps_isr_primordial_kt_width"))
-    shower_settings%isr_primordial_kt_cutoff = &
+    settings%isr_primordial_kt_cutoff = &
          var_list%get_rval (var_str ("ps_isr_primordial_kt_cutoff"))
-    shower_settings%isr_z_cutoff = &
+    settings%isr_z_cutoff = &
          var_list%get_rval (var_str ("ps_isr_z_cutoff"))
-    shower_settings%isr_minenergy = &
+    settings%isr_minenergy = &
          var_list%get_rval (var_str ("ps_isr_minenergy"))
-    shower_settings%isr_tscalefactor = &
+    settings%isr_tscalefactor = &
          var_list%get_rval (var_str ("ps_isr_tscalefactor"))
-    shower_settings%isr_only_onshell_emitted_partons = &
+    settings%isr_only_onshell_emitted_partons = &
          var_list%get_lval (&
          var_str ("?ps_isr_only_onshell_emitted_partons"))
   end subroutine shower_settings_init
@@ -249,10 +247,12 @@ hadronization are switched on).
          "ps_tau_dec                   = ", settings%tau_dec
     write (u, "(3x,A,1x,L1)") &
          "muli_active                  = ", settings%muli_active
+    write (u, "(3x,A,1x,L1)") &
+         "hadronization_active         = ", settings%hadronization_active    
     write (u, "(1x,A)")  "General settings:"
     if (settings%isr_active .or. settings%fsr_active) then
        write (u, "(3x,A)") &
-            "shower_method                =  " // &
+            "method                       =  " // &
             char (shower_method_to_string (settings%method))
        write (u, "(3x,A,1x,L1)") &
             "shower_verbose               = ", settings%verbose
@@ -295,9 +295,6 @@ hadronization are switched on).
     else if (settings%isr_active) then
        write (u, "(3x,A)") " [FSR off]"
     end if
-    write (u, "(1x,A)")  "Hadronization settings:"
-    write (u, "(3x,A,1x,L1)") &
-         "hadronization_active         = ", settings%hadronization_active
     write (u, "(1x,A)")  "Matching Settings:"
     write (u, "(3x,A,1x,L1)") &
          "mlm_matching                 = ", settings%mlm_matching
@@ -623,6 +620,127 @@ remnants and any other particles.
   end function number_of_flavors
 
 @ %def number_of_flavors
+@
+\subsection{Unit tests}
+Test module, followed by the corresponding implementation module.
+<<[[shower_base_ut.f90]]>>=
+<<File header>>
+
+module shower_base_ut
+  use unit_tests
+  use shower_base_uti
+
+<<Standard module head>>
+
+<<Shower base: public test>>
+
+contains
+
+<<Shower base: test driver>>
+
+end module shower_base_ut
+@ %def shower_base_ut
+@
+<<[[shower_base_uti.f90]]>>=
+<<File header>>
+
+module shower_base_uti
+
+<<Use kinds>>
+<<Use strings>>
+  use format_utils, only: write_separator
+  use variables
+  use shower_base
+
+<<Standard module head>>
+
+<<Shower base: test declarations>>
+
+contains
+
+<<Shower base: tests>>
+
+end module shower_base_uti
+@ %def shower_base_ut
+@ API: driver for the unit tests below.
+<<Shower base: public test>>=
+  public :: shower_base_test
+<<Shower base: test driver>>=
+  subroutine shower_base_test (u, results)
+    integer, intent(in) :: u
+    type(test_results_t), intent(inout) :: results
+  <<Shower base: execute tests>>
+  end subroutine shower_base_test
+
+@  %def shower_base_test
+@
+\subsubsection{Shower settings}
+This test dispatches an [[shower_settings]] object, which is used
+to steer the initial and final state showers.
+<<Shower base: execute tests>>=
+  call test (shower_base_1, "shower_base_1", &
+       "Shower settings", &
+       u, results)
+<<Shower base: test declarations>>=
+  public :: shower_base_1
+<<Shower base: tests>>=
+  subroutine shower_base_1 (u)
+    integer, intent(in) :: u
+    type(var_list_t) :: var_list
+    type(shower_settings_t) :: shower_settings
+
+    write (u, "(A)")  "* Test output: shower_base_1"
+    write (u, "(A)")  "*   Purpose: setting ISR/FSR shower"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Default settings"
+    write (u, "(A)")
+
+    call var_list%init_defaults (0)
+    call var_list%set_log (var_str ("?alpha_s_is_fixed"), &
+         .true., is_known = .true.)
+    call shower_settings%init (var_list)
+    call write_separator (u)
+    call shower_settings%write (u)
+    call write_separator (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Switch on ISR/FSR showers, hadronization"
+    write (u, "(A)")  "      and MLM matching"
+    write (u, "(A)")
+
+    call var_list%set_string (var_str ("$shower_method"), &
+         var_str ("PYTHIA6"), is_known = .true.)
+    call var_list%set_log (var_str ("?ps_fsr_active"), &
+         .true., is_known = .true.)
+    call var_list%set_log (var_str ("?ps_isr_active"), &
+         .true., is_known = .true.)
+    call var_list%set_log (var_str ("?hadronization_active"), &
+         .true., is_known = .true.)
+    call var_list%set_log (var_str ("?mlm_matching"), &
+         .true., is_known = .true.)
+    call var_list%set_int &
+         (var_str ("ps_max_n_flavors"), 4, is_known = .true.)
+    call var_list%set_real &
+         (var_str ("ps_isr_z_cutoff"), 0.1234_default, &
+          is_known=.true.)
+    call var_list%set_real (&
+         var_str ("mlm_etamax"), 3.456_default, is_known=.true.)
+    call var_list%set_string (&
+         var_str ("$ps_PYTHIA_PYGIVE"), var_str ("abcdefgh"), is_known=.true.)
+    call shower_settings%init (var_list)
+    call write_separator (u)
+    call shower_settings%write (u)
+    call write_separator (u)
+
+    call var_list%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: shower_base_1"
+
+  end subroutine shower_base_1
+
+@ %def shower_base_1
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Parton module for the shower}
@@ -1925,17 +2043,6 @@ contains
 end module shower_core
 @ %def shower_core
 @
-<<Shower core: interfaces>>=
-  interface
-     subroutine evolvePDFM (set, x, q, ff)
-       integer, intent(in) :: set
-       double precision, intent(in) :: x, q
-       double precision, dimension(-6:6), intent(out) :: ff
-     end subroutine evolvePDFM
-  end interface
-
-@ %def evolvePDFM
-@
 <<Shower core: public>>=
   public :: shower_interaction_t
 <<Shower core: types>>=
@@ -2157,7 +2264,7 @@ $k_T$-ordered showers.
        call msg_debug (D_SHOWER, "Generate ISR with FSR")
        i = 0
        BRANCHINGS: do
-          i = i+1
+          i = i + 1
           if (signal_is_pending ()) return
           if (shower%settings%muli_active) then
           call shower%mi%generate_gev2_pt2 &
@@ -3962,7 +4069,7 @@ proper flavor information, by the ISR shower.
     do i = 1, size (particles)
        hard_colored_mask(i) = (particles(i)%get_status () == PRT_INCOMING .or. &
             particles(i)%get_status () == PRT_OUTGOING) .and. &
-            particles(i)%is_colored ()    
+            particles(i)%is_colored ()
     end do
     !!! hard_colored_mask = (particles%get_status () == PRT_INCOMING .or. &
     !!!                      particles%get_status () == PRT_OUTGOING) .and. &
@@ -6965,7 +7072,7 @@ added back in by Pythia.
           end if
        end associate
     end do
-  end subroutine fix_nonemitting_outgoings 
+  end subroutine fix_nonemitting_outgoings
 
 <<Shower pythia6: combine with particle set: procedures>>=
   subroutine set_parent_child_relations_from_K ()

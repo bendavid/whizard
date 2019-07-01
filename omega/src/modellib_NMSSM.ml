@@ -1,4 +1,4 @@
-(* $Id: modellib_NMSSM.ml 7667 2016-07-29 17:37:42Z jr_reuter $
+(* modellib_NMSSM.ml --
 
    Copyright (C) 1999-2016 by
 
@@ -22,13 +22,6 @@
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
-
-let rcs_file = RCS.parse "Modellib_NMSSM" ["NMSSM"]
-    { RCS.revision = "$Revision: 7667 $";
-      RCS.date = "$Date: 2016-07-29 19:37:42 +0200 (Fri, 29 Jul 2016) $";
-      RCS.author = "$Author: jr_reuter $";
-      RCS.source
-        = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/omega/src/modellib_NMSSM.ml $" }
 
 (* \thocwmodulesection{Next-to-Minimal Supersymmetric Standard Model} *)
 
@@ -62,9 +55,6 @@ module NMSSM_Hgg : NMSSM_flags =
 
 module NMSSM_func (Flags : NMSSM_flags) = 
   struct
-    let rcs = RCS.rename rcs_file "Modellib_NMSSM.NMSSM"
-        [ "NMSSM" ]
-
     open Coupling
 
     let default_width = ref Timelike

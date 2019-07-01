@@ -1,4 +1,4 @@
-(* $Id: omega_NoH_rx.ml 4926 2014-03-21 12:35:06 msekulla $
+(* omega_NoH_rx.ml --
 
    Copyright (C) 1999-2016 by
 

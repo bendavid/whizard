@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -36,15 +36,15 @@
 module integrations_ut
   use unit_tests
   use integrations_uti
-  
+
   implicit none
   private
 
   public :: integrations_test
-  public :: integrations_history_test    
+  public :: integrations_history_test
 
 contains
-  
+
   subroutine integrations_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -83,7 +83,7 @@ contains
     call test (integrations_history_1, "integrations_history_1", &
          "Test integration history files", &
          u, results)
-  end subroutine integrations_history_test  
+  end subroutine integrations_history_test
 
 
 end module integrations_ut

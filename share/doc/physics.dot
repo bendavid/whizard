@@ -1,0 +1,9 @@
+
+digraph G {
+sm_physics -> lorentz
+sm_qcd -> physics_defs
+lorentz -> c_particles
+sm_physics -> physics_defs
+sm_qcd -> sm_physics
+ }
+

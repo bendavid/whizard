@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -44,7 +44,7 @@ module whizard
   use ifiles
   use lexers
   use parser
-  use variables
+  use variables, only: var_list_t
   use eval_trees
   use models
   use phs_forests
@@ -74,18 +74,18 @@ module whizard
      logical :: rebuild_grids = .false.
      logical :: rebuild_events = .false.
   end type whizard_options_t
-  
+
   type, extends (parse_tree_t) :: pt_entry_t
      type(pt_entry_t), pointer :: previous => null ()
   end type pt_entry_t
-  
+
   type :: pt_stack_t
      type(pt_entry_t), pointer :: last => null ()
    contains
      procedure :: final => pt_stack_final
      procedure :: push => pt_stack_push
   end type pt_stack_t
-  
+
   type :: whizard_t
      type(whizard_options_t) :: options
      type(rt_data_t) :: global
@@ -102,7 +102,7 @@ module whizard
      procedure :: process_stream => whizard_process_stream
      procedure :: shell => whizard_shell
   end type whizard_t
-  
+
 
   save
 
@@ -128,10 +128,10 @@ contains
     current%previous => pt_stack%last
     pt_stack%last => current
   end subroutine pt_stack_push
-  
+
   subroutine whizard_init (whizard, options, paths, logfile)
     class(whizard_t), intent(out), target :: whizard
-    type(whizard_options_t), intent(in) :: options    
+    type(whizard_options_t), intent(in) :: options
     type(paths_t), intent(in), optional :: paths
     type(string_t), intent(in), optional :: logfile
     call init_syntax_tables ()
@@ -145,38 +145,31 @@ contains
     call whizard%global%init_radiation_model &
          (var_str ("SM_rad"), var_str ("SM_rad.mdl"))
   end subroutine whizard_init
-  
+
   subroutine whizard_final (whizard)
     class(whizard_t), intent(inout), target :: whizard
     call whizard%global%final ()
     call whizard%pt_stack%final ()
 !!! JRR: WK please check (#529)
     !    call user_code_final ()
-    call final_syntax_tables () 
+    call final_syntax_tables ()
   end subroutine whizard_final
-  
+
   subroutine whizard_init_rebuild_flags (whizard)
     class(whizard_t), intent(inout), target :: whizard
-    associate (var_list => whizard%global%var_list, options => whizard%options) 
-      call var_list_append_log &
-           (var_list, var_str ("?rebuild_library"), options%rebuild_library, &
-           intrinsic=.true.)
-      call var_list_append_log &
-           (var_list, var_str ("?recompile_library"), &
-           options%recompile_library, &
-           intrinsic=.true.)
-      call var_list_append_log &
-           (var_list, var_str ("?rebuild_phase_space"), options%rebuild_phs, &
-           intrinsic=.true.)
-      call var_list_append_log &
-           (var_list, var_str ("?rebuild_grids"), options%rebuild_grids, &
-           intrinsic=.true.)
-      call var_list_append_log &
-           (var_list, var_str ("?powheg_rebuild_grids"), options%rebuild_grids, &
-           intrinsic=.true.)
-      call var_list_append_log &
-           (var_list, var_str ("?rebuild_events"), options%rebuild_events, &
-           intrinsic=.true.)
+    associate (var_list => whizard%global%var_list, options => whizard%options)
+      call var_list%append_log (var_str ("?rebuild_library"), &
+           options%rebuild_library, intrinsic=.true.)
+      call var_list%append_log (var_str ("?recompile_library"), &
+           options%recompile_library, intrinsic=.true.)
+      call var_list%append_log (var_str ("?rebuild_phase_space"), &
+           options%rebuild_phs, intrinsic=.true.)
+      call var_list%append_log (var_str ("?rebuild_grids"), &
+           options%rebuild_grids, intrinsic=.true.)
+      call var_list%append_log (var_str ("?powheg_rebuild_grids"), &
+           options%rebuild_grids, intrinsic=.true.)
+      call var_list%append_log (var_str ("?rebuild_events"), &
+           options%rebuild_events, intrinsic=.true.)
     end associate
   end subroutine whizard_init_rebuild_flags
 
@@ -199,7 +192,7 @@ contains
        call msg_message ("No model preloaded")
     end if
   end subroutine whizard_preload_model
-    
+
   subroutine whizard_preload_library (whizard)
     class(whizard_t), intent(inout), target :: whizard
     type(string_t) :: library_name, libs
@@ -218,19 +211,19 @@ contains
           call lib_entry%init (whizard%options%default_lib)
           call whizard%global%add_prclib (lib_entry)
           call msg_message ("Preloaded library: " // &
-               char (whizard%options%default_lib))    
-       end if    
+               char (whizard%options%default_lib))
+       end if
     SCAN_LIBS: do while (libs /= "")
-       call split (libs, library_name, " ")      
+       call split (libs, library_name, " ")
        if (library_name /= "") then
           allocate (lib_entry)
           call lib_entry%init (library_name)
           call whizard%global%add_prclib (lib_entry)
           call msg_message ("Preloaded library: " // char (library_name))
        end if
-    end do SCAN_LIBS    
+    end do SCAN_LIBS
   end subroutine whizard_preload_library
-    
+
   subroutine init_syntax_tables ()
     call syntax_model_file_init ()
     call syntax_phs_forest_init ()

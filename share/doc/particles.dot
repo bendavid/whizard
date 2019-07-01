@@ -1,0 +1,7 @@
+
+digraph G {
+bloch_vectors -> su_algebra
+polarizations -> bloch_vectors
+particles -> polarizations
+ }
+

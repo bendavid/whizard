@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -57,7 +57,8 @@ module shower
   use event_transforms
   use models
   use hep_common
-  use processes
+  use process, only: process_t
+  use instances, only: process_instance_t
   use process_stacks
 
   implicit none
@@ -102,7 +103,7 @@ contains
     u = given_output_unit (unit)
     write (u, "(1x,A)")  "Event transform: shower"
   end subroutine evt_shower_write_name
-    
+
   subroutine evt_shower_write (evt, unit, verbose, more_verbose, testflag)
     class(evt_shower_t), intent(in) :: evt
     integer, intent(in), optional :: unit
@@ -172,7 +173,7 @@ contains
            evt%particle_set%prt(2)%flv%get_pdg_abs () <= 39) then
           settings%hadron_collision = .false.
        !!! else if (all (evt%particle_set%prt(1:2)%flv%get_pdg_abs () >= 100)) then
-       else if (evt%particle_set%prt(1)%flv%get_pdg_abs () >= 100 .and. & 
+       else if (evt%particle_set%prt(1)%flv%get_pdg_abs () >= 100 .and. &
                 evt%particle_set%prt(2)%flv%get_pdg_abs () >= 100) then
           settings%hadron_collision = .true.
        else
@@ -292,7 +293,7 @@ contains
      select type (matching => evt%matching)
      type is (powheg_matching_t)
         matching%active = .false.
-     class default 
+     class default
         call msg_fatal ("Trying to disable powheg but no powheg matching is allocated!")
      end select
   end subroutine evt_shower_disable_powheg_matching
@@ -302,7 +303,7 @@ contains
      select type (matching => evt%matching)
      type is (powheg_matching_t)
         matching%active = .true.
-     class default 
+     class default
         call msg_fatal ("Trying to enable powheg but no powheg matching is allocated!")
      end select
   end subroutine evt_shower_enable_powheg_matching

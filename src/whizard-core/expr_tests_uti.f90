@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -34,7 +34,7 @@
 ! to the source 'whizard.nw'
 
 module expr_tests_uti
-  
+
     use kinds, only: default
     use iso_varying_string, string_t => varying_string
     use format_defs, only: FMT_12
@@ -53,17 +53,17 @@ module expr_tests_uti
     use rng_base
     use mci_base
     use phs_base
-    use variables
+    use variables, only: var_list_t
     use eval_trees
     use models
     use prc_core
     use prc_test
-    use processes
+    use process, only: process_t
+    use instances, only: process_instance_t
     use events
 
     use rng_base_ut, only: rng_test_factory_t
     use phs_base_ut, only: phs_test_config_t
-    use processes_ut, only: prepare_test_process
 
   implicit none
   private
@@ -94,7 +94,7 @@ contains
     integer :: i, pdg
     logical :: passed
     real(default) :: scale, fac_scale, ren_scale, weight
-    
+
     write (u, "(A)")  "* Test output: subevt_expr_1"
     write (u, "(A)")  "*   Purpose: Set up a subevt and associated &
          &process-specific expressions"
@@ -162,7 +162,7 @@ contains
     write (u, "(A)")
 
     call expr%setup_vars (1000._default)
-    call var_list_append_real (expr%var_list, var_str ("tolerance"), 0._default)
+    call expr%var_list%append_real (var_str ("tolerance"), 0._default)
     call expr%link_var_list (model%get_var_list_ptr ())
 
     call expr_factory%init (pn_cuts)
@@ -179,7 +179,7 @@ contains
     call write_separator (u)
     call expr%write (u)
     call write_separator (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Fill subevt and evaluate expressions"
     write (u, "(A)")
@@ -213,31 +213,31 @@ contains
     expr%subevt_filled = .true.
 
     call expr%evaluate (passed, scale, fac_scale, ren_scale, weight)
-    
+
     write (u, "(A,L1)")      "Event has passed      = ", passed
     write (u, "(A," // FMT_12 // ")")  "Scale                 = ", scale
     write (u, "(A," // FMT_12 // ")")  "Factorization scale   = ", fac_scale
     write (u, "(A," // FMT_12 // ")")  "Renormalization scale = ", ren_scale
     write (u, "(A," // FMT_12 // ")")  "Weight                = ", weight
     write (u, "(A)")
-    
+
     call write_separator (u)
     call expr%write (u)
     call write_separator (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
-    
+
     call expr%final ()
 
     call model%final ()
     call syntax_model_file_final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: subevt_expr_1"
-    
+
   end subroutine subevt_expr_1
-  
+
   subroutine subevt_expr_2 (u)
     integer, intent(in) :: u
     type(string_t) :: expr_text
@@ -257,7 +257,7 @@ contains
     logical :: passed
     real(default) :: reweight
     logical :: analysis_flag
-    
+
     write (u, "(A)")  "* Test output: subevt_expr_2"
     write (u, "(A)")  "*   Purpose: Set up a subevt and associated &
          &process-specific expressions"
@@ -308,7 +308,7 @@ contains
 
     call expr%setup_vars (1000._default)
     call expr%link_var_list (model%get_var_list_ptr ())
-    call var_list_append_real (expr%var_list, var_str ("tolerance"), 0._default)
+    call expr%var_list%append_real (var_str ("tolerance"), 0._default)
 
     call expr_factory%init (pn_selection)
     call expr%setup_selection (expr_factory)
@@ -320,7 +320,7 @@ contains
     call write_separator (u)
     call expr%write (u)
     call write_separator (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Fill subevt and evaluate expressions"
     write (u, "(A)")
@@ -354,29 +354,29 @@ contains
     expr%subevt_filled = .true.
 
     call expr%evaluate (passed, reweight, analysis_flag)
-    
+
     write (u, "(A,L1)")      "Event has passed      = ", passed
     write (u, "(A," // FMT_12 // ")")  "Reweighting factor    = ", reweight
     write (u, "(A,L1)")      "Analysis flag         = ", analysis_flag
     write (u, "(A)")
-    
+
     call write_separator (u)
     call expr%write (u)
     call write_separator (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
-    
+
     call expr%final ()
 
     call model%final ()
     call syntax_model_file_final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: subevt_expr_2"
-    
+
   end subroutine subevt_expr_2
-  
+
   subroutine processes_5 (u)
     integer, intent(in) :: u
     type(string_t) :: cut_expr_text
@@ -395,7 +395,6 @@ contains
     class(model_data_t), pointer :: model
     type(var_list_t), target :: var_list
     type(process_t), allocatable, target :: process
-    class(prc_core_t), allocatable :: core_template
     class(mci_t), allocatable :: mci_template
     class(phs_config_t), allocatable :: phs_config_template
     real(default) :: sqrts
@@ -414,7 +413,7 @@ contains
     call ifile_append (ifile, cut_expr_text)
     call stream_init (stream, ifile)
     call parse_tree_init_lexpr (parse_tree, stream, .true.)
-    
+
     write (u, "(A)")  "* Build and initialize a test process"
     write (u, "(A)")
 
@@ -428,30 +427,29 @@ contains
     call syntax_model_file_init ()
     allocate (model_tmp)
     call model_tmp%read (var_str ("Test.mdl"), os_data)
-    call var_list_init_snapshot (var_list, model_tmp%get_var_list_ptr ())
+    call var_list%init_snapshot (model_tmp%get_var_list_ptr ())
     model => model_tmp
 
     call reset_interaction_counter ()
 
     allocate (process)
     call process%init (procname, run_id, &
-         lib, os_data, qcd, rng_factory, model) 
+         lib, os_data, qcd, rng_factory, model)
 
-    call var_list_append_real &
-         (var_list, var_str ("tolerance"), 0._default)
+    call var_list%append_real (var_str ("tolerance"), 0._default)
     call process%set_var_list (var_list)
     call var_list%final ()
-   
-    allocate (test_t :: core_template)
+
     allocate (phs_test_config_t :: phs_config_template)
+    call process%setup_test_cores ()
     call process%init_component &
-         (1, core_template, mci_template, phs_config_template)
+       (1, .true., mci_template, phs_config_template)
 
     write (u, "(A)")  "* Prepare a trivial beam setup"
     write (u, "(A)")
-    
+
     sqrts = 1000
-    call process%setup_beams_sqrts (sqrts)
+    call process%setup_beams_sqrts (sqrts, i_core = 1)
     call process%configure_phs ()
     call process%setup_mci ()
 
@@ -473,7 +471,7 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Inject a set of random numbers"
     write (u, "(A)")
-     
+
     call process_instance%choose_mci (1)
     call process_instance%set_mcpar ([0._default, 0._default])
 
@@ -487,13 +485,13 @@ contains
     call process_instance%compute_eff_kinematics ()
     call process_instance%evaluate_expressions ()
     call process_instance%compute_other_channels ()
-   
+
     call process_instance%write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Evaluate for another set (should succeed)"
     write (u, "(A)")
-     
+
     call process_instance%reset ()
     call process_instance%set_mcpar ([0.5_default, 0.125_default])
     call process_instance%select_channel (1)
@@ -510,7 +508,7 @@ contains
     write (u, "(A)")  "* Evaluate for another set using convenience procedure &
          &(failure)"
     write (u, "(A)")
-     
+
     call process_instance%evaluate_sqme (1, [0.0_default, 0.2_default])
 
     call process_instance%write_header (u)
@@ -519,17 +517,17 @@ contains
     write (u, "(A)")  "* Evaluate for another set using convenience procedure &
          &(success)"
     write (u, "(A)")
-     
+
     call process_instance%evaluate_sqme (1, [0.1_default, 0.2_default])
 
     call process_instance%write_header (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
-    
+
     call process_instance%final ()
     deallocate (process_instance)
-    
+
     call process%final ()
     deallocate (process)
 
@@ -537,14 +535,14 @@ contains
     call stream_final (stream)
     call ifile_final (ifile)
     call syntax_pexpr_final ()
-    
+
     call syntax_model_file_final ()
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: processes_5"
-    
+
   end subroutine processes_5
-  
+
   subroutine processes_6 (u)
     integer, intent(in) :: u
     type(string_t) :: expr_text
@@ -562,7 +560,6 @@ contains
     class(model_data_t), pointer :: model
     type(var_list_t), target :: var_list
     type(process_t), allocatable, target :: process
-    class(prc_core_t), allocatable :: core_template
     class(mci_t), allocatable :: mci_template
     class(phs_config_t), allocatable :: phs_config_template
     real(default) :: sqrts
@@ -594,7 +591,7 @@ contains
     call stream_init (stream, ifile)
     call parse_tree_init_expr (pt_fac_scale, stream, .true.)
     call stream_final (stream)
-    
+
     expr_text = "eval sqrt (M2) [collect [s]]"
     write (u, "(A,A)")  "ren_scale = ", char (expr_text)
     call ifile_clear (ifile)
@@ -602,7 +599,7 @@ contains
     call stream_init (stream, ifile)
     call parse_tree_init_expr (pt_ren_scale, stream, .true.)
     call stream_final (stream)
-    
+
     expr_text = "n_tot * n_in * n_out * (eval Phi / pi [s])"
     write (u, "(A,A)")  "weight = ", char (expr_text)
     call ifile_clear (ifile)
@@ -612,7 +609,7 @@ contains
     call stream_final (stream)
 
     call ifile_final (ifile)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Build and initialize a test process"
     write (u, "(A)")
@@ -627,28 +624,28 @@ contains
     call syntax_model_file_init ()
     allocate (model_tmp)
     call model_tmp%read (var_str ("Test.mdl"), os_data)
-    call var_list_init_snapshot (var_list, model_tmp%get_var_list_ptr ())
+    call var_list%init_snapshot (model_tmp%get_var_list_ptr ())
     model => model_tmp
 
     call reset_interaction_counter ()
 
     allocate (process)
     call process%init (procname, run_id, &
-         lib, os_data, qcd, rng_factory, model) 
+         lib, os_data, qcd, rng_factory, model)
 
     call process%set_var_list (var_list)
     call var_list%final ()
-   
-    allocate (test_t :: core_template)
+
+    call process%setup_test_cores ()
     allocate (phs_test_config_t :: phs_config_template)
     call process%init_component &
-         (1, core_template, mci_template, phs_config_template)
+       (1, .true., mci_template, phs_config_template)
 
     write (u, "(A)")  "* Prepare a trivial beam setup"
     write (u, "(A)")
-    
+
     sqrts = 1000
-    call process%setup_beams_sqrts (sqrts)
+    call process%setup_beams_sqrts (sqrts, i_core = 1)
     call process%configure_phs ()
     call process%setup_mci ()
 
@@ -679,10 +676,10 @@ contains
 
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
-    
+
     call process_instance%final ()
     deallocate (process_instance)
-    
+
     call process%final ()
     deallocate (process)
 
@@ -693,13 +690,14 @@ contains
     call syntax_pexpr_final ()
 
     call syntax_model_file_final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: processes_6"
-    
+
   end subroutine processes_6
-  
+
   subroutine events_3 (u)
+    use processes_ut, only: prepare_test_process, cleanup_test_process
     integer, intent(in) :: u
     type(string_t) :: expr_text
     type(ifile_t) :: ifile
@@ -737,7 +735,7 @@ contains
     call stream_init (stream, ifile)
     call parse_tree_init_expr (pt_reweight, stream, .true.)
     call stream_final (stream)
-    
+
     expr_text = "true"
     write (u, "(A,A)")  "analysis = ", char (expr_text)
     call ifile_clear (ifile)
@@ -747,7 +745,7 @@ contains
     call stream_final (stream)
 
     call ifile_final (ifile)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Initialize test process event"
 
@@ -756,7 +754,7 @@ contains
     call syntax_model_file_init ()
     allocate (model)
     call model%read (var_str ("Test.mdl"), os_data)
-    call var_list_init_snapshot (var_list, model%get_var_list_ptr ())
+    call var_list%init_snapshot (model%get_var_list_ptr ())
 
     allocate (process)
     allocate (process_instance)
@@ -779,16 +777,15 @@ contains
     call event%set_reweight (expr_factory)
     call expr_factory%init (pt_analysis%get_root_ptr ())
     call event%set_analysis (expr_factory)
-    
+
     call event%connect (process_instance, process%get_model_ptr ())
-    call var_list_append_real &
-         (event%expr%var_list, var_str ("tolerance"), 0._default)
+    call event%expr%var_list%append_real (var_str ("tolerance"), 0._default)
     call event%setup_expressions ()
 
     write (u, "(A)")
     write (u, "(A)")  "* Generate test process event"
 
-    call process%generate_weighted_event (process_instance, 1)
+    call process_instance%generate_weighted_event (1)
 
     write (u, "(A)")
     write (u, "(A)")  "* Fill event object and evaluate expressions"
@@ -809,12 +806,12 @@ contains
     deallocate (process)
 
     call syntax_model_file_final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: events_3"
-    
+
   end subroutine events_3
-  
+
 
 end module expr_tests_uti
-  
+

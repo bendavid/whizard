@@ -50,6 +50,12 @@ if test "$enable_gosam" = "yes"; then
     echo "Gosam dir is " $GOSAM_DIR
   fi
 
+  AC_MSG_CHECKING([the GoSam version])
+  wo_gosam_version=`$gosam_exe --version | $GREP "(rev" | $SED 's/GoSam //g' | $SED 's/ (rev.*$//g'`
+  GOSAM_VERSION=$wo_gosam_version
+  AC_MSG_RESULT([$wo_gosam_version])
+  AC_SUBST([GOSAM_VERSION])
+
   save_path=$PATH
   save_ld_library_path=$LD_LIBRARY_PATH
 

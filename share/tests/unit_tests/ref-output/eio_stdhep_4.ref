@@ -54,7 +54,7 @@ Found process #1 with ID = 42
    Helicity handling  = drop
    Keep correlations  = F
 ------------------------------------------------------------------------
-   Event weight       =  1.000000000000E+00
+   Event weight (ref)       =  1.000000000000E+00
 ------------------------------------------------------------------------
    Selected MCI group = 1
    Selected term      = 1

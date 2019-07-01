@@ -1,4 +1,4 @@
-(* $Id: vertex_lexer.mll 7653 2016-07-18 11:37:04Z ohl $
+(* vertex_lexer.mll --
 
    Copyright (C) 1999-2016 by
 

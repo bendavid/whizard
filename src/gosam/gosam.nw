@@ -1,9 +1,8 @@
 % -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*-
 % WHIZARD code as NOWEB source: GoSam interface
-
-@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{GoSam Interface}
+\includemodulegraph{gosam}
 
 The code in this chapter makes amplitudes accessible to \whizard\ that
 are generated and computed by the GoSam package.
@@ -75,19 +74,6 @@ end module prc_gosam
 
 @
 @ %def module prc_gosam
-
-<<prc gosam: constants>>=
-  character(10), dimension(5), parameter ::  &
-             lib_suffix = [character(10) :: &
-             '.a', '.la', '.so', '.so.0', '.so.0.0.0']
-
-@ Different types of QCD splittings: 1 - $q \rightarrow qg$, 2 - $g \rightarrow gg$,
-3 - $g \rightarrow qq$.
-<<prc gosam: constants>>=
-  integer, parameter :: Q_TO_QG = 1
-  integer, parameter :: G_TO_GG = 2
-  integer, parameter :: G_TO_QQ = 3
-
 @
 <<prc gosam: types>>=
   type, extends (prc_blha_writer_t) :: gosam_writer_t
@@ -158,8 +144,8 @@ end module prc_gosam
   subroutine gosam_def_init (object, basename, model_name, &
      prt_in, prt_out, nlo_type, var_list)
     class(gosam_def_t), intent(inout) :: object
-    type(string_t), intent(in) :: model_name
     type(string_t), intent(in) :: basename
+    type(string_t), intent(in) :: model_name
     type(string_t), dimension(:), intent(in) :: prt_in, prt_out
     integer, intent(in) :: nlo_type
     type(var_list_t), intent(in) :: var_list
@@ -432,7 +418,7 @@ in the GoSam code are ready. This is done with a stamp mechanism.
   procedure :: set_alpha_s => gosam_driver_set_alpha_s
 <<prc gosam: procedures>>=
   subroutine gosam_driver_set_alpha_s (driver, alpha_s)
-     class(gosam_driver_t), intent(inout) :: driver
+     class(gosam_driver_t), intent(in) :: driver
      real(default), intent(in) :: alpha_s
      integer :: ierr
      call driver%blha_olp_set_parameter &
@@ -504,7 +490,6 @@ in the GoSam code are ready. This is done with a stamp mechanism.
     class(prc_gosam_t), intent(inout) :: object
     type(os_data_t), intent(in) :: os_data
     type(string_t), intent(in) :: libname
-    logical :: lib_found
     select type (writer => object%def%writer)
     type is (gosam_writer_t)
        call writer%write_config ()
@@ -514,6 +499,28 @@ in the GoSam code are ready. This is done with a stamp mechanism.
   end subroutine prc_gosam_prepare_library
 
 @ %def prc_gosam_prepare_library
+@
+<<prc gosam: prc gosam: TBP>>=
+  procedure :: create_and_load_extra_libraries => &
+       prc_gosam_create_and_load_extra_libraries
+<<prc gosam: procedures>>=
+  subroutine prc_gosam_create_and_load_extra_libraries ( &
+         core, os_data, libname, model, i_core)
+    class(prc_gosam_t), intent(inout) :: core
+    type(os_data_t), intent(in) :: os_data
+    type(string_t), intent(in) :: libname
+    type(model_data_t), intent(in), target :: model
+    integer, intent(in) :: i_core
+    core%sqme_tree_pos = 4
+    call core%prepare_library (os_data, libname)
+    call core%start ()
+    call core%read_contract_file (core%data%flv_state)
+    call core%set_particle_properties (model)
+    call core%set_electroweak_parameters (model)
+    call core%print_parameter_file (i_core)
+  end subroutine prc_gosam_create_and_load_extra_libraries
+
+@ %def prc_gosam_create_and_load_extra_libraries
 @
 <<prc gosam: prc gosam: TBP>>=
   procedure :: write_makefile => prc_gosam_write_makefile
@@ -577,7 +584,7 @@ in the GoSam code are ready. This is done with a stamp mechanism.
     type is (gosam_driver_t)
        call driver%load (os_data, dl_success)
        if (.not. dl_success) &
-          call msg_fatal ("Error: GoSam Libraries could not be loaded")
+          call msg_fatal ("GoSam Libraries could not be loaded")
     end select
   end subroutine prc_gosam_load_driver
 
@@ -589,6 +596,8 @@ in the GoSam code are ready. This is done with a stamp mechanism.
   subroutine prc_gosam_start (object)
     class(prc_gosam_t), intent(inout) :: object
     integer :: ierr
+    if (object%includes_polarization())  &
+         call msg_fatal ('GoSam does not support polarized beams!')
     select type (driver => object%driver)
     type is (gosam_driver_t)
        call driver%blha_olp_start (string_f2c (driver%contract_file), ierr)
@@ -608,6 +617,19 @@ in the GoSam code are ready. This is done with a stamp mechanism.
 
 @
 @ %def prc_gosam_write
+<<prc gosam: prc gosam: TBP>>=
+  procedure :: write_name => prc_gosam_write_name
+<<prc gosam: procedures>>=
+  subroutine prc_gosam_write_name (object, unit)
+    class(prc_gosam_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit)
+    write (u,"(1x,A)") "Core: GoSam"
+  end subroutine prc_gosam_write_name
+
+@ %def prc_gosam_write_name
+@
 <<prc gosam: prc gosam: TBP>>=
   procedure :: init_driver => prc_gosam_init_driver
 <<prc gosam: procedures>>=
@@ -643,80 +665,23 @@ in the GoSam code are ready. This is done with a stamp mechanism.
   end subroutine prc_gosam_set_initialized
 
 @ %def prc_gosam_set_initialized
-@
-<<prc gosam: prc gosam: TBP>>=
-  procedure :: compute_sqme_born => prc_gosam_compute_sqme_born
+@ The BLHA-interface conventions require the quantity $S_{ij} = \langle
+M_{i,+}|T_iT_j|M_{i,-}\rangle$ to be produced, where $i$ is the position
+of the splitting gluon. However, $\tilde{M} = \langle
+M_{i,-}|M_{i,+}\rangle$ is needed. This can be obtained using color
+conservation, $\sum_{j} T_j|M\rangle = 0$, so that
+\begin{equation*}
+  \sum_{j \neq i} S_{ij} = -\langle M_{i,+}|T_i^2|M_{i,-}\rangle = -C_A
+  \langle M_{i,+}|M_{i,-}\rangle = -C_A \tilde{M}^*
+\end{equation*}
+According to BLHA conventions, the real part of $S_{ij}$ is located at
+positions $2i + 2nj$ in the output array, where $n$ denotes the number
+of external particles and the enumeration of particles starts at zero.
+The subsequent position, i.e. $2i + 2nj + 1$ is designated to the
+imaginary part of $S_{ij}$. Note that, since the first array position
+is 1, the implemented position association deviates from the above one
+in the addition of 1.
 <<prc gosam: procedures>>=
-  subroutine prc_gosam_compute_sqme_born &
-         (object, i_born, p, mu, sqme, bad_point)
-    class(prc_gosam_t), intent(inout) :: object
-    integer, intent(in) :: i_born
-    type(vector4_t), dimension(:), intent(in) :: p
-    real(default), intent(in) :: mu
-    real(default), intent(out) :: sqme
-    logical, intent(out) :: bad_point
-    real(double), dimension(5*object%n_particles) :: mom
-    real(default) :: acc_born
-    real(double), dimension(OLP_RESULTS_LIMIT) :: r
-
-    real(double) :: mu_dble
-    real(double) :: acc_dble
-    real(default) :: alpha_s
-
-    mom = object%create_momentum_array (p)
-    mu_dble = dble(mu)
-    alpha_s = object%qcd%alpha%get (mu)
-
-    select type (driver => object%driver)
-    type is (gosam_driver_t)
-       call driver%set_alpha_s (alpha_s)
-       if (allocated (object%i_born)) then
-          call driver%blha_olp_eval2 (object%i_born(i_born), mom, mu_dble, r, acc_dble)
-          sqme = r(4)
-       else
-          sqme = 0._default
-          acc_dble = 0._default
-       end if
-    end select
-    acc_born = acc_dble
-    bad_point = acc_born > object%maximum_accuracy
-  end subroutine prc_gosam_compute_sqme_born
-
-@ %def prc_gosam_compute_sqme_born
-@
-<<prc gosam: prc gosam: TBP>>=
-  procedure :: compute_sqme_real => prc_gosam_compute_sqme_real
-<<prc gosam: procedures>>=
-  subroutine prc_gosam_compute_sqme_real &
-         (object, i_flv, p, ren_scale, sqme, bad_point)
-    class(prc_gosam_t), intent(inout) :: object
-    integer, intent(in) :: i_flv
-    type(vector4_t), intent(in), dimension(:) :: p
-    real(default), intent(in) :: ren_scale
-    real(default), intent(out) :: sqme
-    logical, intent(out) :: bad_point
-    real(double), dimension(5*object%n_particles) :: mom
-    real(double), dimension(OLP_RESULTS_LIMIT) :: r
-    real(double) :: mu_dble, acc_dble
-    real(default) :: acc, alpha_s
-    mom = object%create_momentum_array (p)
-    if (vanishes (ren_scale)) &
-       call msg_fatal ("prc_gosam_compute_sqme_real: ren_scale vanishes")
-    mu_dble = dble(ren_scale)
-    alpha_s = object%qcd%alpha%get (ren_scale)
-    select type (driver => object%driver)
-    type is (gosam_driver_t)
-       call driver%set_alpha_s (alpha_s)
-       call driver%blha_olp_eval2 (object%i_real(i_flv), mom, &
-                                    mu_dble, r, acc_dble)
-       sqme = r(4)
-    end select
-    acc = acc_dble
-    if (acc > object%maximum_accuracy) bad_point = .true.
-  end subroutine prc_gosam_compute_sqme_real
-
-@ %def prc_gosam_compute_sqme_real
-@
 <<prc gosam: prc gosam: TBP>>=
   procedure :: compute_sqme_sc => prc_gosam_compute_sqme_sc
 <<prc gosam: procedures>>=
@@ -750,18 +715,6 @@ in the GoSam code are ready. This is done with a stamp mechanism.
        call driver%blha_olp_eval2 (object%i_sc(i_flv), &
             mom, ren_scale_dble, r, acc_dble)
     end select
-
-@ The BLHA-interface conventions require the quantity $S_{ij} = \langle M_{i,+}|T_iT_j|M_{i,-}\rangle$ to be
-  produced, where $i$ is the position of the splitting gluon. However, $\tilde{M} = \langle M_{i,-}|M_{i,+}\rangle$
-  is needed. This can be obtained using color conservation, $\sum_{j} T_j|M\rangle = 0$, so that
-  \begin{equation*}
-    \sum_{j \neq i} S_{ij} = -\langle M_{i,+}|T_i^2|M_{i,-}\rangle = -C_A \langle M_{i,+}|M_{i,-}\rangle = -C_A \tilde{M}^*
-  \end{equation*}
-  According to BLHA conventions, the real part of $S_{ij}$ is located at positions $2i + 2nj$ in the output array, where
-  $n$ denotes the number of external particles and the enumeration of particles starts at zero.
-  The subsequent position, i.e. $2i + 2nj + 1$ is designated to the imaginary part of $S_{ij}$. Note that, since the first
-  array position is 1, the implemented position association deviates from the above one in the addition of 1.
-<<prc gosam: procedures>>=
     igm1 = em - 1
     n = size(p)
     do i = 0, n - 1

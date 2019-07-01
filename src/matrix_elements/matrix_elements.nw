@@ -1,7 +1,8 @@
 % -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*- 
 % WHIZARD code as NOWEB source: matrix elements and process libraries
-
 \chapter{Matrix Element Handling}
+\includemodulegraph{matrix_elements}
+
 In this chapter, we support internal and external matrix elements:
 initialization, automatic generation where necessary, and numerical
 evaluation.  We provide the interface for code generation and linking.
@@ -63,6 +64,12 @@ module process_constants
 <<Use kinds>>
 <<Use strings>>
 
+  use io_units, only: given_output_unit, free_unit
+  use format_utils, only: write_integer_array
+  use md5, only: md5sum
+
+  use pdg_arrays
+
 <<Standard module head>>
 
 <<Process constants: public>>
@@ -106,15 +113,26 @@ types, no type-bound procedures.
 @ %def process_constants_t
 @ 
 <<Process constants: prc const: TBP>>=
+  procedure :: get_n_tot => process_constants_get_n_tot
+<<Process constants: procedures>>=
+  elemental function process_constants_get_n_tot (prc_const) result (n_tot)
+    integer :: n_tot
+    class(process_constants_t), intent(in) :: prc_const
+    n_tot = prc_const%n_in + prc_const%n_out
+  end function process_constants_get_n_tot
+
+@ %def process_constants_get_n_tot
+@
+<<Process constants: prc const: TBP>>=
   procedure :: get_flv_state => process_constants_get_flv_state
 <<Process constants: procedures>>=
-  function process_constants_get_flv_state (prc_const) result (flv_state)
+  subroutine process_constants_get_flv_state (prc_const, flv_state)
     class(process_constants_t), intent(in) :: prc_const
-    integer, dimension(:,:), allocatable :: flv_state
+    integer, dimension(:,:), allocatable, intent(out) :: flv_state
     allocate (flv_state (size (prc_const%flv_state, 1), &
          size (prc_const%flv_state, 2)))
     flv_state = prc_const%flv_state
-  end function process_constants_get_flv_state
+  end subroutine process_constants_get_flv_state
 
 @ %def process_constants_get_flv_state
 @
@@ -123,7 +141,7 @@ types, no type-bound procedures.
 <<Process constants: procedures>>=
   subroutine process_constants_get_hel_state (prc_const, hel_state)
     class(process_constants_t), intent(in) :: prc_const
-    integer, dimension(:,:), allocatable :: hel_state
+    integer, dimension(:,:), allocatable, intent(out) :: hel_state
     allocate (hel_state (size (prc_const%hel_state, 1), &
          size (prc_const%hel_state, 2)))
     hel_state = prc_const%hel_state
@@ -136,7 +154,7 @@ types, no type-bound procedures.
 <<Process constants: procedures>>=
   subroutine process_constants_get_col_state (prc_const, col_state)
     class(process_constants_t), intent(in) :: prc_const
-    integer, dimension(:,:,:), allocatable :: col_state
+    integer, dimension(:,:,:), allocatable, intent(out) :: col_state
     allocate (col_state (size (prc_const%col_state, 1), &
          size (prc_const%col_state, 2), size (prc_const%col_state, 3)))
     col_state = prc_const%col_state
@@ -147,13 +165,13 @@ types, no type-bound procedures.
 <<Process constants: prc const: TBP>>=
   procedure :: get_ghost_flag => process_constants_get_ghost_flag
 <<Process constants: procedures>>=
-  function process_constants_get_ghost_flag (prc_const) result(ghost_flag)
-   class(process_constants_t), intent(in) :: prc_const
-   logical, dimension(:,:), allocatable :: ghost_flag
+  subroutine process_constants_get_ghost_flag (prc_const, ghost_flag)
+    class(process_constants_t), intent(in) :: prc_const
+    logical, dimension(:,:), allocatable, intent(out) :: ghost_flag
     allocate (ghost_flag (size (prc_const%ghost_flag, 1), &
          size (prc_const%ghost_flag, 2)))
-   ghost_flag = prc_const%ghost_flag
-  end function process_constants_get_ghost_flag
+    ghost_flag = prc_const%ghost_flag
+  end subroutine process_constants_get_ghost_flag
 
 @ %def process_constants_get_ghost_flag
 @
@@ -161,10 +179,10 @@ types, no type-bound procedures.
   procedure :: get_color_factors => process_constants_get_color_factors
 <<Process constants: procedures>>=
   subroutine process_constants_get_color_factors (prc_const, col_facts)
-   class(process_constants_t), intent(in) :: prc_const
-   complex(default), intent(inout), dimension(:), allocatable :: col_facts
-   allocate (col_facts (size (prc_const%color_factors)))
-   col_facts = prc_const%color_factors
+    class(process_constants_t), intent(in) :: prc_const
+    complex(default), dimension(:), allocatable, intent(out) :: col_facts
+    allocate (col_facts (size (prc_const%color_factors)))
+    col_facts = prc_const%color_factors
   end subroutine process_constants_get_color_factors
 
 @ %def process_constants_get_color_factors
@@ -174,9 +192,9 @@ types, no type-bound procedures.
 <<Process constants: procedures>>=
   subroutine process_constants_get_cf_index (prc_const, cf_index)
     class(process_constants_t), intent(in) :: prc_const
-    integer, intent(inout), dimension(:,:), allocatable :: cf_index
+    integer, intent(out), dimension(:,:), allocatable :: cf_index
     allocate (cf_index (size (prc_const%cf_index, 1), &
-         size (prc_const%cf_index, 2)))    
+         size (prc_const%cf_index, 2)))
     cf_index = prc_const%cf_index
   end subroutine process_constants_get_cf_index
 
@@ -203,7 +221,7 @@ types, no type-bound procedures.
     integer, intent(in), dimension(:,:,:), allocatable :: col_state
     allocate (prc_const%col_state (size (col_state, 1), &
          size (col_state, 2), size (col_state, 3)))
-    prc_const%col_state = col_state    
+    prc_const%col_state = col_state
   end subroutine process_constants_set_col_state
 
 @ %def process_constants_set_col_state
@@ -238,12 +256,125 @@ types, no type-bound procedures.
 <<Process constants: procedures>>=
   subroutine process_constants_set_ghost_flag (prc_const, ghost_flag)
     class(process_constants_t), intent(inout) :: prc_const
-    logical, intent(in), dimension(:,:), allocatable :: ghost_flag
+    logical, dimension(:,:), allocatable, intent(in) :: ghost_flag
     allocate (prc_const%ghost_flag (size (ghost_flag, 1), &
          size (ghost_flag, 2)))
     prc_const%ghost_flag = ghost_flag
   end subroutine process_constants_set_ghost_flag
 @ %def process_constants_set_ghost_flag
+@
+<<Process constants: prc const: TBP>>=
+  procedure :: get_pdg_in => process_constants_get_pdg_in
+<<Process constants: procedures>>=
+  function process_constants_get_pdg_in (prc_const) result (pdg_in)
+    type(pdg_array_t), dimension(:), allocatable :: pdg_in
+    class(process_constants_t), intent(in) :: prc_const
+    type(pdg_array_t) :: pdg_tmp
+    integer :: i
+    allocate (pdg_in (prc_const%n_in))
+    do i = 1, prc_const%n_in
+       pdg_tmp = prc_const%flv_state(i,:)
+       pdg_in(i) = sort_abs (pdg_tmp, unique = .true.)
+    end do
+  end function process_constants_get_pdg_in
+
+@ %def process_constants_get_pdg_in
+@
+<<Process constants: prc const: TBP>>=
+  procedure :: compute_md5sum => process_constants_compute_md5sum
+<<Process constants: procedures>>=
+  subroutine process_constants_compute_md5sum (prc_const, include_id)
+    class(process_constants_t), intent(inout) :: prc_const
+    logical, intent(in) :: include_id
+    integer :: unit
+    unit = prc_const%fill_unit_for_md5sum (include_id)
+    rewind (unit)
+    prc_const%md5sum = md5sum (unit)
+    close (unit)
+  end subroutine process_constants_compute_md5sum
+
+@ %process_constants_compute_md5sum
+@
+<<Process constants: prc const: TBP>>=
+  procedure :: fill_unit_for_md5sum => process_constants_fill_unit_for_md5sum
+<<Process constants: procedures>>=
+  function process_constants_fill_unit_for_md5sum (prc_const, include_id) result (unit)
+    integer :: unit
+    class(process_constants_t), intent(in) :: prc_const
+    logical, intent(in) :: include_id
+    integer :: i, j, k
+    unit = free_unit ()
+    open (unit, status="scratch", action="readwrite")
+    if (include_id) write (unit, '(A)') char (prc_const%id)
+    write (unit, '(A)') char (prc_const%model_name) 
+    write (unit, '(L1)') prc_const%openmp_supported
+    write (unit, '(I0)') prc_const%n_in
+    write (unit, '(I0)') prc_const%n_out
+    write (unit, '(I0)') prc_const%n_flv
+    write (unit, '(I0)') prc_const%n_hel
+    write (unit, '(I0)') prc_const%n_col
+    write (unit, '(I0)') prc_const%n_cin
+    write (unit, '(I0)') prc_const%n_cf
+    do i = 1, size (prc_const%flv_state, dim=1)
+       do j = 1, size (prc_const%flv_state, dim=2)
+          write (unit, '(I0)') prc_const%flv_state (i, j)
+       end do
+    end do
+    do i = 1, size (prc_const%hel_state, dim=1)
+       do j = 1, size (prc_const%hel_state, dim=2)
+          write (unit, '(I0)') prc_const%hel_state (i, j)
+       end do
+    end do
+    do i = 1, size (prc_const%col_state, dim=1)
+       do j = 1, size (prc_const%col_state, dim=2)
+          do k = 1, size (prc_const%col_state, dim=3)
+             write (unit, '(I0)') prc_const%col_state (i, j, k)
+          end do
+      end do
+    end do
+    do i = 1, size (prc_const%ghost_flag, dim=1)
+       do j = 1, size (prc_const%ghost_flag, dim=2)
+          write (unit, '(L1)') prc_const%ghost_flag (i, j)
+       end do
+    end do
+    do i = 1, size (prc_const%color_factors)
+       write (unit, '(F0.0,F0.0)') real (prc_const%color_factors(i)), &
+          aimag (prc_const%color_factors(i))
+    end do
+    do i = 1, size (prc_const%cf_index, dim=1)
+       do j = 1, size (prc_const%cf_index, dim=2)
+          write (unit, '(I0)') prc_const%cf_index(i, j)
+       end do
+    end do
+  end function process_constants_fill_unit_for_md5sum
+
+@ %def process_constants_fill_unit_for_md5sum
+@ 
+<<Process constants: prc const: TBP>>=
+  procedure :: write => process_constants_write
+<<Process constants: procedures>>=
+  subroutine process_constants_write (prc_const, unit)
+    class(process_constants_t), intent(in) :: prc_const
+    integer, intent(in), optional :: unit
+    integer :: u, i
+    u = given_output_unit (unit)
+    write (u, "(1x,A,A)") "Process data of id: ", char (prc_const%id)
+    write (u, "(1x,A,A)") "Associated model: ", char (prc_const%model_name)
+    write (u, "(1x,A,I0)") "n_in: ", prc_const%n_in
+    write (u, "(1x,A,I0)") "n_out: ", prc_const%n_out
+    write (u, "(1x,A,I0)") "n_flv: ", prc_const%n_flv
+    write (u, "(1x,A,I0)") "n_hel: ", prc_const%n_hel
+    write (u, "(1x,A,I0)") "n_col: ", prc_const%n_col
+    write (u, "(1x,A,I0)") "n_cin: ", prc_const%n_cin
+    write (u, "(1x,A,I0)") "n_cf: ", prc_const%n_cf
+    write (u, "(1x,A)") "Flavors: "
+    do i = 1, prc_const%n_flv
+       write (u, "(1x,A,I0)") "i_flv: ", i
+       call write_integer_array (prc_const%flv_state (:,i))
+    end do
+  end subroutine process_constants_write
+
+@ %def process_constants_write
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 \section{Process library interface}
@@ -4477,6 +4608,8 @@ implementation to later modules.
 There should be no components that need explicit finalization,
 otherwise we would have to call a finalizer from the
 [[process_component_def_t]] wrapper.
+
+@ Translate a [[prc_core_def_t]] to above named integers
 <<Prc core def: public>>=
   public :: prc_core_def_t
 <<Prc core def: types>>=
@@ -4870,7 +5003,7 @@ We assume that no finalizer is needed.
      character(32) :: md5sum = ""
      integer :: nlo_type = BORN
      integer, dimension(N_ASSOCIATED_COMPONENTS) :: associated_components = 0
-     logical :: active_component
+     logical :: active
      integer :: fixed_emitter = -1
      integer :: alpha_power = 0
      integer :: alphas_power = 0
@@ -5054,6 +5187,17 @@ types.
   end subroutine process_component_def_compute_md5sum
 
 @ %def process_component_def_compute_md5sum
+@
+<<Process libraries: process component def: TBP>>=
+  procedure :: get_def_type_string => process_component_def_get_def_type_string
+<<Process libraries: procedures>>=
+  function process_component_def_get_def_type_string (component) result (type_string)
+    type(string_t) :: type_string
+    class(process_component_def_t), intent(in) :: component
+    type_string = component%core_def%type_string ()
+  end function process_component_def_get_def_type_string
+
+@ %def process_component_def_get_def_type_string
 @ Allocate the process driver (with a suitable type) for a process
 component.  For internal processes, we may set all data already at
 this stage.
@@ -5117,7 +5261,7 @@ processes).  For internal processes, this is meaningless.
     class(prc_core_driver_t), intent(inout) :: proc_driver
     select type (proc_driver)
     class is (process_driver_internal_t)
-       ! nothing to do
+       !!! Nothing to do
     class default
        call component%core_def%connect (lib_driver, i, proc_driver)
     end select
@@ -5209,7 +5353,7 @@ abstract type.
 <<Process libraries: process component def: TBP>>=
   procedure :: get_md5sum => process_component_def_get_md5sum
 <<Process libraries: procedures>>=
-  function process_component_def_get_md5sum (component) result (md5sum)
+  pure function process_component_def_get_md5sum (component) result (md5sum)
     class(process_component_def_t), intent(in) :: component
     character(32) :: md5sum
     md5sum = component%md5sum
@@ -5223,40 +5367,56 @@ abstract type.
                => process_component_def_get_associated_born
   procedure :: get_associated_real_fin &
                => process_component_def_get_associated_real_fin
+  procedure :: get_associated_real_sing &
+               => process_component_def_get_associated_real_sing
+  procedure :: get_associated_subtraction &
+               => process_component_def_get_associated_subtraction
   procedure :: get_association_list &
                => process_component_def_get_association_list
-  procedure :: is_active_component &
-               => process_component_def_is_active_component
+  procedure :: can_be_integrated &
+               => process_component_def_can_be_integrated
   procedure :: get_associated_real => process_component_def_get_associated_real
 <<Process libraries: procedures>>=
   elemental function process_component_def_get_nlo_type (component) result (nlo_type)
-    class(process_component_def_t), intent(in) :: component
     integer :: nlo_type
+    class(process_component_def_t), intent(in) :: component
     nlo_type = component%nlo_type
   end function process_component_def_get_nlo_type
 
-  function process_component_def_get_associated_born (component) result (i_born)
-    class(process_component_def_t), intent(in) :: component
+  elemental function process_component_def_get_associated_born (component) result (i_born)
     integer :: i_born
+    class(process_component_def_t), intent(in) :: component
     i_born = component%associated_components(ASSOCIATED_BORN)
   end function process_component_def_get_associated_born
 
-  function process_component_def_get_associated_real_fin (component) result (i_rfin)
-    class(process_component_def_t), intent(in) :: component
+  elemental function process_component_def_get_associated_real_fin (component) result (i_rfin)
     integer :: i_rfin
+    class(process_component_def_t), intent(in) :: component
     i_rfin = component%associated_components(ASSOCIATED_REAL_FIN)
   end function process_component_def_get_associated_real_fin
 
-  elemental function process_component_def_is_active_component (component) result (active)
+  elemental function process_component_def_get_associated_real_sing (component) result (i_rsing)
+    integer :: i_rsing
     class(process_component_def_t), intent(in) :: component
+    i_rsing = component%associated_components(ASSOCIATED_REAL_SING)
+  end function process_component_def_get_associated_real_sing
+  
+  elemental function process_component_def_get_associated_subtraction (component) result (i_sub)
+    integer :: i_sub
+    class(process_component_def_t), intent(in) :: component
+    i_sub = component%associated_components(ASSOCIATED_SUB)
+  end function process_component_def_get_associated_subtraction
+
+  elemental function process_component_def_can_be_integrated (component) result (active)
     logical :: active
-    active = component%active_component
-  end function process_component_def_is_active_component
+    class(process_component_def_t), intent(in) :: component
+    active = component%active
+  end function process_component_def_can_be_integrated
 
   function process_component_def_get_association_list (component, i_skip_in) result (list)
+    integer, dimension(:), allocatable :: list
     class(process_component_def_t), intent(in) :: component
     integer, intent(in), optional :: i_skip_in
-    integer, dimension(:), allocatable :: list
     integer :: i, j, n, i_skip
     logical :: valid
     i_skip = 0; if (present (i_skip_in)) i_skip = i_skip_in
@@ -5275,16 +5435,28 @@ abstract type.
   end function process_component_def_get_association_list
 
   function process_component_def_get_associated_real (component) result (i_real)
-    class(process_component_def_t), intent(in) :: component
     integer :: i_real
+    class(process_component_def_t), intent(in) :: component
     i_real = component%associated_components(ASSOCIATED_REAL)
   end function process_component_def_get_associated_real
 
 @ %def process_component_def_get_nlo_type, process_component_def_get_associated_born
-@ %def process_component_def_is_active_component
+@ %def process_component_def_can_be_integrated
 @ %def process_component_def_get_association_list
 @ %def process_component_def_get_associated_real
 @ %def process_component_def_get_associated_real_fin
+@ %def process_component_def_get_associated_subtraction
+@
+<<Process libraries: process component def: TBP>>=
+  procedure :: get_me_method => process_component_def_get_me_method
+<<Process libraries: procedures>>=
+  elemental function process_component_def_get_me_method (component) result (method)
+    type(string_t) :: method
+    class(process_component_def_t), intent(in) :: component
+    method = component%method
+  end function process_component_def_get_me_method
+
+@ %def process_component_def_get_me_method
 @
 <<Process libraries: process component def: TBP>>=
   procedure :: get_fixed_emitter => process_component_def_get_fixed_emitter
@@ -5300,7 +5472,7 @@ abstract type.
 <<Process libraries: process component def: TBP>>=
   procedure :: get_coupling_powers => process_component_def_get_coupling_powers
 <<Process libraries: procedures>>=
-  subroutine process_component_def_get_coupling_powers (component, alpha_power, alphas_power)
+  pure subroutine process_component_def_get_coupling_powers (component, alpha_power, alphas_power)
     class(process_component_def_t), intent(in) :: component
     integer, intent(out) :: alpha_power, alphas_power
     alpha_power = component%alpha_power
@@ -5562,7 +5734,7 @@ allocation is moved, so the original allocated object is returned empty.
 <<Process libraries: procedures>>=
   subroutine process_def_import_component (def, &
        i, n_out, prt_in, prt_out, method, variant, &
-       nlo_type, active)
+       nlo_type, can_be_integrated)
     class(process_def_t), intent(inout) :: def
     integer, intent(in) :: i
     integer, intent(in), optional :: n_out
@@ -5570,7 +5742,7 @@ allocation is moved, so the original allocated object is returned empty.
     type(prt_spec_t), dimension(:), intent(in), optional :: prt_out
     type(string_t), intent(in), optional :: method
     integer, intent(in), optional :: nlo_type
-    logical, intent(in), optional :: active
+    logical, intent(in), optional :: can_be_integrated
     type(string_t) :: nlo_type_string
     class(prc_core_def_t), &
          intent(inout), allocatable, optional :: variant
@@ -5596,10 +5768,10 @@ allocation is moved, so the original allocated object is returned empty.
       if (present (nlo_type)) then
         comp%nlo_type = nlo_type
       end if
-      if (present (active)) then
-         comp%active_component = active
+      if (present (can_be_integrated)) then
+         comp%active = can_be_integrated
       else
-         comp%active_component = .true.
+         comp%active = .true.
       end if
       if (allocated (comp%prt_in) .and. allocated (comp%prt_out)) then
          associate (d => comp%description)
@@ -5614,7 +5786,8 @@ allocation is moved, so the original allocated object is returned empty.
               d = d // comp%prt_out(p)%to_string ()
            end do
            if (comp%method /= "") then
-              if ((def%nlo_process .and. .not. comp%active_component) .or. &
+              !  TODO: (bcn 2016-09-16) better output for subtraction
+              if ((def%nlo_process .and. .not. comp%active) .or. &
                    comp%nlo_type == NLO_SUBTRACTION) then
                  d = d // " [inactive]"
               else
@@ -6294,8 +6467,9 @@ always referring to the lowest status among the process entries.
   integer, parameter, public :: ASSOCIATED_VIRT = 3
   integer, parameter, public :: ASSOCIATED_SUB = 4
   integer, parameter, public :: ASSOCIATED_PDF = 5
-  integer, parameter, public :: ASSOCIATED_REAL_FIN = 6
-  integer, parameter, public :: N_ASSOCIATED_COMPONENTS = 6
+  integer, parameter, public :: ASSOCIATED_REAL_SING = 6
+  integer, parameter, public :: ASSOCIATED_REAL_FIN = 7
+  integer, parameter, public :: N_ASSOCIATED_COMPONENTS = 7
 
 @ %def STAT_UNKNOWN STAT_OPEN STAT_CONFIGURED 
 @ %def STAT_SOURCE STAT_COMPILED STAT_LINKED STAT_ACTIVE
@@ -7211,6 +7385,27 @@ the process code has been loaded, if external.
   end subroutine process_library_entry_fill_constants
   
 @ %def process_library_entry_fill_constants
+@ Retrieve the constants for a process
+<<Process libraries: process library: TBP>>=
+  procedure :: fill_constants => process_library_fill_constants
+<<Process libraries: procedures>>=
+  subroutine process_library_fill_constants (lib, id, i_component, data)
+    class(process_library_t), intent(in) :: lib
+    type(string_t), intent(in) :: id
+    integer, intent(in) :: i_component
+    type(process_constants_t), intent(out) :: data
+    integer :: i
+    do i = 1, size (lib%entry)
+       associate (entry => lib%entry(i))
+          if (entry%def%id == id .and. entry%i_component == i_component) then
+             call entry%fill_constants (lib%driver, data)
+             return
+          end if 
+       end associate
+    end do
+  end subroutine process_library_fill_constants
+
+@ %def process_library_fill_constants
 @ Retrieve the constants and a connected driver for a process,
 identified by a process ID and a subprocess index.  We
 scan the process entries until we have found a match.
@@ -7229,7 +7424,7 @@ scan the process entries until we have found a match.
        associate (entry => lib%entry(i))
          if (entry%def%id == id .and. entry%i_component == i_component) then
             call entry%fill_constants (lib%driver, data)
-            allocate (proc_driver, source=entry%driver)
+            allocate (proc_driver, source = entry%driver)
             return
          end if
        end associate

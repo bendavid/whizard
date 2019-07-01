@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -34,7 +34,7 @@
 ! to the source 'whizard.nw'
 
 module process_stacks
-  
+
   use iso_varying_string, string_t => varying_string
   use io_units
   use format_utils, only: write_separator
@@ -46,7 +46,7 @@ module process_stacks
   use variables
   use observables
   use process_libraries
-  use processes
+  use process
 
   implicit none
   private
@@ -78,10 +78,10 @@ module process_stacks
      procedure :: exists => process_stack_exists
      procedure :: get_process_ptr => process_stack_get_process_ptr
   end type process_stack_t
-  
+
 
 contains
-  
+
   subroutine process_stack_clear (stack)
     class(process_stack_t), intent(inout) :: stack
     type(process_entry_t), pointer :: process
@@ -96,7 +96,7 @@ contains
     end do
     stack%n = 0
   end subroutine process_stack_clear
-  
+
   subroutine process_stack_final (object)
     class(process_stack_t), intent(inout) :: object
     call object%clear ()
@@ -104,7 +104,7 @@ contains
        deallocate (object%var_list)
     end if
   end subroutine process_stack_final
-  
+
   recursive subroutine process_stack_write (object, unit, pacify)
     class(process_stack_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -169,13 +169,13 @@ contains
     allocate (stack%var_list)
     if (present (var_list))  call var_list%link (stack%var_list)
   end subroutine process_stack_init_var_list
-  
+
   subroutine process_stack_link_var_list (stack, var_list)
     class(process_stack_t), intent(inout) :: stack
     type(var_list_t), intent(in), target :: var_list
     call stack%var_list%link (var_list)
   end subroutine process_stack_link_var_list
-  
+
   subroutine process_stack_push (stack, process)
     class(process_stack_t), intent(inout) :: stack
     type(process_entry_t), intent(inout), pointer :: process
@@ -184,14 +184,14 @@ contains
     process => null ()
     stack%n = stack%n + 1
   end subroutine process_stack_push
-  
+
   subroutine process_stack_init_result_vars (stack, id)
     class(process_stack_t), intent(inout) :: stack
     type(string_t), intent(in) :: id
     call var_list_init_num_id (stack%var_list, id)
     call var_list_init_process_results (stack%var_list, id)
   end subroutine process_stack_init_result_vars
-  
+
   subroutine process_stack_fill_result_vars (stack, id)
     class(process_stack_t), intent(inout) :: stack
     type(string_t), intent(in) :: id

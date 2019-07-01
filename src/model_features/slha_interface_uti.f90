@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -49,10 +49,11 @@ module slha_interface_uti
   private
 
   public :: slha_1
+  public :: slha_2
 
 contains
 
-  subroutine slha_1 (u) 
+  subroutine slha_1 (u)
     integer, intent(in) :: u
     type(os_data_t), pointer :: os_data => null ()
     type(parse_tree_t), pointer :: parse_tree => null ()
@@ -61,14 +62,14 @@ contains
     character(*), parameter :: file_slha = "slha_test.dat"
     type(model_list_t) :: model_list
     type(model_t), pointer :: model => null ()
-    
+
     write (u, "(A)")  "* Test output: SLHA Interface"
     write (u, "(A)")  "*   Purpose: test SLHA file reading and writing"
-    write (u, "(A)")            
+    write (u, "(A)")
 
     write (u, "(A)")  "* Initializing"
-    write (u, "(A)")    
-    
+    write (u, "(A)")
+
     allocate (os_data)
     allocate (parse_tree)
     call os_data_init (os_data)
@@ -78,32 +79,32 @@ contains
     call syntax_slha_init ()
 
     write (u, "(A)")  "* Reading SLHA file sps1ap_decays.slha"
-    write (u, "(A)")    
-    
+    write (u, "(A)")
+
     call slha_parse_file (var_str ("sps1ap_decays.slha"), os_data, parse_tree)
 
     write (u, "(A)")  "* Writing the parse tree:"
-    write (u, "(A)")    
+    write (u, "(A)")
 
     call parse_tree_write (parse_tree, u)
-    
+
     write (u, "(A)")  "* Interpreting the parse tree"
-    write (u, "(A)")    
-    
+    write (u, "(A)")
+
     call slha_interpret_parse_tree (parse_tree, model, &
-         input=.true., spectrum=.true., decays=.true.)    
+         input=.true., spectrum=.true., decays=.true.)
     call parse_tree_final (parse_tree)
 
     write (u, "(A)")  "* Writing out the list of variables (reals only):"
-    write (u, "(A)")    
-    
+    write (u, "(A)")
+
     call var_list_write (model%get_var_list_ptr (), &
          only_type = V_REAL, unit = u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Writing SLHA output to '" // file_slha // "'"
-    write (u, "(A)")    
-        
+    write (u, "(A)")
+
     call slha_write_file (var_str (file_slha), model, input=.true., &
          spectrum=.false., decays=.false.)
     u_file = free_unit ()
@@ -121,15 +122,63 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
     write (u, "(A)")
-    
+
     call parse_tree_final (parse_tree)
     deallocate (parse_tree)
     deallocate (os_data)
 
     write (u, "(A)")  "* Test output end: slha_1"
     write (u, "(A)")
-    
+
   end subroutine slha_1
+
+  subroutine slha_2 (u)
+    integer, intent(in) :: u
+    type(var_list_t) :: var_list
+    logical :: input, spectrum, decays
+
+    write (u, "(A)")  "* Test output: slha_2"
+    write (u, "(A)")  "*   Purpose: SLHA interface settings"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Default settings"
+    write (u, "(A)")
+
+    call var_list%init_defaults (0)
+    call dispatch_slha (var_list, &
+         input = input, spectrum = spectrum, decays = decays)
+
+    write (u, "(A,1x,L1)")  " slha_read_input     =", input
+    write (u, "(A,1x,L1)")  " slha_read_spectrum  =", spectrum
+    write (u, "(A,1x,L1)")  " slha_read_decays    =", decays
+
+    call var_list%final ()
+    call var_list%init_defaults (0)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Set all entries to [false]"
+    write (u, "(A)")
+
+    call var_list%set_log (var_str ("?slha_read_input"), &
+         .false., is_known = .true.)
+    call var_list%set_log (var_str ("?slha_read_spectrum"), &
+         .false., is_known = .true.)
+    call var_list%set_log (var_str ("?slha_read_decays"), &
+         .false., is_known = .true.)
+
+    call dispatch_slha (var_list, &
+         input = input, spectrum = spectrum, decays = decays)
+
+    write (u, "(A,1x,L1)")  " slha_read_input     =", input
+    write (u, "(A,1x,L1)")  " slha_read_spectrum  =", spectrum
+    write (u, "(A,1x,L1)")  " slha_read_decays    =", decays
+
+    call var_list%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: slha_2"
+
+  end subroutine slha_2
 
 
 end module slha_interface_uti

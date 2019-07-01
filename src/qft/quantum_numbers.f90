@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -50,6 +50,7 @@ module quantum_numbers
   public :: quantum_numbers_get_color
   public :: quantum_numbers_get_helicity
   public :: quantum_numbers_get_color_type
+  public :: assignment(=)
   public :: quantum_numbers_are_compatible
   public :: quantum_numbers_are_physical
   public :: quantum_numbers_canonicalize_color
@@ -69,6 +70,7 @@ module quantum_numbers
      type(flavor_t) :: f
      type(color_t) :: c
      type(helicity_t) :: h
+     integer :: sub = 0
    contains
      generic :: init => &
         quantum_numbers_init_f, &
@@ -77,7 +79,11 @@ module quantum_numbers
         quantum_numbers_init_fc, &
         quantum_numbers_init_fh, &
         quantum_numbers_init_ch, &
-        quantum_numbers_init_fch
+        quantum_numbers_init_fch, &
+        quantum_numbers_init_fs, &
+        quantum_numbers_init_fhs, &
+        quantum_numbers_init_fcs, &
+        quantum_numbers_init_fhcs
      procedure, private :: quantum_numbers_init_f
      procedure, private :: quantum_numbers_init_c
      procedure, private :: quantum_numbers_init_h
@@ -85,15 +91,22 @@ module quantum_numbers
      procedure, private :: quantum_numbers_init_fh
      procedure, private :: quantum_numbers_init_ch
      procedure, private :: quantum_numbers_init_fch
+     procedure, private :: quantum_numbers_init_fs
+     procedure, private :: quantum_numbers_init_fhs
+     procedure, private :: quantum_numbers_init_fcs
+     procedure, private :: quantum_numbers_init_fhcs
      procedure :: write => quantum_numbers_write_single
      procedure :: write_raw => quantum_numbers_write_raw
      procedure :: read_raw => quantum_numbers_read_raw
      procedure :: get_flavor => quantum_numbers_get_flavor
      procedure :: get_color => quantum_numbers_get_color
      procedure :: get_helicity => quantum_numbers_get_helicity
+     procedure :: get_sub => quantum_numbers_get_sub
      procedure :: set_color_ghost => quantum_numbers_set_color_ghost
      procedure :: set_model => quantum_numbers_set_model
      procedure :: tag_radiated => quantum_numbers_tag_radiated
+     procedure :: set_subtraction_index => quantum_numbers_set_subtraction_index
+     procedure :: get_subtraction_index => quantum_numbers_get_subtraction_index
      procedure :: get_color_type => quantum_numbers_get_color_type
      procedure :: are_valid => quantum_numbers_are_valid
      procedure :: are_associated => quantum_numbers_are_associated
@@ -125,12 +138,14 @@ module quantum_numbers
      logical :: cg = .false.
      logical :: h = .false.
      logical :: hd = .false.
+     integer :: sub = 0
    contains
      procedure :: init => quantum_numbers_mask_init
      procedure :: write => quantum_numbers_mask_write_single
      procedure :: set_flavor => quantum_numbers_mask_set_flavor
      procedure :: set_color => quantum_numbers_mask_set_color
      procedure :: set_helicity => quantum_numbers_mask_set_helicity
+     procedure :: set_sub => quantum_numbers_mask_set_sub
      procedure :: assign => quantum_numbers_mask_assign
      generic :: operator(.or.) => quantum_numbers_mask_or
      procedure, private :: quantum_numbers_mask_or
@@ -146,6 +161,10 @@ module quantum_numbers
      module procedure quantum_numbers_write_single
      module procedure quantum_numbers_write_array
   end interface
+  interface assignment(=)
+     module procedure quantum_numbers_assign
+  end interface 
+
   interface make_color_map
      module procedure quantum_numbers_make_color_map
   end interface make_color_map
@@ -183,65 +202,104 @@ module quantum_numbers
 contains
 
   impure elemental subroutine quantum_numbers_init_f (qn, flv)
-    class(quantum_numbers_t), intent(inout) :: qn
+    class(quantum_numbers_t), intent(out) :: qn
     type(flavor_t), intent(in) :: flv
     qn%f = flv
     call qn%c%undefine ()
     call qn%h%undefine ()
+    qn%sub = 0
   end subroutine quantum_numbers_init_f
 
-  elemental subroutine quantum_numbers_init_c (qn, col)
-    class(quantum_numbers_t), intent(inout) :: qn
+  impure elemental subroutine quantum_numbers_init_c (qn, col)
+    class(quantum_numbers_t), intent(out) :: qn
     type(color_t), intent(in) :: col
     call qn%f%undefine ()
     qn%c = col
     call qn%h%undefine ()
+    qn%sub = 0
   end subroutine quantum_numbers_init_c
 
-  elemental subroutine quantum_numbers_init_h (qn, hel)
-    class(quantum_numbers_t), intent(inout) :: qn
+  impure elemental subroutine quantum_numbers_init_h (qn, hel)
+    class(quantum_numbers_t), intent(out) :: qn
     type(helicity_t), intent(in) :: hel
     call qn%f%undefine ()
     call qn%c%undefine ()
     qn%h = hel
+    qn%sub = 0
   end subroutine quantum_numbers_init_h
 
   impure elemental subroutine quantum_numbers_init_fc (qn, flv, col)
-    class(quantum_numbers_t), intent(inout) :: qn
+    class(quantum_numbers_t), intent(out) :: qn
     type(flavor_t), intent(in) :: flv
     type(color_t), intent(in) :: col
     qn%f = flv
     qn%c = col
     call qn%h%undefine ()
+    qn%sub = 0
   end subroutine quantum_numbers_init_fc
 
   impure elemental subroutine quantum_numbers_init_fh (qn, flv, hel)
-    class(quantum_numbers_t), intent(inout) :: qn
+    class(quantum_numbers_t), intent(out) :: qn
     type(flavor_t), intent(in) :: flv
     type(helicity_t), intent(in) :: hel
     qn%f = flv
     call qn%c%undefine ()
     qn%h = hel
+    qn%sub = 0
   end subroutine quantum_numbers_init_fh
 
-  elemental subroutine quantum_numbers_init_ch (qn, col, hel)
-    class(quantum_numbers_t), intent(inout) :: qn
+  impure elemental subroutine quantum_numbers_init_ch (qn, col, hel)
+    class(quantum_numbers_t), intent(out) :: qn
     type(color_t), intent(in) :: col
     type(helicity_t), intent(in) :: hel
     call qn%f%undefine ()
     qn%c = col
     qn%h = hel
+    qn%sub = 0
   end subroutine quantum_numbers_init_ch
 
   impure elemental subroutine quantum_numbers_init_fch (qn, flv, col, hel)
-    class(quantum_numbers_t), intent(inout) :: qn
+    class(quantum_numbers_t), intent(out) :: qn
     type(flavor_t), intent(in) :: flv
     type(color_t), intent(in) :: col
     type(helicity_t), intent(in) :: hel
     qn%f = flv
     qn%c = col
     qn%h = hel
+    qn%sub = 0
   end subroutine quantum_numbers_init_fch
+
+  impure elemental subroutine quantum_numbers_init_fs (qn, flv, sub)
+    class(quantum_numbers_t), intent(out) :: qn
+    type(flavor_t), intent(in) :: flv
+    integer, intent(in) :: sub
+    qn%f = flv; qn%sub = sub
+  end subroutine quantum_numbers_init_fs
+
+  impure elemental subroutine quantum_numbers_init_fhs (qn, flv, hel, sub)
+    class(quantum_numbers_t), intent(out) :: qn
+    type(flavor_t), intent(in) :: flv
+    type(helicity_t), intent(in) :: hel
+    integer, intent(in) :: sub
+    qn%f = flv; qn%h = hel; qn%sub = sub
+  end subroutine quantum_numbers_init_fhs
+
+  impure elemental subroutine quantum_numbers_init_fcs (qn, flv, col, sub)
+    class(quantum_numbers_t), intent(out) :: qn
+    type(flavor_t), intent(in) :: flv
+    type(color_t), intent(in) :: col
+    integer, intent(in) :: sub
+    qn%f = flv; qn%c = col; qn%sub = sub
+  end subroutine quantum_numbers_init_fcs
+
+  impure elemental subroutine quantum_numbers_init_fhcs (qn, flv, hel, col, sub)
+    class(quantum_numbers_t), intent(out) :: qn
+    type(flavor_t), intent(in) :: flv
+    type(helicity_t), intent(in) :: hel
+    type(color_t), intent(in) :: col
+    integer, intent(in) :: sub
+    qn%f = flv; qn%h = hel; qn%c = col; qn%sub = sub
+  end subroutine quantum_numbers_init_fhcs
 
   subroutine quantum_numbers_write_single (qn, unit, col_verbose)
     class(quantum_numbers_t), intent(in) :: qn
@@ -251,26 +309,28 @@ contains
     logical :: col_verb
     u = given_output_unit (unit);  if (u < 0)  return
     col_verb = .false.;  if (present (col_verbose)) col_verb = col_verbose
-    write (u, "(A)", advance="no")  "["
+    write (u, "(A)", advance = "no")  "["
     if (qn%f%is_defined ()) then
        call qn%f%write (u)
        if (qn%c%is_nonzero () .or. qn%h%is_defined ()) &
-            write (u, "(1x)", advance="no")
+            write (u, "(1x)", advance = "no")
     end if
     if (col_verb) then
        if (qn%c%is_defined () .or. qn%c%is_ghost ()) then
           call color_write (qn%c, u)
-          if (qn%h%is_defined ())  write (u, "(1x)", advance="no")
+          if (qn%h%is_defined ())  write (u, "(1x)", advance = "no")
        end if
     else
        if (qn%c%is_nonzero () .or. qn%c%is_ghost ()) then
           call color_write (qn%c, u)
-          if (qn%h%is_defined ())  write (u, "(1x)", advance="no")
+          if (qn%h%is_defined ())  write (u, "(1x)", advance = "no")
        end if
     end if
     if (qn%h%is_defined ()) then
        call qn%h%write (u)
     end if
+    if (qn%sub > 0) &
+       write (u, "(A,I1)", advance = "no") " SUB = ", qn%sub
     write (u, "(A)", advance="no")  "]"
   end subroutine quantum_numbers_write_single
 
@@ -305,8 +365,10 @@ contains
        if (qn(i)%h%is_defined ()) then
           call qn(i)%h%write (u)
        end if
+       if (qn(i)%sub > 0) &
+          write (u, "(A,I1)", advance = "no") " SUB = ", qn(i)%sub
     end do
-    write (u, "(A)", advance="no")  "]"
+    write (u, "(A)", advance = "no")  "]"
   end subroutine quantum_numbers_write_array
 
   subroutine quantum_numbers_write_raw (qn, u)
@@ -344,6 +406,12 @@ contains
     hel = qn%h
   end function quantum_numbers_get_helicity
 
+  elemental function quantum_numbers_get_sub (qn) result (sub)
+    integer :: sub
+    class(quantum_numbers_t), intent(in) :: qn
+    sub = qn%sub
+  end function quantum_numbers_get_sub
+
   elemental subroutine quantum_numbers_set_color_ghost (qn, ghost)
     class(quantum_numbers_t), intent(inout) :: qn
     logical, intent(in) :: ghost
@@ -361,6 +429,18 @@ contains
     call qn%f%tag_radiated ()
   end subroutine quantum_numbers_tag_radiated
   
+  elemental subroutine quantum_numbers_set_subtraction_index (qn, i)
+    class(quantum_numbers_t), intent(inout) :: qn
+    integer, intent(in) :: i
+    qn%sub = i
+  end subroutine quantum_numbers_set_subtraction_index
+
+  elemental function quantum_numbers_get_subtraction_index (qn) result (sub)
+    integer :: sub
+    class(quantum_numbers_t), intent(in) :: qn
+    sub = qn%sub
+  end function quantum_numbers_get_subtraction_index
+
   elemental function quantum_numbers_get_color_type (qn) result (color_type)
     integer :: color_type
     class(quantum_numbers_t), intent(in) :: qn
@@ -425,7 +505,8 @@ contains
     class(quantum_numbers_t), intent(in) :: qn1, qn2
     eq = (qn1%f == qn2%f) .and. &
          (qn1%c == qn2%c) .and. &
-         (qn1%h == qn2%h)
+         (qn1%h == qn2%h) .and. &
+         (qn1%sub == qn2%sub)
   end function quantum_numbers_eq
 
   elemental function quantum_numbers_neq (qn1, qn2) result (neq)
@@ -433,8 +514,18 @@ contains
     class(quantum_numbers_t), intent(in) :: qn1, qn2
     neq = (qn1%f /= qn2%f) .or. &
          (qn1%c /= qn2%c) .or. &
-         (qn1%h /= qn2%h)
+         (qn1%h /= qn2%h) .or. &
+         (qn1%sub /= qn2%sub)
   end function quantum_numbers_neq
+
+  subroutine quantum_numbers_assign (qn_out, qn_in)
+    type(quantum_numbers_t), intent(out) :: qn_out
+    type(quantum_numbers_t), intent(in) :: qn_in
+    qn_out%f = qn_in%f
+    qn_out%c = qn_in%c
+    qn_out%h = qn_in%h
+    qn_out%sub = qn_in%sub
+  end subroutine quantum_numbers_assign
 
   elemental function quantum_numbers_are_compatible (qn1, qn2, mask) &
       result (flag)
@@ -540,6 +631,7 @@ contains
     qn3%f = qn1%f .merge. qn2%f
     qn3%c = qn1%c .merge. qn2%c
     qn3%h = qn1%h .merge. qn2%h
+    qn3%sub = merge_subtraction_index (qn1%sub, qn2%sub)
   end function merge_quantum_numbers0
 
   function merge_quantum_numbers1 (qn1, qn2) result (qn3)
@@ -548,7 +640,26 @@ contains
     qn3%f = qn1%f .merge. qn2%f
     qn3%c = qn1%c .merge. qn2%c
     qn3%h = qn1%h .merge. qn2%h
+    qn3%sub = merge_subtraction_index (qn1%sub, qn2%sub)
   end function merge_quantum_numbers1
+
+  elemental function merge_subtraction_index (sub1, sub2) result (sub3)
+    integer :: sub3
+    integer, intent(in) :: sub1, sub2
+    if (sub1 > 0 .and. sub2 > 0) then
+       if (sub1 == sub2) then
+          sub3 = sub1
+       else
+          sub3 = 0
+       end if
+    else if (sub1 > 0) then
+       sub3 = sub1
+    else if (sub2 > 0) then
+       sub3 = sub2
+    else
+       sub3 = 0
+    end if
+  end function merge_subtraction_index
 
   elemental function quantum_numbers_mask &
        (mask_f, mask_c, mask_h, mask_cg, mask_hd) result (mask)
@@ -639,6 +750,12 @@ contains
     end if
   end subroutine quantum_numbers_mask_set_helicity
 
+  elemental subroutine quantum_numbers_mask_set_sub (mask, sub)
+    class(quantum_numbers_mask_t), intent(inout) :: mask
+    integer, intent(in) :: sub
+    mask%sub = sub
+  end subroutine quantum_numbers_mask_set_sub
+
   elemental subroutine quantum_numbers_mask_assign &
        (mask, mask_in, flavor, color, helicity)
     class(quantum_numbers_mask_t), intent(inout) :: mask
@@ -703,7 +820,7 @@ contains
     class(quantum_numbers_t), intent(inout) :: qn
     type(quantum_numbers_mask_t), intent(in) :: mask
     if (mask%f)  call qn%f%undefine ()
-    if (mask%c)  call qn%c%undefine (undefine_ghost=mask%cg)
+    if (mask%c)  call qn%c%undefine (undefine_ghost = mask%cg)
     if (mask%h) then
        call qn%h%undefine ()
     else if (mask%hd) then
@@ -756,6 +873,7 @@ contains
     else if (mask%hd) then
        redundant = .not. qn%h%is_diagonal ()
     end if
+    if (mask%sub > 0) redundant = qn%sub >= mask%sub
   end function quantum_numbers_are_redundant
 
   elemental function quantum_numbers_mask_diagonal_helicity (mask) &

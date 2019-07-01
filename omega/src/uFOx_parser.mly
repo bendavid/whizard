@@ -1,4 +1,4 @@
-/* $Id: vertex_parser.mly 7444 2016-02-17 15:37:20Z jr_reuter $
+/* vertex_parser.mly --
 
    Copyright (C) 1999-2016 by
 

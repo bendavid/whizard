@@ -1,8 +1,7 @@
 % -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*-
 % WHIZARD code as NOWEB source: combinatorics and such
-
-
 \chapter{Combinatorics}
+\includemodulegraph{combinatorics}
 
 These modules implement standard algorithms (sorting, hashing, etc.)
 that are not available in Fortran.

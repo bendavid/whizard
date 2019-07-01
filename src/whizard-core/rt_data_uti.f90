@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -42,7 +42,7 @@ module rt_data_uti
   use lexers
   use parser
   use flavors
-  use variables
+  use variables, only: var_list_t
   use eval_trees
   use models
   use prclib_stacks
@@ -67,30 +67,30 @@ contains
   subroutine fix_system_dependencies (global)
     class(rt_data_t), intent(inout), target :: global
     type(var_list_t), pointer :: var_list
-    
+
     var_list => global%get_var_list_ptr ()
     call var_list%set_log (var_str ("?omega_openmp"), &
-         .false., is_known = .true., force=.true.) 
+         .false., is_known = .true., force=.true.)
     call var_list%set_log (var_str ("?openmp_is_active"), &
          .false., is_known = .true., force=.true.)
     call var_list%set_int (var_str ("openmp_num_threads_default"), &
          1, is_known = .true., force=.true.)
     call var_list%set_int (var_str ("openmp_num_threads"), &
-         1, is_known = .true., force=.true.)        
+         1, is_known = .true., force=.true.)
     call var_list%set_int (var_str ("real_range"), &
          307, is_known = .true., force=.true.)
     call var_list%set_int (var_str ("real_precision"), &
-         15, is_known = .true., force=.true.)    
+         15, is_known = .true., force=.true.)
     call var_list%set_real (var_str ("real_epsilon"), &
          1.e-16_default, is_known = .true., force=.true.)
     call var_list%set_real (var_str ("real_tiny"), &
-         1.e-300_default, is_known = .true., force=.true.)     
-    
+         1.e-300_default, is_known = .true., force=.true.)
+
     global%os_data%fc = "Fortran-compiler"
     global%os_data%fcflags = "Fortran-flags"
-        
+
   end subroutine fix_system_dependencies
-  
+
   function is_stable (pdg, global) result (flag)
     integer, intent(in) :: pdg
     type(rt_data_t), intent(in) :: global
@@ -99,7 +99,7 @@ contains
     call flv%init (pdg, global%model)
     flag = flv%is_stable ()
   end function is_stable
-   
+
   function is_polarized (pdg, global) result (flag)
     integer, intent(in) :: pdg
     type(rt_data_t), intent(in) :: global
@@ -108,12 +108,12 @@ contains
     call flv%init (pdg, global%model)
     flag = flv%is_polarized ()
   end function is_polarized
-    
+
 
   subroutine rt_data_1 (u)
     integer, intent(in) :: u
     type(rt_data_t), target :: global
-    
+
     write (u, "(A)")  "* Test output: rt_data_1"
     write (u, "(A)")  "*   Purpose: initialize global runtime data"
     write (u, "(A)")
@@ -121,19 +121,19 @@ contains
     call global%global_init (logfile = var_str ("rt_data.log"))
     call fix_system_dependencies (global)
 
-    call global%set_int (var_str ("seed"), 0, is_known=.true.)            
+    call global%set_int (var_str ("seed"), 0, is_known=.true.)
 
     call global%it_list%init ([2, 3], [5000, 20000])
 
     call global%write (u)
 
     call global%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: rt_data_1"
-    
+
   end subroutine rt_data_1
-  
+
   subroutine rt_data_2 (u)
     integer, intent(in) :: u
     type(rt_data_t), target :: global
@@ -142,7 +142,7 @@ contains
     type(ifile_t) :: ifile
     type(stream_t) :: stream
     type(parse_tree_t) :: parse_tree
-    
+
     write (u, "(A)")  "* Test output: rt_data_2"
     write (u, "(A)")  "*   Purpose: initialize global runtime data &
          &and fill contents"
@@ -158,25 +158,25 @@ contains
     call global%set_real (var_str ("sqrts"), &
          1000._default, is_known = .true.)
     call global%set_int (var_str ("seed"), &
-         0, is_known=.true.)        
+         0, is_known=.true.)
     call flv%init ([25,25], global%model)
-    
+
     call global%set_string (var_str ("$run_id"), &
          var_str ("run1"), is_known = .true.)
     call global%set_real (var_str ("luminosity"), &
          33._default, is_known = .true.)
-    
+
     call syntax_pexpr_init ()
     cut_expr_text = "all Pt > 100 [s]"
     call ifile_append (ifile, cut_expr_text)
     call stream_init (stream, ifile)
     call parse_tree_init_lexpr (parse_tree, stream, .true.)
     global%pn%cuts_lexpr => parse_tree%get_root_ptr ()
-    
+
     allocate (global%sample_fmt (2))
     global%sample_fmt(1) = "foo_fmt"
     global%sample_fmt(2) = "bar_fmt"
-    
+
     call global%write (u)
 
     call parse_tree_final (parse_tree)
@@ -186,12 +186,12 @@ contains
 
     call global%final ()
     call syntax_model_file_final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: rt_data_2"
-    
+
   end subroutine rt_data_2
-  
+
   subroutine rt_data_3 (u)
     use event_base, only: event_callback_nop_t
     integer, intent(in) :: u
@@ -203,7 +203,7 @@ contains
     type(parse_tree_t) :: parse_tree
     type(prclib_entry_t), pointer :: lib
     type(event_callback_nop_t) :: event_callback_nop
-    
+
     write (u, "(A)")  "* Test output: rt_data_3"
     write (u, "(A)")  "*   Purpose: initialize global runtime data &
          &and fill contents;"
@@ -219,14 +219,14 @@ contains
     call fix_system_dependencies (global)
 
     call global%set_int (var_str ("seed"), &
-         0, is_known=.true.)        
+         0, is_known=.true.)
 
     call global%select_model (var_str ("Test"))
 
     call global%set_real (var_str ("sqrts"),&
          1000._default, is_known = .true.)
     call flv%init ([25,25], global%model)
-    
+
     call global%beam_structure%init_sf (flv%get_name (), [1])
     call global%beam_structure%set_sf (1, 1, var_str ("pdf_builtin"))
 
@@ -234,14 +234,14 @@ contains
          var_str ("run1"), is_known = .true.)
     call global%set_real (var_str ("luminosity"), &
          33._default, is_known = .true.)
-    
+
     call syntax_pexpr_init ()
     cut_expr_text = "all Pt > 100 [s]"
     call ifile_append (ifile, cut_expr_text)
     call stream_init (stream, ifile)
     call parse_tree_init_lexpr (parse_tree, stream, .true.)
     global%pn%cuts_lexpr => parse_tree%get_root_ptr ()
-    
+
     allocate (global%sample_fmt (2))
     global%sample_fmt(1) = "foo_fmt"
     global%sample_fmt(2) = "bar_fmt"
@@ -270,7 +270,7 @@ contains
          var_str ("single"), is_known = .true.)
 
     local%os_data%fc = "Local compiler"
-    
+
     allocate (lib)
     call lib%init (var_str ("library_2"))
     call local%add_prclib (lib)
@@ -282,7 +282,7 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Restore global data"
     write (u, "(A)")
-    
+
     call local%deactivate (global)
 
     write (u, "(1x,A,L1)")  "model associated   = ", associated (global%model)
@@ -293,7 +293,7 @@ contains
 
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
-    
+
     call parse_tree_final (parse_tree)
     call stream_final (stream)
     call ifile_final (ifile)
@@ -301,16 +301,16 @@ contains
 
     call global%final ()
     call syntax_model_file_final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: rt_data_3"
-    
+
   end subroutine rt_data_3
-  
+
   subroutine rt_data_4 (u)
     integer, intent(in) :: u
     type(rt_data_t), target :: global
-    
+
     type(string_t), dimension(0) :: empty_string_array
 
     write (u, "(A)")  "* Test output: rt_data_4"
@@ -329,7 +329,7 @@ contains
 
     call global%write_vars (u, &
          [var_str ("?unweighted"), var_str ("$phs_method")])
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Display whole record with selected variables"
     write (u, "(A)")
@@ -338,16 +338,16 @@ contains
          vars = [var_str ("?unweighted"), var_str ("$phs_method")])
 
     call global%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: rt_data_4"
-    
+
   end subroutine rt_data_4
-  
+
   subroutine rt_data_5 (u)
     integer, intent(in) :: u
     type(rt_data_t), target :: global
-    
+
     write (u, "(A)")  "* Test output: rt_data_5"
     write (u, "(A)")  "*   Purpose: display parts of rt data"
     write (u, "(A)")
@@ -364,12 +364,12 @@ contains
     call global%write_process_stack (u)
 
     call global%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: rt_data_5"
-    
+
   end subroutine rt_data_5
-  
+
   subroutine rt_data_6 (u)
     integer, intent(in) :: u
     type(rt_data_t), target :: global, local
@@ -384,7 +384,7 @@ contains
 
     call global%global_init ()
     call global%select_model (var_str ("Test"))
-    
+
     write (u, "(A)")  "* Original model"
     write (u, "(A)")
 
@@ -399,7 +399,7 @@ contains
 
     write (u, "(A)", advance="no")  "Global model variable: "
     model_vars => global%model%get_var_list_ptr ()
-    call var_list_write_var (model_vars, var_name, u)
+    call model_vars%write_var (var_name, u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Apply local modifications: unstable"
@@ -459,11 +459,12 @@ contains
 
     write (u, "(A)", advance="no")  "Global model variable: "
     model_vars => global%model%get_var_list_ptr ()
-    call var_list_write_var (model_vars, var_name, u)
+    call model_vars%write_var (var_name, u)
 
     write (u, "(A)", advance="no")  "Local model variable: "
-    call var_list_write_var (local%model%get_var_list_ptr (), &
-         var_name, u)
+    associate (model_var_list_ptr => local%model%get_var_list_ptr())
+       call model_var_list_ptr%write_var (var_name, u)
+    end associate
 
     write (u, "(A)")
     write (u, "(A)")  "* Restore global"
@@ -492,26 +493,27 @@ contains
 
     write (u, "(A)", advance="no")  "Global model variable: "
     model_vars => global%model%get_var_list_ptr ()
-    call var_list_write_var (model_vars, var_name, u)
+    call model_vars%write_var (var_name, u)
 
     write (u, "(A)", advance="no")  "Local model variable: "
-    call var_list_write_var (local%model%get_var_list_ptr (), &
-         var_name, u)
+    associate (model_var_list_ptr => local%model%get_var_list_ptr())
+       call model_var_list_ptr%write_var (var_name, u)
+    end associate
 
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
 
     call local%model%final ()
     deallocate (local%model)
-    
+
     call global%final ()
     call syntax_model_file_final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: rt_data_6"
-    
+
   end subroutine rt_data_6
-  
+
   subroutine rt_data_7 (u)
     integer, intent(in) :: u
     type(rt_data_t), target :: global
@@ -525,22 +527,22 @@ contains
 
     call global%global_init ()
     call global%process_stack%init_result_vars (var_str ("testproc"))
-    
-    call var_list_write_var (global%var_list, &
+
+    call global%var_list%write_var (&
          var_str ("integral(testproc)"), u)
-    call var_list_write_var (global%var_list, &
+    call global%var_list%write_var (&
          var_str ("error(testproc)"), u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
-    
+
     call global%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: rt_data_7"
-    
+
   end subroutine rt_data_7
-  
+
   subroutine rt_data_8 (u)
     integer, intent(in) :: u
     type(rt_data_t), target :: global
@@ -563,14 +565,14 @@ contains
 
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
-    
+
     call global%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: rt_data_8"
-    
+
   end subroutine rt_data_8
-  
+
   subroutine rt_data_9 (u)
     integer, intent(in) :: u
     type(rt_data_t), target :: global, local
@@ -587,7 +589,7 @@ contains
 
     call global%global_init ()
     call global%select_model (var_str ("Test"))
-    
+
     call global%set_real (var_str ("sqrts"), 17._default, is_known = .true.)
     call global%set_real (var_str ("luminosity"), 2._default, is_known = .true.)
     call global%model_set_real (var_str ("ff"), 0.5_default)
@@ -595,15 +597,15 @@ contains
 
     var_list => global%get_var_list_ptr ()
 
-    call var_list_write_var (var_list, var_str ("sqrts"), u)
-    call var_list_write_var (var_list, var_str ("luminosity"), u)
-    call var_list_write_var (var_list, var_str ("ff"), u)
-    call var_list_write_var (var_list, var_str ("gy"), u)
-    call var_list_write_var (var_list, var_str ("mf"), u)
-    call var_list_write_var (var_list, var_str ("x"), u)
+    call var_list%write_var (var_str ("sqrts"), u)
+    call var_list%write_var (var_str ("luminosity"), u)
+    call var_list%write_var (var_str ("ff"), u)
+    call var_list%write_var (var_str ("gy"), u)
+    call var_list%write_var (var_str ("mf"), u)
+    call var_list%write_var (var_str ("x"), u)
 
     write (u, "(A)")
-    
+
     write (u, "(1x,A,1x,F5.2)")  "sqrts      = ", &
          global%get_rval (var_str ("sqrts"))
     write (u, "(1x,A,1x,F5.2)")  "luminosity = ", &
@@ -630,15 +632,15 @@ contains
 
     var_list => local%get_var_list_ptr ()
 
-    call var_list_write_var (var_list, var_str ("sqrts"), u)
-    call var_list_write_var (var_list, var_str ("luminosity"), u)
-    call var_list_write_var (var_list, var_str ("ff"), u)
-    call var_list_write_var (var_list, var_str ("gy"), u)
-    call var_list_write_var (var_list, var_str ("mf"), u)
-    call var_list_write_var (var_list, var_str ("x"), u)
+    call var_list%write_var (var_str ("sqrts"), u)
+    call var_list%write_var (var_str ("luminosity"), u)
+    call var_list%write_var (var_str ("ff"), u)
+    call var_list%write_var (var_str ("gy"), u)
+    call var_list%write_var (var_str ("mf"), u)
+    call var_list%write_var (var_str ("x"), u)
 
     write (u, "(A)")
-    
+
     write (u, "(1x,A,1x,F5.2)")  "sqrts      = ", &
          local%get_rval (var_str ("sqrts"))
     write (u, "(1x,A,1x,F5.2)")  "luminosity = ", &
@@ -662,15 +664,15 @@ contains
 
     var_list => local%get_var_list_ptr ()
 
-    call var_list_write_var (var_list, var_str ("sqrts"), u)
-    call var_list_write_var (var_list, var_str ("luminosity"), u)
-    call var_list_write_var (var_list, var_str ("ff"), u)
-    call var_list_write_var (var_list, var_str ("gy"), u)
-    call var_list_write_var (var_list, var_str ("mf"), u)
-    call var_list_write_var (var_list, var_str ("x"), u)
+    call var_list%write_var (var_str ("sqrts"), u)
+    call var_list%write_var (var_str ("luminosity"), u)
+    call var_list%write_var (var_str ("ff"), u)
+    call var_list%write_var (var_str ("gy"), u)
+    call var_list%write_var (var_str ("mf"), u)
+    call var_list%write_var (var_str ("x"), u)
 
     write (u, "(A)")
-    
+
     write (u, "(1x,A,1x,F5.2)")  "sqrts      = ", &
          local%get_rval (var_str ("sqrts"))
     write (u, "(1x,A,1x,F5.2)")  "luminosity = ", &
@@ -689,18 +691,18 @@ contains
     write (u, "(A)")
 
     call local%deactivate (global)
-    
+
     var_list => global%get_var_list_ptr ()
 
-    call var_list_write_var (var_list, var_str ("sqrts"), u)
-    call var_list_write_var (var_list, var_str ("luminosity"), u)
-    call var_list_write_var (var_list, var_str ("ff"), u)
-    call var_list_write_var (var_list, var_str ("gy"), u)
-    call var_list_write_var (var_list, var_str ("mf"), u)
-    call var_list_write_var (var_list, var_str ("x"), u)
+    call var_list%write_var (var_str ("sqrts"), u)
+    call var_list%write_var (var_str ("luminosity"), u)
+    call var_list%write_var (var_str ("ff"), u)
+    call var_list%write_var (var_str ("gy"), u)
+    call var_list%write_var (var_str ("mf"), u)
+    call var_list%write_var (var_str ("x"), u)
 
     write (u, "(A)")
-    
+
     write (u, "(1x,A,1x,F5.2)")  "sqrts      = ", &
          global%get_rval (var_str ("sqrts"))
     write (u, "(1x,A,1x,F5.2)")  "luminosity = ", &
@@ -721,11 +723,11 @@ contains
 
     call global%final ()
     call syntax_model_file_final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: rt_data_9"
-    
+
   end subroutine rt_data_9
-  
+
 
 end module rt_data_uti

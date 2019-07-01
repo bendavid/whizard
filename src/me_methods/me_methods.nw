@@ -1,9 +1,8 @@
-% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*- 
+% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*-
 % WHIZARD code as NOWEB source: matrix elements and process libraries
-
-@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Interface for Matrix Element Objects}
+\includemodulegraph{me_methods}
 
 These modules manage internal and, in particular, external
 matrix-element code.
@@ -63,7 +62,7 @@ There are no unit tests, these are deferred to the [[processes]] module.
 <<[[prc_core.f90]]>>=
 <<File header>>
 module prc_core
-  
+
 <<Use kinds>>
 <<Use strings>>
   use io_units
@@ -107,7 +106,7 @@ element will be represented by different implementations.
    contains
    <<Prc core: process core: TBP>>
   end type prc_core_t
-  
+
 @ %def prc_core_t
 @ In any case there must be an output routine.
 <<Prc core: process core: TBP>>=
@@ -120,8 +119,21 @@ element will be represented by different implementations.
        integer, intent(in), optional :: unit
      end subroutine prc_core_write
   end interface
-  
+
 @ %def prc_core_write
+@ Just type the name of the actual core method.
+<<Prc core: process core: TBP>>=
+  procedure(prc_core_write_name), deferred :: write_name
+<<Prc core: interfaces>>=
+  abstract interface
+     subroutine prc_core_write_name (object, unit)
+       import
+       class(prc_core_t), intent(in) :: object
+       integer, intent(in), optional :: unit
+     end subroutine prc_core_write_name
+  end interface
+
+@ %def prc_core_write_name
 @ For initialization, we assign a pointer to the process entry in the
 relevant library.  This allows us to access all process functions via
 the implementation of [[prc_core_t]].
@@ -144,7 +156,7 @@ extensions of [[prc_core]] which override the [[init]] method.
     call lib%connect_process (id, i_component, object%data, object%driver)
     object%data_known = .true.
   end subroutine prc_core_init
-  
+
 @ %def prc_core_init
 @ Return true if the matrix element generation was successful.  This can be
 tested by looking at the number of generated flavor states, which should be
@@ -159,35 +171,6 @@ nonzero.
   end function prc_core_has_matrix_element
 
 @ %def prc_core_has_matrix_element
-@ Return true if a MC dataset should be attached to this process
-component.  False if it shares the dataset with another component.
-<<Prc core: process core: TBP>>=
-  procedure(prc_core_get_flag), deferred :: needs_mcset
-<<Prc core: interfaces>>=
-  abstract interface
-     function prc_core_get_flag (object) result (flag)
-       import
-       class(prc_core_t), intent(in) :: object
-       logical :: flag
-     end function prc_core_get_flag
-  end interface
-  
-@ %def prc_core_needs_mcset
-@ Return an integer number
-<<Prc core: interfaces>>=
-  abstract interface
-     function prc_core_get_integer (object) result (i)
-       import
-       class(prc_core_t), intent(in) :: object
-       integer :: i
-     end function prc_core_get_integer
-  end interface
-
-@ %def prc_core_get_integer
-@ Return the number of distinct terms requested by
-this process component.
-<<Prc core: process core: TBP>>=
-  procedure(prc_core_get_integer), deferred :: get_n_terms
 @
 Tell whether a particular combination of flavor/helicity/color state
 is allowed for the matrix element.
@@ -216,13 +199,13 @@ index.  Type extensions may override this and provide term-specific data.
     integer, intent(in) :: i_term
     data = object%data
   end subroutine prc_core_get_constants
-  
+
 @ %def prc_core_get_constants
 @ The strong coupling is not among the process constants.  The default
 implementation is to return a negative number, which indicates that $\alpha_s$
 is not available.  This may be overridden by an implementation that provides
 an (event-specific) value.  The value can be stored in the
-process-specific workspace. 
+process-specific workspace.
 <<Prc core: process core: TBP>>=
   procedure :: get_alpha_s => prc_core_get_alpha_s
 <<Prc core: procedures>>=
@@ -232,7 +215,7 @@ process-specific workspace.
     real(default) :: alpha
     alpha = -1
   end function prc_core_get_alpha_s
-  
+
 @ %def prc_core_get_alpha_s
 @ Allocate the workspace associated to a process component.  The default is
 that there is no workspace, so we do nothing.  A type extension may override
@@ -250,35 +233,10 @@ workspace.
   end subroutine prc_core_ignore_workspace
 
 @ %def prc_core_ignore_workspace
-@ Initialize the structure-function instance that corresponds to a process
-component.  In ordinary cases, this amounts to a straightforward copy of the
-given template, but the process core may also choose to modify the setup,
-and it may access its own workspace.
-
-The [[sf_chain_instance]] is the object that we want to prepare.  The
-[[sf_chain]] argument is a template for its structure.  For the
-initialization, we also need the number of channels [[n_channel]].
-
-Note: crash with nagfor 5.3.1 if [[sf_chain_instance]] is declared
-[[intent(out)]], as would be more appropriate.
-<<Prc core: process core: TBP>>=
-  procedure :: init_sf_chain => prc_core_init_sf_chain
-<<Prc core: procedures>>=
-  subroutine prc_core_init_sf_chain &
-       (object, sf_chain_instance, sf_chain, n_channel, core_state)
-    class(prc_core_t), intent(in) :: object
-    type(sf_chain_instance_t), intent(inout), target :: sf_chain_instance
-    type(sf_chain_t), intent(in), target :: sf_chain
-    integer, intent(in) :: n_channel
-    class(prc_core_state_t), intent(inout), allocatable :: core_state
-    call sf_chain_instance%init (sf_chain, n_channel)
-  end subroutine prc_core_init_sf_chain
-  
-@ %def prc_core_init_sf_chain
 @ Compute the momenta in the hard interaction, taking the seed
 kinematics as input.  The [[i_term]] index tells us which term we want
 to compute.  (The standard method is to just transfer the momenta to the hard
-interaction.)  
+interaction.)
 <<Prc core: process core: TBP>>=
   procedure(prc_core_compute_hard_kinematics), deferred :: &
        compute_hard_kinematics
@@ -316,33 +274,6 @@ applied for the process variant.)
   end interface
 
 @ %def prc_core_compute_eff_kinematics
-@ Recover the missing pieces.  We know the incoming momenta of the
-[[p_seed]] array and the outgoing momenta of the [[int_eff]]
-interaction.  We have to recover the outgoing momenta of [[p_seed]]
-and the incoming momenta of [[int_eff]].
-
-(The trivial case is that these are identical.)
-
-Furthermore, if [[int_hard]] and [[int_eff]] are not aliased, we have
-to set the momenta there.  In the trivial case, [[int_eff]] is a
-pointer to [[int_hard]], so [[int_hard]] should not be touched at all.
-<<Prc core: process core: TBP>>=
-  procedure(prc_core_recover_kinematics), deferred :: &
-       recover_kinematics
-<<Prc core: interfaces>>=
-  abstract interface
-     subroutine prc_core_recover_kinematics &
-          (object, p_seed, int_hard, int_eff, core_state)
-       import
-       class(prc_core_t), intent(in) :: object
-       type(vector4_t), dimension(:), intent(inout) :: p_seed
-       type(interaction_t), intent(inout) :: int_hard
-       type(interaction_t), intent(inout) :: int_eff
-       class(prc_core_state_t), intent(inout), allocatable :: core_state
-     end subroutine prc_core_recover_kinematics
-  end interface
-
-@ %def prc_core_recover_kinematics
 @ The process core must implement this function.  Here, [[j]] is the index
 of the particular term we want to compute.  The amplitude may depend on the
 factorization and renormalization scales.
@@ -368,7 +299,7 @@ Otherwise, the routine should compute the result directly.
        complex(default) :: amp
      end function prc_core_compute_amplitude
   end interface
-  
+
 @ %def prc_core_compute_amplitude
 @
 \subsection{Storage for intermediate results}
@@ -381,10 +312,10 @@ calculations between kinematics setup and matrix-element evaluation.
 <<Prc core: types>>=
   type, abstract :: prc_core_state_t
    contains
-     procedure(workspace_write), deferred :: write     
+     procedure(workspace_write), deferred :: write
      procedure(workspace_reset_new_kinematics), deferred :: reset_new_kinematics
   end type prc_core_state_t
-  
+
 @ %def prc_core_state_t
 @ For debugging, we should at least have an output routine.
 <<Prc core: interfaces>>=
@@ -431,7 +362,7 @@ assumed to be zero and not called again if it has been zero [[cutoff]] times.
    contains
    <<Prc core: helicity selection: TBP>>
   end type helicity_selection_t
-     
+
 @ %def helicity_selection_t
 @ Output.  If the selection is inactive, print nothing.
 <<Prc core: helicity selection: TBP>>=
@@ -450,13 +381,197 @@ assumed to be zero and not called again if it has been zero [[cutoff]] times.
             "cutoff    = ", object%cutoff
     end if
   end subroutine helicity_selection_write
-    
+
 @ %def helicity_selection_write
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Test process type}
+For the following tests, we define a simple implementation of the abstract
+[[prc_core_t]], designed such as to complement the [[prc_test_t]]
+process definition type.
+
+Note that it is not given that the actual process is defined as
+[[prc_test_t]] type.  We enforce this by calling
+[[prc_test_create_library]].  The driver component in the process core
+will then become of type [[prc_test_t]].
+@
+<<[[prc_test_core.f90]]>>=
+<<File header>>
+
+module prc_test_core
+
+<<Use kinds>>
+  use io_units
+  use lorentz
+  use interactions
+  use prc_test
+  use prc_core
+
+<<Standard module head>>
+
+<<Prc test core: public>>
+
+<<Prc test core: types>>
+
+contains
+
+<<Prc test core: procedures>>
+
+end module prc_test_core
+@ %def prc_test_core
+<<Prc test core: public>>=
+  public :: test_t
+<<Prc test core: types>>=
+  type, extends (prc_core_t) :: test_t
+   contains
+   <<Prc test core: test type: TBP>>
+  end type test_t
+
+@ %def test_t
+<<Prc test core: test type: TBP>>=
+  procedure :: write => test_write
+<<Prc test core: procedures>>=
+  subroutine test_write (object, unit)
+    class(test_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit)
+    write (u, "(3x,A)")  "test type implementing prc_test"
+  end subroutine test_write
+
+@ %def test_write
+<<Prc test core: test type: TBP>>=
+  procedure :: write_name => test_write_name
+<<Prc test core: procedures>>=
+  subroutine test_write_name (object, unit)
+    class(test_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit)
+    write (u,"(1x,A)")  "Core: prc_test"
+  end subroutine test_write_name
+
+@ %def test_write_name
+@ This process type always needs a MC parameter set and a
+single term.  This only state is always allowed.
+<<Prc test core: test type: TBP>>=
+  procedure :: needs_mcset => test_needs_mcset
+  procedure :: get_n_terms => test_get_n_terms
+  procedure :: is_allowed => test_is_allowed
+<<Prc test core: procedures>>=
+  function test_needs_mcset (object) result (flag)
+    class(test_t), intent(in) :: object
+    logical :: flag
+    flag = .true.
+  end function test_needs_mcset
+
+  function test_get_n_terms (object) result (n)
+    class(test_t), intent(in) :: object
+    integer :: n
+    n = 1
+  end function test_get_n_terms
+
+  function test_is_allowed (object, i_term, f, h, c) result (flag)
+    class(test_t), intent(in) :: object
+    integer, intent(in) :: i_term, f, h, c
+    logical :: flag
+    flag = .true.
+  end function test_is_allowed
+
+@ %def test_needs_mcset
+@ %def test_get_n_terms
+@ %def test_is_allowed
+@ Transfer the generated momenta directly to the hard interaction in
+the (only) term.  We assume that everything has been set up correctly,
+so the array fits.
+<<Prc test core: test type: TBP>>=
+  procedure :: compute_hard_kinematics => test_compute_hard_kinematics
+<<Prc test core: procedures>>=
+  subroutine test_compute_hard_kinematics &
+       (object, p_seed, i_term, int_hard, core_state)
+    class(test_t), intent(in) :: object
+    type(vector4_t), dimension(:), intent(in) :: p_seed
+    integer, intent(in) :: i_term
+    type(interaction_t), intent(inout) :: int_hard
+    class(prc_core_state_t), intent(inout), allocatable :: core_state
+    call int_hard%set_momenta (p_seed)
+  end subroutine test_compute_hard_kinematics
+
+@ %def test_compute_hard_kinematics
+@ This procedure is not called for [[test_t]], just a placeholder.
+<<Prc test core: test type: TBP>>=
+  procedure :: compute_eff_kinematics => test_compute_eff_kinematics
+<<Prc test core: procedures>>=
+  subroutine test_compute_eff_kinematics &
+       (object, i_term, int_hard, int_eff, core_state)
+    class(test_t), intent(in) :: object
+    integer, intent(in) :: i_term
+    type(interaction_t), intent(in) :: int_hard
+    type(interaction_t), intent(inout) :: int_eff
+    class(prc_core_state_t), intent(inout), allocatable :: core_state
+  end subroutine test_compute_eff_kinematics
+
+@ %def test_compute_eff_kinematics
+@ Transfer the incoming momenta of [[p_seed]] directly to the
+effective interaction, and vice versa for the outgoing momenta.
+
+[[int_hard]] is left untouched since [[int_eff]] is an alias (via
+pointer) to it.
+<<Prc test core: test type: TBP>>=
+  procedure :: recover_kinematics => test_recover_kinematics
+<<Prc test core: procedures>>=
+  subroutine test_recover_kinematics &
+       (object, p_seed, int_hard, int_eff, core_state)
+    class(test_t), intent(in) :: object
+    type(vector4_t), dimension(:), intent(inout) :: p_seed
+    type(interaction_t), intent(inout) :: int_hard
+    type(interaction_t), intent(inout) :: int_eff
+    class(prc_core_state_t), intent(inout), allocatable :: core_state
+    integer :: n_in
+    n_in = int_eff%get_n_in ()
+    call int_eff%set_momenta (p_seed(1:n_in), outgoing = .false.)
+    p_seed(n_in+1:) = int_eff%get_momenta (outgoing = .true.)
+  end subroutine test_recover_kinematics
+
+@ %def test_recover_kinematics
+@ Compute the amplitude.  The driver ignores all quantum numbers and,
+in fact, returns a constant.  Nevertheless, we properly transfer the
+momentum vectors.
+<<Prc test core: test type: TBP>>=
+  procedure :: compute_amplitude => test_compute_amplitude
+<<Prc test core: procedures>>=
+  function test_compute_amplitude &
+       (object, j, p, f, h, c, fac_scale, ren_scale, alpha_qcd_forced, core_state) &
+       result (amp)
+    class(test_t), intent(in) :: object
+    integer, intent(in) :: j
+    type(vector4_t), dimension(:), intent(in) :: p
+    integer, intent(in) :: f, h, c
+    real(default), intent(in) :: fac_scale, ren_scale
+    real(default), intent(in), allocatable :: alpha_qcd_forced
+    class(prc_core_state_t), intent(inout), allocatable, optional :: core_state
+    complex(default) :: amp
+    real(default), dimension(:,:), allocatable :: parray
+    integer :: i, n_tot
+    select type (driver => object%driver)
+    type is (prc_test_t)
+       if (driver%scattering) then
+          n_tot = 4
+       else
+          n_tot = 3
+       end if
+       allocate (parray (0:3,n_tot))
+       forall (i = 1:n_tot)  parray(:,i) = vector4_get_components (p(i))
+       amp = driver%get_amplitude (parray)
+    end select
+  end function test_compute_amplitude
+
+@ %def test_compute_amplitude
+@
+@
 \section{Template matrix elements}
 
-Here, we provide template matrix elements that are in structure 
+Here, we provide template matrix elements that are in structure
 very similar to \oMega\ matrix elements, but do not need its
 infrastructure. Per default, the matrix elements are flat, i.e.
 they have the constant value one. Analogous to the \oMega\
@@ -466,7 +581,7 @@ to the templates (via the makefile) and the driver.
 <<File header>>
 
 module prc_template_me
-  
+
   use, intrinsic ::  iso_c_binding !NODEP!
 
   use kinds
@@ -496,7 +611,7 @@ module prc_template_me
 <<Template matrix elements: interfaces>>
 
 contains
-  
+
 <<Template matrix elements: procedures>>
 
 end module prc_template_me
@@ -512,7 +627,7 @@ For the process definition we implement an extension of the
    contains
    <<Template matrix elements: template ME def: TBP>>
   end type template_me_def_t
-  
+
 @ %def template_me_def_t
 <<Template matrix elements: template ME def: TBP>>=
   procedure, nopass :: type_string => template_me_def_type_string
@@ -555,9 +670,9 @@ Also set any data for this process that the writer needs.
        call writer%write (unit)
     end select
   end subroutine template_me_def_write
-  
+
 @ %def template_me_def_write
-@ 
+@
 <<Template matrix elements: template ME def: TBP>>=
   procedure :: read => template_me_def_read
 <<Template matrix elements: procedures>>=
@@ -567,7 +682,7 @@ Also set any data for this process that the writer needs.
     call msg_bug &
          ("WHIZARD template process definition: input not supported (yet)")
   end subroutine template_me_def_read
-  
+
 @ %def template_me_def_read
 @ Allocate the driver for template matrix elements.
 <<Template matrix elements: template ME def: TBP>>=
@@ -579,7 +694,7 @@ Also set any data for this process that the writer needs.
     type(string_t), intent(in) :: basename
     allocate (template_me_driver_t :: driver)
   end subroutine template_me_def_allocate_driver
-  
+
 @ %def template_me_def_allocate_driver
 @ We need code:
 <<Template matrix elements: template ME def: TBP>>=
@@ -589,7 +704,7 @@ Also set any data for this process that the writer needs.
     logical :: flag
     flag = .true.
   end function template_me_def_needs_code
-  
+
 @ %def template_me_def_needs_code
 @ These are the features that a template matrix element provides.
 <<Template matrix elements: template ME def: TBP>>=
@@ -616,14 +731,14 @@ Also set any data for this process that the writer needs.
        integer(c_int), intent(in) :: scheme
      end subroutine init_t
   end interface
-  
+
   abstract interface
      subroutine update_alpha_s_t (alpha_s) bind(C)
        import
        real(c_default_float), intent(in) :: alpha_s
      end subroutine update_alpha_s_t
   end interface
-  
+
   abstract interface
      subroutine is_allowed_t (flv, hel, col, flag) bind(C)
        import
@@ -638,7 +753,7 @@ Also set any data for this process that the writer needs.
        real(c_default_float), dimension(0:3,*), intent(in) :: p
      end subroutine new_event_t
   end interface
-  
+
   abstract interface
      subroutine get_amplitude_t (flv, hel, col, amp) bind(C)
        import
@@ -647,7 +762,7 @@ Also set any data for this process that the writer needs.
      end subroutine get_amplitude_t
   end interface
 
-@ %def init_t update_alpha_s_t 
+@ %def init_t update_alpha_s_t
 @ %def is_allowed_t new_event_t get_amplitude_t
 @ Connect the template matrix element features with the process driver.
 <<Template matrix elements: template ME def: TBP>>=
@@ -734,18 +849,18 @@ responsible for writing interfaces and wrappers.
     integer :: i, j
     write (unit, "(5x,A,I0)") "# incoming part. = ", object%n_in
     write (unit, "(7x,A)", advance="no") &
-                              "   Initial state: "  
+                              "   Initial state: "
     do i = 1, object%n_in - 1
        write (unit, "(1x,A)", advance="no") char (object%prt_in(i))
     end do
-    write (unit, "(1x,A)") char (object%prt_in(object%n_in))    
-    write (unit, "(5x,A,I0)") "# outgoing part. = ", object%n_out    
+    write (unit, "(1x,A)") char (object%prt_in(object%n_in))
+    write (unit, "(5x,A,I0)") "# outgoing part. = ", object%n_out
     write (unit, "(7x,A)", advance="no") &
-                              "   Final state:   "      
+                              "   Final state:   "
     do j = 1, object%n_out - 1
        write (unit, "(1x,A)", advance="no") char (object%prt_out(i))
-    end do    
-    write (unit, "(1x,A)") char (object%prt_out(object%n_out))    
+    end do
+    write (unit, "(1x,A)") char (object%prt_out(object%n_out))
     write (unit, "(5x,A,I0)") "# part. (total) = ", object%n_tot
   end subroutine template_me_writer_write
 
@@ -767,8 +882,8 @@ responsible for writing interfaces and wrappers.
     writer%n_out = size (prt_out)
     writer%n_tot = size (prt_in) + size (prt_out)
     allocate (writer%prt_in (size (prt_in)), source = prt_in)
-    allocate (writer%prt_out (size (prt_out)), source = prt_out)    
-    writer%unity = unity    
+    allocate (writer%prt_out (size (prt_out)), source = prt_out)
+    writer%unity = unity
   end subroutine template_me_writer_init
 
 @ %def template_me_writer_init
@@ -787,8 +902,8 @@ responsible for writing interfaces and wrappers.
     write (unit, "(5A)")  "clean-", char (id), ":"
     write (unit, "(5A)")  TAB, "rm -f tpr_", char (id), ".mod"
     write (unit, "(5A)")  TAB, "rm -f ", char (id), ".lo"
-    write (unit, "(5A)")  "CLEAN_SOURCES += ", char (id), ".f90"    
-    write (unit, "(5A)")  "CLEAN_OBJECTS += tpr_", char (id), ".mod"       
+    write (unit, "(5A)")  "CLEAN_SOURCES += ", char (id), ".f90"
+    write (unit, "(5A)")  "CLEAN_OBJECTS += tpr_", char (id), ".mod"
     write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), ".lo"
     write (unit, "(5A)")  char (id), ".lo: ", char (id), ".f90"
     write (unit, "(5A)")  TAB, "$(LTFCOMPILE) $<"
@@ -803,23 +918,23 @@ responsible for writing interfaces and wrappers.
     class(template_me_writer_t), intent(in) :: writer
     type(string_t), intent(in) :: id
     integer, dimension(writer%n_in) :: prt_in, mult_in, col_in
-    type(flavor_t), dimension(1:writer%n_in) :: flv_in    
+    type(flavor_t), dimension(1:writer%n_in) :: flv_in
     integer, dimension(writer%n_out) :: prt_out, mult_out
     integer, dimension(writer%n_tot) :: prt, mult
     integer, dimension(:,:), allocatable :: sxxx
     integer :: dummy, status
-    type(flavor_t), dimension(1:writer%n_out) :: flv_out    
+    type(flavor_t), dimension(1:writer%n_out) :: flv_out
     type(string_t) :: proc_str, comment_str
     integer :: u, i, j
     integer :: hel, hel_in, hel_out, fac, factor, col_fac
     type(string_t) :: filename
     comment_str = ""
     do i = 1, writer%n_in
-       comment_str = comment_str // writer%prt_in(i) // " " 
-    end do   
+       comment_str = comment_str // writer%prt_in(i) // " "
+    end do
     do j = 1, writer%n_out
-       comment_str = comment_str // writer%prt_out(j) // " " 
-    end do       
+       comment_str = comment_str // writer%prt_out(j) // " "
+    end do
     do i = 1, writer%n_in
        prt_in(i) = writer%model%get_pdg (writer%prt_in(i))
        call flv_in(i)%init (prt_in(i), writer%model)
@@ -828,9 +943,9 @@ responsible for writing interfaces and wrappers.
        mult(i) = mult_in(i)
        end do
     do j = 1, writer%n_out
-       prt_out(j) = writer%model%get_pdg (writer%prt_out(j))    
-       call flv_out(j)%init (prt_out(j), writer%model)       
-       mult_out(j) = flv_out(j)%get_multiplicity ()       
+       prt_out(j) = writer%model%get_pdg (writer%prt_out(j))
+       call flv_out(j)%init (prt_out(j), writer%model)
+       mult_out(j) = flv_out(j)%get_multiplicity ()
        mult(writer%n_in + j) = mult_out(j)
        end do
     prt(1:writer%n_in) = prt_in(1:writer%n_in)
@@ -847,7 +962,7 @@ responsible for writing interfaces and wrappers.
        do i = 3, writer%n_out
           factor = factor * (i - 2) * (i - 1)
        end do
-    end if    
+    end if
     factor = factor * col_fac
     allocate (sxxx(1:hel,1:writer%n_tot))
     call create_spin_table (dummy,hel,fac,mult,sxxx)
@@ -856,30 +971,30 @@ responsible for writing interfaces and wrappers.
     filename = id // ".f90"
     u = free_unit ()
     open (unit=u, file=char(filename), action="write")
-    write (u, "(A)") "! File generated automatically by WHIZARD"   
+    write (u, "(A)") "! File generated automatically by WHIZARD"
     write (u, "(A)") "!                                        "
     write (u, "(A)") "! Note that irresp. of what you demanded WHIZARD"
-    write (u, "(A)") "! treats this as colorless process       "    
+    write (u, "(A)") "! treats this as colorless process       "
     write (u, "(A)") "!                                        "
     write (u, "(A)") "module tpr_" // char(id)
     write (u, "(A)") "                                         "
-    write (u, "(A)") "  use kinds"    
-    write (u, "(A)") "  use omega_color, OCF => omega_color_factor"        
+    write (u, "(A)") "  use kinds"
+    write (u, "(A)") "  use omega_color, OCF => omega_color_factor"
     write (u, "(A)") "                                         "
-    write (u, "(A)") "  implicit none"        
-    write (u, "(A)") "  private"            
-    write (u, "(A)") "                                         "    
-    write (u, "(A)") "  public :: md5sum"        
-    write (u, "(A)") "  public :: number_particles_in, number_particles_out"       
+    write (u, "(A)") "  implicit none"
+    write (u, "(A)") "  private"
+    write (u, "(A)") "                                         "
+    write (u, "(A)") "  public :: md5sum"
+    write (u, "(A)") "  public :: number_particles_in, number_particles_out"
     write (u, "(A)") "  public :: number_spin_states, spin_states"
     write (u, "(A)") "  public :: number_flavor_states, flavor_states"
     write (u, "(A)") "  public :: number_color_flows, color_flows"
     write (u, "(A)") "  public :: number_color_indices, number_color_factors, &"
     write (u, "(A)") "     color_factors, color_sum, openmp_supported"
-    write (u, "(A)") "  public :: init, final, update_alpha_s"  
-    write (u, "(A)") "                                         "    
-    write (u, "(A)") "  public :: new_event, is_allowed, get_amplitude"        
-    write (u, "(A)") "       "      
+    write (u, "(A)") "  public :: init, final, update_alpha_s"
+    write (u, "(A)") "                                         "
+    write (u, "(A)") "  public :: new_event, is_allowed, get_amplitude"
+    write (u, "(A)") "       "
     write (u, "(A)") "  real(default), parameter :: &"
     write (u, "(A)") "       & conv = 0.38937966e12_default"
     write (u, "(A)") "       "
@@ -889,11 +1004,11 @@ responsible for writing interfaces and wrappers.
     write (u, "(A)") "  real(default), parameter :: &"
     if (writer%unity) then
        write (u, "(A)") "                   & const = 1"
-    else 
+    else
        write (u, "(A,1x,I0,A)") "       & const = (16 * pi / conv) * " &
-          // "(16 * pi**2)**(", writer%n_out, "-2) " 
+          // "(16 * pi**2)**(", writer%n_out, "-2) "
     end if
-    write (u, "(A)") "       "    
+    write (u, "(A)") "       "
     write (u, "(A,1x,I0)") "  integer, parameter, private :: n_prt =  ", &
        writer%n_tot
     write (u, "(A,1x,I0)") "  integer, parameter, private :: n_in = ", &
@@ -908,109 +1023,109 @@ responsible for writing interfaces and wrappers.
     write (u, "(A)") "                                           "
     write (u, "(A)") "  logical, parameter, private :: T = .true."
     write (u, "(A)") "  logical, parameter, private :: F = .false."
-    write (u, "(A)") "                                           "    
+    write (u, "(A)") "                                           "
     do i = 1, hel
        write (u, "(A)") "  integer, dimension(n_prt), parameter, private :: &"
        write (u, "(A)") "    " // s_conv(i) // " = [ " // &
             char(converter(sxxx(i,1:writer%n_tot))) // " ]"
-    end do 
+    end do
     write (u, "(A)") "  integer, dimension(n_prt,n_hel), parameter, private :: table_spin_states = &"
     write (u, "(A)") "    reshape ( [ & "
     do i = 1, hel-1
-       write (u, "(A)") "                 " // s_conv(i) // ", & " 
-    end do 
-    write (u, "(A)") "                 " // s_conv(hel) // " & "     
+       write (u, "(A)") "                 " // s_conv(i) // ", & "
+    end do
+    write (u, "(A)") "                 " // s_conv(hel) // " & "
     write (u, "(A)") "              ], [ n_prt, n_hel ] )"
     write (u, "(A)") "                                                 "
     write (u, "(A)") "  integer, dimension(n_prt), parameter, private :: &"
     write (u, "(A)") "    f0001 = [ " // char(proc_str) // " ]   !  " // char(comment_str)
     write (u, "(A)") "  integer, dimension(n_prt,n_flv), parameter, private :: table_flavor_states = &"
     write (u, "(A)") "    reshape ( [ f0001 ], [ n_prt, n_flv ] )"
-    write (u, "(A)") "                                                 " 
+    write (u, "(A)") "                                                 "
     write (u, "(A)") "  integer, dimension(n_cindex, n_prt), parameter, private :: &"
     write (u, "(A)") "    c0001 = reshape ( [ " // char (dummy_colorizer (flv_in)) // " " // &
       (repeat ("0,0, ", writer%n_out-1)) // "0,0 ], " // " [ n_cindex, n_prt ] )"
     write (u, "(A)") "  integer, dimension(n_cindex, n_prt, n_cflow), parameter, private :: &"
     write (u, "(A)") "  table_color_flows = reshape ( [ c0001 ], [ n_cindex, n_prt, n_cflow ] )"
-    write (u, "(A)") "                                           "   
+    write (u, "(A)") "                                           "
     write (u, "(A)") "  logical, dimension(n_prt), parameter, private :: & "
     write (u, "(A)") "    g0001 = [ "  // (repeat ("F, ", writer%n_tot-1)) // "F ] "
     write (u, "(A)") "  logical, dimension(n_prt, n_cflow), parameter, private " &
          // ":: table_ghost_flags = &"
     write (u, "(A)") "    reshape ( [ g0001 ], [ n_prt, n_cflow ] )"
-    write (u, "(A)") "                                           "   
+    write (u, "(A)") "                                           "
     write (u, "(A)") "  integer, parameter, private :: n_cfactors = 1"
     write (u, "(A)") "  type(OCF), dimension(n_cfactors), parameter, private :: &"
     write (u, "(A)") "    table_color_factors = [  OCF(1,1,+1._default) ]"
-    write (u, "(A)") "                                           "   
-    write (u, "(A)") "  logical, dimension(n_flv), parameter, private :: a0001 = [ T ]"   
-    write (u, "(A)") "  logical, dimension(n_flv, n_cflow), parameter, private :: &"   
-    write (u, "(A)") "    flv_col_is_allowed = reshape ( [ a0001 ], [ n_flv, n_cflow ] )"   
-    write (u, "(A)") "                                           "   
-    write (u, "(A)") "  complex(default), dimension (n_flv, n_hel, n_cflow), private, save :: amp"    
+    write (u, "(A)") "                                           "
+    write (u, "(A)") "  logical, dimension(n_flv), parameter, private :: a0001 = [ T ]"
+    write (u, "(A)") "  logical, dimension(n_flv, n_cflow), parameter, private :: &"
+    write (u, "(A)") "    flv_col_is_allowed = reshape ( [ a0001 ], [ n_flv, n_cflow ] )"
+    write (u, "(A)") "                                           "
+    write (u, "(A)") "  complex(default), dimension (n_flv, n_hel, n_cflow), private, save :: amp"
     write (u, "(A)") "                                           "
     write (u, "(A)") "  logical, dimension(n_hel), private, save :: hel_is_allowed = T"
     write (u, "(A)") "                                           "
-    write (u, "(A)") "contains"          
-    write (u, "(A)") "                                           "      
+    write (u, "(A)") "contains"
+    write (u, "(A)") "                                           "
     write (u, "(A)") "  pure function md5sum ()"
-    write (u, "(A)") "    character(len=32) :: md5sum"    
-    write (u, "(A)") "    ! DON'T EVEN THINK of modifying the following line!"        
+    write (u, "(A)") "    character(len=32) :: md5sum"
+    write (u, "(A)") "    ! DON'T EVEN THINK of modifying the following line!"
     write (u, "(A)") "    md5sum = """ // writer%md5sum // """"
     write (u, "(A)") "  end function md5sum"
-    write (u, "(A)") "                                           "          
+    write (u, "(A)") "                                           "
     write (u, "(A)") "  subroutine init (par, scheme)"
-    write (u, "(A)") "    real(default), dimension(*), intent(in) :: par"    
+    write (u, "(A)") "    real(default), dimension(*), intent(in) :: par"
     write (u, "(A)") "    integer, intent(in) :: scheme"
-    write (u, "(A)") "  end subroutine init"    
-    write (u, "(A)") "                                           " 
-    write (u, "(A)") "  subroutine final ()" 
-    write (u, "(A)") "  end subroutine final" 
-    write (u, "(A)") "                                           " 
-    write (u, "(A)") "  subroutine update_alpha_s (alpha_s)" 
-    write (u, "(A)") "    real(default), intent(in) :: alpha_s"        
-    write (u, "(A)") "  end subroutine update_alpha_s" 
-    write (u, "(A)") "                                           " 
+    write (u, "(A)") "  end subroutine init"
+    write (u, "(A)") "                                           "
+    write (u, "(A)") "  subroutine final ()"
+    write (u, "(A)") "  end subroutine final"
+    write (u, "(A)") "                                           "
+    write (u, "(A)") "  subroutine update_alpha_s (alpha_s)"
+    write (u, "(A)") "    real(default), intent(in) :: alpha_s"
+    write (u, "(A)") "  end subroutine update_alpha_s"
+    write (u, "(A)") "                                           "
     write (u, "(A)") "  pure function number_particles_in () result (n)"
-    write (u, "(A)") "    integer :: n"    
+    write (u, "(A)") "    integer :: n"
     write (u, "(A)") "    n = n_in"
     write (u, "(A)") "  end function number_particles_in"
-    write (u, "(A)") "                                           "              
+    write (u, "(A)") "                                           "
     write (u, "(A)") "  pure function number_particles_out () result (n)"
-    write (u, "(A)") "    integer :: n"    
+    write (u, "(A)") "    integer :: n"
     write (u, "(A)") "    n = n_out"
     write (u, "(A)") "  end function number_particles_out"
-    write (u, "(A)") "                                           "                  
+    write (u, "(A)") "                                           "
     write (u, "(A)") "  pure function number_spin_states () result (n)"
-    write (u, "(A)") "    integer :: n"    
+    write (u, "(A)") "    integer :: n"
     write (u, "(A)") "    n = size (table_spin_states, dim=2)"
     write (u, "(A)") "  end function number_spin_states"
-    write (u, "(A)") "                                           "                      
+    write (u, "(A)") "                                           "
     write (u, "(A)") "  pure subroutine spin_states (a)"
-    write (u, "(A)") "    integer, dimension(:,:), intent(out) :: a"    
+    write (u, "(A)") "    integer, dimension(:,:), intent(out) :: a"
     write (u, "(A)") "    a = table_spin_states"
-    write (u, "(A)") "  end subroutine spin_states"    
-    write (u, "(A)") "                                           "                          
+    write (u, "(A)") "  end subroutine spin_states"
+    write (u, "(A)") "                                           "
     write (u, "(A)") "  pure function number_flavor_states () result (n)"
-    write (u, "(A)") "    integer :: n"    
+    write (u, "(A)") "    integer :: n"
     write (u, "(A)") "    n = 1"
     write (u, "(A)") "  end function number_flavor_states"
-    write (u, "(A)") "                                           "                      
+    write (u, "(A)") "                                           "
     write (u, "(A)") "  pure subroutine flavor_states (a)"
-    write (u, "(A)") "    integer, dimension(:,:), intent(out) :: a"    
+    write (u, "(A)") "    integer, dimension(:,:), intent(out) :: a"
     write (u, "(A)") "    a = table_flavor_states"
     write (u, "(A)") "  end subroutine flavor_states"
-    write (u, "(A)") "                                           "                          
+    write (u, "(A)") "                                           "
     write (u, "(A)") "  pure function number_color_indices () result (n)"
-    write (u, "(A)") "    integer :: n"    
+    write (u, "(A)") "    integer :: n"
     write (u, "(A)") "    n = size(table_color_flows, dim=1)"
     write (u, "(A)") "  end function number_color_indices"
-    write (u, "(A)") "                                           "                          
+    write (u, "(A)") "                                           "
     write (u, "(A)") "  pure subroutine color_factors (cf)"
-    write (u, "(A)") "    type(OCF), dimension(:), intent(out) :: cf"    
+    write (u, "(A)") "    type(OCF), dimension(:), intent(out) :: cf"
     write (u, "(A)") "    cf = table_color_factors"
     write (u, "(A)") "  end subroutine color_factors"
-    write (u, "(A)") "                                           "                              
+    write (u, "(A)") "                                           "
     !pure unless OpenMP
     !write (u, "(A)") "  pure function color_sum (flv, hel) result (amp2)"
     write (u, "(A)") "  function color_sum (flv, hel) result (amp2)"
@@ -1018,65 +1133,65 @@ responsible for writing interfaces and wrappers.
     write (u, "(A)") "    real(kind=default) :: amp2"
     write (u, "(A)") "    amp2 = real (omega_color_sum (flv, hel, amp, table_color_factors))"
     write (u, "(A)") "  end function color_sum"
-    write (u, "(A)") "                                           "       
+    write (u, "(A)") "                                           "
     write (u, "(A)") "  pure function number_color_flows () result (n)"
-    write (u, "(A)") "    integer :: n"    
+    write (u, "(A)") "    integer :: n"
     write (u, "(A)") "    n = size (table_color_flows, dim=3)"
     write (u, "(A)") "  end function number_color_flows"
-    write (u, "(A)") "                                           "                                  
+    write (u, "(A)") "                                           "
     write (u, "(A)") "  pure subroutine color_flows (a, g)"
     write (u, "(A)") "    integer, dimension(:,:,:), intent(out) :: a"
     write (u, "(A)") "    logical, dimension(:,:), intent(out) :: g"
     write (u, "(A)") "    a = table_color_flows"
     write (u, "(A)") "    g = table_ghost_flags"
-    write (u, "(A)") "  end subroutine color_flows"    
-    write (u, "(A)") "                                           "                              
+    write (u, "(A)") "  end subroutine color_flows"
+    write (u, "(A)") "                                           "
     write (u, "(A)") "  pure function number_color_factors () result (n)"
-    write (u, "(A)") "    integer :: n"    
+    write (u, "(A)") "    integer :: n"
     write (u, "(A)") "    n = size (table_color_factors)"
     write (u, "(A)") "  end function number_color_factors"
-    write (u, "(A)") "                                           "                                  
+    write (u, "(A)") "                                           "
     write (u, "(A)") "  pure function openmp_supported () result (status)"
     write (u, "(A)") "    logical :: status"
     write (u, "(A)") "    status = .false."
     write (u, "(A)") "  end function openmp_supported"
-    write (u, "(A)") "                                           "                                  
+    write (u, "(A)") "                                           "
     write (u, "(A)") "  subroutine new_event (p)"
-    write (u, "(A)") "    real(default), dimension(0:3,*), intent(in) :: p"    
-    write (u, "(A)") "    call calculate_amplitudes (amp, p)"        
+    write (u, "(A)") "    real(default), dimension(0:3,*), intent(in) :: p"
+    write (u, "(A)") "    call calculate_amplitudes (amp, p)"
     write (u, "(A)") "  end subroutine new_event"
-    write (u, "(A)") "                                           "              
-    write (u, "(A)") "  pure function is_allowed (flv, hel, col) result (yorn)"                  
-    write (u, "(A)") "    logical :: yorn"                  
-    write (u, "(A)") "    integer, intent(in) :: flv, hel, col"                  
-    write (u, "(A)") "    yorn = hel_is_allowed(hel) .and. flv_col_is_allowed(flv,col)"                  
-    write (u, "(A)") "  end function is_allowed"                     
-    write (u, "(A)") "                                           "                  
+    write (u, "(A)") "                                           "
+    write (u, "(A)") "  pure function is_allowed (flv, hel, col) result (yorn)"
+    write (u, "(A)") "    logical :: yorn"
+    write (u, "(A)") "    integer, intent(in) :: flv, hel, col"
+    write (u, "(A)") "    yorn = hel_is_allowed(hel) .and. flv_col_is_allowed(flv,col)"
+    write (u, "(A)") "  end function is_allowed"
+    write (u, "(A)") "                                           "
     write (u, "(A)") "  pure function get_amplitude (flv, hel, col) result (amp_result)"
-    write (u, "(A)") "    complex(default) :: amp_result"    
-    write (u, "(A)") "    integer, intent(in) :: flv, hel, col"            
-    write (u, "(A)") "    amp_result = amp (flv, hel, col)"        
+    write (u, "(A)") "    complex(default) :: amp_result"
+    write (u, "(A)") "    integer, intent(in) :: flv, hel, col"
+    write (u, "(A)") "    amp_result = amp (flv, hel, col)"
     write (u, "(A)") "  end function get_amplitude"
-    write (u, "(A)") "                                           "                  
+    write (u, "(A)") "                                           "
     write (u, "(A)") "  pure subroutine calculate_amplitudes (amp, k)"
-    write (u, "(A)") "    complex(default), dimension(:,:,:), intent(out) :: amp"    
-    write (u, "(A)") "    real(default), dimension(0:3,*), intent(in) :: k"    
-    write (u, "(A)") "    real(default) :: fac"        
-    write (u, "(A)") "    integer :: i"            
-    write (u, "(A)") "    ! We give all helicities the same weight!"            
-    if (writer%unity) then 
+    write (u, "(A)") "    complex(default), dimension(:,:,:), intent(out) :: amp"
+    write (u, "(A)") "    real(default), dimension(0:3,*), intent(in) :: k"
+    write (u, "(A)") "    real(default) :: fac"
+    write (u, "(A)") "    integer :: i"
+    write (u, "(A)") "    ! We give all helicities the same weight!"
+    if (writer%unity) then
        write (u, "(A,1x,I0,1x,A)") "    fac = ", col_fac
        write (u, "(A)") "    amp = const * sqrt(fac)"
     else
-       write (u, "(A,1x,I0,1x,A)") "    fac = ", factor 
+       write (u, "(A,1x,I0,1x,A)") "    fac = ", factor
        write (u, "(A)") "    amp = sqrt((2 * (k(0,1)*k(0,2) &"
        write (u, "(A,1x,I0,A)") "         - dot_product (k(1:,1), k(1:,2)))) ** (3-", &
                                   writer%n_out, ")) * sqrt(const * fac)"
-    end if                                  
+    end if
     write (u, "(A,1x,I0,A)") "    amp = amp / sqrt(", hel_out, "._default)"
     write (u, "(A)") "  end subroutine calculate_amplitudes"
-    write (u, "(A)") "                                           "                  
-    write (u, "(A)") "end module tpr_" // char(id)    
+    write (u, "(A)") "                                           "
+    write (u, "(A)") "end module tpr_" // char(id)
     close (u, iostat=status)
     deallocate (sxxx)
   contains
@@ -1089,11 +1204,11 @@ responsible for writing interfaces and wrappers.
          chrt = "s000" // chrt
       else if (num < 100) then
          chrt = "s00" // chrt
-      else if (num < 1000) then 
-         chrt = "s0" // chrt     
+      else if (num < 1000) then
+         chrt = "s0" // chrt
       else
-         chrt = "s" // chrt            
-      end if	 	 
+         chrt = "s" // chrt
+      end if
     end function s_conv
     function converter (flv) result (str)
       integer, dimension(:), intent(in) :: flv
@@ -1104,7 +1219,7 @@ responsible for writing interfaces and wrappers.
       do i = 1, size(flv) - 1
          write (chrt(i), "(I10)") flv(i)
          str = str // var_str(trim(adjustl(chrt(i)))) // ", "
-      end do    
+      end do
       write (chrt(size(flv)), "(I10)") flv(size(flv))
       str = str // trim(adjustl(chrt(size(flv))))
     end function converter
@@ -1117,7 +1232,7 @@ responsible for writing interfaces and wrappers.
           ((j == 5) .and. (m == 4))) then
          sj = 1
       else if (((j == 2) .and. (m == 1)) .or. &
-          ((j == 3) .and. (m == 1)) .or. &         
+          ((j == 3) .and. (m == 1)) .or. &
           ((j == 4) .and. (m == 2)) .or. &
           ((j == 5) .and. (m == 2))) then
          sj = -1
@@ -1125,29 +1240,29 @@ responsible for writing interfaces and wrappers.
           ((j == 5) .and. (m == 3))) then
          sj = 0
       else if (((j == 4) .and. (m == 1)) .or. &
-          ((j == 5) .and. (m == 1))) then         
+          ((j == 5) .and. (m == 1))) then
          sj = -2
       else if (((j == 4) .and. (m == 4)) .or. &
-          ((j == 5) .and. (m == 5))) then         
+          ((j == 5) .and. (m == 5))) then
          sj = 2
       else
          call msg_fatal ("template_me_write_source_code: Wrong spin type")
       end if
-    end function sj    
+    end function sj
     recursive subroutine create_spin_table (index, nhel, fac, mult, inta)
       integer, intent(inout) :: index, fac
       integer, intent(in) :: nhel
       integer, dimension(:), intent(in) :: mult
-      integer, dimension(nhel,size(mult)), intent(out) :: inta    
+      integer, dimension(nhel,size(mult)), intent(out) :: inta
       integer :: j
       if (index > size(mult)) return
       fac = fac / mult(index)
-      do j = 1, nhel 
+      do j = 1, nhel
          inta(j,index) = sj (mult(index),mod(((j-1)/fac),mult(index))+1)
-      end do   
+      end do
       index = index + 1
       call create_spin_table (index, nhel, fac, mult, inta)
-    end subroutine create_spin_table  
+    end subroutine create_spin_table
     function dummy_colorizer (flv) result (str)
       type(flavor_t), dimension(:), intent(in) :: flv
       type(string_t) :: str
@@ -1169,16 +1284,16 @@ responsible for writing interfaces and wrappers.
 	 case default
 	    call msg_error ("Color type not supported.")
 	 end select
-      end do    
+      end do
       str = adjustl(trim(str))
-    end function dummy_colorizer    
-  end subroutine template_me_write_source_code    
+    end function dummy_colorizer
+  end subroutine template_me_write_source_code
 
 @ %def template_me_write_source_code
 @ Return the name of a procedure that implements a given feature, as
 it is provided by the template matrix-element code.  Template ME names
 are chosen completely in analogy to the \oMega\ matrix element
-conventions. 
+conventions.
 <<Template matrix elements: template ME writer: TBP>>=
   procedure, nopass :: get_procname => template_me_writer_get_procname
 <<Template matrix elements: procedures>>=
@@ -1200,7 +1315,7 @@ conventions.
        name = feature
     end select
   end function template_me_writer_get_procname
-  
+
 @ %def template_me_writer_get_procname
 @ The interfaces for the template-specific features.
 <<Template matrix elements: template ME writer: TBP>>=
@@ -1233,7 +1348,7 @@ conventions.
             &(flv, hel, col, flag) bind(C)"
        write (unit, "(7x,9A)")  "import"
        write (unit, "(7x,9A)")  "integer(c_int), intent(in) :: flv, hel, col"
-       write (unit, "(7x,9A)")  "logical(c_bool), intent(out) :: flag"    
+       write (unit, "(7x,9A)")  "logical(c_bool), intent(out) :: flag"
        write (unit, "(5x,9A)")  "end subroutine ", char (name)
     case ("new_event")
        write (unit, "(5x,9A)")  "subroutine ", char (name), " (p) bind(C)"
@@ -1247,7 +1362,7 @@ conventions.
        write (unit, "(7x,9A)")  "import"
        write (unit, "(7x,9A)")  "integer(c_int), intent(in) :: flv, hel, col"
        write (unit, "(7x,9A)")  "complex(c_default_complex), intent(out) &
-            &:: amp"    
+            &:: amp"
        write (unit, "(5x,9A)")  "end subroutine ", char (name)
     end select
     write (unit, "(2x,9A)")  "end interface"
@@ -1300,7 +1415,7 @@ NOTE: The case [[c_default_float]] $\neq$ [[default]] is not yet covered.
        write (unit, "(2x,9A)")  "use kinds"
        write (unit, "(2x,9A)")  "use tpr_", char (id)
        write (unit, "(2x,9A)")  "integer(c_int), intent(in) :: flv, hel, col"
-       write (unit, "(2x,9A)")  "logical(c_bool), intent(out) :: flag"    
+       write (unit, "(2x,9A)")  "logical(c_bool), intent(out) :: flag"
        write (unit, "(2x,9A)")  "flag = ", char (feature), &
             " (int (flv), int (hel), int (col))"
        write (unit, "(9A)")  "end subroutine ", char (name)
@@ -1323,7 +1438,7 @@ NOTE: The case [[c_default_float]] $\neq$ [[default]] is not yet covered.
        write (unit, "(2x,9A)")  "use tpr_", char (id)
        write (unit, "(2x,9A)")  "integer(c_int), intent(in) :: flv, hel, col"
        write (unit, "(2x,9A)")  "complex(c_default_complex), intent(out) &
-            &:: amp"    
+            &:: amp"
        write (unit, "(2x,9A)")  "amp = ", char (feature), &
             " (int (flv), int (hel), int (col))"
        write (unit, "(9A)")  "end subroutine ", char (name)
@@ -1331,7 +1446,7 @@ NOTE: The case [[c_default_float]] $\neq$ [[default]] is not yet covered.
   end subroutine template_me_write_wrapper
 
 @ %def template_me_write_wrapper
-@ 
+@
 \subsection{Driver}
 <<Template matrix elements: public>>=
   public :: template_me_driver_t
@@ -1397,7 +1512,7 @@ cause a segfault.
          method = var_str ("template"), &
          variant = def)
   end subroutine template_me_make_process_component
-    
+
 @ %def template_me_make_process_component
 @
 \subsection{The [[prc_template_me_t]] wrapper}
@@ -1414,7 +1529,7 @@ pointer to the process definition ([[template_me_def_t]]), a data component
    contains
    <<Template matrix elements: prc template ME: TBP>>
   end type prc_template_me_t
-  
+
 @ %def prc_template_me_t
 @ The workspace associated to a [[prc_template_me_t]] object contains a single flag.
 The flag is used to suppress re-evaluating the matrix element for each
@@ -1432,7 +1547,7 @@ value in this context.
      procedure :: write => template_me_state_write
      procedure :: reset_new_kinematics => template_me_state_reset_new_kinematics
   end type template_me_state_t
-  
+
 @ %def template_me_state_t
 <<Template matrix elements: procedures>>=
   subroutine template_me_state_write (object, unit)
@@ -1443,7 +1558,7 @@ value in this context.
     write (u, "(3x,A,L1)")  "Template ME state: new kinematics = ", &
          object%new_kinematics
   end subroutine template_me_state_write
-  
+
 @ %def template_me_state_write
 @
 <<Template matrix elements: procedures>>=
@@ -1461,7 +1576,7 @@ value in this context.
     class(prc_core_state_t), intent(inout), allocatable :: core_state
     allocate (template_me_state_t :: core_state)
   end subroutine prc_template_me_allocate_workspace
-  
+
 @ %def prc_template_me_allocate_workspace
 @ The following procedures are inherited from the base type as deferred, thus
 must be implemented.  The corresponding unit tests are skipped here; the
@@ -1490,10 +1605,23 @@ stored parameters.
        end do
     end if
   end subroutine prc_template_me_write
-  
+
 @ %def prc_template_me_write
+@
+<<Template matrix elements: prc template ME: TBP>>=
+  procedure :: write_name => prc_template_me_write_name
+<<Template matrix elements: procedures>>=
+  subroutine prc_template_me_write_name (object, unit)
+    class(prc_template_me_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit)
+    write (u,"(1x,A)") "Core: template"
+  end subroutine prc_template_me_write_name
+
+@ %def prc_template_me_write_name
 @ Temporarily store the parameter array inside the [[prc_template_me]]
-object, so we can use it later during the actual initialization. 
+object, so we can use it later during the actual initialization.
 <<Template matrix elements: prc template ME: TBP>>=
   procedure :: set_parameters => prc_template_me_set_parameters
 <<Template matrix elements: procedures>>=
@@ -1507,7 +1635,7 @@ object, so we can use it later during the actual initialization.
        prc_template_me%scheme = model%get_scheme_num ()
     end if
   end subroutine prc_template_me_set_parameters
-  
+
 @ %def prc_template_me_set_parameters
 @ To fully initialize the process core, we perform base
 initialization, then initialize the external matrix element code.
@@ -1530,10 +1658,10 @@ where it finally belongs.
     call object%base_init (def, lib, id, i_component)
     call object%activate_parameters ()
   end subroutine prc_template_me_init
-    
+
 @ %def prc_template_me_init
 @ Activate the stored parameters by transferring them to the external
-matrix element.  
+matrix element.
 <<Template matrix elements: prc template ME: TBP>>=
   procedure :: activate_parameters => prc_template_me_activate_parameters
 <<Template matrix elements: procedures>>=
@@ -1554,31 +1682,8 @@ matrix element.
        call msg_bug ("prc_template_me_activate: driver is not allocated")
     end if
   end subroutine prc_template_me_activate_parameters
-    
-@ %def prc_template_me_activate_parameters
-@ The template ME process is an independent process which needs its own Monte
-Carlo parameter set for integration.
-<<Template matrix elements: prc template ME: TBP>>=
-  procedure :: needs_mcset => prc_template_me_needs_mcset
-<<Template matrix elements: procedures>>=
-  function prc_template_me_needs_mcset (object) result (flag)
-    class(prc_template_me_t), intent(in) :: object
-    logical :: flag
-    flag = .true.
-  end function prc_template_me_needs_mcset
-  
-@ %def prc_template_me_needs_mcset
-@ There is only one term for this tree-level process.
-<<Template matrix elements: prc template ME: TBP>>=
-  procedure :: get_n_terms => prc_template_me_get_n_terms
-<<Template matrix elements: procedures>>=
-  function prc_template_me_get_n_terms (object) result (n)
-    class(prc_template_me_t), intent(in) :: object
-    integer :: n
-    n = 1
-  end function prc_template_me_get_n_terms
 
-@ %def prc_template_me_get_n_terms
+@ %def prc_template_me_activate_parameters
 @ Tell whether a particular combination of flavor, helicity, color is
 allowed.  Here we have to consult the matrix-element driver.
 <<Template matrix elements: prc template ME: TBP>>=
@@ -1595,7 +1700,7 @@ allowed.  Here we have to consult the matrix-element driver.
        flag = cflag
     end select
   end function prc_template_me_is_allowed
- 
+
 @ %def prc_template_me_is_allowed
 @ Transfer the generated momenta directly to the hard interaction in
 the (only) term.  We assume that everything has been set up correctly,
@@ -1615,13 +1720,8 @@ so the array fits.
     type(interaction_t), intent(inout) :: int_hard
     class(prc_core_state_t), intent(inout), allocatable :: core_state
     call int_hard%set_momenta (p_seed)
-!     if (allocated (core_state)) then
-!        select type (core_state)
-!        type is (template_me_state_t);  core_state%new_kinematics = .true.
-!        end select
-!     end if
   end subroutine prc_template_me_compute_hard_kinematics
-  
+
 @ %def prc_template_me_compute_hard_kinematics
 @ This procedure is not called for [[prc_template_me_t]], just a placeholder.
 <<Template matrix elements: prc template ME: TBP>>=
@@ -1636,29 +1736,8 @@ so the array fits.
     type(interaction_t), intent(inout) :: int_eff
     class(prc_core_state_t), intent(inout), allocatable :: core_state
   end subroutine prc_template_me_compute_eff_kinematics
-  
+
 @ %def prc_template_me_compute_eff_kinematics
-@ Recover the momenta within the hard interaction.  For tree-level
-processes, this is a trivial copy of the incoming seed and outgoing
-effective momenta.  The effective interaction is a pointer to the hard
-interaction, so the latter is ignored.
-<<Template matrix elements: prc template ME: TBP>>=
-  procedure :: recover_kinematics => prc_template_me_recover_kinematics
-<<Template matrix elements: procedures>>=
-  subroutine prc_template_me_recover_kinematics &
-       (object, p_seed, int_hard, int_eff, core_state)
-    class(prc_template_me_t), intent(in) :: object
-    type(vector4_t), dimension(:), intent(inout) :: p_seed
-    type(interaction_t), intent(inout) :: int_hard
-    type(interaction_t), intent(inout) :: int_eff
-    class(prc_core_state_t), intent(inout), allocatable :: core_state
-    integer :: n_in
-    n_in = int_eff%get_n_in ()
-    call int_eff%set_momenta (p_seed(1:n_in), outgoing = .false.)
-    p_seed(n_in+1:) = int_eff%get_momenta (outgoing = .true.)
-  end subroutine prc_template_me_recover_kinematics
-    
-@ %def prc_template_me_recover_kinematics
 @ Compute the amplitude.  For the tree-level process, we can ignore the scale
 settings.  The term index [[j]] is also irrelevant.
 
@@ -1715,7 +1794,7 @@ unset the [[new_kinematics]] flag.
   end function prc_template_me_compute_amplitude
 
 @ %def prc_template_me_compute_amplitude
-@ We do not overwrite the [[prc_core_t]] routine for $\alpha_s$. 
+@ We do not overwrite the [[prc_core_t]] routine for $\alpha_s$.
 
 \subsection{Unit Test}
 Test module, followed by the corresponding implementation module.
@@ -1725,13 +1804,13 @@ Test module, followed by the corresponding implementation module.
 module prc_template_me_ut
   use unit_tests
   use prc_template_me_uti
-  
+
 <<Standard module head>>
 
 <<Template matrix elements: public test>>
 
 contains
-  
+
 <<Template matrix elements: test driver>>
 
 end module prc_template_me_ut
@@ -1814,10 +1893,10 @@ parallel make.
     logical(c_bool) :: flag
     complex(c_default_complex) :: amp
     integer :: i
-    
+
     write (u, "(A)")  "* Test output: prc_template_me_1"
     write (u, "(A)")  "*   Purpose: create a template matrix element,"
-    write (u, "(A)")  "*            normalized to give unit integral,"    
+    write (u, "(A)")  "*            normalized to give unit integral,"
     write (u, "(A)")  "*            build a library, link, load, and &
          &access the matrix element"
     write (u, "(A)")
@@ -1833,7 +1912,7 @@ parallel make.
     allocate (prt_in (2), prt_out (2))
     prt_in = [var_str ("e+"), var_str ("e-")]
     prt_out = [var_str ("m+"), var_str ("m-")]
-    
+
     allocate (template_me_def_t :: def)
     select type (def)
     type is (template_me_def_t)
@@ -1848,11 +1927,11 @@ parallel make.
          method  = var_str ("template"), &
          variant = def)
     call lib%append (entry)
-    
+
     write (u, "(A)")  "* Configure library"
     write (u, "(A)")
     call lib%configure (os_data)
-    
+
     write (u, "(A)")  "* Write makefile"
     write (u, "(A)")
     call lib%write_makefile (os_data, force = .true.)
@@ -1870,11 +1949,11 @@ parallel make.
     call lib%load (os_data)
 
     call lib%write (u, libpath = .false.)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Probe library API:"
     write (u, "(A)")
-       
+
     write (u, "(1x,A,L1)")  "is active                 = ", &
          lib%is_active ()
     write (u, "(1x,A,I0)")  "n_processes               = ", &
@@ -1919,7 +1998,7 @@ parallel make.
     write (u, "(A)")
     write (u, "(A)")  "* Set kinematics:"
     write (u, "(A)")
-    
+
     p = reshape ([ &
          1.0_cdf, 0.0_cdf, 0.0_cdf, 1.0_cdf, &
          1.0_cdf, 0.0_cdf, 0.0_cdf,-1.0_cdf, &
@@ -1942,19 +2021,19 @@ parallel make.
 
        call driver%is_allowed (1_ci, 6_ci, 1_ci, flag)
        write (u, "(1x,A,L1)") "is_allowed (1, 6, 1) = ", flag
-       
+
        call driver%get_amplitude (1_ci, 6_ci, 1_ci, amp)
        write (u, "(1x,A,1x,E11.4)") "|amp (1, 6, 1)| =", abs (amp)
     end select
 
     call lib%final ()
     call cleanup_model (model)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: prc_template_me_1"
-    
+
   end subroutine prc_template_me_1
-  
+
 @ %def prc_template_me_1
 @
 <<Template matrix elements: execute tests>>=
@@ -1982,10 +2061,10 @@ parallel make.
     logical(c_bool) :: flag
     complex(c_default_complex) :: amp
     integer :: i
-    
+
     write (u, "(A)")  "* Test output: prc_template_me_1"
     write (u, "(A)")  "*   Purpose: create a template matrix element,"
-    write (u, "(A)")  "*            being identical to unity,"    
+    write (u, "(A)")  "*            being identical to unity,"
     write (u, "(A)")  "*            build a library, link, load, and &
          &access the matrix element"
     write (u, "(A)")
@@ -1994,14 +2073,14 @@ parallel make.
     write (u, "(A)")
     call lib%init (var_str ("template_me2"))
     call os_data_init (os_data)
-    
+
     model_name = "QED"
     call prepare_model (model, model_name)
 
     allocate (prt_in (2), prt_out (2))
     prt_in = [var_str ("e+"), var_str ("e-")]
     prt_out = [var_str ("m+"), var_str ("m-")]
-    
+
     allocate (template_me_def_t :: def)
     select type (def)
     type is (template_me_def_t)
@@ -2016,11 +2095,11 @@ parallel make.
          method  = var_str ("template_unity"), &
          variant = def)
     call lib%append (entry)
-    
+
     write (u, "(A)")  "* Configure library"
     write (u, "(A)")
     call lib%configure (os_data)
-    
+
     write (u, "(A)")  "* Write makefile"
     write (u, "(A)")
     call lib%write_makefile (os_data, force = .true.)
@@ -2038,11 +2117,11 @@ parallel make.
     call lib%load (os_data)
 
     call lib%write (u, libpath = .false.)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Probe library API:"
     write (u, "(A)")
-       
+
     write (u, "(1x,A,L1)")  "is active                 = ", &
          lib%is_active ()
     write (u, "(1x,A,I0)")  "n_processes               = ", &
@@ -2087,7 +2166,7 @@ parallel make.
     write (u, "(A)")
     write (u, "(A)")  "* Set kinematics:"
     write (u, "(A)")
-    
+
     p = reshape ([ &
          1.0_cdf, 0.0_cdf, 0.0_cdf, 1.0_cdf, &
          1.0_cdf, 0.0_cdf, 0.0_cdf,-1.0_cdf, &
@@ -2110,19 +2189,19 @@ parallel make.
 
        call driver%is_allowed (1_ci, 6_ci, 1_ci, flag)
        write (u, "(1x,A,L1)") "is_allowed (1, 6, 1) = ", flag
-       
+
        call driver%get_amplitude (1_ci, 6_ci, 1_ci, amp)
        write (u, "(1x,A,1x,E11.4)") "|amp (1, 6, 1)| =", abs (amp)
     end select
 
     call lib%final ()
     call cleanup_model (model)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: prc_template_me_2"
-    
+
   end subroutine prc_template_me_2
-  
+
 @ %def prc_template_me_2
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -2136,15 +2215,15 @@ the makefile) and the driver for the features provided by the \oMega\
 matrix element.
 
 There are actually two different methods steered by this interface, the
-traditional one which delivers compiled Fortran code, while the \oMega\ 
+traditional one which delivers compiled Fortran code, while the \oMega\
 virtual machine (OVM) produces bytecode with look-up tables.
 <<[[prc_omega.f90]]>>=
 <<File header>>
 
 module prc_omega
-  
+
   use, intrinsic :: iso_c_binding !NODEP!
-  
+
   use kinds
 <<Use strings>>
   use io_units
@@ -2172,7 +2251,7 @@ module prc_omega
 <<Omega interface: interfaces>>
 
 contains
-  
+
 <<Omega interface: procedures>>
 
 end module prc_omega
@@ -2188,7 +2267,7 @@ For the process definition we implement an extension of the
    contains
    <<Omega interface: omega def: TBP>>
   end type omega_def_t
-  
+
 @ %def omega_def_t
 @
 <<Omega interface: public>>=
@@ -2198,8 +2277,8 @@ For the process definition we implement an extension of the
    contains
    <<Omega interface: omega omega def: TBP>>
   end type omega_omega_def_t
-  
-@ %def omega_omega_def_t  
+
+@ %def omega_omega_def_t
 @
 <<Omega interface: public>>=
   public :: omega_ovm_def_t
@@ -2208,9 +2287,9 @@ For the process definition we implement an extension of the
    contains
    <<Omega interface: omega ovm def: TBP>>
   end type omega_ovm_def_t
-  
-@ %def omega_ovm_def_t  
-@ 
+
+@ %def omega_ovm_def_t
+@
 <<Omega interface: omega omega def: TBP>>=
   procedure, nopass :: type_string => omega_omega_def_type_string
 <<Omega interface: procedures>>=
@@ -2220,7 +2299,7 @@ For the process definition we implement an extension of the
   end function omega_omega_def_type_string
 
 @ %def omega_omega_def_type_string
-@ 
+@
 <<Omega interface: omega ovm def: TBP>>=
   procedure, nopass :: type_string => omega_ovm_def_type_string
 <<Omega interface: procedures>>=
@@ -2243,7 +2322,7 @@ Also set any data for this process that the writer needs.
     type(string_t), dimension(:), intent(in) :: prt_in
     type(string_t), dimension(:), intent(in) :: prt_out
     logical, intent(in), optional :: cms_scheme
-    type(string_t), intent(in), optional :: restrictions    
+    type(string_t), intent(in), optional :: restrictions
     logical, intent(in), optional :: openmp_support
     logical, intent(in), optional :: report_progress
     logical, intent(in), optional :: diags, diags_color
@@ -2283,9 +2362,9 @@ Also set any data for this process that the writer needs.
        call writer%write (unit)
     end select
   end subroutine omega_def_write
-  
+
 @ %def omega_def_write
-@ 
+@
 <<Omega interface: omega def: TBP>>=
   procedure :: read => omega_def_read
 <<Omega interface: procedures>>=
@@ -2294,7 +2373,7 @@ Also set any data for this process that the writer needs.
     integer, intent(in) :: unit
     call msg_bug ("O'Mega process definition: input not supported yet")
   end subroutine omega_def_read
-  
+
 @ %def omega_def_read
 @ Allocate the driver for \oMega matrix elements.
 <<Omega interface: omega def: TBP>>=
@@ -2306,7 +2385,7 @@ Also set any data for this process that the writer needs.
     type(string_t), intent(in) :: basename
     allocate (omega_driver_t :: driver)
   end subroutine omega_def_allocate_driver
-  
+
 @ %def omega_def_allocate_driver
 @ We need code:
 <<Omega interface: omega def: TBP>>=
@@ -2316,7 +2395,7 @@ Also set any data for this process that the writer needs.
     logical :: flag
     flag = .true.
   end function omega_def_needs_code
-  
+
 @ %def omega_def_needs_code
 @ These are the features that an \oMega\ matrix element provides.
 <<Omega interface: omega def: TBP>>=
@@ -2344,14 +2423,14 @@ Also set any data for this process that the writer needs.
        integer(c_int), intent(in) :: scheme
      end subroutine init_t
   end interface
-  
+
   abstract interface
      subroutine update_alpha_s_t (alpha_s) bind(C)
        import
        real(c_default_float), intent(in) :: alpha_s
      end subroutine update_alpha_s_t
   end interface
-  
+
   abstract interface
      subroutine reset_helicity_selection_t (threshold, cutoff) bind(C)
        import
@@ -2374,7 +2453,7 @@ Also set any data for this process that the writer needs.
        real(c_default_float), dimension(0:3,*), intent(in) :: p
      end subroutine new_event_t
   end interface
-  
+
   abstract interface
      subroutine get_amplitude_t (flv, hel, col, amp) bind(C)
        import
@@ -2383,7 +2462,7 @@ Also set any data for this process that the writer needs.
      end subroutine get_amplitude_t
   end interface
 
-@ %def init_t update_alpha_s_t reset_helicity_selection_t  
+@ %def init_t update_alpha_s_t reset_helicity_selection_t
 @ %def is_allowed_t new_event_t get_amplitude_t
 @ Connect the \oMega\ features with the process driver.
 <<Omega interface: omega def: TBP>>=
@@ -2443,22 +2522,22 @@ wrappers.
   end type omega_writer_t
 
 @ %def omega_writer_t
-@ 
+@
 <<Omega interface: types>>=
   type, extends (omega_writer_t) :: omega_omega_writer_t
    contains
    <<Omega interface: omega omega writer: TBP>>
   end type omega_omega_writer_t
 
-@ %def omega_omega_writer_t 
-@ 
+@ %def omega_omega_writer_t
+@
 <<Omega interface: types>>=
   type, extends (omega_writer_t) :: omega_ovm_writer_t
    contains
    <<Omega interface: omega ovm writer: TBP>>
   end type omega_ovm_writer_t
 
-@ %def omega_ovm_writer_t 
+@ %def omega_ovm_writer_t
 <<Omega interface: omega omega writer: TBP>>=
   procedure, nopass :: type_name => omega_omega_writer_type_name
 <<Omega interface: procedures>>=
@@ -2509,7 +2588,7 @@ wrappers.
     write (unit, "(5x,A,L1)")  "Report progress   = ", object%report_progress
     write (unit, "(5x,A,A)")  "Extra options     = ", &
          '"' // char (object%extra_options) // '"'
-    write (unit, "(5x,A,L1)")  "Write diagrams    = ", object%diags    
+    write (unit, "(5x,A,L1)")  "Write diagrams    = ", object%diags
     write (unit, "(5x,A,L1)")  "Write color diag. = ", object%diags_color
     write (unit, "(5x,A,L1)")  "Complex Mass S.   = ", &
          object%complex_mass_scheme
@@ -2531,7 +2610,7 @@ wrappers.
     type(string_t), intent(in), optional :: restrictions
     logical, intent(in), optional :: openmp_support
     logical, intent(in), optional :: report_progress
-    logical, intent(in), optional :: diags, diags_color    
+    logical, intent(in), optional :: diags, diags_color
     type(string_t), intent(in), optional :: extra_options
     integer :: i
     writer%model_name = model_name
@@ -2614,7 +2693,7 @@ diagrams, at least in the testsuite.
        openmp_string = " -target:openmp"
     else
        openmp_string = ""
-    end if    
+    end if
     if (writer%report_progress) then
        progress_string = " -fusion:progress"
     else
@@ -2628,10 +2707,10 @@ diagrams, at least in the testsuite.
           diagrams_string = " -diagrams " // char(id) // &
                "_diags -diagrams_LaTeX"
        end if
-    else 
+    else
        if (writer%diags_color) then
           diagrams_string = " -diagrams:c " // char(id) // &
-               "_diags -diagrams_LaTeX"        
+               "_diags -diagrams_LaTeX"
        else
           diagrams_string = ""
        end if
@@ -2655,17 +2734,17 @@ diagrams, at least in the testsuite.
        write (unit, "(5A)")  "SOURCES += ", char (id), ".hbc"
     end select
     if (writer%diags .or. writer%diags_color) then
-       write (unit, "(5A)")  "TEX_SOURCES += ", char (id), "_diags.tex"    
+       write (unit, "(5A)")  "TEX_SOURCES += ", char (id), "_diags.tex"
        if (os_data%event_analysis_pdf) then
           write (unit, "(5A)")  "TEX_OBJECTS += ", char (id), "_diags.pdf"
        else
           write (unit, "(5A)")  "TEX_OBJECTS += ", char (id), "_diags.ps"
        end if
     end if
-    write (unit, "(5A)")  "OBJECTS += ", char (id), ".lo"    
+    write (unit, "(5A)")  "OBJECTS += ", char (id), ".lo"
     select type (writer)
-    type is (omega_omega_writer_t)       
-       write (unit, "(5A)")  char (id), ".f90:"       
+    type is (omega_omega_writer_t)
+       write (unit, "(5A)")  char (id), ".f90:"
        write (unit, "(99A)")  TAB, char (omega_path), &
             " -o ", char (id), ".f90", &
             " -target:whizard", &
@@ -2705,7 +2784,7 @@ diagrams, at least in the testsuite.
     write (unit, "(5A)")  TAB, "rm -f ", char (id), ".f90"
     write (unit, "(5A)")  TAB, "rm -f opr_", char (id), ".mod"
     write (unit, "(5A)")  TAB, "rm -f ", char (id), ".lo"
-    write (unit, "(5A)")  "CLEAN_SOURCES += ", char (id), ".f90"    
+    write (unit, "(5A)")  "CLEAN_SOURCES += ", char (id), ".f90"
     select type (writer)
     type is (omega_ovm_writer_t)
        write (unit, "(5A)")  "CLEAN_SOURCES += ", char (id), ".hbc"
@@ -2713,26 +2792,26 @@ diagrams, at least in the testsuite.
     if (writer%diags .or. writer%diags_color) then
        write (unit, "(5A)")  "CLEAN_SOURCES += ", char (id), "_diags.tex"
     end if
-    write (unit, "(5A)")  "CLEAN_OBJECTS += opr_", char (id), ".mod"       
+    write (unit, "(5A)")  "CLEAN_OBJECTS += opr_", char (id), ".mod"
     write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), ".lo"
-    if (writer%diags .or. writer%diags_color) then    
-       write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), "_diags.aux"  
-       write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), "_diags.log"         
-       write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), "_diags.dvi"                
-       write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), "_diags.toc"                       
-       write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), "_diags.out"       
-       write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), "_diags-fmf.[1-9]"       
-       write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), "_diags-fmf.[1-9][0-9]"    
-       write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), "_diags-fmf.[1-9][0-9][0-9]"   
-       write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), "_diags-fmf.t[1-9]"       
+    if (writer%diags .or. writer%diags_color) then
+       write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), "_diags.aux"
+       write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), "_diags.log"
+       write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), "_diags.dvi"
+       write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), "_diags.toc"
+       write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), "_diags.out"
+       write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), "_diags-fmf.[1-9]"
+       write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), "_diags-fmf.[1-9][0-9]"
+       write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), "_diags-fmf.[1-9][0-9][0-9]"
+       write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), "_diags-fmf.t[1-9]"
        write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), "_diags-fmf.t[1-9][0-9]"
        write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), "_diags-fmf.t[1-9][0-9][0-9]"
        write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), "_diags-fmf.mp"
-       write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), "_diags-fmf.log"       
-       write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), "_diags.dvi"              
-       write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), "_diags.ps"                     
+       write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), "_diags-fmf.log"
+       write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), "_diags.dvi"
+       write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), "_diags.ps"
        if (os_data%event_analysis_pdf) &
-            write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), "_diags.pdf" 
+            write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), "_diags.pdf"
     end if
     write (unit, "(5A)")  char (id), ".lo: ", char (id), ".f90"
     write (unit, "(5A)")  TAB, "$(LTFCOMPILE) $<"
@@ -2744,7 +2823,7 @@ diagrams, at least in the testsuite.
              write (unit, "(5A)")  char (id), "_diags.ps: ", char (id), "_diags.tex"
           end if
           if (escape_hyperref) then
-             write (unit, "(5A)")  TAB, "-cat ", char (id), "_diags.tex | \" 
+             write (unit, "(5A)")  TAB, "-cat ", char (id), "_diags.tex | \"
              write (unit, "(5A)")  TAB, "   sed -e" // &
                 "'s/\\usepackage\[colorlinks\]{hyperref}.*/%\\usepackage" // &
                 "\[colorlinks\]{hyperref}/' > \"
@@ -2757,7 +2836,7 @@ diagrams, at least in the testsuite.
           write (unit, "(5A)")  TAB, "MPINPUTS=$(MP_FLAGS) $(MPOST) " // &
                char (id) // "_diags-fmf.mp"
           write (unit, "(5A)")  TAB, "TEXINPUTS=$(TEX_FLAGS) $(LATEX) " // &
-               char (id) // "_diags.tex"  
+               char (id) // "_diags.tex"
           write (unit, "(5A)")  TAB, "$(DVIPS) -o " // char (id) // "_diags.ps " // &
                char (id) // "_diags.dvi"
           if (os_data%event_analysis_pdf) then
@@ -2803,7 +2882,7 @@ the binding of the base type.
        name = feature
     end select
   end function omega_writer_get_procname
-  
+
 @ %def omega_writer_get_procname
 @ The interfaces for the \oMega-specific features.
 <<Omega interface: omega writer: TBP>>=
@@ -2843,7 +2922,7 @@ the binding of the base type.
             &(flv, hel, col, flag) bind(C)"
        write (unit, "(7x,9A)")  "import"
        write (unit, "(7x,9A)")  "integer(c_int), intent(in) :: flv, hel, col"
-       write (unit, "(7x,9A)")  "logical(c_bool), intent(out) :: flag"    
+       write (unit, "(7x,9A)")  "logical(c_bool), intent(out) :: flag"
        write (unit, "(5x,9A)")  "end subroutine ", char (name)
     case ("new_event")
        write (unit, "(5x,9A)")  "subroutine ", char (name), " (p) bind(C)"
@@ -2857,7 +2936,7 @@ the binding of the base type.
        write (unit, "(7x,9A)")  "import"
        write (unit, "(7x,9A)")  "integer(c_int), intent(in) :: flv, hel, col"
        write (unit, "(7x,9A)")  "complex(c_default_complex), intent(out) &
-            &:: amp"    
+            &:: amp"
        write (unit, "(5x,9A)")  "end subroutine ", char (name)
     end select
     write (unit, "(2x,9A)")  "end interface"
@@ -2924,7 +3003,7 @@ NOTE: The case [[c_default_float]] $\neq$ [[default]] is not yet covered.
        write (unit, "(2x,9A)")  "use kinds"
        write (unit, "(2x,9A)")  "use opr_", char (id)
        write (unit, "(2x,9A)")  "integer(c_int), intent(in) :: flv, hel, col"
-       write (unit, "(2x,9A)")  "logical(c_bool), intent(out) :: flag"    
+       write (unit, "(2x,9A)")  "logical(c_bool), intent(out) :: flag"
        write (unit, "(2x,9A)")  "flag = ", char (feature), &
             " (int (flv), int (hel), int (col))"
        write (unit, "(9A)")  "end subroutine ", char (name)
@@ -2947,7 +3026,7 @@ NOTE: The case [[c_default_float]] $\neq$ [[default]] is not yet covered.
        write (unit, "(2x,9A)")  "use opr_", char (id)
        write (unit, "(2x,9A)")  "integer(c_int), intent(in) :: flv, hel, col"
        write (unit, "(2x,9A)")  "complex(c_default_complex), intent(out) &
-            &:: amp"    
+            &:: amp"
        write (unit, "(2x,9A)")  "amp = ", char (feature), &
             " (int (flv), int (hel), int (col))"
        write (unit, "(9A)")  "end subroutine ", char (name)
@@ -2955,7 +3034,7 @@ NOTE: The case [[c_default_float]] $\neq$ [[default]] is not yet covered.
   end subroutine omega_write_wrapper
 
 @ %def omega_write_wrapper
-@ 
+@
 \subsection{Driver}
 <<Omega interface: public>>=
   public :: omega_driver_t
@@ -3031,7 +3110,7 @@ cause a segfault.
          method = var_str ("omega"), &
          variant = def)
   end subroutine omega_make_process_component
-    
+
 @ %def omega_make_process_component
 @
 \subsection{The [[prc_omega_t]] wrapper}
@@ -3050,7 +3129,7 @@ pointer to the process definition ([[omega_def_t]]), a data component
    contains
    <<Omega interface: prc omega: TBP>>
   end type prc_omega_t
-  
+
 @ %def prc_omega_t
 @ The workspace associated to a [[prc_omega_t]] object contains a single flag.
 The flag is used to suppress re-evaluating the matrix element for each
@@ -3067,11 +3146,13 @@ value in this context.
      logical :: new_kinematics = .true.
      real(default) :: alpha_qcd = -1
    contains
-     procedure :: write => omega_state_write
-     procedure :: reset_new_kinematics => omega_state_reset_new_kinematics
+  <<Omega interface: omega state: TBP>>
   end type omega_state_t
-  
+
 @ %def omega_state_t
+@
+<<Omega interface: omega state: TBP>>=
+  procedure :: write => omega_state_write
 <<Omega interface: procedures>>=
   subroutine omega_state_write (object, unit)
     class(omega_state_t), intent(in) :: object
@@ -3081,8 +3162,10 @@ value in this context.
     write (u, "(3x,A,L1)")  "O'Mega state: new kinematics = ", &
          object%new_kinematics
   end subroutine omega_state_write
-  
+
 @ %def omega_state_write
+<<Omega interface: omega state: TBP>>=
+  procedure :: reset_new_kinematics => omega_state_reset_new_kinematics
 <<Omega interface: procedures>>=
   subroutine omega_state_reset_new_kinematics (object)
     class(omega_state_t), intent(inout) :: object
@@ -3099,7 +3182,7 @@ value in this context.
     class(prc_core_state_t), intent(inout), allocatable :: core_state
     allocate (omega_state_t :: core_state)
   end subroutine prc_omega_allocate_workspace
-  
+
 @ %def prc_omega_allocate_workspace
 @ The following procedures are inherited from the base type as deferred, thus
 must be implemented.  The corresponding unit tests are skipped here; the
@@ -3131,8 +3214,21 @@ only if active.)
     call object%helicity_selection%write (u)
     call object%qcd%write (u)
   end subroutine prc_omega_write
-  
+
 @ %def prc_omega_write
+@
+<<Omega interface: prc omega: TBP>>=
+  procedure :: write_name => prc_omega_write_name
+<<Omega interface: procedures>>=
+  subroutine prc_omega_write_name (object, unit)
+    class(prc_omega_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit)
+    write (u,"(1x,A)") "Core: O'Mega"
+  end subroutine prc_omega_write_name
+
+@ %def prc_omega_write_name
 @ Temporarily store the parameter array inside the [[prc_omega]]
 object, so we can use it later during the actual initialization.  Also
 store threshold and cutoff for helicity selection.
@@ -3162,7 +3258,7 @@ store threshold and cutoff for helicity selection.
        prc_omega%use_color_factors = use_color_factors
     end if
   end subroutine prc_omega_set_parameters
-  
+
 @ %def prc_omega_set_parameters
 @ To fully initialize the process core, we perform base
 initialization, then initialize the external matrix element code.
@@ -3186,7 +3282,7 @@ If requested, we initialize the helicity selction counter.
     call object%base_init (def, lib, id, i_component)
     call object%activate_parameters ()
   end subroutine prc_omega_init
-    
+
 @ %def prc_omega_init
 @ Activate the stored parameters by transferring them to the external
 matrix element.  Also reset the helicity selection, if requested.
@@ -3211,31 +3307,8 @@ matrix element.  Also reset the helicity selection, if requested.
        call msg_bug ("prc_omega_activate: driver is not allocated")
     end if
   end subroutine prc_omega_activate_parameters
-    
-@ %def prc_omega_activate_parameters
-@ The \oMega\ process is an independent process which needs its own Monte
-Carlo parameter set for integration.
-<<Omega interface: prc omega: TBP>>=
-  procedure :: needs_mcset => prc_omega_needs_mcset
-<<Omega interface: procedures>>=
-  function prc_omega_needs_mcset (object) result (flag)
-    class(prc_omega_t), intent(in) :: object
-    logical :: flag
-    flag = .true.
-  end function prc_omega_needs_mcset
-  
-@ %def prc_omega_needs_mcset
-@ There is only one term for this tree-level process.
-<<Omega interface: prc omega: TBP>>=
-  procedure :: get_n_terms => prc_omega_get_n_terms
-<<Omega interface: procedures>>=
-  function prc_omega_get_n_terms (object) result (n)
-    class(prc_omega_t), intent(in) :: object
-    integer :: n
-    n = 1
-  end function prc_omega_get_n_terms
 
-@ %def prc_omega_get_n_terms
+@ %def prc_omega_activate_parameters
 @ Tell whether a particular combination of flavor, helicity, color is
 allowed.  Here we have to consult the matrix-element driver.
 <<Omega interface: prc omega: TBP>>=
@@ -3252,7 +3325,7 @@ allowed.  Here we have to consult the matrix-element driver.
        flag = cflag
     end select
   end function prc_omega_is_allowed
- 
+
 @ %def prc_omega_is_allowed
 @ Transfer the generated momenta directly to the hard interaction in
 the (only) term.  We assume that everything has been set up correctly,
@@ -3273,7 +3346,7 @@ configuration is to be considered.
     class(prc_core_state_t), intent(inout), allocatable :: core_state
     call int_hard%set_momenta (p_seed)
   end subroutine prc_omega_compute_hard_kinematics
-  
+
 @ %def prc_omega_compute_hard_kinematics
 @ This procedure is not called for [[prc_omega_t]], just a placeholder.
 <<Omega interface: prc omega: TBP>>=
@@ -3287,29 +3360,8 @@ configuration is to be considered.
     type(interaction_t), intent(inout) :: int_eff
     class(prc_core_state_t), intent(inout), allocatable :: core_state
   end subroutine prc_omega_compute_eff_kinematics
-  
+
 @ %def prc_omega_compute_eff_kinematics
-@ Recover the momenta within the hard interaction.  For tree-level
-processes, this is a trivial copy of the incoming seed and outgoing
-effective momenta.  The effective interaction is a pointer to the hard
-interaction, so the latter is ignored.
-<<Omega interface: prc omega: TBP>>=
-  procedure :: recover_kinematics => prc_omega_recover_kinematics
-<<Omega interface: procedures>>=
-  subroutine prc_omega_recover_kinematics &
-       (object, p_seed, int_hard, int_eff, core_state)
-    class(prc_omega_t), intent(in) :: object
-    type(vector4_t), dimension(:), intent(inout) :: p_seed
-    type(interaction_t), intent(inout) :: int_hard
-    type(interaction_t), intent(inout) :: int_eff
-    class(prc_core_state_t), intent(inout), allocatable :: core_state
-    integer :: n_in
-    n_in = int_eff%get_n_in ()
-    call int_eff%set_momenta (p_seed(1:n_in), outgoing = .false.)
-    p_seed(n_in+1:) = int_eff%get_momenta (outgoing = .true.)
-  end subroutine prc_omega_recover_kinematics
-    
-@ %def prc_omega_recover_kinematics
 @ Reset the helicity selection counters and start counting zero
 helicities.  We assume that the [[helicity_selection]] object is allocated.
 Otherwise, reset and switch off helicity counting.
@@ -3336,7 +3388,7 @@ Therefore, guard against a disassociated method.
        end if
     end select
   end subroutine prc_omega_reset_helicity_selection
-  
+
 @ %def reset_helicity_selection
 @ Compute the amplitude.  For the tree-level process, we can ignore the scale
 settings.  The term index [[j]] is also irrelevant.
@@ -3403,7 +3455,7 @@ the run if helicities are switched off.
                 end if
              end if
           end if
-          n_tot = object%data%n_in + object%data%n_out
+          n_tot = object%data%get_n_tot ()
           allocate (parray (0:3, n_tot))
           do i = 1, n_tot
              parray(:,i) = vector4_get_components (p(i))
@@ -3439,7 +3491,7 @@ $\alpha_s$.  This works only if $\alpha_s$ varies, and if the workspace
        end select
     end if
   end function prc_omega_get_alpha_s
-  
+
 @ %def prc_omega_get_alpha_s
 @
 \subsection{Unit Test}
@@ -3452,13 +3504,13 @@ this depends on a working analysis setup.
 module prc_omega_ut
   use unit_tests
   use prc_omega_uti
-  
+
 <<Standard module head>>
 
 <<Omega interface: public test>>
 
 contains
-  
+
 <<Omega interface: test driver>>
 
 end module prc_omega_ut
@@ -3557,7 +3609,7 @@ parallel make.
     logical(c_bool) :: flag
     complex(c_default_complex) :: amp
     integer :: i
-    
+
     write (u, "(A)")  "* Test output: prc_omega_1"
     write (u, "(A)")  "*   Purpose: create a simple process with OMega"
     write (u, "(A)")  "*            build a library, link, load, and &
@@ -3573,7 +3625,7 @@ parallel make.
     allocate (prt_in (2), prt_out (2))
     prt_in = [var_str ("e+"), var_str ("e-")]
     prt_out = [var_str ("m+"), var_str ("m-")]
-    
+
     allocate (omega_omega_def_t :: def)
     select type (def)
     type is (omega_omega_def_t)
@@ -3588,11 +3640,11 @@ parallel make.
          method  = var_str ("omega"), &
          variant = def)
     call lib%append (entry)
-    
+
     write (u, "(A)")  "* Configure library"
     write (u, "(A)")
     call lib%configure (os_data)
-    
+
     write (u, "(A)")  "* Write makefile"
     write (u, "(A)")
     call lib%write_makefile (os_data, force = .true.)
@@ -3610,11 +3662,11 @@ parallel make.
     call lib%load (os_data)
 
     call lib%write (u, libpath = .false.)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Probe library API:"
     write (u, "(A)")
-       
+
     write (u, "(1x,A,L1)")  "is active                 = ", &
          lib%is_active ()
     write (u, "(1x,A,I0)")  "n_processes               = ", &
@@ -3660,7 +3712,7 @@ parallel make.
     write (u, "(A)")
     write (u, "(A)")  "* Set kinematics:"
     write (u, "(A)")
-    
+
     p = reshape ([ &
          1.0_cdf, 0.0_cdf, 0.0_cdf, 1.0_cdf, &
          1.0_cdf, 0.0_cdf, 0.0_cdf,-1.0_cdf, &
@@ -3683,18 +3735,18 @@ parallel make.
 
        call driver%is_allowed (1_ci, 6_ci, 1_ci, flag)
        write (u, "(1x,A,L1)") "is_allowed (1, 6, 1) = ", flag
-       
+
        call driver%get_amplitude (1_ci, 6_ci, 1_ci, amp)
        write (u, "(1x,A,1x,E11.4)") "|amp (1, 6, 1)| =", abs (amp)
     end select
 
     call lib%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: prc_omega_1"
-    
+
   end subroutine prc_omega_1
-  
+
 @ %def prc_omega_1
 @
 \subsubsection{Check [[prc_omega_t]] wrapper and options}
@@ -3734,7 +3786,7 @@ parallel make.
     complex(c_default_complex) :: amp
     integer :: i
     logical :: exist
-    
+
     write (u, "(A)")  "* Test output: prc_omega_2"
     write (u, "(A)")  "*   Purpose: create simple processes with OMega"
     write (u, "(A)")  "*            use the prc_omega wrapper for this"
@@ -3772,7 +3824,7 @@ parallel make.
          extra_options=var_str ("-fusion:progress_file omega2.log"))
 
     call lib%append (entry)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Remove left-over file"
     write (u, "(A)")
@@ -3789,7 +3841,7 @@ parallel make.
     call lib%clean (os_data, distclean = .false.)
     call lib%write_driver (force = .true.)
     call lib%load (os_data)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Check extra output of OMega"
     write (u, "(A)")
@@ -3800,7 +3852,7 @@ parallel make.
     write (u, "(A)")
     write (u, "(A)")  "* Probe library API:"
     write (u, "(A)")
-       
+
     write (u, "(1x,A,L1)")  "is active                 = ", &
          lib%is_active ()
     write (u, "(1x,A,I0)")  "n_processes               = ", &
@@ -3860,7 +3912,7 @@ parallel make.
     write (u, "(A)")
     write (u, "(A)")  "* Set kinematics:"
     write (u, "(A)")
-    
+
     p = reshape ([ &
          1.0_cdf, 0.0_cdf, 0.0_cdf, 1.0_cdf, &
          1.0_cdf, 0.0_cdf, 0.0_cdf,-1.0_cdf, &
@@ -3892,7 +3944,7 @@ parallel make.
     write (u, "(A)")
     write (u, "(A)")  "* Set kinematics:"
     write (u, "(A)")
-    
+
     p = reshape ([ &
          1.0_cdf, 0.0_cdf, 0.0_cdf, 1.0_cdf, &
          1.0_cdf, 0.0_cdf, 0.0_cdf,-1.0_cdf, &
@@ -3926,9 +3978,9 @@ parallel make.
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: prc_omega_2"
-    
+
   end subroutine prc_omega_2
-  
+
 @ %def prc_omega_2
 @
 \subsubsection{Check helicity selection}
@@ -3959,7 +4011,7 @@ irrelevant helicities.
     real(cdf), dimension(0:3,4) :: p
     type(helicity_selection_t) :: helicity_selection
     integer :: i, h
-    
+
     write (u, "(A)")  "* Test output: prc_omega_3"
     write (u, "(A)")  "*   Purpose: create simple process with OMega"
     write (u, "(A)")  "*            and check helicity selection"
@@ -3985,7 +4037,7 @@ irrelevant helicities.
     call omega_make_process_component (entry, 1, &
          model_name, prt_in, prt_out)
     call lib%append (entry)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Build and load library"
 
@@ -3994,11 +4046,11 @@ irrelevant helicities.
     call lib%clean (os_data, distclean = .false.)
     call lib%write_driver (force = .true.)
     call lib%load (os_data)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Probe library API:"
     write (u, "(A)")
-       
+
     write (u, "(1x,A,L1)")  "is active                 = ", &
          lib%is_active ()
     write (u, "(1x,A,I0)")  "n_processes               = ", &
@@ -4038,14 +4090,14 @@ irrelevant helicities.
     write (u, "(A)")
     write (u, "(A)")  "* Initially allowed helicities:"
     write (u, "(A)")
-    
+
     write (u, "(4x,16(1x,I2))")  [(h, h = 1, data%n_hel)]
     write (u, "(4x)", advance = "no")
     do h = 1, data%n_hel
        write (u, "(2x,L1)", advance = "no")  prc1%is_allowed (1, 1, h, 1)
     end do
     write (u, "(A)")
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Reset helicity selection (cutoff = 4)"
     write (u, "(A)")
@@ -4054,25 +4106,25 @@ irrelevant helicities.
     helicity_selection%threshold = 1e10_default
     helicity_selection%cutoff = 4
     call helicity_selection%write (u)
-    
+
     call prc1%set_parameters (model, helicity_selection=helicity_selection)
     call prc1%reset_helicity_selection ()
 
     write (u, "(A)")
     write (u, "(A)")  "* Allowed helicities:"
     write (u, "(A)")
-    
+
     write (u, "(4x,16(1x,I2))")  [(h, h = 1, data%n_hel)]
     write (u, "(4x)", advance = "no")
     do h = 1, data%n_hel
        write (u, "(2x,L1)", advance = "no")  prc1%is_allowed (1, 1, h, 1)
     end do
     write (u, "(A)")
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Set kinematics:"
     write (u, "(A)")
-    
+
     p = reshape ([ &
          1.0_cdf, 0.0_cdf, 0.0_cdf, 1.0_cdf, &
          1.0_cdf, 0.0_cdf, 0.0_cdf,-1.0_cdf, &
@@ -4109,22 +4161,22 @@ irrelevant helicities.
 
     write (u, "(A)")  "* Allowed helicities:"
     write (u, "(A)")
-    
+
     write (u, "(4x,16(1x,I2))")  [(h, h = 1, data%n_hel)]
     write (u, "(4x)", advance = "no")
     do h = 1, data%n_hel
        write (u, "(2x,L1)", advance = "no")  prc1%is_allowed (1, 1, h, 1)
     end do
     write (u, "(A)")
-    
+
     call lib%final ()
     call cleanup_model (model)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: prc_omega_3"
-    
+
   end subroutine prc_omega_3
-  
+
 @ %def prc_omega_3
 @
 \subsubsection{QCD coupling}
@@ -4160,7 +4212,7 @@ parallel make.
     complex(c_default_complex) :: amp
     integer :: i
     real(cdf) :: alpha_s
-    
+
     write (u, "(A)")  "* Test output: prc_omega_4"
     write (u, "(A)")  "*   Purpose: create a QCD process with OMega"
     write (u, "(A)")  "*            and check alpha_s dependence"
@@ -4175,7 +4227,7 @@ parallel make.
     allocate (prt_in (2), prt_out (2))
     prt_in = [var_str ("u"), var_str ("ubar")]
     prt_out = [var_str ("d"), var_str ("dbar")]
-    
+
     allocate (omega_omega_def_t :: def)
     select type (def)
     type is (omega_omega_def_t)
@@ -4190,7 +4242,7 @@ parallel make.
          method  = var_str ("omega"), &
          variant = def)
     call lib%append (entry)
-    
+
     write (u, "(A)")  "* Configure and compile process"
     write (u, "(A)")
     call lib%configure (os_data)
@@ -4198,10 +4250,10 @@ parallel make.
     call lib%clean (os_data, distclean = .false.)
     call lib%write_driver (force = .true.)
     call lib%load (os_data)
-    
+
     write (u, "(A)")  "* Probe library API:"
     write (u, "(A)")
-       
+
     write (u, "(1x,A,L1)")  "is active = ", lib%is_active ()
 
     write (u, "(A)")
@@ -4209,7 +4261,7 @@ parallel make.
     write (u, "(A)")
 
     alpha_s = 0.1178_cdf
-    
+
     par = [alpha_s, &
          0._cdf, 0._cdf, 0._cdf, 0._cdf, 0._cdf, 173.1_cdf, 1.523_cdf]
     write (u, "(2x,A,F8.4)")  "alpha_s = ", par(1)
@@ -4224,7 +4276,7 @@ parallel make.
     write (u, "(A)")
     write (u, "(A)")  "* Set kinematics:"
     write (u, "(A)")
-    
+
     p = reshape ([ &
          100.0_cdf, 0.0_cdf, 0.0_cdf, 100.0_cdf, &
          100.0_cdf, 0.0_cdf, 0.0_cdf,-100.0_cdf, &
@@ -4249,7 +4301,7 @@ parallel make.
 
        call driver%is_allowed (1_ci, 6_ci, 1_ci, flag)
        write (u, "(1x,A,L1)") "is_allowed (1, 6, 1) = ", flag
-       
+
        call driver%get_amplitude (1_ci, 6_ci, 1_ci, amp)
        write (u, "(1x,A,1x,E11.4)") "|amp (1, 6, 1)| =", abs (amp)
 
@@ -4262,18 +4314,18 @@ parallel make.
 
        call driver%is_allowed (1_ci, 6_ci, 1_ci, flag)
        write (u, "(1x,A,L1)") "is_allowed (1, 6, 1) = ", flag
-       
+
        call driver%get_amplitude (1_ci, 6_ci, 1_ci, amp)
        write (u, "(1x,A,1x,E11.4)") "|amp (1, 6, 1)| =", abs (amp)
     end select
 
     call lib%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: prc_omega_4"
-    
+
   end subroutine prc_omega_4
-  
+
 @ %def prc_omega_4
 @
 \subsubsection{Amplitude and QCD coupling}
@@ -4306,7 +4358,7 @@ method [[compute_amplitude]].
     real(default) :: fac_scale
     real(default), allocatable :: alpha_qcd_forced
     integer :: i
-    
+
     write (u, "(A)")  "* Test output: prc_omega_5"
     write (u, "(A)")  "*   Purpose: create a QCD process with OMega"
     write (u, "(A)")  "*            and check alpha_s dependence"
@@ -4323,7 +4375,7 @@ method [[compute_amplitude]].
     allocate (prt_in (2), prt_out (2))
     prt_in = [var_str ("u"), var_str ("ubar")]
     prt_out = [var_str ("d"), var_str ("dbar")]
-    
+
     allocate (omega_omega_def_t :: def)
     select type (def)
     type is (omega_omega_def_t)
@@ -4338,7 +4390,7 @@ method [[compute_amplitude]].
          method  = var_str ("omega"), &
          variant = def)
     call lib%append (entry)
-    
+
     write (u, "(A)")  "* Configure and compile process"
     write (u, "(A)")
     call lib%configure (os_data)
@@ -4346,16 +4398,16 @@ method [[compute_amplitude]].
     call lib%clean (os_data, distclean = .false.)
     call lib%write_driver (force = .true.)
     call lib%load (os_data)
-    
+
     write (u, "(A)")  "* Probe library API"
     write (u, "(A)")
-       
+
     write (u, "(1x,A,L1)")  "is active = ", lib%is_active ()
 
     write (u, "(A)")
     write (u, "(A)")  "* Set kinematics"
     write (u, "(A)")
-    
+
     p(1) = vector4_moving (100._default, 100._default, 3)
     p(2) = vector4_moving (100._default,-100._default, 3)
     p(3) = vector4_moving (100._default, 100._default, 1)
@@ -4367,12 +4419,12 @@ method [[compute_amplitude]].
     write (u, "(A)")
     write (u, "(A)")  "* Setup QCD data"
     write (u, "(A)")
-    
+
     allocate (alpha_qcd_from_scale_t :: qcd%alpha)
-    
+
     write (u, "(A)")  "* Setup process core"
     write (u, "(A)")
-    
+
     allocate (prc_omega_t :: core)
     cdef_ptr => lib%get_component_def_ptr (var_str ("prc_omega_5_p"), 1)
     def_ptr => cdef_ptr%get_core_def_ptr ()
@@ -4426,18 +4478,18 @@ method [[compute_amplitude]].
 
     call lib%final ()
     call cleanup_model (model)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: prc_omega_5"
-    
+
   end subroutine prc_omega_5
-  
+
 @ %def prc_omega_5
 @
 \subsubsection{Generate matrix element diagrams}
 The same process as before. No amplitude is computed here, instead we just
 generate Feynman (and color flow) diagrams, and check whether PS and PDF
-files have been generated. This test is only run if event analysis is 
+files have been generated. This test is only run if event analysis is
 possible.
 <<Omega interface: execute diags tests>>=
   call test (prc_omega_diags_1, "prc_omega_diags_1", &
@@ -4457,8 +4509,8 @@ possible.
     type(string_t) :: diags_file, pdf_file, ps_file
     logical :: exist, exist_pdf, exist_ps
     integer :: iostat, u_diags
-    character(128) :: buffer    
-    
+    character(128) :: buffer
+
     write (u, "(A)")  "* Test output: prc_omega_diags_1"
     write (u, "(A)")  "*   Purpose: generate Feynman diagrams"
     write (u, "(A)")
@@ -4473,7 +4525,7 @@ possible.
     allocate (prt_in (2), prt_out (2))
     prt_in = [var_str ("u"), var_str ("ubar")]
     prt_out = [var_str ("d"), var_str ("dbar")]
-    
+
     allocate (omega_omega_def_t :: def)
     select type (def)
     type is (omega_omega_def_t)
@@ -4489,7 +4541,7 @@ possible.
          method  = var_str ("omega"), &
          variant = def)
     call lib%append (entry)
-    
+
     write (u, "(A)")  "* Configure and compile process"
     write (u, "(A)")  "    and generate diagrams"
     write (u, "(A)")
@@ -4498,18 +4550,18 @@ possible.
     call lib%clean (os_data, distclean = .false.)
     call lib%write_driver (force = .true.)
     call lib%load (os_data)
-    
+
     write (u, "(A)")  "* Probe library API"
     write (u, "(A)")
-       
+
     write (u, "(1x,A,L1)")  "is active = ", lib%is_active ()
 
     write (u, "(A)")  "* Check produced diagram files"
-    write (u, "(A)")        
+    write (u, "(A)")
 
     diags_file = "prc_omega_diags_1_p_i1_diags.tex"
     ps_file  = "prc_omega_diags_1_p_i1_diags.ps"
-    pdf_file = "prc_omega_diags_1_p_i1_diags.pdf"    
+    pdf_file = "prc_omega_diags_1_p_i1_diags.pdf"
     inquire (file = char (diags_file), exist = exist)
     if (exist) then
        u_diags = free_unit ()
@@ -4534,19 +4586,19 @@ possible.
        write (u, "(A)")  "[Feynman diagrams PDF file exists and is nonempty]"
     else
        write (u, "(A)")  "[Feynman diagrams PDF file is missing/non-regular]"
-    end if               
-    
+    end if
+
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
-    write (u, "(A)")    
-    
+    write (u, "(A)")
+
     call lib%final ()
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: prc_omega_diags_1"
-    
+
   end subroutine prc_omega_diags_1
-  
+
 @ %def prc_omega_diags_1
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -4583,7 +4635,7 @@ module prc_user_defined
   use sf_pdf_builtin, only: pdf_builtin_t
   use sf_lhapdf, only: lhapdf_t
   use pdg_arrays, only: is_gluon, is_quark
- 
+
 <<Standard module head>>
 
 <<Prc User: public>>
@@ -4603,7 +4655,7 @@ end module prc_user_defined
 @
 \subsection{Handling of structure functions}
 User-defined matrix elements do not have access to the structure functions
-stored in the evaluators. The current solution to this problem is to 
+stored in the evaluators. The current solution to this problem is to
 just apply them explicitly after the computation of the matrix element.
 <<Prc User: parameters>>=
   integer, parameter :: LEPTONS = 1
@@ -4626,7 +4678,7 @@ just apply them explicitly after the computation of the matrix element.
     class(sf_handler_t), intent(out) :: sf_handler
     type(sf_chain_instance_t), intent(in) :: sf_chain
     integer :: i
-    sf_handler%n_sf = size (sf_chain%sf) 
+    sf_handler%n_sf = size (sf_chain%sf)
     if (sf_handler%n_sf == 0) then
        sf_handler%initial_state_type = LEPTONS
     else
@@ -4693,7 +4745,7 @@ just apply them explicitly after the computation of the matrix element.
      integer :: k
      real(default), dimension(:), allocatable :: ff
      integer, parameter :: n_flv_light = 6
-     
+
      call sf_chain%get_matrix_elements (i, ff)
 
      if (is_gluon (flavor)) then
@@ -4809,18 +4861,22 @@ driver.
   end function prc_user_defined_base_get_flv_state
 
 @ %def prc_user_defined_base_get_flv_state
-@ Return one single squared test matrix element. It is fixed to 1, 
+@ Return one single squared test matrix element. It is fixed to 1,
 therefore the integration output will be the phase space volume.
 <<Prc User: prc user defined base: TBP>>=
   procedure :: compute_sqme => prc_user_defined_base_compute_sqme
 <<Prc User: procedures>>=
-  function prc_user_defined_base_compute_sqme (object, i_flv, p) result (sqme)
-     real(default) :: sqme
+  subroutine prc_user_defined_base_compute_sqme (object, i_flv, p, &
+         ren_scale, sqme, bad_point)
      class(prc_user_defined_base_t), intent(in) :: object
      integer, intent(in) :: i_flv
      type(vector4_t), dimension(:), intent(in) :: p
+     real(default), intent(in) :: ren_scale
+     real(default), intent(out) :: sqme
+     logical, intent(out) :: bad_point
      sqme = one
-  end function prc_user_defined_base_compute_sqme
+     bad_point = .false.
+  end subroutine prc_user_defined_base_compute_sqme
 
 @ %def prc_user_defined_base_compute_sqme
 @ Return an array of 4 numbers corresponding to the BLHA output convention.
@@ -4830,7 +4886,7 @@ Used for testing.
 <<Prc User: procedures>>=
   subroutine prc_user_defined_base_compute_sqme_virt (object, i_flv, &
      p, ren_scale, sqme, bad_point)
-    class(prc_user_defined_base_t), intent(inout) :: object
+    class(prc_user_defined_base_t), intent(in) :: object
     integer, intent(in) :: i_flv
     type(vector4_t), dimension(:), intent(in) :: p
     real(default), intent(in) :: ren_scale
@@ -4850,14 +4906,14 @@ Used for testing.
   procedure :: compute_sqme_cc => prc_user_defined_base_compute_sqme_cc
 <<Prc User: procedures>>=
   subroutine prc_user_defined_base_compute_sqme_cc (object, i_flv, p, &
-     ren_scale, born_out, born_cc, bad_point) 
+     ren_scale, born_cc, bad_point, born_out)
     class(prc_user_defined_base_t), intent(inout) :: object
     integer, intent(in) :: i_flv
     type(vector4_t), intent(in), dimension(:) :: p
     real(default), intent(in) :: ren_scale
-    real(default), intent(out), optional :: born_out
     real(default), intent(inout), dimension(:,:) :: born_cc
     logical, intent(out) :: bad_point
+    real(default), intent(out), optional :: born_out
     call msg_debug2 (D_ME_METHODS, "prc_user_defined_base_compute_sqme_cc")
     if (present (born_out))  born_out = 0.0015_default
     born_cc = zero
@@ -4869,6 +4925,18 @@ Used for testing.
   end subroutine prc_user_defined_base_compute_sqme_cc
 
 @ %def prc_user_defined_base_compute_sqme_cc
+@
+<<Prc User: prc user defined base: TBP>>=
+  procedure :: compute_alpha_s => prc_user_defined_base_compute_alpha_s
+<<Prc User: procedures>>=
+  subroutine prc_user_defined_base_compute_alpha_s (object, core_state, fac_scale)
+    class(prc_user_defined_base_t), intent(in) :: object
+    class(user_defined_state_t), intent(inout) :: core_state
+    real(default), intent(in) :: fac_scale
+    core_state%alpha_qcd = object%qcd%alpha%get (fac_scale)
+  end subroutine prc_user_defined_base_compute_alpha_s
+
+@ %def prc_user_defined_base_compute_alpha_s
 @
 <<Prc User: prc user defined base: TBP>>=
   procedure :: get_alpha_s => prc_user_defined_base_get_alpha_s
@@ -4894,28 +4962,6 @@ Used for testing.
 @ %def prc_user_defined_base_get_alpha_s
 @
 <<Prc User: prc user defined base: TBP>>=
-  procedure :: needs_mcset => prc_user_defined_base_needs_mcset
-<<Prc User: procedures>>=
-  function prc_user_defined_base_needs_mcset (object) result (flag)
-    class(prc_user_defined_base_t), intent(in) :: object
-    logical :: flag
-    flag = .true.
-  end function prc_user_defined_base_needs_mcset
-
-@
-@ %def prc_user_defined_base_needs_mc_set
-<<Prc User: prc user defined base: TBP>>=
-  procedure :: get_n_terms => prc_user_defined_base_get_n_terms
-<<Prc User: procedures>>=
-  function prc_user_defined_base_get_n_terms (object) result (n)
-    class(prc_user_defined_base_t), intent(in) :: object
-    integer :: n
-    n = 1
-  end function prc_user_defined_base_get_n_terms
-
-@  
-@ %def prc_user_defined_base_get_n_terms
-<<Prc User: prc user defined base: TBP>>=
   procedure :: is_allowed => prc_user_defined_base_is_allowed
 <<Prc User: procedures>>=
   function prc_user_defined_base_is_allowed (object, i_term, f, h, c) result (flag)
@@ -4925,10 +4971,10 @@ Used for testing.
     logical(c_bool) :: cflag
     select type (driver => object%driver)
     class is (user_defined_driver_t)
-       call driver%is_allowed (f, h, c, cflag) 
+       call driver%is_allowed (f, h, c, cflag)
        flag = cflag
     class default
-       call msg_fatal & 
+       call msg_fatal &
           ("Driver does not fit to user_defined_base_t")
     end select
   end function prc_user_defined_base_is_allowed
@@ -4955,7 +5001,7 @@ Used for testing.
     type(vector4_t), dimension(:), intent(in) :: p_seed
     integer, intent(in) :: i_term
     type(interaction_t), intent(inout) :: int_hard
-    class(prc_core_state_t), intent(inout), allocatable :: core_state 
+    class(prc_core_state_t), intent(inout), allocatable :: core_state
     call int_hard%set_momenta (p_seed)
     if (allocated (core_state)) then
       select type (core_state)
@@ -4964,7 +5010,7 @@ Used for testing.
     end if
   end subroutine prc_user_defined_base_compute_hard_kinematics
 
-@ 
+@
 @ %def prc_user_defined_base_compute_hard_kinematics
 <<Prc User: prc user defined base: TBP>>=
   procedure :: compute_eff_kinematics => prc_user_defined_base_compute_eff_kinematics
@@ -4980,34 +5026,15 @@ Used for testing.
 
 @
 @ %def prc_user_defined_base_compute_eff_kinematics
-<<Prc User: prc user defined base: TBP>>=
-  procedure :: recover_kinematics => prc_user_defined_base_recover_kinematics
-<<Prc User: procedures>>=
-  subroutine prc_user_defined_base_recover_kinematics &
-       (object, p_seed, int_hard, int_eff, core_state)
-    class(prc_user_defined_base_t), intent(in) :: object
-    type(vector4_t), dimension(:), intent(inout) :: p_seed
-    type(interaction_t), intent(inout) :: int_hard, int_eff
-    class(prc_core_state_t), intent(inout), allocatable :: core_state
-    integer :: n_in
-    n_in = int_eff%get_n_in ()
-    call int_eff%set_momenta (p_seed(1:n_in), outgoing = .false.)
-    p_seed(n_in+1:) = int_eff%get_momenta (outgoing = .true.)
-  end subroutine prc_user_defined_base_recover_kinematics
-
-@ 
-@ %def prc_user_defined_base_recover_kinematics
+@
 <<Prc User: prc user defined base: TBP>>=
   procedure :: set_parameters => prc_user_defined_base_set_parameters
 <<Prc User: procedures>>=
-  subroutine prc_user_defined_base_set_parameters &
-       (object, qcd, use_color_factors, model)
+  subroutine prc_user_defined_base_set_parameters (object, qcd, model)
     class(prc_user_defined_base_t), intent(inout) :: object
     type(qcd_t), intent(in) :: qcd
-    logical, intent(in) :: use_color_factors
     class(model_data_t), intent(in), target, optional :: model
     object%qcd = qcd
-    object%use_color_factors = use_color_factors
     if (present (model)) then
        if (.not. allocated (object%par)) &
             allocate (object%par (model%get_n_real ()))
@@ -5021,7 +5048,7 @@ Used for testing.
 <<Prc User: prc user defined base: TBP>>=
   procedure :: update_alpha_s => prc_user_defined_base_update_alpha_s
 <<Prc User: procedures>>=
-  subroutine prc_user_defined_base_update_alpha_s (object, core_state, fac_scale) 
+  subroutine prc_user_defined_base_update_alpha_s (object, core_state, fac_scale)
     class(prc_user_defined_base_t), intent(in) :: object
     class(prc_core_state_t), intent(inout), allocatable :: core_state
     real(default), intent(in) :: fac_scale
@@ -5031,7 +5058,7 @@ Used for testing.
        select type (driver => object%driver)
        class is (user_defined_driver_t)
           call driver%update_alpha_s (alpha_qcd)
-       end select 
+       end select
        select type (core_state)
        class is (user_defined_state_t)
           core_state%alpha_qcd = alpha_qcd
@@ -5074,7 +5101,7 @@ Used for testing.
   subroutine prc_user_defined_base_apply_structure_functions (core, sf_chain, flavors)
     class(prc_user_defined_base_t), intent(inout) :: core
     type(sf_chain_instance_t), intent(in) :: sf_chain
-    integer, dimension(2), intent(in) :: flavors 
+    integer, dimension(2), intent(in) :: flavors
     call core%sf_handler%apply_structure_functions (sf_chain, flavors)
   end subroutine prc_user_defined_base_apply_structure_functions
 
@@ -5091,6 +5118,50 @@ Used for testing.
 
 @ %def prc_user_defined_base_get_sf_value
 @
+<<Prc User: prc user defined base: TBP>>=
+  procedure :: get_helicity_list_base => prc_user_defined_base_get_helicity_list
+<<Prc User: procedures>>=
+  function prc_user_defined_base_get_helicity_list (object, i) result (i_out)
+    integer :: i_out
+    class(prc_user_defined_base_t), intent(in) :: object
+    integer, intent(in) :: i
+    i_out = i
+  end function prc_user_defined_base_get_helicity_list
+
+@ %def prc_user_defined_base_get_helicity_list
+@
+<<Prc User: prc user defined base: TBP>>=
+  procedure(prc_user_defined_base_includes_polarization), deferred :: &
+    includes_polarization
+<<Prc User: interfaces>>=
+  abstract interface
+    function prc_user_defined_base_includes_polarization (object) result (polarized)
+      import
+      logical :: polarized
+      class(prc_user_defined_base_t), intent(in) :: object
+    end function prc_user_defined_base_includes_polarization
+  end interface
+
+@ %def prc_user_defined_base_includes_polarization
+@
+<<Prc User: prc user defined base: TBP>>=
+  procedure(prc_user_defined_base_create_and_load_extra_libraries), deferred :: &
+    create_and_load_extra_libraries
+<<Prc User: interfaces>>=
+  abstract interface
+    subroutine prc_user_defined_base_create_and_load_extra_libraries ( &
+         core, os_data, libname, model, i_core)
+      import
+      class(prc_user_defined_base_t), intent(inout) :: core
+      type(os_data_t), intent(in) :: os_data
+      type(string_t), intent(in) :: libname
+      type(model_data_t), intent(in), target :: model
+      integer, intent(in) :: i_core
+    end subroutine prc_user_defined_base_create_and_load_extra_libraries
+  end interface
+
+@ %def prc_user_defined_base_create_and_load_extra_libraries
+@
 \subsubsection{Configuration}
 This is the abstract user defined process definition
 <<Prc User: public>>=
@@ -5105,6 +5176,20 @@ This is the abstract user defined process definition
 @ %def user_defined_def_t
 @
 <<Prc User: user def: TBP>>=
+  procedure :: set_active_writer => user_defined_def_set_active_writer
+<<Prc User: procedures>>=
+  subroutine user_defined_def_set_active_writer (def, active)
+    class(user_defined_def_t), intent(inout) :: def
+    logical, intent(in) :: active
+    select type (writer => def%writer)
+    class is (prc_user_defined_writer_t)
+       writer%active = active
+    end select
+  end subroutine user_defined_def_set_active_writer
+
+@ %def_user_defined_def_set_active_writer
+@
+<<Prc User: user def: TBP>>=
   procedure, nopass :: get_features => user_defined_def_get_features
 <<Prc User: procedures>>=
   subroutine user_defined_def_get_features (features)
@@ -5117,7 +5202,7 @@ This is the abstract user defined process definition
          var_str ("is_allowed"), &
          var_str ("new_event"), &
          var_str ("get_amplitude")]
-  end subroutine user_defined_def_get_features 
+  end subroutine user_defined_def_get_features
 
 @
 @ %def user_defined_def_get_features
@@ -5133,7 +5218,7 @@ This is the abstract user defined process definition
     integer :: pid, fid
     type(c_funptr) :: fptr
     select type (proc_driver)
-    class is (user_defined_driver_t)       
+    class is (user_defined_driver_t)
        pid = i
        fid = 2
        call lib_driver%get_fptr (pid, fid, fptr)
@@ -5183,6 +5268,7 @@ This is the abstract user defined process definition
     type(string_t) :: process_mode
     type(string_t) :: process_string
     type(string_t) :: restrictions
+    logical :: active = .true.
   contains
   <<Prc User: user defined writer: TBP>>
   end type prc_user_defined_writer_t
@@ -5190,8 +5276,8 @@ This is the abstract user defined process definition
 @ %def prc_user_defined_writer_t
 @
 <<Prc User: user defined writer: TBP>>=
-  procedure :: init => user_defined_writer_init 
-  procedure :: base_init => user_defined_writer_init 
+  procedure :: init => user_defined_writer_init
+  procedure :: base_init => user_defined_writer_init
 <<Prc User: procedures>>=
   pure subroutine user_defined_writer_init &
        (writer, model_name, prt_in, prt_out, restrictions)
@@ -5211,7 +5297,7 @@ This is the abstract user defined process definition
        case(2); writer%process_mode = " -scatter"
     end select
     associate (s => writer%process_string)
-      s = " '" 
+      s = " '"
       do i = 1, size (prt_in)
          if (i > 1) s = s // " "
          s = s // prt_in(i)
@@ -5225,7 +5311,7 @@ This is the abstract user defined process definition
   end subroutine user_defined_writer_init
 
 @ %def user_defined_writer_init
-@  
+@
 <<Prc User: user defined writer: TBP>>=
   procedure, nopass :: get_module_name => prc_user_defined_writer_get_module_name
 <<Prc User: procedures>>=
@@ -5243,7 +5329,7 @@ This is the abstract user defined process definition
   subroutine prc_user_defined_writer_write_wrapper (writer, unit, id, feature)
     class(prc_user_defined_writer_t), intent(in) :: writer
     integer, intent(in) :: unit
-    type(string_t), intent(in) :: id, feature    
+    type(string_t), intent(in) :: id, feature
     type(string_t) :: name
     name = writer%get_c_procname (id, feature)
     write (unit, *)
@@ -5293,7 +5379,7 @@ This is the abstract user defined process definition
        write (unit, "(2x,9A)")  "use kinds"
        write (unit, "(2x,9A)")  "use opr_", char (id)
        write (unit, "(2x,9A)")  "integer(c_int), intent(in) :: flv, hel, col"
-       write (unit, "(2x,9A)")  "logical(c_bool), intent(out) :: flag"    
+       write (unit, "(2x,9A)")  "logical(c_bool), intent(out) :: flag"
        write (unit, "(2x,9A)")  "flag = ", char (feature), &
             " (int (flv), int (hel), int (col))"
        write (unit, "(9A)")  "end subroutine ", char (name)
@@ -5328,7 +5414,7 @@ This is the abstract user defined process definition
 @ %def user_defined_writer_write_wrapper
 <<Prc User: user defined writer: TBP>>=
   procedure :: write_interface => prc_user_defined_writer_write_interface
-<<Prc User: procedures>>= 
+<<Prc User: procedures>>=
   subroutine prc_user_defined_writer_write_interface (writer, unit, id, feature)
     class(prc_user_defined_writer_t), intent(in) :: writer
     integer, intent(in) :: unit
@@ -5363,7 +5449,7 @@ This is the abstract user defined process definition
             &(flv, hel, col, flag) bind(C)"
        write (unit, "(7x,9A)")  "import"
        write (unit, "(7x,9A)")  "integer(c_int), intent(in) :: flv, hel, col"
-       write (unit, "(7x,9A)")  "logical(c_bool), intent(out) :: flag"    
+       write (unit, "(7x,9A)")  "logical(c_bool), intent(out) :: flag"
        write (unit, "(5x,9A)")  "end subroutine ", char (name)
     case ("new_event")
        write (unit, "(5x,9A)")  "subroutine ", char (name), " (p) bind(C)"
@@ -5377,7 +5463,7 @@ This is the abstract user defined process definition
        write (unit, "(7x,9A)")  "import"
        write (unit, "(7x,9A)")  "integer(c_int), intent(in) :: flv, hel, col"
        write (unit, "(7x,9A)")  "complex(c_default_complex), intent(out) &
-            &:: amp"    
+            &:: amp"
        write (unit, "(5x,9A)")  "end subroutine ", char (name)
     end select
     write (unit, "(2x,9A)")  "end interface"
@@ -5429,8 +5515,8 @@ This is the abstract user defined process definition
     write (unit, "(5A)")  TAB, "rm -f ", char (id), ".f90"
     write (unit, "(5A)")  TAB, "rm -f opr_", char (id), ".mod"
     write (unit, "(5A)")  TAB, "rm -f ", char (id), ".lo"
-    write (unit, "(5A)")  "CLEAN_SOURCES += ", char (id), ".f90"    
-    write (unit, "(5A)")  "CLEAN_OBJECTS += opr_", char (id), ".mod"       
+    write (unit, "(5A)")  "CLEAN_SOURCES += ", char (id), ".f90"
+    write (unit, "(5A)")  "CLEAN_OBJECTS += opr_", char (id), ".mod"
     write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), ".lo"
     write (unit, "(5A)")  char (id), ".lo: ", char (id), ".f90"
     write (unit, "(5A)")  TAB, "$(LTFCOMPILE) $<"
@@ -5626,6 +5712,19 @@ result of the integration is the n-particle-phase-space volume.
 @ %def prc_user_defined_write
 @
 <<Prc User: prc test: TBP>>=
+  procedure :: write_name => prc_user_defined_test_write_name
+<<Prc User: procedures>>=
+  subroutine prc_user_defined_test_write_name (object, unit)
+    class(prc_user_defined_test_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit)
+    write (u,"(1x,A)") "Core: user defined test"
+  end subroutine prc_user_defined_test_write_name
+
+@ %def prc_user_defined_test_write_name
+@
+<<Prc User: prc test: TBP>>=
   procedure :: compute_amplitude => prc_user_defined_test_compute_amplitude
 <<Prc User: procedures>>=
   function prc_user_defined_test_compute_amplitude &
@@ -5659,6 +5758,32 @@ result of the integration is the n-particle-phase-space volume.
 
 @ %def prc_user_defined_test_allocate_workspace
 @
+<<Prc User: prc test: TBP>>=
+  procedure :: includes_polarization => prc_user_defined_test_includes_polarization
+<<Prc User: procedures>>=
+  function prc_user_defined_test_includes_polarization (object) result (polarized)
+    logical :: polarized
+    class(prc_user_defined_test_t), intent(in) :: object
+    polarized = .false.
+  end function prc_user_defined_test_includes_polarization
+
+@ %def prc_user_defined_test_includes_polarization
+@
+<<Prc User: prc test: TBP>>=
+  procedure :: create_and_load_extra_libraries => &
+       prc_user_defined_test_create_and_load_extra_libraries
+<<Prc User: procedures>>=
+  subroutine prc_user_defined_test_create_and_load_extra_libraries ( &
+         core, os_data, libname, model, i_core)
+    class(prc_user_defined_test_t), intent(inout) :: core
+    type(os_data_t), intent(in) :: os_data
+    type(string_t), intent(in) :: libname
+    type(model_data_t), intent(in), target :: model
+    integer, intent(in) :: i_core
+  end subroutine prc_user_defined_test_create_and_load_extra_libraries
+
+@ %def prc_user_defined_test_create_and_load_extra_libraries
+@
 \subsection{Threshold}
 <<[[prc_threshold.f90]]>>=
 <<File header>>
@@ -5669,23 +5794,24 @@ module prc_threshold
   use kinds
   use constants
   use numeric_utils
+  use string_utils, only: lower_case
   use io_units
 <<Use strings>>
   use physics_defs
   use system_defs, only: TAB
-  use system_dependencies, only: OPENLOOPS_DIR, OPENLOOPS_AVAILABLE
   use diagnostics
   use os_interface
   use lorentz
   use interactions
   use sm_qcd
+  use model_data
 
   use prclib_interfaces
   use process_libraries
   use prc_core_def
   use prc_core
   use prc_user_defined
- 
+
 <<Standard module head>>
 
 <<Prc Threshold: public>>
@@ -5763,9 +5889,8 @@ end module prc_threshold
     call msg_debug (D_ME_METHODS, "threshold_writer_write_makefile_code")
     call writer%base_write_makefile_code (unit, id, os_data, testflag)
     call writer%write_makefile_extra (unit, id, os_data, BORN)
-    if (writer%nlo_type == NLO_VIRTUAL) then
-       call writer%write_makefile_extra (unit, id, os_data, writer%nlo_type)
-    end if
+    if (writer%nlo_type == NLO_VIRTUAL .and. writer%active) &
+         call writer%write_makefile_extra (unit, id, os_data, writer%nlo_type)
   end subroutine threshold_writer_write_makefile_code
 
 @ %def threshold_writer_write_makefile_code
@@ -5782,14 +5907,38 @@ end module prc_threshold
 @
 \subsubsection{Driver}
 <<Prc Threshold: public>>=
-  public :: get_amp_squared
+  public :: set_offshell_momenta_t
 <<Prc Threshold: interfaces>>=
   interface
-    subroutine get_amp_squared (amp2, p) bind(C)
+    subroutine set_offshell_momenta_t (p) bind(C)
+      import
+      real(c_default_float), dimension(0:3,*), intent(in) :: p
+    end subroutine set_offshell_momenta_t
+  end interface
+
+@ %def set_offshell_momenta
+@
+<<Prc Threshold: public>>=
+  public :: set_onshell_momenta_t
+<<Prc Threshold: interfaces>>=
+  interface
+    subroutine set_onshell_momenta_t (p) bind(C)
+      import
+      real(c_default_float), dimension(0:3,*), intent(in) :: p
+    end subroutine set_onshell_momenta_t
+  end interface
+
+@ %def set_onshell_momenta
+@
+<<Prc Threshold: public>>=
+  public :: get_amp_squared_t
+<<Prc Threshold: interfaces>>=
+  interface
+    subroutine get_amp_squared_t (amp2, p) bind(C)
       import
       real(c_default_float), intent(out) :: amp2
       real(c_default_float), dimension(0:3,*), intent(in) :: p
-    end subroutine get_amp_squared
+    end subroutine get_amp_squared_t
   end interface
 
 @ %def get_amp_squared
@@ -5842,14 +5991,18 @@ end module prc_threshold
   type, extends (user_defined_driver_t) :: threshold_driver_t
     procedure(threshold_olp_eval2), nopass, pointer :: &
          olp_eval2 => null ()
-    procedure(get_amp_squared), nopass, pointer :: &
+    procedure(set_offshell_momenta_t), nopass, pointer :: &
+         set_offshell_momenta => null ()
+    procedure(set_onshell_momenta_t), nopass, pointer :: &
+         set_onshell_momenta => null ()
+    procedure(get_amp_squared_t), nopass, pointer :: &
          get_amp_squared => null ()
     procedure(threshold_start_openloops), nopass, pointer :: &
          start_openloops => null ()
     procedure(threshold_init), nopass, pointer :: &
          init => null ()
     type(string_t) :: id
-    integer :: nlo_type
+    integer :: nlo_type = BORN
   contains
   <<Prc Threshold: threshold driver: TBP>>
   end type threshold_driver_t
@@ -5873,22 +6026,30 @@ end module prc_threshold
     class(threshold_driver_t), intent(inout) :: threshold_driver
     type(dlaccess_t), intent(inout) :: dlaccess
     type(c_funptr) :: c_fptr
+    type(string_t) :: lower_case_id
     call msg_debug (D_ME_METHODS, "threshold_driver_load")
-    c_fptr = dlaccess_get_c_funptr (dlaccess, threshold_driver%id // "_get_amp_squared")
+    lower_case_id = lower_case (threshold_driver%id)
+    c_fptr = dlaccess_get_c_funptr (dlaccess, lower_case_id // "_set_offshell_momenta")
+    call c_f_procpointer (c_fptr, threshold_driver%set_offshell_momenta)
+    call check_for_error (lower_case_id // "_set_offshell_momenta")
+    c_fptr = dlaccess_get_c_funptr (dlaccess, lower_case_id // "_set_onshell_momenta")
+    call c_f_procpointer (c_fptr, threshold_driver%set_onshell_momenta)
+    call check_for_error (lower_case_id // "_set_onshell_momenta")
+    c_fptr = dlaccess_get_c_funptr (dlaccess, lower_case_id // "_get_amp_squared")
     call c_f_procpointer (c_fptr, threshold_driver%get_amp_squared)
-    call check_for_error (threshold_driver%id // "_get_amp_squared")
-    c_fptr = dlaccess_get_c_funptr (dlaccess, threshold_driver%id // "_threshold_init")
+    call check_for_error (lower_case_id // "_get_amp_squared")
+    c_fptr = dlaccess_get_c_funptr (dlaccess, lower_case_id // "_threshold_init")
     call c_f_procpointer (c_fptr, threshold_driver%init)
-    call check_for_error (threshold_driver%id // "_threshold_init")
+    call check_for_error (lower_case_id // "_threshold_init")
     select type (threshold_driver)
     type is (threshold_driver_t)
        if (threshold_driver%nlo_type == NLO_VIRTUAL) then
-          c_fptr = dlaccess_get_c_funptr (dlaccess, threshold_driver%id // "_start_openloops")
+          c_fptr = dlaccess_get_c_funptr (dlaccess, lower_case_id // "_start_openloops")
           call c_f_procpointer (c_fptr, threshold_driver%start_openloops)
-          call check_for_error (threshold_driver%id // "_start_openloops")
-          c_fptr = dlaccess_get_c_funptr (dlaccess, threshold_driver%id // "_olp_eval2")
+          call check_for_error (lower_case_id // "_start_openloops")
+          c_fptr = dlaccess_get_c_funptr (dlaccess, lower_case_id // "_olp_eval2")
           call c_f_procpointer (c_fptr, threshold_driver%olp_eval2)
-          call check_for_error (threshold_driver%id // "_olp_eval2")
+          call check_for_error (lower_case_id // "_olp_eval2")
        end if
     end select
     call msg_message ("Loaded extra threshold functions")
@@ -5896,7 +6057,7 @@ end module prc_threshold
       subroutine check_for_error (function_name)
         type(string_t), intent(in) :: function_name
         if (dlaccess_has_error (dlaccess)) &
-           call msg_fatal (char ("Loading of " // function_name // " failed!"))
+             call msg_fatal (char ("Loading of " // function_name // " failed!"))
      end subroutine check_for_error
   end subroutine threshold_driver_load
 
@@ -5994,6 +6155,7 @@ end module prc_threshold
     integer, intent(in) :: i
     class(prc_core_driver_t), intent(inout) :: proc_driver
     type(dlaccess_t) :: dlaccess
+    logical :: skip
     call msg_debug (D_ME_METHODS, "threshold_def_connect")
     call def%omega_connect (lib_driver, i, proc_driver)
     select type (lib_driver)
@@ -6002,7 +6164,11 @@ end module prc_threshold
     end select
     select type (proc_driver)
     class is (threshold_driver_t)
-       call proc_driver%load (dlaccess)
+       select type (writer => def%writer)
+       type is (threshold_writer_t)
+          skip = writer%nlo_type == NLO_VIRTUAL .and. .not. writer%active
+          if (.not. skip) call proc_driver%load (dlaccess)
+       end select
     end select
   end subroutine threshold_def_connect
 
@@ -6025,12 +6191,23 @@ end module prc_threshold
   subroutine prc_threshold_write (object, unit)
     class(prc_threshold_t), intent(in) :: object
     integer, intent(in), optional :: unit
-    integer :: u
-    u = given_output_unit (unit)
     call msg_message ("Supply amplitudes squared for threshold computation")
   end subroutine prc_threshold_write
 
 @ %def prc_user_defined_write
+@
+<<Prc Threshold: prc threshold: TBP>>=
+  procedure :: write_name => prc_threshold_write_name
+<<Prc Threshold: procedures>>=
+  subroutine prc_threshold_write_name (object, unit)
+    class(prc_threshold_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit)
+    write (u,"(1x,A)") "Core: Threshold"
+  end subroutine prc_threshold_write_name
+
+@ %def prc_threshold_write_name
 @
 <<Prc Threshold: prc threshold: TBP>>=
   procedure :: compute_amplitude => prc_threshold_compute_amplitude
@@ -6067,13 +6244,60 @@ end module prc_threshold
 @ %def prc_threshold_allocate_workspace
 @
 <<Prc Threshold: prc threshold: TBP>>=
+  procedure :: set_offshell_momenta => prc_threshold_set_offshell_momenta
+<<Prc Threshold: procedures>>=
+  subroutine prc_threshold_set_offshell_momenta (object, p)
+    class(prc_threshold_t), intent(in) :: object
+    type(vector4_t), intent(in), dimension(:) :: p
+    real(c_default_float), dimension(:,:), allocatable, save :: parray
+    integer :: n_tot, i
+    n_tot = size (p)
+    if (allocated (parray)) then
+       if (size(parray) /= n_tot)  deallocate (parray)
+    end if
+    if (.not. allocated (parray))  allocate (parray (0:3, n_tot))
+    forall (i = 1:n_tot)  parray(:,i) = p(i)%p
+    select type (driver => object%driver)
+    class is (threshold_driver_t)
+       call driver%set_offshell_momenta (parray)
+    end select
+  end subroutine prc_threshold_set_offshell_momenta
+
+@ %def prc_threshold_set_offshell_momenta
+@
+<<Prc Threshold: prc threshold: TBP>>=
+  procedure :: set_onshell_momenta => prc_threshold_set_onshell_momenta
+<<Prc Threshold: procedures>>=
+  subroutine prc_threshold_set_onshell_momenta (object, p)
+    class(prc_threshold_t), intent(in) :: object
+    type(vector4_t), intent(in), dimension(:) :: p
+    real(c_default_float), dimension(:,:), allocatable, save :: parray
+    integer :: n_tot, i
+    n_tot = size (p)
+    if (allocated (parray)) then
+       if (size(parray) /= n_tot)  deallocate (parray)
+    end if
+    if (.not. allocated (parray))  allocate (parray (0:3, n_tot))
+    forall (i = 1:n_tot)  parray(:,i) = p(i)%p
+    select type (driver => object%driver)
+    class is (threshold_driver_t)
+       call driver%set_onshell_momenta (parray)
+    end select
+  end subroutine prc_threshold_set_onshell_momenta
+
+@ %def prc_threshold_set_onshell_momenta
+@
+<<Prc Threshold: prc threshold: TBP>>=
   procedure :: compute_sqme => prc_threshold_compute_sqme
 <<Prc Threshold: procedures>>=
-  function prc_threshold_compute_sqme (object, i_flv, p) result (sqme)
-    real(default) :: sqme
+  subroutine prc_threshold_compute_sqme (object, i_flv, p, &
+         ren_scale, sqme, bad_point)
     class(prc_threshold_t), intent(in) :: object
     integer, intent(in) :: i_flv
-    type(vector4_t), dimension(:), intent(in) :: p
+    type(vector4_t), intent(in), dimension(:) :: p
+    real(default), intent(in) :: ren_scale
+    real(default), intent(out) :: sqme
+    logical, intent(out) :: bad_point
     real(c_default_float), dimension(:,:), allocatable, save :: parray
     integer :: n_tot, i
     call msg_debug2 (D_ME_METHODS, "prc_threshold_compute_sqme")
@@ -6087,7 +6311,8 @@ end module prc_threshold
     class is (threshold_driver_t)
        call driver%get_amp_squared (sqme, parray)
     end select
-  end function prc_threshold_compute_sqme
+    bad_point = .false.
+  end subroutine prc_threshold_compute_sqme
 
 @ %def prc_threshold_compute_sqme
 @
@@ -6096,7 +6321,7 @@ end module prc_threshold
 <<Prc Threshold: procedures>>=
   subroutine prc_threshold_compute_sqme_virt (object, i_flv, &
          p, ren_scale, sqme, bad_point)
-    class(prc_threshold_t), intent(inout) :: object
+    class(prc_threshold_t), intent(in) :: object
     integer, intent(in) :: i_flv
     type(vector4_t), dimension(:), intent(in) :: p
     real(default), intent(in) :: ren_scale
@@ -6110,7 +6335,9 @@ end module prc_threshold
     integer(c_int) :: i_flv_c
     call msg_debug2 (D_ME_METHODS, "prc_threshold_compute_sqme_virt")
     n_tot = size (p)
-    if (allocated (parray) .and. size(parray) /= n_tot)  deallocate (parray)
+    if (allocated (parray)) then
+       if (size(parray) /= n_tot) deallocate (parray)
+    end if
     if (.not. allocated (parray))  allocate (parray (0:3, n_tot))
     forall (i = 1:n_tot)  parray(:,i) = p(i)%p
 
@@ -6124,11 +6351,16 @@ end module prc_threshold
     i_flv_c = i_flv
     select type (driver => object%driver)
     class is (threshold_driver_t)
-      call driver%olp_eval2 (i_flv_c, & !object%i_virt(i_flv), &
-                                  alpha_s_c, parray, mu_c, sqme_c, acc_c)
+       if (associated (driver%olp_eval2)) then
+          call driver%olp_eval2 (i_flv_c, alpha_s_c, &
+             parray, mu_c, sqme_c, acc_c)
+          bad_point = real(acc_c, kind=default) > object%maximum_accuracy
+          sqme = sqme_c
+       else
+          sqme = 0._default
+          bad_point = .true.
+       end if
     end select
-    bad_point = real(acc_c, kind=default) > object%maximum_accuracy
-    sqme = sqme_c
   end subroutine prc_threshold_compute_sqme_virt
 
 @ %def prc_threshold_compute_sqme_virt
@@ -6174,28 +6406,36 @@ matrix element.
 @ %def prc_threshold_activate_parameters
 @
 <<Prc Threshold: prc threshold: TBP>>=
-  procedure :: load_extra_libraries => prc_threshold_load_extra_libraries
+  procedure :: create_and_load_extra_libraries => prc_threshold_create_and_load_extra_libraries
 <<Prc Threshold: procedures>>=
-  subroutine prc_threshold_load_extra_libraries (prc_threshold, os_data, &
-         libname, nlo_type)
-    class(prc_threshold_t), intent(inout) :: prc_threshold
+  subroutine prc_threshold_create_and_load_extra_libraries ( &
+         core, os_data, libname, model, i_core)
+    class(prc_threshold_t), intent(inout) :: core
     type(os_data_t), intent(in) :: os_data
     type(string_t), intent(in) :: libname
-    type(dlaccess_t) :: dlaccess
-    integer, intent(in) :: nlo_type
-    integer :: unit
-    type(string_t) :: new_libname
-    logical :: success
-    call msg_debug (D_ME_METHODS, "prc_threshold_load_extra_libraries")
-    unit = free_unit ()
-    if (allocated (prc_threshold%driver)) then
-       select type (driver => prc_threshold%driver)
+    type(model_data_t), intent(in), target :: model
+    integer, intent(in) :: i_core
+    call msg_debug (D_ME_METHODS, "prc_threshold_create_and_load_extra_libraries")
+    if (allocated (core%driver)) then
+       select type (driver => core%driver)
        type is (threshold_driver_t)
-          call driver%start_openloops ()
+          if (driver%nlo_type == NLO_VIRTUAL) call driver%start_openloops ()
        end select
     else
-       call msg_bug ("prc_threshold_load_extra_libraries: driver is not allocated")
+       call msg_bug ("prc_threshold_create_and_load_extra_libraries: driver is not allocated")
     end if
-  end subroutine prc_threshold_load_extra_libraries
+  end subroutine prc_threshold_create_and_load_extra_libraries
 
-@ %def prc_threshold_load_extra_libraries
+@ %def prc_threshold_create_and_load_extra_libraries
+@
+<<Prc Threshold: prc threshold: TBP>>=
+  procedure :: includes_polarization => prc_threshold_includes_polarization
+<<Prc Threshold: procedures>>=
+  function prc_threshold_includes_polarization (object) result (polarized)
+    logical :: polarized
+    class(prc_threshold_t), intent(in) :: object
+    polarized = .false.
+  end function prc_threshold_includes_polarization
+
+@ %def prc_threshold_includes_polarization
+@

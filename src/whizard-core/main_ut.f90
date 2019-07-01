@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -45,28 +45,19 @@ program main_ut
   use cmdline_options
 
   use model_testbed !NODEP!
-    
+
   use eio_base_ut, only: eio_prepare_test
   use eio_base_ut, only: eio_cleanup_test
   use eio_base_ut, only: eio_prepare_fallback_model
   use eio_base_ut, only: eio_cleanup_fallback_model
-  use dispatch, only: dispatch_rng_factory_extra
-  use dispatch_ut, only: dispatch_rng_factory_test
-  use dispatch, only: dispatch_sf_data_extra
+  use dispatch_rng, only: dispatch_rng_factory_extra
+  use dispatch_rng_ut, only: dispatch_rng_factory_test
+  use dispatch_beams, only: dispatch_sf_data_extra
   use dispatch_ut, only: dispatch_sf_data_test
   use formats_ut, only: format_test
   use md5_ut, only: md5_test
   use os_interface_ut, only: os_interface_test
   use sorting_ut, only: sorting_test
-  use codes_ut, only: codes_test
-  use object_base_ut, only: object_base_test
-  use object_builder_ut, only: object_builder_test
-  use object_logical_ut, only: object_logical_test
-  use object_integer_ut, only: object_integer_test
-  use object_container_ut, only: object_container_test
-  use object_comparison_ut, only: object_comparison_test
-  use object_conditional_ut, only: object_conditional_test
-  use sindarin_parser_ut, only: sindarin_parser_test
   use grids_ut, only: grids_test
   use solver_ut, only: solver_test
   use cputime_ut, only: cputime_test
@@ -109,7 +100,7 @@ program main_ut
   use phs_wood_ut, only: phs_wood_vis_test
   use phs_fks_ut, only: phs_fks_generator_test
   use fks_regions_ut, only: fks_regions_test
-  use nlo_controller_ut, only: nlo_color_data_test
+  use nlo_color_data_ut, only: nlo_color_data_test
   use rng_base_ut, only: rng_base_test
   use rng_tao_ut, only: rng_tao_test
   use selectors_ut, only: selectors_test
@@ -131,6 +122,7 @@ program main_ut
   use prc_template_me_ut, only: prc_template_me_test
   use prc_omega_ut, only: prc_omega_test
   use prc_omega_ut, only: prc_omega_diags_test
+  use parton_states_ut, only: parton_states_test
   use expr_tests_ut, only: subevt_expr_test
   use processes_ut, only: processes_test
   use process_stacks_ut, only: process_stacks_test
@@ -154,6 +146,11 @@ program main_ut
   use beam_structures_ut, only: beam_structures_test
   use rt_data_ut, only: rt_data_test
   use dispatch_ut, only: dispatch_test
+  use dispatch_rng_ut, only: dispatch_rng_test
+  use dispatch_mci_ut, only: dispatch_mci_test
+  use dispatch_phs_ut, only: dispatch_phs_test
+  use dispatch_transforms_ut, only: dispatch_transforms_test
+  use shower_base_ut, only: shower_base_test
   use process_configurations_ut, only: process_configurations_test
   use compilations_ut, only: compilations_test
   use compilations_ut, only: compilations_static_test
@@ -163,7 +160,7 @@ program main_ut
   use simulations_ut, only: simulations_test
   use commands_ut, only: commands_test
   use ttv_formfactors_ut, only: ttv_formfactors_test
-    
+
   implicit none
 
   integer, parameter :: CMDLINE_ARG_LEN = 1000
@@ -282,7 +279,7 @@ program main_ut
 
   ! Overall initialization
   if (banner)  call msg_banner ()
-  
+
    ! Run any self-checks (and no commands)
    if (checks /= "") then
       checks = trim (adjustl (checks))
@@ -309,30 +306,31 @@ contains
   end subroutine print_version
 
   subroutine prepare_eio_test (event, unweighted, n_alt)
-    use variables
+    use variables, only: var_list_t
     use model_data
-    use processes
+    use process, only: process_t
+    use instances, only: process_instance_t
     use processes_ut, only: prepare_test_process
     use event_base
     use events
-    
+
     class(generic_event_t), intent(inout), pointer :: event
     logical, intent(in), optional :: unweighted
     integer, intent(in), optional :: n_alt
     type(model_data_t), pointer :: model
     type(var_list_t) :: var_list
-    type(process_t), pointer :: process
+    type(process_t), pointer :: proc
     type(process_instance_t), pointer :: process_instance
 
     allocate (model)
     call model%init_test ()
 
-    allocate (process)
+    allocate (proc)
     allocate (process_instance)
 
-    call prepare_test_process (process, process_instance, model)
+    call prepare_test_process (proc, process_instance, model)
     call process_instance%setup_event_data ()
- 
+
     call model%final ()
     deallocate (model)
 
@@ -340,47 +338,49 @@ contains
     select type (event)
     type is (event_t)
        if (present (unweighted)) then
-          call var_list_append_log (var_list, &
+          call var_list%append_log (&
                var_str ("?unweighted"), unweighted, &
                intrinsic = .true.)
        else
-          call var_list_append_log (var_list, &
+          call var_list%append_log (&
                var_str ("?unweighted"), .true., &
                intrinsic = .true.)
        end if
-       call var_list_append_string (var_list, &
+       call var_list%append_string (&
             var_str ("$sample_normalization"), &
             var_str ("auto"), intrinsic = .true.)
        call event%basic_init (var_list, n_alt)
-       call event%connect (process_instance, process%get_model_ptr ())
+       call event%connect (process_instance, proc%get_model_ptr ())
        call var_list%final ()
     end select
 
   end subroutine prepare_eio_test
-    
+
   subroutine cleanup_eio_test (event)
     use model_data
-    use processes
+    use process, only: process_t
+    use instances, only: process_instance_t
+    use processes_ut, only: cleanup_test_process
     use event_base
     use events
-    
+
     class(generic_event_t), intent(inout), pointer :: event
-    type(process_t), pointer :: process
+    type(process_t), pointer :: proc
     type(process_instance_t), pointer :: process_instance
 
     select type (event)
     type is (event_t)
-       process => event%get_process_ptr ()
+       proc => event%get_process_ptr ()
        process_instance => event%get_process_instance_ptr ()
-       call cleanup_test_process (process, process_instance)
+       call cleanup_test_process (proc, process_instance)
        deallocate (process_instance)
-       deallocate (process)
+       deallocate (proc)
        call event%final ()
     end select
     deallocate (event)
 
   end subroutine cleanup_eio_test
-    
+
   subroutine prepare_whizard_model (model, name, vars)
     use iso_varying_string, string_t => varying_string
     use os_interface
@@ -402,7 +402,7 @@ contains
        end if
     end select
   end subroutine prepare_whizard_model
-    
+
   subroutine cleanup_whizard_model (model)
     use model_data
     use models
@@ -411,20 +411,18 @@ contains
     deallocate (model)
     call syntax_model_file_final ()
   end subroutine cleanup_whizard_model
-    
+
   subroutine prepare_fallback_model (model)
     use model_data
     class(model_data_t), intent(inout), pointer :: model
     call prepare_whizard_model (model, var_str ("SM_hadrons"))
   end subroutine prepare_fallback_model
-    
+
   subroutine whizard_check (check, results)
-    
     type(string_t), intent(in) :: check
     type(test_results_t), intent(inout) :: results
     type(os_data_t) :: os_data
     integer :: u
-
     call os_data_init (os_data)
     u = free_unit ()
     open (u, file="whizard_check." // char (check) // ".log", &
@@ -449,24 +447,6 @@ contains
        call os_interface_test (u, results)
     case ("sorting")
        call sorting_test (u, results)
-    case ("codes")
-       call codes_test (u, results)
-    case ("object_base")
-       call object_base_test (u, results)
-    case ("object_builder")
-       call object_builder_test (u, results)
-    case ("object_logical")
-       call object_logical_test (u, results)
-    case ("object_integer")
-       call object_integer_test (u, results)
-    case ("object_container")
-       call object_container_test (u, results)
-    case ("object_comparison")
-       call object_comparison_test (u, results)
-    case ("object_conditional")
-       call object_conditional_test (u, results)
-    case ("sindarin_parser")
-       call sindarin_parser_test (u, results)
     case ("grids")
        call grids_test (u, results)
     case ("solver")
@@ -595,6 +575,8 @@ contains
        call prc_omega_test (u, results)
     case ("prc_omega_diags")
        call prc_omega_diags_test (u, results)
+    case ("parton_states")
+       call parton_states_test (u, results)
     case ("subevt_expr")
        call subevt_expr_test (u, results)
     case ("processes")
@@ -641,6 +623,16 @@ contains
        call rt_data_test (u, results)
     case ("dispatch")
        call dispatch_test (u, results)
+    case ("dispatch_rng")
+       call dispatch_rng_test (u, results)
+    case ("dispatch_mci")
+       call dispatch_mci_test (u, results)
+    case ("dispatch_phs")
+       call dispatch_phs_test (u, results)
+    case ("dispatch_transforms")
+       call dispatch_transforms_test (u, results)
+    case ("shower_base")
+       call shower_base_test (u, results)
     case ("process_configurations")
        call process_configurations_test (u, results)
     case ("compilations")
@@ -664,15 +656,6 @@ contains
        call md5_test (u, results)
        call os_interface_test (u, results)
        call sorting_test (u, results)
-       call codes_test (u, results)
-       call object_base_test (u, results)
-       call object_builder_test (u, results)
-       call object_logical_test (u, results)
-       call object_integer_test (u, results)
-       call object_container_test (u, results)
-       call object_comparison_test (u, results)
-       call object_conditional_test (u, results)
-       call sindarin_parser_test (u, results)
        call grids_test (u, results)
        call solver_test (u, results)
        call cputime_test (u, results)
@@ -737,6 +720,7 @@ contains
        call prc_template_me_test (u, results)
        call prc_omega_test (u, results)
        call prc_omega_diags_test (u, results)
+       call parton_states_test (u, results)
        call subevt_expr_test (u, results)
        call processes_test (u, results)
        call process_stacks_test (u, results)
@@ -760,6 +744,11 @@ contains
        call beam_structures_test (u, results)
        call rt_data_test (u, results)
        call dispatch_test (u, results)
+       call dispatch_rng_test (u, results)
+       call dispatch_mci_test (u, results)
+       call dispatch_phs_test (u, results)
+       call dispatch_transforms_test (u, results)
+       call shower_base_test (u, results)
        call process_configurations_test (u, results)
        call compilations_test (u, results)
        call compilations_static_test (u, results)

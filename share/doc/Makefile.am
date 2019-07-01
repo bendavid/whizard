@@ -25,17 +25,17 @@
 ########################################################################
 
 ## The WHIZARD documented source is assembled from various directories
-## defined outside the DISTRIBUTION environment as modern autotools 
+## defined outside the DISTRIBUTION environment as modern autotools
 ## versions complain otherwise
 w_srcdir = $(top_srcdir)/src
-VPATH = $(srcdir):$(w_srcdir)/noweb-frame:$(w_srcdir)/utilities:$(w_srcdir)/testing:$(w_srcdir)/system:$(w_srcdir)/combinatorics:$(w_srcdir)/parsing:$(w_srcdir)/rng:$(w_srcdir)/expr_base:$(w_srcdir)/sindarin:$(w_srcdir)/physics:$(w_srcdir)/qft:$(w_srcdir)/types:$(w_srcdir)/matrix_elements:$(w_srcdir)/particles:$(w_srcdir)/beams:$(w_srcdir)/me_methods:$(w_srcdir)/events:$(w_srcdir)/phase_space:$(w_srcdir)/mci:$(w_srcdir)/user:$(w_srcdir)/fks:$(w_srcdir)/gosam:$(w_srcdir)/openloops:$(w_srcdir)/blha:$(w_srcdir)/shower:$(w_srcdir)/muli:$(w_srcdir)/variables:$(w_srcdir)/model_features:$(w_srcdir)/threshold:$(w_srcdir)/process_integration:$(w_srcdir)/matching:$(w_srcdir)/transforms:$(w_srcdir)/whizard-core
+VPATH = $(srcdir):$(w_srcdir)/noweb-frame:$(w_srcdir)/utilities:$(w_srcdir)/testing:$(w_srcdir)/system:$(w_srcdir)/combinatorics:$(w_srcdir)/parsing:$(w_srcdir)/rng:$(w_srcdir)/expr_base:$(w_srcdir)/physics:$(w_srcdir)/qft:$(w_srcdir)/types:$(w_srcdir)/matrix_elements:$(w_srcdir)/particles:$(w_srcdir)/beams:$(w_srcdir)/me_methods:$(w_srcdir)/events:$(w_srcdir)/phase_space:$(w_srcdir)/mci:$(w_srcdir)/user:$(w_srcdir)/fks:$(w_srcdir)/gosam:$(w_srcdir)/openloops:$(w_srcdir)/blha:$(w_srcdir)/shower:$(w_srcdir)/muli:$(w_srcdir)/variables:$(w_srcdir)/model_features:$(w_srcdir)/threshold:$(w_srcdir)/process_integration:$(w_srcdir)/matching:$(w_srcdir)/transforms:$(w_srcdir)/whizard-core
 
 ## The primary targets
 if DISTRIBUTION
 ## The manual source has to be distributed
 dist_noinst_DATA = manual.tex $(PACKAGE).tex \
 	book.hva custom.hva fancysection.hva Whizard-Logo.jpg \
-	$(MANUAL_PICS)
+	$(MANUAL_PICS) dep2dot.py
 
 MANUAL_PICS = \
    proc_4f-history.eps proc_4f-history.pdf \
@@ -77,7 +77,9 @@ EXTRA_DIST = $(LATEX_STYLES)
 manual.ps: $(PACKAGE).ps
 manual.pdf: $(PACKAGE).pdf
 $(PACKAGE).ps: gamelan_manual.ps
-$(PACKAGE).pdf: gamelan_manual.pdf
+$(PACKAGE).pdf: gamelan_manual.pdf $(WHIZARD_DEPENDENCY_GRAPHS_PDF) overview.pdf
+
+
 gamelan_manual.pdf: gamelan.sty
 
 ## Rules for creating PS
@@ -91,7 +93,62 @@ gamelan_manual.pdf: gamelan.sty
 .dvi.ps:
 	$(DVIPS) -o $@ $<
 
-SUFFIXES: .tex .dvi .ps .pdf
+SUFFIXES: .dot .tex .dvi .ps .pdf
+
+.dot.pdf:
+	$(DOT) -Tpdf $< > $@
+
+if DISTRIBUTION
+WHIZARD_DEPENDENCY_GRAPHS_DOT = \
+	blha.dot \
+	beams.dot \
+	combinatorics.dot \
+	events.dot \
+	expr_base.dot \
+	fks.dot \
+	gosam.dot \
+	matching.dot \
+	matrix_elements.dot \
+	mci.dot \
+	me_methods.dot \
+	model_features.dot \
+	muli.dot \
+	openloops.dot \
+	parsing.dot \
+	particles.dot \
+	phase_space.dot \
+	physics.dot \
+	process_integration.dot \
+	qft.dot \
+	rng.dot \
+	shower.dot \
+	system.dot \
+	testing.dot \
+	threshold.dot \
+	transforms.dot \
+	types.dot \
+	user.dot \
+	utilities.dot \
+	variables.dot \
+	whizard-core.dot
+
+WHIZARD_DEPENDENCY_GRAPHS_PDF = $(WHIZARD_DEPENDENCY_GRAPHS_DOT:.dot=.pdf)
+all-dots: $(WHIZARD_DEPENDENCY_GRAPHS_DOT) overview.dot
+
+$(WHIZARD_DEPENDENCY_GRAPHS_DOT):
+	@rm -f $@
+	$(top_srcdir)/share/doc/dep2dot.py \
+		../../src/`echo $@ | sed 's/.dot//'`/Makefile.depend > $@
+
+overview.dot:
+	@rm -f $@
+	list=''; \
+	for dep in $(WHIZARD_DEPENDENCY_GRAPHS_DOT); do \
+		list="$$list ../../src/`echo $$dep | sed 's/.dot//'`/Makefile.depend"; \
+	done ; \
+	$(top_srcdir)/share/doc/dep2dot.py $$list > $@
+dist_noinst_DATA += $(WHIZARD_DEPENDENCY_GRAPHS_DOT) overview.dot
+endif
 
 ## Rules for creating PDF
 if DISTRIBUTION
@@ -173,7 +230,10 @@ endif NOWEB_AVAILABLE
 mostlyclean-latex:
 	-rm -f *.aux *.log *.dvi *.toc *.idx *.out *.ltp *.mp *.mpx *.glo \
 	gamelan_manual.[1-9] gamelan_manual.[1-9][0-9] \
-	manual.ps manual.pdf gamelan_manual.ps gamelan_manual.pdf
+	manual.ps manual.pdf gamelan_manual.ps gamelan_manual.pdf \
+	$(WHIZARD_DEPENDENCY_GRAPHS_DOT) $(WHIZARD_DEPENDENCY_GRAPHS_PDF) \
+	overview.dot overview.pdf
+	-test "$(srcdir)" != "." && rm -f $(PACKAGE).pdf
 clean-latex:
 maintainer-clean-latex:
 	-rm manual.ps manual.pdf gamelan_manual.ps gamelan_manual.pdf

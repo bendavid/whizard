@@ -31,7 +31,7 @@ if test "$enable_lhapdf" = "yes"; then
        [dnl,
           wo_cv_lhapdf_version=[`$LHAPDF --version | $SED -e 's/.*\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\).*/\1/'`]
     ])
-    LHAPDF_FULL_VERSION="wo_cv_lhapdf_version"
+    LHAPDF_FULL_VERSION="$wo_cv_lhapdf_version"
     AC_SUBST([LHAPDF_FULL_VERSION])    
 
     AC_CACHE_CHECK([the major version],
@@ -72,7 +72,7 @@ if test "$enable_lhapdf" = "yes"; then
        [dnl,
 	wo_cv_lhapdf_version=[`$LHAPDF_CONFIG --version | $SED -e 's/.*\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\).*/\1/'`]
     ])
-       LHAPDF_FULL_VERSION="wo_cv_lhapdf_version"
+       LHAPDF_FULL_VERSION="$wo_cv_lhapdf_version"
        AC_SUBST([LHAPDF_FULL_VERSION])    
 
        AC_CACHE_CHECK([the major version],

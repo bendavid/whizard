@@ -1,3 +1,5 @@
+# SINDARIN input for WHIZARD self-test
+
 model = "QED"
 
 ?logging = true

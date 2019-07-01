@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -51,7 +51,9 @@ module event_transforms_uti
   use phs_single
   use prc_core
   use prc_test, only: prc_test_create_library
-  use processes
+
+  use process, only: process_t
+  use instances, only: process_instance_t
 
   use event_transforms
 
@@ -72,7 +74,6 @@ contains
     class(model_data_t), pointer :: model
     type(process_library_t), target :: lib
     type(string_t) :: libname, procname1, run_id
-    class(prc_core_t), allocatable :: core_template
     class(mci_t), allocatable :: mci_template
     class(phs_config_t), allocatable :: phs_config_template
     real(default) :: sqrts
@@ -106,22 +107,22 @@ contains
     allocate (process)
     call process%init (procname1, run_id, &
          lib, os_data, qcd, rng_factory, model)
+    call process%setup_test_cores ()
 
-    allocate (test_t :: core_template)
     allocate (mci_midpoint_t :: mci_template)
     allocate (phs_single_config_t :: phs_config_template)
     call process%init_component &
-         (1, core_template, mci_template, phs_config_template)
+       (1, .true., mci_template, phs_config_template)
 
     sqrts = 1000
-    call process%setup_beams_sqrts (sqrts)
+    call process%setup_beams_sqrts (sqrts, i_core = 1)
     call process%configure_phs ()
     call process%setup_mci ()
     call process%setup_terms ()
 
     allocate (process_instance)
     call process_instance%init (process)
-    call process%integrate (process_instance, 1, n_it=1, n_calls=100)
+    call process_instance%integrate (1, n_it=1, n_calls=100)
     call process%final_integration (1)
     call process_instance%final ()
     deallocate (process_instance)
@@ -141,7 +142,7 @@ contains
     write (u, "(A)")  "* Generate event and subsequent transform"
     write (u, "(A)")
 
-    call process%generate_unweighted_event (process_instance, 1)
+    call process_instance%generate_unweighted_event (1)
     call process_instance%evaluate_event_data ()
 
     call evt%prepare_new_event (1, 1)

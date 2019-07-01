@@ -1,4 +1,0 @@
-This 'package' libtool-config is not for installation, its purpose
-is to provide a means for configuring libtool on a given host.
-
-This configuration is done automatically by libtool-config.sh

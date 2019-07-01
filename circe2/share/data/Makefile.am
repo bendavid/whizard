@@ -10,5 +10,5 @@ DATAFILES = \
 EXTRA_DIST = $(DATAFILES)
 
 ## Data files needed for running CIRCE2
-datacirce2dir = $(pkgdatadir)/data
+datacirce2dir = $(pkgdatadir)/../circe2/data
 dist_datacirce2_DATA = $(DATAFILES)

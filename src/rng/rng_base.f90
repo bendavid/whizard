@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -65,7 +65,7 @@ module rng_base
      procedure (rng_factory_init), deferred :: init
      procedure (rng_factory_make), deferred :: make
   end type rng_factory_t
-  
+
 
   abstract interface
      subroutine rng_init (rng, seed)
@@ -74,14 +74,14 @@ module rng_base
        integer, intent(in), optional :: seed
      end subroutine rng_init
   end interface
-  
+
   abstract interface
      subroutine rng_final (rng)
        import
        class(rng_t), intent(inout) :: rng
      end subroutine rng_final
   end interface
-  
+
   abstract interface
      subroutine rng_write (rng, unit, indent)
        import
@@ -89,7 +89,7 @@ module rng_base
        integer, intent(in), optional :: unit, indent
      end subroutine rng_write
   end interface
-  
+
   abstract interface
      subroutine rng_generate_single (rng, x)
        import
@@ -97,7 +97,7 @@ module rng_base
        real(default), intent(out) :: x
      end subroutine rng_generate_single
   end interface
-  
+
   abstract interface
      subroutine rng_generate_array (rng, x)
        import
@@ -105,7 +105,7 @@ module rng_base
        real(default), dimension(:), intent(out) :: x
      end subroutine rng_generate_array
   end interface
-  
+
   abstract interface
      subroutine rng_factory_write (object, unit)
        import
@@ -113,7 +113,7 @@ module rng_base
        integer, intent(in), optional :: unit
      end subroutine rng_factory_write
   end interface
-  
+
   abstract interface
      subroutine rng_factory_init (factory, seed)
        import
@@ -121,7 +121,7 @@ module rng_base
        integer(i16), intent(in), optional :: seed
      end subroutine rng_factory_init
   end interface
-       
+
   abstract interface
      subroutine rng_factory_make (factory, rng)
        import
@@ -129,7 +129,7 @@ module rng_base
        class(rng_t), intent(out), allocatable :: rng
      end subroutine rng_factory_make
   end interface
-  
+
 
 contains
 
@@ -140,7 +140,7 @@ contains
     call rng%generate (u)
     x = sin (twopi * u(1)) * sqrt (- 2 * log (u(2)))
   end subroutine rng_generate_gaussian_single
-  
+
   subroutine rng_generate_gaussian_array (rng, x)
     class(rng_t), intent(inout) :: rng
     real(default), dimension(:), intent(out) :: x
@@ -149,6 +149,6 @@ contains
        call rng%generate_gaussian (x(i))
     end do
   end subroutine rng_generate_gaussian_array
-  
+
 
 end module rng_base

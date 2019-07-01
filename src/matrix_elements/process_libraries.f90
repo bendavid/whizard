@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -72,8 +72,9 @@ module process_libraries
   integer, parameter, public :: ASSOCIATED_VIRT = 3
   integer, parameter, public :: ASSOCIATED_SUB = 4
   integer, parameter, public :: ASSOCIATED_PDF = 5
-  integer, parameter, public :: ASSOCIATED_REAL_FIN = 6
-  integer, parameter, public :: N_ASSOCIATED_COMPONENTS = 6
+  integer, parameter, public :: ASSOCIATED_REAL_SING = 6
+  integer, parameter, public :: ASSOCIATED_REAL_FIN = 7
+  integer, parameter, public :: N_ASSOCIATED_COMPONENTS = 7
 
   character, dimension(0:6), parameter :: STATUS_LETTER = &
        ["?", "o", "f", "s", "c", "l", "a"]
@@ -94,7 +95,7 @@ module process_libraries
      character(32) :: md5sum = ""
      integer :: nlo_type = BORN
      integer, dimension(N_ASSOCIATED_COMPONENTS) :: associated_components = 0
-     logical :: active_component
+     logical :: active
      integer :: fixed_emitter = -1
      integer :: alpha_power = 0
      integer :: alphas_power = 0
@@ -103,6 +104,7 @@ module process_libraries
      procedure :: read => process_component_def_read
      procedure :: show => process_component_def_show
      procedure :: compute_md5sum => process_component_def_compute_md5sum
+     procedure :: get_def_type_string => process_component_def_get_def_type_string
      procedure :: allocate_driver => process_component_def_allocate_driver
      procedure :: needs_code => process_component_def_needs_code
      procedure :: get_writer_ptr => process_component_def_get_writer_ptr
@@ -121,11 +123,16 @@ module process_libraries
                   => process_component_def_get_associated_born
      procedure :: get_associated_real_fin &
                   => process_component_def_get_associated_real_fin
+     procedure :: get_associated_real_sing &
+                  => process_component_def_get_associated_real_sing
+     procedure :: get_associated_subtraction &
+                  => process_component_def_get_associated_subtraction
      procedure :: get_association_list &
                   => process_component_def_get_association_list
-     procedure :: is_active_component &
-                  => process_component_def_is_active_component
+     procedure :: can_be_integrated &
+                  => process_component_def_can_be_integrated
      procedure :: get_associated_real => process_component_def_get_associated_real
+     procedure :: get_me_method => process_component_def_get_me_method
      procedure :: get_fixed_emitter => process_component_def_get_fixed_emitter
      procedure :: get_coupling_powers => process_component_def_get_coupling_powers
   end type process_component_def_t
@@ -244,6 +251,7 @@ module process_libraries
      procedure :: get_status => process_library_get_status
      procedure :: set_status => process_library_set_status
      procedure :: is_loaded => process_library_is_loaded
+     procedure :: fill_constants => process_library_fill_constants
      procedure :: connect_process => process_library_connect_process
      procedure :: test_transfer_md5sum => process_library_test_transfer_md5sum
      procedure :: get_modellibs_ldflags => process_library_get_modellibs_ldflags
@@ -398,6 +406,12 @@ contains
     end if
   end subroutine process_component_def_compute_md5sum
 
+  function process_component_def_get_def_type_string (component) result (type_string)
+    type(string_t) :: type_string
+    class(process_component_def_t), intent(in) :: component
+    type_string = component%core_def%type_string ()
+  end function process_component_def_get_def_type_string
+
   subroutine process_component_def_allocate_driver (component, driver)
     class(process_component_def_t), intent(in) :: component
     class(prc_core_driver_t), intent(out), allocatable :: driver
@@ -432,7 +446,7 @@ contains
     class(prc_core_driver_t), intent(inout) :: proc_driver
     select type (proc_driver)
     class is (process_driver_internal_t)
-       ! nothing to do
+       !!! Nothing to do
     class default
        call component%core_def%connect (lib_driver, i, proc_driver)
     end select
@@ -492,40 +506,52 @@ contains
     end do
   end subroutine process_component_def_get_pdg_in
     
-  function process_component_def_get_md5sum (component) result (md5sum)
+  pure function process_component_def_get_md5sum (component) result (md5sum)
     class(process_component_def_t), intent(in) :: component
     character(32) :: md5sum
     md5sum = component%md5sum
   end function process_component_def_get_md5sum
   
   elemental function process_component_def_get_nlo_type (component) result (nlo_type)
-    class(process_component_def_t), intent(in) :: component
     integer :: nlo_type
+    class(process_component_def_t), intent(in) :: component
     nlo_type = component%nlo_type
   end function process_component_def_get_nlo_type
 
-  function process_component_def_get_associated_born (component) result (i_born)
-    class(process_component_def_t), intent(in) :: component
+  elemental function process_component_def_get_associated_born (component) result (i_born)
     integer :: i_born
+    class(process_component_def_t), intent(in) :: component
     i_born = component%associated_components(ASSOCIATED_BORN)
   end function process_component_def_get_associated_born
 
-  function process_component_def_get_associated_real_fin (component) result (i_rfin)
-    class(process_component_def_t), intent(in) :: component
+  elemental function process_component_def_get_associated_real_fin (component) result (i_rfin)
     integer :: i_rfin
+    class(process_component_def_t), intent(in) :: component
     i_rfin = component%associated_components(ASSOCIATED_REAL_FIN)
   end function process_component_def_get_associated_real_fin
 
-  elemental function process_component_def_is_active_component (component) result (active)
+  elemental function process_component_def_get_associated_real_sing (component) result (i_rsing)
+    integer :: i_rsing
     class(process_component_def_t), intent(in) :: component
+    i_rsing = component%associated_components(ASSOCIATED_REAL_SING)
+  end function process_component_def_get_associated_real_sing
+  
+  elemental function process_component_def_get_associated_subtraction (component) result (i_sub)
+    integer :: i_sub
+    class(process_component_def_t), intent(in) :: component
+    i_sub = component%associated_components(ASSOCIATED_SUB)
+  end function process_component_def_get_associated_subtraction
+
+  elemental function process_component_def_can_be_integrated (component) result (active)
     logical :: active
-    active = component%active_component
-  end function process_component_def_is_active_component
+    class(process_component_def_t), intent(in) :: component
+    active = component%active
+  end function process_component_def_can_be_integrated
 
   function process_component_def_get_association_list (component, i_skip_in) result (list)
+    integer, dimension(:), allocatable :: list
     class(process_component_def_t), intent(in) :: component
     integer, intent(in), optional :: i_skip_in
-    integer, dimension(:), allocatable :: list
     integer :: i, j, n, i_skip
     logical :: valid
     i_skip = 0; if (present (i_skip_in)) i_skip = i_skip_in
@@ -544,10 +570,16 @@ contains
   end function process_component_def_get_association_list
 
   function process_component_def_get_associated_real (component) result (i_real)
-    class(process_component_def_t), intent(in) :: component
     integer :: i_real
+    class(process_component_def_t), intent(in) :: component
     i_real = component%associated_components(ASSOCIATED_REAL)
   end function process_component_def_get_associated_real
+
+  elemental function process_component_def_get_me_method (component) result (method)
+    type(string_t) :: method
+    class(process_component_def_t), intent(in) :: component
+    method = component%method
+  end function process_component_def_get_me_method
 
   function process_component_def_get_fixed_emitter (component) result (emitter)
      integer :: emitter
@@ -555,7 +587,7 @@ contains
      emitter = component%fixed_emitter
   end function process_component_def_get_fixed_emitter
      
-  subroutine process_component_def_get_coupling_powers (component, alpha_power, alphas_power)
+  pure subroutine process_component_def_get_coupling_powers (component, alpha_power, alphas_power)
     class(process_component_def_t), intent(in) :: component
     integer, intent(out) :: alpha_power, alphas_power
     alpha_power = component%alpha_power
@@ -728,7 +760,7 @@ contains
   
   subroutine process_def_import_component (def, &
        i, n_out, prt_in, prt_out, method, variant, &
-       nlo_type, active)
+       nlo_type, can_be_integrated)
     class(process_def_t), intent(inout) :: def
     integer, intent(in) :: i
     integer, intent(in), optional :: n_out
@@ -736,7 +768,7 @@ contains
     type(prt_spec_t), dimension(:), intent(in), optional :: prt_out
     type(string_t), intent(in), optional :: method
     integer, intent(in), optional :: nlo_type
-    logical, intent(in), optional :: active
+    logical, intent(in), optional :: can_be_integrated
     type(string_t) :: nlo_type_string
     class(prc_core_def_t), &
          intent(inout), allocatable, optional :: variant
@@ -762,10 +794,10 @@ contains
       if (present (nlo_type)) then
         comp%nlo_type = nlo_type
       end if
-      if (present (active)) then
-         comp%active_component = active
+      if (present (can_be_integrated)) then
+         comp%active = can_be_integrated
       else
-         comp%active_component = .true.
+         comp%active = .true.
       end if
       if (allocated (comp%prt_in) .and. allocated (comp%prt_out)) then
          associate (d => comp%description)
@@ -780,7 +812,8 @@ contains
               d = d // comp%prt_out(p)%to_string ()
            end do
            if (comp%method /= "") then
-              if ((def%nlo_process .and. .not. comp%active_component) .or. &
+              !  TODO: (bcn 2016-09-16) better output for subtraction
+              if ((def%nlo_process .and. .not. comp%active) .or. &
                    comp%nlo_type == NLO_SUBTRACTION) then
                  d = d // " [inactive]"
               else
@@ -1802,6 +1835,22 @@ contains
     end if
   end subroutine process_library_entry_fill_constants
   
+  subroutine process_library_fill_constants (lib, id, i_component, data)
+    class(process_library_t), intent(in) :: lib
+    type(string_t), intent(in) :: id
+    integer, intent(in) :: i_component
+    type(process_constants_t), intent(out) :: data
+    integer :: i
+    do i = 1, size (lib%entry)
+       associate (entry => lib%entry(i))
+          if (entry%def%id == id .and. entry%i_component == i_component) then
+             call entry%fill_constants (lib%driver, data)
+             return
+          end if 
+       end associate
+    end do
+  end subroutine process_library_fill_constants
+
   subroutine process_library_connect_process &
        (lib, id, i_component, data, proc_driver)
     class(process_library_t), intent(in) :: lib
@@ -1814,7 +1863,7 @@ contains
        associate (entry => lib%entry(i))
          if (entry%def%id == id .and. entry%i_component == i_component) then
             call entry%fill_constants (lib%driver, data)
-            allocate (proc_driver, source=entry%driver)
+            allocate (proc_driver, source = entry%driver)
             return
          end if
        end associate

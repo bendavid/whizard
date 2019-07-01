@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -55,7 +55,12 @@ module cascades
   implicit none
   private
 
+  public :: hash_entry_init
   public :: cascade_set_t
+  interface cascade_set_init
+     module procedure cascade_set_init_base
+     module procedure cascade_set_init_from_cascade
+  end interface
   public :: cascade_set_is_valid
   public :: cascade_set_final
   public :: cascade_set_write_process_bincode_format
@@ -206,12 +211,12 @@ module cascades
      module procedure cascade_set_add_outgoing1
      module procedure cascade_set_add_outgoing2
   end interface
- 
+
   interface cascade_set_add_incoming
      module procedure cascade_set_add_incoming0
      module procedure cascade_set_add_incoming1
   end interface
- 
+
   interface operator(==)
     module procedure resonance_contributors_equal
   end interface
@@ -258,7 +263,6 @@ contains
     integer, intent(in), optional :: unit
     type(flavor_t) :: flv
     integer :: u, i
-1   format(3x,A,1x,40(1x,I4))
 2   format(3x,A,1x,I3,1x,A,1x,I7,1x,'!',1x,A)
     u = given_output_unit (unit);  if (u < 0)  return
     call write_reduced (cascade%tree, u)
@@ -580,6 +584,27 @@ contains
           mold))
   end subroutine cascade_assign_resonance_hash
 
+  subroutine hash_entry_init (entry, entry_in)
+    type(hash_entry_t), intent(out) :: entry
+    type(hash_entry_t), intent(in) :: entry_in
+    type(cascade_p), pointer :: casc_iter, casc_copy
+    entry%hashval = entry_in%hashval
+    entry%key = entry_in%key
+    casc_iter => entry_in%first
+    do while (associated (casc_iter))
+       allocate (casc_copy)
+       casc_copy = casc_iter
+       casc_copy%next => null ()
+       if (associated (entry%first)) then
+          entry%last%next => casc_copy
+       else
+          entry%first => casc_copy
+       end if
+       entry%last => casc_copy
+       casc_iter => casc_iter%next
+    end do
+  end subroutine hash_entry_init
+
   subroutine hash_entry_final (hash_entry)
     type(hash_entry_t), intent(inout) :: hash_entry
     type(cascade_p), pointer :: current
@@ -623,7 +648,7 @@ contains
     current%cascade => cascade
     if (associated (hash_entry%last)) then
        hash_entry%last%next => current
-    else 
+    else
        hash_entry%first => current
     end if
     hash_entry%last => current
@@ -684,6 +709,48 @@ contains
     end select
   end function pdg_match
 
+  subroutine cascade_set_init_from_cascade (cascade_set, cascade_set_in)
+    type(cascade_set_t), intent(out) :: cascade_set
+    type(cascade_set_t), intent(in), target :: cascade_set_in
+    type(cascade_t), pointer :: casc_iter, casc_copy
+    cascade_set%model => cascade_set_in%model
+    cascade_set%n_in = cascade_set_in%n_in
+    cascade_set%n_out = cascade_set_in%n_out
+    cascade_set%n_tot = cascade_set_in%n_tot
+    cascade_set%flv = cascade_set_in%flv
+    cascade_set%depth_out = cascade_set_in%depth_out
+    cascade_set%depth_tot = cascade_set_in%depth_tot
+    cascade_set%sqrts = cascade_set_in%sqrts
+    cascade_set%m_threshold_s = cascade_set_in%m_threshold_s
+    cascade_set%m_threshold_t = cascade_set_in%m_threshold_t
+    cascade_set%off_shell = cascade_set_in%off_shell
+    cascade_set%t_channel = cascade_set_in%t_channel
+    cascade_set%keep_nonresonant = cascade_set_in%keep_nonresonant
+    cascade_set%n_groves = cascade_set_in%n_groves
+
+    casc_iter => cascade_set_in%first
+    do while (associated (casc_iter))
+       allocate (casc_copy)
+       casc_copy = casc_iter
+       casc_copy%next => null ()
+       if (associated (cascade_set%first)) then
+          cascade_set%last%next => casc_copy
+       else
+          cascade_set%first => casc_copy
+       end if
+       cascade_set%last => casc_copy
+       casc_iter => casc_iter%next
+    end do
+
+    cascade_set%n_entries = cascade_set_in%n_entries
+    cascade_set%fill_ratio = cascade_set_in%fill_ratio
+    cascade_set%n_entries_max = cascade_set_in%n_entries_max
+    cascade_set%mask = cascade_set_in%mask
+    cascade_set%fatal_beam_decay = cascade_set_in%fatal_beam_decay
+    allocate (cascade_set%entry (0:cascade_set%mask))
+    cascade_set%entry = cascade_set_in%entry
+  end subroutine cascade_set_init_from_cascade
+
   function cascade_set_is_valid (cascade_set) result (flag)
     logical :: flag
     type(cascade_set_t), intent(in) :: cascade_set
@@ -699,7 +766,7 @@ contains
     end do
   end function cascade_set_is_valid
 
-  subroutine cascade_set_init (cascade_set, model, n_in, n_out, phs_par, &
+  subroutine cascade_set_init_base (cascade_set, model, n_in, n_out, phs_par, &
         fatal_beam_decay, flv)
     type(cascade_set_t), intent(out) :: cascade_set
     class(model_data_t), intent(in), target :: model
@@ -738,8 +805,8 @@ contains
     cascade_set%mask = size_guess - 1
     allocate (cascade_set%entry (0:cascade_set%mask))
     cascade_set%fatal_beam_decay = fatal_beam_decay
-  end subroutine cascade_set_init
-    
+  end subroutine cascade_set_init_base
+
   subroutine cascade_set_final (cascade_set)
     type(cascade_set_t), intent(inout), target :: cascade_set
     type(cascade_t), pointer :: current
@@ -782,7 +849,7 @@ contains
     do i = n_in, 1, -1
        bincode(i) = bc
        bc = 2 * bc
-    end do       
+    end do
     do i = 1, n_tot
        write (str, "(I0)")  bincode(i)
        field_width(i) = len_trim (str)
@@ -844,7 +911,7 @@ contains
        else
           write (u, "(A)")  ""
        end if
-    end do       
+    end do
     write (u, "(A)")  "\end{align*}"
   end subroutine cascade_set_write_process_tex_format
 
@@ -944,7 +1011,7 @@ contains
     call cascade_set_write_process_tex_format (cascade_set, u)
     write (u, *)
     write (u, '(A)') "\noindent" // &
-         & "\textbf{Note:} These are pseudo Feynman graphs that " 
+         & "\textbf{Note:} These are pseudo Feynman graphs that "
     write (u, '(A)') "visualize phase-space parameterizations " // &
          & "(``integration channels'').  "
     write (u, '(A)') "They do \emph{not} indicate Feynman graphs used for the " // &
@@ -1414,7 +1481,7 @@ contains
              cascade4%mapping = NO_MAPPING
              cascade4%resonant = .false.
              cascade4%on_shell = .false.
-          end if      
+          end if
           cascade3%m_min = cascade3%m_rea
           call cascade_fusion (cascade_set, cascade1, cascade2, cascade3)
           if (cascade_set%keep_nonresonant) then
@@ -1515,7 +1582,7 @@ contains
          call msg_fatal (" Phase space: Initial beam particle can decay")
       else
          call msg_warning (" Phase space: Initial beam particle can decay")
-      end if 
+      end if
     end subroutine beam_decay
   end subroutine cascade_combine_t
 
@@ -1623,7 +1690,7 @@ contains
             cascade1%n_log_enhanced + cascade2%n_log_enhanced
     end if
     if (cascade3%resonant) then
-       cascade3%n_off_shell = 0    
+       cascade3%n_off_shell = 0
     else if (cascade3%log_enhanced) then
        cascade3%n_off_shell = cascade1%n_off_shell + cascade2%n_off_shell
     else
@@ -1815,7 +1882,7 @@ contains
        cascade_seed => cascade_seed%next
     end do LOOP_SEED
   end subroutine cascade_set_generate_t
-                   
+
   subroutine cascade_set_generate_decay (cascade_set)
     type(cascade_set_t), intent(inout), target :: cascade_set
     type(cascade_t), pointer :: cascade1, cascade2
@@ -1893,7 +1960,7 @@ contains
        cascade_seed => cascade_seed%next
     end do LOOP_SEED
   end subroutine cascade_set_generate_scattering
-    
+
   subroutine cascade_set_assign_resonance_hash (cascade_set)
     type(cascade_set_t), intent(inout) :: cascade_set
     type(cascade_t), pointer :: cascade
@@ -2163,7 +2230,7 @@ contains
     call msg_debug (D_PHASESPACE, "resonance_history_add_resonance")
     res_hist%n_resonances = res_hist%n_resonances + 1
     create_new_array = .not. allocated (res_hist%resonances)
-    extend_array = .false. 
+    extend_array = .false.
     if (.not. create_new_array) &
        extend_array = res_hist%n_resonances > size (res_hist%resonances)
     if (create_new_array .or. extend_array) then
@@ -2321,7 +2388,6 @@ contains
     type(resonance_history_t), dimension(:), allocatable :: tmp
     type(cascade_t), pointer :: cascade
     type(resonance_history_t) :: res_hist
-    type(resonance_info_t), dimension(:), allocatable :: resonances
     integer :: grove, i, n_hists
     logical :: included, add_to_list
     call msg_debug (D_PHASESPACE, "cascade_set_get_resonance_histories")

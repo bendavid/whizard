@@ -56,6 +56,12 @@ if test "$enable_hoppet" = "yes"; then
     AC_MSG_RESULT([(disabled)])
   fi
 
+  AC_MSG_CHECKING([the HOPPET version])
+  wo_hoppet_version=`$HOPPET_CONFIG 2>&1 | $GREP "This is" | $SED 's/.*with hoppet //g' | $SED 's/\.$//g'`
+  HOPPET_VERSION=$wo_hoppet_version
+  AC_MSG_RESULT([$wo_hoppet_version])
+  AC_SUBST([HOPPET_VERSION])
+
 else
   AC_MSG_CHECKING([for HOPPET])
   AC_MSG_RESULT([(disabled)])

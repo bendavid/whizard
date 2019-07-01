@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -40,6 +40,7 @@ module shower_uti
   use format_utils, only: write_separator
   use os_interface
   use sm_qcd
+  use physics_defs, only: BORN
   use model_data
   use state_matrices, only: FM_IGNORE_HELICITY
   use process_libraries
@@ -53,9 +54,11 @@ module shower_uti
   use prc_omega
   use variables
   use models
-  use processes
   use event_transforms
   use tauola_interface !NODEP!
+
+  use process, only: process_t
+  use instances, only: process_instance_t
 
   use pdf
   use shower_base
@@ -138,22 +141,26 @@ contains
     type is (prc_omega_t)
        call core_template%set_parameters (model = model)
     end select
+    call process%core_manager_register (BORN, 1, var_str ("omega"))
+    call process%allocate_cm_arrays (1)
+    call process%allocate_core (1, core_template)
+    call process%init_core (1)
     call process%init_component &
-         (1, core_template, mci_template, phs_config_template)
+       (1, .true., mci_template, phs_config_template)
 
     sqrts = 1000
-    call process%setup_beams_sqrts (sqrts)
+    call process%setup_beams_sqrts (sqrts, i_core = 1)
     call process%configure_phs ()
     call process%setup_mci ()
     call process%setup_terms ()
 
     call process_instance%init (process)
-    call process%integrate (process_instance, 1, 1, 1000)
+    call process_instance%integrate (1, 1, 1000)
     call process%final_integration (1)
 
-    call process_instance%setup_event_data ()
+    call process_instance%setup_event_data (i_core = 1)
     call process_instance%init_simulation (1)
-    call process%generate_weighted_event (process_instance, 1)
+    call process_instance%generate_weighted_event (1)
     call process_instance%evaluate_event_data ()
 
   end subroutine setup_testbed

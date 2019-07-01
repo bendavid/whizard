@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -38,6 +38,12 @@ module process_constants
   use kinds, only: default
   use iso_varying_string, string_t => varying_string
 
+  use io_units, only: given_output_unit, free_unit
+  use format_utils, only: write_integer_array
+  use md5, only: md5sum
+
+  use pdg_arrays
+
   implicit none
   private
 
@@ -62,6 +68,7 @@ module process_constants
      complex(default), dimension(:), allocatable :: color_factors
      integer, dimension(:,:), allocatable :: cf_index
   contains
+    procedure :: get_n_tot => process_constants_get_n_tot
     procedure :: get_flv_state => process_constants_get_flv_state
     procedure :: get_hel_state => process_constants_get_hel_state
     procedure :: get_col_state => process_constants_get_col_state
@@ -73,22 +80,32 @@ module process_constants
     procedure :: set_cf_index => process_constants_set_cf_index
     procedure :: set_color_factors => process_constants_set_color_factors
     procedure :: set_ghost_flag => process_constants_set_ghost_flag
+    procedure :: get_pdg_in => process_constants_get_pdg_in
+    procedure :: compute_md5sum => process_constants_compute_md5sum
+    procedure :: fill_unit_for_md5sum => process_constants_fill_unit_for_md5sum
+    procedure :: write => process_constants_write
   end type process_constants_t
 
 
 contains
 
-  function process_constants_get_flv_state (prc_const) result (flv_state)
+  elemental function process_constants_get_n_tot (prc_const) result (n_tot)
+    integer :: n_tot
     class(process_constants_t), intent(in) :: prc_const
-    integer, dimension(:,:), allocatable :: flv_state
+    n_tot = prc_const%n_in + prc_const%n_out
+  end function process_constants_get_n_tot
+
+  subroutine process_constants_get_flv_state (prc_const, flv_state)
+    class(process_constants_t), intent(in) :: prc_const
+    integer, dimension(:,:), allocatable, intent(out) :: flv_state
     allocate (flv_state (size (prc_const%flv_state, 1), &
          size (prc_const%flv_state, 2)))
     flv_state = prc_const%flv_state
-  end function process_constants_get_flv_state
+  end subroutine process_constants_get_flv_state
 
   subroutine process_constants_get_hel_state (prc_const, hel_state)
     class(process_constants_t), intent(in) :: prc_const
-    integer, dimension(:,:), allocatable :: hel_state
+    integer, dimension(:,:), allocatable, intent(out) :: hel_state
     allocate (hel_state (size (prc_const%hel_state, 1), &
          size (prc_const%hel_state, 2)))
     hel_state = prc_const%hel_state
@@ -96,32 +113,32 @@ contains
 
   subroutine process_constants_get_col_state (prc_const, col_state)
     class(process_constants_t), intent(in) :: prc_const
-    integer, dimension(:,:,:), allocatable :: col_state
+    integer, dimension(:,:,:), allocatable, intent(out) :: col_state
     allocate (col_state (size (prc_const%col_state, 1), &
          size (prc_const%col_state, 2), size (prc_const%col_state, 3)))
     col_state = prc_const%col_state
   end subroutine process_constants_get_col_state
 
-  function process_constants_get_ghost_flag (prc_const) result(ghost_flag)
-   class(process_constants_t), intent(in) :: prc_const
-   logical, dimension(:,:), allocatable :: ghost_flag
+  subroutine process_constants_get_ghost_flag (prc_const, ghost_flag)
+    class(process_constants_t), intent(in) :: prc_const
+    logical, dimension(:,:), allocatable, intent(out) :: ghost_flag
     allocate (ghost_flag (size (prc_const%ghost_flag, 1), &
          size (prc_const%ghost_flag, 2)))
-   ghost_flag = prc_const%ghost_flag
-  end function process_constants_get_ghost_flag
+    ghost_flag = prc_const%ghost_flag
+  end subroutine process_constants_get_ghost_flag
 
   subroutine process_constants_get_color_factors (prc_const, col_facts)
-   class(process_constants_t), intent(in) :: prc_const
-   complex(default), intent(inout), dimension(:), allocatable :: col_facts
-   allocate (col_facts (size (prc_const%color_factors)))
-   col_facts = prc_const%color_factors
+    class(process_constants_t), intent(in) :: prc_const
+    complex(default), dimension(:), allocatable, intent(out) :: col_facts
+    allocate (col_facts (size (prc_const%color_factors)))
+    col_facts = prc_const%color_factors
   end subroutine process_constants_get_color_factors
 
   subroutine process_constants_get_cf_index (prc_const, cf_index)
     class(process_constants_t), intent(in) :: prc_const
-    integer, intent(inout), dimension(:,:), allocatable :: cf_index
+    integer, intent(out), dimension(:,:), allocatable :: cf_index
     allocate (cf_index (size (prc_const%cf_index, 1), &
-         size (prc_const%cf_index, 2)))    
+         size (prc_const%cf_index, 2)))
     cf_index = prc_const%cf_index
   end subroutine process_constants_get_cf_index
 
@@ -138,7 +155,7 @@ contains
     integer, intent(in), dimension(:,:,:), allocatable :: col_state
     allocate (prc_const%col_state (size (col_state, 1), &
          size (col_state, 2), size (col_state, 3)))
-    prc_const%col_state = col_state    
+    prc_const%col_state = col_state
   end subroutine process_constants_set_col_state
 
   subroutine process_constants_set_cf_index (prc_const, cf_index)
@@ -158,10 +175,103 @@ contains
 
   subroutine process_constants_set_ghost_flag (prc_const, ghost_flag)
     class(process_constants_t), intent(inout) :: prc_const
-    logical, intent(in), dimension(:,:), allocatable :: ghost_flag
+    logical, dimension(:,:), allocatable, intent(in) :: ghost_flag
     allocate (prc_const%ghost_flag (size (ghost_flag, 1), &
          size (ghost_flag, 2)))
     prc_const%ghost_flag = ghost_flag
   end subroutine process_constants_set_ghost_flag
+  function process_constants_get_pdg_in (prc_const) result (pdg_in)
+    type(pdg_array_t), dimension(:), allocatable :: pdg_in
+    class(process_constants_t), intent(in) :: prc_const
+    type(pdg_array_t) :: pdg_tmp
+    integer :: i
+    allocate (pdg_in (prc_const%n_in))
+    do i = 1, prc_const%n_in
+       pdg_tmp = prc_const%flv_state(i,:)
+       pdg_in(i) = sort_abs (pdg_tmp, unique = .true.)
+    end do
+  end function process_constants_get_pdg_in
+
+  subroutine process_constants_compute_md5sum (prc_const, include_id)
+    class(process_constants_t), intent(inout) :: prc_const
+    logical, intent(in) :: include_id
+    integer :: unit
+    unit = prc_const%fill_unit_for_md5sum (include_id)
+    rewind (unit)
+    prc_const%md5sum = md5sum (unit)
+    close (unit)
+  end subroutine process_constants_compute_md5sum
+
+  function process_constants_fill_unit_for_md5sum (prc_const, include_id) result (unit)
+    integer :: unit
+    class(process_constants_t), intent(in) :: prc_const
+    logical, intent(in) :: include_id
+    integer :: i, j, k
+    unit = free_unit ()
+    open (unit, status="scratch", action="readwrite")
+    if (include_id) write (unit, '(A)') char (prc_const%id)
+    write (unit, '(A)') char (prc_const%model_name) 
+    write (unit, '(L1)') prc_const%openmp_supported
+    write (unit, '(I0)') prc_const%n_in
+    write (unit, '(I0)') prc_const%n_out
+    write (unit, '(I0)') prc_const%n_flv
+    write (unit, '(I0)') prc_const%n_hel
+    write (unit, '(I0)') prc_const%n_col
+    write (unit, '(I0)') prc_const%n_cin
+    write (unit, '(I0)') prc_const%n_cf
+    do i = 1, size (prc_const%flv_state, dim=1)
+       do j = 1, size (prc_const%flv_state, dim=2)
+          write (unit, '(I0)') prc_const%flv_state (i, j)
+       end do
+    end do
+    do i = 1, size (prc_const%hel_state, dim=1)
+       do j = 1, size (prc_const%hel_state, dim=2)
+          write (unit, '(I0)') prc_const%hel_state (i, j)
+       end do
+    end do
+    do i = 1, size (prc_const%col_state, dim=1)
+       do j = 1, size (prc_const%col_state, dim=2)
+          do k = 1, size (prc_const%col_state, dim=3)
+             write (unit, '(I0)') prc_const%col_state (i, j, k)
+          end do
+      end do
+    end do
+    do i = 1, size (prc_const%ghost_flag, dim=1)
+       do j = 1, size (prc_const%ghost_flag, dim=2)
+          write (unit, '(L1)') prc_const%ghost_flag (i, j)
+       end do
+    end do
+    do i = 1, size (prc_const%color_factors)
+       write (unit, '(F0.0,F0.0)') real (prc_const%color_factors(i)), &
+          aimag (prc_const%color_factors(i))
+    end do
+    do i = 1, size (prc_const%cf_index, dim=1)
+       do j = 1, size (prc_const%cf_index, dim=2)
+          write (unit, '(I0)') prc_const%cf_index(i, j)
+       end do
+    end do
+  end function process_constants_fill_unit_for_md5sum
+
+  subroutine process_constants_write (prc_const, unit)
+    class(process_constants_t), intent(in) :: prc_const
+    integer, intent(in), optional :: unit
+    integer :: u, i
+    u = given_output_unit (unit)
+    write (u, "(1x,A,A)") "Process data of id: ", char (prc_const%id)
+    write (u, "(1x,A,A)") "Associated model: ", char (prc_const%model_name)
+    write (u, "(1x,A,I0)") "n_in: ", prc_const%n_in
+    write (u, "(1x,A,I0)") "n_out: ", prc_const%n_out
+    write (u, "(1x,A,I0)") "n_flv: ", prc_const%n_flv
+    write (u, "(1x,A,I0)") "n_hel: ", prc_const%n_hel
+    write (u, "(1x,A,I0)") "n_col: ", prc_const%n_col
+    write (u, "(1x,A,I0)") "n_cin: ", prc_const%n_cin
+    write (u, "(1x,A,I0)") "n_cf: ", prc_const%n_cf
+    write (u, "(1x,A)") "Flavors: "
+    do i = 1, prc_const%n_flv
+       write (u, "(1x,A,I0)") "i_flv: ", i
+       call write_integer_array (prc_const%flv_state (:,i))
+    end do
+  end subroutine process_constants_write
+
 
 end module process_constants

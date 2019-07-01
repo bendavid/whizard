@@ -93,7 +93,32 @@ Pythia8::Pythia* pythia=new Pythia8::Pythia;
       AC_MSG_RESULT(no)
       $2
    fi
-fi
+
+   AC_MSG_CHECKING(the PYTHIA8 version)
+   AC_LANG([C++])
+
+   save_CXXFLAGS="$CXXFLAGS"	
+   save_LIBS="$LIBS"
+   CXXFLAGS="${CXXFLAGS} `${pyconfig} --cxxflags`"
+   LIBS="${LIBS} `${pyconfig} --libs`"
+   AC_LINK_IFELSE([dnl
+     AC_LANG_PROGRAM([[#include "Pythia8/Pythia.h"]],
+       [[
+       Pythia8::Pythia* pythia=new Pythia8::Pythia;
+       ]])],
+    [dnl
+    wo_pythia8_version=`./conftest | $GREP 'PYTHIA version' | $SED 's/.* PYTHIA version //g'  | $SED 's/|.*//g'`
+    VERSION_KNOWN="true"
+    AC_MSG_RESULT([$wo_pythia8_version])],
+    [dnl
+    AC_MSG_RESULT([unknown])
+    VERSION_KNOWN="no"])
+    PYTHIA8_VERSION=$wo_pythia8_version    
+    AC_SUBST([PYTHIA8_VERSION])   
+
+fi   
+
+
 AC_MSG_WARN([PYTHIA8 configure is for testing purposes at the moment.])
 ])
 

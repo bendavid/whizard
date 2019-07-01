@@ -1,4 +1,4 @@
-! $Id:$
+! fc_fs.ects --
 !ects:model QCD
 !ects:scatter
 !ects:process u ubar -> d dbar

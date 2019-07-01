@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -66,7 +66,9 @@ module lorentz
   public :: vector4_set_component
   public :: vector4_get_component
   public :: vector4_get_components
+  public :: vector4_invert_direction
   public :: assignment (=)
+  public :: vector4
   public :: vector4_to_c_prt
   public :: phs_point_t
   public :: lorentz_transformation_t
@@ -76,6 +78,10 @@ module lorentz
   public :: space_reflection
   public :: compute_resonance_mass
   public :: get_resonance_momentum
+  public :: create_two_particle_decay
+  public :: create_three_particle_decay
+  public :: evaluate_one_to_two_splitting_special
+  public :: generate_on_shell_decay
   public :: vector_set_reshuffle
   public :: vector_set_is_cms
   public :: vector4_write_set
@@ -147,7 +153,7 @@ module lorentz
      integer :: n_momenta = 0
   contains
     procedure :: final => phs_point_final
-    procedure :: write => phs_point_write 
+    procedure :: write => phs_point_write
     procedure :: get_x => phs_point_get_x
   end type phs_point_t
 
@@ -382,6 +388,18 @@ module lorentz
   interface inverse
      module procedure lorentz_transformation_inverse
   end interface
+  abstract interface
+     subroutine evaluate_one_to_two_splitting_special (p_origin, &
+          p1_in, p2_in, p1_out, p2_out, msq_in, jac)
+       import
+       type(vector4_t), intent(in) :: p_origin
+       type(vector4_t), intent(in) :: p1_in, p2_in
+       type(vector4_t), intent(inout) :: p1_out, p2_out
+       real(default), intent(in), optional :: msq_in
+       real(default), intent(inout), optional :: jac
+     end subroutine evaluate_one_to_two_splitting_special
+  end interface
+
   interface boost
      module procedure boost_from_rest_frame
      module procedure boost_from_rest_frame_vector3
@@ -731,11 +749,11 @@ contains
     real(default) :: s
     type(vector4_t), intent(in) :: p
     integer, intent(in) :: e
-    s = p*p
-    if (e/=2) then
-       if (mod(e,2)==0) then
-          s = s**(e/2)
-       elseif (s>=0) then
+    s = p * p
+    if (e /= 2) then
+       if (mod(e, 2) == 0) then
+          s = s**(e / 2)
+       else if (s >= 0) then
           s = sqrt(s)**e
        else
           s = -(sqrt(abs(s))**e)
@@ -814,6 +832,11 @@ contains
     end if
   end function vector4_get_direction
 
+  elemental subroutine vector4_invert_direction (p)
+    type(vector4_t), intent(inout) :: p
+    p%p(1:3) = -p%p(1:3)
+  end subroutine vector4_invert_direction
+
   pure subroutine array_from_vector4_1 (a, p)
     real(default), dimension(:), intent(out) :: a
     type(vector4_t), intent(in) :: p
@@ -855,6 +878,12 @@ contains
     real(default), dimension(:), intent(in) :: a
     p%p(1:3) = a
   end subroutine vector3_from_array
+
+  pure function vector4 (a) result (p)
+    type(vector4_t) :: p
+    real(default), intent(in), dimension(4) :: a
+    p%p = a
+  end function vector4
 
   pure function vector4_to_pythia6 (vector4, m) result (p)
     real(double), dimension(1:5) :: p
@@ -955,8 +984,8 @@ contains
     logical, intent(in), optional :: check_conservation
     integer, intent(in), optional :: n_in
     call vector4_write_set (phs_point%p, unit = unit, show_mass = show_mass, &
-       testflag = testflag, check_conservation = check_conservation, &
-       ultra = ultra, n_in = n_in)
+         testflag = testflag, check_conservation = check_conservation, &
+         ultra = ultra, n_in = n_in)
   end subroutine phs_point_write
 
   function phs_point_get_x (phs_point, E_beam) result (x)
@@ -1247,18 +1276,27 @@ contains
          + azimuthal_distance (p, q)**2)
   end function eta_phi_distance_vector4
 
-  subroutine lorentz_transformation_write (L, unit)
+  subroutine lorentz_transformation_write (L, unit, testflag, ultra)
     class(lorentz_transformation_t), intent(in) :: L
     integer, intent(in), optional :: unit
-    integer :: u
-    integer :: i
+    logical, intent(in), optional :: testflag, ultra
+    integer :: u, i
+    logical :: tf, extreme
+    character(len=7) :: fmt
+    tf = .false.; if (present (testflag)) tf = testflag
+    extreme = .false.; if (present (ultra)) extreme = ultra
+    if (extreme) then
+       call pac_fmt (fmt, FMT_19, FMT_11, testflag)
+    else
+       call pac_fmt (fmt, FMT_19, FMT_13, testflag)
+    end if
     u = given_output_unit (unit);  if (u < 0)  return
-    write (u, "(1x,A,3(1x," // FMT_19 // "))")  "L00 = ", L%L(0,0)
-    write (u, "(1x,A,3(1x," // FMT_19 // "))")  "L0j = ", L%L(0,1:3)
+    write (u, "(1x,A,3(1x," // fmt // "))")  "L00 = ", L%L(0,0)
+    write (u, "(1x,A,3(1x," // fmt // "))")  "L0j = ", L%L(0,1:3)
     do i = 1, 3
-       write (u, "(1x,A,I0,A,3(1x," // FMT_19 // "))")  &
+       write (u, "(1x,A,I0,A,3(1x," // fmt // "))")  &
             "L", i, "0 = ", L%L(i,0)
-       write (u, "(1x,A,I0,A,3(1x," // FMT_19 // "))")  &
+       write (u, "(1x,A,I0,A,3(1x," // fmt // "))")  &
             "L", i, "j = ", L%L(i,1:3)
     end do
   end subroutine lorentz_transformation_write
@@ -1300,17 +1338,18 @@ contains
     type(vector3_t) :: p_out
     real(default) :: abs
     abs = space_part_norm (p_in)
-    p_out%p(1) = p_in%p(1)/abs
-    p_out%p(2) = p_in%p(2)/abs
-    p_out%p(3) = p_in%p(3)/abs
+    p_out%p(1) = p_in%p(1) / abs
+    p_out%p(2) = p_in%p(2) / abs
+    p_out%p(3) = p_in%p(3) / abs
   end function create_unit_vector
 
-  subroutine normalize(p)
-    type(vector3_t), intent(inout) :: p
+  function normalize(p) result (p_norm)
+    type(vector3_t) :: p_norm
+    type(vector3_t), intent(in) :: p
     real(default) :: abs
     abs = sqrt (p%p(1)**2 + p%p(2)**2 + p%p(3)**2)
-    p = p / abs
-  end subroutine normalize
+    p_norm = p / abs
+  end function normalize
 
   pure function compute_resonance_mass (p, i_res_born, i_gluon) result (m)
     real(default) :: m
@@ -1334,6 +1373,161 @@ contains
     end do
     if (present (i_gluon)) p_res = p_res + p (i_gluon)
   end function get_resonance_momentum
+
+  function create_two_particle_decay (s, p1, p2) result (p_rest)
+    type(vector4_t), dimension(3) :: p_rest
+    real(default), intent(in) :: s
+    type(vector4_t), intent(in) :: p1, p2
+    real(default) :: m1_sq, m2_sq
+    real(default) :: E1, E2, p
+    m1_sq = p1**2; m2_sq = p2**2
+    p = sqrt (lambda (s, m1_sq, m2_sq)) / (two * sqrt (s))
+    E1 = sqrt (m1_sq + p**2); E2 = sqrt (m2_sq + p**2) 
+    p_rest(1)%p = [sqrt (s), zero, zero, zero]
+    p_rest(2)%p(0) = E1
+    p_rest(2)%p(1:3) = p * p1%p(1:3) / space_part_norm (p1)
+    p_rest(3)%p(0) = E2; p_rest(3)%p(1:3) = -p_rest(2)%p(1:3)
+  end function create_two_particle_decay
+
+  function create_three_particle_decay (p1, p2, p3) result (p_rest)
+    type(vector4_t), dimension(4) :: p_rest
+    type(vector4_t), intent(in) :: p1, p2, p3
+    real(default) :: E1, E2, E3
+    real(default) :: pr1, pr2, pr3
+    real(default) :: s, s1, s2, s3
+    real(default) :: m1_sq, m2_sq, m3_sq
+    real(default) :: cos_theta_12
+    type(vector3_t) :: v3_unit
+    type(lorentz_transformation_t) :: rot
+    m1_sq = p1**2 
+    m2_sq = p2**2
+    m3_sq = p3**2
+    s1 = (p1 + p2)**2
+    s2 = (p2 + p3)**2
+    s3 = (p3 + p1)**2
+    s = s1 + s2 + s3 - m1_sq - m2_sq - m3_sq 
+    E1 = (s - s2 - m1_sq) / (two * sqrt (s2))
+    E2 = (s2 + m2_sq - m3_sq) / (two * sqrt (s2))
+    E3 = (s2 + m3_sq - m2_sq) / (two * sqrt (s2))
+    pr1 = sqrt (lambda (s, s2, m1_sq)) / (two * sqrt (s2))
+    pr2 = sqrt (lambda (s2, m2_sq, m3_sq)) / (two * sqrt(s2))
+    pr3 = pr2
+    cos_theta_12 = ((s - s2 - m1_sq) * (s2 + m2_sq - m3_sq) + two * s2 * (m1_sq + m2_sq - s1)) / &
+         sqrt (lambda (s, s2, m1_sq) * lambda (s2, m2_sq, m3_sq))
+    v3_unit%p = [zero, zero, one]
+    p_rest(1)%p(0) = E1
+    p_rest(1)%p(1:3) = v3_unit%p * pr1
+    p_rest(2)%p(0) = E2
+    p_rest(2)%p(1:3) = v3_unit%p * pr2
+    p_rest(3)%p(0) = E3
+    p_rest(3)%p(1:3) = v3_unit%p * pr3
+    p_rest(4)%p(0) = (s + s2 - m1_sq) / (2 * sqrt (s2))
+    p_rest(4)%p(1:3) = - p_rest(1)%p(1:3)
+    rot = rotation (cos_theta_12, sqrt (one - cos_theta_12**2), 2)
+    p_rest(2) = rot * p_rest(2)
+    p_rest(3)%p(1:3) = - p_rest(2)%p(1:3)
+  end function create_three_particle_decay
+
+  recursive subroutine generate_on_shell_decay (p_dec, &
+      p_in, p_out, i_real, msq_in, jac, evaluate_special) 
+    type(vector4_t), intent(in) :: p_dec
+    type(vector4_t), intent(in), dimension(:) :: p_in
+    type(vector4_t), intent(inout), dimension(:) :: p_out
+    integer, intent(in) :: i_real
+    real(default), intent(in), optional :: msq_in
+    real(default), intent(inout), optional :: jac
+    procedure(evaluate_one_to_two_splitting_special), intent(in), &
+          pointer, optional :: evaluate_special
+    type(vector4_t) :: p_dec_new
+    integer :: n_recoil
+    real(default), dimension(4) :: inv_masses
+    n_recoil = size (p_in) - 1
+    if (n_recoil > 1) then
+       if (present (evaluate_special)) then
+          call evaluate_special (p_dec, p_in(1), sum (p_in (2 : n_recoil + 1)), &
+               p_out(i_real), p_dec_new)
+          call generate_on_shell_decay (p_dec_new, p_in (2 : ), p_out, &
+               i_real + 1, msq_in, jac, evaluate_special)
+       else
+          call evaluate_one_to_two_splitting (p_dec, p_in(1), &
+               sum (p_in (2 : n_recoil + 1)), p_out(i_real), p_dec_new, msq_in, jac)
+          call generate_on_shell_decay (p_dec_new, p_in (2 : ), p_out, &
+               i_real + 1, msq_in, jac)
+       end if
+    else
+       call evaluate_one_to_two_splitting (p_dec, p_in(1), p_in(2), &
+            p_out(i_real), p_out(i_real + 1), msq_in, jac)
+    end if
+
+  end subroutine generate_on_shell_decay
+
+  subroutine evaluate_one_to_two_splitting (p_origin, &
+      p1_in, p2_in, p1_out, p2_out, msq_in, jac)
+    type(vector4_t), intent(in) :: p_origin
+    type(vector4_t), intent(in) :: p1_in, p2_in
+    type(vector4_t), intent(inout) :: p1_out, p2_out
+    real(default), intent(in), optional :: msq_in
+    real(default), intent(inout), optional :: jac
+    type(lorentz_transformation_t) :: L
+    type(vector4_t) :: p1_rest, p2_rest
+    real(default) :: m, msq, msq1, msq2
+    real(default) :: E1, E2, p
+    real(default) :: lda, rlda_soft
+
+    call get_rest_frame (p1_in, p2_in, p1_rest, p2_rest)
+
+    msq = p_origin**2; m = sqrt(msq)
+    msq1 = p1_in**2; msq2 = p2_in**2
+
+    lda = lambda (msq, msq1, msq2)
+    if (lda < zero) then
+       print *, 'Encountered lambda < 0 in 1 -> 2 splitting! '
+       print *, 'lda: ', lda
+       print *, 'm: ', m, 'msq: ', msq
+       print *, 'm1: ', sqrt (msq1), 'msq1: ', msq1
+       print *, 'm2: ', sqrt (msq2), 'msq2: ', msq2
+       stop
+    end if
+    p = sqrt (lda) / (two * m)
+
+    E1 = sqrt (msq1 + p**2)
+    E2 = sqrt (msq2 + p**2)
+
+    p1_out = shift_momentum (p1_rest, E1, p)
+    p2_out = shift_momentum (p2_rest, E2, p)
+
+    L = boost (p_origin, p_origin**1)
+    p1_out = L  * p1_out
+    p2_out = L  * p2_out
+
+    if (present (jac) .and. present (msq_in)) then
+       jac = jac * sqrt(lda) / msq
+       rlda_soft = sqrt (lambda (msq_in, msq1, msq2))
+       !!! We have to undo the Jacobian which has already been
+       !!! supplied by the Born phase space.
+       jac = jac * msq_in / rlda_soft
+    end if
+
+  contains
+
+   subroutine get_rest_frame (p1_in, p2_in, p1_out, p2_out)
+     type(vector4_t), intent(in) :: p1_in, p2_in
+     type(vector4_t), intent(out) :: p1_out, p2_out
+     type(lorentz_transformation_t) :: L
+     L = inverse (boost (p1_in + p2_in, (p1_in + p2_in)**1))
+     p1_out = L * p1_in; p2_out = L * p2_in
+   end subroutine get_rest_frame
+
+   function shift_momentum (p_in, E, p) result (p_out)
+     type(vector4_t) :: p_out
+     type(vector4_t), intent(in) :: p_in
+     real(default), intent(in) :: E, p
+     type(vector3_t) :: vec
+     vec = p_in%p(1:3) / space_part_norm (p_in)
+     p_out = vector4_moving (E, p * vec)
+   end function shift_momentum 
+
+  end subroutine evaluate_one_to_two_splitting
 
   elemental function boost_from_rest_frame (p, m) result (L)
     type(lorentz_transformation_t) :: L
@@ -1448,9 +1642,9 @@ contains
        a = direction (p)
        b = direction (q)
        ab = cross_product(a,b)
-       ct = a*b;  st = ab**1
+       ct = a * b;  st = ab**1
        if (abs(st) > eps0) then
-          R = rotation_generic_cs (ct, st, ab/st)
+          R = rotation_generic_cs (ct, st, ab / st)
        else if (ct < 0) then
           R = space_reflection
        else
@@ -1477,7 +1671,7 @@ contains
        end do
        ct = b%p(k);  st = ab**1
        if (abs(st) > eps0) then
-          R = rotation_generic_cs (ct, st, ab/st)
+          R = rotation_generic_cs (ct, st, ab / st)
        else if (ct < 0) then
           R = space_reflection
        else
@@ -1717,7 +1911,7 @@ contains
       end if
       call vector4_write (p(i), u, show_mass=show_mass, &
            testflag=testflag, ultra=ultra)
-    end do 
+    end do
     if (extreme) then
        call pac_fmt (fmt, FMT_19, FMT_11, testflag)
     else
@@ -1731,14 +1925,19 @@ contains
     end if
   end subroutine vector4_write_set
 
-  subroutine vector4_check_momentum_conservation (p, n_in, unit, abs_smallness, rel_smallness)
+  subroutine vector4_check_momentum_conservation (p, n_in, unit, &
+     abs_smallness, rel_smallness, verbose)
     type(vector4_t), dimension(:), intent(in) :: p
     integer, intent(in) :: n_in
     integer, intent(in), optional :: unit
     real(default), intent(in), optional :: abs_smallness, rel_smallness
+    logical, intent(in), optional :: verbose
     integer :: u, i
     type(vector4_t) :: psum_in, psum_out
+    logical, dimension(0:3) :: p_diff
+    logical :: verb
     u = given_output_unit (unit);  if (u < 0)  return
+    verb = .false.; if (present (verbose)) verb = verbose
     psum_in = vector4_null
     do i = 1, n_in
        psum_in = psum_in + p(i)
@@ -1747,12 +1946,21 @@ contains
     do i = n_in + 1, size (p)
        psum_out = psum_out + p(i)
     end do
-    if (.not. all (nearly_equal (psum_in%p, psum_out%p, abs_smallness, rel_smallness))) then
-       call msg_warning ("Momentum conservation violated!")
-       write (u, "(A)") "Incoming:"
-       call vector4_write (psum_in, u)
-       write (u, "(A)") "Outgoing:"
-       call vector4_write (psum_out, u)
+    !!! !!! !!! Workaround for gfortran-4.8.4 bug
+    do i = 0, 3
+       p_diff(i) = vanishes (psum_in%p(i) - psum_out%p(i), &
+            abs_smallness = abs_smallness, rel_smallness = rel_smallness)
+    end do
+    if (.not. all (p_diff)) then
+       call msg_warning ("Momentum conservation: FAIL", unit = u)
+       if (verb) then
+          write (u, "(A)") "Incoming:"
+          call vector4_write (psum_in, u)
+          write (u, "(A)") "Outgoing:"
+          call vector4_write (psum_out, u)
+       end if
+    else
+       write (u, "(A)") "Momentum conservation: CHECK"
     end if
   end subroutine vector4_check_momentum_conservation
 

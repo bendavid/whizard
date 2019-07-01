@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -58,7 +58,7 @@ contains
     type(os_data_t) :: os_data
     type(model_list_t) :: model_list
     type(model_t), pointer :: radiation_model => null ()
-    
+
     write (u, "(A)") "* Test output: radiation_generator_1"
     write (u, "(A)") "* Purpose: Create N+1-particle flavor structures from predefined N-particle flavor structures"
     write (u, "(A)") "* One additional strong coupling, no additional electroweak coupling"
@@ -71,13 +71,13 @@ contains
        (var_str ("SM_rad"), var_str ("SM_rad.mdl"), &
         os_data, radiation_model)
     call generator%set_radiation_model (radiation_model)
-    write (u, "(A)") "* Success"    
+    write (u, "(A)") "* Success"
 
     allocate (pdg_in (2))
-    pdg_in(1) = 11; pdg_in(2) = -11    
-    
+    pdg_in(1) = 11; pdg_in(2) = -11
+
     write (u, "(A)") "* Start checking processes"
-    call write_separator (u)    
+    call write_separator (u)
 
     write (u, "(A)") "* Process 1: Quark-antiquark production"
     allocate (pdg_out(2))
@@ -87,7 +87,7 @@ contains
 
     write (u, "(A)") "* Process 2: Quark-antiquark production with additional gluon"
     allocate (pdg_out(3))
-    pdg_out(1) = 2; pdg_out(2) = -2; pdg_out(3) = 21 
+    pdg_out(1) = 2; pdg_out(2) = -2; pdg_out(3) = 21
     call test_process (generator, pdg_in, pdg_out, u)
     deallocate (pdg_out)
 
@@ -96,7 +96,7 @@ contains
     pdg_out(1) = 2; pdg_out(2) = -2; pdg_out(3) = 23
     call test_process (generator, pdg_in, pdg_out, u)
     deallocate (pdg_out)
-    
+
     write (u, "(A)") "* Process 4: Top Decay"
     allocate (pdg_out(4))
     pdg_out(1) = 24; pdg_out(2) = -24
@@ -153,7 +153,7 @@ contains
       write (u, "(A)") "* Incoming: "
       call write_particle_string (prt_strings_in, u)
       write (u, "(A)") "* Outgoing: "
-      call write_particle_string (prt_strings_out, u) 
+      call write_particle_string (prt_strings_out, u)
       call write_separator(u)
     end subroutine test_process
 
@@ -172,7 +172,7 @@ contains
     write (u, "(A)") "* Test output: radiation_generator_2"
     write (u, "(A)") "* Purpose: Test the repeated application of a radiation generator splitting"
     write (u, "(A)") "* Only Final state emissions! "
-    write (u, "(A)") 
+    write (u, "(A)")
     write (u, "(A)") "* Loading radiation model: SM_rad.mdl"
 
     call syntax_model_file_init ()
@@ -201,7 +201,7 @@ contains
     call write_separator (u)
     write (u, "(A)") "Generate higher-multiplicity states"
     write (u, "(A,I0)") "Desired multiplicity: ", max_multiplicity
-    call generator%generate_multiple (max_multiplicity)    
+    call generator%generate_multiple (max_multiplicity)
     call generator%prt_queue%write (u)
     call write_separator (u)
     write (u, "(A,I0)") "Number of higher-multiplicity states: ", generator%prt_queue%n_lists
@@ -233,7 +233,7 @@ contains
     end do
     write (u, "(A)")
   end subroutine write_pdg_array
- 
+
   subroutine write_particle_string (prt, u)
     use iso_varying_string, string_t => varying_string
     type(string_t), dimension(:), intent(in) :: prt
@@ -242,7 +242,7 @@ contains
     do i = 1, size (prt)
        write (u, "(A,1X)", advance = "no") char (prt(i))
     end do
-    write (u, "(A)") 
+    write (u, "(A)")
   end subroutine write_particle_string
 
 

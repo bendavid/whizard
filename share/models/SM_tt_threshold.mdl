@@ -34,7 +34,7 @@ parameter sf     = 1.0          # soft scale: mu_s = m1s * sh * sf * v*(sqrts)
 
 # -3: matched expanded
 # -2: p0-constant resummed FF with switchoff function multiplied to all alpha_s
-# -1: matched FF
+# -1: "matched" FF
 #  0: p0-dependent resummed FF
 #  1: p0-constant resummed FF
 #  3: p0-dependent nonrelativistic O(alphas^1) expanded FF
@@ -63,7 +63,7 @@ parameter FF     =  1           # form factor type:
 #  5th bit enforces  LO width in propagators in signal component: 1/0 * 16
 #      (only relevant if method = "threshold" otherwise its always 0)
 #
-#  6th bit enables   helicty approximation: 1/0 * 32
+#  6th bit enables   helicity approximation: 1/0 * 32
 #      (only relevant if method = "threshold" otherwise its always 0)
 #
 #  7th bit allows to activate on-shell projection of momenta in
@@ -76,9 +76,32 @@ parameter FF     =  1           # form factor type:
 #      (only relevant if method = "threshold" otherwise its always 0)
 #      (only relevant if factorization is on, if on-shell projection is off)
 #
-#  9th bit allows to compute the propagator with off-shell momenta: 1/0 * 256
+#  9th bit allows to compute the width in the propagator with off-shell momenta: 1/0 * 256
 #      (only relevant if method = "threshold" otherwise its always 0)
 #      (highly unrecommended, only for testing, not physical)
+#
+# 10th bit allows to boost the momenta of the decay to the collision system: 1/0 * 512
+#      (only relevant if method = "threshold" otherwise its always 0)
+#      (only relevant if factorization is on)
+#      (only relevant if projection for decay is on via 8th or 4th bit)
+#
+# 11th bit enables   extra helicity approximation: 1/0 * 1024
+#      (only relevant if method = "threshold" otherwise its always 0)
+#      (only relevant if factorization is on)
+#
+# 12th bit enforces to subtract -1 from the form factor: 1/0 * 2048
+#      (only relevant if method = "threshold" otherwise its always 0)
+#      (only relevant if factorization is on)
+#      (only for cross checking and debugging)
+#
+# 13th bit flips the sign of the amplitude containing the form factor: 1/0 * 4096
+#      (only relevant if method = "threshold" otherwise its always 0)
+#      (only relevant if factorization and interference is on)
+#      (only for cross checking and debugging)
+#
+# 14th bit enforces to use the factorized amplitude even in the interference: 1/0 * 8192
+#      (only relevant if method = "threshold" otherwise its always 0)
+#      (only relevant if factorization and interference is on)
 #
 parameter offshell_strategy = 0
 

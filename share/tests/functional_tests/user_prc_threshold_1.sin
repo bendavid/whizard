@@ -7,7 +7,7 @@
 ?integration_timer = false
 ?pacify = true
 
-!!! Tests should be run single-threaded 
+!!! Tests should be run single-threaded
 openmp_num_threads = 1
 
 model = SM_tt_threshold

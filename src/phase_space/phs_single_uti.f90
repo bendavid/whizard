@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -44,7 +44,7 @@ module phs_single_uti
   use phs_base
 
   use phs_single
-  
+
   use phs_base_ut, only: init_test_process_data, init_test_decay_data
 
   implicit none
@@ -63,12 +63,12 @@ contains
     type(process_constants_t) :: process_data
     class(phs_config_t), allocatable :: phs_data
     real(default) :: sqrts
-    
+
     write (u, "(A)")  "* Test output: phs_single_1"
     write (u, "(A)")  "*   Purpose: initialize and display &
          &phase-space configuration data"
     write (u, "(A)")
-    
+
     call model%init_test ()
 
     write (u, "(A)")  "* Initialize a process and a matching &
@@ -82,12 +82,12 @@ contains
 
     sqrts = 1000._default
     call phs_data%configure (sqrts, azimuthal_dependence=.false.)
-       
+
     call phs_data%write (u)
-  
+
     call phs_data%final ()
     call model%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: phs_single_1"
 
@@ -102,11 +102,11 @@ contains
     class(phs_config_t), allocatable, target :: phs_data
     class(phs_t), pointer :: phs => null ()
     type(vector4_t), dimension(2) :: p, q
-    
+
     write (u, "(A)")  "* Test output: phs_single_2"
     write (u, "(A)")  "*   Purpose: test simple two-channel phase space"
     write (u, "(A)")
-    
+
     call model%init_test ()
     call flv%init (25, model)
 
@@ -123,16 +123,16 @@ contains
     call phs_data%configure (sqrts)
 
     call phs_data%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Initialize the phase-space instance"
     write (u, "(A)")
 
     call phs_data%allocate_instance (phs)
     call phs%init (phs_data)
-       
+
     call phs%write (u, verbose=.true.)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Set incoming momenta"
     write (u, "(A)")
@@ -144,7 +144,7 @@ contains
     call phs%set_incoming_momenta (p)
     call phs%compute_flux ()
     call phs%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Compute phase-space point &
          &for x = 0.5, 0.125"
@@ -153,7 +153,7 @@ contains
     call phs%evaluate_selected_channel (1, [0.5_default, 0.125_default])
     call phs%evaluate_other_channels (1)
     call phs%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Inverse kinematics"
     write (u, "(A)")
@@ -162,23 +162,23 @@ contains
     deallocate (phs)
     call phs_data%allocate_instance (phs)
     call phs%init (phs_data)
-       
+
     sqrts = 1000._default
     call phs_data%configure (sqrts)
 
     call phs%set_incoming_momenta (p)
     call phs%compute_flux ()
     call phs%set_outgoing_momenta (q)
-    
+
     call phs%inverse ()
     call phs%write (u)
-    
+
     call phs%final ()
     deallocate (phs)
-    
+
     call phs_data%final ()
     call model%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: phs_single_2"
 
@@ -194,12 +194,12 @@ contains
     class(phs_t), pointer :: phs => null ()
     type(vector4_t), dimension(2) :: p, q
     type(lorentz_transformation_t) :: lt
-    
+
     write (u, "(A)")  "* Test output: phs_single_3"
     write (u, "(A)")  "*   Purpose: test simple two-channel phase space"
     write (u, "(A)")  "*            without c.m. kinematics assumption"
     write (u, "(A)")
-    
+
     call model%init_test ()
     call flv%init (25, model)
 
@@ -216,22 +216,22 @@ contains
     call phs_data%configure (sqrts, cm_frame=.false., sqrts_fixed=.false.)
 
     call phs_data%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Initialize the phase-space instance"
     write (u, "(A)")
 
     call phs_data%allocate_instance (phs)
     call phs%init (phs_data)
-       
+
     call phs%write (u, verbose=.true.)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Set incoming momenta in lab system"
     write (u, "(A)")
 
     lt = boost (0.1_default, 1) * boost (0.3_default, 3)
-    
+
     E = sqrts / 2
     p(1) = lt * vector4_moving (E, sqrt (E**2 - flv%get_mass ()**2), 3)
     p(2) = lt * vector4_moving (E,-sqrt (E**2 - flv%get_mass ()**2), 3)
@@ -246,16 +246,16 @@ contains
 
     call phs%set_incoming_momenta (p)
     call phs%compute_flux ()
-    
+
     call phs%evaluate_selected_channel (1, [0.5_default, 0.125_default])
     call phs%evaluate_other_channels (1)
     call pacify (phs)
     call phs%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Extract outgoing momenta in lab system"
     write (u, "(A)")
-    
+
     call phs%get_outgoing_momenta (q)
     call vector4_write (q(1), u)
     call vector4_write (q(2), u)
@@ -267,24 +267,24 @@ contains
     deallocate (phs)
     call phs_data%allocate_instance (phs)
     call phs%init (phs_data)
-       
+
     sqrts = 1000._default
     call phs_data%configure (sqrts)
 
     call phs%set_incoming_momenta (p)
     call phs%compute_flux ()
     call phs%set_outgoing_momenta (q)
-    
+
     call phs%inverse ()
     call pacify (phs)
     call phs%write (u)
-    
+
     call phs%final ()
     deallocate (phs)
-    
+
     call phs_data%final ()
     call model%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: phs_single_3"
 
@@ -299,11 +299,11 @@ contains
     class(phs_t), pointer :: phs => null ()
     type(vector4_t), dimension(1) :: p
     type(vector4_t), dimension(2) :: q
-    
+
     write (u, "(A)")  "* Test output: phs_single_4"
     write (u, "(A)")  "*   Purpose: test simple two-channel phase space"
     write (u, "(A)")
-    
+
     call model%init_test ()
 
     call model%set_par (var_str ("ff"), 0.4_default)
@@ -323,16 +323,16 @@ contains
     call phs_data%configure (flv%get_mass ())
 
     call phs_data%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Initialize the phase-space instance"
     write (u, "(A)")
 
     call phs_data%allocate_instance (phs)
     call phs%init (phs_data)
-       
+
     call phs%write (u, verbose=.true.)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Set incoming momenta"
     write (u, "(A)")
@@ -342,7 +342,7 @@ contains
     call phs%set_incoming_momenta (p)
     call phs%compute_flux ()
     call phs%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Compute phase-space point &
          &for x = 0.5, 0.125"
@@ -351,7 +351,7 @@ contains
     call phs%evaluate_selected_channel (1, [0.5_default, 0.125_default])
     call phs%evaluate_other_channels (1)
     call phs%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Inverse kinematics"
     write (u, "(A)")
@@ -360,22 +360,22 @@ contains
     deallocate (phs)
     call phs_data%allocate_instance (phs)
     call phs%init (phs_data)
-       
+
     call phs_data%configure (flv%get_mass ())
 
     call phs%set_incoming_momenta (p)
     call phs%compute_flux ()
     call phs%set_outgoing_momenta (q)
-    
+
     call phs%inverse ()
     call phs%write (u)
-    
+
     call phs%final ()
     deallocate (phs)
-    
+
     call phs_data%final ()
     call model%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: phs_single_4"
 

@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -59,7 +59,7 @@ end type selector_t
 
 
 contains
-  
+
   subroutine selector_write (object, unit)
     class(selector_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -75,7 +75,7 @@ contains
        write (u, "(3x,A)")  "[undefined]"
     end if
   end subroutine selector_write
- 
+
   subroutine selector_init (selector, weight, negative_weights)
     class(selector_t), intent(out) :: selector
     real(default), dimension(:), intent(in) :: weight
@@ -111,7 +111,7 @@ contains
        allocate (selector%acc (1), source = 1._default)
     end if
   end subroutine selector_init
-    
+
   function selector_select (selector, x) result (n)
     class(selector_t), intent(in) :: selector
     real(default), intent(in) :: x

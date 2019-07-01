@@ -1,4 +1,4 @@
-(* $Id: algebra.ml 7653 2016-07-18 11:37:04Z ohl $
+(* algebra.ml --
 
    Copyright (C) 1999-2016 by
 

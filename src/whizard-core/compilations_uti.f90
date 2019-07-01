@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -34,7 +34,7 @@
 ! to the source 'whizard.nw'
 
 module compilations_uti
-  
+
   use iso_varying_string, string_t => varying_string
   use io_units
   use models
@@ -58,7 +58,7 @@ contains
     integer, intent(in) :: u
     type(string_t) :: libname, procname
     type(rt_data_t), target :: global
-    
+
     write (u, "(A)")  "* Test output: compilations_1"
     write (u, "(A)")  "*   Purpose: configure and compile test process"
     write (u, "(A)")
@@ -72,22 +72,22 @@ contains
     call prepare_test_library (global, libname, 1, [procname])
 
     call compile_library (libname, global)
-    
+
     call global%write_libraries (u)
 
     call global%final ()
     call syntax_model_file_final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: compilations_1"
-    
+
   end subroutine compilations_1
-  
+
   subroutine compilations_2 (u)
     integer, intent(in) :: u
     type(string_t) :: libname, procname
     type(rt_data_t), target :: global
-    
+
     write (u, "(A)")  "* Test output: compilations_2"
     write (u, "(A)")  "*   Purpose: configure and compile test process"
     write (u, "(A)")
@@ -103,17 +103,17 @@ contains
     call prepare_test_library (global, libname, 2, [procname,procname])
 
     call compile_library (libname, global)
-    
+
     call global%write_libraries (u, libpath = .false.)
 
     call global%final ()
     call syntax_model_file_final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: compilations_2"
-    
+
   end subroutine compilations_2
-  
+
   subroutine compilations_3 (u)
     integer, intent(in) :: u
     type(string_t) :: libname, procname, exename
@@ -138,7 +138,7 @@ contains
     libname = "compilations_3_lib"
     procname = "prc_comp_3"
     exename = "compilations_3"
-    
+
     call prepare_test_library (global, libname, 2, [procname,procname])
 
     call compilation%init (exename, [libname])
@@ -170,8 +170,8 @@ contains
       os_data%ldflags = "my-ldflags"
       os_data%ldflags_static = "my-ldflags-static"
       os_data%ldflags_hepmc = "my-ldflags-hepmc"
-      os_data%ldflags_lcio = "my-ldflags-lcio"      
-      os_data%ldflags_hoppet = "my-ldflags-hoppet"      
+      os_data%ldflags_lcio = "my-ldflags-lcio"
+      os_data%ldflags_hoppet = "my-ldflags-hoppet"
       os_data%ldflags_looptools = "my-ldflags-looptools"
       os_data%whizard_ldflags = "my-ldwhizard"
       os_data%whizard_libtool = "my-libtool"
@@ -192,12 +192,12 @@ contains
 
     call global%final ()
     call syntax_model_file_final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: compilations_3"
-    
+
   end subroutine compilations_3
-  
+
   subroutine compilations_static_1 (u)
     integer, intent(in) :: u
     type(string_t) :: libname, procname, exename
@@ -221,7 +221,7 @@ contains
     libname = "compilations_static_1_lib"
     procname = "prc_comp_stat_1"
     exename = "compilations_static_1"
-    
+
     call prepare_test_library (global, libname, 2, [procname,procname])
 
     call compilation%init (exename, [libname])
@@ -247,7 +247,7 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Check executable (should be absent)"
     write (u, "(A)")
-    
+
     call compilation%make_clean_exe (global%os_data)
     inquire (file = char (exename), exist = exist)
     write (u, "(A,A,L1)")  char (exename), " exists = ", exist
@@ -261,7 +261,7 @@ contains
 
     write (u, "(A)")  "* Check executable (should be present)"
     write (u, "(A)")
-    
+
     inquire (file = char (exename), exist = exist)
     write (u, "(A,A,L1)")  char (exename), " exists = ", exist
 
@@ -272,12 +272,12 @@ contains
 
     call global%final ()
     call syntax_model_file_final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: compilations_static_1"
-    
+
   end subroutine compilations_static_1
-  
+
   subroutine compilations_static_2 (u)
     integer, intent(in) :: u
     type(string_t) :: libname, procname, exename
@@ -301,14 +301,14 @@ contains
     libname = "compilations_static_2_lib"
     procname = "prc_comp_stat_2"
     exename = "compilations_static_2"
-    
+
     call prepare_test_library (global, libname, 2, [procname,procname])
 
     call compile_executable (exename, [libname], global)
 
     write (u, "(A)")  "* Check executable (should be present)"
     write (u, "(A)")
-    
+
     inquire (file = char (exename), exist = exist)
     write (u, "(A,A,L1)")  char (exename), " exists = ", exist
 
@@ -321,12 +321,12 @@ contains
 
     call global%final ()
     call syntax_model_file_final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: compilations_static_2"
-    
+
   end subroutine compilations_static_2
-  
+
 
 end module compilations_uti
-  
+

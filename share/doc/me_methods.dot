@@ -1,0 +1,11 @@
+
+digraph G {
+prc_threshold -> prc_user_defined
+prc_template_me -> prc_core
+prc_user_defined -> prc_core
+prc_user_defined -> prc_omega
+prc_threshold -> prc_core
+prc_omega -> prc_core
+prc_test_core -> prc_core
+ }
+

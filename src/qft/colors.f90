@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -585,7 +585,6 @@ contains
     integer :: i, j, c
     n_prt = size (col_in)
     call extract_color_line_indices (col_in, c_index, col_pos)
-    ! print *, c_index     !!! Debugging
     n_c_index = size (c_index)
     allocate (map (n_c_index))
     map = 0
@@ -640,7 +639,6 @@ contains
          if (any (entry%col(i)%c1 /= 0) .and. &
               entry%col(i)%c1(1) == - entry%col(i)%c1(2))  return
       end do
-      ! call color_write (entry%col); print *, map     !!! Debugging
       if (associated (list%last)) then
          list%last%next => entry
       else
@@ -814,7 +812,6 @@ contains
              if (any (cc(i)%c1 > offset)) then
                 count = count + 1
                 call follow_line1 (pick_new_line (cc(i)%c1, count, 1))
-                !!! TODO: (cw 2016-03-03) This can better be done with recursive subroutines
                 cycle SCAN_LOOPS
              end if
           end if

@@ -100,21 +100,22 @@ MAC OS X:
 WHIZARD has been tested and partially developed under MAC OS X 
 Darwin 9.6.X-9.8.X (Leopard) and Darwin 10.0.X-10.6.X (Snow 
 Leopard), Darwin 10.7.X (Lion), Darwin 10.8.X (Mountain Lion),
-Darwin 10.9.X (Maverick) as well as Darwin 10.10.X (Yosemite).
+Darwin 10.9.X (Maverick), Darwin 10.10.X (Yosemite), Darwin
+10.11.X (El Capitan) as well as Darwin 10.12.X (Sierra).
 The single pass linker here forces to explicitly include static
 C++ libraries when externally linking PYTHIA8, HepMC, FastJet,
 LHAPDF or LCIO. The necessary flags are automatically taken
 care of by the configure script.
 
-Darwin 10.11 (El Capitan): The security measures of the new
+Darwin >= 10.11: The security measures of the new
 Darwin systems do not allow e.g. environment variables passed
 to subprocesses. This does not change anything for the installed
-WHIZARD, but the testsuite (make check) will not work before
-make install has been executed. make distcheck will not work on
-El Capitan. There is also the option to disable the System Integrity
-Protocol (SIP) of El Capitan by booting in Recovery Mode, open a
-terminal and type 'csrutil disable'. However, we do not recommend
-to do so.
+WHIZARD, but the testsuite (make check) will not work probably even
+after make install has been executed. make distcheck will not work on
+Darwin >= 10.11. There is also the option to disable the System Integrity
+Protocol (SIP) of El Capitan by booting in Recovery Mode (use Command R
+while booting), open a terminal and type 'csrutil disable'. However, we 
+do not recommend to do so unless you know exactly what you are doing.
 
 #-------------------------------------------------------------
 #  installing from a source code tar ball

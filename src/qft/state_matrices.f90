@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -85,6 +85,7 @@ module state_matrices
      integer :: n_counters = 0
      complex(default), dimension(:), allocatable :: me
      real(default) :: norm = 1
+     integer :: n_sub = 0
    contains
      procedure :: init => state_matrix_init
      procedure :: final => state_matrix_final
@@ -95,10 +96,16 @@ module state_matrices
      procedure :: is_defined => state_matrix_is_defined
      procedure :: is_empty => state_matrix_is_empty
      procedure :: get_n_matrix_elements => state_matrix_get_n_matrix_elements
+     procedure :: get_me_size => state_matrix_get_me_size
+     procedure :: compute_n_sub => state_matrix_compute_n_sub
+     procedure :: get_n_sub => state_matrix_get_n_sub
      procedure :: get_n_leaves => state_matrix_get_n_leaves
      procedure :: get_depth => state_matrix_get_depth
      procedure :: get_norm => state_matrix_get_norm
-     procedure :: get_quantum_numbers => state_matrix_get_quantum_numbers
+     procedure :: get_quantum_number => &
+        state_matrix_get_quantum_number
+     procedure :: get_quantum_numbers => &
+        state_matrix_get_quantum_numbers
      generic :: get_matrix_element => get_matrix_element_single
      generic :: get_matrix_element => get_matrix_element_array
      procedure :: get_matrix_element_single => &
@@ -153,6 +160,7 @@ module state_matrices
      procedure :: is_valid => state_iterator_is_valid
      procedure :: get_me_index => state_iterator_get_me_index
      procedure :: get_me_count => state_iterator_get_me_count
+     procedure :: get_depth => state_iterator_get_depth
      generic :: get_quantum_numbers => get_qn_multi, get_qn_slice, &
           get_qn_range, get_qn_single
      generic :: get_flavor => get_flv_multi, get_flv_slice, &
@@ -307,10 +315,10 @@ contains
     current => node%child_first
     do while (associated (current))
        write (u, "(A)", advance="no")  repeat (" ", i)
-       call node_write (current, me_array, verbose=verb, &
-          unit=u, col_verbose=col_verbose, testflag=testflag)
-       call node_write_rec (current, me_array, verbose=verb, &
-          indent=i+2, unit=u, col_verbose=col_verbose, testflag=testflag)
+       call node_write (current, me_array, verbose = verb, &
+          unit = u, col_verbose = col_verbose, testflag = testflag)
+       call node_write_rec (current, me_array, verbose = verb, &
+          indent = i + 2, unit = u, col_verbose = col_verbose, testflag = testflag)
        current => current%next
     end do
   end subroutine node_write_rec
@@ -399,11 +407,12 @@ contains
     write (u, "(1x,A," // fmt // ")") "State matrix:  norm = ", state%norm
     if (associated (state%root)) then
        if (allocated (state%me)) then
-          call node_write_rec (state%root, state%me, verbose=verbose, &
-             indent=1, unit=u, col_verbose=col_verbose, testflag=testflag)
+          call node_write_rec (state%root, state%me, verbose = verbose, &
+             indent = 1, unit = u, col_verbose = col_verbose, &
+             testflag = testflag)
        else
-          call node_write_rec (state%root, verbose=verbose, indent=1, &
-             unit=u, col_verbose=col_verbose, testflag=testflag)
+          call node_write_rec (state%root, verbose = verbose, indent = 1, &
+             unit = u, col_verbose = col_verbose, testflag = testflag)
        end if
     end if
     if (present (write_value_list)) then
@@ -519,11 +528,41 @@ contains
     flag = state%depth == 0
   end function state_matrix_is_empty
 
-  function state_matrix_get_n_matrix_elements (state) result (n)
+  pure function state_matrix_get_n_matrix_elements (state) result (n)
     integer :: n
     class(state_matrix_t), intent(in) :: state
     n = state%n_matrix_elements
   end function state_matrix_get_n_matrix_elements
+
+  pure function state_matrix_get_me_size (state) result (n)
+    integer :: n
+    class(state_matrix_t), intent(in) :: state
+    if (allocated (state%me)) then
+       n = size (state%me)
+    else
+       n = 0
+    end if
+  end function state_matrix_get_me_size
+
+  subroutine state_matrix_compute_n_sub (state)
+    class(state_matrix_t), intent(inout) :: state
+    type(state_iterator_t) :: it
+    type(quantum_numbers_t), dimension(state%depth) :: qn
+    integer :: sub
+    call it%init (state)
+    do while (it%is_valid ())
+       qn = it%get_quantum_numbers ()
+       sub = qn(1)%get_sub ()
+       if (sub > state%n_sub) state%n_sub = sub
+       call it%advance ()
+    end do
+  end subroutine state_matrix_compute_n_sub 
+      
+  pure function state_matrix_get_n_sub (state) result (n)
+    integer :: n
+    class(state_matrix_t), intent(in) :: state
+    n = state%n_sub
+  end function state_matrix_get_n_sub
 
   function state_matrix_get_n_leaves (state) result (n)
     integer :: n
@@ -537,19 +576,19 @@ contains
     end do
   end function state_matrix_get_n_leaves
 
-  function state_matrix_get_depth (state) result (depth)
+  pure function state_matrix_get_depth (state) result (depth)
     integer :: depth
     class(state_matrix_t), intent(in) :: state
     depth = state%depth
   end function state_matrix_get_depth
 
-  function state_matrix_get_norm (state) result (norm)
+  pure function state_matrix_get_norm (state) result (norm)
     real(default) :: norm
     class(state_matrix_t), intent(in) :: state
     norm = state%norm
   end function state_matrix_get_norm
 
-  function state_matrix_get_quantum_numbers (state, i) result (qn)
+  function state_matrix_get_quantum_number (state, i) result (qn)
     class(state_matrix_t), intent(in), target :: state
     integer, intent(in) :: i
     type(quantum_numbers_t), dimension(state%depth) :: qn
@@ -565,7 +604,18 @@ contains
        end if
        call it%advance ()
     end do
-  end function state_matrix_get_quantum_numbers
+  end function state_matrix_get_quantum_number
+  
+  subroutine state_matrix_get_quantum_numbers (state, qn)
+    type(quantum_numbers_t), dimension(:,:), allocatable, intent(out) :: qn
+    class(state_matrix_t), intent(in), target :: state
+    integer :: i
+    allocate (qn (state%get_n_matrix_elements (), &
+       state%get_depth()))
+    do i = 1, state%get_n_matrix_elements ()
+       qn (i, :) = state%get_quantum_number (i)
+    end do
+  end subroutine state_matrix_get_quantum_numbers
 
   elemental function state_matrix_get_matrix_element_single (state, i) result (me)
     complex(default) :: me
@@ -705,6 +755,7 @@ contains
        call red_state%add_state (qn)
        call it%advance ()
     end do
+    call red_state%freeze ()
   end subroutine state_matrix_reduce
 
   subroutine state_matrix_freeze (state)
@@ -714,6 +765,7 @@ contains
        if (allocated (state%me))  deallocate (state%me)
        allocate (state%me (state%n_matrix_elements))
        state%me = 0
+       call state%compute_n_sub ()
     end if
     if (state%leaf_nodes_store_values) then
        call it%init (state)
@@ -726,12 +778,12 @@ contains
   end subroutine state_matrix_freeze
 
   subroutine state_matrix_set_matrix_element_qn (state, qn, value)
-    class(state_matrix_t), intent(inout) :: state
+    class(state_matrix_t), intent(inout), target :: state
     type(quantum_numbers_t), dimension(:), intent(in) :: qn
     complex(default), intent(in) :: value
     type(state_iterator_t) :: it
-    if (.not. allocated (it%state%me)) then
-       allocate (it%state%me (size(qn)))
+    if (.not. allocated (state%me)) then
+       allocate (state%me (size(qn)))
     end if
     call it%init (state)
     do while (it%is_valid ())
@@ -845,6 +897,12 @@ contains
        allocate (n (0))
     end if
   end function state_iterator_get_me_count
+
+  pure function state_iterator_get_depth (state_iterator) result (depth)
+    integer :: depth
+    class(state_iterator_t), intent(in) :: state_iterator
+    depth = state_iterator%depth
+  end function state_iterator_get_depth
 
   function state_iterator_get_qn_multi (it) result (qn)
     class(state_iterator_t), intent(in) :: it
@@ -1041,6 +1099,7 @@ contains
        allocate (state_out%me (size (state_in%me)))
        state_out%me = state_in%me
     end if
+    state_out%n_sub = state_in%n_sub
   end subroutine state_matrix_assign
 
   subroutine state_matrix_get_diagonal_entries (state, i)

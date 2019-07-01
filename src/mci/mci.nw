@@ -2,6 +2,7 @@
 % WHIZARD code as NOWEB source: integration and event generation
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Multi-Channel Integration}
+\includemodulegraph{mci}
 
 The abstract representation of multi-channel
 Monte Carlo algorithms for integration and event generation.
@@ -626,7 +627,7 @@ an extension, to return a different MD5 sum.
 <<MCI base: mci: TBP>>=
   procedure :: get_md5sum => mci_get_md5sum
 <<MCI base: procedures>>=
-  function mci_get_md5sum (mci) result (md5sum)
+  pure function mci_get_md5sum (mci) result (md5sum)
     class(mci_t), intent(in) :: mci
     character(32) :: md5sum
     md5sum = mci%md5sum
@@ -2376,7 +2377,9 @@ Simple checks for the embedded timer.
   subroutine mci_base_8 (u)
     integer, intent(in) :: u
     class(mci_t), allocatable, target :: mci
-    
+
+    real(default) :: dummy
+
     write (u, "(A)")  "* Test output: mci_base_8"
     write (u, "(A)")  "*   Purpose: check timer availability"
     write (u, "(A)")
@@ -2406,13 +2409,14 @@ Simple checks for the embedded timer.
     write (u, "(A)")
 
     call mci%stop_timer ()
-    call mci%write (u)
+    write (u, "(A)")  " (ok)"
 
     write (u, "(A)")
     write (u, "(A)")  "* Readout"
     write (u, "(A)")
 
-    write (u, "(1x,A,F6.3)")  "Time = ", mci%get_time ()
+    dummy = mci%get_time ()
+    write (u, "(A)")  " (ok)"
     
     write (u, "(A)")
     write (u, "(A)")  "* Deactivate timer"
@@ -6447,7 +6451,7 @@ printout, which incorporates the current results.
 <<MCI vamp: mci vamp: TBP>>=
   procedure :: get_md5sum => mci_vamp_get_md5sum
 <<MCI vamp: procedures>>=
-  function mci_vamp_get_md5sum (mci) result (md5sum)
+  pure function mci_vamp_get_md5sum (mci) result (md5sum)
     class(mci_vamp_t), intent(in) :: mci
     character(32) :: md5sum
     if (mci%md5sum_adapted /= "") then
@@ -10341,3 +10345,290 @@ Construct an integrator and use it for a one-dimensional sampler.
   end subroutine mci_vamp_16
 
 @ %def mci_vamp_16
+\section{Dispatch}
+@
+<<[[dispatch_mci.f90]]>>=
+<<File header>>
+
+module dispatch_mci
+
+<<Use strings>>
+  use diagnostics
+  use variables
+
+  use mci_base
+  use mci_midpoint
+  use mci_vamp
+
+<<Standard module head>>
+
+<<Dispatch mci: public>>
+
+contains
+
+<<Dispatch mci: procedures>>
+
+end module dispatch_mci
+@ %def dispatch_mci
+Allocate an integrator according to the variable [[$integration_method]].
+<<Dispatch mci: public>>=
+  public :: dispatch_mci_s
+<<Dispatch mci: procedures>>=
+  subroutine dispatch_mci_s (mci, var_list, process_id, is_nlo)
+    class(mci_t), allocatable, intent(inout) :: mci
+    logical, intent(in), optional :: is_nlo
+    type(var_list_t), intent(in) :: var_list
+    type(string_t), intent(in) :: process_id
+    type(string_t) :: run_id
+    type(string_t) :: integration_method
+    type(grid_parameters_t) :: grid_par
+    type(history_parameters_t) :: history_par
+    logical :: rebuild_grids, check_grid_file, negative_weights, verbose
+    logical :: dispatch_nlo = .false.
+    if (present (is_nlo)) dispatch_nlo = is_nlo
+    integration_method = &
+         var_list%get_sval (var_str ("$integration_method"))
+    select case (char (integration_method))
+    case ("midpoint")
+       allocate (mci_midpoint_t :: mci)
+    case ("vamp", "default")
+       call unpack_options ()
+       allocate (mci_vamp_t :: mci)
+       select type (mci)
+       type is (mci_vamp_t)
+          call mci%set_grid_parameters (grid_par)
+          if (run_id /= "") then
+             call mci%set_grid_filename (process_id, run_id)
+          else
+             call mci%set_grid_filename (process_id)
+          end if
+          call mci%set_history_parameters (history_par)
+          call mci%set_rebuild_flag (rebuild_grids, check_grid_file)
+          mci%negative_weights = negative_weights
+          mci%verbose = verbose
+       end select
+    case default
+       call msg_fatal ("Integrator '" &
+            // char (integration_method) // "' not implemented")
+    end select
+  contains
+    <<Dispatch mci s: procedures>>
+  end subroutine dispatch_mci_s
+  
+@ %def dispatch_mci_s
+@
+<<Dispatch mci s: procedures>>=
+  subroutine unpack_options()
+    grid_par%threshold_calls = &
+         var_list%get_ival (var_str ("threshold_calls"))
+    grid_par%min_calls_per_channel = &
+         var_list%get_ival (var_str ("min_calls_per_channel"))
+    grid_par%min_calls_per_bin = &
+         var_list%get_ival (var_str ("min_calls_per_bin"))
+    grid_par%min_bins = &
+         var_list%get_ival (var_str ("min_bins"))
+    grid_par%max_bins = &
+         var_list%get_ival (var_str ("max_bins"))
+    grid_par%stratified = &
+         var_list%get_lval (var_str ("?stratified"))
+    if (.not. dispatch_nlo) then
+       grid_par%use_vamp_equivalences = &
+            var_list%get_lval (var_str ("?use_vamp_equivalences"))
+    else
+       grid_par%use_vamp_equivalences = .false.
+    end if
+    grid_par%channel_weights_power = &
+         var_list%get_rval (var_str ("channel_weights_power"))
+    grid_par%accuracy_goal = &
+         var_list%get_rval (var_str ("accuracy_goal"))
+    grid_par%error_goal = &
+         var_list%get_rval (var_str ("error_goal"))
+    grid_par%rel_error_goal = &
+         var_list%get_rval (var_str ("relative_error_goal"))
+    history_par%global = &
+         var_list%get_lval (var_str ("?vamp_history_global"))
+    history_par%global_verbose = &
+         var_list%get_lval (var_str ("?vamp_history_global_verbose"))
+    history_par%channel = &
+         var_list%get_lval (var_str ("?vamp_history_channels"))
+    history_par%channel_verbose = &
+         var_list%get_lval (var_str ("?vamp_history_channels_verbose"))
+    verbose = &
+         var_list%get_lval (var_str ("?vamp_verbose"))
+    check_grid_file = &
+         var_list%get_lval (var_str ("?check_grid_file"))
+    run_id = &
+         var_list%get_sval (var_str ("$run_id"))
+    rebuild_grids = &
+         var_list%get_lval (var_str ("?rebuild_grids"))
+    negative_weights = &
+         var_list%get_lval (var_str ("?negative_weights")) .or. dispatch_nlo
+  end subroutine unpack_options
+
+@
+@
+\subsection{Unit tests}
+Test module, followed by the corresponding implementation module.
+<<[[dispatch_mci_ut.f90]]>>=
+<<File header>>
+
+module dispatch_mci_ut
+  use unit_tests
+  use dispatch_mci_uti
+  
+<<Standard module head>>
+
+<<Dispatch mci: public test>>
+
+contains
+  
+<<Dispatch mci: test driver>>
+
+end module dispatch_mci_ut
+@ %def dispatch_mci_ut
+@
+<<[[dispatch_mci_uti.f90]]>>=
+<<File header>>
+
+module dispatch_mci_uti
+
+<<Use kinds>>
+<<Use strings>>
+  use variables
+  use mci_base
+  use mci_midpoint
+  use mci_vamp
+  use dispatch_mci
+
+<<Standard module head>>
+
+<<Dispatch mci: test declarations>>
+
+contains
+
+<<Dispatch mci: tests>>
+
+end module dispatch_mci_uti
+@ %def dispatch_mci_ut
+@ API: driver for the unit tests below.
+<<Dispatch mci: public test>>=
+  public ::dispatch_mci_test
+<<Dispatch mci: test driver>>=
+  subroutine dispatch_mci_test (u, results)
+    integer, intent(in) :: u
+    type(test_results_t), intent(inout) :: results
+  <<Dispatch mci: execute tests>>
+  end subroutine dispatch_mci_test
+
+@  %def dispatch_mci_test
+@
+\subsubsection{Select type: integrator core}
+<<Dispatch mci: execute tests>>=
+  call test (dispatch_mci_1, "dispatch_mci_1", &
+       "integration method", &
+       u, results)
+<<Dispatch mci: test declarations>>=
+  public :: dispatch_mci_1
+<<Dispatch mci: tests>>=
+  subroutine dispatch_mci_1 (u)
+    integer, intent(in) :: u
+    type(var_list_t) :: var_list
+    class(mci_t), allocatable :: mci
+    type(string_t) :: process_id
+    
+    write (u, "(A)")  "* Test output: dispatch_mci_1"
+    write (u, "(A)")  "*   Purpose: select integration method"
+    write (u, "(A)")
+
+    call var_list%init_defaults (0)
+
+    process_id = "dispatch_mci_1"
+
+    write (u, "(A)")  "* Allocate MCI as midpoint_t"
+    write (u, "(A)")
+
+    call var_list%set_string (&
+         var_str ("$integration_method"), &
+         var_str ("midpoint"), is_known = .true.)
+    call dispatch_mci_s (mci, var_list, process_id)
+    select type (mci)
+    type is (mci_midpoint_t)
+       call mci%write (u)
+    end select
+
+    call mci%final ()
+    deallocate (mci)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Allocate MCI as vamp_t"
+    write (u, "(A)")
+
+    call var_list%set_string (&
+         var_str ("$integration_method"), &
+         var_str ("vamp"), is_known = .true.)
+    call var_list%set_int (var_str ("threshold_calls"), &
+         1, is_known = .true.)
+    call var_list%set_int (var_str ("min_calls_per_channel"), &
+         2, is_known = .true.)
+    call var_list%set_int (var_str ("min_calls_per_bin"), &
+         3, is_known = .true.)
+    call var_list%set_int (var_str ("min_bins"), &
+         4, is_known = .true.)
+    call var_list%set_int (var_str ("max_bins"), &
+         5, is_known = .true.)
+    call var_list%set_log (var_str ("?stratified"), &
+         .false., is_known = .true.)
+    call var_list%set_log (var_str ("?use_vamp_equivalences"),&
+         .false., is_known = .true.)
+    call var_list%set_real (var_str ("channel_weights_power"),&
+         4._default, is_known = .true.)
+    call var_list%set_log (&
+         var_str ("?vamp_history_global_verbose"), &
+         .true., is_known = .true.)
+    call var_list%set_log (&
+         var_str ("?vamp_history_channels"), &
+         .true., is_known = .true.)
+    call var_list%set_log (&
+         var_str ("?vamp_history_channels_verbose"), &
+         .true., is_known = .true.)
+    call var_list%set_log (var_str ("?stratified"), &
+         .false., is_known = .true.)
+
+    call dispatch_mci_s (mci, var_list, process_id)
+    select type (mci)
+    type is (mci_vamp_t)
+       call mci%write (u)
+       call mci%write_history_parameters (u)
+    end select
+
+    call mci%final ()
+    deallocate (mci)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Allocate MCI as vamp_t, allow for negative weights"
+    write (u, "(A)")
+
+    call var_list%set_string (&
+         var_str ("$integration_method"), &
+         var_str ("vamp"), is_known = .true.)
+    call var_list%set_log (var_str ("?negative_weights"), &
+         .true., is_known = .true.)
+
+    call dispatch_mci_s (mci, var_list, process_id)
+    select type (mci)
+    type is (mci_vamp_t)
+       call mci%write (u)
+       call mci%write_history_parameters (u)
+    end select
+
+    call mci%final ()
+    deallocate (mci)
+
+    call var_list%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: dispatch_mci_1"
+
+  end subroutine dispatch_mci_1
+
+@ %def dispatch_mci_1

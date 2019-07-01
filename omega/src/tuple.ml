@@ -1,4 +1,4 @@
-(* $Id: tuple.ml 7444 2016-02-17 15:37:20Z jr_reuter $
+(* tuple.ml --
 
    Copyright (C) 1999-2016 by
 
@@ -21,13 +21,6 @@
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
-
-let rcs_file = RCS.parse "Tuple" ["Tuples of fixed and indefinite arity"]
-    { RCS.revision = "$Revision: 7444 $";
-      RCS.date = "$Date: 2016-02-17 16:37:20 +0100 (Wed, 17 Feb 2016) $";
-      RCS.author = "$Author: jr_reuter $";
-      RCS.source
-        = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/omega/src/tuple.ml $" }
 
 module type Mono =
   sig
@@ -54,7 +47,6 @@ module type Mono =
       'b -> 'b
     val to_list : 'a t -> 'a list
     val of2_kludge : 'a -> 'a -> 'a t
-    val rcs : RCS.t
   end
 
 module type Poly =
@@ -92,7 +84,6 @@ module type Binary =
 
 module Binary =
   struct
-    let rcs = RCS.rename rcs_file "Tuple.Binary" ["Pairs"]
 
     type 'a t = 'a * 'a
 
@@ -163,7 +154,6 @@ module type Ternary =
 
 module Ternary =
   struct
-    let rcs = RCS.rename rcs_file "Tuple.Ternary" ["Triples"]
 
     type 'a t = 'a * 'a * 'a
 
@@ -250,8 +240,6 @@ module type Mixed23 =
 
 module Mixed23 =
   struct
-    let rcs = RCS.rename rcs_file "Tuple.Mixed23"
-        ["Mixed pairs and triples"]
 
     type 'a t = 'a pair_or_triple
 
@@ -374,8 +362,6 @@ module type Nary =
 
 module Nary (A : sig val max_arity : int end) =
   struct
-    let rcs = RCS.rename rcs_file "Tuple.Nary"
-        ["Tupels of indefinite arity"]
 
     type 'a t = 'a * 'a list
 

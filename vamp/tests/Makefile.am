@@ -2,11 +2,11 @@
 # $Id: Makefile.am 319 2010-04-18 15:00:54Z ohl $
 ########################################################################
 
-AM_FCFLAGS = -I$(top_builddir)/src
+AM_FCFLAGS = -I$(top_builddir)/vamp/src
 AM_LDFLAGS =
 
-KINDS = $(top_builddir)/src/kinds.lo
-LIBVAMP = $(top_builddir)/src/libvamp.la
+KINDS = $(top_builddir)/vamp/src/kinds.lo
+LIBVAMP = $(top_builddir)/vamp/src/libvamp.la
 
 TESTS = tao_test
 EXTRA_PROGRAMS = tao_test
@@ -26,7 +26,7 @@ EXTRA_PROGRAMS += vamp_test0
 vamp_test0_SOURCES = vamp_test0.f90
 vamp_test0_LDADD = $(KINDS) $(LIBVAMP)
 
-VPATH = $(srcdir):$(top_builddir)/src:$(top_srcdir)/src
+VPATH = $(srcdir):$(top_builddir)/vamp/src:$(top_srcdir)/vamp/src
 
 SOURCE_FILES = \
     tao_test.f90 vamp_test0.f90 vamp_test.f90 \
@@ -64,7 +64,7 @@ DISTCLEANFILES = Makefile.depend
 ########################################################################
 
 NOTANGLE_IT = \
-  $(NOTANGLE) -R'[[$(@F)]]' $(top_srcdir)/src/prelude.nw $^ \
+  $(NOTANGLE) -R'[[$(@F)]]' $(top_srcdir)/vamp/src/prelude.nw $^ \
     | $(CPIF) $@
 
 SUFFIXES = .nw .f90

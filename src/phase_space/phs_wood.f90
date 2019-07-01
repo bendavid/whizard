@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -61,6 +61,11 @@ module phs_wood
   public :: phs_wood_config_t
   public :: phs_wood_t
 
+  integer, parameter, public :: EXTENSION_NONE = 0
+  integer, parameter, public :: EXTENSION_DEFAULT = 1
+  integer, parameter, public :: EXTENSION_DGLAP = 2
+
+
   type, extends (phs_config_t) :: phs_wood_config_t
      character(32) :: md5sum_forest = ""
      integer :: io_unit = 0
@@ -69,15 +74,15 @@ module phs_wood
      logical :: fatal_beam_decay = .true.
      type(mapping_defaults_t) :: mapping_defaults
      type(phs_parameters_t) :: par
-     type(string_t) :: run_id 
+     type(string_t) :: run_id
      type(cascade_set_t), allocatable :: cascade_set
      type(phs_forest_t) :: forest
      type(os_data_t) :: os_data
-     logical :: extended_phs = .false.
+     integer :: extension_mode = EXTENSION_NONE
    contains
      procedure :: final => phs_wood_config_final
      procedure :: increase_n_par => phs_wood_config_increase_n_par
-     procedure :: set_extended_phs => phs_wood_config_set_extended_phs
+     procedure :: set_extension_mode => phs_wood_config_set_extension_mode
      procedure :: write => phs_wood_config_write
      procedure :: write_forest => phs_wood_config_write_forest
      procedure :: set_parameters => phs_wood_config_set_parameters
@@ -88,7 +93,6 @@ module phs_wood
      procedure :: write_phase_space => phs_wood_config_write_phase_space
      procedure :: clear_phase_space => phs_wood_config_clear_phase_space
      procedure :: configure => phs_wood_config_configure
-     procedure :: set_extra_parameters => phs_wood_config_set_extra_parameters
      procedure :: reshuffle_flavors => phs_wood_config_reshuffle_flavors
      procedure :: set_momentum_links => phs_wood_config_set_momentum_links
      procedure :: record_s_mappings => phs_wood_config_record_s_mappings
@@ -99,7 +103,7 @@ module phs_wood
      procedure :: startup_message => phs_wood_config_startup_message
      procedure, nopass :: allocate_instance => phs_wood_config_allocate_instance
   end type phs_wood_config_t
-  
+
   type, extends (phs_t) :: phs_wood_t
      real(default) :: sqrts = 0
      type(phs_forest_t) :: forest
@@ -114,7 +118,7 @@ module phs_wood
      procedure :: evaluate_other_channels => phs_wood_evaluate_other_channels
      procedure :: inverse => phs_wood_inverse
   end type phs_wood_t
-  
+
 
 contains
 
@@ -128,20 +132,27 @@ contains
     call object%clear_phase_space ()
     call phs_forest_final (object%forest)
   end subroutine phs_wood_config_final
-  
+
   subroutine phs_wood_config_increase_n_par (phs_config)
     class(phs_wood_config_t), intent(inout) :: phs_config
-    phs_config%n_par = phs_config%n_par + 3
+    select case (phs_config%extension_mode)
+    case (EXTENSION_DEFAULT)
+       phs_config%n_par = phs_config%n_par + 3
+    case (EXTENSION_DGLAP)
+       phs_config%n_par = phs_config%n_par + 4
+    end select
   end subroutine phs_wood_config_increase_n_par
 
-  subroutine phs_wood_config_set_extended_phs (phs_config)
+  subroutine phs_wood_config_set_extension_mode (phs_config, mode)
     class(phs_wood_config_t), intent(inout) :: phs_config
-    phs_config%extended_phs = .true.
-  end subroutine phs_wood_config_set_extended_phs
+    integer, intent(in) :: mode
+    phs_config%extension_mode = mode
+  end subroutine phs_wood_config_set_extension_mode
 
-  subroutine phs_wood_config_write (object, unit)
+  subroutine phs_wood_config_write (object, unit, include_id)
     class(phs_wood_config_t), intent(in) :: object
     integer, intent(in), optional :: unit
+    logical, intent(in), optional :: include_id
     integer :: u
     u = given_output_unit (unit)
     write (u, "(1x,A)") &
@@ -152,7 +163,7 @@ contains
     call object%mapping_defaults%write (u)
     write (u, "(3x,A,A,A)")  "Run ID: '", char (object%run_id), "'"
   end subroutine phs_wood_config_write
-  
+
   subroutine phs_wood_config_write_forest (object, unit)
     class(phs_wood_config_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -160,7 +171,7 @@ contains
     u = given_output_unit (unit)
     call phs_forest_write (object%forest, u)
   end subroutine phs_wood_config_write_forest
-  
+
   subroutine phs_wood_config_set_parameters (phs_config, par)
     class(phs_wood_config_t), intent(inout) :: phs_config
     type(phs_parameters_t), intent(in) :: par
@@ -171,7 +182,7 @@ contains
     class(phs_wood_config_t), intent(inout) :: phs_config
     phs_config%use_equivalences = .true.
   end subroutine phs_wood_config_enable_equivalences
-  
+
   subroutine phs_wood_config_set_mapping_defaults (phs_config, mapping_defaults)
     class(phs_wood_config_t), intent(inout) :: phs_config
     type(mapping_defaults_t), intent(in) :: mapping_defaults
@@ -184,7 +195,7 @@ contains
     phs_config%io_unit = unit
     rewind (unit)
   end subroutine phs_wood_config_set_input
-  
+
   subroutine phs_wood_config_generate_phase_space (phs_config)
     class(phs_wood_config_t), intent(inout) :: phs_config
     integer :: off_shell, extra_off_shell
@@ -210,14 +221,14 @@ contains
        call msg_fatal ("Phase-space: generation failed")
     end if
   end subroutine phs_wood_config_generate_phase_space
-    
+
   subroutine phs_wood_config_write_phase_space (phs_config, &
        filename_vis, unit)
     class(phs_wood_config_t), intent(in) :: phs_config
     integer, intent(in), optional :: unit
     type(string_t), intent(in), optional :: filename_vis
     type(string_t) :: setenv_tex, setenv_mp, pipe, pipe_dvi
-    integer :: u, unit_tex, unit_dev, status   
+    integer :: u, unit_tex, unit_dev, status
     if (allocated (phs_config%cascade_set)) then
        if (present (unit)) then
           u = unit
@@ -236,14 +247,14 @@ contains
             '"', phs_config%md5sum_phs_config, '"'
        call phs_parameters_write (phs_config%par, u)
        call cascade_set_write_file_format (phs_config%cascade_set, u)
-       if (phs_config%vis_channels) then 
+       if (phs_config%vis_channels) then
           unit_tex = free_unit ()
           open (unit=unit_tex, file=char(filename_vis // ".tex"), &
-               action="write", status="replace")      
+               action="write", status="replace")
           call cascade_set_write_graph_format (phs_config%cascade_set, &
                filename_vis // "-graphs", phs_config%id, unit_tex)
-          close (unit_tex)      
-          call msg_message ("Phase space: visualizing channels in file " & 
+          close (unit_tex)
+          call msg_message ("Phase space: visualizing channels in file " &
                // char(trim(filename_vis)) // "...")
           if (phs_config%os_data%event_analysis_ps) then
              BLOCK: do
@@ -275,7 +286,7 @@ contains
                    call os_system_call (setenv_mp // &
                         phs_config%os_data%mpost // " " // &
                         filename_vis // "-graphs.mp" // pipe, status)
-                else 
+                else
                    call msg_fatal ("Could not use MetaPOST.")
                 end if
                 if (status /= 0)  exit BLOCK
@@ -304,7 +315,7 @@ contains
             &no phase space object generated")
     end if
   end subroutine phs_wood_config_write_phase_space
-       
+
   subroutine phs_wood_config_clear_phase_space (phs_config)
     class(phs_wood_config_t), intent(inout) :: phs_config
     if (allocated (phs_config%cascade_set)) then
@@ -312,7 +323,7 @@ contains
        deallocate (phs_config%cascade_set)
     end if
   end subroutine phs_wood_config_clear_phase_space
-  
+
   subroutine phs_wood_config_configure (phs_config, sqrts, &
        sqrts_fixed, cm_frame, azimuthal_dependence, rebuild, ignore_mismatch, &
        nlo_type)
@@ -354,14 +365,14 @@ contains
        check = .true.
     end if
     phs_config%md5sum_forest = ""
-    call phs_config%compute_md5sum ()
+    call phs_config%compute_md5sum (include_id = .false.)
     if (phs_config%io_unit == 0) then
        if (phs_config%run_id /= "") then
           filename = phs_config%id // "." // phs_config%run_id // ".phs"
           filename_vis = phs_config%id // "." // phs_config%run_id // "_phs"
        else
           filename = phs_config%id // ".phs"
-          filename_vis = phs_config%id // "_phs"          
+          filename_vis = phs_config%id // "_phs"
        end if
        if (.not. rebuild_phs) then
           if (check) then
@@ -435,11 +446,6 @@ contains
        call msg_fatal ()
     end if
   end subroutine phs_wood_config_configure
-  
-  subroutine phs_wood_config_set_extra_parameters (config)
-    class(phs_wood_config_t), intent(inout) :: config
-    config%n_par = config%n_par + 3
-  end subroutine phs_wood_config_set_extra_parameters
 
   subroutine phs_wood_config_reshuffle_flavors (phs_config, reshuffle, flv_extra)
     class(phs_wood_config_t), intent(inout) :: phs_config
@@ -498,7 +504,7 @@ contains
     phs_config%md5sum_forest = md5sum (u)
     close (u)
   end subroutine phs_wood_config_compute_md5sum_forest
-  
+
   function phs_wood_config_get_md5sum (phs_config) result (md5sum)
     class(phs_wood_config_t), intent(in) :: phs_config
     character(32) :: md5sum
@@ -508,7 +514,7 @@ contains
        md5sum = phs_config%md5sum_phs_config
     end if
   end function phs_wood_config_get_md5sum
- 
+
   subroutine phs_wood_read_phs_file (phs_config, exist, found, match)
     class(phs_wood_config_t), intent(inout) :: phs_config
     logical, intent(out) :: exist
@@ -534,7 +540,7 @@ contains
        if (present (match))  match = .false.
     end if
   end subroutine phs_wood_read_phs_file
-    
+
   subroutine phs_wood_config_startup_message (phs_config, unit)
     class(phs_wood_config_t), intent(in) :: phs_config
     integer, intent(in), optional :: unit
@@ -551,7 +557,7 @@ contains
        write (msg_buffer, "(A,2(I0,A))") &
             "Phase space: found ", phs_config%n_channel, &
             " channels, collected in ", n_groves, &
-            " grove." 
+            " grove."
        else
        write (msg_buffer, "(A,2(I0,A))") &
             "Phase space: found ", phs_config%n_channel, &
@@ -559,16 +565,16 @@ contains
             phs_forest_get_n_groves (phs_config%forest), &
             " groves."
     end if
-    call msg_message (unit = unit)    
+    call msg_message (unit = unit)
     if (phs_config%use_equivalences) then
-       if (n_eq == 1) then 
+       if (n_eq == 1) then
           write (msg_buffer, "(A,I0,A)") &
                "Phase space: Using ", n_eq, &
                " equivalence between channels."
        else
           write (msg_buffer, "(A,I0,A)") &
                "Phase space: Using ", n_eq, &
-               " equivalences between channels."          
+               " equivalences between channels."
        end if
     else
        write (msg_buffer, "(A)") &
@@ -579,12 +585,12 @@ contains
          "Phase space: wood"
     call msg_message (unit = unit)
   end subroutine phs_wood_config_startup_message
-    
+
   subroutine phs_wood_config_allocate_instance (phs)
     class(phs_t), intent(inout), pointer :: phs
     allocate (phs_wood_t :: phs)
   end subroutine phs_wood_config_allocate_instance
-  
+
   subroutine phs_wood_write (object, unit, verbose)
     class(phs_wood_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -593,7 +599,7 @@ contains
     u = given_output_unit (unit)
     call object%base_write (u)
   end subroutine phs_wood_write
-    
+
   subroutine phs_wood_write_forest (object, unit)
     class(phs_wood_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -601,12 +607,12 @@ contains
     u = given_output_unit (unit)
     call phs_forest_write (object%forest, u)
   end subroutine phs_wood_write_forest
-  
+
   subroutine phs_wood_final (object)
     class(phs_wood_t), intent(inout) :: object
     call phs_forest_final (object%forest)
   end subroutine phs_wood_final
-  
+
   subroutine phs_wood_init (phs, phs_config)
     class(phs_wood_t), intent(out) :: phs
     class(phs_config_t), intent(in), target :: phs_config
@@ -614,11 +620,15 @@ contains
     select type (phs_config)
     type is (phs_wood_config_t)
        phs%forest = phs_config%forest
-       if (phs_config%extended_phs) &
+       select case (phs_config%extension_mode)
+       case (EXTENSION_DEFAULT)
           phs%n_r_born = phs_config%n_par - 3
+       case (EXTENSION_DGLAP)
+          phs%n_r_born = phs_config%n_par - 4
+       end select
     end select
   end subroutine phs_wood_init
-  
+
   subroutine phs_wood_evaluate_selected_channel (phs, c_in, r_in)
     class(phs_wood_t), intent(inout) :: phs
     integer, intent(in) :: c_in
@@ -633,7 +643,7 @@ contains
             phs%sqrts_hat, phs%r, phs%f, phs%volume, ok)
        select type (config => phs%config)
        type is (phs_wood_config_t)
-          if (config%extended_phs) then
+          if (config%extension_mode > EXTENSION_NONE) then
              if (phs%n_r_born > 0) then
                 phs%r_real = r_in (phs%n_r_born + 1 : phs%n_r_born + 3)
              else
@@ -647,7 +657,7 @@ contains
        end if
     end if
   end subroutine phs_wood_evaluate_selected_channel
-  
+
   subroutine phs_wood_evaluate_other_channels (phs, c_in)
     class(phs_wood_t), intent(inout) :: phs
     integer, intent(in) :: c_in
@@ -658,10 +668,10 @@ contains
             phs%sqrts_hat, phs%r, phs%f, combine=.true.)
        select type (config => phs%config)
        type is (phs_wood_config_t)
-          if (config%extended_phs) then
+          if (config%extension_mode > EXTENSION_NONE) then
              if (phs%n_r_born > 0) then
                 do c = 1, size (phs%r, 2)
-                   phs%r(phs%n_r_born+1:phs%n_r_born+3,c) = phs%r_real
+                   phs%r(phs%n_r_born + 1 : phs%n_r_born + 3, c) = phs%r_real
                 end do
              else
                 phs%r_defined = .false.
@@ -671,7 +681,7 @@ contains
        phs%r_defined = .true.
     end if
   end subroutine phs_wood_evaluate_other_channels
-  
+
   subroutine phs_wood_inverse (phs)
     class(phs_wood_t), intent(inout) :: phs
     if (phs%p_defined .and. phs%q_defined) then
@@ -686,6 +696,6 @@ contains
        phs%r_defined = .true.
     end if
   end subroutine phs_wood_inverse
-  
+
 
 end module phs_wood

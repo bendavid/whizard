@@ -30,16 +30,5 @@
 
 SUBDIRS = src share tests
 
-## Use the same compiler and compiler flags for distcheck
-DISTCHECK_CONFIGURE_FLAGS = FC=$(FC) FCFLAGS="$(FCFLAGS)" LIBS="$(LIBS)" \
-	--enable-distribution
-
 ## Use the m4 directory for local Autoconf macros
 ACLOCAL_AMFLAGS = -I m4
-
-DISTCLEANFILES = \
-  iso_c_binding_gfortran.$(FC_MODULE_EXT) \
-  iso_fortran_env_2008.$(FC_MODULE_EXT) \
-  query_kinds.$(FC_MODULE_EXT) \
-  report_kinds.$(FC_MODULE_EXT)
-

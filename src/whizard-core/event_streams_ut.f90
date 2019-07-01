@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -36,14 +36,14 @@
 module event_streams_ut
   use unit_tests
   use event_streams_uti
-  
+
   implicit none
   private
 
   public :: event_streams_test
 
 contains
-  
+
   subroutine event_streams_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -60,6 +60,6 @@ contains
          "check MD5 sum", &
          u, results)
   end subroutine event_streams_test
-  
+
 
 end module event_streams_ut

@@ -1,4 +1,4 @@
-(* $Id: omega_SM_tt_threshold.ml 1340 2009-12-02 23:45:04Z ohl $
+(* omega_SM_tt_threshold.ml --
 
    Copyright (C) 1999-2012 by
 

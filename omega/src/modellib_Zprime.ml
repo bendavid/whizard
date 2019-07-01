@@ -1,4 +1,4 @@
-(* $Id: modellib_Zprime.ml 4926 2013-12-04 12:35:06Z jr_reuter $
+(* modellib_Zprime.ml --
 
    Copyright (C) 1999-2016 by
 
@@ -22,13 +22,6 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
-let rcs_file = RCS.parse "omega_Zprime" ["Standard Model with Additional Vectors"]
-    { RCS.revision = "$Revision: 4926 $";
-      RCS.date = "$Date: 2013-12-04 13:35:06 +0100 (Wed, 04 Dec 2013) $";
-      RCS.author = "$Author: jr_reuter $";
-      RCS.source
-        = "$Source: /home/sources/ohl/ml/omega/src/omega_Zprime.ml,v $" }
-
 (* \thocwmodulesection{SM with additional Z'} *)
 
 module type SM_flags =
@@ -45,7 +38,6 @@ module SM_no_anomalous : SM_flags =
 
 module Zprime (Flags : SM_flags) =
   struct
-    let rcs = rcs_file
 
     open Coupling
 

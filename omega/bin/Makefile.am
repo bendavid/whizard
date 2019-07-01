@@ -1,5 +1,4 @@
 # Makefile.am -- Makefile for O'Mega within and without WHIZARD
-# $Id: Makefile.am 7444 2016-02-17 15:37:20Z jr_reuter $
 ##
 ## Process this file with automake to produce Makefile.in
 ##
@@ -27,7 +26,7 @@
 #
 ########################################################################
 
-VPATH = $(top_builddir)/src:$(top_srcdir)/src
+VPATH = $(top_builddir)/omega/src:$(top_srcdir)/omega/src
 
 bin_SCRIPTS = $(OMEGA_APPLICATIONS_NATIVE)
 
@@ -38,10 +37,10 @@ OMEGA_CMA = $(OMEGA_CMXA:.cmxa=.cma)
 
 ########################################################################
 
-include $(top_srcdir)/src/Makefile.ocaml
-include $(top_srcdir)/src/Makefile.sources
+include $(top_srcdir)/omega/src/Makefile.ocaml
+include $(top_srcdir)/omega/src/Makefile.sources
 
-OCAMLFLAGS += -I $(top_builddir)/src
+OCAMLFLAGS += -I $(top_builddir)/omega/src
 
 $(OMEGA_APPLICATIONS_NATIVE): $(OMEGA_CMXA)
 $(OMEGA_APPLICATIONS_BYTECODE): $(OMEGA_CMA)

@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -33,7 +33,7 @@
 ! This file has been stripped of most comments.  For documentation, refer
 ! to the source 'whizard.nw'
 module prc_core
-  
+
   use kinds, only: default
   use iso_varying_string, string_t => varying_string
   use io_units
@@ -62,31 +62,27 @@ module prc_core
      integer :: nc = 3
    contains
      procedure(prc_core_write), deferred :: write
+     procedure(prc_core_write_name), deferred :: write_name
      procedure :: init => prc_core_init
      procedure :: base_init => prc_core_init
      procedure :: has_matrix_element => prc_core_has_matrix_element
-     procedure(prc_core_get_flag), deferred :: needs_mcset
-     procedure(prc_core_get_integer), deferred :: get_n_terms
      procedure(prc_core_is_allowed), deferred :: is_allowed
      procedure :: get_constants => prc_core_get_constants
      procedure :: get_alpha_s => prc_core_get_alpha_s
      procedure :: allocate_workspace => prc_core_ignore_workspace
-     procedure :: init_sf_chain => prc_core_init_sf_chain
      procedure(prc_core_compute_hard_kinematics), deferred :: &
           compute_hard_kinematics
      procedure(prc_core_compute_eff_kinematics), deferred :: &
           compute_eff_kinematics
-     procedure(prc_core_recover_kinematics), deferred :: &
-          recover_kinematics
      procedure(prc_core_compute_amplitude), deferred :: compute_amplitude
   end type prc_core_t
-  
+
   type, abstract :: prc_core_state_t
    contains
-     procedure(workspace_write), deferred :: write     
+     procedure(workspace_write), deferred :: write
      procedure(workspace_reset_new_kinematics), deferred :: reset_new_kinematics
   end type prc_core_state_t
-  
+
   type :: helicity_selection_t
      logical :: active = .false.
      real(default) :: threshold = 0
@@ -94,7 +90,7 @@ module prc_core
    contains
      procedure :: write => helicity_selection_write
   end type helicity_selection_t
-     
+
 
   abstract interface
      subroutine prc_core_write (object, unit)
@@ -103,21 +99,13 @@ module prc_core
        integer, intent(in), optional :: unit
      end subroutine prc_core_write
   end interface
-  
+
   abstract interface
-     function prc_core_get_flag (object) result (flag)
+     subroutine prc_core_write_name (object, unit)
        import
        class(prc_core_t), intent(in) :: object
-       logical :: flag
-     end function prc_core_get_flag
-  end interface
-  
-  abstract interface
-     function prc_core_get_integer (object) result (i)
-       import
-       class(prc_core_t), intent(in) :: object
-       integer :: i
-     end function prc_core_get_integer
+       integer, intent(in), optional :: unit
+     end subroutine prc_core_write_name
   end interface
 
   abstract interface
@@ -154,18 +142,6 @@ module prc_core
   end interface
 
   abstract interface
-     subroutine prc_core_recover_kinematics &
-          (object, p_seed, int_hard, int_eff, core_state)
-       import
-       class(prc_core_t), intent(in) :: object
-       type(vector4_t), dimension(:), intent(inout) :: p_seed
-       type(interaction_t), intent(inout) :: int_hard
-       type(interaction_t), intent(inout) :: int_eff
-       class(prc_core_state_t), intent(inout), allocatable :: core_state
-     end subroutine prc_core_recover_kinematics
-  end interface
-
-  abstract interface
      function prc_core_compute_amplitude &
           (object, j, p, f, h, c, fac_scale, ren_scale, alpha_qcd_forced, &
           core_state) result (amp)
@@ -181,7 +157,7 @@ module prc_core
        complex(default) :: amp
      end function prc_core_compute_amplitude
   end interface
-  
+
   abstract interface
      subroutine workspace_write (object, unit)
        import
@@ -210,7 +186,7 @@ contains
     call lib%connect_process (id, i_component, object%data, object%driver)
     object%data_known = .true.
   end subroutine prc_core_init
-  
+
   function prc_core_has_matrix_element (object) result (flag)
     class(prc_core_t), intent(in) :: object
     logical :: flag
@@ -223,29 +199,19 @@ contains
     integer, intent(in) :: i_term
     data = object%data
   end subroutine prc_core_get_constants
-  
+
   function prc_core_get_alpha_s (object, core_state) result (alpha)
     class(prc_core_t), intent(in) :: object
     class(prc_core_state_t), intent(in), allocatable :: core_state
     real(default) :: alpha
     alpha = -1
   end function prc_core_get_alpha_s
-  
+
   subroutine prc_core_ignore_workspace (object, core_state)
     class(prc_core_t), intent(in) :: object
     class(prc_core_state_t), intent(inout), allocatable :: core_state
   end subroutine prc_core_ignore_workspace
 
-  subroutine prc_core_init_sf_chain &
-       (object, sf_chain_instance, sf_chain, n_channel, core_state)
-    class(prc_core_t), intent(in) :: object
-    type(sf_chain_instance_t), intent(inout), target :: sf_chain_instance
-    type(sf_chain_t), intent(in), target :: sf_chain
-    integer, intent(in) :: n_channel
-    class(prc_core_state_t), intent(inout), allocatable :: core_state
-    call sf_chain_instance%init (sf_chain, n_channel)
-  end subroutine prc_core_init_sf_chain
-  
   subroutine helicity_selection_write (object, unit)
     class(helicity_selection_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -259,6 +225,6 @@ contains
             "cutoff    = ", object%cutoff
     end if
   end subroutine helicity_selection_write
-    
+
 
 end module prc_core

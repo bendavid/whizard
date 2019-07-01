@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -45,12 +45,10 @@ module rt_data
   use os_interface
   use lexers
   use parser
-  use physics_defs, only: LAMBDA_QCD_REF
   use models
-  use jets
   use subevents
   use pdg_arrays
-  use variables
+  use variables, only: var_list_t
   use process_libraries
   use prclib_stacks
   use prc_core, only: helicity_selection_t
@@ -67,9 +65,9 @@ module rt_data
 
   type :: rt_parse_nodes_t
      type(parse_node_t), pointer :: cuts_lexpr => null ()
-     type(parse_node_t), pointer :: scale_expr => null ()     
+     type(parse_node_t), pointer :: scale_expr => null ()
      type(parse_node_t), pointer :: fac_scale_expr => null ()
-     type(parse_node_t), pointer :: ren_scale_expr => null ()     
+     type(parse_node_t), pointer :: ren_scale_expr => null ()
      type(parse_node_t), pointer :: weight_expr => null ()
      type(parse_node_t), pointer :: selection_lexpr => null ()
      type(parse_node_t), pointer :: reweight_expr => null ()
@@ -80,7 +78,7 @@ module rt_data
      procedure :: write => rt_parse_nodes_write
      procedure :: show => rt_parse_nodes_show
   end type rt_parse_nodes_t
-     
+
   type :: rt_data_t
      type(lexer_t), pointer :: lexer => null ()
      type(rt_data_t), pointer :: context => null ()
@@ -103,9 +101,9 @@ module rt_data
      type(file_list_t), pointer :: out_files => null ()
      logical :: quit = .false.
      integer :: quit_code = 0
-     type(string_t) :: logfile 
+     type(string_t) :: logfile
      logical :: nlo_fixed_order = .false.
-     logical, dimension(6) :: active_nlo_components = .false.
+     logical, dimension(0:5) :: selected_nlo_parts = .false.
    contains
      procedure :: write => rt_data_write
      procedure :: write_vars => rt_data_write_vars
@@ -193,7 +191,7 @@ contains
        rt_pn%analysis_lexpr => null ()
     end select
   end subroutine rt_parse_nodes_clear
-  
+
   subroutine rt_parse_nodes_write (object, unit)
     class(rt_parse_nodes_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -235,7 +233,7 @@ contains
       end if
     end subroutine wrt
   end subroutine rt_parse_nodes_write
-    
+
   subroutine rt_parse_nodes_show (rt_pn, name, unit)
     class(rt_parse_nodes_t), intent(in) :: rt_pn
     type(string_t), intent(in) :: name
@@ -268,7 +266,7 @@ contains
        write (u, "(A,1x,A,A)")  "Expression:", char (name), ": [undefined]"
     end if
   end subroutine rt_parse_nodes_show
-  
+
   subroutine rt_data_write (object, unit, vars, pacify)
     class(rt_data_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -290,7 +288,7 @@ contains
        if (associated (object%model)) then
           call object%model%write_var_list (u, follow_link=.true.)
        else
-          call var_list_write (object%var_list, u, follow_link=.true.)
+          call object%var_list%write (u, follow_link=.true.)
        end if
     end if
     if (object%it_list%get_n_pass () > 0) then
@@ -329,7 +327,7 @@ contains
     write (u, "(1x,A,1x,A)")   "Logfile  :", "'" // trim (char (object%logfile)) // "'"
     call write_separator (u, 2)
   end subroutine rt_data_write
-  
+
   subroutine rt_data_write_vars (object, unit, vars)
     class(rt_data_t), intent(in), target :: object
     integer, intent(in), optional :: unit
@@ -342,14 +340,14 @@ contains
        do i = 1, size (vars)
           associate (var => vars(i))
             if (var_list%contains (var, follow_link=.true.)) then
-               call var_list_write_var (var_list, var, unit = u, &
+               call var_list%write_var (var, unit = u, &
                     follow_link = .true.)
             end if
           end associate
        end do
     end if
   end subroutine rt_data_write_vars
-  
+
   subroutine rt_data_write_model_list (object, unit)
     class(rt_data_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -386,27 +384,25 @@ contains
     call object%pn%write (u)
     call write_separator (u, 2)
   end subroutine rt_data_write_expr
-  
+
   subroutine rt_data_write_process_stack (object, unit)
     class(rt_data_t), intent(in) :: object
     integer, intent(in), optional :: unit
     call object%process_stack%write (unit)
   end subroutine rt_data_write_process_stack
-  
+
   subroutine rt_data_clear_beams (global)
     class(rt_data_t), intent(inout) :: global
     call global%beam_structure%final_sf ()
     call global%beam_structure%final_pol ()
     call global%beam_structure%final_mom ()
   end subroutine rt_data_clear_beams
-  
+
   subroutine rt_data_global_init (global, paths, logfile)
     class(rt_data_t), intent(out), target :: global
     type(paths_t), intent(in), optional :: paths
     type(string_t), intent(in), optional :: logfile
-    logical, target, save :: known = .true.
     integer :: seed
-    real(default), parameter :: real_specimen = 1.
     call os_data_init (global%os_data, paths)
     if (present (logfile)) then
        global%logfile = logfile
@@ -415,1076 +411,9 @@ contains
     end if
     allocate (global%out_files)
     call system_clock (seed)
-    call var_list_append_log_ptr &
-         (global%var_list, var_str ("?logging"), logging, known, &
-         intrinsic=.true.)
-    call var_list_append_int &
-         (global%var_list, var_str ("seed"), seed, &
-          intrinsic=.true.)
-    call var_list_append_string &
-         (global%var_list, var_str ("$model_name"), &
-          intrinsic=.true.)
-    call var_list_append_int &
-         (global%var_list, var_str ("process_num_id"), &
-         intrinsic=.true.)        
-    call var_list_append_string &
-         (global%var_list, var_str ("$method"), var_str ("omega"), &
-         intrinsic=.true.)        
-    call var_list_append_log &
-         (global%var_list, var_str ("?report_progress"), .true., &
-          intrinsic=.true.)
-    call var_list_append_string &
-         (global%var_list, var_str ("$restrictions"), var_str (""), &
-         intrinsic=.true.)
-    call var_list_append_string &
-         (global%var_list, var_str ("$omega_flags"), var_str (""), &
-         intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?read_color_factors"), .true., &
-          intrinsic=.true.)
-!!! JRR: WK please check (#529)    
-!     call var_list_append_string &
-!          (global%var_list, var_str ("$user_procs_cut"), var_str (""), &
-!           intrinsic=.true.)     
-!     call var_list_append_string &
-!          (global%var_list, var_str ("$user_procs_event_shape"), var_str (""), &
-!           intrinsic=.true.)     
-!     call var_list_append_string &
-!          (global%var_list, var_str ("$user_procs_obs1"), var_str (""), &
-!           intrinsic=.true.)     
-!     call var_list_append_string &
-!          (global%var_list, var_str ("$user_procs_obs2"), var_str (""), &
-!           intrinsic=.true.)     
-!     call var_list_append_string &
-!          (global%var_list, var_str ("$user_procs_sf"), var_str (""), &
-!           intrinsic=.true.)     
-    call var_list_append_log &
-         (global%var_list, var_str ("?slha_read_input"), .true., &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?slha_read_spectrum"), .true., &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?slha_read_decays"), .false., &
-          intrinsic=.true.)
-    call var_list_append_string &
-         (global%var_list, var_str ("$library_name"), &
-          intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("sqrts"), &
-          intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("luminosity"), 0._default, &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?sf_trace"), .false., &
-          intrinsic=.true.)
-    call var_list_append_string &
-         (global%var_list, var_str ("$sf_trace_file"), var_str (""), &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?sf_allow_s_mapping"), .true., &
-          intrinsic=.true.)
-    if (present (paths)) then
-       call var_list_append_string &
-            (global%var_list, var_str ("$lhapdf_dir"), paths%lhapdfdir, &
-             intrinsic=.true.)
-    else
-       call var_list_append_string &
-            (global%var_list, var_str ("$lhapdf_dir"), var_str(""), &
-             intrinsic=.true.)
-    end if 
-    call var_list_append_string &
-         (global%var_list, var_str ("$lhapdf_file"), var_str (""), &
-          intrinsic=.true.)
-    call var_list_append_string &
-         (global%var_list, var_str ("$lhapdf_photon_file"), var_str (""), &
-          intrinsic=.true.)    
-    call var_list_append_int &
-         (global%var_list, var_str ("lhapdf_member"), 0, &
-          intrinsic=.true.)
-    call var_list_append_int &
-         (global%var_list, var_str ("lhapdf_photon_scheme"), 0, &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?hoppet_b_matching"), .false., &
-          intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("isr_alpha"), 0._default, &
-          intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("isr_q_max"), 0._default, &
-          intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("isr_mass"), 0._default, &
-          intrinsic=.true.)
-    call var_list_append_int &
-         (global%var_list, var_str ("isr_order"), 3, &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?isr_recoil"), .false., &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?isr_keep_energy"), .false., &
-          intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("epa_alpha"), 0._default, &
-          intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("epa_x_min"), 0._default, &
-          intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("epa_q_min"), 0._default, &
-          intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("epa_e_max"), 0._default, &
-          intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("epa_mass"), 0._default, &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?epa_recoil"), .false., &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?epa_keep_energy"), .false., &
-          intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("ewa_x_min"), 0._default, &
-          intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("ewa_pt_max"), 0._default, &
-          intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("ewa_mass"), 0._default, &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?ewa_recoil"), .false., &
-         intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?ewa_keep_energy"), .false., &
-          intrinsic=.true.)    
-    call var_list_append_log &
-         (global%var_list, var_str ("?circe1_photon1"), .false., &
-          intrinsic=.true.)     
-    call var_list_append_log &
-         (global%var_list, var_str ("?circe1_photon2"), .false., &
-          intrinsic=.true.)     
-    call var_list_append_real &
-         (global%var_list, var_str ("circe1_sqrts"), &
-          intrinsic=.true.)       
-    call var_list_append_log &
-         (global%var_list, var_str ("?circe1_generate"), .true., &
-          intrinsic=.true.)               
-    call var_list_append_log &
-         (global%var_list, var_str ("?circe1_map"), .true., &
-          intrinsic=.true.)     
-    call var_list_append_real &
-         (global%var_list, var_str ("circe1_mapping_slope"), 2._default, &
-          intrinsic=.true.)     
-    call var_list_append_real &
-         (global%var_list, var_str ("circe1_eps"), 1e-5_default, &
-          intrinsic=.true.)               
-    call var_list_append_int &
-         (global%var_list, var_str ("circe1_ver"), 0, intrinsic=.true.)
-    call var_list_append_int &
-         (global%var_list, var_str ("circe1_rev"), 0, intrinsic=.true.)
-    call var_list_append_string &
-         (global%var_list, var_str ("$circe1_acc"), var_str ("SBAND"), &
-          intrinsic=.true.)
-    call var_list_append_int &
-         (global%var_list, var_str ("circe1_chat"), 0, intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?circe1_with_radiation"), .false., &
-         intrinsic=.true.)    
-    call var_list_append_log &
-         (global%var_list, var_str ("?circe2_polarized"), .true., &
-          intrinsic=.true.)               
-    call var_list_append_string &    
-         (global%var_list, var_str ("$circe2_file"), &
-          intrinsic=.true.)      
-    call var_list_append_string &    
-         (global%var_list, var_str ("$circe2_design"), var_str ("*"), &
-          intrinsic=.true.)               
-    call var_list_append_real &    
-         (global%var_list, var_str ("gaussian_spread1"), 0._default, &
-          intrinsic=.true.)      
-    call var_list_append_real &    
-         (global%var_list, var_str ("gaussian_spread2"), 0._default, &
-          intrinsic=.true.)      
-    call var_list_append_string &    
-         (global%var_list, var_str ("$beam_events_file"), &
-          intrinsic=.true.)      
-    call var_list_append_log &
-         (global%var_list, var_str ("?beam_events_warn_eof"), .true., &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?energy_scan_normalize"), .false., &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?alpha_s_is_fixed"), .true., &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?alpha_s_from_lhapdf"), .false., &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?alpha_s_from_pdf_builtin"), .false., &
-          intrinsic=.true.)
-    call var_list_append_int &
-         (global%var_list, var_str ("alpha_s_order"), 0, &
-          intrinsic=.true.)
-    call var_list_append_int &
-         (global%var_list, var_str ("alpha_s_nf"), 5, &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?alpha_s_from_mz"), .false., &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?alpha_s_from_lambda_qcd"), .false., &
-          intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("lambda_qcd"), 200.e-3_default, &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?fatal_beam_decay"), .true., &
-          intrinsic=.true.)          
-    call var_list_append_log &
-         (global%var_list, var_str ("?helicity_selection_active"), .true., &
-          intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("helicity_selection_threshold"), &
-          1E10_default, &
-          intrinsic=.true.)
-    call var_list_append_int &
-         (global%var_list, var_str ("helicity_selection_cutoff"), 1000, &
-          intrinsic=.true.)
-    call var_list_append_string &
-         (global%var_list, var_str ("$rng_method"), var_str ("tao"), &
-          intrinsic=.true.)
-    call var_list_append_string &
-         (global%var_list, var_str ("$integration_method"), var_str ("vamp"), &
-          intrinsic=.true.)
-    call var_list_append_int &
-         (global%var_list, var_str ("threshold_calls"), 10, &
-          intrinsic=.true.)
-    call var_list_append_int &
-         (global%var_list, var_str ("min_calls_per_channel"), 10, &
-          intrinsic=.true.)
-    call var_list_append_int &
-         (global%var_list, var_str ("min_calls_per_bin"), 10, &
-          intrinsic=.true.)
-    call var_list_append_int &
-         (global%var_list, var_str ("min_bins"), 3, &
-          intrinsic=.true.)
-    call var_list_append_int &
-         (global%var_list, var_str ("max_bins"), 20, &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?stratified"), .true., &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?use_vamp_equivalences"), .true., &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?vamp_verbose"), .false., &
-         intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?vamp_history_global"), &
-         .true., intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?vamp_history_global_verbose"), &
-         .false., intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?vamp_history_channels"), &
-         .false., intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?vamp_history_channels_verbose"), &
-         .false., intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("channel_weights_power"), 0.25_default, &
-          intrinsic=.true.)
-    call var_list_append_string &
-         (global%var_list, var_str ("$phs_method"), var_str ("default"), &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?vis_channels"), .false., &
-          intrinsic=.true.)       
-    call var_list_append_log &
-         (global%var_list, var_str ("?check_phs_file"), .true., &
-          intrinsic=.true.)
-    call var_list_append_string &
-         (global%var_list, var_str ("$phs_file"), var_str (""), &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?phs_only"), .false., &
-          intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("phs_threshold_s"), 50._default, &
-          intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("phs_threshold_t"), 100._default, &
-          intrinsic=.true.)
-    call var_list_append_int &
-         (global%var_list, var_str ("phs_off_shell"), 2, &
-          intrinsic=.true.)
-    call var_list_append_int &
-         (global%var_list, var_str ("phs_t_channel"), 6, &
-          intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("phs_e_scale"), 10._default, &
-          intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("phs_m_scale"), 10._default, &
-          intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("phs_q_scale"), 10._default, &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?phs_keep_nonresonant"), .true., &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?phs_step_mapping"), .true., &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?phs_step_mapping_exp"), .true., &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?phs_s_mapping"), .true., &
-          intrinsic=.true.)
-    call var_list_append_string &
-         (global%var_list, var_str ("$run_id"), var_str (""), &
-          intrinsic=.true.)
-    call var_list_append_int &
-         (global%var_list, var_str ("n_calls_test"), 0, &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?integration_timer"), .true., &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?check_grid_file"), .true., &
-          intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("accuracy_goal"), 0._default, &
-          intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("error_goal"), 0._default, &
-          intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("relative_error_goal"), 0._default, &
-          intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("error_threshold"), &
-         0._default, intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?vis_history"), .true., &
-          intrinsic=.true.)       
-    call var_list_append_log &
-         (global%var_list, var_str ("?vis_diags"), .false., &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?vis_diags_color"), .false., &
-          intrinsic=.true.)    
-    call var_list_append_log &
-         (global%var_list, var_str ("?check_event_file"), .true., &
-          intrinsic=.true.)
-    call var_list_append_string &
-         (global%var_list, var_str ("$event_file_version"), var_str (""), &
-          intrinsic=.true.)
-    call var_list_append_int &
-         (global%var_list, var_str ("n_events"), 0, &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?unweighted"), .true., &
-          intrinsic=.true.)       
-    call var_list_append_real &
-         (global%var_list, var_str ("safety_factor"), 1._default, &
-          intrinsic=.true.)       
-    call var_list_append_log &
-         (global%var_list, var_str ("?negative_weights"), .false., &
-          intrinsic=.true.)       
-    call var_list_append_log &
-         (global%var_list, var_str ("?keep_beams"), .false., &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?keep_remnants"), .true., &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?recover_beams"), .true., &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?update_event"), .false., &
-          intrinsic=.true.)       
-    call var_list_append_log &
-         (global%var_list, var_str ("?update_sqme"), .false., &
-          intrinsic=.true.)       
-    call var_list_append_log &
-         (global%var_list, var_str ("?update_weight"), .false., &
-          intrinsic=.true.)       
-    call var_list_append_log &
-         (global%var_list, var_str ("?use_alpha_s_from_file"), .false., &
-          intrinsic=.true.)       
-    call var_list_append_log &
-         (global%var_list, var_str ("?use_scale_from_file"), .false., &
-          intrinsic=.true.)       
-    call var_list_append_log &
-         (global%var_list, var_str ("?allow_decays"), .true., &
-          intrinsic=.true.)       
-    call var_list_append_log &
-         (global%var_list, var_str ("?auto_decays"), .false., &
-          intrinsic=.true.)       
-    call var_list_append_int &
-         (global%var_list, var_str ("auto_decays_multiplicity"), 2, &
-          intrinsic=.true.)       
-    call var_list_append_log &
-         (global%var_list, var_str ("?auto_decays_radiative"), .false., &
-          intrinsic=.true.)       
-    call var_list_append_log &
-         (global%var_list, var_str ("?decay_rest_frame"), .false., &
-          intrinsic=.true.)       
-    call var_list_append_log &
-         (global%var_list, var_str ("?isotropic_decay"), .false., &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?diagonal_decay"), .false., &
-          intrinsic=.true.)
-    call var_list_append_int &
-         (global%var_list, var_str ("decay_helicity"), &
-          intrinsic=.true.)
-    call set_eio_defaults ()
-    call var_list_append_int (global%var_list, &
-         var_str ("n_bins"), 20, &
-         intrinsic=.true.)
-    call var_list_append_log (global%var_list, &
-         var_str ("?normalize_bins"), .false., &
-         intrinsic=.true.)
-    call var_list_append_string (global%var_list, &
-         var_str ("$obs_label"), var_str (""), &
-         intrinsic=.true.)
-    call var_list_append_string (global%var_list, &
-         var_str ("$obs_unit"), var_str (""), &
-          intrinsic=.true.)
-    call var_list_append_string (global%var_list, &
-         var_str ("$title"), var_str (""), &
-          intrinsic=.true.)
-    call var_list_append_string (global%var_list, &
-         var_str ("$description"), var_str (""), &
-          intrinsic=.true.)
-    call var_list_append_string (global%var_list, &
-         var_str ("$x_label"), var_str (""), &
-          intrinsic=.true.)
-    call var_list_append_string (global%var_list, &
-         var_str ("$y_label"), var_str (""), &
-          intrinsic=.true.)
-    call var_list_append_int &
-         (global%var_list, var_str ("graph_width_mm"), 130, &
-          intrinsic=.true.)
-    call var_list_append_int &
-         (global%var_list, var_str ("graph_height_mm"), 90, &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?y_log"), .false., &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?x_log"), .false., &
-          intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("x_min"),  &
-          intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("x_max"),  &
-          intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("y_min"),  &
-          intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("y_max"),  &
-          intrinsic=.true.)
-    call var_list_append_string &
-         (global%var_list, var_str ("$gmlcode_bg"), var_str (""), &
-          intrinsic=.true.)
-    call var_list_append_string &
-         (global%var_list, var_str ("$gmlcode_fg"), var_str (""), &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?draw_histogram"), &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?draw_base"), &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?draw_piecewise"), &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?fill_curve"), &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?draw_curve"), &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?draw_errors"), &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?draw_symbols"), &
-          intrinsic=.true.)
-    call var_list_append_string &
-         (global%var_list, var_str ("$fill_options"), &
-          intrinsic=.true.)
-    call var_list_append_string &
-         (global%var_list, var_str ("$draw_options"), &
-          intrinsic=.true.)
-    call var_list_append_string &
-         (global%var_list, var_str ("$err_options"), &
-          intrinsic=.true.)
-    call var_list_append_string &
-         (global%var_list, var_str ("$symbol"), &
-          intrinsic=.true.)
-    call var_list_append_log (global%var_list, &
-         var_str ("?analysis_file_only"), .false., &
-         intrinsic=.true.)
-    call var_list_append_real (global%var_list, &
-         var_str ("tolerance"), 0._default, &
-          intrinsic=.true.)
-    call var_list_append_int (global%var_list, &
-         var_str ("checkpoint"), 0, &
-         intrinsic = .true.)
-    call var_list_append_int (global%var_list, &
-         var_str ("event_callback_interval"), 0, &
-         intrinsic = .true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?pacify"), .false., &
-         intrinsic=.true.)
-    call var_list_append_string &
-         (global%var_list, var_str ("$out_file"), var_str (""), &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?out_advance"), .true., &
-          intrinsic=.true.)
-!!! JRR: WK please check (#542)    
-!     call var_list_append_log &
-!          (global%var_list, var_str ("?out_custom"), .false., &
-!           intrinsic=.true.)
-!     call var_list_append_string &
-!          (global%var_list, var_str ("$out_comment"), var_str ("# "), &
-!           intrinsic=.true.)
-!     call var_list_append_log &
-!          (global%var_list, var_str ("?out_header"), .true., &
-!           intrinsic=.true.)
-!     call var_list_append_log &
-!          (global%var_list, var_str ("?out_yerr"), .true., &
-!           intrinsic=.true.)
-!     call var_list_append_log &
-!          (global%var_list, var_str ("?out_xerr"), .true., &
-!           intrinsic=.true.)
-    call var_list_append_int (global%var_list, var_str ("real_range"), &
-         range (real_specimen), intrinsic = .true., locked = .true.)
-    call var_list_append_int (global%var_list, var_str ("real_precision"), &
-         precision (real_specimen), intrinsic = .true., locked = .true.)
-    call var_list_append_real (global%var_list, var_str ("real_epsilon"), &
-         epsilon (real_specimen), intrinsic = .true., locked = .true.)
-    call var_list_append_real (global%var_list, var_str ("real_tiny"), &
-         tiny (real_specimen), intrinsic = .true., locked = .true.)
-    !!! FastJet parameters
-    call var_list_append_int (global%var_list, &
-         var_str ("kt_algorithm"), &
-         kt_algorithm, &
-         intrinsic = .true., locked = .true.)
-    call var_list_append_int (global%var_list, &
-         var_str ("cambridge_algorithm"), &
-         cambridge_algorithm, intrinsic = .true., locked = .true.)
-    call var_list_append_int (global%var_list, &
-         var_str ("antikt_algorithm"), &
-         antikt_algorithm, &
-         intrinsic = .true., locked = .true.)
-    call var_list_append_int (global%var_list, &
-         var_str ("genkt_algorithm"), &
-         genkt_algorithm, &
-         intrinsic = .true., locked = .true.)
-    call var_list_append_int (global%var_list, &
-         var_str ("cambridge_for_passive_algorithm"), &
-         cambridge_for_passive_algorithm, &
-         intrinsic = .true., locked = .true.)
-    call var_list_append_int (global%var_list, &
-         var_str ("genkt_for_passive_algorithm"), &
-         genkt_for_passive_algorithm, &
-         intrinsic = .true., locked = .true.)
-    call var_list_append_int (global%var_list, &
-         var_str ("ee_kt_algorithm"), &
-         ee_kt_algorithm, &
-         intrinsic = .true., locked = .true.)
-    call var_list_append_int (global%var_list, &
-         var_str ("ee_genkt_algorithm"), &
-         ee_genkt_algorithm, &
-         intrinsic = .true., locked = .true.)
-    call var_list_append_int (global%var_list, &
-         var_str ("plugin_algorithm"), &
-         plugin_algorithm, &
-         intrinsic = .true., locked = .true.)
-    call var_list_append_int (global%var_list, &
-         var_str ("undefined_jet_algorithm"), &
-         undefined_jet_algorithm, &
-         intrinsic = .true., locked = .true.)
-    call var_list_append_int (global%var_list, &
-         var_str ("jet_algorithm"), undefined_jet_algorithm, &
-         intrinsic = .true.)
-    call var_list_append_real (global%var_list, &
-         var_str ("jet_r"), 0._default, &
-         intrinsic = .true.)
-    call var_list_append_real (global%var_list, &
-         var_str ("jet_p"), 0._default, &
-         intrinsic = .true.)
-    call var_list_append_real (global%var_list, &
-         var_str ("jet_ycut"), 0._default, &
-         intrinsic = .true.)
-    call var_list_append_log (global%var_list, &
-         var_str ("?keep_flavors_when_clustering"), .false., &
-         intrinsic = .true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?polarized_events"), .false., &
-            intrinsic=.true.)
-    call var_list_append_string &
-         (global%var_list, var_str ("$polarization_mode"), &
-         var_str ("helicity"), &
-         intrinsic=.true.)
-    call set_shower_defaults ()
-    call set_tauola_defaults  ()
-    call set_hadronization_defaults ()
-    call set_mlm_matching_defaults ()
-    call set_powheg_matching_defaults ()
-    call var_list_append_log &
-         (global%var_list, var_str ("?ckkw_matching"), .false., &
-            intrinsic=.true.)
-    call var_list_append_string &
-         (global%var_list, var_str ("$pdf_builtin_set"), var_str ("CTEQ6L"), &
-         intrinsic=.true.)
-    call set_openmp_defaults ()
-    call set_nlo_defaults ()
+    call global%var_list%init_defaults (seed, paths)
     call global%init_pointer_variables ()
     call global%process_stack%init_var_list (global%var_list)
-
-  contains
-
-    subroutine set_eio_defaults ()
-      call var_list_append_string &
-           (global%var_list, var_str ("$sample"), var_str (""), &
-            intrinsic=.true.)
-      call var_list_append_string &
-           (global%var_list, var_str ("$sample_normalization"), var_str ("auto"),&
-            intrinsic=.true.)
-      call var_list_append_log &
-           (global%var_list, var_str ("?sample_pacify"), .false., &
-            intrinsic=.true.)
-      call var_list_append_log &
-           (global%var_list, var_str ("?sample_select"), .true., &
-            intrinsic=.true.)
-      call var_list_append_int &
-           (global%var_list, var_str ("sample_max_tries"), 10000, &
-           intrinsic = .true.)
-      call var_list_append_int &
-           (global%var_list, var_str ("sample_split_n_evt"), 0, &
-           intrinsic = .true.)
-      call var_list_append_int &
-           (global%var_list, var_str ("sample_split_n_kbytes"), 0, &
-           intrinsic = .true.)
-      call var_list_append_int &
-           (global%var_list, var_str ("sample_split_index"), 0, &
-           intrinsic = .true.)
-      call var_list_append_string &
-           (global%var_list, var_str ("$rescan_input_format"), var_str ("raw"), &
-            intrinsic=.true.)
-      call var_list_append_log &
-           (global%var_list, var_str ("?read_raw"), .true., &
-            intrinsic=.true.)
-      call var_list_append_log &
-           (global%var_list, var_str ("?write_raw"), .true., &
-            intrinsic=.true.)
-      call var_list_append_string &
-           (global%var_list, var_str ("$extension_raw"), var_str ("evx"), &
-           intrinsic=.true.)
-      call var_list_append_string &
-           (global%var_list, var_str ("$extension_default"), var_str ("evt"), &
-           intrinsic=.true.)
-      call var_list_append_string &
-           (global%var_list, var_str ("$debug_extension"), var_str ("debug"), &
-            intrinsic=.true.)
-      call var_list_append_log &
-           (global%var_list, var_str ("?debug_process"), .true., &
-            intrinsic=.true.)
-      call var_list_append_log &
-           (global%var_list, var_str ("?debug_transforms"), .true., &
-            intrinsic=.true.)
-      call var_list_append_log &
-           (global%var_list, var_str ("?debug_decay"), .true., &
-            intrinsic=.true.)
-      call var_list_append_log &
-           (global%var_list, var_str ("?debug_verbose"), .true., &
-            intrinsic=.true.)
-      call var_list_append_string &
-           (global%var_list, var_str ("$dump_extension"), var_str ("pset"), &
-            intrinsic=.true.)
-      call var_list_append_log &
-           (global%var_list, var_str ("?dump_compressed"), .true., &
-            intrinsic=.true.)
-      call var_list_append_log &
-           (global%var_list, var_str ("?dump_weights"), .false., &
-            intrinsic=.true.)
-      call var_list_append_log &
-           (global%var_list, var_str ("?dump_summary"), .false., &
-            intrinsic=.true.)
-      call var_list_append_log &
-           (global%var_list, var_str ("?dump_screen"), .false., &
-            intrinsic=.true.)
-      call var_list_append_log &
-           (global%var_list, var_str ("?hepevt_ensure_order"), .false., &
-            intrinsic=.true.)
-      call var_list_append_string &
-           (global%var_list, var_str ("$extension_hepevt"), var_str ("hepevt"), &
-            intrinsic=.true.)
-      call var_list_append_string &
-           (global%var_list, var_str ("$extension_ascii_short"), &
-            var_str ("short.evt"), intrinsic=.true.)
-      call var_list_append_string &
-           (global%var_list, var_str ("$extension_ascii_long"), &
-            var_str ("long.evt"), intrinsic=.true.)
-      call var_list_append_string &
-           (global%var_list, var_str ("$extension_athena"), &
-            var_str ("athena.evt"), intrinsic=.true.)
-      call var_list_append_string &
-            (global%var_list, var_str ("$extension_mokka"), &
-             var_str ("mokka.evt"), intrinsic=.true.)
-      call var_list_append_string &
-           (global%var_list, var_str ("$lhef_version"), var_str ("2.0"), &
-           intrinsic = .true.)
-      call var_list_append_string &
-           (global%var_list, var_str ("$lhef_extension"), var_str ("lhe"), &
-            intrinsic=.true.)
-      call var_list_append_log &
-           (global%var_list, var_str ("?lhef_write_sqme_prc"), .true., &
-           intrinsic = .true.)
-      call var_list_append_log &
-           (global%var_list, var_str ("?lhef_write_sqme_ref"), .false., &
-           intrinsic = .true.)
-      call var_list_append_log &
-           (global%var_list, var_str ("?lhef_write_sqme_alt"), .true., &
-           intrinsic = .true.)
-      call var_list_append_string &
-           (global%var_list, var_str ("$extension_lha"), var_str ("lha"), &
-            intrinsic=.true.)
-      call var_list_append_string &
-           (global%var_list, var_str ("$extension_hepmc"), var_str ("hepmc"), &
-            intrinsic=.true.)
-      call var_list_append_log &
-           (global%var_list, var_str ("?hepmc_output_cross_section"), .false., &
-           intrinsic = .true.)
-      call var_list_append_string &
-           (global%var_list, var_str ("$extension_lcio"), var_str ("slcio"), &
-            intrinsic=.true.)
-      call var_list_append_string &
-           (global%var_list, var_str ("$extension_stdhep"), var_str ("hep"), &
-            intrinsic=.true.)
-      call var_list_append_string &
-           (global%var_list, var_str ("$extension_stdhep_up"), &
-            var_str ("up.hep"), intrinsic=.true.)
-      call var_list_append_string &
-           (global%var_list, var_str ("$extension_stdhep_ev4"), &
-            var_str ("ev4.hep"), intrinsic=.true.)    
-      call var_list_append_string &
-           (global%var_list, var_str ("$extension_hepevt_verb"), &
-            var_str ("hepevt.verb"), intrinsic=.true.)
-      call var_list_append_string &
-           (global%var_list, var_str ("$extension_lha_verb"), &
-            var_str ("lha.verb"), intrinsic=.true.)
-    end subroutine set_eio_defaults
-    subroutine set_shower_defaults ()
-      call var_list_append_log &
-           (global%var_list, var_str ("?allow_shower"), .true., &
-              intrinsic=.true.)
-      call var_list_append_log &
-           (global%var_list, var_str ("?ps_fsr_active"), .false., &
-              intrinsic=.true.)
-      call var_list_append_log &
-           (global%var_list, var_str ("?ps_isr_active"), .false., &
-              intrinsic=.true.)
-      call var_list_append_log &
-           (global%var_list, var_str ("?ps_taudec_active"), .false., &
-              intrinsic=.true.)
-      call var_list_append_log &
-           (global%var_list, var_str ("?muli_active"), .false., &
-              intrinsic=.true.)
-      call var_list_append_string &
-           (global%var_list, var_str ("$shower_method"), var_str ("WHIZARD"), &
-              intrinsic=.true.)
-      call var_list_append_log &
-           (global%var_list, var_str ("?shower_verbose"), .false., &
-              intrinsic=.true.)
-      call var_list_append_string &
-           (global%var_list, var_str ("$ps_PYTHIA_PYGIVE"), var_str (""), &
-            intrinsic=.true.)
-      call var_list_append_real (global%var_list, &
-           var_str ("ps_mass_cutoff"), 1._default, intrinsic = .true.)
-      call var_list_append_real (global%var_list, &
-           var_str ("ps_fsr_lambda"), 0.29_default, intrinsic = .true.)
-      call var_list_append_real (global%var_list, &
-           var_str ("ps_isr_lambda"), 0.29_default, intrinsic = .true.)
-      call var_list_append_int (global%var_list, &
-           var_str ("ps_max_n_flavors"), 5, intrinsic = .true.)
-      call var_list_append_log &
-           (global%var_list, var_str ("?ps_isr_alpha_s_running"), .true., &
-              intrinsic=.true.)
-      call var_list_append_log &
-           (global%var_list, var_str ("?ps_fsr_alpha_s_running"), .true., &
-              intrinsic=.true.)
-      call var_list_append_real (global%var_list, var_str ("ps_fixed_alpha_s"), &
-           0._default, intrinsic = .true.)
-      call var_list_append_log &
-           (global%var_list, var_str ("?ps_isr_pt_ordered"), .false., &
-              intrinsic=.true.)
-      call var_list_append_log &
-           (global%var_list, var_str ("?ps_isr_angular_ordered"), .true., &
-              intrinsic=.true.)
-      call var_list_append_real (global%var_list, var_str &
-           ("ps_isr_primordial_kt_width"), 0._default, intrinsic = .true.)
-      call var_list_append_real (global%var_list, var_str &
-           ("ps_isr_primordial_kt_cutoff"), 5._default, intrinsic = .true.)
-      call var_list_append_real (global%var_list, var_str &
-           ("ps_isr_z_cutoff"), 0.999_default, intrinsic = .true.)
-      call var_list_append_real (global%var_list, var_str &
-           ("ps_isr_minenergy"), 1._default, intrinsic = .true.)
-      call var_list_append_real (global%var_list, var_str &
-           ("ps_isr_tscalefactor"), 1._default, intrinsic = .true.)
-      call var_list_append_log (global%var_list, var_str &
-           ("?ps_isr_only_onshell_emitted_partons"), .false., intrinsic=.true.)
-    end subroutine set_shower_defaults
-
-    subroutine set_tauola_defaults ()
-      call var_list_append_log (global%var_list, &
-           var_str ("?ps_tauola_photos"), .false., intrinsic=.true.)
-      call var_list_append_log (global%var_list, &
-           var_str ("?ps_tauola_transverse"), .false., intrinsic=.true.)
-      call var_list_append_log (global%var_list, &
-           var_str ("?ps_tauola_dec_rad_cor"), .true., intrinsic=.true.)
-      call var_list_append_int (global%var_list, &
-           var_str ("ps_tauola_dec_mode1"), 0, intrinsic = .true.)
-      call var_list_append_int (global%var_list, &
-           var_str ("ps_tauola_dec_mode2"), 0, intrinsic = .true.)
-      call var_list_append_real (global%var_list, &
-           var_str ("ps_tauola_mh"), 125._default, intrinsic = .true.)
-      call var_list_append_real (global%var_list, &
-           var_str ("ps_tauola_mix_angle"), 90._default, intrinsic = .true.)
-      call var_list_append_log (global%var_list, &
-           var_str ("?ps_tauola_pol_vector"), .false., intrinsic = .true.)
-    end subroutine set_tauola_defaults
-
-    subroutine set_mlm_matching_defaults ()
-      call var_list_append_log &
-           (global%var_list, var_str ("?mlm_matching"), .false., &
-              intrinsic=.true.)
-      call var_list_append_real (global%var_list, var_str &
-           ("mlm_Qcut_ME"), 0._default, intrinsic = .true.)
-      call var_list_append_real (global%var_list, var_str &
-           ("mlm_Qcut_PS"), 0._default, intrinsic = .true.)
-      call var_list_append_real (global%var_list, var_str &
-           ("mlm_ptmin"), 0._default, intrinsic = .true.)
-      call var_list_append_real (global%var_list, var_str &
-           ("mlm_etamax"), 0._default, intrinsic = .true.)
-      call var_list_append_real (global%var_list, var_str &
-           ("mlm_Rmin"), 0._default, intrinsic = .true.)
-      call var_list_append_real (global%var_list, var_str &
-           ("mlm_Emin"), 0._default, intrinsic = .true.)
-      call var_list_append_int (global%var_list, var_str &
-           ("mlm_nmaxMEjets"), 0, intrinsic = .true.)
-      call var_list_append_real (global%var_list, var_str &
-           ("mlm_ETclusfactor"), 0.2_default, intrinsic = .true.)
-      call var_list_append_real (global%var_list, var_str &
-           ("mlm_ETclusminE"), 5._default, intrinsic = .true.)
-      call var_list_append_real (global%var_list, var_str &
-           ("mlm_etaclusfactor"), 1._default, intrinsic = .true.)
-      call var_list_append_real (global%var_list, var_str &
-           ("mlm_Rclusfactor"), 1._default, intrinsic = .true.)
-      call var_list_append_real (global%var_list, var_str &
-           ("mlm_Eclusfactor"), 1._default, intrinsic = .true.)
-
-    end subroutine set_mlm_matching_defaults
-    subroutine set_powheg_matching_defaults ()
-      call var_list_append_log &
-          (global%var_list, var_str ("?powheg_matching"), &
-           .false., intrinsic = .true.)
-      call var_list_append_real &
-           (global%var_list, var_str ("powheg_damping_scale"), &
-            10._default, intrinsic = .true.)
-      call var_list_append_log &
-          (global%var_list, var_str ("?powheg_use_singular_jacobian"), &
-           .false., intrinsic = .true.)
-      call var_list_append_int &
-          (global%var_list, var_str ("powheg_grid_size_xi"), &
-           5, intrinsic = .true.)
-      call var_list_append_int &
-          (global%var_list, var_str ("powheg_grid_size_y"), &
-           5, intrinsic = .true.)
-      call var_list_append_int &
-          (global%var_list, var_str ("powheg_grid_sampling_points"), &
-           500000, intrinsic = .true.)
-      call var_list_append_real &
-           (global%var_list, var_str ("powheg_pt_min"), &
-            1._default, intrinsic = .true.)
-      call var_list_append_real &
-           (global%var_list, var_str ("powheg_lambda"), &
-            LAMBDA_QCD_REF, intrinsic = .true.)
-      call var_list_append_log &
-           (global%var_list, var_str ("?powheg_rebuild_grids"), &
-            .false., intrinsic = .true.)
-      call var_list_append_log &
-           (global%var_list, var_str ("?powheg_use_damping"), &
-            .false., intrinsic = .true.)
-      call var_list_append_log &
-           (global%var_list, var_str ("?powheg_test_sudakov"), &
-            .false., intrinsic = .true.)
-    end subroutine set_powheg_matching_defaults
-
-    subroutine set_hadronization_defaults ()
-      call var_list_append_log &
-           (global%var_list, var_str ("?allow_hadronization"), .true., &
-              intrinsic=.true.)
-      call var_list_append_log &
-           (global%var_list, var_str ("?hadronization_active"), .false., &
-              intrinsic=.true.)
-      call var_list_append_string &
-           (global%var_list, var_str ("$hadronization_method"), &
-           var_str ("PYTHIA6"), intrinsic = .true.)
-    end subroutine set_hadronization_defaults
-
-    subroutine set_openmp_defaults ()
-      call var_list_append_log &
-           (global%var_list, var_str ("?omega_openmp"), &
-           openmp_is_active (), &
-           intrinsic=.true.)
-      call var_list_append_log &
-           (global%var_list, var_str ("?openmp_is_active"), &
-           openmp_is_active (), &
-           locked=.true., intrinsic=.true.)
-      call var_list_append_int &
-           (global%var_list, var_str ("openmp_num_threads_default"), &
-           openmp_get_default_max_threads (), &
-           locked=.true., intrinsic=.true.)
-      call var_list_append_int &
-           (global%var_list, var_str ("openmp_num_threads"), &
-           openmp_get_max_threads (), &
-           intrinsic=.true.)
-      call var_list_append_log &
-           (global%var_list, var_str ("?openmp_logging"), &
-           .true., intrinsic=.true.)
-    end subroutine set_openmp_defaults
-
-    subroutine set_nlo_defaults ()
-      call var_list_append_string &
-           (global%var_list, var_str ("$born_me_method"), &
-           var_str ("omega"), intrinsic = .true.)
-      call var_list_append_string &
-           (global%var_list, var_str ("$loop_me_method"), &
-           var_str ("openloops"), intrinsic = .true.)
-      call var_list_append_string &
-           (global%var_list, var_str ("$correlation_me_method"), &
-           var_str ("omega"), intrinsic = .true.)
-      call var_list_append_string &
-           (global%var_list, var_str ("$real_tree_me_method"), &
-           var_str ("omega"), intrinsic = .true.)
-      call var_list_append_log (global%var_list, &
-           var_str ("?test_soft_limit"), .false., intrinsic = .true.)
-      call var_list_append_log (global%var_list, &
-           var_str ("?test_coll_limit"), .false., intrinsic = .true.)
-      call var_list_append_log (global%var_list, &
-           var_str ("?test_anti_coll_limit"), .false., intrinsic = .true.)
-      call var_list_append_int (global%var_list, &
-           var_str ("fixed_alpha_region"), 0, intrinsic = .true.)
-      call var_list_append_log (global%var_list, &
-           var_str ("?switch_off_virtual_subtraction"), .false., intrinsic = .true.)
-      call var_list_append_real (global%var_list, &
-           var_str ("blha_use_top_yukawa"), -1._default, intrinsic = .true.)
-      call var_list_append_int &
-           (global%var_list, var_str ("openloops_verbosity"), 1, &
-           intrinsic = .true.)
-      call var_list_append_log &
-           (global%var_list, var_str ("?openloops_use_cms"), &
-           .false., intrinsic = .true.)
-      call var_list_append_int &
-           (global%var_list, var_str ("openloops_phs_tolerance"), 7, &
-           intrinsic = .true.)
-      call var_list_append_int &
-           (global%var_list, var_str ("openloops_stability_log"), 0, &
-           intrinsic = .true.)
-      call var_list_append_log &
-           (global%var_list, var_str ("?openloops_switch_off_muon_yukawa"), &
-           .false., intrinsic = .true.)
-      call var_list_append_string &
-           (global%var_list, var_str ("$openloops_extra_cmd"), &
-            var_str (""), intrinsic = .true.)
-      call var_list_append_log &
-           (global%var_list, var_str ("?openloops_use_collier"), &
-           .true., intrinsic = .true.)
-      call var_list_append_log &
-           (global%var_list, var_str ("?disable_subtraction"), &
-           .false., intrinsic = .true.)
-      call var_list_append_real &
-           (global%var_list, var_str ("fks_dij_exp1"), &
-           1._default, intrinsic = .true.)
-      call var_list_append_real &
-           (global%var_list, var_str ("fks_dij_exp2"), &
-           1._default, intrinsic = .true.)
-      call var_list_append_string &
-           (global%var_list, var_str ("$fks_mapping_type"), &
-           var_str ("default"), intrinsic = .true.)
-      call var_list_append_string &
-           (global%var_list, var_str ("$resonances_exclude_particles"), &
-           var_str ("default"), intrinsic = .true.)
-      call var_list_append_int &
-           (global%var_list, var_str ("alpha_power"), &
-           2, intrinsic = .true.)
-      call var_list_append_int &
-           (global%var_list, var_str ("alphas_power"), &
-           0, intrinsic = .true.)
-      call var_list_append_log &
-           (global%var_list, var_str ("?combined_nlo_integration"), &
-           .false., intrinsic = .true.)
-      call var_list_append_log &
-           (global%var_list, var_str ("?fixed_order_nlo_events"), &
-           .false., intrinsic = .true.)
-      call var_list_append_log &
-           (global%var_list, var_str ("?check_event_weights_against_xsection"), &
-           .false., intrinsic = .true.)
-      call var_list_append_log &
-           (global%var_list, var_str ("?keep_failed_events"), &
-           .false., intrinsic = .true.)
-      call var_list_append_int &
-           (global%var_list, var_str ("gks_multiplicity"), &
-           0, intrinsic = .true.)
-      call var_list_append_string &
-           (global%var_list, var_str ("$gosam_filter_lo"), &
-           var_str (""), intrinsic = .true.)
-      call var_list_append_string &
-           (global%var_list, var_str ("$gosam_filter_nlo"), &
-           var_str (""), intrinsic = .true.)
-      call var_list_append_string &
-           (global%var_list, var_str ("$gosam_symmetries"), &
-           var_str ("family,generation"), intrinsic = .true.)
-      call var_list_append_int &
-           (global%var_list, var_str ("form_threads"), &
-           2, intrinsic = .true.)
-      call var_list_append_int &
-           (global%var_list, var_str ("form_workspace"), &
-           1000, intrinsic = .true.)
-      call var_list_append_string &
-           (global%var_list, var_str ("$gosam_fc"), &
-           var_str (""), intrinsic = .true.)
-      call var_list_append_real (global%var_list, &
-           var_str ("mult_call_real"), 1._default, &
-           intrinsic = .true.)
-      call var_list_append_real (global%var_list, &
-           var_str ("mult_call_virt"), 1._default, &
-           intrinsic = .true.)
-      call var_list_append_real (global%var_list, &
-           var_str ("mult_call_dglap"), 1._default, &
-           intrinsic = .true.)
-    end subroutine set_nlo_defaults
-
-
   end subroutine rt_data_global_init
 
   subroutine rt_data_local_init (local, global, env)
@@ -1495,9 +424,8 @@ contains
     call local%process_stack%link (global%process_stack)
     call local%process_stack%init_var_list (local%var_list)
     call local%process_stack%link_var_list (global%var_list)
-    call var_list_append_string &
-         (local%var_list, var_str ("$model_name"), var_str (""), &
-          intrinsic=.true.)
+    call local%var_list%append_string (var_str ("$model_name"), &
+         var_str (""), intrinsic=.true.)
     call local%init_pointer_variables ()
     local%fallback_model => global%fallback_model
     local%radiation_model => global%radiation_model
@@ -1516,12 +444,10 @@ contains
   subroutine rt_data_init_pointer_variables (local)
     class(rt_data_t), intent(inout), target :: local
     logical, target, save :: known = .true.
-    call var_list_append_string_ptr &
-         (local%var_list, var_str ("$fc"), local%os_data%fc, known, &
-          intrinsic=.true.)
-    call var_list_append_string_ptr &
-         (local%var_list, var_str ("$fcflags"), local%os_data%fcflags, known, &
-         intrinsic=.true.)
+    call local%var_list%append_string_ptr (var_str ("$fc"), &
+         local%os_data%fc, known, intrinsic=.true.)
+    call local%var_list%append_string_ptr (var_str ("$fcflags"), &
+         local%os_data%fcflags, known, intrinsic=.true.)
   end subroutine rt_data_init_pointer_variables
 
   subroutine rt_data_activate (local)
@@ -1572,7 +498,7 @@ contains
     logical :: same_model, delete
     delete = .true.;  if (present (keep_local))  delete = .not. keep_local
     if (present (global)) then
-       if (associated (global%model) .and. associated (local%model)) then 
+       if (associated (global%model) .and. associated (local%model)) then
           local_model = local%model%get_name ()
           if (global%model%has_schemes ()) then
              local_scheme = local%model%get_scheme ()
@@ -1615,13 +541,13 @@ contains
     class(rt_data_t), intent(inout) :: local
     local%prclib_stack = global%prclib_stack
   end subroutine rt_data_copy_globals
- 
+
   subroutine rt_data_restore_globals (global, local)
     class(rt_data_t), intent(inout) :: global
     class(rt_data_t), intent(in) :: local
     global%prclib_stack = local%prclib_stack
   end subroutine rt_data_restore_globals
- 
+
   subroutine rt_data_global_final (global)
     class(rt_data_t), intent(inout) :: global
     call global%process_stack%final ()
@@ -1651,21 +577,21 @@ contains
     call global%model_list%read_model &
          (name, filename, global%os_data, model, scheme)
   end subroutine rt_data_read_model
-    
+
   subroutine rt_data_init_fallback_model (global, name, filename)
     class(rt_data_t), intent(inout) :: global
     type(string_t), intent(in) :: name, filename
     call global%model_list%read_model &
          (name, filename, global%os_data, global%fallback_model)
   end subroutine rt_data_init_fallback_model
-  
+
   subroutine rt_data_init_radiation_model (global, name, filename)
     class(rt_data_t), intent(inout) :: global
     type(string_t), intent(in) :: name, filename
     call global%model_list%read_model &
          (name, filename, global%os_data, global%radiation_model)
   end subroutine rt_data_init_radiation_model
-  
+
   subroutine rt_data_select_model (global, name, scheme)
     class(rt_data_t), intent(inout), target :: global
     type(string_t), intent(in) :: name
@@ -1704,7 +630,7 @@ contains
             var_str (""), is_known = .false.)
     end if
   end subroutine rt_data_select_model
-  
+
   subroutine rt_data_unselect_model (global)
     class(rt_data_t), intent(inout), target :: global
     if (associated (global%model)) then
@@ -1714,7 +640,7 @@ contains
             var_str (""), is_known = .false.)
     end if
   end subroutine rt_data_unselect_model
-  
+
   subroutine rt_data_ensure_model_copy (global)
     class(rt_data_t), intent(inout), target :: global
     if (associated (global%context)) then
@@ -1779,78 +705,78 @@ contains
     type(string_t), intent(in) :: name
     logical, intent(in), optional :: lval
     logical, intent(in), optional :: intrinsic, user
-    call var_list_append_log (local%var_list, name, lval, &
+    call local%var_list%append_log (name, lval, &
          intrinsic = intrinsic, user = user)
   end subroutine rt_data_append_log
-  
+
   subroutine rt_data_append_int (local, name, ival, intrinsic, user)
     class(rt_data_t), intent(inout) :: local
     type(string_t), intent(in) :: name
     integer, intent(in), optional :: ival
     logical, intent(in), optional :: intrinsic, user
-    call var_list_append_int (local%var_list, name, ival, &
+    call local%var_list%append_int (name, ival, &
          intrinsic = intrinsic, user = user)
   end subroutine rt_data_append_int
-  
+
   subroutine rt_data_append_real (local, name, rval, intrinsic, user)
     class(rt_data_t), intent(inout) :: local
     type(string_t), intent(in) :: name
     real(default), intent(in), optional :: rval
     logical, intent(in), optional :: intrinsic, user
-    call var_list_append_real (local%var_list, name, rval, &
+    call local%var_list%append_real (name, rval, &
          intrinsic = intrinsic, user = user)
   end subroutine rt_data_append_real
-  
+
   subroutine rt_data_append_cmplx (local, name, cval, intrinsic, user)
     class(rt_data_t), intent(inout) :: local
     type(string_t), intent(in) :: name
     complex(default), intent(in), optional :: cval
     logical, intent(in), optional :: intrinsic, user
-    call var_list_append_cmplx (local%var_list, name, cval, &
+    call local%var_list%append_cmplx (name, cval, &
          intrinsic = intrinsic, user = user)
   end subroutine rt_data_append_cmplx
-  
+
   subroutine rt_data_append_subevt (local, name, pval, intrinsic, user)
     class(rt_data_t), intent(inout) :: local
     type(string_t), intent(in) :: name
     type(subevt_t), intent(in), optional :: pval
     logical, intent(in) :: intrinsic, user
-    call var_list_append_subevt (local%var_list, name, &
+    call local%var_list%append_subevt (name, &
          intrinsic = intrinsic, user = user)
   end subroutine rt_data_append_subevt
-  
+
   subroutine rt_data_append_pdg_array (local, name, aval, intrinsic, user)
     class(rt_data_t), intent(inout) :: local
     type(string_t), intent(in) :: name
     type(pdg_array_t), intent(in), optional :: aval
     logical, intent(in), optional :: intrinsic, user
-    call var_list_append_pdg_array (local%var_list, name, aval, &
+    call local%var_list%append_pdg_array (name, aval, &
          intrinsic = intrinsic, user = user)
   end subroutine rt_data_append_pdg_array
-  
+
   subroutine rt_data_append_string (local, name, sval, intrinsic, user)
     class(rt_data_t), intent(inout) :: local
     type(string_t), intent(in) :: name
     type(string_t), intent(in), optional :: sval
     logical, intent(in), optional :: intrinsic, user
-    call var_list_append_string (local%var_list, name, sval, &
+    call local%var_list%append_string (name, sval, &
          intrinsic = intrinsic, user = user)
   end subroutine rt_data_append_string
-  
+
   subroutine rt_data_import_values (local)
     class(rt_data_t), intent(inout) :: local
     type(rt_data_t), pointer :: global
     global => local%context
     if (associated (global)) then
-       call var_list_import (local%var_list, global%var_list)
+       call local%var_list%import (global%var_list)
     end if
   end subroutine rt_data_import_values
-    
+
   subroutine rt_data_unset_values (global)
     class(rt_data_t), intent(inout) :: global
-    call var_list_undefine (global%var_list, follow_link=.false.)
+    call global%var_list%undefine (follow_link=.false.)
   end subroutine rt_data_unset_values
-  
+
   subroutine rt_data_set_log (global, name, lval, is_known, verbose)
     class(rt_data_t), intent(inout) :: global
     type(string_t), intent(in) :: name
@@ -1929,7 +855,7 @@ contains
     var_list => global%get_var_list_ptr ()
     lval = var_list%get_lval (name)
   end function rt_data_get_lval
-  
+
   function rt_data_get_ival (global, name) result (ival)
     integer :: ival
     class(rt_data_t), intent(in), target :: global
@@ -1938,7 +864,7 @@ contains
     var_list => global%get_var_list_ptr ()
     ival = var_list%get_ival (name)
   end function rt_data_get_ival
-  
+
   function rt_data_get_rval (global, name) result (rval)
     real(default) :: rval
     class(rt_data_t), intent(in), target :: global
@@ -1947,7 +873,7 @@ contains
     var_list => global%get_var_list_ptr ()
     rval = var_list%get_rval (name)
   end function rt_data_get_rval
-    
+
   function rt_data_get_cval (global, name) result (cval)
     complex(default) :: cval
     class(rt_data_t), intent(in), target :: global
@@ -1965,7 +891,7 @@ contains
     var_list => global%get_var_list_ptr ()
     aval = var_list%get_aval (name)
   end function rt_data_get_aval
-  
+
   function rt_data_get_pval (global, name) result (pval)
     type(subevt_t) :: pval
     class(rt_data_t), intent(in), target :: global
@@ -1974,7 +900,7 @@ contains
     var_list => global%get_var_list_ptr ()
     pval = var_list%get_pval (name)
   end function rt_data_get_pval
-  
+
   function rt_data_get_sval (global, name) result (sval)
     type(string_t) :: sval
     class(rt_data_t), intent(in), target :: global
@@ -1983,7 +909,7 @@ contains
     var_list => global%get_var_list_ptr ()
     sval = var_list%get_sval (name)
   end function rt_data_get_sval
-  
+
   function rt_data_contains (global, name) result (lval)
     logical :: lval
     class(rt_data_t), intent(in) :: global
@@ -1999,7 +925,7 @@ contains
     call global%prclib_stack%push (prclib_entry)
     call global%update_prclib (global%prclib_stack%get_first_ptr ())
   end subroutine rt_data_add_prclib
-  
+
   subroutine rt_data_update_prclib (global, lib)
     class(rt_data_t), intent(inout) :: global
     type(process_library_t), intent(in), target :: lib
@@ -2009,7 +935,7 @@ contains
        call global%var_list%set_string (var_str ("$library_name"), &
             global%prclib%get_name (), is_known=.true.)
     else
-       call var_list_append_string (global%var_list, &
+       call global%var_list%append_string ( &
             var_str ("$library_name"), global%prclib%get_name (), &
             intrinsic = .true.)
     end if
@@ -2040,7 +966,7 @@ contains
       call beams%write (u)
       if (.not. beams%asymmetric () .and. beams%get_n_beam () == 2) then
          write (u, "(2x,A," // FMT_19 // ",1x,'GeV')") "sqrts =", &
-              var_list%get_rval (var_str ("sqrts"))         
+              var_list%get_rval (var_str ("sqrts"))
       end if
       if (beams%contains ("pdf_builtin")) then
          s = var_list%get_sval (var_str ("$pdf_builtin_set"))
@@ -2093,17 +1019,17 @@ contains
          write (u, "(2x,A,1x,L1)") "ISR recoil       =", &
               var_list%get_lval (var_str ("?isr_recoil"))
          write (u, "(2x,A,1x,L1)") "ISR energy cons. =", &
-              var_list%get_lval (var_str ("?isr_keep_energy"))         
+              var_list%get_lval (var_str ("?isr_keep_energy"))
       end if
       if (beams%contains ("epa")) then
          write (u, "(2x,A," // FMT_19 // ")") "EPA alpha         =", &
-              var_list%get_rval (var_str ("epa_alpha"))          
+              var_list%get_rval (var_str ("epa_alpha"))
          write (u, "(2x,A," // FMT_19 // ")") "EPA x min         =", &
-              var_list%get_rval (var_str ("epa_x_min"))          
+              var_list%get_rval (var_str ("epa_x_min"))
          write (u, "(2x,A," // FMT_19 // ")") "EPA Q min         =", &
-              var_list%get_rval (var_str ("epa_q_min"))          
+              var_list%get_rval (var_str ("epa_q_min"))
          write (u, "(2x,A," // FMT_19 // ")") "EPA E max         =", &
-              var_list%get_rval (var_str ("epa_e_max"))          
+              var_list%get_rval (var_str ("epa_e_max"))
          write (u, "(2x,A," // FMT_19 // ")") "EPA mass          =", &
               var_list%get_rval (var_str ("epa_mass"))
          write (u, "(2x,A,1x,L1)") "EPA recoil        =", &
@@ -2127,7 +1053,7 @@ contains
          write (u, "(2x,A,1x,I0)") "CIRCE1 version    =", &
               var_list%get_ival (var_str ("circe1_ver"))
          write (u, "(2x,A,1x,I0)") "CIRCE1 revision   =", &
-              var_list%get_ival (var_str ("circe1_rev")) 
+              var_list%get_ival (var_str ("circe1_rev"))
          s = var_list%get_sval (var_str ("$circe1_acc"))
          write (u, "(2x,A,1x,A)") "CIRCE1 acceler.   =", char (s)
          write (u, "(2x,A,1x,I0)") "CIRCE1 chattin.   =", &
@@ -2151,7 +1077,7 @@ contains
       end if
       if (beams%contains ("circe2")) then
          s = var_list%get_sval (var_str ("$circe2_design"))
-         write (u, "(2x,A,1x,A)") "CIRCE2 design   =", char (s) 
+         write (u, "(2x,A,1x,A)") "CIRCE2 design   =", char (s)
          s = var_list%get_sval (var_str ("$circe2_file"))
          write (u, "(2x,A,1x,A)") "CIRCE2 file     =", char (s)
          write (u, "(2x,A,1x,L1)") "CIRCE2 polarized =", &
@@ -2171,13 +1097,13 @@ contains
       end if
     end associate
   end subroutine rt_data_show_beams
-  
+
   function rt_data_get_sqrts (rt_data) result (sqrts)
     class(rt_data_t), intent(in) :: rt_data
     real(default) :: sqrts
     sqrts = rt_data%var_list%get_rval (var_str ("sqrts"))
   end function rt_data_get_sqrts
-    
+
   subroutine rt_data_pacify (rt_data, efficiency_reset, error_reset)
     class(rt_data_t), intent(inout) :: rt_data
     logical, intent(in), optional :: efficiency_reset, error_reset
@@ -2186,7 +1112,7 @@ contains
     do while (associated (process))
        call process%pacify (efficiency_reset, error_reset)
        process => process%next
-    end do    
+    end do
   end subroutine rt_data_pacify
 
   subroutine rt_data_set_event_callback (global, callback)
@@ -2195,13 +1121,13 @@ contains
     if (allocated (global%event_callback))  deallocate (global%event_callback)
     allocate (global%event_callback, source = callback)
   end subroutine rt_data_set_event_callback
-  
+
   function rt_data_has_event_callback (global) result (flag)
     class(rt_data_t), intent(in) :: global
     logical :: flag
     flag = allocated (global%event_callback)
   end function rt_data_has_event_callback
-  
+
   function rt_data_get_event_callback (global) result (callback)
     class(rt_data_t), intent(in) :: global
     class(event_callback_t), allocatable :: callback
@@ -2209,6 +1135,6 @@ contains
        allocate (callback, source = global%event_callback)
     end if
   end function rt_data_get_event_callback
-  
+
 
 end module rt_data

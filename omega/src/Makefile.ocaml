@@ -1,5 +1,4 @@
-# Makefile.am -- O'Caml rules for O'Mega Makefiles
-# $Id: Makefile.ocaml 7653 2016-07-18 11:37:04Z ohl $
+# Makefile.ocaml -- O'Caml rules for O'Mega Makefiles
 ##
 ## Process Makefile.am with automake to include this file in Makefile.in
 ##

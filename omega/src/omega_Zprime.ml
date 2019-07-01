@@ -1,4 +1,4 @@
-(* $Id: omega_Zprime.ml 7444 2016-02-17 15:37:20Z jr_reuter $
+(* omega_Zprime.ml --
 
    Copyright (C) 1999-2016 by
 

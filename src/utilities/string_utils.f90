@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -215,8 +215,8 @@ contains
     read (buffer, *)  ival
   end function read_ival
     
-  function split_string (str, separator) result (str_array)
-    type(string_t), dimension(:), allocatable :: str_array
+  subroutine split_string (str, separator, str_array)
+    type(string_t), dimension(:), allocatable, intent(out) :: str_array
     type(string_t), intent(in) :: str, separator
     type(string_t) :: str_tmp, str_out
     integer :: n_str
@@ -240,7 +240,7 @@ contains
       call split (str_tmp, str_out, word)
       val = str_out /= "" 
     end function contains_word
-  end function split_string      
+  end subroutine split_string
 
 
 end module string_utils

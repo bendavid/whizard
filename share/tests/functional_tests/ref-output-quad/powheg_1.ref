@@ -4,8 +4,8 @@
 openmp_num_threads = 1
 ?pacify = true
 seed = 0
-SM.wtop =>  0.0000000E+00
-SM.mtop =>  1.7500000E+02
+SM.wtop =>  0.00000E+00
+SM.mtop =>  1.75000E+02
 ?use_vamp_equivalences = false
 $loop_me_method = "dummy"
 ?alpha_s_is_fixed = false
@@ -17,10 +17,10 @@ alphas_power = 0
 powheg_grid_size_xi = 5
 powheg_grid_size_y = 5
 powheg_grid_sampling_points = 1000
-powheg_pt_min =  1.0000000E+00
+powheg_pt_min =  1.00000E+00
 ?powheg_use_singular_jacobian = false
 | Process library 'powheg_1_lib': recorded process 'powheg_1_p1'
-sqrts =  5.0000000E+02
+sqrts =  5.00000E+02
 | Integrate: current process library needs compilation
 | Process library 'powheg_1_lib': compiling ...
 | Process library 'powheg_1_lib': writing makefile
@@ -69,13 +69,6 @@ sqrts =  5.0000000E+02
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: no equivalences between channels used.
 | Phase space: wood
-| Phase space: generating configuration ...
-| Phase space: ... success.
-| Phase space: writing configuration file 'powheg_1_p1_i4.phs'
-| Phase space: 1 channels, 2 dimensions
-| Phase space: found 1 channel, collected in 1 grove.
-| Phase space: no equivalences between channels used.
-| Phase space: wood
 Warning: No cuts have been defined.
 | Using user-defined general scale.
 | Starting integration for process 'powheg_1_p1'
@@ -86,9 +79,9 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1       3000     4.774E+02   3.98E+00    0.83    0.46    43.0
+   1       3000     4.783E+02   3.97E+00    0.83    0.46    43.1
 |-----------------------------------------------------------------------------|
-   1       3000     4.774E+02   3.98E+00    0.83    0.46    43.0
+   1       3000     4.783E+02   3.97E+00    0.83    0.46    43.1
 |=============================================================================|
 n_events = 1
 ?debug_decay = false
@@ -105,7 +98,7 @@ n_events = 1
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1
 | Simulation: requested number of events = 1
-|             corr. to luminosity [fb-1] =   2.0948E-03
+|             corr. to luminosity [fb-1] =   2.0907E-03
 | Events: writing to ASCII file 'powheg_1_p1.debug'
 | Events: generating 1 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
@@ -141,7 +134,7 @@ n_events = 2
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 2
 | Simulation: requested number of events = 2
-|             corr. to luminosity [fb-1] =   4.1897E-03
+|             corr. to luminosity [fb-1] =   4.1813E-03
 | Events: writing to ASCII file 'powheg_1_p1.debug'
 | Events: generating 2 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
@@ -151,12 +144,9 @@ n_events = 2
 | Grid: Mean/Max value of the grid:  4.187909140E-01
 |         ... event sample complete.
 | Events: actual unweighting efficiency =  28.57 %
-Warning: Encountered events with excess weight: 1 events ( 50.000 %)
-| Maximum excess weight = 7.541E-01
-| Average excess weight = 3.770E-01
 | Events: closing ASCII file 'powheg_1_p1.debug'
 ?powheg_use_damping = true
-powheg_damping_scale =  5.0000000E+00
+powheg_damping_scale =  5.00000E+00
 | Process library 'powheg_1_lib': unloading
 | Process library 'powheg_1_lib': open
 | Process library 'powheg_1_lib': recorded process 'powheg_1_p2'
@@ -211,13 +201,9 @@ powheg_damping_scale =  5.0000000E+00
 | Phase space: wood
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'powheg_1_p2_i4.phs'
-| Phase space: 1 channels, 2 dimensions
-| Phase space: found 1 channel, collected in 1 grove.
-| Phase space: no equivalences between channels used.
-| Phase space: wood
-| Phase space: 1 channels, 5 dimensions
-| Phase space: found 1 channel, collected in 1 grove.
+| Phase space: writing configuration file 'powheg_1_p2_i5.phs'
+| Phase space: 2 channels, 5 dimensions
+| Phase space: found 2 channels, collected in 1 grove.
 | Phase space: no equivalences between channels used.
 | Phase space: wood
 Warning: No cuts have been defined.
@@ -230,29 +216,29 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1       3000     3.794E+02   4.42E+00    1.17    0.64    35.2
+   1       3000     3.474E+02   5.87E+00    1.69    0.92    12.9
 |-----------------------------------------------------------------------------|
-   1       3000     3.794E+02   4.42E+00    1.17    0.64    35.2
+   1       3000     3.474E+02   5.87E+00    1.69    0.92    12.9
 |=============================================================================|
 | Starting integration for process 'powheg_1_p2' part 'Real'
 | Integrate: iterations = 1:3000:"gw"
-| Integrator: 1 chains, 1 channels, 5 dimensions
+| Integrator: 1 chains, 2 channels, 5 dimensions
 | Integrator: 3000 initial calls, 20 bins, stratified = T
 | Integrator: VAMP
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1       3000     1.003E+02   3.09E+00    3.08    1.69     5.5
+   1       3000     1.376E+02   3.18E+00    2.31    1.26    10.7
 |-----------------------------------------------------------------------------|
-   1       3000     1.003E+02   3.09E+00    3.08    1.69     5.5
+   1       3000     1.376E+02   3.18E+00    2.31    1.26    10.7
 |=============================================================================|
 | Integrate: sum of all components
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1          0  4.7969331E+02  5.39E+00    1.12    0.00*  16.50
+   1          0     4.850E+02   6.67E+00    1.38    0.00    12.2
 |=============================================================================|
-tolerance =  2.0117048E+01
+tolerance =  2.32913E+01
 | expect: success
 | Starting simulation for process 'powheg_1_p2'
 | Simulate: using integration grids from file 'powheg_1_p2_m1.vg'
@@ -264,7 +250,7 @@ tolerance =  2.0117048E+01
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 4
 | Simulation: requested number of events = 2
-|             corr. to luminosity [fb-1] =   4.1693E-03
+|             corr. to luminosity [fb-1] =   4.1238E-03
 | Events: writing to ASCII file 'powheg_1_p2.debug'
 | Events: generating 2 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
@@ -284,18 +270,15 @@ tolerance =  2.0117048E+01
 |  80.0%
 |  90.0%
 | 100.0%
-| Grid: Mean value of the grid:  2.067242925E-02
-| Grid: Max value of the grid:  4.546603401E-02
-| Grid: Mean/Max value of the grid:  4.546785243E-01
+| Grid: Mean value of the grid:  2.205342834E-02
+| Grid: Max value of the grid:  5.408563254E-02
+| Grid: Mean/Max value of the grid:  4.077502157E-01
 |         ... event sample complete.
 | Events: actual unweighting efficiency =   0.19 %
-Warning: Encountered events with excess weight: 1 events ( 50.000 %)
-| Maximum excess weight = 1.151E-02
-| Average excess weight = 5.753E-03
 | Events: closing ASCII file 'powheg_1_p2.debug'
 | Summary of value checks:
 |   Failures: 0 / Total: 1
-| There were no errors and    4 warning(s).
+| There were no errors and    2 warning(s).
 | WHIZARD run finished.
 |=============================================================================|
 Contents of powheg_1_p1.debug:
@@ -307,15 +290,17 @@ Contents of powheg_1_p1.debug:
    Helicity handling  = drop
    Keep correlations  = F
 ------------------------------------------------------------------------
-   Squared matrix el. =  2.2026051E-02
-   Event weight       =  1.0000000E+00
+   Squared matrix el. (ref) =  2.20507E-02
+   Squared matrix el. (prc) =  2.20507E-02
+   Event weight (ref)       =  1.00000E+00
+   Event weight (prc)       =  1.00000E+00
 ------------------------------------------------------------------------
    Selected MCI group = 1
    Selected term      = 1
    Selected channel   = 1
 ------------------------------------------------------------------------
    Passed selection   = T
-   Reweighting factor =  1.0000000E+00
+   Reweighting factor =  1.00000E+00
    Analysis flag      = T
 ========================================================================
  Event transform: trivial (hard process)
@@ -379,10 +364,9 @@ Sum of outgoing momenta: p(0:3) =          500.000        0.000        0.000    
    ps_fsr_active                =  F
    ps_tau_dec                   =  F
    muli_active                  =  F
+   hadronization_active         =  F
  General settings:
     [ISR and FSR off]
- Hadronization settings:
-   hadronization_active         =  F
  Matching Settings:
    mlm_matching                 =  F
    ckkw_matching                =  F
@@ -391,19 +375,19 @@ Sum of outgoing momenta: p(0:3) =          500.000        0.000        0.000    
 ========================================================================
  Local variables:
 ------------------------------------------------------------------------
-sqrts* =  5.0000000E+02
-sqrts_hat* =>  5.0000000E+02
+sqrts* =  5.00000E+02
+sqrts_hat* =>  5.00000E+02
 n_in* => 2
 n_out* => 3
 n_tot* => 5
 $process_id* => "powheg_1_p1"
 process_num_id* => [unknown integer]
-sqme* =>  2.2026051E-02
-sqme_ref* =>  2.2026051E-02
+sqme* =>  2.20507E-02
+sqme_ref* =>  2.20507E-02
 event_index* => 1
-event_weight* =>  1.0000000E+00
-event_weight_ref* =>  1.0000000E+00
-event_excess* =>  0.0000000E+00
+event_weight* =>  1.00000E+00
+event_weight_ref* =>  1.00000E+00
+event_excess* =>  0.00000E+00
 ------------------------------------------------------------------------
  subevent:
  1 prt(i:-11|-2.5000000E+02; 0.0000000E+00, 0.0000000E+00,-2.5000000E+02| 2.6111793E-07| 1)
@@ -420,15 +404,17 @@ event_excess* =>  0.0000000E+00
    Helicity handling  = drop
    Keep correlations  = F
 ------------------------------------------------------------------------
-   Squared matrix el. =  8.8005477E-02
-   Event weight       =  1.0000000E+00
+   Squared matrix el. (ref) =  3.80939E-02
+   Squared matrix el. (prc) =  3.80939E-02
+   Event weight (ref)       =  1.00000E+00
+   Event weight (prc)       =  1.00000E+00
 ------------------------------------------------------------------------
    Selected MCI group = 1
    Selected term      = 1
    Selected channel   = 1
 ------------------------------------------------------------------------
    Passed selection   = T
-   Reweighting factor =  1.0000000E+00
+   Reweighting factor =  1.00000E+00
    Analysis flag      = T
 ========================================================================
  Event transform: trivial (hard process)
@@ -492,10 +478,9 @@ Sum of outgoing momenta: p(0:3) =          500.000        0.000        0.000    
    ps_fsr_active                =  F
    ps_tau_dec                   =  F
    muli_active                  =  F
+   hadronization_active         =  F
  General settings:
     [ISR and FSR off]
- Hadronization settings:
-   hadronization_active         =  F
  Matching Settings:
    mlm_matching                 =  F
    ckkw_matching                =  F
@@ -504,19 +489,19 @@ Sum of outgoing momenta: p(0:3) =          500.000        0.000        0.000    
 ========================================================================
  Local variables:
 ------------------------------------------------------------------------
-sqrts* =  5.0000000E+02
-sqrts_hat* =>  5.0000000E+02
+sqrts* =  5.00000E+02
+sqrts_hat* =>  5.00000E+02
 n_in* => 2
 n_out* => 3
 n_tot* => 5
 $process_id* => "powheg_1_p1"
 process_num_id* => [unknown integer]
-sqme* =>  8.8005477E-02
-sqme_ref* =>  8.8005477E-02
+sqme* =>  3.80939E-02
+sqme_ref* =>  3.80939E-02
 event_index* => 2
-event_weight* =>  1.0000000E+00
-event_weight_ref* =>  1.0000000E+00
-event_excess* =>  7.5407760E-01
+event_weight* =>  1.00000E+00
+event_weight_ref* =>  1.00000E+00
+event_excess* =>  0.00000E+00
 ------------------------------------------------------------------------
  subevent:
  1 prt(i:-11|-2.5000000E+02; 0.0000000E+00, 0.0000000E+00,-2.5000000E+02| 2.6111793E-07| 1)
@@ -534,15 +519,17 @@ Contents of powheg_1_p2.debug:
    Helicity handling  = drop
    Keep correlations  = F
 ------------------------------------------------------------------------
-   Squared matrix el. =  4.5052573E-03
-   Event weight       =  1.0000000E+00
+   Squared matrix el. (ref) =  1.75887E-04
+   Squared matrix el. (prc) =  1.75887E-04
+   Event weight (ref)       =  1.00000E+00
+   Event weight (prc)       =  1.00000E+00
 ------------------------------------------------------------------------
    Selected MCI group = 2
-   Selected term      = 5
+   Selected term      = 6
    Selected channel   = 1
 ------------------------------------------------------------------------
    Passed selection   = T
-   Reweighting factor =  1.0000000E+00
+   Reweighting factor =  1.00000E+00
    Analysis flag      = T
 ========================================================================
  Event transform: trivial (hard process)
@@ -559,21 +546,26 @@ Contents of powheg_1_p2.debug:
  E =   2.500000E+02
  P =   0.000000E+00  0.000000E+00  2.500000E+02
  T =   2.611179340E-07
- Children: 3 4
+ Children: 3 4 5
  Particle 2 [i] f(11)
  E =   2.500000E+02
  P =   0.000000E+00  0.000000E+00 -2.500000E+02
  T =   2.611179340E-07
- Children: 3 4
+ Children: 3 4 5
  Particle 3 [o] f(6)c(1 )
- E =   2.500000E+02
- P =   1.538619E+01 -1.107595E+02  1.391783E+02
+ E =   2.332566E+02
+ P =  -2.701513E+01  5.046874E+01 -1.432017E+02
  T =   3.062500000E+04
  Parents:  1 2
- Particle 4 [o] f(-6)c(-1 )
- E =   2.500000E+02
- P =  -1.538619E+01  1.107595E+02 -1.391783E+02
+ Particle 4 [o] f(-6)c(-2 )
+ E =   2.364935E+02
+ P =   2.299527E+01 -2.320798E+01  1.556816E+02
  T =   3.062500000E+04
+ Parents:  1 2
+ Particle 5 [o] f(21)c(2 -1)
+ E =   3.024990E+01
+ P =   4.019860E+00 -2.726076E+01 -1.247992E+01
+ T =   0.000000000E+00
  Parents:  1 2
 ========================================================================
 ========================================================================
@@ -587,10 +579,11 @@ Contents of powheg_1_p2.debug:
  Particle set:
 ------------------------------------------------------------------------
   Nr Status  Flavor  Col ACol              Parents             Children         P(0)         P(1)         P(2)         P(3)          P^2
-   1    [i]      e+    0    0               [none]                  3-4      250.000        0.000        0.000      250.000        0.000
-   2    [i]      e-    0    0               [none]                  3-4      250.000        0.000        0.000     -250.000        0.000
-   3    [o]       t    1    0                  1-2               [none]      250.000       15.386     -110.759      139.178    30625.000
-   4    [o]    tbar    0    1                  1-2               [none]      250.000      -15.386      110.759     -139.178    30625.000
+   1    [i]      e+    0    0               [none]                  3-5      250.000        0.000        0.000      250.000        0.000
+   2    [i]      e-    0    0               [none]                  3-5      250.000        0.000        0.000     -250.000        0.000
+   3    [o]       t    1    0                  1-2               [none]      233.257      -27.015       50.469     -143.202    30625.000
+   4    [o]    tbar    0    2                  1-2               [none]      236.493       22.995      -23.208      155.682    30625.000
+   5    [o]      gl    2    1                  1-2               [none]       30.250        4.020      -27.261      -12.480        0.000
 ------------------------------------------------------------------------
 Sum of incoming momenta: p(0:3) =          500.000        0.000        0.000        0.000 
 Sum of beam remnant momenta: p(0:3) =        0.000        0.000        0.000        0.000 
@@ -603,10 +596,9 @@ Sum of outgoing momenta: p(0:3) =          500.000        0.000        0.000    
    ps_fsr_active                =  F
    ps_tau_dec                   =  F
    muli_active                  =  F
+   hadronization_active         =  F
  General settings:
     [ISR and FSR off]
- Hadronization settings:
-   hadronization_active         =  F
  Matching Settings:
    mlm_matching                 =  F
    ckkw_matching                =  F
@@ -615,25 +607,26 @@ Sum of outgoing momenta: p(0:3) =          500.000        0.000        0.000    
 ========================================================================
  Local variables:
 ------------------------------------------------------------------------
-sqrts* =  5.0000000E+02
-sqrts_hat* =>  5.0000000E+02
+sqrts* =  5.00000E+02
+sqrts_hat* =>  5.00000E+02
 n_in* => 2
-n_out* => 2
-n_tot* => 4
+n_out* => 3
+n_tot* => 5
 $process_id* => "powheg_1_p2"
 process_num_id* => [unknown integer]
-sqme* =>  4.5052573E-03
-sqme_ref* =>  4.5052573E-03
+sqme* =>  1.75887E-04
+sqme_ref* =>  1.75887E-04
 event_index* => 1
-event_weight* =>  1.0000000E+00
-event_weight_ref* =>  1.0000000E+00
-event_excess* =>  0.0000000E+00
+event_weight* =>  1.00000E+00
+event_weight_ref* =>  1.00000E+00
+event_excess* =>  0.00000E+00
 ------------------------------------------------------------------------
  subevent:
  1 prt(i:-11|-2.5000000E+02; 0.0000000E+00, 0.0000000E+00,-2.5000000E+02| 2.6111793E-07| 1)
  2 prt(i:11|-2.5000000E+02; 0.0000000E+00, 0.0000000E+00, 2.5000000E+02| 2.6111793E-07| 2)
- 3 prt(o:6| 2.5000000E+02; 1.5386193E+01,-1.1075948E+02, 1.3917831E+02| 3.0625000E+04| 3)
- 4 prt(o:-6| 2.5000000E+02;-1.5386193E+01, 1.1075948E+02,-1.3917831E+02| 3.0625000E+04| 4)
+ 3 prt(o:6| 2.3325661E+02;-2.7015128E+01, 5.0468741E+01,-1.4320173E+02| 3.0625000E+04| 3)
+ 4 prt(o:-6| 2.3649348E+02; 2.2995268E+01,-2.3207979E+01, 1.5568165E+02| 3.0625000E+04| 4)
+ 5 prt(o:21| 3.0249904E+01; 4.0198603E+00,-2.7260762E+01,-1.2479916E+01| 0.0000000E+00| 5)
 ========================================================================
 ========================================================================
  Event
@@ -643,15 +636,17 @@ event_excess* =>  0.0000000E+00
    Helicity handling  = drop
    Keep correlations  = F
 ------------------------------------------------------------------------
-   Squared matrix el. =  5.0979187E-02
-   Event weight       =  1.0000000E+00
+   Squared matrix el. (ref) =  2.60642E-02
+   Squared matrix el. (prc) =  2.60642E-02
+   Event weight (ref)       =  1.00000E+00
+   Event weight (prc)       =  1.00000E+00
 ------------------------------------------------------------------------
    Selected MCI group = 1
    Selected term      = 1
    Selected channel   = 1
 ------------------------------------------------------------------------
    Passed selection   = T
-   Reweighting factor =  1.0000000E+00
+   Reweighting factor =  1.00000E+00
    Analysis flag      = T
 ========================================================================
  Event transform: trivial (hard process)
@@ -712,10 +707,9 @@ Sum of outgoing momenta: p(0:3) =          500.000        0.000        0.000    
    ps_fsr_active                =  F
    ps_tau_dec                   =  F
    muli_active                  =  F
+   hadronization_active         =  F
  General settings:
     [ISR and FSR off]
- Hadronization settings:
-   hadronization_active         =  F
  Matching Settings:
    mlm_matching                 =  F
    ckkw_matching                =  F
@@ -724,19 +718,19 @@ Sum of outgoing momenta: p(0:3) =          500.000        0.000        0.000    
 ========================================================================
  Local variables:
 ------------------------------------------------------------------------
-sqrts* =  5.0000000E+02
-sqrts_hat* =>  5.0000000E+02
+sqrts* =  5.00000E+02
+sqrts_hat* =>  5.00000E+02
 n_in* => 2
 n_out* => 2
 n_tot* => 4
 $process_id* => "powheg_1_p2"
 process_num_id* => [unknown integer]
-sqme* =>  5.0979187E-02
-sqme_ref* =>  5.0979187E-02
+sqme* =>  2.60642E-02
+sqme_ref* =>  2.60642E-02
 event_index* => 2
-event_weight* =>  1.0000000E+00
-event_weight_ref* =>  1.0000000E+00
-event_excess* =>  1.1506672E-02
+event_weight* =>  1.00000E+00
+event_weight_ref* =>  1.00000E+00
+event_excess* =>  0.00000E+00
 ------------------------------------------------------------------------
  subevent:
  1 prt(i:-11|-2.5000000E+02; 0.0000000E+00, 0.0000000E+00,-2.5000000E+02| 2.6111793E-07| 1)
@@ -747,8 +741,8 @@ event_excess* =>  1.1506672E-02
 Contents of powheg_1_p1_1000_powheg_grids.dat:
            3
            5            5            2 
- 5.356834400E-02  4.086287931E-02  3.630838514E-02  2.899127835E-02  1.931454234E-02  5.341189178E-02  4.426462091E-02  3.743264593E-02  2.925385001E-02  2.338264757E-02  3.611413448E-02  3.104179418E-02  2.518811305E-02  2.115699224E-02  1.415959341E-02  1.646456300E-02  1.455475722E-02  1.088723865E-02  8.040854941E-03  5.456261863E-03  3.959023561E-03  3.080907498E-03  2.968225862E-03  2.037329832E-03  1.218882408E-03  5.383484607E-02  3.943809740E-02  3.423647407E-02  2.477785896E-02  2.371104296E-02  5.364226311E-02  4.459628057E-02  3.916808436E-02  3.013425755E-02  2.254083476E-02  3.655453297E-02  3.173476638E-02  2.713381461E-02  2.094894908E-02  1.352585738E-02  1.624136504E-02  1.340897633E-02  1.056358952E-02  9.940953657E-03  5.634406115E-03  3.895467986E-03  3.403007130E-03  2.433112954E-03  1.667950949E-03  9.906721811E-04
+ 5.356834400E-02  4.086287931E-02  3.630838514E-02  2.899127835E-02  1.931454234E-02  5.341189178E-02  4.426462091E-02  3.743264593E-02  2.925385001E-02  2.338264757E-02  3.611413448E-02  3.104179418E-02  2.518811305E-02  2.115699224E-02  1.415959341E-02  1.646456300E-02  1.455475722E-02  1.088723865E-02  8.040854941E-03  5.456261863E-03  3.959023561E-03  3.080907498E-03  2.968225862E-03  2.037329832E-03  1.218882408E-03  5.383484607E-02  3.943809740E-02  3.423647407E-02  2.477785896E-02  2.371104296E-02  5.364226311E-02  4.459628057E-02  3.916808436E-02  3.013425755E-02  2.254083476E-02  3.655453297E-02  3.173476638E-02  2.713381461E-02  2.094894908E-02  1.352585738E-02  1.624136504E-02  1.340897633E-02  1.056358952E-02  9.940953657E-03  5.634406115E-03  3.895467986E-03  3.403007130E-03  2.433112954E-03  1.667950949E-03  9.906721811E-04 
 Contents of powheg_1_p2_1000_powheg_grids.dat:
            3
            5            5            2 
- 4.397761427E-02  4.259215384E-02  3.411067487E-02  2.521470528E-02  1.778456514E-02  4.363408217E-02  4.248512170E-02  3.544051600E-02  2.977895376E-02  2.442965809E-02  3.183896912E-02  2.984623894E-02  2.157919889E-02  1.671348450E-02  1.097623579E-02  1.390963315E-02  1.271555358E-02  1.068010505E-02  7.243947215E-03  4.732395888E-03  2.602565611E-03  3.231341120E-03  2.263711180E-03  1.602643511E-03  8.843840186E-04  4.546603401E-02  4.221654435E-02  3.538941665E-02  2.614657464E-02  1.744639253E-02  4.529306910E-02  4.288771662E-02  3.466650537E-02  3.220347369E-02  2.777429485E-02  2.947910734E-02  2.942442388E-02  2.305397488E-02  1.855307282E-02  1.146262689E-02  1.342618018E-02  1.392665745E-02  1.105449373E-02  7.909181656E-03  4.813645163E-03  2.686036621E-03  3.016471617E-03  2.533427641E-03  1.708901032E-03  8.147869401E-04
+ 5.315522319E-02  4.406307387E-02  3.437396881E-02  2.531936193E-02  1.782161413E-02  5.407131702E-02  4.362756454E-02  3.578424683E-02  2.990258862E-02  2.446962952E-02  3.750385163E-02  3.062706373E-02  2.169797333E-02  1.678283132E-02  1.099806980E-02  1.612569831E-02  1.342040479E-02  1.083460700E-02  7.276718317E-03  4.749061426E-03  4.105251116E-03  3.502026947E-03  2.362957207E-03  1.621291568E-03  8.931412174E-04  5.331612048E-02  4.368431117E-02  3.566556232E-02  2.626643889E-02  1.749564416E-02  5.408563254E-02  4.388191908E-02  3.490292380E-02  3.234027458E-02  2.781973873E-02  3.720830562E-02  3.017296308E-02  2.325148717E-02  1.860743352E-02  1.149073022E-02  1.611762482E-02  1.435953225E-02  1.121441171E-02  7.970665990E-03  4.830610415E-03  4.285996058E-03  3.398098380E-03  2.652129180E-03  1.741513780E-03  8.218126398E-04 

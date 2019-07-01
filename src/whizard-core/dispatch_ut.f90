@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -36,17 +36,16 @@
 module dispatch_ut
   use unit_tests
   use dispatch_uti
-  
+
   implicit none
   private
 
   public :: dispatch_test
 
-  public :: dispatch_rng_factory_test
   public :: dispatch_sf_data_test
 
 contains
-  
+
   subroutine dispatch_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -56,41 +55,17 @@ contains
     call test (dispatch_2, "dispatch_2", &
          "process core", &
          u, results)
-    call test (dispatch_3, "dispatch_3", &
-         "integration method", &
-         u, results)
-    call test (dispatch_4, "dispatch_4", &
-         "phase-space configuration", &
-         u, results)
-    call test (dispatch_5, "dispatch_5", &
-         "random-number generator", &
-         u, results)
-    call test (dispatch_6, "dispatch_6", &
-         "configure phase space using file", &
-         u, results)
     call test (dispatch_7, "dispatch_7", &
          "structure-function data", &
          u, results)
     call test (dispatch_8, "dispatch_8", &
          "beam structure", &
          u, results)
-    call test (dispatch_9, "dispatch_9", &
-         "event I/O", &
-         u, results)
     call test (dispatch_10, "dispatch_10", &
          "process core update", &
          u, results)
     call test (dispatch_11, "dispatch_11", &
          "QCD coupling", &
-         u, results)
-    call test (dispatch_12, "dispatch_12", &
-         "Shower settings", &
-         u, results)
-    call test (dispatch_13, "dispatch_13", &
-         "event transforms", &
-         u, results)
-    call test (dispatch_14, "dispatch_14", &
-         "SLHA interface", &
          u, results)
   end subroutine dispatch_test
 

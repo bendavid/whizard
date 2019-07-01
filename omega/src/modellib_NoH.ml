@@ -1,4 +1,4 @@
-(* $Id: modellib_NoH.ml 5045 2014-03-21 17:09:34Z msekulla $
+(* modellib_NoH.ml --
 
    Copyright (C) 1999-2016 by
 
@@ -24,13 +24,6 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
-let rcs_file = RCS.parse "Modellib_NoH" ["Lagragians"]
-    { RCS.revision = "$Revision: 5041 $";
-      RCS.date = "$Date: 2014-01-07 18:09:34 +0100 (Di, 07 Jan 2014) $";
-      RCS.author = "$Author: jr_reuter $";
-      RCS.source
-        = "$URL: svn+ssh://msekulla@svn.hepforge.org/hepforge/svn/whizard/trunk/src/omega/src/modellib_NoH.ml $" }
- 
 (* \thocwmodulesection{Minimal Higgsless Model (Unitarity Gauge)} *)
 
 module type NoH_flags =
@@ -57,9 +50,6 @@ module NoH_k_matrix : NoH_flags =
 
 module NoH (Flags : NoH_flags) =
   struct
-    let rcs = RCS.rename rcs_file "Modellib.NoH"
-        [ "minimal electroweak higgsless model in unitarity gauge"]
-
     open Coupling
 
     let default_width = ref Timelike
@@ -1479,9 +1469,6 @@ effective operators:
 
 module AltH (Flags : NoH_flags) =
   struct
-    let rcs = RCS.rename rcs_file "Modellib_NoH.AltH"
-        [ "minimal electroweak higgsless model in unitarity gauge with additional Vectorboson Resonances"]
-
     open Coupling
 
     let default_width = ref Timelike

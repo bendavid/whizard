@@ -95,32 +95,34 @@ Contents of parton_shower_1.evt:
    Helicity handling  = drop
    Keep correlations  = F
 ------------------------------------------------------------------------
-   Squared matrix el. =  8.0544203E-03
-   Event weight       =  1.0000000E+00
+   Squared matrix el. (ref) =  8.05442E-03
+   Squared matrix el. (prc) =  8.05442E-03
+   Event weight (ref)       =  1.00000E+00
+   Event weight (prc)       =  1.00000E+00
 ------------------------------------------------------------------------
    Selected MCI group = 1
    Selected term      = 1
    Selected channel   = 1
 ------------------------------------------------------------------------
    Passed selection   = T
-   Reweighting factor =  1.0000000E+00
+   Reweighting factor =  1.00000E+00
    Analysis flag      = T
 ========================================================================
  Local variables:
 ------------------------------------------------------------------------
-sqrts* =  1.0000000E+03
-sqrts_hat* =>  1.0000000E+03
+sqrts* =  1.00000E+03
+sqrts_hat* =>  1.00000E+03
 n_in* => 2
 n_out* => 12
 n_tot* => 14
 $process_id* => "parton_shower_1_p1"
 process_num_id* => [unknown integer]
-sqme* =>  8.0544203E-03
-sqme_ref* =>  8.0544203E-03
+sqme* =>  8.05442E-03
+sqme_ref* =>  8.05442E-03
 event_index* => 1
-event_weight* =>  1.0000000E+00
-event_weight_ref* =>  1.0000000E+00
-event_excess* =>  0.0000000E+00
+event_weight* =>  1.00000E+00
+event_weight_ref* =>  1.00000E+00
+event_excess* =>  0.00000E+00
 ------------------------------------------------------------------------
  subevent:
  1 prt(i:11|-5.0000000E+02; 0.0000000E+00, 0.0000000E+00,-5.0000000E+02| 0.0000000E+00| 1)

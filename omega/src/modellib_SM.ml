@@ -1,4 +1,4 @@
-(* $Id: modellib_SM.ml 7667 2016-07-29 17:37:42Z jr_reuter $
+(* modellib_SM.ml --
 
    Copyright (C) 1999-2016 by
 
@@ -8,7 +8,7 @@
        with contributions from
        Christian Speckner <cnspeckn@googlemail.com>
        Fabian Bach <fabian.bach@t-online.de> (only parts of this file)
-       Soyoung Shim <soyoung.shim@desy.de> (only parts of this file)
+       So Young Shim <soyoung.shim@desy.de> (only parts of this file)
 
    WHIZARD is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by
@@ -24,20 +24,10 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
-let rcs_file = RCS.parse "Modellib_SM" ["Lagragians"]
-    { RCS.revision = "$Revision: 7667 $";
-      RCS.date = "$Date: 2016-07-29 19:37:42 +0200 (Fri, 29 Jul 2016) $";
-      RCS.author = "$Author: jr_reuter $";
-      RCS.source
-        = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/omega/src/modellib_SM.ml $" }
-
 (* \thocwmodulesection{$\phi^3$} *)
 
 module Phi3 =
   struct
-    let rcs = RCS.rename rcs_file "Modellib.Phi3"
-        ["phi**3 with a single flavor"]
-
     open Coupling
 
     let options = Options.empty
@@ -103,9 +93,6 @@ module Phi3 =
 
 module Phi4 =
   struct
-    let rcs = RCS.rename rcs_file "Modellib.Phi4"
-        ["phi**4 with a single flavor"]
-
     open Coupling
 
     let options = Options.empty
@@ -178,9 +165,6 @@ module Phi4 =
 
 module QED =
   struct
-    let rcs = RCS.rename rcs_file "Modellib.QED"
-        ["QED with two leptonic flavors"]
-
     open Coupling
 
     let options = Options.empty
@@ -311,9 +295,6 @@ module QED =
 
 module QCD =
   struct
-    let rcs = RCS.rename rcs_file "Modellib.QCD"
-        ["QCD"]
-
     open Coupling
 
     let options = Options.empty
@@ -675,9 +656,6 @@ module SM_dim6 : SM_flags =
 
 module SM (Flags : SM_flags) =
   struct
-    let rcs = RCS.rename rcs_file "Modellib.SM"
-        [ "minimal electroweak standard model in unitarity gauge"]
-
     open Coupling
 
     let default_width = ref Timelike
@@ -2577,10 +2555,6 @@ effective operators:
 
 module SM_Rxi =
   struct
-    let rcs = RCS.rename rcs_file "Modellib.SM_Rxi"
-        [ "minimal electroweak standard model in R-xi gauge";
-          "NB: very incomplete still!, no CKM matrix" ]
-
     open Coupling
 
     module SM = SM(SM_no_anomalous)
@@ -2655,13 +2629,6 @@ module SM_Rxi =
 module Groves (M : Model.Gauge) : Model.Gauge with module Ch = M.Ch =
   struct
     let max_generations = 5
-    let rcs = RCS.rename M.rcs
-        ("Modellib.Groves(" ^ (RCS.name M.rcs) ^ ")")
-        ([ "experimental Groves functor";
-           Printf.sprintf "for maximally %d flavored legs"
-             (2 * max_generations) ] @
-         RCS.description M.rcs)
-
     let options = M.options
 
     type matter_field = M.matter_field * int

@@ -1,4 +1,4 @@
-(* $Id: target.mli 7444 2016-02-17 15:37:20Z jr_reuter $
+(* target.mli --
 
    Copyright (C) 1999-2016 by
 
@@ -35,7 +35,6 @@ module type T =
 
     val parameters_to_channel : out_channel -> unit
 
-    val rcs_list : RCS.t list
   end
 
 module type Maker =

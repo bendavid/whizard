@@ -1,4 +1,4 @@
-! $Id: fa_f.ects 6004 2014-07-09 15:46:54Z cweiss $
+! fa_f.ects --
 !ects:model QCD
 !ects:scatter
 !ects:process u gl -> u

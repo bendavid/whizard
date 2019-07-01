@@ -1,4 +1,4 @@
-(* $Id: product.ml 7444 2016-02-17 15:37:20Z jr_reuter $
+(* product.ml --
 
    Copyright (C) 1999-2016 by
 

@@ -1,4 +1,4 @@
-(* $Id: omega.ml 7653 2016-07-18 11:37:04Z ohl $
+(* omega.ml --
 
    Copyright (C) 1999-2016 by
 
@@ -297,10 +297,6 @@ i*)
 	  wf_to_TeX momentum_to_TeX variable' format_p
 	  (List.map colored_only (amplitudes_by_flavor amplitudes))
 
-    let version () =
-      List.iter (fun s -> prerr_endline ("RCS: " ^ s))
-        (ThoList.flatmap RCS.summary (CM.rcs :: T.rcs_list @ F.rcs_list))
-
     let debug (str, descr, opt, var) =
       [ "-warning:" ^ str, Arg.Unit (fun () -> var := (opt, false):: !var),
         "         check " ^ descr ^ " and print warning on error";
@@ -405,8 +401,6 @@ i*)
            "file    produce FeynMP output for Feynman and color flow diagrams");
           ("-diagrams_LaTeX", Arg.Set diagrams_LaTeX,
            "    enclose FeynMP output in LaTeX wrapper");
-          ("-revision", Arg.Unit version,
-           "          print revision control information");
           ("-quiet", Arg.Set quiet,
            "             don't print a summary");
           ("-summary", Arg.Clear write,
@@ -464,11 +458,13 @@ i*)
           F.initialize_cache dir;
           exit 0
       | _, _, true ->
-          T.parameters_to_channel output_channel;
+          if !write then
+            T.parameters_to_channel output_channel;
           exit 0
       | [], _, false ->
-          T.amplitudes_to_channel cmdline output_channel !checks CF.empty;
-          exit 0
+         if !write then
+           T.amplitudes_to_channel cmdline output_channel !checks CF.empty;
+         exit 0
       | _, _, false ->
 
         let selectors =

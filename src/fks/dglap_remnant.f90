@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -45,6 +45,8 @@ module dglap_remnant
   use pdg_arrays
   use sf_lhapdf
   use pdf
+  use phs_fks, only: isr_kinematics_t
+
   use nlo_data
 
   implicit none
@@ -54,14 +56,12 @@ module dglap_remnant
 
   type :: dglap_remnant_t
     type(pdf_data_t) :: pdf_data
-    logical :: required = .false.
     type(isr_kinematics_t), pointer :: isr_kinematics => null ()
     integer, dimension(:), allocatable :: i_light_quarks
     integer, dimension(2) :: flv_in
     type(pdf_container_t), dimension(2) :: pdf_scaled
     type(pdf_container_t), dimension(2) :: pdf_born
     real(default), dimension(:), pointer :: sqme_born => null ()
-    real(default), dimension(:), allocatable :: value
   contains
     procedure :: init => dglap_remnant_init
     procedure :: set_incoming_flavor => dglap_remnant_set_incoming_flavor
@@ -71,26 +71,21 @@ module dglap_remnant
     procedure :: get_quark_pdf => dglap_remnant_get_quark_pdf
     procedure :: get_summed_quark_pdf => dglap_remnant_get_summed_quark_pdf
     procedure :: evaluate => dglap_remnant_evaluate
+    procedure :: final => dglap_remnant_final
   end type dglap_remnant_t
 
 
 contains
 
-  subroutine dglap_remnant_init (dglap, isr_kinematics, flv, n_alr, sqme_collector)
+  subroutine dglap_remnant_init (dglap, isr_kinematics, flv, n_alr)
     class(dglap_remnant_t), intent(inout) :: dglap
     type(isr_kinematics_t), intent(in), target :: isr_kinematics
     integer, dimension(:,:), intent(in) :: flv
     integer, intent(in) :: n_alr
-    type(sqme_collector_t), intent(in), target :: sqme_collector
     integer :: i, j, n_quarks
     logical, dimension(-6:6) :: quark_checked = .false.
-    dglap%required = any ([is_quark(flv(1,1)), &
-        is_quark(flv(2,1)), is_gluon(flv(1,1)), is_gluon(flv(2,1))])
-    if (.not. dglap%required) return
 
-    dglap%sqme_born => sqme_collector%sqme_subtraction_born_list
     dglap%isr_kinematics => isr_kinematics
-    allocate (dglap%value (n_alr))
     call dglap%set_incoming_flavor (flv(1,1), flv(2,1))
     n_quarks = 0
     do i = 1, size (flv, dim = 1)
@@ -203,7 +198,6 @@ contains
     real(default) :: sb, xb, onemz
     real(default) :: fac_scale2, jac
 
-    dglap%value = zero
     sb = dglap%isr_kinematics%sqrts_born**2
     tmp = zero
     fac_scale2 = dglap%isr_kinematics%fac_scale**2
@@ -254,6 +248,7 @@ contains
     real(default), intent(in) :: z
     real(default) :: onemz
     onemz = one - z
+
     p_hat_gg = two * CA * (z + onemz**2 / z + z * onemz**2)
   end function p_hat_gg
 
@@ -262,6 +257,7 @@ contains
     real(default), intent(in) :: z
     real(default) :: onemz
     onemz = one - z
+
     p_hat_qg = CF * onemz / z * (one + onemz**2)
   end function p_hat_qg
 
@@ -270,30 +266,25 @@ contains
     real(default), intent(in) :: z
     real(default) :: onemz
     onemz = one - z
+
     p_hat_gq = TR * (onemz - two * z * onemz**2)
   end function p_hat_gq
 
   function p_hat_qq (z)
     real(default) :: p_hat_qq
     real(default), intent(in) :: z
-    real(default) :: onemz
-    onemz = one - z
     p_hat_qq = CF * (one + z**2)
   end function p_hat_qq
 
   function p_derived_gg (z)
     real(default) :: p_derived_gg
     real(default), intent(in) :: z
-    real(default) :: onemz
-    onemz = one - z
     p_derived_gg = zero
   end function p_derived_gg
 
   function p_derived_qg (z)
     real(default) :: p_derived_qg
     real(default), intent(in) :: z
-    real(default) :: onemz
-    onemz = one - z
     p_derived_qg = -CF * z
   end function p_derived_qg
 
@@ -302,6 +293,7 @@ contains
     real(default), intent(in) :: z
     real(default) :: onemz
     onemz = one - z
+
     p_derived_gq = -two * TR * z * onemz
   end function p_derived_gq
 
@@ -310,8 +302,16 @@ contains
     real(default), intent(in) :: z
     real(default) :: onemz
     onemz = one - z
+
     p_derived_qq = -CF * onemz
   end function p_derived_qq
+
+  subroutine dglap_remnant_final (dglap)
+    class(dglap_remnant_t), intent(inout) :: dglap
+    if (associated (dglap%isr_kinematics)) nullify (dglap%isr_kinematics)
+    if (allocated (dglap%i_light_quarks)) deallocate (dglap%i_light_quarks)
+    if (associated (dglap%sqme_born)) deallocate (dglap%sqme_born)
+  end subroutine dglap_remnant_final
 
 
 end module dglap_remnant

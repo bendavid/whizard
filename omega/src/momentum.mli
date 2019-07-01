@@ -1,4 +1,4 @@
-(* $Id: momentum.mli 7444 2016-02-17 15:37:20Z jr_reuter $
+(* momentum.mli --
 
    Copyright (C) 1999-2016 by
 
@@ -204,7 +204,6 @@ module type T =
 
         end
 
-    val rcs : RCS.t
   end
 
 module Lists : T

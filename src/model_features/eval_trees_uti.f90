@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -68,19 +68,19 @@ contains
 
     write (u, "(A)")  "* Test output: Expressions"
     write (u, "(A)")  "*   Purpose: test simple observable and node evaluation"
-    write (u, "(A)")       
+    write (u, "(A)")
 
     write (u, "(A)")  "* Setting a unary observable:"
-    write (u, "(A)")    
-    
+    write (u, "(A)")
+
     allocate (var_list)
     allocate (prt)
     call var_list_set_observables_unary (var_list, prt)
     call var_list%write (u)
-    
+
     write (u, "(A)")  "* Evaluating the observable node:"
-    write (u, "(A)")        
-    
+    write (u, "(A)")
+
     var_name = "PDG"
 
     allocate (node)
@@ -88,19 +88,19 @@ contains
     call node%write (u)
 
     write (u, "(A)")  "* Cleanup"
-    write (u, "(A)")        
-    
+    write (u, "(A)")
+
     call node%final_rec ()
     deallocate (node)
     call var_list%final ()
     deallocate (var_list)
     deallocate (prt)
-       
+
     write (u, "(A)")
-    write (u, "(A)")  "* Test output end: expressions_1"        
-    
+    write (u, "(A)")  "* Test output end: expressions_1"
+
   end subroutine expressions_1
-  
+
   subroutine expressions_2 (u)
     integer, intent(in) :: u
     type(ifile_t) :: ifile
@@ -108,13 +108,13 @@ contains
     type(eval_tree_t) :: eval_tree
     type(string_t) :: expr_text
     type(var_list_t), pointer :: var_list => null ()
-    
+
     write (u, "(A)")  "* Test output: Expressions"
     write (u, "(A)")  "*   Purpose: test parse routines"
-    write (u, "(A)")       
-    
+    write (u, "(A)")
+
     call syntax_expr_init ()
-    call syntax_write (syntax_expr, u)     
+    call syntax_write (syntax_expr, u)
     allocate (var_list)
     call var_list_append_real (var_list, var_str ("tolerance"), 0._default)
     call var_list_append_real (var_list, var_str ("x"), -5._default)
@@ -131,35 +131,35 @@ contains
     call eval_tree%init_stream (stream, var_list=var_list)
     call eval_tree%evaluate ()
     call eval_tree%write (u)
-    
+
     write (u, "(A)")  "* Input string:"
     write (u, "(A,A)")  "     ", char (expr_text)
-    write (u, "(A)") 
+    write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
-    
-    call stream_final (stream) 
+
+    call stream_final (stream)
     call ifile_final (ifile)
     call eval_tree%final ()
     call var_list%final ()
     deallocate (var_list)
-    call syntax_expr_final ()     
-    
+    call syntax_expr_final ()
+
     write (u, "(A)")
-    write (u, "(A)")  "* Test output end: expressions_2"        
-    
-  end subroutine expressions_2 
-  
+    write (u, "(A)")  "* Test output end: expressions_2"
+
+  end subroutine expressions_2
+
   subroutine expressions_3 (u)
     integer, intent(in) :: u
     type(subevt_t) :: subevt
 
     write (u, "(A)")  "* Test output: Expressions"
     write (u, "(A)")  "*   Purpose: test subevent expressions"
-    write (u, "(A)")       
+    write (u, "(A)")
 
     write (u, "(A)")  "* Initialize subevent:"
-    write (u, "(A)")       
-            
+    write (u, "(A)")
+
     call subevt_init (subevt)
     call subevt_reset (subevt, 1)
     call subevt_set_incoming (subevt, 1, &
@@ -179,12 +179,12 @@ contains
          vector4_moving (-1.e3_default, 0._default, 3), &
          [2, 7])
     call subevt_write (subevt, u)
-    
+
     write (u, "(A)")
-    write (u, "(A)")  "* Test output end: expressions_3"        
-    
+    write (u, "(A)")  "* Test output end: expressions_3"
+
   end subroutine expressions_3
-  
+
   subroutine expressions_4 (u)
     integer, intent(in) :: u
     type(subevt_t), target :: subevt
@@ -197,11 +197,11 @@ contains
 
     write (u, "(A)")  "* Test output: Expressions"
     write (u, "(A)")  "*   Purpose: test pdg array expressions"
-    write (u, "(A)")       
+    write (u, "(A)")
 
     write (u, "(A)")  "* Initialization:"
-    write (u, "(A)")       
-    
+    write (u, "(A)")
+
     call syntax_pexpr_init ()
     call syntax_write (syntax_pexpr, u)
     allocate (var_list)
@@ -243,11 +243,11 @@ contains
          "  count [incoming photon] * 3 > 0"
     write (u, "(A,A)")  "     ", char (expr_text)
     write (u, "(A)")
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Extract the evaluation tree:"
     write (u, "(A)")
-    
+
     call ifile_append (ifile, expr_text)
     call stream_init (stream, ifile)
     call eval_tree%init_stream (stream, var_list, subevt, V_LOG)
@@ -263,17 +263,17 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
     write (u, "(A)")
-    
+
     call stream_final (stream)
     call ifile_final (ifile)
     call eval_tree%final ()
     call var_list%final ()
     deallocate (var_list)
-    call syntax_pexpr_final ()  
-    
+    call syntax_pexpr_final ()
+
     write (u, "(A)")
-    write (u, "(A)")  "* Test output end: expressions_4"        
-        
+    write (u, "(A)")  "* Test output end: expressions_4"
+
   end subroutine expressions_4
 
 

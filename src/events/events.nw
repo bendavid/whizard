@@ -1,9 +1,8 @@
 %% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*- 
 % WHIZARD code as NOWEB source: event handling objects
-
-@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 \chapter{Generic Event Handling}
+\includemodulegraph{events}
 
 Event records allow the MC to communicate with the outside world.  The
 event record should exhibit the observable contents of a physical
@@ -101,58 +100,6 @@ contains
 end module event_base
 @ %def event_base
 @
-\subsection{NLO event information}
-This type stores information about fixed-order NLO events.
-<<Event base: parameters>>=
-  integer, parameter :: N_SUPPORTED_EVENT_FORMATS = 2
-<<Event base: types>>=
-  type :: nlo_event_info_t
-    logical :: nlo_event = .false.
-    type(string_t), dimension(:), allocatable :: &
-       supported_event_formats
-    integer :: fixed_mci = 0
-  contains
-  <<Event base: nlo event info: TBP>>
-  end type nlo_event_info_t
-
-@ %def nlo_event_info_t
-@ Somehow, the use of the intrinsic [[var_str]] cannot be used in the type 
-specification in an array. Therefore, it has to be done separately.
-<<Event base: nlo event info: TBP>>=
-  procedure :: init_sample_formats => nlo_event_info_init_sample_formats
-<<Event base: procedures>>=
-  subroutine nlo_event_info_init_sample_formats (nlo_info)
-    class(nlo_event_info_t), intent(inout) :: nlo_info
-    allocate (nlo_info%supported_event_formats (N_SUPPORTED_EVENT_FORMATS))
-    nlo_info%supported_event_formats(1) = var_str ("hepmc")
-    nlo_info%supported_event_formats(2) = var_str ("debug")
-  end subroutine nlo_event_info_init_sample_formats
-
-@ %def nlo_event_info_init_sample_formats
-@
-<<Event base: nlo event info: TBP>>=
-  procedure :: check_supported_sample_formats &
-     => nlo_event_info_check_supported_sample_formats
-<<Event base: procedures>>=
-  subroutine nlo_event_info_check_supported_sample_formats (nlo_info, format)
-    class(nlo_event_info_t), intent(in) :: nlo_info
-    type(string_t), intent(in) :: format
-    logical :: value
-    type(string_t) :: err_message
-    integer :: i
-    value = any (nlo_info%supported_event_formats == format)
-    if (.not. value) then
-      err_message = var_str ("NLO event setup: sample_format ") // format // &
-            var_str (" is not supported yet. Please choose one of the following: ") // LF
-      do i = 1, N_SUPPORTED_EVENT_FORMATS
-         err_message = err_message // nlo_info%supported_event_formats (i) // LF
-      end do
-      call msg_fatal (char (err_message))
-    end if
-  end subroutine nlo_event_info_check_supported_sample_formats
-
-@ %def nlo_event_info_is_supported_sample_formats
-@
 \subsection{generic event type}
 <<Event base: public>>=
   public :: generic_event_t
@@ -176,7 +123,6 @@ specification in an array. Therefore, it has to be done separately.
      real(default), dimension(:), allocatable :: sqme_alt
      logical :: weight_alt_known = .false.
      real(default), dimension(:), allocatable :: weight_alt
-     type(nlo_event_info_t) :: nlo_info
    contains
    <<Event base: generic event: TBP>>
   end type generic_event_t
@@ -723,62 +669,6 @@ are not deleted.  In particular, the initialization is kept.
   end subroutine generic_event_pacify_particle_set
 
 @ %def generic_event_pacify_particle_set
-@
-\subsection{NLO info}
-<<Event base: generic event: TBP>>=
-  procedure :: set_nlo_event => generic_event_set_nlo_event
-<<Event base: procedures>>=
-  subroutine generic_event_set_nlo_event (event, value)
-    class(generic_event_t), intent(inout) :: event
-    logical, intent(in) :: value
-    event%nlo_info%nlo_event = value
-  end subroutine generic_event_set_nlo_event
-
-@ %def generic_event_set_nlo_event
-@
-<<Event base: generic event: TBP>>=
-  procedure :: is_nlo_event => generic_event_is_nlo_event
-<<Event base: procedures>>=
-  function generic_event_is_nlo_event (event) result (value)
-    logical :: value
-    class(generic_event_t), intent(in) :: event
-    value = event%nlo_info%nlo_event
-  end function generic_event_is_nlo_event
-
-@ %def generic_event_is_nlo_event
-@
-<<Event base: generic event: TBP>>=
-  procedure :: get_fixed_mci => generic_event_get_fixed_mci
-<<Event base: procedures>>=
-  function generic_event_get_fixed_mci (event) result (i_mci)
-    integer :: i_mci
-    class(generic_event_t), intent(in) :: event
-    i_mci = event%nlo_info%fixed_mci
-  end function generic_event_get_fixed_mci
-
-@ %def generic_event_get_fixed_mci
-@ 
-<<Event base: generic event: TBP>>=
-  procedure :: init_sample_formats => generic_event_init_sample_formats
-<<Event base: procedures>>=
-  subroutine generic_event_init_sample_formats (event)
-    class(generic_event_t), intent(inout) :: event
-    call event%nlo_info%init_sample_formats ()
-  end subroutine generic_event_init_sample_formats
-
-@ %def generic_event_init_sample_formats
-@
-<<Event base: generic event: TBP>>=
-  procedure :: check_supported_sample_formats &
-     => generic_event_check_supported_sample_formats
-<<Event base: procedures>>=
-  subroutine generic_event_check_supported_sample_formats (event, format)
-    class(generic_event_t), intent(in) :: event
-    type(string_t), intent(in) :: format
-    call event%nlo_info%check_supported_sample_formats (format)
-  end subroutine generic_event_check_supported_sample_formats
-
-@ %def generic_event_check_supported_sample_formats
 @
 \subsection{Event normalization}
 The parameters for event normalization.  For unweighted events,
@@ -2578,7 +2468,6 @@ procedure if the counter hits the interval.
     class(generic_event_t), intent(in), target :: event
     integer, intent(in) :: i_prc
     logical, intent(in), optional :: reading, passed, pacify
-    logical :: rd
     eio%i_evt = eio%i_evt + 1
     if (eio%n_interval > 0) then
        eio%i_interval = eio%i_interval + 1
@@ -3067,7 +2956,6 @@ module eio_dump
 
   use, intrinsic :: iso_fortran_env, only: output_unit
 
-<<Use kinds>>
   use kinds, only: i64
 <<Use strings>>
   use format_utils, only: write_separator
@@ -3435,7 +3323,6 @@ We test the implementation of all I/O methods.
     class(generic_event_t), pointer :: event
     class(eio_t), allocatable :: eio
     integer :: u_file
-    character(80) :: buffer
 
     write (u, "(A)")  "* Test output: eio_dump_1"
     write (u, "(A)")  "*   Purpose: generate an event and dump to output"
@@ -6164,7 +6051,6 @@ the exception of lifetime and spin, where default values are stored.
     type(polarization_t), intent(in), optional :: pol
     type(vector4_t), intent(in) :: vtx
     logical :: hepev4
-    real(default) :: r, theta, phi
     hepev4 = .false.; if (present (fill_hepev4))  hepev4 = fill_hepev4
     IDHEP(i) = pdg
     select case (status)
@@ -9203,10 +9089,10 @@ Particle objects have the obvious meaning.
 <<LCIO interface: interfaces>>=
   interface
      type(c_ptr) function new_lcio_particle &
-          (px, py, pz, pdg_id, mass, status) bind(C)
+          (px, py, pz, pdg_id, mass, charge, status) bind(C)
        import
        integer(c_int), value :: pdg_id, status
-       real(c_double), value :: px, py, pz, mass
+       real(c_double), value :: px, py, pz, mass, charge
      end function new_lcio_particle
   end interface
 @ %def new_lcio_particle
@@ -9235,9 +9121,10 @@ Particle objects have the obvious meaning.
 <<LCIO interface: public>>=
   public :: lcio_particle_init
 <<LCIO interface: procedures>>=
-  subroutine lcio_particle_init (prt, p, pdg, status)
+  subroutine lcio_particle_init (prt, p, pdg, charge, status)
     type(lcio_particle_t), intent(out) :: prt
     type(vector4_t), intent(in) :: p
+    real(default), intent(in) :: charge
     real(default) :: mass
     real(default) :: px, py, pz
     integer, intent(in) :: pdg, status
@@ -9247,7 +9134,7 @@ Particle objects have the obvious meaning.
     mass = p**1
     prt%obj = new_lcio_particle (real (px, c_double), real (py, c_double), &
          real (pz, c_double), int (pdg, c_int), &
-         real (mass, c_double), int (status, c_int))
+         real (mass, c_double), real (charge, c_double), int (status, c_int))
   end subroutine lcio_particle_init
 
 @ %def lcio_particle_init
@@ -9375,27 +9262,27 @@ stores the signed invariant mass (no squaring).
   interface 
      real(c_double) function lcio_vtx_x (prt) bind(C)
        import
-       type(c_ptr), value :: prt       
+       type(c_ptr), value :: prt
      end function lcio_vtx_x
   end interface
-  interface 
+  interface
      real(c_double) function lcio_vtx_y (prt) bind(C)
        import
-       type(c_ptr), value :: prt       
+       type(c_ptr), value :: prt
      end function lcio_vtx_y
   end interface
-  interface 
+  interface
      real(c_double) function lcio_vtx_z (prt) bind(C)
        import
-       type(c_ptr), value :: prt       
+       type(c_ptr), value :: prt
      end function lcio_vtx_z
-  end interface  
-  interface 
+  end interface
+  interface
      real(c_double) function lcio_prt_time (prt) bind(C)
        import
-       type(c_ptr), value :: prt    
+       type(c_ptr), value :: prt
      end function lcio_prt_time
-  end interface    
+  end interface
 @  
 @
 <<LCIO interface: public>>=
@@ -10092,20 +9979,20 @@ end module lcio_interface_uti
     ! $p\to q$ splittings
     call particle_init (prt1, &
          0._default, 0._default, 7000._default, 7000._default, &
-         2212, 3)
+         2212, 1._default, 3)
     call particle_init (prt2, &
          0._default, 0._default,-7000._default, 7000._default, &
-         2212, 3)
+         2212, 1._default, 3)
     call particle_init (prt3, &
           .750_default, -1.569_default, 32.191_default, 32.238_default, &
-          1, 3)
+          1, -1._default/3._default, 3)
     call color_init_from_array (col, [501])
     call lcio_particle_set_color (prt3, col)
     call lcio_particle_set_parent (prt3, prt1)
     call lcio_particle_set_parent (prt3, prt2)
     call particle_init (prt4, &
          -3.047_default, -19._default, -54.629_default, 57.920_default, &
-         -2, 3)
+         -2, -2._default/3._default, 3)
     call color_init_from_array (col, [-501])
     call lcio_particle_set_color (prt4, col)
     call lcio_particle_set_parent (prt4, prt1)
@@ -10117,11 +10004,11 @@ end module lcio_interface_uti
     ! Hard interaction
     call particle_init (prt6, &
          -3.813_default, 0.113_default, -1.833_default, 4.233_default, &
-         22, 1)
+         22, 0._default, 1)
     call lcio_polarization_init (prt6, pol)
     call particle_init (prt5, &
          1.517_default, -20.68_default, -20.605_default, 85.925_default, &
-         -24, 3)
+         -24, -1._default, 3)
     call lcio_particle_set_parent (prt5, prt3)
     call lcio_particle_set_parent (prt5, prt4)
     call lcio_particle_set_parent (prt6, prt3)
@@ -10130,10 +10017,10 @@ end module lcio_interface_uti
     ! $W^-$ decay    
     call particle_init (prt7, &
          -2.445_default, 28.816_default, 6.082_default, 29.552_default, &
-         1, 1)
+         1, -1._default/3._default, 1)
     call particle_init (prt8, &
          3.962_default, -49.498_default, -26.687_default, 56.373_default, &
-         -2, 1)
+         -2, -2._default/3._default, 1)
     call lcio_particle_set_t (prt7, 0.12_default)
     call lcio_particle_set_t (prt8, 0.12_default)    
     call lcio_particle_set_vtx &
@@ -10191,13 +10078,13 @@ end module lcio_interface_uti
   contains
 
     subroutine particle_init &
-         (prt, px, py, pz, E, pdg, status)
+         (prt, px, py, pz, E, pdg, charge, status)
       type(lcio_particle_t), intent(out) :: prt
-      real(default), intent(in) :: px, py, pz, E
+      real(default), intent(in) :: px, py, pz, E, charge
       integer, intent(in) :: pdg, status
       type(vector4_t) :: p
       p = vector4_moving (E, vector3_moving ([px, py, pz]))
-      call lcio_particle_init (prt, p, pdg, status)
+      call lcio_particle_init (prt, p, pdg, charge, status)
     end subroutine particle_init
 
   end subroutine lcio_interface_1
@@ -10663,11 +10550,10 @@ only allow to read in unweighted events.
   public :: hepmc_to_event
 <<HEP events: procedures>>=
   subroutine hepmc_to_event &
-       (event, hepmc_event, default_model, fallback_model, process_index, &
+       (event, hepmc_event, fallback_model, process_index, &
        recover_beams, use_alpha_s, use_scale)
     class(generic_event_t), intent(inout), target :: event
     type(hepmc_event_t), intent(inout) :: hepmc_event
-    class(model_data_t), intent(in), target :: default_model
     class(model_data_t), intent(in), target :: fallback_model
     integer, intent(out), optional :: process_index
     logical, intent(in), optional :: recover_beams
@@ -10677,7 +10563,6 @@ only allow to read in unweighted events.
     real(default) :: scale, alpha_qcd
     type(particle_set_t) :: particle_set
     model => event%get_model_ptr ()
-    if (.not. associated (model))  model => default_model
     call hepmc_event_to_particle_set (particle_set, &
          hepmc_event, model, fallback_model, PRT_DEFINITE_HELICITY)
     call event%set_hard_particle_set (particle_set)
@@ -10752,6 +10637,7 @@ tagged as outgoing, otherwise unphysical.
     call lcio_particle_init (lprt, &
          prt%get_momentum (), &
          prt%get_pdg (), &
+         prt%flv%get_charge (), &
          lcio_status)
     call lcio_particle_set_color (lprt, prt%get_color ())
     vtx = prt%get_vertex ()
@@ -10870,7 +10756,7 @@ information is not available.
        allocate (parents (n_parents))
        if (n_children > 0) then
           do j = 1, n_children
-             daughters(j) = lcio_get_n_children (evt,i,j)          
+             daughters(j) = lcio_get_n_children (evt,i,j)
           end do
        end if
        if (n_parents > 0) then
@@ -11030,12 +10916,10 @@ particles.  The process is $d\bar d \to Z \to q\bar q$.
     type(evaluator_t), target :: eval
     type(interaction_t), pointer :: int
     type(particle_set_t) :: particle_set1, particle_set2
-    type(subevt_t) :: subevt
     type(hepmc_event_t) :: hepmc_event
     type(hepmc_iostream_t) :: iostream
     real(default) :: cross_section, error, weight
     logical :: ok
-    integer :: unit, iostat
 
     write (u, "(A)")  "* Test output: HEP events"
     write (u, "(A)")  "*   Purpose: test HepMC event routines"
@@ -11763,8 +11647,8 @@ squared matrix element, then the particle set.
        write (u, '(A)') "<event>"
        call hepeup_write_lhef (eio%unit)
        select case (eio%version)
-       case ("2.0");  call eio%write_event_20 (event)
-       case ("3.0");  call eio%write_event_30 (event)
+         case ("2.0");  call eio%write_event_20 (event)
+         case ("3.0");  call eio%write_event_30 (event)
        end select
        write (u, '(A)') "</event>"
     else
@@ -12197,7 +12081,6 @@ data.  We have the following tags:
   subroutine eio_lhef_write_init_30 (eio, data)
     class(eio_lhef_t), intent(in) :: eio
     type(event_sample_data_t), intent(in) :: data
-    real(default), parameter :: pb_per_fb = 1.e-3_default
     integer :: u, i
     u = given_output_unit (eio%unit)
     call eio%tag_generator%write (u)
@@ -12552,7 +12435,6 @@ implement some of them.
 <<EIO LHEF: tests>>=
   subroutine eio_lhef_2 (u)
     integer, intent(in) :: u
-    type(model_data_t), target :: model
     class(generic_event_t), pointer :: event
     type(event_sample_data_t) :: data
     class(eio_t), allocatable :: eio
@@ -14249,7 +14131,6 @@ HepMC and this is written for every event, we make it optional with
      type(hepmc_iostream_t) :: iostream
      type(hepmc_event_t) :: hepmc_event
      integer, dimension(:), allocatable :: proc_num_id
-     class(model_data_t), pointer :: default_model => null ()
    contains
    <<EIO HepMC: eio hepmc: TBP>>
   end type eio_hepmc_t
@@ -14261,20 +14142,16 @@ Set parameters that are specifically used with HepMC.
 <<EIO HepMC: eio hepmc: TBP>>=
   procedure :: set_parameters => eio_hepmc_set_parameters
 <<EIO HepMC: procedures>>=
-  ! subroutine eio_hepmc_set_parameters (eio, keep_beams, recover_beams, extension)
   subroutine eio_hepmc_set_parameters &
-       (eio, default_model, &
+       (eio, &
        recover_beams, use_alpha_s_from_file, use_scale_from_file, &
        extension, output_cross_section)
     class(eio_hepmc_t), intent(inout) :: eio
-    class(model_data_t), intent(in), optional, target :: default_model
-    logical, intent(in), optional :: recover_beams 
+    logical, intent(in), optional :: recover_beams
     logical, intent(in), optional :: use_alpha_s_from_file
     logical, intent(in), optional :: use_scale_from_file
     logical, intent(in), optional :: output_cross_section
-    type(string_t), intent(in), optional :: extension    
-    if (present (default_model)) &
-         eio%default_model => default_model
+    type(string_t), intent(in), optional :: extension
     if (present (recover_beams)) &
          eio%recover_beams = recover_beams
     if (present (use_alpha_s_from_file)) &
@@ -14538,7 +14415,7 @@ event files.
     call event%reset ()
     call event%select (1, 1, 1)
     call hepmc_to_event (event, eio%hepmc_event, &
-         eio%default_model, eio%fallback_model, &
+         eio%fallback_model, &
          recover_beams = eio%recover_beams, &
          use_alpha_s = eio%use_alpha_s_from_file, &
          use_scale = eio%use_scale_from_file) 
@@ -14801,11 +14678,10 @@ We test the implementation of all I/O methods.
     allocate (eio_hepmc_t :: eio)
     select type (eio)
     type is (eio_hepmc_t)
-       call eio%set_parameters (default_model = &
-            fallback_model, recover_beams = .false.)
-    end select            
+       call eio%set_parameters (recover_beams = .false.)
+    end select
     call eio%set_fallback_model (fallback_model)
-    
+
     call data%init (1)
     data%n_beam = 2
     data%unweighted = .true.
@@ -14815,13 +14691,13 @@ We test the implementation of all I/O methods.
     data%proc_num_id = [42]
     call data%write (u)
 
-    write (u, "(A)")    
+    write (u, "(A)")
     write (u, "(A)")  "* Initialize"
     write (u, "(A)")
-             
+
     call eio%init_in (sample, data)
-    call eio%write (u)    
-    
+    call eio%write (u)
+
     write (u, "(A)")
     write (u, "(A)")  "* Read event"
     write (u, "(A)")
@@ -15406,12 +15282,12 @@ We test the implementation of all I/O methods.
     write (u, "(A)")  "* Test output: eio_lcio_2"
     write (u, "(A)")  "*   Purpose: read a LCIO event"
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Initialize test process" 
-    
+
     call eio_prepare_fallback_model (fallback_model)
     call eio_prepare_test (event)
-    
+
     call data%init (1)
     data%n_beam = 2
     data%unweighted = .true.
@@ -15426,16 +15302,16 @@ We test the implementation of all I/O methods.
     write (u, "(A)")
     write (u, "(A)")  "* Generate and write an event"
     write (u, "(A)")
- 
+
     sample = "eio_lcio_2"
- 
+
     allocate (eio_lcio_t :: eio)
     select type (eio)
     type is (eio_lcio_t)
        call eio%set_parameters (recover_beams = .false.)
-    end select            
+    end select
     call eio%set_fallback_model (fallback_model)
-    
+
     call eio%init_out (sample, data)
     call event%generate (1, [0._default, 0._default])
     call event%evaluate_expressions ()
@@ -15445,18 +15321,18 @@ We test the implementation of all I/O methods.
     call eio%write (u)
     call eio%final ()
     deallocate (eio)
-    
-    write (u, "(A)")    
+
+    write (u, "(A)")
     write (u, "(A)")  "* Initialize"
     write (u, "(A)")
-             
+
     allocate (eio_lcio_t :: eio)
     select type (eio)
     type is (eio_lcio_t)
        call eio%set_parameters (recover_beams = .false.)
     end select
     call eio%set_fallback_model (fallback_model)
-    
+
     call data%init (1)
     data%n_beam = 2
     data%unweighted = .true.

@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -209,10 +209,10 @@ module lcio_interface
   end interface
   interface
      type(c_ptr) function new_lcio_particle &
-          (px, py, pz, pdg_id, mass, status) bind(C)
+          (px, py, pz, pdg_id, mass, charge, status) bind(C)
        import
        integer(c_int), value :: pdg_id, status
-       real(c_double), value :: px, py, pz, mass
+       real(c_double), value :: px, py, pz, mass, charge
      end function new_lcio_particle
   end interface
   interface
@@ -263,27 +263,27 @@ module lcio_interface
   interface 
      real(c_double) function lcio_vtx_x (prt) bind(C)
        import
-       type(c_ptr), value :: prt       
+       type(c_ptr), value :: prt
      end function lcio_vtx_x
   end interface
-  interface 
+  interface
      real(c_double) function lcio_vtx_y (prt) bind(C)
        import
-       type(c_ptr), value :: prt       
+       type(c_ptr), value :: prt
      end function lcio_vtx_y
   end interface
-  interface 
+  interface
      real(c_double) function lcio_vtx_z (prt) bind(C)
        import
-       type(c_ptr), value :: prt       
+       type(c_ptr), value :: prt
      end function lcio_vtx_z
-  end interface  
-  interface 
+  end interface
+  interface
      real(c_double) function lcio_prt_time (prt) bind(C)
        import
-       type(c_ptr), value :: prt    
+       type(c_ptr), value :: prt
      end function lcio_prt_time
-  end interface    
+  end interface
   interface
      subroutine lcio_particle_set_spin (prt_obj, s1, s2, s3) bind(C)
        import
@@ -464,7 +464,7 @@ contains
     rid = 0; if (present (run_id))  rid = run_id
     runhdr%obj = new_lcio_run_header (rid)
     call run_header_set_simstring (runhdr%obj, &
-         "WHIZARD version:" // "2.3.1")
+         "WHIZARD version:" // "2.4.0")
   end subroutine lcio_run_header_init
 
   subroutine lcio_run_header_write (wrt, hdr)
@@ -529,9 +529,10 @@ contains
     call add_particle_to_collection (lprt%obj, evt%lccoll%obj)
   end subroutine lcio_particle_add_to_evt_coll
 
-  subroutine lcio_particle_init (prt, p, pdg, status)
+  subroutine lcio_particle_init (prt, p, pdg, charge, status)
     type(lcio_particle_t), intent(out) :: prt
     type(vector4_t), intent(in) :: p
+    real(default), intent(in) :: charge
     real(default) :: mass
     real(default) :: px, py, pz
     integer, intent(in) :: pdg, status
@@ -541,7 +542,7 @@ contains
     mass = p**1
     prt%obj = new_lcio_particle (real (px, c_double), real (py, c_double), &
          real (pz, c_double), int (pdg, c_int), &
-         real (mass, c_double), int (status, c_int))
+         real (mass, c_double), real (charge, c_double), int (status, c_int))
   end subroutine lcio_particle_init
 
   subroutine lcio_particle_set_color_col (prt, col)

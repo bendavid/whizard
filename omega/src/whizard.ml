@@ -1,4 +1,4 @@
-(* $Id: whizard.ml 7444 2016-02-17 15:37:20Z jr_reuter $
+(* whizard.ml --
 
    Copyright (C) 1999-2016 by
 
@@ -21,13 +21,6 @@
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
-
-let rcs = RCS.parse "Whizard" ["Whizard Interface"]
-    { RCS.revision = "$Revision: 7444 $";
-      RCS.date = "$Date: 2016-02-17 16:37:20 +0100 (Wed, 17 Feb 2016) $";
-      RCS.author = "$Author: jr_reuter $";
-      RCS.source
-        = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/omega/src/whizard.ml $" }
 
 open Printf
 
@@ -260,9 +253,6 @@ i*)
           fprintf ch "\n    grove\n";
           fprintf ch "    %s\n" (whizard_tree d);
           analyze_tree ch d) ds) t.trees;
-      fprintf ch "\n! O'Mega revision control information:\n";
-      List.iter (fun s -> fprintf ch "!    %s\n" s)
-        (ThoList.flatmap RCS.summary (rcs :: M.rcs :: F.rcs_list));
       fprintf ch "\n"
 i*)
 

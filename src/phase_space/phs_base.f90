@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -39,6 +39,7 @@ module phs_base
   use iso_varying_string, string_t => varying_string
   use io_units
   use constants, only: TWOPI, TWOPI4
+  use string_utils, only: split_string
   use format_defs, only: FMT_19
   use numeric_utils
   use diagnostics
@@ -77,14 +78,14 @@ module phs_base
      procedure :: to_string => resonance_to_string
      procedure :: is_equal => resonance_is_equal
   end type resonance_t
-  
+
   type, extends (channel_prop_t) :: on_shell_t
      real(default) :: mass = 0
    contains
      procedure :: to_string => on_shell_to_string
      procedure :: is_equal => on_shell_is_equal
   end type on_shell_t
-  
+
   type :: phs_equivalence_t
      integer :: c = 0
      integer, dimension(:), allocatable :: perm
@@ -93,7 +94,7 @@ module phs_base
      procedure :: write => phs_equivalence_write
      procedure :: init => phs_equivalence_init
   end type phs_equivalence_t
-  
+
   integer, parameter, public :: &
        EQ_IDENTITY = 0, EQ_INVERT = 1, EQ_SYMMETRIC = 2, EQ_INVARIANT = 3
 
@@ -108,13 +109,13 @@ module phs_base
      procedure :: set_resonant => channel_set_resonant
      procedure :: set_on_shell => channel_set_on_shell
   end type phs_channel_t
-  
+
   type :: prop_entry_t
      integer :: i = 0
      class(channel_prop_t), allocatable :: prop
      type(prop_entry_t), pointer :: next => null ()
   end type prop_entry_t
-  
+
   type :: phs_channel_collection_t
      integer :: n = 0
      type(prop_entry_t), pointer :: first => null ()
@@ -156,6 +157,7 @@ module phs_base
      procedure (phs_config_write), deferred :: write
      procedure :: base_write => phs_config_write
      procedure :: init => phs_config_init
+     procedure :: set_component_index => phs_config_set_component_index
      procedure (phs_config_configure), deferred :: configure
      procedure :: set_sf_channel => phs_config_set_sf_channel
      procedure :: collect_channels => phs_config_collect_channels
@@ -171,7 +173,7 @@ module phs_base
      procedure :: get_masses_in => phs_config_get_masses_in
      procedure :: get_md5sum => phs_config_get_md5sum
   end type phs_config_t
-  
+
   type, abstract :: phs_t
      class(phs_config_t), pointer :: config => null ()
      logical :: r_defined = .false.
@@ -200,6 +202,7 @@ module phs_base
      procedure :: set_outgoing_momenta => phs_set_outgoing_momenta
      procedure :: get_outgoing_momenta => phs_get_outgoing_momenta
      procedure :: is_cm_frame => phs_is_cm_frame
+     procedure :: set_lorentz_transformation => phs_set_lorentz_transformation
      procedure :: get_lorentz_transformation => phs_get_lorentz_transformation
      procedure :: get_mcpar => phs_get_mcpar
      procedure :: get_f => phs_get_f
@@ -210,8 +213,9 @@ module phs_base
      procedure (phs_evaluate_other_channels), deferred :: &
           evaluate_other_channels
      procedure (phs_inverse), deferred :: inverse
+     procedure :: get_sqrts => phs_get_sqrts
   end type phs_t
-     
+
 
   abstract interface
      function channel_prop_to_string (object) result (string)
@@ -267,14 +271,14 @@ module phs_base
        logical, intent(in), optional :: verbose
      end subroutine phs_write
   end interface
-  
+
   abstract interface
      subroutine phs_final (object)
        import
        class(phs_t), intent(inout) :: object
      end subroutine phs_final
   end interface
-  
+
   abstract interface
      subroutine phs_init (phs, phs_config)
        import
@@ -282,7 +286,7 @@ module phs_base
        class(phs_config_t), intent(in), target :: phs_config
      end subroutine phs_init
   end interface
-  
+
   abstract interface
      subroutine phs_evaluate_selected_channel (phs, c_in, r_in)
        import
@@ -291,7 +295,7 @@ module phs_base
        real(default), dimension(:), intent(in) :: r_in
      end subroutine phs_evaluate_selected_channel
   end interface
-  
+
   abstract interface
      subroutine phs_evaluate_other_channels (phs, c_in)
        import
@@ -299,18 +303,18 @@ module phs_base
        integer, intent(in) :: c_in
      end subroutine phs_evaluate_other_channels
   end interface
-  
+
   abstract interface
      subroutine phs_inverse (phs)
        import
        class(phs_t), intent(inout) :: phs
      end subroutine phs_inverse
   end interface
-  
+
   interface pacify
      module procedure pacify_phs
   end interface pacify
-  
+
 
 contains
 
@@ -336,7 +340,7 @@ contains
        flag = .false.
     end select
   end function resonance_is_equal
-  
+
   function on_shell_to_string (object) result (string)
     class(on_shell_t), intent(in) :: object
     type(string_t) :: string
@@ -357,7 +361,7 @@ contains
        flag = .false.
     end select
   end function on_shell_is_equal
-  
+
   subroutine phs_equivalence_write (object, unit)
     class(phs_equivalence_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -376,14 +380,14 @@ contains
        write (u, "(A)")
     end if
   end subroutine phs_equivalence_write
-  
+
   subroutine phs_equivalence_init (eq, n_dim)
     class(phs_equivalence_t), intent(out) :: eq
     integer, intent(in) :: n_dim
     allocate (eq%perm (n_dim), source = 0)
     allocate (eq%mode (n_dim), source = EQ_IDENTITY)
   end subroutine phs_equivalence_init
-  
+
   subroutine phs_channel_write (object, unit)
     class(phs_channel_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -401,7 +405,7 @@ contains
        end do
     end if
   end subroutine phs_channel_write
-    
+
   subroutine channel_set_resonant (channel, mass, width)
     class(phs_channel_t), intent(inout) :: channel
     real(default), intent(in) :: mass, width
@@ -412,7 +416,7 @@ contains
        prop%width = width
     end select
   end subroutine channel_set_resonant
-  
+
   subroutine channel_set_on_shell (channel, mass)
     class(phs_channel_t), intent(inout) :: channel
     real(default), intent(in) :: mass
@@ -422,7 +426,7 @@ contains
        prop%mass = mass
     end select
   end subroutine channel_set_on_shell
-  
+
   subroutine phs_channel_collection_final (object)
     class(phs_channel_collection_t), intent(inout) :: object
     type(prop_entry_t), pointer :: entry
@@ -451,7 +455,7 @@ contains
        entry => entry%next
     end do
   end subroutine phs_channel_collection_write
-  
+
   subroutine phs_channel_collection_push (coll, channel)
     class(phs_channel_collection_t), intent(inout) :: coll
     type(phs_channel_t), intent(inout) :: channel
@@ -489,13 +493,13 @@ contains
        allocate (new%prop, source = channel%prop)
     end if
   end subroutine phs_channel_collection_push
-    
+
   function phs_channel_collection_get_n (coll) result (n)
     class(phs_channel_collection_t), intent(in) :: coll
     integer :: n
     n = coll%n
   end function phs_channel_collection_get_n
-  
+
   subroutine phs_channel_collection_get_entry (coll, i, prop)
     class(phs_channel_collection_t), intent(in) :: coll
     integer, intent(in) :: i
@@ -515,15 +519,18 @@ contains
        call msg_bug ("PHS channel collection: get entry: illegal index")
     end if
   end subroutine phs_channel_collection_get_entry
-    
-  subroutine phs_config_write (object, unit)
+
+  subroutine phs_config_write (object, unit, include_id)
     class(phs_config_t), intent(in) :: object
     integer, intent(in), optional :: unit
+    logical, intent(in), optional :: include_id
     integer :: u, i, j
     integer :: n_tot_flv
+    logical :: use_id
     n_tot_flv = object%n_tot
     u = given_output_unit (unit)
-    write (u, "(3x,A,A,A)") "ID        = '", char (object%id), "'"
+    use_id = .true.; if (present (include_id)) use_id = include_id
+    if (use_id) write (u, "(3x,A,A,A)") "ID        = '", char (object%id), "'"
     write (u, "(3x,A,I0)")  "n_in      = ", object%n_in
     write (u, "(3x,A,I0)")  "n_out     = ", object%n_out
     write (u, "(3x,A,I0)")  "n_tot     = ", object%n_tot
@@ -582,7 +589,7 @@ contains
     else
        call msg_bug ("phs_config_init: model name mismatch")
     end if
-    allocate (phs_config%flv (phs_config%n_tot, phs_config%n_state))    
+    allocate (phs_config%flv (phs_config%n_tot, phs_config%n_state))
     do i = 1, phs_config%n_state
        do j = 1, phs_config%n_tot
           call phs_config%flv(j,i)%init (data%flv_state(j,i), &
@@ -591,13 +598,29 @@ contains
     end do
     phs_config%md5sum_process = data%md5sum
   end subroutine phs_config_init
-    
+
+  subroutine phs_config_set_component_index (phs_config, index)
+    class(phs_config_t), intent(inout) :: phs_config
+    integer, intent(in) :: index
+    type(string_t), dimension(:), allocatable :: id
+    type(string_t) :: suffix
+    integer :: i, n
+    suffix = var_str ('i') // int2string (index)
+    call split_string (phs_config%id, var_str ('_'), id)
+    phs_config%id = var_str ('')
+    n = size (id) - 1
+    do i = 1, n
+       phs_config%id = phs_config%id // id(i) // var_str ('_')
+    end do
+    phs_config%id = phs_config%id // suffix
+  end subroutine phs_config_set_component_index
+
   subroutine phs_config_set_sf_channel (phs_config, sf_channel)
     class(phs_config_t), intent(inout) :: phs_config
     integer, dimension(:), intent(in) :: sf_channel
     phs_config%channel%sf_channel = sf_channel
   end subroutine phs_config_set_sf_channel
-  
+
   subroutine phs_config_collect_channels (phs_config, coll)
     class(phs_config_t), intent(inout) :: phs_config
     type(phs_channel_collection_t), intent(inout) :: coll
@@ -606,20 +629,21 @@ contains
        call coll%push (phs_config%channel(c))
     end do
   end subroutine phs_config_collect_channels
-    
-  subroutine phs_config_compute_md5sum (phs_config)
+
+  subroutine phs_config_compute_md5sum (phs_config, include_id)
     class(phs_config_t), intent(inout) :: phs_config
+    logical, intent(in), optional :: include_id
     integer :: u
     phs_config%md5sum_model_par = phs_config%model%get_parameters_md5sum ()
     phs_config%md5sum_phs_config = ""
     u = free_unit ()
     open (u, status = "scratch", action = "readwrite")
-    call phs_config%write (u)
+    call phs_config%write (u, include_id)
     rewind (u)
     phs_config%md5sum_phs_config = md5sum (u)
     close (u)
   end subroutine phs_config_compute_md5sum
-    
+
   subroutine phs_startup_message (phs_config, unit)
     class(phs_config_t), intent(in) :: phs_config
     integer, intent(in), optional :: unit
@@ -635,7 +659,7 @@ contains
     integer :: n
     n = phs_config%n_par
   end function phs_config_get_n_par
-  
+
   function phs_config_get_flat_dimensions (phs_config) result (dim_flat)
     class(phs_config_t), intent(in) :: phs_config
     integer, dimension(:), allocatable :: dim_flat
@@ -646,13 +670,13 @@ contains
        allocate (dim_flat (0))
     end if
   end function phs_config_get_flat_dimensions
-  
+
   function phs_config_get_n_channel (phs_config) result (n)
     class(phs_config_t), intent(in) :: phs_config
     integer :: n
     n = phs_config%n_channel
   end function phs_config_get_n_channel
-  
+
   function phs_config_get_sf_channel (phs_config, c) result (c_sf)
     class(phs_config_t), intent(in) :: phs_config
     integer, intent(in) :: c
@@ -663,7 +687,7 @@ contains
        c_sf = 0
     end if
   end function phs_config_get_sf_channel
-  
+
   subroutine phs_config_get_masses_in (phs_config, m)
     class(phs_config_t), intent(in) :: phs_config
     real(default), dimension(:), intent(out) :: m
@@ -672,13 +696,13 @@ contains
        m(i) = phs_config%flv(i,1)%get_mass ()
     end do
   end subroutine phs_config_get_masses_in
-  
+
   function phs_config_get_md5sum (phs_config) result (md5sum)
     class(phs_config_t), intent(in) :: phs_config
     character(32) :: md5sum
     md5sum = phs_config%md5sum_phs_config
   end function phs_config_get_md5sum
-  
+
   subroutine phs_base_write (object, unit)
     class(phs_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -741,18 +765,18 @@ contains
        call lorentz_transformation_write (object%lt_cm_to_lab, u)
     end if
   end subroutine phs_base_write
-          
+
   subroutine phs_base_init (phs, phs_config)
     class(phs_t), intent(out) :: phs
     class(phs_config_t), intent(in), target :: phs_config
     real(default), dimension(phs_config%n_in) :: m_in
-    real(default), dimension(phs_config%n_out) :: m_out    
+    real(default), dimension(phs_config%n_out) :: m_out
     phs%config => phs_config
     allocate (phs%active_channel (phs%config%n_channel))
-    phs%active_channel = .true.    
+    phs%active_channel = .true.
     allocate (phs%r (phs%config%n_par, phs%config%n_channel));  phs%r = 0
     allocate (phs%f (phs%config%n_channel));                    phs%f = 0
-    allocate (phs%p (phs%config%n_in))    
+    allocate (phs%p (phs%config%n_in))
     !!! !!! !!! Workaround for gfortran 5.0 ICE
     m_in  = phs_config%flv(:phs_config%n_in, 1)%get_mass ()
     m_out = phs_config%flv(phs_config%n_in+1:, 1)%get_mass ()
@@ -762,10 +786,10 @@ contains
     allocate (phs%q (phs%config%n_out))
     allocate (phs%m_out (phs%config%n_out), source = m_out)
     !!! allocate (phs%m_out (phs%config%n_out), &
-    !!!      source = phs_config%flv(phs_config%n_in+1:, 1)%get_mass ())    
+    !!!      source = phs_config%flv(phs_config%n_in+1:, 1)%get_mass ())
     call phs%compute_flux ()
   end subroutine phs_base_init
- 
+
   subroutine phs_base_select_channel (phs, channel)
     class(phs_t), intent(inout) :: phs
     integer, intent(in), optional :: channel
@@ -775,7 +799,7 @@ contains
        phs%selected_channel = 0
     end if
   end subroutine phs_base_select_channel
-  
+
   subroutine phs_set_incoming_momenta (phs, p)
     class(phs_t), intent(inout) :: phs
     type(vector4_t), dimension(:), intent(in) :: p
@@ -787,6 +811,7 @@ contains
     if (phs%config%cm_frame) then
        phs%sqrts_hat = phs%config%sqrts
        phs%p = p
+       phs%lt_cm_to_lab = identity
     else
        p0 = sum (p)
        if (phs%config%sqrts_fixed) then
@@ -810,11 +835,11 @@ contains
        do i = 1, size (p)
           phs%p(i) = lt_inv * p(i)
        end do
-       !!! phs%p = inverse (phs%lt_cm_to_lab) * p       
+       !!! phs%p = inverse (phs%lt_cm_to_lab) * p
     end if
     phs%p_defined = .true.
   end subroutine phs_set_incoming_momenta
-  
+
   subroutine phs_set_outgoing_momenta (phs, q)
     class(phs_t), intent(inout) :: phs
     type(vector4_t), dimension(:), intent(in) :: q
@@ -834,7 +859,7 @@ contains
        phs%q_defined = .true.
     end if
   end subroutine phs_set_outgoing_momenta
-  
+
   subroutine phs_get_outgoing_momenta (phs, q)
     class(phs_t), intent(in) :: phs
     type(vector4_t), dimension(:), intent(out) :: q
@@ -848,12 +873,18 @@ contains
        q = vector4_null
     end if
   end subroutine phs_get_outgoing_momenta
-  
+
   function phs_is_cm_frame (phs) result (cm_frame)
     logical :: cm_frame
     class(phs_t), intent(in) :: phs
     cm_frame = phs%config%cm_frame
   end function phs_is_cm_frame
+
+  subroutine phs_set_lorentz_transformation (phs, lt)
+    class(phs_t), intent(inout) :: phs
+    type(lorentz_transformation_t), intent(in) :: lt
+    phs%lt_cm_to_lab = lt
+  end subroutine phs_set_lorentz_transformation
 
   function phs_get_lorentz_transformation (phs) result (lt)
     type(lorentz_transformation_t) :: lt
@@ -871,7 +902,7 @@ contains
        r = 0
     end if
   end subroutine phs_get_mcpar
-  
+
   function phs_get_f (phs, c) result (f)
     class(phs_t), intent(in) :: phs
     integer, intent(in) :: c
@@ -882,13 +913,13 @@ contains
        f = 0
     end if
   end function phs_get_f
-    
+
   function phs_get_overall_factor (phs) result (f)
     class(phs_t), intent(in) :: phs
     real(default) :: f
     f = phs%flux * phs%volume
   end function phs_get_overall_factor
-  
+
   subroutine phs_compute_flux (phs)
     class(phs_t), intent(inout) :: phs
     real(default) :: s_hat, lda
@@ -928,6 +959,12 @@ contains
     end select
   end subroutine phs_compute_flux
 
+  function phs_get_sqrts (phs) result (sqrts)
+    real(default) :: sqrts
+    class(phs_t), intent(in) :: phs
+    sqrts = phs%config%sqrts
+  end function phs_get_sqrts
+
   subroutine compute_kinematics_solid_angle (p, q, x)
     type(vector4_t), dimension(2), intent(in) :: p
     type(vector4_t), dimension(2), intent(out) :: q
@@ -943,7 +980,7 @@ contains
        q(i) = rot * p(i)
     end do
   end subroutine compute_kinematics_solid_angle
-  
+
   subroutine inverse_kinematics_solid_angle (p, q, x)
     type(vector4_t), dimension(:), intent(in) :: p
     type(vector4_t), dimension(2), intent(in) :: q
@@ -965,6 +1002,6 @@ contains
        call pacify (phs%q, 30 * epsilon (1._default) * phs%config%sqrts)
     end if
   end subroutine pacify_phs
-    
+
 
 end module phs_base

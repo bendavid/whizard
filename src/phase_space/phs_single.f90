@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -49,20 +49,20 @@ module phs_single
   use sf_mappings
   use sf_base
   use phs_base
-  
+
   implicit none
   private
 
   public :: phs_single_config_t
   public :: phs_single_t
 
-  type, extends (phs_config_t) :: phs_single_config_t  
-   contains
-     procedure :: final => phs_single_config_final
-     procedure :: write => phs_single_config_write
-     procedure :: configure => phs_single_config_configure
-     procedure :: startup_message => phs_single_config_startup_message
-     procedure, nopass :: allocate_instance => phs_single_config_allocate_instance
+  type, extends (phs_config_t) :: phs_single_config_t
+  contains
+    procedure :: final => phs_single_config_final
+    procedure :: write => phs_single_config_write
+    procedure :: configure => phs_single_config_configure
+    procedure :: startup_message => phs_single_config_startup_message
+    procedure, nopass :: allocate_instance => phs_single_config_allocate_instance
   end type phs_single_config_t
 
   type, extends (phs_t) :: phs_single_t
@@ -76,7 +76,7 @@ module phs_single
      procedure :: decay_p => phs_single_decay_p
      procedure :: inverse => phs_single_inverse
   end type phs_single_t
-  
+
 
 contains
 
@@ -84,15 +84,16 @@ contains
     class(phs_single_config_t), intent(inout) :: object
   end subroutine phs_single_config_final
 
-  subroutine phs_single_config_write (object, unit)
+  subroutine phs_single_config_write (object, unit, include_id)
     class(phs_single_config_t), intent(in) :: object
     integer, intent(in), optional :: unit
+    logical, intent(in), optional :: include_id
     integer :: u
     u = given_output_unit (unit)
     write (u, "(1x,A)")  "Partonic phase-space configuration (single-particle):"
     call object%base_write (unit)
   end subroutine phs_single_config_write
-  
+
   subroutine phs_single_config_configure (phs_config, sqrts, &
        sqrts_fixed, cm_frame, azimuthal_dependence, rebuild, ignore_mismatch, &
        nlo_type)
@@ -126,7 +127,7 @@ contains
        call msg_fatal ("Single-particle phase space requires n_out = 2")
     end if
   end subroutine phs_single_config_configure
-  
+
   subroutine phs_single_config_startup_message (phs_config, unit)
     class(phs_single_config_t), intent(in) :: phs_config
     integer, intent(in), optional :: unit
@@ -135,12 +136,12 @@ contains
          "Phase space: single-particle"
     call msg_message (unit = unit)
   end subroutine phs_single_config_startup_message
-    
+
   subroutine phs_single_config_allocate_instance (phs)
     class(phs_t), intent(inout), pointer :: phs
     allocate (phs_single_t :: phs)
   end subroutine phs_single_config_allocate_instance
-  
+
   subroutine phs_single_write (object, unit, verbose)
     class(phs_single_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -149,11 +150,11 @@ contains
     u = given_output_unit (unit)
     call object%base_write (u)
   end subroutine phs_single_write
-    
+
   subroutine phs_single_final (object)
     class(phs_single_t), intent(inout) :: object
   end subroutine phs_single_final
-  
+
   subroutine phs_single_init (phs, phs_config)
     class(phs_single_t), intent(out) :: phs
     class(phs_config_t), intent(in), target :: phs_config
@@ -161,7 +162,7 @@ contains
     phs%volume = 1 / (4 * twopi5)
     call phs%compute_factor ()
   end subroutine phs_single_init
-  
+
   subroutine phs_single_compute_factor (phs)
     class(phs_single_t), intent(inout) :: phs
     real(default) :: s_hat
@@ -196,7 +197,7 @@ contains
        end if
     end select
   end subroutine phs_single_compute_factor
-    
+
   subroutine phs_single_evaluate_selected_channel (phs, c_in, r_in)
     class(phs_single_t), intent(inout) :: phs
     integer, intent(in) :: c_in
@@ -209,7 +210,7 @@ contains
        select case (phs%config%n_in)
        case (2)
           if (all (phs%m_in == phs%m_out)) then
-             call compute_kinematics_solid_angle (phs%p, phs%q, r_in) 
+             call compute_kinematics_solid_angle (phs%p, phs%q, r_in)
           else
              call msg_bug ("PHS single: inelastic scattering not implemented")
           end if
@@ -224,12 +225,12 @@ contains
        phs%r_defined = .true.
     end if
   end subroutine phs_single_evaluate_selected_channel
-  
+
   subroutine phs_single_evaluate_other_channels (phs, c_in)
     class(phs_single_t), intent(inout) :: phs
     integer, intent(in) :: c_in
   end subroutine phs_single_evaluate_other_channels
-  
+
   function phs_single_decay_p (phs) result (p)
     class(phs_single_t), intent(in) :: phs
     type(vector4_t), dimension(2) :: p
@@ -241,7 +242,7 @@ contains
     p(1) = vector4_moving (E(1), k, 3)
     p(2) = vector4_moving (E(2),-k, 3)
   end function phs_single_decay_p
-  
+
   subroutine phs_single_inverse (phs)
     class(phs_single_t), intent(inout) :: phs
     real(default), dimension(:), allocatable :: x
@@ -254,6 +255,6 @@ contains
        phs%r_defined = .true.
     end if
   end subroutine phs_single_inverse
-  
+
 
 end module phs_single

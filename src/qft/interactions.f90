@@ -1,4 +1,4 @@
-! WHIZARD 2.3.1 Aug 25 2016
+! WHIZARD 2.4.0 Nov 28 2016
 ! 
 ! Copyright (C) 1999-2016 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -9,7 +9,7 @@
 !     Fabian Bach <fabian.bach@t-online.de>
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     Soyoung Shim <soyoung.shim@desy.de>
+!     So Young Shim <soyoung.shim@desy.de>
 !     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
@@ -59,7 +59,6 @@ module interactions
   public :: interaction_get_unstable_particle
   public :: interaction_get_flv_out
   public :: interaction_get_flv_content
-  public :: interaction_set_mask
   public :: interaction_set_flavored_values
   public :: interaction_get_n_children
   public :: interaction_get_n_parents
@@ -70,6 +69,7 @@ module interactions
   public :: interaction_exchange_mask
   public :: interaction_send_momenta
   public :: interaction_pacify_momenta
+  public :: interaction_declare_subtraction
   public :: find_connections
 
   type :: external_link_t
@@ -112,13 +112,27 @@ module interactions
      procedure :: basic_init => interaction_init
      procedure :: final => interaction_final
      procedure :: basic_write => interaction_write
+     procedure :: write_state_matrix => interaction_write_state_matrix
+     procedure :: reduce_state_matrix => interaction_reduce_state_matrix
      procedure :: add_state => interaction_add_state
      procedure :: freeze => interaction_freeze
      procedure :: is_empty => interaction_is_empty
      procedure :: get_n_matrix_elements => &
           interaction_get_n_matrix_elements
+     procedure :: get_me_size => interaction_get_me_size
      procedure :: get_norm => interaction_get_norm
-     procedure :: get_quantum_numbers => interaction_get_quantum_numbers
+     procedure :: get_n_sub => interaction_get_n_sub
+     generic :: get_quantum_numbers => get_quantum_numbers_single, &
+                                       get_quantum_numbers_all, &
+                                       get_quantum_numbers_all_qn_mask
+     procedure :: get_quantum_numbers_single => &
+        interaction_get_quantum_numbers_single
+     procedure :: get_quantum_numbers_all => &
+        interaction_get_quantum_numbers_all
+     procedure :: get_quantum_numbers_all_qn_mask => &
+        interaction_get_quantum_numbers_all_qn_mask
+     procedure :: get_quantum_numbers_all_sub => interaction_get_quantum_numbers_all_sub
+     procedure :: get_quantum_numbers_mask => interaction_get_quantum_numbers_mask
      generic :: get_matrix_element => get_matrix_element_single
      generic :: get_matrix_element => get_matrix_element_array
      procedure :: get_matrix_element_single => &
@@ -139,6 +153,7 @@ module interactions
      procedure :: normalize_by_trace => interaction_normalize_by_trace
      procedure :: normalize_by_max => interaction_normalize_by_max
      procedure :: set_norm => interaction_set_norm
+     procedure :: set_state_matrix => interaction_set_state_matrix
      procedure :: get_max_color_value => &
           interaction_get_max_color_value
      procedure :: factorize => interaction_factorize
@@ -166,6 +181,7 @@ module interactions
      generic :: get_mask => get_mask_all, get_mask_slice
      procedure :: get_mask_all => interaction_get_mask_all
      procedure :: get_mask_slice => interaction_get_mask_slice
+     procedure :: set_mask => interaction_set_mask
      procedure :: reset_momenta => interaction_reset_momenta
      procedure :: set_momenta => interaction_set_momenta
      procedure :: set_momentum => interaction_set_momentum
@@ -449,22 +465,42 @@ contains
           if (allocated (int%p) .and. show_momentum_sum) then
              write (u, "(1x,A)") "Incoming particles (sum):"
              call vector4_write &
-                  (sum (int%p(1:int%n_in)), u, show_mass = show_mass)
+                  (sum (int%p(1 : int%n_in)), u, show_mass = show_mass)
              write (u, "(1x,A)") "Outgoing particles (sum):"
              call vector4_write &
-                  (sum (int%p(int%n_in+int%n_vir+1:)), u, show_mass = show_mass)
+                  (sum (int%p(int%n_in + int%n_vir + 1 : )), &
+                   u, show_mass = show_mass)
              write (u, *)
           end if
        end if
        if (show_st) then
-          call int%state_matrix%write (write_value_list=verbose, &
-               verbose=verbose, unit=unit, col_verbose=col_verbose, &
-               testflag = testflag)
+          call int%write_state_matrix (write_value_list = verbose, &
+             verbose = verbose, unit = unit, col_verbose = col_verbose, &
+             testflag = testflag)
        end if
     else
        write (u, "(1x,A)") "Interaction: [empty]"
     end if
   end subroutine interaction_write
+
+  subroutine interaction_write_state_matrix (int, unit, write_value_list, &
+     verbose, col_verbose, testflag)
+    class(interaction_t), intent(in) :: int
+    logical, intent(in), optional :: write_value_list, verbose, col_verbose
+    logical, intent(in), optional :: testflag
+    integer, intent(in), optional :: unit
+    call int%state_matrix%write (write_value_list = verbose, &
+       verbose = verbose, unit = unit, col_verbose = col_verbose, &
+       testflag = testflag)
+  end subroutine interaction_write_state_matrix
+ 
+  subroutine interaction_reduce_state_matrix (int, qn_mask)
+    class(interaction_t), intent(inout) :: int
+    type(quantum_numbers_mask_t), intent(in), dimension(:) :: qn_mask
+    type(state_matrix_t) :: state
+    call int%state_matrix%reduce (qn_mask, state)
+    int%state_matrix = state
+  end subroutine interaction_reduce_state_matrix
 
   subroutine interaction_assign (int_out, int_in)
     type(interaction_t), intent(out) :: int_out
@@ -541,35 +577,108 @@ contains
     end if
   end subroutine interaction_freeze
 
-  function interaction_is_empty (int) result (flag)
-    class(interaction_t), intent(in) :: int
+  pure function interaction_is_empty (int) result (flag)
     logical :: flag
+    class(interaction_t), intent(in) :: int
     flag = int%state_matrix%is_empty ()
   end function interaction_is_empty
 
-  function interaction_get_n_matrix_elements (int) result (n)
-    class(interaction_t), intent(in) :: int
+  pure function interaction_get_n_matrix_elements (int) result (n)
     integer :: n
+    class(interaction_t), intent(in) :: int
     n = int%state_matrix%get_n_matrix_elements ()
   end function interaction_get_n_matrix_elements
 
-  function interaction_get_norm (int) result (norm)
+  pure function interaction_get_me_size (int) result (n)
+    integer :: n
+    class(interaction_t), intent(in) :: int
+    n = int%state_matrix%get_me_size ()
+  end function interaction_get_me_size
+
+  pure function interaction_get_norm (int) result (norm)
     real(default) :: norm
     class(interaction_t), intent(in) :: int
     norm = int%state_matrix%get_norm ()
   end function interaction_get_norm
 
-  function interaction_get_quantum_numbers (int, i) result (qn)
-    class(interaction_t), intent(in), target :: int
+  pure function interaction_get_n_sub (int) result (n_sub)
+    integer :: n_sub
+    class(interaction_t), intent(in) :: int
+    n_sub = int%state_matrix%get_n_sub ()
+  end function interaction_get_n_sub
+
+  function interaction_get_quantum_numbers_single (int, i) result (qn)
     type(quantum_numbers_t), dimension(:), allocatable :: qn
+    class(interaction_t), intent(in), target :: int
     integer, intent(in) :: i
     allocate (qn (int%state_matrix%get_depth ()))
-    qn = int%state_matrix%get_quantum_numbers (i)
-  end function interaction_get_quantum_numbers
+    qn = int%state_matrix%get_quantum_number (i)
+  end function interaction_get_quantum_numbers_single
 
-  function interaction_get_matrix_element_single (int, i) result (me)
+  function interaction_get_quantum_numbers_all (int) result (qn)
+    type(quantum_numbers_t), dimension(:,:), allocatable :: qn
+    class(interaction_t), intent(in), target :: int
+    integer :: i
+    allocate (qn (int%state_matrix%get_n_matrix_elements (), &
+       int%state_matrix%get_depth()))
+    do i = 1, int%state_matrix%get_n_matrix_elements ()
+       qn (i, :) = int%state_matrix%get_quantum_number (i)
+    end do
+  end function interaction_get_quantum_numbers_all
+
+  function interaction_get_quantum_numbers_all_qn_mask (int, qn_mask) &
+     result (qn)
+    type(quantum_numbers_t), dimension(:,:), allocatable :: qn
     class(interaction_t), intent(in) :: int
+    type(quantum_numbers_mask_t), intent(in) :: qn_mask
+    integer :: n_redundant, n_all, n_me
+    integer :: i
+    type(quantum_numbers_t), dimension(:,:), allocatable :: qn_all
+    call int%state_matrix%get_quantum_numbers (qn_all)
+    n_redundant = count (qn_all%are_redundant (qn_mask))
+    n_all = size (qn_all)
+    !!! Number of matrix elements = survivors / n_particles
+    n_me = (n_all - n_redundant) / int%state_matrix%get_depth ()
+    allocate (qn (n_me, int%state_matrix%get_depth()))
+    do i = 1, n_me
+       if (.not. any (qn_all(i, :)%are_redundant (qn_mask))) &
+          qn (i, :) = qn_all (i, :)
+    end do
+  end function interaction_get_quantum_numbers_all_qn_mask
+
+  subroutine interaction_get_quantum_numbers_all_sub (int, qn)
+    class(interaction_t), intent(in) :: int
+    type(quantum_numbers_t), dimension(:,:), allocatable, intent(out) :: qn
+    integer :: i
+    allocate (qn (int%state_matrix%get_n_matrix_elements (), &
+       int%state_matrix%get_depth()))
+    do i = 1, int%state_matrix%get_n_matrix_elements ()
+       qn (i, :) = int%state_matrix%get_quantum_number (i)
+    end do
+  end subroutine interaction_get_quantum_numbers_all_sub
+
+  subroutine interaction_get_quantum_numbers_mask (int, qn_mask, qn)
+    class(interaction_t), intent(in) :: int
+    type(quantum_numbers_mask_t), intent(in) :: qn_mask
+    type(quantum_numbers_t), dimension(:,:), allocatable, intent(out) :: qn
+    integer :: n_redundant, n_all, n_me
+    integer :: i
+    type(quantum_numbers_t), dimension(:,:), allocatable :: qn_all
+    call int%state_matrix%get_quantum_numbers (qn_all)
+    n_redundant = count (qn_all%are_redundant (qn_mask))
+    n_all = size (qn_all)
+    !!! Number of matrix elements = survivors / n_particles
+    n_me = (n_all - n_redundant) / int%state_matrix%get_depth ()
+    allocate (qn (n_me, int%state_matrix%get_depth()))
+    do i = 1, n_me
+       if (.not. any (qn_all(i, :)%are_redundant (qn_mask))) &
+          qn (i, :) = qn_all (i, :)
+    end do
+  end subroutine interaction_get_quantum_numbers_mask
+
+  elemental function interaction_get_matrix_element_single (int, i) result (me)
     complex(default) :: me
+    class(interaction_t), intent(in) :: int
     integer, intent(in) :: i
     me = int%state_matrix%get_matrix_element (i)
   end function interaction_get_matrix_element_single
@@ -577,6 +686,7 @@ contains
   function interaction_get_matrix_element_array (int) result (me)
     complex(default), dimension(:), allocatable :: me
     class(interaction_t), intent(in) :: int
+    allocate (me (int%get_n_matrix_elements ()))
     me = int%state_matrix%get_matrix_element ()
   end function interaction_get_matrix_element_array
 
@@ -633,6 +743,12 @@ contains
     real(default), intent(in) :: norm
     call int%state_matrix%set_norm (norm)
   end subroutine interaction_set_norm
+
+  subroutine interaction_set_state_matrix (int, state)
+    class(interaction_t), intent(inout) :: int
+    type(state_matrix_t), intent(in) :: state
+    int%state_matrix = state
+  end subroutine interaction_set_state_matrix
 
   function interaction_get_max_color_value (int) result (cmax)
     class(interaction_t), intent(in) :: int
@@ -718,25 +834,25 @@ contains
     tag = int%tag
   end function interaction_get_tag
 
-  function interaction_get_n_tot (object) result (n_tot)
+  pure function interaction_get_n_tot (object) result (n_tot)
     class(interaction_t), intent(in) :: object
     integer :: n_tot
     n_tot = object%n_tot
   end function interaction_get_n_tot
 
-  function interaction_get_n_in (object) result (n_in)
+  pure function interaction_get_n_in (object) result (n_in)
     class(interaction_t), intent(in) :: object
     integer :: n_in
     n_in = object%n_in
   end function interaction_get_n_in
 
-  function interaction_get_n_vir (object) result (n_vir)
+  pure function interaction_get_n_vir (object) result (n_vir)
     class(interaction_t), intent(in) :: object
     integer :: n_vir
     n_vir = object%n_vir
   end function interaction_get_n_vir
 
-  function interaction_get_n_out (object) result (n_out)
+  pure function interaction_get_n_out (object) result (n_out)
     class(interaction_t), intent(in) :: object
     integer :: n_out
     n_out = object%n_out
@@ -866,7 +982,7 @@ contains
     if (int%n_in /= 0) then
        s = sum (int%p(:int%n_in)) ** 2
     else
-       s = sum (int%p(int%n_vir+1:)) ** 2
+       s = sum (int%p(int%n_vir + 1 : )) ** 2
     end if
   end function interaction_get_s
 
@@ -923,7 +1039,7 @@ contains
     call it%init (int%get_state_matrix_ptr ())
     do while (it%is_valid ())
        flv_state = it%get_flavor ()
-       flv(:,i) = flv_state(n_in+n_vir+1:)
+       flv(:,i) = flv_state(n_in + n_vir + 1 : )
        i = i + 1
        call it%advance ()
     end do
@@ -937,13 +1053,15 @@ contains
     integer :: n_tot
     n_tot = int%get_n_tot ()
     allocate (mask (n_tot), source = .false.)
-    mask(n_tot-n_out_hard+1:) = .true.
+    mask(n_tot-n_out_hard + 1 : ) = .true.
     call state_flv%fill (int%get_state_matrix_ptr (), mask)
   end subroutine interaction_get_flv_content
   
   subroutine interaction_set_mask (int, mask)
-    type(interaction_t), intent(inout) :: int
+    class(interaction_t), intent(inout) :: int
     type(quantum_numbers_mask_t), dimension(:), intent(in) :: mask
+    if (size (int%mask) /= size (mask)) &
+       call msg_fatal ("Attempting to set mask with unfitting size!")
     int%mask = mask
     int%update_state_matrix = .true.
   end subroutine interaction_set_mask
@@ -1219,6 +1337,35 @@ contains
        call pacify (int%p(i), acc)
     end do
   end subroutine interaction_pacify_momenta
+
+  subroutine interaction_declare_subtraction (int, n_sub)
+    type(interaction_t), intent(inout), target :: int
+    integer, intent(in) :: n_sub
+    type(state_iterator_t) :: it
+    type(quantum_numbers_t), dimension(:), allocatable :: qn
+    integer :: i, s
+    integer :: n_me_orig
+    complex(default), dimension(:), allocatable :: me_orig
+    call it%init (int%state_matrix)
+    i = 1; n_me_orig = int%state_matrix%get_n_matrix_elements ()
+    allocate (me_orig (n_me_orig))
+    allocate (qn (it%get_depth ()))
+    do while (it%is_valid () .and. i <= n_me_orig)
+       qn = it%get_quantum_numbers ()
+       me_orig (i) = it%get_matrix_element ()
+       do s = 1, n_sub
+          call qn%set_subtraction_index (s)
+          call int%state_matrix%add_state (qn)
+       end do
+       call it%advance ()
+       i = i + 1
+    end do
+    call int%state_matrix%freeze()
+    do i = 1, n_me_orig
+       call int%state_matrix%set_matrix_element (i, me_orig(i))
+       call int%state_matrix%set_matrix_element (i + n_me_orig, me_orig(i))
+    end do 
+  end subroutine interaction_declare_subtraction
 
   subroutine find_connections (int1, int2, n, connection_index)
     class(interaction_t), intent(in) :: int1, int2

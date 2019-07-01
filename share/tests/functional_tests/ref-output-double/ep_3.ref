@@ -24,7 +24,7 @@ seed = 0
 | Process library 'ep_3_lib': ... success.
 $phs_method = "wood"
 $integration_method = "vamp"
-sqrts =  1.0000000E+03
+sqrts =  1.00000E+03
 openmp_num_threads = 1
 [user variable] n = 1000
 | RNG: Initializing TAO random-number generator
@@ -250,7 +250,7 @@ Warning:  Phase space: Initial beam particle can decay
 |-----------------------------------------------------------------------------|
    8       3000     5.674E+04   9.92E+02    1.75    0.96     9.5    0.45   3
 |=============================================================================|
-ewa_x_min =  1.0000000E-02
+ewa_x_min =  1.00000E-02
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 4
 | Initializing integration for process ep_3_p3:

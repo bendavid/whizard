@@ -1,4 +1,4 @@
-(* $Id: topology.mli 7444 2016-02-17 15:37:20Z jr_reuter $
+(* topology.mli --
 
    Copyright (C) 1999-2016 by
 
@@ -65,7 +65,6 @@ module type T =
 
 (* Only for diagnostics: *)
     val inspect_partition : partition -> int list
-    val rcs : RCS.t
   end
 
 module Binary : T with type 'a children = 'a Tuple.Binary.t
