@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -37,6 +37,7 @@ module analysis
   use io_units
   use format_utils, only: quote_underscore, tex_format
   use format_defs, only: FMT_19
+  use system_defs, only: TAB
   use unit_tests
   use diagnostics
   use os_interface
@@ -82,6 +83,7 @@ module analysis
   public :: analysis_write_driver
   public :: analysis_compile_tex
   public :: analysis_get_header
+  public :: analysis_write_makefile
   public :: analysis_test
 
   character(*), parameter, public :: HISTOGRAM_HEAD_FORMAT = "1x,A15,3x"
@@ -2609,31 +2611,8 @@ contains
     type(string_t) :: setenv
     integer :: status
     if (os_data%event_analysis_ps) then
-       BLOCK: do
-          if (os_data%whizard_texpath /= "") then
-             setenv = "TEXINPUTS=" // os_data%whizard_texpath // ":$TEXINPUTS "
-          else
-             setenv = ""
-          end if
-          call os_system_call (setenv // os_data%latex // " " // file, status)
-          if (status /= 0)  exit BLOCK
-          if (has_gmlcode) then
-             call os_system_call (os_data%gml // " " // file, status)
-             if (status /= 0)  exit BLOCK
-             call os_system_call (setenv // os_data%latex // " " // file, &
-                  status)
-             if (status /= 0)  exit BLOCK
-          end if
-          call os_system_call (os_data%dvips // " -o " // file // ".ps " &
-               // file, status)
-          if (status /= 0)  exit BLOCK
-          if (os_data%event_analysis_pdf) then
-             call os_system_call (os_data%ps2pdf // " " // file // ".ps", &
-                                  status)
-             if (status /= 0)  exit BLOCK
-          end if
-          exit BLOCK
-       end do BLOCK
+       call os_system_call ("make compile " // os_data%makeflags // " -f " // &
+            char (file) // "_ana.makefile", status)
        if (status /= 0) then
           call msg_error ("Unable to compile analysis output file")
        end if
@@ -2653,6 +2632,83 @@ contains
        call analysis_object_get_header (object, header, comment)
     end if
   end subroutine analysis_get_header
+
+  subroutine analysis_write_makefile (filename, unit, has_gmlcode, os_data)
+    type(string_t), intent(in) :: filename
+    integer, intent(in) :: unit
+    logical, intent(in) :: has_gmlcode
+    type(os_data_t), intent(in) :: os_data
+    type(string_t) :: setenv
+    write (unit, "(3A)")  "# WHIZARD: Makefile for analysis '", &
+         char (filename), "'"
+    write (unit, "(A)")  "# Automatically generated file, do not edit"
+    write (unit, "(A)")  ""
+    write (unit, "(A)")  "# LaTeX setup"
+    write (unit, "(A)")  "LATEX = " // char (os_data%latex)
+    write (unit, "(A)")  "MPOST = " // char (os_data%mpost)
+    write (unit, "(A)")  "GML = " // char (os_data%gml)
+    write (unit, "(A)")  "DVIPS = " // char (os_data%dvips)
+    write (unit, "(A)")  "PS2PDF = " // char (os_data%ps2pdf)    
+    write (unit, "(A)")  'TEX_FLAGS = "$$TEXINPUTS:' // &
+         char(os_data%whizard_texpath) // '"'
+    write (unit, "(A)")  'MP_FLAGS  = "$$MPINPUTS:' // &
+         char(os_data%whizard_texpath) // '"'
+    write (unit, "(A)")  ""       
+    write (unit, "(5A)")  "TEX_SOURCES = ", char (filename), ".tex"    
+    if (os_data%event_analysis_pdf) then
+       write (unit, "(5A)")  "TEX_OBJECTS = ", char (filename), ".pdf"
+    else
+       write (unit, "(5A)")  "TEX_OBJECTS = ", char (filename), ".ps"
+    end if
+    if (os_data%event_analysis_ps) then
+       if (os_data%event_analysis_pdf) then
+          write (unit, "(5A)")  char (filename), ".pdf: ", &
+               char (filename), ".tex"
+       else
+          write (unit, "(5A)")  char (filename), ".ps: ", &
+               char (filename), ".tex"
+       end if    
+       write (unit, "(5A)")  TAB, "-TEXINPUTS=$(TEX_FLAGS) $(LATEX) " // &
+            char (filename) // ".tex"
+       if (has_gmlcode) then
+          write (unit, "(5A)")  TAB, "$(GML) " // char (filename)
+          write (unit, "(5A)")  TAB, "TEXINPUTS=$(TEX_FLAGS) $(LATEX) " // &
+            char (filename) // ".tex"
+       end if
+       write (unit, "(5A)")  TAB, "$(DVIPS) -o " // char (filename) // ".ps " // &
+            char (filename) // ".dvi"
+       if (os_data%event_analysis_pdf) then
+          write (unit, "(5A)")  TAB, "$(PS2PDF) " // char (filename) // ".ps"
+       end if
+    end if       
+    write (unit, "(A)")
+    write (unit, "(A)")  "compile: $(TEX_OBJECTS)"
+    write (unit, "(A)")  ".PHONY: compile" 
+    write (unit, "(A)")
+    write (unit, "(5A)")  "CLEAN_OBJECTS = ",  char (filename), ".aux"  
+    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".log"         
+    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".dvi"                
+    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".out"       
+    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".[1-9]"       
+    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".[1-9][0-9]"    
+    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".[1-9][0-9][0-9]"   
+    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".t[1-9]"       
+    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".t[1-9][0-9]"
+    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".t[1-9][0-9][0-9]"
+    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".ltp"
+    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".mp"
+    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".mpx"       
+    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".dvi"              
+    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".ps"           
+    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".pdf"               
+    write (unit, "(A)")
+    write (unit, "(A)")  "# Generic cleanup targets"
+    write (unit, "(A)")  "clean-objects:"
+    write (unit, "(A)")  TAB // "rm -f $(CLEAN_OBJECTS)"
+    write (unit, "(A)")  ""
+    write (unit, "(A)")  "clean: clean-objects"
+    write (unit, "(A)")  ".PHONY: clean" 
+  end subroutine analysis_write_makefile
 
   subroutine analysis_test (u, results)
     integer, intent(in) :: u

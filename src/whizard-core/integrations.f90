@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -40,6 +40,7 @@ module integrations
   use os_interface
   use cputime
   use sm_qcd
+  use physics_defs
   use ifiles
   use lexers
   use parser
@@ -73,6 +74,7 @@ module integrations
   use process_constants
   use prc_omega
   use prc_gosam
+  use blha_olp_interfaces
   use nlo_data
 
   implicit none
@@ -173,7 +175,7 @@ contains
     type(var_list_t), pointer :: var_list
     class(prc_core_t), allocatable :: core_template
     class(phs_config_t), allocatable :: phs_config_template
-    class(phs_config_t), allocatable :: phs_config_template_real
+    class(phs_config_t), allocatable :: phs_config_template_other
     type(phs_parameters_t) :: phs_par
     type(mapping_defaults_t) :: mapping_defs
     class(mci_t), allocatable :: mci_template
@@ -190,10 +192,10 @@ contains
     logical :: sf_trace
     type(string_t) :: sf_string, sf_trace_file
     logical :: verb
-    type(process_constants_t) :: prc_const
     integer :: i_born
     type(fks_template_t) :: fks_template
-    type(gosam_template_t) :: gosam_template
+    type(blha_template_t) :: blha_template
+    type(string_t) :: me_method
     type(eval_tree_factory_t) :: expr_factory
   
     verb = .true.; if (present (verbose))  verb = verbose
@@ -267,58 +269,75 @@ contains
     n_components = intg%process%get_n_components ()
     n_in = intg%process%get_n_in ()
 
-    call gosam_template%init ()
+    call blha_template%init ()
     intg%combined_integration = var_list%get_lval (&
-                                var_str ('?combined_nlo_integration'))
-    
+                                var_str ('?combined_nlo_integration')) &
+                                .and. intg%process%is_nlo_calculation ()
+
     do i_component = 1, n_components
        config => intg%process%get_component_def_ptr (i_component)
        call dispatch_core (core_template, config%get_core_def_ptr (), &
             intg%process%get_model_ptr (), helicity_selection, intg%qcd, &
             use_color_factors)
-       select case (char (config%get_nlo_type ()))
-       case ('Virtual')
-         call gosam_template%set_loop (var_list%get_lval (&
-                                       var_str ('?use_gosam_loops')))
+       select case (config%get_nlo_type ())
+       case (NLO_VIRTUAL)
+         me_method = var_list%get_sval (var_str ("$loop_me_method"))
+         select case (char (me_method)) 
+         case ('gosam', 'openloops')
+            call blha_template%set_loop ()
+         end select
          call intg%process%init_component &
             (i_component, core_template, mci_template, phs_config_template, &
-             gosam_template = gosam_template)
+             blha_template = blha_template)
          if (intg%combined_integration) &
             call intg%process%set_component_type (i_component, COMP_VIRT)
-         call gosam_template%reset ()
-       case ('Real')
-         call gosam_template%set_real_trees (var_list%get_lval (&
-                                             var_str ('?use_gosam_real_trees')))
-         call dispatch_phs (phs_config_template_real, local, &
+       case (NLO_REAL)
+         me_method = var_list%get_sval (var_str ("$real_tree_me_method"))
+         select case (char (me_method))
+         case ('gosam', 'openloops')
+            call blha_template%set_real_trees ()
+         end select
+         call dispatch_phs (phs_config_template_other, local, &
              intg%process_id, mapping_defs, phs_par, &
              var_str ('fks'))
          call dispatch_fks (fks_template, local)
          call intg%process%init_component &
             (i_component, core_template, mci_template, &
-             phs_config_template_real, fks_template = fks_template, &
-             gosam_template = gosam_template)
+             phs_config_template_other, fks_template = fks_template, &
+             blha_template = blha_template)
          if (intg%combined_integration) &
             call intg%process%set_component_type (i_component, COMP_REAL)
-         call gosam_template%reset ()
-       case ('Born')
+       case (NLO_PDF)
+         call dispatch_phs (phs_config_template_other, local, &
+             intg%process_id, mapping_defs, phs_par, &
+             var_str ('fks'))
+         call intg%process%init_component &
+           (i_component, core_template, mci_template, phs_config_template_other)
+         if (intg%combined_integration) &
+            call intg%process%set_component_type (i_component, COMP_PDF)
+       case (BORN)
          call intg%process%init_component &
             (i_component, core_template, mci_template, phs_config_template)
          i_born = config%get_associated_born ()
          if (intg%combined_integration) &
             call intg%process%set_component_type (i_component, COMP_MASTER)
-       case ('Subtraction')
-         call gosam_template%set_subtraction (var_list%get_lval (&
-                                              var_str ('?use_gosam_correlations')))
+       case (NLO_SUBTRACTION)
+         me_method = var_list%get_sval (var_str ("$correlation_me_method"))
+         select case (char (me_method))
+         case ('gosam', 'openloops')
+            call blha_template%set_subtraction ()
+         end select
          call intg%process%init_component &
              (i_component, core_template, mci_template, phs_config_template, &
-              gosam_template = gosam_template)
+              blha_template = blha_template)
          if (intg%combined_integration) &
             call intg%process%set_component_type (i_component, COMP_SUB)
-         call gosam_template%reset ()
        case default
          call msg_fatal ("setup_process: NLO type not implemented!")
        end select
+       call blha_template%reset ()
        deallocate (core_template)
+       if (allocated (phs_config_template_other)) deallocate (phs_config_template_other)
     end do
 
     if (verb)  call intg%process%write (screen = .true.)
@@ -493,20 +512,24 @@ contains
     type(iterations_list_t) :: it_list
     logical :: pacify
     integer :: pass, i_mci, n_mci, n_pass
-    type(string_t) :: nlo_type
+    integer :: nlo_type
     logical :: display_summed
     logical :: use_internal_color_correlations
+    type(string_t) :: color_method
 
     var_list => intg%process%get_var_list_ptr ()
-    use_internal_color_correlations = &
-         .not. var_list%get_lval (var_str ('?use_gosam_correlations'))
+    
+    color_method = var_list%get_sval (var_str ('$correlation_me_method'))
+    use_internal_color_correlations = color_method == 'omega'
 
     allocate (process_instance)
     call process_instance%init (intg%process, use_internal_color_correlations, &
                                 combined_integration = intg%combined_integration)
+
     if (process_instance%has_nlo_component ()) then
        call process_instance%create_blha_interface ()
        call process_instance%load_blha_libraries (local%os_data)
+       call process_instance%set_blha_constants (var_list)
     end if
 
     call openmp_set_num_threads_verbose &
@@ -522,7 +545,7 @@ contains
             char (intg%process%get_id ()), "'"
        call msg_message ()
     end if
-    call intg%setup_component_cores (process_instance)
+    call intg%setup_component_cores ()
 
     do i_mci = 1, n_mci
        if (intg%process%is_active_nlo_component (i_mci)) then
@@ -567,7 +590,7 @@ contains
          call intg%process%write_logfile (i_mci, log_filename)    
        else
          nlo_type = intg%process%get_component_nlo_type (i_mci)
-         if (nlo_type /= "Subtraction") display_summed = .false.
+         if (nlo_type /= NLO_SUBTRACTION) display_summed = .false.
        end if          
     end do
 
@@ -581,27 +604,10 @@ contains
 
   end subroutine integration_integrate
   
-  subroutine integration_setup_component_cores (intg, instance)
+  subroutine integration_setup_component_cores (intg)
     class(integration_t), intent(inout) :: intg
-    type(process_instance_t), intent(inout) :: instance
-    integer :: i_born, i_sub
-    integer :: n_components, i_component
-    type (string_t) :: nlo_type
-    class(prc_core_t), allocatable :: core_born
     associate (process => intg%process)
-       n_components = process%get_n_components ()
-       do i_component = 1, n_components
-          nlo_type = process%get_component_nlo_type (i_component)
-          i_born = process%get_component_associated_born (i_component)
-          i_sub = i_born + 3
-          select case (char (nlo_type))
-          case ('Real', 'Virtual')
-             call process%extract_component_core (i_sub, core_born)
-             call process%init_sub_born (i_component, core_born)
-             call process%restore_component_core (i_sub, core_born)
-             call instance%init_born_amps (i_component, i_born)
-         end select
-       end do
+       call setup_nlo_component_cores (process)
     end associate
   end subroutine integration_setup_component_cores
 

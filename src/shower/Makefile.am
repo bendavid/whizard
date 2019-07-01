@@ -31,17 +31,18 @@
 #
 ########################################################################
 
-## The files in this directory end up in an auxiliary libtool library.
+## The files in this directory make up the shower routines
+
 noinst_LTLIBRARIES = libshower.la
 
 libshower_la_SOURCES = \
    pythia6_up.f \
    shower_base.f90 \
    shower_partons.f90 \
-   shower_core.f90 \
-   shower_topythia.f90 \
+   ckkw_base.f90 \
    mlm_matching.f90 \
-   ckkw_pseudo_weights.f90 \
+   shower_core.f90 \
+   shower_pythia6.f90 \
    ckkw_matching.f90
 
 ## Omitting this would exclude it from the distribution
@@ -68,12 +69,20 @@ module_lists = \
   ../testing/Modules \
   ../system/Modules \
   ../combinatorics/Modules \
+  ../parsing/Modules \
   ../rng/Modules \
   ../physics/Modules \
   ../qft/Modules \
-  ../types/Modules \
+  ../expr_base/Modules \
   ../particles/Modules \
+  ../types/Modules \
+  ../variables/Modules \
+  ../model_features/Modules \
+  ../muli/Modules \
   ../events/Modules
+
+include_modules_bare = ${module_lists:/Modules=}
+include_modules = ${include_modules_bare:../%=-I../%}
 
 $(module_lists):
 	$(MAKE) -C `dirname $@` Modules
@@ -122,7 +131,7 @@ endif
 	@:
 #	touch $@
 
-AM_FCFLAGS = -I../basics -I../utilities -I ../system -I../testing -I ../rng -I../physics -I../fastjet -I../qft -I../types -I../particles -I../events -I ../lhapdf -I ../pdf_builtin -I../../pythia6
+AM_FCFLAGS = $(include_modules) -I../../vamp/src -I../fastjet -I../lhapdf -I ../pdf_builtin -I../../pythia6
 AM_FFLAGS =
 
 ########################################################################
@@ -141,11 +150,13 @@ AM_FCFLAGS += $(FCFLAGS_OPENMP)
 endif
 
 ########################################################################
+## Non-standard targets and dependencies
 
 ## (Re)create F90 sources from NOWEB source.
-## This needs to be outside the NOWEB bracket.
 
 if NOWEB_AVAILABLE
+
+SHOWER_SRC = $(libshower_la_SOURCES)
 
 PRELUDE = $(top_srcdir)/src/noweb-frame/whizard-prelude.nw
 POSTLUDE = $(top_srcdir)/src/noweb-frame/whizard-postlude.nw
@@ -157,8 +168,6 @@ shower.stamp: $(PRELUDE) $(srcdir)/shower.nw $(POSTLUDE)
 		$(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src; \
 	done
 	@mv -f shower.tmp shower.stamp
-
-SHOWER_SRC = $(libshower_la_SOURCES) 
 
 $(SHOWER_SRC): shower.stamp
 ## Recover from the removal of $@

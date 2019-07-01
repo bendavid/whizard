@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -380,7 +380,8 @@ contains
                show_process = eio%show_process, &
                show_transforms = eio%show_transforms, &
                show_decay = eio%show_decay, &
-               verbose = eio%verbose)
+               verbose = eio%verbose, &
+               testflag = pacify)
        type is (eio_ascii_hepevt_t)
           call hepevt_from_event (event, &
                i_evt = event%get_index (), &                         

@@ -1,0 +1,514 @@
+% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*- 
+% WHIZARD code as NOWEB source: interface to OpenLoops 1-loop library
+
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{OpenLoops Interface}
+
+The interface to OpenLoops.
+
+\clearpage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+<<[[prc_openloops.f90]]>>=
+<<File header>>
+
+module prc_openloops
+
+  use, intrinsic :: iso_c_binding !NODEP!
+
+  use kinds
+  use io_units
+<<Use strings>>
+  use system_defs, only: TAB
+  use diagnostics
+  use system_dependencies
+  use physics_defs
+  use os_interface
+  use lorentz
+  use interactions
+  use sm_qcd
+
+  use prclib_interfaces
+  use prc_core_def
+  use prc_core
+
+  use blha_config
+  use blha_olp_interfaces
+
+<<Standard module head>>
+
+<<prc openloops: public>>
+
+<<prc openloops: parameters>>
+
+<<prc openloops: types>>
+
+<<prc openloops: interfaces>>
+
+contains
+
+<<prc openloops: procedures>>
+
+end module prc_openloops
+@ %def module prc_openloops
+@
+<<prc openloops: parameters>>=
+  real(default), parameter :: openloops_default_bmass = 0._default
+  real(default), parameter :: openloops_default_topmass = 172._default
+  real(default), parameter :: openloops_default_topwidth = 0._default
+  real(default), parameter :: openloops_default_wmass = 80.399_default
+  real(default), parameter :: openloops_default_wwidth = 0._default
+  real(default), parameter :: openloops_default_zmass = 91.1876_default
+  real(default), parameter :: openloops_default_zwidth = 0._default
+  real(default), parameter :: openloops_default_higgsmass = 125._default
+  real(default), parameter :: openloops_default_higgswidth = 0._default
+
+@ %def openloops default parameter
+@
+<<prc openloops: interfaces>>=
+  abstract interface
+     subroutine omega_update_alpha_s (alpha_s) bind(C)
+       import
+       real(c_default_float), intent(in) :: alpha_s
+     end subroutine omega_update_alpha_s
+  end interface
+
+<<prc openloops: types>>=
+  type, extends (prc_blha_writer_t) :: openloops_writer_t
+  contains
+  <<prc openloops: openloops writer: TBP>>
+  end type openloops_writer_t
+
+@ %def openloops_writer_t
+@
+<<prc openloops: public>>=
+  public :: openloops_def_t
+<<prc openloops: types>>=
+  type, extends (blha_def_t) :: openloops_def_t
+  contains
+  <<prc openloops: openloops def: TBP>>
+  end type openloops_def_t
+
+@ %def openloops_def_t
+@
+<<prc openloops: types>>=
+  type, extends (blha_driver_t) :: openloops_driver_t 
+    type(string_t) :: olp_file
+  contains
+  <<prc openloops: openloops driver: TBP>>
+  end type openloops_driver_t 
+
+@ %def openloops_driver_t
+@
+<<prc openloops: types>>=
+  type, extends (blha_state_t) :: openloops_state_t
+  contains
+  <<prc openloops: openloops state: TBP>>
+  end type openloops_state_t
+
+@ %def openloops_state_t
+@
+<<prc openloops: public>>=
+  public :: prc_openloops_t
+<<prc openloops: types>>=
+  type, extends (prc_blha_t) :: prc_openloops_t
+  contains
+  <<prc openloops: prc openloops: TBP>>
+  end type prc_openloops_t
+
+@ %def prc_openloops_t
+@
+<<prc openloops: openloops writer: TBP>>=
+  procedure :: init => openloops_writer_init 
+<<prc openloops: procedures>>=
+  subroutine openloops_writer_init (writer, model_name, prt_in, prt_out)
+    class(openloops_writer_t), intent(inout) :: writer
+    type(string_t), intent(in) :: model_name
+    type(string_t), dimension(:), intent(in) :: prt_in, prt_out
+    integer :: i
+    
+    writer%model_name = model_name
+    select case (size (prt_in))
+       case(1); writer%process_mode = " -decay"
+       case(2); writer%process_mode = " -scatter"
+    end select
+
+    associate (s => writer%process_string)
+      s = " '" 
+      do i = 1, size (prt_in)
+         if (i > 1) s = s // " "
+         s = s // prt_in(i)
+      end do
+      s = s // " ->"
+      do i = 1, size (prt_out)
+         s = s // " " // prt_out(i)
+      end do
+      s = s // "'"
+    end associate
+  end subroutine openloops_writer_init
+
+@ %def openloops_writer_init
+@
+<<prc openloops: openloops writer: TBP>>=
+  procedure, nopass :: type_name => openloops_writer_type_name
+<<prc openloops: procedures>>=
+  function openloops_writer_type_name () result (string)
+    type(string_t) :: string
+    string = "openloops"
+  end function openloops_writer_type_name
+
+@
+@ %def openloops_writer_type_name
+<<prc openloops: openloops def: TBP>>=
+  procedure :: init => openloops_def_init
+<<prc openloops: procedures>>=
+  subroutine openloops_def_init (object, basename, model_name, &
+                                 prt_in, prt_out, nlo_type)
+    class(openloops_def_t), intent(inout) :: object
+    type(string_t), intent(in) :: basename, model_name
+    type(string_t), dimension(:), intent(in) :: prt_in, prt_out
+    integer :: nlo_type
+    object%basename = basename
+    allocate (openloops_writer_t :: object%writer)
+    select case (nlo_type)
+    case (NLO_REAL)
+       object%suffix = '_REAL'
+    case (NLO_VIRTUAL)
+       object%suffix = '_LOOP'
+    case (NLO_SUBTRACTION)
+       object%suffix = '_SUB'
+    end select
+    select type (writer => object%writer)
+    type is (openloops_writer_t)
+       call writer%init (model_name, prt_in, prt_out)
+    end select
+  end subroutine openloops_def_init
+
+@ %def openloops_def_init
+@
+<<prc openloops: openloops def: TBP>>=
+  procedure, nopass :: type_string => openloops_def_type_string
+<<prc openloops: procedures>>=
+  function openloops_def_type_string () result (string)
+    type(string_t) :: string
+    string = "openloops"
+  end function openloops_def_type_string
+
+@ 
+@ %def openloops_def_type_string
+<<prc openloops: openloops def: TBP>>=
+  procedure :: write => openloops_def_write
+<<prc openloops: procedures>>=
+  subroutine openloops_def_write (object, unit)
+    class(openloops_def_t), intent(in) :: object
+    integer, intent(in) :: unit
+    !!! Dummy method
+  end subroutine openloops_def_write
+
+@ 
+@ %def openloops_def_write
+<<prc openloops: openloops driver: TBP>>=
+  procedure :: init_dlaccess_to_library => openloops_driver_init_dlaccess_to_library
+<<prc openloops: procedures>>=
+  subroutine openloops_driver_init_dlaccess_to_library &
+     (object, os_data, dlaccess, success)
+    class(openloops_driver_t), intent(in) :: object
+    type(os_data_t), intent(in) :: os_data
+    type(dlaccess_t), intent(out) :: dlaccess
+    logical, intent(out) :: success
+    type(string_t) :: ol_library, msg_buffer
+    ol_library = OPENLOOPS_DIR // '/lib/libopenloops.' // &
+         os_data%shrlib_ext
+    msg_buffer = "USING OPENLOOPS"
+    call msg_message (char(msg_buffer))
+    msg_buffer = "Loading library: " // ol_library
+    call msg_message (char(msg_buffer))
+    if (os_file_exist (ol_library)) then
+       call dlaccess_init (dlaccess, var_str ("."), ol_library, os_data)
+    else
+       call msg_fatal ("Link OpenLoops: library not found")
+    end if
+    success = .not. dlaccess_has_error (dlaccess)
+  end subroutine openloops_driver_init_dlaccess_to_library 
+
+@ %def openloops_driver_init_dlaccess_to_library
+@   
+<<prc openloops: openloops driver: TBP>>=
+  procedure :: set_alpha_s => openloops_driver_set_alpha_s
+<<prc openloops: procedures>>=
+  subroutine openloops_driver_set_alpha_s (driver, alpha_s)
+    class(openloops_driver_t), intent(inout) :: driver
+    real(default), intent(in) :: alpha_s
+    integer :: ierr
+    call driver%blha_olp_set_parameter &
+       (c_char_'alphas'//c_null_char, &
+        dble (alpha_s), 0._double, ierr)
+  end subroutine openloops_driver_set_alpha_s
+
+@ %def openloops_driver_set_alpha_s
+@
+<<prc openloops: openloops driver: TBP>>=
+  procedure :: print_alpha_s => openloops_driver_print_alpha_s
+<<prc openloops: procedures>>=
+  subroutine openloops_driver_print_alpha_s (object)
+    class(openloops_driver_t), intent(in) :: object
+    call object%blha_olp_print_parameter (c_char_'alphas'//c_null_char)
+  end subroutine openloops_driver_print_alpha_s
+
+@ %def openloops_driver_print_alpha_s
+@
+<<prc openloops: openloops driver: TBP>>=
+  procedure, nopass :: type_name => openloops_driver_type_name
+<<prc openloops: procedures>>=
+  function openloops_driver_type_name () result (type)
+    type(string_t) :: type
+    type = "OpenLoops"
+  end function openloops_driver_type_name
+
+@ %def openloops_driver_type_name
+@
+<<prc openloops: openloops def: TBP>>=
+  procedure :: read => openloops_def_read
+<<prc openloops: procedures>>=
+  subroutine openloops_def_read (object, unit)
+    class(openloops_def_t), intent(out) :: object
+    integer, intent(in) :: unit
+    call msg_bug ("openloops_def_read: not implemented")
+  end subroutine openloops_def_read
+
+@ %def openloops_def_read
+@
+<<prc openloops: openloops def: TBP>>=
+  procedure :: allocate_driver => openloops_def_allocate_driver
+<<prc openloops: procedures>>=
+  subroutine openloops_def_allocate_driver (object, driver, basename)
+    class(openloops_def_t), intent(in) :: object
+    class(prc_core_driver_t), intent(out), allocatable :: driver
+    type(string_t), intent(in) :: basename
+    if (.not. allocated (driver)) allocate (openloops_driver_t :: driver)
+  end subroutine openloops_def_allocate_driver
+
+@
+@ %def openloops_def_allocate_driver
+<<prc openloops: openloops state: TBP>>=
+  procedure :: write => openloops_state_write
+<<prc openloops: procedures>>=
+  subroutine openloops_state_write (object, unit)
+    class(openloops_state_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    call msg_warning ("openloops_state_write: What to write?")
+  end subroutine openloops_state_write
+
+@ %def prc_openloops_state_write
+@
+<<prc openloops: prc openloops: TBP>>=
+  procedure :: allocate_workspace => prc_openloops_allocate_workspace
+<<prc openloops: procedures>>=
+  subroutine prc_openloops_allocate_workspace (object, core_state)
+    class(prc_openloops_t), intent(in) :: object
+    class(prc_core_state_t), intent(inout), allocatable :: core_state
+    allocate (openloops_state_t :: core_state)
+  end subroutine prc_openloops_allocate_workspace
+
+@ %def prc_openloops_allocate_workspace
+@
+<<prc openloops: prc openloops: TBP>>=
+  procedure :: init_driver => prc_openloops_init_driver
+<<prc openloops: procedures>>=
+  subroutine prc_openloops_init_driver (object, os_data)
+    class(prc_openloops_t), intent(inout) :: object
+    type(os_data_t), intent(in) :: os_data
+    type(string_t) :: olp_file, olc_file
+
+    select type (def => object%def)
+    type is (openloops_def_t)
+       olp_file = def%basename // def%suffix // '.olp'
+       olc_file = def%basename // def%suffix // '.olc'
+    class default
+       call msg_bug ("prc_openloops_init_driver: core_def should be openloops-type")
+    end select
+
+    select type (driver => object%driver)
+    type is (openloops_driver_t)
+       driver%olp_file = olp_file
+       driver%contract_file = olc_file
+    end select
+  end subroutine prc_openloops_init_driver
+
+@ %def prc_openloops_init_driver
+@
+<<prc openloops: prc openloops: TBP>>=
+  procedure :: write => prc_openloops_write
+<<prc openloops: procedures>>=
+  subroutine prc_openloops_write (object, unit)
+    class(prc_openloops_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    call msg_message ("OpenLoops")
+  end subroutine prc_openloops_write
+
+@
+@ %def prc_openloops_write
+<<prc openloops: prc openloops: TBP>>=
+  procedure :: load_driver => prc_openloops_load_driver
+<<prc openloops: procedures>>=
+  subroutine prc_openloops_load_driver (object, os_data)
+    class(prc_openloops_t), intent(inout) :: object
+    type(os_data_t), intent(in) :: os_data
+    logical :: success
+    select type (driver => object%driver)
+    type is (openloops_driver_t)
+       call driver%load (os_data, success)
+    end select
+  end subroutine prc_openloops_load_driver
+
+@ %def prc_openloops_load_driver
+@ 
+<<prc openloops: prc openloops: TBP>>=
+  procedure :: start => prc_openloops_start
+<<prc openloops: procedures>>=
+  subroutine prc_openloops_start (object)
+    class(prc_openloops_t), intent(inout) :: object
+    integer :: ierr
+    select type (driver => object%driver)
+    type is (openloops_driver_t) 
+       call driver%blha_olp_start (char (driver%olp_file)//c_null_char, ierr)
+    end select
+  end subroutine prc_openloops_start
+
+@ %def prc_openloops_start
+@
+<<prc openloops: prc openloops: TBP>>=
+  procedure :: reset_parameters => prc_openloops_reset_parameters
+<<prc openloops: procedures>>=
+  subroutine prc_openloops_reset_parameters (object)
+    class(prc_openloops_t), intent(inout) :: object
+    integer :: ierr
+    select type (driver => object%driver)
+    type is (openloops_driver_t)
+       call driver%blha_olp_set_parameter ('mass(5)'//c_null_char, &
+          dble(openloops_default_bmass), 0._double, ierr) 
+       call driver%blha_olp_set_parameter ('mass(6)'//c_null_char, &
+          dble(openloops_default_topmass), 0._double, ierr)        
+       call driver%blha_olp_set_parameter ('width(6)'//c_null_char, &
+          dble(openloops_default_topwidth), 0._double, ierr) 
+       call driver%blha_olp_set_parameter ('mass(23)'//c_null_char, &
+          dble(openloops_default_zmass), 0._double, ierr)
+       call driver%blha_olp_set_parameter ('width(23)'//c_null_char, &
+          dble(openloops_default_zwidth), 0._double, ierr) 
+       call driver%blha_olp_set_parameter ('mass(24)'//c_null_char, &
+          dble(openloops_default_wmass), 0._double, ierr) 
+       call driver%blha_olp_set_parameter ('width(24)'//c_null_char, &
+          dble(openloops_default_wwidth), 0._double, ierr) 
+       call driver%blha_olp_set_parameter ('mass(25)'//c_null_char, &
+          dble(openloops_default_higgsmass), 0._double, ierr) 
+       call driver%blha_olp_set_parameter ('width(25)'//c_null_char, &
+          dble(openloops_default_higgswidth), 0._double, ierr) 
+    end select
+  end subroutine prc_openloops_reset_parameters
+
+@ %def prc_openloops_reset_parameters
+@
+<<prc openloops: prc openloops: TBP>>=
+  procedure :: set_verbosity => prc_openloops_set_verbosity
+<<prc openloops: procedures>>=
+  subroutine prc_openloops_set_verbosity (object, verbose)
+    class(prc_openloops_t), intent(inout) :: object
+    integer, intent(in) :: verbose
+    integer :: ierr
+    select type (driver => object%driver)
+    type is (openloops_driver_t)
+       call driver%blha_olp_set_parameter ('verbose'//c_null_char, &
+          dble(verbose), 0._double, ierr)   
+    end select
+  end subroutine prc_openloops_set_verbosity
+
+@ %def prc_openloops_set_verbosity
+@
+<<prc openloops: prc openloops: TBP>>=
+  procedure :: compute_sqme_born => prc_openloops_compute_sqme_born
+<<prc openloops: procedures>>=
+  subroutine prc_openloops_compute_sqme_born &
+         (object, i_born, mom, mu, sqme, acc_born)
+    class(prc_openloops_t), intent(inout) :: object
+    integer, intent(in) :: i_born
+    real(double), intent(in), dimension(5*object%n_particles) :: mom
+    real(double), intent(in) :: mu
+    real(default), intent(out) :: sqme
+    real(default), intent(out) :: acc_born
+    
+    real(double), dimension(blha_result_array_size (object%n_particles, &
+                                                    BLHA_AMP_TREE)) :: r
+    real(double) :: acc_dble
+    
+    select type (driver => object%driver)
+    type is (openloops_driver_t)
+       call driver%blha_olp_eval2 (i_born, mom, mu, r, acc_dble)
+       sqme = r(1)
+    end select
+    acc_born = acc_dble
+  end subroutine prc_openloops_compute_sqme_born
+
+@ %def prc_openloops_compute_sqme_born
+@
+<<prc openloops: prc openloops: TBP>>=
+  procedure :: compute_sqme_real => prc_openloops_compute_sqme_real
+<<prc openloops: procedures>>=
+  subroutine prc_openloops_compute_sqme_real &
+         (object, i_flv, p, ren_scale, sqme, bad_point)
+    class(prc_openloops_t), intent(inout) :: object
+    integer, intent(in) :: i_flv
+    type(vector4_t), intent(in), dimension(:) :: p
+    real(default), intent(in) :: ren_scale
+    real(default), intent(out) :: sqme
+    logical, intent(out) :: bad_point
+    real(double), dimension(5*object%n_particles) :: mom
+    real(double), dimension(blha_result_array_size (object%n_particles, &
+                                                    BLHA_AMP_TREE)) :: r
+    real(double) :: mu
+    real(double) :: acc_dble
+    real(default) :: acc
+    real(default) :: alpha_s
+ 
+    mom = object%create_momentum_array (p)
+    if (ren_scale == 0.0) then
+       mu = sqrt (2*p(1)*p(2))
+    else
+      mu = ren_scale
+    end if
+    alpha_s = object%qcd%alpha%get (ren_scale)
+    select type (driver => object%driver)
+    type is (openloops_driver_t)
+       call driver%set_alpha_s (alpha_s)
+       call driver%blha_olp_eval2 (object%i_real(i_flv), mom, &
+                                    mu, r, acc_dble)
+       sqme = r(1)
+    end select
+    acc = acc_dble
+    if (acc > object%maximum_accuracy) bad_point = .true.
+  end subroutine prc_openloops_compute_sqme_real
+
+@ %def prc_openloops_compute_sqme_real
+@
+<<prc openloops: prc openloops: TBP>>=
+  procedure :: compute_sqme_sc => prc_openloops_compute_sqme_sc
+<<prc openloops: procedures>>=
+  subroutine prc_openloops_compute_sqme_sc (object, &
+                i_flv, em, p, ren_scale_in, &
+            me_sc, bad_point)
+    class(prc_openloops_t), intent(inout) :: object
+    integer, intent(in) :: i_flv
+    integer, intent(in) :: em
+    type(vector4_t), intent(in), dimension(:) :: p
+    real(default), intent(in) :: ren_scale_in
+    complex(default), intent(out) :: me_sc
+    logical, intent(out) :: bad_point
+    
+    call msg_fatal ("Spin-correlated matrix elements with the BLHA-"&
+                    &"interface are not possible yet with OpenLoops")
+  end subroutine prc_openloops_compute_sqme_sc
+
+@ %def prc_openloops_compute_sqme_sc
+@
+
+
+

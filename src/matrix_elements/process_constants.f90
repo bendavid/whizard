@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -76,37 +76,37 @@ module process_constants
 contains
 
   function process_constants_get_flv_state (prc_const) result (flv_state)
-    class(process_constants_t), intent(inout) :: prc_const
+    class(process_constants_t), intent(in) :: prc_const
     integer, dimension(:,:), allocatable :: flv_state
     flv_state = prc_const%flv_state
   end function process_constants_get_flv_state
 
   subroutine process_constants_get_hel_state (prc_const, hel_state)
-    class(process_constants_t), intent(inout) :: prc_const
+    class(process_constants_t), intent(in) :: prc_const
     integer, dimension(:,:), allocatable :: hel_state
     hel_state = prc_const%hel_state
   end subroutine process_constants_get_hel_state
 
   subroutine process_constants_get_col_state (prc_const, col_state)
-    class(process_constants_t), intent(inout) :: prc_const
+    class(process_constants_t), intent(in) :: prc_const
     integer, dimension(:,:,:), allocatable :: col_state
     col_state = prc_const%col_state
   end subroutine process_constants_get_col_state
 
   function process_constants_get_ghost_flag (prc_const) result(ghost_flag)
-   class(process_constants_t), intent(inout) :: prc_const
+   class(process_constants_t), intent(in) :: prc_const
    logical, dimension(:,:), allocatable :: ghost_flag
    ghost_flag = prc_const%ghost_flag
   end function process_constants_get_ghost_flag
 
   subroutine process_constants_get_color_factors (prc_const, col_facts)
-   class(process_constants_t), intent(inout) :: prc_const
+   class(process_constants_t), intent(in) :: prc_const
    complex(default), intent(inout), dimension(:), allocatable :: col_facts
    col_facts = prc_const%color_factors
   end subroutine process_constants_get_color_factors
 
   subroutine process_constants_get_cf_index (prc_const, cf_index)
-    class(process_constants_t), intent(inout) :: prc_const
+    class(process_constants_t), intent(in) :: prc_const
     integer, intent(inout), dimension(:,:), allocatable :: cf_index
     cf_index = prc_const%cf_index
   end subroutine process_constants_get_cf_index

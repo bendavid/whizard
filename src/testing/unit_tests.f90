@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -35,6 +35,7 @@ module unit_tests
   use kinds, only: default
   use constants, only: zero, tiny_10, tiny_13
   use iso_varying_string, string_t => varying_string
+  use format_defs
   use io_units
 
   implicit none
@@ -43,6 +44,10 @@ module unit_tests
   public :: test_results_t
   public :: test
   public :: assert
+  public:: assert_equal
+  interface assert_equal
+     module procedure assert_equal_real, assert_equal_integer
+  end interface
   public :: nearly_equal
   public:: vanishes
   interface vanishes
@@ -241,11 +246,48 @@ contains
     end if
   end subroutine assert
 
+  subroutine assert_equal_real (unit, lhs, rhs, description, &
+                                abs_smallness, rel_smallness)
+    real(default), intent(in), optional :: abs_smallness, rel_smallness
+    integer, intent(in) :: unit
+    real(default), intent(in) :: lhs, rhs
+    character(*), intent(in), optional :: description
+    logical :: ok
+    ok = nearly_equal (lhs, rhs, abs_smallness, rel_smallness)
+    if (.not. ok) then
+       if (present(description)) then
+          write (unit, "(A," // FMT_19 // ",A," // FMT_19 // ")") &
+               "* FAIL: " // description // ": ", lhs, " /= ", rhs
+       else
+          write (unit, "(A," // FMT_19 // ",A," // FMT_19 // ")") &
+               "* FAIL: Assertion error: ", lhs, " /= ", rhs
+       end if
+    end if
+  end subroutine assert_equal_real
+
+  subroutine assert_equal_integer (unit, lhs, rhs, description)
+    integer, intent(in) :: unit
+    integer, intent(in) :: lhs, rhs
+    character(*), intent(in), optional :: description
+    logical :: ok
+    ok = lhs == rhs
+    if (.not. ok) then
+       if (present(description)) then
+          write (unit, "(A,I0,A,I0)") &
+               "* FAIL: " // description // ": ", lhs, " /= ", rhs
+       else
+          write (unit, "(A,I0,A,I0)") &
+               "* FAIL: Assertion error: ", lhs, " /= ", rhs
+       end if
+    end if
+  end subroutine assert_equal_integer
+
   elemental function ieee_is_nan (x) result (yorn)
     logical :: yorn
     real(default), intent(in) :: x
     yorn = (x /= x)
   end function ieee_is_nan
+
   elemental function nearly_equal (a, b, abs_smallness, rel_smallness) result (r)
     logical :: r
     real(default), intent(in) :: a, b
@@ -262,16 +304,8 @@ contains
        r = .false.
        return
     end if
-    if (present (abs_smallness)) then
-       abs_small = abs_smallness
-    else
-       abs_small = tiny_13
-    end if
-    if (present (rel_smallness)) then
-       rel_small = rel_smallness
-    else
-       rel_small = tiny_10
-    end if
+    abs_small = tiny_13; if (present (abs_smallness)) abs_small = abs_smallness
+    rel_small = tiny_10; if (present (rel_smallness)) rel_small = rel_smallness
     if (abs_a < abs_small .and. abs_b < abs_small) then
        r = diff < abs_small
     else

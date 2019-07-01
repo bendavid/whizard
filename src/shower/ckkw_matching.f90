@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -35,66 +35,68 @@ module ckkw_matching
   use kinds, only: default, double
   use io_units
   use constants
+  use format_utils, only: write_separator
   use diagnostics
   use physics_defs
   use lorentz
+  use rng_base
   use shower_base
   use shower_partons
-  use shower_core
-  use ckkw_pseudo_weights
+  use ckkw_base
+  use variables
 
   implicit none
   private
 
-  public :: ckkw_matching_settings_t
   public :: ckkw_matching_apply
-
-  type :: ckkw_matching_settings_t
-     real(default) :: alphaS = 0.118_default
-     real(default) :: Qmin = one
-     integer :: n_max_jets = 0
-  end type ckkw_matching_settings_t
-
 
 contains
 
-  subroutine ckkw_matching_apply (shower, settings, weights, veto)
-    type(shower_t), intent(inout) :: shower
+  subroutine ckkw_matching_apply (partons, settings, weights, rng, veto)
+    type(parton_pointer_t), dimension(:), intent(inout), allocatable :: &
+         partons
     type(ckkw_matching_settings_t), intent(in) :: settings
     type(ckkw_pseudo_shower_weights_t), intent(in) :: weights
+    class(rng_t), intent(inout), allocatable :: rng
     logical, intent(out) :: veto
 
     real(default), dimension(:), allocatable :: scales
     real(double) :: weight, sf
     real(default) :: rand
-    integer :: i
+    integer :: i, n_partons
 
     if (signal_is_pending ()) return
     weight = one
 
-    call shower%write ()
+    n_partons = size (partons)
+
+    do i = 1, n_partons
+       call partons(i)%p%write ()
+    end do
 
     !!! the pseudo parton shower is already simulated by shower_add_interaction
     !!! get the respective clustering scales
-    allocate (scales(1:size(shower%partons)))
-    do i = 1, size (shower%partons)
-       if (.not. associated (shower%partons(i)%p)) cycle
-       if (shower%partons(i)%p%type == INTERNAL) then
-          scales(i) = two * min (shower%partons(i)%p%child1%momentum%p(0),  &
-                                 shower%partons(i)%p%child2%momentum%p(0))**2 * &
-               (1.0 - (space_part (shower%partons(i)%p%child1%momentum) * &
-                space_part (shower%partons(i)%p%child2%momentum)) / &
-               (space_part (shower%partons(i)%p%child1%momentum)**1 * &
-                space_part (shower%partons(i)%p%child2%momentum)**1))
+    allocate (scales (1:n_partons))
+    do i = 1, n_partons
+       if (.not. associated (partons(i)%p)) cycle
+       if (partons(i)%p%type == INTERNAL) then
+          scales(i) = two * min (partons(i)%p%child1%momentum%p(0),  &
+                                 partons(i)%p%child2%momentum%p(0))**2 * &
+               (1.0 - (space_part (partons(i)%p%child1%momentum) * &
+                space_part (partons(i)%p%child2%momentum)) / &
+               (space_part (partons(i)%p%child1%momentum)**1 * &
+                space_part (partons(i)%p%child2%momentum)**1))
           scales(i) = sqrt (scales(i))
-          shower%partons(i)%p%ckkwscale = scales(i)
+          partons(i)%p%ckkwscale = scales(i)
           print *, scales(i)
        end if
     end do
 
     print *, " scales finished"
     !!! if (highest multiplicity) -> reweight with PDF(mu_F) / PDF(mu_cut)
-    call shower%write ()
+    do i = 1, n_partons
+       call partons(i)%p%write ()
+    end do
 
     !!! Reweight and possibly veto the whole event
 
@@ -102,47 +104,49 @@ contains
 
     !! calculate the Sudakov weights for internal lines
     !! calculate the Sudakov weights for external lines
-    do i = 1, size (shower%partons)
+    do i = 1, n_partons
        if (signal_is_pending ()) return
-       if (.not. associated (shower%partons(i)%p)) cycle
-       if (shower%partons(i)%p%type == INTERNAL) then
+       if (.not. associated (partons(i)%p)) cycle
+       if (partons(i)%p%type == INTERNAL) then
           !!! get type
           !!! check that all particles involved are colored
-          if ((parton_is_colored (shower%partons(i)%p) .or. &
-               shower%partons(i)%p%ckkwtype > 0) .and. &
-               (parton_is_colored (shower%partons(i)%p%child1) .or. &
-               shower%partons(i)%p%child1%ckkwtype > 0) .and. &
-               (parton_is_colored (shower%partons(i)%p%child1) .or. &
-               shower%partons(i)%p%child1%ckkwtype > 0)) then
-             print *, "reweight with alphaS(" , shower%partons(i)%p%ckkwscale, &
-                  ") for particle ", shower%partons(i)%p%nr
-             if (shower%partons(i)%p%belongstoFSR) then
+          if ((partons(i)%p%is_colored () .or. &
+               partons(i)%p%ckkwtype > 0) .and. &
+               (partons(i)%p%child1%is_colored () .or. &
+               partons(i)%p%child1%ckkwtype > 0) .and. &
+               (partons(i)%p%child1%is_colored () .or. &
+               partons(i)%p%child1%ckkwtype > 0)) then
+             print *, "reweight with alphaS(" , partons(i)%p%ckkwscale, &
+                  ") for particle ", partons(i)%p%nr
+             if (partons(i)%p%belongstoFSR) then
                 print *, "FSR"
-                weight = weight * D_alpha_s_fsr (shower%partons(i)%p%ckkwscale**2) &
-                     / settings%alphas
+                weight = weight * D_alpha_s_fsr (partons(i)%p%ckkwscale**2, &
+                     partons(i)%p%settings) / settings%alphas
              else
                 print *, "ISR"
                 weight = weight * &
-                     D_alpha_s_isr (shower%partons(i)%p%ckkwscale**2) &
-                     / settings%alphas
+                     D_alpha_s_isr (partons(i)%p%ckkwscale**2, &
+                     partons(i)%p%settings) / settings%alphas
              end if
           else
-             print *, "no reweight with alphaS for ", shower%partons(i)%p%nr
+             print *, "no reweight with alphaS for ", partons(i)%p%nr
           end if
-          if (shower%partons(i)%p%child1%type == INTERNAL) then
+          if (partons(i)%p%child1%type == INTERNAL) then
              print *, "internal line from ", &
-                  shower%partons(i)%p%child1%ckkwscale, &
-                  " to ", shower%partons(i)%p%ckkwscale, &
-                  " for type ", shower%partons(i)%p%child1%ckkwtype
-             if (shower%partons(i)%p%child1%ckkwtype == 0) then
+                  partons(i)%p%child1%ckkwscale, &
+                  " to ", partons(i)%p%ckkwscale, &
+                  " for type ", partons(i)%p%child1%ckkwtype
+             if (partons(i)%p%child1%ckkwtype == 0) then
                 sf = 1.0
-             else if (shower%partons(i)%p%child1%ckkwtype == 1) then
-                sf = SudakovQ (shower%partons(i)%p%child1%ckkwscale, &
-                     shower%partons(i)%p%ckkwscale, .true.)
+             else if (partons(i)%p%child1%ckkwtype == 1) then
+                sf = SudakovQ (partons(i)%p%child1%ckkwscale, &
+                     partons(i)%p%ckkwscale, &
+                     partons(i)%p%settings, .true., rng)
                 print *, "SFQ = ", sf
-             else if (shower%partons(i)%p%child1%ckkwtype == 2) then
-                sf = SudakovG (shower%partons(i)%p%child1%ckkwscale, &
-                     shower%partons(i)%p%ckkwscale, .true.)
+             else if (partons(i)%p%child1%ckkwtype == 2) then
+                sf = SudakovG (partons(i)%p%child1%ckkwscale, &
+                     partons(i)%p%ckkwscale, &
+                     partons(i)%p%settings, .true., rng)
                 print *, "SFG = ", sf
              else
                 print *, "SUSY not yet implemented"
@@ -150,35 +154,39 @@ contains
              weight = weight * min (one, sf)
           else
              print *, "external line from ", settings%Qmin, &
-                  shower%partons(i)%p%ckkwscale
-             if (parton_is_quark (shower%partons(i)%p%child1)) then
+                  partons(i)%p%ckkwscale
+             if (partons(i)%p%child1%is_quark ()) then
                 sf = SudakovQ (settings%Qmin, &
-                     shower%partons(i)%p%ckkwscale, .true.)
+                     partons(i)%p%ckkwscale, &
+                     partons(i)%p%settings, .true., rng)
                 print *, "SFQ = ", sf
-             else if (parton_is_gluon (shower%partons(i)%p%child1)) then
+             else if (partons(i)%p%child1%is_gluon ()) then
                 sf = SudakovG (settings%Qmin, &
-                     shower%partons(i)%p%ckkwscale, .true.)
+                     partons(i)%p%ckkwscale, &
+                     partons(i)%p%settings, .true., rng)
                 print *, "SFG = ", sf
              else
                 print *, "not yet implemented (", &
-                     shower%partons(i)%p%child2%type, ")"
+                     partons(i)%p%child2%type, ")"
                 sf = one
              end if
              weight = weight * min (one, sf)
           end if
-          if (shower%partons(i)%p%child2%type == INTERNAL) then
-             print *, "internal line from ", shower%partons(i)%p%child2%ckkwscale, &
-                  " to ", shower%partons(i)%p%ckkwscale, &
-                  " for type ", shower%partons(i)%p%child2%ckkwtype
-             if (shower%partons(i)%p%child2%ckkwtype == 0) then
+          if (partons(i)%p%child2%type == INTERNAL) then
+             print *, "internal line from ", partons(i)%p%child2%ckkwscale, &
+                  " to ", partons(i)%p%ckkwscale, &
+                  " for type ", partons(i)%p%child2%ckkwtype
+             if (partons(i)%p%child2%ckkwtype == 0) then
                 sf = 1.0
-             else if (shower%partons(i)%p%child2%ckkwtype == 1) then
-                sf = SudakovQ (shower%partons(i)%p%child2%ckkwscale, &
-                     shower%partons(i)%p%ckkwscale, .true.)
+             else if (partons(i)%p%child2%ckkwtype == 1) then
+                sf = SudakovQ (partons(i)%p%child2%ckkwscale, &
+                     partons(i)%p%ckkwscale, &
+                     partons(i)%p%settings, .true., rng)
                 print *, "SFQ = ", sf
-             else if (shower%partons(i)%p%child2%ckkwtype == 2) then
-                sf = SudakovG (shower%partons(i)%p%child2%ckkwscale, &
-                     shower%partons(i)%p%ckkwscale, .true.)
+             else if (partons(i)%p%child2%ckkwtype == 2) then
+                sf = SudakovG (partons(i)%p%child2%ckkwscale, &
+                     partons(i)%p%ckkwscale, &
+                     partons(i)%p%settings, .true., rng)
                 print *, "SFG = ", sf
              else
                 print *, "SUSY not yet implemented"
@@ -186,18 +194,20 @@ contains
              weight = weight * min (one, sf)
           else
              print *, "external line from ", settings%Qmin, &
-                  shower%partons(i)%p%ckkwscale
-             if (parton_is_quark (shower%partons(i)%p%child2)) then
+                  partons(i)%p%ckkwscale
+             if (partons(i)%p%child2%is_quark ()) then
                 sf = SudakovQ (settings%Qmin, &
-                     shower%partons(i)%p%ckkwscale, .true.)
+                     partons(i)%p%ckkwscale, &
+                     partons(i)%p%settings, .true., rng)
                 print *, "SFQ = ", sf
-             else if (parton_is_gluon (shower%partons(i)%p%child2)) then
+             else if (partons(i)%p%child2%is_gluon ()) then
                 sf = SudakovG (settings%Qmin, &
-                     shower%partons(i)%p%ckkwscale, .true.)
+                     partons(i)%p%ckkwscale, &
+                     partons(i)%p%settings, .true., rng)
                 print *, "SFG = ", sf
              else
                 print *, "not yet implemented (", &
-                     shower%partons(i)%p%child2%type, ")"
+                     partons(i)%p%child2%type, ")"
                 sf = one
              end if
              weight = weight * min (one, sf)
@@ -222,46 +232,52 @@ contains
     deallocate (scales)
   end subroutine ckkw_matching_apply
 
-  function GammaQ (smallq, largeq, fsr) result (gamma)
+  function GammaQ (smallq, largeq, settings, fsr) result (gamma)
     real(default), intent(in) :: smallq, largeq
+    type(shower_settings_t), intent(in) :: settings
     logical, intent(in) :: fsr
     real(default) :: gamma
     gamma = (8._default / three) / (pi * smallq)
     gamma = gamma * (log(largeq / smallq) - 0.75)
     if (fsr) then
-       gamma = gamma * D_alpha_s_fsr (smallq**2)
+       gamma = gamma * D_alpha_s_fsr (smallq**2, settings)
     else
-       gamma = gamma * D_alpha_s_isr (smallq**2)
+       gamma = gamma * D_alpha_s_isr (smallq**2, settings)
     end if
   end function GammaQ
 
-  function GammaG(smallq, largeq, fsr) result(gamma)
+  function GammaG (smallq, largeq, settings, fsr) result (gamma)
     real(default), intent(in) :: smallq, largeq
+    type(shower_settings_t), intent(in) :: settings
     logical, intent(in) :: fsr
     real(default) :: gamma
     gamma = 6._default / (pi * smallq)
     gamma = gamma *( log(largeq / smallq) - 11.0 / 12.0)
     if (fsr) then
-       gamma = gamma * D_alpha_s_fsr(smallq**2)
+       gamma = gamma * D_alpha_s_fsr (smallq**2, settings)
     else
-       gamma = gamma * D_alpha_s_isr(smallq**2)
+       gamma = gamma * D_alpha_s_isr (smallq**2, settings)
     end if
   end function GammaG
 
-  function GammaF (smallq, fsr) result (gamma)
+  function GammaF (smallq, settings, fsr) result (gamma)
     real(default), intent(in) :: smallq
+    type(shower_settings_t), intent(in) :: settings
     logical, intent(in) :: fsr
     real(default) :: gamma
-    gamma = number_of_flavors (smallq) / (three * pi * smallq)
+    gamma = number_of_flavors (smallq, settings%max_n_flavors, &
+         settings%d_min_t) / (three * pi * smallq)
     if (fsr) then
-       gamma = gamma * D_alpha_s_fsr (smallq**2)
+       gamma = gamma * D_alpha_s_fsr (smallq**2, settings)
     else
-       gamma = gamma * D_alpha_s_isr (smallq**2)
+       gamma = gamma * D_alpha_s_isr (smallq**2, settings)
     end if
   end function GammaF
 
-  function SudakovQ (Q1, Q, fsr) result (sf)
+  function SudakovQ (Q1, Q, settings, fsr, rng) result (sf)
     real(default), intent(in) :: Q1, Q
+    type(shower_settings_t), intent(in) :: settings
+    class(rng_t), intent(inout), allocatable :: rng
     logical, intent(in) :: fsr
     real(default) :: sf
     real(default) :: integral
@@ -271,25 +287,28 @@ contains
     integral = zero
     do i = 1, NTRIES
        call rng%generate (rand)
-       integral = integral + GammaQ (Q1 + rand * (Q - Q1), Q, fsr)
+       integral = integral + GammaQ (Q1 + rand * (Q - Q1), Q, settings, fsr)
     end do
     integral = integral / NTRIES
     sf = exp (-integral)
   end function SudakovQ
 
-  function SudakovG (Q1, Q, fsr) result (sf)
+  function SudakovG (Q1, Q, settings, fsr, rng) result (sf)
     real(default), intent(in) :: Q1, Q
+    type(shower_settings_t), intent(in) :: settings
     logical, intent(in) :: fsr
     real(default) :: sf
     real(default) :: integral
+    class(rng_t), intent(inout), allocatable :: rng
     integer, parameter :: NTRIES = 100
     integer :: i
     real(default) :: rand
     integral = zero
     do i = 1, NTRIES
        call rng%generate (rand)
-       integral = integral + GammaG (Q1 + rand * (Q - Q1), Q, fsr) + &
-            GammaF (Q1 +rand * (Q - Q1), fsr)
+       integral = integral + &
+            GammaG (Q1 + rand * (Q - Q1), Q, settings, fsr) + &
+            GammaF (Q1 + rand * (Q - Q1), settings, fsr)
     end do
     integral = integral / NTRIES
     sf = exp (-integral)

@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -58,6 +58,7 @@ module eio_data
      integer :: n_proc = 0
      integer :: n_evt = 0
      integer :: split_n_evt = 0
+     integer :: split_n_kbytes = 0
      integer :: split_index = 0
      real(default) :: total_cross_section = 0
      integer, dimension(:), allocatable :: proc_num_id

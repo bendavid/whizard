@@ -23,16 +23,31 @@ parameter khgg   = 0.000        # anomaly Higgs couplings K factors
 parameter xi0    = 0.000        # R_xi parameter for Z-boson
 parameter xipm   = 0.000        # R_xi parameter for W-boson
 
-# ttbar threshold resummation parameters:
+# ttbar threshold resummation parameters (cf. [arXiv:1309.6323])
 parameter alpha_em_i = 125.924  # inverse QED coupling at ttbar threshold
 parameter m1S    = 172.0        # t-quark m1S mass
-parameter wtop   = 1.54         # t-quark width (increase for invisible channels)
+parameter Vtb    = 1.0          # CKM matrix element Vtb (3rd generation decoupled)
+parameter wt_inv = 0.0          # optional t-quark partial width into invisible channels
 parameter nloop  = 1            # NRQCD order (0: LL, 1: NLL)
 parameter sh     = 1.0          # hard scale: mu_h = m1S * sh
 parameter sf     = 1.0          # soft scale: mu_s = m1s * sh * sf * v*(sqrts)
 
-# TESTING ONLY: switch off threshold initialization to speed up
-parameter test   = -1           # > 0 for fast testing (DON'T TOUCH)
+# TESTING ONLY: REMOVE BEFORE RELEASE
+parameter FF     =  1           # form factor type:
+                 # -4: matched FF (Max's matching to LO continuum)
+                 # -3: matched FF (Andre's matching to LO continuum)
+                 # -2: matched FF (Max's matching to NLO continuum)
+                 # -1: matched FF (Andre's matching to NLO continuum)
+                 #  0: p0-dependent resummed FF (no matching)
+                 #  1: p0-constant resummed FF (release 2.2.3 status)
+                 #  2: relativistic O(alphas^1) FF
+                 #  3: nonrelativistic O(alphas^1) FF (no resummation)
+                 #  4: tree level
+parameter v1     = 0.5          # for switch-off function f: vary between [0.45,0.55]
+parameter v2     = 0.8          # for switch-off function f
+
+# DON'T TOUCH: switch off threshold initialization to speed up self-tests
+parameter test   = -1           # set > 0 to switch off
 
 # Dependent parameters
 derived ee    = sqrt(4*pi/alpha_em_i)         # em-coupling
@@ -40,15 +55,16 @@ derived cw    = mW / mZ                       # cos(theta-W)
 derived sw    = sqrt (1-cw**2)                # sin(theta-W)
 derived v     = mW * sw * sqrt(alpha_em_i/pi) # v (Higgs vev)
 
-# top pole mass: computed from m1S and soft alphas at ttbar threshold
-external mtpole                 # depends on model parameters and sqrts
+# external t-quark parameters depending on model parameters
+external mtpole                 # pole mass: depends on m1S, nloop and sqrts
+external wtop                   # total width: depends on Vtb, wt_inv and masses
 
 ########################################################################
 # Particle content
 
 # The quarks
 particle D_QUARK 1  parton
-  spin 1/2  charge -1/3	  isospin -1/2  color 3
+  spin 1/2  charge -1/3  isospin -1/2  color 3
   name d down
   anti dbar D "d~" 
   tex_anti "\bar{d}"

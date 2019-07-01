@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -56,7 +56,6 @@ module pdg_arrays
   public :: is_lepton
   public :: is_massless_vector
   public :: is_massive_vector
-  public :: is_qcd_particle
   public :: operator(<)
   public :: operator(>)
   public :: operator(<=)
@@ -78,9 +77,11 @@ module pdg_arrays
      procedure :: get => pdg_array_get
      procedure :: set => pdg_array_set
      procedure :: replace => pdg_array_replace
+     procedure :: has_colored_particles => pdg_array_has_colored_particles
      procedure :: sort_abs => pdg_array_sort_abs
      procedure :: intersect => pdg_array_intersect
      procedure :: search_for_particle => pdg_array_search_for_particle
+     procedure :: invert => pdg_array_invert
   end type pdg_array_t
 
   type :: pdg_list_t
@@ -111,7 +112,9 @@ module pdg_arrays
      procedure, private :: pdg_list_match_pdg_array
      procedure :: find_match => pdg_list_find_match_pdg_array
      procedure :: create_pdg_array => pdg_list_create_pdg_array
+     procedure :: create_antiparticles => pdg_list_create_antiparticles
      procedure :: search_for_particle => pdg_list_search_for_particle
+     procedure :: contains_colored_particles => pdg_list_contains_colored_particles
   end type pdg_list_t
   
 
@@ -351,13 +354,19 @@ contains
     end if
   end function is_massive_vector
 
-  function is_qcd_particle (pdg_nr) result (res)
-    integer, intent(in) :: pdg_nr
-    logical :: res
-    res = .false.
-    if (is_quark (abs (pdg_nr)) .or. is_gluon (pdg_nr)) &
-      res = .true.
-  end function is_qcd_particle
+  function pdg_array_has_colored_particles (pdg) result (colored)
+    class(pdg_array_t), intent(in) :: pdg
+    logical :: colored
+    integer :: i, pdg_nr
+    colored = .false.
+    do i = 1, size (pdg%pdg)
+      pdg_nr = pdg%pdg(i)
+      if (is_quark (abs (pdg_nr)) .or. is_gluon (pdg_nr)) then
+         colored = .true.
+         exit
+      end if
+    end do
+  end function pdg_array_has_colored_particles
 
   function pdg_array_match_pdg_array (aval1, aval2) result (flag)
     logical :: flag
@@ -499,6 +508,22 @@ contains
     logical :: found
     found = any (pdg%pdg == i_part)
   end function pdg_array_search_for_particle
+
+  function pdg_array_invert (pdg) result (pdg_inverse)
+    class(pdg_array_t), intent(in) :: pdg
+    type(pdg_array_t) :: pdg_inverse
+    integer :: i, n
+    n = size (pdg%pdg)
+    allocate (pdg_inverse%pdg (n))
+    do i = 1, n
+       select case (pdg%pdg(i))
+       case (21, 22, 23, 25)
+          pdg_inverse%pdg(i) = pdg%pdg(i)
+       case default
+          pdg_inverse%pdg(i) = -pdg%pdg(i)
+       end select
+    end do
+  end function pdg_array_invert
 
   subroutine pdg_list_write (object, unit)
     class(pdg_list_t), intent(in) :: object
@@ -783,6 +808,35 @@ contains
     end associate
   end subroutine pdg_list_create_pdg_array
 
+  subroutine pdg_list_create_antiparticles (pl, pl_anti, n_new_particles)
+    class(pdg_list_t), intent(in) :: pl
+    type(pdg_list_t), intent(out) :: pl_anti
+    integer, intent(out) :: n_new_particles
+    type(pdg_list_t) :: pl_inverse
+    integer :: i, n
+    integer :: n_identical
+    logical, dimension(:), allocatable :: collect
+    n = pl%get_size (); n_identical = 0
+    allocate (collect (n)); collect = .true.
+    call pl_inverse%init (n)
+    do i = 1, n
+       pl_inverse%a(i) = pl%a(i)%invert()
+    end do
+    do i = 1, n
+       if (any (pl_inverse%a(i) == pl%a)) then
+          collect(i) = .false.
+          n_identical = n_identical + 1
+       end if
+    end do
+    n_new_particles = n - n_identical
+    if (n_new_particles > 0) then
+       call pl_anti%init (n_new_particles)
+       do i = 1, n
+          if (collect (i)) pl_anti%a(i) = pl_inverse%a(i)
+       end do
+   end if    
+  end subroutine pdg_list_create_antiparticles
+
   function pdg_list_search_for_particle (pl, i_part) result (found)
     class(pdg_list_t), intent(in) :: pl
     integer, intent(in) :: i_part
@@ -793,6 +847,19 @@ contains
        if (found) return
     end do
   end function pdg_list_search_for_particle
+
+  function pdg_list_contains_colored_particles (pl) result (colored)
+    class(pdg_list_t), intent(in) :: pl
+    logical :: colored
+    integer :: i
+    colored = .false.
+    do i = 1, size (pl%a)
+       if (pl%a(i)%has_colored_particles()) then
+          colored = .true.
+          exit
+       end if
+    end do
+  end function pdg_list_contains_colored_particles
 
   subroutine pdg_arrays_test (u, results)
     integer, intent(in) :: u

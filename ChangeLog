@@ -2,8 +2,25 @@ ChangeLog -- Summary of changes to the WHIZARD package
 
 Use svn log to see detailed changes.
 
-	Version 2.2.5
+	Version 2.2.6
 
+2015-05-02
+	RELEASE: version 2.2.6
+
+2015-05-01
+	Models for (unitarized) tensor resonances in VBS
+	
+2015-04-28
+	Bug fix in channel weights for event generation.
+	
+2015-04-18
+	Improved event record transfer WHIZARD/PYTHIA6
+
+2015-03-19
+	POWHEG matching: alpha version
+	
+##################################################################	
+	
 2015-02-27
 	RELEASE: version 2.2.5
 

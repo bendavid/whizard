@@ -53,11 +53,13 @@ module parameters_sm_rx
        alww0, alww2, alzw0, alzw1, alzz, &
        igdh4, gdh2w2, gdh2z2, gdhw2, gdhz2
   real(default), public :: lam_reg   
-  real(default), public :: fudge_higgs, fudge_km, w_res
+  real(default), public :: fudge_higgs, fudge_km, w_res, &
+       amp00, amp02, amp11, amp20, amp22
   real(default), dimension(1:12), public :: gkm
   real(default), dimension(1:5), public :: mkm, wkm
   complex(default), public :: ghvva
   integer, public :: part_r
+  logical, public :: unit_limit
   integer, private :: i
 
   public :: import_from_whizard, model_update_alpha_s
@@ -289,6 +291,7 @@ contains
     gh3 = - 3 * mass(25)**2 / vev
     gh4 = - 3 * mass(25)**2 / vev**2
     part_r = 0
+    unit_limit = .false.
     !!! Color flow basis, divide by sqrt(2)
     gs = sqrt(2.0_default*PI*par%alphas)
     igs = cmplx (0.0_default, 1.0_default, kind=default) * gs    

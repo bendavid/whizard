@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -71,9 +71,13 @@ module lcio_interface
   public :: lcio_particle_get_flow
   public :: lcio_particle_get_momentum
   public :: lcio_particle_get_mass_squared
+  public :: lcio_particle_get_vertex
+  public :: lcio_particle_get_time
   public :: lcio_polarization_init
   public :: lcio_particle_to_pol
   public :: lcio_particle_to_hel
+  public :: lcio_particle_set_vtx
+  public :: lcio_particle_set_t 
   public :: lcio_particle_set_parent
   public :: lcio_particle_get_status  
   public :: lcio_particle_get_pdg  
@@ -258,6 +262,30 @@ module lcio_interface
        type(c_ptr), value :: prt_obj
      end function lcio_mass
   end interface
+  interface 
+     real(c_double) function lcio_vtx_x (prt) bind(C)
+       import
+       type(c_ptr), value :: prt       
+     end function lcio_vtx_x
+  end interface
+  interface 
+     real(c_double) function lcio_vtx_y (prt) bind(C)
+       import
+       type(c_ptr), value :: prt       
+     end function lcio_vtx_y
+  end interface
+  interface 
+     real(c_double) function lcio_vtx_z (prt) bind(C)
+       import
+       type(c_ptr), value :: prt       
+     end function lcio_vtx_z
+  end interface  
+  interface 
+     real(c_double) function lcio_prt_time (prt) bind(C)
+       import
+       type(c_ptr), value :: prt    
+     end function lcio_prt_time
+  end interface    
   interface
      subroutine lcio_particle_set_spin (prt_obj, s1, s2, s3) bind(C)
        import
@@ -291,6 +319,21 @@ module lcio_interface
        type(c_ptr), value :: prt_obj
      end function lcio_polarization_phi
   end interface
+  interface
+     subroutine lcio_particle_set_vertex (prt_obj, vx, vy, vz) bind(C)
+       import
+       type(c_ptr), value :: prt_obj
+       real(c_double), value :: vx, vy, vz
+     end subroutine lcio_particle_set_vertex
+  end interface
+  interface
+     subroutine lcio_particle_set_time (prt_obj, t) bind(C)
+       import
+       type(c_ptr), value :: prt_obj
+       real(c_double), value :: t
+     end subroutine lcio_particle_set_time
+  end interface  
+  
   interface
      subroutine lcio_particle_add_parent (prt_obj1, prt_obj2) bind(C)
        import
@@ -424,7 +467,7 @@ contains
     rid = 0; if (present (run_id))  rid = run_id
     runhdr%obj = new_lcio_run_header (rid)
     call run_header_set_simstring (runhdr%obj, &
-         "WHIZARD version:" // "2.2.5")
+         "WHIZARD version:" // "2.2.6")
   end subroutine lcio_run_header_init
 
   subroutine lcio_run_header_write (wrt, hdr)
@@ -551,6 +594,22 @@ contains
     m2 = sign (m**2, m)
   end function lcio_particle_get_mass_squared
 
+  function lcio_particle_get_vertex (prt) result (vtx)
+    type(vector3_t) :: vtx
+    type(lcio_particle_t), intent(in) :: prt
+    real(default) :: vx, vy, vz
+    vx = lcio_vtx_x (prt%obj)
+    vy = lcio_vtx_y (prt%obj)
+    vz = lcio_vtx_z (prt%obj)    
+    vtx = vector3_moving ([vx, vy, vz])
+  end function lcio_particle_get_vertex
+
+  function lcio_particle_get_time (prt) result (time)
+    real(default) :: time
+    type(lcio_particle_t), intent(in) :: prt
+    time = lcio_prt_time (prt%obj)
+  end function lcio_particle_get_time
+  
   subroutine lcio_polarization_init_pol (prt, pol)
     type(lcio_particle_t), intent(out) :: prt
     type(polarization_t), intent(in) :: pol
@@ -619,6 +678,19 @@ contains
     hmax = flv%get_spin_type () / 2
     call hel%init (sign (hmax, nint (cos (theta))))
   end subroutine lcio_particle_to_hel
+
+  subroutine lcio_particle_set_vtx (prt, vtx) 
+    type(lcio_particle_t), intent(inout) :: prt
+    type(vector3_t), intent(in) :: vtx
+    call lcio_particle_set_vertex (prt%obj, real(vtx%p(1), c_double), &
+         real(vtx%p(2), c_double), real(vtx%p(3), c_double))
+  end subroutine lcio_particle_set_vtx
+
+  subroutine lcio_particle_set_t (prt, t)
+    type(lcio_particle_t), intent(out) :: prt
+    real(default), intent(in) :: t
+    call lcio_particle_set_time (prt%obj, real(t, c_double))
+  end subroutine lcio_particle_set_t
 
   subroutine lcio_particle_set_parent (daughter, parent) 
     type(lcio_particle_t), intent(inout) :: daughter, parent
@@ -813,13 +885,19 @@ contains
     call lcio_particle_set_parent (prt6, prt3)
     call lcio_particle_set_parent (prt6, prt4)    
     
-    ! $W^-$ decay
+    ! $W^-$ decay    
     call particle_init (prt7, &
          -2.445_default, 28.816_default, 6.082_default, 29.552_default, &
          1, 1)
     call particle_init (prt8, &
          3.962_default, -49.498_default, -26.687_default, 56.373_default, &
          -2, 1)
+    call lcio_particle_set_t (prt7, 0.12_default)
+    call lcio_particle_set_t (prt8, 0.12_default)    
+    call lcio_particle_set_vtx &
+         (prt7, vector3_moving ([-0.3_default, 0.05_default, 0.004_default]))
+    call lcio_particle_set_vtx &
+         (prt8, vector3_moving ([-0.3_default, 0.05_default, 0.004_default]))
     call lcio_particle_set_parent (prt7, prt5)
     call lcio_particle_set_parent (prt8, prt5)
     call lcio_particle_add_to_evt_coll (prt1, evt)
@@ -870,7 +948,8 @@ contains
     
   contains
 
-    subroutine particle_init (prt, px, py, pz, E, pdg, status)
+    subroutine particle_init &
+         (prt, px, py, pz, E, pdg, status)
       type(lcio_particle_t), intent(out) :: prt
       real(default), intent(in) :: px, py, pz, E
       integer, intent(in) :: pdg, status

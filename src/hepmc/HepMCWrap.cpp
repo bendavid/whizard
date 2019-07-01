@@ -182,6 +182,22 @@ extern "C" int gen_vertex_particles_out_size( GenVertex* v ) {
   return v->particles_out_size();
 }
 
+extern "C" double gen_vertex_pos_x( GenVertex* v ) {
+  return v->position().x();
+}
+
+extern "C" double gen_vertex_pos_y( GenVertex* v ) {
+  return v->position().y();
+}
+
+extern "C" double gen_vertex_pos_z( GenVertex* v ) {
+  return v->position().z();
+}
+
+extern "C" double gen_vertex_time( GenVertex* v ) {
+  return v->position().t();
+}
+
 //////////////////////////////////////////////////////////////////////////
 // GenVertex iterator over in-particles
 

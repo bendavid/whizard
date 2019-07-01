@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -106,6 +106,15 @@ module parser
      type(parse_node_t), pointer :: next => null ()
    contains
      procedure :: write => parse_node_write_rec
+     procedure :: get_rule_ptr => parse_node_get_rule_ptr
+     procedure :: get_n_sub => parse_node_get_n_sub
+     procedure :: get_sub_ptr => parse_node_get_sub_ptr
+     procedure :: get_next_ptr => parse_node_get_next_ptr
+     procedure :: get_logical => parse_node_get_logical
+     procedure :: get_integer => parse_node_get_integer
+     procedure :: get_real => parse_node_get_real
+     procedure :: get_cmplx => parse_node_get_cmplx
+     procedure :: get_string => parse_node_get_string
   end type parse_node_t
 
   type :: parse_node_p
@@ -115,6 +124,11 @@ module parser
   type :: parse_tree_t
      private
      type(parse_node_t), pointer :: root_node => null ()
+   contains
+     procedure :: parse => parse_tree_init
+     procedure :: final => parse_tree_final
+     procedure :: write => parse_tree_write
+     procedure :: get_root_ptr => parse_tree_get_root_ptr
   end type parse_tree_t
 
 
@@ -615,8 +629,8 @@ contains
   end subroutine parse_node_replace_last_sub
 
   function parse_node_get_rule_ptr (node) result (rule)
+    class(parse_node_t), intent(in) :: node
     type(syntax_rule_t), pointer :: rule
-    type(parse_node_t), intent(in), target :: node
     if (associated (node%rule)) then
        rule => node%rule
     else
@@ -626,14 +640,14 @@ contains
   end function parse_node_get_rule_ptr
 
   function parse_node_get_n_sub (node) result (n)
+    class(parse_node_t), intent(in) :: node 
     integer :: n
-    type(parse_node_t), intent(in) :: node 
     n = node%n_sub
   end function parse_node_get_n_sub
 
   function parse_node_get_sub_ptr (node, n, tag, required) result (sub)
+    class(parse_node_t), intent(in), target :: node
     type(parse_node_t), pointer :: sub
-    type(parse_node_t), intent(in), target :: node
     integer, intent(in), optional :: n
     character(*), intent(in), optional :: tag
     logical, intent(in), optional :: required
@@ -652,8 +666,8 @@ contains
   end function parse_node_get_sub_ptr
   
   function parse_node_get_next_ptr (sub, n, tag, required) result (next)
+    class(parse_node_t), intent(in), target :: sub
     type(parse_node_t), pointer :: next
-    type(parse_node_t), intent(in), target :: sub
     integer, intent(in), optional :: n
     character(*), intent(in), optional :: tag
     logical, intent(in), optional :: required
@@ -712,32 +726,32 @@ contains
   end subroutine parse_node_mismatch
 
   function parse_node_get_logical (node) result (lval)
+    class(parse_node_t), intent(in), target :: node
     logical :: lval
-    type(parse_node_t), intent(in), target :: node
     lval = token_get_logical (parse_node_get_token_ptr (node))
   end function parse_node_get_logical
 
   function parse_node_get_integer (node) result (ival)
+    class(parse_node_t), intent(in), target :: node
     integer :: ival
-    type(parse_node_t), intent(in), target :: node
     ival = token_get_integer (parse_node_get_token_ptr (node))
   end function parse_node_get_integer
 
   function parse_node_get_real (node) result (rval)
+    class(parse_node_t), intent(in), target :: node
     real(default) :: rval
-    type(parse_node_t), intent(in), target :: node
     rval = token_get_real (parse_node_get_token_ptr (node))
   end function parse_node_get_real
   
   function parse_node_get_cmplx (node) result (cval)
+    class(parse_node_t), intent(in), target :: node
     complex(default) :: cval
-    type(parse_node_t), intent(in), target :: node
     cval = token_get_cmplx (parse_node_get_token_ptr (node))
   end function parse_node_get_cmplx
 
   function parse_node_get_string (node) result (sval)
+    class(parse_node_t), intent(in), target :: node
     type(string_t) :: sval
-    type(parse_node_t), intent(in), target :: node
     sval = token_get_string (parse_node_get_token_ptr (node))
   end function parse_node_get_string
 
@@ -777,7 +791,7 @@ contains
 
   subroutine parse_tree_init &
        (parse_tree, syntax, lexer, key, check_eof)
-    type(parse_tree_t), intent(inout) :: parse_tree
+    class(parse_tree_t), intent(inout) :: parse_tree
     type(lexer_t), intent(inout) :: lexer
     type(syntax_t), intent(in), target :: syntax
     type(string_t), intent(in), optional :: key
@@ -1004,7 +1018,7 @@ contains
   end subroutine parse_tree_init
 
   subroutine parse_tree_final (parse_tree)
-    type(parse_tree_t), intent(inout) :: parse_tree
+    class(parse_tree_t), intent(inout) :: parse_tree
     if (associated (parse_tree%root_node)) then
        call parse_node_final (parse_tree%root_node)
        deallocate (parse_tree%root_node)
@@ -1012,7 +1026,7 @@ contains
   end subroutine parse_tree_final
 
   subroutine parse_tree_write (parse_tree, unit, verbose)
-    type(parse_tree_t), intent(in) :: parse_tree
+    class(parse_tree_t), intent(in) :: parse_tree
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: verbose
     integer :: u
@@ -1035,8 +1049,8 @@ contains
   end subroutine parse_tree_bug
 
   function parse_tree_get_root_ptr (parse_tree) result (node)
+    class(parse_tree_t), intent(in) :: parse_tree
     type(parse_node_t), pointer :: node
-    type(parse_tree_t), intent(in), target :: parse_tree
     node => parse_tree%root_node
   end function parse_tree_get_root_ptr
 

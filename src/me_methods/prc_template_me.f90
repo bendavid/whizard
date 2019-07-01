@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -129,7 +129,7 @@ module prc_template_me
      procedure :: compute_amplitude => prc_template_me_compute_amplitude
   end type prc_template_me_t
   
-  type, extends (workspace_t) :: template_me_state_t
+  type, extends (prc_core_state_t) :: template_me_state_t
      logical :: new_kinematics = .true.
      real(default) :: alpha_qcd = -1
    contains
@@ -877,10 +877,10 @@ contains
     class(template_me_state_t), intent(inout) :: object
   end subroutine template_me_state_reset_new_kinematics
 
-  subroutine prc_template_me_allocate_workspace (object, tmp)
+  subroutine prc_template_me_allocate_workspace (object, core_state)
     class(prc_template_me_t), intent(in) :: object
-    class(workspace_t), intent(inout), allocatable :: tmp
-    allocate (template_me_state_t :: tmp)
+    class(prc_core_state_t), intent(inout), allocatable :: core_state
+    allocate (template_me_state_t :: core_state)
   end subroutine prc_template_me_allocate_workspace
   
   subroutine prc_template_me_write (object, unit)
@@ -963,39 +963,39 @@ contains
   end function prc_template_me_is_allowed
  
   subroutine prc_template_me_compute_hard_kinematics &
-       (object, p_seed, i_term, int_hard, tmp)
+       (object, p_seed, i_term, int_hard, core_state)
     class(prc_template_me_t), intent(in) :: object
     type(vector4_t), dimension(:), intent(in) :: p_seed
     integer, intent(in) :: i_term
     type(interaction_t), intent(inout) :: int_hard
-    class(workspace_t), intent(inout), allocatable :: tmp
-    call interaction_set_momenta (int_hard, p_seed)
-!     if (allocated (tmp)) then
-!        select type (tmp)
-!        type is (template_me_state_t);  tmp%new_kinematics = .true.
+    class(prc_core_state_t), intent(inout), allocatable :: core_state
+    call int_hard%set_momenta (p_seed)
+!     if (allocated (core_state)) then
+!        select type (core_state)
+!        type is (template_me_state_t);  core_state%new_kinematics = .true.
 !        end select
 !     end if
   end subroutine prc_template_me_compute_hard_kinematics
   
   subroutine prc_template_me_compute_eff_kinematics &
-       (object, i_term, int_hard, int_eff, tmp)
+       (object, i_term, int_hard, int_eff, core_state)
     class(prc_template_me_t), intent(in) :: object
     integer, intent(in) :: i_term
     type(interaction_t), intent(in) :: int_hard
     type(interaction_t), intent(inout) :: int_eff
-    class(workspace_t), intent(inout), allocatable :: tmp
+    class(prc_core_state_t), intent(inout), allocatable :: core_state
   end subroutine prc_template_me_compute_eff_kinematics
   
   function prc_template_me_compute_amplitude &
-       (object, j, p, f, h, c, fac_scale, ren_scale, alpha_qcd_forced, tmp) &
-       result (amp)
+       (object, j, p, f, h, c, fac_scale, ren_scale, alpha_qcd_forced, &
+       core_state)  result (amp)
     class(prc_template_me_t), intent(in) :: object
     integer, intent(in) :: j
     type(vector4_t), dimension(:), intent(in) :: p
     integer, intent(in) :: f, h, c
     real(default), intent(in) :: fac_scale, ren_scale
     real(default), intent(in), allocatable :: alpha_qcd_forced
-    class(workspace_t), intent(inout), allocatable, optional :: tmp
+    class(prc_core_state_t), intent(inout), allocatable, optional :: core_state
     complex(default) :: amp
     integer :: n_tot, i
     real(c_default_float), dimension(:,:), allocatable :: parray
@@ -1004,12 +1004,12 @@ contains
     select type (driver => object%driver)
     type is (template_me_driver_t)
        new_event = .true.
-       if (present (tmp)) then
-          if (allocated (tmp)) then
-             select type (tmp)
+       if (present (core_state)) then
+          if (allocated (core_state)) then
+             select type (core_state)
              type is (template_me_state_t)
-                new_event = tmp%new_kinematics
-                tmp%new_kinematics = .false.
+                new_event = core_state%new_kinematics
+                core_state%new_kinematics = .false.
              end select
           end if
        end if
@@ -1031,16 +1031,16 @@ contains
     
 
   subroutine prc_template_me_recover_kinematics &
-       (object, p_seed, int_hard, int_eff, tmp)
+       (object, p_seed, int_hard, int_eff, core_state)
     class(prc_template_me_t), intent(in) :: object
     type(vector4_t), dimension(:), intent(inout) :: p_seed
     type(interaction_t), intent(inout) :: int_hard
     type(interaction_t), intent(inout) :: int_eff
-    class(workspace_t), intent(inout), allocatable :: tmp
+    class(prc_core_state_t), intent(inout), allocatable :: core_state
     integer :: n_in
-    n_in = interaction_get_n_in (int_eff)
-    call interaction_set_momenta (int_eff, p_seed(1:n_in), outgoing = .false.)
-    p_seed(n_in+1:) = interaction_get_momenta (int_eff, outgoing = .true.)
+    n_in = int_eff%get_n_in ()
+    call int_eff%set_momenta (p_seed(1:n_in), outgoing = .false.)
+    p_seed(n_in+1:) = int_eff%get_momenta (outgoing = .true.)
   end subroutine prc_template_me_recover_kinematics
     
   subroutine prc_template_me_test (u, results)

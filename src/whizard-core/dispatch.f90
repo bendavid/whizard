@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -38,6 +38,7 @@ module dispatch
   use constants, only: PI
   use system_dependencies, only: LHAPDF5_AVAILABLE
   use system_dependencies, only: LHAPDF6_AVAILABLE
+  use system_defs, only: LF
   use io_units
   use format_utils, only: write_separator
   use unit_tests
@@ -84,10 +85,16 @@ module dispatch
   use prc_template_me
   use prc_core
   use processes
-  use shower_base !NODEP!
+  use powheg
+  use shower_base
+  use shower_core
+  use shower_pythia6
+  use mlm_matching
+  use ckkw_base
   use shower
   use event_transforms
   use decays
+  use hadrons
   use beam_structures
   use eio_base
   use eio_raw
@@ -100,6 +107,7 @@ module dispatch
   use eio_weights
   use rt_data
   use prc_gosam
+  use prc_openloops
   use phs_fks
   use nlo_data
 
@@ -120,9 +128,9 @@ module dispatch
   public :: dispatch_sf_channels
   public :: dispatch_eio
   public :: dispatch_qcd
-  public :: dispatch_shower
   public :: dispatch_evt_decay
   public :: dispatch_evt_shower
+  public :: dispatch_evt_hadrons
   public :: dispatch_slha
   public :: dispatch_test
 
@@ -169,7 +177,7 @@ contains
     type(string_t), dimension(:), intent(in) :: prt_out
     type(rt_data_t), intent(in) :: global
     type(string_t), intent(in), optional :: id
-    type(string_t), intent(in), optional :: nlo_type
+    integer, intent(in), optional :: nlo_type
     type(string_t) :: method
     type(string_t) :: model_name
     type(string_t) :: restrictions
@@ -256,6 +264,17 @@ contains
              call msg_fatal ("Dispatch GoSam def: No id!")
           end if
         end select
+      case ("openloops")
+         allocate (openloops_def_t :: core_def)
+         select type (core_def)
+         type is (openloops_def_t)
+            if (present (id)) then
+               call core_def%init (id, model_name, prt_in, &
+                                   prt_out, nlo_type)
+            else
+               call msg_fatal ("Dispatch OpenLoops def: No id!")
+            end if
+         end select
       case default
          call msg_fatal ("Process configuration: method '" &
               // char (method) // "' not implemented")
@@ -292,6 +311,12 @@ contains
       select type (core)
       type is (prc_gosam_t)
         call core%set_parameters (qcd, use_color_factors)
+      end select
+    type is (openloops_def_t)
+      if (.not. allocated (core)) allocate (prc_openloops_t :: core)
+      select type (core)
+      type is (prc_openloops_t)
+         call core%set_parameters (qcd, use_color_factors)
       end select
     class default
        call msg_bug ("Process core: unexpected process definition type")
@@ -518,7 +543,7 @@ contains
          local%var_list%get_sval (var_str ("$rng_method"))
     seed = &
          local%var_list%get_ival (var_str ("seed"))
-    s = mod (seed, 32768)
+    s = int (mod (seed, 32768), i16)
     select case (char (rng_method))
     case ("unit_test")
        allocate (rng_test_factory_t :: rng_factory)
@@ -564,7 +589,8 @@ contains
     integer :: lhapdf_member, lhapdf_photon_scheme
     logical :: hoppet_b_matching
     class(rng_factory_t), allocatable :: rng_factory
-    logical :: circe1_photon1, circe1_photon2, circe1_generate
+    logical :: circe1_photon1, circe1_photon2, circe1_generate, &
+         circe1_with_radiation
     real(default) :: circe1_sqrts, circe1_eps
     integer :: circe1_version, circe1_chattiness, &
          circe1_revision
@@ -666,13 +692,13 @@ contains
          allocate (isr_data_t :: data)
          isr_alpha = &
               var_list%get_rval (var_str ("isr_alpha"))
-         if (isr_alpha == 0) then
+         if (vanishes (isr_alpha)) then
             isr_alpha = (var_list%get_rval (var_str ("ee"))) &
                  ** 2 / (4 * PI)
          end if
          isr_q_max = &
               var_list%get_rval (var_str ("isr_q_max"))
-         if (isr_q_max == 0) then
+         if (vanishes (isr_q_max)) then
             isr_q_max = sqrts
          end if
          isr_mass   = var_list%get_rval (var_str ("isr_mass"))
@@ -689,14 +715,14 @@ contains
       case ("epa")
          allocate (epa_data_t :: data)
          epa_alpha = var_list%get_rval (var_str ("epa_alpha"))
-         if (epa_alpha == 0) then
+         if (vanishes (epa_alpha)) then
             epa_alpha = (var_list%get_rval (var_str ("ee"))) &
                  ** 2 / (4 * PI)
          end if         
          epa_x_min = var_list%get_rval (var_str ("epa_x_min"))
          epa_q_min = var_list%get_rval (var_str ("epa_q_min"))
          epa_e_max = var_list%get_rval (var_str ("epa_e_max"))
-         if (epa_e_max == 0) then
+         if (vanishes (epa_e_max)) then
             epa_e_max = sqrts
          end if
          epa_mass   = var_list%get_rval (var_str ("epa_mass"))
@@ -720,7 +746,7 @@ contains
          ewa_id = abs (pdg_array_get (pdg_prc1(1), 1))
          ewa_x_min = var_list%get_rval (var_str ("ewa_x_min"))
          ewa_pt_max = var_list%get_rval (var_str ("ewa_pt_max")) 
-         if (ewa_pt_max == 0) then
+         if (vanishes (ewa_pt_max)) then
             ewa_pt_max = sqrts
          end if
          ewa_mass = var_list%get_rval (var_str ("ewa_mass"))  
@@ -763,10 +789,12 @@ contains
                  char (var_list%get_sval (var_str ("$circe1_acc")))
             circe1_chattiness = &
                  var_list%get_ival (var_str ("circe1_chat"))
+            circe1_with_radiation = &
+                 var_list%get_lval (var_str ("?circe1_with_radiation"))
             call data%init (model, pdg_in, circe1_sqrts, circe1_eps, &
                  [circe1_photon1, circe1_photon2], &
                  circe1_version, circe1_revision, circe1_accelerator, &
-                 circe1_chattiness)
+                 circe1_chattiness, circe1_with_radiation)
             if (circe1_generate) then
                call msg_message ("Circe1: activating generator mode")
                call dispatch_rng_factory (rng_factory, global)
@@ -1617,14 +1645,16 @@ contains
     end select
   end subroutine dispatch_qcd
   
-  subroutine dispatch_shower (shower_settings, global)
-    class(shower_settings_t), intent(inout) :: shower_settings
+  subroutine dispatch_powheg (powheg, global, process_name)
+    type(powheg_t), intent(inout) :: powheg 
+    type(powheg_settings_t) :: settings
     type(rt_data_t), intent(in), target :: global
-    type(var_list_t), pointer :: var_list
+    type(string_t), intent(in) :: process_name
+    type(var_list_t), pointer :: var_list    
     var_list => global%get_var_list_ptr ()
-    call shower_settings%init (var_list)
-  end subroutine dispatch_shower
-
+    call settings%init (var_list)
+    call powheg%init (settings, process_name)
+  end subroutine dispatch_powheg
   subroutine dispatch_evt_decay (evt, global)
     class(evt_t), intent(out), pointer :: evt
     type(rt_data_t), intent(in) :: global
@@ -1639,68 +1669,91 @@ contains
     end if
   end subroutine dispatch_evt_decay
 
-  subroutine dispatch_evt_shower (evt, global, process)
+  subroutine dispatch_evt_shower (evt, rt_data, process)
     class(evt_t), intent(out), pointer :: evt
-    type(rt_data_t), intent(in), target :: global
+    type(rt_data_t), intent(in), target :: rt_data
     type(process_t), intent(in), optional, target :: process
-    logical :: allow_shower
     type(var_list_t), pointer :: var_list
-    type(string_t) :: lhapdf_file, lhapdf_dir
+    type(powheg_t) :: powheg
+    type(string_t) :: lhapdf_file, lhapdf_dir, process_name
     integer :: lhapdf_member
-    double precision :: xmin, xmax, q2min, q2max
     type(shower_settings_t) :: settings
-    external :: GetXminM, GetXmaxM, GetQ2minM, GetQ2maxM    
-    var_list => global%get_var_list_ptr ()    
-    allow_shower = &
-         var_list%get_lval (var_str ("?allow_shower"))
+    var_list => rt_data%get_var_list_ptr ()
     lhapdf_dir = &
-         var_list%get_sval (var_str ("$lhapdf_dir"))    
+         var_list%get_sval (var_str ("$lhapdf_dir"))
     lhapdf_file = &
          var_list%get_sval (var_str ("$lhapdf_file"))
     lhapdf_member = &
-         var_list%get_ival (var_str ("lhapdf_member"))             
-    if (allow_shower) then
-       allocate (evt_shower_t :: evt)
-       call msg_message ("Simulate: activating parton shower")
-       call dispatch_shower (settings, global)
-       if (settings%mlm_matching) &
-            call msg_message ("Simulate: applying MLM matching")
-       if (settings%ckkw_matching) &
-            call msg_warning ("Simulate: CKKW(-L) matching not yet supported")
-       if (settings%hadronization_active) &
-            call msg_message ("Simulate: applying hadronization")
-       select type (evt)
-       type is (evt_shower_t)
-          call evt%init (settings, global%fallback_model, global%os_data)
-          if (LHAPDF6_AVAILABLE) then
-             call lhapdf_initialize &
-                  (1, lhapdf_dir, lhapdf_file, lhapdf_member, evt%pdf)
-          end if
-          if (present (process)) &
-               call evt%setup_pdf (process, global%beam_structure)
-          select case (evt%pdf_type)
-          case (STRF_LHAPDF6)
-             evt%xmin = evt%pdf%getxmin ()
-             evt%xmax = evt%pdf%getxmax ()
-             evt%qmin = sqrt(evt%pdf%getq2min ())
-             evt%qmax = sqrt(evt%pdf%getq2max ())
-          case (STRF_LHAPDF5)
-             if (LHAPDF5_AVAILABLE) then
-                call GetXminM (1, lhapdf_member, xmin)
-                call GetXmaxM (1, lhapdf_member, xmax)
-                call GetQ2minM (1, lhapdf_member, q2min)
-                call GetQ2maxM (1, lhapdf_member, q2max)
-                evt%xmin = xmin
-                evt%xmax = xmax
-                evt%qmin = sqrt(q2min)
-                evt%qmax = sqrt(q2max)
-             end if
-          end select
-       end select
-    else
-       evt => null ()
+         var_list%get_ival (var_str ("lhapdf_member"))
+    allocate (evt_shower_t :: evt)
+    call msg_message ("Simulate: activating parton shower")
+    call settings%init (var_list)
+    if (present (process)) then
+       process_name = process%get_id ()
+       if (settings%powheg_matching) then
+          call dispatch_powheg (powheg, rt_data, process_name)
+       end if
     end if
+    if (settings%mlm_matching .and. settings%ckkw_matching) then
+       call msg_fatal ("Both MLM and CKKW matching activated," // &
+            LF // "     aborting simulation")
+    end if
+    select type (evt)
+    type is (evt_shower_t)
+       call evt%init (settings, rt_data%fallback_model, rt_data%os_data, &
+            powheg)
+       if (settings%mlm_matching) then
+          call msg_message ("Simulate: applying MLM matching")
+          allocate (mlm_matching_settings_t :: evt%matching_settings)
+          allocate (mlm_matching_data_t :: evt%data)
+       end if
+       if (settings%ckkw_matching) then
+          call msg_warning ("Simulate: CKKW(-L) matching not yet supported")
+          allocate (ckkw_matching_settings_t :: evt%matching_settings)
+          allocate (ckkw_matching_data_t :: evt%data)
+       end if
+       if (allocated (evt%matching_settings)) &
+            call evt%matching_settings%init (var_list)
+       if (LHAPDF6_AVAILABLE) then
+          call lhapdf_initialize &
+               (1, lhapdf_dir, lhapdf_file, lhapdf_member, evt%pdf_data%pdf)
+       end if
+       if (present (process)) &
+            call evt%setup_pdf &
+            (process, rt_data%beam_structure, lhapdf_member)
+       select case (evt%settings%method)
+       case (PS_WHIZARD)
+          allocate (shower_t :: evt%shower)
+       case (PS_PYTHIA6)
+          allocate (shower_pythia6_t :: evt%shower)
+       case default
+          call msg_fatal ('Shower: Method ' // &
+            char (var_list%get_sval (var_str ("$shower_method"))) // &
+            'not implemented!')
+       end select
+       call evt%shower%init (evt%settings, evt%pdf_data)
+    end select
   end subroutine dispatch_evt_shower
+
+  subroutine dispatch_evt_hadrons (evt, global, process)
+    class(evt_t), intent(out), pointer :: evt
+    type(rt_data_t), intent(in), target :: global
+    type(process_t), intent(in), optional, target :: process
+    type(string_t) :: method
+    type(var_list_t), pointer :: var_list
+    type(shower_settings_t) :: settings
+    var_list => global%get_var_list_ptr ()
+    method = &
+         var_list%get_sval (var_str ("$hadronization_method"))
+    allocate (evt_hadrons_t :: evt)
+    call msg_message ("Simulate: activating hadronization")
+    call settings%init (var_list)
+    select type (evt)
+    type is (evt_hadrons_t)
+       call settings%init (var_list)
+       call evt%init (settings, global%fallback_model, method)
+    end select
+  end subroutine dispatch_evt_hadrons
 
   subroutine dispatch_slha (global, input, spectrum, decays)
     type(rt_data_t), intent(inout), target :: global
@@ -2573,6 +2626,7 @@ contains
   subroutine dispatch_12 (u)
     integer, intent(in) :: u
     type(rt_data_t), target :: global
+    type(var_list_t), pointer :: var_list
     type(shower_settings_t) :: shower_settings
     
     write (u, "(A)")  "* Test output: dispatch_12"
@@ -2585,7 +2639,8 @@ contains
     call global%global_init ()
     call var_list_set_log (global%var_list, var_str ("?alpha_s_is_fixed"), &
          .true., is_known = .true.)
-    call dispatch_shower (shower_settings, global)
+    var_list => global%get_var_list_ptr ()
+    call shower_settings%init (var_list)
     call write_separator (u)
     call shower_settings%write (u)
     call write_separator (u)
@@ -2595,6 +2650,8 @@ contains
     write (u, "(A)")  "      and MLM matching"
     write (u, "(A)")
     
+    call var_list_set_string (global%var_list, var_str ("$shower_method"), &
+         var_str ("PYTHIA6"), is_known = .true.)
     call var_list_set_log (global%var_list, var_str ("?ps_fsr_active"), &
          .true., is_known = .true.)
     call var_list_set_log (global%var_list, var_str ("?ps_isr_active"), &
@@ -2612,7 +2669,7 @@ contains
          var_str ("mlm_etamax"), 3.456_default, is_known=.true.)
     call var_list_set_string (global%var_list, &
          var_str ("$ps_PYTHIA_PYGIVE"), var_str ("abcdefgh"), is_known=.true.)    
-    call dispatch_shower (shower_settings, global)
+    call shower_settings%init (var_list)
     call write_separator (u)
     call shower_settings%write (u)
     call write_separator (u)
@@ -2644,10 +2701,7 @@ contains
     write (u, "(A)")
 
     call dispatch_evt_decay (evt, global)
-    select type (evt)
-    type is (evt_decay_t)
-       call evt%write (u, show_decay_tree = .true., verbose = .true.)
-    end select
+    call evt%write (u, verbose = .true., more_verbose = .true.)
 
     call evt%final ()
     deallocate (evt)
@@ -2658,12 +2712,11 @@ contains
 
     call var_list_set_log (global%var_list, var_str ("?allow_shower"), .true., &
          is_known = .true.)
+    call var_list_set_string (global%var_list, var_str ("$shower_method"), &
+         var_str ("WHIZARD"), is_known = .true.)
     call dispatch_evt_shower (evt, global)
-    select type (evt)
-    type is (evt_shower_t)
-       call evt%write (u)
-       call write_separator (u, 2)
-    end select
+    call evt%write (u)
+    call write_separator (u, 2)
 
     call evt%final ()
     deallocate (evt)

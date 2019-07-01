@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -142,8 +142,8 @@ contains
        !!! Will have to be filled in later.
        ! call sf_int%base_init (mask, &
        !      hel_lock = hel_lock)
-       call interaction_init &
-            (sf_int%interaction_t, data%n_in, 0, data%n_out, mask=mask, &
+       call sf_int%basic_init &
+            (data%n_in, 0, data%n_out, mask=mask, &
             hel_lock=hel_lock, set_relations=.true.)       
        do s = 1, data%n_states
           i_state = s
@@ -168,9 +168,9 @@ contains
              end if
              call qn(i)%init (flv, col, hel)
           end do
-          call interaction_add_state (sf_int%interaction_t, qn)
+          call sf_int%add_state (qn)
        end do
-       call interaction_freeze (sf_int%interaction_t)
+       call sf_int%freeze ()
        !!! JRR: WK please check (#529)
        !!! What has to be inserted here?
        ! call sf_int%set_incoming (??)
@@ -312,7 +312,7 @@ contains
       x = sf_int%x
       call data%evaluate (real (x, c_double), real (scale, c_double), fval)
       fc = fval
-      call interaction_set_matrix_element (sf_int%interaction_t, fc)
+      call sf_int%set_matrix_element (fc)
     end associate
     sf_int%status = SF_EVALUATED
   end subroutine user_apply

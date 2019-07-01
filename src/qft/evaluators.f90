@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -52,34 +52,8 @@ module evaluators
 
   public :: evaluator_t
   public :: assignment(=)
-  public :: evaluator_init_product
-  public :: evaluator_init_square
-  public :: evaluator_init_square_diag
-  public :: evaluator_init_square_nondiag
-  public :: evaluator_init_color_contractions
-  public :: evaluator_get_int_ptr
-  public :: evaluator_is_empty
-  public :: evaluator_get_tag
-  public :: evaluator_get_norm
-  public :: evaluator_get_n_tot
-  public :: evaluator_get_n_in
-  public :: evaluator_get_n_vir
-  public :: evaluator_get_n_out
-  public :: evaluator_get_matrix_element
-  public :: evaluator_sum
-  public :: evaluator_normalize_by_trace
-  public :: evaluator_normalize_by_max
-  public :: evaluator_add_color_contractions
-  public :: evaluator_get_mask
-  public :: interaction_set_source_link
-  public :: evaluator_set_source_link
-  public :: evaluator_receive_momenta
-  public :: evaluator_send_momenta
   public :: evaluator_reassign_links
   public :: evaluator_get_unstable_particle
-  public :: evaluator_final
-  public :: evaluator_init_identity
-  public :: evaluator_init_qn_sum
   public :: evaluator_test
 
   integer, parameter :: &
@@ -96,15 +70,21 @@ module evaluators
      complex(default), dimension(:), allocatable :: factor
   end type pairing_array_t
      
-  type :: evaluator_t
+  type, extends (interaction_t) :: evaluator_t
      private
      integer :: type = EVAL_UNDEFINED
-     type(interaction_t), pointer :: int_in1 => null ()
-     type(interaction_t), pointer :: int_in2 => null ()
-     type(interaction_t) :: int
+     class(interaction_t), pointer :: int_in1 => null ()
+     class(interaction_t), pointer :: int_in2 => null ()
      type(pairing_array_t), dimension(:), allocatable :: pairing_array
    contains
      procedure :: write => evaluator_write
+     procedure :: init_product => evaluator_init_product
+     procedure :: init_square => evaluator_init_square
+     procedure :: init_square_diag => evaluator_init_square_diag
+     procedure :: init_square_nondiag => evaluator_init_square_nondiag
+     procedure :: init_color_contractions => evaluator_init_color_contractions
+     procedure :: init_identity => evaluator_init_identity
+     procedure :: init_qn_sum => evaluator_init_qn_sum
      procedure :: evaluate => evaluator_evaluate
   end type evaluator_t
 
@@ -170,34 +150,11 @@ module evaluators
      module procedure prt_mask_size
   end interface
 
-  interface evaluator_init_product
-     module procedure evaluator_init_product_ii
-     module procedure evaluator_init_product_ie
-     module procedure evaluator_init_product_ei
-     module procedure evaluator_init_product_ee
-  end interface
-
-  interface interaction_set_source_link
-     module procedure interaction_set_source_link_eval
-  end interface
-  interface evaluator_set_source_link
-     module procedure evaluator_set_source_link_int
-     module procedure evaluator_set_source_link_eval
-  end interface
   interface evaluator_reassign_links
      module procedure evaluator_reassign_links_eval
      module procedure evaluator_reassign_links_int
   end interface
 
-  interface evaluator_init_identity
-     module procedure evaluator_init_identity_i
-     module procedure evaluator_init_identity_e
-  end interface
-
-  interface evaluator_init_qn_sum
-     module procedure evaluator_init_qn_sum_i
-     module procedure evaluator_init_qn_sum_e
-  end interface
 
 contains
 
@@ -222,21 +179,20 @@ contains
     integer :: u, i, j
     u = given_output_unit (unit);  if (u < 0)  return
     show_tab = .true.;  if (present (show_table))  show_tab = .false.
-    ! write (u, "(1x,A)")  "Evaluator:"     !!! Debugging
-    call interaction_write &
-         (eval%int, unit, verbose, show_momentum_sum, show_mass, & 
+    call eval%basic_write &
+         (unit, verbose, show_momentum_sum, show_mass, & 
             show_state, col_verbose, testflag)
     if (show_tab) then
        write (u, "(1x,A)")  "Matrix-element multiplication"
        write (u, "(2x,A)", advance="no")  "Input interaction 1:"
        if (associated (eval%int_in1)) then
-          write (u, "(1x,I0)")  interaction_get_tag (eval%int_in1)
+          write (u, "(1x,I0)")  eval%int_in1%get_tag ()
        else
           write (u, "(A)")  " [undefined]"
        end if
        write (u, "(2x,A)", advance="no")  "Input interaction 2:"
        if (associated (eval%int_in2)) then
-          write (u, "(1x,I0)")  interaction_get_tag (eval%int_in2)
+          write (u, "(1x,I0)")  eval%int_in2%get_tag ()
        else
           write (u, "(A)")  " [undefined]"
        end if
@@ -296,7 +252,7 @@ contains
     eval_out%type = eval_in%type
     eval_out%int_in1 => eval_in%int_in1
     eval_out%int_in2 => eval_in%int_in2
-    eval_out%int = eval_in%int
+    eval_out%interaction_t = eval_in%interaction_t
     if (allocated (eval_in%pairing_array)) then
        allocate (eval_out%pairing_array (size (eval_in%pairing_array)))
        eval_out%pairing_array = eval_in%pairing_array
@@ -566,12 +522,12 @@ contains
     end if
   end function color_table_get_color_factor
 
-  subroutine evaluator_init_product_ii &
+  subroutine evaluator_init_product &
        (eval, int_in1, int_in2, qn_mask_conn, qn_filter_conn, qn_mask_rest, &
         connections_are_resonant)
 
-    type(evaluator_t), intent(out), target :: eval
-    type(interaction_t), intent(in), target :: int_in1, int_in2
+    class(evaluator_t), intent(out), target :: eval
+    class(interaction_t), intent(in), target :: int_in1, int_in2
     type(quantum_numbers_mask_t), intent(in) :: qn_mask_conn
     type(quantum_numbers_t), intent(in), optional :: qn_filter_conn
     type(quantum_numbers_mask_t), intent(in), optional :: qn_mask_rest
@@ -610,21 +566,21 @@ contains
     eval%int_in2 => int_in2
     ! print *, "Evaluator product"          !!! Debugging      
     ! print *, "First interaction"          !!! Debugging      
-    ! call interaction_write (int_in1)      !!! Debugging      
+    ! call int_in1%basic_write ()           !!! Debugging      
     ! print *                               !!! Debugging      
     ! print *, "Second interaction"         !!! Debugging      
-    ! call interaction_write (int_in2)      !!! Debugging      
+    ! call int_in2%basic_write ()           !!! Debugging      
     ! print *                               !!! Debugging      
 
-    state_in1 => interaction_get_state_matrix_ptr (int_in1)
-    state_in2 => interaction_get_state_matrix_ptr (int_in2)
+    state_in1 => int_in1%get_state_matrix_ptr ()
+    state_in2 => int_in2%get_state_matrix_ptr ()
 
     call find_connections (int_in1, int_in2, n_conn, connection_index)
     if (n_conn == 0) then
        call msg_message ("First interaction:")
-       call interaction_write (int_in1, col_verbose=.true.)
+       call int_in1%basic_write (col_verbose=.true.)
        call msg_message ("Second interaction:")
-       call interaction_write (int_in2, col_verbose=.true.)
+       call int_in2%basic_write (col_verbose=.true.)
        call msg_fatal ("Evaluator product: no connections found between factors")
     end if
     call compute_index_bounds_and_mappings &
@@ -632,20 +588,20 @@ contains
           n_in, n_vir, n_out, n_tot, &
           n_rest, prt_map_in, prt_map_conn)
 
-    call prt_mask_init (prt_is_connected(1), interaction_get_n_tot (int_in1))
-    call prt_mask_init (prt_is_connected(2), interaction_get_n_tot (int_in2))
+    call prt_mask_init (prt_is_connected(1), int_in1%get_n_tot ())
+    call prt_mask_init (prt_is_connected(2), int_in2%get_n_tot ())
     do i = 1, 2
        prt_is_connected(i)%entry = .true.
        prt_is_connected(i)%entry(connection_index(:,i)) = .false.
     end do
     allocate (qn_mask_conn_initial (n_conn))
     qn_mask_conn_initial = &
-         interaction_get_mask (int_in1, connection_index(:,1)) .or. &
-         interaction_get_mask (int_in2, connection_index(:,2))
-    allocate (qn_mask_in(1)%mask (interaction_get_n_tot (int_in1)))
-    allocate (qn_mask_in(2)%mask (interaction_get_n_tot (int_in2)))
-    qn_mask_in(1)%mask = interaction_get_mask (int_in1)
-    qn_mask_in(2)%mask = interaction_get_mask (int_in2)
+         int_in1%get_mask (connection_index(:,1)) .or. &
+         int_in2%get_mask (connection_index(:,2))
+    allocate (qn_mask_in(1)%mask (int_in1%get_n_tot ()))
+    allocate (qn_mask_in(2)%mask (int_in2%get_n_tot ()))
+    qn_mask_in(1)%mask = int_in1%get_mask ()
+    qn_mask_in(2)%mask = int_in2%get_mask ()
 
     call connection_table_init (connection_table, &
          state_in1, state_in2, &
@@ -655,7 +611,7 @@ contains
     call connection_table_fill (connection_table, &
          state_in1, state_in2, &
          connection_index, prt_is_connected)
-    call make_product_interaction (eval%int, &
+    call make_product_interaction (eval%interaction_t, &
          n_in, n_vir, n_out, &
          connection_table, &
          prt_map_in, prt_is_connected, &
@@ -663,23 +619,23 @@ contains
          qn_mask_conn, qn_filter_conn, qn_mask_rest)
     ! call connection_table_write (connection_table)    !!! Debugging
     call make_pairing_array (eval%pairing_array, &
-         interaction_get_n_matrix_elements (eval%int), &
+         eval%get_n_matrix_elements (), &
          connection_table)
-    call record_links (eval%int, &
+    call record_links (eval%interaction_t, &
          int_in1, int_in2, connection_index, prt_map_in, prt_map_conn, &
          prt_is_connected, connections_are_resonant)
     call connection_table_final (connection_table)
 
     ! print *, "Result evaluator"                !!! Debugging
-    ! call evaluator_write (eval)                !!! Debugging
+    ! call eval%write ()                         !!! Debugging
 
-    if (interaction_get_n_matrix_elements (eval%int) == 0) then
+    if (eval%get_n_matrix_elements () == 0) then
        print *, "Evaluator product"
        print *, "First interaction"
-       call interaction_write (int_in1, col_verbose=.true.)
+       call int_in1%basic_write (col_verbose=.true.)
        print *
        print *, "Second interaction"
-       call interaction_write (int_in2, col_verbose=.true.)
+       call int_in2%basic_write (col_verbose=.true.)
        print *
        call msg_fatal ("Product of density matrices is empty", &
            [var_str ("   --------------------------------------------"), &
@@ -696,7 +652,7 @@ contains
          (int1, int2, n_conn, &
           n_in, n_vir, n_out, n_tot, &
           n_rest, prt_map_in, prt_map_conn)
-      type(interaction_t), intent(in) :: int1, int2
+      class(interaction_t), intent(in) :: int1, int2
       integer, intent(in) :: n_conn
       integer, intent(out) :: n_in, n_vir, n_out, n_tot
       integer, dimension(2), intent(out) :: n_rest
@@ -706,13 +662,13 @@ contains
       integer :: n_in1, n_vir1, n_out1
       integer :: n_in2, n_vir2, n_out2
       integer :: k
-      n_in1  = interaction_get_n_in  (int1)
-      n_vir1 = interaction_get_n_vir (int1)
-      n_out1 = interaction_get_n_out (int1) - n_conn
+      n_in1  = int1%get_n_in  ()
+      n_vir1 = int1%get_n_vir ()
+      n_out1 = int1%get_n_out () - n_conn
       n_rest(1) = n_in1 + n_vir1 + n_out1
-      n_in2  = interaction_get_n_in  (int2) - n_conn
-      n_vir2 = interaction_get_n_vir (int2)
-      n_out2 = interaction_get_n_out (int2)
+      n_in2  = int2%get_n_in  () - n_conn
+      n_vir2 = int2%get_n_vir ()
+      n_out2 = int2%get_n_out ()
       n_rest(2) = n_in2 + n_vir2 + n_out2
       n_in  = n_in1  + n_in2
       n_vir = n_vir1 + n_vir2 + n_conn
@@ -945,7 +901,7 @@ contains
          end if
       end do
       qn_mask(prt_index_conn%entry) = qn_mask_conn_initial .or. qn_mask_conn
-      call interaction_init (eval%int, n_in, n_vir, n_out, mask=qn_mask)
+      call eval%interaction_t%basic_init (n_in, n_vir, n_out, mask=qn_mask)
       m = 1
       do i = 1, connection_table%n_me_conn
          entry => connection_table%entry(i)
@@ -959,14 +915,14 @@ contains
             qn(prt_index_in(1)%entry) = entry%qn_in_list(1)%qn(:,j)
             do k = 1, entry%n_index(2)
                qn(prt_index_in(2)%entry) = entry%qn_in_list(2)%qn(:,k)
-               call interaction_add_state (int, qn, me_index = result_index)
+               call int%add_state (qn, me_index = result_index)
                call index_map_set_entry &
                     (connection_table%index_result, m, result_index)
                m = m + 1
             end do
          end do
       end do
-      call interaction_freeze (int)
+      call int%freeze ()
     end subroutine make_product_interaction
 
     subroutine make_pairing_array (pa, n_matrix_elements, connection_table)
@@ -1006,8 +962,8 @@ contains
     subroutine record_links (int, &
          int_in1, int_in2, connection_index, prt_map_in, prt_map_conn, &
          prt_is_connected, connections_are_resonant)
-      type(interaction_t), intent(inout) :: int
-      type(interaction_t), intent(in), target :: int_in1, int_in2
+      class(interaction_t), intent(inout) :: int
+      class(interaction_t), intent(in), target :: int_in1, int_in2
       integer, dimension(:,:), intent(in) :: connection_index
       type(index_map_t), dimension(2), intent(in) :: prt_map_in
       type(index_map_t), intent(in) :: prt_map_conn
@@ -1028,9 +984,9 @@ contains
             ival = index_map_get_entry (prt_map_conn, k)
             call index_map_set_entry (prt_map_all(1), i, ival)
          end if
-         call interaction_set_source_link (int, ival, int_in1, i)
+         call int%set_source_link (ival, int_in1, i)
       end do
-      call interaction_transfer_relations (int_in1, int, prt_map_all(1)%entry)
+      call int_in1%transfer_relations (int, prt_map_all(1)%entry)
       call index_map_init (prt_map_all(2), size (prt_is_connected(2)))
       j = 0
       do i = 1, size (prt_is_connected(2))
@@ -1038,70 +994,23 @@ contains
             j = j + 1
             ival = index_map_get_entry (prt_map_in(2), j)
             call index_map_set_entry (prt_map_all(2), i, ival)
-            call interaction_set_source_link (int, ival, int_in2, i)
+            call int%set_source_link (ival, int_in2, i)
          else
             call index_map_set_entry (prt_map_all(2), i, 0)
          end if
       end do
-      call interaction_transfer_relations (int_in2, int, prt_map_all(2)%entry)
-      call interaction_relate_connections (int, &
-           int_in2, connection_index(:,2), prt_map_all(2)%entry, &
+      call int_in2%transfer_relations (int, prt_map_all(2)%entry)
+      call int%relate_connections &
+           (int_in2, connection_index(:,2), prt_map_all(2)%entry, &
            prt_map_conn%entry, connections_are_resonant)
     end subroutine record_links
 
-  end subroutine evaluator_init_product_ii
-
-  subroutine evaluator_init_product_ie &
-       (eval, int_in1, eval_in2, qn_mask_conn, qn_filter_conn, qn_mask_rest, &
-        connections_are_resonant)
-    type(evaluator_t), intent(out), target :: eval
-    type(interaction_t), intent(in), target :: int_in1
-    type(evaluator_t), intent(in), target :: eval_in2
-    type(quantum_numbers_mask_t), intent(in) :: qn_mask_conn
-    type(quantum_numbers_t), intent(in), optional :: qn_filter_conn
-    type(quantum_numbers_mask_t), intent(in), optional :: qn_mask_rest
-    logical, intent(in), optional :: connections_are_resonant
-    call evaluator_init_product_ii &
-         (eval, int_in1, eval_in2%int, &
-          qn_mask_conn, qn_filter_conn, qn_mask_rest, &
-          connections_are_resonant)
-  end subroutine evaluator_init_product_ie
-
-  subroutine evaluator_init_product_ei &
-       (eval, eval_in1, int_in2, qn_mask_conn, qn_filter_conn, qn_mask_rest, &
-        connections_are_resonant)
-    type(evaluator_t), intent(out), target :: eval
-    type(evaluator_t), intent(in), target :: eval_in1
-    type(interaction_t), intent(in), target :: int_in2
-    type(quantum_numbers_mask_t), intent(in) :: qn_mask_conn
-    type(quantum_numbers_t), intent(in), optional :: qn_filter_conn
-    type(quantum_numbers_mask_t), intent(in), optional :: qn_mask_rest
-    logical, intent(in), optional :: connections_are_resonant
-    call evaluator_init_product_ii &
-         (eval, eval_in1%int, int_in2, &
-          qn_mask_conn, qn_filter_conn, qn_mask_rest, &
-         connections_are_resonant)
-  end subroutine evaluator_init_product_ei
-
-  subroutine evaluator_init_product_ee &
-       (eval, eval_in1, eval_in2, qn_mask_conn, qn_filter_conn, qn_mask_rest, &
-        connections_are_resonant)
-    type(evaluator_t), intent(out), target :: eval
-    type(evaluator_t), intent(in), target :: eval_in1, eval_in2
-    type(quantum_numbers_mask_t), intent(in) :: qn_mask_conn
-    type(quantum_numbers_t), intent(in), optional :: qn_filter_conn
-    type(quantum_numbers_mask_t), intent(in), optional :: qn_mask_rest
-    logical, intent(in), optional :: connections_are_resonant
-    call evaluator_init_product_ii &
-         (eval, eval_in1%int, eval_in2%int, &
-          qn_mask_conn, qn_filter_conn, qn_mask_rest, &
-          connections_are_resonant)
-  end subroutine evaluator_init_product_ee
+  end subroutine evaluator_init_product
 
   subroutine evaluator_init_square (eval, int_in, qn_mask, &
        col_flow_index, col_factor, col_index_hi, expand_color_flows, nc)
-    type(evaluator_t), intent(out), target :: eval
-    type(interaction_t), intent(in), target :: int_in
+    class(evaluator_t), intent(out), target :: eval
+    class(interaction_t), intent(in), target :: int_in
     type(quantum_numbers_mask_t), dimension(:), intent(in) :: qn_mask
     integer, dimension(:,:), intent(in), optional :: col_flow_index
     complex(default), dimension(:), intent(in), optional :: col_factor
@@ -1109,10 +1018,10 @@ contains
     logical, intent(in), optional :: expand_color_flows
     integer, intent(in), optional :: nc
     if (all (qn_mask%diagonal_helicity ())) then
-       call evaluator_init_square_diag (eval, int_in, qn_mask, &
+       call eval%init_square_diag (int_in, qn_mask, &
             col_flow_index, col_factor, col_index_hi, expand_color_flows, nc)
     else
-       call evaluator_init_square_nondiag (eval, int_in, qn_mask, &
+       call eval%init_square_nondiag (int_in, qn_mask, &
             col_flow_index, col_factor, col_index_hi, expand_color_flows, nc)
     end if
   end subroutine evaluator_init_square
@@ -1120,8 +1029,8 @@ contains
   subroutine evaluator_init_square_diag (eval, int_in, qn_mask, & 
        col_flow_index, col_factor, col_index_hi, expand_color_flows, nc)
 
-    type(evaluator_t), intent(out), target :: eval
-    type(interaction_t), intent(in), target :: int_in
+    class(evaluator_t), intent(out), target :: eval
+    class(interaction_t), intent(in), target :: int_in
     type(quantum_numbers_mask_t), dimension(:), intent(in) :: qn_mask
     integer, dimension(:,:), intent(in), optional :: col_flow_index
     complex(default), dimension(:), intent(in), optional :: col_factor
@@ -1161,17 +1070,17 @@ contains
 
     ! print *, "Interaction square with color factors (diag)"  !!! Debugging
     ! print *, "Input interaction"                             !!! Debugging
-    ! call interaction_write (int_in)                          !!! Debugging
+    ! call int_in%basic_write ()                               !!! Debugging
     
-    n_in  = interaction_get_n_in  (int_in)
-    n_vir = interaction_get_n_vir (int_in)
-    n_out = interaction_get_n_out (int_in)
-    n_tot = interaction_get_n_tot (int_in)
+    n_in  = int_in%get_n_in  ()
+    n_vir = int_in%get_n_vir ()
+    n_out = int_in%get_n_out ()
+    n_tot = int_in%get_n_tot ()
 
-    state_in => interaction_get_state_matrix_ptr (int_in)
+    state_in => int_in%get_state_matrix_ptr ()
 
     allocate (qn_mask_initial (n_tot))
-    qn_mask_initial = interaction_get_mask (int_in)
+    qn_mask_initial = int_in%get_mask ()
     call qn_mask_initial%set_color (sum_colors, mask_cg=.false.)
     if (sum_colors) then
        call color_table_init (color_table, state_in, n_tot)
@@ -1186,16 +1095,16 @@ contains
     call connection_table_init (connection_table, state_in, &
          qn_mask_initial, qn_mask, n_tot)
     call connection_table_fill (connection_table, state_in)
-    call make_squared_interaction (eval%int, &
+    call make_squared_interaction (eval%interaction_t, &
          n_in, n_vir, n_out, n_tot, &
          connection_table, sum_colors, qn_mask_initial .or. qn_mask)
     call make_pairing_array (eval%pairing_array, &
-         interaction_get_n_matrix_elements (eval%int), &
+         eval%get_n_matrix_elements (), &
          connection_table, sum_colors, color_table, n_in, n_tot, nc)
-    call record_links (eval%int, int_in, n_tot)
+    call record_links (eval, int_in, n_tot)
     call connection_table_final (connection_table)
     ! print *, "Result evaluator:"     !!! Debugging
-    ! call evaluator_write (eval)      !!! Debugging
+    ! call eval%write ()               !!! Debugging
 
   contains
     
@@ -1331,18 +1240,18 @@ contains
       integer :: result_index, n_contrib
       integer :: i, m
       type(quantum_numbers_t), dimension(n_tot) :: qn
-      call interaction_init (eval%int, n_in, n_vir, n_out, mask=qn_mask)
+      call eval%interaction_t%basic_init (n_in, n_vir, n_out, mask=qn_mask)
       m = 0
       do i = 1, connection_table%n_me_conn
          entry => connection_table%entry(i)
          qn = quantum_numbers_undefined (entry%qn_conn, qn_mask)
          if (.not. sum_colors)   call qn(1:n_in)%invert_color ()
-         call interaction_add_state (int, qn, me_index = result_index)
+         call int%add_state (qn, me_index = result_index)
          n_contrib = entry%n_index(1) ** 2
          connection_table%index_result%entry(m+1:m+n_contrib) = result_index
          m = m + n_contrib
       end do
-      call interaction_freeze (int)
+      call int%freeze ()
     end subroutine make_squared_interaction
 
     subroutine make_pairing_array (pa, &
@@ -1401,16 +1310,16 @@ contains
     end subroutine make_pairing_array
 
     subroutine record_links (int, int_in, n_tot)
-      type(interaction_t), intent(inout) :: int
-      type(interaction_t), intent(in), target :: int_in
+      class(interaction_t), intent(inout) :: int
+      class(interaction_t), intent(in), target :: int_in
       integer, intent(in) :: n_tot
       integer, dimension(n_tot) :: map
       integer :: i
       do i = 1, n_tot
-         call interaction_set_source_link (int, i, int_in, i)
+         call int%set_source_link (i, int_in, i)
       end do
       map = [ (i, i = 1, n_tot) ]
-      call interaction_transfer_relations (int_in, int, map)
+      call int_in%transfer_relations (int, map)
     end subroutine record_links
 
   end subroutine evaluator_init_square_diag
@@ -1418,8 +1327,8 @@ contains
   subroutine evaluator_init_square_nondiag (eval, int_in, qn_mask, & 
        col_flow_index, col_factor, col_index_hi, expand_color_flows, nc)
 
-    type(evaluator_t), intent(out), target :: eval
-    type(interaction_t), intent(in), target :: int_in
+    class(evaluator_t), intent(out), target :: eval
+    class(interaction_t), intent(in), target :: int_in
     type(quantum_numbers_mask_t), dimension(:), intent(in) :: qn_mask
     integer, dimension(:,:), intent(in), optional :: col_flow_index
     complex(default), dimension(:), intent(in), optional :: col_factor
@@ -1459,16 +1368,16 @@ contains
 
     ! print *, "Interaction square with color factors (nondiag)"  !!! Debugging
     ! print *, "Input interaction"                                !!! Debugging
-    ! call interaction_write (int_in)                             !!! Debugging
-    n_in  = interaction_get_n_in  (int_in)
-    n_vir = interaction_get_n_vir (int_in)
-    n_out = interaction_get_n_out (int_in)
-    n_tot = interaction_get_n_tot (int_in)
+    ! call int_int%basic_write ()                                 !!! Debugging
+    n_in  = int_in%get_n_in  ()
+    n_vir = int_in%get_n_vir ()
+    n_out = int_in%get_n_out ()
+    n_tot = int_in%get_n_tot ()
 
-    state_in => interaction_get_state_matrix_ptr (int_in)
+    state_in => int_in%get_state_matrix_ptr ()
 
     allocate (qn_mask_initial (n_tot))
-    qn_mask_initial = interaction_get_mask (int_in)
+    qn_mask_initial = int_in%get_mask ()
     call qn_mask_initial%set_color (sum_colors, mask_cg=.false.)
     if (sum_colors) then
        call color_table_init (color_table, state_in, n_tot)
@@ -1483,18 +1392,18 @@ contains
     call connection_table_init (connection_table, state_in, &
          qn_mask_initial, qn_mask, n_tot)
     call connection_table_fill (connection_table, state_in)
-    call make_squared_interaction (eval%int, &
+    call make_squared_interaction (eval%interaction_t, &
          n_in, n_vir, n_out, n_tot, &
          connection_table, sum_colors, qn_mask_initial .or. qn_mask)
     ! call connection_table_write (connection_table)     !!! Debugging
     call make_pairing_array (eval%pairing_array, &
-         interaction_get_n_matrix_elements (eval%int), &
+         eval%get_n_matrix_elements (), &
          connection_table, sum_colors, color_table, n_in, n_tot, nc)
-    call record_links (eval%int, int_in, n_tot)
+    call record_links (eval, int_in, n_tot)
     call connection_table_final (connection_table)
 
     ! print *, "Result evaluator:"     !!! Debugging
-    ! call evaluator_write (eval)      !!! Debugging
+    ! call eval%write ()               !!! Debugging
 
   contains
     
@@ -1648,7 +1557,7 @@ contains
       integer :: result_index
       integer :: i, k, m
       type(quantum_numbers_t), dimension(n_tot) :: qn
-      call interaction_init (eval%int, n_in, n_vir, n_out, mask=qn_mask)
+      call eval%interaction_t%basic_init (n_in, n_vir, n_out, mask=qn_mask)
       m = 0
       do i = 1, connection_table%n_me_conn
          entry => connection_table%entry(i)
@@ -1656,13 +1565,13 @@ contains
             qn = quantum_numbers_undefined &
                     (entry%qn_in_list(1)%qn(:,k), qn_mask)
             if (.not. sum_colors)  call qn(1:n_in)%invert_color ()
-            call interaction_add_state (int, qn, me_index = result_index)
+            call int%add_state (qn, me_index = result_index)
             call index_map_set_entry (connection_table%index_result, m + 1, &
                  result_index)
             m = m + 1
          end do
       end do
-      call interaction_freeze (int)
+      call int%freeze ()
     end subroutine make_squared_interaction
 
     subroutine make_pairing_array (pa, &
@@ -1716,22 +1625,22 @@ contains
     end subroutine make_pairing_array
 
     subroutine record_links (int, int_in, n_tot)
-      type(interaction_t), intent(inout) :: int
-      type(interaction_t), intent(in), target :: int_in
+      class(interaction_t), intent(inout) :: int
+      class(interaction_t), intent(in), target :: int_in
       integer, intent(in) :: n_tot
       integer, dimension(n_tot) :: map
       integer :: i
       do i = 1, n_tot
-         call interaction_set_source_link (int, i, int_in, i)
+         call int%set_source_link (i, int_in, i)
       end do
       map = [ (i, i = 1, n_tot) ]
-      call interaction_transfer_relations (int_in, int, map)
+      call int_in%transfer_relations (int, map)
     end subroutine record_links
 
   end subroutine evaluator_init_square_nondiag
 
   subroutine evaluator_init_color_contractions (eval, int_in)
-    type(evaluator_t), intent(out), target :: eval
+    class(evaluator_t), intent(out), target :: eval
     type(interaction_t), intent(in), target :: int_in
     integer :: n_in, n_vir, n_out, n_tot
     type(state_matrix_t) :: state_with_contractions
@@ -1741,22 +1650,22 @@ contains
     eval%int_in1 => int_in
     ! print *, "Interaction with additional color contractions"  !!! Debugging
     ! print *, "Input interaction"                               !!! Debugging
-    ! call interaction_write (int_in)                            !!! Debugging
-    n_in  = interaction_get_n_in  (int_in)
-    n_vir = interaction_get_n_vir (int_in)
-    n_out = interaction_get_n_out (int_in)
-    n_tot = interaction_get_n_tot (int_in)
-    state_with_contractions = interaction_get_state_matrix_ptr (int_in)
+    ! call int_in%basic_write ()                                 !!! Debugging
+    n_in  = int_in%get_n_in  ()
+    n_vir = int_in%get_n_vir ()
+    n_out = int_in%get_n_out ()
+    n_tot = int_in%get_n_tot ()
+    state_with_contractions = int_in%get_state_matrix_ptr ()
     call state_with_contractions%add_color_contractions ()
-    call make_contracted_interaction (eval%int, &
+    call make_contracted_interaction (eval%interaction_t, &
          me_index, result_index, &
          n_in, n_vir, n_out, n_tot, &
-         state_with_contractions, interaction_get_mask (int_in))
+         state_with_contractions, int_in%get_mask ())
     call make_pairing_array (eval%pairing_array, me_index, result_index)
-    call record_links (eval%int, int_in, n_tot)
+    call record_links (eval, int_in, n_tot)
     call state_with_contractions%final ()
     ! print *, "Result evaluator:"     !!! Debugging
-    ! call evaluator_write (eval)      !!! Debugging
+    ! call eval%write ()               !!! Debugging
 
   contains
 
@@ -1772,7 +1681,7 @@ contains
       type(state_iterator_t) :: it
       integer :: n_me, i
       type(quantum_numbers_t), dimension(n_tot) :: qn
-      call interaction_init (int, n_in, n_vir, n_out, mask=qn_mask)
+      call int%basic_init (n_in, n_vir, n_out, mask=qn_mask)
       n_me = state%get_n_leaves ()
       allocate (me_index (n_me))
       allocate (result_index (n_me))
@@ -1782,10 +1691,10 @@ contains
          i = i + 1
          me_index(i) = it%get_me_index ()
          qn = it%get_quantum_numbers ()
-         call interaction_add_state (int, qn, me_index = result_index(i))
+         call int%add_state (qn, me_index = result_index(i))
          call it%advance ()
       end do
-      call interaction_freeze (int)
+      call int%freeze ()
     end subroutine make_contracted_interaction
 
     subroutine make_pairing_array (pa, me_index, result_index)
@@ -1806,16 +1715,16 @@ contains
     end subroutine make_pairing_array
 
     subroutine record_links (int, int_in, n_tot)
-      type(interaction_t), intent(inout) :: int
-      type(interaction_t), intent(in), target :: int_in
+      class(interaction_t), intent(inout) :: int
+      class(interaction_t), intent(in), target :: int_in
       integer, intent(in) :: n_tot
       integer, dimension(n_tot) :: map
       integer :: i
       do i = 1, n_tot
-         call interaction_set_source_link (int, i, int_in, i)
+         call int%set_source_link (i, int_in, i)
       end do
       map = [ (i, i = 1, n_tot) ]
-      call interaction_transfer_relations (int_in, int, map)
+      call int_in%transfer_relations (int, map)
     end subroutine record_links
 
   end subroutine evaluator_init_color_contractions
@@ -1830,137 +1739,25 @@ contains
     end do
   end function parity
 
-  function evaluator_get_int_ptr (eval) result (int)
-    type(interaction_t), pointer :: int
-    type(evaluator_t), intent(in), target :: eval
-    int => eval%int
-  end function evaluator_get_int_ptr
-
-  function evaluator_is_empty (eval) result (flag)
-    logical :: flag
-    type(evaluator_t), intent(in) :: eval
-    flag = interaction_is_empty (eval%int)
-  end function evaluator_is_empty
-
-  function evaluator_get_tag (eval) result (tag)
-    integer :: tag
-    type(evaluator_t), intent(in) :: eval
-    tag = interaction_get_tag (eval%int)
-  end function evaluator_get_tag
-
-  function evaluator_get_norm (eval) result (norm)
-    real(default) :: norm
-    type(evaluator_t), intent(in) :: eval
-    norm = interaction_get_norm (eval%int)
-  end function evaluator_get_norm
-
-  function evaluator_get_n_tot (eval) result (n_tot)
-    integer :: n_tot
-    type(evaluator_t), intent(in) :: eval
-    n_tot = interaction_get_n_tot (eval%int)
-  end function evaluator_get_n_tot
-
-  function evaluator_get_n_in (eval) result (n_in)
-    integer :: n_in
-    type(evaluator_t), intent(in) :: eval
-    n_in = interaction_get_n_in (eval%int)
-  end function evaluator_get_n_in
-
-  function evaluator_get_n_vir (eval) result (n_vir)
-    integer :: n_vir
-    type(evaluator_t), intent(in) :: eval
-    n_vir = interaction_get_n_vir (eval%int)
-  end function evaluator_get_n_vir
-
-  function evaluator_get_n_out (eval) result (n_out)
-    integer :: n_out
-    type(evaluator_t), intent(in) :: eval
-    n_out = interaction_get_n_out (eval%int)
-  end function evaluator_get_n_out
-
-  function evaluator_get_matrix_element (eval, i) result (value)
-    complex(default) :: value
-    type(evaluator_t), intent(in) :: eval
-    integer :: i
-    value = interaction_get_matrix_element (eval%int, i)
-  end function evaluator_get_matrix_element
-
-  function evaluator_sum (eval) result (value)
-    complex(default) :: value
-    type(evaluator_t), intent(in) :: eval
-    value = interaction_sum (eval%int)
-  end function evaluator_sum
-
-  subroutine evaluator_normalize_by_trace (eval)
-    type(evaluator_t), intent(inout) :: eval
-    call interaction_normalize_by_trace (eval%int)
-  end subroutine evaluator_normalize_by_trace
-
-  subroutine evaluator_normalize_by_max (eval)
-    type(evaluator_t), intent(inout) :: eval
-    call interaction_normalize_by_max (eval%int)
-  end subroutine evaluator_normalize_by_max
-
-  subroutine evaluator_add_color_contractions (eval)
-    type(evaluator_t), intent(inout) :: eval
-    call interaction_add_color_contractions (eval%int)
-  end subroutine evaluator_add_color_contractions
-
-  function evaluator_get_mask (eval) result (mask)
-    type(quantum_numbers_mask_t), dimension(:), allocatable :: mask
-    type(evaluator_t), intent(in), target :: eval
-    allocate (mask (interaction_get_n_tot (eval%int)))
-    mask = interaction_get_mask (eval%int)
-  end function evaluator_get_mask
-
-  subroutine interaction_set_source_link_eval (int, i, eval1, i1)
-    type(interaction_t), intent(inout) :: int
-    type(evaluator_t), intent(in), target :: eval1
-    integer, intent(in) :: i, i1
-    call interaction_set_source_link (int, i, eval1%int, i1)
-  end subroutine interaction_set_source_link_eval
-
-  subroutine evaluator_set_source_link_int (eval, i, int1, i1)
-    type(evaluator_t), intent(inout) :: eval
-    type(interaction_t), intent(in), target :: int1
-    integer, intent(in) :: i, i1
-    call interaction_set_source_link (eval%int, i, int1, i1)
-  end subroutine evaluator_set_source_link_int
-
-  subroutine evaluator_set_source_link_eval (eval, i, eval1, i1)
-    type(evaluator_t), intent(inout) :: eval
-    type(evaluator_t), intent(in), target :: eval1
-    integer, intent(in) :: i, i1
-    call interaction_set_source_link (eval%int, i, eval1%int, i1)
-  end subroutine evaluator_set_source_link_eval
-
-  subroutine evaluator_receive_momenta (eval)
-    type(evaluator_t), intent(inout) :: eval
-    call interaction_receive_momenta (eval%int)
-  end subroutine evaluator_receive_momenta
-
-  subroutine evaluator_send_momenta (eval)
-    type(evaluator_t), intent(in) :: eval
-    call interaction_send_momenta (eval%int)
-  end subroutine evaluator_send_momenta
-
   subroutine evaluator_reassign_links_eval (eval, eval_src, eval_target)
     type(evaluator_t), intent(inout) :: eval
     type(evaluator_t), intent(in) :: eval_src
     type(evaluator_t), intent(in), target :: eval_target
     if (associated (eval%int_in1)) then
-       if (interaction_get_tag (eval%int_in1) &
-            == interaction_get_tag (eval_src%int)) then
-          eval%int_in1 => eval_target%int
+       if (eval%int_in1%get_tag () &
+            == eval_src%get_tag ()) then
+          eval%int_in1 => eval_target%interaction_t
        end if
     end if
     if (associated (eval%int_in2)) then
-       if (interaction_get_tag (eval%int_in2) &
-            == interaction_get_tag (eval_src%int)) then
-          eval%int_in2 => eval_target%int
+       if (eval%int_in2%get_tag () &
+            == eval_src%get_tag ()) then
+          eval%int_in2 => eval_target%interaction_t
        end if
     end if
-    call interaction_reassign_links (eval%int, eval_src%int, eval_target%int)
+    call interaction_reassign_links &
+         (eval%interaction_t, eval_src%interaction_t, &
+         eval_target%interaction_t)
   end subroutine evaluator_reassign_links_eval
 
   subroutine evaluator_reassign_links_int (eval, int_src, int_target)
@@ -1968,18 +1765,18 @@ contains
     type(interaction_t), intent(in) :: int_src
     type(interaction_t), intent(in), target :: int_target
     if (associated (eval%int_in1)) then
-       if (interaction_get_tag (eval%int_in1) &
-            == interaction_get_tag (int_src)) then
+       if (eval%int_in1%get_tag () &
+            == int_src%get_tag ()) then
           eval%int_in1 => int_target
        end if
     end if
     if (associated (eval%int_in2)) then
-       if (interaction_get_tag (eval%int_in2) &
-            == interaction_get_tag (int_src)) then
+       if (eval%int_in2%get_tag () &
+            == int_src%get_tag ()) then
           eval%int_in2 => int_target
        end if
     end if
-    call interaction_reassign_links (eval%int, int_src, int_target)
+    call interaction_reassign_links (eval%interaction_t, int_src, int_target)
   end subroutine evaluator_reassign_links_int
 
   subroutine evaluator_get_unstable_particle (eval, flv, p, i)
@@ -1987,17 +1784,12 @@ contains
     type(flavor_t), intent(out) :: flv
     type(vector4_t), intent(out) :: p
     integer, intent(out) :: i
-    call interaction_get_unstable_particle (eval%int, flv, p, i)
+    call interaction_get_unstable_particle (eval%interaction_t, flv, p, i)
   end subroutine evaluator_get_unstable_particle
 
-  subroutine evaluator_final (eval)
-    type(evaluator_t), intent(inout) :: eval
-    call interaction_final (eval%int)
-  end subroutine evaluator_final
-
-  subroutine evaluator_init_identity_i (eval, int)
-    type(evaluator_t), intent(out), target :: eval
-    type(interaction_t), intent(in), target :: int
+  subroutine evaluator_init_identity (eval, int)
+    class(evaluator_t), intent(out), target :: eval
+    class(interaction_t), intent(in), target :: int
     integer :: n_in, n_out, n_vir, n_tot
     integer :: i
     integer, dimension(:), allocatable :: map
@@ -2007,39 +1799,33 @@ contains
     eval%type = EVAL_IDENTITY
     eval%int_in1 => int
     nullify (eval%int_in2)
-    n_in = interaction_get_n_in (int)
-    n_out = interaction_get_n_out (int)
-    n_vir = interaction_get_n_vir (int)
-    n_tot = interaction_get_n_tot (int)
-    call interaction_init (eval%int, n_in, n_vir, n_out, &
-       mask=interaction_get_mask (int), &
-       resonant=interaction_get_resonance_flags (int))
+    n_in = int%get_n_in ()
+    n_out = int%get_n_out ()
+    n_vir = int%get_n_vir ()
+    n_tot = int%get_n_tot ()
+    call eval%interaction_t%basic_init (n_in, n_vir, n_out, &
+       mask=int%get_mask (), &
+       resonant=int%get_resonance_flags ())
     do i = 1, n_tot
-       call interaction_set_source_link (eval%int, i, int, i)
+       call eval%set_source_link (i, int, i)
     end do
     allocate (map(n_tot))
     map = [(i, i = 1, n_tot)]
-    call interaction_transfer_relations (int, eval%int, map)
-    state => interaction_get_state_matrix_ptr (int)
+    call int%transfer_relations (eval, map)
+    state => int%get_state_matrix_ptr ()
     call it%init (state)
     do while (it%is_valid ())
-       call interaction_add_state (eval%int, &
-          it%get_quantum_numbers (), it%get_me_index ())
+       call eval%add_state (it%get_quantum_numbers (), &
+            it%get_me_index ())
        call it%advance ()
     end do
-    call interaction_freeze (eval%int)
+    call eval%freeze ()
 
-  end subroutine evaluator_init_identity_i
+  end subroutine evaluator_init_identity
 
-  subroutine evaluator_init_identity_e (eval, eval1)
-    type(evaluator_t), intent(out), target :: eval
-    type(evaluator_t), intent(in), target :: eval1
-    call evaluator_init_identity_i (eval, eval1%int)
-  end subroutine evaluator_init_identity_e
-
-  subroutine evaluator_init_qn_sum_i (eval, int, qn_mask, drop)
-    type(evaluator_t), intent(out), target :: eval
-    type(interaction_t), target, intent(in) :: int
+  subroutine evaluator_init_qn_sum (eval, int, qn_mask, drop)
+    class(evaluator_t), intent(out), target :: eval
+    class(interaction_t), target, intent(in) :: int
     type(quantum_numbers_mask_t), dimension(:), intent(in) :: qn_mask
     logical, intent(in), optional, dimension(:) :: drop
     type(state_iterator_t) :: it_old, it_new
@@ -2067,10 +1853,10 @@ contains
     end if
     ndropped = count (dropped)
 
-    n_in = interaction_get_n_in (int)
-    n_out = interaction_get_n_out (int) - ndropped
-    n_vir = interaction_get_n_vir (int)
-    n_tot = interaction_get_n_tot (int) - ndropped
+    n_in = int%get_n_in ()
+    n_out = int%get_n_out () - ndropped
+    n_vir = int%get_n_vir ()
+    n_tot = int%get_n_tot () - ndropped
 
     allocate (inotdropped (n_tot))
     i = 1
@@ -2081,16 +1867,16 @@ contains
     end do
 
     allocate (mask(n_tot + ndropped))
-    mask = interaction_get_mask (int)
+    mask = int%get_mask ()
     allocate (resonant(n_tot + ndropped))
-    resonant = interaction_get_resonance_flags (int)
-    call interaction_init (eval%int, n_in, n_vir, n_out, &
+    resonant = int%get_resonance_flags ()
+    call eval%interaction_t%basic_init (n_in, n_vir, n_out, &
        mask = mask(inotdropped) .or. qn_mask(inotdropped), &
        resonant = resonant(inotdropped))
     i = 1
     do j = 1, n_tot + ndropped
        if (dropped(j)) cycle
-       call interaction_set_source_link (eval%int, i, int, j)
+       call eval%set_source_link (i, int, j)
        i = i + 1
     end do    
     allocate (map(n_tot + ndropped))
@@ -2103,14 +1889,14 @@ contains
           i = i + 1
        end if
     end do
-    call interaction_transfer_relations (int, eval%int, map)
+    call int%transfer_relations (eval, map)
 
-    n_me_old = interaction_get_n_matrix_elements (int)
+    n_me_old = int%get_n_matrix_elements ()
     allocate (pairing_proto(n_me_old, n_me_old))
     allocate (pairing_sizes(n_me_old))
     pairing_sizes = 0
-    state_old => interaction_get_state_matrix_ptr (int)
-    state_new => interaction_get_state_matrix_ptr (eval%int)
+    state_old => int%get_state_matrix_ptr ()
+    state_new => eval%get_state_matrix_ptr ()
     call it_old%init (state_old)
     allocate (qn(n_tot + ndropped))
     do while (it_old%is_valid ())
@@ -2121,7 +1907,7 @@ contains
        end if
        matched = .false.
        call it_new%init (state_new)
-       if (interaction_get_n_matrix_elements (eval%int) > 0) then
+       if (eval%get_n_matrix_elements () > 0) then
           do while (it_new%is_valid ())
              if (all (qn(inotdropped) .match. &
                 it_new%get_quantum_numbers ())) &
@@ -2134,8 +1920,8 @@ contains
           end do
        end if
        if (.not. matched) then
-          call interaction_add_state (eval%int, qn(inotdropped))
-          i = interaction_get_n_matrix_elements (eval%int)
+          call eval%add_state (qn(inotdropped))
+          i = eval%get_n_matrix_elements ()
        end if
        pairing_sizes(i) = pairing_sizes(i) + 1
        pairing_proto(pairing_sizes(i), i) = it_old%get_me_index ()
@@ -2143,9 +1929,9 @@ contains
        !     i, pairing_sizes(i), it_old%get_me_index ()
        call it_old%advance ()
     end do
-    call interaction_freeze (eval%int)
+    call eval%freeze ()
 
-    n_me_new = interaction_get_n_matrix_elements (eval%int)
+    n_me_new = eval%get_n_matrix_elements ()
     allocate (eval%pairing_array(n_me_new))
     do i = 1, n_me_new
        ! print *, i, pairing_sizes(i)     !!! Debugging
@@ -2154,15 +1940,7 @@ contains
        eval%pairing_array(i)%i1 = pairing_proto(:pairing_sizes(i), i) 
     end do
 
-  end subroutine evaluator_init_qn_sum_i
-
-  subroutine evaluator_init_qn_sum_e (eval, eval1, qn_mask, drop)
-    type(evaluator_t), intent(out) :: eval
-    type(evaluator_t), intent(in), target :: eval1
-    type(quantum_numbers_mask_t), dimension(:), intent(in) :: qn_mask
-    logical, dimension(:), optional, intent(in) :: drop
-    call evaluator_init_qn_sum_i (eval, eval1%int, qn_mask, drop)
-  end subroutine
+  end subroutine evaluator_init_qn_sum
 
   subroutine evaluator_evaluate (eval)
     class(evaluator_t), intent(inout), target :: eval
@@ -2170,37 +1948,36 @@ contains
     select case (eval%type)
     case (EVAL_PRODUCT)
        do i = 1, size(eval%pairing_array)
-          call interaction_evaluate_product (eval%int, i, &
+          call eval%evaluate_product (i, &
                eval%int_in1, eval%int_in2, &
                eval%pairing_array(i)%i1, eval%pairing_array(i)%i2)
        end do
     case (EVAL_SQUARE_WITH_COLOR_FACTORS)
        do i = 1, size(eval%pairing_array)
-          call interaction_evaluate_product_cf (eval%int, i, &
+          call eval%evaluate_product_cf (i, &
                eval%int_in1, eval%int_in1, &
                eval%pairing_array(i)%i1, eval%pairing_array(i)%i2, &
                eval%pairing_array(i)%factor)
        end do
     case (EVAL_SQUARED_FLOWS)
        do i = 1, size(eval%pairing_array)
-          call interaction_evaluate_square_c (eval%int, i, &
+          call eval%evaluate_square_c (i, &
                eval%int_in1, &
                eval%pairing_array(i)%i1)
        end do
     case (EVAL_COLOR_CONTRACTION)
        do i = 1, size(eval%pairing_array)
-          call interaction_evaluate_sum (eval%int, i, &
+          call eval%evaluate_sum (i, &
                eval%int_in1, &
                eval%pairing_array(i)%i1)
        end do
     case (EVAL_IDENTITY)
-       call interaction_set_matrix_element (eval%int, eval%int_in1)
+       call eval%set_matrix_element (eval%int_in1)
     case (EVAL_QN_SUM)
        do i = 1, size (eval%pairing_array)
-          call interaction_evaluate_me_sum (eval%int, i, &
+          call eval%evaluate_me_sum (i, &
              eval%int_in1, eval%pairing_array(i)%i1)
-          call interaction_set_norm &
-               (eval%int, interaction_get_norm (eval%int_in1))
+          call eval%set_norm (eval%int_in1%get_norm ())
        end do
     end select
   end subroutine evaluator_evaluate
@@ -2243,7 +2020,7 @@ contains
     write (u, "(A)")   "*** Evaluator for matrix product"
     write (u, "(A)")   "***   Construct interaction for qq -> tt"
     write (u, "(A)")
-    call interaction_init (int_qqtt, 2, 0, 2, set_relations=.true.)
+    call int_qqtt%basic_init (2, 0, 2, set_relations=.true.)
     allocate (flv (4), col (4), hel (4), qn (4))
     allocate (qn_mask2 (4))
     do c = 1, 2
@@ -2260,15 +2037,15 @@ contains
              do h2 = -1, 1, 2
                 call hel(4)%init (h2)
                 call qn%init (flv, col, hel)
-                call interaction_add_state (int_qqtt, qn)
+                call int_qqtt%add_state (qn)
              end do
           end do
        end do
     end do
-    call interaction_freeze (int_qqtt)
+    call int_qqtt%freeze ()
     deallocate (flv, col, hel, qn)
     write (u, "(A)")  "***   Construct interaction for t -> bW"
-    call interaction_init (int_tbw, 1, 0, 2, set_relations=.true.)
+    call int_tbw%basic_init (1, 0, 2, set_relations=.true.)
     allocate (flv (3), col (3), hel (3), qn (3))
     call flv%init ([6, 5, 24], model)
     call col%init_col_acl ([1, 1, 0], [0, 0, 0])
@@ -2279,100 +2056,97 @@ contains
           do h3 = -1, 1
              call hel(3)%init (h3)
              call qn%init (flv, col, hel)
-             call interaction_add_state (int_tbw, qn)
+             call int_tbw%add_state (qn)
           end do
        end do
     end do
-    call interaction_freeze (int_tbw)
+    call int_tbw%freeze ()
     deallocate (flv, col, hel, qn)
     write (u, "(A)")  "***   Link interactions"
-    call interaction_set_source_link (int_tbw, 1, int_qqtt, 3)
+    call int_tbw%set_source_link (1, int_qqtt, 3)
     qn_mask_conn = quantum_numbers_mask (.false.,.false.,.true.)
     write (u, "(A)")
     write (u, "(A)")  "***   Show input"
-    call interaction_write (int_qqtt, unit = u)
+    call int_qqtt%basic_write (unit = u)
     write (u, "(A)")
-    call interaction_write (int_tbw, unit = u)
+    call int_tbw%basic_write (unit = u)
     write (u, "(A)")
     write (u, "(A)")  "***   Evaluate product"
-    call evaluator_init_product &
-         (eval, int_qqtt, int_tbw, qn_mask_conn)
+    call eval%init_product (int_qqtt, int_tbw, qn_mask_conn)
     call eval%write (unit = u)
 
-     call interaction_init (int1, 2, 0, 2, set_relations=.true.)
-     call interaction_init (int2, 1, 0, 2, set_relations=.true.)
+     call int1%basic_init (2, 0, 2, set_relations=.true.)
+     call int2%basic_init (1, 0, 2, set_relations=.true.)
      p(1) = vector4_moving (1000._default, 1000._default, 3)
      p(2) = vector4_moving (200._default, 200._default, 2)
      p(3) = vector4_moving (100._default, 200._default, 1)
      p(4) = p(1) - p(2) - p(3)
-     call interaction_set_momenta (int1, p)
+     call int1%set_momenta (p)
      q(1) = vector4_moving (50._default,-50._default, 3)
      q(2) = p(2) + p(4) - q(1)
-     call interaction_set_momenta (int2, q, outgoing=.true.)
-     call interaction_set_matrix_element &
-          (int1, [(2._default,0._default), &
+     call int2%set_momenta (q, outgoing=.true.)
+     call int1%set_matrix_element ([(2._default,0._default), &
           (4._default,1._default), (-3._default,0._default)])
-     call interaction_set_matrix_element &
-          (int2, [(-3._default,0._default), &
+     call int2%set_matrix_element ([(-3._default,0._default), &
           (0._default,1._default), (1._default,2._default)])
-     call evaluator_receive_momenta (eval)
+     call eval%receive_momenta ()
      call eval%evaluate ()
-     call interaction_write (int1, unit = u)
+     call int1%basic_write (unit = u)
      write (u, "(A)")
-     call interaction_write (int2, unit = u)
+     call int2%basic_write (unit = u)
      write (u, "(A)")
      call eval%write (unit = u)
      write (u, "(A)")
-     call interaction_final (int1)
-     call interaction_final (int2)
-     call evaluator_final (eval)
+     call int1%final ()
+     call int2%final ()
+     call eval%final ()
 
      write (u, "(A)")
      write (u, "(A)")   "*** Evaluator for matrix square"
      allocate (flv(4), col(4), qn(4))
-     call interaction_init (int1, 2, 0, 2, set_relations=.true.)
+     call int1%basic_init (2, 0, 2, set_relations=.true.)
      call flv%init ([1, -1, 21, 21], model)
      call col(1)%init ([1])
      call col(2)%init ([-2])
      call col(3)%init ([2, -3])
      call col(4)%init ([3, -1])
      call qn%init (flv, col)
-     call interaction_add_state (int1, qn)
+     call int1%add_state (qn)
      call col(3)%init ([3, -1])
      call col(4)%init ([2, -3])
      call qn%init (flv, col)
-     call interaction_add_state (int1, qn)
+     call int1%add_state (qn)
      call col(3)%init ([2, -1])
      call col(4)%init (.true.)
      call qn%init (flv, col)
-     call interaction_add_state (int1, qn)
-     call interaction_freeze (int1)
+     call int1%add_state (qn)
+     call int1%freeze ()
      ! [qn_mask2 not set since default is false]
-     call evaluator_init_square (eval, int1, qn_mask2, nc=3)
-     call evaluator_init_square_nondiag (eval2, int1, qn_mask2)
+     call eval%init_square (int1, qn_mask2, nc=3)
+     call eval2%init_square_nondiag (int1, qn_mask2)
      qn_mask2 = quantum_numbers_mask (.false., .true., .true.)
-     call evaluator_init_square_diag (eval3, eval%int, qn_mask2)
-     call interaction_set_matrix_element &
-          (int1, [(2._default,0._default), &
+     call eval3%init_square_diag (eval, qn_mask2)
+     call int1%set_matrix_element &
+          ([(2._default,0._default), &
           (4._default,1._default), (-3._default,0._default)])
-     call interaction_set_momenta (int1, p)
-     call interaction_write (int1, unit = u)
+     call int1%set_momenta (p)
+     call int1%basic_write (unit = u)
      write (u, "(A)")
-     call evaluator_receive_momenta (eval)
+     call eval%receive_momenta ()
      call eval%evaluate ()
      call eval%write (unit = u)
      write (u, "(A)")
-     call evaluator_receive_momenta (eval2)
+     call eval2%receive_momenta ()
      call eval2%evaluate ()
      call eval2%write (unit = u)
      write (u, "(A)")
-     call evaluator_receive_momenta (eval3)
+     call eval3%receive_momenta ()
      call eval3%evaluate ()
      call eval3%write (unit = u)
-     call interaction_final (int1)
-     call evaluator_final (eval)
-     call evaluator_final (eval2)
-     call evaluator_final (eval3)
+     call int1%final ()
+     call eval%final ()
+     call eval2%final ()
+     call eval3%final ()
      
      call model%final ()
   end subroutine evaluator_1
@@ -2399,7 +2173,7 @@ contains
     do i = 1, 4
        call col(i)%init ()
     end do
-    call interaction_init (int, 2, 0, 2, set_relations=.true.)
+    call int%basic_init (2, 0, 2, set_relations=.true.)
     do h1 = -1, 1, 2
        call hel(1)%init (h1)
        do h2 = -1, 1, 2
@@ -2409,33 +2183,33 @@ contains
              do h4 = -1, 1
                 call hel(4)%init (h4)
                 call qn%init (flv, col, hel)
-                call interaction_add_state (int, qn)
+                call int%add_state (qn)
              end do
           end do
        end do
     end do
-    call interaction_freeze (int)
-    call interaction_set_matrix_element (int, &
-       [(cmplx (i, kind=default), i = 1, 36)])
+    call int%freeze ()
+    call int%set_matrix_element &
+       ([(cmplx (i, kind=default), i = 1, 36)])
     p(1) = vector4_moving (1000._default, 1000._default, 3)    
     p(2) = vector4_moving (1000._default, -1000._default, 3)
     p(3) = vector4_moving (1000._default, &
        sqrt (1E6_default - 80._default**2), 3)
     p(4) = p(1) + p(2) - p(3)
-    call interaction_set_momenta (int, p)
+    call int%set_momenta (p)
     write (u, "(A)") "*** Setting up evaluator"
     write (u, "(A)")
     
-    call evaluator_init_identity (eval, int)
+    call eval%init_identity (int)
     write (u, "(A)") "*** Transferring momenta and evaluating"
     write (u, "(A)")
     
-    call evaluator_receive_momenta (eval)
+    call eval%receive_momenta ()
     call eval%evaluate ()
     write (u, "(A)")  "*******************************************************"
     write (u, "(A)")  "   Interaction dump"
     write (u, "(A)")  "*******************************************************"
-    call interaction_write (int, unit = u)
+    call int%basic_write (unit = u)
     write (u, "(A)")  
     write (u, "(A)")  "*******************************************************"
     write (u, "(A)")  "   Evaluator dump"
@@ -2443,8 +2217,8 @@ contains
     call eval%write (unit = u)
     write (u, "(A)")  
     write (u, "(A)")   "*** cleaning up"
-    call interaction_final (int)
-    call evaluator_final (eval)
+    call int%final ()
+    call eval%final ()
     
     call model%final ()
   end subroutine evaluator_2
@@ -2471,7 +2245,7 @@ contains
     do i = 1, 4
        call col (i)%init ()
     end do
-    call interaction_init (int, 2, 0, 2, set_relations=.true.)
+    call int%basic_init (2, 0, 2, set_relations=.true.)
     do h1 = -1, 1, 2
        call hel(1)%init (h1)
        do h2 = -1, 1, 2
@@ -2481,63 +2255,63 @@ contains
              do h4 = -1, 1
                 call hel(4)%init (h4)
                 call qn%init (flv1, col, hel)
-                call interaction_add_state (int, qn)
+                call int%add_state (qn)
                 call qn%init (flv2, col, hel)
-                call interaction_add_state (int, qn)
+                call int%add_state (qn)
              end do
           end do
        end do
     end do
-    call interaction_freeze (int)
-    call interaction_set_matrix_element (int, &
-       [(cmplx (1, kind=default), i = 1, 72)])
+    call int%freeze ()
+    call int%set_matrix_element &
+       ([(cmplx (1, kind=default), i = 1, 72)])
     p(1) = vector4_moving (1000._default, 1000._default, 3)    
     p(2) = vector4_moving (1000._default, -1000._default, 3)
     p(3) = vector4_moving (1000._default, &
        sqrt (1E6_default - 80._default**2), 3)
     p(4) = p(1) + p(2) - p(3)
-    call interaction_set_momenta (int, p)
+    call int%set_momenta (p)
     write (u, "(A)")  "*** Setting up evaluators"
     call qn_mask%init (.false., .true., .true.)
-    call evaluator_init_qn_sum (eval1, int, qn_mask)
+    call eval1%init_qn_sum (int, qn_mask)
     call qn_mask%init (.true., .true., .true.)
-    call evaluator_init_qn_sum (eval2, int, qn_mask)
+    call eval2%init_qn_sum (int, qn_mask)
     call qn_mask%init (.false., .true., .false.)
-    call evaluator_init_qn_sum (eval3, int, qn_mask, &
+    call eval3%init_qn_sum (int, qn_mask, &
       [.false., .false., .false., .true.])
     write (u, "(A)")  "*** Transferring momenta and evaluating"
-    call evaluator_receive_momenta (eval1)
+    call eval1%receive_momenta ()
     call eval1%evaluate ()
-    call evaluator_receive_momenta (eval2)
+    call eval2%receive_momenta ()
     call eval2%evaluate ()
-    call evaluator_receive_momenta (eval3)
+    call eval3%receive_momenta ()
     call eval3%evaluate ()
     write (u, "(A)")  "*******************************************************"
     write (u, "(A)")  "   Interaction dump"
     write (u, "(A)")  "*******************************************************"
-    call interaction_write (int, unit = u)
+    call int%basic_write (unit = u)
     write (u, "(A)")  
     write (u, "(A)")  "*******************************************************"
     write (u, "(A)")  "   Evaluator dump --- spin sum"
     write (u, "(A)")  "*******************************************************"
     call eval1%write (unit = u)
-    call interaction_write (evaluator_get_int_ptr (eval1), unit = u)
+    call eval1%basic_write (unit = u)
     write (u, "(A)")  "*******************************************************"
     write (u, "(A)")  "   Evaluator dump --- spin / flavor sum"
     write (u, "(A)")  "*******************************************************"
     call eval2%write (unit = u)
-    call interaction_write (evaluator_get_int_ptr (eval2), unit = u)
+    call eval2%basic_write (unit = u)
     write (u, "(A)")  "*******************************************************"
     write (u, "(A)")  "   Evaluator dump --- flavor sum, drop last W"
     write (u, "(A)")  "*******************************************************"
     call eval3%write (unit = u)
-    call interaction_write (evaluator_get_int_ptr (eval3), unit = u)
+    call eval3%basic_write (unit = u)
     write (u, "(A)")  
     write (u, "(A)")  "*** cleaning up"
-    call interaction_final (int)
-    call evaluator_final (eval1)
-    call evaluator_final (eval2)
-    call evaluator_final (eval3)
+    call int%final ()
+    call eval1%final ()
+    call eval2%final ()
+    call eval3%final ()
     
     call model%final ()
   end subroutine evaluator_3
@@ -2575,19 +2349,19 @@ contains
     do i = 1, 3
        call col(i)%init ()
     end do
-    call interaction_init (int1, 1, 0, 1, set_relations=.true.)
+    call int1%basic_init (1, 0, 1, set_relations=.true.)
     do h1 = -1, 1, 2
        call hel(1)%init (h1)
        do h2 = -1, 1
           call hel(2)%init (h2)
           call qn(:2)%init (flv1, col(:2), hel(:2))
-          call interaction_add_state (int1, qn(:2))
+          call int1%add_state (qn(:2))
           call qn(:2)%init (flv2, col(:2), hel(:2))
-          call interaction_add_state (int1, qn(:2))
+          call int1%add_state (qn(:2))
        end do
     end do
-    call interaction_freeze (int1)
-    call interaction_write (int1, u)
+    call int1%freeze ()
+    call int1%basic_write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Creating interaction for W+/Z -> u ubar/dbar"
@@ -2596,7 +2370,7 @@ contains
     call flv3%init ([24, 2, -1], model)
     call flv4%init ([23, 2, -2], model)
 
-    call interaction_init (int2, 1, 0, 2, set_relations=.true.)
+    call int2%basic_init (1, 0, 2, set_relations=.true.)
     do h1 = -1, 1
        call hel(1)%init (h1)
        do h2 = -1, 1, 2
@@ -2604,34 +2378,32 @@ contains
           do h3 = -1, 1, 2
              call hel(3)%init (h3)
              call qn(:3)%init (flv3, col(:3), hel(:3))
-             call interaction_add_state (int2, qn(:3))
+             call int2%add_state (qn(:3))
              call qn(:3)%init (flv4, col(:3), hel(:3))
-             call interaction_add_state (int2, qn(:3))
+             call int2%add_state (qn(:3))
           end do
        end do
     end do
-    call interaction_freeze (int2)
+    call int2%freeze ()
 
-    call interaction_set_source_link (int2, 1, int1, 2)
-    call interaction_write (int2, u)
+    call int2%set_source_link (1, int1, 2)
+    call int2%basic_write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Product evaluator"
     write (u, "(A)")
 
     call qn_mask%init (.false., .false., .false.)
-    call evaluator_init_product (eval1, int1, int2, &
-         qn_mask_conn = qn_mask)
-    call evaluator_write (eval1, u)
+    call eval1%init_product (int1, int2, qn_mask_conn = qn_mask)
+    call eval1%write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Product evaluator with helicity mask"
     write (u, "(A)")
 
     call qn_mask%init (.false., .false., .true.)
-    call evaluator_init_product (eval2, int1, int2, &
-         qn_mask_conn = qn_mask)
-    call evaluator_write (eval2, u)
+    call eval2%init_product (int1, int2, qn_mask_conn = qn_mask)
+    call eval2%write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Product with flavor filter and helicity mask"
@@ -2642,9 +2414,9 @@ contains
     call hel_filter%init ()
     call col_filter%init ()
     call qn_filter%init (flv_filter, col_filter, hel_filter)
-    call evaluator_init_product (eval3, int1, int2, &
+    call eval3%init_product (int1, int2, &
          qn_mask_conn = qn_mask, qn_filter_conn = qn_filter)
-    call evaluator_write (eval3, u)
+    call eval3%write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Product with helicity filter and mask"
@@ -2655,20 +2427,20 @@ contains
     call hel_filter%init (0)
     call col_filter%init ()
     call qn_filter%init (flv_filter, col_filter, hel_filter)
-    call evaluator_init_product (eval4, int1, int2, &
+    call eval4%init_product (int1, int2, &
          qn_mask_conn = qn_mask, qn_filter_conn = qn_filter)
-    call evaluator_write (eval4, u)
+    call eval4%write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
     
-    call evaluator_final (eval1)
-    call evaluator_final (eval2)
-    call evaluator_final (eval3)
-    call evaluator_final (eval4)
+    call eval1%final ()
+    call eval2%final ()
+    call eval3%final ()
+    call eval4%final ()
     
-    call interaction_final (int1)
-    call interaction_final (int2)
+    call int1%final ()
+    call int2%final ()
     
     call model%final ()
 

@@ -1,0 +1,60 @@
+* Test output: object_base_5
+*   Purpose: use iterator
+
+* Create prototypes for tag and tag composite
+
+* Create nested composite
+
+tag obj3 ||abstract|| {
+   M1: tag obj1 ||abstract|| {
+     M1: tag foo ||abstract||
+   }
+   M2: type(obj1) obj2 ||abstract||
+   M3: tag bar ||abstract||
+ }
+
+* Iterate through obj3
+
+tag obj3 ||abstract||
+ H
+tag obj1 ||abstract||
+ H M1
+tag foo ||abstract||
+ H M1 M1
+object tag ||atom||
+ H C M1 M1
+object tag ||atom||
+ H C M1
+type(obj1) obj2 ||abstract||
+ H M2
+object tag ||atom||
+ H C M2
+tag bar ||abstract||
+ H M3
+object tag ||atom||
+ H C M3
+object tag ||atom||
+ H C
+
+* Iterate through obj3, skipping obj2
+
+tag obj3 ||abstract||
+ H
+tag obj1 ||abstract||
+ H M1
+tag foo ||abstract||
+ H M1 M1
+object tag ||atom||
+ H C M1 M1
+object tag ||atom||
+ H C M1
+tag bar ||abstract||
+ H M3
+object tag ||atom||
+ H C M3
+object tag ||atom||
+ H C
+
+* Cleanup
+
+* Test output end: object_base_5

@@ -7,6 +7,7 @@ model = "SM"
 ?openmp_logging = false
 ?vis_history = false
 ?integration_timer = false
+?pacify = true
 
 $method = "omega"
 process beam_events_2_p1 = "e-", "e+" => "mu-", "mu+"

@@ -1,5 +1,5 @@
 % -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*- 
-% $Id: omegalib.nw 6556 2015-02-12 20:34:13Z jr_reuter $
+% $Id: omegalib.nw 6943 2015-05-01 10:53:21Z msekulla $
 %
 %  Copyright (C) 1999-2015 by
 %      Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -8,6 +8,7 @@
 %      with contributions from
 %      Fabian Bach <fabian.bach@desy.de>
 %      Bijan Chokoufe Nejad <bijan.chokoufe@desy.de>
+%      Marco Sekulla <sekulla@physik.uni-siegen.de>
 %      Christian Speckner <cnspeckn@googlemail.com>
 %
 %  WHIZARD is free software; you can redistribute it and/or modify it
@@ -2395,6 +2396,7 @@ end function gauss
 @
 <<Declaration of propagators>>=
 public :: pr_phi, pr_unitarity, pr_feynman, pr_gauge, pr_rxi
+public :: pr_vector_pure
 public :: pj_phi, pj_unitarity
 public :: pg_phi, pg_unitarity
 @
@@ -2527,8 +2529,26 @@ pure function pr_rxi (p, m, w, xi, e) result (pe)
        * (e - ((1 - xi) * (p*e) / (p2 - xi * m**2)) * pv)
 end function pr_rxi
 @
+\begin{equation}
+   \frac{\ii}{p^2-m^2+\ii m\Gamma}
+      \left( -g_{\mu\nu} \right)
+   \epsilon^\nu(p)
+\end{equation}
+<<Implementation of propagators>>=
+pure function pr_vector_pure (p, m, w, e) result (pe)
+  type(vector) :: pe
+  type(momentum), intent(in) :: p
+  real(kind=default), intent(in) :: m, w
+  type(vector), intent(in) :: e
+  real(kind=default) :: p2
+  type(vector) :: pv
+  p2 = p*p
+  pv = p
+  pe = - (1 / cmplx (p2 - m**2, m*w, kind=default)) * e 
+end function pr_vector_pure
+@
 <<Declaration of propagators>>=
-public :: pr_tensor
+public :: pr_tensor, pr_tensor_pure
 @
 \begin{subequations}
 \begin{equation}
@@ -2595,6 +2615,44 @@ pure function pr_tensor (p, m, w, t) result (pt)
        - (p_dd_t / 3.0_default) * p_uu
   pt%t = pt%t / cmplx (p*p - m**2, m*w, kind=default)
 end function pr_tensor
+@
+\begin{subequations}
+\begin{equation}
+   \frac{\ii P_p^{\mu\nu,\rho\sigma}}{p^2-m^2+\ii m\Gamma} T_{\rho\sigma}
+\end{equation}
+with
+\begin{multline}
+   P_p^{\mu\nu,\rho\sigma}
+    = \frac{1}{2} g^{\mu\rho} g^{\nu\sigma}
+    + \frac{1}{2} g^{\mu\sigma} g^{\nu\rho}
+    - \frac{1}{2} g^{\mu\nu}g^{\rho\sigma}
+\end{multline}
+\end{subequations}
+<<Implementation of propagators>>=
+pure function pr_tensor_pure (p, m, w, t) result (pt)
+  type(tensor) :: pt
+  type(momentum), intent(in) :: p
+  real(kind=default), intent(in) :: m, w
+  type(tensor), intent(in) :: t
+  complex(kind=default) :: p_dd_t
+  real(kind=default), dimension(0:3,0:3) :: g_uu
+  integer :: i, j
+  g_uu(0,0) = 1 
+  g_uu(0,1:3) = 0
+  g_uu(1:3,0) = g_uu(0,1:3)
+  do i = 1, 3
+     do j = 1, 3
+        g_uu(i,j) = 0
+     end do
+  end do
+  do i = 1, 3
+     g_uu(i,i) = - 1
+  end do
+  p_dd_t = t%t(0,0) - t%t(1,1) - t%t(2,2) - t%t(3,3) 
+  pt%t =  0.5_default * ((t%t + transpose (t%t)) &
+       - p_dd_t * g_uu )
+  pt%t = pt%t / cmplx (p*p - m**2, m*w, kind=default)
+end function pr_tensor_pure
 @ \subsection{Triple Gauge Couplings}
 <<Declaration of couplings>>=
 public :: g_gg
@@ -2698,10 +2756,71 @@ pure function v_sv_t (g, phi, kphi,v, kv) result (vout)
   kout = - (kv + kphi)
   vout = g * phi * ((kout*kv) * v - (v * kout) * kv)
 end function v_sv_t
+@ \subsection{Transversal TensorScalar-Vector Coupling}
+<<Declaration of couplings>>=
+public :: tphi_vv, tphi_vv_cf, v_tphiv, v_tphiv_cf
+@
+\begin{equation}
+  phi(k_1 + k_2) = g (V_1(k_1) (k_1 +k_2)) *
+                     ( V_2(k_2) (k_1 + k_2)) 
+\end{equation}
+<<Implementation of couplings>>=
+pure function tphi_vv (g, v1, k1, v2, k2) result (phi)
+  complex(kind=default), intent(in) :: g
+  type(vector), intent(in) :: v1, v2
+  type(momentum), intent(in) :: k1, k2
+  complex(kind=default) :: phi
+  type(momentum) :: k
+  k = - (k1 + k2)
+  phi = 2 * g * (v1*k) * (v2*k)
+end function tphi_vv
+@
+\begin{equation}
+  phi(k_1+k_2) = g((V_1(k_1) V_2(k_2))(k_1 + k_2)^2)
+\end{equation}
+<<Implementation of couplings>>=
+pure function tphi_vv_cf (g, v1, k1, v2, k2) result (phi)
+  complex(kind=default), intent(in) :: g
+  type(vector), intent(in) :: v1, v2
+  type(momentum), intent(in) :: k1, k2
+  complex(kind=default) :: phi
+  type(momentum) :: k
+  k = - (k1 + k2)
+  phi = - g/2 * (v1*v2) * (k*k)
+end function tphi_vv_cf
+@
+\begin{equation}
+  V_1^\mu(k_\phi+k_V) = g phi ((k_\phi+k_V)V_2) (k_\phi+k_V)^\mu 
+\end{equation}
+<<Implementation of couplings>>=
+pure function v_tphiv (g, phi, kphi,v, kv) result (vout)
+  complex(kind=default), intent(in) :: g, phi
+  type(vector), intent(in) :: v
+  type(momentum), intent(in) :: kv, kphi
+  type(momentum) :: kout
+  type(vector)  :: vout
+  kout = - (kv + kphi)
+  vout = 2 * g * phi * ((v * kout) * kout)
+end function v_tphiv
+@
+\begin{equation}
+  V_1^\mu(k_\phi+k_V) = g phi((k_\phi+k_V)(k_\phi+k_V))V_2^\mu
+\end{equation}
+<<Implementation of couplings>>=
+pure function v_tphiv_cf (g, phi, kphi,v, kv) result (vout)
+  complex(kind=default), intent(in) :: g, phi
+  type(vector), intent(in) :: v
+  type(momentum), intent(in) :: kv, kphi
+  type(momentum) :: kout
+  type(vector)  :: vout
+  kout = - (kv + kphi)
+  vout = -g/2 * phi * (kout*kout) * v
+end function v_tphiv_cf
 @ \subsection{Triple Vector Couplings}
 <<Declaration of couplings>>=
 public :: tkv_vv, lkv_vv, tv_kvv, lv_kvv, kg_kgkg
 public :: t5kv_vv, l5kv_vv, t5v_kvv, l5v_kvv, kg5_kgkg, kg_kg5kg
+public :: dv_vv, v_dvv, dv_vv_cf, v_dvv_cf
 @
 \begin{equation}
   V^\mu(k_1+k_2) = \ii g(k_1-k_2)^\mu V_1^\nu(k_1)V_{2,\nu}(k_2)
@@ -2915,6 +3034,331 @@ pure function kg_kg5kg (g, a1, k1, a2, k2) result (a)
                       -  k2v * pseudo_scalar (kv, a2,  k1v, a1) &
                       +  a2  * pseudo_scalar (kv, k2v, k1v, a1) )
 end function kg_kg5kg
+@
+\begin{equation}
+  V^\mu(k_1+k_2) = 
+     - g ((k_1+k_2) V_{1}) V_{2}^\mu
+    + ((k_1+k_2) V_{2}) V_{1}^\mu
+\end{equation}
+<<Implementation of couplings>>=
+pure function dv_vv (g, v1, k1, v2, k2) result (v)
+  complex(kind=default), intent(in) :: g
+  type(vector), intent(in) :: v1, v2
+  type(momentum), intent(in) :: k1, k2
+  type(vector) :: v
+  type(vector) :: k
+  k = -(k1 + k2)
+  v = g * ((k * v1) * v2 + (k * v2) * v1)
+end function dv_vv
+@
+\begin{equation}
+  V^\mu(k_1+k_2) = \frac{g}{2}
+     ( V_{1} (k_{1})  V_{2} (k_{2}) )  (k_{1}+k_{2})^\mu
+\end{equation}
+<<Implementation of couplings>>=
+pure function dv_vv_cf (g, v1, k1, v2, k2) result (v)
+  complex(kind=default), intent(in) :: g
+  type(vector), intent(in) :: v1, v2
+  type(momentum), intent(in) :: k1, k2
+  type(vector) :: v
+  type(vector) :: k
+  k = -(k1 + k2)
+  v = - g/2 * (v1 * v2) * k
+end function dv_vv_cf
+@
+\begin{equation}
+  V_{1}^\mu = g * ( k V_{2}) V (k) + ( V V_{2}) k 
+\end{equation}
+<<Implementation of couplings>>=
+pure function v_dvv (g, v, k, v2) result (v1)
+  complex(kind=default), intent(in) :: g
+  type(vector), intent(in) :: v, v2
+  type(momentum), intent(in) :: k
+  type(vector) :: v1
+  v1 = g * ((v * v2) * k + (k * v2) * v)
+end function v_dvv
+@
+\begin{equation}
+  V_{1}^\mu = -\frac{g}{2}
+     ( V (k) k )  V_{2}^\mu
+\end{equation}
+<<Implementation of couplings>>=
+pure function v_dvv_cf (g, v, k, v2) result (v1)
+  complex(kind=default), intent(in) :: g
+  type(vector), intent(in) ::  v, v2
+  type(momentum), intent(in) :: k
+  type(vector) :: v1
+  v1 = - g/2 * (v * k) * v2
+end function v_dvv_cf
+@ \section{Tensorvector - Scalar coupling  }
+<<Declaration of couplings>>=
+public :: dv_phi2,phi_dvphi, dv_phi2_cf, phi_dvphi_cf
+@
+\begin{equation}
+  V^\mu (k_1 + k_2 ) = 
+      g* ((k_1 k_2 + k_2 k_2) k_1^\mu
+      + (k_1 k_2 + k_1 k_1) k_2^\mu ) * phi_1 (k_1) phi_2 (k_2)
+\end{equation}
+<<Implementation of couplings>>=
+pure function dv_phi2 (g, phi1, k1, phi2, k2) result (v)
+  complex(kind=default), intent(in) :: g, phi1, phi2
+  type(momentum), intent(in) :: k1, k2
+  type(vector) :: v
+  v = g * phi1 * phi2 * ( &
+      (k1 * k2 + k2 * k2 ) * k1 + &
+      (k1 * k2 + k1 * k1 ) * k2 )
+end function dv_phi2
+@
+\begin{equation}
+  V^\mu (k_1 + k_2 ) = - \frac{g}{2} * (k_1 k_2) * (k_1 + k_2 )^\mu
+    * phi_1 (k_1) phi_2 (k_2)
+\end{equation}
+<<Implementation of couplings>>=
+pure function dv_phi2_cf (g, phi1, k1, phi2, k2) result (v)
+  complex(kind=default), intent(in) :: g, phi1, phi2
+  type(momentum), intent(in) :: k1, k2
+  type(vector) :: v
+  v = - g/2 * phi1 * phi2 * (k1 * k2) * (k1 + k2)
+end function dv_phi2_cf
+@
+\begin{equation}
+  phi_1 (k_1) = 
+      g * ((k_1 k_2 + k_2 k_2)  (k_1 * V(-k_1 - k_2) )
+      + (k_1 k_2 + k_1 k_1) (k_2 * V(-k_1 - k_2) ) ) * phi_2 (k_2)
+\end{equation}
+<<Implementation of couplings>>=
+pure function phi_dvphi (g, v, k, phi2, k2) result (phi1)
+  complex(kind=default), intent(in) :: g, phi2
+  type(vector), intent(in) :: v
+  type(momentum), intent(in) :: k, k2
+  complex(kind=default) :: phi1
+  type(momentum) :: k1
+  k1 = - (k + k2)
+  phi1 = g * phi2 * ( &
+      (k1 * k2 + k2 * k2 ) * ( k1 * V ) + &
+      (k1 * k2 + k1 * k1 ) * ( k2 * V ) )
+end function phi_dvphi
+@
+\begin{equation}
+  phi_1 (k_1 ) = - \frac{g}{2} * (k_1 k_2) * ((k_1 + k_2 ) V(- k_1 - k_2))
+\end{equation}
+<<Implementation of couplings>>=
+pure function phi_dvphi_cf (g, v, k, phi2, k2) result (phi1)
+  complex(kind=default), intent(in) :: g, phi2
+  type(vector), intent(in) :: v
+  type(momentum), intent(in) :: k, k2
+  complex(kind=default) :: phi1
+  type(momentum) :: k1
+  k1 = -(k + k2)
+  phi1 = - g/2 * phi2 * (k1 * k2)  * ((k1 + k2) * v)
+end function phi_dvphi_cf
+@ \section{Scalar-Vector Dim-5 Couplings}
+<<Declaration of couplings>>=
+public :: phi_vv, v_phiv, phi_u_vv, v_u_phiv
+@
+<<Implementation of couplings>>=
+pure function phi_vv (g, k1, k2, v1, v2) result (phi)
+  complex(kind=default), intent(in) :: g
+  type(momentum), intent(in) :: k1, k2
+  type(vector), intent(in) :: v1, v2
+  complex(kind=default) :: phi
+  phi = g * pseudo_scalar (k1, v1, k2, v2)
+end function phi_vv
+@
+<<Implementation of couplings>>=
+pure function v_phiv (g, phi, k1, k2, v) result (w)
+  complex(kind=default), intent(in) :: g, phi
+  type(vector), intent(in) :: v
+  type(momentum), intent(in) :: k1, k2
+  type(vector) :: w
+  w = g * phi * pseudo_vector (k1, k2, v)
+end function v_phiv
+@
+<<Implementation of couplings>>=
+pure function phi_u_vv (g, k1, k2, v1, v2) result (phi)
+  complex(kind=default), intent(in) :: g
+  type(momentum), intent(in) :: k1, k2
+  type(vector), intent(in) :: v1, v2
+  complex(kind=default) :: phi
+  phi = g * ((k1*v2)*((-(k1+k2))*v1) + &
+             (k2*v1)*((-(k1+k2))*v2) + &
+             (((k1+k2)*(k1+k2)) * (v1*v2)))
+end function phi_u_vv
+@
+<<Implementation of couplings>>=
+pure function v_u_phiv (g, phi, k1, k2, v) result (w)
+  complex(kind=default), intent(in) :: g, phi
+  type(vector), intent(in) :: v
+  type(momentum), intent(in) :: k1, k2
+  type(vector) :: w
+  w = g * phi * ((k1*v)*k2 + &
+       ((-(k1+k2))*v)*k1 + &
+       ((k1*k1)*v))
+end function v_u_phiv
+@ \section{Scalar3 Dim-5 Couplings}
+<<Declaration of couplings>>=
+public :: phi_dim5s2
+@
+\begin{equation}
+\phi_1(k_1) = g (k_2 \cdot k_3) \phi_2 (k_2) \phi_3 (k_3)
+\end{equation}  
+<<Implementation of couplings>>=
+pure function phi_dim5s2 (g, phi2, k2, phi3, k3) result (phi1)
+  complex(kind=default), intent(in) :: g, phi2, phi3
+  type(momentum), intent(in) :: k2, k3
+  complex(kind=default) :: phi1
+  phi1 = g * phi2 * phi3 * (k2 * k3)
+end function phi_dim5s2
+@ \section{Tensorscalar-Scalar Couplings}
+<<Declaration of couplings>>=
+public :: tphi_ss, tphi_ss_cf, s_tphis, s_tphis_cf
+@
+\begin{equation}
+\phi(k_1 + k_2) = 2 g ((k_1 \cdot k_2) + (k_1 \cdot k_1))
+ 	              ((k_1 \cdot k_2) + (k_2 \cdot k_2))
+		      \phi_1 (k_1) \phi_2 (k_2)
+\end{equation}  
+<<Implementation of couplings>>=
+pure function tphi_ss (g, phi1, k1, phi2, k2) result (phi)
+  complex(kind=default), intent(in) :: g, phi1, phi2
+  type(momentum), intent(in) :: k1, k2
+  complex(kind=default) :: phi
+  phi = 2 * g * phi1 * phi2 * &
+           ((k1 * k2)+ (k1 * k1)) * &
+	   ((k1 * k2)+ (k2 * k2))
+end function tphi_ss
+@
+\begin{equation}
+\phi(k_1 + k_2) = - g/2 (k_1 \cdot k_2)
+ 	              ((k_1 + k_2) \cdot (k_1 + k_2))
+		      \phi_1 (k_1) \phi_2 (k_2)
+\end{equation}  
+<<Implementation of couplings>>=
+pure function tphi_ss_cf (g, phi1, k1, phi2, k2) result (phi)
+  complex(kind=default), intent(in) :: g, phi1, phi2
+  type(momentum), intent(in) :: k1, k2
+  complex(kind=default) :: phi
+  phi = - g/2 * phi1 * phi2 * &
+           (k1 * k2) * &
+	   ((k1 + k2) * (k1 + k2))
+end function tphi_ss_cf
+@
+\begin{equation}
+\phi_1(k_1) = 2 g ((k_1 \cdot k_2) + (k_1 \cdot k_1))
+ 	              ((k_1 \cdot k_2) + (k_2 \cdot k_2))
+		      \phi(k_2-k_1) \phi_2 (k_2)
+\end{equation}  
+<<Implementation of couplings>>=
+pure function s_tphis (g, phi, k, phi2, k2) result (phi1)
+  complex(kind=default), intent(in) :: g, phi, phi2
+  type(momentum), intent(in) :: k, k2
+  complex(kind=default) :: phi1
+  type(momentum) :: k1
+  k1 = - ( k + k2)
+  phi1 = 2 * g * phi * phi2 * &
+           ((k1 * k2)+ (k1 * k1)) * &
+	   ((k1 * k2)+ (k2 * k2))
+end function s_tphis
+@
+\begin{equation}
+\phi_1(k_1) = - g/2 (k_1 \cdot k_2)
+ 	              ((k_1 + k_2) \cdot (k_1 + k_2))
+		      \phi (k_2 -k_1) \phi_2 (k_2)
+\end{equation}  
+<<Implementation of couplings>>=
+pure function s_tphis_cf (g, phi, k, phi2, k2) result (phi1)
+  complex(kind=default), intent(in) :: g, phi, phi2
+  type(momentum), intent(in) :: k, k2
+  complex(kind=default) :: phi1
+  type(momentum) :: k1
+  k1 = - ( k + k2)
+  phi1 = - g/2 * phi * phi2 * &
+           (k1 * k2) * &
+	   ((k1 + k2) * (k1 + k2))
+end function s_tphis_cf
+@ \section{Scalar2-Vector2 Dim-8 Couplings}
+<<Declaration of couplings>>=
+public :: phi_phi2v_1, v_phi2v_1, phi_phi2v_2, v_phi2v_2
+@
+\begin{equation}
+\phi_2(k_2) = g \left (\left ( k_1 \cdot V_1 \right )  \left ( k_2 \cdot V_2 \right )
+	 + \left ( k_1 \cdot V_1 \right )\left ( k_1 \cdot V_2 \right ) \right )
+          \phi_1 (k_1)
+\end{equation}  
+<<Implementation of couplings>>=
+pure function phi_phi2v_1 (g, phi1, k1, v1, k_v1, v2, k_v2) result (phi2)
+  complex(kind=default), intent(in) :: g, phi1
+  type(momentum), intent(in) :: k1, k_v1, k_v2
+  type(momentum) :: k2
+  type(vector), intent(in) :: v1, v2
+  complex(kind=default) :: phi2
+  k2 = - k1 - k_v1 - k_v2
+  phi2 = g * phi1 * &
+        ( (k1 * v1) * (k2 * v2) + (k1 * v2) * (k2 * v1) )
+end function phi_phi2v_1
+@
+\begin{equation}
+  V_2^\mu =g \left ( k_1^\mu \left ( k_2 \cdot V_1 \right ) 
+  + k_2^\mu \left ( k_1 \cdot V_1 \right ) \right )
+  \phi_1 (k_1) \phi_2 (k_2)
+\end{equation}  
+<<Implementation of couplings>>=
+pure function v_phi2v_1 (g, phi1, k1, phi2, k2, v1) result (v2)
+  complex(kind=default), intent(in) :: g, phi1, phi2
+  type(momentum), intent(in) :: k1, k2
+  type(vector), intent(in) :: v1
+  type(vector) :: v2
+  v2 = g * phi1 * phi2 * &
+        ( k1  * (k2 * v1) + k2 * (k1 * v1) )
+end function v_phi2v_1
+@
+\begin{equation}
+ \phi_2(k_2) = g \left ( k_1 \cdot k_2 \right ) \left ( V_1\cdot V_2 \right)
+               \phi_1 (k_1)
+\end{equation}
+<<Implementation of couplings>>=
+pure function phi_phi2v_2 (g, phi1, k1, v1,k_v1, v2, k_v2) result (phi2)
+  complex(kind=default), intent(in) :: g, phi1
+  type(momentum), intent(in) :: k1, k_v1, k_v2
+  type(vector), intent(in) :: v1, v2
+  type(momentum) :: k2
+  complex(kind=default) :: phi2
+  k2 = - k1 - k_v1 - k_v2
+  phi2 = g * phi1 * (k1 * k2) * (v1 * v2)
+end function phi_phi2v_2
+@
+\begin{equation}
+ V_2^\mu = g  V_1^\mu \left ( k_1 \cdot k_2 \right )  \phi_1 \phi_2
+\end{equation}
+<<Implementation of couplings>>=
+pure function v_phi2v_2 (g, phi1, k1, phi2, k2, v1) result (v2)
+  complex(kind=default), intent(in) :: g, phi1, phi2
+  type(momentum), intent(in) :: k1, k2
+  type(vector), intent(in) :: v1
+  type(vector) :: v2
+  v2 = g * phi1 * phi2 * &
+        ( k1  * k2 ) * v1
+end function v_phi2v_2
+@ \section{Scalar4 Dim-8 Couplings}
+<<Declaration of couplings>>=
+public :: s_dim8s3
+@
+\begin{equation}
+\phi(k_1) = g \left [ \left ( k_1 \cdot k_2 \right ) \left ( k_3 \cdot k_4 \right )+
+	 \left ( k_1 \cdot k_3 \right ) \left ( k_2 \cdot k_4 \right ) +
+	 \left ( k_1 \cdot k_4 \right )\left ( k_2 \cdot k_3 \right ) \right ]
+	 \phi_2 (k_2) \phi_3 (k_3)  \phi_4 (k_4) 
+\end{equation}
+<<Implementation of couplings>>=
+pure function s_dim8s3 (g, phi2, k2, phi3, k3, phi4, k4) result (phi1)
+  complex(kind=default), intent(in) :: g, phi2, phi3, phi4
+  type(momentum), intent(in) :: k2, k3, k4
+  type(momentum) :: k1
+  complex(kind=default) :: phi1
+  k1 = - k2 - k3 - k4
+  phi1 = g * ( (k1 * k2) * (k3 * k4) + (k1 * k3) * (k2 * k4) &
+          + (k1 * k4) * (k2 * k3) ) * phi2 * phi3 * phi4
+end function s_dim8s3
 @ \section{Graviton Couplings}
 <<Declaration of couplings>>=
 public :: s_gravs, v_gravv, grav_ss, grav_vv
@@ -2998,51 +3442,13 @@ pure function grav_vv (g, m, k1, k2, v1, v2) result (t)
 end function grav_vv
 @ \section{Tensor Couplings}
 <<Declaration of couplings>>=
-public :: t2_vv, v_t2v, t2_vv_1, v_t2v_1, t2_vv_t, v_t2v_t
-@ \section{Scalar-Vector Dim-5 Couplings}
-<<Declaration of couplings>>=
-public :: phi_vv, v_phiv, phi_u_vv, v_u_phiv
+public :: t2_vv, v_t2v, t2_vv_cf, v_t2v_cf, & 
+       t2_vv_1, v_t2v_1, t2_vv_t, v_t2v_t, &
+       t2_phi2, phi_t2phi, t2_phi2_cf, phi_t2phi_cf
 @
-<<Implementation of couplings>>=
-pure function phi_vv (g, k1, k2, v1, v2) result (phi)
-  complex(kind=default), intent(in) :: g
-  type(momentum), intent(in) :: k1, k2
-  type(vector), intent(in) :: v1, v2
-  complex(kind=default) :: phi
-  phi = g * pseudo_scalar (k1, v1, k2, v2)
-end function phi_vv
-@
-<<Implementation of couplings>>=
-pure function v_phiv (g, phi, k1, k2, v) result (w)
-  complex(kind=default), intent(in) :: g, phi
-  type(vector), intent(in) :: v
-  type(momentum), intent(in) :: k1, k2
-  type(vector) :: w
-  w = g * phi * pseudo_vector (k1, k2, v)
-end function v_phiv
-@
-<<Implementation of couplings>>=
-pure function phi_u_vv (g, k1, k2, v1, v2) result (phi)
-  complex(kind=default), intent(in) :: g
-  type(momentum), intent(in) :: k1, k2
-  type(vector), intent(in) :: v1, v2
-  complex(kind=default) :: phi
-  phi = g * ((k1*v2)*((-(k1+k2))*v1) + &
-             (k2*v1)*((-(k1+k2))*v2) + &
-             (((k1+k2)*(k1+k2)) * (v1*v2)))
-end function phi_u_vv
-@
-<<Implementation of couplings>>=
-pure function v_u_phiv (g, phi, k1, k2, v) result (w)
-  complex(kind=default), intent(in) :: g, phi
-  type(vector), intent(in) :: v
-  type(momentum), intent(in) :: k1, k2
-  type(vector) :: w
-  w = g * phi * ((k1*v)*k2 + &
-       ((-(k1+k2))*v)*k1 + &
-       ((k1*k1)*v))
-end function v_u_phiv
-@
+\begin{equation}
+ T_{\mu\nu} = g * V_{1 \,\mu} V_{2\,\nu} + V_{1\,\nu} V_{2\,\mu}
+\end{equation}
 <<Implementation of couplings>>=
 pure function t2_vv (g, v1, v2) result (t)
   complex(kind=default), intent(in) :: g
@@ -3053,6 +3459,9 @@ pure function t2_vv (g, v1, v2) result (t)
   t%t = g * (tmp%t + transpose (tmp%t))
 end function t2_vv
 @
+\begin{equation}
+V_{1\,\mu} = g * T_{\mu \nu} V_{2}^{\nu}+ T_{\nu \mu} V_{2}^{\nu}
+\end{equation}
 <<Implementation of couplings>>=
 pure function v_t2v (g, t, v) result (tv)
   complex(kind=default), intent(in) :: g
@@ -3063,6 +3472,104 @@ pure function v_t2v (g, t, v) result (tv)
   tmp%t = t%t + transpose (t%t)
   tv = g * (tmp * v)
 end function v_t2v
+@
+\begin{equation}
+ T_{\mu\nu} =- \frac{g}{2} V_1^\rho V_{2 \,\rho}
+\end{equation}
+<<Implementation of couplings>>=
+pure function t2_vv_cf (g, v1, v2) result (t)
+  complex(kind=default), intent(in) :: g
+  complex(kind=default) :: tmp_s
+  type(vector), intent(in) :: v1, v2
+  type(tensor) :: t_metric, t
+  t_metric%t = 0
+  t_metric%t(0,0) =   1.0_default
+  t_metric%t(1,1) = - 1.0_default
+  t_metric%t(2,2) = - 1.0_default
+  t_metric%t(3,3) = - 1.0_default
+  tmp_s = v1 * v2
+  t%t = - (g /2.0_default) * tmp_s * t_metric%t 
+end function t2_vv_cf
+@
+\begin{equation}
+V_{1\,\mu} = -\frac{g}{2} T^{\nu}_{ \nu} V_{2}^{\mu}
+\end{equation}
+<<Implementation of couplings>>=
+pure function v_t2v_cf (g, t, v) result (tv)
+  complex(kind=default), intent(in) :: g
+  type(tensor), intent(in) :: t
+  type(vector), intent(in) :: v
+  type(vector) :: tv, tmp_tv
+  tmp_tv =  ( t%t(0,0)-t%t(1,1)-t%t(2,2)-t%t(3,3) ) * v
+  tv = - ( g /2.0_default) * tmp_tv
+end function v_t2v_cf
+@
+\begin{equation}
+ T_{\mu\nu} = g * \left ( k_{1 \,\mu} k_{2\,\nu} + k_{1\,\nu} k_{2\,\mu} \right )
+             \phi_1 \left ( k_1 \right ) \phi_1 \left ( k_2 \right ) 
+\end{equation}
+<<Implementation of couplings>>=
+pure function t2_phi2 (g, phi1, k1, phi2, k2) result (t)
+  complex(kind=default), intent(in) :: g, phi1, phi2
+  type(momentum), intent(in) :: k1, k2
+  type(tensor) :: t
+  type(tensor) :: tmp
+  tmp = k1.tprod.k2
+  t%t = g * (tmp%t + transpose (tmp%t)) * phi1 * phi2
+end function t2_phi2
+@
+\begin{equation}
+\phi_{1} (k_1) =g * \left ( T_{\mu \nu} k_{1}^{\mu}k_{2}^{\nu}
+                + T_{\nu \mu} k_{2}^{\mu}k_{1}^{\nu}
+                \right ) \phi_2 \left (k_2 \right )
+\end{equation}
+<<Implementation of couplings>>=
+pure function phi_t2phi (g, t, kt, phi2, k2) result (phi1)
+  complex(kind=default), intent(in) :: g, phi2
+  type(tensor), intent(in) :: t
+  type(momentum), intent(in) :: kt, k2
+  type(momentum) :: k1
+  complex(kind=default) :: phi1
+  type(tensor) :: tmp
+  k1 = -kt - k2 
+  tmp%t = t%t + transpose (t%t)
+  phi1 = g * ( (tmp * k2) * k1) * phi2
+end function phi_t2phi
+@
+\begin{equation}
+ T_{\mu\nu} =- \frac{g}{2} k_1^\rho k_{2 \,\rho}
+            \phi_1 \left ( k_1 \right )  \phi_2 \left ( k_2 \right )
+\end{equation}
+<<Implementation of couplings>>=
+pure function t2_phi2_cf (g, phi1, k1, phi2, k2) result (t)
+  complex(kind=default), intent(in) :: g, phi1, phi2
+  complex(kind=default) :: tmp_s
+  type(momentum), intent(in) :: k1, k2
+  type(tensor) :: t_metric, t
+  t_metric%t = 0
+  t_metric%t(0,0) =   1.0_default
+  t_metric%t(1,1) = - 1.0_default
+  t_metric%t(2,2) = - 1.0_default
+  t_metric%t(3,3) = - 1.0_default
+  tmp_s = (k1 * k2) * phi1 * phi2
+  t%t = - (g /2.0_default) * tmp_s * t_metric%t 
+end function t2_phi2_cf
+@
+\begin{equation}
+\phi_1 (k_1) = - \frac{g}{2} T^{\nu}_{ \nu} 
+              \left (k_1 \cdot k_2 \right ) \phi_2 (k_2)
+\end{equation}
+<<Implementation of couplings>>=
+pure function phi_t2phi_cf (g, t, kt, phi2, k2) result (phi1)
+  complex(kind=default), intent(in) :: g, phi2
+  type(tensor), intent(in) :: t
+  type(momentum), intent(in) :: kt, k2
+  type(momentum) :: k1
+  complex(kind=default) ::  tmp_ts, phi1
+  k1 = - kt - k2
+  tmp_ts =  ( t%t(0,0)-t%t(1,1)-t%t(2,2)-t%t(3,3) ) 
+  phi1 = - ( g /2.0_default) * tmp_ts * (k1 * k2) * phi2
+end function phi_t2phi_cf
 @
 <<Implementation of couplings>>=
 pure function t2_vv_1 (g, v1, v2) result (t)
@@ -9037,7 +9544,7 @@ subroutine expect_real (x, x0, msg, passed, threshold, quiet, abs_threshold)
      end if
   end if
   if (present (passed)) then
-     passed = passed .and. .not.failed
+     passed = passed .and. .not. failed
   end if
 end subroutine expect_real
 @
@@ -9634,6 +10141,7 @@ program test_omega95_bispinors
   type(momentum) :: p, q, t, z, p_0
   type(vector) :: vp, vq, vt, vz
   type(vectorspinor) :: testv
+  type(bispinor) :: vv
   logical :: passed
   call random_seed ()
   c_one = 1
@@ -9668,6 +10176,11 @@ program test_omega95_bispinors
   vt = t
   vz = z
   passed = .true.
+  vv%a(1) = (1.0_default, 0.0_default)
+  vv%a(2) = (0.0_default, 2.0_default)
+  vv%a(3) = (1.0_default, 0.0_default)
+  vv%a(4) = (3.0_default, 0.0_default)
+  vv = pr_psi(p, m, w, vv)
   <<Test [[omega95_bispinors]]>>
   if (.not. passed) then
     stop 1
@@ -9922,15 +10435,15 @@ call expect (abs(u (m,q,1) * f_sgr (c_one, c_one, ueps(m,p,2), t) + &
 !!! call expect (abs(u (m,q,-1) * f_sgr (c_one, c_one, ueps(m,p,-2), t) + &
 !!!    ueps(m,p,-2) * gr_sf(c_one,c_one,u(m,q,-1),t)),  0, "f_sgr     + gr_sf     = 0", passed)
 call expect (abs(u (m,q,1) * f_slgr (c_one, c_one, ueps(m,p,2), t) + &
-   ueps(m,p,2) * gr_slf(c_one,c_one,u(m,q,1),t)),  0, "f_slgr    + gr_slf    = 0", passed)
+   ueps(m,p,2) * gr_slf(c_one,c_one,u(m,q,1),t)),  0, "f_slgr    + gr_slf    = 0", passed, threshold = 0.5_default)
 call expect (abs(u (m,q,1) * f_srgr (c_one, c_one, ueps(m,p,2), t) + &
-   ueps(m,p,2) * gr_srf(c_one,c_one,u(m,q,1),t)),  0, "f_srgr    + gr_srf    = 0", passed)
+   ueps(m,p,2) * gr_srf(c_one,c_one,u(m,q,1),t)),  0, "f_srgr    + gr_srf    = 0", passed, threshold = 0.5_default)
 call expect (abs(u (m,q,1) * f_slrgr (c_one, c_two, c_one, ueps(m,p,2), t) + &
-   ueps(m,p,2) * gr_slrf(c_one,c_two,c_one,u(m,q,1),t)),  0, "f_slrgr   + gr_slrf   = 0", passed)
+   ueps(m,p,2) * gr_slrf(c_one,c_two,c_one,u(m,q,1),t)),  0, "f_slrgr   + gr_slrf   = 0", passed, threshold = 0.5_default)
 call expect (abs(u (m,q,1) * f_pgr (c_one, c_one, ueps(m,p,2), t) + &
-   ueps(m,p,2) * gr_pf(c_one,c_one,u(m,q,1),t)),  0, "f_pgr     + gr_pf     = 0", passed)
+   ueps(m,p,2) * gr_pf(c_one,c_one,u(m,q,1),t)),  0, "f_pgr     + gr_pf     = 0", passed, threshold = 0.5_default)
 call expect (abs(u (m,q,1) * f_vgr (c_one, vt, ueps(m,p,2), p+q) + &
-   ueps(m,p,2) * gr_vf(c_one,vt,u(m,q,1),p+q)),  0, "f_vgr     + gr_vf     = 0", passed)
+   ueps(m,p,2) * gr_vf(c_one,vt,u(m,q,1),p+q)),  0, "f_vgr     + gr_vf = 0", passed, threshold = 0.5_default)
 call expect (abs(u (m,q,1) * f_vlrgr (c_one, c_two, vt, ueps(m,p,2), p+q) + &
    ueps(m,p,2) * gr_vlrf(c_one,c_two,vt,u(m,q,1),p+q)),  0, "f_vlrgr   + gr_vlrf   = 0", &
    passed, threshold = 0.5_default)
@@ -10097,7 +10610,7 @@ module omegavm95
   use omega95_bispinors, only: bi_u => u
   use omega95_bispinors, only: bi_v => v
   use omega95_bispinors, only: bi_pr_psi => pr_psi
-  use omega95_bispinors, only: operator (*), operator (+)
+  use omega_bispinors, only: operator (*), operator (+)
   use omega_color, only: ovm_color_sum, OCF => omega_color_factor
   implicit none
   private
@@ -10501,7 +11014,13 @@ subroutine vm_write (vm)
   write(vm%out_fh, *) 'table_color_flows         = ', vm%table_color_flows
   write(vm%out_fh, *) 'table_spin                = ', vm%table_spin
   write(vm%out_fh, *) 'table_ghost_flags         = ', vm%table_ghost_flags
-  write(vm%out_fh, *) 'table_color_factors       = ', vm%table_color_factors
+  write(vm%out_fh, *) 'table_color_factors       = '
+  do i = 1, size(vm%table_color_factors)
+     write(vm%out_fh, *)  vm%table_color_factors(i)%i1, &
+          vm%table_color_factors(i)%i2, &
+          vm%table_color_factors(i)%factor
+  end do
+
   write(vm%out_fh, *) 'table_flv_col_is_allowed  = ', &
                     vm%table_flv_col_is_allowed
   do i = 1, vm%N_flavors
@@ -12155,7 +12674,7 @@ end function vm_get_amplitude
 @
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 <<Copyleft>>=
-!  $Id: omegalib.nw 6556 2015-02-12 20:34:13Z jr_reuter $
+!  $Id: omegalib.nw 6943 2015-05-01 10:53:21Z msekulla $
 !
 !  Copyright (C) 1999-2015 by
 !      Wolfgang Kilian <kilian@physik.uni-siegen.de>

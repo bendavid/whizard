@@ -38,6 +38,7 @@ c_example_LDADD += $(LDFLAGS_STDHEP)
 c_example_LDADD += $(LDFLAGS_HEPMC)
 c_example_LDADD += $(LDFLAGS_LCIO)
 c_example_LDADD += $(LDFLAGS_HOPPET)
+c_example_LDADD += $(LDFLAGS_LOOPTOOLS)
 
 cpp_example_SOURCES = cpp_whizard.cc cpp_test.cc cpp_whizard.h
 cpp_example_LDADD  = $(top_builddir)/src/libwhizard.la
@@ -47,6 +48,7 @@ cpp_example_LDADD += $(LDFLAGS_STDHEP)
 cpp_example_LDADD += $(LDFLAGS_HEPMC)
 cpp_example_LDADD += $(LDFLAGS_LCIO)
 cpp_example_LDADD += $(LDFLAGS_HOPPET)
+cpp_example_LDADD += $(LDFLAGS_LOOPTOOLS)
 
 SUFFIXES: .c .cc .py
 

@@ -4,8 +4,13 @@
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
-!     Fabian Bach <fabian.bach@desy.de> (only this file)
+!     with contributions from
+!     Fabian Bach <fabian.bach@desy.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
+!     Christian Speckner <cnspeckn@googlemail.com>
+!     Marco Sekulla <marco.sekulla@desy.de>
+!     Christian Weiss <christian.weiss@desy.de>
+!     Felix Braam, Sebastian Schmidt
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -39,7 +44,11 @@ module interpolation
       interpolate_linear_2D_complex_array, &
       interpolate_linear_2D_complex_scalar, &
       interpolate_linear_2D_real_array, &
-      interpolate_linear_2D_real_scalar
+      interpolate_linear_2D_real_scalar, &
+      interpolate_linear_3D_complex_array, &
+      interpolate_linear_3D_complex_scalar, &
+      interpolate_linear_3D_real_array, &
+      interpolate_linear_3D_real_scalar
   end interface
   
   interface strictly_monotonous
@@ -47,43 +56,39 @@ module interpolation
   end interface strictly_monotonous
 
   interface find_nearest_left
-    !!! recursive bisection seems slower with these array sizes
+    !!! recursive bisection is slower
     module procedure find_nearest_left_loop
   end interface find_nearest_left
 
 contains
 
-  pure subroutine interpolate_linear_1D_complex_array (xa, ya, x, y)
+  pure subroutine interpolate_linear_1D_complex_scalar (xa, ya, x, y)
     real(default), dimension(:), intent(in) :: xa
-    complex(default), dimension(:,:), intent(in) :: ya
+    complex(default), dimension(:), intent(in) :: ya
     real(default), intent(in) :: x
-    complex(default), dimension(:), intent(out) :: y
-    integer :: ny, ixl, iy
+    complex(default), intent(out) :: y
+    integer :: ixl
     real(default) :: t
-    ny = size(ya(1,:))
-    y = (/ (0.0_default, iy=1, ny) /)
+    y = 0.0_default
     !!! don't check this at runtime:
     ! if ( .not.monotonous(xa) ) return
     if ( out_of_range(xa, x) ) return
     ixl = 0
     call find_nearest_left (xa, x, ixl)
     t = ( x - xa(ixl) ) / ( xa(ixl+1) - xa(ixl) )
-    do iy = 1, ny
-      y(iy) = (1.-t)*ya(ixl,iy) + t*ya(ixl+1,iy)
-    end do
-  end subroutine interpolate_linear_1D_complex_array
+    y = (1.-t)*ya(ixl) + t*ya(ixl+1)
+  end subroutine interpolate_linear_1D_complex_scalar
 
-  pure subroutine interpolate_linear_2D_complex_array (x1a, x2a, ya, x1, x2, y)
+  pure subroutine interpolate_linear_2D_complex_scalar (x1a, x2a, ya, x1, x2, y)
     real(default), dimension(:), intent(in) :: x1a
     real(default), dimension(:), intent(in) :: x2a
-    complex(default), dimension(:,:,:), intent(in) :: ya
+    complex(default), dimension(:,:), intent(in) :: ya
     real(default), intent(in) :: x1
     real(default), intent(in) :: x2
-    complex(default), dimension(:), intent(out) :: y
-    integer :: ny, ix1l, ix2l, iy
+    complex(default), intent(out) :: y
+    integer :: ix1l, ix2l
     real(default) :: t, u
-    ny  = size(ya(1,1,:))
-    y = (/ (0.0_default, iy=1, ny) /)
+    y = 0.0_default
     !!! don't check this at runtime:
     ! if ( (.not.monotonous(x1a)) .or. (.not.monotonous(x2a)) ) return
     if ( out_of_range(x1a, x1) .or. out_of_range(x2a, x2) ) return
@@ -93,23 +98,60 @@ contains
     call find_nearest_left (x2a, x2, ix2l)
     t = ( x1 - x1a(ix1l) ) / ( x1a(ix1l+1) - x1a(ix1l) )
     u = ( x2 - x2a(ix2l) ) / ( x2a(ix2l+1) - x2a(ix2l) )
-    do iy = 1, ny
-      y(iy) =  (1.-t)*(1.-u)*ya(ix1l  ,ix2l  ,iy) &
-              +    t *(1.-u)*ya(ix1l+1,ix2l  ,iy) &
-              +    t *    u *ya(ix1l+1,ix2l+1,iy) &
-              +(1.-t)*    u *ya(ix1l  ,ix2l+1,iy)
-    end do
-  end subroutine interpolate_linear_2D_complex_array
+    y =  (1.-t)*(1.-u)*ya(ix1l  ,ix2l  ) &
+        +    t *(1.-u)*ya(ix1l+1,ix2l  ) &
+        +    t *    u *ya(ix1l+1,ix2l+1) &
+        +(1.-t)*    u *ya(ix1l  ,ix2l+1)
+  end subroutine interpolate_linear_2D_complex_scalar
+
+  pure subroutine interpolate_linear_3D_complex_scalar (x1a, x2a, x3a, ya, x1, x2, x3, y)
+    real(default), dimension(:), intent(in) :: x1a
+    real(default), dimension(:), intent(in) :: x2a
+    real(default), dimension(:), intent(in) :: x3a
+    complex(default), dimension(:,:,:), intent(in) :: ya
+    real(default), intent(in) :: x1
+    real(default), intent(in) :: x2
+    real(default), intent(in) :: x3
+    complex(default), intent(out) :: y
+    integer :: ix1l, ix2l, ix3l
+    real(default) :: t, u, v
+    y = 0.0_default
+    !!! don't check this at runtime:
+    ! if ( (.not.monotonous(x1a)) .or. (.not.monotonous(x2a)) ) return
+    if ( out_of_range(x1a, x1) .or. out_of_range(x2a, x2) .or. out_of_range(x3a, x3) ) return
+    ix1l = 0
+    call find_nearest_left (x1a, x1, ix1l)
+    ix2l = 0
+    call find_nearest_left (x2a, x2, ix2l)
+    ix3l = 0
+    call find_nearest_left (x3a, x3, ix3l)
+    t = ( x1 - x1a(ix1l) ) / ( x1a(ix1l+1) - x1a(ix1l) )
+    u = ( x2 - x2a(ix2l) ) / ( x2a(ix2l+1) - x2a(ix2l) )
+    v = ( x3 - x3a(ix3l) ) / ( x3a(ix3l+1) - x3a(ix3l) )
+    y =  (1.-t)*(1.-u)*(1.-v)*ya(ix1l  ,ix2l  ,ix3l  ) &
+        +(1.-t)*(1.-u)*    v *ya(ix1l  ,ix2l  ,ix3l+1) &
+        +(1.-t)*    u *(1.-v)*ya(ix1l  ,ix2l+1,ix3l  ) &
+        +(1.-t)*    u *    v *ya(ix1l  ,ix2l+1,ix3l+1) &
+        +    t *(1.-u)*(1.-v)*ya(ix1l+1,ix2l  ,ix3l  ) &
+        +    t *(1.-u)*    v *ya(ix1l+1,ix2l  ,ix3l+1) &
+        +    t *    u *(1.-v)*ya(ix1l+1,ix2l+1,ix3l  ) &
+        +    t *    u *    v *ya(ix1l+1,ix2l+1,ix3l+1)
+  end subroutine interpolate_linear_3D_complex_scalar
 
   pure subroutine find_nearest_left_loop (xa, x, ixl)
     real(default), dimension(:), intent(in) :: xa
     real(default), intent(in) :: x
     integer, intent(out) :: ixl
-    integer :: ix
-    do ix = 2, size(xa)
-      if ( x < xa(ix) ) then
-        ixl = ix-1
-        return
+    integer :: ixm, ixr
+    ixl = 1
+    ixr = size(xa)
+    do
+      if ( ixr-ixl <= 1 ) return
+      ixm = (ixr+ixl) / 2
+      if ( x < xa(ixm) ) then
+        ixr = ixm
+      else
+        ixl = ixm
       end if
     end do
   end subroutine find_nearest_left_loop
@@ -134,7 +176,7 @@ contains
         allocate( xa_new(bs:nx) )
         xa_new = xa(bs:nx)
       end if
-      call find_nearest_left (xa_new, x, ixl)
+      call find_nearest_left_rec (xa_new, x, ixl)
       deallocate( xa_new )
     end if
   end subroutine find_nearest_left_rec
@@ -157,17 +199,16 @@ contains
     flag = ( x < xa(1) .or. x > xa(size(xa)) )
   end function out_of_range
 
-  pure subroutine interpolate_linear_1D_complex_scalar (xa, ya, x, y)
+  pure subroutine interpolate_linear_1D_complex_array (xa, ya, x, y)
     real(default), dimension(:), intent(in) :: xa
-    complex(default), dimension(:), intent(in) :: ya
+    complex(default), dimension(:,:), intent(in) :: ya
     real(default), intent(in) :: x
-    complex(default), intent(out) :: y
-    complex(default), dimension(size(ya),1) :: ya_c
-    complex(default), dimension(1) :: y_c
-    ya_c(:,1) = ya
-    call interpolate_linear_1D_complex_array (xa, ya_c, x, y_c)
-    y = y_c(1)
-  end subroutine interpolate_linear_1D_complex_scalar
+    complex(default), dimension(size(ya(1,:))), intent(out) :: y
+    integer :: iy
+    do iy=1, size(y)
+      call interpolate_linear_1D_complex_scalar (xa, ya(:,iy), x, y(iy))
+    end do
+  end subroutine interpolate_linear_1D_complex_array
 
   pure subroutine interpolate_linear_1D_real_array (xa, ya, x, y)
     real(default), dimension(:), intent(in) :: xa
@@ -184,26 +225,25 @@ contains
     real(default), dimension(:), intent(in) :: ya
     real(default), intent(in) :: x
     real(default), intent(out) :: y
-    complex(default), dimension(size(ya),1) :: ya_c
-    complex(default), dimension(1) :: y_c
-    ya_c(:,1) = cmplx(ya,kind=default)
-    call interpolate_linear_1D_complex_array (xa, ya_c, x, y_c)
-    y = real(y_c(1),kind=default)
+    complex(default), dimension(size(ya)) :: ya_c
+    complex(default) :: y_c
+    ya_c = cmplx(ya,kind=default)
+    call interpolate_linear_1D_complex_scalar (xa, ya_c, x, y_c)
+    y = real(y_c,kind=default)
   end subroutine interpolate_linear_1D_real_scalar
 
-  pure subroutine interpolate_linear_2D_complex_scalar (x1a, x2a, ya, x1, x2, y)
+  pure subroutine interpolate_linear_2D_complex_array (x1a, x2a, ya, x1, x2, y)
     real(default), dimension(:), intent(in) :: x1a
     real(default), dimension(:), intent(in) :: x2a
-    complex(default), dimension(:,:), intent(in) :: ya
+    complex(default), dimension(:,:,:), intent(in) :: ya
     real(default), intent(in) :: x1
     real(default), intent(in) :: x2
-    complex(default), intent(out) :: y
-    complex(default), dimension(size(ya(:,1)),size(ya(1,:)),1) :: ya_c
-    complex(default), dimension(1) :: y_c
-    ya_c(:,:,1) = ya
-    call interpolate_linear_2D_complex_array (x1a, x2a, ya_c, x1, x2, y_c)
-    y = y_c(1)
-  end subroutine interpolate_linear_2D_complex_scalar
+    complex(default), dimension(size(ya(1,1,:))), intent(out) :: y
+    integer :: iy
+    do iy=1, size(y)
+      call interpolate_linear_2D_complex_scalar (x1a, x2a, ya(:,:,iy), x1, x2, y(iy))
+    end do
+  end subroutine interpolate_linear_2D_complex_array
 
   pure subroutine interpolate_linear_2D_real_array (x1a, x2a, ya, x1, x2, y)
     real(default), dimension(:), intent(in) :: x1a
@@ -224,10 +264,58 @@ contains
     real(default), intent(in) :: x1
     real(default), intent(in) :: x2
     real(default), intent(out) :: y
-    complex(default), dimension(size(ya(:,1)),size(ya(1,:)),1) :: ya_c
-    complex(default), dimension(1) :: y_c
-    ya_c(:,:,1) = cmplx(ya,kind=default)
-    call interpolate_linear_2D_complex_array (x1a, x2a, ya_c, x1, x2, y_c)
-    y = real(y_c(1),kind=default)
+    complex(default), dimension(size(ya(:,1)),size(ya(1,:))) :: ya_c
+    complex(default) :: y_c
+    ya_c = reshape (ya_c, shape(ya))
+    ya_c = cmplx(ya,kind=default)
+    call interpolate_linear_2D_complex_scalar (x1a, x2a, ya_c, x1, x2, y_c)
+    y = real(y_c,kind=default)
   end subroutine interpolate_linear_2D_real_scalar
+
+  pure subroutine interpolate_linear_3D_complex_array (x1a, x2a, x3a, ya, x1, x2, x3, y)
+    real(default), dimension(:), intent(in) :: x1a
+    real(default), dimension(:), intent(in) :: x2a
+    real(default), dimension(:), intent(in) :: x3a
+    complex(default), dimension(:,:,:,:), intent(in) :: ya
+    real(default), intent(in) :: x1
+    real(default), intent(in) :: x2
+    real(default), intent(in) :: x3
+    complex(default), dimension(size(ya(1,1,1,:))), intent(out) :: y
+    integer :: iy
+    do iy=1, size(y)
+      call interpolate_linear_3D_complex_scalar &
+                            (x1a, x2a, x3a, ya(:,:,:,iy), x1, x2, x3, y(iy))
+    end do
+  end subroutine interpolate_linear_3D_complex_array
+
+  pure subroutine interpolate_linear_3D_real_array (x1a, x2a, x3a, ya, x1, x2, x3, y)
+    real(default), dimension(:), intent(in) :: x1a
+    real(default), dimension(:), intent(in) :: x2a
+    real(default), dimension(:), intent(in) :: x3a
+    real(default), dimension(:,:,:,:), intent(in) :: ya
+    real(default), intent(in) :: x1
+    real(default), intent(in) :: x2
+    real(default), intent(in) :: x3
+    real(default), dimension(:), intent(out) :: y
+    complex(default), dimension(size(ya(1,1,1,:))) :: y_c
+    call interpolate_linear_3D_complex_array &
+                       (x1a, x2a, x3a, cmplx(ya,kind=default), x1, x2, x3, y_c)
+    y = real(y_c,kind=default)
+  end subroutine interpolate_linear_3D_real_array
+
+  pure subroutine interpolate_linear_3D_real_scalar (x1a, x2a, x3a, ya, x1, x2, x3, y)
+    real(default), dimension(:), intent(in) :: x1a
+    real(default), dimension(:), intent(in) :: x2a
+    real(default), dimension(:), intent(in) :: x3a
+    real(default), dimension(:,:,:), intent(in) :: ya
+    real(default), intent(in) :: x1
+    real(default), intent(in) :: x2
+    real(default), intent(in) :: x3
+    real(default), intent(out) :: y
+    complex(default), dimension(size(ya(:,1,1)),size(ya(1,:,1)),size(ya(1,1,:))) :: ya_c
+    complex(default) :: y_c
+    ya_c = cmplx(ya,kind=default)
+    call interpolate_linear_3D_complex_scalar (x1a, x2a, x3a, ya_c, x1, x2, x3, y_c)
+    y = real(y_c,kind=default)
+  end subroutine interpolate_linear_3D_real_scalar
 end module interpolation

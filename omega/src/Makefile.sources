@@ -1,5 +1,5 @@
 # Makefile.sources -- Makefile component for O'Mega
-# $Id: Makefile.sources 6465 2015-01-10 15:22:31Z jr_reuter $
+# $Id: Makefile.sources 6943 2015-05-01 10:53:21Z msekulla $
 ##
 ## Process Makefile.am with automake to include this file in Makefile.in
 ##
@@ -129,6 +129,7 @@ OMEGA_MODELLIB_MLI = $(OMEGA_MODELLIB_ML:.ml=.mli)
 
 OMEGA_TARGETLIB_ML = \
     targets_Kmatrix.ml \
+    targets_Kmatrix_2.ml \
     targets.ml
 
 OMEGA_TARGETLIB_MLI = $(OMEGA_TARGETLIB_ML:.ml=.mli)
@@ -180,7 +181,10 @@ OMEGA_APPLICATIONS_ML = \
     omega_NoH_rx.ml \
     omega_AltH.ml \
     omega_SM_rx.ml \
+    omega_SM_ul.ml \
     omega_SSC.ml \
+    omega_SSC_2.ml \
+    omega_SSC_AltT.ml \
     omega_UED.ml \
     omega_Zprime.ml \
     omega_Zprime_VM.ml \

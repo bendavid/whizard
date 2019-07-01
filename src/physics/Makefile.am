@@ -36,7 +36,8 @@ libphysics_la_SOURCES = \
   c_particles.f90 \
   lorentz.f90 \
   sm_physics.f90 \
-  sm_qcd.f90
+  sm_qcd.f90 \
+  shower_algorithms.f90
 
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = physics.nw
@@ -61,7 +62,8 @@ module_lists = \
   ../utilities/Modules \
   ../testing/Modules \
   ../system/Modules \
-  ../combinatorics/Modules
+  ../combinatorics/Modules \
+  ../rng/Modules
 
 $(module_lists):
 	$(MAKE) -C `dirname $@` Modules
@@ -105,7 +107,7 @@ DISTCLEANFILES += Makefile.depend
 	@:
 #	touch $@
 
-AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics
+AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../rng
 
 
 ########################################################################

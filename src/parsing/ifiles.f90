@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -71,6 +71,11 @@ module ifiles
      type(line_entry_t), pointer :: first => null ()
      type(line_entry_t), pointer :: last => null ()
      integer :: n_lines = 0
+   contains
+     procedure :: final => ifile_clear
+     generic :: append => &
+          ifile_append_from_char
+     procedure, private :: ifile_append_from_char
   end type ifile_t
 
   type :: line_p
@@ -112,7 +117,7 @@ contains
   end subroutine line_entry_destroy
 
   subroutine ifile_clear (ifile)
-    type(ifile_t), intent(inout) :: ifile
+    class(ifile_t), intent(inout) :: ifile
     type(line_entry_t), pointer :: current
     do while (associated (ifile%first))
        current => ifile%first
@@ -160,7 +165,7 @@ contains
   end subroutine ifile_read_from_ifile
     
   subroutine ifile_append_from_string (ifile, string)
-    type(ifile_t), intent(inout) :: ifile
+    class(ifile_t), intent(inout) :: ifile
     type(string_t), intent(in) :: string
     type(line_entry_t), pointer :: current
     call line_entry_create (current, string)
@@ -176,13 +181,13 @@ contains
   end subroutine ifile_append_from_string
 
   subroutine ifile_append_from_char (ifile, char)
-    type(ifile_t), intent(inout) :: ifile
+    class(ifile_t), intent(inout) :: ifile
     character(*), intent(in) :: char
     call ifile_append_from_string (ifile, var_str (trim (char)))
   end subroutine ifile_append_from_char
 
   subroutine ifile_append_from_char_array (ifile, char)
-    type(ifile_t), intent(inout) :: ifile
+    class(ifile_t), intent(inout) :: ifile
     character(*), dimension(:), intent(in) :: char
     integer :: i
     do i = 1, size (char)
@@ -191,7 +196,7 @@ contains
   end subroutine ifile_append_from_char_array
     
   subroutine ifile_append_from_unit (ifile, unit, iostat)
-    type(ifile_t), intent(inout) :: ifile
+    class(ifile_t), intent(inout) :: ifile
     integer, intent(in) :: unit
     integer, intent(out), optional :: iostat
     type(string_t) :: buffer
@@ -210,7 +215,7 @@ contains
   end subroutine ifile_append_from_unit
     
   subroutine ifile_append_from_ifile (ifile, ifile_in)
-    type(ifile_t), intent(inout) :: ifile
+    class(ifile_t), intent(inout) :: ifile
     type(ifile_t), intent(in) :: ifile_in
     type(line_entry_t), pointer :: current
     current => ifile_in%first

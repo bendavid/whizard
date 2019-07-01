@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -42,6 +42,7 @@ module commands
   use unit_tests
   use diagnostics
   use sm_qcd
+  use physics_defs
   use pdf_builtin !NODEP!
   use sorting
   use sf_lhapdf
@@ -140,7 +141,7 @@ module commands
   type, extends (command_t) :: cmd_nlo_t
     private
     type(parse_node_p), dimension(3) :: pn_components
-    logical, dimension(3) :: active_component  
+    logical, dimension(4) :: active_component  
   contains
       procedure :: write => cmd_nlo_write
       procedure :: compile => cmd_nlo_compile
@@ -676,9 +677,9 @@ end type range_real_t
        FORBIDDEN_ENDINGS1 = [ "o", "a" ]
   character(len=2), dimension(5), parameter, public :: &       
        FORBIDDEN_ENDINGS2 = [ "mp", "ps", "vg", "lo", "la" ]
-  character(len=3), dimension(14), parameter, public :: &
+  character(len=3), dimension(16), parameter, public :: &
        FORBIDDEN_ENDINGS3 = [ "aux", "dvi", "evt", "evx", "f03", "f90", &
-          "f95", "log", "ltp", "mpx", "pdf", "phs", "sin", "tex" ]
+          "f95", "log", "ltp", "mpx", "olc", "olp", "pdf", "phs", "sin", "tex" ]
        
   integer, parameter :: STEP_NONE = 0
   integer, parameter :: STEP_ADD = 1
@@ -1029,19 +1030,24 @@ contains
     integer, dimension(:), allocatable :: i_term
     integer :: i, j, n_in, n_out, n_terms, n_components
     logical :: nlo_calc
-    logical, dimension(3) :: active_nlo_components
-    type(pdg_array_t), dimension(:), allocatable :: pdg_array_in, pdg_array_out
+    logical, dimension(4) :: active_nlo_components
     type(string_t), dimension(:), allocatable :: prt_in_nlo, prt_out_nlo
     type(radiation_generator_t) :: radiation_generator
     type(pdg_list_t) :: pl_in, pl_out
-    logical :: method_changed = .false.
-    logical :: use_gosam_loops
-    logical :: use_gosam_correlations
-    logical :: use_gosam_real_trees
-    integer , dimension(4) :: i_list
-    logical :: combined_nlo_integration
+    type(string_t) :: loop_me_method
+    type(string_t) :: correlation_me_method
+    type(string_t) :: real_tree_me_method
+    type(string_t) :: current_me_method 
+!    integer , dimension(4) :: i_list
+    integer, dimension(5) :: i_list
+    logical :: combined_nlo_integration, powheg_active
     
-    nlo_calc = cmd%local%nlo_calculation
+    nlo_calc = cmd%local%nlo_calculation                 
+    combined_nlo_integration = &
+           global%var_list%get_lval (var_str ('?combined_nlo_integration'))
+    powheg_active = & 
+           global%var_list%get_lval (var_str ('?powheg_matching')) 
+    call check_nlo_options (nlo_calc, combined_nlo_integration, powheg_active)
     active_nlo_components = cmd%local%active_nlo_components
 
     var_list => cmd%local%get_var_list_ptr ()
@@ -1080,7 +1086,8 @@ contains
        pdg_out_tab(n_components) = pdg_out
     end do SCAN_COMPONENTS
     if (nlo_calc) then
-      call prc_config%init (cmd%id, n_in, n_components*4, cmd%local)
+!      call prc_config%init (cmd%id, n_in, n_components*4, cmd%local)
+      call prc_config%init (cmd%id, n_in, n_components*5, cmd%local)
     else
       call prc_config%init (cmd%id, n_in, n_components, cmd%local)
     end if
@@ -1092,52 +1099,57 @@ contains
             i_list(2) = i + n_components
             i_list(3) = i + 2*n_components
             i_list(4) = i + 3*n_components
-            use_gosam_loops = &
-                 global%var_list%get_lval (var_str ('?use_gosam_loops'))
-            use_gosam_correlations = &
-                 global%var_list%get_lval (var_str ('?use_gosam_correlations'))
-            use_gosam_real_trees = &
-                 global%var_list%get_lval (var_str ('?use_gosam_real_trees'))
+            i_list(5) = i + 4*n_components
+            loop_me_method = global%var_list%get_sval (var_str ("$loop_me_method"))
+            correlation_me_method = global%var_list%get_sval (var_str ("$correlation_me_method"))
+            real_tree_me_method = global%var_list%get_sval (var_str ("$real_tree_me_method"))
 
             call prc_config%setup_component (i, prt_spec_in, prt_spec_out, &
-                                             cmd%local, var_str ('Born'), &
+                                             cmd%local, BORN, &
                                              active_in = active_comp (1))
             call split_prt (prt_spec_in, n_in, pl_in)
             call split_prt (prt_spec_out, n_out, pl_out)
-            call radiation_generator_init (radiation_generator, .true., .false., &
-                                           pl_in, pl_out)
+            call radiation_generator%init (pl_in, pl_out, qcd = .true., qed = .false.)
             call radiation_generator%set_n (n_in, n_out, 0)
             call radiation_generator%set_constraints (.false., .false., .true., .true.)
             call radiation_generator%init_radiation_model &
                  (cmd%local%radiation_model)
             call radiation_generator%generate (prt_in_nlo, prt_out_nlo)
 
-            if (use_gosam_real_trees) then
-               if (.not. method_changed) &
-                 call global%change_to_gosam (method_changed)
+            current_me_method = var_str ('omega')
+            if (current_me_method /= real_tree_me_method) then
+               call global%set_me_method (real_tree_me_method)
+               current_me_method = real_tree_me_method
             end if
-  
             call prc_config%setup_component (n_components + i, &
                             new_prt_spec (prt_in_nlo), &
                             new_prt_spec (prt_out_nlo),&
-                            cmd%local, var_str ('Real'), &
+                            cmd%local, NLO_REAL, &
                             active_in = active_comp (2))
 
-            if (use_gosam_loops .and..not. method_changed) &
-                 call global%change_to_gosam (method_changed)
-
+            if (current_me_method /= loop_me_method) then
+               call global%set_me_method (loop_me_method)
+               current_me_method = loop_me_method
+            end if
             call prc_config%setup_component (n_components*2 + i, prt_spec_in, &
-                            prt_spec_out, global, var_str ('Virtual'), &
+                            prt_spec_out, global, NLO_VIRTUAL, &
                             active_in = active_comp (3))
 
-            if (.not. use_gosam_correlations .and. method_changed) then
-               call global%change_to_omega ()
-            else if (use_gosam_correlations .and..not. method_changed) then
-               call global%change_to_gosam (method_changed)
+            if (current_me_method /= "omega") then
+               call global%set_me_method (var_str ("omega"))
+               current_me_method = "omega"
             end if
+            call prc_config%setup_component (n_components*3+i, prt_spec_in, &
+                            prt_spec_out, global, NLO_PDF, &
+                            active_in = active_comp (4))
+           
 
-            call prc_config%setup_component (n_components*3 + i, prt_spec_in, &
-                            prt_spec_out, global, var_str ('Subtraction'), &
+            if (current_me_method /= correlation_me_method) then
+               call global%set_me_method (correlation_me_method)
+               current_me_method = correlation_me_method
+            end if
+            call prc_config%setup_component (n_components*4 + i, prt_spec_in, &
+                            prt_spec_out, global, NLO_SUBTRACTION, &
                             .false.)                     
             call prc_config%set_component_associations (i_list)
          end associate
@@ -1148,6 +1160,24 @@ contains
     call prc_config%record (cmd%local)
  
   contains
+    subroutine check_nlo_options (nlo, combined, powheg)
+      logical, intent(in) :: nlo, combined, powheg
+      logical :: case_lo_but_any_other
+      logical :: case_nlo_powheg_but_not_combined
+      case_lo_but_any_other = .not. nlo .and. &
+                              any ([combined, powheg])
+      case_nlo_powheg_but_not_combined = &
+                              nlo .and. powheg .and. .not. combined
+      if (case_lo_but_any_other) then
+          call msg_fatal ("Option mismatch: Leading order process is selected &
+                          &but either powheg_matching or combined_nlo_integration &
+                          &is set to true.")
+      else if (case_nlo_powheg_but_not_combined) then
+          call msg_fatal ("POWHEG requires the 'combined_nlo_integration'-option &
+                          &to be set to true.")
+      end if
+    end subroutine check_nlo_options
+
     subroutine split_prt (prt, n_out, pl)
       type(prt_spec_t), intent(in), dimension(:), allocatable :: prt
       integer, intent(in) :: n_out
@@ -1314,6 +1344,8 @@ contains
             cmd%active_component(2) = .true.
          case ('Virtual')
             cmd%active_component(3) = .true.
+         case ('Pdf')
+            cmd%active_component(4) = .true.
          case ('Full')
             cmd%active_component = .true.
          end select
@@ -1324,9 +1356,9 @@ contains
          exit
       end if
     end do   
-    ! global%nlo_calculation = cmd%nlo_calc
     global%nlo_calculation = cmd%active_component(2) &
-                        .or. cmd%active_component(3)
+                        .or. cmd%active_component(3) &
+                        .or. cmd%active_component(4)
     global%active_nlo_components = cmd%active_component
   end subroutine cmd_nlo_execute
 
@@ -1713,7 +1745,6 @@ contains
     class(cmd_slha_t), intent(inout) :: cmd
     type(rt_data_t), intent(inout), target :: global
     logical :: input, spectrum, decays
-    type(model_t), pointer :: model
     if (cmd%write_mode) then
        input = .true.
        spectrum = .false.
@@ -3408,9 +3439,10 @@ contains
     class(cmd_compile_analysis_t), intent(inout) :: cmd
     type(rt_data_t), intent(inout), target :: global
     type(var_list_t), pointer :: var_list
-    type(string_t) :: file, basename, extension, driver_file
-    integer :: u_driver
-    logical :: has_gmlcode
+    type(string_t) :: file, basename, extension, driver_file, &
+         makefile
+    integer :: u_driver, u_makefile
+    logical :: has_gmlcode, only_file
     var_list => cmd%local%get_var_list_ptr ()
     call write_analysis_wrap (var_list, &
          global%out_files, cmd%id, tag = cmd%tag, &
@@ -3422,6 +3454,7 @@ contains
       extension = ""
     end if
     driver_file = basename // ".tex"
+    makefile = basename // "_ana.makefile"
     u_driver = free_unit ()
     open (unit=u_driver, file=char(driver_file), &
           action="write", status="replace")
@@ -3433,9 +3466,20 @@ contains
        has_gmlcode = analysis_has_plots ()
     end if
     close (u_driver)
+    u_makefile = free_unit ()
+    open (unit=u_makefile, file=char(makefile), &
+         action="write", status="replace")
+    call analysis_write_makefile (basename, u_makefile, &
+         has_gmlcode, global%os_data)
+    close (u_makefile)
     call msg_message ("Compiling analysis results display in '" &
          // char (driver_file) // "'")
-    call analysis_compile_tex (basename, has_gmlcode, global%os_data)
+    call msg_message ("Providing analysis steering makefile '" &
+         // char (makefile) // "'")    
+    only_file = global%var_list%get_lval &
+         (var_str ("?analysis_file_only"))
+    if (.not. only_file)  call analysis_compile_tex &
+         (basename, has_gmlcode, global%os_data)
   end subroutine cmd_compile_analysis_execute
 
   subroutine cmd_open_out_final (object)
@@ -3854,7 +3898,7 @@ contains
     type(string_t) :: prt_in
     type(string_t), dimension(:), allocatable :: prt_out
     type(process_configuration_t) :: prc_config
-    integer :: i, j, k, n
+    integer :: i, j, k
     call flv_in%init (pdg_in, global%model)
     if (rad) then
        call constraints%init (2)

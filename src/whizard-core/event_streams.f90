@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -503,14 +503,19 @@ contains
     type(event_t), intent(in), target :: event
     integer, intent(in) :: i_prc, event_index
     logical, intent(in), optional :: passed, pacify
+    logical :: increased
     integer :: i
     do i = 1, size (es_array%entry)
        if (i /= es_array%i_in) then
           associate (eio => es_array%entry(i)%eio)
             if (eio%split) then
-               if (event_index > 1 .and. &
-                    mod (event_index, eio%split_n_evt) == 1) then
+               if (eio%split_n_evt > 0 &
+                    .and. event_index > 1 &
+                    .and. mod (event_index, eio%split_n_evt) == 1) then
                   call eio%split_out ()
+               else if (eio%split_n_kbytes > 0) then
+                  call eio%update_split_count (increased)
+                  if (increased)  call eio%split_out ()
                end if
             end if
             call eio%output (event, i_prc, reading = es_array%i_in /= 0, &

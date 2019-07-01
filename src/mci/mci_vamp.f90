@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -1006,6 +1006,7 @@ contains
           end do
           call vamp_read_grids (instance%grids, u, read_integrals)
           close (u)
+          call instance%set_channel_weights (instance%grids%weights)
           instance%grids_defined = .true.
        else
           call msg_bug ("VAMP: read grids: grids already defined")
@@ -1640,26 +1641,27 @@ contains
   subroutine mci_vamp_instance_adapt_weights (instance)
     class(mci_vamp_instance_t), intent(inout) :: instance
     real(default) :: w_sum, w_avg_ch, sum_w_underflow, w_min
+    real(default), dimension(:), allocatable :: weights
     integer :: n_ch, ch, n_underflow
     logical, dimension(:), allocatable :: mask, underflow
     type(exception) :: vamp_exception
     if (instance%enable_adapt_weights .and. instance%allow_adapt_weights) then
        associate (mci => instance%mci)
          if (instance%grids_defined) then
-            instance%w = instance%grids%weights &
+            weights = instance%grids%weights &
                  * vamp_get_variance (instance%grids%grids) &
                  ** mci%grid_par%channel_weights_power
-            w_sum = sum (instance%w)
+            w_sum = sum (weights)
             if (w_sum /= 0) then
-               instance%w = instance%w / w_sum
+               weights = weights / w_sum
                if (mci%n_chain /= 0) then
                   allocate (mask (mci%n_channel))
                   do ch = 1, mci%n_chain
                      mask = mci%chain == ch
                      n_ch = count (mask)
                      if (n_ch /= 0) then
-                        w_avg_ch = sum (instance%w, mask) / n_ch
-                        where (mask)  instance%w = w_avg_ch
+                        w_avg_ch = sum (weights, mask) / n_ch
+                        where (mask)  weights = w_avg_ch
                      end if
                   end do
                end if
@@ -1668,20 +1670,21 @@ contains
                        real (mci%grid_par%threshold_calls, default) &
                        / instance%n_calls
                   allocate (underflow (mci%n_channel))
-                  underflow = instance%w /= 0 .and. abs (instance%w) < w_min
+                  underflow = weights /= 0 .and. abs (weights) < w_min
                   n_underflow = count (underflow)
-                  sum_w_underflow = sum (instance%w, mask=underflow)
+                  sum_w_underflow = sum (weights, mask=underflow)
                   if (sum_w_underflow /= 1) then
                      where (underflow)
-                        instance%w = w_min
+                        weights = w_min
                      elsewhere
-                        instance%w = instance%w &
+                        weights = weights &
                              * (1 - n_underflow * w_min) / (1 - sum_w_underflow)
                      end where
                   end if
                end if
             end if
-            call vamp_update_weights (instance%grids, instance%w, &
+            call instance%set_channel_weights (weights)
+            call vamp_update_weights (instance%grids, weights, &
                  exc = vamp_exception)
             call handle_vamp_exception (vamp_exception, mci%verbose)
          else

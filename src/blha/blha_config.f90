@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -50,6 +50,8 @@ module blha_config
   use syntax_rules
   use ifiles
 
+  use fks_regions, only: flv_structure_t
+
   implicit none
   private
 
@@ -82,7 +84,8 @@ module blha_config
   integer, public, parameter :: &
        BLHA_MPS_ONSHELL=1, BLHA_MPS_OTHER=2
   integer, public, parameter :: &
-       BLHA_MODE_GOSAM=1, BLHA_MODE_FEYNARTS = 2, BLHA_MODE_GENERIC=3
+       BLHA_MODE_GOSAM=1, BLHA_MODE_FEYNARTS = 2, BLHA_MODE_GENERIC=3, &
+       BLHA_MODE_OPENLOOPS=4
   integer, public, parameter :: &
        BLHA_OM_NONE=1, BLHA_OM_NOCPL=2, BLHA_OM_OTHER=3
    integer, public, parameter :: &
@@ -97,6 +100,10 @@ module blha_config
        BLHA_WIDTH_COMPLEX = 1, BLHA_WIDTH_FIXED = 2, &
        BLHA_WIDTH_RUNNING = 3, BLHA_WIDTH_POLE = 4, &
        BLHA_WIDTH_DEFAULT = 5 
+
+  integer, parameter, public :: OLP_N_MASSIVE_PARTICLES = 10
+  integer, dimension(OLP_N_MASSIVE_PARTICLES), public :: &
+    OLP_MASSIVE_PARTICLES = [5,-5,6,-6,15,-15,23,24,-24,25]
 
 
   type :: blha_cfg_process_node_t
@@ -120,8 +127,6 @@ module blha_config
      integer :: mode = BLHA_MODE_GENERIC
      type(blha_cfg_process_node_t), pointer :: processes => null ()
      integer, dimension(2) :: matrix_element_square_type = BLHA_MEST_SUM
-     !!! !!! !!! Triggers gfortran 4.9.0 ICE     
-     ! type(string_t), dimension (2) :: matrix_element_square_type_other
      integer :: correction_type = BLHA_CT_QCD
      type(string_t) :: correction_type_other
      integer :: irreg = BLHA_IRREG_THV
@@ -146,7 +151,8 @@ module blha_config
   end type blha_flv_state_t
 
   type :: blha_master_t
-    integer, dimension(:,:), allocatable :: flv_born, flv_real
+    integer, dimension(3) :: blha_mode
+!    integer, dimension(:,:), allocatable :: flv_born, flv_real
     integer :: n_in, n_out
     logical :: compute_loops = .true.
     logical :: compute_correlations = .false.
@@ -158,6 +164,8 @@ module blha_config
     integer :: n_files = 0
   contains
     procedure :: init => blha_master_init 
+    procedure :: set_gosam => blha_master_set_gosam
+    procedure :: set_openloops => blha_master_set_openloops
     procedure :: generate => blha_master_generate
   end type blha_master_t
 
@@ -215,7 +223,7 @@ contains
           master%suffix(i_file) = "_LOOP"
           call blha_init_virtual (master%blha_cfg(i_file), blha_flavor, &
                                   alpha_power, alphas_power, &
-                                  basename, model)
+                                  basename, model, master%blha_mode(1))
           i_file = i_file+1
         else
           call msg_fatal ("GoSam Loops requested but " &
@@ -233,7 +241,7 @@ contains
           master%suffix(i_file) = "_SUB"
           call blha_init_subtraction (master%blha_cfg(i_file), blha_flavor, &
                                   alpha_power, alphas_power, &
-                                  basename, model)
+                                  basename, model, master%blha_mode(2))
           i_file = i_file+1
        else
           call msg_fatal ("GoSam Correlations requested but "&
@@ -251,7 +259,7 @@ contains
           master%suffix(i_file) = "_REAL"
           call blha_init_real (master%blha_cfg(i_file), blha_flavor, &
                                   alpha_power, alphas_power, &
-                                  basename, model)
+                                  basename, model, master%blha_mode(3))
        else
           call msg_fatal ("GoSam Trees requested but "&
                            // "Real flavor not existing")
@@ -259,41 +267,61 @@ contains
     end if
   end subroutine blha_master_init
 
-  subroutine blha_init_virtual (blha_cfg, blha_flavor, ap, asp, basename, model)
+  subroutine blha_master_set_gosam (master, i)
+    class(blha_master_t), intent(inout) :: master
+    integer, intent(in) :: i
+    master%blha_mode(i) = BLHA_MODE_GOSAM
+  end subroutine blha_master_set_gosam
+
+  subroutine blha_master_set_openloops (master, i)
+    class(blha_master_t), intent(inout) :: master
+    integer, intent(in) :: i
+    master%blha_mode(i) = BLHA_MODE_OPENLOOPS
+  end subroutine blha_master_set_openloops
+
+  subroutine blha_init_virtual (blha_cfg, blha_flavor, ap, asp, basename, model, blha_mode)
     type(blha_configuration_t), intent(inout) :: blha_cfg
     type(blha_flv_state_t), intent(in), dimension(:) :: blha_flavor
     integer, intent(in) :: ap, asp
     type(string_t), intent(in) :: basename
     type(model_data_t), intent(in), target :: model
+    integer, intent(in) :: blha_mode
     integer, dimension(:), allocatable :: amp_type
-    integer :: i
+    integer :: i, ew_scheme
 
     allocate (amp_type (size (blha_flavor)*2))
     do i = 1, size (blha_flavor)
        amp_type(2*i-1) = BLHA_AMP_LOOP
        amp_type(2*i) = BLHA_AMP_CC
     end do
-    call blha_configuration_init (blha_cfg, basename // "_VIRT" , &
-                                  model, BLHA_MODE_GOSAM)
+    call blha_configuration_init (blha_cfg, basename // "_LOOP" , &
+                                  model, blha_mode)
     call blha_configuration_append_processes (blha_cfg, &
                                   blha_flavor, amp_type)
+    select case (blha_cfg%mode)
+    case (BLHA_MODE_GOSAM)
+       ew_scheme = BLHA_EW_GF
+    case (BLHA_MODE_OPENLOOPS)
+       ew_scheme = BLHA_EW_0
+    end select 
     call blha_configuration_set (blha_cfg, 2, &
                                  correction_type = BLHA_CT_QCD, &
                                  irreg = BLHA_IRREG_CDR, &
                                  alphas_power = asp, &
                                  alpha_power = ap, &
-                                 ew_scheme = BLHA_EW_GF, &
-                                 debug = .true.)
+                                 ew_scheme = ew_scheme, &
+                                 debug = blha_mode == BLHA_MODE_GOSAM)
   end subroutine blha_init_virtual
 
-  subroutine blha_init_subtraction (blha_cfg, blha_flavor, ap, asp, basename, model)
+  subroutine blha_init_subtraction (blha_cfg, blha_flavor, ap, asp, basename, model, blha_mode)
     type(blha_configuration_t), intent(inout) :: blha_cfg
     type(blha_flv_state_t), intent(in), dimension(:) :: blha_flavor
     integer, intent(in) :: ap, asp
     type(string_t), intent(in) :: basename
     type(model_data_t), intent(in), target :: model
+    integer, intent(in) :: blha_mode
     integer, dimension(:), allocatable :: amp_type
-    integer :: i
+    integer :: i, ew_scheme
 
     allocate (amp_type (size (blha_flavor)*3))
     do i = 1, size (blha_flavor)
@@ -302,42 +330,57 @@ contains
        amp_type(3*i) = BLHA_AMP_SC
     end do
     call blha_configuration_init (blha_cfg, basename // "_SUB" , &
-                                  model, BLHA_MODE_GOSAM)
+                                  model, blha_mode)
     call blha_configuration_append_processes (blha_cfg, &
                                   blha_flavor, amp_type)
+    select case (blha_cfg%mode)
+    case (BLHA_MODE_GOSAM)
+       ew_scheme = BLHA_EW_GF
+    case (BLHA_MODE_OPENLOOPS)
+       ew_scheme = BLHA_EW_0
+    end select 
     call blha_configuration_set (blha_cfg, 2, &
                                  correction_type = BLHA_CT_QCD, &
                                  irreg = BLHA_IRREG_CDR, &
                                  alphas_power = asp, &
                                  alpha_power = ap, &
-                                 ew_scheme = BLHA_EW_GF, &
-                                 debug = .true.)
+                                 ew_scheme = ew_scheme, &
+!                                 debug = .true.)
+                                 debug = blha_mode == BLHA_MODE_GOSAM)
   end subroutine blha_init_subtraction
 
-  subroutine blha_init_real (blha_cfg, blha_flavor, ap, asp, basename, model)
+  subroutine blha_init_real (blha_cfg, blha_flavor, ap, asp, basename, model, blha_mode)
     type(blha_configuration_t), intent(inout) :: blha_cfg
     type(blha_flv_state_t), intent(in), dimension(:) :: blha_flavor
     integer, intent(in) :: ap, asp
     type(string_t), intent(in) :: basename
     type(model_data_t), intent(in), target :: model
+    integer, intent(in) :: blha_mode
     integer, dimension(:), allocatable :: amp_type
-    integer :: i
+    integer :: i, ew_scheme
 
     allocate (amp_type (size (blha_flavor)))
     do i = 1, size (blha_flavor)
        amp_type(i) = BLHA_AMP_TREE
     end do
     call blha_configuration_init (blha_cfg, basename // "_REAL" , &
-                                  model, BLHA_MODE_GOSAM)
+                                  model, blha_mode)
     call blha_configuration_append_processes (blha_cfg, &
                                   blha_flavor, amp_type)
+    select case (blha_cfg%mode)
+    case (BLHA_MODE_GOSAM)
+       ew_scheme = BLHA_EW_GF
+    case (BLHA_MODE_OPENLOOPS)
+       ew_scheme = BLHA_EW_0
+    end select 
     call blha_configuration_set (blha_cfg, 2, &
                                  correction_type = BLHA_CT_QCD, &
                                  irreg = BLHA_IRREG_CDR, &
                                  alphas_power = asp+1, &
                                  alpha_power = ap, &
-                                 ew_scheme = BLHA_EW_GF, &
-                                 debug = .true.)
+                                 ew_scheme = ew_scheme, &
+!                                 debug = .true.)
+                                 debug = blha_mode == BLHA_MODE_GOSAM)
   end subroutine blha_init_real
 
   subroutine blha_master_generate (master, basename)
@@ -789,11 +832,12 @@ contains
     if (full .and. cfg%dirty) call msg_bug ( &
        "BUG: attempted to write out a dirty BLHA configuration")
     if (full) then
-       write (u,'(A)') "# BLHA order written by WHIZARD 2.2.5"
+       write (u,'(A)') "# BLHA order written by WHIZARD 2.2.6"
        write (u,'(A)')
     end if
     select case (cfg%mode)
        case (BLHA_MODE_GOSAM); buf = "GoSam"
+       case (BLHA_MODE_OPENLOOPS); buf = "OpenLoops"
        case default; buf = "vanilla"
     end select
     write (u,'(A)') "# BLHA interface mode: " // char (buf)
@@ -827,6 +871,13 @@ contains
        case default; buf = cfg%correction_type_other
     end select
     write (u,'(A25,A)') "CorrectionType" // pad, char (buf)
+
+    select case (cfg%mode)
+    case (BLHA_MODE_OPENLOOPS)
+       buf = cfg%name // '.olc'
+       write (u, '(A25,A)') "Extra AnswerFile" // pad, char (buf)
+    end select
+
     select case (cfg%irreg)
        case (BLHA_IRREG_CDR); buf = "CDR"
        case (BLHA_IRREG_DRED); buf = "DRED"
@@ -839,7 +890,8 @@ contains
        case (BLHA_MPS_ONSHELL); buf = "OnShell"
        case default; buf = cfg%massive_particle_scheme_other
     end select
-    write (u,'(A25,A)') "MassiveParticleScheme" // pad, char (buf)
+    if (cfg%mode == BLHA_MODE_GOSAM) &
+       write (u,'(A25,A)') "MassiveParticleScheme" // pad, char (buf)
 !    select case (cfg%subtraction_mode)
 !       case (BLHA_SUBMODE_NONE); buf = "None"
 !       case default; buf = cfg%subtraction_mode_other
@@ -851,10 +903,18 @@ contains
 !    else
 !       write (u,'(A25,A)') "SubdivideSubprocess" // pad, "no"
 !    end if
-    if (cfg%alphas_power >= 0) write (u,'(A25,A)') &
-       "AlphasPower" // pad, int2char (cfg%alphas_power)
-    if (cfg%alpha_power >= 0) write (u,'(A25,A)') &
-       "AlphaPower " // pad, int2char (cfg%alpha_power)
+    select case (cfg%version)
+    case (1)
+      if (cfg%alphas_power >= 0) write (u,'(A25,A)') &
+         "AlphasPower" // pad, int2char (cfg%alphas_power)
+      if (cfg%alpha_power >= 0) write (u,'(A25,A)') &
+         "AlphaPower " // pad, int2char (cfg%alpha_power)
+    case (2) 
+      if (cfg%alphas_power >= 0) write (u,'(A25,A)') &
+         "CouplingPower QCD " // pad, int2char (cfg%alphas_power)
+      if (cfg%alpha_power >= 0) write (u, '(A25,A)') &
+         "CouplingPower QED " // pad, int2char (cfg%alpha_power)
+    end select
     select case (cfg%ew_scheme)
        case (BLHA_EW_GF); buf = "alphaGF"
        case (BLHA_EW_MZ); buf = "alphaMZ"
@@ -863,12 +923,27 @@ contains
        case (BLHA_EW_RUN); buf = "alphaRUN"
        case (BLHA_EW_DEFAULT); buf = "OLPDefined"
     end select
-    write (u, '(A25, A)') "EWScheme " // pad, char (buf)
-    call blha_configuration_get_massive_particles &
-         (cfg, massive_particles, i_massive)
-    if (massive_particles) then
-       write (u, '(A16,10I2)') 'MassiveParticles', i_massive
-    end if
+    select case (cfg%mode)
+    case (BLHA_MODE_GOSAM)
+       write (u, '(A25, A)') "EWScheme " // pad, char (buf)
+    case (BLHA_MODE_OPENLOOPS)
+!       write (u, '(A25, A)') "ewscheme " // pad, char (buf)
+    endselect
+    select case (cfg%mode)
+    case (BLHA_MODE_GOSAM)
+       call blha_configuration_get_massive_particles &
+           (cfg, massive_particles, i_massive)
+       if (massive_particles) then
+          write (u, '(A25)', advance='no') "MassiveParticles " // pad
+          do i = 1, size (OLP_MASSIVE_PARTICLES)
+              if (OLP_MASSIVE_PARTICLES(i) > 0) &
+                 write (u, '(I2,1X)', advance='no') OLP_MASSIVE_PARTICLES(i)
+          end do
+          write (u,*) 
+       end if
+    case (BLHA_MODE_OPENLOOPS)
+       write (u, '(A25,I1)') "extra use_cms " // pad, 0
+    end select
     if (full) then
        write (u,'(A)')
        write (u,'(A)') "# Process definitions"
@@ -878,12 +953,14 @@ contains
 !      write (accuracy, '(f6.5)') cfg%accuracy_target
 !      write (u, '(A25,A)') "AccuracyTarget " // pad , accuracy 
 !    end if
-    if (cfg%debug_unstable) then
-      buf = "True"
-    else
-      buf = "False"
-    end if
-    write (u, '(A25,A)') "DebugUnstable " // pad, char (buf)
+!    if (cfg%debug_unstable) then
+!      buf = "True"
+!    else
+!      buf = "False"
+!    end if
+!   write (u, '(A25,A)') "DebugUnstable " // pad, char (buf)
+    if (cfg%debug_unstable) &
+      write (u, '(A25,A)') "DebugUnstable " // pad, "True"
     write (u, *)
     node => cfg%processes
     do while (associated (node))

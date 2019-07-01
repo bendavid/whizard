@@ -16,12 +16,15 @@ compile
 
 seed = 0
 
+!!! Avoiding numerical noise
+me = 1 GeV
+
 sqrts = 91 GeV
 beams = e1, E1
 
 ?allow_shower = true
 ?ps_fsr_active = true
-?ps_use_PYTHIA_shower = false
+$shower_method = "WHIZARD"
 
 ps_max_n_flavors = 5
 ps_mass_cutoff = 1
@@ -55,7 +58,7 @@ sqrts = 91 GeV
 beams = e1, E1
 
 ?ps_fsr_active = true
-?ps_use_PYTHIA_shower = false
+$shower_method = "WHIZARD"
 
 ps_max_n_flavors = 5
 ps_mass_cutoff = 1

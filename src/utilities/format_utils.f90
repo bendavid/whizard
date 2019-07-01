@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -45,6 +45,7 @@ module format_utils
   public :: tex_format
   public :: mp_format
   public :: pac_fmt
+  public :: write_compressed_integer_array
 
 contains
 
@@ -62,7 +63,7 @@ contains
        write (u, "(A)")  repeat ("=", 72)
     end select
   end subroutine write_separator
-  
+
   subroutine write_indent (unit, indent)
     integer, intent(in) :: unit
     integer, intent(in), optional :: indent
@@ -101,7 +102,7 @@ contains
        string = "0"
     else
        absval = abs (rval)
-       e = log10 (absval)
+       e = int (log10 (absval))
        if (rval < 0) then
           sign = "-"
        else
@@ -143,7 +144,7 @@ contains
     string = lower_case (trim (adjustl (trim (tmp))))
   end function mp_format
 
-  subroutine pac_fmt (fmt, fmt_orig, fmt_pac, pacify) 
+  subroutine pac_fmt (fmt, fmt_orig, fmt_pac, pacify)
     character(*), intent(in) :: fmt_orig, fmt_pac
     character(*), intent(out) :: fmt
     logical, intent(in), optional :: pacify
@@ -156,6 +157,56 @@ contains
        fmt = fmt_orig
     end if
   end subroutine pac_fmt
-  
+
+  subroutine write_compressed_integer_array (chars, array)
+    character(len=*), intent(out) :: chars
+    integer, intent(in), allocatable, dimension(:) :: array
+    logical, dimension(:), allocatable :: used
+    character(len=16) :: tmp
+    type(string_t) :: string
+    integer :: i, j, start_chain, end_chain
+    chars = '[none]'
+    string = ""
+    if (allocated (array)) then
+       if (size (array) > 0) then
+          allocate (used (size (array)))
+          used = .false.
+          do i = 1, size (array)
+             if (.not. used(i)) then
+                start_chain = array(i)
+                end_chain = array(i)
+                used(i) = .true.
+                EXTEND: do
+                   do j = 1, size (array)
+                      if (array(j) == end_chain + 1) then
+                         end_chain = array(j)
+                         used(j) = .true.
+                         cycle EXTEND
+                      end if
+                      if (array(j) == start_chain - 1) then
+                         start_chain = array(j)
+                         used(j) = .true.
+                         cycle EXTEND
+                      end if
+                   end do
+                   exit
+                end do EXTEND
+                if (end_chain - start_chain > 0) then
+                   write (tmp, "(I0,A,I0)") start_chain, "-", end_chain
+                else
+                   write (tmp, "(I0)") start_chain
+                end if
+                string = string // trim (tmp)
+                if (any (.not. used)) then
+                   string = string // ','
+                end if
+             end if
+          end do
+          chars = string
+       end if
+    end if
+    chars = adjustr (chars)
+  end subroutine write_compressed_integer_array
+
 
 end module format_utils

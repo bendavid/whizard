@@ -5,11 +5,11 @@ echo "Running script $0"
 if test -f OCAML_FLAG; then
     name=`basename @script@`
     ./run_whizard.sh @script@ --no-logging --model QCD
-    head -1 ${name}a.mokka.evt | sed -e 's/.* \([0-9].[0-9]\+E+[0-9]\+\)/\1/' > ${name}a.red.evt
-    head -1 ${name}b.mokka.evt | sed -e 's/.* \([0-9].[0-9]\+E+[0-9]\+\)/\1/' > ${name}b.red.evt
-    grep '^ 1 ' ${name}a.mokka.evt >> ${name}a.red.evt
-    grep '^ 1 ' ${name}b.mokka.evt >> ${name}b.red.evt
-    diff ${name}a.red.evt ${name}b.red.evt
+    echo "Contents of ${name}.lhe" >> $name.log
+    # Maybe we want to compare to reference output data though the shower is
+    # quite sensitive...
+    #cat ${name}.lhe >> $name.log
+    #diff ref-output/$name.ref $name.log
 else
     echo "|=============================================================================|"
     echo "No O'Mega matrix elements available, test skipped"

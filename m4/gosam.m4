@@ -101,7 +101,7 @@ else
 fi
 
 AC_SUBST([GOSAM_DIR])
-AM_CONDITIONAL([GOSAM_AVAILABLE], [test -n $GOSAM_DIR])
+AM_CONDITIONAL([GOSAM_AVAILABLE], [test "$enable_gosam" = "yes"])
 
 ]) dnl WO_PROG_GOSAM
 

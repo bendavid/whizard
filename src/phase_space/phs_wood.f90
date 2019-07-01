@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -40,6 +40,7 @@ module phs_wood
   use diagnostics
   use os_interface
   use md5
+  use physics_defs
   use lorentz
   use model_data
   use flavors
@@ -322,7 +323,7 @@ contains
     logical, intent(in), optional :: azimuthal_dependence
     logical, intent(in), optional :: rebuild
     logical, intent(in), optional :: ignore_mismatch
-    type(string_t), intent(inout), optional :: nlo_type
+    integer, intent(inout), optional :: nlo_type
     type(string_t) :: filename, filename_vis
     logical :: variable_limits
     logical :: ok, exist, found, check, match, rebuild_phs
@@ -330,7 +331,7 @@ contains
     if (present (nlo_type)) then
       phs_config%nlo_type = nlo_type
     else
-      phs_config%nlo_type = 'Born'
+      phs_config%nlo_type = BORN
     end if
     phs_config%sqrts = sqrts
     phs_config%par%sqrts = sqrts

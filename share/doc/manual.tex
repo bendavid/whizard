@@ -267,7 +267,7 @@ Parameter & Value & Default & Description \\
 }
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %END LATEX
-\newcommand{\thisversion}{2.2.5}
+\newcommand{\thisversion}{2.2.6}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -600,7 +600,7 @@ of \whizard:
 \begin{tabular}{|l|l|l|}\hline
   0.99 & 08/1999 & Beta version \\\hline
   1.00 & 12/2000 & First public version \\\hline
-  1.10 & 03/2001 & Libraries; \pythia\ interface \\ 
+  1.10 & 03/2001 & Libraries; \pythiasix\ interface \\ 
   1.11 & 04/2001 & PDF support; anomalous couplings \\ \hline
   1.20 & 02/2002 & \oMega\ matrix elements; \ttt{Circe} support\\
   1.22 & 03/2002 & QED ISR; beam remnants, phase space improvements \\
@@ -1071,7 +1071,7 @@ If you want to use this format, you should link \whizard\ with \hepmc,
 otherwise you can skip this section.
 
 If it is not already installed on your system, you may obtain
-\hepmc\ from one of these two webpage:
+\hepmc\ from one of these two webpages:
 \begin{quote}
   \url{http://lcgapp.cern.ch/project/simu/HepMC/}
 \end{quote}
@@ -1117,8 +1117,8 @@ header files.
 
 %%%%%
 
-\subsection{FastJet}
-\label{sec:fastjet}
+\subsection{PYTHIA8}
+\label{sec:pythia8}
 
 \emph{NOTE: This is at the moment not yet supported, but merely a stub 
 with the only purpose to be recognized by the build system.}
@@ -1278,6 +1278,60 @@ If \stdhep\ is installed in a non-default directory where
 
 \subsection{LCIO}
 \label{sec:lcio}
+
+
+\lcio\ is a \ttt{C++} class library for handling collider scattering
+events.  In particular, it provides a portable format for event files.
+If you want to use this format, you should link \whizard\ with \lcio,
+otherwise you can skip this section.
+
+If it is not already installed on your system, you may obtain
+\lcio\ from:
+\begin{quote}
+  \url{http://lcio.desy.de}
+\end{quote}
+or 
+\begin{quote}
+  \url{https://sft.its.cern.ch/jira/browse/HEPMC}
+\end{quote}
+If the \hepmc\ library is linked with the installation, \whizard\ is
+able to read and write files in the \hepmc\ format.
+
+Detailed information on the installation and usage can be found on the
+\hepmc\ homepage. We give here only some brief details relevant for
+the usage with \whizard: For the compilation of HepMC one needs a
+\ttt{C++} compiler. Then the procedure is the same as for the
+\whizard\ package, namely configure HepMC: 
+\begin{interaction}
+  configure --with-momentum=GEV --with-length=MM --prefix=<install dir> 
+\end{interaction}
+Note that the particle momentum and decay length flags are mandatory, and
+we highly recommend to set them to the values \ttt{GEV} and \ttt{MM},
+respectively. After configuration, do \ttt{make}, an optional
+\ttt{make check} (which might sometimes fail for non-standard values
+of momentum and length), and finally \ttt{make install}.
+
+A \whizard\ configuration for \lcio\ looks like this:
+\begin{footnotesize}
+  \begin{verbatim}
+   configure: --------------------------------------------------------------
+   configure: --- LCIO ---
+   configure:
+   checking the LCIO version... 2.4.2
+   checking for LCEventImpl class in -llcio... yes
+   configure: --------------------------------------------------------------    
+  \end{verbatim}
+\end{footnotesize}
+
+If \lcio\ is installed in a non-default directory where \whizard\
+would not find it, set the environment variable \ttt{LCIO\_DIR} to
+the correct installation path when configuring \whizard.  Furthermore,
+the environment variable \ttt{CXXFLAGS} allows you to set specific
+\ttt{C/C++} preprocessor flags, e.g. non-standard include paths for
+header files.
+
+
+%%%%%
 
 \section{Installation}
 \label{sec:installation}
@@ -2326,7 +2380,7 @@ named \verb|hello.sin|.
 		|        M. Moretti, T. Ohl, J. Reuter, arXiv: hep-ph/0102195                 |
 		|                                                                             |
 		|=============================================================================|
-		|                               WHIZARD 2.2.5
+		|                               WHIZARD 2.2.6
 		|=============================================================================|
 		| Reading model file '/usr/local/share/whizard/models/SM.mdl'
 		| Preloaded model: SM
@@ -2357,7 +2411,7 @@ including the \whizard\ banner is shown in Fig.~\ref{fig:helloworld})
 \centerline{[... here a banner is displayed]}
 \begin{Verbatim}
 |=============================================================================|
-|                               WHIZARD 2.2.5
+|                               WHIZARD 2.2.6
 |=============================================================================|
 | Reading model file '/usr/local/share/whizard/models/SM.mdl'
 | Preloaded model: SM
@@ -2416,7 +2470,7 @@ This produces a lot of output which looks similar to this:
  | Writing log to 'whizard.log'
 [... banner ...]
  |=============================================================================|
- |                               WHIZARD 2.2.5
+ |                               WHIZARD 2.2.6
  |=============================================================================|
  | Reading model file '/usr/local/share/whizard/models/SM.mdl'
  | Preloaded model: SM
@@ -8341,9 +8395,9 @@ cf. Chap.~\ref{chap:extmodels}.
              SM with anomalous top couplings &  \tt{---} &
              \tt{SM\_top\_anom} \\
              SM with anomalous Higgs couplings &  \tt{---} &
-             \tt{SM\_rx}/\tt{NoH} \\\hline
+             \tt{SM\_rx}/\tt{NoH\_rx}/\tt{SM\_ul} \\\hline
              SM extensions for $VV$ scattering & \tt{---} &
-             \tt{SSC}/\tt{AltH} \\\hline
+             \tt{SSC}/\tt{AltH}/\tt{SSC\_2}/\tt{SSC\_AltT} \\\hline
              SM with $Z'$ & \tt{---} & \tt{Zprime} \\
              \hline
              Two-Higgs Doublet Model & \tt{2HDM\_CKM} & \tt{2HDM} \\ \hline\hline
@@ -9319,7 +9373,7 @@ This is the modern version of the Les Houches accord event format
 <LesHouchesEvents version="1.0">
 <header>
   <generator_name>WHIZARD</generator_name>
-  <generator_version>2.2.5</generator_version>
+  <generator_version>2.2.6</generator_version>
 </header>
 <init>
  25 25  5.0000000000E+02  5.0000000000E+02 -1 -1 -1 -1 3 1
@@ -9404,7 +9458,7 @@ parton showers\\\hline
 showers\\\hline 
 \ttt{?hadronization\_active = true} & master switch to enable
 hadronization\\\hline 
-\ttt{?ps\_use\_PYTHIA\_shower = true} & switch to use \pythia's parton
+\ttt{\$shower\_method = "PYTHIA6"} & switch to use \pythiasix's parton
 shower instead of \\ & 
  \whizard's own shower\\\hline
 \end{tabular}}\mbox{}
@@ -10570,13 +10624,23 @@ This command will perform the following actions:
   extension \ttt{.tex}.  The driver file is a \LaTeX\ source file which
   contains embedded GAMELAN code that handles the selected graphics data.  In
   the \LaTeX\ document, there is a separate section for each contained
-  dataset.
+  dataset. Furthermore, a process-/analysis-specific makefile with the
+  name \ttt{<process\_name>\_ana.makefile} is created that can be used
+  to generate postscript or PDF output from the \LaTeX\ source. If the
+  steering flag \ttt{?analysis\_file\_only} is set to \ttt{true}, then
+  the \LaTeX\ file and the makefile are only written, but no execution
+  of the makefile resulting in compilation of the \LaTeX\ code (see
+  the next item) is invoked.
 \item
-  The driver file is processed by \LaTeX, which generates an appropriate
+  As mentioned above, if the flag \ttt{?analysis\_file\_only} is set
+  to \ttt{false} (which is the default), the driver file is processed
+  by \LaTeX (invoked by calling the makefile with the name
+  \ttt{<process\_name>\_ana.makefile}), which generates an appropriate 
   GAMELAN source file with extension \ttt{.mp}.  This code is executed
   (calling GAMELAN/MetaPost, and again \LaTeX\ for typesetting embedded
-  labels).  There is a second \LaTeX\ pass which collects the results, and
-  finally conversion to PostScript and PDF formats.
+  labels).  There is a second \LaTeX\ pass (automatically done by the
+  makefile) which collects the results, and finally conversion to
+  PostScript and PDF formats. 
 \end{enumerate}
 
 The resulting PostScript or PDF file -- the file name is the name of the data
@@ -10591,11 +10655,35 @@ overwrite \whizard's log file if the basename is identical.  Be careful to use
 a value for \ttt{\$out\_file} which is not likely to cause name clashes.
 
 
+\subsection{User-specific changes}
+
+In the case, that the SINDARIN \ttt{compile\_analysis} command is
+invoked and the flag named \ttt{?analysis\_file\_only} is not changed
+from its default value \ttt{false}, \whizard\ calls the
+process-/analysis-specific makefile triggering the compilation of the
+\LaTeX\ code and the GAMELAN plots and histograms. If the user wants
+to edit the analysis output, for example changing captions, headlines,
+labels, properties of the plots, graphs and histograms using GAMELAN
+specials etc., this is possible and the output can be regenerated
+using the makefile. The user can also directly invoke the GAMELAN
+script, \texttt{whizard-gml}, that is installed in the binary directly
+along with the \whizard\ binary and other scripts. Note however, that
+the \LaTeX\ environment for the specific style files have to be set by
+hand (the command line invocation in the makefile does this
+automatically). Those style files are generally written into
+\ttt{share/texmf/whizard/} directory. The user can execute the
+commands in the same way as denoted in the process-/analysis-specific
+makefile by hand. 
+
+
+%%%%%
+
 \section{Histogram Display}
 
 
-\section{Plot Display}
+%%%%%
 
+\section{Plot Display}
 
 
 \section{Graphs}
@@ -13088,9 +13176,15 @@ an event transform. As a default, it is switched on. (cf. also
 \ttt{?auto\_decays\_radiative}, \ttt{?decay\_rest\_frame})
 %%%%%
 \item
+\ttt{?allow\_hadronization} \qquad (default: \ttt{true}) \newline
+Master flag to switch on hadronization as an event transform. As a
+default, it is switched on. (cf. also \ttt{?ps\_ ....}, \ttt{\$ps\_
+  ...}, \ttt{?mlm\_ ...}, \ttt{?hadronization\_active}) 
+%%%%%
+\item
 \ttt{?allow\_shower} \qquad (default: \ttt{true}) \newline
 Master flag to switch on (initial and final state) parton shower,
-matching/merging and hadronization as an event transform. As a
+matching/merging as an event transform. As a
 default, it is switched on. (cf. also \ttt{?ps\_ ....}, \ttt{\$ps\_
   ...}, \ttt{?mlm\_ ...}, \ttt{?hadronization\_active}) 
 %%%%%
@@ -13183,6 +13277,12 @@ This command, \ttt{analysis = {\em <log\_expr>}}, allows to define an
 analysis as a logical expression, with a syntax similar to the ($\to$)
 \ttt{cuts} or ($\to$) \ttt{selection} command. Note that a ($\to$)
 formally is a logical expression. 
+%%%%%
+\item
+\ttt{?analysis\_file\_only} \qquad (default: \ttt{false}) \newline
+Allows to specify that only \LaTeX\ files for \whizard's graphical
+analysis are written out, but not
+processed. (cf. \ttt{compile\_analysis}, \ttt{write\_analysis})
 %%%%%
 \item
 \ttt{and} \newline
@@ -13678,8 +13778,10 @@ consideration. If no \ttt{\$out\_file} is provided, the histogram
 tables/plot data etc. are written to the default file
 \ttt{whizard\_analysis.dat}. In addition to \ttt{write\_analysis}, 
 \ttt{compile\_analysis} also invokes the \whizard\ \LaTeX routines for
-producing postscript or PDF output of the data.
-(cf. also \ttt{\$out\_file}, \ttt{compile\_analysis})
+producing postscript or PDF output of the data (unless the flag
+$\rightarrow$ \ttt{?analysis\_file\_only} is set to \ttt{true}).
+(cf. also \ttt{\$out\_file}, \ttt{write\_analysis},
+\ttt{?analysis\_file\_only}) 
 %%%%%
 \item
 \ttt{cos} \newline
@@ -15904,13 +16006,6 @@ and/or hadronization. (cf. also \ttt{?allow\_shower}, \ttt{?ps\_
 ...}, \ttt{\$ps\_ ...}, \ttt{?mlm\_ ...}, \ttt{?hadronization\_active})  
 %%%%%
 \item
-\ttt{?ps\_use\_PYTHIA\_shower} \qquad (default: \ttt{false}) \newline
-Flag whether to use \whizard's internal shower(s) or the parton
-shower from the included \pythia. (cf. also \ttt{?allow\_shower}, \ttt{?ps\_
-  ....}, \ttt{\$ps\_ ...}, \ttt{?mlm\_ ...}, \newline
-\ttt{?hadronization\_active}) 
-%%%%%
-\item
 \ttt{Pt} \newline
 Unary (binary) observable specifier for the transverse momentum
 ($\sqrt{p_x^2 + p_y^2}$ in the c.m. frame) of a single (two)
@@ -16206,7 +16301,8 @@ the following specifiers: \ttt{hepevt}, \ttt{hepevt\_verb}, \ttt{ascii},
 \ttt{athena}, \ttt{debug}, \ttt{long}, \ttt{short}, \ttt{hepmc}, 
 \ttt{lhef}, \ttt{lha}, \ttt{stdhep}, \ttt{stdhep\_up}, \newline
 \ttt{\$sample\_normalization}, \ttt{?sample\_pacify},
-\ttt{sample\_max\_tries}, \ttt{sample\_split\_n\_evt}) 
+\ttt{sample\_max\_tries}, \ttt{sample\_split\_n\_evt},
+\ttt{sample\_split\_n\_kbytes}) 
 %%%%%
 \item
 \ttt{sample\_max\_tries} \qquad (default: \ttt{10000}) \newline
@@ -16215,7 +16311,8 @@ a single event. The event might be vetoed because of a very low
 unweighting efficiency, errors in the event transforms like decays,
 shower, matching, hadronization etc. (cf. also
 \ttt{simulate}, \ttt{\$sample}, \ttt{sample\_format},
-\ttt{?sample\_pacify}, \ttt{\$sample\_normalization}, \ttt{sample\_split\_n\_evt}) 
+\ttt{?sample\_pacify}, \ttt{\$sample\_normalization},
+\ttt{sample\_split\_n\_evt}, \ttt{sample\_split\_n\_kbytes}) 
 %%%%%
 \item
 \ttt{\$sample\_normalization} \qquad (default: \ttt{"auto"}) \newline
@@ -16227,14 +16324,16 @@ and \ttt{"sigma/n"} (sum of all events normalized to the cross
 section). The default is \ttt{"auto"} where unweighted events are
 normalized to one, and weighted ones to the cross section. (cf. also
 \ttt{simulate}, \ttt{\$sample}, \ttt{sample\_format},
-\ttt{?sample\_pacify}, \ttt{sample\_max\_tries}, \ttt{sample\_split\_n\_evt}) 
+\ttt{?sample\_pacify}, \ttt{sample\_max\_tries},
+\ttt{sample\_split\_n\_evt}, \ttt{sample\_split\_n\_kbytes}) 
 %%%%%
 \item
 \ttt{?sample\_pacify} \qquad (default: \ttt{false}) \newline
 Flag, mainly for debugging purposes: suppresses numerical noise in the
 output of a simulation. (cf. also \ttt{simulate}, \ttt{\$sample},
 \ttt{sample\_format}, \ttt{\$sample\_normalization},
-\ttt{sample\_max\_tries}, \ttt{sample\_split\_n\_evt})
+\ttt{sample\_max\_tries}, \ttt{sample\_split\_n\_evt},
+\ttt{sample\_split\_n\_kbytes})
 %%%%%
 \item
 \ttt{sample\_split\_index} \qquad (default: \ttt{0}) \newline
@@ -16257,6 +16356,19 @@ breakpoints in the event files, i.e. it splits the event files into
 \ttt{{\em <split\_index>}} is an integer running from \ttt{0} to
 \ttt{{\em <num>}}. The start can be reset by ($\to$)
 \ttt{sample\_split\_index}. (cf. also \ttt{simulate}, \ttt{\$sample},
+\ttt{sample\_format}, \ttt{sample\_max\_tries},
+\ttt{\$sample\_normalization}, \ttt{?sample\_pacify},
+\ttt{sample\_split\_n\_kbytes})
+%%%%%
+\item
+\ttt{sample\_split\_n\_kbytes} \qquad (default: \ttt{0}) \newline
+When generating events, this integer parameter
+\ttt{sample\_split\_n\_kbytes = {\em <num>}} limits the file size of
+event files.  Whenever an event file has exceeded this size, counted
+in kilobytes, the following
+events will be written to a new file.  The naming conventions are
+the same as for \ttt{sample\_split\_n\_evt}. (cf. also \ttt{simulate},
+\ttt{\$sample}, 
 \ttt{sample\_format}, \ttt{sample\_max\_tries},
 \ttt{\$sample\_normalization}, \ttt{?sample\_pacify})
 %%%%%
@@ -16365,6 +16477,12 @@ defined real, string, logical etc. variables, respectively.
 (cf. also \ttt{library}, \ttt{results})
 %%%%%
 \item
+\ttt{\$shower\_method} \qquad (default: \ttt{"WHIZARD"}) \newline
+String variable that allows to specify which parton shower is being
+used, the default, \ttt{"WHIZARD"}, is one of the in-house showers of
+\whizard. Other possibilities at the moment are only \ttt{"PYTHIA6"}. 
+%%%%%
+\item
 \ttt{simulate} \newline
 This command invokes the generation of events for the process
 \ttt{proc} by means of \ttt{simulate ({\em <proc>})}.
@@ -16372,7 +16490,8 @@ Optional arguments: \ttt{\$sample}, \ttt{sample\_format},
 \ttt{checkpoint} (cf. also \ttt{integrate}, \ttt{luminosity},
 \ttt{n\_events}, \ttt{\$sample}, \ttt{sample\_format},
 \ttt{checkpoint}, \ttt{?unweighted}, \ttt{safety\_factor},
-\ttt{?negative\_weights}, \ttt{sample\_max\_tries}, \ttt{sample\_split\_n\_evt})
+\ttt{?negative\_weights}, \ttt{sample\_max\_tries},
+\ttt{sample\_split\_n\_evt}, \ttt{sample\_split\_n\_kbytes})
 %%%%%
 \item
 \ttt{sin} \newline

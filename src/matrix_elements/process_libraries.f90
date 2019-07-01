@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -39,6 +39,7 @@ module process_libraries
   use unit_tests
   use diagnostics
   use md5
+  use physics_defs
   use os_interface
   use lexers
   use model_data
@@ -81,7 +82,7 @@ module process_libraries
      type(string_t) :: description
      class(prc_core_def_t), allocatable :: core_def
      character(32) :: md5sum = ""
-     type(string_t) :: nlo_type
+     integer :: nlo_type = BORN
      integer :: associated_born = 0
      integer :: associated_real = 0
      integer :: associated_virt = 0
@@ -111,6 +112,7 @@ module process_libraries
                   => process_component_def_get_association_list
      procedure :: is_active_nlo_component &
                   => process_component_def_is_active_nlo_component
+     procedure :: get_associated_real => process_component_def_get_associated_real
   end type process_component_def_t
   
   type :: process_def_t
@@ -525,12 +527,8 @@ contains
   
   function process_component_def_get_nlo_type (component) result (nlo_type)
     class(process_component_def_t), intent(in) :: component
-    type(string_t) :: nlo_type
-    if (component%nlo_type == "") then
-      nlo_type = 'Born'
-    else
-      nlo_type = component%nlo_type
-    end if
+    integer :: nlo_type
+    nlo_type = component%nlo_type
   end function process_component_def_get_nlo_type
 
   function process_component_def_get_associated_born (component) result (i_born)
@@ -553,6 +551,12 @@ contains
     list(3) = component%associated_virt
     list(4) = component%associated_sub
   end function process_component_def_get_association_list
+
+  function process_component_def_get_associated_real (component) result (i_real)
+    class(process_component_def_t), intent(in) :: component
+    integer :: i_real
+    i_real = component%associated_real
+  end function process_component_def_get_associated_real
 
   subroutine process_def_write (object, unit)
     class(process_def_t), intent(in) :: object
@@ -721,8 +725,9 @@ contains
     type(prt_spec_t), dimension(:), intent(in), optional :: prt_in
     type(prt_spec_t), dimension(:), intent(in), optional :: prt_out
     type(string_t), intent(in), optional :: method
-    type(string_t), intent(in), optional :: nlo_type
+    integer, intent(in), optional :: nlo_type
     logical, intent(in), optional :: active
+    type(string_t) :: nlo_type_string
     class(prc_core_def_t), &
          intent(inout), allocatable, optional :: variant
     integer :: p
@@ -767,12 +772,30 @@ contains
            if (comp%method /= "") then
               d = d // " [" // comp%method // "]"
            end if
-           if (comp%nlo_type /= "") then
-             d = d // ", [" // comp%nlo_type // "]"
+           nlo_type_string = get_nlo_type_string (comp%nlo_type)
+           if (nlo_type_string /= "Born") then
+             d = d // ", [" // nlo_type_string // "]"
            end if
          end associate
       end if
     end associate
+  contains
+    function get_nlo_type_string (nlo_type) result (nlo_type_string)
+      integer, intent(in) :: nlo_type
+      type(string_t) :: nlo_type_string
+      select case (nlo_type)
+      case (BORN) 
+         nlo_type_string = 'Born'
+      case (NLO_REAL)
+         nlo_type_string = 'Real'
+      case (NLO_VIRTUAL)
+         nlo_type_string = 'Virtual'
+      case (NLO_PDF)
+         nlo_type_string  = 'Pdf'
+      case (NLO_SUBTRACTION)
+         nlo_type_string = 'Subtraction'
+      end select
+    end function get_nlo_type_string
   end subroutine process_def_import_component
 
   function process_def_get_n_components (def) result (n)

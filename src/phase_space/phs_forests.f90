@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -812,7 +812,6 @@ contains
     integer :: n_grove, g
     integer, dimension(:), allocatable :: n_tree
     integer :: t
-    logical :: real_phsp_work
     node_header => parse_tree_get_process_ptr (parse_tree, process_id)
     found = associated (node_header);  if (.not. found)  return
     if (present (match)) then
@@ -1019,10 +1018,10 @@ contains
     if (present (lt_cm_to_lab)) then
        call phs_prt_set_momentum (forest%prt_in, &
             inverse (lt_cm_to_lab) * &
-            interaction_get_momenta (int, outgoing=.false.))
+            int%get_momenta (outgoing=.false.))
     else
        call phs_prt_set_momentum (forest%prt_in, &
-            interaction_get_momenta (int, outgoing=.false.))
+            int%get_momenta (outgoing=.false.))
     end if
     associate (m_in => forest%flv(:forest%n_in)%get_mass ())
       call phs_prt_set_msq (forest%prt_in, m_in ** 2)
@@ -1053,10 +1052,10 @@ contains
     if (present (lt_cm_to_lab)) then
        call phs_prt_set_momentum (forest%prt_out, &
             inverse (lt_cm_to_lab) * &
-            interaction_get_momenta (int, outgoing=.true.))
+            int%get_momenta (outgoing=.true.))
     else
        call phs_prt_set_momentum (forest%prt_out, &
-            interaction_get_momenta (int, outgoing=.true.))
+            int%get_momenta (outgoing=.true.))
     end if
     associate (m_out => forest%flv(forest%n_in+1:)%get_mass ())
       call phs_prt_set_msq (forest%prt_out, m_out ** 2)
@@ -1098,12 +1097,11 @@ contains
     type(interaction_t), intent(inout) :: int
     type(lorentz_transformation_t), intent(in), optional :: lt_cm_to_lab
     if (present (lt_cm_to_lab)) then
-       call interaction_set_momenta (int, &
-            lt_cm_to_lab * &
+       call int%set_momenta (lt_cm_to_lab * &
             phs_prt_get_momentum (forest%prt_out), outgoing=.true.)
     else
-       call interaction_set_momenta (int, &
-            phs_prt_get_momentum (forest%prt_out), outgoing=.true.)
+       call int%set_momenta (phs_prt_get_momentum (forest%prt_out), &
+            outgoing=.true.)
     end if
   end subroutine phs_forest_get_prt_out
 
@@ -1418,11 +1416,11 @@ contains
     call phs_forest_set_parameters (forest, mapping_defaults, .false.)
     call phs_forest_setup_prt_combinations (forest)
     call phs_forest_set_equivalences (forest)
-    call interaction_init (int, 2, 0, 3)
-    call interaction_set_momentum (int, &
-         vector4_moving (500._default, 500._default, 3), 1)
-    call interaction_set_momentum (int, &
-         vector4_moving (500._default,-500._default, 3), 2)
+    call int%basic_init (2, 0, 3)
+    call int%set_momentum &
+         (vector4_moving (500._default, 500._default, 3), 1)
+    call int%set_momentum &
+         (vector4_moving (500._default,-500._default, 3), 2)
     call phs_forest_set_prt_in (forest, int)
     n_channel = 2
     x = 0
@@ -1442,7 +1440,7 @@ contains
     do ch = 1, 4
        write (u, "(3x,5(1x," // FMT_12 // "))")  x(:,ch)
     end do
-    call interaction_write (int, u)
+    call int%basic_write (u)
     write (u, "(A)")  "   Factors:"
     write (u, "(3x,5(1x," // FMT_12 // "))")  factor
     write (u, "(A)")  "   Volume:"

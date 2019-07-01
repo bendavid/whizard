@@ -31,6 +31,7 @@ xf=  0.9997418
    rev      = 0
    acc      = SBAND
    chat     = 0
+   with rad.= T
  RNG factory: test (1)
  Random-number generator: test (state = 5)
    x =  1.0000000000E+00  9.9974182319E-01

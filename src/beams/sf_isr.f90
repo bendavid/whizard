@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -398,13 +398,12 @@ contains
           do while (it_hel%is_valid ())
              qn_hel = it_hel%get_quantum_numbers ()
              qn = qn_hel(1) .merge. qn_fc(1)
-             call interaction_add_state &
-                  (sf_int%interaction_t, [qn, qn_photon, qn])
+             call sf_int%add_state ([qn, qn_photon, qn])
              call it_hel%advance ()
           end do
           call polarization_final (pol)
        end do
-       call interaction_freeze (sf_int%interaction_t)
+       call sf_int%freeze ()
        call sf_int%set_incoming ([1])
        call sf_int%set_radiated ([2])
        call sf_int%set_outgoing ([3])
@@ -463,8 +462,7 @@ contains
          end if
       end if
     end associate
-    call interaction_set_matrix_element &
-           (sf_int%interaction_t, cmplx (f, kind=default))    
+    call sf_int%set_matrix_element (cmplx (f, kind=default))    
     sf_int%status = SF_EVALUATED
   end subroutine isr_apply
 
@@ -625,7 +623,7 @@ contains
     write (u, "(A)")  "* Structure-function value, default order"
     write (u, "(A)")
 
-    f_isr = interaction_get_matrix_element (sf_int%interaction_t, 1)
+    f_isr = sf_int%get_matrix_element (1)
     
     write (u, "(A,9(1x," // FMT_12 // "))")  "f_isr         =", f_isr
     write (u, "(A,9(1x," // FMT_12 // "))")  "f_isr * f_map =", f_isr * f
@@ -639,7 +637,7 @@ contains
        sf_int%data%order = 0
     end select
     call sf_int%apply (scale = 100._default)
-    f_isr = interaction_get_matrix_element (sf_int%interaction_t, 1)
+    f_isr = sf_int%get_matrix_element (1)
     
     write (u, "(A,9(1x," // FMT_12 // "))")  "f_isr         =", f_isr
     write (u, "(A,9(1x," // FMT_12 // "))")  "f_isr * f_map =", f_isr * f
@@ -743,7 +741,7 @@ contains
     write (u, "(A)")  "* Structure-function value, default order"
     write (u, "(A)")
 
-    f_isr = interaction_get_matrix_element (sf_int%interaction_t, 1)
+    f_isr = sf_int%get_matrix_element (1)
     
     write (u, "(A,9(1x," // FMT_12 // "))")  "f_isr         =", f_isr
     write (u, "(A,9(1x," // FMT_12 // "))")  "f_isr * f_map =", f_isr * f
@@ -757,7 +755,7 @@ contains
        sf_int%data%order = 0
     end select
     call sf_int%apply (scale = 100._default)
-    f_isr = interaction_get_matrix_element (sf_int%interaction_t, 1)
+    f_isr = sf_int%get_matrix_element (1)
     
     write (u, "(A,9(1x," // FMT_12 // "))")  "f_isr         =", f_isr
     write (u, "(A,9(1x," // FMT_12 // "))")  "f_isr * f_map =", f_isr * f
@@ -848,7 +846,7 @@ contains
     write (u, "(A)")  "* Recover x and r from momenta"
     write (u, "(A)")
     
-    q = interaction_get_momenta (sf_int%interaction_t, outgoing=.true.)
+    q = sf_int%get_momenta (outgoing=.true.)
     call sf_int%final ()
     deallocate (sf_int)
     
@@ -857,7 +855,7 @@ contains
     call sf_int%set_beam_index ([1])
     
     call sf_int%seed_kinematics ([k])
-    call interaction_set_momenta (sf_int%interaction_t, q, outgoing=.true.)
+    call sf_int%set_momenta (q, outgoing=.true.)
     call sf_int%recover_x (x)
     call sf_int%inverse_kinematics (x, f, r, rb, map=.true.)    
     
@@ -878,11 +876,11 @@ contains
     do 
        read (u_scratch, "(A)", iostat=iostat) buffer    
        if (iostat /= 0) exit
-       if (buffer(1:27) == " P =   0.00000000E+00  9.57") then
-          buffer = replace (buffer, 28, "XXXXXX")
+       if (buffer(1:25) == " P =   0.000000E+00  9.57") then
+          buffer = replace (buffer, 26, "XXXX")
        end if
-       if (buffer(1:27) == " P =   0.00000000E+00 -9.57") then
-          buffer = replace (buffer, 28, "XXXXXX")
+       if (buffer(1:25) == " P =   0.000000E+00 -9.57") then
+          buffer = replace (buffer, 26, "XXXX")
        end if       
        write (u, "(A)") buffer
     end do
@@ -892,7 +890,7 @@ contains
     write (u, "(A)")  "* Structure-function value"
     write (u, "(A)")
 
-    f_isr = interaction_get_matrix_element (sf_int%interaction_t, 1)
+    f_isr = sf_int%get_matrix_element (1)
     
     write (u, "(A,9(1x," // FMT_12 // "))")  "f_isr         =", f_isr
     write (u, "(A,9(1x," // FMT_12 // "))")  "f_isr * f_map =", f_isr * f
@@ -1044,7 +1042,7 @@ contains
     write (u, "(A)")
 
     do i = 1, 2
-       f_isr(i) = interaction_get_matrix_element (sf_int(i)%interaction_t, 1)
+       f_isr(i) = sf_int(i)%get_matrix_element (1)
     end do
     
     write (u, "(A,9(1x," // FMT_12 // "))")  "f_isr         =", &

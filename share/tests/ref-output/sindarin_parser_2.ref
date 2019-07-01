@@ -1,0 +1,23 @@
+* Test output: sindarin_parser_2
+*   Purpose: build Sindarin repository
+
+object repository ||abstract|| {
+   M1: object logical ||abstract||
+   M2: logical not ||operator|unary|abstract||
+   M3: logical and ||operator|binary|abstract||
+   M4: logical or ||operator|binary|abstract||
+   M5: statement assignment ||abstract|| {
+     LHS:
+     RHS: <???>
+   }
+ }
+
+* Name array
+
+1 logical
+2 not
+3 and
+4 or
+5 assignment
+
+* Test output end: sindarin_parser_2

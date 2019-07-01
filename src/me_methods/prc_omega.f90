@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -157,7 +157,7 @@ module prc_omega
      procedure :: get_alpha_s => prc_omega_get_alpha_s
   end type prc_omega_t
   
-  type, extends (workspace_t) :: omega_state_t
+  type, extends (prc_core_state_t) :: omega_state_t
      logical :: new_kinematics = .true.
      real(default) :: alpha_qcd = -1
    contains
@@ -471,6 +471,8 @@ contains
     end if
     select case (char (writer%model_name))
     case ("SM_rx", "SSC", "NoH_rx", "AltH")
+       kmatrix_string = " -target:kmatrix_2_write"
+    case ("SSC_2", "SSC_AltT", "SM_ul")
        kmatrix_string = " -target:kmatrix_write"
     case default
        kmatrix_string = ""
@@ -796,10 +798,10 @@ contains
     object%new_kinematics = .true.
   end subroutine omega_state_reset_new_kinematics
 
-  subroutine prc_omega_allocate_workspace (object, tmp)
+  subroutine prc_omega_allocate_workspace (object, core_state)
     class(prc_omega_t), intent(in) :: object
-    class(workspace_t), intent(inout), allocatable :: tmp
-    allocate (omega_state_t :: tmp)
+    class(prc_core_state_t), intent(inout), allocatable :: core_state
+    allocate (omega_state_t :: core_state)
   end subroutine prc_omega_allocate_workspace
   
   subroutine prc_omega_write (object, unit)
@@ -898,22 +900,22 @@ contains
   end function prc_omega_is_allowed
  
   subroutine prc_omega_compute_hard_kinematics &
-       (object, p_seed, i_term, int_hard, tmp)
+       (object, p_seed, i_term, int_hard, core_state)
     class(prc_omega_t), intent(in) :: object
     type(vector4_t), dimension(:), intent(in) :: p_seed
     integer, intent(in) :: i_term
     type(interaction_t), intent(inout) :: int_hard
-    class(workspace_t), intent(inout), allocatable :: tmp
-    call interaction_set_momenta (int_hard, p_seed)
+    class(prc_core_state_t), intent(inout), allocatable :: core_state
+    call int_hard%set_momenta (p_seed)
   end subroutine prc_omega_compute_hard_kinematics
   
   subroutine prc_omega_compute_eff_kinematics &
-       (object, i_term, int_hard, int_eff, tmp)
+       (object, i_term, int_hard, int_eff, core_state)
     class(prc_omega_t), intent(in) :: object
     integer, intent(in) :: i_term
     type(interaction_t), intent(in) :: int_hard
     type(interaction_t), intent(inout) :: int_eff
-    class(workspace_t), intent(inout), allocatable :: tmp
+    class(prc_core_state_t), intent(inout), allocatable :: core_state
   end subroutine prc_omega_compute_eff_kinematics
   
   subroutine prc_omega_reset_helicity_selection (object)
@@ -935,15 +937,15 @@ contains
   end subroutine prc_omega_reset_helicity_selection
   
   function prc_omega_compute_amplitude &
-       (object, j, p, f, h, c, fac_scale, ren_scale, alpha_qcd_forced, tmp) &
-       result (amp)
+       (object, j, p, f, h, c, fac_scale, ren_scale, alpha_qcd_forced, &
+       core_state)  result (amp)
     class(prc_omega_t), intent(in) :: object
     integer, intent(in) :: j
     type(vector4_t), dimension(:), intent(in) :: p
     integer, intent(in) :: f, h, c
     real(default), intent(in) :: fac_scale, ren_scale
     real(default), intent(in), allocatable :: alpha_qcd_forced
-    class(workspace_t), intent(inout), allocatable, optional :: tmp
+    class(prc_core_state_t), intent(inout), allocatable, optional :: core_state
     real(default) :: alpha_qcd
     complex(default) :: amp
     integer :: n_tot, i
@@ -953,12 +955,12 @@ contains
     select type (driver => object%driver)
     type is (omega_driver_t)
        new_event = .true.
-       if (present (tmp)) then
-          if (allocated (tmp)) then
-             select type (tmp)
+       if (present (core_state)) then
+          if (allocated (core_state)) then
+             select type (core_state)
              type is (omega_state_t)
-                new_event = tmp%new_kinematics
-                tmp%new_kinematics = .false.
+                new_event = core_state%new_kinematics
+                core_state%new_kinematics = .false.
              end select
           end if
        end if
@@ -970,11 +972,11 @@ contains
                 alpha_qcd = object%qcd%alpha%get (fac_scale)
              end if
              call driver%update_alpha_s (alpha_qcd)
-             if (present (tmp)) then
-                if (allocated (tmp)) then
-                   select type (tmp)
+             if (present (core_state)) then
+                if (allocated (core_state)) then
+                   select type (core_state)
                    type is (omega_state_t)
-                      tmp%alpha_qcd = alpha_qcd
+                      core_state%alpha_qcd = alpha_qcd
                    end select
                 end if
              end if
@@ -996,31 +998,31 @@ contains
     end select
   end function prc_omega_compute_amplitude
     
-  function prc_omega_get_alpha_s (object, tmp) result (alpha)
+  function prc_omega_get_alpha_s (object, core_state) result (alpha)
     class(prc_omega_t), intent(in) :: object
-    class(workspace_t), intent(in), allocatable :: tmp
+    class(prc_core_state_t), intent(in), allocatable :: core_state
     real(default) :: alpha
     alpha = -1
-    if (allocated (object%qcd%alpha) .and. allocated (tmp)) then
-       select type (tmp)
+    if (allocated (object%qcd%alpha) .and. allocated (core_state)) then
+       select type (core_state)
        type is (omega_state_t)
-          alpha = tmp%alpha_qcd
+          alpha = core_state%alpha_qcd
        end select
     end if
   end function prc_omega_get_alpha_s
   
 
   subroutine prc_omega_recover_kinematics &
-       (object, p_seed, int_hard, int_eff, tmp)
+       (object, p_seed, int_hard, int_eff, core_state)
     class(prc_omega_t), intent(in) :: object
     type(vector4_t), dimension(:), intent(inout) :: p_seed
     type(interaction_t), intent(inout) :: int_hard
     type(interaction_t), intent(inout) :: int_eff
-    class(workspace_t), intent(inout), allocatable :: tmp
+    class(prc_core_state_t), intent(inout), allocatable :: core_state
     integer :: n_in
-    n_in = interaction_get_n_in (int_eff)
-    call interaction_set_momenta (int_eff, p_seed(1:n_in), outgoing = .false.)
-    p_seed(n_in+1:) = interaction_get_momenta (int_eff, outgoing = .true.)
+    n_in = int_eff%get_n_in ()
+    call int_eff%set_momenta (p_seed(1:n_in), outgoing = .false.)
+    p_seed(n_in+1:) = int_eff%get_momenta (outgoing = .true.)
   end subroutine prc_omega_recover_kinematics
     
   subroutine prc_omega_test (u, results)
@@ -1746,7 +1748,7 @@ end subroutine prc_omega_diags_test
     type(string_t), dimension(:), allocatable :: prt_in, prt_out
     type(qcd_t) :: qcd
     class(prc_core_t), allocatable :: core
-    class(workspace_t), allocatable :: tmp
+    class(prc_core_state_t), allocatable :: core_state
     type(vector4_t), dimension(4) :: p
     complex(default) :: amp
     real(default) :: fac_scale
@@ -1825,7 +1827,7 @@ end subroutine prc_omega_diags_test
 
     select type (core)
     type is (prc_omega_t)
-       call core%allocate_workspace (tmp)
+       call core%allocate_workspace (core_state)
        call core%set_parameters (model, qcd = qcd)
        call core%init (def_ptr, lib, var_str ("prc_omega_5_p"), 1)
        call core%write (u)

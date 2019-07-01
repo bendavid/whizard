@@ -3,7 +3,7 @@
 
 \documentclass[a4paper]{report} 
 
-\usepackage{amsmath}
+\usepackage{amsmath,dsfont}
 
 \usepackage
   [bookmarks,bookmarksopen=true,bookmarksopenlevel=1,bookmarksnumbered=true]
@@ -38,12 +38,12 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\def\WhizardVersion{2.2.5}
-\def\WhizardDate{Feb 27 2015}
+\def\WhizardVersion{2.2.6}
+\def\WhizardDate{May 02 2015}
 <<Version>>=
-2.2.5
+2.2.6
 <<Date>>=
-Feb 27 2015
+May 02 2015
 @ 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \title{%

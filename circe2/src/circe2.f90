@@ -372,7 +372,7 @@ contains
        return
     end if
     if (ierror .gt. 0) then
-       write (*, '(2A)') 'circe2_load: ', 'Version 2.2.5'                         
+       write (*, '(2A)') 'circe2_load: ', 'Version 2.2.6'                         
     end if
     prefix = index (design, '*') - 1
     do

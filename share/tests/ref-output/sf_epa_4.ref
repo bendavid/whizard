@@ -52,21 +52,21 @@ f =  0.2391788
  Interaction: 2
  Incoming:
  Particle 1
- E =   5.00000000E+02
- P =   0.00000000E+00  0.00000000E+00  4.99974999E+02
+ E =   5.000000E+02
+ P =   0.000000E+00  0.000000E+00  4.999750E+02
  mask [fch] = [FFgF]
  internal links: X => 2 3
  helicity lock: 2
  Outgoing:
  Particle 2
- E =   4.70966324E+02
- P =   0.00000000E+00  1.65320108E+01  4.70649520E+02
+ E =   4.709663E+02
+ P =   0.000000E+00  1.653201E+01  4.706495E+02
  mask [fch] = [FFgF]
  internal links: 1 => X
  helicity lock: 1
  Particle 3
- E =   2.90336761E+01
- P =   0.00000000E+00 -1.42579460E+01  2.52916057E+01
+ E =   2.903368E+01
+ P =   0.000000E+00 -1.425795E+01  2.529161E+01
  mask [fch] = [FFgT]
  internal links: 1 => X
  State matrix:  norm =  1.0000000000E+00

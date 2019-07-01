@@ -41,7 +41,7 @@ beams = e1, E1
 
 ?ps_fsr_active = true
 ?hadronization_active = false
-?ps_use_PYTHIA_shower = true
+$shower_method = "PYTHIA6"
 
 ps_max_n_flavors = 5
 ps_mass_cutoff = 1

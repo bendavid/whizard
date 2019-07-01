@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -57,7 +57,7 @@ module muli_trapezium
 
   type, extends (measure_class_t) :: muli_trapezium_t
      private
-     integer::dim=0
+     integer :: dim = 0
      real(default) :: r_position = 0
      real(default) :: d_position = 0
      real(default) :: measure_comp = 0
@@ -731,7 +731,10 @@ contains
   subroutine muli_trapezium_update (this)
     class(muli_trapezium_t), intent(inout) :: this
     real(default), dimension(:), allocatable :: integral
-    allocate (integral (0:this%dim-1), source=this%get_d_integral())
+    real(default), dimension(0:this%dim-1) :: d_int
+    !!! !!! !!! Workaround for gfortran 5.0 ICE
+    d_int = this%get_d_integral ()
+    allocate (integral (0:this%dim-1), source=d_int)
     call this%set_d_integral (-this%d_position * (this%get_r_value_array() &
          - this%get_d_value() / 2))
     call this%set_error (abs (this%get_d_integral() - integral))

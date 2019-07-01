@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -94,6 +94,19 @@ module lexers
      type(line_p), pointer :: line => null ()
      integer :: record = 0
      logical :: eof = .false.
+   contains
+     generic :: init => &
+          stream_init_filename, &
+          stream_init_unit, &
+          stream_init_string, &
+          stream_init_ifile, &
+          stream_init_line
+     procedure, private :: stream_init_filename
+     procedure, private :: stream_init_unit
+     procedure, private :: stream_init_string
+     procedure, private :: stream_init_ifile
+     procedure, private :: stream_init_line
+     procedure :: final => stream_final
   end type stream_t
 
   type :: keyword_entry_t
@@ -143,6 +156,11 @@ module lexers
      integer :: previous_column = 0
      type(string_t) :: buffer
      type(lexer_t), pointer :: parent => null ()
+   contains
+     procedure :: init => lexer_init
+     procedure :: clear => lexer_clear
+     procedure :: final => lexer_final
+     procedure :: assign_stream => lexer_assign_stream
   end type lexer_t
 
   interface stream_init
@@ -159,7 +177,7 @@ module lexers
 contains
 
   subroutine stream_init_filename (stream, filename)
-    type(stream_t), intent(out) :: stream
+    class(stream_t), intent(out) :: stream
     character(*), intent(in) :: filename
     integer :: unit
     unit = free_unit ()
@@ -170,7 +188,7 @@ contains
   end subroutine stream_init_filename
 
   subroutine stream_init_unit (stream, unit)
-    type(stream_t), intent(out) :: stream
+    class(stream_t), intent(out) :: stream
     integer, intent(in) :: unit
     allocate (stream%unit)
     stream%unit = unit
@@ -178,14 +196,14 @@ contains
   end subroutine stream_init_unit
     
   subroutine stream_init_string (stream, string)
-    type(stream_t), intent(out) :: stream
+    class(stream_t), intent(out) :: stream
     type(string_t), intent(in) :: string
     allocate (stream%string)
     stream%string = string
   end subroutine stream_init_string
     
   subroutine stream_init_ifile (stream, ifile)
-    type(stream_t), intent(out) :: stream
+    class(stream_t), intent(out) :: stream
     type(ifile_t), intent(in) :: ifile
     type(line_p) :: line
     call line_init (line, ifile)
@@ -195,14 +213,14 @@ contains
   end subroutine stream_init_ifile
     
   subroutine stream_init_line (stream, line)
-    type(stream_t), intent(out) :: stream
+    class(stream_t), intent(out) :: stream
     type(line_p), intent(in) :: line
     allocate (stream%line)
     stream%line = line
   end subroutine stream_init_line
     
   subroutine stream_final (stream)
-    type(stream_t), intent(inout) :: stream
+    class(stream_t), intent(inout) :: stream
     if (associated (stream%filename)) then
        close (stream%unit)
        deallocate (stream%unit)
@@ -739,7 +757,7 @@ contains
        single_chars, special_class, &
        keyword_list, upper_case_keywords, &
        parent)
-    type(lexer_t), intent(inout) :: lexer
+    class(lexer_t), intent(inout) :: lexer
     character(*), intent(in) :: comment_chars
     character(*), intent(in) :: quote_chars, quote_match
     character(*), intent(in) :: single_chars
@@ -760,7 +778,7 @@ contains
   end subroutine lexer_init
 
   subroutine lexer_clear (lexer)
-    type(lexer_t), intent(inout) :: lexer
+    class(lexer_t), intent(inout) :: lexer
     call lexeme_clear (lexer%lexeme)
     lexer%previous_line2 = ""
     lexer%previous_line1 = ""
@@ -772,13 +790,13 @@ contains
   end subroutine lexer_clear
 
   subroutine lexer_final (lexer)
-    type(lexer_t), intent(inout) :: lexer
-    call lexer_clear (lexer)
+    class(lexer_t), intent(inout) :: lexer
+    call lexer%clear ()
     call lexer_setup_final (lexer%setup)
   end subroutine lexer_final
 
   subroutine lexer_assign_stream (lexer, stream)
-    type(lexer_t), intent(inout) :: lexer
+    class(lexer_t), intent(inout) :: lexer
     type(stream_t), intent(in), target :: stream
     lexer%stream => stream
   end subroutine lexer_assign_stream

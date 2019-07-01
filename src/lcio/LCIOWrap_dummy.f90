@@ -156,9 +156,9 @@
      end subroutine lcio_particle_add_parent
      
 ! extern "C" MCParticleImpl* lcio_set_color_flow
-     subroutine lcio_set_color_flow (evt_obj, cflow1, cflow2) bind(C)
+     subroutine lcio_set_color_flow (prt_obj, cflow1, cflow2) bind(C)
        use iso_c_binding
-       type(c_ptr), value :: evt_obj
+       type(c_ptr), value :: prt_obj
        integer(c_int), value :: cflow1, cflow2
      end subroutine lcio_set_color_flow
 
@@ -169,6 +169,21 @@
        type(c_ptr), value :: prt_obj
        real(c_double), value :: s1, s2, s3
      end subroutine lcio_particle_set_spin
+
+! extern "C" MCParticleImpl* lcio_particle_set_time 
+     subroutine lcio_particle_set_time (prt_obj, t) bind(C)
+       use iso_c_binding
+       type(c_ptr), value :: prt_obj
+       real(c_double), value :: t
+     end subroutine lcio_particle_set_time
+
+! extern "C" MCParticleImpl* lcio_particle_set_vertex
+! (MCParticleImpl* mcp, const double vx, const double vy, const double vz) 
+     subroutine lcio_particle_set_vertex (prt_obj, vx, vy, vz) bind(C)
+       use iso_c_binding
+       type(c_ptr), value :: prt_obj
+       real(c_double), value :: vx, vy, vz
+     end subroutine lcio_particle_set_vertex
 
 ! extern "C" double lcio_polarization_degree ( MCParticleImpl* mcp)
      real(c_double) function lcio_polarization_degree (prt_obj) bind(C)
@@ -248,6 +263,34 @@
        type(c_ptr), value :: prt_obj
        lcio_n_daughters = 0_c_int
      end function lcio_n_daughters
+
+! extern "C" double lcio_vtx_x (MCParticleImpl* mcp) 
+     real(c_double) function lcio_vtx_x (prt_obj) bind (C)
+       use iso_c_binding
+       type(c_ptr), value :: prt_obj
+       lcio_vtx_x = 0
+     end function lcio_vtx_x
+
+! extern "C" double lcio_vtx_y (MCParticleImpl* mcp) 
+     real(c_double) function lcio_vtx_y (prt_obj) bind (C)
+       use iso_c_binding
+       type(c_ptr), value :: prt_obj
+       lcio_vtx_y = 0
+     end function lcio_vtx_y
+
+! extern "C" double lcio_vtx_z (MCParticleImpl* mcp) 
+     real(c_double) function lcio_vtx_z (prt_obj) bind (C)
+       use iso_c_binding
+       type(c_ptr), value :: prt_obj
+       lcio_vtx_z = 0
+     end function lcio_vtx_z
+
+! extern "C" double lcio_prt_time (MCParticleImpl* mcp) {
+     real(c_double) function lcio_prt_time (prt_obj) bind(C)
+       use iso_c_binding
+       type(c_ptr), value :: prt_obj
+       lcio_prt_time = 0
+     end function lcio_prt_time
 
 ! extern "C" int lcio_event_daughter_k ( LCEventImpl* evt, int num_part, int k_daughter)
      integer(c_int) function lcio_event_daughter_k &

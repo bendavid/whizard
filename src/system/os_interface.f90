@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -95,7 +95,9 @@ module os_interface
      type(string_t) :: ldflags_static
      type(string_t) :: ldflags_hepmc
      type(string_t) :: ldflags_hoppet
-     type(string_t) :: shlib_ext
+     type(string_t) :: ldflags_looptools
+     type(string_t) :: shrlib_ext
+     type(string_t) :: fc_shrlib_ext
      type(string_t) :: makeflags
      type(string_t) :: prefix
      type(string_t) :: exec_prefix
@@ -243,7 +245,9 @@ contains
     os_data%ldflags_static = DEFAULT_LDFLAGS_STATIC
     os_data%ldflags_hepmc  = DEFAULT_LDFLAGS_HEPMC
     os_data%ldflags_hoppet = DEFAULT_LDFLAGS_HOPPET
-    os_data%shlib_ext      = DEFAULT_SHLIB_EXT
+    os_data%ldflags_looptools = DEFAULT_LDFLAGS_LOOPTOOLS
+    os_data%shrlib_ext     = DEFAULT_SHRLIB_EXT
+    os_data%fc_shrlib_ext  = DEFAULT_FC_SHRLIB_EXT    
     os_data%makeflags      = DEFAULT_MAKEFLAGS
     os_data%prefix      = PREFIX
     os_data%exec_prefix = EXEC_PREFIX
@@ -305,8 +309,13 @@ contains
     os_data%event_analysis_pdf = EVENT_ANALYSIS_PDF == "yes"
     os_data%latex  = PRG_LATEX // " " // OPT_LATEX
     os_data%mpost  = PRG_MPOST // " " // OPT_MPOST
-    os_data%gml    = os_data%whizard_gmlpath // "/gml" // " " // OPT_MPOST &
+    if (os_data%use_testfiles) then
+       os_data%gml    = os_data%whizard_gmlpath // "/whizard-gml" // " " // &
+            OPT_MPOST // " " // "--gmldir " // os_data%whizard_gmlpath
+    else
+       os_data%gml    = os_data%bindir // "/whizard-gml" // " " // OPT_MPOST &
          // " " // "--gmldir " // os_data%whizard_gmlpath
+    end if
     os_data%dvips  = PRG_DVIPS
     os_data%ps2pdf = PRG_PS2PDF
     call os_data_expand_paths (os_data)
@@ -382,8 +391,10 @@ contains
     write (u, *) "ldflags_so     = ", char (os_data%ldflags_so)
     write (u, *) "ldflags_static = ", char (os_data%ldflags_static)
     write (u, *) "ldflags_hepmc  = ", char (os_data%ldflags_hepmc)
-    write (u, *) "ldflags_hoppet = ", char (os_data%ldflags_hoppet)    
-    write (u, *) "shlib_ext      = ", char (os_data%shlib_ext)
+    write (u, *) "ldflags_hoppet = ", char (os_data%ldflags_hoppet)
+    write (u, *) "ldflags_looptools = ", char (os_data%ldflags_looptools) 
+    write (u, *) "shrlib_ext     = ", char (os_data%shrlib_ext)
+    write (u, *) "fc_shrlib_ext  = ", char (os_data%fc_shrlib_ext)    
     write (u, *) "makeflags      = ", char (os_data%makeflags)
     write (u, *) "prefix         = ", char (os_data%prefix)
     write (u, *) "exec_prefix    = ", char (os_data%exec_prefix)
@@ -613,7 +624,7 @@ contains
             os_data%fcflags // " " // &
             os_data%whizard_ldflags // " " // &
             os_data%ldflags // " " // &
-            "-o '" // lib // os_data%shlib_ext // "' " // &
+            "-o '" // lib // os_data%shrlib_ext // "' " // &
             objlist
     end if
     call os_system_call (command_string, status)
@@ -636,7 +647,8 @@ contains
             "-o '" // exec_name // "' " // &
             objlist // " " // &
             os_data%ldflags_hepmc // " " // &
-            os_data%ldflags_hoppet
+            os_data%ldflags_hoppet // " " // &
+            os_data%ldflags_looptools
     else
        command_string = &
             os_data%ld // " " // &
@@ -648,7 +660,8 @@ contains
             "-o '" // exec_name // "' " // &
             objlist // " " // &
             os_data%ldflags_hepmc // " " // &
-            os_data%ldflags_hoppet
+            os_data%ldflags_hoppet // " " // &
+            os_data%ldflags_looptools
     end if
     call os_system_call (command_string, status)
   end subroutine os_link_static
@@ -697,7 +710,7 @@ contains
           dlname = ""
        end if
     else
-       dlname = lib // os_data%shlib_ext
+       dlname = lib // os_data%shrlib_ext
        inquire (file=char(dlname), exist=exist)
        if (.not. exist) then
           if (required) then
@@ -805,7 +818,7 @@ contains
        ext = os_data%obj_ext
     end if
     filename_obj = fname // ext
-    libname = fname // os_data%shlib_ext
+    libname = fname // '.' // os_data%fc_shrlib_ext
     
     write (u, "(A)")  "* Test output: OS interface"
     write (u, "(A)")  "*   Purpose: check os_interface routines"

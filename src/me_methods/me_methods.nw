@@ -222,13 +222,14 @@ index.  Type extensions may override this and provide term-specific data.
 @ The strong coupling is not among the process constants.  The default
 implementation is to return a negative number, which indicates that $\alpha_s$
 is not available.  This may be overridden by an implementation that provides
-an (event-specific) value.  The value can be stored in the [[tmp]] workspace.
+an (event-specific) value.  The value can be stored in the
+process-specific workspace. 
 <<Prc core: process core: TBP>>=
   procedure :: get_alpha_s => prc_core_get_alpha_s
 <<Prc core: procedures>>=
-  function prc_core_get_alpha_s (object, tmp) result (alpha)
+  function prc_core_get_alpha_s (object, core_state) result (alpha)
     class(prc_core_t), intent(in) :: object
-    class(workspace_t), intent(in), allocatable :: tmp
+    class(prc_core_state_t), intent(in), allocatable :: core_state
     real(default) :: alpha
     alpha = -1
   end function prc_core_get_alpha_s
@@ -244,9 +245,9 @@ workspace.
 <<Prc core: process core: TBP>>=
   procedure :: allocate_workspace => prc_core_ignore_workspace
 <<Prc core: procedures>>=
-  subroutine prc_core_ignore_workspace (object, tmp)
+  subroutine prc_core_ignore_workspace (object, core_state)
     class(prc_core_t), intent(in) :: object
-    class(workspace_t), intent(inout), allocatable :: tmp
+    class(prc_core_state_t), intent(inout), allocatable :: core_state
   end subroutine prc_core_ignore_workspace
 
 @ %def prc_core_ignore_workspace
@@ -265,12 +266,12 @@ Note: crash with nagfor 5.3.1 if [[sf_chain_instance]] is declared
   procedure :: init_sf_chain => prc_core_init_sf_chain
 <<Prc core: procedures>>=
   subroutine prc_core_init_sf_chain &
-       (object, sf_chain_instance, sf_chain, n_channel, tmp)
+       (object, sf_chain_instance, sf_chain, n_channel, core_state)
     class(prc_core_t), intent(in) :: object
     type(sf_chain_instance_t), intent(inout), target :: sf_chain_instance
     type(sf_chain_t), intent(in), target :: sf_chain
     integer, intent(in) :: n_channel
-    class(workspace_t), intent(inout), allocatable :: tmp
+    class(prc_core_state_t), intent(inout), allocatable :: core_state
     call sf_chain_instance%init (sf_chain, n_channel)
   end subroutine prc_core_init_sf_chain
   
@@ -285,13 +286,13 @@ interaction.)
 <<Prc core: interfaces>>=
   abstract interface
      subroutine prc_core_compute_hard_kinematics &
-          (object, p_seed, i_term, int_hard, tmp)
+          (object, p_seed, i_term, int_hard, core_state)
        import
        class(prc_core_t), intent(in) :: object
        type(vector4_t), dimension(:), intent(in) :: p_seed
        integer, intent(in) :: i_term
        type(interaction_t), intent(inout) :: int_hard
-       class(workspace_t), intent(inout), allocatable :: tmp
+       class(prc_core_state_t), intent(inout), allocatable :: core_state
      end subroutine prc_core_compute_hard_kinematics
   end interface
 
@@ -305,13 +306,13 @@ applied for the process variant.)
 <<Prc core: interfaces>>=
   abstract interface
      subroutine prc_core_compute_eff_kinematics &
-          (object, i_term, int_hard, int_eff, tmp)
+          (object, i_term, int_hard, int_eff, core_state)
        import
        class(prc_core_t), intent(in) :: object
        integer, intent(in) :: i_term
        type(interaction_t), intent(in) :: int_hard
        type(interaction_t), intent(inout) :: int_eff
-       class(workspace_t), intent(inout), allocatable :: tmp
+       class(prc_core_state_t), intent(inout), allocatable :: core_state
      end subroutine prc_core_compute_eff_kinematics
   end interface
 
@@ -332,13 +333,13 @@ pointer to [[int_hard]], so [[int_hard]] should not be touched at all.
 <<Prc core: interfaces>>=
   abstract interface
      subroutine prc_core_recover_kinematics &
-          (object, p_seed, int_hard, int_eff, tmp)
+          (object, p_seed, int_hard, int_eff, core_state)
        import
        class(prc_core_t), intent(in) :: object
        type(vector4_t), dimension(:), intent(inout) :: p_seed
        type(interaction_t), intent(inout) :: int_hard
        type(interaction_t), intent(inout) :: int_eff
-       class(workspace_t), intent(inout), allocatable :: tmp
+       class(prc_core_state_t), intent(inout), allocatable :: core_state
      end subroutine prc_core_recover_kinematics
   end interface
 
@@ -347,15 +348,15 @@ pointer to [[int_hard]], so [[int_hard]] should not be touched at all.
 of the particular term we want to compute.  The amplitude may depend on the
 factorization and renormalization scales.
 
-The [[tmp]] (workspace) argument may be used if it is provided by the caller.
+The [[core_state]] (workspace) argument may be used if it is provided by the caller.
 Otherwise, the routine should compute the result directly.
 <<Prc core: process core: TBP>>=
   procedure(prc_core_compute_amplitude), deferred :: compute_amplitude
 <<Prc core: interfaces>>=
   abstract interface
      function prc_core_compute_amplitude &
-          (object, j, p, f, h, c, fac_scale, ren_scale, alpha_qcd_forced, tmp) &
-          result (amp)
+          (object, j, p, f, h, c, fac_scale, ren_scale, alpha_qcd_forced, &
+          core_state) result (amp)
        import
        class(prc_core_t), intent(in) :: object
        integer, intent(in) :: j
@@ -363,7 +364,8 @@ Otherwise, the routine should compute the result directly.
        integer, intent(in) :: f, h, c
        real(default), intent(in) :: fac_scale, ren_scale
        real(default), intent(in), allocatable :: alpha_qcd_forced
-       class(workspace_t), intent(inout), allocatable, optional :: tmp
+       class(prc_core_state_t), intent(inout), allocatable, optional :: &
+            core_state
        complex(default) :: amp
      end function prc_core_compute_amplitude
   end interface
@@ -372,25 +374,25 @@ Otherwise, the routine should compute the result directly.
 @
 \subsection{Storage for intermediate results}
 
-The abstract [[workspace_t]] type allows process cores to set up temporary
+The abstract [[prc_core_state_t]] type allows process cores to set up temporary
 workspace.  The object is an extra argument for each of the individual
 calculations between kinematics setup and matrix-element evaluation.
 <<Prc core: public>>=
-  public :: workspace_t
+  public :: prc_core_state_t
 <<Prc core: types>>=
-  type, abstract :: workspace_t
+  type, abstract :: prc_core_state_t
    contains
      procedure(workspace_write), deferred :: write     
      procedure(workspace_reset_new_kinematics), deferred :: reset_new_kinematics
-  end type workspace_t
+  end type prc_core_state_t
   
-@ %def workspace_t
+@ %def prc_core_state_t
 @ For debugging, we should at least have an output routine.
 <<Prc core: interfaces>>=
   abstract interface
      subroutine workspace_write (object, unit)
        import
-       class(workspace_t), intent(in) :: object
+       class(prc_core_state_t), intent(in) :: object
        integer, intent(in), optional :: unit
      end subroutine workspace_write
   end interface
@@ -401,7 +403,7 @@ calculations between kinematics setup and matrix-element evaluation.
   abstract interface
     subroutine workspace_reset_new_kinematics (object)
       import
-      class(workspace_t), intent(inout) :: object
+      class(prc_core_state_t), intent(inout) :: object
     end subroutine workspace_reset_new_kinematics
   end interface
 
@@ -1419,7 +1421,7 @@ We can also store the value of a running coupling once it has been calculated
 for an event.  The default value is negative, which indicates an undefined
 value in this context.
 <<Template matrix elements: types>>=
-  type, extends (workspace_t) :: template_me_state_t
+  type, extends (prc_core_state_t) :: template_me_state_t
      logical :: new_kinematics = .true.
      real(default) :: alpha_qcd = -1
    contains
@@ -1450,10 +1452,10 @@ value in this context.
 <<Template matrix elements: prc template ME: TBP>>=
   procedure :: allocate_workspace => prc_template_me_allocate_workspace
 <<Template matrix elements: procedures>>=
-  subroutine prc_template_me_allocate_workspace (object, tmp)
+  subroutine prc_template_me_allocate_workspace (object, core_state)
     class(prc_template_me_t), intent(in) :: object
-    class(workspace_t), intent(inout), allocatable :: tmp
-    allocate (template_me_state_t :: tmp)
+    class(prc_core_state_t), intent(inout), allocatable :: core_state
+    allocate (template_me_state_t :: core_state)
   end subroutine prc_template_me_allocate_workspace
   
 @ %def prc_template_me_allocate_workspace
@@ -1599,16 +1601,16 @@ so the array fits.
        prc_template_me_compute_hard_kinematics
 <<Template matrix elements: procedures>>=
   subroutine prc_template_me_compute_hard_kinematics &
-       (object, p_seed, i_term, int_hard, tmp)
+       (object, p_seed, i_term, int_hard, core_state)
     class(prc_template_me_t), intent(in) :: object
     type(vector4_t), dimension(:), intent(in) :: p_seed
     integer, intent(in) :: i_term
     type(interaction_t), intent(inout) :: int_hard
-    class(workspace_t), intent(inout), allocatable :: tmp
-    call interaction_set_momenta (int_hard, p_seed)
-!     if (allocated (tmp)) then
-!        select type (tmp)
-!        type is (template_me_state_t);  tmp%new_kinematics = .true.
+    class(prc_core_state_t), intent(inout), allocatable :: core_state
+    call int_hard%set_momenta (p_seed)
+!     if (allocated (core_state)) then
+!        select type (core_state)
+!        type is (template_me_state_t);  core_state%new_kinematics = .true.
 !        end select
 !     end if
   end subroutine prc_template_me_compute_hard_kinematics
@@ -1620,12 +1622,12 @@ so the array fits.
        prc_template_me_compute_eff_kinematics
 <<Template matrix elements: procedures>>=
   subroutine prc_template_me_compute_eff_kinematics &
-       (object, i_term, int_hard, int_eff, tmp)
+       (object, i_term, int_hard, int_eff, core_state)
     class(prc_template_me_t), intent(in) :: object
     integer, intent(in) :: i_term
     type(interaction_t), intent(in) :: int_hard
     type(interaction_t), intent(inout) :: int_eff
-    class(workspace_t), intent(inout), allocatable :: tmp
+    class(prc_core_state_t), intent(inout), allocatable :: core_state
   end subroutine prc_template_me_compute_eff_kinematics
   
 @ %def prc_template_me_compute_eff_kinematics
@@ -1637,16 +1639,16 @@ interaction, so the latter is ignored.
   procedure :: recover_kinematics => prc_template_me_recover_kinematics
 <<Template matrix elements: tests>>=
   subroutine prc_template_me_recover_kinematics &
-       (object, p_seed, int_hard, int_eff, tmp)
+       (object, p_seed, int_hard, int_eff, core_state)
     class(prc_template_me_t), intent(in) :: object
     type(vector4_t), dimension(:), intent(inout) :: p_seed
     type(interaction_t), intent(inout) :: int_hard
     type(interaction_t), intent(inout) :: int_eff
-    class(workspace_t), intent(inout), allocatable :: tmp
+    class(prc_core_state_t), intent(inout), allocatable :: core_state
     integer :: n_in
-    n_in = interaction_get_n_in (int_eff)
-    call interaction_set_momenta (int_eff, p_seed(1:n_in), outgoing = .false.)
-    p_seed(n_in+1:) = interaction_get_momenta (int_eff, outgoing = .true.)
+    n_in = int_eff%get_n_in ()
+    call int_eff%set_momenta (p_seed(1:n_in), outgoing = .false.)
+    p_seed(n_in+1:) = int_eff%get_momenta (outgoing = .true.)
   end subroutine prc_template_me_recover_kinematics
     
 @ %def prc_template_me_recover_kinematics
@@ -1656,22 +1658,22 @@ settings.  The term index [[j]] is also irrelevant.
 We first call [[new_event]] for the given momenta (which we must unpack), then
 retrieve the amplitude value for the given quantum numbers.
 
-If the [[tmp]] status flag is present, we can make sure that we call
+If the [[core_state]] status flag is present, we can make sure that we call
 [[new_event]] only once for a given kinematics.  After the first call, we
 unset the [[new_kinematics]] flag.
 <<Template matrix elements: prc template ME: TBP>>=
   procedure :: compute_amplitude => prc_template_me_compute_amplitude
 <<Template matrix elements: procedures>>=
   function prc_template_me_compute_amplitude &
-       (object, j, p, f, h, c, fac_scale, ren_scale, alpha_qcd_forced, tmp) &
-       result (amp)
+       (object, j, p, f, h, c, fac_scale, ren_scale, alpha_qcd_forced, &
+       core_state)  result (amp)
     class(prc_template_me_t), intent(in) :: object
     integer, intent(in) :: j
     type(vector4_t), dimension(:), intent(in) :: p
     integer, intent(in) :: f, h, c
     real(default), intent(in) :: fac_scale, ren_scale
     real(default), intent(in), allocatable :: alpha_qcd_forced
-    class(workspace_t), intent(inout), allocatable, optional :: tmp
+    class(prc_core_state_t), intent(inout), allocatable, optional :: core_state
     complex(default) :: amp
     integer :: n_tot, i
     real(c_default_float), dimension(:,:), allocatable :: parray
@@ -1680,12 +1682,12 @@ unset the [[new_kinematics]] flag.
     select type (driver => object%driver)
     type is (template_me_driver_t)
        new_event = .true.
-       if (present (tmp)) then
-          if (allocated (tmp)) then
-             select type (tmp)
+       if (present (core_state)) then
+          if (allocated (core_state)) then
+             select type (core_state)
              type is (template_me_state_t)
-                new_event = tmp%new_kinematics
-                tmp%new_kinematics = .false.
+                new_event = core_state%new_kinematics
+                core_state%new_kinematics = .false.
              end select
           end if
        end if
@@ -2577,6 +2579,8 @@ diagrams, at least in the testsuite.
     end if
     select case (char (writer%model_name))
     case ("SM_rx", "SSC", "NoH_rx", "AltH")
+       kmatrix_string = " -target:kmatrix_2_write"
+    case ("SSC_2", "SSC_AltT", "SM_ul")
        kmatrix_string = " -target:kmatrix_write"
     case default
        kmatrix_string = ""
@@ -2983,7 +2987,7 @@ We can also store the value of a running coupling once it has been calculated
 for an event.  The default value is negative, which indicates an undefined
 value in this context.
 <<Omega interface: types>>=
-  type, extends (workspace_t) :: omega_state_t
+  type, extends (prc_core_state_t) :: omega_state_t
      logical :: new_kinematics = .true.
      real(default) :: alpha_qcd = -1
    contains
@@ -3014,10 +3018,10 @@ value in this context.
 <<Omega interface: prc omega: TBP>>=
   procedure :: allocate_workspace => prc_omega_allocate_workspace
 <<Omega interface: procedures>>=
-  subroutine prc_omega_allocate_workspace (object, tmp)
+  subroutine prc_omega_allocate_workspace (object, core_state)
     class(prc_omega_t), intent(in) :: object
-    class(workspace_t), intent(inout), allocatable :: tmp
-    allocate (omega_state_t :: tmp)
+    class(prc_core_state_t), intent(inout), allocatable :: core_state
+    allocate (omega_state_t :: core_state)
   end subroutine prc_omega_allocate_workspace
   
 @ %def prc_omega_allocate_workspace
@@ -3182,13 +3186,13 @@ configuration is to be considered.
   procedure :: compute_hard_kinematics => prc_omega_compute_hard_kinematics
 <<Omega interface: procedures>>=
   subroutine prc_omega_compute_hard_kinematics &
-       (object, p_seed, i_term, int_hard, tmp)
+       (object, p_seed, i_term, int_hard, core_state)
     class(prc_omega_t), intent(in) :: object
     type(vector4_t), dimension(:), intent(in) :: p_seed
     integer, intent(in) :: i_term
     type(interaction_t), intent(inout) :: int_hard
-    class(workspace_t), intent(inout), allocatable :: tmp
-    call interaction_set_momenta (int_hard, p_seed)
+    class(prc_core_state_t), intent(inout), allocatable :: core_state
+    call int_hard%set_momenta (p_seed)
   end subroutine prc_omega_compute_hard_kinematics
   
 @ %def prc_omega_compute_hard_kinematics
@@ -3197,12 +3201,12 @@ configuration is to be considered.
   procedure :: compute_eff_kinematics => prc_omega_compute_eff_kinematics
 <<Omega interface: procedures>>=
   subroutine prc_omega_compute_eff_kinematics &
-       (object, i_term, int_hard, int_eff, tmp)
+       (object, i_term, int_hard, int_eff, core_state)
     class(prc_omega_t), intent(in) :: object
     integer, intent(in) :: i_term
     type(interaction_t), intent(in) :: int_hard
     type(interaction_t), intent(inout) :: int_eff
-    class(workspace_t), intent(inout), allocatable :: tmp
+    class(prc_core_state_t), intent(inout), allocatable :: core_state
   end subroutine prc_omega_compute_eff_kinematics
   
 @ %def prc_omega_compute_eff_kinematics
@@ -3214,16 +3218,16 @@ interaction, so the latter is ignored.
   procedure :: recover_kinematics => prc_omega_recover_kinematics
 <<Omega interface: tests>>=
   subroutine prc_omega_recover_kinematics &
-       (object, p_seed, int_hard, int_eff, tmp)
+       (object, p_seed, int_hard, int_eff, core_state)
     class(prc_omega_t), intent(in) :: object
     type(vector4_t), dimension(:), intent(inout) :: p_seed
     type(interaction_t), intent(inout) :: int_hard
     type(interaction_t), intent(inout) :: int_eff
-    class(workspace_t), intent(inout), allocatable :: tmp
+    class(prc_core_state_t), intent(inout), allocatable :: core_state
     integer :: n_in
-    n_in = interaction_get_n_in (int_eff)
-    call interaction_set_momenta (int_eff, p_seed(1:n_in), outgoing = .false.)
-    p_seed(n_in+1:) = interaction_get_momenta (int_eff, outgoing = .true.)
+    n_in = int_eff%get_n_in ()
+    call int_eff%set_momenta (p_seed(1:n_in), outgoing = .false.)
+    p_seed(n_in+1:) = int_eff%get_momenta (outgoing = .true.)
   end subroutine prc_omega_recover_kinematics
     
 @ %def prc_omega_recover_kinematics
@@ -3261,7 +3265,7 @@ settings.  The term index [[j]] is also irrelevant.
 We first call [[new_event]] for the given momenta (which we must unpack), then
 retrieve the amplitude value for the given quantum numbers.
 
-If the [[tmp]] status flag is present, we can make sure that we call
+If the [[core_state]] status flag is present, we can make sure that we call
 [[new_event]] only once for a given kinematics.  After the first call, we
 unset the [[new_kinematics]] flag.
 
@@ -3276,15 +3280,15 @@ the run if helicities are switched off.
   procedure :: compute_amplitude => prc_omega_compute_amplitude
 <<Omega interface: procedures>>=
   function prc_omega_compute_amplitude &
-       (object, j, p, f, h, c, fac_scale, ren_scale, alpha_qcd_forced, tmp) &
-       result (amp)
+       (object, j, p, f, h, c, fac_scale, ren_scale, alpha_qcd_forced, &
+       core_state)  result (amp)
     class(prc_omega_t), intent(in) :: object
     integer, intent(in) :: j
     type(vector4_t), dimension(:), intent(in) :: p
     integer, intent(in) :: f, h, c
     real(default), intent(in) :: fac_scale, ren_scale
     real(default), intent(in), allocatable :: alpha_qcd_forced
-    class(workspace_t), intent(inout), allocatable, optional :: tmp
+    class(prc_core_state_t), intent(inout), allocatable, optional :: core_state
     real(default) :: alpha_qcd
     complex(default) :: amp
     integer :: n_tot, i
@@ -3294,12 +3298,12 @@ the run if helicities are switched off.
     select type (driver => object%driver)
     type is (omega_driver_t)
        new_event = .true.
-       if (present (tmp)) then
-          if (allocated (tmp)) then
-             select type (tmp)
+       if (present (core_state)) then
+          if (allocated (core_state)) then
+             select type (core_state)
              type is (omega_state_t)
-                new_event = tmp%new_kinematics
-                tmp%new_kinematics = .false.
+                new_event = core_state%new_kinematics
+                core_state%new_kinematics = .false.
              end select
           end if
        end if
@@ -3311,11 +3315,11 @@ the run if helicities are switched off.
                 alpha_qcd = object%qcd%alpha%get (fac_scale)
              end if
              call driver%update_alpha_s (alpha_qcd)
-             if (present (tmp)) then
-                if (allocated (tmp)) then
-                   select type (tmp)
+             if (present (core_state)) then
+                if (allocated (core_state)) then
+                   select type (core_state)
                    type is (omega_state_t)
-                      tmp%alpha_qcd = alpha_qcd
+                      core_state%alpha_qcd = alpha_qcd
                    end select
                 end if
              end if
@@ -3340,19 +3344,19 @@ the run if helicities are switched off.
 @ %def prc_omega_compute_amplitude
 @ After the amplitude has been computed, we may read off the current value of
 $\alpha_s$.  This works only if $\alpha_s$ varies, and if the workspace
-[[tmp]] is present which stores this value.
+[[core_state]] is present which stores this value.
 <<Omega interface: prc omega: TBP>>=
   procedure :: get_alpha_s => prc_omega_get_alpha_s
 <<Omega interface: procedures>>=
-  function prc_omega_get_alpha_s (object, tmp) result (alpha)
+  function prc_omega_get_alpha_s (object, core_state) result (alpha)
     class(prc_omega_t), intent(in) :: object
-    class(workspace_t), intent(in), allocatable :: tmp
+    class(prc_core_state_t), intent(in), allocatable :: core_state
     real(default) :: alpha
     alpha = -1
-    if (allocated (object%qcd%alpha) .and. allocated (tmp)) then
-       select type (tmp)
+    if (allocated (object%qcd%alpha) .and. allocated (core_state)) then
+       select type (core_state)
        type is (omega_state_t)
-          alpha = tmp%alpha_qcd
+          alpha = core_state%alpha_qcd
        end select
     end if
   end function prc_omega_get_alpha_s
@@ -4150,7 +4154,7 @@ method [[compute_amplitude]].
     type(string_t), dimension(:), allocatable :: prt_in, prt_out
     type(qcd_t) :: qcd
     class(prc_core_t), allocatable :: core
-    class(workspace_t), allocatable :: tmp
+    class(prc_core_state_t), allocatable :: core_state
     type(vector4_t), dimension(4) :: p
     complex(default) :: amp
     real(default) :: fac_scale
@@ -4229,7 +4233,7 @@ method [[compute_amplitude]].
 
     select type (core)
     type is (prc_omega_t)
-       call core%allocate_workspace (tmp)
+       call core%allocate_workspace (core_state)
        call core%set_parameters (model, qcd = qcd)
        call core%init (def_ptr, lib, var_str ("prc_omega_5_p"), 1)
        call core%write (u)

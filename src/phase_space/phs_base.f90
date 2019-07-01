@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -154,7 +154,7 @@ module phs_base
      character(32) :: md5sum_process = ""
      character(32) :: md5sum_model_par = ""
      character(32) :: md5sum_phs_config = ""
-     type(string_t) :: nlo_type
+     integer :: nlo_type
    contains
      procedure (phs_config_final), deferred :: final
      procedure (phs_config_write), deferred :: write
@@ -250,7 +250,7 @@ module phs_base
        logical, intent(in), optional :: azimuthal_dependence
        logical, intent(in), optional :: rebuild
        logical, intent(in), optional :: ignore_mismatch
-       type(string_t), intent(inout), optional :: nlo_type
+       integer, intent(inout), optional :: nlo_type
      end subroutine phs_config_configure
   end interface
 
@@ -770,20 +770,27 @@ contains
   subroutine phs_base_init (phs, phs_config)
     class(phs_t), intent(out) :: phs
     class(phs_config_t), intent(in), target :: phs_config
+    real(default), dimension(phs_config%n_in) :: m_in
+    real(default), dimension(phs_config%n_out) :: m_out    
     phs%config => phs_config
     allocate (phs%active_channel (phs%config%n_channel))
-    phs%active_channel = .true.
+    phs%active_channel = .true.    
     allocate (phs%r (phs%config%n_par, phs%config%n_channel));  phs%r = 0
     allocate (phs%f (phs%config%n_channel));                    phs%f = 0
-    allocate (phs%p (phs%config%n_in))
-    allocate (phs%m_in  (phs%config%n_in), &
-         source = phs_config%flv(:phs_config%n_in, 1)%get_mass ())
+    allocate (phs%p (phs%config%n_in))    
+    !!! !!! !!! Workaround for gfortran 5.0 ICE
+    m_in  = phs_config%flv(:phs_config%n_in, 1)%get_mass ()
+    m_out = phs_config%flv(phs_config%n_in+1:, 1)%get_mass ()
+    allocate (phs%m_in  (phs%config%n_in), source = m_in)
+    !!! allocate (phs%m_in  (phs%config%n_in), &
+    !!!      source = phs_config%flv(:phs_config%n_in, 1)%get_mass ())
     allocate (phs%q (phs%config%n_out))
-    allocate (phs%m_out (phs%config%n_out), &
-         source = phs_config%flv(phs_config%n_in+1:, 1)%get_mass ())
+    allocate (phs%m_out (phs%config%n_out), source = m_out)
+    !!! allocate (phs%m_out (phs%config%n_out), &
+    !!!      source = phs_config%flv(phs_config%n_in+1:, 1)%get_mass ())    
     call phs%compute_flux ()
   end subroutine phs_base_init
-
+ 
   subroutine phs_base_select_channel (phs, channel)
     class(phs_t), intent(inout) :: phs
     integer, intent(in), optional :: channel
@@ -1004,12 +1011,12 @@ contains
     logical, intent(in), optional :: azimuthal_dependence
     logical, intent(in), optional :: rebuild
     logical, intent(in), optional :: ignore_mismatch
-    type(string_t), intent(inout), optional :: nlo_type
+    integer, intent(inout), optional :: nlo_type
     phs_config%n_channel = 2
     phs_config%n_par = 2
     phs_config%sqrts = sqrts
     if (.not. present (nlo_type)) &
-      phs_config%nlo_type = 'Born'
+      phs_config%nlo_type = BORN
     if (present (sqrts_fixed)) then
        phs_config%sqrts_fixed = sqrts_fixed
     end if

@@ -53,6 +53,7 @@ LDFLAGS = my-ldflags
 LDFLAGS_STATIC = my-ldflags-static
 LDFLAGS_HEPMC = my-ldflags-hepmc
 LDFLAGS_HOPPET = my-ldflags-hoppet
+LDFLAGS_LOOPTOOLS = my-ldflags-looptools
 LDWHIZARD = my-ldwhizard
 
 # Libtool
@@ -81,7 +82,7 @@ $(EXE): $(DISP).lo $(LIBRARIES)
 	$(LINK) $(FC) -static-libtool-libs $(FCFLAGS) \
 	   $(LDWHIZARD) $(LDFLAGS) \
 	   -o $(EXE) $^ \
-	   $(LDFLAGS_HEPMC) $(LDFLAGS_HOPPET) \
+	   $(LDFLAGS_HEPMC) $(LDFLAGS_HOPPET) $(LDFLAGS_LOOPTOOLS) \
 	   $(LDFLAGS_STATIC)
 
 # Main targets

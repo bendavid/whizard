@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -44,7 +44,6 @@ module sm_qcd
   implicit none
   private
 
-  public :: sm_physics_test
   public :: alpha_qcd_t
   public :: alpha_qcd_fixed_t
   public :: alpha_qcd_from_scale_t
@@ -206,14 +205,6 @@ contains
     md5sum = qcd%md5sum
   end function qcd_get_md5sum
 
-
-  subroutine sm_physics_test (u, results)
-    integer, intent(in) :: u
-    type(test_results_t), intent(inout) :: results
-    call test (sm_qcd_1, "sm_qcd_1", &
-         "running alpha_s", &
-         u, results)
-  end subroutine sm_physics_test
 
   subroutine sm_qcd_test (u, results)
     integer, intent(in) :: u

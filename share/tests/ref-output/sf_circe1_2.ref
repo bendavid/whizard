@@ -16,6 +16,7 @@
    rev      = 0
    acc      = SBAND
    chat     = 0
+   with rad.= T
  SF instance: [initialized]
    beam      = 1 2
    incoming  = 1 2
@@ -158,6 +159,7 @@
    rev      = 0
    acc      = SBAND
    chat     = 0
+   with rad.= T
    x =  9.0000000000E-01  8.0000000000E-01
  SF instance: [kinematics set]
    beam      = 1 2
@@ -307,6 +309,7 @@ x =  0.9000000  0.8000000
    rev      = 0
    acc      = SBAND
    chat     = 0
+   with rad.= T
    x =  9.0000000000E-01  8.0000000000E-01
    f =  9.6975175558E-02
  SF instance: [evaluated]

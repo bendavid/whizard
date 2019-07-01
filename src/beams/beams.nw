@@ -1590,8 +1590,8 @@ with the associated values from the spin density matrix into the
     mask = quantum_numbers_mask (.false., .false., &
          .not. beam_data%pmatrix%is_polarized (), &
          mask_hd = beam_data%pmatrix%is_diagonal ())
-    call interaction_init &
-         (beam%int, 0, 0, beam_data%n, mask=mask, store_values=.true.)
+    call beam%int%basic_init &
+         (0, 0, beam_data%n, mask=mask, store_values=.true.)
     allocate (pol (beam_data%n))
     do i = 1, size (pol)
        call polarization_init_pmatrix (pol(i), beam_data%pmatrix(i))
@@ -1608,15 +1608,13 @@ with the associated values from the spin density matrix into the
     call it_hel%init (state_hel)
     call it_tmp%init (state_tmp)
     do while (it_hel%is_valid ())
-       call interaction_add_state (beam%int, &
-            it_tmp%get_quantum_numbers (), &
+       call beam%int%add_state (it_tmp%get_quantum_numbers (), &
             value=it_hel%get_matrix_element ())
        call it_hel%advance ()
        call it_tmp%advance ()
     end do
-    call interaction_freeze (beam%int)
-    call interaction_set_momenta &
-         (beam%int, beam_data%p, outgoing = .true.)
+    call beam%int%freeze ()
+    call beam%int%set_momenta (beam_data%p, outgoing = .true.)
     call state_hel%final ()
     call state_fc%final ()
     call state_tmp%final ()
@@ -1629,7 +1627,7 @@ with the associated values from the spin density matrix into the
 <<Beams: procedures>>=
   subroutine beam_final (beam)
     type(beam_t), intent(inout) :: beam
-    call interaction_final (beam%int)
+    call beam%int%final ()
   end subroutine beam_final
 
 @ %def beam_final
@@ -1643,12 +1641,12 @@ with the associated values from the spin density matrix into the
     logical, intent(in), optional :: verbose, show_momentum_sum, show_mass
     integer :: u
     u = given_output_unit (unit);  if (u < 0)  return
-    select case (interaction_get_n_out (beam%int))
+    select case (beam%int%get_n_out ())
     case (1);  write (u, *) "Decaying particle:"
     case (2);  write (u, *) "Colliding beams:"
     end select
-    call interaction_write &
-         (beam%int, unit, verbose = verbose, show_momentum_sum = &
+    call beam%int%basic_write &
+         (unit, verbose = verbose, show_momentum_sum = &
             show_momentum_sum, show_mass = show_mass)
   end subroutine beam_write
 
@@ -1682,7 +1680,7 @@ with the associated values from the spin density matrix into the
     type(interaction_t), intent(inout) :: int
     type(beam_t), intent(in), target :: beam1
     integer, intent(in) :: i, i1
-    call interaction_set_source_link (int, i, beam1%int, i1)
+    call int%set_source_link (i, beam1%int, i1)
   end subroutine interaction_set_source_link_beam
 
 @ %def interaction_set_source_link_beam
@@ -1706,7 +1704,7 @@ Return the interaction component -- as a pointer, to avoid any copying.
   subroutine beam_set_momenta (beam, p)
     type(beam_t), intent(inout) :: beam
     type(vector4_t), dimension(:), intent(in) :: p
-    call interaction_set_momenta (beam%int, p)
+    call beam%int%set_momenta (p)
   end subroutine beam_set_momenta
 
 @ %def beam_set_momenta
@@ -2256,7 +2254,7 @@ tolerated.
     real(default) :: tp, tm
     if (present (x))  d%x = x
     if (present (xb)) d%xb = xb
-    if (d%xb /= 0) then
+    if (.not. vanishes (d%xb)) then
        d%pb = sqrt (max (d%E**2 - d%u / d%xb**2, 0._default))
     else
        d%pb = 0
@@ -3502,7 +3500,7 @@ module sf_mappings
 <<Use kinds>>
   use kinds, only: double
   use io_units
-  use constants, only: pi
+  use constants, only: pi, zero, one
   use format_defs, only: FMT_12, FMT_13, FMT_14, FMT_15, FMT_16
   use unit_tests
   use diagnostics
@@ -5322,14 +5320,28 @@ exchanged.)
     log1 = log_prec (r(1), rb(1))
     log2 = log_prec (r(2), rb(2))
     a1 = - rb(1) / log2
-    a2 = - rb(1) ** 2 * (1 / log2**2 + 1 / (2 * log2))
-    a3 = - rb(1) ** 3 * (1 / log2**3 + 1 / log2**2 + 1 / (3 * log2))
+    a2 = - rb(1) ** 2 * (one / log2**2 + one/(2*log2))
+    if (abs (log2**3) < epsilon (one)) then
+       if (abs(log1) < epsilon (one)) then
+          y = zero
+       else
+          y = one / (one+log2/log1)
+       end if
+       if (abs(log2) < epsilon (one)) then
+          yb = zero
+       else 
+          yb = one / (one+log1/log2)
+       end if
+       return
+    else
+       a3 = - rb(1) ** 3 * (one / log2**3 + one/log2**2 + one/(3 * log2))
+    end if
     if (abs (a3) < epsilon (a3)) then
        y  = a1 + a2 + a3
-       yb = 1 - y
+       yb = one - y
     else
-       y  = 1 / (1 + log2/log1)
-       yb = 1 / (1 + log1/log2)
+       y  = one / (one+log2/log1)
+       yb = one / (one+log1/log2)
     end if
   end subroutine inverse_prec_y
   
@@ -7404,19 +7416,6 @@ The status codes are public.
   end subroutine write_sf_status
 
 @ %def write_sf_status
-@ Finalizer.  Required because the base interaction needs a
-finalizer.  We provide an implementation, which need not be
-overwritten if the implementation does not add finalizable
-subobjects.
-<<SF base: sf int: TBP>>=
-  procedure :: final => sf_int_final
-<<SF base: procedures>>=
-  subroutine sf_int_final (object)
-    class(sf_int_t), intent(inout) :: object
-    call interaction_final (object%interaction_t)
-  end subroutine sf_int_final
-
-@ %def sf_int_final
 @ This is the basic output routine.  Display status and interaction.
 <<SF base: sf int: TBP>>=
   procedure :: base_write => sf_int_base_write
@@ -7443,7 +7442,7 @@ subobjects.
          write (u, "(3x,A,1x," // FMT_19 // ")")  "q_min     =", object%qmin
     if (object%qmax_defined) &
          write (u, "(3x,A,1x," // FMT_19 // ")")  "q_max     =", object%qmax
-    call interaction_write (object%interaction_t, u, testflag = testflag)
+    call object%interaction_t%basic_write (u, testflag = testflag)
   end subroutine sf_int_base_write
   
 @ %def sf_int_base_write
@@ -7513,8 +7512,8 @@ actually required for non-collinear splitting.
        allocate (sf_int%qmax (size (qmax)))
        sf_int%qmax = qmax
     end if
-    call interaction_init (sf_int%interaction_t, &
-         size (mi2), 0, size (mr2) + size (mo2), &
+    call sf_int%interaction_t%basic_init &
+         (size (mi2), 0, size (mr2) + size (mo2), &
          mask = mask, hel_lock = hel_lock, set_relations = .true.)
   end subroutine sf_int_base_init
     
@@ -7626,7 +7625,7 @@ specified energies and store those.
   subroutine sf_int_receive_momenta (sf_int)
     class(sf_int_t), intent(inout) :: sf_int
     if (sf_int%status >= SF_INITIAL) then
-       call interaction_receive_momenta (sf_int%interaction_t)
+       call sf_int%receive_momenta ()
        sf_int%status = SF_SEED_KINEMATICS
     end if
   end subroutine sf_int_receive_momenta
@@ -7635,8 +7634,7 @@ specified energies and store those.
     class(sf_int_t), intent(inout) :: sf_int
     type(vector4_t), dimension(:), intent(in) :: k
     if (sf_int%status >= SF_INITIAL) then
-       call interaction_set_momenta (sf_int%interaction_t, k, &
-            outgoing=.false.)
+       call sf_int%set_momenta (k, outgoing=.false.)
        sf_int%status = SF_SEED_KINEMATICS
     end if
   end subroutine sf_int_seed_momenta
@@ -7762,7 +7760,7 @@ on shell.
     real(default) :: E1, E2
     logical :: fail
     if (sf_int%status >= SF_SEED_KINEMATICS) then
-       k = interaction_get_momentum (sf_int%interaction_t, 1)
+       k = sf_int%get_momentum (1)
        call sd%init (k, &
             sf_int%mi2(1), sf_int%mr2(1), sf_int%mo2(1), &
             collinear = size (x) == 1)
@@ -7792,8 +7790,7 @@ on shell.
        q = sd%split_momentum (k)
        call on_shell (q, [sf_int%mr2, sf_int%mo2], &
             sf_int%on_shell_mode)
-       call interaction_set_momenta (sf_int%interaction_t, &
-            q, outgoing=.true.)
+       call sf_int%set_momenta (q, outgoing=.true.)
        E1 = energy (q(1))
        E2 = energy (q(2))
        fail = E1 < 0 .or. E2 < 0 &
@@ -7828,8 +7825,8 @@ This is simple because we insist on all momenta being collinear.
           call msg_bug ("Pair structure function: recoil requested &
                &but not implemented yet")
        end select
-       k(1) = interaction_get_momentum (sf_int%interaction_t, 1)
-       k(2) = interaction_get_momentum (sf_int%interaction_t, 2)
+       k(1) = sf_int%get_momentum (1)
+       k(2) = sf_int%get_momentum (2)
        q(1:2) = xb1 * k
        q(3:4) = x * k
        select case (size (sf_int%mr2))
@@ -7838,8 +7835,7 @@ This is simple because we insist on all momenta being collinear.
                [sf_int%mr2(1), sf_int%mr2(2), &
                sf_int%mo2(1), sf_int%mo2(2)], &
                sf_int%on_shell_mode)
-          call interaction_set_momenta (sf_int%interaction_t, &
-               q, outgoing=.true.)
+          call sf_int%set_momenta (q, outgoing=.true.)
           E = energy (q)
           fail = any (E < 0) &
                .or. any (E(1:2) ** 2 < sf_int%mr2) &
@@ -7874,14 +7870,13 @@ without radiated momenta.
           call msg_bug ("Pair spectrum: recoil requested &
                &but not implemented yet")
        end select
-       k(1) = interaction_get_momentum (sf_int%interaction_t, 1)
-       k(2) = interaction_get_momentum (sf_int%interaction_t, 2)
+       k(1) = sf_int%get_momentum (1)
+       k(2) = sf_int%get_momentum (2)
        q = x * k
        call on_shell (q, &
             [sf_int%mo2(1), sf_int%mo2(2)], &
             sf_int%on_shell_mode)
-       call interaction_set_momenta (sf_int%interaction_t, &
-            q, outgoing=.true.)
+       call sf_int%set_momenta (q, outgoing=.true.)
        E = energy (q)
        fail = any (E < 0) &
             .or. any (E ** 2 < sf_int%mo2)
@@ -7919,10 +7914,10 @@ The current implementation is not sensitive to small $\bar x$ values.
     type(vector4_t), dimension(:), allocatable :: q
     type(splitting_data_t) :: sd
     if (sf_int%status >= SF_SEED_KINEMATICS) then
-       allocate (k (interaction_get_n_in (sf_int%interaction_t)))
-       allocate (q (interaction_get_n_out (sf_int%interaction_t)))
-       k = interaction_get_momenta (sf_int%interaction_t, outgoing=.false.)
-       q = interaction_get_momenta (sf_int%interaction_t, outgoing=.true.)
+       allocate (k (sf_int%interaction_t%get_n_in ()))
+       allocate (q (sf_int%interaction_t%get_n_out ()))
+       k = sf_int%get_momenta (outgoing=.false.)
+       q = sf_int%get_momenta (outgoing=.true.)
        select case (size (k))
        case (1)
           call sd%init (k(1), &
@@ -8011,23 +8006,23 @@ radiated particles are the difference.
   procedure :: get_n_rad => sf_int_get_n_rad
   procedure :: get_n_out => sf_int_get_n_out
 <<SF base: procedures>>=
-  function sf_int_get_n_in (sf_int) result (n_in)
-    class(sf_int_t), intent(in) :: sf_int
+  function sf_int_get_n_in (object) result (n_in)
+    class(sf_int_t), intent(in) :: object
     integer :: n_in
-    n_in = interaction_get_n_in (sf_int%interaction_t)
+    n_in = object%interaction_t%get_n_in ()
   end function sf_int_get_n_in
   
-  function sf_int_get_n_rad (sf_int) result (n_rad)
-    class(sf_int_t), intent(in) :: sf_int
+  function sf_int_get_n_rad (object) result (n_rad)
+    class(sf_int_t), intent(in) :: object
     integer :: n_rad
-    n_rad = interaction_get_n_out (sf_int%interaction_t) &
-         - interaction_get_n_in (sf_int%interaction_t)
+    n_rad = object%interaction_t%get_n_out () &
+         - object%interaction_t%get_n_in ()
   end function sf_int_get_n_rad
   
-  function sf_int_get_n_out (sf_int) result (n_out)
-    class(sf_int_t), intent(in) :: sf_int
+  function sf_int_get_n_out (object) result (n_out)
+    class(sf_int_t), intent(in) :: object
     integer :: n_out
-    n_out = interaction_get_n_in (sf_int%interaction_t)
+    n_out = object%interaction_t%get_n_in ()
   end function sf_int_get_n_out
   
 @ %def sf_int_get_n_in
@@ -8040,7 +8035,7 @@ radiated particles are the difference.
   function sf_int_get_n_states (sf_int) result (n_states)
     class(sf_int_t), intent(in) :: sf_int
     integer :: n_states
-    n_states = interaction_get_n_matrix_elements (sf_int%interaction_t)
+    n_states = sf_int%get_n_matrix_elements ()
   end function sf_int_get_n_states
   
 @ %def sf_int_get_n_states
@@ -8052,8 +8047,8 @@ radiated particles are the difference.
     class(sf_int_t), intent(in) :: sf_int
     type(quantum_numbers_t), dimension(:), allocatable :: qn
     integer, intent(in) :: i
-    allocate (qn (interaction_get_n_tot (sf_int%interaction_t)))
-    qn = interaction_get_quantum_numbers (sf_int%interaction_t, i)
+    allocate (qn (sf_int%get_n_tot ()))
+    qn = sf_int%get_quantum_numbers (i)
   end function sf_int_get_state
 
 @ %def sf_int_get_state
@@ -8068,8 +8063,7 @@ the matrix elements are real, so we take the real part.
     integer :: i
     if (sf_int%status >= SF_EVALUATED) then
        do i = 1, size (value)
-          value(i) = interaction_get_matrix_element &
-               (sf_int%interaction_t, i)
+          value(i) = sf_int%get_matrix_element (i)
        end do
     else
        value = 0
@@ -8287,7 +8281,7 @@ is linked.
     class(sf_chain_t), intent(inout), target :: sf_chain
     type(interaction_t), pointer :: beam_int
     beam_int => sf_chain%get_beam_int_ptr ()
-    call interaction_receive_momenta (beam_int)
+    call beam_int%receive_momenta ()
   end subroutine sf_chain_receive_beam_momenta
   
 @ %def sf_chain_receive_beam_momenta
@@ -8510,7 +8504,7 @@ involved in a local mapping.
        do i = 1, size (object%sf, 1)
           associate (sf => object%sf(i))
             if (allocated (sf%int)) then
-               call evaluator_final (sf%eval)
+               call sf%eval%final ()
                call sf%int%final ()
             end if
           end associate
@@ -8595,7 +8589,7 @@ status.  We check both for allocation and nonzero size.
                   write (u, "(3x,A,9(1x,F9.7))")  "x =", sf%x
                end if
                call sf%int%write (u)
-               if (.not. evaluator_is_empty (sf%eval)) then
+               if (.not. sf%eval%is_empty ()) then
                      call sf%eval%write (u)
                end if
             end if
@@ -8780,8 +8774,8 @@ interaction.
          call interaction_set_source_link (int, in_index, &
               chain%beam_t, chain%out_sf_i(b))
       case default
-         call interaction_set_source_link (int, in_index, &
-              chain%sf(i)%int%interaction_t, chain%out_sf_i(b))
+         call int%set_source_link (in_index, &
+              chain%sf(i)%int, chain%out_sf_i(b))
       end select
     end subroutine link
   end subroutine sf_chain_instance_link_interactions
@@ -8806,8 +8800,8 @@ matrix element structure.
     if (chain%status >= SF_DONE_LINKS) then
        if (allocated (chain%sf)) then
           int => beam_get_int_ptr (chain%beam_t)
-          allocate (mask (interaction_get_n_out (int)))
-          mask = interaction_get_mask (int)
+          allocate (mask (int%get_n_out ()))
+          mask = int%get_mask ()
           if (size (chain%sf) /= 0) then
              do i = 1, size (chain%sf) - 1
                 call interaction_exchange_mask (chain%sf(i)%int%interaction_t)
@@ -8815,7 +8809,7 @@ matrix element structure.
              do i = size (chain%sf), 1, -1
                 call interaction_exchange_mask (chain%sf(i)%int%interaction_t)
              end do
-             if (any (mask .neqv. interaction_get_mask (int))) then
+             if (any (mask .neqv. int%get_mask ())) then
                 chain%status = SF_FAILED_MASK
                 return
              end if
@@ -8846,14 +8840,13 @@ chain.
              int => beam_get_int_ptr (chain%beam_t)
              do i = 1, size (chain%sf)
                 associate (sf => chain%sf(i))
-                  call evaluator_init_product (sf%eval, &
-                       int, sf%int%interaction_t, &
-                       mask)
-                  if (evaluator_is_empty (sf%eval)) then
+                  call sf%eval%init_product &
+                       (int, sf%int%interaction_t, mask)
+                  if (sf%eval%is_empty ()) then
                      chain%status = SF_FAILED_CONNECTIONS
                      return
                   end if
-                  int => evaluator_get_int_ptr (sf%eval)
+                  int => sf%eval%interaction_t
                 end associate
              end do
              call find_outgoing_particles ()
@@ -8893,7 +8886,7 @@ index of the outgoing particle within that evaluator.
           int => chain%sf(out_sf)%int%interaction_t
        end if
        do i = out_sf, chain%out_eval
-          int_next => evaluator_get_int_ptr (chain%sf(i)%eval)
+          int_next => chain%sf(i)%eval%interaction_t
           out_i = interaction_find_link (int_next, int, out_i)
           int => int_next
        end do
@@ -8929,7 +8922,7 @@ multiply to obtain the overall Jacobian.
     if (chain%status >= SF_DONE_CONNECTIONS) then
        call chain%select_channel (c_sel)
        int => beam_get_int_ptr (chain%beam_t)
-       call interaction_receive_momenta (int)
+       call int%receive_momenta ()
        if (allocated (chain%sf)) then
           if (size (chain%sf) /= 0) then
              forall (i = 1:size (chain%sf))  chain%sf(i)%int%status = SF_INITIAL
@@ -8993,8 +8986,8 @@ multiply to obtain the overall Jacobian.
                      end if
                      chain%f(c) = chain%f(c) * sf%f(c)
                   end do
-                  if (.not. evaluator_is_empty (sf%eval)) then
-                     call evaluator_receive_momenta (sf%eval)
+                  if (.not. sf%eval%is_empty ()) then
+                     call sf%eval%receive_momenta ()
                   end if
                 end associate
              end do
@@ -9039,7 +9032,7 @@ inverts mappings.  See below [[recover_kinematics]].
     if (chain%status >= SF_DONE_CONNECTIONS) then
        call chain%select_channel ()
        int => beam_get_int_ptr (chain%beam_t)
-       call interaction_receive_momenta (int)
+       call int%receive_momenta ()
        if (allocated (chain%sf)) then
           chain%f = 1
           if (size (chain%sf) /= 0) then
@@ -9060,8 +9053,8 @@ inverts mappings.  See below [[recover_kinematics]].
                         chain%rb(sf%int%par_index(j),c) = sf%rb(j,c)
                      end do
                   end do
-                  if (.not. evaluator_is_empty (sf%eval)) then
-                     call evaluator_receive_momenta (sf%eval)
+                  if (.not. sf%eval%is_empty ()) then
+                     call sf%eval%receive_momenta ()
                   end if
                 end associate
              end do
@@ -9110,8 +9103,8 @@ independent of this.
        if (allocated (chain%sf)) then
           do i = size (chain%sf), 1, -1
              associate (sf => chain%sf(i))
-               if (.not. evaluator_is_empty (sf%eval)) then
-                  call evaluator_send_momenta (sf%eval)
+               if (.not. sf%eval%is_empty ()) then
+                  call interaction_send_momenta (sf%eval%interaction_t)
                end if
              end associate
           end do
@@ -9194,13 +9187,13 @@ functions in the chain.
                      chain%status = SF_FAILED_EVALUATION
                      return
                   end if
-                  if (.not. evaluator_is_empty (sf%eval)) then
+                  if (.not. sf%eval%is_empty ()) then
                      call sf%eval%evaluate ()
                   end if
                 end associate
              end do
              out_int => chain%get_out_int_ptr ()
-             sf_sum = interaction_sum (out_int)
+             sf_sum = out_int%sum ()
              call chain%config%trace &
                   (chain%selected_channel, chain%p, chain%x, chain%f, sf_sum)
           end if
@@ -9231,7 +9224,7 @@ array sizes match.
           case default
              int => chain%sf(i)%int%interaction_t
           end select
-          p(j) = interaction_get_momentum (int, chain%out_sf_i(j))
+          p(j) = int%get_momentum (chain%out_sf_i(j))
        end do
     end if
   end subroutine sf_chain_instance_get_out_momenta
@@ -9247,7 +9240,7 @@ array sizes match.
     if (chain%out_eval == 0) then
        int => beam_get_int_ptr (chain%beam_t)
     else
-       int => evaluator_get_int_ptr (chain%sf(chain%out_eval)%eval)
+       int => chain%sf(chain%out_eval)%eval%interaction_t
     end if
   end function sf_chain_instance_get_out_int_ptr
 
@@ -9275,7 +9268,7 @@ evaluator.
     type(interaction_t), pointer :: int
     allocate (mask (chain%config%n_in))
     int => chain%get_out_int_ptr ()
-    mask = interaction_get_mask (int, chain%out_eval_i)
+    mask = int%get_mask (chain%out_eval_i)
   end function sf_chain_instance_get_out_mask
     
 @ %def sf_chain_instance_get_out_mask
@@ -9530,8 +9523,8 @@ transfer.
        call qn(1)%init (data%flv_in,  col0, hel0)
        call qn(2)%init (data%flv_rad, col0, hel0)
        call qn(3)%init (data%flv_out, col0, hel0)
-       call interaction_add_state (sf_int%interaction_t, qn)
-       call interaction_freeze (sf_int%interaction_t)
+       call sf_int%add_state (qn)
+       call sf_int%freeze ()
        call sf_int%set_incoming ([1])
        call sf_int%set_radiated ([2])
        call sf_int%set_outgoing ([3])
@@ -9623,11 +9616,11 @@ parameter~$x$.
     real(default), intent(in) :: scale
     select case (sf_int%data%mode)
     case (0)
-       call interaction_set_matrix_element (sf_int%interaction_t, &
-            cmplx (1._default, kind=default))
+       call sf_int%set_matrix_element &
+            (cmplx (1._default, kind=default))
     case (1)
-       call interaction_set_matrix_element (sf_int%interaction_t, &
-            cmplx (sf_int%x, kind=default))
+       call sf_int%set_matrix_element &
+            (cmplx (sf_int%x, kind=default))
     end select
     sf_int%status = SF_EVALUATED
   end subroutine sf_test_apply
@@ -9812,7 +9805,7 @@ transfer.
           call qn(4)%init (data%flv_rad, col0, hel0)
           call qn(5)%init (data%flv_out, col0, hel0)
           call qn(6)%init (data%flv_out, col0, hel0)
-          call interaction_add_state (sf_int%interaction_t, qn(1:6))
+          call sf_int%add_state (qn(1:6))
           call sf_int%set_incoming ([1,2])
           call sf_int%set_radiated ([3,4])
           call sf_int%set_outgoing ([5,6])
@@ -9828,11 +9821,11 @@ transfer.
           call qn(2)%init (data%flv_in,  col0, hel0)
           call qn(3)%init (data%flv_out, col0, hel0)
           call qn(4)%init (data%flv_out, col0, hel0)
-          call interaction_add_state (sf_int%interaction_t, qn(1:4))
+          call sf_int%add_state (qn(1:4))
           call sf_int%set_incoming ([1,2])
           call sf_int%set_outgoing ([3,4])
        end if
-       call interaction_freeze (sf_int%interaction_t)
+       call sf_int%freeze ()
     end select
     sf_int%status = SF_INITIAL
   end subroutine sf_test_spectrum_init
@@ -9923,8 +9916,8 @@ the application always succeeds.
   subroutine sf_test_spectrum_apply (sf_int, scale)
     class(sf_test_spectrum_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
-    call interaction_set_matrix_element (sf_int%interaction_t, &
-         cmplx (1._default, kind=default))
+    call sf_int%set_matrix_element &
+         (cmplx (1._default, kind=default))
     sf_int%status = SF_EVALUATED
   end subroutine sf_test_spectrum_apply
 
@@ -10104,10 +10097,10 @@ to the physical particle mass.  No radiation.
        call qn(2)%init (data%flv_in,  col0, hel0)
        call qn(3)%init (data%flv_out, col0, hel0)
        call qn(4)%init (data%flv_out, col0, hel0)
-       call interaction_add_state (sf_int%interaction_t, qn(1:4))
+       call sf_int%add_state (qn(1:4))
        call sf_int%set_incoming ([1,2])
        call sf_int%set_outgoing ([3,4])
-       call interaction_freeze (sf_int%interaction_t)
+       call sf_int%freeze ()
     end select
     sf_int%status = SF_INITIAL
   end subroutine sf_test_generator_init
@@ -10201,8 +10194,8 @@ the application always succeeds.
   subroutine sf_test_generator_apply (sf_int, scale)
     class(sf_test_generator_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
-    call interaction_set_matrix_element (sf_int%interaction_t, &
-         cmplx (1._default, kind=default))
+    call sf_int%set_matrix_element &
+         (cmplx (1._default, kind=default))
     sf_int%status = SF_EVALUATED
   end subroutine sf_test_generator_apply
 
@@ -10373,7 +10366,7 @@ structure function.
     write (u, "(A)")  "* Recover x from momenta"
     write (u, "(A)")
 
-    q = interaction_get_momenta (sf_int%interaction_t, outgoing=.true.)
+    q = sf_int%get_momenta (outgoing=.true.)
     call sf_int%final ()
     deallocate (sf_int)
 
@@ -10382,7 +10375,7 @@ structure function.
     call sf_int%set_beam_index ([1])
 
     call sf_int%seed_kinematics ([k])
-    call interaction_set_momenta (sf_int%interaction_t, q, outgoing=.true.)
+    call sf_int%set_momenta (q, outgoing=.true.)
     call sf_int%recover_x (x)
 
     write (u, "(A,9(1x,F10.7))")  "x =", x
@@ -11035,7 +11028,7 @@ Construct and display a structure function object for a pair spectrum
     write (u, "(A)")  "* Recover x from momenta"
     write (u, "(A)")
 
-    q = interaction_get_momenta (sf_int%interaction_t, outgoing=.true.)
+    q = sf_int%get_momenta (outgoing=.true.)
     call sf_int%final ()
     deallocate (sf_int)
 
@@ -11044,7 +11037,7 @@ Construct and display a structure function object for a pair spectrum
     call sf_int%init (data)
 
     call sf_int%seed_kinematics (k)
-    call interaction_set_momenta (sf_int%interaction_t, q, outgoing=.true.)
+    call sf_int%set_momenta (q, outgoing=.true.)
     call sf_int%recover_x (x)
     write (u, "(A,9(1x,F10.7))")  "x =", x
 
@@ -11150,7 +11143,7 @@ Construct and display a structure function object for a pair spectrum
     write (u, "(A)")  "* Recover x from momenta"
     write (u, "(A)")
 
-    q = interaction_get_momenta (sf_int%interaction_t, outgoing=.true.)
+    q = sf_int%get_momenta (outgoing=.true.)
     call sf_int%final ()
     deallocate (sf_int)
 
@@ -11159,7 +11152,7 @@ Construct and display a structure function object for a pair spectrum
     call sf_int%init (data)
 
     call sf_int%seed_kinematics (k)
-    call interaction_set_momenta (sf_int%interaction_t, q, outgoing=.true.)
+    call sf_int%set_momenta (q, outgoing=.true.)
     call sf_int%recover_x (x)
     write (u, "(A,9(1x,F10.7))")  "x =", x
 
@@ -12159,7 +12152,7 @@ which is evaluated as a beam-event generator.
     write (u, "(A)")  "* Recover x from momenta"
     write (u, "(A)")
 
-    q = interaction_get_momenta (sf_int%interaction_t, outgoing=.true.)
+    q = sf_int%get_momenta (outgoing=.true.)
     call sf_int%final ()
     deallocate (sf_int)
 
@@ -12168,7 +12161,7 @@ which is evaluated as a beam-event generator.
     call sf_int%init (data)
 
     call sf_int%seed_kinematics (k)
-    call interaction_set_momenta (sf_int%interaction_t, q, outgoing=.true.)
+    call sf_int%set_momenta (q, outgoing=.true.)
     x_free = 1
     call sf_int%recover_x (x, x_free)
     write (u, "(A,9(1x,F10.7))")  "x =", x
@@ -12940,13 +12933,12 @@ current sampling point (but maybe another channel).
           do while (it_hel%is_valid ())
              qn_hel = it_hel%get_quantum_numbers ()
              qn = qn_hel(1) .merge. qn_fc(1)
-             call interaction_add_state &
-                  (sf_int%interaction_t, [qn, qn_photon, qn])
+             call sf_int%add_state ([qn, qn_photon, qn])
              call it_hel%advance ()
           end do
           call polarization_final (pol)
        end do
-       call interaction_freeze (sf_int%interaction_t)
+       call sf_int%freeze ()
        call sf_int%set_incoming ([1])
        call sf_int%set_radiated ([2])
        call sf_int%set_outgoing ([3])
@@ -13025,8 +13017,7 @@ choose to conserve momentum, so energy conservation may be violated.
          end if
       end if
     end associate
-    call interaction_set_matrix_element &
-           (sf_int%interaction_t, cmplx (f, kind=default))    
+    call sf_int%set_matrix_element (cmplx (f, kind=default))    
     sf_int%status = SF_EVALUATED
   end subroutine isr_apply
 
@@ -13197,7 +13188,7 @@ structure function.  The parameter pair is mapped in the calling program.
     write (u, "(A)")  "* Structure-function value, default order"
     write (u, "(A)")
 
-    f_isr = interaction_get_matrix_element (sf_int%interaction_t, 1)
+    f_isr = sf_int%get_matrix_element (1)
     
     write (u, "(A,9(1x," // FMT_12 // "))")  "f_isr         =", f_isr
     write (u, "(A,9(1x," // FMT_12 // "))")  "f_isr * f_map =", f_isr * f
@@ -13211,7 +13202,7 @@ structure function.  The parameter pair is mapped in the calling program.
        sf_int%data%order = 0
     end select
     call sf_int%apply (scale = 100._default)
-    f_isr = interaction_get_matrix_element (sf_int%interaction_t, 1)
+    f_isr = sf_int%get_matrix_element (1)
     
     write (u, "(A,9(1x," // FMT_12 // "))")  "f_isr         =", f_isr
     write (u, "(A,9(1x," // FMT_12 // "))")  "f_isr * f_map =", f_isr * f
@@ -13325,7 +13316,7 @@ structure function.
     write (u, "(A)")  "* Structure-function value, default order"
     write (u, "(A)")
 
-    f_isr = interaction_get_matrix_element (sf_int%interaction_t, 1)
+    f_isr = sf_int%get_matrix_element (1)
     
     write (u, "(A,9(1x," // FMT_12 // "))")  "f_isr         =", f_isr
     write (u, "(A,9(1x," // FMT_12 // "))")  "f_isr * f_map =", f_isr * f
@@ -13339,7 +13330,7 @@ structure function.
        sf_int%data%order = 0
     end select
     call sf_int%apply (scale = 100._default)
-    f_isr = interaction_get_matrix_element (sf_int%interaction_t, 1)
+    f_isr = sf_int%get_matrix_element (1)
     
     write (u, "(A,9(1x," // FMT_12 // "))")  "f_isr         =", f_isr
     write (u, "(A,9(1x," // FMT_12 // "))")  "f_isr * f_map =", f_isr * f
@@ -13440,7 +13431,7 @@ structure function. We blank out numerical fluctuations for 32bit.
     write (u, "(A)")  "* Recover x and r from momenta"
     write (u, "(A)")
     
-    q = interaction_get_momenta (sf_int%interaction_t, outgoing=.true.)
+    q = sf_int%get_momenta (outgoing=.true.)
     call sf_int%final ()
     deallocate (sf_int)
     
@@ -13449,7 +13440,7 @@ structure function. We blank out numerical fluctuations for 32bit.
     call sf_int%set_beam_index ([1])
     
     call sf_int%seed_kinematics ([k])
-    call interaction_set_momenta (sf_int%interaction_t, q, outgoing=.true.)
+    call sf_int%set_momenta (q, outgoing=.true.)
     call sf_int%recover_x (x)
     call sf_int%inverse_kinematics (x, f, r, rb, map=.true.)    
     
@@ -13470,11 +13461,11 @@ structure function. We blank out numerical fluctuations for 32bit.
     do 
        read (u_scratch, "(A)", iostat=iostat) buffer    
        if (iostat /= 0) exit
-       if (buffer(1:27) == " P =   0.00000000E+00  9.57") then
-          buffer = replace (buffer, 28, "XXXXXX")
+       if (buffer(1:25) == " P =   0.000000E+00  9.57") then
+          buffer = replace (buffer, 26, "XXXX")
        end if
-       if (buffer(1:27) == " P =   0.00000000E+00 -9.57") then
-          buffer = replace (buffer, 28, "XXXXXX")
+       if (buffer(1:25) == " P =   0.000000E+00 -9.57") then
+          buffer = replace (buffer, 26, "XXXX")
        end if       
        write (u, "(A)") buffer
     end do
@@ -13484,7 +13475,7 @@ structure function. We blank out numerical fluctuations for 32bit.
     write (u, "(A)")  "* Structure-function value"
     write (u, "(A)")
 
-    f_isr = interaction_get_matrix_element (sf_int%interaction_t, 1)
+    f_isr = sf_int%get_matrix_element (1)
     
     write (u, "(A,9(1x," // FMT_12 // "))")  "f_isr         =", f_isr
     write (u, "(A,9(1x," // FMT_12 // "))")  "f_isr * f_map =", f_isr * f
@@ -13646,7 +13637,7 @@ structure function.
     write (u, "(A)")
 
     do i = 1, 2
-       f_isr(i) = interaction_get_matrix_element (sf_int(i)%interaction_t, 1)
+       f_isr(i) = sf_int(i)%get_matrix_element (1)
     end do
     
     write (u, "(A,9(1x," // FMT_12 // "))")  "f_isr         =", &
@@ -14098,13 +14089,12 @@ elements for all flavor and helicity combinations.
              qn = qn_hel(1) .merge. qn_fc(1)
              qn_rad = qn
              call qn_rad%tag_radiated ()
-             call interaction_add_state (sf_int%interaction_t, &
-                  [qn, qn_rad, qn_photon])
+             call sf_int%add_state ([qn, qn_rad, qn_photon])
              call it_hel%advance ()
           end do
           call polarization_final (pol)
        end do
-       call interaction_freeze (sf_int%interaction_t)
+       call sf_int%freeze ()
        call sf_int%set_incoming ([1])
        call sf_int%set_radiated ([2])
        call sf_int%set_outgoing ([3])
@@ -14122,9 +14112,9 @@ the state matrix may be helicity-contracted.
     type(state_iterator_t) :: it
     type(flavor_t) :: flv
     integer :: i, n_me
-    n_me = interaction_get_n_matrix_elements (sf_int%interaction_t)
+    n_me = sf_int%get_n_matrix_elements ()
     allocate (sf_int%charge2 (n_me))
-    call it%init (interaction_get_state_matrix_ptr (sf_int%interaction_t))
+    call it%init (sf_int%interaction_t%get_state_matrix_ptr ())
     do while (it%is_valid ())
        i = it%get_me_index ()
        flv = it%get_flavor (1)
@@ -14191,8 +14181,7 @@ also output [[xb]], which is $\bar x=1-x$.
     case (SF_DONE_KINEMATICS)
        sf_int%x = x(1)
        sf_int%xb= xb1
-       sf_int%E  = &
-            energy (interaction_get_momentum (sf_int%interaction_t, 1))
+       sf_int%E  = energy (sf_int%get_momentum (1))
     case (SF_FAILED_KINEMATICS)
        sf_int%x = 0
        sf_int%xb= 0
@@ -14247,8 +14236,7 @@ can set momenta by the same formula as for normal kinematics.
        case (SF_DONE_KINEMATICS)
           sf_int%x  = x(1)
           sf_int%xb = 1 - x(1)
-          sf_int%E  = &
-               energy (interaction_get_momentum (sf_int%interaction_t, 1))
+          sf_int%E  = energy (sf_int%get_momentum (1))
        case (SF_FAILED_KINEMATICS)
           sf_int%x = 0
           f = 0
@@ -14312,8 +14300,8 @@ generated $x$ values are identical.
       else
          f = 0
       end if
-      call interaction_set_matrix_element &
-           (sf_int%interaction_t, cmplx (f, kind=default) * sf_int%charge2)
+      call sf_int%set_matrix_element &
+           (cmplx (f, kind=default) * sf_int%charge2)
     end associate
     sf_int%status = SF_EVALUATED
   end subroutine epa_apply
@@ -14468,7 +14456,7 @@ structure function.
     write (u, "(A)")  "* Recover x from momenta"
     write (u, "(A)")
     
-    q = interaction_get_momenta (sf_int%interaction_t, outgoing=.true.)
+    q = sf_int%get_momenta (outgoing=.true.)
     call sf_int%final ()
     deallocate (sf_int)
     
@@ -14478,7 +14466,7 @@ structure function.
     call sf_int%setup_constants ()
     
     call sf_int%seed_kinematics ([k])
-    call interaction_set_momenta (sf_int%interaction_t, q, outgoing=.true.)
+    call sf_int%set_momenta (q, outgoing=.true.)
     call sf_int%recover_x (x)
     call sf_int%inverse_kinematics (x, f, r, rb, map=.false., &
          set_momenta=.true.)
@@ -14587,7 +14575,7 @@ structure function, applying the standard single-particle mapping.
     write (u, "(A)")  "* Recover x from momenta"
     write (u, "(A)")
     
-    q = interaction_get_momenta (sf_int%interaction_t, outgoing=.true.)
+    q = sf_int%get_momenta (outgoing=.true.)
     call sf_int%final ()
     deallocate (sf_int)
     
@@ -14597,7 +14585,7 @@ structure function, applying the standard single-particle mapping.
     call sf_int%setup_constants ()
     
     call sf_int%seed_kinematics ([k])
-    call interaction_set_momenta (sf_int%interaction_t, q, outgoing=.true.)
+    call sf_int%set_momenta (q, outgoing=.true.)
     call sf_int%recover_x (x)
     call sf_int%inverse_kinematics (x, f, r, rb, map=.true., &
          set_momenta=.true.)
@@ -14710,7 +14698,7 @@ structure function.
     write (u, "(A)")  "* Recover x and r from momenta"
     write (u, "(A)")
     
-    q = interaction_get_momenta (sf_int%interaction_t, outgoing=.true.)
+    q = sf_int%get_momenta (outgoing=.true.)
     call sf_int%final ()
     deallocate (sf_int)
     
@@ -14720,7 +14708,7 @@ structure function.
     call sf_int%setup_constants ()
     
     call sf_int%seed_kinematics ([k])
-    call interaction_set_momenta (sf_int%interaction_t, q, outgoing=.true.)
+    call sf_int%set_momenta (q, outgoing=.true.)
     call sf_int%recover_x (x)
     call sf_int%inverse_kinematics (x, f, r, rb, map=.true., &
          set_momenta=.true.)    
@@ -15390,8 +15378,7 @@ particles, therefore we need to probe only the first one.
                 qn = qn_hel(1) .merge. qn_fc(1)
                 qn_rad = qn
                 call qn_rad%tag_radiated ()
-                call interaction_add_state &
-                     (sf_int%interaction_t, [qn, qn_rad, qn_z])
+                call sf_int%add_state ([qn, qn_rad, qn_z])
                 call it_hel%advance ()
              end do
              call polarization_final (pol)
@@ -15434,8 +15421,7 @@ particles, therefore we need to probe only the first one.
                 qn = qn_hel(1) .merge. qn_fc(1)
                 qn_rad = qn_hel(1) .merge. qn_fc_fin(1)
                 call qn_rad%tag_radiated ()
-                call interaction_add_state &
-                     (sf_int%interaction_t, [qn, qn_rad, qn_w])
+                call sf_int%add_state ([qn, qn_rad, qn_w])
                 call it_hel%advance ()
              end do
              call polarization_final (pol)    
@@ -15443,7 +15429,7 @@ particles, therefore we need to probe only the first one.
        case default
           call msg_fatal ("EWA initialization failed: wrong particle type.")
        end select
-       call interaction_freeze (sf_int%interaction_t)
+       call sf_int%freeze ()
        if (data%keep_momentum) then
           if (data%keep_energy) then
              call msg_fatal ("EWA: momentum and energy" // &
@@ -15474,13 +15460,13 @@ the state matrix may be helicity-contracted.
     type(flavor_t) :: flv
     real(default) :: q, t3
     integer :: i
-    sf_int%n_me = interaction_get_n_matrix_elements (sf_int%interaction_t) 
+    sf_int%n_me = sf_int%get_n_matrix_elements () 
     allocate (sf_int%cv (sf_int%n_me))
     allocate (sf_int%ca (sf_int%n_me))
     associate (data => sf_int%data)
       select case (data%id)
       case (23)
-         call it%init (interaction_get_state_matrix_ptr (sf_int%interaction_t))
+         call it%init (sf_int%interaction_t%get_state_matrix_ptr ())
          do while (it%is_valid ())
             i = it%get_me_index ()
             flv = it%get_flavor (1)
@@ -15498,7 +15484,7 @@ the state matrix may be helicity-contracted.
             call it%advance ()
          end do
       case (24)
-         call it%init (interaction_get_state_matrix_ptr (sf_int%interaction_t))
+         call it%init (sf_int%interaction_t%get_state_matrix_ptr ())
          do while (it%is_valid ())
             i = it%get_me_index ()
             flv = it%get_flavor (1)
@@ -15540,7 +15526,7 @@ discussed above is applied.
     logical, intent(in) :: map
     real(default) :: xb1, e_1
     real(default) :: x0, x1, lx0, lx1, lx
-    e_1 = energy (interaction_get_momentum (sf_int%interaction_t, 1))
+    e_1 = energy (sf_int%get_momentum (1))
     if (sf_int%data%keep_momentum .or. sf_int%data%keep_energy) then
        select case (sf_int%data%id)
        case (23)
@@ -15605,7 +15591,7 @@ can set momenta by the same formula as for normal kinematics.
     real(default) :: x0, x1, lx0, lx1, lx, e_1
     logical :: set_mom
     set_mom = .false.;  if (present (set_momenta))  set_mom = set_momenta
-    e_1 = energy (interaction_get_momentum (sf_int%interaction_t, 1))    
+    e_1 = energy (sf_int%get_momentum (1))    
     if (sf_int%data%keep_momentum .or. sf_int%data%keep_energy) then
        select case (sf_int%data%id)
        case (23)
@@ -15702,8 +15688,7 @@ generated $x$ values are identical.
             fm = fm / f
             fL = fL / f      
          end if
-         call interaction_set_matrix_element &
-              (sf_int%interaction_t, i, cmplx (f, kind=default))
+         call sf_int%set_matrix_element (i, cmplx (f, kind=default))
       end do
     end associate
     sf_int%status = SF_EVALUATED
@@ -15886,7 +15871,7 @@ structure function.
     write (u, "(A)")  "* Recover x from momenta"
     write (u, "(A)")
     
-    q = interaction_get_momenta (sf_int%interaction_t, outgoing=.true.)
+    q = sf_int%get_momenta (outgoing=.true.)
     call sf_int%final ()
     deallocate (sf_int)
     
@@ -15896,7 +15881,7 @@ structure function.
     call sf_int%setup_constants ()
     
     call sf_int%seed_kinematics ([k])
-    call interaction_set_momenta (sf_int%interaction_t, q, outgoing=.true.)
+    call sf_int%set_momenta (q, outgoing=.true.)
     call sf_int%recover_x (x)
     call sf_int%inverse_kinematics (x, f, r, rb, map=.false., &
          set_momenta=.true.)
@@ -16009,7 +15994,7 @@ structure function, applying the standard single-particle mapping.
     write (u, "(A)")  "* Recover x from momenta"
     write (u, "(A)")
     
-    q = interaction_get_momenta (sf_int%interaction_t, outgoing=.true.)
+    q = sf_int%get_momenta (outgoing=.true.)
     call sf_int%final ()
     deallocate (sf_int)
     
@@ -16019,7 +16004,7 @@ structure function, applying the standard single-particle mapping.
     call sf_int%setup_constants ()
     
     call sf_int%seed_kinematics ([k])
-    call interaction_set_momenta (sf_int%interaction_t, q, outgoing=.true.)
+    call sf_int%set_momenta (q, outgoing=.true.)
     call sf_int%recover_x (x)
     call sf_int%inverse_kinematics (x, f, r, rb, map=.true., &
          set_momenta=.true.)
@@ -16132,7 +16117,7 @@ structure function.
     write (u, "(A)")  "* Recover x and r from momenta"
     write (u, "(A)")
     
-    q = interaction_get_momenta (sf_int%interaction_t, outgoing=.true.)
+    q = sf_int%get_momenta (outgoing=.true.)
     call sf_int%final ()
     deallocate (sf_int)
     
@@ -16142,7 +16127,7 @@ structure function.
     call sf_int%setup_constants ()
     
     call sf_int%seed_kinematics ([k])
-    call interaction_set_momenta (sf_int%interaction_t, q, outgoing=.true.)
+    call sf_int%set_momenta (q, outgoing=.true.)
     call sf_int%recover_x (x)
     call sf_int%inverse_kinematics (x, f, r, rb, map=.true., &
          set_momenta=.true.)    
@@ -16542,7 +16527,7 @@ are always using only one beam parameter.
                    qn_hel(2:2) = it_hel2%get_quantum_numbers ()
                    qn_hel(4:4) = it_hel2%get_quantum_numbers ()
                    qn = qn_hel .merge. qn_fc
-                   call interaction_add_state (sf_int%interaction_t, qn)
+                   call sf_int%add_state (qn)
                    call it_hel2%advance ()
                 end do
                 call it_hel1%advance ()
@@ -16553,7 +16538,7 @@ are always using only one beam parameter.
        end do
        call sf_int%set_incoming ([1,2])
        call sf_int%set_outgoing ([3,4])
-       call interaction_freeze (sf_int%interaction_t)       
+       call sf_int%freeze ()
        sf_int%status = SF_INITIAL
     end select
   end subroutine escan_init
@@ -16647,8 +16632,7 @@ Here, we insert the predefined norm.
     associate (data => sf_int%data)
       f = data%norm
     end associate
-    call interaction_set_matrix_element (sf_int%interaction_t, &
-         cmplx (f, kind=default))    
+    call sf_int%set_matrix_element (cmplx (f, kind=default))    
     sf_int%status = SF_EVALUATED
   end subroutine escan_apply
 
@@ -17129,14 +17113,14 @@ Flavor and polarization carried through, no radiated particles.
              qn_hel(2:2) = it_hel2%get_quantum_numbers ()
              qn_hel(4:4) = it_hel2%get_quantum_numbers ()
              qn = qn_hel .merge. qn_fc
-             call interaction_add_state (sf_int%interaction_t, qn)
+             call sf_int%add_state (qn)
              call it_hel2%advance ()
           end do
           call polarization_final (pol2)
           call it_hel1%advance ()
        end do
        call polarization_final (pol2)
-       call interaction_freeze (sf_int%interaction_t)
+       call sf_int%freeze ()
        call sf_int%set_incoming ([1,2])
        call sf_int%set_outgoing ([3,4])
        call sf_int%data%open ()
@@ -17152,7 +17136,7 @@ Flavor and polarization carried through, no radiated particles.
   subroutine sf_beam_events_final (object)
     class(beam_events_t), intent(inout) :: object
     call object%data%close ()
-    call interaction_final (object%interaction_t)
+    call object%interaction_t%final ()
   end subroutine sf_beam_events_final
 
 @ %def sf_beam_events_final
@@ -17273,8 +17257,7 @@ Trivial, just set the unit weight.
     real(default), intent(in) :: scale
     real(default) :: f
     f = 1
-    call interaction_set_matrix_element (sf_int%interaction_t, &
-         cmplx (f, kind=default))        
+    call sf_int%set_matrix_element (cmplx (f, kind=default))        
     sf_int%status = SF_EVALUATED
   end subroutine beam_events_apply
 
@@ -17647,7 +17630,8 @@ generator is used instead.
      integer :: ver = 0 
      integer :: rev = 0      
      character(6) :: acc = "?"
-     integer :: chat = 0    
+     integer :: chat = 0
+     logical :: with_radiation = .false.
    contains  
      <<SF circe1: circe1 data: TBP>>     
   end type circe1_data_t 
@@ -17659,7 +17643,7 @@ generator is used instead.
 <<SF circe1: procedures>>= 
   subroutine circe1_data_init &
        (data, model, pdg_in, sqrts, eps, out_photon, &
-        ver, rev, acc, chat)
+        ver, rev, acc, chat, with_radiation)
     class(circe1_data_t), intent(out) :: data 
     class(model_data_t), intent(in), target :: model
     type(pdg_array_t), dimension(2), intent(in) :: pdg_in
@@ -17668,6 +17652,7 @@ generator is used instead.
     logical, dimension(2), intent(in) :: out_photon
     character(*), intent(in) :: acc
     integer, intent(in) :: ver, rev, chat 
+    logical, intent(in) :: with_radiation
     data%model => model 
     if (any (pdg_array_get_length (pdg_in) /= 1)) then
        call msg_fatal ("CIRCE1: incoming beam particles must be unique")
@@ -17683,6 +17668,7 @@ generator is used instead.
     data%rev = rev
     data%acc = acc 
     data%chat = chat 
+    data%with_radiation = with_radiation
     call data%check ()
     call circex (0.d0, 0.d0, dble (data%sqrts), &
          data%acc, data%ver, data%rev, data%chat)
@@ -17749,6 +17735,7 @@ type, which can then spawn RNG generator objects.
     write (u, "(3x,A,I0)") "rev      = ", data%rev 
     write (u, "(3x,A,A)")  "acc      = ", data%acc 
     write (u, "(3x,A,I0)") "chat     = ", data%chat 
+    write (u, "(3x,A,L1)") "with rad.= ", data%with_radiation
     if (data%generate)  call data%rng_factory%write (u)
   end subroutine circe1_data_write 
  
@@ -17866,6 +17853,14 @@ partons initiating the hard interaction.
 CIRCE1 does not support polarized beams explicitly.  For simplicity, we
 nevertheless carry beam polarization through to the outgoing electrons and
 make the photons unpolarized.
+
+In the case that no radiated particle is kept (which actually is the
+default), polarization is always transferred to the electrons, too. If
+there is a recoil photon in the event, the radiated particles are 3
+and 4, respectively, and 5 and 6 are the outgoing ones (triggering the
+hard scattering process), while in the case of no radiation, the
+outgoing particles are 3 and 4, respectively. In the case of the
+electron being the radiated particle, helicity is not kept.
 <<SF circe1: types>>=
   type, extends (sf_int_t) :: circe1_t
      type(circe1_data_t), pointer :: data => null ()
@@ -17943,70 +17938,129 @@ depends. Hence, a dummy routine.
     mask_h = .false.
     select type (data)
     type is (circe1_data_t)
-       mi2 = data%m_in**2
-       if (data%photon(1)) then
-          hel_lock(1) = 3;  hel_lock(3) = 1;  mask_h(5) = .true.
-          mr2(1) = mi2(1)
-          mo2(1) = 0._default
-       else
-          hel_lock(1) = 5;  hel_lock(5) = 1;  mask_h(3) = .true.
-          mr2(1) = 0._default
-          mo2(1) = mi2(1)
-       end if
-       if (data%photon(2)) then
-          hel_lock(2) = 4;  hel_lock(4) = 2;  mask_h(6) = .true.
-          mr2(2) = mi2(2)
-          mo2(2) = 0._default
-       else
-          hel_lock(2) = 6;  hel_lock(6) = 2;  mask_h(4) = .true.
-          mr2(2) = 0._default
-          mo2(2) = mi2(2)
-       end if
-       mask = quantum_numbers_mask (.false., .false., mask_h)
-       call sf_int%base_init (mask, mi2, mr2, mo2, &
-            hel_lock = hel_lock)
-       sf_int%data => data
-       call flv_photon%init (PHOTON, data%model)
-       call col0%init ()
-       call qn_photon%init (flv_photon, col0)
-       call polarization_init_generic (pol1, data%flv_in(1))
-       call qn_fc1(1)%init (flv = data%flv_in(1), col = col0)
-       call polarization_init_generic (pol2, data%flv_in(2))
-       call qn_fc2(1)%init (flv = data%flv_in(2), col = col0)
-       call it_hel1%init (pol1%state)
-       
-       do while (it_hel1%is_valid ()) 
-          qn_hel1 = it_hel1%get_quantum_numbers ()
-          qn1 = qn_hel1(1) .merge. qn_fc1(1) 
-          qn(1) = qn1
+       mi2 = data%m_in**2       
+       if (data%with_radiation) then
           if (data%photon(1)) then
-             qn(3) = qn1;  qn(5) = qn_photon
+             hel_lock(1) = 3;  hel_lock(3) = 1;  mask_h(5) = .true.
+             mr2(1) = mi2(1)
+             mo2(1) = 0._default
           else
-             qn(3) = qn_photon;  qn(5) = qn1
+             hel_lock(1) = 5;  hel_lock(5) = 1;  mask_h(3) = .true.
+             mr2(1) = 0._default
+             mo2(1) = mi2(1)
           end if
-          call it_hel2%init (pol2%state) 
-          do while (it_hel2%is_valid ()) 
-             qn_hel2 = it_hel2%get_quantum_numbers () 
-             qn2 = qn_hel2(1) .merge. qn_fc2(1) 
-             qn(2) = qn2
-             if (data%photon(2)) then
-                qn(4) = qn2;  qn(6) = qn_photon
+          if (data%photon(2)) then
+             hel_lock(2) = 4;  hel_lock(4) = 2;  mask_h(6) = .true.
+             mr2(2) = mi2(2)
+             mo2(2) = 0._default
+          else
+             hel_lock(2) = 6;  hel_lock(6) = 2;  mask_h(4) = .true.
+             mr2(2) = 0._default
+             mo2(2) = mi2(2)
+          end if
+          mask = quantum_numbers_mask (.false., .false., mask_h)
+          call sf_int%base_init (mask, mi2, mr2, mo2, &
+               hel_lock = hel_lock)
+          sf_int%data => data
+          call flv_photon%init (PHOTON, data%model)
+          call col0%init ()
+          call qn_photon%init (flv_photon, col0)
+          call polarization_init_generic (pol1, data%flv_in(1))
+          call qn_fc1(1)%init (flv = data%flv_in(1), col = col0)
+          call polarization_init_generic (pol2, data%flv_in(2))
+          call qn_fc2(1)%init (flv = data%flv_in(2), col = col0)
+          call it_hel1%init (pol1%state)
+          
+          do while (it_hel1%is_valid ()) 
+             qn_hel1 = it_hel1%get_quantum_numbers ()
+             qn1 = qn_hel1(1) .merge. qn_fc1(1) 
+             qn(1) = qn1
+             if (data%photon(1)) then
+                qn(3) = qn1;  qn(5) = qn_photon
              else
-                qn(4) = qn_photon;  qn(6) = qn2
+                qn(3) = qn_photon;  qn(5) = qn1
              end if
-             call qn(3:4)%tag_radiated ()
-             call interaction_add_state (sf_int%interaction_t, qn)
-             call it_hel2%advance () 
+             call it_hel2%init (pol2%state) 
+             do while (it_hel2%is_valid ()) 
+                qn_hel2 = it_hel2%get_quantum_numbers () 
+                qn2 = qn_hel2(1) .merge. qn_fc2(1) 
+                qn(2) = qn2
+                if (data%photon(2)) then
+                   qn(4) = qn2;  qn(6) = qn_photon
+                else
+                   qn(4) = qn_photon;  qn(6) = qn2
+                end if
+                call qn(3:4)%tag_radiated ()
+                call sf_int%add_state (qn)
+                call it_hel2%advance () 
+             end do
+             call it_hel1%advance ()
           end do
-          call it_hel1%advance ()
-       end do
-       call polarization_final (pol1)
-       call polarization_final (pol2)
-       call interaction_freeze (sf_int%interaction_t) 
-       call sf_int%set_incoming ([1,2])
-       call sf_int%set_radiated ([3,4])
-       call sf_int%set_outgoing ([5,6])
-       sf_int%status = SF_INITIAL
+          call polarization_final (pol1)
+          call polarization_final (pol2)
+          call sf_int%freeze () 
+          call sf_int%set_incoming ([1,2])
+          call sf_int%set_radiated ([3,4])
+          call sf_int%set_outgoing ([5,6])
+       else
+          if (data%photon(1)) then
+             mask_h(3) = .true.
+             mo2(1) = 0._default
+          else
+             hel_lock(1) = 3;  hel_lock(3) = 1
+             mo2(1) = mi2(1)
+          end if
+          if (data%photon(2)) then
+             mask_h(4) = .true.
+             mo2(2) = 0._default
+          else
+             hel_lock(2) = 4;  hel_lock(4) = 2
+             mo2(2) = mi2(2)
+          end if
+          mask = quantum_numbers_mask (.false., .false., mask_h)
+          call sf_int%base_init (mask(1:4), mi2, [real(default) :: ], mo2, &
+               hel_lock = hel_lock(1:4))
+          sf_int%data => data
+          call flv_photon%init (PHOTON, data%model)
+          call col0%init ()
+          call qn_photon%init (flv_photon, col0)
+          call polarization_init_generic (pol1, data%flv_in(1))
+          call qn_fc1(1)%init (flv = data%flv_in(1), col = col0)
+          call polarization_init_generic (pol2, data%flv_in(2))
+          call qn_fc2(1)%init (flv = data%flv_in(2), col = col0)
+          call it_hel1%init (pol1%state)
+          
+          do while (it_hel1%is_valid ()) 
+             qn_hel1 = it_hel1%get_quantum_numbers ()
+             qn1 = qn_hel1(1) .merge. qn_fc1(1) 
+             qn(1) = qn1
+             if (data%photon(1)) then
+                qn(3) = qn_photon
+             else
+                qn(3) = qn1
+             end if
+             call it_hel2%init (pol2%state) 
+             do while (it_hel2%is_valid ()) 
+                qn_hel2 = it_hel2%get_quantum_numbers () 
+                qn2 = qn_hel2(1) .merge. qn_fc2(1) 
+                qn(2) = qn2
+                if (data%photon(2)) then
+                   qn(4) = qn_photon
+                else
+                   qn(4) = qn2
+                end if
+                call sf_int%add_state (qn(1:4))
+                call it_hel2%advance () 
+             end do
+             call it_hel1%advance ()
+          end do
+          call polarization_final (pol1)
+          call polarization_final (pol2)
+          call sf_int%freeze () 
+          call sf_int%set_incoming ([1,2])
+          call sf_int%set_outgoing ([3,4])
+       end if
+       sf_int%status = SF_INITIAL       
     end select
     if (sf_int%data%generate) then
        call sf_int%data%rng_factory%make (sf_int%rng_obj%rng)
@@ -18094,8 +18148,12 @@ We store the $x$ values, so we can use them for the evaluation later.
     x = r
     sf_int%x = x
     f = 1
-    xb1 = 1 - x
-    call sf_int%split_momenta (x, xb1)
+    if (sf_int%data%with_radiation) then
+       xb1 = 1 - x       
+       call sf_int%split_momenta (x, xb1)
+    else
+       call sf_int%reduce_momenta (x)
+    end if
     select case (sf_int%status)
     case (SF_FAILED_KINEMATICS);  f = 0
     end select
@@ -18175,8 +18233,7 @@ The scale is ignored.
          end if
       end if
     end associate
-    call interaction_set_matrix_element &
-        (sf_int%interaction_t, cmplx (sf_int%f, kind=default)) 
+    call sf_int%set_matrix_element (cmplx (sf_int%f, kind=default)) 
     sf_int%status = SF_EVALUATED
   end subroutine circe1_apply
  
@@ -18249,7 +18306,8 @@ Construct and display a test structure function data object.
             ver = 0, &
             rev = 0, &
             acc = "SBAND", &
-            chat = 0)
+            chat = 0, &
+            with_radiation = .true.)
     end select
 
     call data%write (u)
@@ -18318,7 +18376,8 @@ structure function.
             ver = 0, &
             rev = 0, &
             acc = "SBAND", &
-            chat = 0)
+            chat = 0, &
+            with_radiation = .true.)
     end select
        
     write (u, "(A)")  "* Initialize structure-function object"
@@ -18360,7 +18419,7 @@ structure function.
     write (u, "(A)")  "* Recover x from momenta"
     write (u, "(A)")
 
-    q = interaction_get_momenta (sf_int%interaction_t, outgoing=.true.)
+    q = sf_int%get_momenta (outgoing=.true.)
     call sf_int%final ()
     deallocate (sf_int)
 
@@ -18369,7 +18428,7 @@ structure function.
     call sf_int%set_beam_index ([1, 2])
 
     call sf_int%seed_kinematics ([k1, k2])
-    call interaction_set_momenta (sf_int%interaction_t, q, outgoing=.true.)
+    call sf_int%set_momenta (q, outgoing=.true.)
     call sf_int%recover_x (x)
 
     write (u, "(A,9(1x,F10.7))")  "x =", x
@@ -18442,7 +18501,8 @@ Construct and evaluate a structure function object in generator mode.
             ver = 0, &
             rev = 0, &
             acc = "SBAND", &
-            chat = 0)
+            chat = 0, &
+            with_radiation = .true.)
        call data%set_generator_mode (rng_factory)
     end select
        
@@ -18594,8 +18654,8 @@ The CIRCE2 parameters are: file and collider specification, incoming
 <<SF circe2: circe2 data: TBP>>=
   procedure :: init => circe2_data_init
 <<SF circe2: procedures>>=
-  subroutine circe2_data_init &
-       (data, os_data, model, pdg_in, sqrts, polarized, file, design)
+  subroutine circe2_data_init (data, os_data, model, pdg_in, &
+       sqrts, polarized, file, design)
     class(circe2_data_t), intent(out) :: data
     type(os_data_t), intent(in) :: os_data
     class(model_data_t), intent(in), target :: model
@@ -18902,7 +18962,17 @@ helicities.
             null_array, [0._default, 0._default])    
        sf_int%data => data              
        if (data%polarized) then
-          call sf_int%selector%init (data%lumi_hel_frac)
+          if (sum (data%lumi_hel_frac) == 0 .or. &
+               any (data%lumi_hel_frac < 0)) then
+             call msg_fatal ("Circe2: Helicity-dependent lumi " &
+                  // "fractions all vanish or",  &
+                  [var_str ("are negative: Please inspect the " &
+                  // "CIRCE2 file or "), &
+                   var_str ("switch off the polarized" // &
+                  " option for Circe2.")])
+          else             
+             call sf_int%selector%init (data%lumi_hel_frac)
+          end if
        end if
        call col0%init ()
        call qn(1)%init (flv = data%flv_in(1), col = col0)
@@ -18915,15 +18985,15 @@ helicities.
              call hel%init (data%h2(h))
              call qn(4)%init &
                   (flv = data%flv_in(2), col = col0, hel = hel)
-             call interaction_add_state (sf_int%interaction_t, qn)
+             call sf_int%add_state (qn)
           end do
        else
           call qn(3)%init (flv = data%flv_in(1), col = col0)
           call qn(4)%init (flv = data%flv_in(2), col = col0)
           call qn(3:4)%tag_radiated ()
-          call interaction_add_state (sf_int%interaction_t, qn)
+          call sf_int%add_state (qn)
        end if
-       call interaction_freeze (sf_int%interaction_t)
+       call sf_int%freeze ()
        call sf_int%set_incoming ([1,2])
        call sf_int%set_outgoing ([3,4])
        call sf_int%data%rng_factory%make (sf_int%rng_obj%rng)
@@ -19049,7 +19119,7 @@ the interaction has only one entry, and the factor is unity.
       else
          h = 1
       end if
-      call interaction_set_matrix_element (sf_int%interaction_t, h, f)
+      call sf_int%set_matrix_element (h, f)
     end associate
     sf_int%status = SF_EVALUATED
   end subroutine circe2_apply
@@ -19748,7 +19818,7 @@ transfer.
              call qn(2)%tag_radiated ()
              call qn(3)%init ( &
                   flv = flv, col = color_from_flavor (flv, 1, reverse=.true.))
-             call interaction_add_state (sf_int%interaction_t, qn)
+             call sf_int%add_state (qn)
           end if
        end do
        if (data%has_photon .and. data%mask_photon) then
@@ -19759,9 +19829,9 @@ transfer.
           call qn(2)%tag_radiated ()
           call qn(3)%init (flv = flv, &
                col = color_from_flavor (flv, 1, reverse = .true.))
-          call interaction_add_state (sf_int%interaction_t, qn)
+          call sf_int%add_state (qn)
        end if
-       call interaction_freeze (sf_int%interaction_t)
+       call sf_int%freeze ()
        call sf_int%set_incoming ([1])
        call sf_int%set_radiated ([2])
        call sf_int%set_outgoing ([3])
@@ -19897,7 +19967,7 @@ adjusting to the $x$ and $Q$ bounds.  Account for the Jacobian.
          fc = max (pack (ff, data%mask), 0._default)
       end if
     end associate
-    call interaction_set_matrix_element (sf_int%interaction_t, fc)
+    call sf_int%set_matrix_element (fc)
     sf_int%status = SF_EVALUATED
   end subroutine pdf_builtin_apply
 
@@ -20125,7 +20195,7 @@ structure function.
     write (u, "(A)")  "* Recover x from momenta"
     write (u, "(A)")
 
-    q = interaction_get_momenta (sf_int%interaction_t, outgoing=.true.)
+    q = sf_int%get_momenta (outgoing=.true.)
     call sf_int%final ()
     deallocate (sf_int)
 
@@ -20134,7 +20204,7 @@ structure function.
     call sf_int%set_beam_index ([1])
 
     call sf_int%seed_kinematics ([k])
-    call interaction_set_momenta (sf_int%interaction_t, q, outgoing=.true.)
+    call sf_int%set_momenta (q, outgoing=.true.)
     call sf_int%recover_x (x)
 
     write (u, "(A,9(1x,F10.7))")  "x =", x
@@ -20984,7 +21054,7 @@ to the physical particle mass, but keep the radiated mass zero.
              call qn(2)%tag_radiated ()
              call qn(3)%init ( &
                   flv = flv, col = color_from_flavor (flv, 1, reverse=.true.))
-             call interaction_add_state (sf_int%interaction_t, qn)
+             call sf_int%add_state (qn)
           end if
        end do
        if (data%has_photon .and. data%mask_photon) then
@@ -20995,9 +21065,9 @@ to the physical particle mass, but keep the radiated mass zero.
           call qn(2)%tag_radiated ()
           call qn(3)%init (flv = flv, &
                col = color_from_flavor (flv, 1, reverse=.true.))
-          call interaction_add_state (sf_int%interaction_t, qn)
+          call sf_int%add_state (qn)
        end if
-       call interaction_freeze (sf_int%interaction_t)
+       call sf_int%freeze ()
        call sf_int%set_incoming ([1])
        call sf_int%set_radiated ([2])
        call sf_int%set_outgoing ([3])
@@ -21090,7 +21160,7 @@ to $x=1$).  We set these unphysical values to zero.
          fc = max (pack (ff / x, data%mask), 0._default)
       end if
     end associate
-    call interaction_set_matrix_element (sf_int%interaction_t, fc)
+    call sf_int%set_matrix_element (fc)
     sf_int%status = SF_EVALUATED
   end subroutine lhapdf_apply
   
@@ -21339,7 +21409,7 @@ structure function.
     write (u, "(A)")  "* Recover x from momenta"
     write (u, "(A)")
 
-    q = interaction_get_momenta (sf_int%interaction_t, outgoing=.true.)
+    q = sf_int%get_momenta (outgoing=.true.)
     call sf_int%final ()
     deallocate (sf_int)
 
@@ -21348,7 +21418,7 @@ structure function.
     call sf_int%set_beam_index ([1])
 
     call sf_int%seed_kinematics ([k])
-    call interaction_set_momenta (sf_int%interaction_t, q, outgoing=.true.)
+    call sf_int%set_momenta (q, outgoing=.true.)
     call sf_int%recover_x (x)
 
     write (u, "(A,9(1x,F10.7))")  "x =", x

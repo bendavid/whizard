@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -130,7 +130,7 @@ contains
     real(default) :: tp, tm
     if (present (x))  d%x = x
     if (present (xb)) d%xb = xb
-    if (d%xb /= 0) then
+    if (.not. vanishes (d%xb)) then
        d%pb = sqrt (max (d%E**2 - d%u / d%xb**2, 0._default))
     else
        d%pb = 0

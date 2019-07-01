@@ -38,23 +38,33 @@ SUBDIRS = \
   testing \
   system \
   combinatorics parsing rng expr_base \
+  sindarin \
   physics qft \
   fastjet \
   types \
   matrix_elements \
   hepmc lcio particles \
-  lhapdf lhapdf5 pdf_builtin hoppet beams \
+  lhapdf \
+  lhapdf5 \
+  pdf_builtin \
+  hoppet \
+  beams \
   me_methods \
   stdhep xdr events \
   phase_space \
-  mci \
-  shower muli \
+  mci variables \
+  muli shower \
   user \
-  blha \
-  gosam fks \
-  variables model_features \
+  fks blha \
+  gosam openloops \
+  looptools \
+  model_features \
+  process_integration \
+  powheg \
+  transforms \
   whizard-core \
-  prebuilt models
+  prebuilt \
+  models
 if MPOST_AVAILABLE
 SUBDIRS += gamelan feynmf
 endif
@@ -74,6 +84,7 @@ libomega_la_SOURCES =
 ## Collect the various partial libraries
 libwhizard_la_LIBADD = \
   whizard-core/libwhizard_core.la \
+  transforms/libtransforms.la \
   ../vamp/src/libvamp.la \
   ../circe1/src/libcirce1.la \
   ../circe2/src/libcirce2.la \
@@ -82,8 +93,11 @@ libwhizard_la_LIBADD = \
   pdf_builtin/libpdf_builtin.la \
   model_features/libmodel_features.la \
   variables/libvariables.la \
+  process_integration/libprocess_integration.la \
+  powheg/libpowheg.la \
   fks/libfks.la \
   gosam/libgosam.la \
+  openloops/liboloops.la \
   blha/libblha.la \
   user/libuser.la \
   mci/libmci.la \
@@ -97,6 +111,7 @@ libwhizard_la_LIBADD = \
   types/libtypes.la \
   qft/libqft.la \
   physics/libphysics.la \
+  sindarin/libsindarin.la \
   expr_base/libexpr_base.la \
   rng/librng.la \
   parsing/libparsing.la \
@@ -160,6 +175,12 @@ else
 libwhizard_la_LIBADD += fastjet/libFastjetWrap_dummy.la
 endif 
 
+if LOOPTOOLS_AVAILABLE 
+libwhizard_la_LIBADD += $(LDFLAGS_LOOPTOOLS) looptools/liblooptools.la 
+else 
+libwhizard_la_LIBADD += looptools/liblooptools_dummy.la 
+endif 
+
 ## -------------------------------------------------------------------
 ## Build a standalone program
 bin_PROGRAMS = whizard 
@@ -179,6 +200,7 @@ whizard_LDADD += $(LDFLAGS_HEPMC)
 whizard_LDADD += $(LDFLAGS_LCIO)
 whizard_LDADD += $(LDFLAGS_HOPPET)
 whizard_LDADD += $(FASTJET_LIBS)
+whizard_LDADD += $(LDFLAGS_LOOPTOOLS)
 
 AM_FCFLAGS =
 

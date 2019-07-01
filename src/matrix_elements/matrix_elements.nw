@@ -109,7 +109,7 @@ types, no type-bound procedures.
   procedure :: get_flv_state => process_constants_get_flv_state
 <<Process constants: procedures>>=
   function process_constants_get_flv_state (prc_const) result (flv_state)
-    class(process_constants_t), intent(inout) :: prc_const
+    class(process_constants_t), intent(in) :: prc_const
     integer, dimension(:,:), allocatable :: flv_state
     flv_state = prc_const%flv_state
   end function process_constants_get_flv_state
@@ -120,7 +120,7 @@ types, no type-bound procedures.
   procedure :: get_hel_state => process_constants_get_hel_state
 <<Process constants: procedures>>=
   subroutine process_constants_get_hel_state (prc_const, hel_state)
-    class(process_constants_t), intent(inout) :: prc_const
+    class(process_constants_t), intent(in) :: prc_const
     integer, dimension(:,:), allocatable :: hel_state
     hel_state = prc_const%hel_state
   end subroutine process_constants_get_hel_state
@@ -131,7 +131,7 @@ types, no type-bound procedures.
   procedure :: get_col_state => process_constants_get_col_state
 <<Process constants: procedures>>=
   subroutine process_constants_get_col_state (prc_const, col_state)
-    class(process_constants_t), intent(inout) :: prc_const
+    class(process_constants_t), intent(in) :: prc_const
     integer, dimension(:,:,:), allocatable :: col_state
     col_state = prc_const%col_state
   end subroutine process_constants_get_col_state
@@ -142,7 +142,7 @@ types, no type-bound procedures.
   procedure :: get_ghost_flag => process_constants_get_ghost_flag
 <<Process constants: procedures>>=
   function process_constants_get_ghost_flag (prc_const) result(ghost_flag)
-   class(process_constants_t), intent(inout) :: prc_const
+   class(process_constants_t), intent(in) :: prc_const
    logical, dimension(:,:), allocatable :: ghost_flag
    ghost_flag = prc_const%ghost_flag
   end function process_constants_get_ghost_flag
@@ -153,7 +153,7 @@ types, no type-bound procedures.
   procedure :: get_color_factors => process_constants_get_color_factors
 <<Process constants: procedures>>=
   subroutine process_constants_get_color_factors (prc_const, col_facts)
-   class(process_constants_t), intent(inout) :: prc_const
+   class(process_constants_t), intent(in) :: prc_const
    complex(default), intent(inout), dimension(:), allocatable :: col_facts
    col_facts = prc_const%color_factors
   end subroutine process_constants_get_color_factors
@@ -164,7 +164,7 @@ types, no type-bound procedures.
   procedure :: get_cf_index => process_constants_get_cf_index
 <<Process constants: procedures>>=
   subroutine process_constants_get_cf_index (prc_const, cf_index)
-    class(process_constants_t), intent(inout) :: prc_const
+    class(process_constants_t), intent(in) :: prc_const
     integer, intent(inout), dimension(:,:), allocatable :: cf_index
     cf_index = prc_const%cf_index
   end subroutine process_constants_get_cf_index
@@ -4657,6 +4657,7 @@ module process_libraries
   use unit_tests
   use diagnostics
   use md5
+  use physics_defs
   use os_interface
   use lexers
   use model_data
@@ -4763,7 +4764,7 @@ We assume that no finalizer is needed.
      type(string_t) :: description
      class(prc_core_def_t), allocatable :: core_def
      character(32) :: md5sum = ""
-     type(string_t) :: nlo_type
+     integer :: nlo_type = BORN
      integer :: associated_born = 0
      integer :: associated_real = 0
      integer :: associated_virt = 0
@@ -5105,15 +5106,12 @@ abstract type.
                => process_component_def_get_association_list
   procedure :: is_active_nlo_component &
                => process_component_def_is_active_nlo_component
+  procedure :: get_associated_real => process_component_def_get_associated_real
 <<Process libraries: procedures>>=
   function process_component_def_get_nlo_type (component) result (nlo_type)
     class(process_component_def_t), intent(in) :: component
-    type(string_t) :: nlo_type
-    if (component%nlo_type == "") then
-      nlo_type = 'Born'
-    else
-      nlo_type = component%nlo_type
-    end if
+    integer :: nlo_type
+    nlo_type = component%nlo_type
   end function process_component_def_get_nlo_type
 
   function process_component_def_get_associated_born (component) result (i_born)
@@ -5137,9 +5135,16 @@ abstract type.
     list(4) = component%associated_sub
   end function process_component_def_get_association_list
 
+  function process_component_def_get_associated_real (component) result (i_real)
+    class(process_component_def_t), intent(in) :: component
+    integer :: i_real
+    i_real = component%associated_real
+  end function process_component_def_get_associated_real
+
 @ %def process_component_def_get_nlo_type, process_component_def_get_associated_born
 @ %def process_component_def_is_active_nlo_component
 @ %def process_component_def_get_association_list
+@ %def process_component_def_get_associated_real
 @
 \subsubsection{Process definition}
 The process component definitions are collected in a common process
@@ -5391,8 +5396,9 @@ allocation is moved, so the original allocated object is returned empty.
     type(prt_spec_t), dimension(:), intent(in), optional :: prt_in
     type(prt_spec_t), dimension(:), intent(in), optional :: prt_out
     type(string_t), intent(in), optional :: method
-    type(string_t), intent(in), optional :: nlo_type
+    integer, intent(in), optional :: nlo_type
     logical, intent(in), optional :: active
+    type(string_t) :: nlo_type_string
     class(prc_core_def_t), &
          intent(inout), allocatable, optional :: variant
     integer :: p
@@ -5437,12 +5443,30 @@ allocation is moved, so the original allocated object is returned empty.
            if (comp%method /= "") then
               d = d // " [" // comp%method // "]"
            end if
-           if (comp%nlo_type /= "") then
-             d = d // ", [" // comp%nlo_type // "]"
+           nlo_type_string = get_nlo_type_string (comp%nlo_type)
+           if (nlo_type_string /= "Born") then
+             d = d // ", [" // nlo_type_string // "]"
            end if
          end associate
       end if
     end associate
+  contains
+    function get_nlo_type_string (nlo_type) result (nlo_type_string)
+      integer, intent(in) :: nlo_type
+      type(string_t) :: nlo_type_string
+      select case (nlo_type)
+      case (BORN) 
+         nlo_type_string = 'Born'
+      case (NLO_REAL)
+         nlo_type_string = 'Real'
+      case (NLO_VIRTUAL)
+         nlo_type_string = 'Virtual'
+      case (NLO_PDF)
+         nlo_type_string  = 'Pdf'
+      case (NLO_SUBTRACTION)
+         nlo_type_string = 'Subtraction'
+      end select
+    end function get_nlo_type_string
   end subroutine process_def_import_component
 
 @ %def process_def_import_component

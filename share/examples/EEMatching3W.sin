@@ -41,7 +41,7 @@ beams = e1, E1
 
 ?ps_fsr_active = true
 ?hadronization_active = false
-?ps_use_PYTHIA_shower = false
+$shower_method = "WHIZARD"
 ps_fsr_lambda = 0.29
 
 ps_max_n_flavors = 5

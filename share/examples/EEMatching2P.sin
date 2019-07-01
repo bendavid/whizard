@@ -40,7 +40,7 @@ sqrts = 91 GeV
 beams = e1, E1
 
 ?ps_fsr_active = true
-?ps_use_PYTHIA_shower = true
+$shower_method = "PYTHIA6"
 ?hadronization_active = false
 
 ps_max_n_flavors = 5

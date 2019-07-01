@@ -100,6 +100,8 @@ The internal file is a linked list of line entries.
      type(line_entry_t), pointer :: first => null ()
      type(line_entry_t), pointer :: last => null ()
      integer :: n_lines = 0
+   contains
+   <<Ifiles: ifile: TBP>>
   end type ifile_t
 
 @ %def ifile_t
@@ -111,7 +113,7 @@ the file is destroyed.
   public :: ifile_clear
 <<Ifiles: subroutines>>=
   subroutine ifile_clear (ifile)
-    type(ifile_t), intent(inout) :: ifile
+    class(ifile_t), intent(inout) :: ifile
     type(line_entry_t), pointer :: current
     do while (associated (ifile%first))
        current => ifile%first
@@ -126,6 +128,8 @@ the file is destroyed.
 @ The finalizer is just an alias for the above.
 <<Ifiles: public>>=
   public :: ifile_final
+<<Ifiles: ifile: TBP>>=
+  procedure :: final => ifile_clear
 <<Ifiles: interfaces>>=
   interface ifile_final
      module procedure ifile_clear
@@ -191,6 +195,10 @@ there is a variant which reads from another ifile, effectively copying it.
 ifile.  In addition, there is a routine for appending a whole ifile.
 <<Ifiles: public>>=
   public :: ifile_append
+<<Ifiles: ifile: TBP>>=
+  generic :: append => &
+       ifile_append_from_char
+  procedure, private :: ifile_append_from_char
 <<Ifiles: interfaces>>=
   interface ifile_append
      module procedure ifile_append_from_string
@@ -201,7 +209,7 @@ ifile.  In addition, there is a routine for appending a whole ifile.
   end interface
 <<Ifiles: subroutines>>=
   subroutine ifile_append_from_string (ifile, string)
-    type(ifile_t), intent(inout) :: ifile
+    class(ifile_t), intent(inout) :: ifile
     type(string_t), intent(in) :: string
     type(line_entry_t), pointer :: current
     call line_entry_create (current, string)
@@ -217,13 +225,13 @@ ifile.  In addition, there is a routine for appending a whole ifile.
   end subroutine ifile_append_from_string
 
   subroutine ifile_append_from_char (ifile, char)
-    type(ifile_t), intent(inout) :: ifile
+    class(ifile_t), intent(inout) :: ifile
     character(*), intent(in) :: char
     call ifile_append_from_string (ifile, var_str (trim (char)))
   end subroutine ifile_append_from_char
 
   subroutine ifile_append_from_char_array (ifile, char)
-    type(ifile_t), intent(inout) :: ifile
+    class(ifile_t), intent(inout) :: ifile
     character(*), dimension(:), intent(in) :: char
     integer :: i
     do i = 1, size (char)
@@ -232,7 +240,7 @@ ifile.  In addition, there is a routine for appending a whole ifile.
   end subroutine ifile_append_from_char_array
     
   subroutine ifile_append_from_unit (ifile, unit, iostat)
-    type(ifile_t), intent(inout) :: ifile
+    class(ifile_t), intent(inout) :: ifile
     integer, intent(in) :: unit
     integer, intent(out), optional :: iostat
     type(string_t) :: buffer
@@ -251,7 +259,7 @@ ifile.  In addition, there is a routine for appending a whole ifile.
   end subroutine ifile_append_from_unit
     
   subroutine ifile_append_from_ifile (ifile, ifile_in)
-    type(ifile_t), intent(inout) :: ifile
+    class(ifile_t), intent(inout) :: ifile
     type(ifile_t), intent(in) :: ifile_in
     type(line_entry_t), pointer :: current
     current => ifile_in%first
@@ -535,6 +543,8 @@ line pointer is implicitly created by the runtime library.
      type(line_p), pointer :: line => null ()
      integer :: record = 0
      logical :: eof = .false.
+   contains
+   <<Lexer: stream: TBP>>
   end type stream_t
 
 @ %def stream_t
@@ -542,6 +552,18 @@ line pointer is implicitly created by the runtime library.
 be undefined before calling this.
 <<Lexer: public>>=
   public :: stream_init
+<<Lexer: stream: TBP>>=
+  generic :: init => &
+       stream_init_filename, &
+       stream_init_unit, &
+       stream_init_string, &
+       stream_init_ifile, &
+       stream_init_line
+  procedure, private :: stream_init_filename
+  procedure, private :: stream_init_unit
+  procedure, private :: stream_init_string
+  procedure, private :: stream_init_ifile
+  procedure, private :: stream_init_line
 <<Lexer: interfaces>>=
   interface stream_init
      module procedure stream_init_filename
@@ -552,7 +574,7 @@ be undefined before calling this.
   end interface
 <<Lexer: procedures>>=
   subroutine stream_init_filename (stream, filename)
-    type(stream_t), intent(out) :: stream
+    class(stream_t), intent(out) :: stream
     character(*), intent(in) :: filename
     integer :: unit
     unit = free_unit ()
@@ -563,7 +585,7 @@ be undefined before calling this.
   end subroutine stream_init_filename
 
   subroutine stream_init_unit (stream, unit)
-    type(stream_t), intent(out) :: stream
+    class(stream_t), intent(out) :: stream
     integer, intent(in) :: unit
     allocate (stream%unit)
     stream%unit = unit
@@ -571,14 +593,14 @@ be undefined before calling this.
   end subroutine stream_init_unit
     
   subroutine stream_init_string (stream, string)
-    type(stream_t), intent(out) :: stream
+    class(stream_t), intent(out) :: stream
     type(string_t), intent(in) :: string
     allocate (stream%string)
     stream%string = string
   end subroutine stream_init_string
     
   subroutine stream_init_ifile (stream, ifile)
-    type(stream_t), intent(out) :: stream
+    class(stream_t), intent(out) :: stream
     type(ifile_t), intent(in) :: ifile
     type(line_p) :: line
     call line_init (line, ifile)
@@ -588,7 +610,7 @@ be undefined before calling this.
   end subroutine stream_init_ifile
     
   subroutine stream_init_line (stream, line)
-    type(stream_t), intent(out) :: stream
+    class(stream_t), intent(out) :: stream
     type(line_p), intent(in) :: line
     allocate (stream%line)
     stream%line = line
@@ -599,9 +621,11 @@ be undefined before calling this.
 opened, it is closed.
 <<Lexer: public>>=
   public :: stream_final
+<<Lexer: stream: TBP>>=
+  procedure :: final => stream_final
 <<Lexer: procedures>>=
   subroutine stream_final (stream)
-    type(stream_t), intent(inout) :: stream
+    class(stream_t), intent(inout) :: stream
     if (associated (stream%filename)) then
        close (stream%unit)
        deallocate (stream%unit)
@@ -1407,18 +1431,22 @@ messages for the parser.
      integer :: previous_column = 0
      type(string_t) :: buffer
      type(lexer_t), pointer :: parent => null ()
+   contains
+   <<Lexer: lexer: TBP>>
   end type lexer_t
 @ %def lexer_t
 @ Create-setup wrapper
 <<Lexer: public>>=
   public :: lexer_init
+<<Lexer: lexer: TBP>>=
+  procedure :: init => lexer_init
 <<Lexer: procedures>>=
   subroutine lexer_init (lexer, &
        comment_chars, quote_chars, quote_match, &
        single_chars, special_class, &
        keyword_list, upper_case_keywords, &
        parent)
-    type(lexer_t), intent(inout) :: lexer
+    class(lexer_t), intent(inout) :: lexer
     character(*), intent(in) :: comment_chars
     character(*), intent(in) :: quote_chars, quote_match
     character(*), intent(in) :: single_chars
@@ -1444,9 +1472,11 @@ the lexing starts, but it is not known whether the lexer was used
 before.
 <<Lexer: public>>=
   public :: lexer_clear
+<<Lexer: lexer: TBP>>=
+  procedure :: clear => lexer_clear
 <<Lexer: procedures>>=
   subroutine lexer_clear (lexer)
-    type(lexer_t), intent(inout) :: lexer
+    class(lexer_t), intent(inout) :: lexer
     call lexeme_clear (lexer%lexeme)
     lexer%previous_line2 = ""
     lexer%previous_line1 = ""
@@ -1461,10 +1491,12 @@ before.
 @ Reset lexer state and delete setup
 <<Lexer: public>>=
   public :: lexer_final
+<<Lexer: lexer: TBP>>=
+  procedure :: final => lexer_final
 <<Lexer: procedures>>=
   subroutine lexer_final (lexer)
-    type(lexer_t), intent(inout) :: lexer
-    call lexer_clear (lexer)
+    class(lexer_t), intent(inout) :: lexer
+    call lexer%clear ()
     call lexer_setup_final (lexer%setup)
   end subroutine lexer_final
 
@@ -1474,9 +1506,11 @@ before.
 For lexing we need to associate an input stream to the lexer.
 <<Lexer: public>>=
   public :: lexer_assign_stream
+<<Lexer: lexer: TBP>>=
+  procedure :: assign_stream => lexer_assign_stream
 <<Lexer: procedures>>=
   subroutine lexer_assign_stream (lexer, stream)
-    type(lexer_t), intent(inout) :: lexer
+    class(lexer_t), intent(inout) :: lexer
     type(stream_t), intent(in), target :: stream
     lexer%stream => stream
   end subroutine lexer_assign_stream
@@ -1851,6 +1885,9 @@ element (blank, "?", "*", or "+"), mirrored in the flags [[opt]] and
 [[rep]].  Then, we have the character constants used as separators and
 delimiters for this rule.  Finally, the [[used]] flag can be set to
 indicate that this rule is the child of another rule.
+
+Note: we separate [[delimiter_left]] and [[delimiter_right]] because
+the previous fixed dimension(2) array triggered an ICE in gfortran-4.9.2.
 <<Syntax: types>>=
   public :: syntax_rule_t
 <<Syntax: types>>=
@@ -1860,10 +1897,12 @@ indicate that this rule is the child of another rule.
      logical :: used = .false.
      type(string_t) :: keyword
      type(string_t) :: separator
-     type(string_t), dimension(2) :: delimiter
+     type(string_t) :: delimiter_left, delimiter_right
      type(rule_p), dimension(:), allocatable :: child
      character(1) :: modifier = ""
      logical :: opt = .false., rep = .false.
+   contains
+   <<Syntax: syntax rule: TBP>>
   end type syntax_rule_t
 
 @ %def syntax_rule_t
@@ -1901,11 +1940,11 @@ definition.  Setting [[advance]] false will suppress the trailing
 newline.
 <<Syntax: public>>=
   public :: syntax_rule_write
-@ %def syntax_rule_write
-@ 
+<<Syntax: syntax rule: TBP>>=
+  procedure :: write => syntax_rule_write
 <<Syntax: subroutines>>=
   subroutine syntax_rule_write (rule, unit, short, key_only, advance)
-    type(syntax_rule_t), intent(in) :: rule
+    class(syntax_rule_t), intent(in) :: rule
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: short, key_only, advance
     logical :: typ, def, adv
@@ -1924,18 +1963,20 @@ newline.
     case (S_IDENTIFIER); call write_atom ("IDENTIFIER", typ)
     case (S_KEYWORD);    call write_atom ("KEYWORD", typ)
     case (S_QUOTED)
-       call write_quotes (typ, def, del = rule%delimiter)
+       call write_quotes (typ, def, &
+            del = [rule%delimiter_left, rule%delimiter_right])
     case (S_SEQUENCE)
        call write_sequence ("SEQUENCE", typ, def, size (rule%child))
     case (S_GROUP)
        call write_sequence ("GROUP", typ, def, size (rule%child), &
-            del = rule%delimiter)
+            del = [rule%delimiter_left, rule%delimiter_right])
     case (S_LIST)
        call write_sequence ("LIST", typ, def, size (rule%child), &
             sep = rule%separator)
     case (S_ARGS)
        call write_sequence ("ARGUMENTS", typ, def, size (rule%child), &
-            del = rule%delimiter, sep = rule%separator)
+            del = [rule%delimiter_left, rule%delimiter_right], &
+            sep = rule%separator)
     case (S_ALTERNATIVE)
        call write_sequence ("ALTERNATIVE", typ, def, size (rule%child), &
             sep = var_str ("|"))
@@ -2049,9 +2090,11 @@ Set the separator and delimiter entries, using defaults:
     type(syntax_rule_t), intent(inout) :: rule
     type(string_t), dimension(2), intent(in), optional :: delimiter
     if (present (delimiter)) then
-       rule%delimiter = delimiter
+       rule%delimiter_left = delimiter(1)
+       rule%delimiter_right = delimiter(2)
     else
-       rule%delimiter = ["(", ")"]
+       rule%delimiter_left = "("
+       rule%delimiter_right = ")"
     end if
   end subroutine syntax_rule_set_delimiter
 
@@ -2093,14 +2136,17 @@ Set the separator and delimiter entries, using defaults:
     case (S_IGNORE, S_LOGICAL, S_INTEGER, S_REAL, S_COMPLEX, &
              S_IDENTIFIER, S_KEYWORD)
     case (S_QUOTED)
-       if (any (rule%delimiter == "")) call bug (" Missing quote character(s)")
+       if (rule%delimiter_left == "" .or. rule%delimiter_right == "") &
+            call bug (" Missing quote character(s)")
     case (S_SEQUENCE)
     case (S_GROUP)
-       if (any (rule%delimiter == "")) call bug (" Missing delimiter(s)")
+       if (rule%delimiter_left == "" .or. rule%delimiter_right == "") &
+            call bug (" Missing delimiter(s)")
     case (S_LIST)
        if (rule%separator == "") call bug (" Missing separator")
     case (S_ARGS)
-       if (any (rule%delimiter == "")) call bug (" Missing delimiter(s)")
+       if (rule%delimiter_left == "" .or. rule%delimiter_right == "") &
+            call bug (" Missing delimiter(s)")
        if (rule%separator == "") call bug (" Missing separator")
     case (S_ALTERNATIVE)
     case default
@@ -2141,10 +2187,12 @@ This is the API for syntax rules:
 @ %def syntax_rule_get_type
 <<Syntax: public>>=
   public :: syntax_rule_get_key
+<<Syntax: syntax rule: TBP>>=
+  procedure :: get_key => syntax_rule_get_key
 <<Syntax: subroutines>>=
   function syntax_rule_get_key (rule) result (key)
+    class(syntax_rule_t), intent(in) :: rule
     type(string_t) :: key
-    type(syntax_rule_t), intent(in) :: rule
     key = rule%keyword
   end function syntax_rule_get_key
 
@@ -2162,7 +2210,7 @@ This is the API for syntax rules:
   function syntax_rule_get_delimiter (rule) result (delimiter)
     type(string_t), dimension(2) :: delimiter
     type(syntax_rule_t), intent(in) :: rule
-    delimiter = rule%delimiter
+    delimiter = [rule%delimiter_left, rule%delimiter_right]
   end function syntax_rule_get_delimiter
 
 @ %def syntax_rule_get_separator syntax_rule_get_delimiter
@@ -2550,8 +2598,8 @@ in the list.
       end select
       select case (rule%type)
       case (S_GROUP, S_ARGS)
-         call keyword_list_add (keyword_list, rule%delimiter(1))
-         call keyword_list_add (keyword_list, rule%delimiter(2))
+         call keyword_list_add (keyword_list, rule%delimiter_left)
+         call keyword_list_add (keyword_list, rule%delimiter_right)
       end select
       select case (rule%type)
       case (S_SEQUENCE, S_GROUP, S_LIST, S_ARGS, S_ALTERNATIVE)
@@ -3386,10 +3434,15 @@ The token extractor returns a pointer.
   public :: parse_node_get_sub_ptr
   public :: parse_node_get_next_ptr
   public :: parse_node_get_last_sub_ptr
+<<Parser: parse node: TBP>>=
+  procedure :: get_rule_ptr => parse_node_get_rule_ptr
+  procedure :: get_n_sub => parse_node_get_n_sub
+  procedure :: get_sub_ptr => parse_node_get_sub_ptr
+  procedure :: get_next_ptr => parse_node_get_next_ptr
 <<Parser: procedures>>=
   function parse_node_get_rule_ptr (node) result (rule)
+    class(parse_node_t), intent(in) :: node
     type(syntax_rule_t), pointer :: rule
-    type(parse_node_t), intent(in), target :: node
     if (associated (node%rule)) then
        rule => node%rule
     else
@@ -3399,14 +3452,14 @@ The token extractor returns a pointer.
   end function parse_node_get_rule_ptr
 
   function parse_node_get_n_sub (node) result (n)
+    class(parse_node_t), intent(in) :: node 
     integer :: n
-    type(parse_node_t), intent(in) :: node 
     n = node%n_sub
   end function parse_node_get_n_sub
 
   function parse_node_get_sub_ptr (node, n, tag, required) result (sub)
+    class(parse_node_t), intent(in), target :: node
     type(parse_node_t), pointer :: sub
-    type(parse_node_t), intent(in), target :: node
     integer, intent(in), optional :: n
     character(*), intent(in), optional :: tag
     logical, intent(in), optional :: required
@@ -3425,8 +3478,8 @@ The token extractor returns a pointer.
   end function parse_node_get_sub_ptr
   
   function parse_node_get_next_ptr (sub, n, tag, required) result (next)
+    class(parse_node_t), intent(in), target :: sub
     type(parse_node_t), pointer :: next
-    type(parse_node_t), intent(in), target :: sub
     integer, intent(in), optional :: n
     character(*), intent(in), optional :: tag
     logical, intent(in), optional :: required
@@ -3510,34 +3563,40 @@ actual nodes do not match
   public :: parse_node_get_string
   public :: parse_node_get_key
   public :: parse_node_get_rule_key
+<<Parser: parse node: TBP>>=
+  procedure :: get_logical => parse_node_get_logical
+  procedure :: get_integer => parse_node_get_integer
+  procedure :: get_real => parse_node_get_real
+  procedure :: get_cmplx => parse_node_get_cmplx
+  procedure :: get_string => parse_node_get_string
 <<Parser: procedures>>=
   function parse_node_get_logical (node) result (lval)
+    class(parse_node_t), intent(in), target :: node
     logical :: lval
-    type(parse_node_t), intent(in), target :: node
     lval = token_get_logical (parse_node_get_token_ptr (node))
   end function parse_node_get_logical
 
   function parse_node_get_integer (node) result (ival)
+    class(parse_node_t), intent(in), target :: node
     integer :: ival
-    type(parse_node_t), intent(in), target :: node
     ival = token_get_integer (parse_node_get_token_ptr (node))
   end function parse_node_get_integer
 
   function parse_node_get_real (node) result (rval)
+    class(parse_node_t), intent(in), target :: node
     real(default) :: rval
-    type(parse_node_t), intent(in), target :: node
     rval = token_get_real (parse_node_get_token_ptr (node))
   end function parse_node_get_real
   
   function parse_node_get_cmplx (node) result (cval)
+    class(parse_node_t), intent(in), target :: node
     complex(default) :: cval
-    type(parse_node_t), intent(in), target :: node
     cval = token_get_cmplx (parse_node_get_token_ptr (node))
   end function parse_node_get_cmplx
 
   function parse_node_get_string (node) result (sval)
+    class(parse_node_t), intent(in), target :: node
     type(string_t) :: sval
-    type(parse_node_t), intent(in), target :: node
     sval = token_get_string (parse_node_get_token_ptr (node))
   end function parse_node_get_string
 
@@ -3594,6 +3653,8 @@ token, while branch nodes point to a list of sub-nodes.
   type :: parse_tree_t
      private
      type(parse_node_t), pointer :: root_node => null ()
+   contains
+   <<Parser: parse tree: TBP>>
   end type parse_tree_t
 
 @ %def parse_tree_t
@@ -3614,10 +3675,12 @@ Failure at the top level means that no rule could match at all; in
 this case the error message will show the top rule.
 <<Parser: public>>=
   public :: parse_tree_init
+<<Parser: parse tree: TBP>>=
+  procedure :: parse => parse_tree_init
 <<Parser: procedures>>=
   subroutine parse_tree_init &
        (parse_tree, syntax, lexer, key, check_eof)
-    type(parse_tree_t), intent(inout) :: parse_tree
+    class(parse_tree_t), intent(inout) :: parse_tree
     type(lexer_t), intent(inout) :: lexer
     type(syntax_t), intent(in), target :: syntax
     type(string_t), intent(in), optional :: key
@@ -3887,9 +3950,11 @@ turn deallocates the token or sub-node array contained within each of
 them.  At the end, only the top node remains to be deallocated.
 <<Parser: public>>=
   public :: parse_tree_final
+<<Parser: parse tree: TBP>>=
+  procedure :: final => parse_tree_final
 <<Parser: procedures>>=
   subroutine parse_tree_final (parse_tree)
-    type(parse_tree_t), intent(inout) :: parse_tree
+    class(parse_tree_t), intent(inout) :: parse_tree
     if (associated (parse_tree%root_node)) then
        call parse_node_final (parse_tree%root_node)
        deallocate (parse_tree%root_node)
@@ -3903,9 +3968,11 @@ to the depth of the node.
 The [[verbose]] version includes type identifiers for the nodes.
 <<Parser: public>>=
   public :: parse_tree_write
+<<Parser: parse tree: TBP>>=
+  procedure :: write => parse_tree_write
 <<Parser: procedures>>=
   subroutine parse_tree_write (parse_tree, unit, verbose)
-    type(parse_tree_t), intent(in) :: parse_tree
+    class(parse_tree_t), intent(in) :: parse_tree
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: verbose
     integer :: u
@@ -3941,10 +4008,12 @@ For scanning the parse tree we give access to the top node, as a node
 pointer.  Of course, there should be no write access.
 <<Parser: public>>=
   public :: parse_tree_get_root_ptr
+<<Parser: parse tree: TBP>>=
+  procedure :: get_root_ptr => parse_tree_get_root_ptr
 <<Parser: procedures>>=
   function parse_tree_get_root_ptr (parse_tree) result (node)
+    class(parse_tree_t), intent(in) :: parse_tree
     type(parse_node_t), pointer :: node
-    type(parse_tree_t), intent(in), target :: parse_tree
     node => parse_tree%root_node
   end function parse_tree_get_root_ptr
 
@@ -4223,55 +4292,16 @@ and presented to the caller for the next read.
   end type cstream_t
   
 @ %def cached_stream
-@ The initializers are simply inherited.  We require a generic.
-<<XML: cstream: TBP>>=
-  generic :: init => init_filename, init_unit, init_string, &
-       init_ifile, init_line
-  procedure :: init_filename => cstream_init_filename
-  procedure :: init_unit => cstream_init_unit
-  procedure :: init_string => cstream_init_string
-  procedure :: init_ifile => cstream_init_ifile
-  procedure :: init_line => cstream_init_line
-<<XML: procedures>>=
-  subroutine cstream_init_filename (cstream, filename)
-    class(cstream_t), intent(out) :: cstream
-    character(*), intent(in) :: filename
-    call stream_init (cstream%stream_t, filename)
-  end subroutine cstream_init_filename
+@ The initializers are simply inherited.
 
-  subroutine cstream_init_unit (cstream, unit)
-    class(cstream_t), intent(out) :: cstream
-    integer, intent(in) :: unit
-    call stream_init (cstream%stream_t, unit)
-  end subroutine cstream_init_unit
-    
-  subroutine cstream_init_string (cstream, string)
-    class(cstream_t), intent(out) :: cstream
-    type(string_t), intent(in) :: string
-    call stream_init (cstream%stream_t, string)
-  end subroutine cstream_init_string
-    
-  subroutine cstream_init_ifile (cstream, ifile)
-    class(cstream_t), intent(out) :: cstream
-    type(ifile_t), intent(in) :: ifile
-    call stream_init (cstream%stream_t, ifile)
-  end subroutine cstream_init_ifile
-    
-  subroutine cstream_init_line (cstream, line)
-    class(cstream_t), intent(out) :: cstream
-    type(line_p), intent(in) :: line
-    call stream_init (cstream%stream_t, line)
-  end subroutine cstream_init_line
-    
-@ %def cstream_init
-@ Finalizer: also inherited
+Finalizer: also inherited, in essence:
 <<XML: cstream: TBP>>=
   procedure :: final => cstream_final
 <<XML: procedures>>=
-  subroutine cstream_final (cstream)
-    class(cstream_t), intent(inout) :: cstream
-    cstream%cache_is_empty = .true.
-    call stream_final (cstream%stream_t)
+  subroutine cstream_final (stream)
+    class(cstream_t), intent(inout) :: stream
+    stream%cache_is_empty = .true.
+    call stream%stream_t%final ()
   end subroutine cstream_final
   
 @ %def cstream_final

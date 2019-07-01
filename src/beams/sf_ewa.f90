@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -386,8 +386,7 @@ contains
                 qn = qn_hel(1) .merge. qn_fc(1)
                 qn_rad = qn
                 call qn_rad%tag_radiated ()
-                call interaction_add_state &
-                     (sf_int%interaction_t, [qn, qn_rad, qn_z])
+                call sf_int%add_state ([qn, qn_rad, qn_z])
                 call it_hel%advance ()
              end do
              call polarization_final (pol)
@@ -430,8 +429,7 @@ contains
                 qn = qn_hel(1) .merge. qn_fc(1)
                 qn_rad = qn_hel(1) .merge. qn_fc_fin(1)
                 call qn_rad%tag_radiated ()
-                call interaction_add_state &
-                     (sf_int%interaction_t, [qn, qn_rad, qn_w])
+                call sf_int%add_state ([qn, qn_rad, qn_w])
                 call it_hel%advance ()
              end do
              call polarization_final (pol)    
@@ -439,7 +437,7 @@ contains
        case default
           call msg_fatal ("EWA initialization failed: wrong particle type.")
        end select
-       call interaction_freeze (sf_int%interaction_t)
+       call sf_int%freeze ()
        if (data%keep_momentum) then
           if (data%keep_energy) then
              call msg_fatal ("EWA: momentum and energy" // &
@@ -464,13 +462,13 @@ contains
     type(flavor_t) :: flv
     real(default) :: q, t3
     integer :: i
-    sf_int%n_me = interaction_get_n_matrix_elements (sf_int%interaction_t) 
+    sf_int%n_me = sf_int%get_n_matrix_elements () 
     allocate (sf_int%cv (sf_int%n_me))
     allocate (sf_int%ca (sf_int%n_me))
     associate (data => sf_int%data)
       select case (data%id)
       case (23)
-         call it%init (interaction_get_state_matrix_ptr (sf_int%interaction_t))
+         call it%init (sf_int%interaction_t%get_state_matrix_ptr ())
          do while (it%is_valid ())
             i = it%get_me_index ()
             flv = it%get_flavor (1)
@@ -488,7 +486,7 @@ contains
             call it%advance ()
          end do
       case (24)
-         call it%init (interaction_get_state_matrix_ptr (sf_int%interaction_t))
+         call it%init (sf_int%interaction_t%get_state_matrix_ptr ())
          do while (it%is_valid ())
             i = it%get_me_index ()
             flv = it%get_flavor (1)
@@ -515,7 +513,7 @@ contains
     logical, intent(in) :: map
     real(default) :: xb1, e_1
     real(default) :: x0, x1, lx0, lx1, lx
-    e_1 = energy (interaction_get_momentum (sf_int%interaction_t, 1))
+    e_1 = energy (sf_int%get_momentum (1))
     if (sf_int%data%keep_momentum .or. sf_int%data%keep_energy) then
        select case (sf_int%data%id)
        case (23)
@@ -573,7 +571,7 @@ contains
     real(default) :: x0, x1, lx0, lx1, lx, e_1
     logical :: set_mom
     set_mom = .false.;  if (present (set_momenta))  set_mom = set_momenta
-    e_1 = energy (interaction_get_momentum (sf_int%interaction_t, 1))    
+    e_1 = energy (sf_int%get_momentum (1))    
     if (sf_int%data%keep_momentum .or. sf_int%data%keep_energy) then
        select case (sf_int%data%id)
        case (23)
@@ -654,8 +652,7 @@ contains
             fm = fm / f
             fL = fL / f      
          end if
-         call interaction_set_matrix_element &
-              (sf_int%interaction_t, i, cmplx (f, kind=default))
+         call sf_int%set_matrix_element (i, cmplx (f, kind=default))
       end do
     end associate
     sf_int%status = SF_EVALUATED
@@ -828,7 +825,7 @@ contains
     write (u, "(A)")  "* Recover x from momenta"
     write (u, "(A)")
     
-    q = interaction_get_momenta (sf_int%interaction_t, outgoing=.true.)
+    q = sf_int%get_momenta (outgoing=.true.)
     call sf_int%final ()
     deallocate (sf_int)
     
@@ -838,7 +835,7 @@ contains
     call sf_int%setup_constants ()
     
     call sf_int%seed_kinematics ([k])
-    call interaction_set_momenta (sf_int%interaction_t, q, outgoing=.true.)
+    call sf_int%set_momenta (q, outgoing=.true.)
     call sf_int%recover_x (x)
     call sf_int%inverse_kinematics (x, f, r, rb, map=.false., &
          set_momenta=.true.)
@@ -941,7 +938,7 @@ contains
     write (u, "(A)")  "* Recover x from momenta"
     write (u, "(A)")
     
-    q = interaction_get_momenta (sf_int%interaction_t, outgoing=.true.)
+    q = sf_int%get_momenta (outgoing=.true.)
     call sf_int%final ()
     deallocate (sf_int)
     
@@ -951,7 +948,7 @@ contains
     call sf_int%setup_constants ()
     
     call sf_int%seed_kinematics ([k])
-    call interaction_set_momenta (sf_int%interaction_t, q, outgoing=.true.)
+    call sf_int%set_momenta (q, outgoing=.true.)
     call sf_int%recover_x (x)
     call sf_int%inverse_kinematics (x, f, r, rb, map=.true., &
          set_momenta=.true.)
@@ -1054,7 +1051,7 @@ contains
     write (u, "(A)")  "* Recover x and r from momenta"
     write (u, "(A)")
     
-    q = interaction_get_momenta (sf_int%interaction_t, outgoing=.true.)
+    q = sf_int%get_momenta (outgoing=.true.)
     call sf_int%final ()
     deallocate (sf_int)
     
@@ -1064,7 +1061,7 @@ contains
     call sf_int%setup_constants ()
     
     call sf_int%seed_kinematics ([k])
-    call interaction_set_momenta (sf_int%interaction_t, q, outgoing=.true.)
+    call sf_int%set_momenta (q, outgoing=.true.)
     call sf_int%recover_x (x)
     call sf_int%inverse_kinematics (x, f, r, rb, map=.true., &
          set_momenta=.true.)    

@@ -1,0 +1,17 @@
+* Test output: object_integer_1
+*   Purpose: construct integer value objects
+
+* Integer objects: prototype
+
+object integer ||abstract||
+
+* Integer objects: zero, positive, negative, undefined
+
+integer pos ||constant|| = 42
+integer neg ||constant|| = -1234567890
+integer zero ||constant|| = 0
+integer undef ||constant|| = ???
+
+* Cleanup
+
+* Test output end: object_integer_1

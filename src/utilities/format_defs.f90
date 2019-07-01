@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -37,11 +37,11 @@ module format_defs
 
   character(*), parameter, public :: FMT_19 = "ES19.12"
   character(*), parameter, public :: FMT_18 = "ES18.11"
-  character(*), parameter, public :: FMT_17 = "ES17.10"  
+  character(*), parameter, public :: FMT_17 = "ES17.10"
   character(*), parameter, public :: FMT_16 = "ES16.9"
   character(*), parameter, public :: FMT_15 = "ES15.8"
-  character(*), parameter, public :: FMT_14 = "ES14.7"    
-  character(*), parameter, public :: FMT_13 = "ES13.6"    
+  character(*), parameter, public :: FMT_14 = "ES14.7"
+  character(*), parameter, public :: FMT_13 = "ES13.6"
   character(*), parameter, public :: FMT_12 = "ES12.5"
   character(*), parameter, public :: FMT_11 = "ES11.4"
   character(*), parameter, public :: FMT_10 = "ES10.3"

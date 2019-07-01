@@ -1,4 +1,4 @@
-(* $Id: modellib_BSM.mli 6465 2015-01-10 15:22:31Z jr_reuter $
+(* $Id: modellib_BSM.mli 6943 2015-05-01 10:53:21Z msekulla $
 
    Copyright (C) 1999-2015 by
 
@@ -76,11 +76,17 @@ module type SSC_flags =
     val ckm_present : bool
     val top_anom : bool
     val top_anom_4f : bool
+    val cf_arbitrary : bool
+    val higgs_matrix : bool
   end
 
 module SSC_kmatrix: SSC_flags
 
+module SSC_kmatrix_2: SSC_flags
+
 module SSC: functor (F : SSC_flags) -> Model.Gauge with module Ch = Charges.QQ
+
+module SSC_AltT: functor (F : SSC_flags) -> Model.Gauge with module Ch = Charges.QQ
 
 
 (*i

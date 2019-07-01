@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -75,7 +75,8 @@ module sf_circe1
      integer :: ver = 0 
      integer :: rev = 0      
      character(6) :: acc = "?"
-     integer :: chat = 0    
+     integer :: chat = 0
+     logical :: with_radiation = .false.
    contains  
        procedure :: init => circe1_data_init 
        procedure :: set_generator_mode => circe1_data_set_generator_mode
@@ -117,7 +118,7 @@ contains
 
   subroutine circe1_data_init &
        (data, model, pdg_in, sqrts, eps, out_photon, &
-        ver, rev, acc, chat)
+        ver, rev, acc, chat, with_radiation)
     class(circe1_data_t), intent(out) :: data 
     class(model_data_t), intent(in), target :: model
     type(pdg_array_t), dimension(2), intent(in) :: pdg_in
@@ -126,6 +127,7 @@ contains
     logical, dimension(2), intent(in) :: out_photon
     character(*), intent(in) :: acc
     integer, intent(in) :: ver, rev, chat 
+    logical, intent(in) :: with_radiation
     data%model => model 
     if (any (pdg_array_get_length (pdg_in) /= 1)) then
        call msg_fatal ("CIRCE1: incoming beam particles must be unique")
@@ -141,6 +143,7 @@ contains
     data%rev = rev
     data%acc = acc 
     data%chat = chat 
+    data%with_radiation = with_radiation
     call data%check ()
     call circex (0.d0, 0.d0, dble (data%sqrts), &
          data%acc, data%ver, data%rev, data%chat)
@@ -191,6 +194,7 @@ contains
     write (u, "(3x,A,I0)") "rev      = ", data%rev 
     write (u, "(3x,A,A)")  "acc      = ", data%acc 
     write (u, "(3x,A,I0)") "chat     = ", data%chat 
+    write (u, "(3x,A,L1)") "with rad.= ", data%with_radiation
     if (data%generate)  call data%rng_factory%write (u)
   end subroutine circe1_data_write 
  
@@ -296,70 +300,129 @@ contains
     mask_h = .false.
     select type (data)
     type is (circe1_data_t)
-       mi2 = data%m_in**2
-       if (data%photon(1)) then
-          hel_lock(1) = 3;  hel_lock(3) = 1;  mask_h(5) = .true.
-          mr2(1) = mi2(1)
-          mo2(1) = 0._default
-       else
-          hel_lock(1) = 5;  hel_lock(5) = 1;  mask_h(3) = .true.
-          mr2(1) = 0._default
-          mo2(1) = mi2(1)
-       end if
-       if (data%photon(2)) then
-          hel_lock(2) = 4;  hel_lock(4) = 2;  mask_h(6) = .true.
-          mr2(2) = mi2(2)
-          mo2(2) = 0._default
-       else
-          hel_lock(2) = 6;  hel_lock(6) = 2;  mask_h(4) = .true.
-          mr2(2) = 0._default
-          mo2(2) = mi2(2)
-       end if
-       mask = quantum_numbers_mask (.false., .false., mask_h)
-       call sf_int%base_init (mask, mi2, mr2, mo2, &
-            hel_lock = hel_lock)
-       sf_int%data => data
-       call flv_photon%init (PHOTON, data%model)
-       call col0%init ()
-       call qn_photon%init (flv_photon, col0)
-       call polarization_init_generic (pol1, data%flv_in(1))
-       call qn_fc1(1)%init (flv = data%flv_in(1), col = col0)
-       call polarization_init_generic (pol2, data%flv_in(2))
-       call qn_fc2(1)%init (flv = data%flv_in(2), col = col0)
-       call it_hel1%init (pol1%state)
-       
-       do while (it_hel1%is_valid ()) 
-          qn_hel1 = it_hel1%get_quantum_numbers ()
-          qn1 = qn_hel1(1) .merge. qn_fc1(1) 
-          qn(1) = qn1
+       mi2 = data%m_in**2       
+       if (data%with_radiation) then
           if (data%photon(1)) then
-             qn(3) = qn1;  qn(5) = qn_photon
+             hel_lock(1) = 3;  hel_lock(3) = 1;  mask_h(5) = .true.
+             mr2(1) = mi2(1)
+             mo2(1) = 0._default
           else
-             qn(3) = qn_photon;  qn(5) = qn1
+             hel_lock(1) = 5;  hel_lock(5) = 1;  mask_h(3) = .true.
+             mr2(1) = 0._default
+             mo2(1) = mi2(1)
           end if
-          call it_hel2%init (pol2%state) 
-          do while (it_hel2%is_valid ()) 
-             qn_hel2 = it_hel2%get_quantum_numbers () 
-             qn2 = qn_hel2(1) .merge. qn_fc2(1) 
-             qn(2) = qn2
-             if (data%photon(2)) then
-                qn(4) = qn2;  qn(6) = qn_photon
+          if (data%photon(2)) then
+             hel_lock(2) = 4;  hel_lock(4) = 2;  mask_h(6) = .true.
+             mr2(2) = mi2(2)
+             mo2(2) = 0._default
+          else
+             hel_lock(2) = 6;  hel_lock(6) = 2;  mask_h(4) = .true.
+             mr2(2) = 0._default
+             mo2(2) = mi2(2)
+          end if
+          mask = quantum_numbers_mask (.false., .false., mask_h)
+          call sf_int%base_init (mask, mi2, mr2, mo2, &
+               hel_lock = hel_lock)
+          sf_int%data => data
+          call flv_photon%init (PHOTON, data%model)
+          call col0%init ()
+          call qn_photon%init (flv_photon, col0)
+          call polarization_init_generic (pol1, data%flv_in(1))
+          call qn_fc1(1)%init (flv = data%flv_in(1), col = col0)
+          call polarization_init_generic (pol2, data%flv_in(2))
+          call qn_fc2(1)%init (flv = data%flv_in(2), col = col0)
+          call it_hel1%init (pol1%state)
+          
+          do while (it_hel1%is_valid ()) 
+             qn_hel1 = it_hel1%get_quantum_numbers ()
+             qn1 = qn_hel1(1) .merge. qn_fc1(1) 
+             qn(1) = qn1
+             if (data%photon(1)) then
+                qn(3) = qn1;  qn(5) = qn_photon
              else
-                qn(4) = qn_photon;  qn(6) = qn2
+                qn(3) = qn_photon;  qn(5) = qn1
              end if
-             call qn(3:4)%tag_radiated ()
-             call interaction_add_state (sf_int%interaction_t, qn)
-             call it_hel2%advance () 
+             call it_hel2%init (pol2%state) 
+             do while (it_hel2%is_valid ()) 
+                qn_hel2 = it_hel2%get_quantum_numbers () 
+                qn2 = qn_hel2(1) .merge. qn_fc2(1) 
+                qn(2) = qn2
+                if (data%photon(2)) then
+                   qn(4) = qn2;  qn(6) = qn_photon
+                else
+                   qn(4) = qn_photon;  qn(6) = qn2
+                end if
+                call qn(3:4)%tag_radiated ()
+                call sf_int%add_state (qn)
+                call it_hel2%advance () 
+             end do
+             call it_hel1%advance ()
           end do
-          call it_hel1%advance ()
-       end do
-       call polarization_final (pol1)
-       call polarization_final (pol2)
-       call interaction_freeze (sf_int%interaction_t) 
-       call sf_int%set_incoming ([1,2])
-       call sf_int%set_radiated ([3,4])
-       call sf_int%set_outgoing ([5,6])
-       sf_int%status = SF_INITIAL
+          call polarization_final (pol1)
+          call polarization_final (pol2)
+          call sf_int%freeze () 
+          call sf_int%set_incoming ([1,2])
+          call sf_int%set_radiated ([3,4])
+          call sf_int%set_outgoing ([5,6])
+       else
+          if (data%photon(1)) then
+             mask_h(3) = .true.
+             mo2(1) = 0._default
+          else
+             hel_lock(1) = 3;  hel_lock(3) = 1
+             mo2(1) = mi2(1)
+          end if
+          if (data%photon(2)) then
+             mask_h(4) = .true.
+             mo2(2) = 0._default
+          else
+             hel_lock(2) = 4;  hel_lock(4) = 2
+             mo2(2) = mi2(2)
+          end if
+          mask = quantum_numbers_mask (.false., .false., mask_h)
+          call sf_int%base_init (mask(1:4), mi2, [real(default) :: ], mo2, &
+               hel_lock = hel_lock(1:4))
+          sf_int%data => data
+          call flv_photon%init (PHOTON, data%model)
+          call col0%init ()
+          call qn_photon%init (flv_photon, col0)
+          call polarization_init_generic (pol1, data%flv_in(1))
+          call qn_fc1(1)%init (flv = data%flv_in(1), col = col0)
+          call polarization_init_generic (pol2, data%flv_in(2))
+          call qn_fc2(1)%init (flv = data%flv_in(2), col = col0)
+          call it_hel1%init (pol1%state)
+          
+          do while (it_hel1%is_valid ()) 
+             qn_hel1 = it_hel1%get_quantum_numbers ()
+             qn1 = qn_hel1(1) .merge. qn_fc1(1) 
+             qn(1) = qn1
+             if (data%photon(1)) then
+                qn(3) = qn_photon
+             else
+                qn(3) = qn1
+             end if
+             call it_hel2%init (pol2%state) 
+             do while (it_hel2%is_valid ()) 
+                qn_hel2 = it_hel2%get_quantum_numbers () 
+                qn2 = qn_hel2(1) .merge. qn_fc2(1) 
+                qn(2) = qn2
+                if (data%photon(2)) then
+                   qn(4) = qn_photon
+                else
+                   qn(4) = qn2
+                end if
+                call sf_int%add_state (qn(1:4))
+                call it_hel2%advance () 
+             end do
+             call it_hel1%advance ()
+          end do
+          call polarization_final (pol1)
+          call polarization_final (pol2)
+          call sf_int%freeze () 
+          call sf_int%set_incoming ([1,2])
+          call sf_int%set_outgoing ([3,4])
+       end if
+       sf_int%status = SF_INITIAL       
     end select
     if (sf_int%data%generate) then
        call sf_int%data%rng_factory%make (sf_int%rng_obj%rng)
@@ -422,8 +485,12 @@ contains
     x = r
     sf_int%x = x
     f = 1
-    xb1 = 1 - x
-    call sf_int%split_momenta (x, xb1)
+    if (sf_int%data%with_radiation) then
+       xb1 = 1 - x       
+       call sf_int%split_momenta (x, xb1)
+    else
+       call sf_int%reduce_momenta (x)
+    end if
     select case (sf_int%status)
     case (SF_FAILED_KINEMATICS);  f = 0
     end select
@@ -486,8 +553,7 @@ contains
          end if
       end if
     end associate
-    call interaction_set_matrix_element &
-        (sf_int%interaction_t, cmplx (sf_int%f, kind=default)) 
+    call sf_int%set_matrix_element (cmplx (sf_int%f, kind=default)) 
     sf_int%status = SF_EVALUATED
   end subroutine circe1_apply
  
@@ -548,7 +614,8 @@ contains
             ver = 0, &
             rev = 0, &
             acc = "SBAND", &
-            chat = 0)
+            chat = 0, &
+            with_radiation = .true.)
     end select
 
     call data%write (u)
@@ -607,7 +674,8 @@ contains
             ver = 0, &
             rev = 0, &
             acc = "SBAND", &
-            chat = 0)
+            chat = 0, &
+            with_radiation = .true.)
     end select
        
     write (u, "(A)")  "* Initialize structure-function object"
@@ -649,7 +717,7 @@ contains
     write (u, "(A)")  "* Recover x from momenta"
     write (u, "(A)")
 
-    q = interaction_get_momenta (sf_int%interaction_t, outgoing=.true.)
+    q = sf_int%get_momenta (outgoing=.true.)
     call sf_int%final ()
     deallocate (sf_int)
 
@@ -658,7 +726,7 @@ contains
     call sf_int%set_beam_index ([1, 2])
 
     call sf_int%seed_kinematics ([k1, k2])
-    call interaction_set_momenta (sf_int%interaction_t, q, outgoing=.true.)
+    call sf_int%set_momenta (q, outgoing=.true.)
     call sf_int%recover_x (x)
 
     write (u, "(A,9(1x,F10.7))")  "x =", x
@@ -722,7 +790,8 @@ contains
             ver = 0, &
             rev = 0, &
             acc = "SBAND", &
-            chat = 0)
+            chat = 0, &
+            with_radiation = .true.)
        call data%set_generator_mode (rng_factory)
     end select
        

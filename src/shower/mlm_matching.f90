@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -33,32 +33,26 @@
 module mlm_matching
 
   use kinds, only: default, double
+  use iso_varying_string, string_t => varying_string
   use io_units
   use constants
   use format_utils, only: write_separator
   use diagnostics
   use file_utils
   use lorentz
+  use shower_base
+  use variables
 
   implicit none
   private
 
-  public :: mlm_matching_data_t
   public :: mlm_matching_settings_t
-  public :: mlm_matching_settings_write
+  public :: mlm_matching_data_t
   public :: mlm_matching_data_write
   public :: mlm_matching_data_final
   public :: mlm_matching_apply
 
-  type :: mlm_matching_data_t
-     logical :: is_hadron_collision = .false.
-     type(vector4_t), dimension(:), allocatable, public :: P_ME
-     type(vector4_t), dimension(:), allocatable, public :: P_PS
-     type(vector4_t), dimension(:), allocatable, private :: JETS_ME
-     type(vector4_t), dimension(:), allocatable, private :: JETS_PS
-  end type mlm_matching_data_t
-
-  type :: mlm_matching_settings_t
+  type, extends (matching_settings_t) :: mlm_matching_settings_t
      real(default) :: mlm_Qcut_ME = one
      real(default) :: mlm_Qcut_PS = one
      real(default) :: mlm_ptmin, mlm_etamax, mlm_Rmin, mlm_Emin
@@ -70,13 +64,53 @@ module mlm_matching
      integer :: kt_imode_hadronic = 4313
      integer :: kt_imode_leptonic = 1111
      integer :: mlm_nmaxMEjets = 0
+   contains
+     procedure :: init => mlm_matching_settings_init
+     procedure :: write => mlm_matching_settings_write
   end type mlm_matching_settings_t
+
+  type, extends (matching_data_t) :: mlm_matching_data_t
+     type(vector4_t), dimension(:), allocatable, public :: P_ME
+     type(vector4_t), dimension(:), allocatable, public :: P_PS
+     type(vector4_t), dimension(:), allocatable, private :: JETS_ME
+     type(vector4_t), dimension(:), allocatable, private :: JETS_PS
+  end type mlm_matching_data_t
 
 
 contains
 
+  subroutine mlm_matching_settings_init (settings, var_list)
+    class(mlm_matching_settings_t), intent(out) :: settings
+    type(var_list_t), intent(in) :: var_list
+    settings%mlm_Qcut_ME = &
+         var_list%get_rval (var_str ("mlm_Qcut_ME"))
+    settings%mlm_Qcut_PS = &
+         var_list%get_rval (var_str ("mlm_Qcut_PS"))
+    settings%mlm_ptmin = &
+         var_list%get_rval (var_str ("mlm_ptmin"))
+    settings%mlm_etamax = &
+         var_list%get_rval (var_str ("mlm_etamax"))
+    settings%mlm_Rmin = &
+         var_list%get_rval (var_str ("mlm_Rmin"))
+    settings%mlm_Emin = &
+         var_list%get_rval (var_str ("mlm_Emin"))
+    settings%mlm_nmaxMEjets = &
+         var_list%get_ival (var_str ("mlm_nmaxMEjets"))
+
+    settings%mlm_ETclusfactor = &
+         var_list%get_rval (var_str ("mlm_ETclusfactor"))
+    settings%mlm_ETclusminE = &
+         var_list%get_rval (var_str ("mlm_ETclusminE"))
+    settings%mlm_etaclusfactor = &
+         var_list%get_rval (var_str ("mlm_etaclusfactor"))
+    settings%mlm_Rclusfactor = &
+         var_list%get_rval (var_str ("mlm_Rclusfactor"))
+    settings%mlm_Eclusfactor = &
+         var_list%get_rval (var_str ("mlm_Eclusfactor"))
+  end subroutine mlm_matching_settings_init
+
   subroutine mlm_matching_settings_write (settings, unit)
-    type(mlm_matching_settings_t), intent(in) :: settings
+    class(mlm_matching_settings_t), intent(in) :: settings
     integer, intent(in), optional :: unit
     integer :: u
     u = given_output_unit (unit);  if (u < 0)  return

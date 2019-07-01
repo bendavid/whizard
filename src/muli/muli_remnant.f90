@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -1273,6 +1273,34 @@ contains
          (old_id, new_id, pdg_f, x_proton, gev_scale)
   end subroutine pp_remnant_replace_parton
   
+  subroutine pp_remnant_momentum_pdf &
+       (this, x_proton, gev2_scale, n, pdg_f, pdf)
+    class(pp_remnant_t), intent(in) :: this
+    real(default), intent(in) :: x_proton, gev2_scale
+    integer, intent(in) :: n, pdg_f
+    real(default), intent(out) :: pdf
+    if (n==1 .or. n==2) then
+       if (x_proton <= this%proton(n)%momentum_fraction) then
+          if (pdg_f == PDG_FLAVOR_g) then
+             call this%proton(n)%momentum_flavor_pdf (sqrt(GeV2_scale), &
+                  x_proton / this%proton(n)%momentum_fraction, &
+                  LHA_FLAVOR_g, pdf)
+          else
+             call this%proton(n)%momentum_flavor_pdf (sqrt(GeV2_scale), &
+                  x_proton / this%proton(n)%momentum_fraction, &
+                  pdg_f, pdf)
+          end if
+          pdf = pdf * this%proton(n)%momentum_fraction
+       else
+          pdf = zero
+       end if
+    else
+       call msg_error ("pp_remnant_momentum_pdf: n must be either 1 or 2, " &
+            // "but it is " // char (str (n)) // ".")
+       stop
+    end if
+  end subroutine pp_remnant_momentum_pdf
+  
   subroutine pp_remnant_parton_pdf (this, x_proton, gev2_scale, n, pdg_f, pdf)
     class(pp_remnant_t), intent(in) :: this
     real(default), intent(in) :: x_proton, gev2_scale
@@ -1298,62 +1326,39 @@ contains
        stop
     end if
   end subroutine pp_remnant_parton_pdf
-    
   
-  subroutine pp_remnant_momentum_pdf (this,x_proton,gev2_scale,n,pdg_f,pdf)
-    class(pp_remnant_t), intent(in) :: this
-    real(default), intent(in) :: x_proton, gev2_scale
-    integer, intent(in) :: n, pdg_f
-    real(default), intent(out) :: pdf
-    if (n==1 .or. n==2) then
-       if (x_proton<=this%proton(n)%momentum_fraction) then
-          if (pdg_f==PDG_FLAVOR_g) then
-             call this%proton(n)%momentum_flavor_pdf (sqrt(GeV2_scale), &
-                  x_proton / this%proton(n)%momentum_fraction, &
-                  LHA_FLAVOR_g, pdf)
-          else
-             call this%proton(n)%momentum_flavor_pdf (sqrt(GeV2_scale), &
-                  x_proton / this%proton(n)%momentum_fraction, &
-                  pdg_f, pdf)
-          end if
-          pdf = pdf * this%proton(n)%momentum_fraction
-       else
-          pdf = zero
-       end if
-    else
-       call msg_error ("pp_remnant_momentum_pdf: n must be either 1 or 2, " &
-            // "but it is " // char (str (n)) // ".")
-       stop
-    end if
-  end subroutine pp_remnant_momentum_pdf
-
-  subroutine pp_remnant_apply_interaction(this,qcd_2_2)
-    class(pp_remnant_t), intent(inout)::this
-    class(qcd_2_2_class), intent(in)::qcd_2_2
-    integer, dimension(4)::lha_f
-    integer, dimension(2)::int_k
+  subroutine pp_remnant_apply_interaction (this, qcd_2_2)
+    class(pp_remnant_t), intent(inout) :: this
+    class(qcd_2_2_class), intent(in) :: qcd_2_2
+    integer, dimension(4) :: lha_f
+    integer, dimension(2) :: int_k
     real(default) :: gev_pt
     real(default), dimension(2) :: mom_f
-    integer::n
-    mom_f=qcd_2_2%get_remnant_momentum_fractions()
-    lha_f=qcd_2_2%get_lha_flavors()
-    int_k=qcd_2_2%get_pdf_int_kinds()
-    gev_pt=qcd_2_2%get_gev_scale()
-    !print *,"pp_remnant_apply_interaction",mom_f,qcd_2_2%get_parton_id(1),qcd_2_2%get_parton_id(2),lha_f
-    do n=1,2
+    integer :: n
+    mom_f = qcd_2_2%get_remnant_momentum_fractions ()
+    lha_f = qcd_2_2%get_lha_flavors ()
+    int_k = qcd_2_2%get_pdf_int_kinds ()
+    gev_pt = qcd_2_2%get_gev_scale ()
+    ! print *,"pp_remnant_apply_interaction", mom_f, &
+    !    qcd_2_2%get_parton_id(1), qcd_2_2%get_parton_id(2), lha_f
+    do n = 1, 2
        select case (int_k(n))
        case (PDF_VALENCE_DOWN)
           call this%proton(n)%remove_valence_down_quark &
                (qcd_2_2%get_parton_id(n), gev_pt, mom_f(n))
        case (PDF_VALENCE_UP)
-          call this%proton(n)%remove_valence_up_quark(qcd_2_2%get_parton_id(n),gev_pt,mom_f(n))
+          call this%proton(n)%remove_valence_up_quark &
+               (qcd_2_2%get_parton_id(n), gev_pt, mom_f(n))
        case (PDF_SEA)
-          call this%proton(n)%remove_sea_quark(qcd_2_2%get_parton_id(n),gev_pt,mom_f(n),lha_f(n))
+          call this%proton(n)%remove_sea_quark &
+               (qcd_2_2%get_parton_id(n), gev_pt, mom_f(n), lha_f(n))
        case (PDF_GLUON)
-          call this%proton(n)%remove_gluon(qcd_2_2%get_parton_id(n),gev_pt,mom_f(n))
+          call this%proton(n)%remove_gluon &
+               (qcd_2_2%get_parton_id(n), gev_pt, mom_f(n))
        end select
     end do
-    this%X=this%proton(1)%momentum_fraction*this%proton(2)%momentum_fraction
+    this%X = this%proton(1)%momentum_fraction * &
+         this%proton(2)%momentum_fraction
   end subroutine pp_remnant_apply_interaction
 
   pure function pp_remnant_get_pdf_int_weights &
@@ -1365,11 +1370,13 @@ contains
          this%proton(2)%pdf_int_weight (pdf_int_kinds(2)) !*((this%x)**2)
   end function pp_remnant_get_pdf_int_weights
 
-  elemental function pp_remnant_get_pdf_int_weight(this,kind1,kind2) result(weight)
-    class(pp_remnant_t), intent(in)::this
-    real(double)::weight
-    integer, intent(in)::kind1,kind2 ! pdf_int_kind
-    weight=this%proton(1)%pdf_int_weight(kind1)*this%proton(2)%pdf_int_weight(kind2)!*((this%x)**2)
+  elemental function pp_remnant_get_pdf_int_weight &
+       (this, kind1, kind2) result (weight)
+    class(pp_remnant_t), intent(in) :: this
+    real(double) :: weight
+    integer, intent(in) :: kind1, kind2 ! pdf_int_kind
+    weight = this%proton(1)%pdf_int_weight(kind1) * &
+         this%proton(2)%pdf_int_weight(kind2)     !*((this%x)**2)
   end function pp_remnant_get_pdf_int_weight
 
   subroutine pp_remnant_set_pdf_weight (this, weights)
@@ -1379,42 +1386,44 @@ contains
     this%proton(2)%pdf_int_weight = weights(6:10)
   end subroutine pp_remnant_set_pdf_weight
 
-  elemental function pp_remnant_get_gev_initial_cme(this) result(cme)
-    class(pp_remnant_t), intent(in)::this
-    real(double)::cme
-    cme=this%gev_initial_cme
+  elemental function pp_remnant_get_gev_initial_cme (this) result (cme)
+    class(pp_remnant_t), intent(in) :: this
+    real(double) :: cme
+    cme  =this%gev_initial_cme
   end function pp_remnant_get_gev_initial_cme
 
-  elemental function pp_remnant_get_gev_actual_cme(this) result(cme)
-    class(pp_remnant_t), intent(in)::this
-    real(double)::cme
-    cme=this%gev_initial_cme*this%X
+  elemental function pp_remnant_get_gev_actual_cme (this) result (cme)
+    class(pp_remnant_t), intent(in) :: this
+    real(double) :: cme
+    cme = this%gev_initial_cme * this%X
   end function pp_remnant_get_gev_actual_cme
 
-  elemental function pp_remnant_get_cme_fraction(this) result(cme)
-    class(pp_remnant_t), intent(in)::this
-    real(double)::cme
-    cme=this%X
+  elemental function pp_remnant_get_cme_fraction (this) result (cme)
+    class(pp_remnant_t), intent(in) :: this
+    real(double) :: cme
+    cme = this%X
   end function pp_remnant_get_cme_fraction
 
-  pure function pp_remnant_get_proton_remnant_momentum_fractions(this) result(fractions)
-    class(pp_remnant_t), intent(in)::this
-    real(double), dimension(2)::fractions
-    fractions=[this%proton(1)%get_momentum_fraction(),this%proton(2)%get_momentum_fraction()]
+  pure function pp_remnant_get_proton_remnant_momentum_fractions &
+       (this) result (fractions)
+    class(pp_remnant_t), intent(in) :: this
+    real(double), dimension(2) :: fractions
+    fractions = [this%proton(1)%get_momentum_fraction(), &
+         this%proton(2)%get_momentum_fraction()]
   end function pp_remnant_get_proton_remnant_momentum_fractions
 
-  subroutine pp_remnant_get_proton_remnants(this,proton1,proton2)
-    class(pp_remnant_t),target, intent(in)::this
-    class(proton_remnant_t), intent(out),pointer::proton1,proton2
-    proton1=>this%proton(1)
-    proton2=>this%proton(2)
+  subroutine pp_remnant_get_proton_remnants (this, proton1, proton2)
+    class(pp_remnant_t), target, intent(in) :: this
+    class(proton_remnant_t), intent(out), pointer :: proton1, proton2
+    proton1 => this%proton(1)
+    proton2 => this%proton(2)
   end subroutine pp_remnant_get_proton_remnants
 
   subroutine pp_remnant_get_remnant_parton_flavor_pdf_arrays &
        (this, GeV_scale, momentum1, momentum2, pdf1, pdf2)
     class(pp_remnant_t), intent(in) :: this
     real(default), intent(in) :: GeV_scale, momentum1, momentum2
-    real(double), dimension(-6:6), intent(out)::pdf1,pdf2
+    real(double), dimension(-6:6), intent(out) :: pdf1, pdf2
     call this%proton(1)%parton_flavor_pdf_array (GeV_scale, momentum1, pdf1)
     call this%proton(2)%parton_flavor_pdf_array (GeV_scale, momentum2, pdf2)
   end subroutine pp_remnant_get_remnant_parton_flavor_pdf_arrays
@@ -1425,7 +1434,7 @@ contains
     p = (z**2 + (1-z)**2) / two
   end function remnant_dglap_splitting_gqq
   
-  pure function remnant_gluon_pdf_approx (x,p) result (g)
+  pure function remnant_gluon_pdf_approx (x, p) result (g)
     real(default) :: g
     integer, intent(in) :: p
     real(default), intent(in) :: x
@@ -1493,17 +1502,17 @@ contains
             12*xs*(1+2*xs)*(1+2*xs*(5+2*xs))*Log(xs))/&
             (8*(1+2*xs)*((-1+xs)*(1+xs*(10+xs))-6*xs*(1+xs)*Log(xs)))
     else
-       p = (1-xs) / 6 - (5*(-1+xs)**2)/63+(5*(-1+xs)**3) / 216
+       p = (1-xs) / 6 - (5*(-1+xs)**2) / 63 + (5*(-1+xs)**3) / 216
     end if
   end function remnant_twin_momentum_4
 
   subroutine gnuplot_integrated_pdf (this, momentum_unit, parton_unit)
-    class(proton_remnant_t), intent(in)::this
-    integer, intent(in)::momentum_unit,parton_unit
-!    real(double), intent(in)::gev_scale
+    class(proton_remnant_t), intent(in) :: this
+    integer, intent(in) :: momentum_unit, parton_unit
+    ! real(double), intent(in) :: gev_scale
     integer, parameter :: x_grid = 1000000
     integer, parameter :: q_grid = 100
-    integer::n,m,mem
+    integer :: n, m, mem
     real(default) :: x, q, dx, dq, overall_sum, xmin, xmax, &
          q2min, q2max, qmin, qmax
     real(double) :: q2min_dbl, q2max_dbl, xmin_dbl, xmax_dbl
@@ -1513,7 +1522,7 @@ contains
          valence_parton_pdf_sum
     real(default), allocatable, dimension(:) :: twin_momentum_pdf_sum
     class(muli_parton_t), pointer :: tmp_twin
-    mem=1
+    mem = 1
     call GetXmin (mem, xmin_dbl)
     call GetXmax (mem, xmax_dbl)
     call GetQ2max (mem, q2max_dbl)
@@ -1522,61 +1531,65 @@ contains
     xmax = xmax_dbl
     q2min = q2min_dbl
     q2max = q2max_dbl
-    qmin=sqrt(q2min)
-    qmax=sqrt(q2max)
-    print *,"qmin=",qmin,"GeV"
-    print *,"qmax=",qmax,"GeV"
-    dx=(xmax-xmin)/x_grid
-    dq=(qmax-qmin)/q_grid
-    q=qmin+dq/2D0
-    tmp_twin=>this%twin_partons%next
-    n=0
-    if (this%n_twins>0) then
-       allocate(twin_momentum_pdf_sum(this%n_twins))
-       do while(associated(tmp_twin))
-          n=n+1
-          twin_momentum_pdf_sum(n)=tmp_twin%momentum
-          tmp_twin=>tmp_twin%next
+    qmin = sqrt(q2min)
+    qmax = sqrt(q2max)
+    print *, "qmin=", qmin, "GeV"
+    print *, "qmax=", qmax, "GeV"
+    dx = (xmax-xmin) / x_grid
+    dq = (qmax-qmin) / q_grid
+    q = qmin + dq / 2D0
+    tmp_twin => this%twin_partons%next
+    n = 0
+    if (this%n_twins > 0) then
+       allocate (twin_momentum_pdf_sum (this%n_twins))
+       do while (associated (tmp_twin))
+          n = n + 1
+          twin_momentum_pdf_sum(n) = tmp_twin%momentum
+          tmp_twin => tmp_twin%next
        end do
     end if
-    do m=1,q_grid
-       valence_momentum_pdf_sum=[0D0,0D0]
-       valence_parton_pdf_sum=[0D0,0D0]
-       sea_momentum_pdf_sum=[0D0,0D0,0D0,0D0,0D0,0D0,0D0,0D0,0D0,0D0,0D0,0D0,0D0]    
-       sea_parton_pdf_sum=[0D0,0D0,0D0,0D0,0D0,0D0,0D0,0D0,0D0,0D0,0D0,0D0,0D0]    
-       x=xmin+dx/2D0
-       do n=1,x_grid
+    do m = 1, q_grid
+       valence_momentum_pdf_sum = [0D0,0D0]
+       valence_parton_pdf_sum = [0D0,0D0]
+       sea_momentum_pdf_sum = &
+            [0D0,0D0,0D0,0D0,0D0,0D0,0D0,0D0,0D0,0D0,0D0,0D0,0D0]    
+       sea_parton_pdf_sum = &
+            [0D0,0D0,0D0,0D0,0D0,0D0,0D0,0D0,0D0,0D0,0D0,0D0,0D0]    
+       x = xmin + dx / 2D0
+       do n = 1, x_grid
           call this%parton_kind_pdf_array (Q, x, valence_pdf, sea_pdf)
-          valence_parton_pdf_sum=valence_parton_pdf_sum+valence_pdf
-          sea_parton_pdf_sum=sea_parton_pdf_sum+sea_pdf
+          valence_parton_pdf_sum = valence_parton_pdf_sum + valence_pdf
+          sea_parton_pdf_sum = sea_parton_pdf_sum + sea_pdf
           call this%momentum_kind_pdf_array (Q, x, valence_pdf, sea_pdf)
-          valence_momentum_pdf_sum=valence_momentum_pdf_sum+valence_pdf
-          sea_momentum_pdf_sum=sea_momentum_pdf_sum+sea_pdf
-          x=x+dx
+          valence_momentum_pdf_sum = valence_momentum_pdf_sum + valence_pdf
+          sea_momentum_pdf_sum = sea_momentum_pdf_sum + sea_pdf
+          x = x + dx
        end do
-       valence_parton_pdf_sum=valence_parton_pdf_sum*dx
-       sea_parton_pdf_sum=sea_parton_pdf_sum*dx
-       valence_momentum_pdf_sum=valence_momentum_pdf_sum*dx
-       sea_momentum_pdf_sum=sea_momentum_pdf_sum*dx
-       if (this%n_twins>0) then
-          write(momentum_unit,fmt=*)q,&
-               sum(valence_momentum_pdf_sum)+sum(sea_momentum_pdf_sum)+sum(twin_momentum_pdf_sum),&
-               valence_momentum_pdf_sum,&
-               sea_momentum_pdf_sum,&
+       valence_parton_pdf_sum = valence_parton_pdf_sum * dx
+       sea_parton_pdf_sum = sea_parton_pdf_sum * dx
+       valence_momentum_pdf_sum = valence_momentum_pdf_sum * dx
+       sea_momentum_pdf_sum = sea_momentum_pdf_sum * dx
+       if (this%n_twins > 0) then
+          write (momentum_unit, fmt=*) q, &
+               sum(valence_momentum_pdf_sum) + &
+               sum(sea_momentum_pdf_sum) + sum(twin_momentum_pdf_sum), &
+               valence_momentum_pdf_sum, &
+               sea_momentum_pdf_sum, &
                twin_momentum_pdf_sum
        else
-          write(momentum_unit,fmt=*)q,&
-               sum(valence_momentum_pdf_sum)+sum(sea_momentum_pdf_sum),&
-               valence_momentum_pdf_sum,&
+          write (momentum_unit, fmt=*) q, &
+               sum(valence_momentum_pdf_sum) + sum(sea_momentum_pdf_sum), &
+               valence_momentum_pdf_sum, &
                sea_momentum_pdf_sum
        end if
-       write(parton_unit,fmt=*)q,&
-            sum(valence_parton_pdf_sum)+sum(sea_parton_pdf_sum),&
-            valence_parton_pdf_sum,&
+       write (parton_unit,fmt=*) q, &
+            sum(valence_parton_pdf_sum) + sum(sea_parton_pdf_sum), &
+            valence_parton_pdf_sum, &
             sea_parton_pdf_sum
-       q=q+dq
+       q = q + dq
     end do
   end subroutine gnuplot_integrated_pdf
+    
 
 end module muli_remnant
 

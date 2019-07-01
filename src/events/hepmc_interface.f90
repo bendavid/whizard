@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -78,6 +78,7 @@ module hepmc_interface
   public :: hepmc_particle_get_child_barcodes
   public :: hepmc_particle_get_polarization
   public :: hepmc_particle_get_color
+  public :: hepmc_vertex_to_vertex
   public :: hepmc_vertex_t
   public :: hepmc_vertex_init
   public :: hepmc_vertex_is_valid
@@ -369,6 +370,34 @@ module hepmc_interface
        integer(c_int), value :: code_index
      end function gen_particle_flow
   end interface
+  interface
+     function gen_vertex_pos_x (v_obj) result (x) bind(C)
+       import
+       type(c_ptr), value :: v_obj
+       real(c_double) :: x
+     end function gen_vertex_pos_x
+  end interface
+  interface
+     function gen_vertex_pos_y (v_obj) result (y) bind(C)
+       import
+       type(c_ptr), value :: v_obj
+       real(c_double) :: y
+     end function gen_vertex_pos_y
+  end interface
+  interface
+     function gen_vertex_pos_z (v_obj) result (z) bind(C)
+       import
+       type(c_ptr), value :: v_obj
+       real(c_double) :: z
+     end function gen_vertex_pos_z
+  end interface
+  interface
+     function gen_vertex_time (v_obj) result (t) bind(C)
+       import
+       type(c_ptr), value :: v_obj
+       real(c_double) :: t
+     end function gen_vertex_time
+  end interface  
   interface
      type(c_ptr) function new_gen_vertex () bind(C)
        import
@@ -1025,6 +1054,20 @@ contains
     col(1) = gen_particle_flow (prt%obj, 1)
     col(2) = - gen_particle_flow (prt%obj, 2)
   end function hepmc_particle_get_color
+
+  function hepmc_vertex_to_vertex (vtx) result (v)
+    type(hepmc_vertex_t), intent(in) :: vtx
+    type(vector4_t) :: v
+    real(default) :: t, vx, vy, vz
+    if (hepmc_vertex_is_valid (vtx)) then
+       t = gen_vertex_time (vtx%obj)
+       vx = gen_vertex_pos_x (vtx%obj)
+       vy = gen_vertex_pos_y (vtx%obj)
+       vz = gen_vertex_pos_z (vtx%obj)    
+       v = vector4_moving (t, &
+            vector3_moving ([vx, vy, vz]))
+    end if
+  end function hepmc_vertex_to_vertex
 
   subroutine hepmc_vertex_init (v, x)
     type(hepmc_vertex_t), intent(out) :: v

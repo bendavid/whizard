@@ -66,6 +66,12 @@ WHIZARD:
    You can get Qgraf from: http://cfif.ist.utl.pt/~paulo/qgraf.html
    You can get FORM from: http://www.nikhef.nl/~form/
 
+-- OpenLoops for NLO matrix elements.
+   Available from: http://openloops.hepforge.org/
+
+-- LoopTools for one-loop functions (for the top threshold)
+   You can get it from: http://www.feynarts.de/looptools/
+
 -- HepMC for the corresponding event file standard.	
    Available from: http://lcgapp.cern.ch/project/simu/HepMC
 
@@ -222,6 +228,10 @@ Optional Features:
   --enable-lcio		  enable LCIO for binary event files [[yes]]
   --enable-pythia6        enable internal PYTHIA6 for hadronization [[yes]]
   --enable-gosam	  enable GoSAM for external NLO matrix elements [[no]]
+  --enable-openloops	  enable OpenLoops for external NLO matrix elements 
+  			  [[no]]
+  --enable-looptools      enable LoopTools for top threshold one-loop
+  			  functions [[no]]
   --enable-hoppet         enable HOPPET for b quark pdf matching [[no]]
   --enable-fastjet	  enable FastJet for handling event data [[no]]
   --enable-pythia8        enable PYTHIA8 for shower and hadronization [[no]]

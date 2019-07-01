@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -287,7 +287,7 @@ contains
              call qn(2)%tag_radiated ()
              call qn(3)%init ( &
                   flv = flv, col = color_from_flavor (flv, 1, reverse=.true.))
-             call interaction_add_state (sf_int%interaction_t, qn)
+             call sf_int%add_state (qn)
           end if
        end do
        if (data%has_photon .and. data%mask_photon) then
@@ -298,9 +298,9 @@ contains
           call qn(2)%tag_radiated ()
           call qn(3)%init (flv = flv, &
                col = color_from_flavor (flv, 1, reverse = .true.))
-          call interaction_add_state (sf_int%interaction_t, qn)
+          call sf_int%add_state (qn)
        end if
-       call interaction_freeze (sf_int%interaction_t)
+       call sf_int%freeze ()
        call sf_int%set_incoming ([1])
        call sf_int%set_radiated ([2])
        call sf_int%set_outgoing ([3])
@@ -409,7 +409,7 @@ contains
          fc = max (pack (ff, data%mask), 0._default)
       end if
     end associate
-    call interaction_set_matrix_element (sf_int%interaction_t, fc)
+    call sf_int%set_matrix_element (fc)
     sf_int%status = SF_EVALUATED
   end subroutine pdf_builtin_apply
 
@@ -588,7 +588,7 @@ contains
     write (u, "(A)")  "* Recover x from momenta"
     write (u, "(A)")
 
-    q = interaction_get_momenta (sf_int%interaction_t, outgoing=.true.)
+    q = sf_int%get_momenta (outgoing=.true.)
     call sf_int%final ()
     deallocate (sf_int)
 
@@ -597,7 +597,7 @@ contains
     call sf_int%set_beam_index ([1])
 
     call sf_int%seed_kinematics ([k])
-    call interaction_set_momenta (sf_int%interaction_t, q, outgoing=.true.)
+    call sf_int%set_momenta (q, outgoing=.true.)
     call sf_int%recover_x (x)
 
     write (u, "(A,9(1x,F10.7))")  "x =", x

@@ -50,11 +50,13 @@ module parameters_noh_rx
        ialww0, ialww2, ialzw0, ialzw1, ialzz, &
        alww0, alww2, alzw0, alzw1, alzz
   real(default), public :: lam_reg   
-  real(default), public :: fudge_higgs, fudge_km, w_res
+  real(default), public :: fudge_higgs, fudge_km, w_res, &
+       amp00, amp02, amp11, amp20, amp22
   real(default), dimension(1:12), public :: gkm
   real(default), dimension(1:5), public :: mkm, wkm
   complex(default), public :: ghvva
   integer, public :: part_r
+  logical, public :: unit_limit
   integer, private :: i
 
   public :: import_from_whizard, model_update_alpha_s
@@ -269,6 +271,7 @@ contains
     gazww = gzww * qw
     gaaww = qw**2
     part_r = 0
+    unit_limit = .false.
     !!! Color flow basis, divide by sqrt(2)
     gs = sqrt(2.0_default*PI*par%alphas)
     igs = cmplx (0.0_default, 1.0_default, kind=default) * gs    

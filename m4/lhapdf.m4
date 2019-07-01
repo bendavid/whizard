@@ -46,13 +46,13 @@ if test "$enable_lhapdf" = "yes"; then
     AC_MSG_RESULT([$LHAPDF_PDFSETS_PATH])
 
     AC_MSG_CHECKING([the standard PDF sets])
-    if test -f "$LHAPDF_PDFSETS_PATH/CT10/CT10.info" -a -f "$LHAPDF_PDFSETS_PATH/CT10/CT10_0000.dat"; then
+    if test -f "$LHAPDF_PDFSETS_PATH/CT10/CT10.info" -a -f "$LHAPDF_PDFSETS_PATH/CT10/CT10_0000.dat" -a -f "$LHAPDF_PDFSETS_PATH/cteq6l1/cteq6l1.info" -a -f "$LHAPDF_PDFSETS_PATH/cteq6l1/cteq6l1_0000.dat"; then
        AC_MSG_RESULT([ all standard PDF sets installed])
     else	  
        AC_MSG_RESULT([ not all standard PDF sets installed])     
        AC_MSG_NOTICE([error: *************************************************************])
        AC_MSG_NOTICE([error: LHAPDF standard PDF sets not installed, please install these ])
-       AC_MSG_NOTICE([error:    PDF sets: CT10.                                           ])
+       AC_MSG_NOTICE([error:    PDF sets: cteq6l1, CT10.                                  ])
        AC_MSG_NOTICE([error: *************************************************************])
        enable_lhapdf="no"
        AC_MSG_CHECKING([for LHAPDF])

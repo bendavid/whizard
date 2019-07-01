@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -1402,7 +1402,7 @@ contains
     integer, intent(in) :: n
     logical, dimension(:), intent(in) :: mask
     integer :: d, i
-    d = size (mask)
+    d = size (mask)    
     allocate (state_flv%pdg (d, n), source = 0)
     allocate (state_flv%map (d, n), source = spread ([(i, i = 1, d)], 2, n))
     allocate (state_flv%mask (d), source = mask)

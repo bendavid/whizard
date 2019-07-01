@@ -2,7 +2,7 @@
 ?vis_history = false
 ?integration_timer = false
 ?pacify = true
-?use_gosam_loops = false
+$loop_me_method = "omega"
 openmp_num_threads = 1
 | Process library 'smtest_16_lib': recorded process 'smtest_16_p1'
 seed = 0
@@ -26,10 +26,11 @@ sqrts =  2.5000000E+02
 |   Library name  = 'smtest_16_lib'
 |   Process index = 1
 |   Process components:
-|     1: 'smtest_16_p1_i1':   e-, e+ => u, ubar [omega], [Born]
+|     1: 'smtest_16_p1_i1':   e-, e+ => u, ubar [omega]
 |     2: 'smtest_16_p1_i2':   e-, e+ => u, ubar, gl [omega], [Real]
 |     3: 'smtest_16_p1_i3':   e-, e+ => u, ubar [omega], [Virtual]
-|     4: 'smtest_16_p1_i4':   e-, e+ => u, ubar [omega], [Subtraction]
+|     4: 'smtest_16_p1_i4':   e-, e+ => u, ubar [omega], [Pdf]
+|     5: 'smtest_16_p1_i5':   e-, e+ => u, ubar [omega], [Subtraction]
 | ------------------------------------------------------------------------
 | Beam structure: [any particles]
 | Beam data (collision):
@@ -54,9 +55,13 @@ sqrts =  2.5000000E+02
 | Phase space: found 2 channels, collected in 2 groves.
 | Phase space: Using 2 equivalences between channels.
 | Phase space: wood
+| Phase space: 2 channels, 3 dimensions
+| Phase space: found 2 channels, collected in 2 groves.
+| Phase space: no equivalences between channels used.
+| Phase space: wood
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'smtest_16_p1_i4.phs'
+| Phase space: writing configuration file 'smtest_16_p1_i5.phs'
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 2 groves.
 | Phase space: Using 2 equivalences between channels.

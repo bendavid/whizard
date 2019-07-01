@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -289,6 +289,7 @@ contains
   elemental function c_prt_from_prt (prt) result (c_prt)
     type(c_prt_t) :: c_prt
     type(prt_t), intent(in) :: prt
+    c_prt = prt%p
     c_prt%type = prt%type
     c_prt%pdg = prt%pdg
     if (prt%polarized) then
@@ -297,25 +298,21 @@ contains
        c_prt%polarized = 0
     end if
     c_prt%h = prt%h
-    c_prt%pe = energy (prt%p)
-    c_prt%px = vector4_get_component (prt%p, 1)
-    c_prt%py = vector4_get_component (prt%p, 2)
-    c_prt%pz = vector4_get_component (prt%p, 3)
-    c_prt%p2 = prt%p2
   end function c_prt_from_prt
 
-  subroutine prt_write (prt, unit, pacified)
+  subroutine prt_write (prt, unit, testflag)
     type(prt_t), intent(in) :: prt
     integer, intent(in), optional :: unit
-    logical, intent(in), optional :: pacified
-    real(default), dimension(0:3) :: arr
-    logical :: num_pac
+    logical, intent(in), optional :: testflag
+    logical :: pacified
     type(prt_t) :: tmp
     character(len=7) :: fmt   
     integer :: u, i
-    call pac_fmt (fmt, FMT_19, FMT_14, pacified)
+    call pac_fmt (fmt, FMT_19, FMT_14, testflag)
     u = given_output_unit (unit);  if (u < 0)  return
-    num_pac = .false. ; if (present (pacified))  num_pac = pacified
+    pacified = .false. ; if (present (testflag))  pacified = testflag
+    tmp = prt
+    if (pacified) call pacify (tmp)
     write (u, "(1x,A)", advance="no")  "prt("
     select case (prt%type)
     case (PRT_UNDEFINED);    write (u, "('?')", advance="no")
@@ -334,15 +331,9 @@ contains
     end select
     select case (prt%type)
     case (PRT_BEAM, PRT_INCOMING, PRT_OUTGOING, PRT_COMPOSITE)
-       tmp = prt
-       if (num_pac) then
-          call pacify (tmp)
-       end if
-       arr = tmp%p
        write (u, "(" // FMT_14 // ",';'," // FMT_14 // ",','," // &
-            FMT_14 // ",','," // FMT_14 // ")", advance="no") arr
-       write (u, "('|'," // fmt // ")", advance="no") &
-            tmp%p2
+            FMT_14 // ",','," // FMT_14 // ")", advance="no") tmp%p
+       write (u, "('|'," // fmt // ")", advance="no") tmp%p2
     end select
     if (allocated (prt%src)) then
        write (u, "('|')", advance="no")
@@ -466,7 +457,7 @@ contains
     do i = 1, object%n_active
        if (present (prefix))  write (u, "(A)", advance="no") prefix
        write (u, "(1x,I0)", advance="no")  i
-       call prt_write (object%prt(i), unit = unit, pacified = pacified)
+       call prt_write (object%prt(i), unit = unit, testflag = pacified)
     end do
   end subroutine subevt_write
 
@@ -974,9 +965,9 @@ contains
   subroutine pacify_prt (prt)
     class(prt_t), intent(inout) :: prt
     real(default) :: e
-    e = 1e-13_default * energy (prt%p)
+    e = max (1E-10_default * energy (prt%p), 1E-13_default)
     call pacify (prt%p, e)
-    call pacify (prt%p2, 1e3 * e)
+    call pacify (prt%p2, 1E3_default * e)
   end subroutine pacify_prt
   
   subroutine pacify_subevt (subevt)

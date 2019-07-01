@@ -1,6 +1,6 @@
 ! WHIZARD <<Version>> <<Date>>
 ! 
-! Copyright (C) 1999-2014 by 
+! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -30,14 +30,14 @@ module system_dependencies
   ! configure.
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-  
+  use, intrinsic :: omp_lib
 
   implicit none
   public
  
   ! Program version
-  character(*), parameter :: WHIZARD_VERSION = "2.2.5"
-  character(*), parameter :: WHIZARD_DATE = "Feb 27 2015"
+  character(*), parameter :: WHIZARD_VERSION = "2.2.6"
+  character(*), parameter :: WHIZARD_DATE = "May 02 2015"
 
   ! System paths
   ! These are used for testing without existing installation
@@ -47,6 +47,8 @@ module system_dependencies
        "/Users/reuter/local/packages/whizard/trunk/build/src/utilities"
   character(*), parameter :: WHIZARD_TEST_TESTING_MODPATH = &
        "/Users/reuter/local/packages/whizard/trunk/build/src/testing"
+  character(*), parameter :: WHIZARD_TEST_COMBINATORICS_MODPATH = &
+       "/Users/reuter/local/packages/whizard/trunk/build/src/combinatorics"
   character(*), parameter :: WHIZARD_TEST_SYSTEM_MODPATH = &
        "/Users/reuter/local/packages/whizard/trunk/build/src/system"
   character(*), parameter :: WHIZARD_TEST_PHYSICS_MODPATH = &
@@ -71,6 +73,8 @@ module system_dependencies
        "/Users/reuter/local/packages/whizard/trunk/build/src/lcio"
   character(*), parameter :: WHIZARD_TEST_HOPPET_LIBPATH = &
        "/Users/reuter/local/packages/whizard/trunk/build/src/hoppet"
+  character(*), parameter :: WHIZARD_TEST_LOOPTOOLS_LIBPATH = &
+       "/Users/reuter/local/packages/whizard/trunk/build/src/looptools"
   character(*), parameter :: WHIZARD_TEST_MODELPATH = &
        "/Users/reuter/local/packages/whizard/trunk/share/models"
   character(*), parameter :: WHIZARD_TEST_MODELS_LIBPATH = &
@@ -103,6 +107,7 @@ module system_dependencies
       "-I" // WHIZARD_TEST_PHYSICS_MODPATH // " " // &
       "-I" // WHIZARD_TEST_SYSTEM_MODPATH // " " // &
       "-I" // WHIZARD_TEST_TESTING_MODPATH // " " // &
+      "-I" // WHIZARD_TEST_COMBINATORICS_MODPATH // " " // &
       "-I" // WHIZARD_TEST_UTILITIES_MODPATH // " " // &
       "-I" // WHIZARD_TEST_BASICS_MODPATH
 
@@ -113,8 +118,10 @@ module system_dependencies
       "-L" // WHIZARD_TEST_HEPMC_LIBPATH // " " // &
       "-L" // WHIZARD_TEST_LCIO_LIBPATH // " " // &
       "-L" // WHIZARD_TEST_HOPPET_LIBPATH // " " // &
+      "-L" // WHIZARD_TEST_LOOPTOOLS_LIBPATH // " " // &
        "-lwhizard_main -lwhizard -lomega " // &
-       "-lHepMC -llcio -L/usr/local//lib -lhoppet_v1"
+       "-lHepMC -llcio -L/usr/local/lib -lhoppet_v1 " // &
+       "-L/usr/local/lib -looptools"
 
   ! Libtool
   character(*), parameter :: WHIZARD_LIBTOOL_TEST = &
@@ -147,6 +154,8 @@ module system_dependencies
        PKGLIBDIR // "/mod/utilities"
   character(*), parameter :: WHIZARD_TESTING_MODPATH = &
        PKGLIBDIR // "/mod/testing"
+  character(*), parameter :: WHIZARD_COMBINATORICS_MODPATH = &
+       PKGLIBDIR // "/mod/combinatorics"
   character(*), parameter :: WHIZARD_SYSTEM_MODPATH = &
        PKGLIBDIR // "/mod/system"
   character(*), parameter :: WHIZARD_PHYSICS_MODPATH = &
@@ -194,6 +203,7 @@ module system_dependencies
       "-I" // WHIZARD_ME_MODPATH // " " // &
       "-I" // WHIZARD_PHYSICS_MODPATH // " " // &
       "-I" // WHIZARD_SYSTEM_MODPATH // " " // &
+      "-I" // WHIZARD_COMBINATORICS_MODPATH // " " // &
       "-I" // WHIZARD_TESTING_MODPATH // " " // &
       "-I" // WHIZARD_UTILITIES_MODPATH // " " // &
       "-I" // WHIZARD_BASICS_MODPATH
@@ -202,7 +212,8 @@ module system_dependencies
   character(*), parameter :: WHIZARD_LDFLAGS = &
       "-L" // WHIZARD_OMEGA_LIBPATH // " " // &
        "-lwhizard_main -lwhizard -lomega " // &
-       "-lHepMC -llcio -L/usr/local//lib -lhoppet_v1"
+       "-lHepMC -llcio -L/usr/local/lib -lhoppet_v1 " // &
+       "-L/usr/local/lib -looptools"
 
   ! Libtool
   character(*), parameter :: WHIZARD_LIBTOOL = &
@@ -213,7 +224,7 @@ module system_dependencies
   character(*), parameter :: DEFAULT_FC = &
        "gfortran"
   character(*), parameter :: DEFAULT_FCFLAGS = &
-       "  -g -O2"
+       " -fopenmp -g -O2"
   character(*), parameter :: DEFAULT_FCFLAGS_PIC = &
        " -fno-common"
   character(*), parameter :: DEFAULT_FC_SRC_EXT = &
@@ -244,8 +255,11 @@ module system_dependencies
   character(*), parameter :: DEFAULT_LDFLAGS_LCIO = &
        "-llcio"
   character(*), parameter :: DEFAULT_LDFLAGS_HOPPET = &
-       "-L/usr/local//lib -lhoppet_v1"
-  character(*), parameter :: DEFAULT_SHLIB_EXT = ".so"
+       "-L/usr/local/lib -lhoppet_v1"
+  character(*), parameter :: DEFAULT_LDFLAGS_LOOPTOOLS = &
+       "-L/usr/local/lib -looptools"
+  character(*), parameter :: DEFAULT_SHRLIB_EXT = "dylib"
+  character(*), parameter :: DEFAULT_FC_SHRLIB_EXT = "so"
 
   ! Make
   character(*), parameter :: DEFAULT_MAKEFLAGS = &
@@ -274,6 +288,7 @@ module system_dependencies
        "ps2pdf14"
 
   ! Programs and libraries used for NLO calculations
+  ! GoSam
   character(*), parameter :: GOSAM_DIR = &
        "/usr/local"
   character(*), parameter :: GOLEM_DIR = &
@@ -285,6 +300,10 @@ module system_dependencies
   character(*), parameter :: NINJA_DIR = &
        "/usr/local"
   character(*), parameter :: SAMURAI_DIR = &
+       "/usr/local"
+
+  ! OpenLoops
+  character(*), parameter :: OPENLOOPS_DIR = &
        "/usr/local"
 
   ! Hardwired options for batch-mode processing
@@ -311,30 +330,30 @@ contains
   ! OpenMP wrapper routines, work independent of OpenMP status
   function openmp_is_active () result (flag)
     logical :: flag
-!    flag = .true.
-    flag = .false.
+    flag = .true.
+!    flag = .false.
   end function openmp_is_active
 
   subroutine openmp_set_num_threads (num)
     integer, intent(in) :: num
-!    call omp_set_num_threads (num)
+    call omp_set_num_threads (num)
   end subroutine openmp_set_num_threads
   
   function openmp_get_num_threads () result (num)
     integer :: num
-!    num = omp_get_num_threads ()
-    num = 1
+    num = omp_get_num_threads ()
+!    num = 1
   end function openmp_get_num_threads
   
   function openmp_get_max_threads () result (num)
     integer :: num
-!    num = omp_get_max_threads ()
-    num = 1
+    num = omp_get_max_threads ()
+!    num = 1
   end function openmp_get_max_threads
   
   function openmp_get_default_max_threads () result (num)
     integer :: num
-    num = 1
+    num = 8
   end function openmp_get_default_max_threads
 
 end module system_dependencies

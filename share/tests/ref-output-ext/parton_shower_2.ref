@@ -71,13 +71,14 @@ sqrts =  1.000000000000E+03
 n_events = 1
 ?allow_shower = true
 ?ps_isr_active = true
-?ps_use_PYTHIA_shower = false
+$shower_method = "WHIZARD"
 $sample = "parton_shower_2"
 ?sample_pacify = true
 | Starting simulation for process 'parton_shower_2_p1'
 | Simulate: using integration grids from file 'parton_shower_2_p1_m1.vg'
 | Simulate: activating parton shower
 | Shower: interfacing PDF builtin set #3
+| Shower: Using WHIZARD internal shower
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1
 | Simulation: requested number of events = 1
@@ -86,7 +87,6 @@ $sample = "parton_shower_2"
 | Events: writing to raw file 'parton_shower_2.evx'
 | Events: generating 1 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
-| Using WHIZARD's internal showering
 |         ... event sample complete.
 | Events: closing ASCII file 'parton_shower_2.evt'
 | Events: closing raw file 'parton_shower_2.evx'

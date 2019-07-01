@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -458,8 +458,8 @@ contains
     mask = quantum_numbers_mask (.false., .false., &
          .not. beam_data%pmatrix%is_polarized (), &
          mask_hd = beam_data%pmatrix%is_diagonal ())
-    call interaction_init &
-         (beam%int, 0, 0, beam_data%n, mask=mask, store_values=.true.)
+    call beam%int%basic_init &
+         (0, 0, beam_data%n, mask=mask, store_values=.true.)
     allocate (pol (beam_data%n))
     do i = 1, size (pol)
        call polarization_init_pmatrix (pol(i), beam_data%pmatrix(i))
@@ -476,15 +476,13 @@ contains
     call it_hel%init (state_hel)
     call it_tmp%init (state_tmp)
     do while (it_hel%is_valid ())
-       call interaction_add_state (beam%int, &
-            it_tmp%get_quantum_numbers (), &
+       call beam%int%add_state (it_tmp%get_quantum_numbers (), &
             value=it_hel%get_matrix_element ())
        call it_hel%advance ()
        call it_tmp%advance ()
     end do
-    call interaction_freeze (beam%int)
-    call interaction_set_momenta &
-         (beam%int, beam_data%p, outgoing = .true.)
+    call beam%int%freeze ()
+    call beam%int%set_momenta (beam_data%p, outgoing = .true.)
     call state_hel%final ()
     call state_fc%final ()
     call state_tmp%final ()
@@ -492,7 +490,7 @@ contains
 
   subroutine beam_final (beam)
     type(beam_t), intent(inout) :: beam
-    call interaction_final (beam%int)
+    call beam%int%final ()
   end subroutine beam_final
 
   subroutine beam_write (beam, unit, verbose, show_momentum_sum, show_mass)
@@ -501,12 +499,12 @@ contains
     logical, intent(in), optional :: verbose, show_momentum_sum, show_mass
     integer :: u
     u = given_output_unit (unit);  if (u < 0)  return
-    select case (interaction_get_n_out (beam%int))
+    select case (beam%int%get_n_out ())
     case (1);  write (u, *) "Decaying particle:"
     case (2);  write (u, *) "Colliding beams:"
     end select
-    call interaction_write &
-         (beam%int, unit, verbose = verbose, show_momentum_sum = &
+    call beam%int%basic_write &
+         (unit, verbose = verbose, show_momentum_sum = &
             show_momentum_sum, show_mass = show_mass)
   end subroutine beam_write
 
@@ -520,7 +518,7 @@ contains
     type(interaction_t), intent(inout) :: int
     type(beam_t), intent(in), target :: beam1
     integer, intent(in) :: i, i1
-    call interaction_set_source_link (int, i, beam1%int, i1)
+    call int%set_source_link (i, beam1%int, i1)
   end subroutine interaction_set_source_link_beam
 
   function beam_get_int_ptr (beam) result (int)
@@ -532,7 +530,7 @@ contains
   subroutine beam_set_momenta (beam, p)
     type(beam_t), intent(inout) :: beam
     type(vector4_t), dimension(:), intent(in) :: p
-    call interaction_set_momenta (beam%int, p)
+    call beam%int%set_momenta (p)
   end subroutine beam_set_momenta
 
   subroutine beam_test (u, results)

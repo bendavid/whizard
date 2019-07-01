@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -52,13 +52,6 @@ module xml
      logical :: cache_is_empty = .true.
      type(string_t) :: cache
    contains
-     generic :: init => init_filename, init_unit, init_string, &
-          init_ifile, init_line
-     procedure :: init_filename => cstream_init_filename
-     procedure :: init_unit => cstream_init_unit
-     procedure :: init_string => cstream_init_string
-     procedure :: init_ifile => cstream_init_ifile
-     procedure :: init_line => cstream_init_line
      procedure :: final => cstream_final
      procedure :: get_record => cstream_get_record
      procedure :: revert_record => cstream_revert_record
@@ -98,40 +91,10 @@ module xml
 
 contains
 
-  subroutine cstream_init_filename (cstream, filename)
-    class(cstream_t), intent(out) :: cstream
-    character(*), intent(in) :: filename
-    call stream_init (cstream%stream_t, filename)
-  end subroutine cstream_init_filename
-
-  subroutine cstream_init_unit (cstream, unit)
-    class(cstream_t), intent(out) :: cstream
-    integer, intent(in) :: unit
-    call stream_init (cstream%stream_t, unit)
-  end subroutine cstream_init_unit
-    
-  subroutine cstream_init_string (cstream, string)
-    class(cstream_t), intent(out) :: cstream
-    type(string_t), intent(in) :: string
-    call stream_init (cstream%stream_t, string)
-  end subroutine cstream_init_string
-    
-  subroutine cstream_init_ifile (cstream, ifile)
-    class(cstream_t), intent(out) :: cstream
-    type(ifile_t), intent(in) :: ifile
-    call stream_init (cstream%stream_t, ifile)
-  end subroutine cstream_init_ifile
-    
-  subroutine cstream_init_line (cstream, line)
-    class(cstream_t), intent(out) :: cstream
-    type(line_p), intent(in) :: line
-    call stream_init (cstream%stream_t, line)
-  end subroutine cstream_init_line
-    
-  subroutine cstream_final (cstream)
-    class(cstream_t), intent(inout) :: cstream
-    cstream%cache_is_empty = .true.
-    call stream_final (cstream%stream_t)
+  subroutine cstream_final (stream)
+    class(cstream_t), intent(inout) :: stream
+    stream%cache_is_empty = .true.
+    call stream%stream_t%final ()
   end subroutine cstream_final
   
   subroutine cstream_get_record (cstream, string, iostat)

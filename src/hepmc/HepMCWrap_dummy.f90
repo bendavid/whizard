@@ -280,6 +280,38 @@
        size = 0
      end function gen_vertex_particles_out_size
 
+! extern "C" double gen_vertex_pos_x( GenVertex* v ) 
+     function gen_vertex_pos_x (v_obj) result (x) bind(C)
+       use iso_c_binding
+       real(c_double) :: x
+       type(c_ptr), value :: v_obj
+       x = 0
+     end function gen_vertex_pos_x
+
+! extern "C" double gen_vertex_pos_y( GenVertex* v ) 
+     function gen_vertex_pos_y (v_obj) result (y) bind(C)
+       use iso_c_binding
+       real(c_double) :: y
+       type(c_ptr), value :: v_obj
+       y = 0
+     end function gen_vertex_pos_y
+
+! extern "C" double gen_vertex_pos_z( GenVertex* v ) 
+     function gen_vertex_pos_z (v_obj) result (z) bind(C)
+       use iso_c_binding
+       real(c_double) :: z
+       type(c_ptr), value :: v_obj
+       z = 0
+     end function gen_vertex_pos_z
+
+! extern "C" double gen_vertex_time( GenVertex* v ) 
+     function gen_vertex_time (v_obj) result (t) bind(C)
+       use iso_c_binding
+       real(c_double) :: t
+       type(c_ptr), value :: v_obj
+       t = 0
+     end function gen_vertex_time
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !! GenVertex iterator over in-particles
 

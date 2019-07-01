@@ -35,7 +35,9 @@ libcombinatorics_la_SOURCES = \
   hashes.f90 \
   md5.f90 \
   permutations.f90 \
-  sorting.f90
+  sorting.f90 \
+  grids.f90 \
+  solver.f90
 
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = combinatorics.nw
@@ -58,7 +60,8 @@ BUILT_SOURCES = Modules
 module_lists = \
   ../basics/Modules \
   ../testing/Modules \
-  ../system/Modules
+  ../system/Modules \
+  ../utilities/Modules
 
 $(module_lists):
 	$(MAKE) -C `dirname $@` Modules
@@ -102,7 +105,7 @@ DISTCLEANFILES += Makefile.depend
 	@:
 #	touch $@
 
-AM_FCFLAGS = -I../basics -I../testing -I../system
+AM_FCFLAGS = -I../basics -I../testing -I../system -I../utilities
 
 
 ########################################################################
@@ -124,8 +127,9 @@ endif
 
 ## Install the modules used by generated matrix element code
 ## and by the user code library
-#execmoddir = $(pkglibdir)/mod/combinatorics
-#nodist_execmod_HEADERS = 
+execmoddir = $(pkglibdir)/mod/combinatorics
+nodist_execmod_HEADERS = \
+  solver.$(FC_MODULE_EXT)
 
 ## (Re)create F90 sources from NOWEB source.
 if NOWEB_AVAILABLE

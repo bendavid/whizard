@@ -39,9 +39,8 @@
  Matching Settings:
    mlm_matching                 =  F
    ckkw_matching                =  F
- PYTHIA specific settings:
-   ps_PYTHIA_verbose            =  F
-   ps_PYTHIA_PYGIVE             =  ''
+ PYTHIA6 specific settings:
+   ps_PYTHIA_PYGIVE             = ''
 ========================================================================
 
 * Test output end: dispatch_13

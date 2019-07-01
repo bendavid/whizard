@@ -556,7 +556,7 @@ parameters.  (It doesn't depend on the QCD setup.)
      character(32) :: md5sum_process = ""
      character(32) :: md5sum_model_par = ""
      character(32) :: md5sum_phs_config = ""
-     type(string_t) :: nlo_type
+     integer :: nlo_type
    contains
    <<PHS base: phs config: TBP>>
   end type phs_config_t
@@ -685,7 +685,7 @@ array accordingly.
        logical, intent(in), optional :: azimuthal_dependence
        logical, intent(in), optional :: rebuild
        logical, intent(in), optional :: ignore_mismatch
-       type(string_t), intent(inout), optional :: nlo_type
+       integer, intent(inout), optional :: nlo_type
      end subroutine phs_config_configure
   end interface
 
@@ -1007,20 +1007,27 @@ at the beginning of the implementation of [[phs_init]].
   subroutine phs_base_init (phs, phs_config)
     class(phs_t), intent(out) :: phs
     class(phs_config_t), intent(in), target :: phs_config
+    real(default), dimension(phs_config%n_in) :: m_in
+    real(default), dimension(phs_config%n_out) :: m_out    
     phs%config => phs_config
     allocate (phs%active_channel (phs%config%n_channel))
-    phs%active_channel = .true.
+    phs%active_channel = .true.    
     allocate (phs%r (phs%config%n_par, phs%config%n_channel));  phs%r = 0
     allocate (phs%f (phs%config%n_channel));                    phs%f = 0
-    allocate (phs%p (phs%config%n_in))
-    allocate (phs%m_in  (phs%config%n_in), &
-         source = phs_config%flv(:phs_config%n_in, 1)%get_mass ())
+    allocate (phs%p (phs%config%n_in))    
+    !!! !!! !!! Workaround for gfortran 5.0 ICE
+    m_in  = phs_config%flv(:phs_config%n_in, 1)%get_mass ()
+    m_out = phs_config%flv(phs_config%n_in+1:, 1)%get_mass ()
+    allocate (phs%m_in  (phs%config%n_in), source = m_in)
+    !!! allocate (phs%m_in  (phs%config%n_in), &
+    !!!      source = phs_config%flv(:phs_config%n_in, 1)%get_mass ())
     allocate (phs%q (phs%config%n_out))
-    allocate (phs%m_out (phs%config%n_out), &
-         source = phs_config%flv(phs_config%n_in+1:, 1)%get_mass ())
+    allocate (phs%m_out (phs%config%n_out), source = m_out)
+    !!! allocate (phs%m_out (phs%config%n_out), &
+    !!!      source = phs_config%flv(phs_config%n_in+1:, 1)%get_mass ())    
     call phs%compute_flux ()
   end subroutine phs_base_init
-
+ 
 @ %def phs_base_init
 @ Manually select a channel.
 <<PHS base: phs: TBP>>=
@@ -1412,12 +1419,12 @@ This is a trivial implementation of the [[phs_config_t]] configuration object.
     logical, intent(in), optional :: azimuthal_dependence
     logical, intent(in), optional :: rebuild
     logical, intent(in), optional :: ignore_mismatch
-    type(string_t), intent(inout), optional :: nlo_type
+    integer, intent(inout), optional :: nlo_type
     phs_config%n_channel = 2
     phs_config%n_par = 2
     phs_config%sqrts = sqrts
     if (.not. present (nlo_type)) &
-      phs_config%nlo_type = 'Born'
+      phs_config%nlo_type = BORN
     if (present (sqrts_fixed)) then
        phs_config%sqrts_fixed = sqrts_fixed
     end if
@@ -2065,6 +2072,7 @@ module phs_single
   use diagnostics
   use os_interface
   use lorentz
+  use physics_defs
   use model_data
   use flavors
   use process_constants
@@ -2135,9 +2143,9 @@ second parameter is the azimuthal angle, which may be a flat dimension.
     logical, intent(in), optional :: azimuthal_dependence
     logical, intent(in), optional :: rebuild
     logical, intent(in), optional :: ignore_mismatch
-    type(string_t), intent(inout), optional :: nlo_type
+    integer, intent(inout), optional :: nlo_type
     if (.not. present (nlo_type)) &
-      phs_config%nlo_type = 'Born'
+      phs_config%nlo_type = BORN
     if (phs_config%n_out == 2) then
        phs_config%n_channel = 1
        phs_config%n_par = 2
@@ -6405,7 +6413,6 @@ the file to those.  Set [[match]] true if everything agrees.
     integer :: n_grove, g
     integer, dimension(:), allocatable :: n_tree
     integer :: t
-    logical :: real_phsp_work
     node_header => parse_tree_get_process_ptr (parse_tree, process_id)
     found = associated (node_header);  if (.not. found)  return
     if (present (match)) then
@@ -6671,10 +6678,10 @@ Set the incoming particles from the contents of an interaction.
     if (present (lt_cm_to_lab)) then
        call phs_prt_set_momentum (forest%prt_in, &
             inverse (lt_cm_to_lab) * &
-            interaction_get_momenta (int, outgoing=.false.))
+            int%get_momenta (outgoing=.false.))
     else
        call phs_prt_set_momentum (forest%prt_in, &
-            interaction_get_momenta (int, outgoing=.false.))
+            int%get_momenta (outgoing=.false.))
     end if
     associate (m_in => forest%flv(:forest%n_in)%get_mass ())
       call phs_prt_set_msq (forest%prt_in, m_in ** 2)
@@ -6714,10 +6721,10 @@ Set the incoming particles from the contents of an interaction.
     if (present (lt_cm_to_lab)) then
        call phs_prt_set_momentum (forest%prt_out, &
             inverse (lt_cm_to_lab) * &
-            interaction_get_momenta (int, outgoing=.true.))
+            int%get_momenta (outgoing=.true.))
     else
        call phs_prt_set_momentum (forest%prt_out, &
-            interaction_get_momenta (int, outgoing=.true.))
+            int%get_momenta (outgoing=.true.))
     end if
     associate (m_out => forest%flv(forest%n_in+1:)%get_mass ())
       call phs_prt_set_msq (forest%prt_out, m_out ** 2)
@@ -6772,12 +6779,11 @@ forest.  The others are kept undefined.
     type(interaction_t), intent(inout) :: int
     type(lorentz_transformation_t), intent(in), optional :: lt_cm_to_lab
     if (present (lt_cm_to_lab)) then
-       call interaction_set_momenta (int, &
-            lt_cm_to_lab * &
+       call int%set_momenta (lt_cm_to_lab * &
             phs_prt_get_momentum (forest%prt_out), outgoing=.true.)
     else
-       call interaction_set_momenta (int, &
-            phs_prt_get_momentum (forest%prt_out), outgoing=.true.)
+       call int%set_momenta (phs_prt_get_momentum (forest%prt_out), &
+            outgoing=.true.)
     end if
   end subroutine phs_forest_get_prt_out
 
@@ -7162,11 +7168,11 @@ phase-space factors.
     call phs_forest_set_parameters (forest, mapping_defaults, .false.)
     call phs_forest_setup_prt_combinations (forest)
     call phs_forest_set_equivalences (forest)
-    call interaction_init (int, 2, 0, 3)
-    call interaction_set_momentum (int, &
-         vector4_moving (500._default, 500._default, 3), 1)
-    call interaction_set_momentum (int, &
-         vector4_moving (500._default,-500._default, 3), 2)
+    call int%basic_init (2, 0, 3)
+    call int%set_momentum &
+         (vector4_moving (500._default, 500._default, 3), 1)
+    call int%set_momentum &
+         (vector4_moving (500._default,-500._default, 3), 2)
     call phs_forest_set_prt_in (forest, int)
     n_channel = 2
     x = 0
@@ -7186,7 +7192,7 @@ phase-space factors.
     do ch = 1, 4
        write (u, "(3x,5(1x," // FMT_12 // "))")  x(:,ch)
     end do
-    call interaction_write (int, u)
+    call int%basic_write (u)
     write (u, "(A)")  "   Factors:"
     write (u, "(3x,5(1x," // FMT_12 // "))")  factor
     write (u, "(A)")  "   Volume:"
@@ -9706,6 +9712,7 @@ module phs_wood
   use diagnostics
   use os_interface
   use md5
+  use physics_defs
   use lorentz
   use model_data
   use flavors
@@ -10044,7 +10051,7 @@ reuse an existing file even if it does not match the current setup.
     logical, intent(in), optional :: azimuthal_dependence
     logical, intent(in), optional :: rebuild
     logical, intent(in), optional :: ignore_mismatch
-    type(string_t), intent(inout), optional :: nlo_type
+    integer, intent(inout), optional :: nlo_type
     type(string_t) :: filename, filename_vis
     logical :: variable_limits
     logical :: ok, exist, found, check, match, rebuild_phs
@@ -10052,7 +10059,7 @@ reuse an existing file even if it does not match the current setup.
     if (present (nlo_type)) then
       phs_config%nlo_type = nlo_type
     else
-      phs_config%nlo_type = 'Born'
+      phs_config%nlo_type = BORN
     end if
     phs_config%sqrts = sqrts
     phs_config%par%sqrts = sqrts

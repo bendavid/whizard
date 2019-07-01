@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -32,10 +32,10 @@
 
 module lorentz
 
-  use kinds, only: default
+  use kinds, only: default, double
   use io_units
   use constants, only: pi, twopi, degree, zero, one, eps0
-  use format_defs, only: FMT_15, FMT_17, FMT_19
+  use format_defs, only: FMT_13, FMT_15, FMT_17, FMT_19
   use format_utils, only: pac_fmt
   use diagnostics
   use c_particles
@@ -129,6 +129,9 @@ module lorentz
   type :: vector4_t
      real(default), dimension(0:3) :: p = &
         [zero, zero, zero, zero]
+  contains
+    procedure :: write => vector4_write
+    procedure :: to_pythia6 => vector4_to_pythia6
   end type vector4_t
   type :: lorentz_transformation_t
      private
@@ -244,7 +247,7 @@ module lorentz
      module procedure negate_vector4
   end interface
   interface sum
-     module procedure sum_vector4
+     module procedure sum_vector4, sum_vector4_mask
   end interface
   interface space_part
      module procedure vector4_get_space_part
@@ -557,20 +560,23 @@ contains
     end if
   end function vector3_get_direction
 
-  subroutine vector4_write (p, unit, show_mass, testflag)
-    type(vector4_t), intent(in) :: p
+  subroutine vector4_write (p, unit, show_mass, testflag, compressed)
+    class(vector4_t), intent(in) :: p
     integer, intent(in), optional :: unit
-    logical, intent(in), optional :: show_mass
-    logical, intent(in), optional :: testflag
+    logical, intent(in), optional :: show_mass, testflag, compressed
+    logical :: comp, sm
     integer :: u
     character(len=7) :: fmt
-    call pac_fmt (fmt, FMT_19, FMT_15, testflag)
+    comp = .false.; if (present (compressed))  comp = compressed
+    sm = .false.;  if (present (show_mass))  sm = show_mass
+    call pac_fmt (fmt, FMT_19, FMT_13, testflag)
     u = given_output_unit (unit);  if (u < 0)  return
-    write(u, "(1x,A,1x," // fmt // ")") 'E = ', p%p(0)
-    write(u, "(1x,A,3(1x," // fmt // "))") 'P = ', p%p(1:)
-    if (present (show_mass)) then
-       if (show_mass) &
-            write (u, "(1x,A,1x," // fmt // ")") 'M = ', p**1
+    if (comp) then
+       write (u, "(4(F12.3,1X))", advance="no")  p%p(0:3)
+    else
+       write(u, "(1x,A,1x," // fmt // ")") 'E = ', p%p(0)
+       write(u, "(1x,A,3(1x," // fmt // "))") 'P = ', p%p(1:)
+       if (sm)  write (u, "(1x,A,1x," // fmt // ")") 'M = ', p**1
     end if
   end subroutine vector4_write
 
@@ -713,10 +719,20 @@ contains
     type(vector4_t) :: q
     type(vector4_t), dimension(:), intent(in) :: p
     integer :: i
-    do i=0, 3
+    do i = 0, 3
        q%p(i) = sum (p%p(i))
     end do
   end function sum_vector4
+
+  pure function sum_vector4_mask (p, mask) result (q)
+    type(vector4_t) :: q
+    type(vector4_t), dimension(:), intent(in) :: p
+    logical, dimension(:), intent(in) :: mask
+    integer :: i
+    do i = 0, 3
+       q%p(i) = sum (p%p(i), mask=mask)
+    end do
+  end function sum_vector4_mask
 
   subroutine vector4_set_component (p, k, c)
     type(vector4_t), intent(inout) :: p
@@ -798,6 +814,14 @@ contains
     real(default), dimension(:), intent(in) :: a
     p%p(1:3) = a
   end subroutine vector3_from_array
+
+  pure function vector4_to_pythia6 (vector4) result (p)
+    real(double), dimension(1:5) :: p
+    class(vector4_t), intent(in) :: vector4
+    p(1:3) = vector4%p(1:3)
+    p(4) = vector4%p(0)
+    p(5) = vector4 ** 2
+  end function vector4_to_pythia6
 
   pure subroutine vector4_from_c_prt (p, c_prt)
     type(vector4_t), intent(out) :: p
@@ -1476,19 +1500,19 @@ contains
   elemental subroutine pacify_vector3 (p, tolerance)
     type(vector3_t), intent(inout) :: p
     real(default), intent(in) :: tolerance
-    where (abs (p%p) < tolerance)  p%p = 0
+    where (abs (p%p) < tolerance)  p%p = zero
   end subroutine pacify_vector3
 
   elemental subroutine pacify_vector4 (p, tolerance)
     type(vector4_t), intent(inout) :: p
     real(default), intent(in) :: tolerance
-    where (abs (p%p) < tolerance)  p%p = 0
+    where (abs (p%p) < tolerance)  p%p = zero
   end subroutine pacify_vector4
 
   elemental subroutine pacify_LT (LT, tolerance)
     type(lorentz_transformation_t), intent(inout) :: LT
     real(default), intent(in) :: tolerance
-    where (abs (LT%L) < tolerance)  LT%L = 0
+    where (abs (LT%L) < tolerance)  LT%L = zero
   end subroutine pacify_LT
 
   subroutine vector_set_reshuffle (p1, list, p2)
@@ -1504,10 +1528,11 @@ contains
     end do
   end subroutine vector_set_reshuffle
 
-  subroutine vector4_write_set (p, unit, show_mass)
+  subroutine vector4_write_set (p, unit, show_mass, testflag)
     type(vector4_t), intent(in), dimension(:) :: p
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: show_mass
+    logical, intent(in), optional :: testflag
     integer :: i, j
     real(default), dimension(4) :: p_tot
     character(len=7) :: fmt
@@ -1516,12 +1541,15 @@ contains
     p_tot = 0
     do i = 1, size (p)
       forall (j=1:4) p_tot(j) = p_tot(j) + vector4_get_component(p(i),j-1)
-      call vector4_write (p(i), u, show_mass)
+      call vector4_write (p(i), u, show_mass, testflag)
     end do
-    call pac_fmt (fmt, FMT_19, FMT_15)
-    write(u, "(A5)") 'Total: '
-    write(u, "(1x,A,1x," // fmt // ")") 'E = ', p_tot(1)
-    write(u, "(1x,A,3(1x," // fmt // "))") 'P = ', p_tot(2:)
+    call pac_fmt (fmt, FMT_19, FMT_15, testflag)
+    if (present (testflag)) then
+       if (testflag)  call pacify (p_tot, 1.E-10_default)
+    end if
+    write (u, "(A5)") 'Total: '
+    write (u, "(1x,A,1x," // fmt // ")")    "E = ", p_tot(1)
+    write (u, "(1x,A,3(1x," // fmt // "))") "P = ", p_tot(2:)
   end subroutine vector4_write_set
 
   subroutine spinor_product (p1, p2, prod1, prod2)

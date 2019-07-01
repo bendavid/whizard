@@ -1,9 +1,9 @@
 General:
 
-* WHIZARD 2.2 currently runs only with the NAGFOR 5.3 (or newer) and 
+* WHIZARD 2.2 currently runs only with the NAGFOR 6.0 (or newer) and 
   gfortran 4.7.4 (or newer) Fortran compilers
 
-  [After compiler bugs are fixed, it should also run with g95, PGF
+  [After compiler bugs are fixed, it should also run with PGF
    and ifort.  See the file EXTENSIONS for the list of Fortran 2003 
    features that the compiler must support.]
 

@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -55,20 +55,25 @@ module eio_base
      type(string_t) :: sample
      type(string_t) :: extension
      type(string_t) :: filename
+     logical :: has_file = .false.
      logical :: split = .false.
      integer :: split_n_evt = 0
+     integer :: split_n_kbytes = 0
      integer :: split_index = 0
+     integer :: split_count = 0
      class(model_data_t), pointer :: fallback_model => null ()
    contains
      procedure (eio_write), deferred :: write
      procedure (eio_final), deferred :: final
      procedure :: set_splitting => eio_set_splitting
+     procedure :: update_split_count => eio_update_split_count
      procedure :: set_filename => eio_set_filename
      procedure :: set_fallback_model => eio_set_fallback_model
      procedure (eio_init_out), deferred :: init_out
      procedure (eio_init_in), deferred :: init_in
      procedure (eio_switch_inout), deferred :: switch_inout
      procedure :: split_out => eio_split_out
+     procedure :: file_size_kbytes => eio_file_size_kbytes
      procedure (eio_output), deferred :: output
      procedure (eio_input_i_prc), deferred :: input_i_prc
      procedure (eio_input_event), deferred :: input_event
@@ -207,21 +212,36 @@ contains
   subroutine eio_set_splitting (eio, data)
     class(eio_t), intent(inout) :: eio
     type(event_sample_data_t), intent(in) :: data
-    eio%split = data%split_n_evt > 0
+    eio%split = data%split_n_evt > 0 .or. data%split_n_kbytes > 0
     if (eio%split) then
        eio%split_n_evt = data%split_n_evt
+       eio%split_n_kbytes = data%split_n_kbytes
        eio%split_index = data%split_index
+       eio%split_count = 0
     end if
   end subroutine eio_set_splitting
     
+  subroutine eio_update_split_count (eio, increased)
+    class(eio_t), intent(inout) :: eio
+    logical, intent(out) :: increased
+    integer :: split_count_old
+    if (eio%split_n_kbytes > 0) then
+       split_count_old = eio%split_count
+       eio%split_count = eio%file_size_kbytes () / eio%split_n_kbytes
+       increased = eio%split_count > split_count_old
+    end if
+  end subroutine eio_update_split_count
+  
   subroutine eio_set_filename (eio)
     class(eio_t), intent(inout) :: eio
     character(32) :: buffer
     if (eio%split) then
        write (buffer, "(I0,'.')")  eio%split_index
        eio%filename = eio%sample // "." // trim (buffer) // eio%extension
+       eio%has_file = .true.
     else
        eio%filename = eio%sample // "." // eio%extension
+       eio%has_file = .true.
     end if    
   end subroutine eio_set_filename
 
@@ -235,6 +255,22 @@ contains
     class(eio_t), intent(inout) :: eio
   end subroutine eio_split_out
 
+  function eio_file_size_kbytes (eio) result (kbytes)
+    class(eio_t), intent(in) :: eio
+    integer :: kbytes
+    integer(i64) :: bytes
+    if (eio%has_file) then
+       inquire (file = char (eio%filename), size = bytes)
+       if (bytes > 0) then
+          kbytes = bytes / 1024
+       else
+          kbytes = 0
+       end if
+    else
+       kbytes = 0
+    end if
+  end function eio_file_size_kbytes
+  
   subroutine eio_test_write (object, unit)
     class(eio_test_t), intent(in) :: object
     integer, intent(in), optional :: unit

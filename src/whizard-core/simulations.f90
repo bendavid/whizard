@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -63,6 +63,7 @@ module simulations
   use events
   use event_transforms
   use decays
+  use shower
   use eio_data
   use eio_base
   use eio_raw
@@ -73,7 +74,6 @@ module simulations
   use compilations
   use integrations
   use event_streams
-
   implicit none
   private
 
@@ -152,6 +152,7 @@ module simulations
      procedure :: update_process => entry_update_process
      procedure :: restore_process => entry_restore_process
      procedure :: combine_mci_sets => entry_combine_mci_sets
+     procedure :: connect_qcd => entry_connect_qcd
   end type entry_t
 
   type, extends (entry_t) :: alt_entry_t
@@ -188,6 +189,7 @@ module simulations
      type(selector_t) :: process_selector
      integer :: n_evt_requested = 0
      integer :: split_n_evt = 0
+     integer :: split_n_kbytes = 0
      integer :: split_index = 0
      type(counter_t) :: counter
      class(rng_t), allocatable :: rng
@@ -445,7 +447,8 @@ contains
     type(process_t), pointer :: process, master_process
     type(process_instance_t), pointer :: process_instance
     integer :: i
-    
+    logical :: combined_integration
+
     call prepare_process (master_process, process_id, integrate, local, global)
     if (signal_is_pending ())  return
 
@@ -492,7 +495,9 @@ contains
     call entry%import_process_results (master_process)
     call entry%prepare_expressions (local)
 
-    call prepare_process_instance (process_instance, process, local%model)
+    combined_integration = local%get_lval (var_str ("?combined_nlo_integration"))
+    call prepare_process_instance (process_instance, process, local%model, &
+                                   combined_integration = combined_integration)
     if (generate) then
        do i = 1, entry%n_mci
           call process%prepare_simulation (i)
@@ -500,6 +505,9 @@ contains
        end do
     end if
     call entry%setup_event_transforms (process, local)
+    call dispatch_qcd (entry%qcd, local)
+
+    call entry%connect_qcd ()
 
     if (present (global)) then
        call entry%connect (process_instance, local%model, global%process_stack)
@@ -509,7 +517,6 @@ contains
     call entry%setup_expressions ()
 
     entry%model => process%get_model_ptr ()
-    call dispatch_qcd (entry%qcd, local)
     entry%valid = .true.
     
   end subroutine entry_init
@@ -525,12 +532,18 @@ contains
     process => intg%get_process_ptr ()
   end subroutine prepare_local_process
   
-  subroutine prepare_process_instance (process_instance, process, model)
+  subroutine prepare_process_instance (process_instance, process, model, combined_integration)
     type(process_instance_t), pointer, intent(inout) :: process_instance
     type(process_t), intent(inout), target :: process
     class(model_data_t), intent(in), optional :: model
+    logical, intent(in), optional :: combined_integration
     allocate (process_instance)
-    call process_instance%init (process)
+    if (process%is_nlo_calculation ()) then
+       call process_instance%init (process, combined_integration = combined_integration)
+       call setup_nlo_component_cores (process)
+    else
+       call process_instance%init (process)
+    end if
     call process_instance%setup_event_data (model)
   end subroutine prepare_process_instance 
 
@@ -567,23 +580,28 @@ contains
 
   subroutine entry_setup_event_transforms (entry, process, local)
     class(entry_t), intent(inout) :: entry
-    type(process_t), intent(in), target :: process
+    type(process_t), intent(inout), target :: process
     type(rt_data_t), intent(in), target :: local
     class(evt_t), pointer :: evt
-    logical :: enable_qcd
+    logical :: enable_shower
     if (process%contains_unstable (local%model)) then
        call dispatch_evt_decay (evt, local)
        if (associated (evt))  call entry%import_transform (evt)
     end if
-    enable_qcd = local%get_lval (var_str ("?ps_isr_active")) &
+    enable_shower = local%get_lval (var_str ("?allow_shower")) .and. &
+            (local%get_lval (var_str ("?ps_isr_active")) &
             .or. local%get_lval (var_str ("?ps_fsr_active")) &
-            .or. local%get_lval (var_str ("?hadronization_active")) &
+            .or. local%get_lval (var_str ("?muli_active")) &
             .or. local%get_lval (var_str ("?mlm_matching")) &
             .or. local%get_lval (var_str ("?ckkw_matching")) &
-            .or. local%get_lval (var_str ("?muli_active"))
-    if (enable_qcd) then 
+            .or. local%get_lval (var_str ("?powheg_matching")))
+    if (enable_shower) then
        call dispatch_evt_shower (evt, local, process)
-       if (associated (evt))  call entry%import_transform (evt)
+       call entry%import_transform (evt)
+    end if
+    if (local%get_lval (var_str ("?hadronization_active"))) then
+       call dispatch_evt_hadrons (evt, local, process)
+       call entry%import_transform (evt)
     end if
   end subroutine entry_setup_event_transforms
 
@@ -597,7 +615,7 @@ contains
        end do
     end if
   end subroutine entry_init_mci_selector
-  
+
   function entry_select_mci (entry) result (i_mci)
     class(entry_t), intent(inout) :: entry
     integer :: i_mci
@@ -681,16 +699,31 @@ contains
     end do
   end subroutine entry_combine_mci_sets
  
+  subroutine entry_connect_qcd (entry)
+    class(entry_t), intent(inout), target :: entry
+    class(evt_t), pointer :: evt
+    evt => entry%transform_first
+    do while (associated (evt))
+       select type (evt)
+       type is (evt_shower_t)
+          evt%qcd => entry%qcd
+          if (evt%settings%powheg_matching) then
+             evt%powheg%qcd => entry%qcd
+             call evt%powheg%compute_lambda2_gen ()
+          end if
+       end select
+       evt => evt%next
+    end do
+  end subroutine entry_connect_qcd
+
   subroutine alt_entry_init (entry, process_id, master_process, local)
     class(alt_entry_t), intent(inout), target :: entry
     type(string_t), intent(in) :: process_id
     type(process_t), intent(in), target :: master_process
     type(rt_data_t), intent(inout), target :: local
-    class(rng_factory_t), allocatable :: rng_factory
     type(process_t), pointer :: process
     type(process_instance_t), pointer :: process_instance
     type(string_t) :: run_id
-    type(integration_t) :: intg
     integer :: i
 
     call msg_message ("Simulate: initializing alternate process setup ...")
@@ -778,8 +811,9 @@ contains
        write (u, "(3x,A,A,A)")  "MD5 sum (config) = '", object%md5sum_cfg, "'"
     end if
     write (u, "(3x,A,I0)")  "Events requested  = ", object%n_evt_requested
-    if (object%split_n_evt > 0) then
+    if (object%split_n_evt > 0 .or. object%split_n_kbytes > 0) then
        write (u, "(3x,A,I0)")  "Events per file   = ", object%split_n_evt
+       write (u, "(3x,A,I0)")  "KBytes per file   = ", object%split_n_kbytes
        write (u, "(3x,A,I0)")  "First file index  = ", object%split_index
     end if
     call object%counter%write (u)
@@ -791,7 +825,7 @@ contains
             char (object%entry(object%i_prc)%process_id)
        write (u, "(3x,A,I0)")  "MCI set #", object%i_mci
        write (u, "(3x,A," // FMT_19 // ")")  "Weight    = ", object%weight
-       if (object%excess /= 0) &
+       if (.not. vanishes (object%excess)) &
             write (u, "(3x,A," // FMT_19 // ")")  "Excess    = ", object%excess
     else
        write (u, "(1x,A,I0,A,A)")  "Current event: [undefined]"
@@ -825,8 +859,7 @@ contains
     logical, intent(in), optional :: testflag
     logical :: pacified
     integer :: current
-    pacified = .false.
-    if (present(testflag)) pacified = testflag
+    pacified = .false.;  if (present(testflag)) pacified = testflag
     pacified = pacified .or. object%pacify
     if (present (i_prc)) then
        current = i_prc
@@ -921,6 +954,8 @@ contains
          local%get_ival (var_str ("sample_max_tries"))
     simulation%split_n_evt = &
          local%get_ival (var_str ("sample_split_n_evt"))
+    simulation%split_n_kbytes = &
+         local%get_ival (var_str ("sample_split_n_kbytes"))
     simulation%split_index = &
          local%get_ival (var_str ("sample_split_index"))
     simulation%update_sqme = &
@@ -1062,7 +1097,7 @@ contains
              write (msg_buffer, "(A,1x,I0)") &
                   "Simulation: requested number of events =", n_events
              call msg_message ()
-             if (simulation%integral /= 0) then
+             if (.not. vanishes (simulation%integral)) then
                 write (msg_buffer, "(A,1x,ES11.4)") &
                      "            corr. to luminosity [fb-1] = ", &
                      n_events / simulation%integral        
@@ -1218,6 +1253,8 @@ contains
           associate (entry => simulation%entry(simulation%i_prc))
             call entry%accept_sqme_ref ()
             call entry%accept_weight_ref ()
+            !!! JRR: WK please check: why commented out
+            ! call entry%evaluate_transforms ()  ! doesn't activate
             call entry%check ()
             call entry%evaluate_expressions ()
             if (signal_is_pending ()) return
@@ -1378,6 +1415,7 @@ contains
     class(simulation_t), intent(in) :: object
     class(eio_t), intent(inout) :: eio
     integer, intent(in), optional :: i_prc
+    logical :: increased
     integer :: current
     if (present (i_prc)) then
        current = i_prc
@@ -1385,11 +1423,13 @@ contains
        current = object%i_prc
     end if
     if (current > 0) then
-       if (object%split_n_evt > 0) then
-          if (object%counter%total > 1 .and. &
-               mod (object%counter%total, object%split_n_evt) == 1) then
-             call eio%split_out ()
-          end if
+       if (object%split_n_evt > 0 &
+            .and. object%counter%total > 1 &
+            .and. mod (object%counter%total, object%split_n_evt) == 1) then
+          call eio%split_out ()
+       else if (object%split_n_kbytes > 0) then
+          call eio%update_split_count (increased)
+          if (increased)  call eio%split_out ()
        end if
        call eio%output (object%entry(current)%event_t, current, pacify = object%pacify)
     else
@@ -1560,8 +1600,9 @@ contains
     sdata%total_cross_section = sum (sdata%cross_section)
     sdata%md5sum_prc = simulation%get_md5sum_prc ()
     sdata%md5sum_cfg = simulation%get_md5sum_cfg ()
-    if (simulation%split_n_evt > 0) then
+    if (simulation%split_n_evt > 0 .or. simulation%split_n_kbytes > 0) then
        sdata%split_n_evt = simulation%split_n_evt
+       sdata%split_n_kbytes = simulation%split_n_kbytes
        sdata%split_index = simulation%split_index
     end if
   end function simulation_get_data
@@ -2904,7 +2945,6 @@ contains
     type(rt_data_t), target :: global
     type(prclib_entry_t), pointer :: lib
     type(string_t) :: prefix, procname1, procname2
-    type(process_t), pointer :: process
     type(simulation_t), target :: simulation
     
     write (u, "(A)")  "* Test output: simulations_11"

@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -51,6 +51,7 @@ module model_data
 
   public :: modelpar_data_t
   public :: field_data_t
+  public :: find_model
   public :: vertex_iterator_t
   public :: model_data_t
 
@@ -1084,6 +1085,22 @@ contains
     end if
   end function field_data_get_width
   
+  subroutine find_model (model, PDG, model_A, model_B)
+    class(model_data_t), pointer, intent(out) :: model
+    integer, intent(in) :: PDG
+    class(model_data_t), intent(in), target :: model_A, model_B
+    character(len=5) :: buffer
+    if (model_A%test_field (PDG)) then
+       model => model_A
+    else if (model_B%test_field (PDG)) then
+       model => model_B
+    else
+       write (buffer, "(I5)") PDG
+       call msg_fatal ("Parton " // buffer // &
+            " not found in the given model files")
+    end if
+  end subroutine find_model
+
   subroutine vertex_write (vtx, unit)
     class(vertex_t), intent(in) :: vtx
     integer, intent(in), optional :: unit

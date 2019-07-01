@@ -1,4 +1,4 @@
-!  $Id: omegalib.nw 6556 2015-02-12 20:34:13Z jr_reuter $
+!  $Id: omegalib.nw 6943 2015-05-01 10:53:21Z msekulla $
 !
 !  Copyright (C) 1999-2015 by
 !      Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -35,20 +35,30 @@ module omega_couplings
   public :: x_gg, g_gx
   public :: v_ss, s_vs
   public :: s_vv_t, v_sv_t
+  public :: tphi_vv, tphi_vv_cf, v_tphiv, v_tphiv_cf
   public :: tkv_vv, lkv_vv, tv_kvv, lv_kvv, kg_kgkg
   public :: t5kv_vv, l5kv_vv, t5v_kvv, l5v_kvv, kg5_kgkg, kg_kg5kg
-  public :: s_gravs, v_gravv, grav_ss, grav_vv
-  public :: t2_vv, v_t2v, t2_vv_1, v_t2v_1, t2_vv_t, v_t2v_t
+  public :: dv_vv, v_dvv, dv_vv_cf, v_dvv_cf
+  public :: dv_phi2,phi_dvphi, dv_phi2_cf, phi_dvphi_cf
   public :: phi_vv, v_phiv, phi_u_vv, v_u_phiv
+  public :: phi_dim5s2
+  public :: tphi_ss, tphi_ss_cf, s_tphis, s_tphis_cf
+  public :: phi_phi2v_1, v_phi2v_1, phi_phi2v_2, v_phi2v_2
+  public :: s_dim8s3
+  public :: s_gravs, v_gravv, grav_ss, grav_vv
+  public :: t2_vv, v_t2v, t2_vv_cf, v_t2v_cf, & 
+         t2_vv_1, v_t2v_1, t2_vv_t, v_t2v_t, &
+         t2_phi2, phi_t2phi, t2_phi2_cf, phi_t2phi_cf
   public :: t2_vv_d5_1, v_t2v_d5_1
   public :: t2_vv_d5_2, v_t2v_d5_2
   public :: t2_vv_d7, v_t2v_d7
   public :: wd_tl
   public :: gauss
   public :: pr_phi, pr_unitarity, pr_feynman, pr_gauge, pr_rxi
+  public :: pr_vector_pure
   public :: pj_phi, pj_unitarity
   public :: pg_phi, pg_unitarity
-  public :: pr_tensor
+  public :: pr_tensor, pr_tensor_pure
   integer, parameter, public :: omega_couplings_2010_01_A = 0
 contains
   pure function g_gg (g, a1, k1, a2, k2) result (a)
@@ -101,6 +111,42 @@ contains
     kout = - (kv + kphi)
     vout = g * phi * ((kout*kv) * v - (v * kout) * kv)
   end function v_sv_t
+  pure function tphi_vv (g, v1, k1, v2, k2) result (phi)
+    complex(kind=default), intent(in) :: g
+    type(vector), intent(in) :: v1, v2
+    type(momentum), intent(in) :: k1, k2
+    complex(kind=default) :: phi
+    type(momentum) :: k
+    k = - (k1 + k2)
+    phi = 2 * g * (v1*k) * (v2*k)
+  end function tphi_vv
+  pure function tphi_vv_cf (g, v1, k1, v2, k2) result (phi)
+    complex(kind=default), intent(in) :: g
+    type(vector), intent(in) :: v1, v2
+    type(momentum), intent(in) :: k1, k2
+    complex(kind=default) :: phi
+    type(momentum) :: k
+    k = - (k1 + k2)
+    phi = - g/2 * (v1*v2) * (k*k)
+  end function tphi_vv_cf
+  pure function v_tphiv (g, phi, kphi,v, kv) result (vout)
+    complex(kind=default), intent(in) :: g, phi
+    type(vector), intent(in) :: v
+    type(momentum), intent(in) :: kv, kphi
+    type(momentum) :: kout
+    type(vector)  :: vout
+    kout = - (kv + kphi)
+    vout = 2 * g * phi * ((v * kout) * kout)
+  end function v_tphiv
+  pure function v_tphiv_cf (g, phi, kphi,v, kv) result (vout)
+    complex(kind=default), intent(in) :: g, phi
+    type(vector), intent(in) :: v
+    type(momentum), intent(in) :: kv, kphi
+    type(momentum) :: kout
+    type(vector)  :: vout
+    kout = - (kv + kphi)
+    vout = -g/2 * phi * (kout*kout) * v
+  end function v_tphiv_cf
   pure function tkv_vv (g, v1, k1, v2, k2) result (v)
     complex(kind=default), intent(in) :: g
     type(vector), intent(in) :: v1, v2
@@ -215,6 +261,190 @@ contains
                         -  k2v * pseudo_scalar (kv, a2,  k1v, a1) &
                         +  a2  * pseudo_scalar (kv, k2v, k1v, a1) )
   end function kg_kg5kg
+  pure function dv_vv (g, v1, k1, v2, k2) result (v)
+    complex(kind=default), intent(in) :: g
+    type(vector), intent(in) :: v1, v2
+    type(momentum), intent(in) :: k1, k2
+    type(vector) :: v
+    type(vector) :: k
+    k = -(k1 + k2)
+    v = g * ((k * v1) * v2 + (k * v2) * v1)
+  end function dv_vv
+  pure function dv_vv_cf (g, v1, k1, v2, k2) result (v)
+    complex(kind=default), intent(in) :: g
+    type(vector), intent(in) :: v1, v2
+    type(momentum), intent(in) :: k1, k2
+    type(vector) :: v
+    type(vector) :: k
+    k = -(k1 + k2)
+    v = - g/2 * (v1 * v2) * k
+  end function dv_vv_cf
+  pure function v_dvv (g, v, k, v2) result (v1)
+    complex(kind=default), intent(in) :: g
+    type(vector), intent(in) :: v, v2
+    type(momentum), intent(in) :: k
+    type(vector) :: v1
+    v1 = g * ((v * v2) * k + (k * v2) * v)
+  end function v_dvv
+  pure function v_dvv_cf (g, v, k, v2) result (v1)
+    complex(kind=default), intent(in) :: g
+    type(vector), intent(in) ::  v, v2
+    type(momentum), intent(in) :: k
+    type(vector) :: v1
+    v1 = - g/2 * (v * k) * v2
+  end function v_dvv_cf
+  pure function dv_phi2 (g, phi1, k1, phi2, k2) result (v)
+    complex(kind=default), intent(in) :: g, phi1, phi2
+    type(momentum), intent(in) :: k1, k2
+    type(vector) :: v
+    v = g * phi1 * phi2 * ( &
+        (k1 * k2 + k2 * k2 ) * k1 + &
+        (k1 * k2 + k1 * k1 ) * k2 )
+  end function dv_phi2
+  pure function dv_phi2_cf (g, phi1, k1, phi2, k2) result (v)
+    complex(kind=default), intent(in) :: g, phi1, phi2
+    type(momentum), intent(in) :: k1, k2
+    type(vector) :: v
+    v = - g/2 * phi1 * phi2 * (k1 * k2) * (k1 + k2)
+  end function dv_phi2_cf
+  pure function phi_dvphi (g, v, k, phi2, k2) result (phi1)
+    complex(kind=default), intent(in) :: g, phi2
+    type(vector), intent(in) :: v
+    type(momentum), intent(in) :: k, k2
+    complex(kind=default) :: phi1
+    type(momentum) :: k1
+    k1 = - (k + k2)
+    phi1 = g * phi2 * ( &
+        (k1 * k2 + k2 * k2 ) * ( k1 * V ) + &
+        (k1 * k2 + k1 * k1 ) * ( k2 * V ) )
+  end function phi_dvphi
+  pure function phi_dvphi_cf (g, v, k, phi2, k2) result (phi1)
+    complex(kind=default), intent(in) :: g, phi2
+    type(vector), intent(in) :: v
+    type(momentum), intent(in) :: k, k2
+    complex(kind=default) :: phi1
+    type(momentum) :: k1
+    k1 = -(k + k2)
+    phi1 = - g/2 * phi2 * (k1 * k2)  * ((k1 + k2) * v)
+  end function phi_dvphi_cf
+  pure function phi_vv (g, k1, k2, v1, v2) result (phi)
+    complex(kind=default), intent(in) :: g
+    type(momentum), intent(in) :: k1, k2
+    type(vector), intent(in) :: v1, v2
+    complex(kind=default) :: phi
+    phi = g * pseudo_scalar (k1, v1, k2, v2)
+  end function phi_vv
+  pure function v_phiv (g, phi, k1, k2, v) result (w)
+    complex(kind=default), intent(in) :: g, phi
+    type(vector), intent(in) :: v
+    type(momentum), intent(in) :: k1, k2
+    type(vector) :: w
+    w = g * phi * pseudo_vector (k1, k2, v)
+  end function v_phiv
+  pure function phi_u_vv (g, k1, k2, v1, v2) result (phi)
+    complex(kind=default), intent(in) :: g
+    type(momentum), intent(in) :: k1, k2
+    type(vector), intent(in) :: v1, v2
+    complex(kind=default) :: phi
+    phi = g * ((k1*v2)*((-(k1+k2))*v1) + &
+               (k2*v1)*((-(k1+k2))*v2) + &
+               (((k1+k2)*(k1+k2)) * (v1*v2)))
+  end function phi_u_vv
+  pure function v_u_phiv (g, phi, k1, k2, v) result (w)
+    complex(kind=default), intent(in) :: g, phi
+    type(vector), intent(in) :: v
+    type(momentum), intent(in) :: k1, k2
+    type(vector) :: w
+    w = g * phi * ((k1*v)*k2 + &
+         ((-(k1+k2))*v)*k1 + &
+         ((k1*k1)*v))
+  end function v_u_phiv
+  pure function phi_dim5s2 (g, phi2, k2, phi3, k3) result (phi1)
+    complex(kind=default), intent(in) :: g, phi2, phi3
+    type(momentum), intent(in) :: k2, k3
+    complex(kind=default) :: phi1
+    phi1 = g * phi2 * phi3 * (k2 * k3)
+  end function phi_dim5s2
+  pure function tphi_ss (g, phi1, k1, phi2, k2) result (phi)
+    complex(kind=default), intent(in) :: g, phi1, phi2
+    type(momentum), intent(in) :: k1, k2
+    complex(kind=default) :: phi
+    phi = 2 * g * phi1 * phi2 * &
+             ((k1 * k2)+ (k1 * k1)) * &
+             ((k1 * k2)+ (k2 * k2))
+  end function tphi_ss
+  pure function tphi_ss_cf (g, phi1, k1, phi2, k2) result (phi)
+    complex(kind=default), intent(in) :: g, phi1, phi2
+    type(momentum), intent(in) :: k1, k2
+    complex(kind=default) :: phi
+    phi = - g/2 * phi1 * phi2 * &
+             (k1 * k2) * &
+             ((k1 + k2) * (k1 + k2))
+  end function tphi_ss_cf
+  pure function s_tphis (g, phi, k, phi2, k2) result (phi1)
+    complex(kind=default), intent(in) :: g, phi, phi2
+    type(momentum), intent(in) :: k, k2
+    complex(kind=default) :: phi1
+    type(momentum) :: k1
+    k1 = - ( k + k2)
+    phi1 = 2 * g * phi * phi2 * &
+             ((k1 * k2)+ (k1 * k1)) * &
+             ((k1 * k2)+ (k2 * k2))
+  end function s_tphis
+  pure function s_tphis_cf (g, phi, k, phi2, k2) result (phi1)
+    complex(kind=default), intent(in) :: g, phi, phi2
+    type(momentum), intent(in) :: k, k2
+    complex(kind=default) :: phi1
+    type(momentum) :: k1
+    k1 = - ( k + k2)
+    phi1 = - g/2 * phi * phi2 * &
+             (k1 * k2) * &
+             ((k1 + k2) * (k1 + k2))
+  end function s_tphis_cf
+  pure function phi_phi2v_1 (g, phi1, k1, v1, k_v1, v2, k_v2) result (phi2)
+    complex(kind=default), intent(in) :: g, phi1
+    type(momentum), intent(in) :: k1, k_v1, k_v2
+    type(momentum) :: k2
+    type(vector), intent(in) :: v1, v2
+    complex(kind=default) :: phi2
+    k2 = - k1 - k_v1 - k_v2
+    phi2 = g * phi1 * &
+          ( (k1 * v1) * (k2 * v2) + (k1 * v2) * (k2 * v1) )
+  end function phi_phi2v_1
+  pure function v_phi2v_1 (g, phi1, k1, phi2, k2, v1) result (v2)
+    complex(kind=default), intent(in) :: g, phi1, phi2
+    type(momentum), intent(in) :: k1, k2
+    type(vector), intent(in) :: v1
+    type(vector) :: v2
+    v2 = g * phi1 * phi2 * &
+          ( k1  * (k2 * v1) + k2 * (k1 * v1) )
+  end function v_phi2v_1
+  pure function phi_phi2v_2 (g, phi1, k1, v1,k_v1, v2, k_v2) result (phi2)
+    complex(kind=default), intent(in) :: g, phi1
+    type(momentum), intent(in) :: k1, k_v1, k_v2
+    type(vector), intent(in) :: v1, v2
+    type(momentum) :: k2
+    complex(kind=default) :: phi2
+    k2 = - k1 - k_v1 - k_v2
+    phi2 = g * phi1 * (k1 * k2) * (v1 * v2)
+  end function phi_phi2v_2
+  pure function v_phi2v_2 (g, phi1, k1, phi2, k2, v1) result (v2)
+    complex(kind=default), intent(in) :: g, phi1, phi2
+    type(momentum), intent(in) :: k1, k2
+    type(vector), intent(in) :: v1
+    type(vector) :: v2
+    v2 = g * phi1 * phi2 * &
+          ( k1  * k2 ) * v1
+  end function v_phi2v_2
+  pure function s_dim8s3 (g, phi2, k2, phi3, k3, phi4, k4) result (phi1)
+    complex(kind=default), intent(in) :: g, phi2, phi3, phi4
+    type(momentum), intent(in) :: k2, k3, k4
+    type(momentum) :: k1
+    complex(kind=default) :: phi1
+    k1 = - k2 - k3 - k4
+    phi1 = g * ( (k1 * k2) * (k3 * k4) + (k1 * k3) * (k2 * k4) &
+            + (k1 * k4) * (k2 * k3) ) * phi2 * phi3 * phi4
+  end function s_dim8s3
   pure function s_gravs (g, m, k1, k2, t, s) result (phi)
     complex(kind=default), intent(in) :: g, s
     real(kind=default), intent(in) :: m
@@ -285,38 +515,6 @@ contains
   !!!       t_metric) - (k1*v1) * ((k1.tprod.v2) + (v2.tprod.k1)) &
   !!!       - (k2*v2) * ((k2.tprod.v1) + (v1.tprod.k2)))
   end function grav_vv
-  pure function phi_vv (g, k1, k2, v1, v2) result (phi)
-    complex(kind=default), intent(in) :: g
-    type(momentum), intent(in) :: k1, k2
-    type(vector), intent(in) :: v1, v2
-    complex(kind=default) :: phi
-    phi = g * pseudo_scalar (k1, v1, k2, v2)
-  end function phi_vv
-  pure function v_phiv (g, phi, k1, k2, v) result (w)
-    complex(kind=default), intent(in) :: g, phi
-    type(vector), intent(in) :: v
-    type(momentum), intent(in) :: k1, k2
-    type(vector) :: w
-    w = g * phi * pseudo_vector (k1, k2, v)
-  end function v_phiv
-  pure function phi_u_vv (g, k1, k2, v1, v2) result (phi)
-    complex(kind=default), intent(in) :: g
-    type(momentum), intent(in) :: k1, k2
-    type(vector), intent(in) :: v1, v2
-    complex(kind=default) :: phi
-    phi = g * ((k1*v2)*((-(k1+k2))*v1) + &
-               (k2*v1)*((-(k1+k2))*v2) + &
-               (((k1+k2)*(k1+k2)) * (v1*v2)))
-  end function phi_u_vv
-  pure function v_u_phiv (g, phi, k1, k2, v) result (w)
-    complex(kind=default), intent(in) :: g, phi
-    type(vector), intent(in) :: v
-    type(momentum), intent(in) :: k1, k2
-    type(vector) :: w
-    w = g * phi * ((k1*v)*k2 + &
-         ((-(k1+k2))*v)*k1 + &
-         ((k1*k1)*v))
-  end function v_u_phiv
   pure function t2_vv (g, v1, v2) result (t)
     complex(kind=default), intent(in) :: g
     type(vector), intent(in) :: v1, v2
@@ -334,6 +532,69 @@ contains
     tmp%t = t%t + transpose (t%t)
     tv = g * (tmp * v)
   end function v_t2v
+  pure function t2_vv_cf (g, v1, v2) result (t)
+    complex(kind=default), intent(in) :: g
+    complex(kind=default) :: tmp_s
+    type(vector), intent(in) :: v1, v2
+    type(tensor) :: t_metric, t
+    t_metric%t = 0
+    t_metric%t(0,0) =   1.0_default
+    t_metric%t(1,1) = - 1.0_default
+    t_metric%t(2,2) = - 1.0_default
+    t_metric%t(3,3) = - 1.0_default
+    tmp_s = v1 * v2
+    t%t = - (g /2.0_default) * tmp_s * t_metric%t 
+  end function t2_vv_cf
+  pure function v_t2v_cf (g, t, v) result (tv)
+    complex(kind=default), intent(in) :: g
+    type(tensor), intent(in) :: t
+    type(vector), intent(in) :: v
+    type(vector) :: tv, tmp_tv
+    tmp_tv =  ( t%t(0,0)-t%t(1,1)-t%t(2,2)-t%t(3,3) ) * v
+    tv = - ( g /2.0_default) * tmp_tv
+  end function v_t2v_cf
+  pure function t2_phi2 (g, phi1, k1, phi2, k2) result (t)
+    complex(kind=default), intent(in) :: g, phi1, phi2
+    type(momentum), intent(in) :: k1, k2
+    type(tensor) :: t
+    type(tensor) :: tmp
+    tmp = k1.tprod.k2
+    t%t = g * (tmp%t + transpose (tmp%t)) * phi1 * phi2
+  end function t2_phi2
+  pure function phi_t2phi (g, t, kt, phi2, k2) result (phi1)
+    complex(kind=default), intent(in) :: g, phi2
+    type(tensor), intent(in) :: t
+    type(momentum), intent(in) :: kt, k2
+    type(momentum) :: k1
+    complex(kind=default) :: phi1
+    type(tensor) :: tmp
+    k1 = -kt - k2 
+    tmp%t = t%t + transpose (t%t)
+    phi1 = g * ( (tmp * k2) * k1) * phi2
+  end function phi_t2phi
+  pure function t2_phi2_cf (g, phi1, k1, phi2, k2) result (t)
+    complex(kind=default), intent(in) :: g, phi1, phi2
+    complex(kind=default) :: tmp_s
+    type(momentum), intent(in) :: k1, k2
+    type(tensor) :: t_metric, t
+    t_metric%t = 0
+    t_metric%t(0,0) =   1.0_default
+    t_metric%t(1,1) = - 1.0_default
+    t_metric%t(2,2) = - 1.0_default
+    t_metric%t(3,3) = - 1.0_default
+    tmp_s = (k1 * k2) * phi1 * phi2
+    t%t = - (g /2.0_default) * tmp_s * t_metric%t 
+  end function t2_phi2_cf
+  pure function phi_t2phi_cf (g, t, kt, phi2, k2) result (phi1)
+    complex(kind=default), intent(in) :: g, phi2
+    type(tensor), intent(in) :: t
+    type(momentum), intent(in) :: kt, k2
+    type(momentum) :: k1
+    complex(kind=default) ::  tmp_ts, phi1
+    k1 = - kt - k2
+    tmp_ts =  ( t%t(0,0)-t%t(1,1)-t%t(2,2)-t%t(3,3) ) 
+    phi1 = - ( g /2.0_default) * tmp_ts * (k1 * k2) * phi2
+  end function phi_t2phi_cf
   pure function t2_vv_1 (g, v1, v2) result (t)
     complex(kind=default), intent(in) :: g
     complex(kind=default) :: tmp_s
@@ -550,6 +811,17 @@ contains
     pe = - (1 / cmplx (p2 - m**2, m*w, kind=default)) &
          * (e - ((1 - xi) * (p*e) / (p2 - xi * m**2)) * pv)
   end function pr_rxi
+  pure function pr_vector_pure (p, m, w, e) result (pe)
+    type(vector) :: pe
+    type(momentum), intent(in) :: p
+    real(kind=default), intent(in) :: m, w
+    type(vector), intent(in) :: e
+    real(kind=default) :: p2
+    type(vector) :: pv
+    p2 = p*p
+    pv = p
+    pe = - (1 / cmplx (p2 - m**2, m*w, kind=default)) * e 
+  end function pr_vector_pure
   pure function pr_tensor (p, m, w, t) result (pt)
     type(tensor) :: pt
     type(momentum), intent(in) :: p
@@ -584,4 +856,28 @@ contains
          - (p_dd_t / 3.0_default) * p_uu
     pt%t = pt%t / cmplx (p*p - m**2, m*w, kind=default)
   end function pr_tensor
+  pure function pr_tensor_pure (p, m, w, t) result (pt)
+    type(tensor) :: pt
+    type(momentum), intent(in) :: p
+    real(kind=default), intent(in) :: m, w
+    type(tensor), intent(in) :: t
+    complex(kind=default) :: p_dd_t
+    real(kind=default), dimension(0:3,0:3) :: g_uu
+    integer :: i, j
+    g_uu(0,0) = 1 
+    g_uu(0,1:3) = 0
+    g_uu(1:3,0) = g_uu(0,1:3)
+    do i = 1, 3
+       do j = 1, 3
+          g_uu(i,j) = 0
+       end do
+    end do
+    do i = 1, 3
+       g_uu(i,i) = - 1
+    end do
+    p_dd_t = t%t(0,0) - t%t(1,1) - t%t(2,2) - t%t(3,3) 
+    pt%t =  0.5_default * ((t%t + transpose (t%t)) &
+         - p_dd_t * g_uu )
+    pt%t = pt%t / cmplx (p*p - m**2, m*w, kind=default)
+  end function pr_tensor_pure
 end module omega_couplings

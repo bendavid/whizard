@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -39,7 +39,7 @@ module md5
   use system_defs, only: LF, EOR, EOF
   use diagnostics
   use bytes
-  
+
   implicit none
   private
 
@@ -264,7 +264,7 @@ contains
     call message_append_string (m, trim (buffer))
     call message_append_string (m, LF)
   end subroutine message_append_from_unit
- 
+
   subroutine message_read_from_file (m, f)
     type(message_t), intent(inout) :: m
     character(len=*), intent(in) :: f
@@ -461,7 +461,7 @@ contains
       integer, intent(in) :: k, s, i
       a = b + ishftc (a + f(b, c, d) + x(k) + t(i), s)
     end subroutine transform
-    
+
   end subroutine message_digest
 
   function md5sum_from_string (s) result (digest)
@@ -504,9 +504,9 @@ contains
     type(test_results_t), intent(inout) :: results
     call test (md5_1, "md5_1", &
          "check MD5 sums", &
-         u, results)  
+         u, results)
   end subroutine md5_test
-  
+
 
   subroutine md5_1 (u)
     integer, intent(in) :: u
@@ -529,11 +529,11 @@ contains
     data result(5) /"C3FCD3D76192E4007DFB496CCA67E13B"/
     data result(6) /"D174AB98D277D9F5A5611C2C9F419D9F"/
     data result(7) /"57EDF4A22BE3C955AC49DA2E2107B67A"/
-    
+
     write (u, "(A)")  "* Test output: MD5"
     write (u, "(A)")  "*   Purpose: test MD5 sums"
-    write (u, "(A)")        
-        
+    write (u, "(A)")
+
     do i = 1, n
        write (u, "(A)") "MD5 test string = " // '"'// &
             trim (teststring(i)) // '"'

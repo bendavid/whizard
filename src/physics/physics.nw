@@ -1,5 +1,5 @@
 % -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*-
-% WHIZARD code as NOWEB source: combinatorics and such
+% WHIZARD code as NOWEB source: physics and such
 
 \chapter{Physics}
 
@@ -19,6 +19,9 @@ of WHIZARD.
   running coupling constants, Catani-Seymour dipoles, or Sudakov factors.
 \item[sm\_qcd]
   Definitions and methods for dealing with the running QCD coupling.
+\item[shower\_algorithms]
+  Algorithms typically used in Parton Showers as well as in their
+  matching to NLO computations, e.g. with the POWHEG method.
 \end{description}
 
 \clearpage
@@ -89,8 +92,13 @@ We need an UNDEFINED value:
 @ SM fermions:
 <<Physics defs: public parameters>>=
   integer, parameter, public :: ELECTRON = 11
+  integer, parameter, public :: ELECTRON_NEUTRINO = 12
+  integer, parameter, public :: MUON = 13
+  integer, parameter, public :: MUON_NEUTRINO = 14
+  integer, parameter, public :: TAU = 15
+  integer, parameter, public :: TAU_NEUTRINO = 16
 
-@ %def ELECTRON
+@ %def ELECTRON MUON TAU
 @ Gauge bosons:
 <<Physics defs: public parameters>>=
   integer, parameter, public :: GLUON = 21
@@ -183,6 +191,7 @@ the number of degrees of freedom.
   integer, parameter, public:: UNKNOWN = 0
   integer, parameter, public :: SCALAR = 1, SPINOR = 2, VECTOR = 3, &
                                 VECTORSPINOR = 4, TENSOR = 5
+
 @ %def UNKNOWN SCALAR SPINOR VECTOR VECTORSPINOR TENSOR
 @ Isospin types and charge types are counted in an analogous way,
 where charge type 1 is charge 0, 2 is charge 1/3, and so on. Zero
@@ -191,6 +200,19 @@ explicit sign.
 
 Color types are defined as the dimension of the representation.
 
+\subsection{NLO status codes}
+Used to specify whether a component of a process instance is associated
+with a Born, real-subtracted, virtual-subtracted or subtraction-dummy
+matrix element.
+<<Physics defs: public parameters>>= 
+  integer, parameter, public :: BORN = 0
+  integer, parameter, public :: NLO_REAL = 1
+  integer, parameter, public :: NLO_VIRTUAL = 2
+  integer, parameter, public :: NLO_PDF = 3
+  integer, parameter, public :: NLO_SUBTRACTION = 4
+
+@ % def BORN, NLO_REAL, NLO_VIRTUAL, NLO_SUBTRACTION
+@
 \clearpage
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{C-compatible Particle Type}
@@ -277,10 +299,10 @@ elemental (or pure, if this is not possible).
 
 module lorentz
 
-<<Use kinds>>
+<<Use kinds with double>>
   use io_units
   use constants, only: pi, twopi, degree, zero, one, eps0
-  use format_defs, only: FMT_15, FMT_17, FMT_19
+  use format_defs, only: FMT_13, FMT_15, FMT_17, FMT_19
   use format_utils, only: pac_fmt
   use diagnostics
   use c_particles
@@ -640,26 +662,33 @@ the time-critical applications do not involve four-vector operations.
   type :: vector4_t
      real(default), dimension(0:3) :: p = &
         [zero, zero, zero, zero]
+  contains
+  <<Lorentz: vector4: TBP>>
   end type vector4_t
 @ %def vector4_t
 @ Output a vector
 <<Lorentz: public>>=
   public :: vector4_write
+<<Lorentz: vector4: TBP>>=
+  procedure :: write => vector4_write
 <<Lorentz: procedures>>=
-  subroutine vector4_write (p, unit, show_mass, testflag)
-    type(vector4_t), intent(in) :: p
+  subroutine vector4_write (p, unit, show_mass, testflag, compressed)
+    class(vector4_t), intent(in) :: p
     integer, intent(in), optional :: unit
-    logical, intent(in), optional :: show_mass
-    logical, intent(in), optional :: testflag
+    logical, intent(in), optional :: show_mass, testflag, compressed
+    logical :: comp, sm
     integer :: u
     character(len=7) :: fmt
-    call pac_fmt (fmt, FMT_19, FMT_15, testflag)
+    comp = .false.; if (present (compressed))  comp = compressed
+    sm = .false.;  if (present (show_mass))  sm = show_mass
+    call pac_fmt (fmt, FMT_19, FMT_13, testflag)
     u = given_output_unit (unit);  if (u < 0)  return
-    write(u, "(1x,A,1x," // fmt // ")") 'E = ', p%p(0)
-    write(u, "(1x,A,3(1x," // fmt // "))") 'P = ', p%p(1:)
-    if (present (show_mass)) then
-       if (show_mass) &
-            write (u, "(1x,A,1x," // fmt // ")") 'M = ', p**1
+    if (comp) then
+       write (u, "(4(F12.3,1X))", advance="no")  p%p(0:3)
+    else
+       write(u, "(1x,A,1x," // fmt // ")") 'E = ', p%p(0)
+       write(u, "(1x,A,3(1x," // fmt // "))") 'P = ', p%p(1:)
+       if (sm)  write (u, "(1x,A,1x," // fmt // ")") 'M = ', p**1
     end if
   end subroutine vector4_write
 
@@ -890,7 +919,7 @@ positive for timelike and negative for spacelike vectors.  Note that
 @ The sum function can be useful:
 <<Lorentz: interfaces>>=
   interface sum
-     module procedure sum_vector4
+     module procedure sum_vector4, sum_vector4_mask
   end interface
 @ %def sum
 @
@@ -899,10 +928,20 @@ positive for timelike and negative for spacelike vectors.  Note that
     type(vector4_t) :: q
     type(vector4_t), dimension(:), intent(in) :: p
     integer :: i
-    do i=0, 3
+    do i = 0, 3
        q%p(i) = sum (p%p(i))
     end do
   end function sum_vector4
+
+  pure function sum_vector4_mask (p, mask) result (q)
+    type(vector4_t) :: q
+    type(vector4_t), dimension(:), intent(in) :: p
+    logical, dimension(:), intent(in) :: mask
+    integer :: i
+    do i = 0, 3
+       q%p(i) = sum (p%p(i), mask=mask)
+    end do
+  end function sum_vector4_mask
 
 @ %def sum
 @
@@ -1034,6 +1073,19 @@ second version for an array of four-vectors.
   end subroutine vector3_from_array
 
 @ %def array_from_vector4 array_from_vector3
+@
+<<Lorentz: vector4: TBP>>=
+  procedure :: to_pythia6 => vector4_to_pythia6
+<<Lorentz: procedures>>=
+  pure function vector4_to_pythia6 (vector4) result (p)
+    real(double), dimension(1:5) :: p
+    class(vector4_t), intent(in) :: vector4
+    p(1:3) = vector4%p(1:3)
+    p(4) = vector4%p(0)
+    p(5) = vector4 ** 2
+  end function vector4_to_pythia6
+
+@ %def vector4_to_pythia6
 @ Transform the momentum of a [[c_prt]] object into a four-vector and
 vice versa:
 <<Lorentz: interfaces>>=
@@ -2251,19 +2303,19 @@ transformations.
   elemental subroutine pacify_vector3 (p, tolerance)
     type(vector3_t), intent(inout) :: p
     real(default), intent(in) :: tolerance
-    where (abs (p%p) < tolerance)  p%p = 0
+    where (abs (p%p) < tolerance)  p%p = zero
   end subroutine pacify_vector3
 
   elemental subroutine pacify_vector4 (p, tolerance)
     type(vector4_t), intent(inout) :: p
     real(default), intent(in) :: tolerance
-    where (abs (p%p) < tolerance)  p%p = 0
+    where (abs (p%p) < tolerance)  p%p = zero
   end subroutine pacify_vector4
 
   elemental subroutine pacify_LT (LT, tolerance)
     type(lorentz_transformation_t), intent(inout) :: LT
     real(default), intent(in) :: tolerance
-    where (abs (LT%L) < tolerance)  LT%L = 0
+    where (abs (LT%L) < tolerance)  LT%L = zero
   end subroutine pacify_LT
 
 @ %def pacify
@@ -2289,10 +2341,11 @@ transformations.
 <<Lorentz: public>>=
   public :: vector4_write_set
 <<Lorentz: procedures>>=
-  subroutine vector4_write_set (p, unit, show_mass)
+  subroutine vector4_write_set (p, unit, show_mass, testflag)
     type(vector4_t), intent(in), dimension(:) :: p
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: show_mass
+    logical, intent(in), optional :: testflag
     integer :: i, j
     real(default), dimension(4) :: p_tot
     character(len=7) :: fmt
@@ -2301,12 +2354,15 @@ transformations.
     p_tot = 0
     do i = 1, size (p)
       forall (j=1:4) p_tot(j) = p_tot(j) + vector4_get_component(p(i),j-1)
-      call vector4_write (p(i), u, show_mass)
+      call vector4_write (p(i), u, show_mass, testflag)
     end do
-    call pac_fmt (fmt, FMT_19, FMT_15)
-    write(u, "(A5)") 'Total: '
-    write(u, "(1x,A,1x," // fmt // ")") 'E = ', p_tot(1)
-    write(u, "(1x,A,3(1x," // fmt // "))") 'P = ', p_tot(2:)
+    call pac_fmt (fmt, FMT_19, FMT_15, testflag)
+    if (present (testflag)) then
+       if (testflag)  call pacify (p_tot, 1.E-10_default)
+    end if
+    write (u, "(A5)") 'Total: '
+    write (u, "(1x,A,1x," // fmt // ")")    "E = ", p_tot(1)
+    write (u, "(1x,A,3(1x," // fmt // "))") "P = ", p_tot(2:)
   end subroutine vector4_write_set
 
 @ %def vector4_write_set
@@ -2383,6 +2439,8 @@ module sm_physics
 contains
 
 <<SM physics: procedures>>
+
+<<SM physics: tests>>
 
 end module sm_physics
 @ %def sm_physics
@@ -3519,13 +3577,13 @@ emission and the gluon is preferably polarized in the branching plane
 
 @
 \subsection{Unit tests}
-<<SM qcd: public>>=
+<<SM physics: public>>=
   public :: sm_physics_test
-<<SM qcd: tests>>=
+<<SM physics: tests>>=
   subroutine sm_physics_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
-  <<SM qcd: execute tests>>
+  <<SM physics: execute tests>>
   end subroutine sm_physics_test
 
 @ %def sm_physics_test
@@ -3533,7 +3591,7 @@ emission and the gluon is preferably polarized in the branching plane
 \subsubsection{Splitting functions}
 <<SM physics: execute tests>>=
   call test (sm_physics_1, "sm_physics_1", &
-       "running alpha_s", &
+       "Splitting functions", &
        u, results)
 <<SM physics: tests>>=
   subroutine sm_physics_1 (u)
@@ -3553,8 +3611,8 @@ emission and the gluon is preferably polarized in the branching plane
     call assert (u, vanishes (p_qqg_pol (z, -1, +1, -1)))
 
     call assert (u, nearly_equal ( &
-         p_qqg_pol (z, +1, +1, -1) + p_qqg_pol (z, +1, +1, +1),
-         p_qqg (z))
+         p_qqg_pol (z, +1, +1, -1) + p_qqg_pol (z, +1, +1, +1), &
+         p_qqg (z)))
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: sm_physics_1"
@@ -4002,3 +4060,133 @@ We check two different implementations of the abstract QCD coupling.
   end subroutine sm_qcd_1
 
 @ %def sm_qcd_1
+@
+\clearpage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Shower algorithms}
+% TODO: (bcn 2015-01-21) DESCRIPTION
+<<[[shower_algorithms.f90]]>>=
+<<File header>>
+
+module shower_algorithms
+
+<<Use kinds>>
+  use constants
+  use unit_tests
+  use rng_base
+
+<<Standard module head>>
+
+<<shower algorithms: public>>
+
+<<shower algorithms: interfaces>>
+
+contains
+
+<<shower algorithms: procedures>>
+
+<<shower algorithms: tests>>
+
+end module shower_algorithms
+@ %def shower_algorithms
+@ We want to generate emission variables [[x]]$\in\mathds{R}^d$
+proportional to
+\begin{align}
+  &\quad f(x)\; \Delta(f, h(x)) \quad\text{with}\\
+  \Delta(f, H) &= \exp\left\{-\int\text{d}^d x'f(x') \Theta(h(x') -
+                H)\right\}
+\end{align}
+The [[true_function]] $f$ is however too complicated and we are only
+able to generate [[x]] according to the [[overestimator]] $F$.  This
+algorithm is described in Appendix B of 0709.2092 and is proven e.g.~in
+1211.7204 and hep-ph/0606275.  Intuitively speaking, we overestimate the
+emission probability and can therefore set [[scale_max = scale]] if the
+emission is rejected.
+<<shower algorithms: procedures>>=
+  subroutine generate_vetoed (x, rng, overestimator, true_function, &
+         sudakov, inverse_sudakov, scale_min)
+    real(default), dimension(:), intent(out) :: x
+    class(rng_t), intent(inout) :: rng
+    procedure(XXX_function), pointer, intent(in) :: overestimator, true_function
+    procedure(sudakov_p), pointer, intent(in) :: sudakov, inverse_sudakov
+    real(default), intent(in) :: scale_min
+    real(default) :: random, scale_max, scale
+    scale_max = inverse_sudakov (one)
+    do while (scale_max > scale_min)
+       call rng%generate (random)
+       scale = inverse_sudakov (random * sudakov (scale_max))
+       call generate_on_hypersphere (x, overestimator, scale)
+       call rng%generate (random)
+       if (random < true_function (x) / overestimator (x)) then
+          return !!! accept x
+       end if
+       scale_max = scale
+    end do
+  end subroutine generate_vetoed
+
+@ %def generate_vetoed
+@
+<<shower algorithms: procedures>>=
+  pure subroutine generate_on_hypersphere (x, overestimator, scale)
+    real(default), dimension(:), intent(out) :: x
+    procedure(XXX_function), pointer, intent(in) :: overestimator
+    real(default), intent(in) :: scale
+  end subroutine generate_on_hypersphere
+
+@ %def generate_on_hypersphere
+@
+<<shower algorithms: interfaces>>=
+  interface
+    pure function XXX_function (x)
+      import
+      real(default) :: XXX_function
+      real(default), dimension(:), intent(in) :: x
+    end function XXX_function
+  end interface
+  interface
+    pure function sudakov_p (x)
+      import
+      real(default) :: sudakov_p
+      real(default), intent(in) :: x
+    end function sudakov_p
+  end interface
+@
+\subsection{Unit tests}
+<<shower algorithms: public>>=
+  public :: shower_algorithms_test
+<<shower algorithms: tests>>=
+  subroutine shower_algorithms_test (u, results)
+    integer, intent(in) :: u
+    type(test_results_t), intent(inout) :: results
+  <<shower algorithms: execute tests>>
+  end subroutine shower_algorithms_test
+
+@ %def shower_algorithms_test
+@
+\subsubsection{Splitting functions}
+<<shower algorithms: execute tests>>=
+  call test (shower_algorithms_1, "shower_algorithms_1", &
+       "veto technique", &
+       u, results)
+<<shower algorithms: tests>>=
+  subroutine shower_algorithms_1 (u)
+    integer, intent(in) :: u
+
+    write (u, "(A)")  "* Test output: shower_algorithms_1"
+    write (u, "(A)")  "*   Purpose: check veto technique"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Splitting functions:"
+    write (u, "(A)")
+
+    !call assert (u, vanishes (p_qqg_pol (z, +1, -1, +1)))
+    !call assert (u, nearly_equal ( &
+         !p_qqg_pol (z, +1, +1, -1) + p_qqg_pol (z, +1, +1, +1),
+         !p_qqg (z))
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: shower_algorithms_1"
+
+  end subroutine shower_algorithms_1
+
+@ %def shower_algorithms_1

@@ -49,12 +49,21 @@ UNIT_TESTS = \
     evaluators.run \
     formats.run \
     sorting.run \
+    codes.run \
+    object_base.run \
+    object_builder.run \
+    object_logical.run \
+    object_integer.run \
+    sindarin_parser.run \
+    grids.run \
+    solver.run \
     state_matrices.run \
     interactions.run \
     xml.run \
     sm_qcd.run \
     models.run \
     auto_components.run \
+    radiation_generator.run \
     particles.run \
     beam_structures.run \
     sf_aux.run \
@@ -72,6 +81,7 @@ UNIT_TESTS = \
     phs_single.run \
     phs_forests.run \
     phs_wood.run \
+    phs_fks_generator.run \
     rng_base.run \
     rng_tao.run \
     selectors.run \
@@ -91,6 +101,7 @@ UNIT_TESTS = \
     cascades.run \
     event_transforms.run \
     decays.run \
+    powheg.run \
     shower.run \
     events.run \
     hep_events.run \
@@ -231,6 +242,7 @@ TESTS_REQ_OCAML = \
     lhef_8.run \
     lhef_9.run \
     lhef_10.run \
+    lhef_11.run \
     select_1.run \
     select_2.run \
     fatal_beam_decay.run \
@@ -262,6 +274,8 @@ TESTS_REQ_OCAML = \
     multi_comp_3.run \
     multi_comp_4.run \
     flvsum_1.run \
+    decay_err_1.run \
+    decay_err_2.run \
     pdf_builtin.run \
     ep_1.run \
     ep_2.run \
@@ -275,6 +289,7 @@ TESTS_REQ_OCAML = \
     circe1_7.run \
     circe1_8.run \
     circe1_9.run \
+    circe1_10.run \
     circe1_photons_1.run \
     circe1_photons_2.run \
     circe1_photons_3.run \
@@ -345,7 +360,10 @@ XFAIL_TESTS_STATIC =
 TESTS_REQ_PYTHIA6 = \
     pythia6_1.run \
     pythia6_2.run \
-    mlm_pythia6_isr.run	
+    pythia6_3.run \
+    pythia6_4.run \
+    mlm_matching_isr.run \
+    mlm_pythia6_isr.run
 XFAIL_TESTS_REQ_PYTHIA6 = 
 
 TESTS_REQ_EV_ANA = \
@@ -538,7 +556,7 @@ user_strfun.f90: $(top_builddir)/share/tests/user_strfun.f90
 
 model_test.run: tdefs.$(FC_MODULE_EXT) tglue.$(FC_MODULE_EXT) \
 	threeshl.$(FC_MODULE_EXT) tscript.$(FC_MODULE_EXT) \
-	ttv_formfactors.$(FC_MODULE_EXT) nr_hypgeometric.$(FC_MODULE_EXT) \
+	ttv_formfactors.$(FC_MODULE_EXT) nr_tools.$(FC_MODULE_EXT) \
 	nr.$(FC_MODULE_EXT) nrtype.$(FC_MODULE_EXT) interpolation.$(FC_MODULE_EXT)
 tdefs.mod: $(top_builddir)/src/models/threeshl_bundle/tdefs.$(FC_MODULE_EXT)
 	cp $< $@
@@ -550,7 +568,7 @@ threeshl.mod: $(top_builddir)/src/models/threeshl_bundle/threeshl.$(FC_MODULE_EX
 	cp $< $@
 ttv_formfactors.mod: $(top_builddir)/src/models/SM_tt_threshold_bundle/ttv_formfactors.$(FC_MODULE_EXT)
 	cp $< $@
-nr_hypgeometric.mod: $(top_builddir)/src/models/SM_tt_threshold_bundle/nr_hypgeometric.$(FC_MODULE_EXT)
+nr_tools.mod: $(top_builddir)/src/models/SM_tt_threshold_bundle/nr_tools.$(FC_MODULE_EXT)
 	cp $< $@ 
 nr.mod: $(top_builddir)/src/models/SM_tt_threshold_bundle/nr.$(FC_MODULE_EXT)
 	cp $< $@ 
@@ -710,7 +728,7 @@ notestflag:
 clean-local:
 	rm -f gamelan.sty TEST.mdl 
 	rm -f TESTFLAG GAMELAN_FLAG STDHEP_FLAG 
-	rm -f OCAML_FLAG FASTJET_FLAG HEPMC_FLAG LCIO_FLAG
+	rm -f OCAML_FLAG FASTJET_FLAG HEPMC_FLAG LCIO_FLAG 
 	rm -f EVENT_ANALYSIS_FLAG PYTHIA6_FLAG LHAPDF5_FLAG
 	rm -f LHAPDF6_FLAG STATIC_FLAG static_1.exe
 	rm -f *.run *.log slha_test.out
@@ -719,7 +737,7 @@ clean-local:
 	rm -f *.makefile
 	rm -rf err-output
 	rm -rf ref-output
-	rm -f *.sin *.hbc
+	rm -f *.sin *.hbc 
 	rm -f *.phs *.vg *.vgb *.evt *.evx *.lhe *.hepmc *.dat *.debug 
 	rm -f *.tmp *.hepevt *.hepevt.verb *.lha *.lha.verb *.slcio
 	rm -f prc_omega_diags_1_p_i1_diags.out prc_omega_diags_1_p_i1_diags.toc

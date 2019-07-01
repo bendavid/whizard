@@ -1,5 +1,5 @@
 % -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*- 
-% WHIZARD code as NOWEB source: matrix elements and process libraries
+% WHIZARD code as NOWEB source: user plugins for cuts and structure functions
 
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -109,7 +109,7 @@ done, dlopen all libraries that we have so far.
              call msg_message ("Found user-code library '" &
                   // char (user_lib_file) // "'.")
           else
-             user_lib_file = user_lib(i) // os_data%shlib_ext
+             user_lib_file = user_lib(i) // os_data%fc_shrlib_ext
              inquire (file = char (user_lib_file), exist = exist)
              if (exist) then
                 call msg_message ("Found user-code library '" &
@@ -139,7 +139,7 @@ done, dlopen all libraries that we have so far.
     end if
     call dlaccess_init &
          (user_lib_handle, var_str ("."), &
-          user // os_data%shlib_ext, os_data)
+          user // os_data%fc_shrlib_ext, os_data)
     if (dlaccess_has_error (user_lib_handle)) then
        call msg_error (char (dlaccess_get_error (user_lib_handle)))
        call msg_fatal ("Loading user code library '" // char (user) &
@@ -178,7 +178,7 @@ done, dlopen all libraries that we have so far.
       character(*), intent(in) :: user_lib
       type(string_t), intent(in) :: user_obj_files
       call msg_message ("Linking user code library '" &
-           // user_lib // char (os_data%shlib_ext) // "'")
+           // user_lib // char (os_data%fc_shrlib_ext) // "'")
       call os_link_shared (user_obj_files, var_str (user_lib), os_data)
     end subroutine link_user
   end subroutine user_code_init
@@ -653,8 +653,8 @@ the particle objects.
        !!! Will have to be filled in later.
        ! call sf_int%base_init (mask, &
        !      hel_lock = hel_lock)
-       call interaction_init &
-            (sf_int%interaction_t, data%n_in, 0, data%n_out, mask=mask, &
+       call sf_int%basic_init &
+            (data%n_in, 0, data%n_out, mask=mask, &
             hel_lock=hel_lock, set_relations=.true.)       
        do s = 1, data%n_states
           i_state = s
@@ -679,9 +679,9 @@ the particle objects.
              end if
              call qn(i)%init (flv, col, hel)
           end do
-          call interaction_add_state (sf_int%interaction_t, qn)
+          call sf_int%add_state (qn)
        end do
-       call interaction_freeze (sf_int%interaction_t)
+       call sf_int%freeze ()
        !!! JRR: WK please check (#529)
        !!! What has to be inserted here?
        ! call sf_int%set_incoming (??)
@@ -894,13 +894,13 @@ can set momenta by the same formula as for normal kinematics.
     type(c_prt_t), dimension(data%n_in) :: prt_in
     type(c_prt_t), dimension(data%n_out) :: prt_out
     real(c_double), dimension(data%n_var) :: xval
-    call interaction_get_momenta_sub (int, p_in, outgoing=.false.)
+    call int%get_momenta_sub (p_in, outgoing=.false.)
     prt_in = vector4_to_c_prt (p_in)
     prt_in%type = PRT_INCOMING
     call data%kinematics (prt_in, real (r, c_double), prt_out, xval)
     x = xval
     p_out = vector4_from_c_prt (prt_out)
-    call interaction_set_momenta (int, p_out, outgoing=.true.)
+    call int%set_momenta (p_out, outgoing=.true.)
   end subroutine interaction_set_kinematics_sf_user
 
 @ %def interaction_set_kinematics_sf_user
@@ -924,7 +924,7 @@ the matrix elements.
       x = sf_int%x
       call data%evaluate (real (x, c_double), real (scale, c_double), fval)
       fc = fval
-      call interaction_set_matrix_element (sf_int%interaction_t, fc)
+      call sf_int%set_matrix_element (fc)
     end associate
     sf_int%status = SF_EVALUATED
   end subroutine user_apply

@@ -33,7 +33,7 @@ integrate (parton_shower_1_p1)
 n_events = 1
 ?allow_shower = true
 ?ps_fsr_active = true
-?ps_use_PYTHIA_shower = false
+$shower_method = "WHIZARD"
 $sample = "parton_shower_1"
 sample_format = ascii
 ?sample_pacify = true

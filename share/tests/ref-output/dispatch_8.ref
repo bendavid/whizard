@@ -38,6 +38,7 @@
    rev      = 0
    acc      = SBAND
    chat     = 0
+   with rad.= F
  Mapping configuration:
    e / map: endpoint (a = 2.00000E+00)
 

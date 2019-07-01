@@ -11,7 +11,7 @@ model = "SM"
 ?pacify = true
 
 # This flag is needed to avoid the program searching for loop libraries
-?use_gosam_loops = false
+$loop_me_method = "omega"
 
 !!! Tests should be run single-threaded 
 openmp_num_threads = 1

@@ -25,9 +25,10 @@
 ## Process this file with automake to produce Makefile.in
 
 ## Install the gml executable and WHIZARD logo here:
-GML=gml
+GML=whizard-gml
 gmlexeclibdir = $(PKGLIBDIR)/gamelan
-dist_gmlexeclib_SCRIPTS = $(GML)
+gmlexecbindir = $(BINDIR)
+dist_gmlexecbin_SCRIPTS = $(GML)
 
 ## Install the gml MetaPost code here:
 gmllibdir = $(PKGLIBDIR)/gamelan
@@ -140,7 +141,7 @@ endif
 if NOWEB_AVAILABLE
 .tex.ps: 
 	$(LATEX) $*
-	./gml $*
+	./whizard-gml $*
 	$(LATEX) $*
 	$(DVIPS) -o $@ $*
 else !NOWEB_AVAILABLE
@@ -151,7 +152,7 @@ else !NOWEB_AVAILABLE
           done; \
         fi
 	$(LATEX) $*
-	./gml $*
+	./whizard-gml $*
 	$(LATEX) $*
 	$(DVIPS) -o $@ $*
 endif

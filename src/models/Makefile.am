@@ -66,9 +66,12 @@ libmodels_la_SOURCES = \
   parameters.SM_tt_threshold.f90 \
   parameters.SM_Higgs.f90 \
   parameters.SM_rx.f90 \
+  parameters.SM_ul.f90 \
   parameters.Template.f90 \
   parameters.UED.f90 \
   parameters.SSC.f90 \
+  parameters.SSC_2.f90 \
+  parameters.SSC_AltT.f90 \
   parameters.Xdim.f90 \
   parameters.Zprime.f90 \
   parameters.Threeshl.f90 \
@@ -109,9 +112,12 @@ nodist_execmod_HEADERS = \
   parameters_sm_tt_threshold.$(FC_MODULE_EXT) \
   parameters_sm_higgs.$(FC_MODULE_EXT) \
   parameters_sm_rx.$(FC_MODULE_EXT) \
+  parameters_sm_ul.$(FC_MODULE_EXT) \
   parameters_template.$(FC_MODULE_EXT) \
   parameters_ued.$(FC_MODULE_EXT) \
   parameters_ssc.$(FC_MODULE_EXT) \
+  parameters_ssc_2.$(FC_MODULE_EXT) \
+  parameters_ssc_altt.$(FC_MODULE_EXT) \
   parameters_xdim.$(FC_MODULE_EXT) \
   parameters_zprime.$(FC_MODULE_EXT) \
   parameters_threeshl.$(FC_MODULE_EXT) \
@@ -253,6 +259,9 @@ parameters_sm_higgs.$(FC_MODULE_EXT): parameters.SM_Higgs.lo
 parameters_sm_rx.$(FC_MODULE_EXT): parameters.SM_rx.lo
 	@:
 
+parameters_sm_ul.$(FC_MODULE_EXT): parameters.SM_ul.lo
+	@:
+
 parameters_simplest.$(FC_MODULE_EXT): parameters.Simplest.lo
 	@:
 
@@ -277,6 +286,12 @@ parameters_ued.$(FC_MODULE_EXT): parameters.UED.lo
 parameters_ssc.$(FC_MODULE_EXT): parameters.SSC.lo
 	@:
 
+parameters_ssc.$(FC_MODULE_EXT): parameters.SSC_2.lo
+	@:
+
+parameters_ssc_altt.$(FC_MODULE_EXT): parameters.SSC_AltT.lo
+	@:
+
 parameters_xdim.$(FC_MODULE_EXT): parameters.Xdim.lo
 	@:
 
@@ -291,6 +306,7 @@ testingdir = $(top_builddir)/src/testing
 utilitiesdir = $(top_builddir)/src/utilities
 systemdir = $(top_builddir)/src/system
 physicsdir = $(top_builddir)/src/physics
+combinatoricsdir = $(top_builddir)/src/combinatorics
 omegadir = $(top_builddir)/omega/src
 
 KINDS_MOD = kinds.$(FC_MODULE_EXT)
@@ -299,6 +315,7 @@ PHYSICS_DEFS_MOD = physics_defs.$(FC_MODULE_EXT)
 FORMAT_DEFS_MOD = format_defs.$(FC_MODULE_EXT)
 DIAGNOSTICS_MOD = diagnostics.$(FC_MODULE_EXT)
 SMPHYSICS_MOD = sm_physics.$(FC_MODULE_EXT)
+SOLVER_MOD = solver.$(FC_MODULE_EXT)
 OMEGAVECTORS_MOD = omega_vectors.$(FC_MODULE_EXT)
 TTV_FORMFACTORS_MOD = ttv_formfactors.$(FC_MODULE_EXT)
 
@@ -310,12 +327,13 @@ $(libmodels_la_OBJECTS) $(external_SM_tt_threshold_la_OBJECTS) $(external_Threes
   $(systemdir)/$(DIAGNOSTICS_MOD) \
   $(physicsdir)/$(PHYSICS_DEFS_MOD) \
   $(physicsdir)/$(SMPHYSICS_MOD) \
+  $(combinatoricsdir)/$(SOLVER_MOD) \
   $(omegadir)/$(OMEGAVECTORS_MOD) \
   SM_tt_threshold_bundle/$(TTV_FORMFACTORS_MOD) \
   threeshl_bundle/threeshl.$(FC_MODULE_EXT) \
   threeshl_bundle/tglue.$(FC_MODULE_EXT)
 
-AM_FCFLAGS = -I$(basicsdir) -I$(testingdir) -I$(utilitiesdir) -I$(systemdir) -I$(physicsdir) -I$(omegadir) -ISM_tt_threshold_bundle -Ithreeshl_bundle
+AM_FCFLAGS = -I$(basicsdir) -I$(testingdir) -I$(utilitiesdir) -I$(systemdir) -I$(physicsdir) -I$(combinatoricsdir) -I$(omegadir) -ISM_tt_threshold_bundle -Ithreeshl_bundle
 
 ########################################################################
 ## Default Fortran compiler options

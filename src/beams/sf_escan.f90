@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -216,7 +216,7 @@ contains
                    qn_hel(2:2) = it_hel2%get_quantum_numbers ()
                    qn_hel(4:4) = it_hel2%get_quantum_numbers ()
                    qn = qn_hel .merge. qn_fc
-                   call interaction_add_state (sf_int%interaction_t, qn)
+                   call sf_int%add_state (qn)
                    call it_hel2%advance ()
                 end do
                 call it_hel1%advance ()
@@ -227,7 +227,7 @@ contains
        end do
        call sf_int%set_incoming ([1,2])
        call sf_int%set_outgoing ([3,4])
-       call interaction_freeze (sf_int%interaction_t)       
+       call sf_int%freeze ()
        sf_int%status = SF_INITIAL
     end select
   end subroutine escan_init
@@ -294,8 +294,7 @@ contains
     associate (data => sf_int%data)
       f = data%norm
     end associate
-    call interaction_set_matrix_element (sf_int%interaction_t, &
-         cmplx (f, kind=default))    
+    call sf_int%set_matrix_element (cmplx (f, kind=default))    
     sf_int%status = SF_EVALUATED
   end subroutine escan_apply
 

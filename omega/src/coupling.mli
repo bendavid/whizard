@@ -1,4 +1,4 @@
-(* $Id: coupling.mli 6465 2015-01-10 15:22:31Z jr_reuter $
+(* $Id: coupling.mli 6943 2015-05-01 10:53:21Z msekulla $
 
    Copyright (C) 1999-2015 by
 
@@ -7,6 +7,7 @@
        Juergen Reuter <juergen.reuter@desy.de>
        with contributions from
        Christian Speckner <cnspeckn@googlemail.com>
+       Marco Sekulla <sekulla@physik.uni-siegen.de>
 
    WHIZARD is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by
@@ -139,7 +140,8 @@ type 'a propagator =
   | Prop_Scalar | Prop_Ghost 
   | Prop_Spinor | Prop_ConjSpinor | Prop_Majorana 
   | Prop_Unitarity | Prop_Feynman | Prop_Gauge of 'a | Prop_Rxi of 'a
-  | Prop_Tensor_2 | Prop_Vectorspinor
+  | Prop_Tensor_2 | Prop_Tensor_pure | Prop_Vector_pure
+  | Prop_Vectorspinor
   | Prop_Col_Scalar | Prop_Col_Feynman | Prop_Col_Majorana 
   | Prop_Col_Unitarity 
   | Aux_Scalar | Aux_Vector | Aux_Tensor_1
@@ -196,6 +198,7 @@ type boson =
 type boson2 = S2 | P2 | S2P | S2L | S2R | S2LR 
   | SV | PV | SLV | SRV | SLRV | V2 | V2LR
 
+
 (* The integer is an additional coefficient that multiplies the respective
    coupling constant.  This allows to reduce the number of required coupling
    constants in manifestly symmetrc cases.  Most of times it will be equal
@@ -236,6 +239,8 @@ type 'a vertex3 =
       (* %
       $\frac12 \phi F_{1,\mu\nu} \tilde{F}_2^{\mu\nu} = -
       \phi (\ii \partial_\mu V_{1,\nu})(\ii \partial_\rho V_{2,\sigma})\epsilon^{\mu\nu\rho\sigma}$ *) 
+  | Dim5_Scalar_Scalar2 of int (* %
+    $\phi_1 \partial_\mu \phi_2 \partial^\mu \phi_3$ *)
   | Dim5_Scalar_Vector_Vector_T of int (* %
       $\phi(\ii\partial_\mu V_1^\nu)(\ii\partial_\nu V_2^\mu)$ *)
   | Dim5_Scalar_Vector_Vector_TU of int (* %
@@ -245,12 +250,21 @@ type 'a vertex3 =
   | Scalar_Vector_Vector_t of int (* %
       $ ( \partial_\mu V_\nu-\partial_\nu V_\mu )^2 $ *)
   | Dim6_Vector_Vector_Vector_T of int (* %
-      $V_1^\mu ((\ii\partial_\nu V_2^\rho)%
+      $V_1^\mu ((\ii\partial_\nu V_2^\rho) %
        \ii\overleftrightarrow{\partial_\mu}(\ii\partial_\rho V_3^\nu))$ *)
   | Tensor_2_Vector_Vector of int (* %
       $T^{\mu\nu} (V_{1,\mu}V_{2,\nu} + V_{1,\nu}V_{2,\mu})$ *)
   | Tensor_2_Vector_Vector_1 of int (* % 
       $T^{\mu\nu} (V_{1,\mu}V_{2,\nu} + V_{1,\nu}V_{2,\mu} - g_{\mu,\nu}V_1^\rho V_{2,\rho} )$ *) 
+  | Tensor_2_Vector_Vector_cf of int (* % 
+      $T^{\mu\nu} ( %
+        - \frac{c_f}{2} g_{\mu,\nu}V_1^\rho V_{2,\rho} )$ *) 
+  | Tensor_2_Scalar_Scalar of int (* % 
+      $T^{\mu\nu} (\partial_{\mu}\phi_1\partial_{\nu}\phi_2 + %
+      		  \partial_{\nu}\phi_1\partial_{\mu}\phi_2 )$ *) 
+  | Tensor_2_Scalar_Scalar_cf of int (* % 
+      $T^{\mu\nu} ( - \frac{c_f}{2} g_{\mu,\nu} %
+		  \partial_{\rho}\phi_1\partial_{\rho}\phi_2 )$ *) 
   | Tensor_2_Vector_Vector_t of int (* %
     $T^{\mu\nu} (V_{1,\mu}V_{2,\nu} + V_{1,\nu}V_{2,\mu} - g_{\mu,\nu}V_1^\rho V_{2,\rho} )$ *) 
   | Dim5_Tensor_2_Vector_Vector_1 of int (* %
@@ -267,6 +281,14 @@ type 'a vertex3 =
                           \ii\overleftrightarrow\partial_\alpha
                           \ii\overleftrightarrow\partial_\beta
                         (\ii\partial_\nu V_{2,\mu})) $ *)
+  | TensorVector_Vector_Vector of int
+  | TensorVector_Vector_Vector_cf of int
+  | TensorVector_Scalar_Scalar of int
+  | TensorVector_Scalar_Scalar_cf of int
+  | TensorScalar_Vector_Vector of int
+  | TensorScalar_Vector_Vector_cf of int
+  | TensorScalar_Scalar_Scalar of int
+  | TensorScalar_Scalar_Scalar_cf of int
 
 (* As long as we stick to renormalizable couplings, there are only
    three types of quartic couplings: [Scalar4], [Scalar2_Vector2]
@@ -311,6 +333,9 @@ type 'a vertex4 =
   | Vector4 of (int * contract4) list
   | DScalar4 of (int * contract4) list
   | DScalar2_Vector2 of (int * contract4) list
+  | Dim8_Scalar2_Vector2_1 of int
+  | Dim8_Scalar2_Vector2_2 of int
+  | Dim8_Scalar4 of int
   | GBBG of int * fermionbar * boson2 * fermion
 
 (* In some applications, we have to allow for contributions outside of
@@ -362,6 +387,9 @@ type 'a vertex4 =
    \end{equation} *)
   | Vector4_K_Matrix_tho of int * ('a * 'a) list    
   | Vector4_K_Matrix_jr of int * (int * contract4) list
+  | DScalar2_Vector2_K_Matrix_ms of int * (int * contract4) list
+  | DScalar4_K_Matrix_ms of int * (int * contract4) list
+
 
 type 'a vertexn = unit
 

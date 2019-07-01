@@ -1,6 +1,6 @@
 # $Id: lhef_8.sin 4873 2013-11-26 19:52:40Z jr_reuter $
 # Sindarin input for WHIZARD self-test
-# Process p p => W+ W- => 4f
+# Process p p => W+ W- => 4f including ISR + FSR QCD shower
 
 model = "SM"
 $method = "omega"
@@ -43,20 +43,13 @@ n_events = 1
 ?allow_shower = true
 ?ps_isr_active = true
 ?ps_fsr_active = true
-?ps_use_PYTHIA_shower = false
+$shower_method = "WHIZARD"
 
 ?sample_pacify = true
 ?keep_beams = false
 
 simulate (lhef_8_p1) {
   sample_format = lhef, mokka
-  $sample = "lhef_8a"
+  $sample = "lhef_8"
   iterations = 5:1000, 1:1000
-}
-
-rescan "lhef_8a" (lhef_8_p1) {
-  $rescan_input_format = "lhef"
-  sample_format = mokka
-  $sample = "lhef_8b"
-  ?update_sqme = true
 }

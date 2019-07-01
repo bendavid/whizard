@@ -14,6 +14,7 @@ $out_file = "analyze_3_plots.dat"
 | Writing analysis data to file 'analyze_3_plots.dat'
 | Closing file 'analyze_3_plots.dat' for output
 | Compiling analysis results display in 'analyze_3_plots.tex'
+| Providing analysis steering makefile 'analyze_3_plots_ana.makefile'
 | WHIZARD run finished.
 |=============================================================================|
 Plot range settings in analyze_3_plots.tex:

@@ -1,5 +1,5 @@
 % -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*- 
-% WHIZARD code as NOWEB source: combinatorics and such
+% WHIZARD code as NOWEB source: random number generator and such
 
 \chapter{Random-Number Generator}
 
@@ -494,6 +494,10 @@ end type selector_t
 @ We pack the input weight array such that zero-weight entries are
 removed.  We also normalize it.  This makes a [[map]] array for
 mapping the selected weight to the actual entry necessary.
+
+We may encounter a case where all weights are zero.  We do not reject
+this, but set up the selector so that it always returns the first
+entry.
 <<Selectors: selector: TBP>>=
   procedure :: init => selector_init
 <<Selectors: procedures>>=
@@ -508,21 +512,25 @@ mapping the selected weight to the actual entry necessary.
     if (any (weight < 0)) &
          call msg_bug ("Selector init: negative weight")
     s = sum (weight)
-    if (s == 0) &
-         call msg_bug ("Selector init: all weights are zero")
     allocate (mask (size (weight)), &
          source = weight /= 0)
     n = count (mask)
-    allocate (selector%map (n), &
-         source = pack ([(i, i = 1, size (weight))], mask))
-    allocate (selector%weight (n), &
-         source = pack (weight / s, mask))
-    allocate (selector%acc (n))
-    selector%acc(1) = selector%weight(1)
-    do i = 2, n - 1
-       selector%acc(i) = selector%acc(i-1) + selector%weight(i)
-    end do
-    selector%acc(n) = 1
+    if (n > 0) then
+       allocate (selector%map (n), &
+            source = pack ([(i, i = 1, size (weight))], mask))
+       allocate (selector%weight (n), &
+            source = pack (weight / s, mask))
+       allocate (selector%acc (n))
+       selector%acc(1) = selector%weight(1)
+       do i = 2, n - 1
+          selector%acc(i) = selector%acc(i-1) + selector%weight(i)
+       end do
+       selector%acc(n) = 1
+    else
+       allocate (selector%map (1), source = 1)
+       allocate (selector%weight (1), source = 0._default)
+       allocate (selector%acc (1), source = 1._default)
+    end if
   end subroutine selector_init
     
 @ %def selector_init

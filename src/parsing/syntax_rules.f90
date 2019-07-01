@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -89,10 +89,13 @@ module syntax_rules
      logical :: used = .false.
      type(string_t) :: keyword
      type(string_t) :: separator
-     type(string_t), dimension(2) :: delimiter
+     type(string_t) :: delimiter_left, delimiter_right
      type(rule_p), dimension(:), allocatable :: child
      character(1) :: modifier = ""
      logical :: opt = .false., rep = .false.
+   contains
+     procedure :: write => syntax_rule_write
+     procedure :: get_key => syntax_rule_get_key
   end type syntax_rule_t
 
   type :: syntax_t
@@ -133,7 +136,7 @@ contains
   end subroutine syntax_rule_init
        
   subroutine syntax_rule_write (rule, unit, short, key_only, advance)
-    type(syntax_rule_t), intent(in) :: rule
+    class(syntax_rule_t), intent(in) :: rule
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: short, key_only, advance
     logical :: typ, def, adv
@@ -152,18 +155,20 @@ contains
     case (S_IDENTIFIER); call write_atom ("IDENTIFIER", typ)
     case (S_KEYWORD);    call write_atom ("KEYWORD", typ)
     case (S_QUOTED)
-       call write_quotes (typ, def, del = rule%delimiter)
+       call write_quotes (typ, def, &
+            del = [rule%delimiter_left, rule%delimiter_right])
     case (S_SEQUENCE)
        call write_sequence ("SEQUENCE", typ, def, size (rule%child))
     case (S_GROUP)
        call write_sequence ("GROUP", typ, def, size (rule%child), &
-            del = rule%delimiter)
+            del = [rule%delimiter_left, rule%delimiter_right])
     case (S_LIST)
        call write_sequence ("LIST", typ, def, size (rule%child), &
             sep = rule%separator)
     case (S_ARGS)
        call write_sequence ("ARGUMENTS", typ, def, size (rule%child), &
-            del = rule%delimiter, sep = rule%separator)
+            del = [rule%delimiter_left, rule%delimiter_right], &
+            sep = rule%separator)
     case (S_ALTERNATIVE)
        call write_sequence ("ALTERNATIVE", typ, def, size (rule%child), &
             sep = var_str ("|"))
@@ -264,9 +269,11 @@ contains
     type(syntax_rule_t), intent(inout) :: rule
     type(string_t), dimension(2), intent(in), optional :: delimiter
     if (present (delimiter)) then
-       rule%delimiter = delimiter
+       rule%delimiter_left = delimiter(1)
+       rule%delimiter_right = delimiter(2)
     else
-       rule%delimiter = ["(", ")"]
+       rule%delimiter_left = "("
+       rule%delimiter_right = ")"
     end if
   end subroutine syntax_rule_set_delimiter
 
@@ -302,14 +309,17 @@ contains
     case (S_IGNORE, S_LOGICAL, S_INTEGER, S_REAL, S_COMPLEX, &
              S_IDENTIFIER, S_KEYWORD)
     case (S_QUOTED)
-       if (any (rule%delimiter == "")) call bug (" Missing quote character(s)")
+       if (rule%delimiter_left == "" .or. rule%delimiter_right == "") &
+            call bug (" Missing quote character(s)")
     case (S_SEQUENCE)
     case (S_GROUP)
-       if (any (rule%delimiter == "")) call bug (" Missing delimiter(s)")
+       if (rule%delimiter_left == "" .or. rule%delimiter_right == "") &
+            call bug (" Missing delimiter(s)")
     case (S_LIST)
        if (rule%separator == "") call bug (" Missing separator")
     case (S_ARGS)
-       if (any (rule%delimiter == "")) call bug (" Missing delimiter(s)")
+       if (rule%delimiter_left == "" .or. rule%delimiter_right == "") &
+            call bug (" Missing delimiter(s)")
        if (rule%separator == "") call bug (" Missing separator")
     case (S_ALTERNATIVE)
     case default
@@ -341,8 +351,8 @@ contains
   end function syntax_rule_get_type
 
   function syntax_rule_get_key (rule) result (key)
+    class(syntax_rule_t), intent(in) :: rule
     type(string_t) :: key
-    type(syntax_rule_t), intent(in) :: rule
     key = rule%keyword
   end function syntax_rule_get_key
 
@@ -355,7 +365,7 @@ contains
   function syntax_rule_get_delimiter (rule) result (delimiter)
     type(string_t), dimension(2) :: delimiter
     type(syntax_rule_t), intent(in) :: rule
-    delimiter = rule%delimiter
+    delimiter = [rule%delimiter_left, rule%delimiter_right]
   end function syntax_rule_get_delimiter
 
   function syntax_rule_get_n_sub (rule) result (n)
@@ -650,8 +660,8 @@ end function get_n_token
       end select
       select case (rule%type)
       case (S_GROUP, S_ARGS)
-         call keyword_list_add (keyword_list, rule%delimiter(1))
-         call keyword_list_add (keyword_list, rule%delimiter(2))
+         call keyword_list_add (keyword_list, rule%delimiter_left)
+         call keyword_list_add (keyword_list, rule%delimiter_right)
       end select
       select case (rule%type)
       case (S_SEQUENCE, S_GROUP, S_LIST, S_ARGS, S_ALTERNATIVE)

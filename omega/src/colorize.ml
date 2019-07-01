@@ -1,4 +1,4 @@
-(* $Id: colorize.ml 6465 2015-01-10 15:22:31Z jr_reuter $
+(* $Id: colorize.ml 6943 2015-05-01 10:53:21Z msekulla $
 
    Copyright (C) 1999-2015 by
 
@@ -7,6 +7,7 @@
        Juergen Reuter <juergen.reuter@desy.de>
        with contributions from
        Christian Speckner <cnspeckn@googlemail.com>
+       Marco Sekulla <sekulla@physik.uni-siegen.de>
 
    WHIZARD is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by
@@ -23,9 +24,9 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 let rcs_file = RCS.parse "Colorize" ["Colorizing Monochrome Models"]
-    { RCS.revision = "$Revision: 6465 $";
-      RCS.date = "$Date: 2015-01-10 16:22:31 +0100 (Sat, 10 Jan 2015) $";
-      RCS.author = "$Author: jr_reuter $";
+    { RCS.revision = "$Revision: 6943 $";
+      RCS.date = "$Date: 2015-05-01 12:53:21 +0200 (Fri, 01 May 2015) $";
+      RCS.author = "$Author: msekulla $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/omega/src/colorize.ml $" }
 
@@ -337,12 +338,20 @@ module It (M : Model.T) =
           Dim5_Scalar_Vector_Vector_U (x * c)
       | Dim5_Scalar_Vector_Vector_TU c ->
           Dim5_Scalar_Vector_Vector_TU (x * c)
+      | Dim5_Scalar_Scalar2 c ->
+          Dim5_Scalar_Scalar2 (x * c)
       | Scalar_Vector_Vector_t c ->
           Scalar_Vector_Vector_t (x * c)
       | Dim6_Vector_Vector_Vector_T c ->
           Dim6_Vector_Vector_Vector_T (x * c)
       | Tensor_2_Vector_Vector c ->
           Tensor_2_Vector_Vector (x * c)
+      | Tensor_2_Vector_Vector_cf c ->
+          Tensor_2_Vector_Vector_cf (x * c)
+      | Tensor_2_Scalar_Scalar c ->
+          Tensor_2_Scalar_Scalar (x * c)
+      | Tensor_2_Scalar_Scalar_cf c ->
+          Tensor_2_Scalar_Scalar_cf (x * c)
       | Tensor_2_Vector_Vector_1 c ->
           Tensor_2_Vector_Vector_1 (x * c)
       | Tensor_2_Vector_Vector_t c ->
@@ -351,6 +360,22 @@ module It (M : Model.T) =
           Dim5_Tensor_2_Vector_Vector_1 (x * c)
       | Dim5_Tensor_2_Vector_Vector_2 c ->
           Dim5_Tensor_2_Vector_Vector_2 (x * c)
+      | TensorVector_Vector_Vector c ->
+          TensorVector_Vector_Vector (x * c)
+      | TensorVector_Vector_Vector_cf c ->
+          TensorVector_Vector_Vector_cf (x * c)
+      | TensorVector_Scalar_Scalar c ->
+          TensorVector_Scalar_Scalar (x * c)
+      | TensorVector_Scalar_Scalar_cf c ->
+          TensorVector_Scalar_Scalar_cf (x * c)
+      | TensorScalar_Vector_Vector c ->
+          TensorScalar_Vector_Vector (x * c)
+      | TensorScalar_Vector_Vector_cf c ->
+          TensorScalar_Vector_Vector_cf (x * c)
+      | TensorScalar_Scalar_Scalar c ->
+          TensorScalar_Scalar_Scalar (x * c)
+      | TensorScalar_Scalar_Scalar_cf c ->
+          TensorScalar_Scalar_Scalar_cf (x * c)
       | Dim7_Tensor_2_Vector_Vector_T c ->
           Dim7_Tensor_2_Vector_Vector_T (x * c)
 
@@ -371,6 +396,16 @@ module It (M : Model.T) =
           Vector4_K_Matrix_tho ((x * c),  ic4_list)
       | Vector4_K_Matrix_jr (c, ch2_list) ->
           Vector4_K_Matrix_jr ((x * c),  ch2_list)
+      | DScalar2_Vector2_K_Matrix_ms (c, ch2_list) ->
+          DScalar2_Vector2_K_Matrix_ms ((x * c),  ch2_list)
+      | DScalar4_K_Matrix_ms (c, ch2_list) ->
+          DScalar4_K_Matrix_ms ((x * c),  ch2_list)
+      | Dim8_Scalar2_Vector2_1 c ->
+          Dim8_Scalar2_Vector2_1 (x * c) 
+      | Dim8_Scalar2_Vector2_2 c ->
+          Dim8_Scalar2_Vector2_1 (x * c)
+      | Dim8_Scalar4 c ->
+          Dim8_Scalar4 (x * c)
 
     let mult_vertexn x = function
       | foo -> ignore (incomplete "mult_vertexn"); foo
@@ -437,6 +472,10 @@ module It (M : Model.T) =
           Vector4 (permute_contract4_list perm ic4_list)
       | Vector4_K_Matrix_jr (c, ic4_list) ->
           Vector4_K_Matrix_jr (c, permute_contract4_list perm ic4_list)
+      | DScalar2_Vector2_K_Matrix_ms (c, ic4_list) ->
+          DScalar2_Vector2_K_Matrix_ms (c, permute_contract4_list perm ic4_list)
+      | DScalar4_K_Matrix_ms (c, ic4_list) ->
+          DScalar4_K_Matrix_ms (c, permute_contract4_list perm ic4_list)
       | Scalar2_Vector2 c ->
           incomplete "permute_vertex4' Scalar2_Vector2"
       | DScalar4 ic4_list ->

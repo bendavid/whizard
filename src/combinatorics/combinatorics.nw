@@ -1,4 +1,4 @@
-% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*- 
+% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*-
 % WHIZARD code as NOWEB source: combinatorics and such
 
 
@@ -20,9 +20,12 @@ are implemented only for specific data types.
   Permuting an array of integers.
 \item[sorting]
   Sorting integer and real values.
+\item[grids]
+  $d$-dimensional grids can be saved to disk and used for interpolation,
+  maximum finding, etc.
 \end{description}
 
- 
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Bytes and such}
 In a few instances we will need the notion of a byte (8-bit) and a word
@@ -132,7 +135,7 @@ Optionally append a newline.
   end subroutine byte_write_string
 
 @ %def byte_write_string
-@ 
+@
 \subsection{32-bit words}
 This is not exactly a 32-bit integer.  A word is to be filled with
 bytes, and it may be partially filled.  The filling is done lowest-byte
@@ -221,7 +224,7 @@ interpretation integers are unsigned.
 @ %def word32_empty word32_filled word32_fill
 @ Partial assignment: append a byte to a partially filled word.
 (Note: no assignment if the word is filled, so check this before if
-necessary.)  
+necessary.)
 <<Bytes: public>>=
   public :: word32_append_byte
 <<Bytes: procedures>>=
@@ -315,7 +318,7 @@ bytes are printed as whitespace.
   end subroutine word32_write_unit
 
 @ %def word32_write_unit
-@ 
+@
 \subsection{Operations on 32-bit words}
 Define the usual logical operations, as well as addition (mod
 $2^{32}$).  We assume that all operands are completely filled.
@@ -341,7 +344,7 @@ $2^{32}$).  We assume that all operands are completely filled.
      module procedure word_shftc
   end interface
 @ %def not, ior, ieor, iand, ishftc
-<<Bytes: procedures>>=  
+<<Bytes: procedures>>=
   function word_not (w1) result (w2)
     type(word32_t), intent(in) :: w1
     type(word32_t) :: w2
@@ -394,7 +397,7 @@ the compiler.
   end interface
 @ %def +
 @
-<<Bytes: procedures>>=  
+<<Bytes: procedures>>=
   function word_add (w1, w2) result (w3)
     type(word32_t), intent(in) :: w1, w2
     type(word32_t) :: w3
@@ -434,7 +437,7 @@ the compiler.
   end function word_add_i32
 
 @ %def word_add word_add_i32
-@ 
+@
 \subsection{64-bit words}
 These objects consist of two 32-bit words.  They thus can hold integer
 numbers larger than $2^{32}$ (to be exact, $2^{31}$ since FORTRAN
@@ -554,12 +557,12 @@ number without spaces, highest byte first.
   end subroutine word64_write_unit
 
 @ %def word64_write_unit
-@ 
+@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Hashtables}
 Hash tables, like lists, are not part of Fortran and must be defined
 on a per-case basis.  In this section we define a module that contains
-a hash function.  
+a hash function.
 
 Furthermore, for reference there is a complete framework of hashtable
 type definitions and access functions.  This code is to be replicated
@@ -582,8 +585,8 @@ contains
 
 end module hashes
 @ %def hashes
-@ 
-\subsection{The hash function} 
+@
+\subsection{The hash function}
 This is the one-at-a-time hash function by Bob Jenkins (from
 Wikipedia), re-implemented in Fortran.  The function works on an array
 of bytes (8-bit integers), as could be produced by, e.g., the
@@ -612,7 +615,7 @@ matter in practice, however.
     w = w + ishft (w, 15)
     hashval = w
   end function hash
-    
+
 @ %def hash
 @
 \subsection{The hash table}
@@ -787,7 +790,7 @@ Note that if the new key exactly matches an existing key, nothing is done.
        hashtable%n_entries = hashtable%n_entries + 1
     end if
   end subroutine hashtable_insert_rec
-    
+
 @ %def hashtable_insert_rec
 @
 \subsection{Hashtable lookup}
@@ -864,7 +867,7 @@ increment the hash value and check again.
   end subroutine hashtable_test
 
 @ %def hashtable_test
-@ 
+@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{MD5 Checksums}
 Implementing MD5 checksums allows us
@@ -882,7 +885,7 @@ module md5
   use system_defs, only: LF, EOR, EOF
   use diagnostics
   use bytes
-  
+
 <<Standard module head>>
 
 <<MD5: public>>
@@ -901,7 +904,7 @@ contains
 
 end module md5
 @ %def md5
-@ 
+@
 \subsection{Blocks}
 A block is a sequence of 16 words (64 bytes or 512 bits).  We
 anticipate that blocks will be linked, so include a pointer to the
@@ -998,7 +1001,7 @@ bytes, decimal or hex.
   end subroutine block_write_unit
 
 @ %def block_write_unit
-@ 
+@
 \subsection{Messages}
 A message (within this module) is a linked list of blocks.
 <<MD5: types>>=
@@ -1115,7 +1118,7 @@ required by the MD5 standard.
   end function message_bits
 
 @ %def message_bits
-@ 
+@
 \subsection{Message I/O}
 Append the contents of a string to a message.  We first cast the
 character string into a 8-bit integer array and the append this byte
@@ -1168,7 +1171,7 @@ by byte.
     call message_append_string (m, trim (buffer))
     call message_append_string (m, LF)
   end subroutine message_append_from_unit
- 
+
 @ %def message_append_from_unit
 @ Fill a message from file.  (Each line counts as a string.)
 <<MD5: procedures>>=
@@ -1211,7 +1214,7 @@ by byte.
   end subroutine message_write_unit
 
 @ %def message_write_unit
-@ 
+@
 \subsection{Auxiliary functions}
 These four functions on three words are defined in the MD5 standard:
 <<MD5: procedures>>=
@@ -1276,7 +1279,7 @@ string.
   end function digest_string
 
 @ %def digest_string
-@ 
+@
 \subsection{MD5 algorithm}
 Pad the message with a byte [[x80]] and then pad zeros up to a full
 block minus two words; in these words, insert the message length
@@ -1414,9 +1417,9 @@ the entry in the predefined table.
     integer, intent(in) :: k, s, i
     a = b + ishftc (a + f(b, c, d) + x(k) + t(i), s)
   end subroutine transform
-  
+
 @ %def transform
-@ 
+@
 \subsection{User interface}
 <<MD5: public>>=
   public :: md5sum
@@ -1440,7 +1443,7 @@ as a 32-character string
   end function md5sum_from_string
 
 @ %def md5sum_from_string
-@ This funct. reads from unit u (an unformmated sequence of 
+@ This funct. reads from unit u (an unformmated sequence of
 integers) and computes the MD5 sum.
 <<MD5: procedures>>=
   function md5sum_from_unit (u) result (digest)
@@ -1469,7 +1472,7 @@ integers) and computes the MD5 sum.
   end function md5sum_from_unit
 
 @ %def md5sum_from_unit
-@ 
+@
 \subsection{Unit tests}
 <<MD5: public>>=
   public :: md5_test
@@ -1477,17 +1480,17 @@ integers) and computes the MD5 sum.
   subroutine md5_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
-  <<MD5: execute tests>>  
+  <<MD5: execute tests>>
   end subroutine md5_test
-  
-@ %def md5_test 
+
+@ %def md5_test
 @ This function checks the implementation by computing the checksum of
 certain strings and comparing them with the known values.
 <<MD5: execute tests>>=
   call test (md5_1, "md5_1", &
        "check MD5 sums", &
        u, results)
-<<MD5: tests>>=  
+<<MD5: tests>>=
   subroutine md5_1 (u)
     integer, intent(in) :: u
     character(32) :: s
@@ -1509,11 +1512,11 @@ certain strings and comparing them with the known values.
     data result(5) /"C3FCD3D76192E4007DFB496CCA67E13B"/
     data result(6) /"D174AB98D277D9F5A5611C2C9F419D9F"/
     data result(7) /"57EDF4A22BE3C955AC49DA2E2107B67A"/
-    
+
     write (u, "(A)")  "* Test output: MD5"
     write (u, "(A)")  "*   Purpose: test MD5 sums"
-    write (u, "(A)")        
-        
+    write (u, "(A)")
+
     do i = 1, n
        write (u, "(A)") "MD5 test string = " // '"'// &
             trim (teststring(i)) // '"'
@@ -1609,7 +1612,7 @@ Initialize with the identity permutation.
   end subroutine permutation_write
 
 @ %def permutation_write
-@ 
+@
 Administration:
 <<Permutations: public>>=
   public :: permutation_size
@@ -1686,7 +1689,7 @@ This cannot be elemental.
   end subroutine permutation_find
 
 @ %def permutation_find
-@ 
+@
 Find all permutations that transform an array of integers into
 itself.  The resulting permutation list is allocated with the correct
 length and filled.
@@ -1766,7 +1769,7 @@ permutation to start with, which must have the same length as the
     type(permutation_t), intent(in) :: p_init
     integer :: plen
     integer :: i, ii, j, fac_i, k, x
-    integer, dimension(:), allocatable :: index 
+    integer, dimension(:), allocatable :: index
     plen = size (pa)
     allocate (index(count(mask)))
     ii = 0
@@ -1819,7 +1822,7 @@ permutations that will be generated:
   end function factorial
 
 @ %def factorial
-@ 
+@
 \subsection{Operations on binary codes}
 Binary codes are needed for phase-space trees.  Since the permutation
 function uses permutations, and no other special type is involved, we
@@ -1879,7 +1882,7 @@ still one point apart from the initial particles.
   end function decay_level_simple
 
 @ %def decay_level_simple decay_level_complement
-@ 
+@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Sorting}
 This small module provides functions for sorting integer or real
@@ -1892,7 +1895,7 @@ module sorting
 <<Use kinds>>
   use unit_tests
   use diagnostics
-  
+
 <<Standard module head>>
 
 <<Sorting: public>>
@@ -2000,12 +2003,12 @@ subarrays to merge should contain at least one element.
 <<Sorting: order1>>
         call merge (idx(b1:e2), idx(b1:e1), idx(b2:e2), val)
 <<Sorting: order2>>
-@ 
+@
 <<Sorting: order abs>>=
 <<Sorting: order1>>
         call merge_abs (idx(b1:e2), idx(b1:e1), idx(b2:e2), val)
 <<Sorting: order2>>
-@ 
+@
 <<Sorting: order1>>=
   integer :: n, i, s, b1, b2, e1, e2
   n = size (idx)
@@ -2046,7 +2049,7 @@ which is real or integer.
     integer, dimension(size(res)) :: tmp
   <<Sorting: merge>>
   end subroutine merge_int
-    
+
   subroutine merge_real (res, src1, src2, val)
     integer, dimension(:), intent(out) :: res
     integer, dimension(:), intent(in) :: src1, src2
@@ -2062,7 +2065,7 @@ which is real or integer.
     integer, dimension(size(res)) :: tmp
   <<Sorting: merge abs>>
   end subroutine merge_int_abs
-    
+
 @ %def merge_int merge_real merge_int_abs
 <<Sorting: merge>>=
 <<Sorting: merge1>>
@@ -2128,7 +2131,7 @@ Not precisely a sorting function, but useful: Concatenate two arrays.
 <<Sorting: concat>>=
   val12(:size(val1)) = val1
   val12(size(val1)+1:) = val2
-@ 
+@
 \subsection{Unit tests}
 <<Sorting: public>>=
   public :: sorting_test
@@ -2140,12 +2143,12 @@ Not precisely a sorting function, but useful: Concatenate two arrays.
   end subroutine sorting_test
 
 @ %def sorting_test
-@ This checks whether the sorting routine works correctly.  
+@ This checks whether the sorting routine works correctly.
 <<Sorting: execute tests>>=
   call test (sorting_1, "sorting_1", &
        "check sorting routines", &
        u, results)
-<<Sorting: tests>>=   
+<<Sorting: tests>>=
   subroutine sorting_1 (u)
     integer, intent(in) :: u
     integer, parameter :: NMAX = 10
@@ -2173,7 +2176,7 @@ Not precisely a sorting function, but useful: Concatenate two arrays.
          0.5540, 0.9778, 0.9019, 0.6579, 0.]
     harvest_r(:,10) = [0.7289, 0.4025, 0.9286, 0.1478, 0.6745, &
          0.7696, 0.3393, 0.1158, 0.6144, 0.8206]
-    
+
     harvest_i(:, 1) = [18, 0, 0, 0, 0, 0, 0, 0, 0, 0]
     harvest_i(:, 2) = [14, 9, 0, 0, 0, 0, 0, 0, 0, 0]
     harvest_i(:, 3) = [ 7, 8,11, 0, 0, 0, 0, 0, 0, 0]
@@ -2184,7 +2187,7 @@ Not precisely a sorting function, but useful: Concatenate two arrays.
     harvest_i(:, 8) = [ 5, 1, 2,10, 7, 0,15,12, 0, 0]
     harvest_i(:, 9) = [15,19, 2, 6,11, 0, 2, 4, 2, 0]
     harvest_i(:,10) = [ 1, 4, 8, 4,11, 0, 8, 7,19,13]
-    
+
     harvest_a(:, 1) = [-6,  0,  0,  0,  0,  0,  0,  0,  0,  0]
     harvest_a(:, 2) = [-8, -9,  0,  0,  0,  0,  0,  0,  0,  0]
     harvest_a(:, 3) = [ 4, -3,  3,  0,  0,  0,  0,  0,  0,  0]
@@ -2199,10 +2202,10 @@ Not precisely a sorting function, but useful: Concatenate two arrays.
 
     write (u, "(A)")  "* Test output: Sorting"
     write (u, "(A)")  "*   Purpose: test sorting routines"
-    write (u, "(A)")      
-    
+    write (u, "(A)")
+
     write (u, "(A)")  "* Sorting real values:"
-    
+
     do i = 1, NMAX
        write (u, "(A)")
        rval(:i) = harvest_r(:i,i)
@@ -2214,10 +2217,10 @@ Not precisely a sorting function, but useful: Concatenate two arrays.
              write (u, "(A)") "*** Sorting failure. ***"
        end do
     end do
-    
+
     write (u, "(A)")
     write (u, "(A)") "* Sorting integer values:"
-    
+
     do i = 1, NMAX
        write (u, "(A)")
        ival(:i) = harvest_i(:i,i)
@@ -2229,10 +2232,10 @@ Not precisely a sorting function, but useful: Concatenate two arrays.
              write (u, "(A)")  "*** Sorting failure. ***"
        end do
     end do
-    
+
     write (u, "(A)")
     write (u, "(A)") "* Sorting integer values by absolute value:"
-    
+
     do i = 1, NMAX
        write (u, "(A)")
        ival(:i) = harvest_a(:i,i)
@@ -2245,11 +2248,943 @@ Not precisely a sorting function, but useful: Concatenate two arrays.
              write (u, "(A)")  "*** Sorting failure. ***"
        end do
     end do
-    
+
     write (u, "(A)")
-    write (u, "(A)")  "* Test output end: sorting_1"    
+    write (u, "(A)")  "* Test output end: sorting_1"
 
   end subroutine sorting_1
 
 @ %def sorting_1
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Grids}
+\emph{This is not really a combinatorics module but this directory is the
+  closest I could find. Maybe this will be moved to a seperate directory
+  or combined with related stuff.}
+<<[[grids.f90]]>>=
+<<File header>>
+
+module grids
+
+<<Use kinds>>
+  use unit_tests
+  use constants
+  use io_units
+  use format_defs
+  use file_utils
+  use diagnostics
+
+<<Standard module head>>
+
+<<grids: public>>
+
+<<grids: interfaces>>
+
+<<grids: parameters>>
+
+<<grids: types>>
+
+contains
+
+<<grids: procedures>>
+
+end module grids
+@ %def grids
+@ Grids are used in many applications and a general implementation seems
+useful.  The relevant properties implemented so far are
+\begin{itemize}
+  \item Segments of the hypercube are represented by an integer array
+    with size $d$ corresponding to the dimension.
+  \item There is a mapping from the indices to the location in the
+    continuous memory block of values.
+  \item Given a point in the hypercube, find the corresponding
+    segment and the value of the grid therein.
+  \item Update the grid sequentially to represent the maximum
+    of a function over the unit hypercube.
+  \item The grid can be saved to and recovered from disk.
+\end{itemize}
+The following might be implemented in the future
+\begin{itemize}
+  \item Generate a random point in the hypercube by interpreting the
+    grid as probability distribution.
+
+    \emph{This would most likely be solved by using projections and the
+      [[selector_t]], which would make a move of this module higher up in
+      the dependency tree necessary.}
+  \item Update the grid sequentially to represent the \emph{minimum}
+    of a function over the unit hypercube.
+\end{itemize}
+<<grids: public>>=
+  public :: grid_t
+<<grids: types>>=
+  type :: grid_t
+     real(default), dimension(:), allocatable, private :: values
+     integer, dimension(:), allocatable, private :: points
+  contains
+   <<grids: grid: TBP>>
+  end type grid_t
+
+@ %def grid_t
+@
+\subsection{Initializer and finalizer}
+For initialization, we expect the number of points for each dimension
+as an array or the the number of dimensions as a scalar whereby the
+default number of points is used then for each dimension.
+<<grids: grid: TBP>>=
+  generic :: init => init_base, init_simple
+  procedure :: init_base => grid_init_base
+  procedure :: init_simple => grid_init_simple
+<<grids: procedures>>=
+  pure subroutine grid_init_base (grid, points)
+    class(grid_t), intent(inout) :: grid
+    integer, dimension(:), intent(in) :: points
+    allocate (grid%points (size (points)))
+    allocate (grid%values (product (points)))
+    grid%points = points
+    grid%values = zero
+  end subroutine grid_init_base
+
+@ %def grid_init_base
+<<grids: procedures>>=
+  pure subroutine grid_init_simple (grid, dimensions)
+    class(grid_t), intent(inout) :: grid
+    integer, intent(in) :: dimensions
+    allocate (grid%points (dimensions))
+    allocate (grid%values (DEFAULT_POINTS_PER_DIMENSION ** dimensions))
+    grid%points = DEFAULT_POINTS_PER_DIMENSION
+    grid%values = zero
+  end subroutine grid_init_simple
+
+@ %def grid_init_simple
+@ A reasonable default
+<<grids: parameters>>=
+  integer, parameter :: DEFAULT_POINTS_PER_DIMENSION = 100
+@ %def DEFAULT_POINTS_PER_DIMENSION
+@ Calling this is not mandatory, when an instance of [[grid_t]] goes out
+of scope as it will be done by Fortran automatically.
+<<grids: grid: TBP>>=
+  procedure :: final => grid_final
+<<grids: procedures>>=
+  pure subroutine grid_final (grid)
+    class(grid_t), intent(inout) :: grid
+    if (allocated (grid%values)) then
+       deallocate (grid%values)
+    end if
+    if (allocated (grid%points)) then
+       deallocate (grid%points)
+    end if
+  end subroutine grid_final
+
+@ %def grid_final
+@
+\subsection{Segment finding and memory mapping}
+The [[indices]] array is expected to go from 1 to $d$ whereby the
+entries for the different $\text{dim}$s are from 1 to
+$n_\text{points}(\text{dim})$.
+
+@ We get the value of the grid either from given [[indices]] or from a
+point [[x]] in the hypercube.  In the latter case, we have to find the
+segment first.
+<<grids: grid: TBP>>=
+  generic :: get_value => get_value_from_x, get_value_from_indices
+  procedure :: get_value_from_x => grid_get_value_from_x
+  procedure :: get_value_from_indices => grid_get_value_from_indices
+<<grids: procedures>>=
+  function grid_get_value_from_indices (grid, indices)
+    real(default) :: grid_get_value_from_indices
+    class(grid_t), intent(in) :: grid
+    integer, dimension(:), intent(in) :: indices
+    grid_get_value_from_indices = grid%values(grid%get_index(indices))
+  end function grid_get_value_from_indices
+
+@ %def grid_get_value_from_indices
+<<grids: procedures>>=
+  function grid_get_value_from_x (grid, x)
+    real(default) :: grid_get_value_from_x
+    class(grid_t), intent(in) :: grid
+    real(default), dimension(:), intent(in) :: x
+    grid_get_value_from_x = grid_get_value_from_indices &
+         (grid, grid_get_segment (grid, x))
+  end function grid_get_value_from_x
+
+@ %def grid_get_value_from_x
+@ The segment is the part of the grid that contains the point [[x]] and
+is identified by a tupel of [[indices]].  This is just a brute force
+search, for fine grids one could also implement a binary search for
+$\mathcal{O}(\log{N})$ behavior instead of $\mathcal{O}({N})$.
+<<grids: grid: TBP>>=
+  procedure :: get_segment => grid_get_segment
+<<grids: procedures>>=
+  function grid_get_segment (grid, x, unit)
+    class(grid_t), intent(in) :: grid
+    real(default), dimension(:), intent(in) :: x
+    integer, intent(in), optional :: unit
+    integer, dimension(1:size (x)) :: grid_get_segment
+    integer :: dim, i
+    real(default) :: segment_width
+    grid_get_segment = 0
+    do dim = 1, size (grid%points)
+       segment_width = one / grid%points (dim)
+       SEARCH: do i = 1, grid%points (dim)
+          if (x (dim) <= i * segment_width) then
+             grid_get_segment (dim) = i
+             exit SEARCH
+          end if
+       end do SEARCH
+       if (grid_get_segment (dim) == 0) then
+          call msg_error ("grid_get_segment: Did not find x in [0,1]^d", &
+               unit=unit)
+       end if
+    end do
+  end function grid_get_segment
+
+@ %def grid_get_segment
+@ This is a simple storage mapping function but more sophisticated ideas
+like hashing could be implemented.
+\begin{align}
+\text{index} = &\text{indices}(1) + \notag\\
+               &\text{indices}(2) * \text{size}(1) + \notag\\
+               &\text{indices}(3) * \text{size}(1) * \text{size}(2) +
+                \dots
+\end{align}
+<<grids: grid: TBP>>=
+  procedure :: get_index => grid_get_index
+<<grids: procedures>>=
+  pure function grid_get_index (grid, indices) result (grid_index)
+    integer :: grid_index
+    class(grid_t), intent(in) :: grid
+    integer, dimension(:), intent(in) :: indices
+    integer :: dim_innerloop, dim_outerloop, multiplier
+    grid_index = 1
+    do dim_outerloop = 1, size(indices)
+       multiplier = 1
+       do dim_innerloop = 1, dim_outerloop - 1
+          multiplier = multiplier * grid%points (dim_innerloop)
+       end do
+       grid_index = grid_index + (indices(dim_outerloop) - 1) * multiplier
+    end do
+  end function grid_get_index
+
+@ %def grid_get_index
+@
+\subsection{Grid manipulations}
+Given a point in the hypercube [[x]] and its value [[y]], we update
+the grids, such that the stepwise function $f$ defined by the grid is
+$f(x_i)\geq y_i\;\forall \{x_i, y_i\}$.
+<<grids: grid: TBP>>=
+  procedure :: update_maxima => grid_update_maxima
+<<grids: procedures>>=
+  subroutine grid_update_maxima (grid, x, y)
+    class(grid_t), intent(inout) :: grid
+    real(default), dimension(:), intent(in) :: x
+    real(default), intent(in) :: y
+    integer, dimension(1:size(x)) :: indices
+    indices = grid%get_segment (x)
+    if (grid%get_value (indices) < y) then
+       grid%values (grid%get_index (indices)) = y
+    end if
+  end subroutine grid_update_maxima
+
+@ %def grid_update_maxima
+@ More general cases have to be thought through when they are needed.
+\emph{This is inefficient and non-general}.
+<<grids: grid: TBP>>=
+  procedure :: get_maximum_in_3d => grid_get_maximum_in_3d
+<<grids: procedures>>=
+  function grid_get_maximum_in_3d (grid, projected_index) result (maximum)
+    real(default) :: maximum
+    class(grid_t), intent(in) :: grid
+    integer, intent(in) :: projected_index
+    real(default) :: val
+    integer :: i, j
+    maximum = zero
+    do i = 1, grid%points(1)
+       do j = 1, grid%points(2)
+          val = grid%get_value ([i, j, projected_index])
+          if (val > maximum) then
+             maximum = val
+          end if
+       end do
+    end do
+
+  end function grid_get_maximum_in_3d
+
+@ %def grid_get_maximum_in_3d
+@
+<<grids: grid: TBP>>=
+  procedure :: is_non_zero_everywhere => grid_is_non_zero_everywhere
+<<grids: procedures>>=
+  pure function grid_is_non_zero_everywhere (grid) result (yorn)
+    logical :: yorn
+    class(grid_t), intent(in) :: grid
+    yorn = all (abs (grid%values) > zero)
+  end function grid_is_non_zero_everywhere
+
+@ %def grid_is_non_zero_everywhere
+@
+\subsection{Input and Output to screen and disk}
+
+<<grids: grid: TBP>>=
+  procedure :: write => grid_write
+<<grids: procedures>>=
+  subroutine grid_write (grid, unit)
+    class(grid_t), intent(in) :: grid
+    integer, intent(in), optional :: unit
+    integer :: u, i
+    u = given_output_unit (unit);  if (u < 0)  return
+    write (u, "(1X,A)") "Grid"
+    write (u, "(2X,A,2X)", advance='no') "Number of points per dimension:"
+    if (allocated (grid%points)) then
+       do i = 1, size (grid%points)
+          write (u, "(I12,1X)", advance='no') &
+               grid%points (i)
+       end do
+    end if
+    write (u, *)
+    write (u, "(2X,A)") "Values of the grid:"
+    if (allocated (grid%values)) then
+       do i = 1, size (grid%values)
+          write (u, "(" // DEFAULT_OUTPUT_PRECISION // ",1X)") &
+               grid%values (i)
+       end do
+    end if
+    call grid%compute_and_write_mean_and_max (u)
+  end subroutine grid_write
+
+@ %def grid_write
+<<grids: grid: TBP>>=
+  procedure :: compute_and_write_mean_and_max => &
+       grid_compute_and_write_mean_and_max
+<<grids: procedures>>=
+  subroutine grid_compute_and_write_mean_and_max (grid, unit)
+    class(grid_t), intent(in) :: grid
+    integer, intent(in), optional :: unit
+    integer :: u, i, n_values
+    real(default) :: mean, val, maximum
+    u = given_output_unit (unit);  if (u < 0)  return
+    mean = zero
+    maximum = zero
+    n_values = size (grid%values)
+    do i = 1, n_values
+       val = grid%values (i)
+       mean = mean + val / n_values
+       if (val > maximum) then
+          maximum = val
+       end if
+    end do
+    write (u, "(2X,A," // DEFAULT_OUTPUT_PRECISION // ")") &
+         "Mean value of the grid: ", mean
+    write (u, "(2X,A," // DEFAULT_OUTPUT_PRECISION // ")") &
+         "Max value of the grid: ", maximum
+    if (maximum > zero) then
+       write (u, "(2X,A," // DEFAULT_OUTPUT_PRECISION // ")") &
+            "Mean/Max value of the grid: ", mean / maximum
+    end if
+  end subroutine grid_compute_and_write_mean_and_max
+
+@ %def grid_compute_and_write_mean_and_max
+@
+@
+<<grids: grid: TBP>>=
+  procedure :: save_to_file => grid_save_to_file
+<<grids: procedures>>=
+  subroutine grid_save_to_file (grid, file)
+    class(grid_t), intent(in) :: grid
+    character(len=*), intent(in) :: file
+    integer :: iostat, u, i
+    u = free_unit ()
+    open (file=file, unit=u, action='write')
+    if (allocated (grid%points)) then
+       write (u, "(I12)") size (grid%points)
+       do i = 1, size (grid%points)
+          write (u, "(I12,1X)", advance='no', iostat=iostat) &
+               grid%points (i)
+       end do
+    end if
+    write (u, *)
+    if (allocated (grid%values)) then
+       do i = 1, size (grid%values)
+          write (u, "(" // DEFAULT_OUTPUT_PRECISION // ",1X)", &
+               advance='no', iostat=iostat) grid%values (i)
+       end do
+    end if
+    if (iostat < 0) then
+       call msg_warning &
+            ('grid_save_to_file: Could not save grid to file')
+    end if
+    close (u)
+  end subroutine grid_save_to_file
+
+@ %def grid_save_to_file
+@
+<<grids: parameters>>=
+  character(len=*), parameter :: DEFAULT_OUTPUT_PRECISION = FMT_16
+@ %def DEFAULT_OUTPUT_PRECISION
+@
+<<grids: grid: TBP>>=
+  procedure :: load_from_file => grid_load_from_file
+<<grids: procedures>>=
+  subroutine grid_load_from_file (grid, file)
+    class(grid_t), intent(out) :: grid
+    character(len=*), intent(in) :: file
+    integer :: iostat, u, i, n_dimensions
+    integer, dimension(:), allocatable :: points
+    u = free_unit ()
+    open (file=file, unit=u, action='read', iostat=iostat)
+    read (u, "(I12)", iostat=iostat) n_dimensions
+    allocate (points (n_dimensions))
+    do i = 1, size (points)
+       read (u, "(I12,1X)", advance='no', iostat=iostat) &
+            points (i)
+    end do
+    read (u, *)
+    call grid%init (points)
+    do i = 1, size (grid%values)
+       read (u, "(" // DEFAULT_OUTPUT_PRECISION // ",1X)", advance='no', iostat=iostat) &
+            grid%values (i)
+    end do
+    if (iostat < 0) then
+       call msg_warning ('grid_load_from_file: Could not load grid from file')
+    end if
+    close (u)
+  end subroutine grid_load_from_file
+
+@ %def grid_load_from_file
+@
+\subsection{Unit tests}
+<<grids: public>>=
+  public :: grids_test
+<<grids: procedures>>=
+  subroutine grids_test (u, results)
+    integer, intent(in) :: u
+    type(test_results_t), intent(inout) :: results
+  <<grids: execute tests>>
+  end subroutine grids_test
+
+@ %def grids_test
+@
+\subsubsection{Test Index Function}
+<<grids: execute tests>>=
+  call test(grids_1, "grids_1", &
+       "Test Index Function", u, results)
+<<grids: procedures>>=
+  subroutine grids_1 (u)
+    integer, intent(in) :: u
+    type(grid_t) :: grid
+    write (u, "(A)")  "* Test output: grids_1"
+    write (u, "(A)")  "*   Purpose: Test Index Function"
+    write (u, "(A)")
+
+    call grid%init ([3])
+    call grid%write(u)
+    call assert (u, grid%get_index([1]) == 1, "grid%get_index(1) == 1")
+    call assert (u, grid%get_index([2]) == 2, "grid%get_index(2) == 2")
+    call assert (u, grid%get_index([3]) == 3, "grid%get_index(3) == 3")
+    call grid%final ()
+
+    call grid%init ([3,3])
+    call grid%write(u)
+    call assert (u, grid%get_index([1,1]) == 1, "grid%get_index(1,1) == 1")
+    call assert (u, grid%get_index([2,1]) == 2, "grid%get_index(2,1) == 2")
+    call assert (u, grid%get_index([3,1]) == 3, "grid%get_index(3,1) == 3")
+    call assert (u, grid%get_index([1,2]) == 4, "grid%get_index(1,2) == 4")
+    call assert (u, grid%get_index([2,2]) == 5, "grid%get_index(2,2) == 5")
+    call assert (u, grid%get_index([3,2]) == 6, "grid%get_index(3,2) == 6")
+    call assert (u, grid%get_index([1,3]) == 7, "grid%get_index(1,3) == 7")
+    call assert (u, grid%get_index([2,3]) == 8, "grid%get_index(2,3) == 8")
+    call assert (u, grid%get_index([3,3]) == 9, "grid%get_index(3,3) == 9")
+    call grid%final ()
+
+    call grid%init ([3,3,2])
+    call grid%write(u)
+    call assert (u, grid%get_index([1,1,1]) == 1,   "grid%get_index(1,1,1) == 1")
+    call assert (u, grid%get_index([2,1,2]) == 2+9, "grid%get_index(2,1,2) == 2+9")
+    call assert (u, grid%get_index([3,3,1]) == 9,   "grid%get_index(3,3,1) == 3")
+    call assert (u, grid%get_index([3,1,2]) == 3+9, "grid%get_index(3,1,2) == 4+9")
+    call assert (u, grid%get_index([2,2,1]) == 5,   "grid%get_index(2,2,1) == 5")
+    call assert (u, grid%get_index([3,2,2]) == 6+9, "grid%get_index(3,2,2) == 6+9")
+    call assert (u, grid%get_index([1,3,1]) == 7,   "grid%get_index(1,3,1) == 7")
+    call assert (u, grid%get_index([2,3,2]) == 8+9, "grid%get_index(2,3,2) == 8+9")
+    call assert (u, grid%get_index([3,3,2]) == 9+9, "grid%get_index(3,3,2) == 9+9")
+    call grid%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: grids_1"
+  end subroutine grids_1
+
+@ %def grids_1
+@
+\subsubsection{Saving and Loading}
+<<grids: execute tests>>=
+  call test(grids_2, "grids_2", &
+            "Saving and Loading", u, results)
+<<grids: procedures>>=
+  subroutine grids_2 (u)
+    integer, intent(in) :: u
+    type(grid_t) :: grid
+    write (u, "(A)")  "* Test output: grids_2"
+    write (u, "(A)")  "*   Purpose: Saving and Loading"
+    write (u, "(A)")
+
+    call grid%init ([3])
+    grid%values = [one, two, three]
+    call grid%save_to_file ('grids_2_test')
+    call grid%final ()
+
+    call grid%load_from_file ('grids_2_test')
+    call grid%write (u)
+    call assert (u, nearly_equal (grid%get_value([1]), one),   "grid%get_value(1) == 1")
+    call assert (u, nearly_equal (grid%get_value([2]), two),   "grid%get_value(2) == 2")
+    call assert (u, nearly_equal (grid%get_value([3]), three), "grid%get_value(3) == 3")
+    call grid%final ()
+
+    call grid%init ([3,3])
+    grid%values = [one, two, three, four, zero, zero, zero, zero, zero]
+    call grid%save_to_file ('grids_2_test')
+    call grid%final ()
+
+    call grid%load_from_file ('grids_2_test')
+    call grid%write (u)
+    call assert (u, nearly_equal (grid%get_value([1,1]), one),   "grid%get_value(1,1) == 1")
+    call assert (u, nearly_equal (grid%get_value([2,1]), two),   "grid%get_value(2,1) == 2")
+    call assert (u, nearly_equal (grid%get_value([3,1]), three), "grid%get_value(3,1) == 3")
+    call assert (u, nearly_equal (grid%get_value([1,2]), four),  "grid%get_value(1,2) == 4")
+    call delete_file ('grids_2_test')
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: grids_2"
+  end subroutine grids_2
+
+@ %def grids_2
+@
+\subsubsection{Get Segments}
+<<grids: execute tests>>=
+  call test(grids_3, "grids_3", &
+            "Get Segments", u, results)
+<<grids: procedures>>=
+  subroutine grids_3 (u)
+    integer, intent(in) :: u
+    type(grid_t) :: grid
+    integer, dimension(2) :: fail
+    write (u, "(A)")  "* Test output: grids_3"
+    write (u, "(A)")  "*   Purpose: Get Segments"
+    write (u, "(A)")
+
+    call grid%init ([3])
+    call assert (u, all(grid%get_segment([0.00_default]) == [1]), &
+                   "all(grid%get_segment([0.00_default]) == [1])")
+    call assert (u, all(grid%get_segment([0.32_default]) == [1]), &
+                   "all(grid%get_segment([0.32_default]) == [1])")
+    call assert (u, all(grid%get_segment([0.52_default]) == [2]), &
+                   "all(grid%get_segment([0.52_default]) == [2])")
+    call assert (u, all(grid%get_segment([1.00_default]) == [3]), &
+                   "all(grid%get_segment([1.00_default]) == [3])")
+    call grid%final ()
+
+    call grid%init ([3,3])
+    call assert (u, all(grid%get_segment([0.00_default,0.00_default]) == [1,1]), &
+                   "all(grid%get_segment([0.00_default,0.00_default]) == [1,1])")
+    call assert (u, all(grid%get_segment([0.32_default,0.32_default]) == [1,1]), &
+                   "all(grid%get_segment([0.32_default,0.32_default]) == [1,1])")
+    call assert (u, all(grid%get_segment([0.52_default,0.52_default]) == [2,2]), &
+                   "all(grid%get_segment([0.52_default,0.52_default]) == [2,2])")
+    call assert (u, all(grid%get_segment([1.00_default,1.00_default]) == [3,3]), &
+                   "all(grid%get_segment([1.00_default,1.00_default]) == [3,3])")
+    write (u, "(A)")  "* A double error is expected"
+    fail = grid%get_segment([1.10_default,1.10_default], u)
+    call grid%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: grids_3"
+  end subroutine grids_3
+
+@ %def grids_3
+@
+\subsubsection{Update Maxima}
+<<grids: execute tests>>=
+  call test(grids_4, "grids_4", &
+            "Update Maxima", u, results)
+<<grids: procedures>>=
+  subroutine grids_4 (u)
+    integer, intent(in) :: u
+    type(grid_t) :: grid
+    write (u, "(A)")  "* Test output: grids_4"
+    write (u, "(A)")  "*   Purpose: Update Maxima"
+    write (u, "(A)")
+
+    call grid%init ([4,4])
+    call grid%update_maxima ([0.1_default, 0.0_default], 0.3_default)
+    call grid%update_maxima ([0.9_default, 0.95_default], 1.7_default)
+    call grid%write (u)
+    call assert_equal (u, grid%get_value([1,1]), 0.3_default, &
+               "grid%get_value([1,1]")
+    call assert_equal (u, grid%get_value([2,2]), 0.0_default, &
+               "grid%get_value([2,2]")
+    call assert_equal (u, grid%get_value([4,4]), 1.7_default, &
+               "grid%get_value([4,4]")
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: grids_4"
+  end subroutine grids_4
+
+@ %def grids_4
+@
+\subsubsection{Finding and checking}
+<<grids: execute tests>>=
+  call test(grids_5, "grids_5", &
+            "Finding and checking", u, results)
+<<grids: procedures>>=
+  subroutine grids_5 (u)
+    integer, intent(in) :: u
+    type(grid_t) :: grid
+    real(default) :: first, second
+    write (u, "(A)")  "* Test output: grids_5"
+    write (u, "(A)")  "*   Purpose: Finding and checking"
+    write (u, "(A)")
+
+    call grid%init ([2,2,2])
+    first = one / two - tiny_07
+    second = two / two - tiny_07
+    call grid%update_maxima ([0.1_default, 0.0_default, first], 0.3_default)
+    call grid%update_maxima ([0.9_default, 0.95_default, second], 1.7_default)
+    call grid%write (u)
+    call assert (u, .not. grid%is_non_zero_everywhere (), &
+               ".not. grid%is_non_zero_everywhere (")
+    call assert_equal (u, grid%get_maximum_in_3d (1), 0.3_default, &
+         "grid%get_maximum_in_3d (1)")
+    call assert_equal (u, grid%get_maximum_in_3d (2), 1.7_default, &
+         "grid%get_maximum_in_3d (2)")
+
+    call grid%update_maxima ([0.9_default, 0.95_default, first], 1.8_default)
+    call grid%update_maxima ([0.1_default, 0.95_default, first], 1.5_default)
+    call grid%update_maxima ([0.9_default, 0.15_default, first], 1.5_default)
+    call grid%update_maxima ([0.1_default, 0.0_default, second], 0.2_default)
+    call grid%update_maxima ([0.1_default, 0.9_default, second], 0.2_default)
+    call grid%update_maxima ([0.9_default, 0.0_default, second], 0.2_default)
+    call grid%write (u)
+    call assert (u, grid%is_non_zero_everywhere (), &
+               "grid%is_non_zero_everywhere (")
+    call assert_equal (u, grid%get_maximum_in_3d (1), 1.8_default, &
+         "grid%get_maximum_in_3d (1)")
+    call assert_equal (u, grid%get_maximum_in_3d (2), 1.7_default, &
+         "grid%get_maximum_in_3d (2)")
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: grids_5"
+  end subroutine grids_5
+
+@ %def grids_5
+@ One could think of multiple implementations of a generic type.
+<<[[solver.f90]]>>=
+<<File header>>
+
+module solver
+
+<<Use kinds>>
+  use constants
+  use unit_tests
+  use diagnostics
+
+<<Standard module head>>
+
+<<solver: public>>
+
+<<solver: parameters>>
+
+<<solver: types>>
+
+<<solver: interfaces>>
+
+contains
+
+<<solver: procedures>>
+
+end module solver
+@ %def solver
+@
+<<solver: public>>=
+  public :: solver_function_t
+<<solver: types>>=
+  type, abstract :: solver_function_t
+  contains
+    procedure(solver_function_evaluate), deferred :: evaluate
+  end type solver_function_t
+
+@ %def solver_function_t
+@
+<<solver: interfaces>>=
+  abstract interface
+     function solver_function_evaluate (solver_f, x) result (f)
+       import
+       complex(default) :: f
+       class(solver_function_t), intent(in) :: solver_f
+       real(default), intent(in) :: x
+     end function
+  end interface
+
+@ %def solver_function_evaluate
+@
+<<solver: public>>=
+  public :: solve_secant
+<<solver: procedures>>=
+  function solve_secant (func, lower_start, upper_start, success, precision) result (x0)
+    class(solver_function_t), intent(in) :: func
+    real(default) :: x0
+    real(default), intent(in) :: lower_start, upper_start
+    real(default), intent(in), optional :: precision
+    logical, intent(out) :: success
+    real(default) :: desired, x_curr, x_next, f_curr, f_next, x_new
+    integer :: n_iter
+    desired = DEFAULT_PRECISION; if (present(precision)) desired = precision
+    x_curr = lower_start
+    x_next = upper_start
+    n_iter = 0
+    success = .false.
+    SEARCH: do
+       n_iter = n_iter + 1
+       f_curr = real( func%evaluate (x_curr) )
+       f_next = real( func%evaluate (x_next) )
+       <<Exit if close to zero and handle exceptions>>
+       x_new = x_next - (x_next - x_curr) / (f_next - f_curr) * f_next
+       x_curr = x_next
+       x_next = x_new
+    end do SEARCH
+    if (x0 < lower_start .or. x0 > upper_start) then
+       call msg_warning ("solve: The root of the function is not in boundaries")
+       return
+    end if
+    success = .true.
+  end function solve_secant
+
+@ %def solve_secant
+<<Exit if close to zero and handle exceptions>>=
+if (abs (f_next) < desired) then
+   x0 = x_next
+   exit
+end if
+if (n_iter > MAX_TRIES) then
+   call msg_warning ("solve: Couldn't find root of function")
+   return
+end if
+if (vanishes (f_next - f_curr)) then
+   x_next = x_next + (x_next - x_curr) / 10
+   cycle
+end if
+@
+@
+<<solver: public>>=
+  public :: solve_interval
+<<solver: procedures>>=
+  function solve_interval (func, lower_start, upper_start, success, precision) &
+                                                           result (x0)
+    class(solver_function_t), intent(in) :: func
+    real(default) :: x0
+    real(default), intent(in) :: lower_start, upper_start
+    real(default), intent(in), optional :: precision
+    logical, intent(out) :: success
+    real(default) :: desired
+    real(default) :: x_low, x_high, x_half
+    real(default) :: f_low, f_high, f_half
+    integer :: n_iter
+    success = .false.
+    desired = DEFAULT_PRECISION; if (present(precision)) desired = precision
+    x0 = lower_start
+    x_low = lower_start
+    x_high = upper_start
+    f_low = real( func%evaluate (x_low) )
+    f_high = real( func%evaluate (x_high) )
+    if (f_low * f_high > 0) return
+    if (x_low > x_high) call msg_fatal ("Interval solver: Upper bound must be&
+                                        &greater than lower bound")
+    n_iter = 0
+    do n_iter = 1, MAX_TRIES
+       x_half = (x_high + x_low)/2
+       f_half = real( func%evaluate (x_half) )
+       if (abs (f_half) <= desired) then
+          x0 = x_half
+          exit
+       end if
+       if (f_low * f_half > 0._default) then
+          x_low = x_half
+          f_low = f_half
+       else
+          x_high = x_half
+          f_high = f_half
+       end if
+    end do
+    if (x0 < lower_start .or. x0 > upper_start) then
+       call msg_warning ("Interval solver: The root of the function&
+                          & is out of boundaries")
+       return
+    end if
+    success = .true.
+  contains
+    subroutine display_solver_status ()
+       print *, '================='
+       print *, 'Status of interval solver: '
+       print *, 'initial values: ', lower_start, upper_start
+       print *, 'iteration: ', n_iter
+       print *, 'x_low: ', x_low, 'f_low: ', f_low
+       print *, 'x_high: ', x_high, 'f_high: ', f_high
+       print *, 'x_half: ', x_half, 'f_half: ', f_half
+    end subroutine display_solver_status
+  end function solve_interval
+
+@ %def solve_interval
+@
+<<solver: public>>=
+  public :: solve_qgaus
+<<solver: procedures>>=
+  function solve_qgaus (integrand, grid) result (integral)
+    class(solver_function_t), intent(in) :: integrand
+    complex(default) :: integral
+    real(default), dimension(:), intent(in) :: grid
+    integer :: i, j
+    real(default) :: xm, xr
+    real(default), dimension(5) :: dx, &
+      w = (/ 0.2955242247_default, 0.2692667193_default, &
+        0.2190863625_default, 0.1494513491_default, 0.0666713443_default /), &
+      x = (/ 0.1488743389_default, 0.4333953941_default, 0.6794095682_default, &
+        0.8650633666_default, 0.9739065285_default /)
+    integral = 0.0_default
+    if ( size(grid) < 2 ) then
+      call msg_warning ("solve_qgaus: size of integration grid smaller than 2.")
+      return
+    end if
+    do i=1, size(grid)-1
+      xm = 0.5_default * ( grid(i+1) + grid(i) )
+      xr = 0.5_default * ( grid(i+1) - grid(i) )
+      do j=1, 5
+        dx(j) = xr * x(j)
+        integral = integral + xr * w(j) * &
+          ( integrand%evaluate (xm+dx(j)) + integrand%evaluate (xm-dx(j)) )
+      end do
+    end do
+  end function solve_qgaus
+
+@ %def solve_qgaus
+@
+<<solver: parameters>>=
+  real(default), parameter :: DEFAULT_PRECISION = tiny_10
+@ %def name
+@
+<<solver: parameters>>=
+  integer, parameter :: MAX_TRIES = 10000
+@ %def MAX_TRIES
+@
+\subsection{Unit tests}
+<<solver: types>>=
+  type, extends (solver_function_t) :: test_function_1_t
+  contains
+    procedure :: evaluate => test_func_1
+  end type test_function_1_t
+
+@ %def test_function_1_t
+@
+<<solver: types>>=
+  type, extends (solver_function_t) :: test_function_2_t
+  contains
+    procedure :: evaluate => test_func_2
+  end type test_function_2_t
+
+@ %def test_function_2_t
+@
+<<solver: types>>=
+  type, extends (solver_function_t) :: test_function_3_t
+  contains
+    procedure :: evaluate => test_func_3
+  end type test_function_3_t
+
+@ %def test_function_3_t
+@
+<<solver: types>>=
+  type, extends (solver_function_t) :: test_function_4_t
+  contains
+    procedure :: evaluate => test_func_4
+  end type test_function_4_t
+
+@ %def test_function_4_t
+@
+<<solver: procedures>>=
+  function test_func_1 (solver_f, x) result (f)
+    complex(default) :: f
+    class(test_function_1_t), intent(in) :: solver_f
+    real(default), intent(in) :: x
+    f = x
+  end function test_func_1
+
+  function test_func_2 (solver_f, x) result (f)
+    complex(default) :: f
+    class(test_function_2_t), intent(in) :: solver_f
+    real(default), intent(in) :: x
+    f = x ** 2
+  end function test_func_2
+
+  function test_func_3 (solver_f, x) result (f)
+    complex(default) :: f
+    class(test_function_3_t), intent(in) :: solver_f
+    real(default), intent(in) :: x
+    f = x ** 3
+  end function test_func_3
+
+  function test_func_4 (solver_f, x) result (f)
+    complex(default) :: f
+    class(test_function_4_t), intent(in) :: solver_f
+    real(default), intent(in) :: x
+    real(default) :: s, cutoff
+    s = 100.0_default
+    cutoff = 1.01_default
+    if (x < cutoff) then
+       f = - (log (s) * log (log (s) / log(cutoff**2)) - log (s / cutoff**2)) - &
+         log (one/two)
+    else
+       f = - (log (s) * log (log (s) / log(x**2)) - log (s / x**2)) - &
+            log (one/two)
+    end if
+  end function test_func_4
+
+@ %def test_func_1
+<<solver: public>>=
+  public :: solver_test
+<<solver: procedures>>=
+  subroutine solver_test (u, results)
+    integer, intent(in) :: u
+    type(test_results_t), intent(inout) :: results
+  <<solver: execute tests>>
+  end subroutine solver_test
+
+@ %def solver_test
+@
+\subsubsection{Solve trivial functions}
+<<solver: execute tests>>=
+  call test(solver_1, "solver_1", &
+            "Solve trivial functions", u, results)
+<<solver: procedures>>=
+  subroutine solver_1 (u)
+    integer, intent(in) :: u
+    real(default) :: zero_position
+    logical :: success
+    type(test_function_1_t) :: test_func_1
+    type(test_function_2_t) :: test_func_2
+    type(test_function_3_t) :: test_func_3
+    type(test_function_4_t) :: test_func_4
+    write (u, "(A)")  "* Test output: solver_1"
+    write (u, "(A)")  "*   Purpose: Solve trivial functions"
+    write (u, "(A)")
+
+    zero_position = solve_interval (test_func_1, -one, one, success)
+    call assert (u, success, "success")
+    call assert_equal (u, zero_position, zero, "test_func_1: zero_position")
+
+    zero_position = solve_interval (test_func_4, two, 10.0_default, success)
+    call assert (u, success, "success")
+    call assert_equal (u, zero_position, 3.5216674014805425_default, &
+         "test_func_4: zero_position", rel_smallness=1000*DEFAULT_PRECISION)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: solver_1"
+  end subroutine solver_1
+
+@ %def solver_1
+@
 

@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -86,21 +86,25 @@ contains
     if (any (weight < 0)) &
          call msg_bug ("Selector init: negative weight")
     s = sum (weight)
-    if (s == 0) &
-         call msg_bug ("Selector init: all weights are zero")
     allocate (mask (size (weight)), &
          source = weight /= 0)
     n = count (mask)
-    allocate (selector%map (n), &
-         source = pack ([(i, i = 1, size (weight))], mask))
-    allocate (selector%weight (n), &
-         source = pack (weight / s, mask))
-    allocate (selector%acc (n))
-    selector%acc(1) = selector%weight(1)
-    do i = 2, n - 1
-       selector%acc(i) = selector%acc(i-1) + selector%weight(i)
-    end do
-    selector%acc(n) = 1
+    if (n > 0) then
+       allocate (selector%map (n), &
+            source = pack ([(i, i = 1, size (weight))], mask))
+       allocate (selector%weight (n), &
+            source = pack (weight / s, mask))
+       allocate (selector%acc (n))
+       selector%acc(1) = selector%weight(1)
+       do i = 2, n - 1
+          selector%acc(i) = selector%acc(i-1) + selector%weight(i)
+       end do
+       selector%acc(n) = 1
+    else
+       allocate (selector%map (1), source = 1)
+       allocate (selector%weight (1), source = 0._default)
+       allocate (selector%acc (1), source = 1._default)
+    end if
   end subroutine selector_init
     
   function selector_select (selector, x) result (n)

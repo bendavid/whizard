@@ -5,8 +5,9 @@
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
-#     with contributions from Fabian Bach, Felix Braam, Sebastian Schmidt, 
-#     Christian Speckner, Daniel Wiesler
+#     with contributions from Fabian Bach, Felix Braam, Bijan Chokoufe Nejad,
+#     Sebastian Schmidt, Marco Sekulla, Christian Speckner, Christian Weiss,
+#     Daniel Wiesler
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by 
@@ -47,7 +48,7 @@ the Higgs boson, and the top quark), the MSSM, the NMSSM, several types
 of Little Higgs models, Universal Extra Dimensions, the 3-site Higgsless
 moose model, and a generic Z' model. Model extensions or completely 
 different models can be added. Almost arbitrary models might be added via
-the interface to the package FeynRules.
+interfaces to the packages FeynRules and SARAH.
 
 The WHIZARD manual as well as the documented source code can be found 
 in the subdirectory 'share/doc'.  The manual describes the installation 

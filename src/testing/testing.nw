@@ -23,6 +23,7 @@ module unit_tests
 <<Use kinds>>
   use constants, only: zero, tiny_10, tiny_13
 <<Use strings>>
+  use format_defs
   use io_units
 
 <<Standard module head>>
@@ -268,8 +269,9 @@ The test routine must take the output unit as argument.
   end subroutine test
 
 @ %def test
+@
 \subsection{Convenience functions}
-@ Unit tests should include a lot of assertions that only involve IO if
+Unit tests should include a lot of assertions that only involve IO if
 something is wrong. [[assert]] allows to streamline this method.
 <<Tests: public>>=
   public :: assert
@@ -288,6 +290,53 @@ something is wrong. [[assert]] allows to streamline this method.
   end subroutine assert
 
 @ %def assert
+@ Compare numbers and output error message if not equal.
+<<Tests: public>>=
+  public:: assert_equal
+  interface assert_equal
+     module procedure assert_equal_real, assert_equal_integer
+  end interface
+@
+<<Tests: procedures>>=
+  subroutine assert_equal_real (unit, lhs, rhs, description, &
+                                abs_smallness, rel_smallness)
+    real(default), intent(in), optional :: abs_smallness, rel_smallness
+    integer, intent(in) :: unit
+    real(default), intent(in) :: lhs, rhs
+    character(*), intent(in), optional :: description
+    logical :: ok
+    ok = nearly_equal (lhs, rhs, abs_smallness, rel_smallness)
+    if (.not. ok) then
+       if (present(description)) then
+          write (unit, "(A," // FMT_19 // ",A," // FMT_19 // ")") &
+               "* FAIL: " // description // ": ", lhs, " /= ", rhs
+       else
+          write (unit, "(A," // FMT_19 // ",A," // FMT_19 // ")") &
+               "* FAIL: Assertion error: ", lhs, " /= ", rhs
+       end if
+    end if
+  end subroutine assert_equal_real
+
+@ %def assert_equal_real
+<<Tests: procedures>>=
+  subroutine assert_equal_integer (unit, lhs, rhs, description)
+    integer, intent(in) :: unit
+    integer, intent(in) :: lhs, rhs
+    character(*), intent(in), optional :: description
+    logical :: ok
+    ok = lhs == rhs
+    if (.not. ok) then
+       if (present(description)) then
+          write (unit, "(A,I0,A,I0)") &
+               "* FAIL: " // description // ": ", lhs, " /= ", rhs
+       else
+          write (unit, "(A,I0,A,I0)") &
+               "* FAIL: Assertion error: ", lhs, " /= ", rhs
+       end if
+    end if
+  end subroutine assert_equal_integer
+
+@ %def assert_equal_integer
 @ Note that this poor man's check will be disabled if someone compiles
 with [[-ffast-math]] or similar optimizations.
 <<Tests: procedures>>=
@@ -296,6 +345,8 @@ with [[-ffast-math]] or similar optimizations.
     real(default), intent(in) :: x
     yorn = (x /= x)
   end function ieee_is_nan
+
+@ %def ieee_is_nan
 @ This is still not perfect but should work in most cases.  Usually one
 wants to compare to a relative epsilon [[rel_smallness]], except for
 numbers close to zero defined by [[abs_smallness]].  Both might need
@@ -319,16 +370,8 @@ adaption to specific use cases but have reasonable defaults.
        r = .false.
        return
     end if
-    if (present (abs_smallness)) then
-       abs_small = abs_smallness
-    else
-       abs_small = tiny_13
-    end if
-    if (present (rel_smallness)) then
-       rel_small = rel_smallness
-    else
-       rel_small = tiny_10
-    end if
+    abs_small = tiny_13; if (present (abs_smallness)) abs_small = abs_smallness
+    rel_small = tiny_10; if (present (rel_smallness)) rel_small = rel_smallness
     if (abs_a < abs_small .and. abs_b < abs_small) then
        r = diff < abs_small
     else

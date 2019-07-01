@@ -12,7 +12,7 @@ $(libwhizard_prebuilt_la_OBJECTS): \
   ../basics/iso_varying_string.$(FC_MODULE_EXT) \
   ../matrix_elements/prclib_interfaces.$(FC_MODULE_EXT)
 
-AM_FCFLAGS = -I../basics -I../testing -I../system -I../matrix_elements
+AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../matrix_elements
 
 ########################################################################
 ## Default Fortran compiler options

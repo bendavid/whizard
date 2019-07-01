@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -266,7 +266,6 @@ contains
     type(file_list_t), intent(in) :: file_list
     type(string_t), intent(in) :: name
     type(ifile_t), intent(in) :: ifile
-    type(line_p) :: line
     type(file_t), pointer :: current
     current => file_list_get_file_ptr (file_list, name)
     if (associated (current)) then

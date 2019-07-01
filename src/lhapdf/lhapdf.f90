@@ -38,7 +38,7 @@ module lhapdf
   ! Public types
   public :: lhapdf_pdf_t
 
-  public :: lhapdf_transfer_pointer
+  public :: lhapdf_copy_pointer
 
   type :: lhapdf_pdf_t
      private
@@ -192,7 +192,7 @@ contains
   end subroutine lhapdf_pdf_init
 
   function lhapdf_is_associated (pdf) result (flag)
-    class(lhapdf_pdf_t), intent(inout) :: pdf
+    class(lhapdf_pdf_t), intent(in) :: pdf
     logical :: flag
     flag = c_associated (pdf%cptr)
   end function lhapdf_is_associated
@@ -285,7 +285,11 @@ contains
     real(double) :: as
     real(c_double) :: c_q = 0
     c_q = q
-    as = lhapdf_alphaspdf (pdf%cptr, c_q)
+    !!! Problems with -O0:
+    !!! Without this print statement, c_q is undefined when called from
+    !!! sf_lhapdf and LHAPDF6 gives an error and the test sf_lhapdf_3 fails
+    !!! print *, c_q
+    as = lhapdf_alphaspdf (pdf%cptr, real(q, kind=c_double))
   end function lhapdf_alphas_pdf
 
   subroutine lhapdf_final (pdf)
@@ -295,11 +299,10 @@ contains
     end if
   end subroutine lhapdf_final
 
-  subroutine lhapdf_transfer_pointer (pdf_in, pdf_out)
-    type(lhapdf_pdf_t), intent(inout), target :: pdf_in
+  subroutine lhapdf_copy_pointer (pdf_in, pdf_out)
+    type(lhapdf_pdf_t), intent(in), target :: pdf_in
     type(lhapdf_pdf_t), intent(out), target :: pdf_out
-    pdf_out = pdf_in    
     pdf_out%cptr = transfer (pdf_in%cptr, pdf_out%cptr)
-  end subroutine lhapdf_transfer_pointer
+  end subroutine lhapdf_copy_pointer
 
 end module lhapdf

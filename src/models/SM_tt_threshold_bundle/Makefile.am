@@ -6,9 +6,13 @@
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
-#     Fabian Bach <fabian.bach@desy.de> (only this file)
 #     with contributions from
+#     Fabian Bach <fabian.bach@desy.de>
+#     Bijan Chokoufe <bijan.chokoufe@desy.de>
 #     Christian Speckner <cnspeckn@googlemail.com>
+#     Marco Sekulla <marco.sekulla@desy.de>
+#     Christian Weiss <christian.weiss@desy.de>
+#     Felix Braam, Sebastian Schmidt
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by 
@@ -32,12 +36,12 @@ noinst_LTLIBRARIES = libSM_tt_threshold_bundle.la
 
 ## We need all in the distribution
 
-EXTRA_DIST = interpolation.f90  nr_hypgeometric.f90  \
+EXTRA_DIST = interpolation.f90  nr_tools.f90  \
 	toppik.f  toppik_axial.f  ttv_formfactors.f90
 
 libSM_tt_threshold_bundle_la_SOURCES = \
   interpolation.f90 \
-  nr_hypgeometric.f90 \
+  nr_tools.f90 \
   toppik.f \
   toppik_axial.f \
   ttv_formfactors.f90
@@ -58,7 +62,8 @@ module_lists = \
   ../../basics/Modules \
   ../../utilities/Modules \
   ../../system/Modules \
-  ../../physics/Modules
+  ../../physics/Modules \
+  ../../combinatorics/Modules
 
 $(module_lists):
 	$(MAKE) -C `dirname $@` Modules
@@ -100,7 +105,7 @@ DISTCLEANFILES += Makefile.depend
 execmoddir = $(pkglibdir)/mod/models
 nodist_execmod_HEADERS = \
 	interpolation.$(FC_MODULE_EXT) \
-	nr_hypgeometric.$(FC_MODULE_EXT) \
+	nr_tools.$(FC_MODULE_EXT) \
 	ttv_formfactors.$(FC_MODULE_EXT)
 
 SUFFIXES = .lo .$(FC_MODULE_EXT)
@@ -110,7 +115,7 @@ SUFFIXES = .lo .$(FC_MODULE_EXT)
 	@:
 #       touch $@
 
-AM_FCFLAGS = -I../../basics -I../../testing -I../../utilities -I../../system -I../../physics
+AM_FCFLAGS = -I../../basics -I../../testing -I../../utilities -I../../system -I../../physics -I../../combinatorics
 
 ########################################################################
 ## Default Fortran compiler options

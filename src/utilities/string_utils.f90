@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -42,7 +42,6 @@ module string_utils
   public :: upper_case
   public :: lower_case
   public :: string_f2c
-  public :: integer_to_string
   public :: str
   public :: read_rval
   public :: read_ival
@@ -118,20 +117,12 @@ contains
     o = char (i) // c_null_char
   end function string_f2c_var_str
 
-  function integer_to_string (x) result (str)
-    integer, intent(in) :: x
-    type(string_t) :: str
-    character(5) :: buf
-    write (buf, '(I5)') x
-    str = var_str (trim (adjustl (buf)))
-  end function integer_to_string
-
   function str_int (i) result (s)
     integer, intent(in) :: i
     type(string_t) :: s
     character(32) :: buffer
     write (buffer, "(I0)")  i
-    s = var_str (trim (buffer))
+    s = var_str (trim (adjustl (buffer)))
   end function str_int
   
   function str_real (x) result (s)

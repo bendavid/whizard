@@ -1,4 +1,4 @@
-(* $Id: modellib_SM.ml 6465 2015-01-10 15:22:31Z jr_reuter $
+(* $Id: modellib_SM.ml 6759 2015-03-23 13:42:37Z fbach $
 
    Copyright (C) 1999-2015 by
 
@@ -24,9 +24,9 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 let rcs_file = RCS.parse "Modellib_SM" ["Lagragians"]
-    { RCS.revision = "$Revision: 6465 $";
-      RCS.date = "$Date: 2015-01-10 16:22:31 +0100 (Sat, 10 Jan 2015) $";
-      RCS.author = "$Author: jr_reuter $";
+    { RCS.revision = "$Revision: 6759 $";
+      RCS.date = "$Date: 2015-03-23 14:42:37 +0100 (Mon, 23 Mar 2015) $";
+      RCS.author = "$Author: fbach $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/omega/src/modellib_SM.ml $" }
 
@@ -640,7 +640,7 @@ module SM_tt_threshold : SM_flags =
     let quartic_anom = false
     let higgs_anom = false
     let k_matrix = false
-    let ckm_present = false
+    let ckm_present = true
     let top_anom = false
     let top_anom_4f = false
     let tt_threshold = true

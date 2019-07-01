@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -96,6 +96,7 @@ module sm_physics
   public :: integral_over_p_gqq
   public :: integral_over_p_ggg
   public :: p_qqg_pol
+  public :: sm_physics_test
 
   real(kind=default), parameter, public ::  gamma_q = three/two * CF, &
      k_q = (7.0_default/two - pi**2/6.0_default) * CF
@@ -778,6 +779,40 @@ contains
     end if
     P = P * CF
   end function p_qqg_pol
+
+
+  subroutine sm_physics_test (u, results)
+    integer, intent(in) :: u
+    type(test_results_t), intent(inout) :: results
+    call test (sm_physics_1, "sm_physics_1", &
+         "Splitting functions", &
+         u, results)
+  end subroutine sm_physics_test
+
+  subroutine sm_physics_1 (u)
+    integer, intent(in) :: u
+    real(default) :: z = 0.75_default
+
+    write (u, "(A)")  "* Test output: sm_physics_1"
+    write (u, "(A)")  "*   Purpose: check analytic properties"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Splitting functions:"
+    write (u, "(A)")
+
+    call assert (u, vanishes (p_qqg_pol (z, +1, -1, +1)))
+    call assert (u, vanishes (p_qqg_pol (z, +1, -1, -1)))
+    call assert (u, vanishes (p_qqg_pol (z, -1, +1, +1)))
+    call assert (u, vanishes (p_qqg_pol (z, -1, +1, -1)))
+
+    call assert (u, nearly_equal ( &
+         p_qqg_pol (z, +1, +1, -1) + p_qqg_pol (z, +1, +1, +1), &
+         p_qqg (z)))
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: sm_physics_1"
+
+  end subroutine sm_physics_1
 
 
 end module sm_physics

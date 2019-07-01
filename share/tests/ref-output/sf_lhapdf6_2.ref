@@ -154,19 +154,19 @@ x =  0.5000000
  Interaction: 2
  Incoming:
  Particle 1
- E =   5.00000000E+02
- P =   0.00000000E+00  0.00000000E+00  5.00000000E+02
+ E =   5.000000E+02
+ P =   0.000000E+00  0.000000E+00  5.000000E+02
  mask [fch] = [FFgT]
  internal links: X => 2 3
  Outgoing:
  Particle 2
- E =   2.50000000E+02
- P =   0.00000000E+00  0.00000000E+00  2.50000000E+02
+ E =   2.500000E+02
+ P =   0.000000E+00  0.000000E+00  2.500000E+02
  mask [fch] = [FFgT]
  internal links: 1 => X
  Particle 3
- E =   2.50000000E+02
- P =   0.00000000E+00  0.00000000E+00  2.50000000E+02
+ E =   2.500000E+02
+ P =   0.000000E+00  0.000000E+00  2.500000E+02
  mask [fch] = [FFgT]
  internal links: 1 => X
  State matrix:  norm =  1.0000000000E+00

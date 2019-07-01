@@ -54,11 +54,8 @@ C*********************************************************************
 C*********************************************************************
 
 C...UPINIT
-C...Dummy routine, to be replaced by a user implementing external
-C...processes. Is supposed to fill the HEPRUP commonblock with info
+C...Is supposed to fill the HEPRUP commonblock with info
 C...on incoming beams and allowed processes.
-
-C...New example: handles a standard Les Houches Events File.
 
       SUBROUTINE UPINIT
 
@@ -116,60 +113,6 @@ C...Error exit: give up if initalization does not work.
 
       RETURN
       END
-
-C...Old example: handles a simple Pythia 6.4 initialization file.
-
-c      SUBROUTINE UPINIT
-
-C...Double precision and integer declarations.
-c      IMPLICIT DOUBLE PRECISION(A-H, O-Z)
-c      IMPLICIT INTEGER(I-N)
-
-C...Commonblocks.
-c      COMMON/PYDAT1/MSTU(200),PARU(200),MSTJ(200),PARJ(200)
-c      COMMON/PYPARS/MSTP(200),PARP(200),MSTI(200),PARI(200)
-c      SAVE /PYDAT1/,/PYPARS/
-
-C...User process initialization commonblock.
-c      INTEGER MAXPUP
-c      PARAMETER (MAXPUP=100)
-c      INTEGER IDBMUP,PDFGUP,PDFSUP,IDWTUP,NPRUP,LPRUP
-c      DOUBLE PRECISION EBMUP,XSECUP,XERRUP,XMAXUP
-c      COMMON/HEPRUP/IDBMUP(2),EBMUP(2),PDFGUP(2),PDFSUP(2),
-c     &IDWTUP,NPRUP,XSECUP(MAXPUP),XERRUP(MAXPUP),XMAXUP(MAXPUP),
-c     &LPRUP(MAXPUP)
-c      SAVE /HEPRUP/
-
-C...Read info from file.
-c      IF(MSTP(161).GT.0) THEN
-c        READ(MSTP(161),*,END=110,ERR=110) IDBMUP(1),IDBMUP(2),EBMUP(1),
-c     &  EBMUP(2),PDFGUP(1),PDFGUP(2),PDFSUP(1),PDFSUP(2),IDWTUP,NPRUP
-c        DO 100 IPR=1,NPRUP
-c          READ(MSTP(161),*,END=110,ERR=110) XSECUP(IPR),XERRUP(IPR),
-c     &    XMAXUP(IPR),LPRUP(IPR)
-c  100   CONTINUE
-c        RETURN
-C...Error or prematurely reached end of file.
-c  110   WRITE(MSTU(11),5000)
-c        STOP
-
-C...Else not implemented.
-c      ELSE
-c        WRITE(MSTU(11),5100)
-c        STOP
-c      ENDIF
-
-C...Format for error printout.
-c 5000 FORMAT(1X,'Error: UPINIT routine failed to read information'/
-c     &1X,'Execution stopped!')
-c 5100 FORMAT(1X,'Error: You have not implemented UPINIT routine'/
-c     &1X,'Dummy routine in PYTHIA file called instead.'/
-c     &1X,'Execution stopped!')
-
-c      RETURN
-c      END
-
-C*********************************************************************
 
 C...UPEVNT
 C...Dummy routine, to be replaced by a user implementing external
@@ -245,58 +188,6 @@ C...Added by WHIZARD, mark these failed events
 
       RETURN
       END
-
-C...Old example: handles a simple Pythia 6.4 event file.
-
-c      SUBROUTINE UPEVNT
-
-C...Double precision and integer declarations.
-c      IMPLICIT DOUBLE PRECISION(A-H, O-Z)
-c      IMPLICIT INTEGER(I-N)
-
-C...Commonblocks.
-c      COMMON/PYDAT1/MSTU(200),PARU(200),MSTJ(200),PARJ(200)
-c      COMMON/PYPARS/MSTP(200),PARP(200),MSTI(200),PARI(200)
-c      SAVE /PYDAT1/,/PYPARS/
-
-C...User process event common block.
-c      INTEGER MAXNUP
-c      PARAMETER (MAXNUP=500)
-c      INTEGER NUP,IDPRUP,IDUP,ISTUP,MOTHUP,ICOLUP
-c      DOUBLE PRECISION XWGTUP,SCALUP,AQEDUP,AQCDUP,PUP,VTIMUP,SPINUP
-c      COMMON/HEPEUP/NUP,IDPRUP,XWGTUP,SCALUP,AQEDUP,AQCDUP,IDUP(MAXNUP),
-c     &ISTUP(MAXNUP),MOTHUP(2,MAXNUP),ICOLUP(2,MAXNUP),PUP(5,MAXNUP),
-c     &VTIMUP(MAXNUP),SPINUP(MAXNUP)
-c      SAVE /HEPEUP/
-
-C...Read info from file.
-c      IF(MSTP(162).GT.0) THEN
-c        READ(MSTP(162),*,END=110,ERR=110) NUP,IDPRUP,XWGTUP,SCALUP,
-c     &  AQEDUP,AQCDUP
-c        DO 100 I=1,NUP
-c          READ(MSTP(162),*,END=110,ERR=110) IDUP(I),ISTUP(I),
-c     &    MOTHUP(1,I),MOTHUP(2,I),ICOLUP(1,I),ICOLUP(2,I),
-c     &    (PUP(J,I),J=1,5),VTIMUP(I),SPINUP(I)
-c  100   CONTINUE
-c        RETURN
-C...Special when reached end of file or other error.
-c  110   NUP=0
-
-C...Else not implemented.
-c      ELSE
-c        WRITE(MSTU(11),5000)
-c        STOP
-c      ENDIF
-
-C...Format for error printout.
-c 5000 FORMAT(1X,'Error: You have not implemented UPEVNT routine'/
-c     &1X,'Dummy routine in PYTHIA file called instead.'/
-c     &1X,'Execution stopped!')
-
-c      RETURN
-c      END
-
-C*********************************************************************
 
 C...UPVETO
 C...Dummy routine, to be replaced by user, to veto event generation

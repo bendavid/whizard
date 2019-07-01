@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -114,10 +114,7 @@
     integer, parameter :: CMDLINE_ARG_LEN = 1000
 
     type(c_ptr), intent(out) :: w_c_instance    
-    character(CMDLINE_ARG_LEN) :: arg
     character(2) :: option
-    type(string_t) :: long_option, value
-    integer :: i, j, arg_len, arg_status
     logical :: look_for_options
     logical :: interactive
     logical :: banner
@@ -132,8 +129,6 @@
     logical :: rebuild_library, rebuild_user
     logical :: rebuild_phs, rebuild_grids, rebuild_events
     logical :: recompile_library
-    type(ifile_t) :: commands
-    type(string_t) :: command
 
     type(whizard_options_t), allocatable :: options
     type(whizard_t), pointer :: whizard_instance
@@ -415,11 +410,6 @@
     integer :: proc_id, event_id
   
     type(hepmc_event_t), pointer :: hepmc_event
-   
-    type(process_t), pointer :: process
-    integer :: proc
-   
-    integer :: factorization_mode, try
    
     call c_f_pointer (w_c_instance, whizard_instance)        
     

@@ -1,0 +1,67 @@
+* Test output: object_logical_4
+*   Purpose: nested composite assignment
+
+* Prepare composite object with primer
+
+object main ||abstract|| {
+   M1: logical foo ||constant|| {
+     M1: tag a ||abstract||
+     M2: logical bar ||constant|| = ???
+   } = ???
+   P1: foo = true {
+     logical bar ||constant|| = false
+     tag a ||abstract||
+   }
+ }
+
+* Initialize: evaluate primer
+
+success = T
+
+object main ||abstract|| {
+   M1: logical foo ||constant|| {
+     M1: tag a ||abstract||
+     M2: logical bar ||constant|| = false
+   } = true
+   P1: foo = true {
+     logical bar ||constant|| = false
+     tag a ||abstract||
+   }
+ }
+
+* Iterate through main
+
+object main ||abstract||
+ H
+logical foo ||constant||
+ H M1
+tag a ||abstract||
+ H M1 M1
+object tag ||atom||
+ H C M1 M1
+logical bar ||constant||
+ H M2 M1
+object logical ||value||
+ H C M2 M1
+object logical ||value||
+ H C M1
+statement assignment ||constant||
+ H P1
+object id ||value||
+ H I P1
+object rhs ||constant||
+ H M1 P1
+logical bar ||constant||
+ H M1 M1 P1
+object logical ||value||
+ H C M1 M1 P1
+tag a ||abstract||
+ H M2 M1 P1
+object tag ||atom||
+ H C M2 M1 P1
+object logical ||value||
+ H C M1 P1
+
+* Cleanup
+
+* Test output end: object_logical_4

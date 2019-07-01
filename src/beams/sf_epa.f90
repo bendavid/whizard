@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -298,13 +298,12 @@ contains
              qn = qn_hel(1) .merge. qn_fc(1)
              qn_rad = qn
              call qn_rad%tag_radiated ()
-             call interaction_add_state (sf_int%interaction_t, &
-                  [qn, qn_rad, qn_photon])
+             call sf_int%add_state ([qn, qn_rad, qn_photon])
              call it_hel%advance ()
           end do
           call polarization_final (pol)
        end do
-       call interaction_freeze (sf_int%interaction_t)
+       call sf_int%freeze ()
        call sf_int%set_incoming ([1])
        call sf_int%set_radiated ([2])
        call sf_int%set_outgoing ([3])
@@ -316,9 +315,9 @@ contains
     type(state_iterator_t) :: it
     type(flavor_t) :: flv
     integer :: i, n_me
-    n_me = interaction_get_n_matrix_elements (sf_int%interaction_t)
+    n_me = sf_int%get_n_matrix_elements ()
     allocate (sf_int%charge2 (n_me))
-    call it%init (interaction_get_state_matrix_ptr (sf_int%interaction_t))
+    call it%init (sf_int%interaction_t%get_state_matrix_ptr ())
     do while (it%is_valid ())
        i = it%get_me_index ()
        flv = it%get_flavor (1)
@@ -368,8 +367,7 @@ contains
     case (SF_DONE_KINEMATICS)
        sf_int%x = x(1)
        sf_int%xb= xb1
-       sf_int%E  = &
-            energy (interaction_get_momentum (sf_int%interaction_t, 1))
+       sf_int%E  = energy (sf_int%get_momentum (1))
     case (SF_FAILED_KINEMATICS)
        sf_int%x = 0
        sf_int%xb= 0
@@ -417,8 +415,7 @@ contains
        case (SF_DONE_KINEMATICS)
           sf_int%x  = x(1)
           sf_int%xb = 1 - x(1)
-          sf_int%E  = &
-               energy (interaction_get_momentum (sf_int%interaction_t, 1))
+          sf_int%E  = energy (sf_int%get_momentum (1))
        case (SF_FAILED_KINEMATICS)
           sf_int%x = 0
           f = 0
@@ -454,8 +451,8 @@ contains
       else
          f = 0
       end if
-      call interaction_set_matrix_element &
-           (sf_int%interaction_t, cmplx (f, kind=default) * sf_int%charge2)
+      call sf_int%set_matrix_element &
+           (cmplx (f, kind=default) * sf_int%charge2)
     end associate
     sf_int%status = SF_EVALUATED
   end subroutine epa_apply
@@ -600,7 +597,7 @@ contains
     write (u, "(A)")  "* Recover x from momenta"
     write (u, "(A)")
     
-    q = interaction_get_momenta (sf_int%interaction_t, outgoing=.true.)
+    q = sf_int%get_momenta (outgoing=.true.)
     call sf_int%final ()
     deallocate (sf_int)
     
@@ -610,7 +607,7 @@ contains
     call sf_int%setup_constants ()
     
     call sf_int%seed_kinematics ([k])
-    call interaction_set_momenta (sf_int%interaction_t, q, outgoing=.true.)
+    call sf_int%set_momenta (q, outgoing=.true.)
     call sf_int%recover_x (x)
     call sf_int%inverse_kinematics (x, f, r, rb, map=.false., &
          set_momenta=.true.)
@@ -709,7 +706,7 @@ contains
     write (u, "(A)")  "* Recover x from momenta"
     write (u, "(A)")
     
-    q = interaction_get_momenta (sf_int%interaction_t, outgoing=.true.)
+    q = sf_int%get_momenta (outgoing=.true.)
     call sf_int%final ()
     deallocate (sf_int)
     
@@ -719,7 +716,7 @@ contains
     call sf_int%setup_constants ()
     
     call sf_int%seed_kinematics ([k])
-    call interaction_set_momenta (sf_int%interaction_t, q, outgoing=.true.)
+    call sf_int%set_momenta (q, outgoing=.true.)
     call sf_int%recover_x (x)
     call sf_int%inverse_kinematics (x, f, r, rb, map=.true., &
          set_momenta=.true.)
@@ -822,7 +819,7 @@ contains
     write (u, "(A)")  "* Recover x and r from momenta"
     write (u, "(A)")
     
-    q = interaction_get_momenta (sf_int%interaction_t, outgoing=.true.)
+    q = sf_int%get_momenta (outgoing=.true.)
     call sf_int%final ()
     deallocate (sf_int)
     
@@ -832,7 +829,7 @@ contains
     call sf_int%setup_constants ()
     
     call sf_int%seed_kinematics ([k])
-    call interaction_set_momenta (sf_int%interaction_t, q, outgoing=.true.)
+    call sf_int%set_momenta (q, outgoing=.true.)
     call sf_int%recover_x (x)
     call sf_int%inverse_kinematics (x, f, r, rb, map=.true., &
          set_momenta=.true.)    

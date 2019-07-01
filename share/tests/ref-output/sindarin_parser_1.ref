@@ -1,0 +1,32 @@
+* Test output: sindarin_parser_1
+*   Purpose: build syntax table
+
+Syntax table:
+ SEQUENCE    <script> = <command>*
+ ALTERNATIVE <command> = <declaration> | <assignment>
+ SEQUENCE    <declaration> = <builtin_type> <var_name> <assignment_clause>?
+ SEQUENCE    <assignment> = <var_name> <assignment_clause>
+ ALTERNATIVE <builtin_type> = logical
+ KEYWORD     logical
+ IDENTIFIER  <var_name>
+ SEQUENCE    <assignment_clause> = '=' <expr>
+ KEYWORD     '='
+ ALTERNATIVE <expr> = <logical_expr>
+ SEQUENCE    <logical_expr> = <logical_term> <or_clause>*
+ SEQUENCE    <logical_term> = <logical_value> <and_clause>*
+ ALTERNATIVE <logical_value> = <not_clause> | <logical_literal> | <group> | <atom>
+ SEQUENCE    <or_clause> = or <logical_term>
+ SEQUENCE    <and_clause> = and <logical_value>
+ SEQUENCE    <not_clause> = not <logical_value>
+ ALTERNATIVE <logical_literal> = true | false
+ KEYWORD     or
+ KEYWORD     and
+ KEYWORD     not
+ KEYWORD     true
+ KEYWORD     false
+ GROUP       <group> = ( <expr> )
+ IDENTIFIER  <atom>
+Keyword list:
+ logical = not true false ( ) and or
+
+* Test output end: sindarin_parser_1

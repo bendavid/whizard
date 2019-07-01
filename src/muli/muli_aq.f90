@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -40,9 +40,10 @@ module muli_aq
   use muli_trapezium
   use muli_fibonacci_tree
 
-  
+  implicit none
+  private  
 
-
+  public :: aq_class
 
   type, extends (identified_t), abstract :: aq_class
      logical :: is_deferred_initialised = .false.
@@ -72,8 +73,11 @@ module muli_aq
      class(fibonacci_root_t), pointer :: err_tree => null()
      class(muli_trapezium_list_t), pointer :: int_list => null()
    contains
+     procedure :: basic_write_to_marker => aq_write_to_marker
      procedure :: write_to_marker => aq_write_to_marker
+     procedure :: basic_read_from_marker => aq_read_from_marker
      procedure :: read_from_marker => aq_read_from_marker
+     procedure :: basic_print_to_unit => aq_print_to_unit
      procedure :: print_to_unit => aq_print_to_unit  
      procedure, nopass :: get_type => aq_get_type  
      procedure :: deserialize_from_marker => aq_deserialize_from_marker

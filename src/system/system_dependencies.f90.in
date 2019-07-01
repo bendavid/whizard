@@ -1,6 +1,6 @@
 ! WHIZARD <<Version>> <<Date>>
 ! 
-! Copyright (C) 1999-2014 by 
+! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -47,6 +47,8 @@ module system_dependencies
        "@BUILDDIR@/src/utilities"
   character(*), parameter :: WHIZARD_TEST_TESTING_MODPATH = &
        "@BUILDDIR@/src/testing"
+  character(*), parameter :: WHIZARD_TEST_COMBINATORICS_MODPATH = &
+       "@BUILDDIR@/src/combinatorics"
   character(*), parameter :: WHIZARD_TEST_SYSTEM_MODPATH = &
        "@BUILDDIR@/src/system"
   character(*), parameter :: WHIZARD_TEST_PHYSICS_MODPATH = &
@@ -71,6 +73,8 @@ module system_dependencies
        "@BUILDDIR@/src/lcio"
   character(*), parameter :: WHIZARD_TEST_HOPPET_LIBPATH = &
        "@BUILDDIR@/src/hoppet"
+  character(*), parameter :: WHIZARD_TEST_LOOPTOOLS_LIBPATH = &
+       "@BUILDDIR@/src/looptools"
   character(*), parameter :: WHIZARD_TEST_MODELPATH = &
        "@SRCDIR@/share/models"
   character(*), parameter :: WHIZARD_TEST_MODELS_LIBPATH = &
@@ -103,6 +107,7 @@ module system_dependencies
       "-I" // WHIZARD_TEST_PHYSICS_MODPATH // " " // &
       "-I" // WHIZARD_TEST_SYSTEM_MODPATH // " " // &
       "-I" // WHIZARD_TEST_TESTING_MODPATH // " " // &
+      "-I" // WHIZARD_TEST_COMBINATORICS_MODPATH // " " // &
       "-I" // WHIZARD_TEST_UTILITIES_MODPATH // " " // &
       "-I" // WHIZARD_TEST_BASICS_MODPATH
 
@@ -113,8 +118,10 @@ module system_dependencies
       "-L" // WHIZARD_TEST_HEPMC_LIBPATH // " " // &
       "-L" // WHIZARD_TEST_LCIO_LIBPATH // " " // &
       "-L" // WHIZARD_TEST_HOPPET_LIBPATH // " " // &
+      "-L" // WHIZARD_TEST_LOOPTOOLS_LIBPATH // " " // &
        "-lwhizard_main -lwhizard -lomega " // &
-       "@LDFLAGS_HEPMC@ @LDFLAGS_LCIO@ @LDFLAGS_HOPPET@"
+       "@LDFLAGS_HEPMC@ @LDFLAGS_LCIO@ @LDFLAGS_HOPPET@ " // &
+       "@LDFLAGS_LOOPTOOLS@"
 
   ! Libtool
   character(*), parameter :: WHIZARD_LIBTOOL_TEST = &
@@ -147,6 +154,8 @@ module system_dependencies
        PKGLIBDIR // "/mod/utilities"
   character(*), parameter :: WHIZARD_TESTING_MODPATH = &
        PKGLIBDIR // "/mod/testing"
+  character(*), parameter :: WHIZARD_COMBINATORICS_MODPATH = &
+       PKGLIBDIR // "/mod/combinatorics"
   character(*), parameter :: WHIZARD_SYSTEM_MODPATH = &
        PKGLIBDIR // "/mod/system"
   character(*), parameter :: WHIZARD_PHYSICS_MODPATH = &
@@ -194,6 +203,7 @@ module system_dependencies
       "-I" // WHIZARD_ME_MODPATH // " " // &
       "-I" // WHIZARD_PHYSICS_MODPATH // " " // &
       "-I" // WHIZARD_SYSTEM_MODPATH // " " // &
+      "-I" // WHIZARD_COMBINATORICS_MODPATH // " " // &
       "-I" // WHIZARD_TESTING_MODPATH // " " // &
       "-I" // WHIZARD_UTILITIES_MODPATH // " " // &
       "-I" // WHIZARD_BASICS_MODPATH
@@ -202,7 +212,8 @@ module system_dependencies
   character(*), parameter :: WHIZARD_LDFLAGS = &
       "-L" // WHIZARD_OMEGA_LIBPATH // " " // &
        "-lwhizard_main -lwhizard -lomega " // &
-       "@LDFLAGS_HEPMC@ @LDFLAGS_LCIO@ @LDFLAGS_HOPPET@"
+       "@LDFLAGS_HEPMC@ @LDFLAGS_LCIO@ @LDFLAGS_HOPPET@ " // &
+       "@LDFLAGS_LOOPTOOLS@"
 
   ! Libtool
   character(*), parameter :: WHIZARD_LIBTOOL = &
@@ -245,7 +256,10 @@ module system_dependencies
        "@LDFLAGS_LCIO@"
   character(*), parameter :: DEFAULT_LDFLAGS_HOPPET = &
        "@LDFLAGS_HOPPET@"
-  character(*), parameter :: DEFAULT_SHLIB_EXT = ".so"
+  character(*), parameter :: DEFAULT_LDFLAGS_LOOPTOOLS = &
+       "@LDFLAGS_LOOPTOOLS@"
+  character(*), parameter :: DEFAULT_SHRLIB_EXT = "@SHRLIB_EXT@"
+  character(*), parameter :: DEFAULT_FC_SHRLIB_EXT = "so"
 
   ! Make
   character(*), parameter :: DEFAULT_MAKEFLAGS = &
@@ -274,6 +288,7 @@ module system_dependencies
        "@PS2PDF@"
 
   ! Programs and libraries used for NLO calculations
+  ! GoSam
   character(*), parameter :: GOSAM_DIR = &
        "@GOSAM_DIR@"
   character(*), parameter :: GOLEM_DIR = &
@@ -286,6 +301,10 @@ module system_dependencies
        "@NINJA_DIR@"
   character(*), parameter :: SAMURAI_DIR = &
        "@SAMURAI_DIR@"
+
+  ! OpenLoops
+  character(*), parameter :: OPENLOOPS_DIR = &
+       "@OPENLOOPS_DIR@"
 
   ! Hardwired options for batch-mode processing
   character(*), parameter :: OPT_LATEX  = &

@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -57,6 +57,11 @@ module physics_defs
   integer, parameter, public :: UNDEFINED = 0
 
   integer, parameter, public :: ELECTRON = 11
+  integer, parameter, public :: ELECTRON_NEUTRINO = 12
+  integer, parameter, public :: MUON = 13
+  integer, parameter, public :: MUON_NEUTRINO = 14
+  integer, parameter, public :: TAU = 15
+  integer, parameter, public :: TAU_NEUTRINO = 16
 
   integer, parameter, public :: GLUON = 21
   integer, parameter, public :: PHOTON = 22
@@ -112,5 +117,12 @@ module physics_defs
   integer, parameter, public:: UNKNOWN = 0
   integer, parameter, public :: SCALAR = 1, SPINOR = 2, VECTOR = 3, &
                                 VECTORSPINOR = 4, TENSOR = 5
+
+  integer, parameter, public :: BORN = 0
+  integer, parameter, public :: NLO_REAL = 1
+  integer, parameter, public :: NLO_VIRTUAL = 2
+  integer, parameter, public :: NLO_PDF = 3
+  integer, parameter, public :: NLO_SUBTRACTION = 4
+
 
 end module physics_defs

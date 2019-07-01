@@ -1,4 +1,4 @@
-!  $Id: omegalib.nw 6556 2015-02-12 20:34:13Z jr_reuter $
+!  $Id: omegalib.nw 6943 2015-05-01 10:53:21Z msekulla $
 !
 !  Copyright (C) 1999-2015 by
 !      Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -34,7 +34,7 @@ module omegavm95
   use omega95_bispinors, only: bi_u => u
   use omega95_bispinors, only: bi_v => v
   use omega95_bispinors, only: bi_pr_psi => pr_psi
-  use omega95_bispinors, only: operator (*), operator (+)
+  use omega_bispinors, only: operator (*), operator (+)
   use omega_color, only: ovm_color_sum, OCF => omega_color_factor
   implicit none
   private
@@ -477,7 +477,13 @@ contains
     write(vm%out_fh, *) 'table_color_flows         = ', vm%table_color_flows
     write(vm%out_fh, *) 'table_spin                = ', vm%table_spin
     write(vm%out_fh, *) 'table_ghost_flags         = ', vm%table_ghost_flags
-    write(vm%out_fh, *) 'table_color_factors       = ', vm%table_color_factors
+    write(vm%out_fh, *) 'table_color_factors       = '
+    do i = 1, size(vm%table_color_factors)
+       write(vm%out_fh, *)  vm%table_color_factors(i)%i1, &
+            vm%table_color_factors(i)%i2, &
+            vm%table_color_factors(i)%factor
+    end do
+
     write(vm%out_fh, *) 'table_flv_col_is_allowed  = ', &
                       vm%table_flv_col_is_allowed
     do i = 1, vm%N_flavors

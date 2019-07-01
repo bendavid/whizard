@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -196,7 +196,7 @@ contains
     type(permutation_t), intent(in) :: p_init
     integer :: plen
     integer :: i, ii, j, fac_i, k, x
-    integer, dimension(:), allocatable :: index 
+    integer, dimension(:), allocatable :: index
     plen = size (pa)
     allocate (index(count(mask)))
     ii = 0

@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -52,6 +52,6 @@ contains
        close (u, status = "delete")
     end if
   end subroutine delete_file
-  
+
 
 end module file_utils

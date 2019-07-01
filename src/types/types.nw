@@ -1395,18 +1395,24 @@ array.  If either one is zero (UNDEFINED), the match also succeeds.
 
 @ %def is massive_vector
 @ Check if particle is strongly interacting
-<<PDG arrays: public>>=
-  public :: is_qcd_particle
+<<PDG arrays: pdg array: TBP>>=
+  procedure :: has_colored_particles => pdg_array_has_colored_particles
 <<PDG arrays: procedures>>=
-  function is_qcd_particle (pdg_nr) result (res)
-    integer, intent(in) :: pdg_nr
-    logical :: res
-    res = .false.
-    if (is_quark (abs (pdg_nr)) .or. is_gluon (pdg_nr)) &
-      res = .true.
-  end function is_qcd_particle
+  function pdg_array_has_colored_particles (pdg) result (colored)
+    class(pdg_array_t), intent(in) :: pdg
+    logical :: colored
+    integer :: i, pdg_nr
+    colored = .false.
+    do i = 1, size (pdg%pdg)
+      pdg_nr = pdg%pdg(i)
+      if (is_quark (abs (pdg_nr)) .or. is_gluon (pdg_nr)) then
+         colored = .true.
+         exit
+      end if
+    end do
+  end function pdg_array_has_colored_particles
 
-@ %def is_qcd_particle
+@ %def pdg_array_has_colored_particles
 @ Match two arrays.  Succeeds if any pair of entries matches.
 <<PDG arrays: procedures>>=
   function pdg_array_match_pdg_array (aval1, aval2) result (flag)
@@ -1626,6 +1632,27 @@ sorting, we eliminate double entries.
   end function pdg_array_search_for_particle
 
 @ %def pdg_array_search_for_particle
+@
+<<PDG arrays: pdg array: TBP>>=
+  procedure :: invert => pdg_array_invert
+<<PDG arrays: procedures>>=
+  function pdg_array_invert (pdg) result (pdg_inverse)
+    class(pdg_array_t), intent(in) :: pdg
+    type(pdg_array_t) :: pdg_inverse
+    integer :: i, n
+    n = size (pdg%pdg)
+    allocate (pdg_inverse%pdg (n))
+    do i = 1, n
+       select case (pdg%pdg(i))
+       case (21, 22, 23, 25)
+          pdg_inverse%pdg(i) = pdg%pdg(i)
+       case default
+          pdg_inverse%pdg(i) = -pdg%pdg(i)
+       end select
+    end do
+  end function pdg_array_invert
+
+@ %def pdg_array_invert
 @
 \subsection{PDG array list}
 A PDG array list, or PDG list, is an array of PDG-array objects with
@@ -2033,6 +2060,40 @@ intent(out) or as function result, so be conservative here:
 @ %def pdg_list_create_pdg_array
 @
 <<PDG arrays: pdg list: TBP>>=
+  procedure :: create_antiparticles => pdg_list_create_antiparticles
+<<PDG arrays: procedures>>=
+  subroutine pdg_list_create_antiparticles (pl, pl_anti, n_new_particles)
+    class(pdg_list_t), intent(in) :: pl
+    type(pdg_list_t), intent(out) :: pl_anti
+    integer, intent(out) :: n_new_particles
+    type(pdg_list_t) :: pl_inverse
+    integer :: i, n
+    integer :: n_identical
+    logical, dimension(:), allocatable :: collect
+    n = pl%get_size (); n_identical = 0
+    allocate (collect (n)); collect = .true.
+    call pl_inverse%init (n)
+    do i = 1, n
+       pl_inverse%a(i) = pl%a(i)%invert()
+    end do
+    do i = 1, n
+       if (any (pl_inverse%a(i) == pl%a)) then
+          collect(i) = .false.
+          n_identical = n_identical + 1
+       end if
+    end do
+    n_new_particles = n - n_identical
+    if (n_new_particles > 0) then
+       call pl_anti%init (n_new_particles)
+       do i = 1, n
+          if (collect (i)) pl_anti%a(i) = pl_inverse%a(i)
+       end do
+   end if    
+  end subroutine pdg_list_create_antiparticles
+
+@ %def pdg_list_create_antiparticles
+@
+<<PDG arrays: pdg list: TBP>>=
   procedure :: search_for_particle => pdg_list_search_for_particle
 <<PDG arrays: procedures>>=
   function pdg_list_search_for_particle (pl, i_part) result (found)
@@ -2047,6 +2108,24 @@ intent(out) or as function result, so be conservative here:
   end function pdg_list_search_for_particle
 
 @ %def pdg_list_search_for_particle
+@
+<<PDG arrays: pdg list: TBP>>=
+  procedure :: contains_colored_particles => pdg_list_contains_colored_particles
+<<PDG arrays: procedures>>=
+  function pdg_list_contains_colored_particles (pl) result (colored)
+    class(pdg_list_t), intent(in) :: pl
+    logical :: colored
+    integer :: i
+    colored = .false.
+    do i = 1, size (pl%a)
+       if (pl%a(i)%has_colored_particles()) then
+          colored = .true.
+          exit
+       end if
+    end do
+  end function pdg_list_contains_colored_particles
+
+@ %def pdg_list_contains_colored_particles
 @
 \subsection{Unit tests}
 <<PDG arrays: public>>=
@@ -2854,6 +2933,7 @@ Transform a [[prt_t]] object into a [[c_prt_t]] object.
   elemental function c_prt_from_prt (prt) result (c_prt)
     type(c_prt_t) :: c_prt
     type(prt_t), intent(in) :: prt
+    c_prt = prt%p
     c_prt%type = prt%type
     c_prt%pdg = prt%pdg
     if (prt%polarized) then
@@ -2862,11 +2942,6 @@ Transform a [[prt_t]] object into a [[c_prt_t]] object.
        c_prt%polarized = 0
     end if
     c_prt%h = prt%h
-    c_prt%pe = energy (prt%p)
-    c_prt%px = vector4_get_component (prt%p, 1)
-    c_prt%py = vector4_get_component (prt%p, 2)
-    c_prt%pz = vector4_get_component (prt%p, 3)
-    c_prt%p2 = prt%p2
   end function c_prt_from_prt
 
 @ %def c_prt_from_prt
@@ -2875,18 +2950,19 @@ Transform a [[prt_t]] object into a [[c_prt_t]] object.
 <<Subevents: public>>=
   public :: prt_write
 <<Subevents: procedures>>=
-  subroutine prt_write (prt, unit, pacified)
+  subroutine prt_write (prt, unit, testflag)
     type(prt_t), intent(in) :: prt
     integer, intent(in), optional :: unit
-    logical, intent(in), optional :: pacified
-    real(default), dimension(0:3) :: arr
-    logical :: num_pac
+    logical, intent(in), optional :: testflag
+    logical :: pacified
     type(prt_t) :: tmp
     character(len=7) :: fmt   
     integer :: u, i
-    call pac_fmt (fmt, FMT_19, FMT_14, pacified)
+    call pac_fmt (fmt, FMT_19, FMT_14, testflag)
     u = given_output_unit (unit);  if (u < 0)  return
-    num_pac = .false. ; if (present (pacified))  num_pac = pacified
+    pacified = .false. ; if (present (testflag))  pacified = testflag
+    tmp = prt
+    if (pacified) call pacify (tmp)
     write (u, "(1x,A)", advance="no")  "prt("
     select case (prt%type)
     case (PRT_UNDEFINED);    write (u, "('?')", advance="no")
@@ -2905,15 +2981,9 @@ Transform a [[prt_t]] object into a [[c_prt_t]] object.
     end select
     select case (prt%type)
     case (PRT_BEAM, PRT_INCOMING, PRT_OUTGOING, PRT_COMPOSITE)
-       tmp = prt
-       if (num_pac) then
-          call pacify (tmp)
-       end if
-       arr = tmp%p
        write (u, "(" // FMT_14 // ",';'," // FMT_14 // ",','," // &
-            FMT_14 // ",','," // FMT_14 // ")", advance="no") arr
-       write (u, "('|'," // fmt // ")", advance="no") &
-            tmp%p2
+            FMT_14 // ",','," // FMT_14 // ")", advance="no") tmp%p
+       write (u, "('|'," // fmt // ")", advance="no") tmp%p2
     end select
     if (allocated (prt%src)) then
        write (u, "('|')", advance="no")
@@ -3119,7 +3189,7 @@ printed appending to a previous line.
     do i = 1, object%n_active
        if (present (prefix))  write (u, "(A)", advance="no") prefix
        write (u, "(1x,I0)", advance="no")  i
-       call prt_write (object%prt(i), unit = unit, pacified = pacified)
+       call prt_write (object%prt(i), unit = unit, testflag = pacified)
     end do
   end subroutine subevt_write
 
@@ -3840,9 +3910,9 @@ to double precision, even if the main program uses higher precision.
   subroutine pacify_prt (prt)
     class(prt_t), intent(inout) :: prt
     real(default) :: e
-    e = 1e-13_default * energy (prt%p)
+    e = max (1E-10_default * energy (prt%p), 1E-13_default)
     call pacify (prt%p, e)
-    call pacify (prt%p2, 1e3 * e)
+    call pacify (prt%p2, 1E3_default * e)
   end subroutine pacify_prt
   
   subroutine pacify_subevt (subevt)
@@ -3889,6 +3959,7 @@ module analysis
   use io_units
   use format_utils, only: quote_underscore, tex_format
   use format_defs, only: FMT_19
+  use system_defs, only: TAB
   use unit_tests
   use diagnostics
   use os_interface
@@ -7087,31 +7158,8 @@ has wrong type, the iterator will be invalid.
     type(string_t) :: setenv
     integer :: status
     if (os_data%event_analysis_ps) then
-       BLOCK: do
-          if (os_data%whizard_texpath /= "") then
-             setenv = "TEXINPUTS=" // os_data%whizard_texpath // ":$TEXINPUTS "
-          else
-             setenv = ""
-          end if
-          call os_system_call (setenv // os_data%latex // " " // file, status)
-          if (status /= 0)  exit BLOCK
-          if (has_gmlcode) then
-             call os_system_call (os_data%gml // " " // file, status)
-             if (status /= 0)  exit BLOCK
-             call os_system_call (setenv // os_data%latex // " " // file, &
-                  status)
-             if (status /= 0)  exit BLOCK
-          end if
-          call os_system_call (os_data%dvips // " -o " // file // ".ps " &
-               // file, status)
-          if (status /= 0)  exit BLOCK
-          if (os_data%event_analysis_pdf) then
-             call os_system_call (os_data%ps2pdf // " " // file // ".ps", &
-                                  status)
-             if (status /= 0)  exit BLOCK
-          end if
-          exit BLOCK
-       end do BLOCK
+       call os_system_call ("make compile " // os_data%makeflags // " -f " // &
+            char (file) // "_ana.makefile", status)
        if (status /= 0) then
           call msg_error ("Unable to compile analysis output file")
        end if
@@ -7138,7 +7186,89 @@ has wrong type, the iterator will be invalid.
   end subroutine analysis_get_header
 
 @ %def analysis_get_header
-@
+@ Write a makefile in order to do the compile steps.
+<<Analysis: public>>=
+  public :: analysis_write_makefile
+<<Analysis: procedures>>=
+  subroutine analysis_write_makefile (filename, unit, has_gmlcode, os_data)
+    type(string_t), intent(in) :: filename
+    integer, intent(in) :: unit
+    logical, intent(in) :: has_gmlcode
+    type(os_data_t), intent(in) :: os_data
+    type(string_t) :: setenv
+    write (unit, "(3A)")  "# WHIZARD: Makefile for analysis '", &
+         char (filename), "'"
+    write (unit, "(A)")  "# Automatically generated file, do not edit"
+    write (unit, "(A)")  ""
+    write (unit, "(A)")  "# LaTeX setup"
+    write (unit, "(A)")  "LATEX = " // char (os_data%latex)
+    write (unit, "(A)")  "MPOST = " // char (os_data%mpost)
+    write (unit, "(A)")  "GML = " // char (os_data%gml)
+    write (unit, "(A)")  "DVIPS = " // char (os_data%dvips)
+    write (unit, "(A)")  "PS2PDF = " // char (os_data%ps2pdf)    
+    write (unit, "(A)")  'TEX_FLAGS = "$$TEXINPUTS:' // &
+         char(os_data%whizard_texpath) // '"'
+    write (unit, "(A)")  'MP_FLAGS  = "$$MPINPUTS:' // &
+         char(os_data%whizard_texpath) // '"'
+    write (unit, "(A)")  ""       
+    write (unit, "(5A)")  "TEX_SOURCES = ", char (filename), ".tex"    
+    if (os_data%event_analysis_pdf) then
+       write (unit, "(5A)")  "TEX_OBJECTS = ", char (filename), ".pdf"
+    else
+       write (unit, "(5A)")  "TEX_OBJECTS = ", char (filename), ".ps"
+    end if
+    if (os_data%event_analysis_ps) then
+       if (os_data%event_analysis_pdf) then
+          write (unit, "(5A)")  char (filename), ".pdf: ", &
+               char (filename), ".tex"
+       else
+          write (unit, "(5A)")  char (filename), ".ps: ", &
+               char (filename), ".tex"
+       end if    
+       write (unit, "(5A)")  TAB, "-TEXINPUTS=$(TEX_FLAGS) $(LATEX) " // &
+            char (filename) // ".tex"
+       if (has_gmlcode) then
+          write (unit, "(5A)")  TAB, "$(GML) " // char (filename)
+          write (unit, "(5A)")  TAB, "TEXINPUTS=$(TEX_FLAGS) $(LATEX) " // &
+            char (filename) // ".tex"
+       end if
+       write (unit, "(5A)")  TAB, "$(DVIPS) -o " // char (filename) // ".ps " // &
+            char (filename) // ".dvi"
+       if (os_data%event_analysis_pdf) then
+          write (unit, "(5A)")  TAB, "$(PS2PDF) " // char (filename) // ".ps"
+       end if
+    end if       
+    write (unit, "(A)")
+    write (unit, "(A)")  "compile: $(TEX_OBJECTS)"
+    write (unit, "(A)")  ".PHONY: compile" 
+    write (unit, "(A)")
+    write (unit, "(5A)")  "CLEAN_OBJECTS = ",  char (filename), ".aux"  
+    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".log"         
+    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".dvi"                
+    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".out"       
+    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".[1-9]"       
+    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".[1-9][0-9]"    
+    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".[1-9][0-9][0-9]"   
+    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".t[1-9]"       
+    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".t[1-9][0-9]"
+    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".t[1-9][0-9][0-9]"
+    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".ltp"
+    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".mp"
+    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".mpx"       
+    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".dvi"              
+    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".ps"           
+    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (filename), ".pdf"               
+    write (unit, "(A)")
+    write (unit, "(A)")  "# Generic cleanup targets"
+    write (unit, "(A)")  "clean-objects:"
+    write (unit, "(A)")  TAB // "rm -f $(CLEAN_OBJECTS)"
+    write (unit, "(A)")  ""
+    write (unit, "(A)")  "clean: clean-objects"
+    write (unit, "(A)")  ".PHONY: clean" 
+  end subroutine analysis_write_makefile
+
+@ %def analysis_write_makefile
+@ 
 \subsection{Unit tests}
 <<Analysis: public>>=
   public :: analysis_test

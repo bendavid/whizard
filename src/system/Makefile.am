@@ -74,6 +74,7 @@ BUILT_SOURCES = Modules
 # Get module lists from other directories
 module_lists = \
   ../basics/Modules \
+  ../utilities/Modules \
   ../testing/Modules
 
 $(module_lists):
@@ -128,7 +129,7 @@ SUFFIXES = .lo .$(FC_MODULE_EXT)
 	@:
 #	touch $@
 
-AM_FCFLAGS = -I../basics -I../testing
+AM_FCFLAGS = -I../basics -I../utilities -I../testing
 
 
 ########################################################################

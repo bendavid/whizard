@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -198,22 +198,28 @@ contains
     type(hepmc_vertex_t), dimension(:), allocatable :: v
     type(hepmc_particle_t), dimension(:), allocatable :: hprt
     type(hepmc_particle_t), dimension(2) :: hbeam
+    type(vector4_t), dimension(:), allocatable :: vtx
     logical, dimension(:), allocatable :: is_beam
     integer, dimension(:), allocatable :: v_from, v_to
     integer :: n_vertices, n_tot, i
     n_tot = particle_set%get_n_tot ()
     allocate (v_from (n_tot), v_to (n_tot))
     call particle_set%assign_vertices (v_from, v_to, n_vertices)
-    allocate (v (n_vertices))
-    do i = 1, n_vertices
-       call hepmc_vertex_init (v(i))
-       call hepmc_event_add_vertex (evt, v(i))
-    end do
-    allocate (hprt (n_tot))
+    allocate (hprt (n_tot))    
+    allocate (vtx (n_vertices))
+    vtx = vector4_null
     do i = 1, n_tot
        if (v_to(i) /= 0 .or. v_from(i) /= 0) then
           call particle_to_hepmc (particle_set%prt(i), hprt(i))
+          if (v_to(i) /= 0) then
+             vtx(v_to(i)) = particle_set%prt(i)%get_vertex ()
+          end if
        end if
+    end do       
+    allocate (v (n_vertices))    
+    do i = 1, n_vertices
+       call hepmc_vertex_init (v(i), vtx(i))
+       call hepmc_event_add_vertex (evt, v(i))
     end do
     allocate (is_beam (n_tot))
     is_beam = particle_set%prt(1:n_tot)%get_status () == PRT_BEAM
@@ -247,6 +253,7 @@ contains
     type(particle_t), intent(out) :: prt
     type(hepmc_particle_t), intent(in) :: hprt
     type(model_data_t), intent(in), target :: model
+    type(hepmc_vertex_t) :: vtx
     integer, intent(in) :: polarization
     integer, dimension(:), intent(in) :: barcode
     type(hepmc_polarization_t) :: hpol
@@ -254,6 +261,7 @@ contains
     type(color_t) :: col
     type(helicity_t) :: hel
     type(polarization_t) :: pol
+    type(vector4_t) :: vertex
     integer :: n_parents, n_children
     integer, dimension(:), allocatable :: &
          parent_barcode, child_barcode, parent, child
@@ -297,6 +305,11 @@ contains
     call prt%set_children (child)
     if (prt%get_status () == PRT_VIRTUAL .and. n_parents == 0) &
          call prt%set_status (PRT_INCOMING)
+    vtx = hepmc_particle_get_decay_vertex (hprt)
+    if (hepmc_vertex_is_valid (vtx)) then
+       vertex = hepmc_vertex_to_vertex (vtx)
+       if (vertex /= vector4_null)  call prt%set_vertex (vertex)
+    end if
   end subroutine particle_from_hepmc_particle
 
   subroutine hepmc_event_to_particle_set &
@@ -400,6 +413,7 @@ contains
     type(particle_t), intent(in) :: prt
     type(lcio_particle_t), intent(out) :: lprt
     integer :: lcio_status
+    type(vector4_t) :: vtx
     select case (prt%get_status ())
     case (PRT_UNDEFINED)
        lcio_status = 0
@@ -428,6 +442,9 @@ contains
          prt%get_pdg (), &
          lcio_status)
     call lcio_particle_set_color (lprt, prt%get_color ())
+    vtx = prt%get_vertex ()
+    call lcio_particle_set_vtx (lprt, space_part (vtx))
+    call lcio_particle_set_t (lprt, vtx%p(0))
     select case (prt%get_polarization_status ())
     case (PRT_DEFINITE_HELICITY)
        call lcio_polarization_init (lprt, prt%get_helicity ())
@@ -442,6 +459,8 @@ contains
     type(lcio_particle_t), intent(in) :: lprt
     type(model_data_t), intent(in), target :: model
     integer, dimension(:), intent(in) :: daughters, parents    
+    type(vector3_t) :: vtx3
+    type(vector4_t) :: vtx4
     type(flavor_t) :: flv
     type(color_t) :: col
     type(helicity_t) :: hel
@@ -473,6 +492,9 @@ contains
     call prt%set_children (daughters)
     if (prt%get_status () == PRT_VIRTUAL .and. size(parents) == 0) &
          call prt%set_status (PRT_INCOMING)
+    vtx4 = vector4_moving (lcio_particle_get_time (lprt), &
+         lcio_particle_get_vertex (lprt))
+    if (vtx4 /= vector4_null)  call prt%set_vertex (vtx4)       
   end subroutine particle_from_lcio_particle
 
   subroutine lcio_event_from_particle_set (evt, particle_set)
@@ -625,81 +647,81 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Initializing production process"
 
-    call interaction_init (int1, 2, 0, 1, set_relations=.true.)
+    call int1%basic_init (2, 0, 1, set_relations=.true.)
     call flv%init ([1, -1, 23], model)
     call col%init_col_acl ([0, 0, 0], [0, 0, 0])
     call hel(3)%init ( 1, 1)
     call qn%init (flv, col, hel)
-    call interaction_add_state (int1, qn, value=(0.25_default, 0._default))
+    call int1%add_state (qn, value=(0.25_default, 0._default))
     call hel(3)%init ( 1,-1)
     call qn%init (flv, col, hel)
-    call interaction_add_state (int1, qn, value=(0._default, 0.25_default))
+    call int1%add_state (qn, value=(0._default, 0.25_default))
     call hel(3)%init (-1, 1)
     call qn%init (flv, col, hel)
-    call interaction_add_state (int1, qn, value=(0._default,-0.25_default))
+    call int1%add_state (qn, value=(0._default,-0.25_default))
     call hel(3)%init (-1,-1)
     call qn%init (flv, col, hel)
-    call interaction_add_state (int1, qn, value=(0.25_default, 0._default))
+    call int1%add_state (qn, value=(0.25_default, 0._default))
     call hel(3)%init ( 0, 0)
     call qn%init (flv, col, hel)
-    call interaction_add_state (int1, qn, value=(0.5_default, 0._default))
-    call interaction_freeze (int1)
+    call int1%add_state (qn, value=(0.5_default, 0._default))
+    call int1%freeze ()
     p(1) = vector4_moving (45._default, 45._default, 3)
     p(2) = vector4_moving (45._default,-45._default, 3)
     p(3) = p(1) + p(2)
-    call interaction_set_momenta (int1, p)
+    call int1%set_momenta (p)
 
     write (u, "(A)")
     write (u, "(A)")  "* Setup decay process"
 
-    call interaction_init (int2, 1, 0, 2, set_relations=.true.)
+    call int2%basic_init (1, 0, 2, set_relations=.true.)
     call flv%init ([23, 1, -1], model)
     call col%init_col_acl ([0, 501, 0], [0, 0, 501])
     call hel%init ([1, 1, 1], [1, 1, 1])
     call qn%init (flv, col, hel)
-    call interaction_add_state (int2, qn, value=(1._default, 0._default))
+    call int2%add_state (qn, value=(1._default, 0._default))
     call hel%init ([1, 1, 1], [-1,-1,-1])
     call qn%init (flv, col, hel)
-    call interaction_add_state (int2, qn, value=(0._default, 0.1_default))
+    call int2%add_state (qn, value=(0._default, 0.1_default))
     call hel%init ([-1,-1,-1], [1, 1, 1])
     call qn%init (flv, col, hel)
-    call interaction_add_state (int2, qn, value=(0._default,-0.1_default))
+    call int2%add_state (qn, value=(0._default,-0.1_default))
     call hel%init ([-1,-1,-1], [-1,-1,-1])
     call qn%init (flv, col, hel)
-    call interaction_add_state (int2, qn, value=(1._default, 0._default))
+    call int2%add_state (qn, value=(1._default, 0._default))
     call hel%init ([0, 1,-1], [0, 1,-1])
     call qn%init (flv, col, hel)
-    call interaction_add_state (int2, qn, value=(4._default, 0._default))
+    call int2%add_state (qn, value=(4._default, 0._default))
     call hel%init ([0,-1, 1], [0, 1,-1])
     call qn%init (flv, col, hel)
-    call interaction_add_state (int2, qn, value=(2._default, 0._default))
+    call int2%add_state (qn, value=(2._default, 0._default))
     call hel%init ([0, 1,-1], [0,-1, 1])
     call qn%init (flv, col, hel)
-    call interaction_add_state (int2, qn, value=(2._default, 0._default))
+    call int2%add_state (qn, value=(2._default, 0._default))
     call hel%init ([0,-1, 1], [0,-1, 1])
     call qn%init (flv, col, hel)
-    call interaction_add_state (int2, qn, value=(4._default, 0._default))
+    call int2%add_state (qn, value=(4._default, 0._default))
     call flv%init ([23, 2, -2], model)
     call hel%init ([0, 1,-1], [0, 1,-1])
     call qn%init (flv, col, hel)
-    call interaction_add_state (int2, qn, value=(0.5_default, 0._default))
+    call int2%add_state (qn, value=(0.5_default, 0._default))
     call hel%init ([0,-1, 1], [0,-1, 1])
     call qn%init (flv, col, hel)
-    call interaction_add_state (int2, qn, value=(0.5_default, 0._default))
-    call interaction_freeze (int2)
+    call int2%add_state (qn, value=(0.5_default, 0._default))
+    call int2%freeze ()
     p(2) = vector4_moving (45._default, 45._default, 2)
     p(3) = vector4_moving (45._default,-45._default, 2)
-    call interaction_set_momenta (int2, p)
-    call interaction_set_source_link (int2, 1, int1, 3)
-    call interaction_write (int1, u)
-    call interaction_write (int2, u)
+    call int2%set_momenta (p)
+    call int2%set_source_link (1, int1, 3)
+    call int1%basic_write (u)
+    call int2%basic_write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Concatenate production and decay"
 
-    call evaluator_init_product (eval, int1, int2, qn_mask_conn, &
+    call eval%init_product (int1, int2, qn_mask_conn, &
          connections_are_resonant=.true.)
-    call evaluator_receive_momenta (eval)
+    call eval%receive_momenta ()
     call eval%evaluate ()
     call eval%write (u)
     
@@ -707,7 +729,7 @@ contains
     write (u, "(A)")  "* Factorize as subevent (complete, polarized)"
     write (u, "(A)")
     
-    int => evaluator_get_int_ptr (eval)
+    int => eval%interaction_t
     call particle_set1%init &
          (ok, int, int, FM_FACTOR_HELICITY, &
           [0.2_default, 0.2_default], .false., .true.)
@@ -717,7 +739,7 @@ contains
     write (u, "(A)")  "* Factorize as subevent (in/out only, selected helicity)"
     write (u, "(A)")
     
-    int => evaluator_get_int_ptr (eval)
+    int => eval%interaction_t
     call particle_set2%init &
          (ok, int, int, FM_SELECT_HELICITY, &
           [0.9_default, 0.9_default], .false., .false.)
@@ -728,7 +750,7 @@ contains
     write (u, "(A)")  "* Factorize as subevent (complete, selected helicity)"
     write (u, "(A)") 
     
-    int => evaluator_get_int_ptr (eval)
+    int => eval%interaction_t
     call particle_set2%init &
          (ok, int, int, FM_SELECT_HELICITY, &
           [0.7_default, 0.7_default], .false., .true.)
@@ -767,9 +789,9 @@ contains
     
     call particle_set1%final ()
     call particle_set2%final ()
-    call evaluator_final (eval)
-    call interaction_final (int1)
-    call interaction_final (int2)
+    call eval%final ()
+    call int1%final ()
+    call int2%final ()
     call hepmc_event_final (hepmc_event)            
     call model%final ()
        

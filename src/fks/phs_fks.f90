@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -36,28 +36,46 @@ module phs_fks
   use iso_varying_string, string_t => varying_string
   use constants
   use diagnostics
+  use io_units, only: given_output_unit
+  use format_utils, only: write_separator
   use lorentz
+  use physics_defs
   use flavors
   use sf_mappings
   use sf_base
   use phs_base
   use phs_wood
   use process_constants
+  use process_libraries
+  use unit_tests
+  use nlo_data
 
   implicit none
   private
 
   public :: phs_fks_config_t
   public :: kinematics_counter_t
+  public :: phs_fks_generator_t
   public :: phs_fks_t
+  public :: phs_fks_generator_test
+
+  integer, parameter, public :: I_XI = 1
+  integer, parameter, public :: I_Y = 2
+  integer, parameter, public :: I_PHI = 3
+
+  integer, parameter, public :: PHS_MODE_UNDEFINED = 0
+  integer, parameter, public :: PHS_MODE_ADDITIONAL_PARTICLE = 1
+  integer, parameter, public :: PHS_MODE_COLLINEAR_REMNANT = 2
+
 
   type, extends (phs_wood_config_t) :: phs_fks_config_t
+    integer :: mode = PHS_MODE_UNDEFINED
   contains
     procedure :: final => phs_fks_config_final
     procedure :: write => phs_fks_config_write
+    procedure :: set_mode => phs_fks_config_set_mode
     procedure :: configure => phs_fks_config_configure
     procedure :: startup_message => phs_fks_config_startup_message
-    procedure :: increase_n_par => phs_fks_config_increase_n_par
     procedure, nopass :: allocate_instance => phs_fks_config_allocate_instance
     procedure :: set_born_config => phs_fks_config_set_born_config
   end type phs_fks_config_t
@@ -75,53 +93,92 @@ module phs_fks
     procedure :: display => kinematics_counter_display
   end type kinematics_counter_t
 
+  type :: phs_fks_generator_t
+    integer, dimension(:), allocatable :: emitters
+    type(real_kinematics_t), pointer :: real_kinematics => null()
+    type(isr_kinematics_t), pointer :: isr_kinematics => null()
+    !!! xi_min should be set to a non-zero value in order to avoid 
+    !!! phase-space points with p_real(emitter) = 0
+    real(default) :: xi_min = tiny_07
+    real(default) :: y_max = 1._default
+    real(default) :: E_beam_tot 
+    real(default) :: E_gluon
+    real(default) :: mrec2
+    real(default), dimension(:), allocatable :: m2
+    logical :: massive_phsp = .false.
+    logical, dimension(:), allocatable :: is_massive
+    logical :: singular_jacobian = .false.
+  contains
+    procedure :: generate_fsr => phs_fks_generator_generate_fsr
+    generic :: compute_emitter_kinematics => &
+                      compute_emitter_kinematics_massless, &
+                      compute_emitter_kinematics_massive 
+    procedure :: compute_emitter_kinematics_massless => &
+                      phs_fks_generator_compute_emitter_kinematics_massless
+    procedure :: compute_emitter_kinematics_massive => &
+                      phs_fks_generator_compute_emitter_kinematics_massive
+    procedure :: generate_isr => phs_fks_generator_generate_isr
+    procedure :: set_beam_energy => phs_fks_generator_set_beam_energy
+    procedure :: set_emitters => phs_fks_generator_set_emitters
+    procedure :: setup_masses => phs_fks_generator_setup_masses 
+    procedure :: set_isr_kinematics => phs_fks_generator_set_isr_kinematics 
+    procedure :: setup_real_kinematics => phs_fks_generator_setup_real_kinematics
+    procedure :: generate_radiation_variables => &
+                         phs_fks_generator_generate_radiation_variables
+    procedure :: compute_y => phs_fks_generator_compute_y
+    procedure :: compute_xi_tilde => phs_fks_generator_compute_xi_tilde
+    procedure :: generate_fsr_from_x => phs_fks_generator_generate_fsr_from_x
+    procedure :: generate_fsr_from_xi_and_y => &
+                          phs_fks_generator_generate_fsr_from_xi_and_y
+    procedure :: get_radiation_variables => &
+                     phs_fks_generator_get_radiation_variables
+    procedure :: get_jacobian => phs_fks_generator_get_jacobian
+    procedure :: write => phs_fks_generator_write
+  end type phs_fks_generator_t
+
   type, extends (phs_wood_t) :: phs_fks_t
+    integer :: mode = PHS_MODE_UNDEFINED
     type(vector4_t), dimension(:), allocatable :: p_born
     type(vector4_t), dimension(:), allocatable :: q_born
     type(vector4_t), dimension(:), allocatable :: p_real
     type(vector4_t), dimension(:), allocatable :: q_real
     type(vector4_t), dimension(:), allocatable :: p_born_tot
-    real(default) :: E_beam_tot
-    real(default) :: E_gluon
-    real(default) :: mrec2
-    real(default), dimension(:), allocatable :: m2
-    real(default) :: xi_tilde, phi
-    real(default), dimension(:), allocatable :: xi_max
-    real(default), dimension(:), allocatable :: y
-    real(default) :: xi_min, y_max
-    real(default) :: y_soft
-    real(default), dimension(:), allocatable :: jac_rand
-    real(default), dimension(3) :: jac
-    integer, dimension(:), allocatable :: emitters
+    type(real_kinematics_t), pointer :: real_kinematics => null()
+    type(isr_kinematics_t), pointer :: isr_kinematics => null()
+    type(phs_fks_generator_t) :: generator
     type(kinematics_counter_t) :: counter
     logical :: massive_phsp = .false.
     logical :: perform_generation = .true.
+    !!! Not entirley suited for combined integration
+    !!! TODO: Modifiy global r_real-array
+    real(default) :: r_isr  
 
   contains
     procedure :: init => phs_fks_init
+    procedure :: setup_real_kinematics => phs_fks_setup_real_kinematics
+    procedure :: setup_isr_kinematics => phs_fks_setup_isr_kinematics
     procedure :: final => phs_fks_final
     procedure :: init_momenta => phs_fks_init_momenta
+    procedure :: set_incoming_momenta => phs_fks_set_incoming_momenta
     procedure :: evaluate_selected_channel => phs_fks_evaluate_selected_channel
     procedure :: evaluate_other_channels => phs_fks_evaluate_other_channels
     procedure :: get_mcpar => phs_fks_get_mcpar
     procedure :: get_real_kinematics => phs_fks_get_real_kinematics
-    procedure :: enable_massive_emitters => &
-                       phs_fks_enable_massive_emitters
+    procedure :: set_beam_energy => phs_fks_set_beam_energy
     procedure :: set_emitters => phs_fks_set_emitters
+    procedure :: setup_masses => phs_fks_setup_masses
+    procedure :: set_mass_info => phs_fks_set_mass_info
+    procedure :: set_singular_jacobian => phs_fks_set_singular_jacobian
     procedure :: get_born_momenta => phs_fks_get_born_momenta
     procedure :: get_outgoing_momenta => phs_fks_get_outgoing_momenta
     procedure :: get_incoming_momenta => phs_fks_get_incoming_momenta
     procedure :: display_kinematics => phs_fks_display_kinematics
-    procedure :: generate_real_kinematics => phs_fks_generate_real_kinematics
+    procedure :: setup_generator_kinematics => phs_fks_setup_generator_kinematics 
+    procedure :: generate_radiation_variables => &
+                         phs_fks_generate_radiation_variables
     procedure :: generate_fsr => phs_fks_generate_fsr
-    generic :: compute_emitter_kinematics => &
-                      compute_emitter_kinematics_massless, &
-                      compute_emitter_kinematics_massive 
-    procedure :: compute_emitter_kinematics_massless => &
-                      phs_fks_compute_emitter_kinematics_massless
-    procedure :: compute_emitter_kinematics_massive => &
-                      phs_fks_compute_emitter_kinematics_massive
     procedure :: generate_isr => phs_fks_generate_isr
+    procedure :: compute_isr_kinematics => phs_fks_compute_isr_kinematics 
   end type phs_fks_t
 
 
@@ -150,6 +207,17 @@ contains
     call object%phs_wood_config_t%write
   end subroutine phs_fks_config_write
 
+  subroutine phs_fks_config_set_mode (phs_config, mode)
+    class(phs_fks_config_t), intent(inout) :: phs_config
+    integer, intent(in) :: mode
+    select case (mode)
+    case (NLO_REAL)
+       phs_config%mode = PHS_MODE_ADDITIONAL_PARTICLE
+    case (NLO_PDF)
+       phs_config%mode = PHS_MODE_COLLINEAR_REMNANT
+    end select
+  end subroutine phs_fks_config_set_mode
+
   subroutine phs_fks_config_configure (phs_config, sqrts, &
         sqrts_fixed, cm_frame, azimuthal_dependence, rebuild, &
         ignore_mismatch, nlo_type)
@@ -160,13 +228,19 @@ contains
     logical, intent(in), optional :: azimuthal_dependence
     logical, intent(in), optional :: rebuild
     logical, intent(in), optional :: ignore_mismatch
-    type(string_t), intent(inout), optional :: nlo_type
+    integer, intent(inout), optional :: nlo_type
     if (present (nlo_type)) then
-      if (nlo_type /= 'Real') & 
-        call msg_fatal ("FKS config has to be called with nlo_type = 'Real'")
+      if (.not. (nlo_type == NLO_REAL .or. nlo_type == NLO_PDF)) & 
+        call msg_fatal ("FKS config has to be called with nlo_type = 'Real' or nlo_type = 'Pdf'")
     end if 
-    if (.not. phs_config%extended_phs) &
-       phs_config%n_par = phs_config%n_par + 3
+    if (.not. phs_config%extended_phs) then
+       select case (phs_config%mode)
+       case (PHS_MODE_ADDITIONAL_PARTICLE)
+          phs_config%n_par = phs_config%n_par + 3
+       case (PHS_MODE_COLLINEAR_REMNANT)
+          phs_config%n_par = phs_config%n_par + 1
+       end select
+    end if
 !!! Channel equivalences not accessible yet
     phs_config%provides_equivalences = .false.
   end subroutine phs_fks_config_configure
@@ -176,11 +250,6 @@ contains
     integer, intent(in), optional :: unit
     call phs_config%phs_wood_config_t%startup_message
   end subroutine phs_fks_config_startup_message
-
-  subroutine phs_fks_config_increase_n_par (phs_config)
-    class(phs_fks_config_t), intent(inout) :: phs_config
-    phs_config%n_par = phs_config%n_par + 3
-  end subroutine phs_fks_config_increase_n_par
 
   subroutine phs_fks_config_allocate_instance (phs)
     class(phs_t), intent(inout), pointer :: phs
@@ -192,13 +261,20 @@ contains
     type(phs_wood_config_t), intent(in), target :: phs_cfg_born
     phs_config%forest = phs_cfg_born%forest
     phs_config%n_channel = phs_cfg_born%n_channel
+    allocate (phs_config%channel (phs_config%n_channel))
+    phs_config%channel = phs_cfg_born%channel
     phs_config%n_par = phs_cfg_born%n_par
+    phs_config%n_state = phs_cfg_born%n_state
     phs_config%sqrts = phs_cfg_born%sqrts
     phs_config%par = phs_cfg_born%par
     phs_config%sqrts_fixed = phs_cfg_born%sqrts_fixed
     phs_config%azimuthal_dependence = phs_cfg_born%azimuthal_dependence
     phs_config%provides_chains = phs_cfg_born%provides_chains
     phs_config%chain = phs_cfg_born%chain
+    phs_config%cm_frame = phs_cfg_born%cm_frame
+    phs_config%vis_channels = phs_cfg_born%vis_channels 
+    phs_config%chain = phs_cfg_born%chain
+    phs_config%model => phs_cfg_born%model
   end subroutine phs_fks_config_set_born_config
 
   subroutine kinematics_counter_init (counter, n_bins)
@@ -281,20 +357,32 @@ contains
 
     select type(phs)
     type is (phs_fks_t)
-      phs%n_r_born = phs%config%n_par - 3
+      select type (phs_config)
+      type is (phs_fks_config_t)
+         phs%mode = phs_config%mode
+      end select
+      
+      select case (phs%mode)
+      case (PHS_MODE_ADDITIONAL_PARTICLE)
+         phs%n_r_born = phs%config%n_par - 3
+      case (PHS_MODE_COLLINEAR_REMNANT)
+         phs%n_r_born = phs%config%n_par - 1
+      end select
       call phs%init_momenta (phs_config)
-      allocate (phs%m2 (phs_config%n_tot))
-      allocate (phs%xi_max (phs_config%n_tot))
-      allocate (phs%y (phs_config%n_tot))
-      allocate (phs%jac_rand (phs_config%n_tot))
-      phs%xi_max = 0._default
-      phs%y = 0._default
-      phs%jac_rand = 1._default
-      phs%jac = 1._default
-      phs%xi_min = 1d-5
-      phs%y_max = 1._default
     end select
   end subroutine phs_fks_init
+
+  subroutine phs_fks_setup_real_kinematics (phs, real_kinematics)
+    class(phs_fks_t), intent(inout) :: phs
+    type(real_kinematics_t), intent(in), target :: real_kinematics
+    phs%real_kinematics => real_kinematics
+  end subroutine phs_fks_setup_real_kinematics
+
+  subroutine phs_fks_setup_isr_kinematics (phs, fractions)
+    class(phs_fks_t), intent(inout) :: phs
+    type(isr_kinematics_t), intent(in), target :: fractions
+    phs%isr_kinematics => fractions
+  end subroutine phs_fks_setup_isr_kinematics
 
   subroutine phs_fks_final (object)
     class(phs_fks_t), intent(inout) :: object
@@ -304,37 +392,49 @@ contains
     class(phs_fks_t), intent(inout) :: phs
     class(phs_config_t), intent(in) :: phs_config
     allocate (phs%p_born (phs_config%n_in))
-    allocate (phs%q_born (phs_config%n_out-1))
     allocate (phs%p_real (phs_config%n_in))
-    allocate (phs%q_real (phs_config%n_out-1))
-    allocate (phs%p_born_tot (phs%config%n_in + phs%config%n_out-1))
+    select case (phs%mode)
+    case (PHS_MODE_ADDITIONAL_PARTICLE)
+       allocate (phs%q_born (phs_config%n_out-1))
+       allocate (phs%q_real (phs_config%n_out-1))
+       allocate (phs%p_born_tot (phs%config%n_in + phs%config%n_out-1))
+    end select
   end subroutine phs_fks_init_momenta
 
+  subroutine phs_fks_set_incoming_momenta (phs, p)
+    class(phs_fks_t), intent(inout) :: phs
+    type(vector4_t), dimension(:), intent(in) :: p
+    call phs%phs_wood_t%set_incoming_momenta(p)
+  end subroutine phs_fks_set_incoming_momenta
+   
   subroutine phs_fks_evaluate_selected_channel (phs, c_in, r_in)
     class(phs_fks_t), intent(inout) :: phs
     integer, intent(in) :: c_in
     real(default), intent(in), dimension(:) :: r_in
-    integer :: em 
-    real(default), dimension(:), allocatable :: r_born
-    integer :: n_r_born
     integer :: n_in
  
-    n_in = phs%config%n_in
     call phs%phs_wood_t%evaluate_selected_channel (c_in, r_in)
-    phs%p_born = phs%phs_wood_t%p
-    phs%q_born = phs%phs_wood_t%q
-    phs%p_born_tot (1:n_in) = phs%p_born
-    phs%p_born_tot (n_in+1:) = phs%q_born
     phs%r(:,c_in) = r_in
 
-    if (phs%perform_generation) call phs%generate_real_kinematics &
-                                             (r_in(phs%n_r_born+1:phs%n_r_born+3))
+    if (phs%perform_generation) then     
+       select case (phs%mode)
+       case (PHS_MODE_ADDITIONAL_PARTICLE)
+          n_in = phs%config%n_in
+          phs%p_born = phs%phs_wood_t%p
+          phs%q_born = phs%phs_wood_t%q
+          phs%p_born_tot (1:n_in) = phs%p_born
+          phs%p_born_tot (n_in+1:) = phs%q_born
+          call phs%generate_radiation_variables (r_in(phs%n_r_born+1:phs%n_r_born+3))
+       case (PHS_MODE_COLLINEAR_REMNANT)
+          call phs%compute_isr_kinematics (r_in(phs%n_r_born+1))
+          phs%r_isr = r_in(phs%n_r_born+1)
+       end select
+    end if
   end subroutine phs_fks_evaluate_selected_channel
 
   subroutine phs_fks_evaluate_other_channels (phs, c_in)
     class(phs_fks_t), intent(inout) :: phs
     integer, intent(in) :: c_in
-    integer :: c
     call phs%phs_wood_t%evaluate_other_channels (c_in)
     phs%r_defined = .true.
   end subroutine phs_fks_evaluate_other_channels
@@ -343,9 +443,13 @@ contains
     class(phs_fks_t), intent(in) :: phs
     integer, intent(in) :: c
     real(default), dimension(:), intent(out) :: r
-    integer :: n_r_born 
     r(1:phs%n_r_born) = phs%r(1:phs%n_r_born,c)
-    r(phs%n_r_born+1:) = phs%r_real
+    select case (phs%mode)
+    case (PHS_MODE_ADDITIONAL_PARTICLE)
+       r(phs%n_r_born+1:) = phs%r_real
+    case (PHS_MODE_COLLINEAR_REMNANT)
+       r(phs%n_r_born+1:) = phs%r_isr
+    end select
   end subroutine phs_fks_get_mcpar
 
   subroutine phs_fks_get_real_kinematics (phs, xit, y, phi, xi_max, jac, jac_rand)
@@ -356,36 +460,69 @@ contains
     real(default), intent(out) :: phi
     real(default), intent(out), dimension(3) :: jac
     real(default), intent(out), dimension(:), allocatable :: jac_rand
-    xit = phs%xi_tilde
-    y = phs%y
-    phi = phs%phi
-    xi_max = phs%xi_max
-    jac = phs%jac
-    jac_rand = phs%jac_rand
+    associate (real_kinematics => phs%real_kinematics)
+      xit = real_kinematics%xi_tilde
+      y = real_kinematics%y
+      phi = real_kinematics%phi
+      xi_max = real_kinematics%xi_max
+      jac = real_kinematics%jac(1)%jac
+      jac_rand = real_kinematics%jac_rand
+    end associate
   end subroutine phs_fks_get_real_kinematics
 
-  subroutine phs_fks_enable_massive_emitters (phs_fks)
-    class(phs_fks_t), intent(inout) :: phs_fks
-    phs_fks%massive_phsp = .true.
-  end subroutine phs_fks_enable_massive_emitters
+  subroutine phs_fks_set_beam_energy (phs)
+    class(phs_fks_t), intent(inout) :: phs
+    call phs%generator%set_beam_energy (phs%config%sqrts)
+    phs%isr_kinematics%beam_energy = phs%config%sqrts/2
+  end subroutine phs_fks_set_beam_energy
 
   subroutine phs_fks_set_emitters (phs, emitters)
     class(phs_fks_t), intent(inout) :: phs
     integer, intent(in), dimension(:), allocatable :: emitters
-    phs%emitters = emitters
+    call phs%generator%set_emitters (emitters)
   end subroutine phs_fks_set_emitters
+
+  subroutine phs_fks_setup_masses (phs, n_tot)
+    class(phs_fks_t), intent(inout) :: phs
+    integer, intent(in) :: n_tot
+    call phs%generator%setup_masses (n_tot)
+  end subroutine phs_fks_setup_masses
+
+  subroutine phs_fks_set_mass_info (phs, massive)
+    class(phs_fks_t), intent(inout) :: phs
+    logical, dimension(:), allocatable :: massive
+    phs%generator%is_massive = massive
+  end subroutine phs_fks_set_mass_info
+
+  subroutine phs_fks_set_singular_jacobian (phs, value)
+    class(phs_fks_t), intent(inout) :: phs
+    logical, intent(in) :: value
+    phs%generator%singular_jacobian = value
+  end subroutine phs_fks_set_singular_jacobian
 
   subroutine phs_fks_get_born_momenta (phs, p)
     class(phs_fks_t), intent(inout) :: phs
     type(vector4_t), intent(out), dimension(:) :: p
-    p(1:phs%config%n_in) = phs%p_born
-    p(phs%config%n_in+1:) = phs%q_born
+    select case (phs%mode)
+    case (PHS_MODE_ADDITIONAL_PARTICLE)
+       p(1:phs%config%n_in) = phs%p_born
+       p(phs%config%n_in+1:) = phs%q_born
+    case (PHS_MODE_COLLINEAR_REMNANT)
+       p(1:phs%config%n_in) = phs%phs_wood_t%p
+       p(phs%config%n_in+1:) = phs%phs_wood_t%q
+    end select
+    if (.not. phs%config%cm_frame) p = phs%lt_cm_to_lab * p
   end subroutine phs_fks_get_born_momenta
 
   subroutine phs_fks_get_outgoing_momenta (phs, q)
     class(phs_fks_t), intent(in) :: phs
     type(vector4_t), intent(out), dimension(:) :: q
-    q = phs%q_real
+    select case (phs%mode)
+    case (PHS_MODE_ADDITIONAL_PARTICLE)
+       q = phs%q_real
+    case (PHS_MODE_COLLINEAR_REMNANT)
+       q = phs%phs_wood_t%q
+    end select
   end subroutine phs_fks_get_outgoing_momenta
 
   subroutine phs_fks_get_incoming_momenta (phs, p)
@@ -399,66 +536,29 @@ contains
 !     call phs%counter%display ()
   end subroutine phs_fks_display_kinematics
 
-  subroutine phs_fks_generate_real_kinematics (phs, r_in)
+  subroutine phs_fks_setup_generator_kinematics (phs)
+    class(phs_fks_t), intent(inout), target :: phs
+    phs%generator%real_kinematics => phs%real_kinematics
+    phs%generator%isr_kinematics => phs%isr_kinematics
+    phs%generator%massive_phsp = phs%massive_phsp
+  end subroutine phs_fks_setup_generator_kinematics
+
+  subroutine phs_fks_generate_radiation_variables (phs, r_in)
     class(phs_fks_t), intent(inout) :: phs
     real(default), intent(in), dimension(:) :: r_in
-    integer :: em
-    real(default) :: beta
-
     if (size (r_in) /= 3) call msg_fatal &
-                        ("Real kinematics need to be generated using three random numbers!")
-    phs%E_beam_tot = phs%p_born(1)%p(0) + phs%p_born(2)%p(0)
-
-    !!! Jacobian corresponding to the transformation rand -> (xi, y, phi)
-    phs%jac_rand = 1.0
-    !!! Produce real momentum
-    phs%phi = r_in(3)*twopi
-    phs%xi_tilde = phs%xi_min + r_in(1)*(1-phs%xi_min)
-    phs%jac_rand = phs%jac_rand * (1-phs%xi_min)       
-    do em = 1, phs%config%n_tot
-      if (any (phs%emitters == em)) then
-         if (phs%massive_phsp) then
-            phs%m2(em) = phs%p_born_tot(em)**2
-            beta = beta_emitter (phs%E_beam_tot, phs%p_born_tot(em))
-            phs%y(em) = 1.0/beta * (1-(1+beta) * &
-                            exp(-r_in(2)*log((1+beta)/(1-beta))))
-            phs%jac_rand(em) = phs%jac_rand(em) * &
-                               (1-beta*phs%y(em))*log((1+beta)/(1-beta))/beta
-            phs%xi_max (em) = get_xi_max_fsr &
-                                   (phs%p_born_tot, em, phs%m2(em), phs%y(em))
-         else
-            phs%m2(em) = 0._default
-            phs%xi_max (em) = get_xi_max_fsr (phs%p_born_tot, em)
-         end if
-      end if
-    end do
-    if (.not. phs%massive_phsp) then
-       phs%y = (1-2*r_in(2))*phs%y_max
-       phs%jac_rand = phs%jac_rand*3*(1-phs%y(1)**2)
-       phs%y = 1.5_default*(phs%y - phs%y**3/3)
-    end if
-
+         ("Real kinematics need to be generated using three random numbers!")
+    call phs%generator%generate_radiation_variables (r_in, phs%p_born_tot)
     phs%r_real = r_in
-  contains
-    function beta_emitter (q0, p) result (beta)
-      real(default), intent(in) :: q0
-      type(vector4_t), intent(in) :: p
-      real(default) :: beta
-      real(default) :: m2, mrec2, k0_max
-      m2 = p**2
-      mrec2 = (q0-p%p(0))**2 - p%p(1)**2 - p%p(2)**2 - p%p(3)**2
-      k0_max = (q0**2-mrec2+m2)/(2*q0)
-      beta = sqrt(1-m2/k0_max**2)
-    end function beta_emitter 
-  end subroutine phs_fks_generate_real_kinematics
+  end subroutine phs_fks_generate_radiation_variables
 
-  subroutine phs_fks_generate_fsr (phs, emitter, p_born, p_real)
+  subroutine phs_fks_generator_generate_fsr (generator, emitter, p_born, p_real)
     !!! Important: Momenta must be input in the center-of-mass frame
-    class(phs_fks_t), intent(inout) :: phs
+    class(phs_fks_generator_t), intent(inout) :: generator
     integer, intent(in) :: emitter
     type(vector4_t), intent(in), dimension(:) :: p_born 
     type(vector4_t), intent(out), dimension(:), allocatable :: p_real
-    integer nlegborn, nlegreal
+    integer :: nlegborn, nlegreal
     type(vector4_t) :: q
     real(default) :: q0, q2, uk_np1, uk_n
     real(default) :: uk_rec, k_rec0
@@ -471,11 +571,14 @@ contains
     integer :: i
     real(default) :: xi, y, phi
 
-    xi = phs%xi_tilde * phs%xi_max(emitter)
-    y = phs%y(emitter)
-    phi = phs%phi
-    nlegreal = phs%config%n_in + phs%config%n_out
-    nlegborn = nlegreal-1
+    associate (rad_var => generator%real_kinematics)
+       xi = rad_var%xi_tilde
+       if (rad_var%supply_xi_max) xi = xi*rad_var%xi_max(emitter)
+       y = rad_var%y(emitter)
+       phi = rad_var%phi
+    end associate
+    nlegborn = size (p_born)
+    nlegreal = nlegborn+1
     if (emitter <= 2 .or. emitter > nlegborn) then
       call msg_fatal ("Generate FSR phase space: Invalid emitter!")
     end if
@@ -484,20 +587,21 @@ contains
     p_real(1) = p_born(1)
     p_real(2) = p_born(2)
     q = p_born(1) + p_born(2)
-    q0 = phs%E_beam_tot
+    q0 = q%p(0)
     q2 = q**2
+    generator%real_kinematics%cms_energy2 = q2
 
-    phs%E_gluon = q0*xi/2
-    uk_np1 = phs%E_gluon
+    generator%E_gluon = q0*xi/2
+    uk_np1 = generator%E_gluon
     k_n_born = p_born(emitter)%p(1:3)
     uk_n_born = k_n_born**1
 
-    phs%mrec2 = (q-p_born(emitter))**2
-    if (phs%massive_phsp) then
-       call phs%compute_emitter_kinematics (emitter, k0_n, uk_n, uk)
+    generator%mrec2 = (q-p_born(emitter))**2
+    if (generator%is_massive(emitter)) then
+       call generator%compute_emitter_kinematics (emitter, k0_n, uk_n, uk)
     else
-       call phs%compute_emitter_kinematics (emitter, uk_n, uk)
-       phs%y_soft = y
+       call generator%compute_emitter_kinematics (emitter, uk_n, uk)
+       generator%real_kinematics%y_soft = y
        k0_n = uk_n
     end if
     
@@ -508,19 +612,20 @@ contains
     cpsi = (uk_n**2 + uk**2 - uk_np1**2) / (2*(uk_n * uk))
     !!! This is to catch the case where cpsi = 1, but numerically 
     !!! turns out to be slightly larger than 1. 
-    if (cpsi > 1._default) cpsi = 1._default
-    rot = rotation (cpsi, -sqrt (1-cpsi**2), vec_orth)
+    call check_cpsi_bound (cpsi)
+    rot = rotation (cpsi, -sqrt (1._default-cpsi**2), vec_orth)
     p_real(emitter) = rot*p_real(emitter)
     vec = uk_np1 / uk_n_born * k_n_born
     vec_orth = create_orthogonal (vec)
     p_real(nlegreal)%p(0) = uk_np1
     p_real(nlegreal)%p(1:3) = vec%p(1:3)
     cpsi = (uk_np1**2 + uk**2 - uk_n**2) / (2*(uk_np1 * uk))
-    rot = rotation (cpsi, sqrt (1-cpsi**2), vec_orth)
+    call check_cpsi_bound (cpsi)
+    rot = rotation (cpsi, sqrt (1._default-cpsi**2), vec_orth)
     p_real(nlegreal) = rot*p_real(nlegreal)
     k_rec0 = q0 - p_real(emitter)%p(0) - p_real(nlegreal)%p(0)
-    uk_rec = sqrt (k_rec0**2 - phs%mrec2)
-    if (phs%massive_phsp) then
+    uk_rec = sqrt (k_rec0**2 - generator%mrec2)
+    if (generator%is_massive(emitter)) then
        beta = compute_beta (q2, k_rec0, uk_rec, &
                             p_born(emitter)%p(0), uk_n_born)
     else
@@ -538,45 +643,62 @@ contains
     rot = rotation (cos(phi), sin(phi), vec)
     p_real(nlegreal) = rot * p_real(nlegreal)
     p_real(emitter) = rot * p_real(emitter)
-    if (phs%massive_phsp) then 
-       phs%jac(1) = phs%jac(1)*4/q0/uk_n_born/xi
-    else
-       k2 = 2*uk_n*uk_np1*(1-y)
-       phs%jac(1) = uk_n**2/uk_n_born / (uk_n - k2/(2*q0))
-    end if
-    !!! Soft jacobian
-    phs%jac(2) = 1.0
-    !!! Collinear jacobian
-    phs%jac(3) = 1-xi/2*q0/uk_n_born
+    associate (jac => generator%real_kinematics%jac(emitter))
+       if (generator%is_massive(emitter)) then
+          jac%jac(1) = jac%jac(1)*4/q0/uk_n_born/xi
+       else
+          k2 = 2*uk_n*uk_np1*(1-y)
+          jac%jac(1) = uk_n**2/uk_n_born / (uk_n - k2/(2*q0))
+       end if
+       !!! Soft jacobian
+       jac%jac(2) = 1._default
+       !!! Collinear jacobian
+       jac%jac(3) = 1-xi/2*q0/uk_n_born       
+    end associate
+  contains
+    subroutine check_cpsi_bound (cpsi)
+      real(default), intent(inout) :: cpsi
+      if (cpsi > 1._default) cpsi = 1._default
+    end subroutine check_cpsi_bound
+  end subroutine phs_fks_generator_generate_fsr
 
+  subroutine phs_fks_generate_fsr (phs, emitter, p_born, p_real)
+    class(phs_fks_t), intent(inout) :: phs
+    integer, intent(in) :: emitter
+    type(vector4_t), intent(in), dimension(:) :: p_born
+    type(vector4_t), intent(out), dimension(:), allocatable :: p_real
+    call phs%generator%generate_fsr (emitter, p_born, p_real)
   end subroutine phs_fks_generate_fsr
 
-  subroutine phs_fks_compute_emitter_kinematics_massless &
-                                    (phs, em, uk_em, uk)
-    class(phs_fks_t), intent(inout) :: phs
+  subroutine phs_fks_generator_compute_emitter_kinematics_massless &
+                                    (generator, em, uk_em, uk)
+    class(phs_fks_generator_t), intent(inout) :: generator
     integer, intent(in) :: em
     real(default), intent(out) :: uk_em, uk
     real(default) :: y, k0_np1, q0, q2
 
-    y = phs%y(em); k0_np1 = phs%E_gluon
-    q0 = phs%E_beam_tot; q2 = q0**2
+    y = generator%real_kinematics%y(em)
+    k0_np1 = generator%E_gluon
+    q0 = generator%E_beam_tot; q2 = q0**2
 
-    uk_em = (q2 - phs%mrec2 - 2*q0*k0_np1) / (2*(q0 - k0_np1*(1-y))) 
+    uk_em = (q2 - generator%mrec2 - 2*q0*k0_np1) / (2*(q0 - k0_np1*(1-y))) 
     uk = sqrt (uk_em**2 + k0_np1**2 + 2*uk_em*k0_np1*y)
-  end subroutine phs_fks_compute_emitter_kinematics_massless
+  end subroutine phs_fks_generator_compute_emitter_kinematics_massless
 
-  subroutine phs_fks_compute_emitter_kinematics_massive &
-                                    (phs, em, k0_em, uk_em, uk)
-    class(phs_fks_t), intent(inout) :: phs
+  subroutine phs_fks_generator_compute_emitter_kinematics_massive &
+                                    (generator, em, k0_em, uk_em, uk)
+    class(phs_fks_generator_t), intent(inout) :: generator
     integer, intent(in) :: em
     real(default), intent(inout) :: k0_em, uk_em, uk
     real(default) :: y, k0_np1, q0, q2, mrec2, m2
     real(default) :: k0_rec_max, k0_em_max, k0_rec, uk_rec
     real(default) :: z, z1, z2
 
-    y = phs%y(em); k0_np1 = phs%E_gluon
-    q0 = phs%E_beam_tot; q2 = q0**2
-    mrec2 = phs%mrec2; m2 = phs%m2(em)
+    y = generator%real_kinematics%y(em)
+    k0_np1 = generator%E_gluon
+    q0 = generator%E_beam_tot; q2 = q0**2
+    mrec2 = generator%mrec2
+    m2 = generator%m2(em)
 
     k0_rec_max = (q2-m2+mrec2)/(2*q0)
     k0_em_max = (q2+m2-mrec2)/(2*q0)
@@ -588,9 +710,11 @@ contains
     uk_em = sqrt(k0_em**2-m2)
     uk_rec = sqrt(k0_rec**2 - mrec2)
     uk = uk_rec
-    phs%jac = q0*(z1-z2)/4*k0_np1
-    phs%y_soft = (2*q2*z-q2-mrec2+m2)/(sqrt(k0_em_max**2-m2)*q0)/2
-  end subroutine phs_fks_compute_emitter_kinematics_massive
+    generator%real_kinematics%cms_energy2 = q2
+    generator%real_kinematics%jac(em)%jac = q0*(z1-z2)/4*k0_np1
+    generator%real_kinematics%y_soft = &
+                 (2*q2*z-q2-mrec2+m2)/(sqrt(k0_em_max**2-m2)*q0)/2
+  end subroutine phs_fks_generator_compute_emitter_kinematics_massive
 
   function compute_beta_massless (q2, k0_rec, uk_rec) result (beta)
     real(default), intent(in) :: q2, k0_rec, uk_rec
@@ -610,7 +734,7 @@ contains
     beta = (1-alpha**2)/(1+alpha**2)
   end function compute_beta_massive
 
-  function get_xi_max_fsr_massless (p_born, emitter) result (xi_max)
+  pure function get_xi_max_fsr_massless (p_born, emitter) result (xi_max)
     type(vector4_t), intent(in), dimension(:) :: p_born
     integer, intent(in) :: emitter
     real(default) :: xi_max
@@ -620,7 +744,7 @@ contains
     xi_max = 2*uk_n_born / q0
   end function get_xi_max_fsr_massless
   
-  function get_xi_max_fsr_massive (p_born, emitter, m2, y) result (xi_max)
+  pure function get_xi_max_fsr_massive (p_born, emitter, m2, y) result (xi_max)
     type(vector4_t), intent(in), dimension(:) :: p_born
     integer, intent(in) :: emitter
     real(default), intent(in) :: m2, y
@@ -640,75 +764,496 @@ contains
     xi_max = 2*k_np1_max/q0
   end function get_xi_max_fsr_massive
 
+  function get_xi_max_isr (xb, y) result (xi_max)
+    real(default), dimension(2), intent(in) :: xb
+    real(default), intent(in) :: y
+    real(default) :: xb_plus, xb_minus
+    real(default) :: xi_max
+    real(default) :: plus_val, minus_val
+    
+    xb_plus = xb(1); xb_minus = xb(2)
+
+    plus_val = 2*(1+y)*xb_plus**2 / &
+               (sqrt ((1+xb_plus**2)**2*(1-y)**2 + 16*y*xb_plus**2) &
+               + (1-y)*(1-xb_plus**2))
+    minus_val = 2*(1-y)*xb_minus**2 / &
+                (sqrt ((1+xb_minus**2)**2*(1+y)**2 - 16*y*xb_minus**2) &
+               + (1-y)*(1-xb_minus**2))
+    xi_max = one - max (plus_val, minus_val)
+  end function get_xi_max_isr
+
   subroutine phs_fks_generate_isr &
        (phs, emitter, p_born, p_real)
-    !!! Important: Import momenta in the lab frame
     class(phs_fks_t), intent(inout) :: phs
     integer, intent(in) :: emitter
-    type(vector4_t), intent(in) , dimension(:), allocatable :: p_born
+    type(vector4_t), intent(in), dimension(:) :: p_born
     type(vector4_t), intent(out), dimension(:), allocatable :: p_real
-    real(default) :: xi, y, phi
+    call phs%generator%generate_isr (p_born, p_real)
+  end subroutine phs_fks_generate_isr
+
+  subroutine phs_fks_generator_generate_isr &
+       (generator, p_born, p_real)
+    !!! Important: Import momenta in the lab frame
+    class(phs_fks_generator_t), intent(inout) :: generator
+    type(vector4_t), intent(in) , dimension(:) :: p_born
+    type(vector4_t), intent(out), dimension(:), allocatable :: p_real
+    real(default) :: xi_max, xi, y, phi
     integer :: nlegborn, nlegreal
-    real(default) :: sqrts_beam
-    real(default) :: sqrts_born
+    real(default) :: sqrts_real
     real(default) :: k0_np1
-    type(vector3_t) :: beta_l, vec_t
-    real(default) :: beta_t, beta_gamma_l, beta_gamma_t
-    real(default) :: k_tmp, k_p, k_m, k_p0, k_m0
-    real(default) :: pt_rad
-    type(lorentz_transformation_t) :: lambda_t, lambda_l, lambda_l_inv
-    real(default) :: x_plus, x_minus, barx_plus, barx_minus
+    type(lorentz_transformation_t) :: lambda_transv, lambda_longit, lambda_longit_inv
+    real(default) :: x_plus, x_minus, xb_plus, xb_minus
     integer :: i
 
-    xi = phs%xi_tilde * phs%xi_max(emitter)
-    y = phs%y(emitter)
-    phi = phs%phi
-    nlegreal = phs%config%n_in + phs%config%n_out
-    nlegborn = nlegreal - 1
-    sqrts_beam = phs%config%sqrts
-    sqrts_born = sqrt ((p_born(1) + p_born(2))**2)
+    associate (rad_var => generator%real_kinematics)
+      xi_max = rad_var%xi_max(1)
+      xi = rad_var%xi_tilde * xi_max
+      y = rad_var%y(1)
+      phi = rad_var%phi
+      rad_var%y_soft = y
+    end associate
+    
+    nlegborn = size (p_born)
+    nlegreal = nlegborn+1
+    generator%isr_kinematics%sqrts_born = sqrt ((p_born(1) + p_born(2))**2)
     allocate (p_real (nlegreal))
+   
+    !!! Initial state real momenta
+    xb_plus = generator%isr_kinematics%x(1)
+    xb_minus = generator%isr_kinematics%x(2)
+    x_plus = xb_plus/sqrt(1-xi) * sqrt ((2-xi*(1-y)) / (2-xi*(1+y)))
+    x_minus = xb_minus/sqrt(1-xi) * sqrt ((2-xi*(1+y)) / (2-xi*(1-y)))
+    p_real(1) = x_plus/xb_plus * p_born(1)
+    p_real(2) = x_minus/xb_minus * p_born(2)
+
     !!! Create radiation momentum
-    k0_np1 = sqrts_born*xi/2 
-    !!! There must be the real cm-energy, not the Born one! 
-    !!!    s_real = s_born / (1-xi)
-    !!! Build radiation momentum in the rest frame of the real momenta
+    sqrts_real = generator%isr_kinematics%sqrts_born / (1-xi)
+    k0_np1 = sqrts_real*xi/2 
     p_real(nlegreal)%p(0) = k0_np1
     p_real(nlegreal)%p(1) = k0_np1*sqrt(1-y**2)*sin(phi)
     p_real(nlegreal)%p(2) = k0_np1*sqrt(1-y**2)*cos(phi)
     p_real(nlegreal)%p(3) = k0_np1*y
 
-    !!! Boost to lab frame missing
-    pt_rad = transverse_part (p_real(nlegreal))
-    beta_t = sqrt (1 + sqrts_born**2 * (1-xi) / pt_rad**2)
-    beta_gamma_t = 1/sqrt(beta_t)
-    k_p0 = vector4_get_component (p_born(1), 0)
-    k_m0 = vector4_get_component (p_born(2), 0)
-    
-    beta_l%p(1:3) = (p_born(1)%p(1:3) + p_born(2)%p(1:3)) / &
-                    (p_born(1)%p(0) + p_born(2)%p(0))
-    beta_gamma_l = beta_l**1
-    beta_l = beta_l / beta_gamma_l
-    beta_gamma_l = beta_gamma_l / sqrt (1 - beta_gamma_l**2)
-    vec_t%p(1:2) = p_real(nlegreal)%p(1:2)
-    vec_t%p(3) = 0._default
-    call normalize (vec_t)
+    lambda_longit = create_longitudinal_boost (p_real, inverse = .false.)
+    p_real(nlegreal) = lambda_longit * p_real(nlegreal)
 
-    lambda_l = boost(beta_gamma_l, beta_l)
-    lambda_t = boost(-beta_gamma_t, vec_t)
-    lambda_l_inv = boost(-beta_gamma_l, beta_l)
+    lambda_longit = create_longitudinal_boost (p_born, inverse = .false.)
     forall (i=3:nlegborn) &
-         p_real(i) = lambda_l_inv * lambda_t * lambda_l * p_born(i)
-    !!! Now need access to the x-variables of the IS-partons
-    barx_plus = 2*vector4_get_component(p_born(1), 0)/sqrts_beam
-    barx_minus = 2*vector4_get_component(p_born(2), 0)/sqrts_beam
-    x_plus = barx_plus/sqrt(1-xi) * sqrt ((2-xi*(1-y)) / (2-xi*(1+y)))
-    x_minus = barx_minus/sqrt(1-xi) * sqrt ((2-xi*(1+y)) / (2-xi*(1-y)))
-    p_real(1) = x_plus/barx_plus * p_born(1)
-    p_real(2) = x_minus/barx_minus * p_born(2)
-    !!! Total nonsense
-    phs%jac(1) = 1
-  end subroutine phs_fks_generate_isr
+        p_real(i) = lambda_longit * p_born(i)
+
+    lambda_transv = create_transversal_boost (p_real(nlegreal), xi, sqrts_real)
+    forall (i=3:nlegborn) &
+         p_real(i) = lambda_transv * p_real(i)
+    
+    lambda_longit_inv = create_longitudinal_boost (p_real, inverse = .true.)
+    forall (i=3:nlegborn) &
+         p_real(i) = lambda_longit_inv * p_real(i)
+
+  contains
+    function create_longitudinal_boost (p, inverse) result (lambda)
+       type(vector4_t), intent(in), dimension(:) :: p
+       logical, intent(in) :: inverse
+       type(lorentz_transformation_t) :: lambda
+       type(vector3_t) :: beta_vec
+       real(default) :: beta_gamma
+       beta_vec = (p(1)%p(1:3) + p(2)%p(1:3)) / (p(1)%p(0) + p(2)%p(0))
+       beta_gamma = beta_vec**1 / sqrt (1-beta_vec**2)
+       beta_vec = beta_vec / beta_vec**1
+       if (inverse) beta_gamma = -beta_gamma
+       lambda = boost (-beta_gamma, beta_vec)
+    end function create_longitudinal_boost
+
+    function create_transversal_boost (p_rad, xi, sqrts_real) result (lambda)
+       type(vector4_t), intent(in) :: p_rad
+       real(default), intent(in) :: xi, sqrts_real
+       type(lorentz_transformation_t) :: lambda
+       type(vector3_t) :: vec_transverse
+       real(default) :: pt2, beta, beta_gamma
+       pt2 = transverse_part(p_rad)**2
+       beta = 1.0 / sqrt (1 + sqrts_real**2 * (1-xi)/pt2)
+       beta_gamma = beta / sqrt (1-beta**2)
+       vec_transverse%p(1:2) = p_rad%p(1:2)
+       vec_transverse%p(3) = 0._default
+       call normalize (vec_transverse)
+       lambda = boost (-beta_gamma, vec_transverse)
+    end function create_transversal_boost
+  end subroutine phs_fks_generator_generate_isr
+
+  pure subroutine phs_fks_generator_set_beam_energy (generator, E_beam)
+    class(phs_fks_generator_t), intent(inout) :: generator
+    real(default), intent(in) :: E_beam
+    generator%E_beam_tot = E_beam
+  end subroutine phs_fks_generator_set_beam_energy
+
+  subroutine phs_fks_generator_set_emitters (generator, emitters)
+    class(phs_fks_generator_t), intent(inout) :: generator
+    integer, intent(in), dimension(:), allocatable ::  emitters
+    generator%emitters = emitters
+  end subroutine phs_fks_generator_set_emitters
+
+  subroutine phs_fks_generator_setup_masses (generator, n_tot)
+    class (phs_fks_generator_t), intent(inout) :: generator
+    integer, intent(in) :: n_tot
+    if (.not. allocated (generator%m2)) then
+       allocate (generator%is_massive (n_tot))
+       allocate (generator%m2 (n_tot))
+       generator%is_massive = .false.
+       generator%m2 = 0._default
+    end if
+  end subroutine phs_fks_generator_setup_masses
+
+  subroutine phs_fks_generator_set_isr_kinematics (generator, p_born)
+    class(phs_fks_generator_t), intent(inout) :: generator
+    type(vector4_t), dimension(:), intent(in) :: p_born
+    generator%isr_kinematics%x = space_part_norm (p_born(1:2)) / (generator%E_beam_tot/2)
+  end subroutine phs_fks_generator_set_isr_kinematics
+
+  subroutine phs_fks_generator_setup_real_kinematics (generator, real_kinematics)
+    class(phs_fks_generator_t), intent(inout) :: generator
+    type(real_kinematics_t), intent(in), pointer :: real_kinematics
+    generator%real_kinematics => real_kinematics
+  end subroutine phs_fks_generator_setup_real_kinematics
+
+  subroutine phs_fks_generator_generate_radiation_variables & 
+                    (generator, r_in, p_born)
+    class(phs_fks_generator_t), intent(inout) :: generator
+    real(default), intent(in), dimension(:) :: r_in
+    type(vector4_t), intent(in), dimension(:) :: p_born
+    integer :: em
+
+!    call generator%set_beam_energy (p_born(1)%p(0) + p_born(2)%p(0))
+    if (any (generator%emitters <= 2)) call generator%set_isr_kinematics (p_born)
+    associate (rad_var => generator%real_kinematics)
+       rad_var%jac_rand = 1.0
+       call generator%compute_xi_tilde (r_in(I_XI))
+       rad_var%phi = r_in (I_PHI)*twopi
+       rad_var%jac_rand = rad_var%jac_rand*twopi
+       call generator%compute_y (r_in(I_Y), p_born)
+       do em = 1, size (p_born)
+          if (any (generator%emitters == em)) then
+                if (generator%is_massive(em)) then
+                   if (em <= 2) then
+                      call msg_fatal ("Massive emitters incompatible with IS phase space")
+                   else
+                     rad_var%xi_max (em) = get_xi_max_fsr &
+                                   (p_born, em, generator%m2(em), rad_var%y(em))
+                   end if
+                else
+                   if (em <= 2) then
+                      rad_var%xi_max(em) = get_xi_max_isr (generator%isr_kinematics%x, rad_var%y(em))
+                   else
+                      rad_var%xi_max(em) = get_xi_max_fsr (p_born, em)
+                   end if
+                end if
+          end if
+       end do
+    end associate 
+  end subroutine phs_fks_generator_generate_radiation_variables
+
+  subroutine phs_fks_generator_compute_y (generator, r_y, p)
+    class(phs_fks_generator_t), intent(inout) :: generator
+    real(default), intent(in) :: r_y
+    type(vector4_t), dimension(:) :: p
+    integer :: em
+    real(default) :: beta
+    associate (rad_var => generator%real_kinematics)
+       do em = 1, size (p)
+          if (any (generator%emitters == em)) then
+             if (generator%is_massive (em)) then
+                generator%m2(em) = p(em)**2
+                beta = beta_emitter (generator%E_beam_tot, p(em))
+                rad_var%y(em) = 1.0/beta * (1-(1+beta) * &
+                    exp(-r_y*log((1+beta)/(1-beta))))
+                rad_var%jac_rand(em) = rad_var%jac_rand(em) * &
+                    (1-beta*rad_var%y(em))*log((1+beta)/(1-beta))/beta
+             else
+                rad_var%y(em) = (1-2*r_y)*generator%y_max
+                rad_var%jac_rand(em) = rad_var%jac_rand(em)*3*(1-rad_var%y(em)**2)
+                rad_var%y(em) = 1.5_default*(rad_var%y(em) - rad_var%y(em)**3/3)
+             end if
+          end if
+       end do
+    end associate
+  contains
+    pure function beta_emitter (q0, p) result (beta)
+      real(default), intent(in) :: q0
+      type(vector4_t), intent(in) :: p
+      real(default) :: beta
+      real(default) :: m2, mrec2, k0_max
+      m2 = p**2
+      mrec2 = (q0-p%p(0))**2 - p%p(1)**2 - p%p(2)**2 - p%p(3)**2
+      k0_max = (q0**2-mrec2+m2)/(2*q0)
+      beta = sqrt(1-m2/k0_max**2)
+    end function beta_emitter 
+  end subroutine phs_fks_generator_compute_y
+
+  pure subroutine phs_fks_generator_compute_xi_tilde (generator, r)
+    class(phs_fks_generator_t), intent(inout) :: generator
+    real(default), intent(in) :: r
+    associate (rad_var => generator%real_kinematics)
+       if (generator%singular_jacobian) then
+          rad_var%xi_tilde = (1-generator%xi_min) - (1-r)**2*(1-2*generator%xi_min)
+          rad_var%jac_rand = rad_var%jac_rand * 2*(1-r)*(1-2*generator%xi_min)
+       else
+          rad_var%xi_tilde = generator%xi_min + r*(1-generator%xi_min)
+          rad_var%jac_rand = rad_var%jac_rand *(1-generator%xi_min) 
+       end if
+    end associate
+  end subroutine phs_fks_generator_compute_xi_tilde
+
+  function phs_fks_generator_generate_fsr_from_x (generator, &
+                    r_in, emitter, p_born) result  (p_real)
+    type(vector4_t), dimension(:), allocatable :: p_real
+    class(phs_fks_generator_t), intent(inout) :: generator
+    real(default), intent(in), dimension(:) :: r_in
+    integer, intent(in) :: emitter
+    type(vector4_t), intent(in), dimension(:) :: p_born
+
+    call generator%generate_radiation_variables (r_in, p_born)
+    call generator%generate_fsr (emitter, p_born, p_real)
+  end function phs_fks_generator_generate_fsr_from_x
+
+  function phs_fks_generator_generate_fsr_from_xi_and_y (generator, xi, y, &
+                                         phi, emitter, p_born) result (p_real)
+    class(phs_fks_generator_t), intent(inout) :: generator
+    real(default), intent(in) :: xi, y, phi
+    integer, intent(in) :: emitter
+    type(vector4_t), intent(in), dimension(:) :: p_born
+    type(vector4_t), dimension(:), allocatable :: p_real
+    associate (rad_var => generator%real_kinematics)
+       rad_var%supply_xi_max = .false.
+       rad_var%xi_tilde = xi
+       rad_var%y(emitter) = y
+       rad_var%phi = phi
+    end associate
+    call generator%set_beam_energy (p_born(1)%p(0) + p_born(2)%p(0))
+    call generator%generate_fsr (emitter, p_born, p_real)
+  end function phs_fks_generator_generate_fsr_from_xi_and_y
+
+  pure subroutine phs_fks_generator_get_radiation_variables (generator, &
+                              emitter, xi, y, phi)
+    class(phs_fks_generator_t), intent(in) :: generator
+    integer, intent(in) :: emitter
+    real(default), intent(out) :: xi, y
+    real(default), intent(out), optional :: phi
+    associate (rad_var => generator%real_kinematics)
+       xi = rad_var%xi_max(emitter) * rad_var%xi_tilde
+       y = rad_var%y(emitter)
+       if (present (phi)) phi = rad_var%phi
+    end associate
+  end subroutine phs_fks_generator_get_radiation_variables
+
+  subroutine phs_fks_generator_get_jacobian (generator, emitter, jac)
+    class(phs_fks_generator_t), intent(in) :: generator
+    integer, intent(in) :: emitter
+    real(default) :: jac
+    associate (rad_var => generator%real_kinematics)
+       jac = rad_var%jac_rand (emitter) * rad_var%jac(emitter)%jac(1)
+    end associate
+  end subroutine phs_fks_generator_get_jacobian
+                            
+  subroutine phs_fks_generator_write (generator, unit)
+    class(phs_fks_generator_t), intent(in) :: generator
+    integer, intent(in), optional :: unit
+    integer :: u
+    type(string_t) :: massive_phsp
+    u = given_output_unit (unit); if (u < 0) return 
+    if (generator%massive_phsp) then
+       massive_phsp = " massive "
+    else
+       massive_phsp = " massless "
+    end if
+    write (u, "(A)") char ("This is a generator for a" // massive_phsp // "phase space")
+    if (associated (generator%real_kinematics)) then
+       call generator%real_kinematics%write ()
+    else
+       write (u, "(A)") "Warning: There are no real kinematics associated with this generator"
+    end if
+    call write_separator (u)
+    write (u, "(A,F5.3)") "E_beam_tot: ", generator%E_beam_tot
+    write (u, "(A,F5.3)") "E_gluon: ", generator%E_gluon
+    write (u, "(A,F5.3)") "mrec2: ", generator%mrec2
+  end subroutine phs_fks_generator_write
+
+  subroutine phs_fks_compute_isr_kinematics (phs, r)
+    class(phs_fks_t), intent(inout) :: phs
+    real(default), intent(in) :: r
+    real(default) :: E_beam
+    integer :: em
+    type(vector4_t), dimension(2) :: p_in
+    E_beam = phs%isr_kinematics%beam_energy
+    do em = 1, 2
+       p_in(em) = phs%phs_wood_t%p(em)
+       phs%isr_kinematics%x(em) = p_in(em)%p(0) / E_beam
+       phs%isr_kinematics%z(em) = one - (one-phs%isr_kinematics%x(em))*r
+       phs%isr_kinematics%jacobian(em) =  phs%isr_kinematics%jacobian(em) * (one-phs%isr_kinematics%x(em))
+    end do
+
+    phs%isr_kinematics%sqrts_born = (p_in(1) + p_in(2))**1
+  end subroutine phs_fks_compute_isr_kinematics
+
+  subroutine phs_fks_generator_test (u, results)
+    integer, intent(in) :: u
+    type(test_results_t), intent(inout) :: results
+    call test(phs_fks_generator_1, "phs_fks_generator_1", &
+              "Test the generation of FKS phase spaces", u, results)
+    call test(phs_fks_generator_2, "phs_fks_generator_2", &
+              "Test the generation of an ISR FKS phase space", u, results)
+  end subroutine phs_fks_generator_test
+
+  subroutine phs_fks_generator_1 (u)
+    integer, intent(in) :: u
+    type(phs_fks_generator_t) :: generator
+    type(vector4_t), dimension(:), allocatable :: p_born
+    type(vector4_t), dimension(:), allocatable :: p_real
+    integer :: emitter
+    real(default) :: x1, x2, x3
+    real(default), parameter :: sqrts = 250.0_default
+    write (u, "(A)") "* Test output: phs_fks_generator_1"
+    write (u, "(A)") "* Purpose: Create massless fsr phase space"
+    write (u, "(A)") 
+    
+       
+    allocate (p_born (4))
+    p_born(1)%p(0) = 125.0_default
+    p_born(1)%p(1:2) = 0.0_default
+    p_born(1)%p(3) = 125.0_default
+    p_born(2)%p(0) = 125.0_default
+    p_born(2)%p(1:2) = 0.0_default
+    p_born(2)%p(3) = -125.0_default
+    p_born(3)%p(0) = 125.0_default
+    p_born(3)%p(1) = -39.5618_default
+    p_born(3)%p(2) = -20.0791_default
+    p_born(3)%p(3) = -114.6957_default
+    p_born(4)%p(0) = 125.0_default
+    p_born(4)%p(1:3) = -p_born(3)%p(1:3)
+
+    call generator%set_beam_energy (sqrts)
+
+    write (u, "(A)") "* Use four-particle phase space containing: "
+    call vector4_write_set (p_born, u, testflag = .true.)
+    write (u, "(A)") "***********************"
+    write (u, "(A)") 
+    
+    x1=0.5_default; x2=0.25_default; x3=0.75_default
+    write (u, "(A)" ) "* Use random numbers: "
+    write (u, "(A,F3.2,A,F3.2,A,F3.2)") "x1: ", x1, "x2: ", x2, "x3: ", x3
+    allocate (generator%real_kinematics)
+    associate (rad_var => generator%real_kinematics)
+       allocate (rad_var%xi_max(4), rad_var%y(4))
+       allocate (rad_var%p_born(4), rad_var%p_real(5))
+       allocate (rad_var%jac(4))
+       allocate (rad_var%jac_rand(4), rad_var%y_soft(4))
+    end associate 
+    allocate (generator%emitters (2))
+    generator%emitters(1) = 3; generator%emitters(2) = 4
+    allocate (generator%m2 (4))
+    generator%m2 = 0._default
+    allocate (generator%is_massive (4))
+    generator%is_massive(1:2) = .false.
+    generator%is_massive(3:4) = .true.
+    call generator%generate_radiation_variables ([x1,x2,x3], p_born)
+    write (u, "(A)")  &
+         "* With these, the following radiation variables have been produced:"
+    associate (rad_var => generator%real_kinematics)
+      write (u, "(A,F3.2)") "xi_tilde: ", rad_var%xi_tilde
+      write (u, "(A,F3.2)") "y: " , rad_var%y(3)
+      write (u, "(A,F3.2)") "phi: ", rad_var%phi
+    end associate
+    call write_separator (u)
+    write (u, "(A)") "Produce real momenta: "
+    emitter = 3
+    write (u, "(A,I1)") "emitter: ", emitter
+    call generator%generate_fsr (emitter, p_born, p_real)
+    call vector4_write_set (p_real, u, testflag = .true.)
+    call write_separator (u)
+    write (u, "(A)")  &
+         "Test direct interface via phs_fks_generator_generate_from_x"
+    p_real = generator%generate_fsr_from_x ([x1,x2,x3], emitter, p_born)
+    call vector4_write_set (p_real, u, testflag = .true.)
+    write (u, "(A)")
+    write (u, "(A)") "* Test output end: phs_fks_generator_1"   
+    
+  end subroutine phs_fks_generator_1
+
+  subroutine phs_fks_generator_2 (u)
+    integer, intent(in) :: u
+    type(phs_fks_generator_t) :: generator
+    type(vector4_t), dimension(:), allocatable :: p_born
+    type(vector4_t), dimension(:), allocatable :: p_real
+    integer :: emitter
+    real(default) :: x1, x2, x3
+    real(default), parameter :: sqrts_hadronic = 250.0_default
+    write (u, "(A)") "* Test output: phs_fks_generator_1"
+    write (u, "(A)") "* Purpose: Create massless ISR phase space"
+    write (u, "(A)") 
+    
+       
+    allocate (p_born (4))
+    p_born(1)%p(0) = 114.661_default
+    p_born(1)%p(1:2) = 0.0_default
+    p_born(1)%p(3) = 114.661_default
+    p_born(2)%p(0) = 121.784_default
+    p_born(2)%p(1:2) = 0.0_default
+    p_born(2)%p(3) = -121.784_default
+    p_born(3)%p(0) = 115.148_default
+    p_born(3)%p(1) = -46.250_default
+    p_born(3)%p(2) = -37.711_default
+    p_born(3)%p(3) = 98.478_default
+    p_born(4)%p(0) = 121.296_default
+    p_born(4)%p(1:2) = -p_born(3)%p(1:2)
+    p_born(4)%p(3) = -105.601_default
+
+    allocate (generator%emitters (2))
+    allocate (generator%isr_kinematics)
+    generator%emitters(1) = 1; generator%emitters(2) = 2 
+    call generator%set_beam_energy (sqrts_hadronic)
+    call generator%set_isr_kinematics (p_born)
+
+    write (u, "(A)") "* Use four-particle phase space containing: "
+    call vector4_write_set (p_born, u, testflag = .true.)
+    write (u, "(A)") "***********************"
+    write (u, "(A)") 
+    
+    x1=0.5_default; x2=0.25_default; x3=0.65_default
+    write (u, "(A)" ) "* Use random numbers: "
+    write (u, "(A,F3.2,A,F3.2,A,F3.2)") "x1: ", x1, "x2: ", x2, "x3: ", x3
+    allocate (generator%real_kinematics)
+    associate (rad_var => generator%real_kinematics)
+       allocate (rad_var%xi_max(4), rad_var%y(4))
+       allocate (rad_var%p_born(4), rad_var%p_real(5))
+       allocate (rad_var%jac(4))
+       allocate (rad_var%jac_rand(4), rad_var%y_soft(4))
+    end associate 
+    allocate (generator%m2 (2))
+    generator%m2(1) = 0._default; generator%m2(2) = 0._default
+    allocate (generator%is_massive (4))
+    generator%is_massive = .false.
+    call generator%generate_radiation_variables ([x1,x2,x3], p_born)
+    write (u, "(A)")  &
+         "* With these, the following radiation variables have been produced:"
+    associate (rad_var => generator%real_kinematics)
+      write (u, "(A,F3.2)") "xi_tilde: ", rad_var%xi_tilde
+      write (u, "(A,F3.2)") "y: " , rad_var%y(1)
+      write (u, "(A,F3.2)") "phi: ", rad_var%phi
+    end associate
+    write (u, "(A)") "Initial-state momentum fractions: "
+    associate (xb => generator%isr_kinematics%x)
+       write (u, "(A,F3.2)") "x_born_plus: ", xb(1)
+       write (u, "(A,F3.2)") "x_born_minus: ", xb(2)
+    end associate
+    call write_separator (u)
+    write (u, "(A)") "Produce real momenta: "
+    emitter = 1
+    write (u, "(A,I1)") "emitter: ", emitter
+    call generator%generate_isr (p_born, p_real)
+    call vector4_write_set (p_real, u, testflag = .true.)
+    call write_separator (u)
+    write (u, "(A)")
+    write (u, "(A)") "* Test output end: phs_fks_generator_2"   
+    
+  end subroutine phs_fks_generator_2
+
 
 end module phs_fks
 

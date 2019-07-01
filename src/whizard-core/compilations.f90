@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -281,6 +281,7 @@ contains
     write (u, "(A)") "LDFLAGS_STATIC = " // char (os_data%ldflags_static)   
     write (u, "(A)") "LDFLAGS_HEPMC = " // char (os_data%ldflags_hepmc)
     write (u, "(A)") "LDFLAGS_HOPPET = " // char (os_data%ldflags_hoppet)    
+    write (u, "(A)") "LDFLAGS_LOOPTOOLS = " // char (os_data%ldflags_looptools)
     write (u, "(A)") "LDWHIZARD = " // char (os_data%whizard_ldflags)
     write (u, "(A)") ""
     write (u, "(A)") "# Libtool"
@@ -313,7 +314,7 @@ contains
     write (u, "(A)") TAB // "$(LINK) $(FC) -static-libtool-libs $(FCFLAGS) \"
     write (u, "(A)") TAB // "   $(LDWHIZARD) $(LDFLAGS) \" 
     write (u, "(A)") TAB // "   -o $(EXE) $^ \"
-    write (u, "(A)") TAB // "   $(LDFLAGS_HEPMC) $(LDFLAGS_HOPPET) \"
+    write (u, "(A)") TAB // "   $(LDFLAGS_HEPMC) $(LDFLAGS_HOPPET) $(LDFLAGS_LOOPTOOLS) \"
     write (u, "(A)") TAB // "   $(LDFLAGS_STATIC)" // char (ext_tag)
     write (u, "(A)") ""
     write (u, "(A)") "# Main targets"
@@ -523,6 +524,7 @@ end subroutine compilations_test
       os_data%ldflags_static = "my-ldflags-static"
       os_data%ldflags_hepmc = "my-ldflags-hepmc"
       os_data%ldflags_hoppet = "my-ldflags-hoppet"      
+      os_data%ldflags_looptools = "my-ldflags-looptools"
       os_data%whizard_ldflags = "my-ldwhizard"
       os_data%whizard_libtool = "my-libtool"
     end associate
@@ -643,8 +645,6 @@ end subroutine compilations_static_test
     integer, intent(in) :: u
     type(string_t) :: libname, procname, exename
     type(rt_data_t), target :: global
-    type(compilation_item_t) :: item
-    type(compilation_t) :: compilation
     logical :: exist
     integer :: u_file
 

@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -56,7 +56,7 @@ module virtual
     real(default) :: sqme_cc
     real(default) :: sqme_virt
     real(default), dimension(:,:), allocatable :: gamma_0, gamma_p, c_flv
-    real(default) :: ren_scale2
+    real(default) :: ren_scale2, fac_scale
     integer, dimension(:), allocatable :: n_is_neutrinos
     integer :: nlegs, nflv
     logical :: bad_point
@@ -65,6 +65,7 @@ module virtual
     procedure :: init => virtual_init
     procedure :: init_constants => virtual_init_constants
     procedure :: set_ren_scale => virtual_set_ren_scale
+    procedure :: set_fac_scale => virtual_set_fac_scale
     procedure :: evaluate => virtual_evaluate
     procedure :: compute_vfin_test => virtual_compute_vfin_test
     procedure :: set_vfin => virtual_set_vfin
@@ -79,9 +80,7 @@ contains
  subroutine virtual_init (object, flv_born)
     class(virtual_t), intent(inout) :: object
     integer, intent(in), dimension(:,:) :: flv_born
-    integer :: nlegs, nflv
     integer :: i_flv
-    type(flavor_t) :: flv
     object%nlegs = size (flv_born, 1); object%nflv = size (flv_born, 2)
     allocate (object%I (object%nlegs, object%nlegs))
     allocate (object%gamma_0 (object%nlegs, object%nflv), &
@@ -139,6 +138,17 @@ contains
     end if
   end subroutine virtual_set_ren_scale
   
+  subroutine virtual_set_fac_scale (object, p, fac_scale)
+    class(virtual_t), intent(inout) :: object
+    type(vector4_t), dimension(:), intent(in) :: p
+    real(default), optional :: fac_scale
+    if (present (fac_scale)) then
+       object%fac_scale = fac_scale
+    else
+       object%fac_scale = (p(1)+p(2))**1
+    end if
+  end subroutine virtual_set_fac_scale
+
   subroutine virtual_evaluate &
        (object, reg_data, i_flv, alpha_s, p_born, born, b_ij)
     class(virtual_t), intent(inout) :: object
@@ -149,7 +159,6 @@ contains
     real(default), intent(in) :: born
     real(default), intent(in), dimension(:,:,:), allocatable :: b_ij
     integer :: i, j, alr
-    integer :: nlegs
     real(default) :: BI
     if (object%bad_point) then
        object%sqme_virt = 0
@@ -223,17 +232,16 @@ contains
     real(default) :: s1, s2, s3, s4
     integer :: i
     sqrts = sqrt ((p_born(1)+p_born(2))**2)
-    !!! ---- NOTE: Implementation only works for lepton collisions. 
-    !!!            This implies that both the summand containing log(s/q**2) 
-    !!!            and (γ_fp + γ…vfm) vanish. 
-    !!!            Also, s = (p_born(1)+p_born(2))**2
     object%Q = 0
-    do i = 1, object%nlegs
+    do i = 1, 2
+       object%Q = object%Q - object%gamma_0(i, i_flv) * 2*log(object%fac_scale/sqrts)
+    end do
+    do i = 3, object%nlegs
        if (.not. massive (i)) then
           s1 = object%gamma_p(i, i_flv)
           E = vector4_get_component (p_born(i), 0)
-          s2 = log(sqrts**2/object%ren_scale2)*&
-               (object%gamma_0(i, i_flv)-2 * object%c_flv(i, i_flv) * log(2*E/sqrts))
+          s2 = log(sqrts**2/object%ren_scale2)* &
+               (object%gamma_0(i, i_flv) - 2*object%c_flv(i, i_flv)*log(2*E/sqrts))
           s3 = 2*log(2*E/sqrts)**2*object%c_flv(i, i_flv)
           s4 = 2*log(2*E/sqrts)*object%gamma_0(i, i_flv)
           object%Q = object%Q + s1 - s2 + s3 - s4
@@ -269,7 +277,6 @@ contains
     real(default) :: I
     real(default) :: Ei, Ej
     real(default) :: pij, Eij
-    real(default) :: s
     real(default) :: s1, s2, s3, s4, s5
     real(default) :: arglog
     real(default), parameter :: tiny_value = epsilon(1.0)
@@ -284,7 +291,7 @@ contains
     s2 = log(somu2)*log(pij/(2*Eij))
     s3 = Li2 (pij / (2*Eij))
     s4 = 0.5*log (pij / (2*Eij))**2
-    arglog = 1 - pij/(2*Eij)
+    arglog = 1._default - pij/(2*Eij)
     if (arglog > tiny_value) then
       s5 = log(arglog) * log(pij / (2*Eij))
     else
@@ -333,7 +340,7 @@ contains
 
     pp = p/energy(p); kp = k/energy(k) 
   
-    beta = sqrt (1-pp*kp)
+    beta = sqrt (1-kp*kp)
     I = -2*(log((1-beta)/(1+beta))**2/4 + log((pp*kp)/(1+beta))*log((pp*kp)/(1-beta)) &
         + Li2(1-(pp*kp)/(1+beta)) + Li2(1-(pp*kp)/(1-beta)))
   end function I_0m_eps

@@ -1,8 +1,7 @@
 # $Id: pythia6_2.sin 4937 2013-12-05 09:29:17Z jr_reuter $
 # SINDARIN input for WHIZARD self-test
-# Process g g -> u ubar
 
-model = "SM"
+model = SM
 
 ?logging = true
 ?openmp_logging = false
@@ -12,31 +11,47 @@ model = "SM"
 
 me = 0
 $method = "omega"
-process pythia6_2_p1 = "e-", "e+" => "u", "ubar"
-
-seed = 0
+process pythia6_2_p1 = "e-", "e+" => "Z", "H"
+process pythia6_2_p2 = "Z" => "e-", "e+"
+process pythia6_2_p3 = "H" => "b", "bbar"
 
 compile ()
 
+seed = 0
 $phs_method = "wood"
 $integration_method = "vamp"
-
-iterations = 3:1000:"g", 3:1000 
 sqrts = 1000
-
-cuts = all Pt > 100 [u:ubar]
 
 !!! Tests should be run single-threaded 
 openmp_num_threads = 1
 
-integrate (pythia6_2_p1)
+integrate (pythia6_2_p1) { iterations=1:1000 }
+
+error_threshold = 1e-8
 
 n_events = 1
+?rebuild_events = true
+sample_format = debug
+?debug_decay = false
+?debug_process = false
+?debug_verbose = false
+?sample_pacify = true
+
 ?allow_shower = true
 ?ps_fsr_active = true
-?ps_use_PYTHIA_shower = true
-?hadronization_active = true
-$sample = "pythia6_2"
-sample_format = ascii
-?sample_pacify = true
+$shower_method = "PYTHIA6"
+
+$sample = "pythia6_2a"
 simulate (pythia6_2_p1)
+
+$sample = "pythia6_2b"
+simulate (pythia6_2_p1) {?hadronization_active = true}
+
+unstable Z (pythia6_2_p2)
+unstable H (pythia6_2_p3)
+
+$sample = "pythia6_2c"
+simulate (pythia6_2_p1)
+
+$sample = "pythia6_2d"
+simulate (pythia6_2_p1) {?hadronization_active = true}

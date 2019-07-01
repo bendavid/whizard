@@ -67,6 +67,30 @@ REF_OUTPUT_FILES_BASE = \
     ref-output/cputime_2.ref \
     ref-output/lexer_1.ref \
     ref-output/sorting_1.ref \
+    ref-output/codes_1.ref \
+    ref-output/object_base_1.ref \
+    ref-output/object_base_2.ref \
+    ref-output/object_base_3.ref \
+    ref-output/object_base_4.ref \
+    ref-output/object_base_5.ref \
+    ref-output/object_base_6.ref \
+    ref-output/object_base_7.ref \
+    ref-output/object_base_8.ref \
+    ref-output/object_builder_1.ref \
+    ref-output/object_logical_1.ref \
+    ref-output/object_logical_2.ref \
+    ref-output/object_logical_3.ref \
+    ref-output/object_logical_4.ref \
+    ref-output/object_logical_5.ref \
+    ref-output/object_logical_6.ref \
+    ref-output/object_logical_7.ref \
+    ref-output/object_logical_8.ref \
+    ref-output/object_logical_9.ref \
+    ref-output/object_logical_10.ref \
+    ref-output/object_integer_1.ref \
+    ref-output/sindarin_parser_1.ref \
+    ref-output/sindarin_parser_2.ref \
+    ref-output/sindarin_parser_3.ref \
     ref-output/state_matrix_1.ref \
     ref-output/state_matrix_2.ref \
     ref-output/state_matrix_3.ref \
@@ -96,6 +120,7 @@ REF_OUTPUT_FILES_BASE = \
     ref-output/auto_components_1.ref \
     ref-output/auto_components_2.ref \
     ref-output/auto_components_3.ref \
+    ref-output/radiation_generator_1.ref \
     ref-output/particles_1.ref \
     ref-output/particles_2.ref \
     ref-output/particles_3.ref \
@@ -103,6 +128,7 @@ REF_OUTPUT_FILES_BASE = \
     ref-output/particles_5.ref \
     ref-output/particles_6.ref \
     ref-output/particles_7.ref \
+    ref-output/particles_8.ref \
     ref-output/beam_structures_1.ref \
     ref-output/beam_structures_2.ref \
     ref-output/beam_structures_3.ref \
@@ -174,6 +200,12 @@ REF_OUTPUT_FILES_BASE = \
     ref-output/sf_beam_events_3.ref \
     ref-output/sf_escan_1.ref \
     ref-output/sf_escan_2.ref \
+    ref-output/grids_1.ref \
+    ref-output/grids_2.ref \
+    ref-output/grids_3.ref \
+    ref-output/grids_4.ref \
+    ref-output/grids_5.ref \
+    ref-output/solver_1.ref \
     ref-output/phs_base_1.ref \
     ref-output/phs_base_2.ref \
     ref-output/phs_base_3.ref \
@@ -191,6 +223,7 @@ REF_OUTPUT_FILES_BASE = \
     ref-output/phs_wood_5.ref \
     ref-output/phs_wood_6.ref \
     ref-output/phs_wood_vis_1.ref \
+    ref-output/powheg_1.ref \
     ref-output/rng_base_1.ref \
     ref-output/rng_base_2.ref \
     ref-output/rng_tao_1.ref \
@@ -512,6 +545,7 @@ REF_OUTPUT_FILES_BASE = \
     ref-output/lhef_6.ref \
     ref-output/lhef_9.ref \
     ref-output/lhef_10.ref \
+    ref-output/lhef_11.ref \
     ref-output/select_1.ref \
     ref-output/select_2.ref \
     ref-output/stdhep_1.ref \
@@ -543,9 +577,12 @@ REF_OUTPUT_FILES_BASE = \
     ref-output/show_4.ref \
     ref-output/multi_comp_4.ref \
     ref-output/flvsum_1.ref \
+    ref-output/decay_err_1.ref \
+    ref-output/decay_err_2.ref \
     ref-output/circe1_2.ref \
     ref-output/circe1_3.ref \
     ref-output/circe1_6.ref \
+    ref-output/circe1_10.ref \
     ref-output/circe1_errors_1.ref \
     ref-output/circe2_1.ref \
     ref-output/circe2_2.ref \
@@ -573,6 +610,8 @@ REF_OUTPUT_FILES_DOUBLE = \
     ref-output-double/multi_comp_1.ref \
     ref-output-double/multi_comp_2.ref \
     ref-output-double/multi_comp_3.ref \
+    ref-output-double/phs_fks_generator_1.ref \
+    ref-output-double/phs_fks_generator_2.ref \
     ref-output-double/pdf_builtin.ref \
     ref-output-double/lhapdf5.ref \
     ref-output-double/lhapdf6.ref \
@@ -590,6 +629,9 @@ REF_OUTPUT_FILES_DOUBLE = \
     ref-output-double/circe1_photons_3.ref \
     ref-output-double/circe1_photons_4.ref \
     ref-output-double/circe1_photons_5.ref \
+    ref-output-double/pythia6_3.ref \
+    ref-output-double/pythia6_4.ref \
+    ref-output-double/mlm_matching_isr.ref \
     ref-output-double/ewa_1.ref \
     ref-output-double/ewa_2.ref \
     ref-output-double/ewa_3.ref \
@@ -614,6 +656,8 @@ REF_OUTPUT_FILES_EXT = \
     ref-output-ext/multi_comp_1.ref \
     ref-output-ext/multi_comp_2.ref \
     ref-output-ext/multi_comp_3.ref \
+    ref-output-ext/phs_fks_generator_1.ref \
+    ref-output-ext/phs_fks_generator_2.ref \
     ref-output-ext/pdf_builtin.ref \
     ref-output-ext/lhapdf5.ref \
     ref-output-ext/lhapdf6.ref \
@@ -631,6 +675,9 @@ REF_OUTPUT_FILES_EXT = \
     ref-output-ext/circe1_photons_3.ref \
     ref-output-ext/circe1_photons_4.ref \
     ref-output-ext/circe1_photons_5.ref \
+    ref-output-ext/pythia6_3.ref \
+    ref-output-ext/pythia6_4.ref \
+    ref-output-ext/mlm_matching_isr.ref \
     ref-output-ext/ewa_1.ref \
     ref-output-ext/ewa_2.ref \
     ref-output-ext/ewa_3.ref \
@@ -659,6 +706,12 @@ UNIT_TESTS_SIN = \
     beams.sin \
     polarizations.sin \
     sorting.sin \
+    codes.sin \
+    object_base.sin \
+    object_builder.sin \
+    object_logical.sin \
+    object_integer.sin \
+    sindarin_parser.sin \
     interactions.sin \
     state_matrices.sin \
     md5.sin \
@@ -673,6 +726,7 @@ UNIT_TESTS_SIN = \
     sm_qcd.sin \
     models.sin \
     auto_components.sin \
+    radiation_generator.sin \
     particles.sin \
     beam_structures.sin \
     sf_aux.sin \
@@ -688,11 +742,15 @@ UNIT_TESTS_SIN = \
     sf_circe2.sin \
     sf_beam_events.sin \
     sf_escan.sin \
+    grids.sin \
+    solver.sin \
     phs_base.sin \
     phs_single.sin \
     phs_forests.sin \
     phs_wood.sin \
     phs_wood_vis.sin \
+    phs_fks_generator.sin \
+    powheg.sin \
     rng_base.sin \
     rng_tao.sin \
     selectors.sin \
@@ -824,13 +882,17 @@ MISC_TESTS_SIN = \
     lhef_8.sin \
     lhef_9.sin \
     lhef_10.sin \
+    lhef_11.sin \
     select_1.sin \
     select_2.sin \
     parton_shower_1.sin \
     parton_shower_2.sin \
     pythia6_1.sin \
     pythia6_2.sin \
+    pythia6_3.sin \
+    pythia6_4.sin \
     mlm_matching_fsr.sin \
+    mlm_matching_isr.sin \
     mlm_pythia6_isr.sin \
     hepmc.sin \
     hepmc_1.sin \
@@ -878,6 +940,8 @@ MISC_TESTS_SIN = \
     multi_comp_3.sin \
     multi_comp_4.sin \
     flvsum_1.sin \
+    decay_err_1.sin \
+    decay_err_2.sin \
     pdf_builtin.sin \
     lhapdf5.sin \
     lhapdf6.sin \
@@ -893,6 +957,7 @@ MISC_TESTS_SIN = \
     circe1_7.sin \
     circe1_8.sin \
     circe1_9.sin \
+    circe1_10.sin \
     circe1_photons_1.sin \
     circe1_photons_2.sin \
     circe1_photons_3.sin \

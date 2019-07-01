@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -35,7 +35,7 @@ module sorting
   use kinds, only: default
   use unit_tests
   use diagnostics
-  
+
   implicit none
   private
 
@@ -184,7 +184,7 @@ contains
     end do
     res = tmp
   end subroutine merge_int
-    
+
   subroutine merge_real (res, src1, src2, val)
     integer, dimension(:), intent(out) :: res
     integer, dimension(:), intent(in) :: src1, src2
@@ -238,7 +238,7 @@ contains
     end do
     res = tmp
   end subroutine merge_int_abs
-    
+
   function concat_int (val1, val2) result (val12)
     integer, dimension(:), intent(in) :: val1, val2
     integer, dimension(size(val1)+size(val2)) :: val12
@@ -289,7 +289,7 @@ contains
          0.5540, 0.9778, 0.9019, 0.6579, 0.]
     harvest_r(:,10) = [0.7289, 0.4025, 0.9286, 0.1478, 0.6745, &
          0.7696, 0.3393, 0.1158, 0.6144, 0.8206]
-    
+
     harvest_i(:, 1) = [18, 0, 0, 0, 0, 0, 0, 0, 0, 0]
     harvest_i(:, 2) = [14, 9, 0, 0, 0, 0, 0, 0, 0, 0]
     harvest_i(:, 3) = [ 7, 8,11, 0, 0, 0, 0, 0, 0, 0]
@@ -300,7 +300,7 @@ contains
     harvest_i(:, 8) = [ 5, 1, 2,10, 7, 0,15,12, 0, 0]
     harvest_i(:, 9) = [15,19, 2, 6,11, 0, 2, 4, 2, 0]
     harvest_i(:,10) = [ 1, 4, 8, 4,11, 0, 8, 7,19,13]
-    
+
     harvest_a(:, 1) = [-6,  0,  0,  0,  0,  0,  0,  0,  0,  0]
     harvest_a(:, 2) = [-8, -9,  0,  0,  0,  0,  0,  0,  0,  0]
     harvest_a(:, 3) = [ 4, -3,  3,  0,  0,  0,  0,  0,  0,  0]
@@ -315,10 +315,10 @@ contains
 
     write (u, "(A)")  "* Test output: Sorting"
     write (u, "(A)")  "*   Purpose: test sorting routines"
-    write (u, "(A)")      
-    
+    write (u, "(A)")
+
     write (u, "(A)")  "* Sorting real values:"
-    
+
     do i = 1, NMAX
        write (u, "(A)")
        rval(:i) = harvest_r(:i,i)
@@ -330,10 +330,10 @@ contains
              write (u, "(A)") "*** Sorting failure. ***"
        end do
     end do
-    
+
     write (u, "(A)")
     write (u, "(A)") "* Sorting integer values:"
-    
+
     do i = 1, NMAX
        write (u, "(A)")
        ival(:i) = harvest_i(:i,i)
@@ -345,10 +345,10 @@ contains
              write (u, "(A)")  "*** Sorting failure. ***"
        end do
     end do
-    
+
     write (u, "(A)")
     write (u, "(A)") "* Sorting integer values by absolute value:"
-    
+
     do i = 1, NMAX
        write (u, "(A)")
        ival(:i) = harvest_a(:i,i)
@@ -361,9 +361,9 @@ contains
              write (u, "(A)")  "*** Sorting failure. ***"
        end do
     end do
-    
+
     write (u, "(A)")
-    write (u, "(A)")  "* Test output end: sorting_1"    
+    write (u, "(A)")  "* Test output end: sorting_1"
 
   end subroutine sorting_1
 

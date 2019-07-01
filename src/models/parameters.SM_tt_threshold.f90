@@ -42,6 +42,9 @@ module parameters_sm_tt_threshold
        gzww, gwww, ghww, ghhww, ghzz, ghhzz, &
        ghbb, ghtt, ghcc, ghtautau, gh3, gh4, ghmm, & 
        iqw, igzww, igwww, gw4, gzzww, gazww, gaaww
+  complex(default), public :: &
+       gccq11 = 0, gccq12 = 0, gccq13 = 0, gccq21 = 0, &
+       gccq22 = 0, gccq23 = 0, gccq31 = 0, gccq32 = 0, gccq33 = 0
   real(default), public :: vev
   complex(default), dimension(2), public :: &
        gncneu, gnclep, gncup, gncdwn
@@ -52,7 +55,7 @@ module parameters_sm_tt_threshold
 contains
 
   subroutine import_from_whizard (par_array)
-    real(default), dimension(30), intent(in) :: par_array
+    real(default), dimension(35), intent(in) :: par_array
     type :: parameter_set
        real(default) :: mZ
        real(default) :: mW
@@ -74,16 +77,21 @@ contains
        real(default) :: xipm
        real(default) :: alphaemi
        real(default) :: m1s
-       real(default) :: wtop
+       real(default) :: Vtb
+       real(default) :: wt_inv
        real(default) :: nloop
        real(default) :: sh
        real(default) :: sf
+       real(default) :: FF
+       real(default) :: v1
+       real(default) :: v2
        real(default) :: test
        real(default) :: ee
        real(default) :: cw
        real(default) :: sw
        real(default) :: v
        real(default) :: mtpole
+       real(default) :: wtop
     end type parameter_set
     type(parameter_set) :: par
     !!! This corresponds to 1/alpha = 137.03598949333
@@ -110,16 +118,21 @@ contains
     par%xipm   = par_array(18)
     par%alphaemi = par_array(19)
     par%m1s    = par_array(20)
-    par%wtop   = par_array(21)
-    par%nloop  = par_array(22)
-    par%sh     = par_array(23)
-    par%sf     = par_array(24)
-    par%test   = par_array(25)
-    par%ee     = par_array(26)
-    par%cw     = par_array(27)
-    par%sw     = par_array(28)
-    par%v      = par_array(29)
-    par%mtpole = par_array(30)
+    par%Vtb    = par_array(21)
+    par%wt_inv = par_array(22)
+    par%nloop  = par_array(23)
+    par%sh     = par_array(24)
+    par%sf     = par_array(25)
+    par%FF     = par_array(26)
+    par%v1     = par_array(27)
+    par%v2     = par_array(28)
+    par%test   = par_array(29)
+    par%ee     = par_array(30)
+    par%cw     = par_array(31)
+    par%sw     = par_array(32)
+    par%v      = par_array(33)
+    par%mtpole = par_array(34)
+    par%wtop   = par_array(35)
     mass(1:27) = 0
     width(1:27) = 0
     mass(3) = par%ms
@@ -136,10 +149,10 @@ contains
     width(24) = par%wW
     mass(25) = par%mH
     width(25) = par%wH
-    mass(26) =  par%xi0 * mass(23)
-    width(26) =  0
-    mass(27) =  par%xipm * mass(24)
-    width(27) =  0
+    mass(26) = par%xi0 * mass(23)
+    width(26) = 0
+    mass(27) = par%xipm * mass(24)
+    width(27) = 0
     vev = par%v
     e = par%ee
     sinthw = par%sw
@@ -151,6 +164,15 @@ contains
     qedwn = - 1.0_default / 3.0_default
     g = e / sinthw
     gcc = - g / 2 / sqrt (2.0_default)
+    gccq11 = gcc * 1.0_default
+    gccq12 = 0.0_default
+    gccq13 = 0.0_default
+    gccq21 = 0.0_default
+    gccq22 = gcc * 1.0_default
+    gccq23 = 0.0_default
+    gccq31 = 0.0_default
+    gccq32 = 0.0_default
+    gccq33 = gcc * par%Vtb
     gncneu(1) = - g / 2 / costhw * ( + 0.5_default)
     gnclep(1) = - g / 2 / costhw * ( - 0.5_default - 2 * qelep * sin2thw)
     gncup(1)  = - g / 2 / costhw * ( + 0.5_default - 2 * qeup  * sin2thw)
@@ -186,27 +208,28 @@ contains
     !!! Color flow basis, divide by sqrt(2)
     gs = sqrt(2.0_default*PI*par%alphas)
     igs = cmplx (0.0_default, 1.0_default, kind=default) * gs
-    call ttv_formfactors_init (mass(6), par%m1s, width(6), par%alphaemi, &
-       par%sw, par%alphas, par%mZ, par%mW, mass(5), par%sh, par%sf, par%nloop)
-    call ttv_formfactors_init_threshold_grid (par%test)
+    call ttv_formfactors_init_parameters (mass(6), width(6), par%m1s, par%Vtb, &
+       par%wt_inv, par%alphaemi, par%sw, par%alphas, par%mZ, par%mW, mass(5), &
+       par%sh, par%sf, par%nloop, par%FF, par%v1, par%v2)
+    call ttv_formfactors_init_threshold_grids (par%test)
   end subroutine import_from_whizard
 
   subroutine model_update_alpha_s (alpha_s)
     real(default), intent(in) :: alpha_s
     gs = sqrt(2.0_default*PI*alpha_s)
-    igs = cmplx (0.0_default, 1.0_default, kind=default) * gs     
+    igs = cmplx (0.0_default, 1.0_default, kind=default) * gs
   end subroutine model_update_alpha_s
 
   pure function ttv_formfactor (p, k, i) result (c)
     complex(default) :: c
     type(momentum), intent(in) :: p, k
     integer, intent(in) :: i
-    real(default) :: p2, k2, q2
-    p2 = p*p
-    k2 = k*k
-    q2 = (k+p)*(k+p)
-    !!! lim_(alphas->0) FF = 0
-    c = ttv_formfactors_FF_threshold (p2, k2, q2, i)
+    type(phase_space_point_t) :: ps
+    call ps%init (p*p, k*k, (k+p)*(k+p), mass(6))
+    c = ttv_formfactors_FF (ps, i)
+    !!! form factors include tree level: FF = 1 + O(alphas)
+    !!! subtract tree level contribution ~ 1 already included in SM couplings
+    c = c - 1.0_default
   end function ttv_formfactor
 
   pure function va_ilc_tta (p, k, i) result (c)

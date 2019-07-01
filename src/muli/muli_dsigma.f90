@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -37,6 +37,7 @@ module muli_dsigma
   use muli_interactions
   use muli_base
   use muli_cuba
+  use muli_trapezium
   use muli_aq
 
   implicit none
@@ -72,7 +73,7 @@ contains
     integer(dik), intent(out) :: status
     class(ser_class_t), pointer :: ser
     call marker%mark_begin ("muli_dsigma_t")
-    call aq_write_to_marker (this, marker, status)
+    call this%basic_write_to_marker (marker, status)
     call this%cuba_int%serialize (marker, "cuba_int")
     call marker%mark_end ("muli_dsigma_t")
   end subroutine muli_dsigma_write_to_marker
@@ -82,7 +83,7 @@ contains
     class(marker_t), intent(inout) :: marker
     integer(dik), intent(out) :: status
     call marker%pick_begin ("muli_dsigma_t", status=status)
-    call aq_read_from_marker (this, marker, status)
+    call this%basic_read_from_marker (marker, status)
     call this%cuba_int%deserialize ("cuba_int", marker)
     call marker%pick_end ("muli_dsigma_t", status)
   end subroutine muli_dsigma_read_from_marker
@@ -93,8 +94,8 @@ contains
     integer, intent(in) :: unit
     integer(dik), intent(in) :: parents, components, peers
     integer :: ite
-    if (parents > 0)  &
-         call aq_print_to_unit (this, unit, parents-1, components, peers)
+    if (parents > 0)  call this%basic_print_to_unit &
+         (unit, parents-1, components, peers)
     write (unit, "(A)")  "Components of muli_dsigma_t"
     if (components > 0) then
        write (unit, "(A)")  "Printing components of cuba_int:"

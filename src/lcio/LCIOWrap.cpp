@@ -337,6 +337,18 @@ extern "C" MCParticleImpl* lcio_particle_set_spin
   mcp->setSpin( spin );
 }
 
+extern "C" MCParticleImpl* lcio_particle_set_time 
+(MCParticleImpl* mcp, const double t) {
+  mcp->setTime( t );
+}
+
+extern "C" MCParticleImpl* lcio_particle_set_vertex
+(MCParticleImpl* mcp, const double vx, const double vy, const double vz) {
+  double vtx[3] = { vx, vy, vz };
+  mcp->setVertex( vtx );
+}
+
+
 extern "C" void lcio_particle_add_parent
 ( MCParticleImpl* daughter , MCParticleImpl* parent) {
   daughter->addParent( parent );
@@ -385,6 +397,22 @@ extern "C" int lcio_n_parents ( MCParticleImpl* mcp) {
 extern "C" int lcio_n_daughters ( MCParticleImpl* mcp) {
   return mcp->getDaughters().size();
 }  
+
+extern "C" double lcio_vtx_x (MCParticleImpl* mcp) {
+  mcp->getVertex()[0];
+}
+
+extern "C" double lcio_vtx_y (MCParticleImpl* mcp) {
+  mcp->getVertex()[1];
+}
+
+extern "C" double lcio_vtx_z (MCParticleImpl* mcp) {
+  mcp->getVertex()[2];
+}
+
+extern "C" double lcio_prt_time (MCParticleImpl* mcp) {
+  mcp->getTime();
+}
 
 //////////////////////////////////////////////////////////////////////////
 // LCWriter functions

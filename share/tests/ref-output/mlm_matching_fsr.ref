@@ -15,10 +15,11 @@
 | Process library 'mlm_matching_fsr_lib': loading
 | Process library 'mlm_matching_fsr_lib': ... success.
 seed = 0
+SM.me =>  1.0000000E+00
 sqrts =  9.1000000E+01
 ?allow_shower = true
 ?ps_fsr_active = true
-?ps_use_PYTHIA_shower = false
+$shower_method = "WHIZARD"
 ps_max_n_flavors = 5
 ps_mass_cutoff =  1.0000000E+00
 ps_fsr_lambda =  2.9000000E-01
@@ -36,8 +37,8 @@ openmp_num_threads = 1
 | ------------------------------------------------------------------------
 | Beam structure: e-, e+
 | Beam data (collision):
-|   e-  (mass = 5.1099700E-04 GeV)
-|   e+  (mass = 5.1099700E-04 GeV)
+|   e-  (mass = 1.0000000E+00 GeV)
+|   e+  (mass = 1.0000000E+00 GeV)
 |   sqrts = 9.100000000000E+01 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
@@ -56,10 +57,10 @@ openmp_num_threads = 1
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1       4608     7.019E+06   1.09E+03    0.02    0.01    58.5
-   2       4608     7.018E+06   1.09E+03    0.02    0.01    58.5
+   1       4608     7.017E+06   1.09E+03    0.02    0.01    58.5
+   2       4608     7.017E+06   1.09E+03    0.02    0.01    58.5
 |-----------------------------------------------------------------------------|
-   2       9216     7.019E+06   7.72E+02    0.01    0.01    58.5    0.07   2
+   2       9216     7.017E+06   7.72E+02    0.01    0.01    58.5    0.07   2
 |=============================================================================|
 n_events = 1
 ?rebuild_events = true
@@ -68,25 +69,25 @@ $sample = "mlm_matching_fsr_1"
 | Starting simulation for process 'mlm_matching_fsr_eeuu'
 | Simulate: using integration grids from file 'mlm_matching_fsr_eeuu_m1.vg'
 | Simulate: activating parton shower
+| Shower: Using WHIZARD internal shower
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1
 | Simulation: requested number of events = 1
-|             corr. to luminosity [fb-1] =   1.4248E-07
+|             corr. to luminosity [fb-1] =   1.4251E-07
 | Events: writing to ASCII file 'mlm_matching_fsr_1.evt'
 | Events: writing to raw file 'mlm_matching_fsr_1.evx'
 | Events: generating 1 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
-| Using WHIZARD's internal showering
 |         ... event sample complete.
 | Events: closing ASCII file 'mlm_matching_fsr_1.evt'
 | Events: closing raw file 'mlm_matching_fsr_1.evx'
 mlm_matching_fsr_eeuu:
-   7.0186489E+06 +- 7.72E+02 fb
+   7.0170233E+06 +- 7.72E+02 fb
 SM.ms =>  0.0000000E+00
 SM.mc =>  0.0000000E+00
 sqrts =  9.1000000E+01
 ?ps_fsr_active = true
-?ps_use_PYTHIA_shower = false
+$shower_method = "WHIZARD"
 ps_max_n_flavors = 5
 ps_mass_cutoff =  1.0000000E+00
 ps_fsr_lambda =  2.9000000E-01
@@ -107,8 +108,8 @@ mlm_ETclusminE =  1.0000000E+01
 | ------------------------------------------------------------------------
 | Beam structure: e-, e+
 | Beam data (collision):
-|   e-  (mass = 5.1099700E-04 GeV)
-|   e+  (mass = 5.1099700E-04 GeV)
+|   e-  (mass = 1.0000000E+00 GeV)
+|   e+  (mass = 1.0000000E+00 GeV)
 |   sqrts = 9.100000000000E+01 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
@@ -127,10 +128,10 @@ mlm_ETclusminE =  1.0000000E+01
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1       4608     7.021E+06   1.09E+03    0.02    0.01    58.5
-   2       4608     7.021E+06   1.10E+03    0.02    0.01    58.5
+   1       4608     7.019E+06   1.09E+03    0.02    0.01    58.5
+   2       4608     7.019E+06   1.10E+03    0.02    0.01    58.5
 |-----------------------------------------------------------------------------|
-   2       9216     7.021E+06   7.75E+02    0.01    0.01    58.5    0.00   2
+   2       9216     7.019E+06   7.75E+02    0.01    0.01    58.5    0.00   2
 |=============================================================================|
 n_events = 1
 ?rebuild_events = true
@@ -140,10 +141,11 @@ $sample = "mlm_matching_fsr_2"
 | Simulate: using integration grids from file 'mlm_matching_fsr_eeuu_m1.vg'
 | Simulate: activating parton shower
 | Simulate: applying MLM matching
+| Shower: Using WHIZARD internal shower
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 3
 | Simulation: requested number of events = 1
-|             corr. to luminosity [fb-1] =   1.4244E-07
+|             corr. to luminosity [fb-1] =   1.4247E-07
 | Events: writing to ASCII file 'mlm_matching_fsr_2.evt'
 | Events: writing to raw file 'mlm_matching_fsr_2.evx'
 | Events: generating 1 unweighted, unpolarized events ...
@@ -152,9 +154,9 @@ $sample = "mlm_matching_fsr_2"
 | Events: closing ASCII file 'mlm_matching_fsr_2.evt'
 | Events: closing raw file 'mlm_matching_fsr_2.evx'
 mlm_matching_fsr_eeuu:
-   7.0206667E+06 +- 7.75E+02 fb
+   7.0190407E+06 +- 7.75E+02 fb
 mlm_matching_fsr_eeuu:
-   7.0186489E+06 +- 7.72E+02 fb
+   7.0170233E+06 +- 7.72E+02 fb
 | WHIZARD run finished.
 |=============================================================================|
 Contents of mlm_matching_fsr_1.evt:
@@ -166,50 +168,45 @@ Contents of mlm_matching_fsr_1.evt:
    Helicity handling  = drop
    Keep correlations  = F
 ------------------------------------------------------------------------
-   Squared matrix el. =  1.082902731702E+01
-   Event weight       =  1.000000000000E+00
+   Squared matrix el. =  1.0824188E+01
+   Event weight       =  1.0000000E+00
 ------------------------------------------------------------------------
    Selected MCI group = 1
    Selected term      = 1
    Selected channel   = 1
 ------------------------------------------------------------------------
    Passed selection   = T
-   Reweighting factor =  1.000000000000E+00
+   Reweighting factor =  1.0000000E+00
    Analysis flag      = T
 ========================================================================
  Local variables:
 ------------------------------------------------------------------------
-sqrts* =  9.100000000000E+01
-sqrts_hat* =>  9.100000000000E+01
+sqrts* =  9.1000000E+01
+sqrts_hat* =>  9.1000000E+01
 n_in* => 2
-n_out* => 14
-n_tot* => 16
+n_out* => 9
+n_tot* => 11
 $process_id* => "mlm_matching_fsr_eeuu"
 process_num_id* => [unknown integer]
-sqme* =>  1.082902731702E+01
-sqme_ref* =>  1.082902731702E+01
+sqme* =>  1.0824188E+01
+sqme_ref* =>  1.0824188E+01
 event_index* => 1
-event_weight* =>  1.000000000000E+00
-event_weight_ref* =>  1.000000000000E+00
-event_excess* =>  0.000000000000E+00
+event_weight* =>  1.0000000E+00
+event_weight_ref* =>  1.0000000E+00
+event_excess* =>  0.0000000E+00
 ------------------------------------------------------------------------
  subevent:
- 1 prt(i:11|-4.5500000E+01; 0.0000000E+00, 0.0000000E+00,-4.5500000E+01| 2.6111793E-07| 1)
- 2 prt(i:-11|-4.5500000E+01; 0.0000000E+00, 0.0000000E+00, 4.5500000E+01| 2.6111793E-07| 2)
- 3 prt(o:21| 6.2505042E+00; 5.7058559E+00, 1.2011374E+00, 2.2515063E+00| 0.0000000E+00| 3)
- 4 prt(o:21| 2.8485385E+00;-1.9874094E+00, 1.9947998E+00,-4.3028938E-01| 0.0000000E+00| 4)
- 5 prt(o:21| 1.8552012E+00;-5.3419154E-01, 1.5098711E+00, 9.3632258E-01| 0.0000000E+00| 5)
- 6 prt(o:2| 9.5651337E+00; 8.6933863E+00,-9.0717655E-01, 3.8850802E+00| 0.0000000E+00| 6)
- 7 prt(o:21| 4.0383919E+00; 3.3955173E+00,-8.8999330E-01, 1.9967431E+00| 0.0000000E+00| 7)
- 8 prt(o:21| 4.7324827E+00; 4.1673094E-01,-2.1952235E+00, 4.1717768E+00| 0.0000000E+00| 8)
- 9 prt(o:21| 3.0790108E+00; 4.4512340E-01,-5.8456403E-01, 2.9900598E+00| 0.0000000E+00| 9)
- 10 prt(o:21| 5.3545464E-01; 2.2512716E-01,-1.2086713E-02, 4.8567823E-01| 0.0000000E+00| 10)
- 11 prt(o:-2| 1.7639419E+01;-8.5494382E+00,-6.9513150E-01,-1.5413403E+01| 0.0000000E+00| 11)
- 12 prt(o:21| 1.0456878E+01;-4.1586798E+00,-2.0830063E-01,-9.5920953E+00| 0.0000000E+00| 12)
- 13 prt(o:21| 4.8968515E+00;-3.3940695E+00,-3.8167545E-01,-3.5090982E+00| 0.0000000E+00| 13)
- 14 prt(o:21| 6.7885305E+00;-3.7892055E+00,-4.2923766E-01,-5.6162107E+00| 0.0000000E+00| 14)
- 15 prt(o:21| 1.0072057E+01; 2.4494402E+00, 1.3361422E+00, 9.6778773E+00| 0.0000000E+00| 15)
- 16 prt(o:21| 8.2415461E+00; 1.0818127E+00, 2.6143889E-01, 8.1660525E+00| 0.0000000E+00| 16)
+ 1 prt(i:11|-4.5500000E+01; 0.0000000E+00, 0.0000000E+00,-4.5489010E+01| 1.0000000E+00| 1)
+ 2 prt(i:-11|-4.5500000E+01; 0.0000000E+00, 0.0000000E+00, 4.5489010E+01| 1.0000000E+00| 2)
+ 3 prt(o:21| 1.8487664E+00; 3.6130820E-01, 5.6694401E-02, 1.8122304E+00| 0.0000000E+00| 3)
+ 4 prt(o:21| 1.8372419E+00;-2.3911335E-01,-8.0816973E-01,-1.6325270E+00| 0.0000000E+00| 4)
+ 5 prt(o:2| 8.1080929E-01; 4.3100038E-01,-2.6254624E-01, 6.3460212E-01| 0.0000000E+00| 5)
+ 6 prt(o:-2| 6.7846490E+00;-3.4676744E+00,-3.5553039E-01,-5.8206783E+00| 0.0000000E+00| 6)
+ 7 prt(o:21| 4.6764434E+00; 2.8551340E+00,-5.5334677E-01, 3.6621224E+00| 0.0000000E+00| 7)
+ 8 prt(o:21| 9.6819931E+00;-5.4365869E+00,-7.9966528E-02,-8.0111247E+00| 0.0000000E+00| 8)
+ 9 prt(o:21| 2.7350316E+01;-1.5859421E+01, 3.2408629E+00,-2.2045757E+01| 0.0000000E+00| 9)
+ 10 prt(o:21| 3.3144476E+01; 1.8919814E+01,-1.1096376E+00, 2.7191279E+01| 0.0000000E+00| 10)
+ 11 prt(o:21| 4.8653044E+00; 2.4355389E+00,-1.2836001E-01, 4.2098528E+00| 0.0000000E+00| 11)
 ========================================================================
 Contents of mlm_matching_fsr_2.evt:
 ========================================================================
@@ -220,44 +217,42 @@ Contents of mlm_matching_fsr_2.evt:
    Helicity handling  = drop
    Keep correlations  = F
 ------------------------------------------------------------------------
-   Squared matrix el. =  5.519325951320E+00
-   Event weight       =  1.000000000000E+00
+   Squared matrix el. =  5.5166758E+00
+   Event weight       =  1.0000000E+00
 ------------------------------------------------------------------------
    Selected MCI group = 1
    Selected term      = 1
    Selected channel   = 1
 ------------------------------------------------------------------------
    Passed selection   = T
-   Reweighting factor =  1.000000000000E+00
+   Reweighting factor =  1.0000000E+00
    Analysis flag      = T
 ========================================================================
  Local variables:
 ------------------------------------------------------------------------
-sqrts* =  9.100000000000E+01
-sqrts_hat* =>  9.100000000000E+01
+sqrts* =  9.1000000E+01
+sqrts_hat* =>  9.1000000E+01
 n_in* => 2
-n_out* => 10
-n_tot* => 12
+n_out* => 8
+n_tot* => 10
 $process_id* => "mlm_matching_fsr_eeuu"
 process_num_id* => [unknown integer]
-sqme* =>  5.519325951320E+00
-sqme_ref* =>  5.519325951320E+00
+sqme* =>  5.5166758E+00
+sqme_ref* =>  5.5166758E+00
 event_index* => 1
-event_weight* =>  1.000000000000E+00
-event_weight_ref* =>  1.000000000000E+00
-event_excess* =>  0.000000000000E+00
+event_weight* =>  1.0000000E+00
+event_weight_ref* =>  1.0000000E+00
+event_excess* =>  0.0000000E+00
 ------------------------------------------------------------------------
  subevent:
- 1 prt(i:11|-4.5500000E+01; 0.0000000E+00, 0.0000000E+00,-4.5500000E+01| 2.6111793E-07| 1)
- 2 prt(i:-11|-4.5500000E+01; 0.0000000E+00, 0.0000000E+00, 4.5500000E+01| 2.6111793E-07| 2)
- 3 prt(o:2| 1.5933869E+01; 5.4041324E+00,-1.4560144E+01,-3.5617055E+00| 0.0000000E+00| 3)
- 4 prt(o:21| 5.5682191E+00; 2.7855850E+00,-4.6144581E+00,-1.3972677E+00| 0.0000000E+00| 4)
- 5 prt(o:21| 9.0574267E+00; 3.2408964E+00,-8.4558047E+00, 1.8148244E-01| 0.0000000E+00| 5)
- 6 prt(o:21| 1.3684057E+01; 5.1816191E+00,-1.2506945E+01,-1.9951364E+00| 0.0000000E+00| 6)
- 7 prt(o:21| 2.7057265E+00;-7.2718725E-01, 2.5309319E+00, 6.2172217E-01| 0.0000000E+00| 7)
- 8 prt(o:21| 8.4431854E-01;-2.0521333E-01, 7.7526034E-01, 2.6406947E-01| 0.0000000E+00| 8)
- 9 prt(o:-2| 1.0527797E+01;-1.2677810E+00, 9.5724598E+00, 4.1946693E+00| 0.0000000E+00| 9)
- 10 prt(o:21| 7.8586212E+00;-1.0758318E+00, 6.5782753E+00, 4.1625482E+00| 0.0000000E+00| 10)
- 11 prt(o:21| 1.3296647E+01;-7.5939558E+00, 1.0693840E+01,-2.1850461E+00| 0.0000000E+00| 11)
- 12 prt(o:21| 1.1523318E+01;-5.7422638E+00, 9.9865840E+00,-2.8533590E-01| 0.0000000E+00| 12)
+ 1 prt(i:11|-4.5500000E+01; 0.0000000E+00, 0.0000000E+00,-4.5489010E+01| 1.0000000E+00| 1)
+ 2 prt(i:-11|-4.5500000E+01; 0.0000000E+00, 0.0000000E+00, 4.5489010E+01| 1.0000000E+00| 2)
+ 3 prt(o:21| 3.1066812E+00; 8.3836114E-01,-2.9908553E+00,-5.8339034E-02| 0.0000000E+00| 3)
+ 4 prt(o:2| 2.3635479E+01; 8.4414315E+00,-2.1730553E+01,-3.8937360E+00| 0.0000000E+00| 4)
+ 5 prt(o:21| 1.7933795E+01; 7.5713435E+00,-1.5993165E+01,-2.9179503E+00| 0.0000000E+00| 5)
+ 6 prt(o:-2| 1.3327948E+01;-6.3597978E+00, 1.1106990E+01, 3.7177870E+00| 0.0000000E+00| 6)
+ 7 prt(o:21| 1.0213311E+01;-3.6573815E+00, 8.0918817E+00, 5.0454662E+00| 0.0000000E+00| 7)
+ 8 prt(o:21| 1.3483061E+00;-7.0657008E-01, 1.1315044E+00, 1.9592329E-01| 0.0000000E+00| 8)
+ 9 prt(o:21| 1.1832248E+01;-3.4922920E+00, 1.1295857E+01,-4.5783424E-01| 0.0000000E+00| 9)
+ 10 prt(o:21| 9.6022319E+00;-2.6350947E+00, 9.0883408E+00,-1.6313170E+00| 0.0000000E+00| 10)
 ========================================================================

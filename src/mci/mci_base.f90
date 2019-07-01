@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -120,6 +120,7 @@ module mci_base
      procedure (mci_instance_final), deferred :: final
      procedure (mci_instance_base_init), deferred :: init
      procedure :: base_init => mci_instance_base_init
+     procedure :: set_channel_weights => mci_instance_set_channel_weights
      procedure (mci_instance_compute_weight), deferred :: compute_weight
      procedure (mci_instance_record_integrand), deferred :: record_integrand
      procedure :: evaluate => mci_instance_evaluate
@@ -655,13 +656,27 @@ contains
     allocate (mci_instance%w (mci%n_channel))
     allocate (mci_instance%f (mci%n_channel))
     allocate (mci_instance%x (mci%n_dim, mci%n_channel))
-    if (size (mci_instance%w) /= 0) then
-       mci_instance%w = 1._default / size (mci_instance%w)
+    if (mci%n_channel > 0) then
+       call mci_instance%set_channel_weights &
+            (spread (1._default, dim=1, ncopies=mci%n_channel))
     end if
     mci_instance%f = 0
     mci_instance%x = 0
   end subroutine mci_instance_base_init
     
+  subroutine mci_instance_set_channel_weights (mci_instance, weights)
+    class(mci_instance_t), intent(inout) :: mci_instance
+    real(default), dimension(:), intent(in) :: weights
+    real(default) :: wsum
+    wsum = sum (weights)
+    if (wsum /= 0) then
+       mci_instance%w = weights / wsum
+    else
+       call msg_fatal ("MC sampler initialization:&
+            & sum of channel weights is zero")
+    end if
+  end subroutine mci_instance_set_channel_weights
+  
   subroutine mci_instance_evaluate (mci, sampler, c, x)
     class(mci_instance_t), intent(inout) :: mci
     class(mci_sampler_t), intent(inout) :: sampler

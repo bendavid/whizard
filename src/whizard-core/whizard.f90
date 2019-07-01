@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -42,6 +42,14 @@ module whizard
   use formats
   use md5
   use sorting
+  use codes
+  use object_base
+  use object_builder
+  use object_logical
+  use object_integer
+  use sindarin_parser
+  use grids
+  use solver
   use cputime
   use sm_qcd
   use ifiles
@@ -58,6 +66,7 @@ module whizard
   use particles
   use models
   use auto_components
+  use radiation_generator
   use evaluators
   use phs_forests
   use beams
@@ -78,6 +87,7 @@ module whizard
   use phs_base
   use phs_single
   use phs_wood
+  use phs_fks
   use rng_base
   use rng_tao
   use selectors
@@ -106,6 +116,7 @@ module whizard
   use process_stacks
   use event_transforms
   use decays
+  use powheg
   use shower
   use events
 
@@ -130,7 +141,7 @@ module whizard
   use integrations
   use event_streams
   use simulations
-  use nlo_data
+  use nlo_controller
 
   use expr_tests
 
@@ -637,6 +648,22 @@ contains
        call parse_test (u, results)       
     case ("sorting")
        call sorting_test (u, results)
+    case ("codes")
+       call codes_test (u, results)
+    case ("object_base")
+       call object_base_test (u, results)
+    case ("object_builder")
+       call object_builder_test (u, results)
+    case ("object_logical")
+       call object_logical_test (u, results)
+    case ("object_integer")
+       call object_integer_test (u, results)
+    case ("sindarin_parser")
+       call sindarin_parser_test (u, results)
+    case ("grids")
+       call grids_test (u, results)
+    case ("solver")
+       call solver_test (u, results)
     case ("md5")       
        call md5_test (u, results)       
     case ("xml")
@@ -647,6 +674,8 @@ contains
        call models_test (u, results)
     case ("auto_components")
        call auto_components_test (u, results)
+    case ("radiation_generator")
+       call radiation_generator_test (u, results)
     case ("particles")
        call particles_test (u, results)
     case ("polarizations")
@@ -685,6 +714,8 @@ contains
        call phs_wood_test (u, results)
     case ("phs_wood_vis")
        call phs_wood_vis_test (u, results)
+    case ("phs_fks_generator")
+       call phs_fks_generator_test (u, results)
     case ("mci_base")
        call mci_base_test (u, results)
     case ("rng_base")
@@ -721,6 +752,8 @@ contains
        call event_transforms_test (u, results)       
     case ("decays")
        call decays_test (u, results)       
+    case ("powheg")
+       call powheg_test (u, results)
     case ("shower")
        call shower_test (u, results)       
     case ("events")
@@ -783,6 +816,14 @@ contains
        call md5_test (u, results)
        call lexer_test (u, results)
        call sorting_test (u, results)
+       call codes_test (u, results)
+       call object_base_test (u, results)
+       call object_builder_test (u, results)
+       call object_logical_test (u, results)
+       call object_integer_test (u, results)
+       call sindarin_parser_test (u, results)
+       call solver_test (u, results)
+       call grids_test (u, results)
        call parse_test (u, results)
        call color_test (u, results)
        call evaluator_test (u, results)
@@ -836,6 +877,7 @@ contains
        call process_stacks_test (u, results)   
        call event_transforms_test (u, results)
        call decays_test (u, results)
+       call powheg_test (u, results)
        call shower_test (u, results)
        call events_test (u, results)
        call prc_omega_test (u, results)

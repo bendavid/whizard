@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -538,8 +538,7 @@ contains
     if (.not. var%is_intrinsic) then
        write (u, "(A,1x)", advance="no")  "[user variable]"
     end if
-    num_pac = .false.
-    if (present (pacified))  num_pac = pacified
+    num_pac = .false.; if (present (pacified))  num_pac = pacified
     if (present (model_name)) then
        write (u, "(A,A)", advance="no")  char(model_name), "."
     end if
@@ -590,7 +589,8 @@ contains
        end if
     case (V_SEV)
        if (var%is_known) then
-          call subevt_write (var%pval, unit, prefix="       ")
+          call subevt_write (var%pval, unit, prefix="       ", &
+               pacified = pacified)
        else
           write (u, "(A)")  "[unknown subevent]"
        end if

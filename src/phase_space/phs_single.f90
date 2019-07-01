@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -40,6 +40,7 @@ module phs_single
   use diagnostics
   use os_interface
   use lorentz
+  use physics_defs
   use model_data
   use flavors
   use process_constants
@@ -101,9 +102,9 @@ contains
     logical, intent(in), optional :: azimuthal_dependence
     logical, intent(in), optional :: rebuild
     logical, intent(in), optional :: ignore_mismatch
-    type(string_t), intent(inout), optional :: nlo_type
+    integer, intent(inout), optional :: nlo_type
     if (.not. present (nlo_type)) &
-      phs_config%nlo_type = 'Born'
+      phs_config%nlo_type = BORN
     if (phs_config%n_out == 2) then
        phs_config%n_channel = 1
        phs_config%n_par = 2

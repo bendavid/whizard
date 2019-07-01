@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -201,7 +201,7 @@ contains
              call msg_message ("Found user-code library '" &
                   // char (user_lib_file) // "'.")
           else
-             user_lib_file = user_lib(i) // os_data%shlib_ext
+             user_lib_file = user_lib(i) // os_data%fc_shrlib_ext
              inquire (file = char (user_lib_file), exist = exist)
              if (exist) then
                 call msg_message ("Found user-code library '" &
@@ -231,7 +231,7 @@ contains
     end if
     call dlaccess_init &
          (user_lib_handle, var_str ("."), &
-          user // os_data%shlib_ext, os_data)
+          user // os_data%fc_shrlib_ext, os_data)
     if (dlaccess_has_error (user_lib_handle)) then
        call msg_error (char (dlaccess_get_error (user_lib_handle)))
        call msg_fatal ("Loading user code library '" // char (user) &
@@ -270,7 +270,7 @@ contains
       character(*), intent(in) :: user_lib
       type(string_t), intent(in) :: user_obj_files
       call msg_message ("Linking user code library '" &
-           // user_lib // char (os_data%shlib_ext) // "'")
+           // user_lib // char (os_data%fc_shrlib_ext) // "'")
       call os_link_shared (user_obj_files, var_str (user_lib), os_data)
     end subroutine link_user
   end subroutine user_code_init

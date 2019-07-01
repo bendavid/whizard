@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -35,7 +35,7 @@ module sf_mappings
   use kinds, only: default
   use kinds, only: double
   use io_units
-  use constants, only: pi
+  use constants, only: pi, zero, one
   use format_defs, only: FMT_12, FMT_13, FMT_14, FMT_15, FMT_16
   use unit_tests
   use diagnostics
@@ -1375,14 +1375,28 @@ contains
     log1 = log_prec (r(1), rb(1))
     log2 = log_prec (r(2), rb(2))
     a1 = - rb(1) / log2
-    a2 = - rb(1) ** 2 * (1 / log2**2 + 1 / (2 * log2))
-    a3 = - rb(1) ** 3 * (1 / log2**3 + 1 / log2**2 + 1 / (3 * log2))
+    a2 = - rb(1) ** 2 * (one / log2**2 + one/(2*log2))
+    if (abs (log2**3) < epsilon (one)) then
+       if (abs(log1) < epsilon (one)) then
+          y = zero
+       else
+          y = one / (one+log2/log1)
+       end if
+       if (abs(log2) < epsilon (one)) then
+          yb = zero
+       else 
+          yb = one / (one+log1/log2)
+       end if
+       return
+    else
+       a3 = - rb(1) ** 3 * (one / log2**3 + one/log2**2 + one/(3 * log2))
+    end if
     if (abs (a3) < epsilon (a3)) then
        y  = a1 + a2 + a3
-       yb = 1 - y
+       yb = one - y
     else
-       y  = 1 / (1 + log2/log1)
-       yb = 1 / (1 + log1/log2)
+       y  = one / (one+log2/log1)
+       yb = one / (one+log1/log2)
     end if
   end subroutine inverse_prec_y
   

@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -54,6 +54,7 @@ module diagnostics
   public :: msg_terminate
   public :: msg_bug, msg_fatal, msg_error, msg_warning
   public :: msg_message, msg_result, msg_debug
+  public :: msg_show_progress
   public :: msg_banner
   public :: logging
   public :: logfile_init
@@ -471,6 +472,19 @@ contains
     call message_print (DEBUG, string, arr, unit)
   end subroutine msg_debug
 
+  subroutine msg_show_progress (i_call, n_calls)
+    integer, intent(in) :: i_call, n_calls
+    real(default) :: progress
+    integer, save :: next_check
+    if (i_call == 1) next_check = 10
+    progress = (i_call * 100._default) / n_calls
+    if (progress >= next_check) then
+       write (msg_buffer, "(F5.1,A)") progress, "%"
+       call msg_message ()
+       next_check = next_check + 10
+    end if
+  end subroutine msg_show_progress
+
   subroutine msg_banner (unit)
     integer, intent(in), optional :: unit
     integer :: n_proc
@@ -662,7 +676,7 @@ contains
   elemental subroutine pacify_real_default (x, tolerance)
     real(default), intent(inout) :: x
     real(default), intent(in) :: tolerance
-    if (abs (x) < tolerance)  x = 0
+    if (abs (x) < tolerance)  x = 0._default
   end subroutine pacify_real_default
   
   elemental subroutine pacify_complex_default (x, tolerance)

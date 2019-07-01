@@ -817,6 +817,7 @@ there is a configuration MD5 sum for each of them.
      integer :: n_proc = 0
      integer :: n_evt = 0
      integer :: split_n_evt = 0
+     integer :: split_n_kbytes = 0
      integer :: split_index = 0
      real(default) :: total_cross_section = 0
      integer, dimension(:), allocatable :: proc_num_id
@@ -1167,9 +1168,12 @@ hard-interaction model.
      type(string_t) :: sample
      type(string_t) :: extension
      type(string_t) :: filename
+     logical :: has_file = .false.
      logical :: split = .false.
      integer :: split_n_evt = 0
+     integer :: split_n_kbytes = 0
      integer :: split_index = 0
+     integer :: split_count = 0
      class(model_data_t), pointer :: fallback_model => null ()
    contains
    <<EIO base: eio: TBP>>
@@ -1210,14 +1214,34 @@ channels.
   subroutine eio_set_splitting (eio, data)
     class(eio_t), intent(inout) :: eio
     type(event_sample_data_t), intent(in) :: data
-    eio%split = data%split_n_evt > 0
+    eio%split = data%split_n_evt > 0 .or. data%split_n_kbytes > 0
     if (eio%split) then
        eio%split_n_evt = data%split_n_evt
+       eio%split_n_kbytes = data%split_n_kbytes
        eio%split_index = data%split_index
+       eio%split_count = 0
     end if
   end subroutine eio_set_splitting
     
 @ %def eio_set_splitting
+@ Update the byte count and check if it has increased.  We use integer
+division to determine the number of [[n_kbytes]] blocks that are in
+the event file.
+<<EIO base: eio: TBP>>=
+  procedure :: update_split_count => eio_update_split_count
+<<EIO base: procedures>>=
+  subroutine eio_update_split_count (eio, increased)
+    class(eio_t), intent(inout) :: eio
+    logical, intent(out) :: increased
+    integer :: split_count_old
+    if (eio%split_n_kbytes > 0) then
+       split_count_old = eio%split_count
+       eio%split_count = eio%file_size_kbytes () / eio%split_n_kbytes
+       increased = eio%split_count > split_count_old
+    end if
+  end subroutine eio_update_split_count
+  
+@ %def eio_update_split_count
 @ Generate a filename, taking a possible split index into account.
 <<EIO base: eio: TBP>>=
   procedure :: set_filename => eio_set_filename
@@ -1228,8 +1252,10 @@ channels.
     if (eio%split) then
        write (buffer, "(I0,'.')")  eio%split_index
        eio%filename = eio%sample // "." // trim (buffer) // eio%extension
+       eio%has_file = .true.
     else
        eio%filename = eio%sample // "." // eio%extension
+       eio%has_file = .true.
     end if    
   end subroutine eio_set_filename
 
@@ -1310,7 +1336,34 @@ an implementation must override this.
   end subroutine eio_split_out
 
 @ %def eio_split_out
-@ 
+@ Determine the file size in kilobytes.  More exactly, determine the
+size in units of 1024 storage units, as returned by the INQUIRE statement.
+
+The implementation returns zero if there is no file.  The
+[[has_file]] flag is set by the [[set_filename]] method, so we can be
+confident that the [[inquire]] call is meaningful.  If this algorithm
+doesn't apply for a particular format, we still can override the
+procedure.
+<<EIO base: eio: TBP>>=
+  procedure :: file_size_kbytes => eio_file_size_kbytes
+<<EIO base: procedures>>=
+  function eio_file_size_kbytes (eio) result (kbytes)
+    class(eio_t), intent(in) :: eio
+    integer :: kbytes
+    integer(i64) :: bytes
+    if (eio%has_file) then
+       inquire (file = char (eio%filename), size = bytes)
+       if (bytes > 0) then
+          kbytes = bytes / 1024
+       else
+          kbytes = 0
+       end if
+    else
+       kbytes = 0
+    end if
+  end function eio_file_size_kbytes
+  
+@ %def eio_file_size_kbytes
 @ Output an event.  All data can be taken from the [[event]] record.
 The index [[i_prc]] identifies the process among the processes that
 are contained in the current sample.  The [[reading]] flag, if present,
@@ -2850,7 +2903,8 @@ squared matrix element, then the particle set.
                show_process = eio%show_process, &
                show_transforms = eio%show_transforms, &
                show_decay = eio%show_decay, &
-               verbose = eio%verbose)
+               verbose = eio%verbose, &
+               testflag = pacify)
        type is (eio_ascii_hepevt_t)
           call hepevt_from_event (event, &
                i_evt = event%get_index (), &                         
@@ -3897,6 +3951,7 @@ module hep_common
   use physics_defs, only: HADRON_REMNANT_SINGLET
   use physics_defs, only: HADRON_REMNANT_TRIPLET
   use physics_defs, only: HADRON_REMNANT_OCTET
+  use xml
   use lorentz
   use flavors
   use colors
@@ -3904,6 +3959,7 @@ module hep_common
   use model_data
   use particles
   use subevents
+  use unit_tests, only: nearly_equal
 
 <<Standard module head>>
 
@@ -4089,6 +4145,240 @@ weighting model.
   end subroutine heprup_init
 
 @ %def heprup_init
+The HEPRUP (event) common block is needed for the interface to the shower.
+Filling of it is triggered by some output file formats.  If these are not
+present, the common block is filled with some dummy information. Be generous
+with the number of processes in HEPRUP so that PYTHIA only rarely needs to be
+reinitialized in case events with higher process ids are generated.
+<<HEP common: public>>=
+  public :: assure_heprup 
+<<HEP common: procedures>>=
+  subroutine assure_heprup (pset)
+    type(particle_set_t), intent(in) :: pset
+    integer :: i, num_id
+    integer, parameter :: min_processes = 10
+    num_id = 1
+    if (LPRUP (num_id) /= 0)  return
+    call heprup_init ( &
+         [pset%prt(1)%get_pdg (), pset%prt(2)%get_pdg ()] , &
+         [pset%prt(1)%p%p(0), pset%prt(2)%p%p(0)], &
+         num_id, .false., .false.)
+    do i = 1, (num_id / min_processes + 1) * min_processes
+       call heprup_set_process_parameters (i = i, process_id = &
+            i, cross_section = 1._default, error = 1._default)
+    end do
+  end subroutine assure_heprup
+
+@ %def assure_heprup
+@ Read in the LHE file opened in unit [[u]] and add the final
+particles to the [[particle_set]], the outgoing particles of the existing
+[[particle_set]] are compared to the particles that are read in. When
+they are equal in flavor and momenta, they are erased and their
+mother-daughter relations are transferred to the existing particles.
+<<HEP common: public>>=
+  public :: combine_lhef_with_particle_set
+<<HEP common: procedures>>=
+  subroutine combine_lhef_with_particle_set &
+       (particle_set, u, model_in, model_hadrons)
+    type(particle_set_t), intent(inout) :: particle_set
+    integer, intent(in) :: u
+    class(model_data_t), intent(in), target :: model_in
+    class(model_data_t), intent(in), target :: model_hadrons
+    type(flavor_t) :: flv
+    type(color_t) :: col
+    class(model_data_t), pointer :: model
+    type(particle_t), dimension(:), allocatable :: prt_tmp, prt
+    integer :: i, j
+    type(vector4_t) :: mom, d_mom
+    integer, PARAMETER :: MAXLEN=200
+    character(len=maxlen) :: string
+    integer :: ibeg, n_tot, n_entries
+    integer, dimension(:), allocatable :: relations, mothers, tbd
+    INTEGER :: NUP,IDPRUP,IDUP,ISTUP
+    real(kind=double) :: XWGTUP,SCALUP,AQEDUP,AQCDUP,VTIMUP,SPINUP
+    integer :: MOTHUP(1:2), ICOLUP(1:2)
+    real(kind=double) :: PUP(1:5)
+    real(kind=default) :: pup_dum(1:5)
+    character(len=5) :: buffer
+    character(len=6) :: strfmt
+    logical :: not_found
+    logical :: debug_lhef = .false.
+    STRFMT='(A000)'
+    WRITE (STRFMT(3:5),'(I3)') MAXLEN
+
+    if (debug_lhef)  call particle_set%write ()
+
+    rewind (u)
+
+    do
+       read (u,*, END=501, ERR=502) STRING
+       IBEG = 0
+       do
+          if (signal_is_pending ()) return              
+          IBEG = IBEG + 1
+          ! Allow indentation.
+          IF (STRING (IBEG:IBEG) .EQ. ' ' .and. IBEG < MAXLEN-6) cycle
+          exit
+       end do
+       IF (string(IBEG:IBEG+6) /= '<event>' .and. &
+            string(IBEG:IBEG+6) /= '<event ') cycle
+       exit
+    end do
+    !!! Read first line of event info -> number of entries
+    read (u, *, END=503, ERR=504) NUP, IDPRUP, XWGTUP, SCALUP, AQEDUP, AQCDUP
+    n_tot = particle_set%get_n_tot ()
+    allocate (prt_tmp (1:n_tot+NUP))
+    allocate (relations (1:NUP), mothers (1:NUP), tbd(1:NUP))
+    do i = 1, n_tot
+       if (signal_is_pending ()) return           
+       prt_tmp (i) = particle_set%get_particle (i)
+    end do
+    !!! transfer particles from lhef to particle_set
+    !!!...Read NUP subsequent lines with information on each particle.
+    n_entries = 1
+    mothers = 0
+    relations = 0    
+    PARTICLE_LOOP: do I = 1, NUP
+       read (u,*, END=200, ERR=505) IDUP, ISTUP, MOTHUP(1), MOTHUP(2), &
+            ICOLUP(1), ICOLUP(2), (PUP (J),J=1,5), VTIMUP, SPINUP
+       if (model_in%test_field (IDUP)) then
+          model => model_in
+       else if (model_hadrons%test_field (IDUP)) then
+          model => model_hadrons
+       else
+          write (buffer, "(I5)") IDUP
+          call msg_error ("Parton " // buffer // &
+               " found neither in given model file nor in SM_hadrons")
+          return
+       end if
+       if (debug_lhef) then
+          print *, "IDUP, ISTUP, MOTHUP, PUP = ", IDUP, ISTUP, MOTHUP(1), &
+	     MOTHUP(2), PUP
+       end if
+       call flv%init (IDUP, model)
+       if (IABS(IDUP) == 2212 .or. IABS(IDUP) == 2112) then
+          ! PYTHIA sometimes sets color indices for protons and neutrons (?)
+          ICOLUP (1) = 0
+          ICOLUP (2) = 0
+       end if
+       call col%init_col_acl (ICOLUP (1), ICOLUP (2))
+       !!! Settings for unpolarized particles
+       ! particle_set%prt (oldsize+i)%hel = ??
+       ! particle_set%prt (oldsize+i)%pol = ??
+       if (MOTHUP(1) /= 0) then
+          mothers(i) = MOTHUP(1)
+       end if
+       pup_dum = PUP
+       if (pup_dum(4) < 1E-10_default)  cycle
+       mom = vector4_moving (pup_dum (4), &
+            vector3_moving ([pup_dum (1), pup_dum (2), pup_dum (3)]))
+       not_found = .true.
+       SCAN_PARTICLES: do j = 1, n_tot
+          d_mom = prt_tmp(j)%get_momentum () 
+          if (all (nearly_equal &
+               (mom%p, d_mom%p, abs_smallness = 1.E-4_default)) .and. &
+                (prt_tmp(j)%get_pdg () == IDUP)) then
+             if (.not. prt_tmp(j)%get_status () == PRT_BEAM .or. &
+                  .not. prt_tmp(j)%get_status () == PRT_BEAM_REMNANT) &
+                  relations(i) = j
+                  not_found = .false.
+          end if
+       end do SCAN_PARTICLES               
+       if (not_found) then
+          if (debug_lhef) &
+             print *, "Not found: adding particle"
+          call prt_tmp(n_tot+n_entries)%set_flavor (flv)    
+          call prt_tmp(n_tot+n_entries)%set_color (col)
+          call prt_tmp(n_tot+n_entries)%set_momentum (mom)
+          if (MOTHUP(1) /= 0) then 
+             if (relations(MOTHUP(1)) /= 0) then
+                call prt_tmp(n_tot+n_entries)%set_parents &
+                     ([relations(MOTHUP(1))])             
+                call prt_tmp(relations(MOTHUP(1)))%add_child (n_tot+n_entries)
+                if (prt_tmp(relations(MOTHUP(1)))%get_status () &
+                     == PRT_OUTGOING) &
+                     call prt_tmp(relations(MOTHUP(1)))%reset_status &
+                     (PRT_VIRTUAL)
+             end if             
+          end if
+          call prt_tmp(n_tot+n_entries)%set_status (PRT_OUTGOING)
+          if (debug_lhef) call prt_tmp(n_tot+n_entries)%write ()
+          n_entries = n_entries + 1
+       end if
+    end do PARTICLE_LOOP
+    do i = 1, n_tot
+       if (prt_tmp(i)%get_status () == PRT_OUTGOING .and. &
+           prt_tmp(i)%get_n_children () /= 0) then
+                call prt_tmp(i)%reset_status (PRT_VIRTUAL)          
+       end if
+    end do
+    
+    allocate (prt (1:n_tot+n_entries-1))
+    prt = prt_tmp (1:n_tot+n_entries-1)
+    ! transfer to particle_set
+    call particle_set%replace (prt)
+    deallocate (prt, prt_tmp)
+    
+    if (debug_lhef) then
+       call particle_set%write ()
+       print *, "combine_lhef_with_particle_set"
+       ! stop
+    end if
+
+200 continue
+    return
+
+501 write(*,*) "READING LHEF failed 501"
+    return
+502 write(*,*) "READING LHEF failed 502"
+    return
+503 write(*,*) "READING LHEF failed 503"
+    return
+504 write(*,*) "READING LHEF failed 504"
+    return
+505 write(*,*) "READING LHEF failed 505"
+    return
+  end subroutine combine_lhef_with_particle_set
+  
+@ %def combine_lhef_with_particle_set
+@
+<<HEP common: public>>=
+  public :: w2p_write_lhef_event
+<<HEP common: procedures>>=
+  subroutine w2p_write_lhef_event (unit)
+    integer, intent(in) :: unit
+    type(xml_tag_t), allocatable :: tag_lhef, tag_head, tag_init, &
+         tag_event, tag_gen_n, tag_gen_v
+    allocate (tag_lhef, tag_head, tag_init, tag_event, &
+         tag_gen_n, tag_gen_v)
+    call tag_lhef%init (var_str ("LesHouchesEvents"), &
+         [xml_attribute (var_str ("version"), var_str ("1.0"))], .true.)
+    call tag_head%init (var_str ("header"), .true.)
+    call tag_init%init (var_str ("init"), .true.)
+    call tag_event%init (var_str ("event"), .true.)
+    call tag_gen_n%init (var_str ("generator_name"), .true.)
+    call tag_gen_v%init (var_str ("generator_version"), .true.)      
+    call tag_lhef%write (unit); write (unit, *)
+    call tag_head%write (unit); write (unit, *)
+    write (unit, "(2x)", advance = "no")
+    call tag_gen_n%write (var_str ("WHIZARD"), unit)
+    write (unit, *)
+    write (unit, "(2x)", advance = "no")      
+    call tag_gen_v%write (var_str ("<<Version>>"), unit)
+    write (unit, *)
+    call tag_head%close (unit); write (unit, *)
+    call tag_init%write (unit); write (unit, *)
+    call heprup_write_lhef (unit)
+    call tag_init%close (unit); write (unit, *)
+    call tag_event%write (unit); write (unit, *)
+    call hepeup_write_lhef (unit)
+    call tag_event%close (unit); write (unit, *)
+    call tag_lhef%close (unit); write (unit, *)
+    deallocate (tag_lhef, tag_head, tag_init, tag_event, &
+         tag_gen_n, tag_gen_v)
+  end subroutine w2p_write_lhef_event
+
+@ %def w2p_write_lhef_event    
 @ Extract parameters from the common block.  We leave it to the caller
 to specify which parameters it actually needs.
 
@@ -4680,7 +4970,8 @@ the exception of lifetime and spin, where default values are stored.
 <<HEP common: public>>=
   public :: hepevt_set_particle
 <<HEP common: procedures>>=
-  subroutine hepevt_set_particle (i, pdg, status, parent, child, p, m2, hel)
+  subroutine hepevt_set_particle &
+       (i, pdg, status, parent, child, p, m2, hel, vtx)
     integer, intent(in) :: i
     integer, intent(in) :: pdg, status
     integer, dimension(:), intent(in) :: parent
@@ -4688,6 +4979,7 @@ the exception of lifetime and spin, where default values are stored.
     type(vector4_t), intent(in) :: p
     real(default), intent(in) :: m2
     integer, intent(in) :: hel
+    type(vector4_t), intent(in) :: vtx
     IDHEP(i) = pdg
     select case (status)
       case (PRT_BEAM);      ISTHEP(i) = 2
@@ -4710,7 +5002,8 @@ the exception of lifetime and spin, where default values are stored.
     PHEP(1:3,i) = vector3_get_components (space_part (p))
     PHEP(4,i) = energy (p)
     PHEP(5,i) = sign (sqrt (abs (m2)), m2)
-    VHEP(1:4,i) = 0
+    VHEP(1:3,i) = vtx%p(1:3)
+    VHEP(4,i) = vtx%p(0)
     hepevt_pol(i) = hel
   end subroutine hepevt_set_particle
 
@@ -4988,21 +5281,21 @@ unique mother, and if its polarization is fully defined.
 <<HEP common: public>>=
   public :: hepeup_from_particle_set
 <<HEP common: procedures>>=
-  subroutine hepeup_from_particle_set (particle_set, keep_beams, keep_remnants)
-    type(particle_set_t), intent(in) :: particle_set
+  subroutine hepeup_from_particle_set (pset_in, keep_beams, keep_remnants)
+    type(particle_set_t), intent(in) :: pset_in
+    type(particle_set_t), target :: pset
     logical, intent(in), optional :: keep_beams
     logical, intent(in), optional :: keep_remnants
-    type(particle_set_t), target :: pset_hepevt
     integer :: i, n_parents, status, n_tot
     integer, dimension(1) :: i_mother
     logical :: activate_remnants
     activate_remnants = .true.
     if (present (keep_remnants))  activate_remnants = keep_remnants
-    call particle_set%to_hepevt_form (pset_hepevt, keep_beams)
-    n_tot = pset_hepevt%get_n_tot ()
+    call pset_in%apply_keep_beams (pset, keep_beams = keep_beams)
+    n_tot = pset%get_n_tot ()
     call hepeup_init (n_tot)
     do i = 1, n_tot
-       associate (prt => pset_hepevt%prt(i))
+       associate (prt => pset%prt(i))
          status = prt%get_status ()
          if (activate_remnants &
               .and. status == PRT_BEAM_REMNANT &
@@ -5023,12 +5316,11 @@ unique mother, and if its polarization is fully defined.
                call hepeup_set_particle_spin (i, &
                     prt%get_momentum (), &
                     prt%get_polarization (), &
-                    pset_hepevt%prt(i_mother(1))%get_momentum ())
+                    pset%prt(i_mother(1))%get_momentum ())
             end select
          end if
        end associate
     end do
-    call pset_hepevt%final ()
   end subroutine hepeup_from_particle_set
 
 @ %def hepeup_from_particle_set
@@ -5139,7 +5431,8 @@ its polarization is fully defined.
               prt%get_children (), &
               prt%get_momentum (), &
               prt%get_p2 (), &
-              prt%get_helicity ())
+              prt%get_helicity (), &
+              prt%get_vertex ())
        end associate
     end do
     call pset_hepevt%final ()
@@ -5940,6 +6233,55 @@ polarized).  Note that the generated polarization object needs finalization.
 
 @ %def hepmc_particle_get_color
 @
+<<HepMC interface: interfaces>>=
+  interface
+     function gen_vertex_pos_x (v_obj) result (x) bind(C)
+       import
+       type(c_ptr), value :: v_obj
+       real(c_double) :: x
+     end function gen_vertex_pos_x
+  end interface
+  interface
+     function gen_vertex_pos_y (v_obj) result (y) bind(C)
+       import
+       type(c_ptr), value :: v_obj
+       real(c_double) :: y
+     end function gen_vertex_pos_y
+  end interface
+  interface
+     function gen_vertex_pos_z (v_obj) result (z) bind(C)
+       import
+       type(c_ptr), value :: v_obj
+       real(c_double) :: z
+     end function gen_vertex_pos_z
+  end interface
+  interface
+     function gen_vertex_time (v_obj) result (t) bind(C)
+       import
+       type(c_ptr), value :: v_obj
+       real(c_double) :: t
+     end function gen_vertex_time
+  end interface  
+@ 
+<<HepMC interface: public>>=
+  public :: hepmc_vertex_to_vertex
+<<HepMC interface: procedures>>=
+  function hepmc_vertex_to_vertex (vtx) result (v)
+    type(hepmc_vertex_t), intent(in) :: vtx
+    type(vector4_t) :: v
+    real(default) :: t, vx, vy, vz
+    if (hepmc_vertex_is_valid (vtx)) then
+       t = gen_vertex_time (vtx%obj)
+       vx = gen_vertex_pos_x (vtx%obj)
+       vy = gen_vertex_pos_y (vtx%obj)
+       vz = gen_vertex_pos_z (vtx%obj)    
+       v = vector4_moving (t, &
+            vector3_moving ([vx, vy, vz]))
+    end if
+  end function hepmc_vertex_to_vertex
+
+@ %def hepmc_vertex_to_vertex  
+@ 
 \subsection{GenVertex}
 Vertices are made of particles (incoming and outgoing).
 <<HepMC interface: public>>=
@@ -7728,6 +8070,55 @@ stores the signed invariant mass (no squaring).
   end function lcio_particle_get_mass_squared
 
 @ %def lcio_particle_get_mass_squared
+@ Return vertex and production time of a LCIO particle.
+<<LCIO interface: interfaces>>=
+  interface 
+     real(c_double) function lcio_vtx_x (prt) bind(C)
+       import
+       type(c_ptr), value :: prt       
+     end function lcio_vtx_x
+  end interface
+  interface 
+     real(c_double) function lcio_vtx_y (prt) bind(C)
+       import
+       type(c_ptr), value :: prt       
+     end function lcio_vtx_y
+  end interface
+  interface 
+     real(c_double) function lcio_vtx_z (prt) bind(C)
+       import
+       type(c_ptr), value :: prt       
+     end function lcio_vtx_z
+  end interface  
+  interface 
+     real(c_double) function lcio_prt_time (prt) bind(C)
+       import
+       type(c_ptr), value :: prt    
+     end function lcio_prt_time
+  end interface    
+@  
+@
+<<LCIO interface: public>>=
+  public :: lcio_particle_get_vertex
+  public :: lcio_particle_get_time
+<<LCIO interface: procedures>>=
+  function lcio_particle_get_vertex (prt) result (vtx)
+    type(vector3_t) :: vtx
+    type(lcio_particle_t), intent(in) :: prt
+    real(default) :: vx, vy, vz
+    vx = lcio_vtx_x (prt%obj)
+    vy = lcio_vtx_y (prt%obj)
+    vz = lcio_vtx_z (prt%obj)    
+    vtx = vector3_moving ([vx, vy, vz])
+  end function lcio_particle_get_vertex
+
+  function lcio_particle_get_time (prt) result (time)
+    real(default) :: time
+    type(lcio_particle_t), intent(in) :: prt
+    time = lcio_prt_time (prt%obj)
+  end function lcio_particle_get_time
+  
+@ %def lcio_particle_get_vertex lcio_particle_get_time
 @
 \subsection{Polarization}
 For polarization there is a three-component float entry foreseen in the LCIO 
@@ -7866,6 +8257,47 @@ $\cos\theta$ is relevant, mapped to positive/negative helicity.
   end subroutine lcio_particle_to_hel
 
 @ %def lcio_particle_to_hel
+@ Set the vertex of a particle.
+<<LCIO interface: interfaces>>=
+  interface
+     subroutine lcio_particle_set_vertex (prt_obj, vx, vy, vz) bind(C)
+       import
+       type(c_ptr), value :: prt_obj
+       real(c_double), value :: vx, vy, vz
+     end subroutine lcio_particle_set_vertex
+  end interface
+  interface
+     subroutine lcio_particle_set_time (prt_obj, t) bind(C)
+       import
+       type(c_ptr), value :: prt_obj
+       real(c_double), value :: t
+     end subroutine lcio_particle_set_time
+  end interface  
+  
+@ %def lcio_particle_set_vertex lcio_particle_set_time
+@
+<<LCIO interface: public>>=
+  public :: lcio_particle_set_vtx
+<<LCIO interface: procedures>>=
+  subroutine lcio_particle_set_vtx (prt, vtx) 
+    type(lcio_particle_t), intent(inout) :: prt
+    type(vector3_t), intent(in) :: vtx
+    call lcio_particle_set_vertex (prt%obj, real(vtx%p(1), c_double), &
+         real(vtx%p(2), c_double), real(vtx%p(3), c_double))
+  end subroutine lcio_particle_set_vtx
+
+@ %def lcio_particle_set_vtx
+@
+<<LCIO interface: public>>=
+  public :: lcio_particle_set_t 
+<<LCIO interface: procedures>>=
+  subroutine lcio_particle_set_t (prt, t)
+    type(lcio_particle_t), intent(out) :: prt
+    real(default), intent(in) :: t
+    call lcio_particle_set_time (prt%obj, real(t, c_double))
+  end subroutine lcio_particle_set_t
+
+@ %def lcio_particle_set_t
 @ 
 <<LCIO interface: interfaces>>=
   interface
@@ -8358,13 +8790,19 @@ object can be correctly initialized.
     call lcio_particle_set_parent (prt6, prt3)
     call lcio_particle_set_parent (prt6, prt4)    
     
-    ! $W^-$ decay
+    ! $W^-$ decay    
     call particle_init (prt7, &
          -2.445_default, 28.816_default, 6.082_default, 29.552_default, &
          1, 1)
     call particle_init (prt8, &
          3.962_default, -49.498_default, -26.687_default, 56.373_default, &
          -2, 1)
+    call lcio_particle_set_t (prt7, 0.12_default)
+    call lcio_particle_set_t (prt8, 0.12_default)    
+    call lcio_particle_set_vtx &
+         (prt7, vector3_moving ([-0.3_default, 0.05_default, 0.004_default]))
+    call lcio_particle_set_vtx &
+         (prt8, vector3_moving ([-0.3_default, 0.05_default, 0.004_default]))
     call lcio_particle_set_parent (prt7, prt5)
     call lcio_particle_set_parent (prt8, prt5)
     call lcio_particle_add_to_evt_coll (prt1, evt)
@@ -8415,7 +8853,8 @@ object can be correctly initialized.
     
   contains
 
-    subroutine particle_init (prt, px, py, pz, E, pdg, status)
+    subroutine particle_init &
+         (prt, px, py, pz, E, pdg, status)
       type(lcio_particle_t), intent(out) :: prt
       real(default), intent(in) :: px, py, pz, E
       integer, intent(in) :: pdg, status
@@ -8652,22 +9091,28 @@ http://herwig.hepforge.org/trac/wiki/FaQs.
     type(hepmc_vertex_t), dimension(:), allocatable :: v
     type(hepmc_particle_t), dimension(:), allocatable :: hprt
     type(hepmc_particle_t), dimension(2) :: hbeam
+    type(vector4_t), dimension(:), allocatable :: vtx
     logical, dimension(:), allocatable :: is_beam
     integer, dimension(:), allocatable :: v_from, v_to
     integer :: n_vertices, n_tot, i
     n_tot = particle_set%get_n_tot ()
     allocate (v_from (n_tot), v_to (n_tot))
     call particle_set%assign_vertices (v_from, v_to, n_vertices)
-    allocate (v (n_vertices))
-    do i = 1, n_vertices
-       call hepmc_vertex_init (v(i))
-       call hepmc_event_add_vertex (evt, v(i))
-    end do
-    allocate (hprt (n_tot))
+    allocate (hprt (n_tot))    
+    allocate (vtx (n_vertices))
+    vtx = vector4_null
     do i = 1, n_tot
        if (v_to(i) /= 0 .or. v_from(i) /= 0) then
           call particle_to_hepmc (particle_set%prt(i), hprt(i))
+          if (v_to(i) /= 0) then
+             vtx(v_to(i)) = particle_set%prt(i)%get_vertex ()
+          end if
        end if
+    end do       
+    allocate (v (n_vertices))    
+    do i = 1, n_vertices
+       call hepmc_vertex_init (v(i), vtx(i))
+       call hepmc_event_add_vertex (evt, v(i))
     end do
     allocate (is_beam (n_tot))
     is_beam = particle_set%prt(1:n_tot)%get_status () == PRT_BEAM
@@ -8710,6 +9155,7 @@ could be replaced by a hash table.
     type(particle_t), intent(out) :: prt
     type(hepmc_particle_t), intent(in) :: hprt
     type(model_data_t), intent(in), target :: model
+    type(hepmc_vertex_t) :: vtx
     integer, intent(in) :: polarization
     integer, dimension(:), intent(in) :: barcode
     type(hepmc_polarization_t) :: hpol
@@ -8717,6 +9163,7 @@ could be replaced by a hash table.
     type(color_t) :: col
     type(helicity_t) :: hel
     type(polarization_t) :: pol
+    type(vector4_t) :: vertex
     integer :: n_parents, n_children
     integer, dimension(:), allocatable :: &
          parent_barcode, child_barcode, parent, child
@@ -8760,6 +9207,11 @@ could be replaced by a hash table.
     call prt%set_children (child)
     if (prt%get_status () == PRT_VIRTUAL .and. n_parents == 0) &
          call prt%set_status (PRT_INCOMING)
+    vtx = hepmc_particle_get_decay_vertex (hprt)
+    if (hepmc_vertex_is_valid (vtx)) then
+       vertex = hepmc_vertex_to_vertex (vtx)
+       if (vertex /= vector4_null)  call prt%set_vertex (vertex)
+    end if
   end subroutine particle_from_hepmc_particle
 
 @ %def particle_from_hepmc_particle
@@ -8905,6 +9357,7 @@ tagged as outgoing, otherwise unphysical.
     type(particle_t), intent(in) :: prt
     type(lcio_particle_t), intent(out) :: lprt
     integer :: lcio_status
+    type(vector4_t) :: vtx
     select case (prt%get_status ())
     case (PRT_UNDEFINED)
        lcio_status = 0
@@ -8933,6 +9386,9 @@ tagged as outgoing, otherwise unphysical.
          prt%get_pdg (), &
          lcio_status)
     call lcio_particle_set_color (lprt, prt%get_color ())
+    vtx = prt%get_vertex ()
+    call lcio_particle_set_vtx (lprt, space_part (vtx))
+    call lcio_particle_set_t (lprt, vtx%p(0))
     select case (prt%get_polarization_status ())
     case (PRT_DEFINITE_HELICITY)
        call lcio_polarization_init (lprt, prt%get_helicity ())
@@ -8954,6 +9410,8 @@ necessary for making a fully qualified flavor component.
     type(lcio_particle_t), intent(in) :: lprt
     type(model_data_t), intent(in), target :: model
     integer, dimension(:), intent(in) :: daughters, parents    
+    type(vector3_t) :: vtx3
+    type(vector4_t) :: vtx4
     type(flavor_t) :: flv
     type(color_t) :: col
     type(helicity_t) :: hel
@@ -8985,6 +9443,9 @@ necessary for making a fully qualified flavor component.
     call prt%set_children (daughters)
     if (prt%get_status () == PRT_VIRTUAL .and. size(parents) == 0) &
          call prt%set_status (PRT_INCOMING)
+    vtx4 = vector4_moving (lcio_particle_get_time (lprt), &
+         lcio_particle_get_vertex (lprt))
+    if (vtx4 /= vector4_null)  call prt%set_vertex (vtx4)       
   end subroutine particle_from_lcio_particle
 
 @ %def particle_from_lcio_particle
@@ -9167,81 +9628,81 @@ particles.  The process is $d\bar d \to Z \to q\bar q$.
     write (u, "(A)")
     write (u, "(A)")  "* Initializing production process"
 
-    call interaction_init (int1, 2, 0, 1, set_relations=.true.)
+    call int1%basic_init (2, 0, 1, set_relations=.true.)
     call flv%init ([1, -1, 23], model)
     call col%init_col_acl ([0, 0, 0], [0, 0, 0])
     call hel(3)%init ( 1, 1)
     call qn%init (flv, col, hel)
-    call interaction_add_state (int1, qn, value=(0.25_default, 0._default))
+    call int1%add_state (qn, value=(0.25_default, 0._default))
     call hel(3)%init ( 1,-1)
     call qn%init (flv, col, hel)
-    call interaction_add_state (int1, qn, value=(0._default, 0.25_default))
+    call int1%add_state (qn, value=(0._default, 0.25_default))
     call hel(3)%init (-1, 1)
     call qn%init (flv, col, hel)
-    call interaction_add_state (int1, qn, value=(0._default,-0.25_default))
+    call int1%add_state (qn, value=(0._default,-0.25_default))
     call hel(3)%init (-1,-1)
     call qn%init (flv, col, hel)
-    call interaction_add_state (int1, qn, value=(0.25_default, 0._default))
+    call int1%add_state (qn, value=(0.25_default, 0._default))
     call hel(3)%init ( 0, 0)
     call qn%init (flv, col, hel)
-    call interaction_add_state (int1, qn, value=(0.5_default, 0._default))
-    call interaction_freeze (int1)
+    call int1%add_state (qn, value=(0.5_default, 0._default))
+    call int1%freeze ()
     p(1) = vector4_moving (45._default, 45._default, 3)
     p(2) = vector4_moving (45._default,-45._default, 3)
     p(3) = p(1) + p(2)
-    call interaction_set_momenta (int1, p)
+    call int1%set_momenta (p)
 
     write (u, "(A)")
     write (u, "(A)")  "* Setup decay process"
 
-    call interaction_init (int2, 1, 0, 2, set_relations=.true.)
+    call int2%basic_init (1, 0, 2, set_relations=.true.)
     call flv%init ([23, 1, -1], model)
     call col%init_col_acl ([0, 501, 0], [0, 0, 501])
     call hel%init ([1, 1, 1], [1, 1, 1])
     call qn%init (flv, col, hel)
-    call interaction_add_state (int2, qn, value=(1._default, 0._default))
+    call int2%add_state (qn, value=(1._default, 0._default))
     call hel%init ([1, 1, 1], [-1,-1,-1])
     call qn%init (flv, col, hel)
-    call interaction_add_state (int2, qn, value=(0._default, 0.1_default))
+    call int2%add_state (qn, value=(0._default, 0.1_default))
     call hel%init ([-1,-1,-1], [1, 1, 1])
     call qn%init (flv, col, hel)
-    call interaction_add_state (int2, qn, value=(0._default,-0.1_default))
+    call int2%add_state (qn, value=(0._default,-0.1_default))
     call hel%init ([-1,-1,-1], [-1,-1,-1])
     call qn%init (flv, col, hel)
-    call interaction_add_state (int2, qn, value=(1._default, 0._default))
+    call int2%add_state (qn, value=(1._default, 0._default))
     call hel%init ([0, 1,-1], [0, 1,-1])
     call qn%init (flv, col, hel)
-    call interaction_add_state (int2, qn, value=(4._default, 0._default))
+    call int2%add_state (qn, value=(4._default, 0._default))
     call hel%init ([0,-1, 1], [0, 1,-1])
     call qn%init (flv, col, hel)
-    call interaction_add_state (int2, qn, value=(2._default, 0._default))
+    call int2%add_state (qn, value=(2._default, 0._default))
     call hel%init ([0, 1,-1], [0,-1, 1])
     call qn%init (flv, col, hel)
-    call interaction_add_state (int2, qn, value=(2._default, 0._default))
+    call int2%add_state (qn, value=(2._default, 0._default))
     call hel%init ([0,-1, 1], [0,-1, 1])
     call qn%init (flv, col, hel)
-    call interaction_add_state (int2, qn, value=(4._default, 0._default))
+    call int2%add_state (qn, value=(4._default, 0._default))
     call flv%init ([23, 2, -2], model)
     call hel%init ([0, 1,-1], [0, 1,-1])
     call qn%init (flv, col, hel)
-    call interaction_add_state (int2, qn, value=(0.5_default, 0._default))
+    call int2%add_state (qn, value=(0.5_default, 0._default))
     call hel%init ([0,-1, 1], [0,-1, 1])
     call qn%init (flv, col, hel)
-    call interaction_add_state (int2, qn, value=(0.5_default, 0._default))
-    call interaction_freeze (int2)
+    call int2%add_state (qn, value=(0.5_default, 0._default))
+    call int2%freeze ()
     p(2) = vector4_moving (45._default, 45._default, 2)
     p(3) = vector4_moving (45._default,-45._default, 2)
-    call interaction_set_momenta (int2, p)
-    call interaction_set_source_link (int2, 1, int1, 3)
-    call interaction_write (int1, u)
-    call interaction_write (int2, u)
+    call int2%set_momenta (p)
+    call int2%set_source_link (1, int1, 3)
+    call int1%basic_write (u)
+    call int2%basic_write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Concatenate production and decay"
 
-    call evaluator_init_product (eval, int1, int2, qn_mask_conn, &
+    call eval%init_product (int1, int2, qn_mask_conn, &
          connections_are_resonant=.true.)
-    call evaluator_receive_momenta (eval)
+    call eval%receive_momenta ()
     call eval%evaluate ()
     call eval%write (u)
     
@@ -9249,7 +9710,7 @@ particles.  The process is $d\bar d \to Z \to q\bar q$.
     write (u, "(A)")  "* Factorize as subevent (complete, polarized)"
     write (u, "(A)")
     
-    int => evaluator_get_int_ptr (eval)
+    int => eval%interaction_t
     call particle_set1%init &
          (ok, int, int, FM_FACTOR_HELICITY, &
           [0.2_default, 0.2_default], .false., .true.)
@@ -9259,7 +9720,7 @@ particles.  The process is $d\bar d \to Z \to q\bar q$.
     write (u, "(A)")  "* Factorize as subevent (in/out only, selected helicity)"
     write (u, "(A)")
     
-    int => evaluator_get_int_ptr (eval)
+    int => eval%interaction_t
     call particle_set2%init &
          (ok, int, int, FM_SELECT_HELICITY, &
           [0.9_default, 0.9_default], .false., .false.)
@@ -9270,7 +9731,7 @@ particles.  The process is $d\bar d \to Z \to q\bar q$.
     write (u, "(A)")  "* Factorize as subevent (complete, selected helicity)"
     write (u, "(A)") 
     
-    int => evaluator_get_int_ptr (eval)
+    int => eval%interaction_t
     call particle_set2%init &
          (ok, int, int, FM_SELECT_HELICITY, &
           [0.7_default, 0.7_default], .false., .true.)
@@ -9309,9 +9770,9 @@ particles.  The process is $d\bar d \to Z \to q\bar q$.
     
     call particle_set1%final ()
     call particle_set2%final ()
-    call evaluator_final (eval)
-    call interaction_final (int1)
-    call interaction_final (int2)
+    call eval%final ()
+    call int1%final ()
+    call int2%final ()
     call hepmc_event_final (hepmc_event)            
     call model%final ()
        

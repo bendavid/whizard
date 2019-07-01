@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -50,7 +50,7 @@ module prc_core
   private
 
   public :: prc_core_t
-  public :: workspace_t
+  public :: prc_core_state_t
   public :: helicity_selection_t
 
   type, abstract :: prc_core_t
@@ -81,11 +81,11 @@ module prc_core
      procedure(prc_core_compute_amplitude), deferred :: compute_amplitude
   end type prc_core_t
   
-  type, abstract :: workspace_t
+  type, abstract :: prc_core_state_t
    contains
      procedure(workspace_write), deferred :: write     
      procedure(workspace_reset_new_kinematics), deferred :: reset_new_kinematics
-  end type workspace_t
+  end type prc_core_state_t
   
   type :: helicity_selection_t
      logical :: active = .false.
@@ -133,44 +133,44 @@ module prc_core
 
   abstract interface
      subroutine prc_core_compute_hard_kinematics &
-          (object, p_seed, i_term, int_hard, tmp)
+          (object, p_seed, i_term, int_hard, core_state)
        import
        class(prc_core_t), intent(in) :: object
        type(vector4_t), dimension(:), intent(in) :: p_seed
        integer, intent(in) :: i_term
        type(interaction_t), intent(inout) :: int_hard
-       class(workspace_t), intent(inout), allocatable :: tmp
+       class(prc_core_state_t), intent(inout), allocatable :: core_state
      end subroutine prc_core_compute_hard_kinematics
   end interface
 
   abstract interface
      subroutine prc_core_compute_eff_kinematics &
-          (object, i_term, int_hard, int_eff, tmp)
+          (object, i_term, int_hard, int_eff, core_state)
        import
        class(prc_core_t), intent(in) :: object
        integer, intent(in) :: i_term
        type(interaction_t), intent(in) :: int_hard
        type(interaction_t), intent(inout) :: int_eff
-       class(workspace_t), intent(inout), allocatable :: tmp
+       class(prc_core_state_t), intent(inout), allocatable :: core_state
      end subroutine prc_core_compute_eff_kinematics
   end interface
 
   abstract interface
      subroutine prc_core_recover_kinematics &
-          (object, p_seed, int_hard, int_eff, tmp)
+          (object, p_seed, int_hard, int_eff, core_state)
        import
        class(prc_core_t), intent(in) :: object
        type(vector4_t), dimension(:), intent(inout) :: p_seed
        type(interaction_t), intent(inout) :: int_hard
        type(interaction_t), intent(inout) :: int_eff
-       class(workspace_t), intent(inout), allocatable :: tmp
+       class(prc_core_state_t), intent(inout), allocatable :: core_state
      end subroutine prc_core_recover_kinematics
   end interface
 
   abstract interface
      function prc_core_compute_amplitude &
-          (object, j, p, f, h, c, fac_scale, ren_scale, alpha_qcd_forced, tmp) &
-          result (amp)
+          (object, j, p, f, h, c, fac_scale, ren_scale, alpha_qcd_forced, &
+          core_state) result (amp)
        import
        class(prc_core_t), intent(in) :: object
        integer, intent(in) :: j
@@ -178,7 +178,8 @@ module prc_core
        integer, intent(in) :: f, h, c
        real(default), intent(in) :: fac_scale, ren_scale
        real(default), intent(in), allocatable :: alpha_qcd_forced
-       class(workspace_t), intent(inout), allocatable, optional :: tmp
+       class(prc_core_state_t), intent(inout), allocatable, optional :: &
+            core_state
        complex(default) :: amp
      end function prc_core_compute_amplitude
   end interface
@@ -186,7 +187,7 @@ module prc_core
   abstract interface
      subroutine workspace_write (object, unit)
        import
-       class(workspace_t), intent(in) :: object
+       class(prc_core_state_t), intent(in) :: object
        integer, intent(in), optional :: unit
      end subroutine workspace_write
   end interface
@@ -194,7 +195,7 @@ module prc_core
   abstract interface
     subroutine workspace_reset_new_kinematics (object)
       import
-      class(workspace_t), intent(inout) :: object
+      class(prc_core_state_t), intent(inout) :: object
     end subroutine workspace_reset_new_kinematics
   end interface
 
@@ -225,25 +226,25 @@ contains
     data = object%data
   end subroutine prc_core_get_constants
   
-  function prc_core_get_alpha_s (object, tmp) result (alpha)
+  function prc_core_get_alpha_s (object, core_state) result (alpha)
     class(prc_core_t), intent(in) :: object
-    class(workspace_t), intent(in), allocatable :: tmp
+    class(prc_core_state_t), intent(in), allocatable :: core_state
     real(default) :: alpha
     alpha = -1
   end function prc_core_get_alpha_s
   
-  subroutine prc_core_ignore_workspace (object, tmp)
+  subroutine prc_core_ignore_workspace (object, core_state)
     class(prc_core_t), intent(in) :: object
-    class(workspace_t), intent(inout), allocatable :: tmp
+    class(prc_core_state_t), intent(inout), allocatable :: core_state
   end subroutine prc_core_ignore_workspace
 
   subroutine prc_core_init_sf_chain &
-       (object, sf_chain_instance, sf_chain, n_channel, tmp)
+       (object, sf_chain_instance, sf_chain, n_channel, core_state)
     class(prc_core_t), intent(in) :: object
     type(sf_chain_instance_t), intent(inout), target :: sf_chain_instance
     type(sf_chain_t), intent(in), target :: sf_chain
     integer, intent(in) :: n_channel
-    class(workspace_t), intent(inout), allocatable :: tmp
+    class(prc_core_state_t), intent(inout), allocatable :: core_state
     call sf_chain_instance%init (sf_chain, n_channel)
   end subroutine prc_core_init_sf_chain
   

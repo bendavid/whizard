@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -118,8 +118,8 @@ module sf_circe2
 
 contains
 
-  subroutine circe2_data_init &
-       (data, os_data, model, pdg_in, sqrts, polarized, file, design)
+  subroutine circe2_data_init (data, os_data, model, pdg_in, &
+       sqrts, polarized, file, design)
     class(circe2_data_t), intent(out) :: data
     type(os_data_t), intent(in) :: os_data
     class(model_data_t), intent(in), target :: model
@@ -317,7 +317,17 @@ contains
             null_array, [0._default, 0._default])    
        sf_int%data => data              
        if (data%polarized) then
-          call sf_int%selector%init (data%lumi_hel_frac)
+          if (sum (data%lumi_hel_frac) == 0 .or. &
+               any (data%lumi_hel_frac < 0)) then
+             call msg_fatal ("Circe2: Helicity-dependent lumi " &
+                  // "fractions all vanish or",  &
+                  [var_str ("are negative: Please inspect the " &
+                  // "CIRCE2 file or "), &
+                   var_str ("switch off the polarized" // &
+                  " option for Circe2.")])
+          else             
+             call sf_int%selector%init (data%lumi_hel_frac)
+          end if
        end if
        call col0%init ()
        call qn(1)%init (flv = data%flv_in(1), col = col0)
@@ -330,15 +340,15 @@ contains
              call hel%init (data%h2(h))
              call qn(4)%init &
                   (flv = data%flv_in(2), col = col0, hel = hel)
-             call interaction_add_state (sf_int%interaction_t, qn)
+             call sf_int%add_state (qn)
           end do
        else
           call qn(3)%init (flv = data%flv_in(1), col = col0)
           call qn(4)%init (flv = data%flv_in(2), col = col0)
           call qn(3:4)%tag_radiated ()
-          call interaction_add_state (sf_int%interaction_t, qn)
+          call sf_int%add_state (qn)
        end if
-       call interaction_freeze (sf_int%interaction_t)
+       call sf_int%freeze ()
        call sf_int%set_incoming ([1,2])
        call sf_int%set_outgoing ([3,4])
        call sf_int%data%rng_factory%make (sf_int%rng_obj%rng)
@@ -428,7 +438,7 @@ contains
       else
          h = 1
       end if
-      call interaction_set_matrix_element (sf_int%interaction_t, h, f)
+      call sf_int%set_matrix_element (h, f)
     end associate
     sf_int%status = SF_EVALUATED
   end subroutine circe2_apply

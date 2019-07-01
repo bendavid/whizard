@@ -663,14 +663,33 @@ The weights are initialized with an uniform normalized value.
     allocate (mci_instance%w (mci%n_channel))
     allocate (mci_instance%f (mci%n_channel))
     allocate (mci_instance%x (mci%n_dim, mci%n_channel))
-    if (size (mci_instance%w) /= 0) then
-       mci_instance%w = 1._default / size (mci_instance%w)
+    if (mci%n_channel > 0) then
+       call mci_instance%set_channel_weights &
+            (spread (1._default, dim=1, ncopies=mci%n_channel))
     end if
     mci_instance%f = 0
     mci_instance%x = 0
   end subroutine mci_instance_base_init
     
 @ %def mci_instance_base_init
+@ Explicitly set the array of channel weights.
+<<MCI base: mci instance: TBP>>=
+  procedure :: set_channel_weights => mci_instance_set_channel_weights
+<<MCI base: procedures>>=
+  subroutine mci_instance_set_channel_weights (mci_instance, weights)
+    class(mci_instance_t), intent(inout) :: mci_instance
+    real(default), dimension(:), intent(in) :: weights
+    real(default) :: wsum
+    wsum = sum (weights)
+    if (wsum /= 0) then
+       mci_instance%w = weights / wsum
+    else
+       call msg_fatal ("MC sampler initialization:&
+            & sum of channel weights is zero")
+    end if
+  end subroutine mci_instance_set_channel_weights
+  
+@ %def mci_instance_set_channel_weights
 @ Compute the overall weight factor for a configuration of $x$ values and
 Jacobians $f$.  The $x$ values come in [[n_channel]] rows with [[n_dim]]
 entries each.  The $f$ factors constitute an array with [[n_channel]] entries.
@@ -6510,6 +6529,9 @@ must follow the MCI record.
   
 @ %def mci_vamp_update
 @ Read / write grids from / to file.
+
+Bug fix for 2.2.5: after reading grids from file, channel weights
+must be copied back to the [[mci_instance]] record.
 <<MCI vamp: mci vamp: TBP>>=
   procedure :: write_grids => mci_vamp_write_grids
   procedure :: read_grids_header => mci_vamp_read_grids_header
@@ -6588,6 +6610,7 @@ must follow the MCI record.
           end do
           call vamp_read_grids (instance%grids, u, read_integrals)
           close (u)
+          call instance%set_channel_weights (instance%grids%weights)
           instance%grids_defined = .true.
        else
           call msg_bug ("VAMP: read grids: grids already defined")
@@ -7458,26 +7481,27 @@ channel weights are reduced accordingly.
   subroutine mci_vamp_instance_adapt_weights (instance)
     class(mci_vamp_instance_t), intent(inout) :: instance
     real(default) :: w_sum, w_avg_ch, sum_w_underflow, w_min
+    real(default), dimension(:), allocatable :: weights
     integer :: n_ch, ch, n_underflow
     logical, dimension(:), allocatable :: mask, underflow
     type(exception) :: vamp_exception
     if (instance%enable_adapt_weights .and. instance%allow_adapt_weights) then
        associate (mci => instance%mci)
          if (instance%grids_defined) then
-            instance%w = instance%grids%weights &
+            weights = instance%grids%weights &
                  * vamp_get_variance (instance%grids%grids) &
                  ** mci%grid_par%channel_weights_power
-            w_sum = sum (instance%w)
+            w_sum = sum (weights)
             if (w_sum /= 0) then
-               instance%w = instance%w / w_sum
+               weights = weights / w_sum
                if (mci%n_chain /= 0) then
                   allocate (mask (mci%n_channel))
                   do ch = 1, mci%n_chain
                      mask = mci%chain == ch
                      n_ch = count (mask)
                      if (n_ch /= 0) then
-                        w_avg_ch = sum (instance%w, mask) / n_ch
-                        where (mask)  instance%w = w_avg_ch
+                        w_avg_ch = sum (weights, mask) / n_ch
+                        where (mask)  weights = w_avg_ch
                      end if
                   end do
                end if
@@ -7486,20 +7510,21 @@ channel weights are reduced accordingly.
                        real (mci%grid_par%threshold_calls, default) &
                        / instance%n_calls
                   allocate (underflow (mci%n_channel))
-                  underflow = instance%w /= 0 .and. abs (instance%w) < w_min
+                  underflow = weights /= 0 .and. abs (weights) < w_min
                   n_underflow = count (underflow)
-                  sum_w_underflow = sum (instance%w, mask=underflow)
+                  sum_w_underflow = sum (weights, mask=underflow)
                   if (sum_w_underflow /= 1) then
                      where (underflow)
-                        instance%w = w_min
+                        weights = w_min
                      elsewhere
-                        instance%w = instance%w &
+                        weights = weights &
                              * (1 - n_underflow * w_min) / (1 - sum_w_underflow)
                      end where
                   end if
                end if
             end if
-            call vamp_update_weights (instance%grids, instance%w, &
+            call instance%set_channel_weights (weights)
+            call vamp_update_weights (instance%grids, weights, &
                  exc = vamp_exception)
             call handle_vamp_exception (vamp_exception, mci%verbose)
          else

@@ -1,4 +1,4 @@
-!  $Id: omegalib.nw 6556 2015-02-12 20:34:13Z jr_reuter $
+!  $Id: omegalib.nw 6943 2015-05-01 10:53:21Z msekulla $
 !
 !  Copyright (C) 1999-2015 by
 !      Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -37,6 +37,7 @@ program test_omega95_bispinors
   type(momentum) :: p, q, t, z, p_0
   type(vector) :: vp, vq, vt, vz
   type(vectorspinor) :: testv
+  type(bispinor) :: vv
   logical :: passed
   call random_seed ()
   c_one = 1
@@ -71,6 +72,11 @@ program test_omega95_bispinors
   vt = t
   vz = z
   passed = .true.
+  vv%a(1) = (1.0_default, 0.0_default)
+  vv%a(2) = (0.0_default, 2.0_default)
+  vv%a(3) = (1.0_default, 0.0_default)
+  vv%a(4) = (3.0_default, 0.0_default)
+  vv = pr_psi(p, m, w, vv)
   print *, "*** Checking the equations of motion ***:"
   call expect (abs(f_vf(c_one,vp,u(m,p,+1))-m*u(m,p,+1)), 0, "|[p-m]u(+)|=0", passed)
   call expect (abs(f_vf(c_one,vp,u(m,p,-1))-m*u(m,p,-1)), 0, "|[p-m]u(-)|=0", passed)
@@ -299,15 +305,15 @@ program test_omega95_bispinors
   !!! call expect (abs(u (m,q,-1) * f_sgr (c_one, c_one, ueps(m,p,-2), t) + &
   !!!    ueps(m,p,-2) * gr_sf(c_one,c_one,u(m,q,-1),t)),  0, "f_sgr     + gr_sf     = 0", passed)
   call expect (abs(u (m,q,1) * f_slgr (c_one, c_one, ueps(m,p,2), t) + &
-     ueps(m,p,2) * gr_slf(c_one,c_one,u(m,q,1),t)),  0, "f_slgr    + gr_slf    = 0", passed)
+     ueps(m,p,2) * gr_slf(c_one,c_one,u(m,q,1),t)),  0, "f_slgr    + gr_slf    = 0", passed, threshold = 0.5_default)
   call expect (abs(u (m,q,1) * f_srgr (c_one, c_one, ueps(m,p,2), t) + &
-     ueps(m,p,2) * gr_srf(c_one,c_one,u(m,q,1),t)),  0, "f_srgr    + gr_srf    = 0", passed)
+     ueps(m,p,2) * gr_srf(c_one,c_one,u(m,q,1),t)),  0, "f_srgr    + gr_srf    = 0", passed, threshold = 0.5_default)
   call expect (abs(u (m,q,1) * f_slrgr (c_one, c_two, c_one, ueps(m,p,2), t) + &
-     ueps(m,p,2) * gr_slrf(c_one,c_two,c_one,u(m,q,1),t)),  0, "f_slrgr   + gr_slrf   = 0", passed)
+     ueps(m,p,2) * gr_slrf(c_one,c_two,c_one,u(m,q,1),t)),  0, "f_slrgr   + gr_slrf   = 0", passed, threshold = 0.5_default)
   call expect (abs(u (m,q,1) * f_pgr (c_one, c_one, ueps(m,p,2), t) + &
-     ueps(m,p,2) * gr_pf(c_one,c_one,u(m,q,1),t)),  0, "f_pgr     + gr_pf     = 0", passed)
+     ueps(m,p,2) * gr_pf(c_one,c_one,u(m,q,1),t)),  0, "f_pgr     + gr_pf     = 0", passed, threshold = 0.5_default)
   call expect (abs(u (m,q,1) * f_vgr (c_one, vt, ueps(m,p,2), p+q) + &
-     ueps(m,p,2) * gr_vf(c_one,vt,u(m,q,1),p+q)),  0, "f_vgr     + gr_vf     = 0", passed)
+     ueps(m,p,2) * gr_vf(c_one,vt,u(m,q,1),p+q)),  0, "f_vgr     + gr_vf = 0", passed, threshold = 0.5_default)
   call expect (abs(u (m,q,1) * f_vlrgr (c_one, c_two, vt, ueps(m,p,2), p+q) + &
      ueps(m,p,2) * gr_vlrf(c_one,c_two,vt,u(m,q,1),p+q)),  0, "f_vlrgr   + gr_vlrf   = 0", &
      passed, threshold = 0.5_default)

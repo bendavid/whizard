@@ -1,4 +1,4 @@
-! WHIZARD 2.2.5 Feb 27 2015
+! WHIZARD 2.2.6 May 02 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -47,7 +47,6 @@ module polarizations
   use helicities
   use quantum_numbers
   use state_matrices
-!  use models
 
   implicit none
   private
