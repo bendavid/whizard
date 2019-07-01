@@ -1,3 +1,5 @@
+% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*- 
+% VAMP divisions code as NOWEB source
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \RCSId$Id: divisions.nw 314 2010-04-17 20:32:33Z ohl $
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -773,7 +775,7 @@ if (d%stratified) then
    call raise_exception (exc, EXC_FATAL, FN, &
                          "ng == 1 incompatiple w/ stratification")
 else
-   call copy`'_division (ds, d)
+   call copy_division (ds, d)
    num_calls(2:) = ceiling (real (sum_calls) / num_forks)
    num_calls(1) = sum_calls - sum (num_calls(2:))
 end if
@@ -1141,12 +1143,12 @@ subroutine write_history (u, h, tag)
   end if
   if ((minval (h%x_min) == maxval (h%x_min)) &
        .and. (minval (h%x_max) == maxval (h%x_max))) then
-     write (u, "(1X,A11,1X,2X,1X,2(E10.3,A4,E10.3,A7))") pfx, &
+     write (u, "(1X,A11,1X,2X,1X,2(ES10.3,A4,ES10.3,A7))") pfx, &
           h(1)%x_min, " <= ", h(1)%x_min_true, &
           " < x < ", h(1)%x_max_true, " <= ", h(1)%x_max
   else
      do i = 1, size (h)
-        write (u, "(1X,A11,1X,I2,1X,2(E10.3,A4,E10.3,A7))") pfx, &
+        write (u, "(1X,A11,1X,I2,1X,2(ES10.3,A4,ES10.3,A7))") pfx, &
              i, h(i)%x_min, " <= ", h(i)%x_min_true, &
              " < x < ", h(i)%x_max_true, " <= ", h(i)%x_max
      end do
@@ -1674,10 +1676,3 @@ end subroutine copy_history
 @ %def copy_history
 
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Local Variables:
-% mode:noweb
-% noweb-doc-mode:latex-mode
-% noweb-code-mode:f90-mode
-% indent-tabs-mode:nil
-% page-delimiter:"^@ %%%.*\n"
-% End:

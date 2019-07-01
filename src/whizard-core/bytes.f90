@@ -1,11 +1,13 @@
-! WHIZARD 2.1.1 September 18 2012
+! WHIZARD 2.2.0 May 18 2014
 ! 
-! Copyright (C) 1999-2012 by 
+! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
-!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
+!     
+!     with contributions from
+!     Christian Speckner <cnspeckn@googlemail.com> 
+!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -42,7 +44,8 @@ module bytes
   public :: word32_append_byte
   public :: byte_from_word32
   public :: word32_write
-  public :: not, ior, ieor, iand, ishftc, operator(+)
+  public :: not, ior, ieor, iand, ishft, ishftc
+  public :: operator(+)
   public :: word64_t
   public :: byte_from_word64, word32_from_word64
   public :: word64_write
@@ -77,6 +80,9 @@ module bytes
      module procedure word32_set_from_i32
      module procedure word32_set_from_byte
   end interface
+  interface assignment(=)
+     module procedure i32_from_word32
+  end interface
   interface word32_write
      module procedure word32_write_unit
   end interface
@@ -92,11 +98,16 @@ module bytes
   interface iand
      module procedure word_and
   end interface
+  interface ishft
+     module procedure word_shft
+  end interface
   interface ishftc
      module procedure word_shftc
   end interface
   interface operator(+)
      module procedure word_add
+     module procedure word_add_i8
+     module procedure word_add_i32
   end interface
   interface assignment(=)
      module procedure word64_set_from_i64
@@ -145,6 +156,12 @@ contains
     w%i = i
     w%fill = 32
   end subroutine word32_set_from_i32
+
+  subroutine i32_from_word32 (i, w)
+    integer(i32), intent(out) :: i
+    type(word32_t), intent(in) :: w
+    i = w%i
+  end subroutine i32_from_word32
 
   subroutine word32_set_from_byte (w, b)
     type(word32_t), intent(out) :: w
@@ -195,7 +212,8 @@ contains
     if (i >= 0 .and. i*8 < w%fill) then
        call mvbits (w%i, i*8, 8, j, 0)
     end if
-    b%i = j
+    b%i = int (ibclr (j, 7), kind=i8)
+    if (btest (j, 7))  b%i = ibset (b%i, 7)
   end function byte_from_word32
 
   subroutine word32_write_unit (w, unit, bytes, decimal, newline)
@@ -259,6 +277,13 @@ contains
     w3 = iand (w1%i, w2%i)
   end function word_and
 
+  function word_shft (w1, s) result (w2)
+    type(word32_t), intent(in) :: w1
+    integer, intent(in) :: s
+    type(word32_t) :: w2
+    w2 = ishft (w1%i, s)
+  end function word_shft
+
   function word_shftc (w1, s) result (w2)
     type(word32_t), intent(in) :: w1
     integer, intent(in) :: s
@@ -269,8 +294,40 @@ contains
   function word_add (w1, w2) result (w3)
     type(word32_t), intent(in) :: w1, w2
     type(word32_t) :: w3
-    w3 = w1%i + w2%i
+    integer(i64) :: j
+    j = int (ibclr (w1%i, 31), i64) + int (ibclr (w2%i, 31), i64)
+    w3 = int (ibclr (j, 31), kind=i32)
+    if (btest (j, 31)) then
+       if (btest (w1%i, 31) .eqv. btest (w2%i, 31))  w3 = ibset (w3%i, 31)
+    else
+       if (btest (w1%i, 31) .neqv. btest (w2%i, 31))  w3 = ibset (w3%i, 31)
+    end if
   end function word_add
+
+  function word_add_i8 (w1, i) result (w3)
+    type(word32_t), intent(in) :: w1
+    integer(i8), intent(in) :: i
+    type(word32_t) :: w3
+    integer(i64) :: j
+    j = int (ibclr (w1%i, 31), i64) + int (ibclr (i, 7), i64)
+    if (btest (i, 7))  j = j + 128
+    w3 = int (ibclr (j, 31), kind=i32)
+    if (btest (j, 31) .neqv. btest (w1%i, 31))  w3 = ibset (w3%i, 31)
+  end function word_add_i8
+
+  function word_add_i32 (w1, i) result (w3)
+    type(word32_t), intent(in) :: w1
+    integer(i32), intent(in) :: i
+    type(word32_t) :: w3
+    integer(i64) :: j
+    j = int (ibclr (w1%i, 31), i64) + int (ibclr (i, 31), i64)
+    w3 = int (ibclr (j, 31), kind=i32)
+    if (btest (j, 31)) then
+       if (btest (w1%i, 31) .eqv. btest (i, 31))  w3 = ibset (w3%i, 31)
+    else
+       if (btest (w1%i, 31) .neqv. btest (i, 31))  w3 = ibset (w3%i, 31)
+    end if
+  end function word_add_i32
 
   subroutine word64_set_from_i64 (ww, i)
     type(word64_t), intent(out) :: ww
@@ -297,7 +354,8 @@ contains
     if (i >= 0 .and. i*8 < 64) then
        call mvbits (ww%i, i*8, 8, j, 0)
     end if
-    b%i = j
+    b%i = int (ibclr (j, 7), kind=i8)
+    if (btest (j, 7))  b%i = ibset (b%i, 7)
   end function byte_from_word64
 
   function word32_from_word64 (ww, i) result (w)
@@ -310,7 +368,8 @@ contains
     case (0);  call mvbits (ww%i,  0, 32, j, 0)
     case (1);  call mvbits (ww%i, 32, 32, j, 0)
     end select
-    w = int (j, kind=i32)
+    w = int (ibclr (j, 31), kind=i32)
+    if (btest (j, 31))  w = ibset (w%i, 31)
   end function word32_from_word64
 
   subroutine word64_write_unit (ww, unit, words, bytes, decimal, newline)

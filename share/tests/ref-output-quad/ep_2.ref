@@ -1,0 +1,220 @@
+?openmp_logging = false
+?vis_history = false
+?integration_timer = false
+$method = "omega"
+| Process library 'ep_2_lib': recorded process 'ep_2_p1'
+| Process library 'ep_2_lib': recorded process 'ep_2_p2'
+| Process library 'ep_2_lib': recorded process 'ep_2_q1'
+| Process library 'ep_2_lib': recorded process 'ep_2_q2'
+seed = 0
+| Process library 'ep_2_lib': compiling ...
+| Process library 'ep_2_lib': writing makefile
+| Process library 'ep_2_lib': removing old files
+| Process library 'ep_2_lib': writing driver
+| Process library 'ep_2_lib': creating source code
+| Process library 'ep_2_lib': compiling sources
+| Process library 'ep_2_lib': linking
+| Process library 'ep_2_lib': loading
+| Process library 'ep_2_lib': ... success.
+$phs_method = "wood"
+$integration_method = "vamp"
+sqrts =  5.000000000000E+02
+openmp_num_threads = 1
+[user variable] n = 1000
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 0
+| Initializing integration for process ep_2_p1:
+| ------------------------------------------------------------------------
+| Process [scattering]: 'ep_2_p1'
+|   Library name  = 'ep_2_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'ep_2_p1_i1':   A, u => A, u [omega]
+| ------------------------------------------------------------------------
+| Beam structure: A, p => none, pdf_builtin
+| Beam data (collision):
+|   A  (mass = 0.0000000E+00 GeV)
+|   p  (mass = 0.0000000E+00 GeV)
+|   sqrts = 5.000000000000E+02 GeV
+| Initialized builtin PDF CTEQ6L
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'ep_2_p1_i1.phs'
+| Phase space: 3 channels, 2 dimensions
+| Phase space: found 3 channels, collected in 2 groves.
+| Phase space: Using 3 equivalences between channels.
+| Phase space: wood
+| Beam structure: none, pdf_builtin
+| Beam structure: 1 channels, 1 dimensions
+| Applying user-defined cuts.
+| Starting integration for process 'ep_2_p1'
+| Integrate: iterations = 5:1000:"g", 3:1000
+| Integrator: 2 chains, 3 channels, 3 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 1000 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1        999  3.8616031E+04  8.51E+03   22.04    6.97*   1.19
+   2        999  2.7857398E+04  1.78E+03    6.38    2.02*   5.08
+   3        999  3.0216543E+04  9.45E+02    3.13    0.99*  18.37
+   4        999  2.9322626E+04  6.18E+02    2.11    0.67*  27.51
+   5        999  2.9741141E+04  5.38E+02    1.81    0.57*  29.57
+|-----------------------------------------------------------------------------|
+   5       4995  2.9603259E+04  3.65E+02    1.23    0.87   29.57    0.69   5
+|-----------------------------------------------------------------------------|
+   6        999  3.0451498E+04  5.72E+02    1.88    0.59   17.93
+   7        999  3.0219585E+04  5.49E+02    1.82    0.57*  17.79
+   8        999  2.8109027E+04  5.53E+02    1.97    0.62   16.55
+|-----------------------------------------------------------------------------|
+   8       2997  2.9576611E+04  3.22E+02    1.09    0.60   16.55    5.38   3
+|=============================================================================|
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 1
+| Initializing integration for process ep_2_q1:
+| ------------------------------------------------------------------------
+| Process [scattering]: 'ep_2_q1'
+|   Library name  = 'ep_2_lib'
+|   Process index = 3
+|   Process components:
+|     1: 'ep_2_q1_i1':   u, A => A, u [omega]
+| ------------------------------------------------------------------------
+| Beam structure: p, A => pdf_builtin, none
+| Beam data (collision):
+|   p  (mass = 0.0000000E+00 GeV)
+|   A  (mass = 0.0000000E+00 GeV)
+|   sqrts = 5.000000000000E+02 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'ep_2_q1_i1.phs'
+| Phase space: 3 channels, 2 dimensions
+| Phase space: found 3 channels, collected in 2 groves.
+| Phase space: Using 3 equivalences between channels.
+| Phase space: wood
+| Beam structure: pdf_builtin, none
+| Beam structure: 1 channels, 1 dimensions
+| Applying user-defined cuts.
+| Starting integration for process 'ep_2_q1'
+| Integrate: iterations = 5:1000:"g", 3:1000
+| Integrator: 2 chains, 3 channels, 3 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 1000 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1        999  2.2336268E+04  4.60E+03   20.58    6.50*   1.16
+   2        999  2.8528596E+04  1.83E+03    6.42    2.03*   6.51
+   3        999  3.0843141E+04  9.52E+02    3.09    0.98*  14.57
+   4        999  2.9186505E+04  7.06E+02    2.42    0.76*  13.29
+   5        999  2.9592321E+04  5.77E+02    1.95    0.62*  26.33
+|-----------------------------------------------------------------------------|
+   5       4995  2.9577391E+04  3.93E+02    1.33    0.94   26.33    1.22   5
+|-----------------------------------------------------------------------------|
+   6        999  2.8638694E+04  5.71E+02    1.99    0.63   22.49
+   7        999  2.8915831E+04  5.73E+02    1.98    0.63*  21.87
+   8        999  2.8276971E+04  5.53E+02    1.96    0.62*  21.38
+|-----------------------------------------------------------------------------|
+   8       2997  2.8602459E+04  3.26E+02    1.14    0.62   21.38    0.32   3
+|=============================================================================|
+epa_x_min =  1.000000000000E-01
+epa_mass =  5.109970000000E-04
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 2
+| Initializing integration for process ep_2_p2:
+| ------------------------------------------------------------------------
+| Process [scattering]: 'ep_2_p2'
+|   Library name  = 'ep_2_lib'
+|   Process index = 2
+|   Process components:
+|     1: 'ep_2_p2_i1':   A, u => A, u [omega]
+| ------------------------------------------------------------------------
+| Beam structure: e-, p => epa, pdf_builtin
+| Beam data (collision):
+|   e-  (mass = 5.1099700E-04 GeV)
+|   p   (mass = 0.0000000E+00 GeV)
+|   sqrts = 5.000000000000E+02 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'ep_2_p2_i1.phs'
+| Phase space: 3 channels, 2 dimensions
+| Phase space: found 3 channels, collected in 2 groves.
+| Phase space: Using 3 equivalences between channels.
+| Phase space: wood
+| Beam structure: epa, none => none, pdf_builtin
+| Beam structure: 1 channels, 2 dimensions
+| Applying user-defined cuts.
+| Starting integration for process 'ep_2_p2'
+| Integrate: iterations = 5:1000:"g", 3:1000
+| Integrator: 2 chains, 3 channels, 4 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 1000 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1        999  2.0971640E+03  2.61E+02   12.42    3.93*   2.66
+   2        999  2.3639786E+03  1.37E+02    5.80    1.83*   5.50
+   3        999  2.5364680E+03  1.08E+02    4.27    1.35*  10.56
+   4        999  2.4060945E+03  9.43E+01    3.92    1.24*  13.50
+   5        999  2.3483825E+03  8.33E+01    3.55    1.12*  16.31
+|-----------------------------------------------------------------------------|
+   5       4995  2.3964230E+03  4.94E+01    2.06    1.46   16.31    0.85   5
+|-----------------------------------------------------------------------------|
+   6        999  2.3177334E+03  8.26E+01    3.56    1.13   13.20
+   7        999  2.2763476E+03  8.16E+01    3.59    1.13   12.15
+   8        999  2.2938908E+03  8.68E+01    3.78    1.20    9.37
+|-----------------------------------------------------------------------------|
+   8       2997  2.2959079E+03  4.83E+01    2.10    1.15    9.37    0.06   3
+|=============================================================================|
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 3
+| Initializing integration for process ep_2_q2:
+| ------------------------------------------------------------------------
+| Process [scattering]: 'ep_2_q2'
+|   Library name  = 'ep_2_lib'
+|   Process index = 4
+|   Process components:
+|     1: 'ep_2_q2_i1':   u, A => A, u [omega]
+| ------------------------------------------------------------------------
+| Beam structure: p, e- => pdf_builtin, epa
+| Beam data (collision):
+|   p   (mass = 0.0000000E+00 GeV)
+|   e-  (mass = 5.1099700E-04 GeV)
+|   sqrts = 5.000000000000E+02 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'ep_2_q2_i1.phs'
+| Phase space: 3 channels, 2 dimensions
+| Phase space: found 3 channels, collected in 2 groves.
+| Phase space: Using 3 equivalences between channels.
+| Phase space: wood
+| Beam structure: pdf_builtin, none => none, epa
+| Beam structure: 1 channels, 2 dimensions
+| Applying user-defined cuts.
+| Starting integration for process 'ep_2_q2'
+| Integrate: iterations = 5:1000:"g", 3:1000
+| Integrator: 2 chains, 3 channels, 4 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 1000 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1        999  2.5267593E+03  3.79E+02   15.01    4.74*   1.76
+   2        999  2.3238030E+03  1.12E+02    4.84    1.53*   8.11
+   3        999  2.2523896E+03  8.33E+01    3.70    1.17*  13.00
+   4        999  2.4212901E+03  8.58E+01    3.54    1.12*  14.30
+   5        999  2.2598343E+03  7.71E+01    3.41    1.08*  15.48
+|-----------------------------------------------------------------------------|
+   5       4995  2.3118325E+03  4.33E+01    1.87    1.32   15.48    0.73   5
+|-----------------------------------------------------------------------------|
+   6        999  2.2009251E+03  7.46E+01    3.39    1.07*  14.79
+   7        999  2.2684545E+03  7.71E+01    3.40    1.07   15.16
+   8        999  2.3791813E+03  8.01E+01    3.37    1.06*  15.18
+|-----------------------------------------------------------------------------|
+   8       2997  2.2786465E+03  4.45E+01    1.95    1.07   15.18    1.34   3
+|=============================================================================|
+| WHIZARD run finished.
+|=============================================================================|

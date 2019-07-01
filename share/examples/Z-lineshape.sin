@@ -1,12 +1,13 @@
-# $Id: Z-lineshape.sin 3670 2012-01-21 19:33:07Z jr_reuter $
+# $Id: Z-lineshape.sin 5323 2014-02-18 16:40:40Z jr_reuter $
 # Simple complete physics example: Z lineshape in the Standard Model
 ########################################################################
 #
-# Copyright (C) 1999-2012 by 
+# Copyright (C) 1999-2014 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
-#     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+#     with contributions from
+#     Christian Speckner <cnspeckn@googlemail.com>
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by 
@@ -38,14 +39,14 @@ cuts = all E >= 100 MeV [prt]
    and all M2 >= (1 GeV)^2 [prt, prt]
  
 # Define title etc. as global variables, that will be used by PLOT:
-$description = "A WHIZARD 2.0 Example"
+$description = "A WHIZARD 2.2 Example"
 $x_label = "$\sqrt{s}$/GeV"
 $y_label = "$\sigma(s)$/pb"
 
 # Allocate one plot
 $title = "The Z Lineshape in $e^+e^-\to\mu^+\mu^-$"
 plot lineshape_born { x_min = 88 GeV  x_max = 95 GeV }
-
+ 
 # Allocate another plot
 $title = "The Z Lineshape in $e^+e^-\to\mu^+\mu^-\gamma$"
 plot lineshape_rc { x_min = 88 GeV  x_max = 95 GeV }
@@ -54,9 +55,9 @@ scan sqrts = ((88.0 GeV => 90.0 GeV /+ 0.5 GeV),
               (90.1 GeV => 91.9 GeV /+ 0.1 GeV),
               (92.0 GeV => 95.0 GeV /+ 0.5 GeV)) {
   beams = e1, E1
-  integrate (born) { iterations = 1:2000 }
+  integrate (born) { iterations = 2:1000:"gw", 1:2000 }
   record lineshape_born (sqrts, integral (born) / 1000)
-  integrate (rc)   { iterations = 5:5000 }
+  integrate (rc)   { iterations = 5:3000:"gw", 2:5000 }
   record lineshape_rc (sqrts, integral (rc) / 1000)
 }
 

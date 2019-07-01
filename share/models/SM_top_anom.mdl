@@ -1,5 +1,5 @@
 ########################################################################
-# Standard Model with trivial CKM matrix and anom. tt vector couplings
+# Standard Model with trivial CKM matrix and anom. top couplings
 model "SM_top_anom"
 
 # Independent parameters
@@ -20,11 +20,11 @@ parameter wtop   = 1.523        # t-quark width
 parameter wZ     = 2.443        # Z-boson width
 parameter wW     = 2.049        # W-boson width
 parameter wH     = 0.004143     # Higgs width  
-parameter khgaz  = 1.000	# anomaly Higgs couplings K factors
-parameter khgaga = 1.000	# anomaly Higgs couplings K factors
-parameter khgg 	 = 1.000	# anomaly Higgs couplings K factors
-parameter xi0    = 0.000	# R_xi parameter for Z-boson
-parameter xipm   = 0.000	# R_xi parameter for W-boson
+parameter khgaz  = 0.000        # anomaly Higgs couplings K factors
+parameter khgaga = 0.000        # anomaly Higgs couplings K factors
+parameter khgg   = 0.000        # anomaly Higgs couplings K factors
+parameter xi0    = 0.000        # R_xi parameter for Z-boson
+parameter xipm   = 0.000        # R_xi parameter for W-boson
 
 # General set of parameters for anomalous top-gauge and top-Higgs vertices
 parameter tv_ttA    = 0.000     # vector coeff. of ttA tensor coupling
@@ -62,7 +62,7 @@ parameter norm_conv = 1
 
 # Setting this switch to a positive value effects the usual normalization
 # convention widely used in literature, where the ratio of fundamental scales
-# is implicit inside the couplings (cf. e.g. 0811.3842 & 0904.2387).
+# is implicit inside the couplings (cf. e.g. [arXiv:0811.3842] & [arXiv:0904.2387]).
 # With a negative value, the ratio of scales appears explicitly in the
 # normalization of the interaction terms, making the natural coupling sizes
 # become of the order of the fundamental Wilson coefficients. 
@@ -87,15 +87,19 @@ parameter gauge_inv = 1
 # N_tr_tbW_Im = N_ta_ttZ * sqrt(2) * cw + N_ta_ttA * 2 * sw
 
 
-# Partially redundant operator coefficients (turn on 4-fermion contact terms)
-parameter Re_CqG = 0.000        # real part of C_qG
-parameter Re_CuG = 0.000        # real part of C_uG
-parameter Re_CqB = 0.000        # real part of C_qB
-parameter Re_CuB = 0.000        # real part of C_uB
-parameter Re_CqW = 0.000        # real part of C_qW
-parameter Re_CDu = 0.000        # real part of C_Du
-parameter Re_CDd = 0.000        # real part of C_Dd
-parameter Im_CDd = 0.000        # imaginary part of C_Dd
+# Anomalous dim6 charged-current top interactions (cf. [arXiv:1008.4884])
+parameter v3_4f     = 0.000   #  4*C_qq3
+parameter s1r_4f_Re = 0.000   # -Re(C_quqd1_1)
+parameter s1r_4f_Im = 0.000   # -Im(C_quqd1_1)
+parameter s1l_4f_Re = 0.000   # -Re(C_quqd1_2)
+parameter s1l_4f_Im = 0.000   #  Im(C_quqd1_2)
+parameter s8r_4f_Re = 0.000   # -Re(C_quqd8_1)
+parameter s8r_4f_Im = 0.000   # -Im(C_quqd8_1)
+parameter s8l_4f_Re = 0.000   # -Re(C_quqd8_2)
+parameter s8l_4f_Im = 0.000   #  Im(C_quqd8_2)
+
+# finite top quark radius (~ O_qG + O_uG in [arXiv:0811.3842])
+parameter Rt =  0.000         # dimension [TeV^-1]: overrides global scale Lambda!
 
 
 # Dependent SM parameters
@@ -209,15 +213,65 @@ particle PROTON 2212
   name p "p+"
   anti pbar "p-"
 
+# Beam remnants for proton colliders
 particle HADRON_REMNANT 90
-
+  name hr
+  tex_name "had_r"
 particle HADRON_REMNANT_SINGLET 91
-
+  name hr1
+  tex_name "had_r^{(1)}"
 particle HADRON_REMNANT_TRIPLET 92
   color 3
-
+  name hr3
+  tex_name "had_r^{(3)}"
+  anti hr3bar
+  tex_name "had_r^{(\bar 3)}"
 particle HADRON_REMNANT_OCTET 93
   color 8
+  name hr8
+  tex_name "had_r^{(8)}"
+
+# Auxiliary particles for top couplings
+particle AUX_TOP_QW_P 601
+  spin 1 charge 1
+  name "Aux_t_qW+" Aux_t_qWp Aux_t_V3_p
+  anti "Aux_qW-" Aux_qWm Aux_V3_m
+particle AUX_TOP_QW_M 603
+  spin 1 charge 1
+  name "Aux_t_qW-" Aux_t_qWm Aux_t_V3_m
+  anti "Aux_qW+" Aux_qWp Aux_V3_p
+particle AUX_TOP_QUQD1R_P 604
+  spin 0 charge 1
+  name "Aux_t_quqd1R+" Aux_t_quqd1Rp Aux_t_S1_p
+  anti "Aux_quqd1R-" Aux_quqd1Rm Aux_S1_m
+particle AUX_TOP_QUQD1R_M 606
+  spin 0 charge 1
+  name "Aux_t_quqd1R-" Aux_t_quqd1Rm Aux_t_S1_m
+  anti "Aux_quqd1R+" Aux_quqd1Rp Aux_S1_p
+particle AUX_TOP_QUQD1L_P 607
+  spin 0 charge 1
+  name "Aux_t_quqd1L+" Aux_t_quqd1Lp Aux_t_S2_p
+  anti "Aux_quqd1L-" Aux_quqd1Lm Aux_S2_m
+particle AUX_TOP_QUQD1L_M 609
+  spin 0 charge 1
+  name "Aux_t_quqd1L-" Aux_t_quqd1Lm Aux_t_S2_m
+  anti "Aux_quqd1L+" Aux_quqd1Lp Aux_S2_p
+particle AUX_TOP_QUQD8R_P 610
+  spin 0 charge 1 color 8
+  name "Aux_t_quqd8R+" Aux_t_quqd8Rp Aux_t_O1_p
+  anti "Aux_quqd8R-" Aux_quqd8Rm Aux_O1_m
+particle AUX_TOP_QUQD8R_M 612
+  spin 0 charge 1 color 8
+  name "Aux_t_quqd8R-" Aux_t_quqd8Rm Aux_t_O1_m
+  anti "Aux_quqd8R+" Aux_quqd8Rp Aux_O1_p
+particle AUX_TOP_QUQD8L_P 613
+  spin 0 charge 1 color 8
+  name "Aux_t_quqd8L+" Aux_t_quqd8Lp Aux_t_O2_p
+  anti "Aux_quqd8L-" Aux_quqd8Lm Aux_O2_m
+particle AUX_TOP_QUQD8L_M 615
+  spin 0 charge 1 color 8
+  name "Aux_t_quqd8L-" Aux_t_quqd8Lm Aux_t_O2_m
+  anti "Aux_quqd8L+" Aux_quqd8Lp Aux_O2_p
 
 ########################################################################
 # Vertices of the Standard model

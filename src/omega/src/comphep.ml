@@ -1,11 +1,12 @@
-(* $Id: comphep.ml 3670 2012-01-21 19:33:07Z jr_reuter $
+(* $Id: comphep.ml 4926 2013-12-04 12:35:06Z jr_reuter $
 
-   Copyright (C) 1999-2012 by
+   Copyright (C) 1999-2014 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
        Juergen Reuter <juergen.reuter@desy.de>
-       Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+       with contributions from
+       Christian Speckner <cnspeckn@googlemail.com>
 
    WHIZARD is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by
@@ -22,8 +23,8 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 let rcs_file = RCS.parse "Comphep" ["Plagiarizing CompHEP models ..."]
-    { RCS.revision = "$Revision: 3670 $";
-      RCS.date = "$Date: 2012-01-21 20:33:07 +0100 (Sat, 21 Jan 2012) $";
+    { RCS.revision = "$Revision: 4926 $";
+      RCS.date = "$Date: 2013-12-04 13:35:06 +0100 (Wed, 04 Dec 2013) $";
       RCS.author = "$Author: jr_reuter $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/src/omega/src/comphep.ml $" }
@@ -182,10 +183,12 @@ module Model =
     type flavor = int
     type constant = string
     type gauge = unit
+    type orders = unit
 
     module M = Modeltools.Mutable
-        (struct type f = flavor type g = gauge type c = constant end)
+        (struct type f = flavor type g = gauge type c = constant type o = orders end)
 
+    let orders = M.orders
     let flavors = M.flavors
     let external_flavors = M.external_flavors
     let lorentz = M.lorentz

@@ -1,0 +1,14 @@
+# $Id: susyhit.sin 5412 2014-03-03 12:49:47Z jr_reuter $
+# Test the interaction with the external spectrum/decay program SUSYHIT
+
+model = MSSM_Grav
+
+?logging = true
+
+write_slha ("suspect2_lha.in")
+
+exec ("susyhit")
+
+read_slha ("susyhit_slha.out")
+
+show (mgg, wgg) { ?pacify = true }

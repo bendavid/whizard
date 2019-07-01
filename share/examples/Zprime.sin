@@ -2,11 +2,12 @@
 # Simple complete physics example: sequential Z' in Drell-Yan
 ########################################################################
 #
-# Copyright (C) 1999-2012 by 
+# Copyright (C) 1999-2014 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
-#     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+#     with contributions from 
+#     Christian Speckner <cnspeckn@googlemail.com>
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by 
@@ -47,14 +48,14 @@ scale = 1500 GeV
 
 # Beam specification and integration
 sqrts = 14 TeV
-beams = p,p => lhapdf 
-integrate (zp_drell_yan) { iterations = 3:10000,6:20000 }
+beams = p,p => pdf_builtin 
+integrate (zp_drell_yan) { iterations = 3:10000:"gw",6:20000 }
 
 ?unweighted = false
 
 # Define title etc. as global variables, that will be used by PLOT
 $description =
-  "A WHIZARD 2.0 Example.
+  "A WHIZARD 2.2 Example.
    Cuts: $p_T^\ell\ge50 \textrm{ GeV}$, $M_{\ell\ell} \ge$800 GeV, 
          $|\eta(\ell)|\le2.5$
          \newline Using weighted events to produce smooth 

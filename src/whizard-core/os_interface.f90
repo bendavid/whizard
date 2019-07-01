@@ -1,11 +1,13 @@
-! WHIZARD 2.1.1 September 18 2012
+! WHIZARD 2.2.0 May 18 2014
 ! 
-! Copyright (C) 1999-2012 by 
+! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
-!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
+!     
+!     with contributions from
+!     Christian Speckner <cnspeckn@googlemail.com> 
+!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -33,7 +35,8 @@ module os_interface
   use system_dependencies !NODEP!
   use limits, only: DLERROR_LEN, ENVVAR_LEN !NODEP!
   use diagnostics !NODEP!
-
+  use unit_tests
+  
   implicit none
   private
 
@@ -77,13 +80,18 @@ module os_interface
      type(string_t) :: fcflags
      type(string_t) :: fcflags_pic
      type(string_t) :: fc_src_ext
+     type(string_t) :: cc
+     type(string_t) :: cflags
+     type(string_t) :: cflags_pic
      type(string_t) :: obj_ext
      type(string_t) :: ld
      type(string_t) :: ldflags
      type(string_t) :: ldflags_so
      type(string_t) :: ldflags_static
      type(string_t) :: ldflags_hepmc
+     type(string_t) :: ldflags_hoppet
      type(string_t) :: shlib_ext
+     type(string_t) :: makeflags
      type(string_t) :: prefix
      type(string_t) :: exec_prefix
      type(string_t) :: bindir
@@ -125,6 +133,10 @@ module os_interface
      logical :: is_open = .false.
      logical :: has_error = .false.
      type(string_t) :: error
+   contains
+     procedure :: write => dlaccess_write
+     procedure :: init => dlaccess_init
+     procedure :: final => dlaccess_final
   end type dlaccess_t
 
 
@@ -210,13 +222,18 @@ contains
     os_data%fcflags        = DEFAULT_FCFLAGS
     os_data%fcflags_pic    = DEFAULT_FCFLAGS_PIC
     os_data%fc_src_ext     = DEFAULT_FC_SRC_EXT
+    os_data%cc             = DEFAULT_CC
+    os_data%cflags         = DEFAULT_CFLAGS
+    os_data%cflags_pic     = DEFAULT_CFLAGS_PIC
     os_data%obj_ext        = DEFAULT_OBJ_EXT
     os_data%ld             = DEFAULT_LD
     os_data%ldflags        = DEFAULT_LDFLAGS
     os_data%ldflags_so     = DEFAULT_LDFLAGS_SO
     os_data%ldflags_static = DEFAULT_LDFLAGS_STATIC
     os_data%ldflags_hepmc  = DEFAULT_LDFLAGS_HEPMC
+    os_data%ldflags_hoppet = DEFAULT_LDFLAGS_HOPPET
     os_data%shlib_ext      = DEFAULT_SHLIB_EXT
+    os_data%makeflags      = DEFAULT_MAKEFLAGS
     os_data%prefix      = PREFIX
     os_data%exec_prefix = EXEC_PREFIX
     os_data%bindir      = BINDIR
@@ -339,13 +356,18 @@ contains
     write (u, *) "fcflags        = ", char (os_data%fcflags)
     write (u, *) "fcflags_pic    = ", char (os_data%fcflags_pic)
     write (u, *) "fc_src_ext     = ", char (os_data%fc_src_ext)
+    write (u, *) "cc             = ", char (os_data%cc)
+    write (u, *) "cflags         = ", char (os_data%cflags)
+    write (u, *) "cflags_pic     = ", char (os_data%cflags_pic)
     write (u, *) "obj_ext        = ", char (os_data%obj_ext)
     write (u, *) "ld             = ", char (os_data%ld)
     write (u, *) "ldflags        = ", char (os_data%ldflags)
     write (u, *) "ldflags_so     = ", char (os_data%ldflags_so)
     write (u, *) "ldflags_static = ", char (os_data%ldflags_static)
     write (u, *) "ldflags_hepmc  = ", char (os_data%ldflags_hepmc)
+    write (u, *) "ldflags_hoppet = ", char (os_data%ldflags_hoppet)    
     write (u, *) "shlib_ext      = ", char (os_data%shlib_ext)
+    write (u, *) "makeflags      = ", char (os_data%makeflags)
     write (u, *) "prefix         = ", char (os_data%prefix)
     write (u, *) "exec_prefix    = ", char (os_data%exec_prefix)
     write (u, *) "bindir         = ", char (os_data%bindir)
@@ -386,6 +408,18 @@ contains
     write (u, *) "ps2pdf = ", char (os_data%ps2pdf)
   end subroutine os_data_write
 
+  subroutine dlaccess_write (object, unit)
+    class(dlaccess_t), intent(in) :: object
+    integer, intent(in) :: unit
+    write (unit, "(1x,A)")  "DL access info:"
+    write (unit, "(3x,A,L1)")   "is open   = ", object%is_open
+    if (object%has_error) then
+       write (unit, "(3x,A,A,A)")  "error     = '", char (object%error), "'"
+    else
+       write (unit, "(3x,A)")      "error     = [none]"
+    end if
+  end subroutine dlaccess_write
+    
   subroutine read_dlerror (has_error, error)
     logical, intent(out) :: has_error
     type(string_t), intent(out) :: error
@@ -409,9 +443,9 @@ contains
   end subroutine read_dlerror
 
   subroutine dlaccess_init (dlaccess, prefix, libname, os_data)
-    type(dlaccess_t), intent(out) :: dlaccess
+    class(dlaccess_t), intent(out) :: dlaccess
     type(string_t), intent(in) :: prefix, libname
-    type(os_data_t), intent(in) :: os_data
+    type(os_data_t), intent(in), optional :: os_data
     type(string_t) :: filename
     logical :: exist
     dlaccess%filename = libname
@@ -426,13 +460,14 @@ contains
           return
        end if
     end if
-    dlaccess%handle = dlopen (char (filename) // c_null_char, 1_c_int)
+    dlaccess%handle = dlopen (char (filename) // c_null_char, ior ( &
+       RTLD_LAZY, RTLD_LOCAL))
     dlaccess%is_open = c_associated (dlaccess%handle)
     call read_dlerror (dlaccess%has_error, dlaccess%error)
   end subroutine dlaccess_init
 
   subroutine dlaccess_final (dlaccess)
-    type(dlaccess_t), intent(inout) :: dlaccess
+    class(dlaccess_t), intent(inout) :: dlaccess
     integer(c_int) :: status
     if (dlaccess%is_open) then
        status = dlclose (dlaccess%handle)
@@ -565,7 +600,8 @@ contains
             os_data%ldflags_static // " " // &
             "-o '" // exec_name // "' " // &
             objlist // " " // &
-            os_data%ldflags_hepmc
+            os_data%ldflags_hepmc // " " // &
+            os_data%ldflags_hoppet
     else
        command_string = &
             os_data%ld // " " // &
@@ -576,7 +612,8 @@ contains
             os_data%ldflags_static // " " // &
             "-o '" // exec_name // "' " // &
             objlist // " " // &
-            os_data%ldflags_hepmc
+            os_data%ldflags_hepmc // " " // &
+            os_data%ldflags_hoppet
     end if
     call os_system_call (command_string, status)
   end subroutine os_link_static
@@ -640,51 +677,75 @@ contains
     end if
   end function os_get_dlname
 
-  subroutine openmp_set_num_threads_verbose (num_threads)
+  subroutine openmp_set_num_threads_verbose (num_threads, openmp_logging)
     integer, intent(in) :: num_threads
     integer :: n_threads
+    logical, intent(in), optional :: openmp_logging
+    logical :: logging
+    if (present (openmp_logging)) then
+       logging = openmp_logging
+    else
+       logging = .true.
+    end if
     n_threads = num_threads
     if (openmp_is_active ()) then
        if (num_threads == 1) then
-          write (msg_buffer, "(A,I0,A)")  "OpenMP: Using ", num_threads, &
-              " thread"
-          call msg_message
+          if (logging) then
+             write (msg_buffer, "(A,I0,A)")  "OpenMP: Using ", num_threads, &
+                  " thread"
+             call msg_message
+          end if
           n_threads = num_threads
        else if (num_threads > 1) then
-          write (msg_buffer, "(A,I0,A)")  "OpenMP: Using ", num_threads, &
-              " threads"
-          call msg_message
+          if (logging) then
+             write (msg_buffer, "(A,I0,A)")  "OpenMP: Using ", num_threads, &
+                  " threads"
+             call msg_message
+          end if
           n_threads = num_threads
        else
-          write (msg_buffer, "(A,I0,A)")  "OpenMP: " &
-               // "Illegal value of openmp_num_threads (", num_threads, &
+          if (logging) then
+             write (msg_buffer, "(A,I0,A)")  "OpenMP: " &
+                  // "Illegal value of openmp_num_threads (", num_threads, &
                ") ignored"
-          call msg_error
+             call msg_error
+          end if
           n_threads = openmp_get_default_max_threads ()
-          write (msg_buffer, "(A,I0,A)")  "OpenMP: Using ", &
-              n_threads, " threads"
-          call msg_message
+          if (logging) then
+             write (msg_buffer, "(A,I0,A)")  "OpenMP: Using ", &
+                  n_threads, " threads"
+             call msg_message          
+          end if
        end if
        if (n_threads > openmp_get_default_max_threads ()) then
-          write (msg_buffer, "(A,I0)")  "OpenMP: " &
-               // "Number of threads is greater than library default of ", &
-               openmp_get_default_max_threads ()
-          call msg_warning
+          if (logging) then
+             write (msg_buffer, "(A,I0)")  "OpenMP: " &
+                  // "Number of threads is greater than library default of ", &
+                  openmp_get_default_max_threads ()
+             call msg_warning
+          end if
        end if
        call openmp_set_num_threads (n_threads)
     else if (num_threads /= 1) then
-       write (msg_buffer, "(A,I0,A)")  "openmp_num_threads set to ", &
-             num_threads, ", but OpenMP is not active: ignored"
-       call msg_warning
+       if (logging) then
+          write (msg_buffer, "(A,I0,A)")  "openmp_num_threads set to ", &
+               num_threads, ", but OpenMP is not active: ignored"
+          call msg_warning
+       end if
     end if
   end subroutine openmp_set_num_threads_verbose
 
-  subroutine os_interface_test ()
-    call os_interface_test1 ()
+  subroutine os_interface_test (u, results)
+    integer, intent(in) :: u
+    type(test_results_t), intent(inout) :: results
+    call test (os_interface_1, "os_interface_1", &
+         "check OS interface routines", &
+         u, results)
   end subroutine os_interface_test
 
-  subroutine os_interface_test1 ()
-    use diagnostics, only: msg_fatal !NODEP!
+
+  subroutine os_interface_1 (u)
+    integer, intent(in) :: u
     type(dlaccess_t) :: dlaccess
     type(string_t) :: fname, libname, ext
     type(os_data_t) :: os_data
@@ -698,7 +759,7 @@ contains
     end interface
     procedure(so_test_proc), pointer :: so_test => null ()
     type(c_funptr) :: c_fptr
-    integer :: u
+    integer :: unit
     integer(c_int) :: i
     call os_data_init (os_data)
     fname = "so_test"
@@ -710,46 +771,56 @@ contains
     end if
     filename_obj = fname // ext
     libname = fname // os_data%shlib_ext
-    print *, "* write source file 'so_test.f90'"
-    u = free_unit ()
-    open (unit=u, file=char(filename_src), action="write")
-    write (u, "(A)")  "function so_test (i) result (j) bind(C)"
-    write (u, "(A)")  "  use iso_c_binding"
-    write (u, "(A)")  "  integer(c_int), intent(in) :: i"
-    write (u, "(A)")  "  integer(c_int) :: j"
-    write (u, "(A)")  "  j = 2 * i"
-    write (u, "(A)")  "end function so_test"
-    close (u)
-    print *, "* compile and link as 'so_test.so'"
+    
+    write (u, "(A)")  "* Test output: OS interface"
+    write (u, "(A)")  "*   Purpose: check os_interface routines"
+    write (u, "(A)")      
+            
+    write (u, "(A)")  "* write source file 'so_test.f90'"
+    write (u, "(A)")
+    unit = free_unit ()
+    open (unit=unit, file=char(filename_src), action="write")
+    write (unit, "(A)")  "function so_test (i) result (j) bind(C)"
+    write (unit, "(A)")  "  use iso_c_binding"
+    write (unit, "(A)")  "  integer(c_int), intent(in) :: i"
+    write (unit, "(A)")  "  integer(c_int) :: j"
+    write (unit, "(A)")  "  j = 2 * i"
+    write (unit, "(A)")  "end function so_test"
+    close (unit)
+    write (u, "(A)")  "* compile and link as 'so_test.so/dylib'"
+    write (u, "(A)")
     call os_compile_shared (fname, os_data)
     call os_link_shared (filename_obj, fname, os_data)
-    print *, "* load library 'so_test.so'"
+    write (u, "(A)")  "* load library 'so_test.so/dylib'"
+    write (u, "(A)")
     call dlaccess_init (dlaccess, var_str ("."), libname, os_data)
     if (dlaccess_is_open (dlaccess)) then
-       print *, "  success"
+       write (u, "(A)") "     success"
     else
-       print *, "  failure"
+       write (u, "(A)") "     failure"
     end if
-    print *, "* load symbol 'so_test'"
+    write (u, "(A)")  "* load symbol 'so_test'"
+    write (u, "(A)")
     c_fptr = dlaccess_get_c_funptr (dlaccess, fname)
     if (c_associated (c_fptr)) then
-       print *, "  success"
+       write (u, "(A)") "     success"
     else
-       print *, "  failure"
+       write (u, "(A)") "     failure"
     end if
     call c_f_procpointer (c_fptr, so_test)
-    print *, "* Execute function from 'so_test.so'"
+    write (u, "(A)") "* Execute function from 'so_test.so/dylib'"
     i = 7
-    print *, "  input = ", i
-    print *, "  result =", so_test(i)
+    write (u, "(A,1x,I1)")  "     input  = ", i
+    write (u, "(A,1x,I1)")  "     result = ", so_test(i)
     if (so_test(i) / i .ne. 2) then
-       call msg_fatal ("Compiling and linking ISO C functions failed.")
+       write (u, "(A)")  "* Compiling and linking ISO C functions failed."
     else
-       print *, "* Successful."
+       write (u, "(A)")  "* Successful."
     end if
-    print *, "* Cleanup"
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
     call dlaccess_final (dlaccess)
-  end subroutine os_interface_test1
+  end subroutine os_interface_1
 
 
 end module os_interface

@@ -1,3 +1,5 @@
+% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*- 
+% VAMP tao_random_numbers code as NOWEB source
 % $Id: tao_random_numbers.nw 314 2010-04-17 20:32:33Z ohl $ 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \newcommand{\modpoly}{%
@@ -1664,10 +1666,3 @@ program tao_test
 end program tao_test
 @ %def tao_test
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Local Variables:
-% mode:noweb
-% noweb-doc-mode:latex-mode
-% noweb-code-mode:f90-mode
-% indent-tabs-mode:nil
-% page-delimiter:"^@ %%%.*\n"
-% End:

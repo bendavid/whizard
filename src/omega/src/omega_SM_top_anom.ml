@@ -1,12 +1,13 @@
 (* $Id: omega_SM_top_anom.ml 1340 2009-12-02 23:45:04Z ohl $
 
-   Copyright (C) 1999-2012 by
+   Copyright (C) 1999-2014 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-       Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
-       Christian Speckner <christian.speckner@physik.uni-freiburg.de>
-       Fabian Bach <fabian.bach@cern.ch> (only this file)
+       Juergen Reuter <juergen.reuter@desy.de>
+       with contributions from
+       Christian Speckner <cnspeckn@googlemail.com>
+       Fabian Bach <fabian.bach@desy.de> (only this file)
 
    WHIZARD is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by

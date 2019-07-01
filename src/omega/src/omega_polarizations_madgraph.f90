@@ -1,9 +1,9 @@
-!  $Id: omegalib.nw 3745 2012-03-10 20:44:32Z jr_reuter $
+!  $Id: omegalib.nw 5434 2014-03-06 18:17:45Z msekulla $
 !
 !  Copyright (C) 1999-2009 by 
 !      Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !      Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-!      Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+!      Juergen Reuter <juergen.reuter@desy.de>
 !
 !  WHIZARD is free software; you can redistribute it and/or modify it
 !  under the terms of the GNU General Public License as published by 

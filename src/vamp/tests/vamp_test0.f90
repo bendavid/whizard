@@ -17,12 +17,13 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! This version of the source code of vamp has no comments and
 ! can be hard to understand, modify, and improve.  You should have
-! received a copy of the literate noweb sources of vamp that
+! received a copy of the literate `noweb' sources of vamp that
 ! contain the documentation in full detail.
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 module vamp_test0_functions
   use kinds
   use vamp, only: vamp_grid, vamp_multi_channel0
+  use vamp, only: vamp_data_t
   implicit none
   private
   public :: f, g, phi, w
@@ -31,7 +32,7 @@ module vamp_test0_functions
   real(kind=default), dimension(:), allocatable, private :: c, x_min, x_max
   real(kind=default), dimension(:,:,:), allocatable, public :: x0, gamma
 contains
-   function f0 (x, x_min, x_max, x0, g) result (f_x)
+  pure function f0 (x, x_min, x_max, x0, g) result (f_x)
     real(kind=default), intent(in) :: x, x_min, x_max
     real(kind=default), dimension(:), intent(in) :: x0, g
     real(kind=default) :: f_x
@@ -48,7 +49,7 @@ contains
     end do
     f_x = amp * conjg (amp) / norm
   end function f0
-   function f_norm (x_min, x_max, x0p, gp, x0q, gq) &
+  pure function f_norm (x_min, x_max, x0p, gp, x0q, gq) &
        result (norm)
     real(kind=default), intent(in) :: x_min, x_max, x0p, gp, x0q, gq
     real(kind=default) :: norm
@@ -59,9 +60,9 @@ contains
                    / cmplx (x0p - x0q, - gp - gq, kind=default), &
                  kind=default)
   end function f_norm
-   function f (x, prc_index, weights, channel, grids) result (f_x)
+  pure function f (x, data, weights, channel, grids) result (f_x)
     real(kind=default), dimension(:), intent(in) :: x
-    integer, intent(in) :: prc_index
+    class(vamp_data_t), intent(in) :: data
     real(kind=default), dimension(:), intent(in), optional :: weights
     integer, intent(in), optional :: channel
     type(vamp_grid), dimension(:), intent(in), optional :: grids
@@ -99,7 +100,7 @@ contains
     x_max = region(2,:)
     c = weights
   end subroutine create_sample
-   function psi (xi, x_min, x_max, x0, gamma) result (x)
+  pure function psi (xi, x_min, x_max, x0, gamma) result (x)
     real(kind=default), intent(in) :: xi, x_min, x_max, x0, gamma
     real(kind=default) :: x
     x = x0 + gamma &
@@ -107,13 +108,13 @@ contains
                    - (x_max - xi) * atan ((x0 - x_min) / gamma)) &
                  / (x_max - x_min))
   end function psi
-   function g0 (x, x_min, x_max, x0, gamma) result (g_x)
+  pure function g0 (x, x_min, x_max, x0, gamma) result (g_x)
     real(kind=default), intent(in) :: x, x_min, x_max, x0, gamma
     real(kind=default) :: g_x
     g_x = gamma / (atan ((x_max - x0) / gamma) - atan ((x_min - x0) / gamma)) &
            * (x_max - x_min) / ((x - x0)**2 + gamma**2)
   end function g0
-   function phi (xi, channel) result (x)
+  pure function phi (xi, channel) result (x)
     real(kind=default), dimension(:), intent(in) :: xi
     integer, intent(in) :: channel
     real(kind=default), dimension(size(xi)) :: x
@@ -144,9 +145,9 @@ contains
        x = 0
     end if
   end function phi
-   recursive function g (x, prc_index, channel) result (g_x)
+  pure recursive function g (x, data, channel) result (g_x)
     real(kind=default), dimension(:), intent(in) :: x
-    integer, intent(in) :: prc_index
+    class(vamp_data_t), intent(in) :: data
     integer, intent(in) :: channel
     real(kind=default) :: g_x
     integer, dimension(size(x)) :: p
@@ -175,14 +176,14 @@ contains
        g_x = 0
     end if
   end function g
-   function w (x, prc_index, weights, channel, grids) result (w_x)
+  function w (x, data, weights, channel, grids) result (w_x)
     real(kind=default), dimension(:), intent(in) :: x
-    integer, intent(in) :: prc_index
+    class(vamp_data_t), intent(in) :: data
     real(kind=default), dimension(:), intent(in), optional :: weights
     integer, intent(in), optional :: channel
     type(vamp_grid), dimension(:), intent(in), optional :: grids
     real(kind=default) :: w_x
-    w_x = vamp_multi_channel0 (f, prc_index, phi, g, x, weights, channel)
+    w_x = vamp_multi_channel0 (f, data, phi, g, x, weights, channel)
   end function w
 end module vamp_test0_functions
 module vamp_tests0
@@ -208,13 +209,12 @@ contains
     type(vamp_grid) :: gr
     type(vamp_history), dimension(iterations(1)+iterations(2)) :: history
     real(kind=default) :: integral, standard_dev, chi_squared, pull
-    integer, parameter :: PRC_INDEX = 1
     call vamp_create_history (history)
     call vamp_create_grid (gr, region, samples(1))
-    call vamp_sample_grid (rng, gr, f, PRC_INDEX, iterations(1), history = history)
+    call vamp_sample_grid (rng, gr, f, NO_DATA, iterations(1), history = history)
     call vamp_discard_integral (gr, samples(2))
     call vamp_sample_grid &
-         (rng, gr, f, PRC_INDEX, iterations(2), &
+         (rng, gr, f, NO_DATA, iterations(2), &
           integral, standard_dev, chi_squared, &
           history = history(iterations(1)+1:))
     call vamp_write_grid (gr, "vamp_test0.grid")
@@ -248,22 +248,21 @@ contains
     type(vamp_history), dimension(size(history),size(weight_vector)) :: histories
     real(kind=default) :: integral, standard_dev, chi_squared, pull
     integer :: it
-    integer, parameter :: PRC_INDEX = 1
     weight_vector = 1.0
     call vamp_create_history (history)
     call vamp_create_history (histories)
     call vamp_create_grids (grs, region, samples(1), weight_vector)
-    call vamp_sample_grids (rng, grs, w, PRC_INDEX, iterations(1) - 1, &
+    call vamp_sample_grids (rng, grs, w, NO_DATA, iterations(1) - 1, &
                             history = history, histories = histories)
     do it = 1, 5
-       call vamp_sample_grids (rng, grs, w, PRC_INDEX, 1, &
+       call vamp_sample_grids (rng, grs, w, NO_DATA, 1, &
                                history = history(iterations(1)+it-1:), &
                                histories = histories(iterations(1)+it-1:,:))
        call vamp_refine_weights (grs)
     end do
     call vamp_discard_integrals (grs, samples(2))
     call vamp_sample_grids &
-         (rng, grs, w, PRC_INDEX, iterations(2), &
+         (rng, grs, w, NO_DATA, iterations(2), &
           integral, standard_dev, chi_squared, &
           history = history(iterations(1)+5:), &
           histories = histories(iterations(1)+5:,:))
@@ -296,12 +295,11 @@ contains
     real(kind=default) :: weight, integral, standard_dev
     integer :: i
     real(kind=default), dimension(size(region,dim=2)) :: x
-    integer, parameter :: PRC_INDEX = 1
     call vamp_create_grid (gr, region, samples(1))
-    call vamp_sample_grid (rng, gr, f, PRC_INDEX, iterations(1), history = history)
+    call vamp_sample_grid (rng, gr, f, NO_DATA, iterations(1), history = history)
     call vamp_discard_integral (gr, samples(2))
     call vamp_warmup_grid &
-         (rng, gr, f, PRC_INDEX, iterations(2), history = history(iterations(1)+1:))
+         (rng, gr, f, NO_DATA, iterations(2), history = history(iterations(1)+1:))
     call vamp_print_history (history, "single")
     call vamp_delete_history (history)
     call create_histogram (unweighted, region(1,1), region(2,1), 100)
@@ -311,18 +309,18 @@ contains
     ! do i = 1, 1000000
     do i = 1, 100
        call clear_exception (exc)
-       call vamp_next_event (x, rng, gr, f, PRC_INDEX, exc = exc)
+       call vamp_next_event (x, rng, gr, f, NO_DATA, exc = exc)
        call handle_exception (exc)
        call fill_histogram (unweighted, x(1))
-       call fill_histogram (reweighted, x(1), 1.0_default / f (x, PRC_INDEX))
+       call fill_histogram (reweighted, x(1), 1.0_default / f (x, NO_DATA))
     end do
     integral = 0.0
     standard_dev = 0.0
     do i = 1, 10000
        call clear_exception (exc)
-       call vamp_next_event (x, rng, gr, f, PRC_INDEX, weight, exc = exc)
+       call vamp_next_event (x, rng, gr, f, NO_DATA, weight, exc = exc)
        call handle_exception (exc)
-       call fill_histogram (weighted, x(1), weight / f (x, PRC_INDEX))
+       call fill_histogram (weighted, x(1), weight / f (x, NO_DATA))
        call fill_histogram (weights, x(1), weight)
        integral = integral + weight
        standard_dev = standard_dev + weight**2
@@ -357,22 +355,21 @@ contains
     real(kind=default), dimension(size(region,dim=2)) :: x
     character(len=5) :: pfx
     integer :: it, i, j
-    integer, parameter :: PRC_INDEX = 1
     weight_vector = 1.0
     call vamp_create_history (history)
     call vamp_create_history (histories)
     call vamp_create_grids (grs, region, samples(1), weight_vector)
-    call vamp_sample_grids (rng, grs, w, PRC_INDEX, iterations(1) - 1, &
+    call vamp_sample_grids (rng, grs, w, NO_DATA, iterations(1) - 1, &
                             history = history, histories = histories)
     do it = 1, 5
-       call vamp_sample_grids (rng, grs, w, PRC_INDEX, 1, &
+       call vamp_sample_grids (rng, grs, w, NO_DATA, 1, &
                                history = history(iterations(1)+it-1:), &
                                histories = histories(iterations(1)+it-1:,:))
        call vamp_refine_weights (grs)
     end do
     call vamp_discard_integrals (grs, samples(2))
     call vamp_warmup_grids &
-         (rng, grs, w, PRC_INDEX, iterations(2), &
+         (rng, grs, w, NO_DATA, iterations(2), &
           history = history(iterations(1)+5:), &
           histories = histories(iterations(1)+5:,:))
     call vamp_print_history (history, "multi")
@@ -392,18 +389,18 @@ contains
     ! do i = 1, 1000000
     do i = 1, 100
        call clear_exception (exc)
-       call vamp_next_event (x, rng, grs, f, PRC_INDEX, phi, exc = exc)
+       call vamp_next_event (x, rng, grs, f, NO_DATA, phi, exc = exc)
        call handle_exception (exc)
        call fill_histogram (unweighted, x(1))
-       call fill_histogram (reweighted, x(1), 1.0_default / f (x, PRC_INDEX))
+       call fill_histogram (reweighted, x(1), 1.0_default / f (x, NO_DATA))
     end do
     integral = 0.0
     standard_dev = 0.0
     do i = 1, 10000
        call clear_exception (exc)
-       call vamp_next_event (x, rng, grs, f, PRC_INDEX, phi, weight, exc = exc)
+       call vamp_next_event (x, rng, grs, f, NO_DATA, phi, weight, exc = exc)
        call handle_exception (exc)
-       call fill_histogram (weighted, x(1), weight / f (x, PRC_INDEX))
+       call fill_histogram (weighted, x(1), weight / f (x, NO_DATA))
        call fill_histogram (weights, x(1), weight)
        integral = integral + weight
        standard_dev = standard_dev + weight**2
@@ -431,7 +428,7 @@ program vamp_test0
   use vamp_tests0 !NODEP!
   implicit none
   logical :: do_print
-  integer :: i, j, ticks, ticks_per_second, ticks0
+  integer :: i, j, ticks, ticks_per_second, ticks0, status
   integer, dimension(2) :: iterations, samples
   real(kind=default), dimension(:,:), allocatable :: region
   type(tao_random_state) :: rng
@@ -443,7 +440,12 @@ program vamp_test0
   print *, VAMP_RCS_ID
   print *, DIVISIONS_RCS_ID
   call tao_random_create (rng, 0)
-  call system_clock (ticks0)
+  call get_environment_variable (name="VAMP_RANDOM_TESTS", status=status)
+  if (status == 0) then
+     call system_clock (ticks0)
+  else
+     ticks0 = 42
+  end if
   call tao_random_seed (rng, ticks0)
   iterations = (/ 4, 3 /)
   samples = (/ 10000, 50000 /)

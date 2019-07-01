@@ -1,11 +1,13 @@
-! WHIZARD 2.1.1 September 18 2012
+! WHIZARD 2.2.0 May 18 2014
 ! 
-! Copyright (C) 1999-2012 by 
+! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
-!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
+!     
+!     with contributions from
+!     Christian Speckner <cnspeckn@googlemail.com> 
+!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -59,6 +61,7 @@ module flavors
   public :: flavor_is_antiparticle
   public :: flavor_has_antiparticle
   public :: flavor_is_stable
+  public :: flavor_get_decays
   public :: flavor_decays_isotropically
   public :: flavor_decays_diagonal
   public :: flavor_is_polarized
@@ -101,6 +104,7 @@ module flavors
   interface flavor_set_model
      module procedure flavor_set_model_single
      module procedure flavor_set_model_array
+     module procedure flavor_set_model_array2
   end interface
   interface operator(.match.)
      module procedure flavor_match
@@ -246,6 +250,18 @@ contains
     end do
   end subroutine flavor_set_model_array
 
+  subroutine flavor_set_model_array2 (flv, model)
+    type(flavor_t), dimension(:,:), intent(inout) :: flv
+    type(model_t), intent(in), target :: model
+    integer :: i, j
+    do i = 1, size (flv, 2)
+       do j = 1, size (flv, 1)
+          if (flv(j,i)%f /= UNDEFINED) &
+               flv(j,i)%prt => model_get_particle_ptr (model, flv(j,i)%f)
+       end do
+    end do
+  end subroutine flavor_set_model_array2
+
   elemental function flavor_is_defined (flv) result (defined)
     logical :: defined
     type(flavor_t), intent(in) :: flv
@@ -385,6 +401,16 @@ contains
        flag = .true.
     end if
   end function flavor_is_stable
+
+  subroutine flavor_get_decays (flv, decay)
+    type(flavor_t), intent(in) :: flv
+    type(string_t), dimension(:), intent(out), allocatable :: decay
+    logical :: anti
+    anti = flv%f < 0
+    if (.not. particle_data_is_stable (flv%prt, anti)) then
+       call particle_data_get_decays (flv%prt, decay, anti)
+    end if
+  end subroutine flavor_get_decays
 
   elemental function flavor_decays_isotropically (flv) result (flag)
     logical :: flag

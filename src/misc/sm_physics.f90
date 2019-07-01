@@ -1,11 +1,13 @@
-! WHIZARD 2.1.1 September 18 2012
+! WHIZARD 2.2.0 May 18 2014
 ! 
-! Copyright (C) 1999-2012 by 
+! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
-!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
+!     
+!     with contributions from
+!     Christian Speckner <cnspeckn@googlemail.com> 
+!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -30,18 +32,12 @@ module sm_physics
   use kinds, only: default !NODEP!
   use constants !NODEP!
   use file_utils !NODEP!
+  use limits, only: MZ_REF, ALPHA_QCD_MZ_REF, LAMBDA_QCD_REF !NODEP!
   use diagnostics !NODEP!
   use lorentz !NODEP!
 
   implicit none
   private
-
-  real(kind=default), public, parameter :: as_mz = 0.1178_default, &
-     mass_z = 91.188_default
-
-  real(kind=default), parameter, public ::  gamma_q = three/two * CF, &
-     k_q = (7.0_default/two - pi**2/6.0_default) * CF
-     
 
   public :: beta0, beta1, beta2, coeff_b0, coeff_b1, coeff_b2
   public :: running_as, running_as_lam 
@@ -90,43 +86,47 @@ module sm_physics
   public :: log2_plus_distr
   public :: log2_plus_distr_al
 
+  real(kind=default), parameter, public ::  gamma_q = three/two * CF, &
+     k_q = (7.0_default/two - pi**2/6.0_default) * CF
+     
+
 contains
 
   pure function beta0 (nf) 
-    real(kind=default), intent(in) :: nf
-    real(kind=default) :: beta0
+    real(default), intent(in) :: nf
+    real(default) :: beta0
     beta0 = 11.0_default - two/three * nf
   end function beta0 
   
   pure function beta1 (nf) 
-    real(kind=default), intent(in) :: nf
-    real(kind=default) :: beta1
+    real(default), intent(in) :: nf
+    real(default) :: beta1
     beta1 = 51.0_default - 19.0_default/three * nf
   end function beta1
   
   pure function beta2 (nf) 
-    real(kind=default), intent(in) :: nf
-    real(kind=default) :: beta2
+    real(default), intent(in) :: nf
+    real(default) :: beta2
     beta2 = 2857.0_default - 5033.0_default / 9.0_default * &
                     nf + 325.0_default/27.0_default * nf**2
   end function beta2
   
   pure function coeff_b0 (nf) 
-    real(kind=default), intent(in) :: nf
-    real(kind=default) :: coeff_b0
+    real(default), intent(in) :: nf
+    real(default) :: coeff_b0
     coeff_b0 = (11.0_default * CA - two * nf) / (12.0_default * pi)
   end function coeff_b0 
   
   pure function coeff_b1 (nf) 
-    real(kind=default), intent(in) :: nf
-    real(kind=default) :: coeff_b1
+    real(default), intent(in) :: nf
+    real(default) :: coeff_b1
     coeff_b1 = (17.0_default * CA**2 - five * CA * nf - three * CF * nf) / &
                (24.0_default * pi**2)
   end function coeff_b1
   
   pure function coeff_b2 (nf) 
-    real(kind=default), intent(in) :: nf
-    real(kind=default) :: coeff_b2
+    real(default), intent(in) :: nf
+    real(default) :: coeff_b2
     coeff_b2 = (2857.0_default/54.0_default * CA**3 - &
                     1415.0_default/54.0_default * & 
                     CA**2 * nf - 205.0_default/18.0_default * CA*CF*nf &
@@ -134,17 +134,17 @@ contains
                     11.0_default/9.0_default * CF * nf**2) / (four*pi)**3
   end function coeff_b2
   
-  pure function running_as (scale,al_mz,mz,order,nf) result (ascale)
-    real(kind=default), intent(in) :: scale
-    real(kind=default), intent(in), optional :: al_mz, nf, mz
+  pure function running_as (scale, al_mz, mz, order, nf) result (ascale)
+    real(default), intent(in) :: scale
+    real(default), intent(in), optional :: al_mz, nf, mz
     integer, intent(in), optional :: order
     integer :: ord
-    real(kind=default) :: az, m_z, as_log, n_f, b0, b1, b2, ascale
-    real(kind=default) :: as0, as1
+    real(default) :: az, m_z, as_log, n_f, b0, b1, b2, ascale
+    real(default) :: as0, as1
     if (present(mz)) then
       m_z = mz
     else
-      m_z = mass_z
+      m_z = MZ_REF
     end if
     if (present(order)) then
        ord = order
@@ -154,7 +154,7 @@ contains
     if (present(al_mz)) then
        az = al_mz
     else
-       az = as_mz
+       az = ALPHA_QCD_MZ_REF
     end if
     if (present(nf)) then
       n_f = nf
@@ -178,11 +178,18 @@ contains
     end select            
   end function running_as
 
-  pure function running_as_lam (nf,scale,lambda_qcd,order) result (ascale)
-    real(kind=default), intent(in) :: nf, scale, lambda_qcd
+  pure function running_as_lam (nf, scale, lambda, order) result (ascale)
+    real(default), intent(in) :: nf, scale 
+    real(default), intent(in), optional :: lambda
     integer, intent(in), optional :: order
-    real(kind=default) :: as0, as1, logmul, b0, b1, b2, ascale
+    real(default) :: lambda_qcd
+    real(default) :: as0, as1, logmul, b0, b1, b2, ascale
     integer :: ord
+    if (present (lambda)) then
+       lambda_qcd = lambda
+    else
+       lambda_qcd = LAMBDA_QCD_REF
+    end if
     if (present(order)) then 
       ord = order
     else
@@ -237,7 +244,8 @@ contains
        Li2 = pi2_6 - log(1-x) * log(x) - Li2_restricted (1-x)
     else if (abs(x).gt.1.d0) then
        call msg_bug (" Dilogarithm called outside of defined range.")
-!       Li2 = -pi2_6 - 0.5_default * log(-x) * log(-x) - Li2_restricted (1/x)
+       !!! Insert dilogarithm identity, not used yet 
+       ! Li2 = -pi2_6 - 0.5_default * log(-x) * log(-x) - Li2_restricted (1/x)
     else
        Li2 = Li2_restricted (x)
     end if
@@ -313,7 +321,8 @@ contains
        y = sqrt(x - 1) * asin(sqrt(1/x))
     else
        y = sqrt(1 - x) * (log((1 + sqrt(1 - x)) / &
-            (1 - sqrt(1 - x))) - cmplx (0.0_default, pi, kind=default)) / 2
+            (1 - sqrt(1 - x))) - &
+            cmplx (0.0_default, pi, kind=default)) / 2.0_default
     end if
   end function gaux
 
@@ -693,5 +702,6 @@ contains
        lpd_al = two*log(one/(one-x))/(one-x)
     end if
   end function log2_plus_distr_al
+
 
 end module sm_physics

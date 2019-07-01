@@ -1,11 +1,12 @@
-(* $Id: tree.ml 3670 2012-01-21 19:33:07Z jr_reuter $
+(* $Id: tree.ml 5170 2014-01-26 13:57:26Z jr_reuter $
 
-   Copyright (C) 1999-2012 by
+   Copyright (C) 1999-2014 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-       Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
-       Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+       Juergen Reuter <juergen.reuter@desy.de>
+       with contributions from
+       Christian Speckner <cnspeckn@googlemail.com>
 
    WHIZARD is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by
@@ -159,6 +160,11 @@ let rec sort' lesseq = function
 
 let sort lesseq t = (sort' lesseq t).data
 
+let rec canonicalize = function
+  | Leaf (_, _) as l -> l
+  | Node (n, ch) ->
+    Node (n, List.sort compare (List.map canonicalize ch))
+
 (* \thocwmodulesection{Homomorphisms} *)
 
 (* Isomophisms are simple: *)
@@ -245,9 +251,12 @@ let species prop = fst (style prop)
 let tex_lbl prop = snd (style prop)
 
 let leaf_label tex io leaf lab = function
-  | None -> fprintf tex "    \\fmflabel{$%s$}{%s%s}\n" lab io leaf 
+  | None -> fprintf tex "    \\fmflabel{${%s}$}{%s%s}\n" lab io leaf 
   | Some s ->
-      fprintf tex "    \\fmflabel{$%s{}^{(%s)}$}{%s%s}\n" s lab io leaf
+      fprintf tex "    \\fmflabel{${%s{}^{(%s)}}$}{%s%s}\n" s lab io leaf
+
+let leaf_label tex io leaf lab label =
+  ()
 
 (* We try to draw diagrams more symmetrically by reducing the tension
    on the outgoing external lines.
@@ -256,73 +265,84 @@ let leaf_label tex io leaf lab = function
       This is insufficient for asymmetrical cascade decays.
    \end{dubious} *)
 
-let rec leaf_node tex to_string i2 n prop leaf =
+let rec leaf_node tex to_label i2 n prop leaf =
   let io, tension, rev =
     if leaf = i2 then
       ("i", "", not prop.rev)
     else
       ("o", ",tension=0.5", prop.rev) in
-  leaf_label tex io (to_string leaf) (tex_lbl prop) prop.label ;
+  leaf_label tex io (to_label leaf) (tex_lbl prop) prop.label ;
   fprintf tex "    \\fmfdot{v%d}\n"  n;
   if rev then 
     fprintf tex "    \\fmf{%s%s}{%s%s,v%d}\n"
-      (species prop) tension io (to_string leaf) n
+      (species prop) tension io (to_label leaf) n
   else
     fprintf tex "    \\fmf{%s%s}{v%d,%s%s}\n"
-      (species prop) tension n io (to_string leaf)
+      (species prop) tension n io (to_label leaf)
 
-and int_node tex to_string i2 n n' prop t =
+and int_node tex to_label i2 n n' prop t =
   if prop.rev then
     fprintf tex 
-      "    \\fmf{%s,label=\\begin{scriptsize}$%s$\\end{scriptsize}}{v%d,v%d}\n" 
+      "    \\fmf{%s,label=\\begin{scriptsize}${%s}$\\end{scriptsize}}{v%d,v%d}\n" 
       (species prop) (tex_lbl prop) n' n
   else
     fprintf tex 
-      "    \\fmf{%s,label=\\begin{scriptsize}$%s$\\end{scriptsize}}{v%d,v%d}\n" 
+      "    \\fmf{%s,label=\\begin{scriptsize}${%s}$\\end{scriptsize}}{v%d,v%d}\n" 
       (species prop) (tex_lbl prop) n n';
   fprintf tex "    \\fmfdot{v%d,v%d}\n" n n';
-  edges_feynmf' tex to_string i2 n' t
+  edges_feynmf' tex to_label i2 n' t
 
-and leaf_or_int_node tex to_string i2 n n' = function
-  | Leaf (prop, l) -> leaf_node tex to_string i2 n prop l
-  | Node (prop, _) as t -> int_node tex to_string i2 n n' prop t
+and leaf_or_int_node tex to_label i2 n n' = function
+  | Leaf (prop, l) -> leaf_node tex to_label i2 n prop l
+  | Node (prop, _) as t -> int_node tex to_label i2 n n' prop t
 
-and edges_feynmf' tex to_string i2 n = function
-  | Leaf (prop, l) -> leaf_node tex to_string i2 n prop l
+and edges_feynmf' tex to_label i2 n = function
+  | Leaf (prop, l) -> leaf_node tex to_label i2 n prop l
   | Node (_, ch) ->
       ignore (List.fold_right
                 (fun t' n' ->
-                  leaf_or_int_node tex to_string i2 n n' t';
+                  leaf_or_int_node tex to_label i2 n n' t';
                   succ n') ch (4*n))
 
-let edges_feynmf tex to_string i2 t =
+let edges_feynmf tex to_label i1 i2 t =
   let n = 1 in
   begin match t with
   | Leaf _ -> ()
   | Node (prop, _) ->
       leaf_label tex "i" "1" (tex_lbl prop) prop.label;
       if prop.rev then
-        fprintf tex "    \\fmf{%s}{i1,v%d}\n" (species prop) n
+        fprintf tex "    \\fmf{%s}{v%d,i%s}\n" (species prop) n (to_label i1)
       else
-        fprintf tex "    \\fmf{%s}{v%d,i1}\n" (species prop) n
+        fprintf tex "    \\fmf{%s}{i%s,v%d}\n" (species prop) (to_label i1) n
   end;
   fprintf tex "    \\fmfdot{v%d}\n" n;
-  edges_feynmf' tex to_string i2 n t
+  edges_feynmf' tex to_label i2 n t
 
-let to_feynmf_channel tex to_string i2 t =
-  let t' = sort_2i (<=) i2 t in
-  let out = List.map to_string (List.filter (fun a -> i2 <> a) (leafs t')) in
-  fprintf tex "\\fmfframe(6,7)(6,6){%%\n";
-  fprintf tex "  \\begin{fmfgraph*}(35,30)\n";
-  fprintf tex "   \\fmfpen{.1pt}\n";
-  fprintf tex "   \\fmfset{arrow_len}{2mm}\n";
-  fprintf tex "    \\fmfleft{i1,i%s}\n" (to_string i2);
-  fprintf tex "    \\fmfright{o%s}\n" (String.concat ",o" out);
-  List.iter (fun s -> fprintf tex "    \\fmflabel{$%s$}{i%s}\n" s s)
-    ["1"; (to_string i2)];
-  List.iter (fun s -> fprintf tex "    \\fmflabel{$%s$}{o%s}\n" s s) out;
-  edges_feynmf tex to_string i2 t';
-  fprintf tex "  \\end{fmfgraph*}}\n"
+let to_feynmf_channel tex to_TeX to_label incoming t =
+  match incoming with
+  | i1 :: i2 :: _ ->
+      let t' = sort_2i (<=) i2 t in
+      let out = List.filter (fun a -> i2 <> a) (leafs t') in
+      fprintf tex "\\fmfframe(8,7)(8,6){%%\n";
+      fprintf tex "  \\begin{fmfgraph*}(35,30)\n";
+      fprintf tex "   \\fmfpen{thin}\n";
+      fprintf tex "   \\fmfset{arrow_len}{2mm}\n";
+      fprintf tex "    \\fmfleft{i%s,i%s}\n" (to_label i1) (to_label i2);
+      fprintf tex "    \\fmfright{o%s}\n"
+        (String.concat ",o" (List.map to_label out));
+      List.iter
+        (fun s ->
+          fprintf tex "    \\fmflabel{${%s}$}{i%s}\n"
+            (to_TeX s) (to_label s))
+        [i1; i2];
+      List.iter
+        (fun s ->
+          fprintf tex "    \\fmflabel{${%s}$}{o%s}\n"
+            (to_TeX s) (to_label s))
+        out;
+      edges_feynmf tex to_label i1 i2 t';
+      fprintf tex "  \\end{fmfgraph*}}\\hfil\\allowbreak\n"
+  | _ -> ()
 
 (* \begin{figure}
    \fmfframe(3,5)(3,5){%
@@ -389,31 +409,114 @@ let to_feynmf_channel tex to_string i2 t =
        Note that this is subtly different \ldots}
    \end{figure} *)
 
-let to_feynmf latex file to_string i2 t =
-  if !latex then
-    let tex = open_out (file ^ ".tex") in
-    fprintf tex "\\documentclass[10pt]{article} \n";
-    fprintf tex "\\usepackage{feynmp} \n\n";
-    fprintf tex "\\textwidth 18.5cm\n";
-    fprintf tex "\\evensidemargin -1.5cm \n";
-    fprintf tex "\\oddsidemargin -1.5cm \n\n";
-    fprintf tex "\\setlength{\\unitlength}{1mm} \n\n";
-    fprintf tex "\\begin{document} \n";
-    fprintf tex "\\begin{fmffile}{%s.fmf} \n\n" file;
-    List.iter (to_feynmf_channel tex to_string i2) t;
-    fprintf tex "\n";   
-    fprintf tex "\\end{fmffile} \n";
-    fprintf tex "\\end{document} \n";
-    close_out tex
-  else
-    let tex = open_out file in
-    List.iter (to_feynmf_channel tex to_string i2) t;
-    close_out tex
-
 let vanilla = { style = None; rev = false; label = None; tension = None }
 
 let sty (s, r, l) = { vanilla with style = Some s; rev = r; label = Some l }
 
+type 'l feynmf_set =
+  { header : string;
+    incoming : 'l list;
+    diagrams : (feynmf, 'l) t list }
+
+type ('l, 'm) feynmf_sets =
+  { outer : 'l feynmf_set;
+    inner : 'm feynmf_set list }
+
+type 'l feynmf_levels =
+  { this : 'l feynmf_set;
+    lower : 'l feynmf_levels list }
+
+let latex_section = function
+  | level when level < 0 -> "part"
+  | 0 -> "chapter"
+  | 1 -> "section"
+  | 2 -> "subsection"
+  | 3 -> "subsubsection"
+  | 4 -> "paragraph"
+  | _ -> "subparagraph"
+
+let rec feynmf_set tex sections level to_TeX to_label set =
+  fprintf tex "%s\\%s{%s}\n"
+    (if sections then "" else "%%% ")
+    (latex_section level)
+    set.header;
+  List.iter
+    (to_feynmf_channel tex to_TeX to_label set.incoming)
+    set.diagrams
+
+let feynmf_sets tex sections level
+    to_TeX_outer to_label_outer to_TeX_inner to_label_inner set =
+  feynmf_set tex sections level to_TeX_outer to_label_outer set.outer;
+  List.iter
+    (feynmf_set tex sections (succ level) to_TeX_inner to_label_inner)
+    set.inner
+
+let feynmf_sets_plain sections level file
+    to_TeX_outer to_label_outer to_TeX_inner to_label_inner sets =
+  let tex = open_out (file ^ ".tex") in
+  List.iter
+    (feynmf_sets tex sections level
+       to_TeX_outer to_label_outer to_TeX_inner to_label_inner)
+    sets;
+  close_out tex
+
+let feynmf_header tex file =
+  fprintf tex "\\documentclass[10pt]{article}\n";
+  fprintf tex "\\usepackage{ifpdf}\n";
+  fprintf tex "\\usepackage[colorlinks]{hyperref}\n";
+  fprintf tex "\\usepackage[a4paper,margin=1cm]{geometry}\n";
+  fprintf tex "\\usepackage{feynmp}\n";
+  fprintf tex "\\ifpdf\n";
+  fprintf tex "   \\DeclareGraphicsRule{*}{mps}{*}{}\n";
+  fprintf tex "\\else\n";
+  fprintf tex "   \\DeclareGraphicsRule{*}{eps}{*}{}\n";
+  fprintf tex "\\fi\n";
+  fprintf tex "\\setlength{\\unitlength}{1mm}\n";
+  fprintf tex "\\setlength{\\parindent}{0pt}\n";
+  fprintf tex
+    "\\renewcommand{\\mathstrut}{\\protect\\vphantom{\\hat{0123456789}}}\n";
+  fprintf tex "\\begin{document}\n";
+  fprintf tex "\\tableofcontents\n";
+  fprintf tex "\\begin{fmffile}{%s-fmf}\n\n" file
+
+let feynmf_footer tex =
+  fprintf tex "\n";   
+  fprintf tex "\\end{fmffile} \n";
+  fprintf tex "\\end{document} \n"
+
+let feynmf_sets_wrapped latex file 
+    to_TeX_outer to_label_outer to_TeX_inner to_label_inner sets =
+  let tex = open_out (file ^ ".tex") in
+  if latex then feynmf_header tex file;
+  List.iter
+    (feynmf_sets tex latex 1
+       to_TeX_outer to_label_outer to_TeX_inner to_label_inner)
+    sets;
+  if latex then feynmf_footer tex;
+  close_out tex
+
+let rec feynmf_levels tex sections level to_TeX to_label set =
+  fprintf tex "%s\\%s{%s}\n"
+    (if sections then "" else "%%% ")
+    (latex_section level)
+    set.this.header;
+  List.iter
+    (to_feynmf_channel tex to_TeX to_label set.this.incoming)
+    set.this.diagrams;
+  List.iter (feynmf_levels tex sections (succ level) to_TeX to_label) set.lower
+
+let feynmf_levels_plain sections level file to_TeX to_label sets =
+  let tex = open_out (file ^ ".tex") in
+  List.iter (feynmf_levels tex sections level to_TeX to_label) sets;
+  close_out tex
+    
+let feynmf_levels_wrapped file to_TeX to_label sets =
+  let tex = open_out (file ^ ".tex") in
+  feynmf_header tex file;
+  List.iter (feynmf_levels tex true 1 to_TeX to_label) sets;
+  feynmf_footer tex;
+  close_out tex
+    
 (* \thocwmodulesection{Least Squares Layout}
    \begin{equation}
      L = \frac{1}{2} \sum_{i\not=i'} T_{ii'} \left(x_i-x_{i'}\right)^2

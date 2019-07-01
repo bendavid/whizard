@@ -1,6 +1,6 @@
-(* $Id: bundle.mli 3930 2012-09-09 18:48:11Z jr_reuter $
+(* $Id: bundle.mli 5023 2013-12-20 12:03:39Z ohl $
 
-   Copyright (C) 1999-2012 by
+   Copyright (C) 1999-2014 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
@@ -55,6 +55,7 @@
      \caption{\label{fig:bundle}
        The bundle structure implemented by [Bundle.T]}
    \end{figure}
+   \label{Bundle}
 
    See figure~\ref{fig:bundle} for the geometric intuition behind the bundle structure.
 

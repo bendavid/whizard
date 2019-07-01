@@ -1,11 +1,12 @@
 (* $Id: omega_SM_top.ml,v 1.3.10.2 2006/05/15 09:06:23 ohl Exp $ 
 
-   Copyright (C) 1999-2012 by
+   Copyright (C) 1999-2014 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-       Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
-       Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+       Juergen Reuter <juergen.reuter@desy.de>
+       with contributions from
+       Christian Speckner <cnspeckn@googlemail.com>
 
    WHIZARD is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by
@@ -279,6 +280,13 @@ module Anomtop (Flags : SM_flags) =
       | G_Htt | G_Hbb | G_Hcc | G_Htautau | G_H3 | G_H4
       | Gs | I_Gs | G2 
       | Mass of flavor | Width of flavor
+
+(* Two integer counters for the QCD and EW order of the couplings. *)
+
+    type orders = int * int
+
+    let orders = function 
+      | _ -> (0,0)
 
     let input_parameters =
       []

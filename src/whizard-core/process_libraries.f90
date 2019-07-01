@@ -1,11 +1,13 @@
-! WHIZARD 2.1.1 September 18 2012
+! WHIZARD 2.2.0 May 18 2014
 ! 
-! Copyright (C) 1999-2012 by 
+! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
-!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
+!     
+!     with contributions from
+!     Christian Speckner <cnspeckn@googlemail.com> 
+!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -33,2822 +35,2448 @@ module process_libraries
   use file_utils !NODEP!
   use diagnostics !NODEP!
   use md5
+  use unit_tests
   use os_interface
   use lexers
   use variables
   use user_code_interface
   use models
   use flavors
+
+  use process_constants
   use prclib_interfaces
+  use prc_core_def
+  use particle_specifiers
 
   implicit none
   private
 
-  public :: process_configuration_t
+  public :: process_component_def_t
+  public :: process_def_t
+  public :: process_def_entry_t
   public :: process_library_t
-  public :: process_library_init
-  public :: process_library_final
-  public :: process_library_advance
-  public :: process_library_write
-  public :: process_library_set_static
-  public :: process_library_is_static
-  public :: process_library_is_compiled
-  public :: process_library_is_loaded
-  public :: process_library_get_name
-  public :: process_library_get_n_processes
-  public :: process_library_check_name_consistency
-  public :: process_library_get_process_index
-  public :: process_library_append
-  public :: process_library_update_status
-  public :: process_library_get_process_id
-  public :: process_library_get_process_pid
-  public :: process_library_get_process_md5sum
-  public :: process_library_get_process_model_name
-  public :: process_library_get_openmp_status
-  public :: process_library_generate_code
-  public :: process_library_write_driver
-  public :: user_procs_t
-  public :: write_library_manager
-  public :: get_modellibs_flags
-  public :: process_library_compile
-  public :: process_library_link
-  public :: compile_library_manager
-  public :: link_executable
-  public :: process_library_load
-  public :: process_library_unload
-  public :: process_library_set_unload_hook
-  public :: process_library_set_reload_hook
-  public :: process_library_store_append
-  public :: process_library_store_final
-  public :: process_library_store_load
-  public :: process_library_store_get_ptr
-  public :: process_library_store_get_first
-  public :: process_library_store_load_static
   public :: process_libraries_test
 
-  integer, parameter, public :: PRC_UNDEFINED = 0
-  integer, parameter, public :: PRC_OMEGA = 1
-  integer, parameter, public :: PRC_TEST = 2
-  integer, parameter, public :: PRC_UNIT = 3
-  integer, parameter, public :: PRC_EXTERNAL = 4
-  integer, parameter, public :: PRC_DIPOLE = 5
   integer, parameter :: STAT_UNKNOWN = 0
-  integer, parameter :: STAT_CONFIGURED = 1
-  integer, parameter :: STAT_CODE_GENERATED = 2
-  integer, parameter :: STAT_COMPILED = 3
-  integer, parameter :: STAT_LOADED = 4
+  integer, parameter :: STAT_OPEN = 1
+  integer, parameter :: STAT_CONFIGURED = 2
+  integer, parameter :: STAT_SOURCE = 3
+  integer, parameter :: STAT_COMPILED = 4
+  integer, parameter :: STAT_LINKED = 5
+  integer, parameter :: STAT_ACTIVE = 6
+
+  character, dimension(0:6), parameter :: STATUS_LETTER = &
+       ["?", "o", "f", "s", "c", "l", "a"]
 
 
-  type :: process_configuration_t
+  type :: process_component_def_t
      private
-     integer :: status = STAT_UNKNOWN
-     integer :: method = PRC_UNDEFINED
-     type(string_t) :: id
-     type(model_t), pointer :: model => null ()
-     integer :: n_in  = 0
+     type(string_t) :: basename
+     logical :: initial = .false.
+     integer :: n_in = 0
      integer :: n_out = 0
      integer :: n_tot = 0
-     type(string_t), dimension(:), allocatable :: prt_in, prt_out
-     type(string_t) :: restrictions
-     type(string_t) :: omega_flags
+     type(prt_spec_t), dimension(:), allocatable :: prt_in
+     type(prt_spec_t), dimension(:), allocatable :: prt_out
+     type(string_t) :: method
+     type(string_t) :: description
+     class(prc_core_def_t), allocatable :: core_def
      character(32) :: md5sum = ""
-     logical :: omega_openmp = .false.
-     type(process_configuration_t), pointer :: next => null ()
-  end type process_configuration_t
+   contains
+     procedure :: write => process_component_def_write
+     procedure :: read => process_component_def_read
+     procedure :: show => process_component_def_show
+     procedure :: compute_md5sum => process_component_def_compute_md5sum
+     procedure :: allocate_driver => process_component_def_allocate_driver
+     procedure :: needs_code => process_component_def_needs_code
+     procedure :: get_writer_ptr => process_component_def_get_writer_ptr
+     procedure :: get_features => process_component_def_get_features
+     procedure :: connect => process_component_def_connect
+     procedure :: get_core_def_ptr => process_component_get_core_def_ptr
+     procedure :: get_n_in  => process_component_def_get_n_in
+     procedure :: get_n_out => process_component_def_get_n_out
+     procedure :: get_n_tot => process_component_def_get_n_tot
+     procedure :: get_prt_in => process_component_def_get_prt_in
+     procedure :: get_prt_out => process_component_def_get_prt_out
+     procedure :: get_md5sum => process_component_def_get_md5sum
+  end type process_component_def_t
+  
+  type :: process_def_t
+     private
+     type(string_t) :: id
+     integer :: num_id = 0
+     type(model_t), pointer :: model => null ()
+     type(string_t) :: model_name
+     integer :: n_in  = 0
+     integer :: n_initial = 0
+     integer :: n_extra = 0
+     type(process_component_def_t), dimension(:), allocatable :: initial
+     type(process_component_def_t), dimension(:), allocatable :: extra
+     character(32) :: md5sum = ""
+   contains
+     procedure :: write => process_def_write
+     procedure :: read => process_def_read
+     procedure :: show => process_def_show
+     procedure :: init => process_def_init
+     procedure :: import_component => process_def_import_component
+     procedure :: compute_md5sum => process_def_compute_md5sum
+     procedure :: get_md5sum => process_def_get_md5sum
+     procedure :: needs_code => process_def_needs_code
+  end type process_def_t
 
-  type :: process_library_t
-     ! private
-     logical :: static = .false.
+  type, extends (process_def_t) :: process_def_entry_t
+     private
+     type(process_def_entry_t), pointer :: next => null ()
+  end type process_def_entry_t
+  
+  type :: process_def_list_t
+     private
+     type(process_def_entry_t), pointer :: first => null ()
+     type(process_def_entry_t), pointer :: last => null ()
+   contains
+     procedure :: final => process_def_list_final
+     procedure :: write => process_def_list_write
+     procedure :: show => process_def_list_show
+     procedure :: read => process_def_list_read
+     procedure :: append => process_def_list_append
+     procedure :: get_n_processes => process_def_list_get_n_processes
+     procedure :: get_process_id_list => process_def_list_get_process_id_list
+     procedure :: contains => process_def_list_contains
+     procedure :: get_entry_index => process_def_list_get_entry_index
+     procedure :: get_num_id => process_def_list_get_num_id
+     procedure :: get_model_name => process_def_list_get_model_name
+     procedure :: get_n_in => process_def_list_get_n_in
+     procedure :: get_n_components => process_def_list_get_n_components
+     procedure :: get_component_def_ptr => process_def_list_get_component_def_ptr
+     procedure :: get_component_list => process_def_list_get_component_list
+     procedure :: get_component_description_list => &
+          process_def_list_get_component_description_list
+  end type process_def_list_t
+
+  type :: process_library_entry_t
+     private
      integer :: status = STAT_UNKNOWN
+     type(process_def_t), pointer :: def => null ()
+     integer :: i_component = 0
+     integer :: i_external = 0
+     class(prc_core_driver_t), allocatable :: driver
+   contains
+     procedure :: to_string => process_library_entry_to_string
+     procedure :: init => process_library_entry_init
+     procedure :: connect => process_library_entry_connect
+     procedure :: fill_constants => process_library_entry_fill_constants
+  end type process_library_entry_t
+
+  type, extends (process_def_list_t) :: process_library_t
+     private
      type(string_t) :: basename
-     type(string_t) :: srcname
-     type(string_t) :: libname
-     integer :: n_prc = 0
-     type(process_configuration_t), pointer :: prc_first => null ()
-     type(process_configuration_t), pointer :: prc_last => null ()
-     type(dlaccess_t) :: dlaccess
-     procedure(prc_get_n_processes), nopass, pointer :: get_n_prc => null ()
-     procedure(prc_get_stringptr), nopass, pointer :: get_process_id => null ()
-     procedure(prc_get_stringptr), nopass, pointer :: get_model_name => null ()
-     procedure(prc_get_stringptr), nopass, pointer :: &
-          get_restrictions => null ()
-     procedure(prc_get_stringptr), nopass, pointer :: &
-          get_omega_flags => null ()
-     procedure(prc_get_stringptr), nopass, pointer :: get_md5sum => null ()
-     procedure(prc_get_int), nopass, pointer :: get_n_in  => null ()
-     procedure(prc_get_int), nopass, pointer :: get_n_out => null ()
-     procedure(prc_get_int), nopass, pointer :: get_n_flv => null ()
-     procedure(prc_get_int), nopass, pointer :: get_n_hel => null ()
-     procedure(prc_get_int), nopass, pointer :: get_n_col => null ()
-     procedure(prc_get_int), nopass, pointer :: get_n_cin => null ()
-     procedure(prc_get_int), nopass, pointer :: get_n_cf  => null ()
-     procedure(prc_get_log), nopass, pointer :: get_openmp_status => null ()
-     procedure(prc_set_int_tab1), nopass, pointer :: set_flv_state => null ()
-     procedure(prc_set_int_tab1), nopass, pointer :: set_hel_state => null ()
-     procedure(prc_set_int_tab2), nopass, pointer :: set_col_state => null ()
-     procedure(prc_set_cf_tab), nopass, pointer :: set_cf_table => null ()
-     procedure(prc_get_fptr), nopass, pointer :: init_get_fptr  => null()
-     procedure(prc_get_fptr), nopass, pointer :: final_get_fptr => null()
-     procedure(prc_get_fptr), nopass, pointer :: &
-          update_alpha_s_get_fptr => null ()
-     procedure(prc_get_fptr), nopass, pointer :: &
-          reset_helicity_selection_get_fptr => null ()
-     procedure(prc_get_fptr), nopass, pointer :: new_event_get_fptr => null ()
-     procedure(prc_get_fptr), nopass, pointer :: is_allowed_get_fptr => null ()
-     procedure(prc_get_fptr), nopass, pointer :: get_amplitude_get_fptr &
-          => null ()
-     procedure(prclib_unload_hook), nopass, pointer :: unload_hook => null ()
-     procedure(prclib_reload_hook), nopass, pointer :: reload_hook => null ()
-     type(process_library_t), pointer :: next => null ()
+     integer :: n_entries = 0
+     logical :: external = .false.
+     integer :: status = STAT_UNKNOWN
+     logical :: static = .false.
+     logical :: driver_exists = .false.
+     logical :: makefile_exists = .false.
+     type(process_library_entry_t), dimension(:), allocatable :: entry
+     class(prclib_driver_t), allocatable :: driver
+     character(32) :: md5sum = ""
+   contains
+     procedure :: write => process_library_write
+     procedure :: show => process_library_show
+     procedure :: init => process_library_init
+     procedure :: init_static => process_library_init_static
+     procedure :: configure => process_library_configure
+     procedure :: compute_md5sum => process_library_compute_md5sum
+     procedure :: write_makefile => process_library_write_makefile
+     procedure :: write_driver => process_library_write_driver
+     procedure :: update_status => process_library_update_status
+     procedure :: make_source => process_library_make_source
+     procedure :: make_compile => process_library_make_compile
+     procedure :: make_link => process_library_make_link
+     procedure :: load => process_library_load
+     procedure :: load_entries => process_library_load_entries
+     procedure :: unload => process_library_unload
+     procedure :: clean => process_library_clean
+     procedure :: open => process_library_open
+     procedure :: get_name => process_library_get_name
+     procedure :: is_active => process_library_is_active
+     procedure :: connect_process => process_library_connect_process
   end type process_library_t
 
-  type :: user_procs_t
-     type(string_t), dimension(:), allocatable :: cut
-     type(string_t), dimension(:), allocatable :: event_shape
-     type(string_t), dimension(:), allocatable :: obs_real_unary
-     type(string_t), dimension(:), allocatable :: obs_real_binary
-     type(string_t), dimension(:), allocatable :: sf
-  end type user_procs_t
+  type, extends (process_driver_internal_t) :: prctest_2_t
+   contains
+     procedure, nopass :: type_name => prctest_2_type_name
+     procedure :: fill_constants => prctest_2_fill_constants
+  end type prctest_2_t
+  
+  type, extends (prc_core_driver_t) :: prctest_5_t
+   contains
+     procedure, nopass :: type_name => prctest_5_type_name
+  end type prctest_5_t
+  
+  type, extends (prc_core_driver_t) :: prctest_6_t
+     procedure(proc1_t), nopass, pointer :: proc1 => null ()
+   contains
+     procedure, nopass :: type_name => prctest_6_type_name
+  end type prctest_6_t
+  
 
-  type :: process_library_store_t
-     private
-     type(process_library_t), pointer :: first => null ()
-     type(process_library_t), pointer :: last => null ()
-  end type process_library_store_t
-
-
-  interface
-     function libmanager_get_n_libs () result (n)
-       integer :: n
-     end function libmanager_get_n_libs
-  end interface
-
-  interface
-     function libmanager_get_libname (i) result (name)
-       use iso_varying_string, string_t => varying_string !NODEP!
-       type(string_t) :: name
-       integer, intent(in) :: i
-     end function libmanager_get_libname
-  end interface
-
-  interface
-     function libmanager_get_c_funptr (libname, fname) result (c_fptr)
-       use iso_c_binding !NODEP!
-       type(c_funptr) :: c_fptr
-       character(*), intent(in) :: libname, fname
-     end function libmanager_get_c_funptr
+  abstract interface
+     subroutine proc1_t (n) bind(C)
+       import
+       integer(c_int), intent(out) :: n
+     end subroutine proc1_t
   end interface
 
 
-  type(process_library_store_t), save :: process_library_store
+  type, extends (prc_core_def_t) :: prcdef_2_t
+     integer :: data = 0
+     logical :: file = .false.
+   contains
+     procedure, nopass :: type_string => prcdef_2_type_string
+     procedure :: write => prcdef_2_write
+     procedure :: read => prcdef_2_read
+     procedure, nopass :: get_features => prcdef_2_get_features
+     procedure :: generate_code => prcdef_2_generate_code
+     procedure :: allocate_driver => prcdef_2_allocate_driver
+     procedure :: connect => prcdef_2_connect
+  end type prcdef_2_t
+  
+  type, extends (prc_core_def_t) :: prcdef_5_t
+   contains
+     procedure, nopass :: type_string => prcdef_5_type_string
+     procedure :: init => prcdef_5_init
+     procedure :: write => prcdef_5_write
+     procedure :: read => prcdef_5_read
+     procedure :: allocate_driver => prcdef_5_allocate_driver
+     procedure, nopass :: needs_code => prcdef_5_needs_code
+     procedure, nopass :: get_features => prcdef_5_get_features
+     procedure :: connect => prcdef_5_connect
+  end type prcdef_5_t
+  
+  type, extends (prc_core_def_t) :: prcdef_6_t
+   contains
+     procedure, nopass :: type_string => prcdef_6_type_string
+     procedure :: init => prcdef_6_init
+     procedure :: write => prcdef_6_write
+     procedure :: read => prcdef_6_read
+     procedure :: allocate_driver => prcdef_6_allocate_driver
+     procedure, nopass :: needs_code => prcdef_6_needs_code
+     procedure, nopass :: get_features => prcdef_6_get_features
+     procedure :: connect => prcdef_6_connect
+  end type prcdef_6_t
+  
 
 contains
 
-  subroutine process_configuration_init &
-       (prc_conf, prc_id, model, prt_in, prt_out, method, status, &
-        restrictions, omega_flags, known_md5sum, omega_openmp)
-    type(process_configuration_t), intent(inout) :: prc_conf
-    type(string_t), intent(in) :: prc_id
-    type(model_t), intent(in), target :: model
-    type(string_t), dimension(:), intent(in) :: prt_in, prt_out
-    integer, intent(in), optional :: status
-    integer, intent(in), optional :: method
-    type(string_t), intent(in), optional :: restrictions, omega_flags
-    character(32), intent(in), optional :: known_md5sum
-    logical, intent(in), optional :: omega_openmp
-    prc_conf%id = prc_id
-    prc_conf%model => model
-    prc_conf%n_in  = size (prt_in)
-    prc_conf%n_out = size (prt_out)
-    prc_conf%n_tot = prc_conf%n_in + prc_conf%n_out
-    if (allocated (prc_conf%prt_in))  deallocate (prc_conf%prt_in)
-    allocate (prc_conf%prt_in  (prc_conf%n_in))
-    if (allocated (prc_conf%prt_out)) deallocate (prc_conf%prt_out)
-    allocate (prc_conf%prt_out (prc_conf%n_out))
-    prc_conf%prt_in  = prt_in
-    prc_conf%prt_out = prt_out
-    if (present (status)) then
-       prc_conf%status = status
-    else
-       prc_conf%status = STAT_CONFIGURED
-    end if
-    if (present (method)) then
-       prc_conf%method = method
-    else
-       prc_conf%method = PRC_OMEGA
-    end if
-    if (present (restrictions)) then
-       prc_conf%restrictions = canonicalize_restrictions (restrictions, model)
-    else
-       prc_conf%restrictions = ""
-    end if
-    if (present (omega_flags)) then
-       prc_conf%omega_flags = omega_flags
-    else
-       prc_conf%omega_flags = ""
-    end if
-    if (present (omega_openmp)) then
-       select case (prc_conf%method)
-       case (PRC_OMEGA)
-          prc_conf%omega_openmp = omega_openmp
-       case default
-          prc_conf%omega_openmp = .false.
-       end select
-    else
-       prc_conf%omega_openmp = .false.
-    end if
-    if (present (known_md5sum)) then
-       prc_conf%md5sum = known_md5sum
-    else
-       call process_configuration_compute_md5sum (prc_conf)
-    end if
-  end subroutine process_configuration_init
-
-  subroutine process_configuration_compute_md5sum (prc_conf)
-    type(process_configuration_t), intent(inout) :: prc_conf
-    integer :: u, i
-    u = free_unit ()
-    open (unit=u, status="scratch")
-    write (u, "(A)")  char (model_get_name (prc_conf%model))
-    write (u, "(I0)")  prc_conf%n_in
-    write (u, "(I0)")  prc_conf%n_out
-    write (u, "(I0)")  prc_conf%n_tot
-    do i = 1, size (prc_conf%prt_in)
-       write (u, "(A)")  char (prc_conf%prt_in(i))
-    end do
-    do i = 1, size (prc_conf%prt_out)
-       write (u, "(A)")  char (prc_conf%prt_out(i))
-    end do
-    if (prc_conf%method /= PRC_OMEGA) then
-       write (u, "(I0)")  prc_conf%method
-    end if
-    if (prc_conf%restrictions /= "") then
-       write (u, "(A)")  char (prc_conf%restrictions)
-    end if
-    if (prc_conf%omega_flags /= "") then
-       write (u, "(A)")  char (prc_conf%omega_flags)
-    end if
-    rewind (u)
-    prc_conf%md5sum = md5sum (u)
-    close (u)
-  end subroutine process_configuration_compute_md5sum
+  subroutine strip_prefix (buffer)
+    character(*), intent(inout) :: buffer
+    type(string_t) :: string, prefix
+    string = buffer
+    call split (string, prefix, "=")
+    buffer = string
+  end subroutine strip_prefix
     
-  subroutine process_configuration_write (prc_conf, unit)
-    type(process_configuration_t), intent(in) :: prc_conf
+  subroutine process_component_def_write (object, unit)
+    class(process_component_def_t), intent(in) :: object
     integer, intent(in), optional :: unit
-    character :: status
-    type(string_t) :: in_state, out_state
-    type(string_t) :: restrictions_str, omega_flags_str
-    integer :: i
-    select case (prc_conf%status)
-    case (STAT_UNKNOWN);         status = "?"
-    case (STAT_CONFIGURED);      status = "O"
-    case (STAT_CODE_GENERATED);  status = "G"
-    case (STAT_COMPILED);        status = "C"
-    case (STAT_LOADED);          status = "L"
-    end select
-    in_state = prc_conf%prt_in(1)
-    do i = 2, size (prc_conf%prt_in)
-       in_state = in_state // ", " // prc_conf%prt_in(i)
-    end do
-    out_state = prc_conf%prt_out(1)
-    do i = 2, size (prc_conf%prt_out)
-       out_state = out_state // ", " // prc_conf%prt_out(i)
-    end do
-    if (prc_conf%restrictions == "" .and. prc_conf%omega_flags == "") then
-       call msg_message (" [" // status // "] " // char (prc_conf%id) // " = " &
-            // char (in_state) // " => " // char (out_state), unit)
+    integer :: u
+    u = output_unit (unit)
+    write (u, "(3x,A,A)")  "Component ID        = ", char (object%basename)
+    write (u, "(3x,A,L1)") "Initial component   = ", object%initial
+    write (u, "(3x,A,I0,1x,I0,1x,I0)") "N (in, out, tot)    = ", &
+         object%n_in, object%n_out, object%n_tot
+    write (u, "(3x,A)", advance="no") "Particle content    = "
+    if (allocated (object%prt_in)) then
+       call prt_spec_write (object%prt_in, u, advance="no")
     else
-       if (prc_conf%restrictions /= "") then
-          restrictions_str = "$restrictions = """ &    ! $
-               // prc_conf%restrictions // """"
-       else
-          restrictions_str = ""
-       end if
-       if (prc_conf%omega_flags /= "") then
-          omega_flags_str = "$omega_flags = """ &      ! $
-               // prc_conf%omega_flags // """"
-       else
-          omega_flags_str = ""
-       end if
-       call msg_message (" [" // status // "] " // char (prc_conf%id) // " = " &
-            // char (in_state) // " => " // char (out_state) &
-            // " { " // char (restrictions_str) // " " &
-            // char (omega_flags_str) // " }", unit) 
+       write (u, "(A)", advance="no")  "[undefined]"
     end if
-  end subroutine process_configuration_write
-
-  function canonicalize_restrictions (string, model) result (newstring)
-    type(string_t) :: newstring
-    type(string_t), intent(in) :: string
-    type(model_t), intent(in), target :: model
-    type(stream_t), target :: stream
-    type(lexer_t) :: lexer
-    type(lexeme_t) :: lexeme
-    type(string_t) :: token
-    if (string == "")  return
-    if (extract (string, 1, 1) == "!")  return
-    newstring = "!"
-    call lexer_init (lexer, &
-         comment_chars = "", &
-         quote_chars = "'", &
-         quote_match = "'", &
-         single_chars = "+~:", &
-         special_class = (/ "&" /), &
-         keyword_list = null ())
-    call stream_init (stream, string)
-    call lexer_assign_stream (lexer, stream)
-    TRANSFORM_TOKENS: do
-       call lex (lexeme, lexer)
-       if (lexeme_is_eof (lexeme))  exit TRANSFORM_TOKENS
-       if (lexeme_is_break (lexeme)) then
-          call msg_message ("Restriction string = " &
-               // '"' // char (string) // '"')
-          call msg_fatal ("Syntax error in restrictions specification")
-          exit TRANSFORM_TOKENS
-       end if
-       token = lexeme_get_contents (lexeme)
-       select case (lexeme_get_type (lexeme))
-       case (T_NUMERIC)
-          newstring = newstring // token
-       case (T_IDENTIFIER)
-          select case (char (extract (token, 1, 1)))
-          case ("+", "~", "&", ":")
-             newstring = newstring // token
-          case default
-             newstring = newstring // canonicalize_prt (token, model)
-          end select
-       case (T_QUOTED)
-          newstring = newstring // canonicalize_prt (token, model)
-       case default
-          call msg_bug ("Token type error in restrictions specification")
-       end select
-    end do TRANSFORM_TOKENS
-    call stream_final (stream)
-  end function canonicalize_restrictions
-
-  function canonicalize_prt (string, model) result (newstring)
-    type(string_t) :: newstring
-    type(string_t), intent(in) :: string
-    type(model_t), intent(in), target :: model
-    type(flavor_t) :: flv
-    integer :: pdg
-    pdg = model_get_particle_pdg (model, string)
-    if (pdg == 0) then
-       call msg_fatal ("Undefined particle in restrictions specification")
+    write (u, "(A)", advance="no") " => "
+    if (allocated (object%prt_out)) then
+       call prt_spec_write (object%prt_out, u, advance="no")
+    else
+       write (u, "(A)", advance="no")  "[undefined]"
     end if
-    call flavor_init (flv, pdg, model)
-    newstring = flavor_get_name (flv)
-  end function canonicalize_prt
+    write (u, "(A)")
+    if (object%method /= "") then
+       write (u, "(3x,A,A)")  "Method              = ", &
+            char (object%method)
+    else
+       write (u, "(3x,A)")  "Method              = [undefined]"
+    end if
+    if (allocated (object%core_def)) then
+       write (u, "(3x,A,A)")  "Process variant     = ", &
+            char (object%core_def%type_string ())
+       call object%core_def%write (u)
+    else
+       write (u, "(3x,A)")  "Process variant     = [undefined]"
+    end if
+    write (u, "(3x,A,A,A)") "MD5 sum (def)       = '", object%md5sum, "'"
+  end subroutine process_component_def_write
+    
+  subroutine process_component_def_read (component, unit, core_def_templates)
+    class(process_component_def_t), intent(out) :: component
+    integer, intent(in) :: unit
+    type(prc_template_t), dimension(:), intent(in) :: core_def_templates
+    character(80) :: buffer
+    type(string_t) :: var_buffer, prefix, in_state, out_state
+    type(string_t) :: variant_type
+    
+    read (unit, "(A)")  buffer
+    call strip_prefix (buffer)
+    component%basename = trim (adjustl (buffer))
+    
+    read (unit, "(A)")  buffer
+    call strip_prefix (buffer)
+    read (buffer, *)  component%initial
+    
+    read (unit, "(A)")  buffer
+    call strip_prefix (buffer)
+    read (buffer, *)  component%n_in, component%n_out, component%n_tot
+    
+    call get (unit, var_buffer)
+    call split (var_buffer, prefix, "=")   ! keeps 'in => out'
+    call split (var_buffer, prefix, "=")   ! actually: separator is '=>'
 
-  subroutine process_library_init (prc_lib, name, os_data)
-    type(process_library_t), intent(out) :: prc_lib
-    type(string_t), intent(in) :: name
-    type(os_data_t), intent(in) :: os_data
-    prc_lib%basename = name
-    prc_lib%srcname = name // os_data%fc_src_ext
-    prc_lib%status = STAT_CONFIGURED
-  end subroutine process_library_init
+    in_state = prefix
+    if (component%n_in > 0) then
+       call prt_spec_read (component%prt_in, in_state)
+    end if
 
-  subroutine process_library_clear_configuration (prc_lib)
-    type(process_library_t), intent(inout) :: prc_lib
-    type(process_configuration_t), pointer :: current
-    do while (associated (prc_lib%prc_first))
-       current => prc_lib%prc_first
-       prc_lib%prc_first => current%next
+    out_state = extract (var_buffer, 2)
+    if (component%n_out > 0) then
+       call prt_spec_read (component%prt_out, out_state)
+    end if
+    
+    read (unit, "(A)")  buffer
+    call strip_prefix (buffer)
+    component%method = trim (adjustl (buffer))
+    if (component%method == "[undefined]") &
+         component%method = ""
+    
+    read (unit, "(A)")  buffer
+    call strip_prefix (buffer)
+    variant_type = trim (adjustl (buffer))
+    call allocate_core_def &
+         (core_def_templates, variant_type, component%core_def)
+    if (allocated (component%core_def)) then
+       call component%core_def%read (unit)
+    end if
+
+    read (unit, "(A)")  buffer
+    call strip_prefix (buffer)
+    read (buffer(3:34), "(A32)")  component%md5sum
+    
+  end subroutine process_component_def_read
+    
+  subroutine process_component_def_show (object, unit)
+    class(process_component_def_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = output_unit (unit)
+    write (u, "(6x,A)", advance="no")  char (object%basename)
+    if (.not. object%initial) &
+         write (u, "('*')", advance="no")
+    write (u, "(':',1x)", advance="no")
+    if (allocated (object%prt_in)) then
+       call prt_spec_write (object%prt_in, u, advance="no")
+    else
+       write (u, "(A)", advance="no")  "[undefined]"
+    end if
+    write (u, "(A)", advance="no") " => "
+    if (allocated (object%prt_out)) then
+       call prt_spec_write (object%prt_out, u, advance="no")
+    else
+       write (u, "(A)", advance="no")  "[undefined]"
+    end if
+    if (object%method /= "") then
+       write (u, "(2x,'[',A,']')")  char (object%method)
+    else
+       write (u, *)
+    end if
+  end subroutine process_component_def_show
+    
+  subroutine process_component_def_compute_md5sum (component, model)
+    class(process_component_def_t), intent(inout) :: component
+    type(model_t), intent(in), pointer :: model
+    integer :: u
+    component%md5sum = ""
+    u = free_unit ()
+    open (u, status = "scratch", action = "readwrite")
+    if (associated (model))  write (u, "(A32)")  model_get_md5sum (model)
+    call component%write (u)
+    rewind (u)
+    component%md5sum = md5sum (u)
+    close (u)
+    if (allocated (component%core_def)) then
+       call component%core_def%set_md5sum (component%md5sum)
+    end if
+  end subroutine process_component_def_compute_md5sum
+
+  subroutine process_component_def_allocate_driver (component, driver)
+    class(process_component_def_t), intent(in) :: component
+    class(prc_core_driver_t), intent(out), allocatable :: driver
+    if (allocated (component%core_def)) then
+       call component%core_def%allocate_driver (driver, component%basename)
+    end if
+  end subroutine process_component_def_allocate_driver
+    
+  function process_component_def_needs_code (component) result (flag)
+    class(process_component_def_t), intent(in) :: component
+    logical :: flag
+    flag = component%core_def%needs_code ()
+  end function process_component_def_needs_code
+  
+  function process_component_def_get_writer_ptr (component) result (writer)
+    class(process_component_def_t), intent(in), target :: component
+    class(prc_writer_t), pointer :: writer
+    writer => component%core_def%writer
+  end function process_component_def_get_writer_ptr
+  
+  function process_component_def_get_features (component) result (features)
+    class(process_component_def_t), intent(in) :: component
+    type(string_t), dimension(:), allocatable :: features
+    call component%core_def%get_features (features)
+  end function process_component_def_get_features
+
+  subroutine process_component_def_connect &
+       (component, lib_driver, i, proc_driver)
+    class(process_component_def_t), intent(in) :: component
+    class(prclib_driver_t), intent(in) :: lib_driver
+    integer, intent(in) :: i
+    class(prc_core_driver_t), intent(inout) :: proc_driver
+    select type (proc_driver)
+    class is (process_driver_internal_t)
+       ! nothing to do
+    class default
+       call component%core_def%connect (lib_driver, i, proc_driver)
+    end select
+  end subroutine process_component_def_connect
+
+  function process_component_get_core_def_ptr (component) result (ptr)
+    class(process_component_def_t), intent(in), target :: component
+    class(prc_core_def_t), pointer :: ptr
+    ptr => component%core_def
+  end function process_component_get_core_def_ptr
+  
+  function process_component_def_get_n_in (component) result (n_in)
+    class(process_component_def_t), intent(in) :: component
+    integer :: n_in
+    n_in = component%n_in
+  end function process_component_def_get_n_in
+  
+  function process_component_def_get_n_out (component) result (n_out)
+    class(process_component_def_t), intent(in) :: component
+    integer :: n_out
+    n_out = component%n_out
+  end function process_component_def_get_n_out
+  
+  function process_component_def_get_n_tot (component) result (n_tot)
+    class(process_component_def_t), intent(in) :: component
+    integer :: n_tot
+    n_tot = component%n_tot
+  end function process_component_def_get_n_tot
+  
+  subroutine process_component_def_get_prt_in (component, prt)
+    class(process_component_def_t), intent(in) :: component
+    type(string_t), dimension(:), intent(out), allocatable :: prt
+    integer :: i
+    allocate (prt (component%n_in))
+    do i = 1, component%n_in
+       prt(i) = component%prt_in(i)%to_string ()
+    end do
+  end subroutine process_component_def_get_prt_in
+  
+  subroutine process_component_def_get_prt_out (component, prt)
+    class(process_component_def_t), intent(in) :: component
+    type(string_t), dimension(:), intent(out), allocatable :: prt
+    integer :: i
+    allocate (prt (component%n_out))
+    do i = 1, component%n_out
+       prt(i) = component%prt_out(i)%to_string ()
+    end do
+  end subroutine process_component_def_get_prt_out
+  
+  function process_component_def_get_md5sum (component) result (md5sum)
+    class(process_component_def_t), intent(in) :: component
+    character(32) :: md5sum
+    md5sum = component%md5sum
+  end function process_component_def_get_md5sum
+  
+  subroutine process_def_write (object, unit)
+    class(process_def_t), intent(in) :: object
+    integer, intent(in) :: unit
+    integer :: i
+    write (unit, "(1x,A,A,A)") "ID = '", char (object%id), "'"
+    if (object%num_id /= 0) &
+         write (unit, "(1x,A,I0)")  "ID(num) = ", object%num_id
+    select case (object%n_in)
+    case (1);  write (unit, "(1x,A)")  "Decay"
+    case (2);  write (unit, "(1x,A)")  "Scattering"
+    case default
+       write (unit, "(1x,A)")  "[Undefined process]"
+       return
+    end select
+    if (object%model_name /= "") then
+       write (unit, "(1x,A,A)")  "Model = ", char (object%model_name)
+    else
+       write (unit, "(1x,A)")  "Model = [undefined]"
+    end if
+    write (unit, "(1x,A,I0)")  "Initially defined component(s) = ", &
+         object%n_initial
+    write (unit, "(1x,A,I0)")  "Extra generated component(s)   = ", &
+         object%n_extra
+    write (unit, "(1x,A,A,A)") "MD5 sum   = '", object%md5sum, "'"
+    if (allocated (object%initial)) then
+       do i = 1, size (object%initial)
+          write (unit, "(1x,A,I0)")  "Component #", i
+          call object%initial(i)%write (unit)
+       end do
+    end if
+    if (allocated (object%extra)) then
+       do i = 1, size (object%extra)
+          write (unit, "(1x,A,I0)")  "Component #", object%n_initial + i
+          call object%extra(i)%write (unit)
+       end do
+    end if
+  end subroutine process_def_write
+    
+  subroutine process_def_read (object, unit, core_def_templates)
+    class(process_def_t), intent(out) :: object
+    integer, intent(in) :: unit
+    type(prc_template_t), dimension(:), intent(in) :: core_def_templates
+    integer :: i, i1, i2
+    character(80) :: buffer, ref
+    read (unit, "(A)")  buffer
+    call strip_prefix (buffer)
+    i1 = scan (buffer, "'")
+    i2 = scan (buffer, "'", back=.true.)
+    if (i2 > i1) then
+       object%id = buffer(i1+1:i2-1)
+    else
+       object%id = ""
+    end if
+
+    read (unit, "(A)")  buffer
+    select case (buffer(2:11))
+    case ("Decay     "); object%n_in = 1
+    case ("Scattering"); object%n_in = 2
+    case default
+       return
+    end select
+
+    read (unit, "(A)")  buffer
+    call strip_prefix (buffer)
+    object%model_name = trim (adjustl (buffer))
+    if (object%model_name == "[undefined]")  object%model_name = ""
+          
+    read (unit, "(A)")  buffer
+    call strip_prefix (buffer)
+    read (buffer, *)  object%n_initial
+
+    read (unit, "(A)")  buffer
+    call strip_prefix (buffer)
+    read (buffer, *)  object%n_extra
+
+    read (unit, "(A)")  buffer
+    call strip_prefix (buffer)
+    read (buffer(3:34), "(A32)")  object%md5sum
+    
+    if (object%n_initial > 0) then
+       allocate (object%initial (object%n_initial))
+       do i = 1, object%n_initial
+          read (unit, "(A)")  buffer
+          write (ref, "(1x,A,I0)")  "Component #", i
+          if (buffer /= ref)  return                ! Wrong component header
+          call object%initial(i)%read (unit, core_def_templates)
+       end do
+    end if
+    
+  end subroutine process_def_read
+    
+  subroutine process_def_show (object, unit)
+    class(process_def_t), intent(in) :: object
+    integer, intent(in) :: unit
+    integer :: i
+    write (unit, "(4x,A)", advance="no") char (object%id)
+    if (object%num_id /= 0) &
+         write (unit, "(1x,'(',I0,')')", advance="no")  object%num_id
+    if (object%model_name /= "") &
+         write (unit, "(1x,'[',A,']')")  char (object%model_name)
+    if (allocated (object%initial)) then
+       do i = 1, size (object%initial)
+          call object%initial(i)%show (unit)
+       end do
+    end if
+    if (allocated (object%extra)) then
+       do i = 1, size (object%extra)
+          call object%extra(i)%show (unit)
+       end do
+    end if
+  end subroutine process_def_show
+    
+  subroutine process_def_init (def, id, &
+       model, model_name, n_in, n_components, num_id)
+    class(process_def_t), intent(out) :: def
+    type(string_t), intent(in), optional :: id
+    type(model_t), intent(in), optional, target :: model
+    type(string_t), intent(in), optional :: model_name
+    integer, intent(in), optional :: n_in
+    integer, intent(in), optional :: n_components
+    integer, intent(in), optional :: num_id
+    character(16) :: suffix
+    integer :: i
+    if (present (id)) then
+       def%id = id
+    else
+       def%id = ""
+    end if
+    if (present (num_id)) then
+       def%num_id = num_id
+    end if
+    if (present (model)) then
+       def%model => model
+       def%model_name = model%get_name ()
+    else
+       def%model => null ()
+       if (present (model_name)) then
+          def%model_name = model_name
+       else
+          def%model_name = ""
+       end if
+    end if
+    if (present (n_in))  def%n_in = n_in
+    if (present (n_components)) then
+       def%n_initial = n_components
+       allocate (def%initial (n_components))
+    end if
+    def%initial%initial = .true.
+    def%initial%method     = ""
+    do i = 1, def%n_initial
+       write (suffix, "(A,I0)")  "_i", i
+       def%initial(i)%basename = def%id // trim (suffix)
+    end do
+    def%initial%description = ""
+  end subroutine process_def_init
+  
+  subroutine process_def_import_component (def, &
+       i, n_out, prt_in, prt_out, method, variant)
+    class(process_def_t), intent(inout) :: def
+    integer, intent(in) :: i
+    integer, intent(in), optional :: n_out
+    type(prt_spec_t), dimension(:), intent(in), optional :: prt_in
+    type(prt_spec_t), dimension(:), intent(in), optional :: prt_out
+    type(string_t), intent(in), optional :: method
+    class(prc_core_def_t), &
+         intent(inout), allocatable, optional :: variant
+    integer :: p
+    associate (comp => def%initial(i))
+      if (present (n_out)) then
+         comp%n_in  = def%n_in
+         comp%n_out = n_out
+         comp%n_tot = def%n_in + n_out
+      end if
+      if (present (prt_in)) then
+         allocate (comp%prt_in (size (prt_in)))
+         comp%prt_in = prt_in
+      end if
+      if (present (prt_out)) then
+         allocate (comp%prt_out (size (prt_out)))
+         comp%prt_out = prt_out
+      end if
+      if (present (method))  comp%method = method
+      if (present (variant)) then
+         call move_alloc (variant, comp%core_def)
+      end if
+      if (allocated (comp%prt_in) .and. allocated (comp%prt_out)) then
+         associate (d => comp%description)
+           d = ""
+           do p = 1, size (prt_in)
+              if (p > 1)  d = d // ", "
+              d = d // comp%prt_in(p)%to_string ()
+           end do
+           d = d // " => "
+           do p = 1, size (prt_out)
+              if (p > 1)  d = d // ", "
+              d = d // comp%prt_out(p)%to_string ()
+           end do
+           if (comp%method /= "") then
+              d = d // " [" // comp%method // "]"
+           end if
+         end associate
+      end if
+    end associate
+  end subroutine process_def_import_component
+
+  subroutine process_def_compute_md5sum (def)
+    class(process_def_t), intent(inout) :: def
+    integer :: i
+    type(string_t) :: buffer
+    buffer = def%model_name
+    do i = 1, def%n_initial
+       call def%initial(i)%compute_md5sum (def%model)
+       buffer = buffer // def%initial(i)%md5sum
+    end do
+    do i = 1, def%n_extra
+       call def%extra(i)%compute_md5sum (def%model)
+       buffer = buffer // def%initial(i)%md5sum
+    end do
+    def%md5sum = md5sum (char (buffer))
+  end subroutine process_def_compute_md5sum
+    
+  function process_def_get_md5sum (def, i_component) result (md5sum)
+    class(process_def_t), intent(in) :: def
+    integer, intent(in), optional :: i_component
+    character(32) :: md5sum
+    if (present (i_component)) then
+       md5sum = def%initial(i_component)%md5sum
+    else
+       md5sum = def%md5sum
+    end if
+  end function process_def_get_md5sum
+  
+  function process_def_needs_code (def, i_component) result (flag)
+    class(process_def_t), intent(in) :: def
+    integer, intent(in) :: i_component
+    logical :: flag
+    flag = def%initial(i_component)%needs_code ()
+  end function process_def_needs_code
+  
+  subroutine process_def_list_final (list)
+    class(process_def_list_t), intent(inout) :: list
+    type(process_def_entry_t), pointer :: current
+    nullify (list%last)
+    do while (associated (list%first))
+       current => list%first
+       list%first => current%next
        deallocate (current)
     end do
-    prc_lib%prc_last => null ()
-    prc_lib%n_prc = 0
-  end subroutine process_library_clear_configuration
-
-  subroutine process_library_final (prc_lib)
-    type(process_library_t), intent(inout) :: prc_lib
-    if (.not. prc_lib%static)  call dlaccess_final (prc_lib%dlaccess)
-    call process_library_clear_configuration (prc_lib)
-  end subroutine process_library_final
-
-  subroutine process_library_advance (prc_lib)
-    type(process_library_t), pointer :: prc_lib
-    prc_lib => prc_lib%next
-  end subroutine process_library_advance
-
-  subroutine process_library_write (prc_lib, unit)
-    type(process_library_t), intent(in) :: prc_lib
+  end subroutine process_def_list_final
+  
+  subroutine process_def_list_write (object, unit)
+    class(process_def_list_t), intent(in) :: object
     integer, intent(in), optional :: unit
-    type(string_t) :: status
-    type(process_configuration_t), pointer :: current
-    select case (prc_lib%status)
-    case (STAT_UNKNOWN)
-       status = "[unknown]"
-    case (STAT_CONFIGURED)
-       status = "[open]"
-    case (STAT_CODE_GENERATED)
-       status = "[generated code]"
-    case (STAT_COMPILED)
-       status = "[compiled]"
-    case (STAT_LOADED)
-       if (prc_lib%static) then
-          status = "[static]"
-       else
-          status = "[loaded]"
-       end if
-    end select
-    call msg_message ("Process library: " // char (prc_lib%basename) &
-         // " " // char (status), unit)
-    current => prc_lib%prc_first
-    do while (associated (current))
-       call process_configuration_write (current, unit)
-       current => current%next
-    end do
-  end subroutine process_library_write
-
-  subroutine process_library_set_static (prc_lib, flag)
-    type(process_library_t), intent(inout) :: prc_lib
-    logical, intent(in) :: flag
-    prc_lib%static = flag
-  end subroutine process_library_set_static
-
-  function process_library_is_static (prc_lib) result (flag)
-    logical :: flag
-    type(process_library_t), intent(in) :: prc_lib
-    flag = prc_lib%static
-  end function process_library_is_static
-
-  function process_library_is_compiled (prc_lib) result (flag)
-    logical :: flag
-    type(process_library_t), intent(in) :: prc_lib
-    flag = prc_lib%status >= STAT_COMPILED
-  end function process_library_is_compiled
-
-  function process_library_is_loaded (prc_lib) result (flag)
-    logical :: flag
-    type(process_library_t), intent(in) :: prc_lib
-    flag = prc_lib%status >= STAT_LOADED
-  end function process_library_is_loaded
-
-  function process_library_get_name (prc_lib) result (name)
-    type(string_t) :: name
-    type(process_library_t), intent(in) :: prc_lib
-    name = prc_lib%basename
-  end function process_library_get_name
-
-  function process_library_get_n_processes (prc_lib) result (n)
-    integer :: n
-    type(process_library_t), intent(in) :: prc_lib
-    n = prc_lib%n_prc
-  end function process_library_get_n_processes
-
-  function process_library_get_process_ptr (prc_lib, prc_id) result (current)
-    type(process_library_t), intent(in), target :: prc_lib
-    type(string_t), intent(in) :: prc_id
-    type(process_configuration_t), pointer :: current
-    current => prc_lib%prc_first
-    do while (associated (current))
-       if (current%id == prc_id)  return
-       current => current%next
-    end do
-  end function process_library_get_process_ptr
-
-  subroutine process_library_check_name_consistency (prc_id, prc_lib) 
-    type(process_library_t), intent(in), target :: prc_lib
-    type(string_t), intent(in) :: prc_id
-    if (char (prc_id) == 'prc') & 
-         call msg_fatal ("The name 'prc' cannot " // &
-                  "be chosen as a valid process name.")  
-    if (prc_id == prc_lib%basename) &
-        call msg_fatal ("Process and library names must not be identical ('" &
-                // char (prc_id) // "').")
-  end subroutine process_library_check_name_consistency
-
-  function process_library_get_process_index (prc_lib, prc_id) result (index)
-    integer :: index
-    type(process_library_t), intent(in), target :: prc_lib
-    type(string_t), intent(in) :: prc_id
-    type(process_configuration_t), pointer :: current
-    index = 0
-    current => prc_lib%prc_first
-    do while (associated (current))
-       index = index + 1
-       if (current%id == prc_id)  return
-       current => current%next
-    end do
-    index = 0
-  end function process_library_get_process_index
-
-  subroutine process_library_append &
-       (prc_lib, prc_id, model, prt_in, prt_out, method, &
-        status, restrictions, omega_flags, &
-        rebuild_library, message, known_md5sum, &
-        omega_openmp)
-    type(process_library_t), intent(inout), target :: prc_lib
-    type(string_t), intent(in) :: prc_id
-    type(model_t), intent(in), target :: model
-    type(string_t), dimension(:), intent(in) :: prt_in, prt_out
-    integer, intent(in), optional :: status, method
-    type(string_t), intent(in), optional :: restrictions, omega_flags
-    logical, intent(in), optional :: rebuild_library, message, omega_openmp
-    character(32), intent(in), optional :: known_md5sum
-    type(process_configuration_t), pointer :: current
-    character(32) :: old_md5sum
-    integer :: old_status
-    logical :: keep_status
-    logical :: msg
-    logical :: old_omega_openmp, new_omega_openmp
-    keep_status = .true.
-    if (present (rebuild_library))  keep_status = .not. rebuild_library
-    msg = .false.;  if (present (message))  msg = message
-    if (.not. present (method)) then
-       new_omega_openmp = omega_openmp
-    else
-       select case (method)
-       case (PRC_OMEGA)
-          new_omega_openmp = omega_openmp
-       case default
-          new_omega_openmp = .false.
-       end select
-    end if
-    current => process_library_get_process_ptr (prc_lib, prc_id)
-    if (associated (current)) then
-       old_md5sum = current%md5sum
-       old_status = current%status
-       old_omega_openmp = current%omega_openmp
-       call process_configuration_init &
-            (current, prc_id, model, prt_in, prt_out, method, status, &
-             restrictions, omega_flags, known_md5sum, new_omega_openmp)
-       if (size (prt_in) == 0) then
-          call msg_warning ("Process '" // char (prc_id) &
-               // "': matrix element vanishes in selected model '" &
-               // char (model_get_name (model)) // "'")
-       else if (keep_status) then
-          if ((current%md5sum == old_md5sum) .and. &
-               (old_omega_openmp .eqv. new_omega_openmp)) then
-             if (current%status <= old_status) then
-                 call msg_message ("Process '" // char (prc_id) &
-                      // "': keeping configuration")
-                current%status = old_status
-             else
-                 call msg_message ("Process '" // char (prc_id) &
-                      // "': updating configuration")
-             end if
-          else
-             call msg_warning ("Process '" // char (prc_id) &
-                  // "': configuration changed, overwriting.")
-          end if
-       else
-          if ((current%md5sum /= old_md5sum) .or. &
-               (current%omega_openmp .neqv. old_omega_openmp)) then
-             call msg_message ("Process '" // char (prc_id) &
-                  // "': ignoring previous configuration")
-          end if
-       end if
-    else
-       allocate (current)
-       if (associated (prc_lib%prc_last)) then
-          prc_lib%prc_last%next => current
-       else
-          prc_lib%prc_first => current
-       end if
-       prc_lib%prc_last => current
-       prc_lib%n_prc = prc_lib%n_prc + 1
-       call process_library_check_name_consistency (prc_id, prc_lib)
-       call process_configuration_init &
-            (current, prc_id, model, prt_in, prt_out, method, status, &
-             restrictions, omega_flags, known_md5sum, new_omega_openmp)
-       call process_update_code_status (current, keep_status)
-       if (msg)  call msg_message &
-            ("Added process to library '" // char (prc_lib%basename) // "':")
-    end if
-    if (msg)  call process_configuration_write (current)
-  end subroutine process_library_append
-
-  subroutine process_update_code_status (prc_conf, keep_status)
-    type(process_configuration_t), intent(inout) :: prc_conf
-    logical, intent(in) :: keep_status
-    type(string_t) :: filename
-    logical :: exist, found
-    integer :: u, iostat
-    character(80) :: buffer
-    character(32) :: md5sum 
-    logical :: omega_openmp
-    filename = prc_conf%id // ".f90"
-    inquire (file=char(filename), exist=exist)
-    if (exist) then
-       found = .false.
-       u = free_unit ()
-       omega_openmp = .false.
-       open (u, file=char(filename), action="read")
-       SCAN_FILE: do
-          read (u, "(A)", iostat=iostat)  buffer
-          select case (iostat)
-          case (0)
-             if (buffer(1:12) == "    md5sum =") then
-                md5sum = buffer(15:47)
-                found = .true.
-             end if
-             if (buffer(1:5) == "!$OMP") omega_openmp = .true. ! $
-          case default
-             exit SCAN_FILE
-          end select
-       end do SCAN_FILE
-       close (u)
-       if (found) then
-          if (keep_status) then
-             if (prc_conf%status < STAT_CODE_GENERATED) then
-                if ((md5sum == prc_conf%md5sum) .and. &
-                     (omega_openmp .eqv. prc_conf%omega_openmp)) then
-                   call msg_message ("Process '" // char (prc_conf%id) &
-                        // "': using existing source code")
-                   prc_conf%status = STAT_CODE_GENERATED
-                else
-                   call msg_warning ("Process '" // char (prc_conf%id) &
-                        // "': will overwrite existing source code")
-                end if
-             else if ((md5sum /= prc_conf%md5sum) .or. &
-                  (omega_openmp .neqv. prc_conf%omega_openmp)) then
-                call msg_warning ("Process '" // char (prc_conf%id) &
-                     // "': source code and loaded checksums differ")
-             end if
-          else if (prc_conf%status < STAT_CODE_GENERATED) then
-             call msg_message ("Process '" // char (prc_conf%id) &
-                  // "': ignoring existing source code")
-          end if
-       else
-         call msg_warning ("Process '" // char (prc_conf%id) &
-            // "': No MD5 sum found in source code")
-       end if
-    end if
-  end subroutine process_update_code_status
-
-  subroutine process_library_update_status (prc_lib)
-    type(process_library_t), intent(inout), target :: prc_lib
-    type(process_configuration_t), pointer :: prc_conf
-    integer :: initial_status
-    initial_status = prc_lib%status
-    prc_conf => prc_lib%prc_first
-    do while (associated (prc_conf))
-       prc_lib%status = min (prc_lib%status, prc_conf%status)
-       prc_conf => prc_conf%next
-    end do
-    if (initial_status == STAT_LOADED .and. prc_lib%status < STAT_LOADED) &
-         call process_library_unload (prc_lib)
-  end subroutine process_library_update_status
-
-  subroutine process_library_load_configuration &
-       (prc_lib, os_data, model)
-    type(process_library_t), intent(inout), target :: prc_lib
-    type(os_data_t), intent(in) :: os_data
-    type(model_t), pointer :: model
-    integer :: n_prc, p, n_flv, n_in, n_out, n_tot, i
-    integer(c_int) :: pid
-    integer, dimension(:,:), allocatable :: flv_state
-    integer(c_int), dimension(:,:), allocatable, target :: flv_state_tmp
-    type(string_t) :: prc_id, model_name, filename, restrictions, omega_flags
-    type(string_t), dimension(:), allocatable :: prt_in, prt_out
-    logical :: omega_openmp
-    character(32) :: md5sum
-    n_prc = prc_lib% get_n_prc ()
-    SCAN_PROCESSES: do p = 1, n_prc
-       pid = p
-       prc_id = process_library_get_process_id (prc_lib, pid)
-       md5sum = process_library_get_process_md5sum (prc_lib, pid)
-       model_name = process_library_get_process_model_name (prc_lib, pid)
-       restrictions = process_library_get_process_restrictions (prc_lib, pid)
-       omega_flags = process_library_get_process_omega_flags (prc_lib, pid)
-       omega_openmp = process_library_get_openmp_status (prc_lib, pid)
-       filename = model_name // ".mdl"
-       model => null ()
-       call model_list_read_model (model_name, filename, os_data, model)
-       if (.not. associated (model)) then
-          call msg_error ("Process library '" // char (prc_lib%basename) &
-               // "', process '" // char (prc_id) // "': " &
-               // "model unavailable, process skipped")
-          cycle SCAN_PROCESSES
-       end if
-       n_in  = prc_lib% get_n_in  (pid)
-       n_out = prc_lib% get_n_out (pid)
-       n_tot = n_in + n_out
-       n_flv = prc_lib% get_n_flv (pid)
-       allocate (flv_state (n_tot, n_flv))
-       allocate (flv_state_tmp (n_tot, n_flv))
-       allocate (prt_in  (n_in ))
-       allocate (prt_out (n_out))
-       call prc_lib% set_flv_state (pid, &
-            c_loc (flv_state_tmp), &
-            int((/n_tot, n_flv/), kind=c_int))
-       flv_state = flv_state_tmp
-       do i = 1, n_in
-          prt_in(i) = particle_name_string (flv_state (i, :), model)
+    type(process_def_entry_t), pointer :: entry
+    integer :: i, u
+    u = output_unit (unit)
+    if (associated (object%first)) then
+       i = 1
+       entry => object%first
+       do while (associated (entry))
+          write (u, "(1x,A,I0,A)")  "Process #", i, ":"
+          call entry%write (u)
+          i = i + 1
+          entry => entry%next
+          if (associated (entry))  write (u, *)
        end do
-       do i = 1, n_out
-          prt_out(i) = particle_name_string (flv_state (n_in+i, :), model)
+    else
+       write (u, "(1x,A)")  "Process definition list: [empty]"
+    end if
+  end subroutine process_def_list_write
+
+  subroutine process_def_list_show (object, unit)
+    class(process_def_list_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    type(process_def_entry_t), pointer :: entry
+    integer :: u
+    u = output_unit (unit)
+    if (associated (object%first)) then
+       write (u, "(2x,A)")  "Processes:"
+       entry => object%first
+       do while (associated (entry))
+          call entry%show (u)
+          entry => entry%next
        end do
-       call process_library_append &
-            (prc_lib, prc_id, model, prt_in, prt_out, &
-             status=STAT_LOADED, &
-             restrictions=restrictions, omega_flags=omega_flags, &
-             known_md5sum=md5sum, omega_openmp=omega_openmp)
-       deallocate (prt_in, prt_out, flv_state, flv_state_tmp)
-    end do SCAN_PROCESSES
-  contains
-    function particle_name_string (ff, model) result (prt)
-      type(string_t) :: prt
-      integer, dimension(:), intent(in) :: ff
-      type(model_t), intent(in), target :: model
-      type(flavor_t) :: flv
-      integer :: i
-      prt = ""
-      do i = 1, size (ff)
-         if (all (ff(i) /= ff(:i-1))) then
-            call flavor_init (flv, ff(i), model)
-            if (prt /= "")  prt = prt // ":"
-            prt = prt // flavor_get_name (flv)
-         end if
-      end do
-    end function particle_name_string
-  end subroutine process_library_load_configuration
-
-  function process_library_get_process_id (prc_lib, pid) result (process_id)
-    type(string_t) :: process_id
-    type(process_library_t), intent(in), target :: prc_lib
-    integer(c_int), intent(in) :: pid
-    type(c_ptr) :: cptr
-    integer(c_int) :: len
-    character(kind=c_char), dimension(:), pointer :: char_array
-    integer, dimension(1) :: shape
-    call prc_lib% get_process_id (pid, cptr, len)
-    if (c_associated (cptr)) then
-       shape(1) = len
-       call c_f_pointer (cptr, char_array, shape)
-       process_id = char_from_array (char_array)
-       call prc_lib% get_process_id (0_c_int, cptr, len)
     else
-       process_id = ""
+       write (u, "(2x,A)")  "Processes: [empty]"
     end if
-  end function process_library_get_process_id
+  end subroutine process_def_list_show
 
-  function process_library_get_process_pid (prc_lib, id) result (process_pid)
-     type(process_library_t), intent(in) :: prc_lib
-     type(string_t), intent(in) :: id
-     integer :: process_pid, pid, n_proc
-     process_pid = -1
-     n_proc = process_library_get_n_processes (prc_lib)
-     if (n_proc <= 0) return
-     do pid = 1, n_proc
-        if (process_library_get_process_id (prc_lib, pid) == id) then
-           process_pid = pid
-           return
-        end if
-     end do
-  end function process_library_get_process_pid
-
-  function process_library_get_process_model_name &
-       (prc_lib, pid) result (model_name)
-    type(string_t) :: model_name
-    type(process_library_t), intent(in), target :: prc_lib
-    integer(c_int), intent(in) :: pid
-    type(c_ptr) :: cptr
-    integer(c_int) :: len
-    character(kind=c_char), dimension(:), pointer :: char_array
-    integer, dimension(1) :: shape
-    call prc_lib% get_model_name (pid, cptr, len)
-    if (c_associated (cptr)) then
-       shape(1) = len
-       call c_f_pointer (cptr, char_array, shape)
-       model_name = char_from_array (char_array)
-       call prc_lib% get_model_name (0_c_int, cptr, len)
-    else
-       model_name = ""
-    end if
-  end function process_library_get_process_model_name
-
-  function process_library_get_process_restrictions &
-       (prc_lib, pid) result (restrictions)
-    type(string_t) :: restrictions
-    type(process_library_t), intent(in), target :: prc_lib
-    integer(c_int), intent(in) :: pid
-    type(c_ptr) :: cptr
-    integer(c_int) :: len
-    character(kind=c_char), dimension(:), pointer :: char_array
-    integer, dimension(1) :: shape
-    call prc_lib% get_restrictions (pid, cptr, len)
-    if (c_associated (cptr)) then
-       shape(1) = len
-       call c_f_pointer (cptr, char_array, shape)
-       restrictions = char_from_array (char_array)
-       call prc_lib% get_restrictions (0_c_int, cptr, len)
-    else
-       restrictions = ""
-    end if
-  end function process_library_get_process_restrictions
-
-  function process_library_get_process_omega_flags &
-       (prc_lib, pid) result (omega_flags)
-    type(string_t) :: omega_flags
-    type(process_library_t), intent(in), target :: prc_lib
-    integer(c_int), intent(in) :: pid
-    type(c_ptr) :: cptr
-    integer(c_int) :: len
-    character(kind=c_char), dimension(:), pointer :: char_array
-    integer, dimension(1) :: shape
-    call prc_lib% get_omega_flags (pid, cptr, len)
-    if (c_associated (cptr)) then
-       shape(1) = len
-       call c_f_pointer (cptr, char_array, shape)
-       omega_flags = char_from_array (char_array)
-       call prc_lib% get_omega_flags (0_c_int, cptr, len)
-    else
-       omega_flags = ""
-    end if
-  end function process_library_get_process_omega_flags
-
-  function process_library_get_openmp_status &
-       (prc_lib, pid) result (openmp_status)
-    type(process_library_t), intent(in), target :: prc_lib
-    integer(c_int), intent(in) :: pid
-    logical :: openmp_status
-    type(c_ptr) :: cptr
-    openmp_status =  prc_lib%get_openmp_status (pid)
-  end function process_library_get_openmp_status
-
-  function process_library_get_process_md5sum (prc_lib, pid) result (md5sum)
-    type(string_t) :: md5sum
-    type(process_library_t), intent(in), target :: prc_lib
-    integer(c_int), intent(in) :: pid
-    type(c_ptr) :: cptr
-    integer(c_int) :: len
-    character(kind=c_char), dimension(:), pointer :: char_array
-    integer, dimension(1) :: shape
-    call prc_lib% get_md5sum (pid, cptr, len)
-    if (c_associated (cptr)) then
-       shape(1) = len
-       call c_f_pointer (cptr, char_array, shape)
-       md5sum = char_from_array (char_array)
-       call prc_lib% get_md5sum (0_c_int, cptr, len)
-    else
-       md5sum = ""
-    end if
-  end function process_library_get_process_md5sum
-
-  function char_from_array (a) result (char)
-    character(kind=c_char), dimension(:), intent(in) :: a
-    character(len=size(a)) :: char
+  subroutine process_def_list_read (object, unit, core_def_templates)
+    class(process_def_list_t), intent(out) :: object
+    integer, intent(in) :: unit
+    type(prc_template_t), dimension(:), intent(in) :: core_def_templates
+    type(process_def_entry_t), pointer :: entry
+    character(80) :: buffer, ref
     integer :: i
-    do i = 1, len (char)
-       char(i:i) = a(i)
-    end do
-  end function char_from_array
+    read (unit, "(A)")  buffer
+    write (ref, "(1x,A)")  "Process definition list: [empty]"  
+    if (buffer == ref)  return         ! OK: empty library
+    backspace (unit)
+    READ_ENTRIES: do i = 1, huge (0)
+       if (i > 1) read (unit, *, end=1)
+       read (unit, "(A)")  buffer
 
-  subroutine process_library_generate_code (prc_lib, os_data, simulate)
-    type(process_library_t), intent(in) :: prc_lib
-    type(os_data_t), intent(in) :: os_data
-    logical, intent(in), optional :: simulate
-    type(process_configuration_t), pointer :: current
-    integer :: status
-    call msg_message ("Generating code for process library '" &
-         // char (process_library_get_name (prc_lib)) // "'")
-    current => prc_lib%prc_first
-    SCAN_PROCESSES: do while (associated (current))
-       select case (current%status)
-       case (STAT_CONFIGURED)
-          select case (current%method)
-          case (PRC_OMEGA)
-             call call_omega (current, os_data, status, simulate)
-             if (status == 0) then
-                current%status = STAT_CODE_GENERATED
-             else
-                call msg_error ("Process '" // char (current%id) &
-                     // "': code generation failed")
-             end if
-          case (PRC_TEST)
-             call write_unit_matrix_element (current, os_data, status, unit=.false.)
-             if (status == 0) then
-                current%status = STAT_CODE_GENERATED
-             else
-                call msg_error ("Process '" // char (current%id) &
-                     // "': code generation failed")
-             end if          
-          case (PRC_UNIT)
-             call write_unit_matrix_element (current, os_data, status, unit=.true.)
-             if (status == 0) then
-                current%status = STAT_CODE_GENERATED
-             else
-                call msg_error ("Process '" // char (current%id) &
-                     // "': code generation failed")
-             end if          
-          case default
-             call msg_fatal ("These methods are not yet implemented.")
-          end select
-       case (STAT_CODE_GENERATED:)
-          call msg_message ("Skipping process '" // char (current%id) &
-               // "' (source code exists)")
-       case default
-          call msg_message ("Skipping process '" // char (current%id) &
-               // "' (undefined configuration)")
-       end select
+       write (ref, "(1x,A,I0,A)")  "Process #", i, ":"
+       if (buffer /= ref)  return      ! Wrong process header: done.
+       allocate (entry)
+       call entry%read (unit, core_def_templates)
+       call object%append (entry)
+    end do READ_ENTRIES
+1   continue                           ! EOF: done
+  end subroutine process_def_list_read
+
+  subroutine process_def_list_append (list, entry)
+    class(process_def_list_t), intent(inout) :: list
+    type(process_def_entry_t), intent(inout), pointer :: entry
+    if (list%contains (entry%id)) then
+       call msg_fatal ("Recording process: '" // char (entry%id) &
+            // "' has already been defined")
+    end if
+    if (associated (list%first)) then
+       list%last%next => entry
+    else
+       list%first => entry
+    end if
+    list%last => entry
+    entry => null ()
+  end subroutine process_def_list_append
+  
+  function process_def_list_get_n_processes (list) result (n)
+    integer :: n
+    class(process_def_list_t), intent(in) :: list
+    type(process_def_entry_t), pointer :: current
+    n = 0
+    current => list%first
+    do while (associated (current))
+       n = n + 1
        current => current%next
-    end do SCAN_PROCESSES
-  end subroutine process_library_generate_code
-
-  subroutine call_omega (prc_conf, os_data, status, simulate)
-    type(process_configuration_t), intent(in) :: prc_conf
-    type(os_data_t), intent(in) :: os_data
-    integer, intent(out) :: status
-    logical, intent(in), optional :: simulate
-    type(string_t) :: command_string, binary_name
-    type(string_t) :: model_id, omega_mode, omega_cascade, omega_kmatrix, &
-       omega_openmp
-    integer :: j
-    logical :: sim, binary_found
-    sim = .false.;  if (present (simulate))  sim = simulate
-    call msg_message ("Calling O'Mega for process '" &
-         // char (prc_conf%id) // "'")
-    model_id = model_get_name (prc_conf%model)
-    binary_name = "omega_" // model_id // ".opt"
-    binary_found = .false.
-    select case (char (model_id))
-    case ("SM_km")
-       omega_kmatrix = " -target:kmatrix_write"
-    case default
-       omega_kmatrix = ""
-    end select
-    if (prc_conf%omega_openmp) then
-       omega_openmp = " -target:openmp "
-       call msg_message ("Enabling OpenMP support in O'Mega")
-!       call msg_message ("WARNING: enabling OpenMP support in O'Mega --- " &
-!         // "make sure that _both_ ")
-!       call msg_message ("   WHIZARD _and_ the matrix element are compiled with " &
-!         // "the proper OpenMP compiler flags.")
-!       call msg_message ("   Be prepared for broken results if you compile only " &
-!         // " the matrix element with OpenMP flags.")
-    else
-       omega_openmp = ""
-    end if
-    if (.not. os_data%use_testfiles) then
-       command_string = os_data%whizard_omega_binpath_local &
-          // "/" // binary_name
-       inquire (file=char (command_string), exist=binary_found)
-    end if
-    if (.not. binary_found) then
-       command_string = os_data%whizard_omega_binpath // "/" // binary_name
-       inquire (file=char (command_string), exist=binary_found)
-    end if
-    if (.not. binary_found) &
-       call msg_fatal ("O'Mega binary """ // char (binary_name) // """ not found")
-    select case (prc_conf%n_in)
-    case (1);  omega_mode = "-decay"
-    case (2);  omega_mode = "-scatter"
-    end select
-    if (prc_conf%restrictions == "") then
-       omega_cascade = ""
-    else if (extract (prc_conf%restrictions, 1, 1) == "!") then
-       omega_cascade = " -cascade '" &
-            // extract (prc_conf%restrictions, 2) // "'"
-    else
-       omega_cascade = " -cascade '" // prc_conf%restrictions // "'"
-    end if
-    command_string = command_string &
-         // " -o " // prc_conf%id // ".f90" &
-         // " -target:whizard" &
-         // " -target:parameter_module parameters_" // model_id &
-         // " -target:module opr_" // prc_conf%id &
-         // omega_kmatrix // omega_openmp &
-         // " -target:md5sum " // prc_conf%md5sum &
-         // omega_cascade &
-         // " -fusion:progress" &
-         // " " // prc_conf%omega_flags &
-         // " " // omega_mode
-    command_string = command_string // " "
-    do j = 1, prc_conf%n_in
-       if (j == 1) then
-          command_string = command_string // "'"
-       else
-          command_string = command_string // " "
+    end do
+  end function process_def_list_get_n_processes
+  
+  subroutine process_def_list_get_process_id_list (list, id)
+    class(process_def_list_t), intent(in) :: list
+    type(string_t), dimension(:), allocatable, intent(out) :: id
+    type(process_def_entry_t), pointer :: current
+    integer :: i
+    allocate (id (list%get_n_processes ()))
+    i = 0
+    current => list%first
+    do while (associated (current))
+       i = i + 1
+       id(i) = current%id
+       current => current%next
+    end do
+  end subroutine process_def_list_get_process_id_list
+  
+  function process_def_list_contains (list, id) result (flag)
+    logical :: flag
+    class(process_def_list_t), intent(in) :: list
+    type(string_t), intent(in) :: id
+    type(process_def_entry_t), pointer :: current
+    current => list%first
+    do while (associated (current))
+       if (id == current%id) then
+          flag = .true.;  return
        end if
-       command_string = command_string // prc_conf%prt_in(j)
-    end do
-    command_string = command_string // " ->"
-    do j = 1, prc_conf%n_out
-       command_string = command_string &
-            // " " // prc_conf%prt_out(j)
-    end do
-    command_string = command_string // "'"
-    if (sim) then
-       command_string = "cp " // os_data%whizard_testdatapath // "/" &
-            // prc_conf%id // ".f90 ."
-       call msg_message ("[call not executed, instead: copy file from " &
-            // char (os_data%whizard_testdatapath) // "]")
-    end if
-    call os_system_call (command_string, status, verbose=.true.)
-  end subroutine call_omega
-
-  subroutine write_unit_matrix_element (prc_conf, os_data, status, unit)
-    type(process_configuration_t), intent(in) :: prc_conf
-    type(os_data_t), intent(in) :: os_data
-    integer, intent(out) :: status
-    logical, intent(in) :: unit
-    integer, dimension(prc_conf%n_in) :: prt_in, mult_in, col_in
-    type(flavor_t), dimension(1:prc_conf%n_in) :: flv_in    
-    integer, dimension(prc_conf%n_out) :: prt_out, mult_out
-    integer, dimension(prc_conf%n_tot) :: prt, mult
-    integer, dimension(:,:), allocatable :: sxxx
-    integer :: dummy
-    type(flavor_t), dimension(1:prc_conf%n_out) :: flv_out    
-    type(string_t) :: proc_str, comment_str
-    integer :: u, i, j, count
-    integer :: hel, hel_in, hel_out, fac, factor, col_fac
-    type(string_t) :: filename
-    comment_str = ""
-    do i = 1, prc_conf%n_in
-       comment_str = comment_str // prc_conf%prt_in(i) // " " 
-    end do   
-    do j = 1, prc_conf%n_out
-       comment_str = comment_str // prc_conf%prt_out(j) // " " 
-    end do       
-    do i = 1, prc_conf%n_in
-       prt_in(i) = model_get_particle_pdg (prc_conf%model, prc_conf%prt_in(i))
-       call flavor_init (flv_in(i), prt_in(i), prc_conf%model)
-       mult_in(i) = flavor_get_multiplicity (flv_in(i))
-       col_in(i) = abs(flavor_get_color_type (flv_in(i)))
-       mult(i) = mult_in(i)
-       end do
-    do j = 1, prc_conf%n_out
-       prt_out(j) = model_get_particle_pdg (prc_conf%model, prc_conf%prt_out(j))    
-       call flavor_init (flv_out(j), prt_out(j), prc_conf%model)       
-       mult_out(j) = flavor_get_multiplicity (flv_out(j))       
-       mult(prc_conf%n_in + j) = mult_out(j)
-       end do
-    prt(1:prc_conf%n_in) = prt_in(1:prc_conf%n_in)
-    prt(prc_conf%n_in+1:prc_conf%n_tot) = prt_out(1:prc_conf%n_out)
-    proc_str = converter (prt)
-    hel_in = product (mult_in)
-    hel_out = product (mult_out)
-    col_fac = product (col_in)
-    hel = hel_in * hel_out
-    fac = hel
-    dummy = 1
-    factor = 1
-    if (prc_conf%n_out >= 3) then
-       do i = 3, prc_conf%n_out
-          factor = factor * (i - 2) * (i - 1)
-       end do
-    end if    
-    factor = factor * col_fac
-    allocate (sxxx(1:hel,1:prc_conf%n_tot))
-    call create_spin_table (dummy,hel,fac,mult,sxxx)
-    call msg_message ("Writing test matrix element for process '" &
-         // char (prc_conf%id) // "'")
-    filename = prc_conf%id // ".f90"
-    u = free_unit ()
-    open (unit=u, file=char(filename), action="write")
-    write (u, "(A)") "! File generated automatically by WHIZARD"   
-    write (u, "(A)") "!                                        "
-    write (u, "(A)") "! Note that irresp. of what you demanded WHIZARD"
-    write (u, "(A)") "! treats this as colorless process       "    
-    write (u, "(A)") "!                                        "
-    write (u, "(A)") "module tpr_" // char(prc_conf%id)
-    write (u, "(A)") "                                         "
-    write (u, "(A)") "  use kinds"    
-    write (u, "(A)") "  use omega_color, OCF => omega_color_factor"        
-    write (u, "(A)") "                                         "
-    write (u, "(A)") "  implicit none"        
-    write (u, "(A)") "  private"            
-    write (u, "(A)") "                                         "    
-    write (u, "(A)") "  public :: md5sum"        
-    write (u, "(A)") "  public :: number_particles_in, number_particles_out"       
-    write (u, "(A)") "  public :: number_spin_states, spin_states"
-    write (u, "(A)") "  public :: number_flavor_states, flavor_states"
-    write (u, "(A)") "  public :: number_color_flows, color_flows"
-    write (u, "(A)") "  public :: number_color_indices, number_color_factors, &"
-    write (u, "(A)") "     color_factors, color_sum, openmp_supported"
-    write (u, "(A)") "  public :: init, final, update_alpha_s"  
-    write (u, "(A)") "  public :: reset_helicity_selection"
-    write (u, "(A)") "                                         "    
-    write (u, "(A)") "  public :: new_event, is_allowed, get_amplitude"        
-    write (u, "(A)") "       "      
-    write (u, "(A)") "  real(default), parameter :: &"
-    write (u, "(A)") "       & conv = 0.38937966e12_default"
-    write (u, "(A)") "       "
-    write (u, "(A)") "  real(default), parameter :: &"
-    write (u, "(A)") "       & pi = 3.1415926535897932384626433832795028841972_default"
-    write (u, "(A)") "       "
-    write (u, "(A)") "  real(default), parameter :: &"
-    if (unit) then
-       write (u, "(A)") "                   & const = 1"
-    else 
-       write (u, "(A,1x,I0,A)") "       & const = (16 * pi / conv) * " &
-          // "(16 * pi**2)**(", prc_conf%n_out, "-2) " 
-    end if
-    write (u, "(A)") "       "    
-    write (u, "(A,1x,I0)") "  integer, parameter, private :: n_prt =  ", &
-       prc_conf%n_tot
-    write (u, "(A,1x,I0)") "  integer, parameter, private :: n_in = ", &
-       prc_conf%n_in
-    write (u, "(A,1x,I0)") "  integer, parameter, private :: n_out = ", &
-       prc_conf%n_out
-    write (u, "(A)") "  integer, parameter, private :: n_cflow = 1"
-    write (u, "(A)") "  integer, parameter, private :: n_cindex = 2"
-    write (u, "(A)") "  !!! We ignore tensor products and take only one flavor state."
-    write (u, "(A)") "  integer, parameter, private :: n_flv = 1"
-    write (u, "(A,1x,I0)") "  integer, parameter, private :: n_hel = ", hel
-    write (u, "(A)") "                                           "
-    write (u, "(A)") "  logical, parameter, private :: T = .true."
-    write (u, "(A)") "  logical, parameter, private :: F = .false."
-    write (u, "(A)") "                                           "    
-    do i = 1, hel
-       write (u, "(A)") "  integer, dimension(n_prt), parameter, private :: &"
-       write (u, "(A)") "    " // s_conv(i) // " = (/ " // char(converter(sxxx(i,1:prc_conf%n_tot))) // " /)"
-    end do 
-    write (u, "(A)") "  integer, dimension(n_prt,n_hel), parameter, private :: table_spin_states = &"
-    write (u, "(A)") "    reshape ( (/ & "
-    do i = 1, hel-1
-       write (u, "(A)") "                 " // s_conv(i) // ", & " 
-    end do 
-    write (u, "(A)") "                 " // s_conv(hel) // " & "     
-    write (u, "(A)") "              /), (/ n_prt, n_hel /) )"
-    write (u, "(A)") "                                                 "
-    write (u, "(A)") "  integer, dimension(n_prt), parameter, private :: &"
-    write (u, "(A)") "    f0001 = (/ " // char(proc_str) // " /)   !  " // char(comment_str)
-    write (u, "(A)") "  integer, dimension(n_prt,n_flv), parameter, private :: table_flavor_states = &"
-    write (u, "(A)") "    reshape ( (/ f0001 /), (/ n_prt, n_flv /) )"
-    write (u, "(A)") "                                                 " 
-    write (u, "(A)") "  integer, dimension(n_cindex, n_prt), parameter, private :: &"
-    write (u, "(A)") "    c0001 = reshape ( (/ " // char (dummy_colorizer (flv_in)) // " " // &
-      (repeat ("0,0, ", prc_conf%n_out-1)) // "0,0 /), " // " (/ n_cindex, n_prt /) )"
-    write (u, "(A)") "  integer, dimension(n_cindex, n_prt, n_cflow), parameter, private :: &"
-    write (u, "(A)") "  table_color_flows = reshape ( (/ c0001 /), (/ n_cindex, n_prt, n_cflow /) )"
-    write (u, "(A)") "                                           "   
-    write (u, "(A)") "  logical, dimension(n_prt), parameter, private :: & "
-    write (u, "(A)") "    g0001 = (/ "  // (repeat ("F, ", prc_conf%n_tot-1)) // "F /) "
-    write (u, "(A)") "  logical, dimension(n_prt, n_cflow), parameter, private :: table_ghost_flags = &"
-    write (u, "(A)") "    reshape ( (/ g0001 /), (/ n_prt, n_cflow /) )"
-    write (u, "(A)") "                                           "   
-    write (u, "(A)") "  integer, parameter, private :: n_cfactors = 1"
-    write (u, "(A)") "  type(OCF), dimension(n_cfactors), parameter, private :: &"
-    write (u, "(A)") "    table_color_factors = (/  OCF(1,1,+1._default) /)"
-    write (u, "(A)") "                                           "   
-    write (u, "(A)") "  logical, dimension(n_flv), parameter, private :: a0001 = (/ T /)"   
-    write (u, "(A)") "  logical, dimension(n_flv, n_cflow), parameter, private :: &"   
-    write (u, "(A)") "    flv_col_is_allowed = reshape ( (/ a0001 /), (/ n_flv, n_cflow /) )"   
-    write (u, "(A)") "                                           "   
-    write (u, "(A)") "  complex(default), dimension (n_flv, n_hel, n_cflow), private, save :: amp"    
-    write (u, "(A)") "                                           "
-    write (u, "(A)") "  logical, dimension(n_hel), private, save :: hel_is_allowed = T"
-    write (u, "(A)") "                                           "
-    write (u, "(A)") "contains"          
-    write (u, "(A)") "                                           "      
-    write (u, "(A)") "  pure function md5sum ()"
-    write (u, "(A)") "    character(len=32) :: md5sum"    
-    write (u, "(A)") "    ! DON'T EVEN THINK of modifying the following line!"        
-    write (u, "(A)") "    md5sum = """ // prc_conf%md5sum // """"
-    write (u, "(A)") "  end function md5sum"
-    write (u, "(A)") "                                           "          
-    write (u, "(A)") "  subroutine init (par)"
-    write (u, "(A)") "    real(default), dimension(*), intent(in) :: par"    
-    write (u, "(A)") "  end subroutine init"    
-    write (u, "(A)") "                                           " 
-    write (u, "(A)") "  subroutine final ()" 
-    write (u, "(A)") "  end subroutine final" 
-    write (u, "(A)") "                                           " 
-    write (u, "(A)") "  subroutine update_alpha_s (alpha_s)" 
-    write (u, "(A)") "    real(default), intent(in) :: alpha_s"        
-    write (u, "(A)") "  end subroutine update_alpha_s" 
-    write (u, "(A)") "                                           " 
-    write (u, "(A)") "  pure function number_particles_in () result (n)"
-    write (u, "(A)") "    integer :: n"    
-    write (u, "(A)") "    n = n_in"
-    write (u, "(A)") "  end function number_particles_in"
-    write (u, "(A)") "                                           "              
-    write (u, "(A)") "  pure function number_particles_out () result (n)"
-    write (u, "(A)") "    integer :: n"    
-    write (u, "(A)") "    n = n_out"
-    write (u, "(A)") "  end function number_particles_out"
-    write (u, "(A)") "                                           "                  
-    write (u, "(A)") "  pure function number_spin_states () result (n)"
-    write (u, "(A)") "    integer :: n"    
-    write (u, "(A)") "    n = size (table_spin_states, dim=2)"
-    write (u, "(A)") "  end function number_spin_states"
-    write (u, "(A)") "                                           "                      
-    write (u, "(A)") "  pure subroutine spin_states (a)"
-    write (u, "(A)") "    integer, dimension(:,:), intent(out) :: a"    
-    write (u, "(A)") "    a = table_spin_states"
-    write (u, "(A)") "  end subroutine spin_states"    
-    write (u, "(A)") "                                           "                          
-    write (u, "(A)") "  pure function number_flavor_states () result (n)"
-    write (u, "(A)") "    integer :: n"    
-    write (u, "(A)") "    n = 1"
-    write (u, "(A)") "  end function number_flavor_states"
-    write (u, "(A)") "                                           "                      
-    write (u, "(A)") "  pure subroutine flavor_states (a)"
-    write (u, "(A)") "    integer, dimension(:,:), intent(out) :: a"    
-    write (u, "(A)") "    a = table_flavor_states"
-    write (u, "(A)") "  end subroutine flavor_states"
-    write (u, "(A)") "                                           "                          
-    write (u, "(A)") "  pure function number_color_indices () result (n)"
-    write (u, "(A)") "    integer :: n"    
-    write (u, "(A)") "    n = size(table_color_flows, dim=1)"
-    write (u, "(A)") "  end function number_color_indices"
-    write (u, "(A)") "                                           "                          
-    write (u, "(A)") "  pure subroutine color_factors (cf)"
-    write (u, "(A)") "    type(OCF), dimension(:), intent(out) :: cf"    
-    write (u, "(A)") "    cf = table_color_factors"
-    write (u, "(A)") "  end subroutine color_factors"
-    write (u, "(A)") "                                           "                              
-    write (u, "(A)") "  pure function color_sum (flv, hel) result (amp2)"
-    write (u, "(A)") "    integer, intent(in) :: flv, hel"
-    write (u, "(A)") "    real(kind=default) :: amp2"
-    write (u, "(A)") "    amp2 = real (omega_color_sum (flv, hel, amp, table_color_factors))"
-    write (u, "(A)") "  end function color_sum"
-    write (u, "(A)") "                                           "       
-    write (u, "(A)") "  pure function number_color_flows () result (n)"
-    write (u, "(A)") "    integer :: n"    
-    write (u, "(A)") "    n = size (table_color_flows, dim=3)"
-    write (u, "(A)") "  end function number_color_flows"
-    write (u, "(A)") "                                           "                                  
-    write (u, "(A)") "  pure subroutine color_flows (a, g)"
-    write (u, "(A)") "    integer, dimension(:,:,:), intent(out) :: a"
-    write (u, "(A)") "    logical, dimension(:,:), intent(out) :: g"
-    write (u, "(A)") "    a = table_color_flows"
-    write (u, "(A)") "    g = table_ghost_flags"
-    write (u, "(A)") "  end subroutine color_flows"    
-    write (u, "(A)") "                                           "                              
-    write (u, "(A)") "  pure function number_color_factors () result (n)"
-    write (u, "(A)") "    integer :: n"    
-    write (u, "(A)") "    n = size (table_color_factors)"
-    write (u, "(A)") "  end function number_color_factors"
-    write (u, "(A)") "                                           "                                  
-    write (u, "(A)") "  pure function openmp_supported () result (status)"
-    write (u, "(A)") "    logical :: status"
-    write (u, "(A)") "    status = .false."
-    write (u, "(A)") "  end function openmp_supported"
-    write (u, "(A)") "                                           "                                  
-    write (u, "(A)") "  subroutine new_event (p)"
-    write (u, "(A)") "    real(default), dimension(0:3,*), intent(in) :: p"    
-    write (u, "(A)") "    call calculate_amplitudes (amp, p)"        
-    write (u, "(A)") "  end subroutine new_event"
-    write (u, "(A)") "                                           "              
-    write (u, "(A)") "  subroutine reset_helicity_selection (threshold, cutoff)"
-    write (u, "(A)") "    real(default), intent(in) :: threshold"    
-    write (u, "(A)") "    integer, intent(in) :: cutoff"
-    write (u, "(A)") "  end subroutine reset_helicity_selection"
-    write (u, "(A)") "                                           "                  
-    write (u, "(A)") "  pure function is_allowed (flv, hel, col) result (yorn)"                  
-    write (u, "(A)") "    logical :: yorn"                  
-    write (u, "(A)") "    integer, intent(in) :: flv, hel, col"                  
-    write (u, "(A)") "    yorn = hel_is_allowed(hel) .and. flv_col_is_allowed(flv,col)"                  
-    write (u, "(A)") "  end function is_allowed"                     
-    write (u, "(A)") "                                           "                  
-    write (u, "(A)") "  pure function get_amplitude (flv, hel, col) result (amp_result)"
-    write (u, "(A)") "    complex(default) :: amp_result"    
-    write (u, "(A)") "    integer, intent(in) :: flv, hel, col"            
-    write (u, "(A)") "    amp_result = amp (flv, hel, col)"        
-    write (u, "(A)") "  end function get_amplitude"
-    write (u, "(A)") "                                           "                  
-    write (u, "(A)") "  pure subroutine calculate_amplitudes (amp, k)"
-    write (u, "(A)") "    complex(default), dimension(:,:,:), intent(out) :: amp"    
-    write (u, "(A)") "    real(default), dimension(0:3,*), intent(in) :: k"    
-    write (u, "(A)") "    real(default) :: fac"        
-    write (u, "(A)") "    integer :: i"            
-    write (u, "(A)") "    ! We give all helicities the same weight!"            
-    if (unit) then 
-       write (u, "(A,1x,I0,1x,A)") "    fac = ", col_fac
-       write (u, "(A)") "    amp = const * sqrt(fac)"
-    else
-       write (u, "(A,1x,I0,1x,A)") "    fac = ", factor 
-       write (u, "(A)") "    amp = sqrt((2 * (k(0,1)*k(0,2) &"
-       write (u, "(A,1x,I0,A)") "         - dot_product (k(1:,1), k(1:,2)))) ** (3-", &
-                                  prc_conf%n_out, ")) * sqrt(const * fac)"
-    end if                                  
-    write (u, "(A,1x,I0,A)") "    amp = amp / sqrt(", hel_out, "._default)"
-    write (u, "(A)") "  end subroutine calculate_amplitudes"
-    write (u, "(A)") "                                           "                  
-    write (u, "(A)") "end module tpr_" // char(prc_conf%id)    
-    close (u, iostat=status)
-    deallocate (sxxx)
-  contains
-    function s_conv (num) result (chrt)
-      integer, intent(in) :: num
-      character(len=10) :: chrt
-      write (chrt, "(I10)") num
-      chrt = trim(adjustl(chrt))
-      if (num < 10) then
-         chrt = "s000" // chrt
-      else if (num < 100) then
-         chrt = "s00" // chrt
-      else if (num < 1000) then 
-         chrt = "s0" // chrt     
-      else
-         chrt = "s" // chrt            
-      end if             
-    end function s_conv
-    function converter (flv) result (str)
-      integer, dimension(:), intent(in) :: flv
-      type(string_t) :: str
-      character(len=150), dimension(size(flv)) :: chrt
-      integer :: i
-      str = ""
-      do i = 1, size(flv) - 1
-         write (chrt(i), "(I10)") flv(i)
-         str = str // var_str(trim(adjustl(chrt(i)))) // ", "
-      end do    
-      write (chrt(size(flv)), "(I10)") flv(size(flv))
-      str = str // trim(adjustl(chrt(size(flv))))
-    end function converter
-    integer function sj (j,m)
-      integer, intent(in) :: j, m
-      if (((j == 1) .and. (m == 1)) .or. &
-          ((j == 2) .and. (m == 2)) .or. &
-          ((j == 3) .and. (m == 3)) .or. &
-          ((j == 4) .and. (m == 3)) .or. &
-          ((j == 5) .and. (m == 4))) then
-         sj = 1
-      else if (((j == 2) .and. (m == 1)) .or. &
-          ((j == 3) .and. (m == 1)) .or. &         
-          ((j == 4) .and. (m == 2)) .or. &
-          ((j == 5) .and. (m == 2))) then
-         sj = -1
-      else if (((j == 3) .and. (m == 2)) .or. &
-          ((j == 5) .and. (m == 3))) then
-         sj = 0
-      else if (((j == 4) .and. (m == 1)) .or. &
-          ((j == 5) .and. (m == 1))) then         
-         sj = -2
-      else if (((j == 4) .and. (m == 4)) .or. &
-          ((j == 5) .and. (m == 5))) then         
-         sj = 2
-      else
-         call msg_fatal ("Write_unit_matrix_element: Wrong spin type")
-      end if
-    end function sj    
-    recursive subroutine create_spin_table (index, nhel, fac, mult, inta)
-      integer, intent(inout) :: index, fac
-      integer, intent(in) :: nhel
-      integer, dimension(:), intent(in) :: mult
-      integer, dimension(nhel,size(mult)), intent(out) :: inta    
-      integer :: i, j
-      if (index > size(mult)) return
-      fac = fac / mult(index)
-      do j = 1, nhel 
-         inta(j,index) = sj (mult(index),mod(((j-1)/fac),mult(index))+1)
-      end do   
-      index = index + 1
-      call create_spin_table (index, nhel, fac, mult, inta)
-    end subroutine create_spin_table  
-    function dummy_colorizer (flv) result (str)
-      type(flavor_t), dimension(:), intent(in) :: flv
-      type(string_t) :: str
-      integer :: i, k
-      str = ""
-      k = 0
-      do i = 1, size(flv)
-         k = k + 1
-         select case (flavor_get_color_type (flv(i)))    
-         case (1,-1)
-            str = str // "0,0, "
-         case (3)
-            str = str // int2string(k) // ",0, "
-         case (-3)
-            str = str // "0," // int2string(-k) // ", "
-         case (8)
-            str = str // int2string(k) // "," // int2string(-k-1) // ", "
-            k = k + 1
-         case default
-            call msg_error ("Color type not supported.")
-         end select
-      end do    
-      str = adjustl(trim(str))
-    end function dummy_colorizer    
-  end subroutine write_unit_matrix_element
-
-  subroutine process_library_write_driver (prc_lib)
-
-    type(process_library_t), intent(inout) :: prc_lib
-    type(string_t) :: filename, prefix
-    type(string_t), dimension(:), allocatable :: prc_id, mod_prc_id, model
-    type(string_t), dimension(:), allocatable :: restrictions, omega_flags
-    integer, dimension(:), allocatable :: n_par
-    character(32), dimension(:), allocatable :: md5sum
-    type(process_configuration_t), pointer :: current    
-    integer :: u, i, n_prc
-
-    call msg_message ("Writing interface code for process library '" // &
-         char (process_library_get_name (prc_lib)) // "'")
-    prefix = prc_lib%basename // "_"
-
-    n_prc = prc_lib%n_prc
-    allocate (prc_id (n_prc), mod_prc_id (n_prc), model (n_prc))
-    allocate (restrictions (n_prc), omega_flags (n_prc))
-    allocate (n_par (n_prc), md5sum (n_prc))
-    current => prc_lib%prc_first
-    do i = 1, n_prc
-       prc_id(i) = current%id
-       mod_prc_id(i) = process_library_get_module_name (current%id,current%method)
-       model(i) = model_get_name (current%model)
-       restrictions(i) = current%restrictions
-       omega_flags(i) = current%omega_flags
-       n_par(i) = model_get_n_parameters (current%model)
-       md5sum(i) = current%md5sum
        current => current%next
     end do
-    filename = prc_lib%basename // "_interface.f90"
-    u = free_unit ()
-    open (unit=u, file=char(prc_lib%basename // ".f90"), action="write")
-    write (u, "(A)")  "! WHIZARD process interface"
-    write (u, "(A)")  "!"
-    write (u, "(A)")  "! Automatically generated file, do not edit"
-    call write_get_n_processes_fun ()
-    call write_get_process_id_fun ()
-    call write_get_model_name_fun ()
-    call write_get_restrictions_fun ()
-    call write_get_omega_flags_fun ()
-    call write_get_openmp_status_fun ()
-    call write_get_md5sum_fun ()
-    call write_string_to_array_fun ()
-    call write_get_int_fun ("n_in",  "number_particles_in")
-    call write_get_int_fun ("n_out", "number_particles_out")
-    call write_get_int_fun ("n_flv", "number_flavor_states")
-    call write_get_int_fun ("n_hel", "number_spin_states")
-    call write_get_int_fun ("n_col", "number_color_flows")
-    call write_get_int_fun ("n_cin", "number_color_indices")
-    call write_get_int_fun ("n_cf",  "number_color_factors")
-    call write_set_int_sub1 ("flv_state", "flavor_states")
-    call write_set_int_sub1 ("hel_state", "spin_states")
-    call write_set_int_sub2 ("col_state", "color_flows", "ghost_flag")
-    call write_set_cf_tab_sub ()
-    call write_init_get_fptr ()
-    call write_final_get_fptr ()
-    call write_update_alpha_s_get_fptr ()
-    call write_reset_helicity_selection_get_fptr ()
-    call write_new_event_get_fptr ()
-    call write_is_allowed_get_fptr ()
-    call write_get_amplitude_get_fptr ()
-    close (u)
+    flag = .false.
+  end function process_def_list_contains
 
-    prc_lib%status = max (prc_lib%status, STAT_CODE_GENERATED)
+  function process_def_list_get_entry_index (list, id) result (n)
+    integer :: n
+    class(process_def_list_t), intent(in) :: list
+    type(string_t), intent(in) :: id
+    type(process_def_entry_t), pointer :: current
+    n = 0
+    current => list%first
+    do while (associated (current))
+       n = n + 1
+       if (id == current%id) then
+          return
+       end if
+       current => current%next
+    end do
+    n = 0
+  end function process_def_list_get_entry_index
+    
+  function process_def_list_get_num_id (list, id) result (num_id)
+    integer :: num_id
+    class(process_def_list_t), intent(in) :: list
+    type(string_t), intent(in) :: id
+    type(process_def_entry_t), pointer :: current
+    current => list%first
+    do while (associated (current))
+       if (id == current%id) then
+          num_id = current%num_id
+          return
+       end if
+       current => current%next
+    end do
+    num_id = 0
+  end function process_def_list_get_num_id
+    
+  function process_def_list_get_model_name (list, id) result (model_name)
+    type(string_t) :: model_name
+    class(process_def_list_t), intent(in) :: list
+    type(string_t), intent(in) :: id
+    type(process_def_entry_t), pointer :: current
+    current => list%first
+    do while (associated (current))
+       if (id == current%id) then
+          model_name = current%model_name
+          return
+       end if
+       current => current%next
+    end do
+    model_name = ""
+  end function process_def_list_get_model_name
+  
+  function process_def_list_get_n_in (list, id) result (n)
+    integer :: n
+    class(process_def_list_t), intent(in) :: list
+    type(string_t), intent(in) :: id
+    type(process_def_entry_t), pointer :: current
+    current => list%first
+    do while (associated (current))
+       if (id == current%id) then
+          n = current%n_in
+          return
+       end if
+       current => current%next
+    end do
+  end function process_def_list_get_n_in
+  
+  function process_def_list_get_n_components (list, id) result (n)
+    integer :: n
+    class(process_def_list_t), intent(in) :: list
+    type(string_t), intent(in) :: id
+    type(process_def_entry_t), pointer :: current
+    current => list%first
+    do while (associated (current))
+       if (id == current%id) then
+          n = current%n_initial + current%n_extra
+          return
+       end if
+       current => current%next
+    end do
+  end function process_def_list_get_n_components
+  
+  function process_def_list_get_component_def_ptr (list, id, i) result (ptr)
+    class(process_def_list_t), intent(in) :: list
+    type(string_t), intent(in) :: id
+    integer, intent(in) :: i
+    type(process_component_def_t), pointer :: ptr
+    type(process_def_entry_t), pointer :: current
+    ptr => null ()
+    current => list%first
+    do while (associated (current))
+       if (id == current%id) then
+          if (i <= current%n_initial) then
+             ptr => current%initial(i)
+          else if (i <= current%n_initial + current%n_extra) then
+             ptr => current%extra(i-current%n_initial)
+          end if
+          return
+       end if
+       current => current%next
+    end do
+  end function process_def_list_get_component_def_ptr
+  
+  subroutine process_def_list_get_component_list (list, id, cid)
+    class(process_def_list_t), intent(in) :: list
+    type(string_t), intent(in) :: id
+    type(string_t), dimension(:), allocatable, intent(out) :: cid
+    type(process_def_entry_t), pointer :: current
+    integer :: i, n
+    current => list%first
+    do while (associated (current))
+       if (id == current%id) then
+          allocate (cid (current%n_initial + current%n_extra))
+          do i = 1, current%n_initial
+             cid(i) = current%initial(i)%basename
+          end do
+          n = current%n_initial
+          do i = 1, current%n_extra
+             cid(n + i) = current%extra(i)%basename
+          end do
+          return
+       end if
+       current => current%next
+    end do
+  end subroutine process_def_list_get_component_list
+  
+  subroutine process_def_list_get_component_description_list &
+       (list, id, description)
+    class(process_def_list_t), intent(in) :: list
+    type(string_t), intent(in) :: id
+    type(string_t), dimension(:), allocatable, intent(out) :: description
+    type(process_def_entry_t), pointer :: current
+    integer :: i, n
+    current => list%first
+    do while (associated (current))
+       if (id == current%id) then
+          allocate (description (current%n_initial + current%n_extra))
+          do i = 1, current%n_initial
+             description(i) = current%initial(i)%description
+          end do
+          n = current%n_initial
+          do i = 1, current%n_extra
+             description(n + i) = current%extra(i)%description
+          end do
+          return
+       end if
+       current => current%next
+    end do
+  end subroutine process_def_list_get_component_description_list
+  
+  function process_library_entry_to_string (object) result (string)
+    type(string_t) :: string
+    class(process_library_entry_t), intent(in) :: object
+    character(32) :: buffer
+    string = "[" // STATUS_LETTER(object%status) // "]"
+    select case (object%status)
+    case (STAT_UNKNOWN)
+    case default
+       if (associated (object%def)) then
+          write (buffer, "(I0)")  object%i_component
+          string = string // " " // object%def%id // "." // trim (buffer)
+       end if
+       if (object%i_external /= 0) then
+          write (buffer, "(I0)")  object%i_external
+          string = string // " = ext:" // trim (buffer)
+       else
+          string = string // " = int"
+       end if
+       if (allocated (object%driver)) then
+          string = string // " (" // object%driver%type_name () // ")"
+       end if
+    end select
+  end function process_library_entry_to_string
+  
+  subroutine process_library_entry_init (object, &
+       status, def, i_component, i_external)
+    class(process_library_entry_t), intent(out) :: object
+    integer, intent(in) :: status
+    type(process_def_t), target, intent(in) :: def
+    integer, intent(in) :: i_component
+    integer, intent(in) :: i_external
+    object%status = status
+    object%def => def
+    object%i_component = i_component
+    object%i_external = i_external
+  end subroutine process_library_entry_init
+  
+  subroutine process_library_entry_connect (entry, lib_driver, i)
+    class(process_library_entry_t), intent(inout) :: entry
+    class(prclib_driver_t), intent(in) :: lib_driver
+    integer, intent(in) :: i
+    call entry%def%initial(entry%i_component)%connect &
+         (lib_driver, i, entry%driver)
+  end subroutine process_library_entry_connect
 
-  contains
+  subroutine process_library_write (object, unit)
+    class(process_library_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    integer :: i, u
+    u = output_unit (unit)
+    write (u, "(1x,A,A)")  "Process library: ", char (object%basename)
+    write (u, "(3x,A,L1)")   "external        = ", object%external
+    write (u, "(3x,A,L1)")   "makefile exists = ", object%makefile_exists
+    write (u, "(3x,A,L1)")   "driver exists   = ", object%driver_exists
+    write (u, "(3x,A,A1)")   "code status     = ", &
+         STATUS_LETTER (object%status)
+    write (u, *)
+    if (allocated (object%entry)) then
+       write (u, "(1x,A)", advance="no")  "Process library entries:"
+       write (u, "(1x,I0)")  object%n_entries
+       do i = 1, size (object%entry)
+          write (u, "(1x,A,I0,A,A)")  "Entry #", i, ": ", &
+               char (object%entry(i)%to_string ())
+       end do
+       write (u, *)
+    end if
+    if (object%external) then
+       call object%driver%write (u)
+       write (u, *)
+    end if
+    call object%process_def_list_t%write (u)
+  end subroutine process_library_write
+         
+  subroutine process_library_show (object, unit)
+    class(process_library_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = output_unit (unit)
+    write (u, "(A,A)")  "Process library: ", char (object%basename)
+    write (u, "(2x,A,L1)")   "external        = ", object%external
+    if (object%static) then
+       write (u, "(2x,A,L1)")   "static          = ", .true.
+    else
+       write (u, "(2x,A,L1)")   "makefile exists = ", object%makefile_exists
+       write (u, "(2x,A,L1)")   "driver exists   = ", object%driver_exists
+    end if
+    write (u, "(2x,A,A1)", advance="no")   "code status     = "
+    select case (object%status)
+    case (STAT_UNKNOWN);    write (u, "(A)")  "[unknown]"
+    case (STAT_OPEN);       write (u, "(A)")  "open"
+    case (STAT_CONFIGURED); write (u, "(A)")  "configured"
+    case (STAT_SOURCE);     write (u, "(A)")  "source code exists"
+    case (STAT_COMPILED);   write (u, "(A)")  "compiled"
+    case (STAT_LINKED);     write (u, "(A)")  "linked"
+    case (STAT_ACTIVE);     write (u, "(A)")  "active"
+    end select
+    call object%process_def_list_t%show (u)
+  end subroutine process_library_show
+         
+  subroutine process_library_init (lib, basename)
+    class(process_library_t), intent(out) :: lib
+    type(string_t), intent(in) :: basename
+    lib%basename = basename
+    lib%status = STAT_OPEN
+    call msg_message ("Process library '" // char (basename) &
+         // "': initialized")
+  end subroutine process_library_init
+  
+  subroutine process_library_init_static (lib, basename)
+    class(process_library_t), intent(out) :: lib
+    type(string_t), intent(in) :: basename
+    lib%basename = basename
+    lib%status = STAT_OPEN
+    lib%static = .true.
+    call msg_message ("Static process library '" // char (basename) &
+         // "': initialized")
+  end subroutine process_library_init_static
+  
+  subroutine process_library_configure (lib)
+    class(process_library_t), intent(inout) :: lib
+    type(process_def_entry_t), pointer :: def_entry
+    integer :: n_entries, n_external, i_entry, i_external
+    type(string_t) :: model_name
+    integer :: i_component
 
-    function logical_to_string (flag) result (str)
-    logical, intent(in) :: flag
-    type(string_t) :: str
-      if (flag) then
-         str = ".true."
-      else
-         str = ".false."
-      end if
-    end function logical_to_string
+    n_entries = 0
+    n_external = 0
+    if (allocated (lib%entry))  deallocate (lib%entry)
+    
+    def_entry => lib%first
+    do while (associated (def_entry))
+       do i_component = 1, def_entry%n_initial
+          n_entries = n_entries + 1
+          if (def_entry%initial(i_component)%needs_code ()) then
+             n_external = n_external + 1
+             lib%external = .true.
+          end if
+       end do
+       def_entry => def_entry%next
+    end do
+    lib%n_entries = n_entries
 
-    subroutine write_get_n_processes_fun ()
-      write (u, "(A)")  ""
-      write (u, "(A)")  "! Return the number of processes in this library"
-      write (u, "(A)")  "function " // char (prefix) &
-           // "get_n_processes () result (n) bind(C)"
-      write (u, "(A)")  "  use iso_c_binding"
-      write (u, "(A)")  "  integer(c_int) :: n"
-      write (u, "(A,I0)")  "  n = ", n_prc
-      write (u, "(A)")  "end function " // char (prefix) &
-           // "get_n_processes"
-    end subroutine write_get_n_processes_fun
+    allocate (lib%entry (n_entries))
+    i_entry = 0
+    i_external = 0
+    def_entry => lib%first
+    do while (associated (def_entry))
+       do i_component = 1, def_entry%n_initial
+          i_entry = i_entry + 1
+          associate (lib_entry => lib%entry(i_entry))
+            lib_entry%status = STAT_CONFIGURED
+            lib_entry%def => def_entry%process_def_t
+            lib_entry%i_component = i_component
+            if (def_entry%initial(i_component)%needs_code ()) then
+               i_external = i_external + 1
+               lib_entry%i_external = i_external
+            end if
+            call def_entry%initial(i_component)%allocate_driver &
+                 (lib_entry%driver)
+          end associate
+       end do
+       def_entry => def_entry%next
+    end do
 
-    subroutine write_get_process_id_fun ()
-      write (u, "(A)")  ""
-      write (u, "(A)")  "! Return the process ID of process #i (as a C pointer to a character array)"
-      write (u, "(A)")  "subroutine " // char (prefix) &
-           // "get_process_id (i, cptr, len) bind(C)"
-      write (u, "(A)")  "  use iso_c_binding"
-      write (u, "(A)")  "  integer(c_int), intent(in) :: i"
-      write (u, "(A)")  "  type(c_ptr), intent(inout) :: cptr"
-      write (u, "(A)")  "  integer(c_int), intent(out) :: len"
-      write (u, "(A)")  "  character(kind=c_char), dimension(:), allocatable, target, save :: a"
-      call write_string_to_array_interface ()
-      write (u, "(A)")  "  select case (i)"
-      write (u, "(A)")  "  case (0);  if (allocated (a))  deallocate (a)"
-      do i = 1, n_prc
-         write (u, "(A,I0,A)")  "  case (", i, ");  " &
-              // "call " // char (prefix) &
-              // "string_to_array ('" // char (prc_id(i)) // "', a)"
-      end do
-      write (u, "(A)")  "  end select"
-      write (u, "(A)")  "  if (allocated (a)) then"
-      write (u, "(A)")  "     cptr = c_loc (a)"
-      write (u, "(A)")  "     len = size (a)"
-      write (u, "(A)")  "  else"
-      write (u, "(A)")  "     cptr = c_null_ptr"
-      write (u, "(A)")  "     len = 0"
-      write (u, "(A)")  "  end if"
-      write (u, "(A)")  "end subroutine " // char (prefix) &
-           // "get_process_id"
-    end subroutine write_get_process_id_fun
-
-    subroutine write_get_model_name_fun ()
-      write (u, "(A)")  ""
-      write (u, "(A)")  "! Return the model name for process #i (as a C pointer to a character array)"
-      write (u, "(A)")  "subroutine " // char (prefix) &
-           // "get_model_name (i, cptr, len) bind(C)"
-      write (u, "(A)")  "  use iso_c_binding"
-      write (u, "(A)")  "  integer(c_int), intent(in) :: i"
-      write (u, "(A)")  "  type(c_ptr), intent(inout) :: cptr"
-      write (u, "(A)")  "  integer(c_int), intent(out) :: len"
-      write (u, "(A)")  "  character(kind=c_char), dimension(:), allocatable, target, save :: a"
-      call write_string_to_array_interface ()
-      write (u, "(A)")  "  select case (i)"
-      write (u, "(A)")  "  case (0);  if (allocated (a))  deallocate (a)"
-      do i = 1, n_prc
-         write (u, "(A,I0,A)")  "  case (", i, ");  " &
-              // "call " // char (prefix) &
-              // "string_to_array ('" // char (model(i)) // "', a)"
-      end do
-      write (u, "(A)")  "  end select"
-      write (u, "(A)")  "  if (allocated (a)) then"
-      write (u, "(A)")  "     cptr = c_loc (a)"
-      write (u, "(A)")  "     len = size (a)"
-      write (u, "(A)")  "  else"
-      write (u, "(A)")  "     cptr = c_null_ptr"
-      write (u, "(A)")  "     len = 0"
-      write (u, "(A)")  "  end if"
-      write (u, "(A)")  "end subroutine " // char (prefix) &
-           // "get_model_name"
-    end subroutine write_get_model_name_fun
-
-    subroutine write_get_restrictions_fun ()
-      write (u, "(A)")  ""
-      write (u, "(A)")  "! Return the restriction string process #i (as a C pointer to a character array)"
-      write (u, "(A)")  "subroutine " // char (prefix) &
-           // "get_restrictions (i, cptr, len) bind(C)"
-      write (u, "(A)")  "  use iso_c_binding"
-      write (u, "(A)")  "  integer(c_int), intent(in) :: i"
-      write (u, "(A)")  "  type(c_ptr), intent(inout) :: cptr"
-      write (u, "(A)")  "  integer(c_int), intent(out) :: len"
-      write (u, "(A)")  "  character(kind=c_char), dimension(:), allocatable, target, save :: a"
-      call write_string_to_array_interface ()
-      write (u, "(A)")  "  select case (i)"
-      write (u, "(A)")  "  case (0);  if (allocated (a))  deallocate (a)"
-      do i = 1, n_prc
-         write (u, "(A,I0,A)")  "  case (", i, ");  " &
-              // "call " // char (prefix) &
-              // "string_to_array ('" // char (restrictions(i)) // "', a)"
-      end do
-      write (u, "(A)")  "  end select"
-      write (u, "(A)")  "  if (allocated (a)) then"
-      write (u, "(A)")  "     cptr = c_loc (a)"
-      write (u, "(A)")  "     len = size (a)"
-      write (u, "(A)")  "  else"
-      write (u, "(A)")  "     cptr = c_null_ptr"
-      write (u, "(A)")  "     len = 0"
-      write (u, "(A)")  "  end if"
-      write (u, "(A)")  "end subroutine " // char (prefix) &
-           // "get_restrictions"
-    end subroutine write_get_restrictions_fun
-
-    subroutine write_get_omega_flags_fun ()
-      write (u, "(A)")  ""
-      write (u, "(A)")  "! Return the omega flags for process #i (as a C pointer to a character array)"
-      write (u, "(A)")  "subroutine " // char (prefix) &
-           // "get_omega_flags (i, cptr, len) bind(C)"
-      write (u, "(A)")  "  use iso_c_binding"
-      write (u, "(A)")  "  integer(c_int), intent(in) :: i"
-      write (u, "(A)")  "  type(c_ptr), intent(inout) :: cptr"
-      write (u, "(A)")  "  integer(c_int), intent(out) :: len"
-      write (u, "(A)")  "  character(kind=c_char), dimension(:), allocatable, target, save :: a"
-      call write_string_to_array_interface ()
-      write (u, "(A)")  "  select case (i)"
-      write (u, "(A)")  "  case (0);  if (allocated (a))  deallocate (a)"
-      do i = 1, n_prc
-         write (u, "(A,I0,A)")  "  case (", i, ");  " &
-              // "call " // char (prefix) &
-              // "string_to_array ('" // char (omega_flags(i)) // "', a)"
-      end do
-      write (u, "(A)")  "  end select"
-      write (u, "(A)")  "  if (allocated (a)) then"
-      write (u, "(A)")  "     cptr = c_loc (a)"
-      write (u, "(A)")  "     len = size (a)"
-      write (u, "(A)")  "  else"
-      write (u, "(A)")  "     cptr = c_null_ptr"
-      write (u, "(A)")  "     len = 0"
-      write (u, "(A)")  "  end if"
-      write (u, "(A)")  "end subroutine " // char (prefix) &
-           // "get_omega_flags"
-    end subroutine write_get_omega_flags_fun
-
-    subroutine write_get_openmp_status_fun ()
-      write (u, "(A)")  ""
-      write (u, "(A)")  "! Return the OpenMP support status"
-      write (u, "(A)")  "function " // char (prefix) &
-           // "get_openmp_status (i) result (openmp_status) bind(C)"
-      write (u, "(A)")  "  use iso_c_binding"
-      call write_use_lines ("openmp_supported", "openmp_supported")
-      write (u, "(A)")  "  integer(c_int), intent(in) :: i"
-      write (u, "(A)")  "  logical(c_bool) :: openmp_status"
-      write (u, "(A)")  "  select case (i)"
-      do i = 1, n_prc
-         write (u, "(A,I0,A)")  "  case (", i, ");  " &
-              // "openmp_status = " // char (prc_id(i)) // "_openmp_supported ()"
-      end do
-      write (u, "(A)")  "  end select"
-      write (u, "(A)")  "end function " // char (prefix) &
-           // "get_openmp_status"
-    end subroutine write_get_openmp_status_fun
-
-    subroutine write_get_md5sum_fun ()
-      integer :: i
-      write (u, "(A)")  ""
-      write (u, "(A)")  "! Return the MD5 sum for the process configuration (as a C pointer to a character array)"
-      write (u, "(A)")  "subroutine " // char (prefix) &
-           // "get_md5sum (i, cptr, len) bind(C)"
-      write (u, "(A)")  "  use iso_c_binding"
-      call write_use_lines ("md5sum", "md5sum")
-      write (u, "(A)")  "  integer(c_int), intent(in) :: i"
-      write (u, "(A)")  "  type(c_ptr), intent(inout) :: cptr"
-      write (u, "(A)")  "  integer(c_int), intent(out) :: len"
-      write (u, "(A)")  "  character(kind=c_char), dimension(:), allocatable, target, save :: a"
-      call write_string_to_array_interface ()
-      write (u, "(A)")  "  select case (i)"
-      write (u, "(A)")  "  case (0);  if (allocated (a))  deallocate (a)"
-      do i = 1, n_prc
-         write (u, "(A,I0,A)")  "  case (", i, ");  " &
-              // "call " // char (prefix) &
-              // "string_to_array (" // char (prc_id(i)) &
-              // "_md5sum (), a)"
-      end do
-      write (u, "(A)")  "  end select"
-      write (u, "(A)")  "  if (allocated (a)) then"
-      write (u, "(A)")  "     cptr = c_loc (a)"
-      write (u, "(A)")  "     len = size (a)"
-      write (u, "(A)")  "  else"
-      write (u, "(A)")  "     cptr = c_null_ptr"
-      write (u, "(A)")  "     len = 0"
-      write (u, "(A)")  "  end if"
-      write (u, "(A)")  "end subroutine " // char (prefix) &
-           // "get_md5sum"
-    end subroutine write_get_md5sum_fun
-
-    subroutine write_string_to_array_interface ()
-      write (u, "(2x,A)")  "interface"
-      write (u, "(5x,A)")  "subroutine " // char (prefix) &
-           // "string_to_array (string, a)"
-      write (u, "(5x,A)")  "  use iso_c_binding"
-      write (u, "(5x,A)")  "  character(*), intent(in) :: string"
-      write (u, "(5x,A)")  "  character(kind=c_char), dimension(:), allocatable, intent(out) :: a"
-      write (u, "(5x,A)")  "end subroutine " // char (prefix) &
-           // "string_to_array"
-      write (u, "(2x,A)")  "end interface"
-    end subroutine write_string_to_array_interface
-
-    subroutine write_string_to_array_fun ()
-      write (u, "(A)")  ""
-      write (u, "(A)")  "! Auxiliary: convert character string to array pointer"
-      write (u, "(A)")  "subroutine " // char (prefix) &
-           // "string_to_array (string, a)"
-      write (u, "(A)")  "  use iso_c_binding"
-      write (u, "(A)")  "  character(*), intent(in) :: string"
-      write (u, "(A)")  "  character(kind=c_char), dimension(:), allocatable, intent(out) :: a"
-      write (u, "(A)")  "  integer :: i"
-      write (u, "(A)")  "  allocate (a (len (string)))"
-      write (u, "(A)")  "  do i = 1, size (a)"
-      write (u, "(A)")  "     a(i) = string(i:i)"
-      write (u, "(A)")  "  end do"
-      write (u, "(A)")  "end subroutine " // char (prefix) &
-           // "string_to_array"
-    end subroutine write_string_to_array_fun
-
-    subroutine write_get_int_fun (vname, fname)
-      character(*), intent(in) :: vname, fname
-      write (u, "(A)")  ""
-      write (u, "(A)")  "! Return the value of " // vname
-      write (u, "(A)")  "function " // char (prefix) &
-           // "get_" // vname // " (pid)" &
-           // " result (" // vname // ") bind(C)"
-      write (u, "(A)")  "  use iso_c_binding"
-      call write_use_lines (vname, fname)
-      write (u, "(A)")  "  integer(c_int), intent(in) :: pid"
-      write (u, "(A)")  "  integer(c_int) :: " // vname
-      call write_case_lines (vname // " = ", "_" // vname // " ()")
-      write (u, "(A)")  "end function " // char (prefix) &
-           // "get_" // vname
-    end subroutine write_get_int_fun
-
-    subroutine write_set_int_sub1 (vname, fname)
-      character(*), intent(in) :: vname, fname
-      write (u, "(A)")  ""
-      write (u, "(A)")  "! Set table: " // vname
-      write (u, "(A)")  "subroutine " // char (prefix) &
-           // "set_" // vname &
-           // " (pid, cptr, shape) bind(C)"
-      write (u, "(A)")  "  use iso_c_binding"
-      call write_use_lines (vname, fname)
-      write (u, "(A)")  "  integer(c_int), intent(in) :: pid"
-      write (u, "(A)")  "  type(c_ptr), intent(in) :: cptr"
-      write (u, "(A)")  "  integer(c_int), dimension(2), intent(in) :: shape"
-      write (u, "(A)")  "  integer(c_int), dimension(:,:), pointer :: " // vname
-      if (kind(1) /= c_int) then
-         write (u, "(A)")  "  integer, dimension(:,:), allocatable :: " &
-              // vname // "_tmp"
-      end if
-      write (u, "(A)")  "  call c_f_pointer (cptr, " // vname // ", shape)"
-      if (kind(1) == c_int) then
-         call write_case_lines ("call ", "_" // vname // " (" // vname // ")")
-      else
-         write (u, "(A)")  "  allocate (" &
-              // vname // "_tmp (shape(1), shape(2)))"
-         call write_case_lines ("call ", &
-              "_" // vname // " (" // vname // "_tmp)")
-         write (u, "(A)")  "  " // vname // " = " // vname // "_tmp"
-      end if
-      write (u, "(A)")  "end subroutine " // char (prefix) &
-           // "set_" // vname
-    end subroutine write_set_int_sub1
-
-    subroutine write_set_int_sub2 (vname, fname, lname)
-      character(*), intent(in) :: vname, fname, lname
-      write (u, "(A)")  ""
-      write (u, "(A)")  "! Set tables: " // vname // ", " // lname
-      write (u, "(A)")  "subroutine " // char (prefix) &
-           // "set_" // vname &
-           // " (pid, cptr, shape, lcptr, lshape) bind(C)"
-      write (u, "(A)")  "  use iso_c_binding"
-      call write_use_lines (vname, fname)
-      write (u, "(A)")  "  integer(c_int), intent(in) :: pid"
-      write (u, "(A)")  "  type(c_ptr), intent(in) :: cptr"
-      write (u, "(A)")  "  integer(c_int), dimension(3), intent(in) :: shape"
-      write (u, "(A)")  "  type(c_ptr), intent(in) :: lcptr"
-      write (u, "(A)")  "  integer(c_int), dimension(2), intent(in) :: lshape"
-      write (u, "(A)")  "  integer(c_int), dimension(:,:,:), pointer :: " &
-           // vname
-      write (u, "(A)")  "  logical(c_bool), dimension(:,:), pointer :: " &
-           // lname
-      if (kind(1) /= c_int) then
-         write (u, "(A)")  "  integer, dimension(:,:), allocatable :: " &
-              // vname // "_tmp"
-      end if
-      if (kind(.true.) /= c_bool) then
-         write (u, "(A)")  "  logical, dimension(:,:), allocatable :: " &
-              // lname // "_tmp"
-      end if
-      write (u, "(A)")  "  call c_f_pointer (cptr, " // vname // ", shape)"
-      write (u, "(A)")  "  call c_f_pointer (lcptr, " // lname // ", lshape)"
-      if (kind(1) /= c_int) then
-         write (u, "(A)")  "  allocate (" &
-              // vname // "_tmp (shape(1), shape(2), shape(3)))"
-      end if
-      if (kind(.true.) /= c_bool) then
-         write (u, "(A)")  "  allocate (" &
-              // lname // "_tmp (lshape(1), lshape(2)))"
-      end if
-      if (kind(1) == c_int) then
-         if (kind(.true.) == c_bool) then
-            call write_case_lines ("call ", &
-                 "_" // vname // " (" // vname // ", " // lname // ")")
-         else
-            call write_case_lines ("call ", &
-                 "_" // vname // " (" // vname // ", " // lname // "_tmp)")
-            write (u, "(A)")  "  " // lname // " = " // lname // "_tmp"
-         end if
-      else
-         if (kind(.true.) == c_bool) then
-            call write_case_lines ("call ", &
-                 "_" // vname // " (" // vname // "_tmp, " // lname // ")")
-         else
-            call write_case_lines ("call ", &
-                 "_" // vname // " (" // vname // "_tmp, " // lname // "_tmp)")
-            write (u, "(A)")  "  " // lname // " = " // lname // "_tmp"
-         end if
-         write (u, "(A)")  "  " // vname // " = " // vname // "_tmp"
-      end if
-      write (u, "(A)")  "end subroutine " // char (prefix) &
-           // "set_" // vname
-    end subroutine write_set_int_sub2
-
-    subroutine write_set_cf_tab_sub ()
-      write (u, "(A)")  ""
-      write (u, "(A)")  "subroutine " // char (prefix) &
-           // "set_cf_table (pid, iptr1, iptr2, cptr, shape) bind(C)"
-      write (u, "(A)")  "  use iso_c_binding"
-      write (u, "(A)")  "  use kinds"
-      write (u, "(A)")  "  use omega_color"
-      call write_use_lines ("color_factors", "color_factors")
-      write (u, "(A)")  "  integer(c_int), intent(in) :: pid"
-      write (u, "(A)")  "  type(c_ptr), intent(in) :: iptr1, iptr2, cptr"
-      write (u, "(A)")  "  integer(c_int), dimension(1), intent(in) :: shape"
-      write (u, "(A)")  "  integer(c_int), dimension(:), pointer :: " &
-           // "cf_index1, cf_index2"
-      write (u, "(A)")  "  complex(c_default_complex), dimension(:), " &
-           // "pointer :: col_factor"
-      write (u, "(A)")  "  type(omega_color_factor), dimension(:), " &
-           // "allocatable :: cf"
-      write (u, "(A)")  "  call c_f_pointer (iptr1, cf_index1, shape)"
-      write (u, "(A)")  "  call c_f_pointer (iptr2, cf_index2, shape)"
-      write (u, "(A)")  "  call c_f_pointer (cptr, col_factor, shape)"
-      write (u, "(A)")  "  allocate (cf (shape(1)))"
-      call write_case_lines ("call ", "_color_factors (cf)")
-      write (u, "(A)")  "  cf_index1 = cf%i1"
-      write (u, "(A)")  "  cf_index2 = cf%i2"
-      write (u, "(A)")  "  col_factor = cf%factor"
-      write (u, "(A)")  "end subroutine " // char (prefix) // "set_cf_table"
-    end subroutine write_set_cf_tab_sub
-
-    subroutine write_init_get_fptr ()
-      write (u, "(A)")  ""
-      write (u, "(A)")  "! Return pointer to function: 'init'"
-      write (u, "(A)")  "subroutine " // char (prefix) &
-           // "init_get_fptr (pid, fptr) bind(C)"
-      write (u, "(A)")  "  use iso_c_binding"
-      write (u, "(A)")  "  integer(c_int), intent(in) :: pid"
-      write (u, "(A)")  "  type(c_funptr), intent(out) :: fptr"
-      write (u, "(A)")  "  abstract interface"
-      write (u, "(A)")  "     subroutine prc_init (par) bind(C)"
-      write (u, "(A)")  "       use iso_c_binding"
-      write (u, "(A)")  "       use kinds"
-      write (u, "(A)")  "       real(c_default_float), dimension(*), " &
-           // "intent(in) :: par"
-      write (u, "(A)")  "     end subroutine prc_init" 
-      write (u, "(A)")  "  end interface"
-      do i = 1, n_prc
-         write (u, "(2x,A)")  "procedure(prc_init), bind(C) :: " &
-              // char (prc_id(i)) // "_init"
-      end do
-      call write_case_lines ("fptr = c_funloc (", "_init)")
-      write (u, "(A)")  "end subroutine " // char (prefix) &
-           // "init_get_fptr"
-      do i = 1, n_prc
-         write (u, *)
-         write (u, "(A)")  "subroutine " // char (prc_id(i)) &
-              // "_init (par) bind(C)"
-         write (u, "(A)")  "  use iso_c_binding"
-         write (u, "(A)")  "  use kinds"
-         write (u, "(A)")  "  use " // char (mod_prc_id(i))
-         write (u, "(A)")  "  real(c_default_float), dimension(*), " &
-              // "intent(in) :: par"
-         if (c_default_float == default) then
-            write (u, "(A)")  "  call init (par)"
-         else
-            write (u, "(A, I0)")  "  integer, parameter :: n_par = ", n_par(i)
-            write (u, "(A)")  "  real(default), dimension(n_par) :: fpar"
-            write (u, "(A)")  "  fpar = par"
-            write (u, "(A)")  "  call init (fpar)"
-         end if
-         write (u, "(A)")  "end subroutine " // char (prc_id(i)) // "_init"
-      end do
-    end subroutine write_init_get_fptr
-
-    subroutine write_final_get_fptr ()
-      write (u, "(A)")  ""
-      write (u, "(A)")  "! Return pointer to function: 'final'"
-      write (u, "(A)")  "subroutine " // char (prefix) &
-           // "final_get_fptr (pid, fptr) bind(C)"
-      write (u, "(A)")  "  use iso_c_binding"
-      write (u, "(A)")  "  integer(c_int), intent(in) :: pid"
-      write (u, "(A)")  "  type(c_funptr), intent(out) :: fptr"
-      write (u, "(A)")  "  abstract interface"
-      write (u, "(A)")  "     subroutine prc_final () bind(C)"
-      write (u, "(A)")  "     end subroutine prc_final" 
-      write (u, "(A)")  "  end interface"
-      do i = 1, n_prc
-         write (u, "(2x,A)")  "procedure(prc_final), bind(C) :: " &
-              // char (prc_id(i)) // "_final"
-      end do
-      call write_case_lines ("fptr = c_funloc (", "_final)")
-      write (u, "(A)")  "end subroutine " // char (prefix) &
-           // "final_get_fptr"
-      do i = 1, n_prc
-         write (u, *)
-         write (u, "(A)")  "subroutine " // char (prc_id(i)) &
-              // "_final () bind(C)"
-         write (u, "(A)")  "  use " // char (mod_prc_id(i))
-         write (u, "(A)")  "  call final ()"
-         write (u, "(A)")  "end subroutine " // char (prc_id(i)) // "_final"
-      end do
-    end subroutine write_final_get_fptr
-
-    subroutine write_update_alpha_s_get_fptr ()
-      write (u, "(A)")  ""
-      write (u, "(A)")  "! Return pointer to function: 'update_alpha_s'"
-      write (u, "(A)")  "subroutine " // char (prefix) &
-           // "update_alpha_s_get_fptr (pid, fptr) bind(C)"
-      write (u, "(A)")  "  use iso_c_binding"
-      write (u, "(A)")  "  integer(c_int), intent(in) :: pid"
-      write (u, "(A)")  "  type(c_funptr), intent(out) :: fptr"
-      write (u, "(A)")  "  abstract interface"
-      write (u, "(A)")  "     subroutine prc_update_alpha_s (alpha_s) bind(C)"
-      write (u, "(A)")  "       use iso_c_binding"
-      write (u, "(A)")  "       use kinds"
-      write (u, "(A)")  "       real(c_default_float), " &
-           // "intent(in) :: alpha_s"
-      write (u, "(A)")  "     end subroutine prc_update_alpha_s" 
-      write (u, "(A)")  "  end interface"
-      do i = 1, n_prc
-         write (u, "(2x,A)")  "procedure(prc_update_alpha_s), bind(C) :: " &
-              // char (prc_id(i)) // "_update_alpha_s"
-      end do
-      call write_case_lines ("fptr = c_funloc (", "_update_alpha_s)")
-      write (u, "(A)")  "end subroutine " // char (prefix) &
-           // "update_alpha_s_get_fptr"
-      do i = 1, n_prc
-         write (u, *)
-         write (u, "(A)")  "subroutine " // char (prc_id(i)) &
-              // "_update_alpha_s (alpha_s) bind(C)"
-         write (u, "(A)")  "  use iso_c_binding"
-         write (u, "(A)")  "  use kinds"
-         write (u, "(A)")  "  use " // char (mod_prc_id(i))
-         write (u, "(A)")  "  real(c_default_float), " &
-              // "intent(in) :: alpha_s"
-         if (c_default_float == default) then
-            write (u, "(A)")  "  call update_alpha_s (alpha_s)"
-         else
-            write (u, "(A)")  "  call update_alpha_s " &
-                 // "(real (alpha_s, c_default_float))"
-         end if
-         write (u, "(A)")  "end subroutine " // char (prc_id(i)) &
-              // "_update_alpha_s"
-      end do
-    end subroutine write_update_alpha_s_get_fptr
-
-    subroutine write_reset_helicity_selection_get_fptr ()
-      write (u, "(A)")  ""
-      write (u, "(A)")  "! Return pointer to function: " &
-           // "'reset_helicity_selection'"
-      write (u, "(A)")  "subroutine " // char (prefix) &
-           // "reset_helicity_selection_get_fptr (pid, fptr) bind(C)"
-      write (u, "(A)")  "  use iso_c_binding"
-      write (u, "(A)")  "  integer(c_int), intent(in) :: pid"
-      write (u, "(A)")  "  type(c_funptr), intent(out) :: fptr"
-      write (u, "(A)")  "  abstract interface"
-      write (u, "(A)")  "     subroutine " &
-           // "prc_reset_helicity_selection (threshold, cutoff) bind(C)"
-      write (u, "(A)")  "       use iso_c_binding"
-      write (u, "(A)")  "       use kinds"
-      write (u, "(A)")  "       real(c_default_float), " &
-           // "intent(in) :: threshold"
-      write (u, "(A)")  "       integer(c_int), " &
-           // "intent(in) :: cutoff"
-      write (u, "(A)")  "     end subroutine prc_reset_helicity_selection" 
-      write (u, "(A)")  "  end interface"
-      do i = 1, n_prc
-         write (u, "(2x,A)")  "procedure(prc_reset_helicity_selection), " &
-              // "bind(C) :: " &
-              // char (prc_id(i)) // "_reset_helicity_selection"
-      end do
-      call write_case_lines ("fptr = c_funloc (", "_reset_helicity_selection)")
-      write (u, "(A)")  "end subroutine " // char (prefix) &
-           // "reset_helicity_selection_get_fptr"
-      do i = 1, n_prc
-         write (u, *)
-         write (u, "(A)")  "subroutine " // char (prc_id(i)) &
-              // "_reset_helicity_selection (threshold, cutoff) bind(C)"
-         write (u, "(A)")  "  use iso_c_binding"
-         write (u, "(A)")  "  use kinds"
-         write (u, "(A)")  "  use " // char (mod_prc_id(i))
-         write (u, "(A)")  "  real(c_default_float), " &
-              // "intent(in) :: threshold"
-         write (u, "(A)")  "  integer(c_int), " &
-              // "intent(in) :: cutoff"
-         write (u, "(A)")  "  real(default) :: rthreshold"
-         write (u, "(A)")  "  integer :: icutoff"
-         write (u, "(A)")  "  rthreshold = threshold"
-         write (u, "(A)")  "  icutoff = cutoff"
-         write (u, "(A)")  "  call reset_helicity_selection " &
-              // "(rthreshold, icutoff)"
-         write (u, "(A)")  "end subroutine " // char (prc_id(i)) &
-              // "_reset_helicity_selection"
-      end do
-    end subroutine write_reset_helicity_selection_get_fptr
-
-    subroutine write_new_event_get_fptr ()
-      write (u, "(A)")  ""
-      write (u, "(A)")  "! Return pointer to function: 'new_event'"
-      write (u, "(A)")  "subroutine " // char (prefix) &
-           // "new_event_get_fptr (pid, fptr) bind(C)"
-      write (u, "(A)")  "  use iso_c_binding"
-      write (u, "(A)")  "  integer(c_int), intent(in) :: pid"
-      write (u, "(A)")  "  type(c_funptr), intent(out) :: fptr"
-      write (u, "(A)")  "  abstract interface"
-      write (u, "(A)")  "     subroutine prc_new_event (p) bind(C)"
-      write (u, "(A)")  "       use iso_c_binding"
-      write (u, "(A)")  "       use kinds"
-      write (u, "(A)")  "       real(c_default_float), dimension(0:3,*), " &
-           // "intent(in) :: p"
-      write (u, "(A)")  "     end subroutine prc_new_event" 
-      write (u, "(A)")  "  end interface"
-      do i = 1, n_prc
-         write (u, "(2x,A)")  "procedure(prc_new_event), bind(C) :: " &
-              // char (prc_id(i)) // "_new_event"
-      end do
-      call write_case_lines ("fptr = c_funloc (", "_new_event)")
-      write (u, "(A)")  "end subroutine " // char (prefix) &
-           // "new_event_get_fptr"
-      do i = 1, n_prc
-         write (u, *)
-         write (u, "(A)")  "subroutine " // char (prc_id(i)) &
-              // "_new_event (p) bind(C)"
-         write (u, "(A)")  "  use iso_c_binding"
-         write (u, "(A)")  "  use kinds"
-         write (u, "(A)")  "  use " // char (mod_prc_id(i))
-         write (u, "(A)")  "  real(c_default_float), dimension(0:3,*), " &
-              // "intent(in) :: p"
-         if (c_default_float == default) then
-            write (u, "(A)")  "  call new_event (p)"
-         else
-            write (u, "(A)")  "  integer :: n_tot"
-            write (u, "(A)")  "  real(default), dimension(:,:), " &
-                 // "allocatable :: k"
-            write (u, "(A)")  "  n_tot = " &
-                 // "number_particles_in () + number_particles_out ()"
-            write (u, "(A)")  "  allocate (k (0:3,n_tot))"
-            write (u, "(A)")  "  k = p"
-            write (u, "(A)")  "  call new_event (k)"
-         end if
-         write (u, "(A)")  "end subroutine " // char (prc_id(i)) // "_new_event"
-      end do
-    end subroutine write_new_event_get_fptr
-
-    subroutine write_is_allowed_get_fptr ()
-      write (u, "(A)")  ""
-      write (u, "(A)")  "! Return pointer to function: 'is_allowed'"
-      write (u, "(A)")  "subroutine " // char (prefix) &
-           // "is_allowed_get_fptr (pid, fptr) bind(C)"
-      write (u, "(A)")  "  use iso_c_binding"
-      write (u, "(A)")  "  integer(c_int), intent(in) :: pid"
-      write (u, "(A)")  "  type(c_funptr), intent(out) :: fptr"
-      write (u, "(A)")  "  abstract interface"
-      write (u, "(A)")  "     function " &
-           // "prc_is_allowed (flv, hel, col) result (flag) bind(C)"
-      write (u, "(A)")  "       use iso_c_binding"
-      write (u, "(A)")  "       use kinds"
-      write (u, "(A)")  "       logical(c_bool) :: flag"
-      write (u, "(A)")  "       integer(c_int), intent(in) :: flv, hel, col"
-      write (u, "(A)")  "     end function prc_is_allowed" 
-      write (u, "(A)")  "  end interface"
-      do i = 1, n_prc
-         write (u, "(2x,A)")  "procedure(prc_is_allowed), bind(C) :: " &
-              // char (prc_id(i)) // "_is_allowed"
-      end do
-      call write_case_lines ("fptr = c_funloc (", "_is_allowed)")
-      write (u, "(A)")  "end subroutine " // char (prefix) &
-           // "is_allowed_get_fptr"
-      do i = 1, n_prc
-         write (u, *)
-         write (u, "(A)")  "function " // char (prc_id(i)) &
-              // "_is_allowed (flv, hel, col) result (flag) bind(C)"
-         write (u, "(A)")  "  use iso_c_binding"
-         write (u, "(A)")  "  use kinds"
-         write (u, "(A)")  "  use " // char (mod_prc_id(i))
-         write (u, "(A)")  "  logical(c_bool) :: flag"
-         write (u, "(A)")  "  integer(c_int), intent(in) :: flv, hel, col"
-         if (c_int == kind(1)) then
-            write (u, "(A)")  "  flag = is_allowed (flv, hel, col)"
-         else
-            write (u, "(A)")  "  integer :: iflv, ihel, icol"
-            write (u, "(A)")  "  iflv = flv;  ihel = hel;  icol = col"
-            write (u, "(A)")  "  flag = is_allowed (iflv, ihel, icol)"
-         end if
-         write (u, "(A)")  "end function " // char (prc_id(i)) &
-              // "_is_allowed"
-      end do
-    end subroutine write_is_allowed_get_fptr
-
-    subroutine write_get_amplitude_get_fptr ()
-      write (u, "(A)")  ""
-      write (u, "(A)")  "! Return pointer to function: 'get_amplitude'"
-      write (u, "(A)")  "subroutine " // char (prefix) &
-           // "get_amplitude_get_fptr (pid, fptr) " &
-           // "bind(C)"
-      write (u, "(A)")  "  use iso_c_binding"
-      write (u, "(A)")  "  integer(c_int), intent(in) :: pid"
-      write (u, "(A)")  "  type(c_funptr), intent(out) :: fptr"
-      write (u, "(A)")  "  abstract interface"
-      write (u, "(A)")  "     function " &
-           // "prc_get_amplitude (flv, hel, col) result (amp) bind(C)"
-      write (u, "(A)")  "       use iso_c_binding"
-      write (u, "(A)")  "       use kinds"
-      write (u, "(A)")  "       complex(c_default_complex) :: amp"
-      write (u, "(A)")  "       integer(c_int), intent(in) :: flv, hel, col"
-      write (u, "(A)")  "     end function prc_get_amplitude" 
-      write (u, "(A)")  "  end interface"
-      do i = 1, n_prc
-         write (u, "(2x,A)")  "procedure(prc_get_amplitude), bind(C) :: " &
-              // char (prc_id(i)) // "_get_amplitude"
-      end do
-      call write_case_lines ("fptr = c_funloc (", "_get_amplitude)")
-      write (u, "(A)")  "end subroutine " // char (prefix) &
-           // "get_amplitude_get_fptr"
-      do i = 1, n_prc
-         write (u, *)
-         write (u, "(A)")  "function " // char (prc_id(i)) &
-              // "_get_amplitude (flv, hel, col) result (amp) bind(C)"
-         write (u, "(A)")  "  use iso_c_binding"
-         write (u, "(A)")  "  use kinds"
-         write (u, "(A)")  "  use " // char (mod_prc_id(i))
-         write (u, "(A)")  "  complex(c_default_complex) :: amp"
-         write (u, "(A)")  "  integer(c_int), intent(in) :: flv, hel, col"
-         if (c_int == kind(1)) then
-            write (u, "(A)")  "  amp = get_amplitude (flv, hel, col)"
-         else
-            write (u, "(A)")  "  integer :: iflv, ihel, icol"
-            write (u, "(A)")  "  iflv = flv;  ihel = hel;  icol = col"
-            write (u, "(A)")  "  amp = get_amplitude (iflv, ihel, icol)"
-         end if
-         write (u, "(A)")  "end function " // char (prc_id(i)) &
-              // "_get_amplitude"
-      end do
-    end subroutine write_get_amplitude_get_fptr
-
-    subroutine write_use_lines (vname, fname)
-      character(*), intent(in) :: vname, fname
-      integer :: i
-      do i = 1, n_prc
-         write (u, "(2x,A)")  "use " // char (mod_prc_id(i)) // ", only: " &
-              // char (prc_id(i)) // "_" // vname // " => " // fname
-      end do
-    end subroutine write_use_lines
-
-    subroutine write_case_lines (cmd1, cmd2)
-      character(*), intent(in) :: cmd1, cmd2
-      integer :: i
-      write (u, "(A)")  "  select case (pid)"
-      do i = 1, n_prc
-         write (u, "(2x,A,I0,A)")  "case(", i, ");  " &
-              // cmd1 // char (prc_id(i)) // cmd2
-      end do
-      write (u, "(A)")  "  end select"
-    end subroutine write_case_lines
-
+    call dispatch_prclib_driver (lib%driver, lib%basename)
+    call lib%driver%init (n_external)
+    do i_entry = 1, n_entries
+       associate (lib_entry => lib%entry(i_entry))
+         i_component = lib_entry%i_component
+         model_name = lib_entry%def%model_name
+         associate (def => lib_entry%def%initial(i_component))
+           if (def%needs_code ()) then
+              call lib%driver%set_record (lib_entry%i_external, &
+                   def%basename, &
+                   model_name, &
+                   def%get_features (), def%get_writer_ptr ())
+           end if
+         end associate
+       end associate
+    end do
+    
+    if (lib%static) then
+       if (lib%n_entries /= 0)  lib%entry%status = STAT_LINKED
+       lib%status = STAT_LINKED
+    else if (lib%external) then
+       where (lib%entry%i_external == 0)  lib%entry%status = STAT_LINKED
+       lib%status = STAT_CONFIGURED
+       lib%makefile_exists = .false.
+       lib%driver_exists = .false.
+    else
+       if (lib%n_entries /= 0)  lib%entry%status = STAT_LINKED
+       lib%status = STAT_LINKED
+    end if
+  end subroutine process_library_configure
+  
+  subroutine process_library_compute_md5sum (lib)
+    class(process_library_t), intent(inout) :: lib
+    type(process_def_entry_t), pointer :: def_entry
+    type(string_t) :: buffer
+    buffer = lib%basename
+    def_entry => lib%first
+    do while (associated (def_entry))
+       call def_entry%compute_md5sum ()
+       buffer = buffer // def_entry%md5sum
+       def_entry => def_entry%next
+    end do
+    lib%md5sum = md5sum (char (buffer))
+    call lib%driver%set_md5sum (lib%md5sum)
+  end subroutine process_library_compute_md5sum
+  
+  subroutine process_library_write_makefile (lib, os_data, force, testflag)
+    class(process_library_t), intent(inout) :: lib
+    type(os_data_t), intent(in) :: os_data
+    logical, intent(in) :: force
+    logical, intent(in), optional :: testflag
+    character(32) :: md5sum_file
+    logical :: generate
+    integer :: unit
+    if (lib%external .and. .not. lib%static) then
+       generate = .true.
+       if (.not. force) then
+          md5sum_file = lib%driver%get_md5sum_makefile ()
+          if (lib%md5sum == md5sum_file) then
+             call msg_message ("Process library '" // char (lib%basename) &
+                  // "': keeping makefile")
+             generate = .false.
+          end if
+       end if
+       if (generate) then
+          call msg_message ("Process library '" // char (lib%basename) &
+               // "': writing makefile")
+          unit = free_unit ()
+          open (unit, file = char (lib%driver%basename // ".makefile"), &
+               status="replace", action="write")
+          call lib%driver%generate_makefile (unit, os_data, testflag)
+          close (unit)
+       end if
+       lib%makefile_exists = .true.
+    end if
+  end subroutine process_library_write_makefile
+  
+  subroutine process_library_write_driver (lib, force)
+    class(process_library_t), intent(inout) :: lib
+    logical, intent(in) :: force
+    character(32) :: md5sum_file
+    logical :: generate
+    integer :: unit
+    if (lib%external .and. .not. lib%static) then
+       generate = .true.
+       if (.not. force) then
+          md5sum_file = lib%driver%get_md5sum_driver ()
+          if (lib%md5sum == md5sum_file) then
+             call msg_message ("Process library '" // char (lib%basename) &
+                  // "': keeping driver")
+             generate = .false.
+          end if
+       end if
+       if (generate) then
+          call msg_message ("Process library '" // char (lib%basename) &
+               // "': writing driver")
+          unit = free_unit ()
+          open (unit, file = char (lib%driver%basename // ".f90"), &
+               status="replace", action="write")
+          call lib%driver%generate_driver_code (unit)
+          close (unit)
+       end if
+       lib%driver_exists = .true.
+    end if
   end subroutine process_library_write_driver
 
-  subroutine write_user_code_declarations (u, user_procs)
-    integer, intent(in) :: u
-    type(user_procs_t), intent(in) :: user_procs
-    integer :: i
-    do i = 1, size (user_procs%cut)
-       write (u, "(A)")  "  procedure(user_cut_fun), bind(C) :: " &
-            // char (user_procs%cut(i))
-    end do
-    do i = 1, size (user_procs%event_shape)
-       write (u, "(A)")  "  procedure(user_event_shape_fun), bind(C) :: " &
-            // char (user_procs%event_shape(i))
-    end do
-    do i = 1, size (user_procs%obs_real_unary)
-       write (u, "(A)")  "  procedure(user_obs_real_unary), bind(C) :: " &
-            // char (user_procs%obs_real_unary(i))
-    end do
-    do i = 1, size (user_procs%obs_real_binary)
-       write (u, "(A)")  "  procedure(user_obs_real_binary), bind(C) :: " &
-            // char (user_procs%obs_real_binary(i))
-    end do
-  end subroutine write_user_code_declarations
-
-  subroutine write_user_code_access (u, user_procs)
-    integer, intent(in) :: u
-    type(user_procs_t), intent(in) :: user_procs
-    write (u, "(5x,A)")  "select case (fname)"
-    call write_access (user_procs%cut)
-    call write_access (user_procs%event_shape)
-    call write_access (user_procs%obs_real_unary)
-    call write_access (user_procs%obs_real_binary)
-    call write_sf_access (user_procs%sf)
-    write (u, "(5x,A)")  "case default"
-    write (u, "(5x,A)")  "   c_fptr = c_null_funptr"
-    write (u, "(5x,A)")  "end select"
-  contains
-    subroutine write_access (procname)
-      type(string_t), dimension(:), intent(in) :: procname
-      integer :: i
-      do i = 1, size (procname)
-         call write_access_line (procname(i))
-      end do
-    end subroutine write_access
-    subroutine write_sf_access (procname)
-      type(string_t), dimension(:), intent(in) :: procname
-      integer :: i
-      do i = 1, size (procname)
-         call write_access_line (procname(i) // "_info")
-         call write_access_line (procname(i) // "_mask")
-         call write_access_line (procname(i) // "_state")
-         call write_access_line (procname(i) // "_kinematics")
-         call write_access_line (procname(i) // "_evaluate")
-      end do
-    end subroutine write_sf_access
-    subroutine write_access_line (procname)
-      type(string_t), intent(in) :: procname
-      write (u, "(5x,A)")  "case ('" // char (procname) // "')"
-      write (u, "(8x,A)")  "c_fptr = c_funloc (" // char (procname) // ")"
-    end subroutine write_access_line
-  end subroutine write_user_code_access
-
-  subroutine write_library_manager (libname, user_procs)
-
-    type(string_t), dimension(:), intent(in) :: libname
-    type(user_procs_t), intent(in) :: user_procs
-    integer :: u, i
-
-    call msg_message ("Writing library manager code")
-    u = free_unit ()
-    open (unit=u, file="libmanager.f90", action="write", status="replace")
-    write (u, "(A)")  "! WHIZARD library manager"
-    write (u, "(A)")  "!"
-    write (u, "(A)")  "! Automatically generated file, do not edit"
-    write (u, "(A)")  ""
-    write (u, "(A)")  "function libmanager_get_n_libs () result (n)"
-    write (u, "(A)")  "  implicit none"
-    write (u, "(A)")  "  integer :: n"
-    write (u, "(A,1x,I0)")  "  n =", size (libname)
-    write (u, "(A)")  "end function libmanager_get_n_libs"
-    write (u, "(A)")  ""
-    write (u, "(A)")  "function libmanager_get_libname (i) result (name)"
-    write (u, "(A)")  "  use iso_varying_string, string_t => varying_string"
-    write (u, "(A)")  "  implicit none"
-    write (u, "(A)")  "  type(string_t) :: name"
-    write (u, "(A)")  "  integer, intent(in) :: i"
-    write (u, "(A)")  "  select case (i)"
-    do i = 1, size (libname)
-       call write_lib_name (i, libname(i))
-    end do
-    write (u, "(A)")  "  case default;  name = ''"
-    write (u, "(A)")  "  end select"
-    write (u, "(A)")  "end function libmanager_get_libname"
-    write (u, "(A)")  ""
-    write (u, "(A)")  "function libmanager_get_c_funptr (libname, fname) " &
-         // "result (c_fptr)"
-    write (u, "(A)")  "  use iso_c_binding"
-    write (u, "(A)")  "  use prclib_interfaces"
-    write (u, "(A)")  "  use user_code_interface"
-    write (u, "(A)")  "  implicit none"
-    write (u, "(A)")  "  type(c_funptr) :: c_fptr"
-    write (u, "(A)")  "  character(*), intent(in) :: libname, fname"
-    do i = 1, size (libname)
-       call write_lib_declarations (libname(i))
-    end do
-    if (has_user_lib)  call write_user_code_declarations (u, user_procs)
-    write (u, "(A)")  "  select case (libname)"
-    do i = 1, size (libname)
-       call write_lib_code (libname(i))
-    end do
-    if (has_user_lib) then
-       write (u, "(A)")  "  case ('user')"
-       call write_user_code_access (u, user_procs)
-    end if
-    write (u, "(A)")  "  case default"
-    write (u, "(A)")  "     c_fptr = c_null_funptr"
-    write (u, "(A)")  "  end select"
-    write (u, "(A)")  "end function libmanager_get_c_funptr"
-    close (u)
-
-  contains
-    
-    subroutine write_lib_name (i, libname)
-      integer, intent(in) :: i
-      type(string_t), intent(in) :: libname
-      write (u, "(A,I0,A)")  "  case (", i, ");  name = '" // char (libname) &
-           // "'"
-    end subroutine write_lib_name
-
-    subroutine write_lib_declarations (libname)
-      type(string_t), intent(in) :: libname
-      write (u, "(A)")  "  procedure(prc_get_n_processes), bind(C) :: " &
-           // char (libname)// "_" //  "get_n_processes"
-      write (u, "(A)")  "  procedure(prc_get_stringptr), bind(C) :: " &
-           // char (libname)// "_" //  "get_process_id"
-      write (u, "(A)")  "  procedure(prc_get_stringptr), bind(C) :: " &
-           // char (libname)// "_" //  "get_model_name"
-      write (u, "(A)")  "  procedure(prc_get_stringptr), bind(C) :: " &
-           // char (libname)// "_" //  "get_restrictions"
-      write (u, "(A)")  "  procedure(prc_get_stringptr), bind(C) :: " &
-           // char (libname)// "_" //  "get_omega_flags"
-      write (u, "(A)")  "  procedure(prc_get_stringptr), bind(C) :: " &
-           // char (libname)// "_" //  "get_md5sum"
-      write (u, "(A)")  "  procedure(prc_get_int), bind(C) :: " &
-           // char (libname)// "_" //  "get_n_in"
-      write (u, "(A)")  "  procedure(prc_get_int), bind(C) :: " &
-           // char (libname)// "_" //  "get_n_out"
-      write (u, "(A)")  "  procedure(prc_get_int), bind(C) :: " &
-           // char (libname)// "_" //  "get_n_flv"
-      write (u, "(A)")  "  procedure(prc_get_int), bind(C) :: " &
-           // char (libname)// "_" //  "get_n_hel"
-      write (u, "(A)")  "  procedure(prc_get_int), bind(C) :: " &
-           // char (libname)// "_" //  "get_n_col"
-      write (u, "(A)")  "  procedure(prc_get_int), bind(C) :: " &
-           // char (libname)// "_" //  "get_n_cin"
-      write (u, "(A)")  "  procedure(prc_get_int), bind(C) :: " &
-           // char (libname)// "_" //  "get_n_cf"
-      write (u, "(A)")  "  procedure(prc_get_log), bind(C) :: " &
-           // char (libname)// "_" //  "get_openmp_status"
-      write (u, "(A)")  "  procedure(prc_set_int_tab1), bind(C) :: " &
-           // char (libname)// "_" //  "set_flv_state"
-      write (u, "(A)")  "  procedure(prc_set_int_tab1), bind(C) :: " &
-           // char (libname)// "_" //  "set_hel_state"
-      write (u, "(A)")  "  procedure(prc_set_int_tab2), bind(C) :: " &
-           // char (libname)// "_" //  "set_col_state"
-      write (u, "(A)")  "  procedure(prc_set_cf_tab), bind(C) :: " &
-           // char (libname)// "_" //  "set_cf_table"
-      write (u, "(A)")  "  procedure(prc_get_fptr), bind(C) :: " &
-           // char (libname)// "_" //  "init_get_fptr"
-      write (u, "(A)")  "  procedure(prc_get_fptr), bind(C) :: " &
-           // char (libname)// "_" //  "final_get_fptr"
-      write (u, "(A)")  "  procedure(prc_get_fptr), bind(C) :: " &
-           // char (libname)// "_" //  "update_alpha_s_get_fptr"
-      write (u, "(A)")  "  procedure(prc_get_fptr), bind(C) :: " &
-           // char (libname)// "_" //  "new_event_get_fptr"
-      write (u, "(A)")  "  procedure(prc_get_fptr), bind(C) :: " &
-           // char (libname)// "_" //  "reset_helicity_selection_get_fptr"
-      write (u, "(A)")  "  procedure(prc_get_fptr), bind(C) :: " &
-           // char (libname)// "_" //  "is_allowed_get_fptr"
-      write (u, "(A)")  "  procedure(prc_get_fptr), bind(C) :: " &
-           // char (libname)// "_" //  "get_amplitude_get_fptr"
-    end subroutine write_lib_declarations
-
-    subroutine write_lib_code (libname)
-      type(string_t), intent(in) :: libname
-      write (u, "(2x,A)")  "case ('" // char (libname) // "')"
-      write (u, "(2x,A)")  "   select case (fname)"
-      call write_fun_code (char (libname), "get_n_processes")
-      call write_fun_code (char (libname), "get_process_id")
-      call write_fun_code (char (libname), "get_model_name")
-      call write_fun_code (char (libname), "get_restrictions")
-      call write_fun_code (char (libname), "get_omega_flags")
-      call write_fun_code (char (libname), "get_md5sum")
-      call write_fun_code (char (libname), "get_n_in")
-      call write_fun_code (char (libname), "get_n_out")
-      call write_fun_code (char (libname), "get_n_flv")
-      call write_fun_code (char (libname), "get_n_hel")
-      call write_fun_code (char (libname), "get_n_col")
-      call write_fun_code (char (libname), "get_n_cin")
-      call write_fun_code (char (libname), "get_n_cf")
-      call write_fun_code (char (libname), "get_openmp_status")
-      call write_fun_code (char (libname), "set_flv_state")
-      call write_fun_code (char (libname), "set_hel_state")
-      call write_fun_code (char (libname), "set_col_state")
-      call write_fun_code (char (libname), "set_cf_table")
-      call write_fun_code (char (libname), "init_get_fptr")
-      call write_fun_code (char (libname), "final_get_fptr")
-      call write_fun_code (char (libname), "update_alpha_s_get_fptr")
-      call write_fun_code (char (libname), "reset_helicity_selection_get_fptr")
-      call write_fun_code (char (libname), "new_event_get_fptr")
-      call write_fun_code (char (libname), "is_allowed_get_fptr")
-      call write_fun_code (char (libname), "get_amplitude_get_fptr")
-      write (u, "(2x,A)")  "   case default"
-      write (u, "(2x,A)")  "      print *, fname"
-      write (u, "(2x,A)")  "      stop 'WHIZARD bug: " &
-           // "libmanager cannot handle this function'"
-      write (u, "(2x,A)")  "   end select"
-    end subroutine write_lib_code
-
-    subroutine write_fun_code (prefix, fname)
-      character(*), intent(in) :: prefix, fname
-      write (u, "(5x,A)")  "case ('" // fname // "')"
-      write (u, "(5x,A)")  "   c_fptr = c_funloc (" // prefix &
-           // "_" // fname // ")"
-    end subroutine write_fun_code
-
-  end subroutine write_library_manager
-
-  function get_modellibs_flags (prc_lib, os_data) result (flags)
-    type(process_library_t), intent(in) :: prc_lib
+  subroutine process_library_update_status (lib, os_data)
+    class(process_library_t), intent(inout) :: lib
     type(os_data_t), intent(in) :: os_data
-    type(string_t) :: flags
-    type(string_t), dimension(:), allocatable :: models
-    type(string_t) :: modelname, modellib, modellib_full
-    logical :: exist
-    type(process_configuration_t), pointer :: current
-    integer :: i, j, mi
-    flags = " -lomega"
-    if ((.not. os_data%use_testfiles) .and. &
-               os_dir_exist (os_data%whizard_models_libpath_local)) &
-                 flags = flags // " -L" // os_data%whizard_models_libpath_local
-    flags = flags // " -L" // os_data%whizard_models_libpath
-    allocate (models(prc_lib%n_prc + 1))
-    models = ""
-    mi = 1
-    current => prc_lib%prc_first
-    SCAN: do i = 1, prc_lib%n_prc
-       modelname = model_get_name (current%model)
-       do j = 1, mi
-          if (models(mi) == modelname) cycle SCAN
-       end do
-       models(mi) = modelname
-       mi = mi + 1
-       if (os_data%use_libtool) then
-          modellib = "libparameters_" // modelname // ".la"
-       else
-          modellib = "libparameters_" // modelname // ".a"
+    character(32) :: md5sum_file
+    integer :: i, i_external, i_component
+    if (lib%external) then
+       select case (lib%status)
+       case (STAT_CONFIGURED:STAT_LINKED)
+          call lib%driver%load (os_data, noerror=.true.)
+       end select
+       if (lib%driver%loaded) then
+          md5sum_file = lib%driver%get_md5sum (0)
+          if (lib%md5sum == md5sum_file) then
+             call lib%load_entries ()
+             lib%entry%status = STAT_ACTIVE
+             lib%status = STAT_ACTIVE
+             call msg_message ("Process library '" // char (lib%basename) &
+                  // "': active")
+          else
+             do i = 1, lib%n_entries
+                associate (entry => lib%entry(i))
+                  i_external = entry%i_external
+                  i_component = entry%i_component
+                  if (i_external /= 0) then
+                     md5sum_file = lib%driver%get_md5sum (i_external)
+                     if (entry%def%get_md5sum (i_component) == md5sum_file) then
+                        entry%status = STAT_COMPILED
+                     else
+                        entry%status = STAT_CONFIGURED
+                     end if
+                  end if
+                end associate
+             end do
+             call lib%driver%unload ()
+             lib%status = STAT_CONFIGURED
+          end if
        end if
-       exist = .false.
-       if (.not. os_data%use_testfiles) then
-          modellib_full = os_data%whizard_models_libpath_local &
-             // "/" // modellib
-          inquire (file=char (modellib_full), exist=exist)
+       select case (lib%status)
+       case (STAT_CONFIGURED)
+          do i = 1, lib%n_entries
+             associate (entry => lib%entry(i))
+               i_external = entry%i_external
+               i_component = entry%i_component
+               if (i_external /= 0) then
+                  select case (entry%status)
+                  case (STAT_CONFIGURED)
+                     md5sum_file = lib%driver%get_md5sum_source (i_external)
+                     if (entry%def%get_md5sum (i_component) == md5sum_file) then
+                        entry%status = STAT_SOURCE
+                     end if
+                  end select
+               end if
+             end associate
+          end do
+          if (all (lib%entry%status >= STAT_SOURCE)) then
+             md5sum_file = lib%driver%get_md5sum_driver ()
+             if (lib%md5sum == md5sum_file) then
+                lib%status = STAT_SOURCE
+             end if
+          end if
+       end select
+    end if
+  end subroutine process_library_update_status
+
+  subroutine process_library_make_source (lib, os_data, keep_old_source)
+    class(process_library_t), intent(inout) :: lib
+    type(os_data_t), intent(in) :: os_data
+    logical, intent(in), optional :: keep_old_source
+    logical :: keep_old
+    integer :: i, i_external
+    keep_old = .false.
+    if (present (keep_old_source))  keep_old = keep_old_source
+    if (lib%external .and. .not. lib%static) then
+       select case (lib%status)
+       case (STAT_CONFIGURED)
+          if (keep_old) then
+             call msg_message ("Process library '" // char (lib%basename) &
+                  // "': keeping source code")
+          else
+             call msg_message ("Process library '" // char (lib%basename) &
+                  // "': creating source code")
+             do i = 1, size (lib%entry)
+                associate (entry => lib%entry(i))
+                  i_external = entry%i_external
+                  if (i_external /= 0 &
+                       .and. lib%entry(i)%status == STAT_CONFIGURED) then
+                     call lib%driver%clean_proc (i_external, os_data)
+                  end if
+                end associate
+                if (signal_is_pending ())  return
+             end do
+             call lib%driver%make_source (os_data)
+          end if
+          lib%status = STAT_SOURCE
+          where (lib%entry%i_external /= 0 &
+               .and. lib%entry%status == STAT_CONFIGURED)
+             lib%entry%status = STAT_SOURCE
+          end where
+          lib%status = STAT_SOURCE
+       end select
+    end if
+  end subroutine process_library_make_source
+  
+  subroutine process_library_make_compile (lib, os_data, keep_old_source)
+    class(process_library_t), intent(inout) :: lib
+    type(os_data_t), intent(in) :: os_data
+    logical, intent(in), optional :: keep_old_source
+    if (lib%external .and. .not. lib%static) then
+       select case (lib%status)
+       case (STAT_CONFIGURED)
+          call lib%make_source (os_data, keep_old_source)
+       end select
+       if (signal_is_pending ())  return
+       select case (lib%status)
+       case (STAT_SOURCE)
+          call msg_message ("Process library '" // char (lib%basename) &
+               // "': compiling sources")
+          call lib%driver%make_compile (os_data)
+          where (lib%entry%i_external /= 0 &
+               .and. lib%entry%status == STAT_SOURCE)
+             lib%entry%status = STAT_COMPILED
+          end where
+          lib%status = STAT_COMPILED
+       end select
+    end if
+  end subroutine process_library_make_compile
+  
+  subroutine process_library_make_link (lib, os_data, keep_old_source)
+    class(process_library_t), intent(inout) :: lib
+    type(os_data_t), intent(in) :: os_data
+    logical, intent(in), optional :: keep_old_source
+    if (lib%external .and. .not. lib%static) then
+       select case (lib%status)
+       case (STAT_CONFIGURED:STAT_SOURCE)
+          call lib%make_compile (os_data, keep_old_source)
+       end select
+       if (signal_is_pending ())  return
+       select case (lib%status)
+       case (STAT_COMPILED)
+          call msg_message ("Process library '" // char (lib%basename) &
+               // "': linking")
+          call lib%driver%make_link (os_data)
+          lib%entry%status = STAT_LINKED
+          lib%status = STAT_LINKED
+       end select
+    end if
+  end subroutine process_library_make_link
+  
+  subroutine process_library_load (lib, os_data, keep_old_source)
+    class(process_library_t), intent(inout) :: lib
+    type(os_data_t), intent(in) :: os_data
+    logical, intent(in), optional :: keep_old_source
+    select case (lib%status)
+    case (STAT_CONFIGURED:STAT_COMPILED)
+       call lib%make_link (os_data, keep_old_source)
+    end select
+    if (signal_is_pending ())  return
+    select case (lib%status)
+    case (STAT_LINKED)
+       if (lib%external) then
+          call msg_message ("Process library '" // char (lib%basename) &
+               // "': loading")
+          call lib%driver%load (os_data)
+          call lib%load_entries ()
        end if
-       if (.not. exist) then
-          modellib_full = os_data%whizard_models_libpath &
-            // "/" // modellib
-          inquire (file=char (modellib_full), exist=exist)
-       end if
-       if (exist) flags = flags // " -lparameters_" // modelname
-       current => current%next
-    end do SCAN
-    deallocate (models)
-    flags = flags // " -lwhizard"
-  end function get_modellibs_flags
-
-  subroutine process_library_compile &
-       (prc_lib, os_data, recompile_library, objlist_link)
-    type(process_library_t), intent(inout) :: prc_lib
-    type(os_data_t), intent(in) :: os_data
-    logical, intent(in) :: recompile_library
-    type(string_t), intent(out) :: objlist_link
-    type(string_t) :: objlist_comp
-    type(process_configuration_t), pointer :: current
-    type(string_t) :: ext
-    integer :: i
-    if (prc_lib%status == STAT_LOADED)  call process_library_unload (prc_lib)
-    call msg_message ("Compiling process library '" // &
-         char (process_library_get_name (prc_lib)) // "'")
-    objlist_comp = ""
-    objlist_link = ""
-    if (os_data%use_libtool) then
-       ext = ".lo"
-    else
-       ext = os_data%obj_ext
-    end if
-    current => prc_lib%prc_first
-    SCAN_PROCESSES: do i = 1, prc_lib%n_prc
-       objlist_link = objlist_link // " " // current%id // ext
-       if (recompile_library) &
-            current%status = min (STAT_CODE_GENERATED, current%status)
-       if (current%status == STAT_CODE_GENERATED) then
-          objlist_comp = objlist_comp // " " // current%id // ext
-          call os_compile_shared (current%id, os_data)
-          current%status = STAT_COMPILED
-       else
-          call msg_message ("Skipping process '" // char (current%id) &
-               // "' (object code exists)")
-       end if
-       current => current%next
-    end do SCAN_PROCESSES
-    if (objlist_comp /= "") then
-       call os_compile_shared (prc_lib%basename, os_data)
-       objlist_link = objlist_link // " " // prc_lib%basename // ext
-    else
-       call msg_message ("Skipping library '" &
-            // char (prc_lib%basename) &
-            // "' (no processes have been recompiled)")
-       objlist_link = ""
-    end if
-    prc_lib%status = STAT_COMPILED
-  end subroutine process_library_compile
-
-  subroutine process_library_link (prc_lib, os_data, objlist)
-    type(process_library_t), intent(in) :: prc_lib
-    type(os_data_t), intent(in) :: os_data
-    type(string_t), intent(in) :: objlist
-    type(os_data_t) :: local_os_data
-    local_os_data = os_data
-    local_os_data%ldflags = os_data%ldflags &
-         // " " // get_modellibs_flags (prc_lib, os_data)
-    if (objlist /= "") then
-       call os_link_shared (objlist,  prc_lib%basename, local_os_data)
-    end if
-  end subroutine process_library_link
-
-  subroutine compile_library_manager (os_data)
-    type(os_data_t), intent(in) :: os_data
-    call msg_message ("Compiling library manager")
-    call os_compile_shared (var_str ("libmanager"), os_data)
-  end subroutine compile_library_manager
-
-  subroutine link_executable (libname, exec_name, flags, os_data)
-    type(string_t), dimension(:), intent(in) :: libname
-    type(string_t), intent(in) :: exec_name, flags
-    type(os_data_t), intent(in) :: os_data
-    type(string_t) :: objlist, ext_o, ext_a
-    integer :: i
-    if (os_data%use_libtool) then
-       ext_o = ".lo"
-       ext_a = ".la"
-    else
-       ext_o = ".o"
-       ext_a = ".a"
-    end if
-    objlist = "libmanager" // ext_o
-    do i = 1, size (libname)
-       objlist = objlist // " " // libname(i) // ext_a
-    end do
-    if (has_user_lib) then
-       objlist = objlist // " user" // ext_a
-    end if
-    call os_link_static (objlist // flags, exec_name, os_data)
-  end subroutine link_executable
-
-  subroutine process_library_load (prc_lib, os_data, model, var_list, ignore)
-    type(process_library_t), intent(inout), target :: prc_lib
-    type(os_data_t), intent(in) :: os_data
-    type(model_t), pointer, optional :: model
-    type(var_list_t), intent(inout) :: var_list
-    logical, intent(in), optional :: ignore
-    type(c_funptr) :: c_fptr
-    type(model_t), pointer :: mdl
-    type(string_t) :: prefix
-    logical :: ignore_error
-    ignore_error = .false.;  if (present (ignore))  ignore_error = ignore
-    if (prc_lib%status == STAT_LOADED) then
-       if (.not. ignore_error) then
-          call msg_message ("Process library '" // char (prc_lib%basename) &
-               // "' is already loaded")
-       end if
-       return
-    end if
-    if (prc_lib%static) then
-       call msg_message ("Loading static process library '" &
-            // char (prc_lib%basename) // "'")
-    else
-       call msg_message ("Loading process library '" &
-            // char (prc_lib%basename) // "'")
-       prc_lib%libname = os_get_dlname (prc_lib%basename, os_data, ignore)
-       if (prc_lib%libname == "")  return
-       call dlaccess_init (prc_lib%dlaccess, var_str ("."), &
-            prc_lib%libname, os_data)
-       call process_library_check_dlerror (prc_lib)
-    end if
-    prefix = prc_lib%basename
-    c_fptr = process_library_get_c_funptr &
-         (prc_lib, prefix, var_str ("get_n_processes"))
-    call c_f_procpointer (c_fptr, prc_lib%get_n_prc)
-    c_fptr = process_library_get_c_funptr &
-         (prc_lib, prefix, var_str ("get_process_id"))
-    call c_f_procpointer (c_fptr, prc_lib%get_process_id)
-    c_fptr = process_library_get_c_funptr &
-         (prc_lib, prefix, var_str ("get_model_name"))
-    call c_f_procpointer (c_fptr, prc_lib%get_model_name)
-    c_fptr = process_library_get_c_funptr &
-         (prc_lib, prefix, var_str ("get_restrictions"))
-    call c_f_procpointer (c_fptr, prc_lib%get_restrictions)
-    c_fptr = process_library_get_c_funptr &
-         (prc_lib, prefix, var_str ("get_omega_flags"))
-    call c_f_procpointer (c_fptr, prc_lib%get_omega_flags)
-    c_fptr = process_library_get_c_funptr &
-         (prc_lib, prefix, var_str ("get_openmp_status"))
-    call c_f_procpointer (c_fptr, prc_lib%get_openmp_status)
-    c_fptr = process_library_get_c_funptr &
-         (prc_lib, prefix, var_str ("get_md5sum"))
-    call c_f_procpointer (c_fptr, prc_lib%get_md5sum)
-    c_fptr = process_library_get_c_funptr &
-         (prc_lib, prefix, var_str ("get_n_in"))
-    call c_f_procpointer (c_fptr, prc_lib%get_n_in)
-    c_fptr = process_library_get_c_funptr &
-         (prc_lib, prefix, var_str ("get_n_out"))
-    call c_f_procpointer (c_fptr, prc_lib%get_n_out)
-    c_fptr = process_library_get_c_funptr &
-         (prc_lib, prefix, var_str ("get_n_flv"))
-    call c_f_procpointer (c_fptr, prc_lib%get_n_flv)
-    c_fptr = process_library_get_c_funptr &
-         (prc_lib, prefix, var_str ("get_n_hel"))
-    call c_f_procpointer (c_fptr, prc_lib%get_n_hel)
-    c_fptr = process_library_get_c_funptr &
-         (prc_lib, prefix, var_str ("get_n_col"))
-    call c_f_procpointer (c_fptr, prc_lib%get_n_col)
-    c_fptr = process_library_get_c_funptr &
-         (prc_lib, prefix, var_str ("get_n_cin"))
-    call c_f_procpointer (c_fptr, prc_lib%get_n_cin)
-    c_fptr = process_library_get_c_funptr &
-         (prc_lib, prefix, var_str ("get_n_cf"))
-    call c_f_procpointer (c_fptr, prc_lib%get_n_cf)
-    c_fptr = process_library_get_c_funptr &
-         (prc_lib, prefix, var_str ("set_flv_state"))
-    call c_f_procpointer (c_fptr, prc_lib%set_flv_state)
-    c_fptr = process_library_get_c_funptr &
-         (prc_lib, prefix, var_str ("set_hel_state"))
-    call c_f_procpointer (c_fptr, prc_lib%set_hel_state)
-    c_fptr = process_library_get_c_funptr &
-         (prc_lib, prefix, var_str ("set_col_state"))
-    call c_f_procpointer (c_fptr, prc_lib%set_col_state)
-    c_fptr = process_library_get_c_funptr &
-         (prc_lib, prefix, var_str ("set_cf_table"))
-    call c_f_procpointer (c_fptr, prc_lib%set_cf_table)
-    c_fptr = process_library_get_c_funptr &
-         (prc_lib, prefix, var_str ("init_get_fptr"))
-    call c_f_procpointer (c_fptr, prc_lib%init_get_fptr)
-    c_fptr = process_library_get_c_funptr &
-         (prc_lib, prefix, var_str ("final_get_fptr"))
-    call c_f_procpointer (c_fptr, prc_lib%final_get_fptr)
-    c_fptr = process_library_get_c_funptr &
-         (prc_lib, prefix, var_str ("update_alpha_s_get_fptr"))
-    call c_f_procpointer (c_fptr, prc_lib%update_alpha_s_get_fptr)
-    c_fptr = process_library_get_c_funptr &
-         (prc_lib, prefix, var_str ("new_event_get_fptr"))
-    call c_f_procpointer (c_fptr, prc_lib%new_event_get_fptr)
-    c_fptr = process_library_get_c_funptr &
-         (prc_lib, prefix, var_str ("reset_helicity_selection_get_fptr"))
-    call c_f_procpointer (c_fptr, prc_lib%reset_helicity_selection_get_fptr)
-    c_fptr = process_library_get_c_funptr &
-         (prc_lib, prefix, var_str ("is_allowed_get_fptr"))
-    call c_f_procpointer (c_fptr, prc_lib%is_allowed_get_fptr)
-    c_fptr = process_library_get_c_funptr &
-         (prc_lib, prefix, var_str ("get_amplitude_get_fptr"))
-    call c_f_procpointer (c_fptr, prc_lib%get_amplitude_get_fptr)
-    call process_library_load_configuration (prc_lib, os_data, mdl)
-    prc_lib%status = STAT_LOADED
-    if (associated (prc_lib%reload_hook)) &
-       call prc_lib%reload_hook (process_library_get_name (prc_lib))
-    call var_list_set_string (var_list, var_str ("$library_name"), &
-         process_library_get_name (prc_lib), is_known=.true.)  ! $
-    if (present (model))  model => mdl
+       lib%entry%status = STAT_ACTIVE
+       lib%status = STAT_ACTIVE
+    end select
   end subroutine process_library_load
+  
+  subroutine process_library_load_entries (lib)
+    class(process_library_t), intent(inout) :: lib
+    integer :: i
+    do i = 1, size (lib%entry)
+       associate (entry => lib%entry(i))
+         if (entry%i_external /= 0) then
+            call entry%connect (lib%driver, entry%i_external)
+         end if
+       end associate
+    end do
+  end subroutine process_library_load_entries
 
-  subroutine process_library_unload (prc_lib)
-    type(process_library_t), intent(inout) :: prc_lib
-    call msg_message ("Unloading process library '" // &
-         char (process_library_get_name (prc_lib)) // "'")
-    if (associated (prc_lib%unload_hook)) &
-       call prc_lib%unload_hook (process_library_get_name(prc_lib))
-    call dlaccess_final (prc_lib%dlaccess)
-    prc_lib%status = STAT_CODE_GENERATED
+  subroutine process_library_unload (lib)
+    class(process_library_t), intent(inout) :: lib
+    select case (lib%status)
+    case (STAT_ACTIVE)
+       if (lib%external) then
+          call msg_message ("Process library '" // char (lib%basename) &
+               // "': unloading")
+          call lib%driver%unload ()
+       end if
+       lib%entry%status = STAT_LINKED
+       lib%status = STAT_LINKED
+    end select
   end subroutine process_library_unload
 
-  subroutine process_library_set_unload_hook (prc_lib, hook)
-    type(process_library_t), intent(inout), target :: prc_lib
-    procedure(prclib_unload_hook), pointer, intent(in) :: hook
-    prc_lib%unload_hook => hook
-  end subroutine process_library_set_unload_hook
-
-  subroutine process_library_set_reload_hook (prc_lib, hook)
-    type(process_library_t), intent(inout), target :: prc_lib
-    procedure(prclib_reload_hook), pointer, intent(in) :: hook
-    prc_lib%reload_hook => hook
-  end subroutine process_library_set_reload_hook
-
-  function process_library_get_c_funptr &
-       (prc_lib, prefix, fname) result (c_fptr)
-    type(c_funptr) :: c_fptr
-    type(process_library_t), intent(inout) :: prc_lib
-    type(string_t), intent(in) :: prefix, fname
-    type(string_t) :: full_name
-    full_name = prefix // "_" // fname
-    if (prc_lib%static) then
-       c_fptr = libmanager_get_c_funptr (char (prefix), char (fname))
-    else
-       c_fptr = dlaccess_get_c_funptr (prc_lib%dlaccess, full_name)
-       call process_library_check_dlerror (prc_lib)
-    end if
-  end function process_library_get_c_funptr
-
-  subroutine process_library_check_dlerror (prc_lib)
-    type(process_library_t), intent(in) :: prc_lib
-    if (dlaccess_has_error (prc_lib%dlaccess)) then
-       call msg_fatal (char (dlaccess_get_error (prc_lib%dlaccess)))
-    end if
-  end subroutine process_library_check_dlerror
-
-  subroutine process_library_store_append (name, os_data, prc_lib)
-    type(string_t), intent(in) :: name
+  subroutine process_library_clean (lib, os_data, distclean)
+    class(process_library_t), intent(inout) :: lib
     type(os_data_t), intent(in) :: os_data
-    type(process_library_t), pointer :: prc_lib
-    prc_lib => process_library_store_get_ptr (name)
-    if (.not. associated (prc_lib)) then
-       call msg_message &
-            ("Initializing process library '" // char (name) // "'")
-       allocate (prc_lib)
-       call process_library_init (prc_lib, name, os_data)
-       if (associated (process_library_store%last)) then
-          process_library_store%last%next => prc_lib
+    logical, intent(in) :: distclean
+    call lib%unload ()
+    if (lib%external .and. .not. lib%static) then
+       call msg_message ("Process library '" // char (lib%basename) &
+            // "': removing old files")
+       if (distclean) then
+          call lib%driver%distclean (os_data)
        else
-          process_library_store%first => prc_lib
+          call lib%driver%clean (os_data)
        end if
-       process_library_store%last => prc_lib
     end if
-  end subroutine process_library_store_append
-
-  subroutine process_library_store_final ()
-    type(process_library_t), pointer :: current
-    do while (associated (process_library_store%first))
-       current => process_library_store%first
-       process_library_store%first => current%next
-       call process_library_final (current)
-       deallocate (current)
-    end do
-    process_library_store%last => null ()
-  end subroutine process_library_store_final
-
-  subroutine process_library_store_load (os_data, var_list)
-    type(os_data_t), intent(in) :: os_data
-    type(var_list_t), intent(inout), optional :: var_list
-    type(process_library_t), pointer :: current
-    current => process_library_store%first
-    do while (associated (current))
-       call process_library_load (current, os_data, var_list=var_list)
-       current => current%next
-    end do
-  end subroutine process_library_store_load
-
-  function process_library_store_get_ptr (name) result (prc_lib)
-    type(process_library_t), pointer :: prc_lib
-    type(string_t), intent(in) :: name
-    prc_lib => process_library_store%first
-    do while (associated (prc_lib))       
-       if (prc_lib%basename == name)  exit
-       prc_lib => prc_lib%next
-    end do
-  end function process_library_store_get_ptr
-
-  function process_library_store_get_first () result (prc_lib)
-    type(process_library_t), pointer :: prc_lib
-    prc_lib => process_library_store%first
-  end function process_library_store_get_first
-
-  subroutine process_library_store_load_static &
-       (os_data, prc_lib, model, var_list)
-    type(os_data_t), intent(in) :: os_data
-    type(process_library_t), pointer :: prc_lib
-    type(model_t), pointer :: model
-    type(var_list_t), intent(inout) :: var_list
-    integer :: n, i
-    type(string_t), dimension(:), allocatable :: libname
-    n = libmanager_get_n_libs ()
-    allocate (libname (n))
-    do i = 1, n
-       libname(i) = libmanager_get_libname (i)
-    end do
-    do i = 1, n
-       call process_library_store_append (libname(i), os_data, prc_lib)
-       call process_library_set_static (prc_lib, .true.)
-       call process_library_load (prc_lib, os_data, model, var_list)
-    end do
-  end subroutine process_library_store_load_static
-
-  function process_library_get_module_name (id, method) result (mod_id)
-    type(string_t), intent(in) :: id
-    integer, intent(in) :: method
-    type(string_t) :: mod_id
-    select case (method)
-       case (PRC_OMEGA)
-          mod_id = "opr_" // id
-       case (PRC_TEST, PRC_UNIT)
-          mod_id = "tpr_" // id
-       case default
-          mod_id = id
-    end select    
-  end function process_library_get_module_name
-  subroutine process_libraries_test ()
-    type(model_t), pointer :: model
-    type(process_library_t), pointer :: prc_lib => null ()
-    type(string_t), dimension(:), allocatable :: prt_in, prt_out
-    type(os_data_t) :: os_data
-    type(string_t) :: objlist
-    type(var_list_t), pointer :: var_list => null ()
-    integer :: n_prc
-    allocate (var_list)
-    allocate (prc_lib)
-    call process_library_store_final
-    call os_data_init (os_data)
-    print *, "*** Read model file"
-    call syntax_model_file_init ()
-    call model_list_read_model &
-         (var_str("SM"), var_str("SM.mdl"), os_data, model)
-    call syntax_model_file_final ()
-    print *, "*** Create library 'proc' with two processes"
-    print *, "* Setup process configuration"
-    call var_list_append_string (var_list, name = "$library_name", sval = "proc") ! $
-    call process_library_store_append (var_str ("proc"), os_data, prc_lib)
-    allocate (prt_in (1), prt_out (2))
-    prt_in(1) = "Z"
-    prt_out(1) = "e1"
-    prt_out(2) = "E1"
-    call process_library_append &
-         (prc_lib, var_str ("zee"), model, prt_in, prt_out, method = PRC_TEST)
-    deallocate (prt_in, prt_out)
-    allocate (prt_in (2), prt_out (2))
-    prt_in(1) = "g"
-    prt_in(2) = "g"
-    prt_out(1) = "u"
-    prt_out(2) = "U"
-    call process_library_append &
-         (prc_lib, var_str ("uu"), model, prt_in, prt_out, method = PRC_TEST)
-    print *
-    print *, "* Generate code"
-    call process_library_generate_code (prc_lib, os_data)
-    print *
-    print *, "* Write driver file 'proc_interface.f90'"
-    call process_library_write_driver (prc_lib)
-    print *
-    print *, "* Compile and link as 'libproc.so'"
-    call process_library_compile (prc_lib, os_data, .false., objlist)
-    call process_library_link (prc_lib, os_data, objlist)
-    print *
-    print *, "* Load shared libraries"
-    call process_library_load (prc_lib, os_data, var_list = var_list)
-    print *
-    print *, "* Execute 'get_n_processes' from the shared library named 'proc'"
-    print *
-    prc_lib => process_library_store_get_ptr (var_str ("proc"))
-    n_prc = prc_lib% get_n_prc ()
-    print *, "n_prc = ", n_prc 
-    if (n_prc .ne. 2) then
-       call msg_fatal (" Process library test failed.") 
+    where (lib%entry%i_external /= 0)
+       lib%entry%status = STAT_CONFIGURED
+    elsewhere
+       lib%entry%status = STAT_LINKED
+    end where
+    if (lib%external) then
+       lib%status = STAT_CONFIGURED
     else
-       call msg_message ("Successful.")
+       lib%status = STAT_LINKED
     end if
-    print *
-    print *, "* Cleanup"
-    call process_library_store_final
-    call var_list_final (var_list)
-    deallocate (var_list)
+  end subroutine process_library_clean
+  
+  subroutine process_library_open (lib)
+    class(process_library_t), intent(inout) :: lib
+    select case (lib%status)
+    case (STAT_OPEN)
+    case default
+       call lib%unload ()
+       if (.not. lib%static) then
+          lib%entry%status = STAT_OPEN
+          lib%status = STAT_OPEN
+          call msg_message ("Process library '" // char (lib%basename) &
+               // "': open")
+       else
+          call msg_error ("Static process library '" // char (lib%basename) &
+               // "': processes can't be appended")
+       end if
+    end select
+  end subroutine process_library_open
+  
+  function process_library_get_name (lib) result (name)
+    class(process_library_t), intent(in) :: lib
+    type(string_t) :: name
+    name = lib%basename
+  end function process_library_get_name
+  
+  function process_library_is_active (lib) result (flag)
+    logical :: flag
+    class(process_library_t), intent(in) :: lib
+    flag = lib%status == STAT_ACTIVE
+  end function process_library_is_active
+  
+  subroutine process_library_entry_fill_constants (entry, driver, data)
+    class(process_library_entry_t), intent(in) :: entry
+    class(prclib_driver_t), intent(in) :: driver
+    type(process_constants_t), intent(out) :: data
+    integer :: i
+    if (entry%i_external /= 0) then
+       i = entry%i_external
+       data%id         = driver%get_process_id (i)
+       data%model_name = driver%get_model_name (i)
+       data%md5sum     = driver%get_md5sum (i)
+       data%openmp_supported = driver%get_openmp_status (i)
+       data%n_in  = driver%get_n_in  (i)
+       data%n_out = driver%get_n_out (i)
+       data%n_flv = driver%get_n_flv (i)
+       data%n_hel = driver%get_n_hel (i)
+       data%n_col = driver%get_n_col (i)
+       data%n_cin = driver%get_n_cin (i)
+       data%n_cf  = driver%get_n_cf  (i)
+       call driver%set_flv_state (i, data%flv_state)
+       call driver%set_hel_state (i, data%hel_state)
+       call driver%set_col_state (i, data%col_state, data%ghost_flag)
+       call driver%set_color_factors (i, data%color_factors, data%cf_index)
+    else
+       select type (proc_driver => entry%driver)
+       class is (process_driver_internal_t)
+          call proc_driver%fill_constants (data)
+       end select
+    end if
+  end subroutine process_library_entry_fill_constants
+  
+  subroutine process_library_connect_process &
+       (lib, id, i_component, data, proc_driver)
+    class(process_library_t), intent(in) :: Lib
+    type(string_t), intent(in) :: id
+    integer, intent(in) :: i_component
+    type(process_constants_t), intent(out) :: data
+    class(prc_core_driver_t), allocatable, intent(out) :: proc_driver
+    integer :: i
+    do i = 1, size (lib%entry)
+       associate (entry => lib%entry(i))
+         if (entry%def%id == id .and. entry%i_component == i_component) then
+            call entry%fill_constants (lib%driver, data)
+            allocate (proc_driver, source=entry%driver)
+            return
+         end if
+       end associate
+    end do
+    call msg_fatal ("Process library '" // char (lib%basename) &
+               // "': process '" // char (id) // "' not found")
+  end subroutine process_library_connect_process
+
+  function prctest_2_type_name () result (type)
+    type(string_t) :: type
+    type = "test"
+  end function prctest_2_type_name
+  
+  subroutine prctest_2_fill_constants (driver, data)
+    class(prctest_2_t), intent(in) :: driver
+    type(process_constants_t), intent(out) :: data
+  end subroutine prctest_2_fill_constants
+
+
+  subroutine process_libraries_test (u, results)
+    integer, intent(in) :: u
+    type(test_results_t), intent(inout) :: results
+    call test (process_libraries_1, "process_libraries_1", &
+         "empty process list", &
+         u, results)
+    call test (process_libraries_2, "process_libraries_2", &
+         "process definition list", &
+         u, results)
+    call test (process_libraries_3, "process_libraries_3", &
+         "recover process definition list from file", &
+         u, results)
+    call test (process_libraries_4, "process_libraries_4", &
+         "build and load internal process library", &
+         u, results)
+    call test (process_libraries_5, "process_libraries_5", &
+         "build external process library", &
+         u, results)
+    call test (process_libraries_6, "process_libraries_6", &
+         "build and load external process library", &
+         u, results)
+    call test (process_libraries_7, "process_libraries_7", &
+         "process definition list", &
+         u, results)
+    call test (process_libraries_8, "process_libraries_8", &
+         "library status checks", &
+         u, results)
   end subroutine process_libraries_test
 
+  subroutine process_libraries_1 (u)
+    integer, intent(in) :: u
+    type(process_def_list_t) :: process_def_list
+
+    write (u, "(A)")  "* Test output: process_libraries_1"
+    write (u, "(A)")  "*   Purpose: Display an empty process definition list"
+    write (u, "(A)")
+
+    call process_def_list%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: process_libraries_1"
+  end subroutine process_libraries_1
+  
+  function prcdef_2_type_string () result (string)
+    type(string_t) :: string
+    string = "test"
+  end function prcdef_2_type_string
+
+  subroutine prcdef_2_write (object, unit)
+    class(prcdef_2_t), intent(in) :: object
+    integer, intent(in) :: unit
+    write (unit, "(3x,A,I0)")  "Test data         = ", object%data
+  end subroutine prcdef_2_write
+  
+  subroutine prcdef_2_read (object, unit)
+    class(prcdef_2_t), intent(out) :: object
+    integer, intent(in) :: unit
+    character(80) :: buffer
+    read (unit, "(A)")  buffer
+    call strip_prefix (buffer)
+    read (buffer, *)  object%data
+  end subroutine prcdef_2_read
+  
+  subroutine prcdef_2_get_features (features)
+    type(string_t), dimension(:), allocatable, intent(out) :: features
+    allocate (features (0))
+  end subroutine prcdef_2_get_features
+
+  subroutine prcdef_2_generate_code (object, &
+       basename, model_name, prt_in, prt_out)
+    class(prcdef_2_t), intent(in) :: object
+    type(string_t), intent(in) :: basename
+    type(string_t), intent(in) :: model_name
+    type(string_t), dimension(:), intent(in) :: prt_in
+    type(string_t), dimension(:), intent(in) :: prt_out
+  end subroutine prcdef_2_generate_code
+  
+  subroutine prcdef_2_allocate_driver (object, driver, basename)
+    class(prcdef_2_t), intent(in) :: object
+    class(prc_core_driver_t), intent(out), allocatable :: driver
+    type(string_t), intent(in) :: basename
+    allocate (prctest_2_t :: driver)
+  end subroutine prcdef_2_allocate_driver
+  
+  subroutine prcdef_2_connect (def, lib_driver, i, proc_driver)
+    class(prcdef_2_t), intent(in) :: def
+    class(prclib_driver_t), intent(in) :: lib_driver
+    integer, intent(in) :: i
+    class(prc_core_driver_t), intent(inout) :: proc_driver
+  end subroutine prcdef_2_connect
+
+  subroutine process_libraries_2 (u)
+    integer, intent(in) :: u
+    type(prc_template_t), dimension(:), allocatable :: process_core_templates
+    type(process_def_list_t) :: process_def_list
+    type(process_def_entry_t), pointer :: entry => null ()
+    class(prc_core_def_t), allocatable :: test_def
+    integer :: scratch_unit
+
+    write (u, "(A)")  "* Test output: process_libraries_2"
+    write (u, "(A)")  "* Purpose: Construct a process definition list,"
+    write (u, "(A)")  "*          write it to file and reread it"
+    write (u, "(A)")  ""
+    write (u, "(A)")  "* Construct a process definition list"
+    write (u, "(A)")  "*   First process definition: empty"
+    write (u, "(A)")  "*   Second process definition: two components"
+    write (u, "(A)")  "*     First component: empty"
+    write (u, "(A)")  "*     Second component: test data"
+    write (u, "(A)")  "*   Third process definition:"
+    write (u, "(A)")  "*     Embedded decays and polarization"
+    write (u, "(A)")
+
+    allocate (process_core_templates (1))
+    allocate (prcdef_2_t :: process_core_templates(1)%core_def)
+    
+    allocate (entry)
+    call entry%init (var_str ("first"), n_in = 0, n_components = 0)
+    call entry%compute_md5sum ()
+    call process_def_list%append (entry)
+    
+    allocate (entry)
+    call entry%init (var_str ("second"), model_name = var_str ("Test"), &
+         n_in = 1, n_components = 2)
+    allocate (prcdef_2_t :: test_def)
+    select type (test_def)
+    type is (prcdef_2_t);  test_def%data = 42
+    end select
+    call entry%import_component (2, n_out = 2, &
+         prt_in  = new_prt_spec ([var_str ("a")]), &
+         prt_out = new_prt_spec ([var_str ("b"), var_str ("c")]), &
+         method  = var_str ("test"), &
+         variant = test_def)
+    call entry%compute_md5sum ()
+    call process_def_list%append (entry)
+
+    allocate (entry)
+    call entry%init (var_str ("third"), model_name = var_str ("Test"), &
+         n_in = 2, n_components = 1)
+    allocate (prcdef_2_t :: test_def)
+    call entry%import_component (1, n_out = 3, &
+         prt_in  = &
+           new_prt_spec ([var_str ("a"), var_str ("b")]), &
+         prt_out = &
+           [new_prt_spec (var_str ("c")), &
+            new_prt_spec (var_str ("d"), .true.), &
+            new_prt_spec (var_str ("e"), [var_str ("e_decay")])], &
+         method  = var_str ("test"), &
+         variant = test_def)
+    call entry%compute_md5sum ()
+    call process_def_list%append (entry)
+    call process_def_list%write (u)
+
+    write (u, "(A)")  ""
+    write (u, "(A)")  "* Write the process definition list to (scratch) file"
+
+    scratch_unit = free_unit ()
+    open (unit = scratch_unit, status="scratch", action = "readwrite")
+    call process_def_list%write (scratch_unit)
+    call process_def_list%final ()
+    
+    write (u, "(A)")  "* Reread it"
+    write (u, "(A)")  ""
+
+    rewind (scratch_unit)
+    call process_def_list%read (scratch_unit, process_core_templates)
+    close (scratch_unit)
+    
+    call process_def_list%write (u)
+    call process_def_list%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: process_libraries_2"
+  end subroutine process_libraries_2
+  
+  subroutine process_libraries_3 (u)
+    integer, intent(in) :: u
+    type(process_library_t) :: lib
+    type(process_def_entry_t), pointer :: entry
+
+    write (u, "(A)")  "* Test output: process_libraries_3"
+    write (u, "(A)")  "* Purpose: Construct a process library object &
+         &with entries"
+    write (u, "(A)")  ""
+    write (u, "(A)")  "* Construct and display a process library object"
+    write (u, "(A)")  "*   with 5 entries"
+    write (u, "(A)")  "*   associated with 3 matrix element codes"
+    write (u, "(A)")  "*   corresponding to 3 process definitions"
+    write (u, "(A)")  "*   with 2, 1, 1 components, respectively"
+    write (u, "(A)")
+
+    call lib%init (var_str ("testlib"))
+
+    lib%status = STAT_ACTIVE
+    lib%n_entries = 5
+    allocate (lib%entry (lib%n_entries))
+   
+    allocate (entry)
+    call entry%init (var_str ("test_a"), n_in = 2, n_components = 2)
+    call lib%entry(3)%init (STAT_SOURCE, entry%process_def_t, 2, 2)
+    allocate (prctest_2_t :: lib%entry(3)%driver)
+    call lib%entry(4)%init (STAT_COMPILED, entry%process_def_t, 1, 0)
+    call lib%append (entry)
+
+    allocate (entry)
+    call entry%init (var_str ("test_b"), n_in = 2, n_components = 1)
+    call lib%entry(2)%init (STAT_CONFIGURED, entry%process_def_t, 1, 1)
+    call lib%append (entry)
+
+    allocate (entry)
+    call entry%init (var_str ("test_c"), n_in = 2, n_components = 1)
+    call lib%entry(5)%init (STAT_LINKED, entry%process_def_t, 1, 3)
+    allocate (prctest_2_t :: lib%entry(5)%driver)
+    call lib%append (entry)
+    
+    call lib%write (u)
+    call lib%final ()
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: process_libraries_3"
+  end subroutine process_libraries_3
+  
+  subroutine process_libraries_4 (u)
+    integer, intent(in) :: u
+    type(process_library_t) :: lib
+    type(process_def_entry_t), pointer :: entry
+    class(prc_core_def_t), allocatable :: core_def
+    type(os_data_t) :: os_data
+
+    write (u, "(A)")  "* Test output: process_libraries_4"
+    write (u, "(A)")  "* Purpose: build a process library with an &
+         &internal (pseudo) matrix element"
+    write (u, "(A)")  "*          No Makefile or code should be generated"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Initialize a process library with one entry &
+         &(no external code)"
+    write (u, "(A)")
+    call lib%init (var_str ("proclibs4"))
+
+    allocate (prcdef_2_t :: core_def)
+
+    allocate (entry)
+    call entry%init (var_str ("proclibs4_a"), n_in = 1, n_components = 1)
+    call entry%import_component (1, n_out = 2, variant = core_def)
+    call lib%append (entry)
+
+    write (u, "(A)")  "* Configure library"
+    write (u, "(A)")
+    call lib%configure ()
+
+    write (u, "(A)")  "* Compute MD5 sum"
+    write (u, "(A)")
+    call lib%compute_md5sum ()
+
+    write (u, "(A)")  "* Write makefile (no-op)"
+    write (u, "(A)")
+    call lib%write_makefile (os_data, force = .true.)
+
+    write (u, "(A)")  "* Write driver source code (no-op)"
+    write (u, "(A)")
+    call lib%write_driver (force = .true.)
+
+    write (u, "(A)")  "* Write process source code (no-op)"
+    write (u, "(A)")
+    call lib%make_source (os_data)
+
+    write (u, "(A)")  "* Compile (no-op)"
+    write (u, "(A)")
+    call lib%make_compile (os_data)
+
+    write (u, "(A)")  "* Link (no-op)"
+    write (u, "(A)")
+    call lib%make_link (os_data)
+
+    write (u, "(A)")  "* Load (no-op)"
+    write (u, "(A)")
+    call lib%load (os_data)
+
+    call lib%write (u)
+    call lib%final ()
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: process_libraries_4"
+  end subroutine process_libraries_4
+  
+  function prcdef_5_type_string () result (string)
+    type(string_t) :: string
+    string = "test_file"
+  end function prcdef_5_type_string
+
+  subroutine prcdef_5_init (object)
+    class(prcdef_5_t), intent(out) :: object
+    allocate (test_writer_4_t :: object%writer)
+  end subroutine prcdef_5_init
+  
+  subroutine prcdef_5_write (object, unit)
+    class(prcdef_5_t), intent(in) :: object
+    integer, intent(in) :: unit
+  end subroutine prcdef_5_write
+  
+  subroutine prcdef_5_read (object, unit)
+    class(prcdef_5_t), intent(out) :: object
+    integer, intent(in) :: unit
+  end subroutine prcdef_5_read
+  
+  subroutine prcdef_5_allocate_driver (object, driver, basename)
+    class(prcdef_5_t), intent(in) :: object
+    class(prc_core_driver_t), intent(out), allocatable :: driver
+    type(string_t), intent(in) :: basename
+    allocate (prctest_5_t :: driver)
+  end subroutine prcdef_5_allocate_driver
+  
+  function prcdef_5_needs_code () result (flag)
+    logical :: flag
+    flag = .true.
+  end function prcdef_5_needs_code
+  
+  subroutine prcdef_5_get_features (features)
+    type(string_t), dimension(:), allocatable, intent(out) :: features
+    allocate (features (1))
+    features = [ var_str ("proc1") ]
+  end subroutine prcdef_5_get_features
+
+  subroutine prcdef_5_connect (def, lib_driver, i, proc_driver)
+    class(prcdef_5_t), intent(in) :: def
+    class(prclib_driver_t), intent(in) :: lib_driver
+    integer, intent(in) :: i
+    class(prc_core_driver_t), intent(inout) :: proc_driver
+  end subroutine prcdef_5_connect
+
+  function prctest_5_type_name () result (type)
+    type(string_t) :: type
+    type = "test_file"
+  end function prctest_5_type_name
+  
+  subroutine process_libraries_5 (u)
+    integer, intent(in) :: u
+    type(process_library_t) :: lib
+    type(process_def_entry_t), pointer :: entry
+    class(prc_core_def_t), allocatable :: core_def
+    type(os_data_t) :: os_data
+
+    write (u, "(A)")  "* Test output: process_libraries_5"
+    write (u, "(A)")  "* Purpose: build a process library with an &
+         &external (pseudo) matrix element"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Initialize a process library with one entry"
+    write (u, "(A)")
+    call lib%init (var_str ("proclibs5"))
+    call os_data_init (os_data)
+
+    allocate (prcdef_5_t :: core_def)
+    select type (core_def)
+    type is (prcdef_5_t)
+       call core_def%init ()
+    end select
+
+    allocate (entry)
+    call entry%init (var_str ("proclibs5_a"), &
+         model_name = var_str ("Test_Model"), &
+         n_in = 1, n_components = 1)
+    call entry%import_component (1, n_out = 2, &
+         prt_in  = new_prt_spec ([var_str ("a")]), &
+         prt_out = new_prt_spec ([var_str ("b"), var_str ("c")]), &
+         method  = var_str ("test"), &
+         variant = core_def)
+    call lib%append (entry)
+    
+    write (u, "(A)")  "* Configure library"
+    write (u, "(A)")
+    call lib%configure ()
+
+    write (u, "(A)")  "* Compute MD5 sum"
+    write (u, "(A)")
+    call lib%compute_md5sum ()
+
+    write (u, "(A)")  "* Write makefile"
+    write (u, "(A)")
+    call lib%write_makefile (os_data, force = .true.)
+    
+    write (u, "(A)")  "* Write driver source code"
+    write (u, "(A)")
+    call lib%write_driver (force = .true.)
+
+    write (u, "(A)")  "* Write process source code"
+    write (u, "(A)")
+    call lib%make_source (os_data)
+
+    write (u, "(A)")  "* Compile"
+    write (u, "(A)")
+    call lib%make_compile (os_data)
+
+    write (u, "(A)")  "* Link"
+    write (u, "(A)")
+    call lib%make_link (os_data)
+
+    call lib%write (u)
+    
+    call lib%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: process_libraries_5"
+  end subroutine process_libraries_5
+  
+  function prcdef_6_type_string () result (string)
+    type(string_t) :: string
+    string = "test_file"
+  end function prcdef_6_type_string
+
+  subroutine prcdef_6_init (object)
+    class(prcdef_6_t), intent(out) :: object
+    allocate (test_writer_4_t :: object%writer)
+    call object%writer%init_test ()
+  end subroutine prcdef_6_init
+  
+  subroutine prcdef_6_write (object, unit)
+    class(prcdef_6_t), intent(in) :: object
+    integer, intent(in) :: unit
+  end subroutine prcdef_6_write
+  
+  subroutine prcdef_6_read (object, unit)
+    class(prcdef_6_t), intent(out) :: object
+    integer, intent(in) :: unit
+  end subroutine prcdef_6_read
+  
+  subroutine prcdef_6_allocate_driver (object, driver, basename)
+    class(prcdef_6_t), intent(in) :: object
+    class(prc_core_driver_t), intent(out), allocatable :: driver
+    type(string_t), intent(in) :: basename
+    allocate (prctest_6_t :: driver)
+  end subroutine prcdef_6_allocate_driver
+  
+  function prcdef_6_needs_code () result (flag)
+    logical :: flag
+    flag = .true.
+  end function prcdef_6_needs_code
+  
+  subroutine prcdef_6_get_features (features)
+    type(string_t), dimension(:), allocatable, intent(out) :: features
+    allocate (features (1))
+    features = [ var_str ("proc1") ]
+  end subroutine prcdef_6_get_features
+
+  subroutine prcdef_6_connect (def, lib_driver, i, proc_driver)
+    class(prcdef_6_t), intent(in) :: def
+    class(prclib_driver_t), intent(in) :: lib_driver
+    integer, intent(in) :: i
+    class(prc_core_driver_t), intent(inout) :: proc_driver
+    integer(c_int) :: pid, fid
+    type(c_funptr) :: fptr
+    select type (proc_driver)
+    type is  (prctest_6_t)
+       pid = i
+       fid = 1
+       call lib_driver%get_fptr (pid, fid, fptr)
+       call c_f_procpointer (fptr, proc_driver%proc1)
+    end select
+  end subroutine prcdef_6_connect
+
+  function prctest_6_type_name () result (type)
+    type(string_t) :: type
+    type = "test_file"
+  end function prctest_6_type_name
+  
+  subroutine process_libraries_6 (u)
+    integer, intent(in) :: u
+    type(process_library_t) :: lib
+    type(process_def_entry_t), pointer :: entry
+    class(prc_core_def_t), allocatable :: core_def
+    type(os_data_t) :: os_data
+    type(string_t), dimension(:), allocatable :: name_list
+    type(process_constants_t) :: data
+    class(prc_core_driver_t), allocatable :: proc_driver
+    integer :: i
+    integer(c_int) :: n
+
+    write (u, "(A)")  "* Test output: process_libraries_6"
+    write (u, "(A)")  "* Purpose: build and load a process library"
+    write (u, "(A)")  "*          with an external (pseudo) matrix element"
+    write (u, "(A)")  "*          Check single-call linking"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Initialize a process library with one entry"
+    write (u, "(A)")
+    call lib%init (var_str ("proclibs6"))
+    call os_data_init (os_data)
+
+    allocate (prcdef_6_t :: core_def)
+    select type (core_def)
+    type is (prcdef_6_t)
+       call core_def%init ()
+    end select
+
+    allocate (entry)
+    call entry%init (var_str ("proclibs6_a"), &
+         model_name = var_str ("Test_model"), &
+         n_in = 1, n_components = 1)
+    call entry%import_component (1, n_out = 2, &
+         prt_in  = new_prt_spec ([var_str ("a")]), &
+         prt_out = new_prt_spec ([var_str ("b"), var_str ("c")]), &
+         method  = var_str ("test"), &
+         variant = core_def)
+    call lib%append (entry)
+
+    write (u, "(A)")  "* Configure library"
+    write (u, "(A)")
+    call lib%configure ()
+
+    write (u, "(A)")  "* Write makefile"
+    write (u, "(A)")
+    call lib%write_makefile (os_data, force = .true.)
+    
+    write (u, "(A)")  "* Write driver source code"
+    write (u, "(A)")
+    call lib%write_driver (force = .true.)
+
+    write (u, "(A)")  "* Write process source code, compile, link, load"
+    write (u, "(A)")
+    call lib%load (os_data)
+
+    call lib%write (u)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Probe library API:"
+    write (u, "(A)")
+       
+    write (u, "(1x,A,A,A)")  "name                      = '", &
+         char (lib%get_name ()), "'"
+    write (u, "(1x,A,L1)")  "is active                 = ", &
+         lib%is_active ()
+    write (u, "(1x,A,I0)")  "n_processes               = ", &
+         lib%get_n_processes ()
+    write (u, "(1x,A)", advance="no")  "processes                 ="
+    call lib%get_process_id_list (name_list)
+    do i = 1, size (name_list)
+       write (u, "(1x,A)", advance="no")  char (name_list(i))
+    end do
+    write (u, *)
+    write (u, "(1x,A,L1)")  "proclibs6_a is process    = ", &
+         lib%contains (var_str ("proclibs6_a"))
+    write (u, "(1x,A,I0)")  "proclibs6_a has index     = ", &
+         lib%get_entry_index (var_str ("proclibs6_a"))
+    write (u, "(1x,A,L1)")  "foobar is process         = ", &
+         lib%contains (var_str ("foobar"))
+    write (u, "(1x,A,I0)")  "foobar has index          = ", &
+         lib%get_entry_index (var_str ("foobar"))
+    write (u, "(1x,A,I0)")  "n_in(proclibs6_a)         = ", &
+         lib%get_n_in (var_str ("proclibs6_a"))
+    write (u, "(1x,A,A)")   "model_name(proclibs6_a)   = ", &
+         char (lib%get_model_name (var_str ("proclibs6_a")))
+    write (u, "(1x,A,I0)")  "n_components(proclibs6_a) = ", &
+         lib%get_n_components (var_str ("proclibs6_a"))
+    write (u, "(1x,A)", advance="no")  "components(proclibs6_a)   ="
+    call lib%get_component_list (var_str ("proclibs6_a"), name_list)
+    do i = 1, size (name_list)
+       write (u, "(1x,A)", advance="no")  char (name_list(i))
+    end do
+    write (u, *)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Constants of proclibs6_a_i1:"
+    write (u, "(A)")
+
+    call lib%connect_process (var_str ("proclibs6_a"), 1, data, proc_driver)
+
+    write (u, "(1x,A,A)")  "component ID     = ", char (data%id)
+    write (u, "(1x,A,A)")  "model name       = ", char (data%model_name)
+    write (u, "(1x,A,A,A)")  "md5sum           = '", data%md5sum, "'"
+    write (u, "(1x,A,L1)") "openmp supported = ", data%openmp_supported
+    write (u, "(1x,A,I0)") "n_in  = ", data%n_in
+    write (u, "(1x,A,I0)") "n_out = ", data%n_out
+    write (u, "(1x,A,I0)") "n_flv = ", data%n_flv
+    write (u, "(1x,A,I0)") "n_hel = ", data%n_hel
+    write (u, "(1x,A,I0)") "n_col = ", data%n_col
+    write (u, "(1x,A,I0)") "n_cin = ", data%n_cin
+    write (u, "(1x,A,I0)") "n_cf  = ", data%n_cf
+    write (u, "(1x,A,10(1x,I0))") "flv state =", data%flv_state
+    write (u, "(1x,A,10(1x,I0))") "hel state =", data%hel_state
+    write (u, "(1x,A,10(1x,I0))") "col state =", data%col_state
+    write (u, "(1x,A,10(1x,L1))") "ghost flag =", data%ghost_flag
+    write (u, "(1x,A,10(1x,F5.3))") "color factors =", data%color_factors
+    write (u, "(1x,A,10(1x,I0))") "cf index =", data%cf_index
+       
+    write (u, "(A)")
+    write (u, "(A)")  "* Call feature of proclibs6_a:"
+    write (u, "(A)")
+
+    select type (proc_driver)
+    type is (prctest_6_t)
+       call proc_driver%proc1 (n)
+       write (u, "(1x,A,I0)") "proc1 = ", n
+    end select
+
+    call lib%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: process_libraries_6"
+  end subroutine process_libraries_6
+  
+  subroutine process_libraries_7 (u)
+    integer, intent(in) :: u
+    type(prc_template_t), dimension(:), allocatable :: process_core_templates
+    type(process_def_entry_t) :: entry
+    class(prc_core_def_t), allocatable :: test_def
+
+    write (u, "(A)")  "* Test output: process_libraries_7"
+    write (u, "(A)")  "* Purpose: Construct a process definition list &
+         &and check MD5 sums"
+    write (u, "(A)")
+    write (u, "(A)")  "* Construct a process definition list"
+    write (u, "(A)")  "*   Process: two components"
+    write (u, "(A)")
+
+    allocate (process_core_templates (1))
+    allocate (prcdef_2_t :: process_core_templates(1)%core_def)
+    
+    call entry%init (var_str ("first"), model_name = var_str ("Test"), &
+         n_in = 1, n_components = 2)
+    allocate (prcdef_2_t :: test_def)
+    select type (test_def)
+    type is (prcdef_2_t);  test_def%data = 31
+    end select
+    call entry%import_component (1, n_out = 3, &
+         prt_in  = new_prt_spec ([var_str ("a")]), &
+         prt_out = new_prt_spec ([var_str ("b"), var_str ("c"), &
+                                  var_str ("e")]), &
+         method  = var_str ("test"), &
+         variant = test_def)
+    allocate (prcdef_2_t :: test_def)
+    select type (test_def)
+    type is (prcdef_2_t);  test_def%data = 42
+    end select
+    call entry%import_component (2, n_out = 2, &
+         prt_in  = new_prt_spec ([var_str ("a")]), &
+         prt_out = new_prt_spec ([var_str ("b"), var_str ("c")]), &
+         method  = var_str ("test"), &
+         variant = test_def)
+    call entry%write (u)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Compute MD5 sums"
+    write (u, "(A)")
+
+    call entry%compute_md5sum ()
+    call entry%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Recalculate MD5 sums (should be identical)"
+    write (u, "(A)")
+
+    call entry%compute_md5sum ()
+    call entry%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Modify a component and recalculate MD5 sums"
+    write (u, "(A)")
+
+    select type (test_def => entry%initial(2)%core_def)
+    type is (prcdef_2_t)
+       test_def%data = 54
+    end select
+    call entry%compute_md5sum ()
+    call entry%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Modify the model and recalculate MD5 sums"
+    write (u, "(A)")
+
+    entry%model_name = "foo"
+    call entry%compute_md5sum ()
+    call entry%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: process_libraries_7"
+  end subroutine process_libraries_7
+  
+  subroutine process_libraries_8 (u)
+    integer, intent(in) :: u
+    type(process_library_t) :: lib
+    type(process_def_entry_t), pointer :: entry
+    class(prc_core_def_t), allocatable :: core_def
+    type(os_data_t) :: os_data
+
+    write (u, "(A)")  "* Test output: process_libraries_8"
+    write (u, "(A)")  "* Purpose: build and load a process library"
+    write (u, "(A)")  "*          with an external (pseudo) matrix element"
+    write (u, "(A)")  "*          Check status updates"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Initialize a process library with one entry"
+    write (u, "(A)")
+    call lib%init (var_str ("proclibs8"))
+    call os_data_init (os_data)
+
+    allocate (prcdef_6_t :: core_def)
+    select type (core_def)
+    type is (prcdef_6_t)
+       call core_def%init ()
+    end select
+
+    allocate (entry)
+    call entry%init (var_str ("proclibs8_a"), &
+         model_name = var_str ("Test_model"), &
+         n_in = 1, n_components = 1)
+    call entry%import_component (1, n_out = 2, &
+         prt_in  = new_prt_spec ([var_str ("a")]), &
+         prt_out = new_prt_spec ([var_str ("b"), var_str ("c")]), &
+         method  = var_str ("test"), &
+         variant = core_def)
+    call lib%append (entry)
+
+    write (u, "(A)")  "* Configure library"
+    write (u, "(A)")
+
+    call lib%configure ()
+    call lib%compute_md5sum ()
+    
+    associate (def => lib%entry(1)%def%initial(1))
+      select type (writer => lib%driver%record(1)%writer)
+      type is (test_writer_4_t)
+         writer%md5sum = def%md5sum
+      end select
+    end associate
+
+    write (u, "(1x,A,L1)")  "library loaded = ", lib%driver%loaded
+    write (u, "(1x,A,I0)")  "lib status   = ", lib%status
+    write (u, "(1x,A,I0)")  "proc1 status = ", lib%entry(1)%status
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Write makefile"
+    write (u, "(A)")
+    call lib%write_makefile (os_data, force = .true.)
+    
+    write (u, "(A)")  "* Update status"
+    write (u, "(A)")
+    
+    call lib%update_status (os_data)
+    write (u, "(1x,A,L1)")  "library loaded = ", lib%driver%loaded
+    write (u, "(1x,A,I0)")  "lib status   = ", lib%status
+    write (u, "(1x,A,I0)")  "proc1 status = ", lib%entry(1)%status
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Write driver source code"
+    write (u, "(A)")
+    call lib%write_driver (force = .false.)
+
+    write (u, "(A)")  "* Write process source code"
+    write (u, "(A)")
+    call lib%make_source (os_data)
+
+    write (u, "(1x,A,L1)")  "library loaded = ", lib%driver%loaded
+    write (u, "(1x,A,I0)")  "lib status   = ", lib%status
+    write (u, "(1x,A,I0)")  "proc1 status = ", lib%entry(1)%status
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Compile and load"
+    write (u, "(A)")
+
+    call lib%load (os_data)
+    write (u, "(1x,A,L1)")  "library loaded = ", lib%driver%loaded
+    write (u, "(1x,A,I0)")  "lib status   = ", lib%status
+    write (u, "(1x,A,I0)")  "proc1 status = ", lib%entry(1)%status
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Append process and reconfigure"
+    write (u, "(A)")
+    
+    allocate (prcdef_6_t :: core_def)
+    select type (core_def)
+    type is (prcdef_6_t)
+       call core_def%init ()
+    end select
+
+    allocate (entry)
+    call entry%init (var_str ("proclibs8_b"), &
+         model_name = var_str ("Test_model"), &
+         n_in = 1, n_components = 1)
+    call entry%import_component (1, n_out = 2, &
+         prt_in  = new_prt_spec ([var_str ("a")]), &
+         prt_out = new_prt_spec ([var_str ("b"), var_str ("d")]), &
+         method  = var_str ("test"), &
+         variant = core_def)
+    call lib%append (entry)
+
+    call lib%configure ()
+    call lib%compute_md5sum ()
+    associate (def => lib%entry(2)%def%initial(1))
+      select type (writer => lib%driver%record(2)%writer)
+      type is (test_writer_4_t)
+         writer%md5sum = def%md5sum
+      end select
+    end associate
+    call lib%write_makefile (os_data, force = .false.)
+    call lib%write_driver (force = .false.)
+
+    write (u, "(1x,A,L1)")  "library loaded = ", lib%driver%loaded
+    write (u, "(1x,A,I0)")  "lib status   = ", lib%status
+    write (u, "(1x,A,I0)")  "proc1 status = ", lib%entry(1)%status
+    write (u, "(1x,A,I0)")  "proc2 status = ", lib%entry(2)%status
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Update status"
+    write (u, "(A)")
+    
+    call lib%update_status (os_data)
+    write (u, "(1x,A,L1)")  "library loaded = ", lib%driver%loaded
+    write (u, "(1x,A,I0)")  "lib status   = ", lib%status
+    write (u, "(1x,A,I0)")  "proc1 status = ", lib%entry(1)%status
+    write (u, "(1x,A,I0)")  "proc2 status = ", lib%entry(2)%status
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Write source code"
+    write (u, "(A)")
+    
+    call lib%make_source (os_data)
+    write (u, "(1x,A,L1)")  "library loaded = ", lib%driver%loaded
+    write (u, "(1x,A,I0)")  "lib status   = ", lib%status
+    write (u, "(1x,A,I0)")  "proc1 status = ", lib%entry(1)%status
+    write (u, "(1x,A,I0)")  "proc2 status = ", lib%entry(2)%status
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Reset status"
+    write (u, "(A)")
+    
+    lib%status = STAT_CONFIGURED
+    lib%entry%status = STAT_CONFIGURED
+    write (u, "(1x,A,L1)")  "library loaded = ", lib%driver%loaded
+    write (u, "(1x,A,I0)")  "lib status   = ", lib%status
+    write (u, "(1x,A,I0)")  "proc1 status = ", lib%entry(1)%status
+    write (u, "(1x,A,I0)")  "proc2 status = ", lib%entry(2)%status
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Update status"
+    write (u, "(A)")
+    
+    call lib%update_status (os_data)
+    write (u, "(1x,A,L1)")  "library loaded = ", lib%driver%loaded
+    write (u, "(1x,A,I0)")  "lib status   = ", lib%status
+    write (u, "(1x,A,I0)")  "proc1 status = ", lib%entry(1)%status
+    write (u, "(1x,A,I0)")  "proc2 status = ", lib%entry(2)%status
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Partial cleanup"
+    write (u, "(A)")
+
+    call lib%clean (os_data, distclean = .false.)
+    write (u, "(1x,A,L1)")  "library loaded = ", lib%driver%loaded
+    write (u, "(1x,A,I0)")  "lib status   = ", lib%status
+    write (u, "(1x,A,I0)")  "proc1 status = ", lib%entry(1)%status
+    write (u, "(1x,A,I0)")  "proc2 status = ", lib%entry(2)%status
+    
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Update status"
+    write (u, "(A)")
+    
+    call lib%update_status (os_data)
+    write (u, "(1x,A,L1)")  "library loaded = ", lib%driver%loaded
+    write (u, "(1x,A,I0)")  "lib status   = ", lib%status
+    write (u, "(1x,A,I0)")  "proc1 status = ", lib%entry(1)%status
+    write (u, "(1x,A,I0)")  "proc2 status = ", lib%entry(2)%status
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Complete cleanup"
+
+    call lib%clean (os_data, distclean = .true.)
+    call lib%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: process_libraries_8"
+  end subroutine process_libraries_8
+  
 
 end module process_libraries

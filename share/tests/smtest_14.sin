@@ -1,0 +1,22 @@
+# $Id: smtest_14.sin 4873 2013-11-26 19:52:40Z jr_reuter $
+# SINDARIN input for WHIZARD self-test
+# Test minimum number of iterations
+
+?logging = true
+?openmp_logging = false
+?vis_history = false
+?integration_timer = false
+?pacify = true
+
+seed = 0
+
+me = 0
+
+process smtest_14_1 = e1, E1 => e2, E2
+
+sqrts = 200 GeV
+!!! Tests should be run single-threaded 
+openmp_num_threads = 1
+
+### Explicitly setting a too low number of iterations
+integrate (smtest_14_1) { iterations = 1:1:"" }

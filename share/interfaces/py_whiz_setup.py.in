@@ -1,0 +1,12 @@
+from distutils.core import setup, Extension
+
+pywhizard = Extension('pywhizard',
+                    extra_objects = ['@BUILDDIR@/src/.libs/libwhizard.@SHRLIB_EXT@', '@BUILDDIR@/src/prebuilt/.libs/libwhizard_prebuilt.@SHRLIB_EXT@'],
+                    libraries = ['whizard', 'whizard_prebuilt'],
+                    library_dirs = ['@BUILDDIR@/src/.libs','@BUILDDIR@/src/prebuilt/.libs'],
+                    sources = ['py_whizard.c'])
+
+setup (name = 'pywhizard',
+       version = '0.02',
+       description = 'This is the PyWhizard package.',
+       ext_modules = [pywhizard])

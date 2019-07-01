@@ -1,11 +1,13 @@
-! WHIZARD 2.1.1 September 18 2012
+! WHIZARD 2.2.0 May 18 2014
 ! 
-! Copyright (C) 1999-2012 by 
+! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
-!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
+!     
+!     with contributions from
+!     Christian Speckner <cnspeckn@googlemail.com> 
+!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -31,8 +33,9 @@ module md5
   use file_utils !NODEP!
   use diagnostics !NODEP!
   use bytes
-  use limits, only: LF, EOR, EOF !NODEP!
-
+  use limits, only: BUFFER_SIZE, LF, EOR, EOF !NODEP!
+  use unit_tests
+  
   implicit none
   private
 
@@ -248,28 +251,28 @@ contains
     end do
   end subroutine message_append_i32
 
-!   subroutine message_append_from_unit (m, u, iostat)
-!     type(message_t), intent(inout) :: m
-!     integer, intent(in) :: u
-!     integer, intent(out) :: iostat
-!     character(len=BUFFER_SIZE) :: buffer
-!     read (u, *, iostat=iostat) buffer
-!     call message_append_string (m, trim (buffer))
-!     call message_append_string (m, LF)
-!   end subroutine message_append_from_unit
+  subroutine message_append_from_unit (m, u, iostat)
+    type(message_t), intent(inout) :: m
+    integer, intent(in) :: u
+    integer, intent(out) :: iostat
+    character(len=BUFFER_SIZE) :: buffer
+    read (u, *, iostat=iostat) buffer
+    call message_append_string (m, trim (buffer))
+    call message_append_string (m, LF)
+  end subroutine message_append_from_unit
  
-!   subroutine message_read_from_file (m, f)
-!     type(message_t), intent(inout) :: m
-!     character(len=*), intent(in) :: f
-!     integer :: u, iostat
-!     u = free_unit ()
-!     open (file=f, unit=u, action='read')
-!     do
-!        call message_append_from_unit (m, u, iostat=iostat)
-!        if (iostat < 0) exit
-!     end do
-!     close (u)
-!   end subroutine message_read_from_file
+  subroutine message_read_from_file (m, f)
+    type(message_t), intent(inout) :: m
+    character(len=*), intent(in) :: f
+    integer :: u, iostat
+    u = free_unit ()
+    open (file=f, unit=u, action='read')
+    do
+       call message_append_from_unit (m, u, iostat=iostat)
+       if (iostat < 0) exit
+    end do
+    close (u)
+  end subroutine message_read_from_file
 
   subroutine message_write_unit (m, unit, bytes, decimal)
     type(message_t), intent(in) :: m
@@ -439,7 +442,7 @@ contains
        d = d + dd
        bl => bl%next
     end do
-    s = digest_string ((/a, b, c, d/))
+    s = digest_string ([a, b, c, d])
   contains
     subroutine transform (f, a, b, c, d, k, s, i)
       interface
@@ -492,7 +495,17 @@ contains
     call message_clear (m)
   end function md5sum_from_unit
 
-  subroutine md5_test
+  subroutine md5_test (u, results)
+    integer, intent(in) :: u
+    type(test_results_t), intent(inout) :: results
+    call test (md5_1, "md5_1", &
+         "check MD5 sums", &
+         u, results)  
+  end subroutine md5_test
+  
+
+  subroutine md5_1 (u)
+    integer, intent(in) :: u
     character(32) :: s
     integer, parameter :: n = 7
     integer :: i
@@ -512,19 +525,25 @@ contains
     data result(5) /"C3FCD3D76192E4007DFB496CCA67E13B"/
     data result(6) /"D174AB98D277D9F5A5611C2C9F419D9F"/
     data result(7) /"57EDF4A22BE3C955AC49DA2E2107B67A"/
+    
+    write (u, "(A)")  "* Test output: MD5"
+    write (u, "(A)")  "*   Purpose: test MD5 sums"
+    write (u, "(A)")        
+        
     do i = 1, n
-       call msg_message ("string = " // '"'// trim (teststring(i)) // '"')
+       write (u, "(A)") "MD5 test string = " // '"'// &
+            trim (teststring(i)) // '"'
        s = md5sum (trim (teststring(i)))
-       call msg_message ("md5sum = " // trim (s))
+       write (u, "(A)") "MD5 check sum   = " // trim (s)
+       write (u, "(A)") "Ref check sum   = " // result(i)
        if (s == result(i)) then
-          call msg_message ("-> ok")
+          call msg_message ("=> ok", u)
        else
-          call msg_message ("expect = " // trim (result(i)))
-          call msg_bug (" MD5 sum self-test failed")
+          call msg_message ("=> MD5 sum self-test failed", u)
        end if
     end do
-    call msg_message ("MD5 sum self-test successful.")
-  end subroutine md5_test
+    call msg_message ("=============================================================================|", unit=u)
+  end subroutine md5_1
 
 
 end module md5

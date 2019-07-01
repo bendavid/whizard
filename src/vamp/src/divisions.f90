@@ -17,7 +17,7 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! This version of the source code of vamp has no comments and
 ! can be hard to understand, modify, and improve.  You should have
-! received a copy of the literate noweb sources of vamp that
+! received a copy of the literate `noweb' sources of vamp that
 ! contain the documentation in full detail.
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 module divisions
@@ -28,27 +28,6 @@ module divisions
   use iso_fortran_env
   implicit none
   private
-  private :: create_division_s, create_division_v
-  private :: create_empty_division_s, create_empty_division_v
-  private :: copy_division_s, copy_division_v, copy_division_a
-  private :: set_rigid_division_s, set_rigid_division_v
-  private :: reshape_division_s, reshape_division_v
-  private :: delete_division_s, delete_division_v
-  private :: inject_division_s, inject_division_v
-  private :: inject_division_short_s, inject_division_short_v
-  private :: record_integral_s, record_integral_v
-  private :: record_variance_s, record_variance_v
-  private :: clear_integral_and_variance_s, clear_integral_and_variance_v
-  private :: refine_division_s, refine_division_v
-  private :: probability_s, probability_v
-  private :: inside_division_s, inside_division_v
-  private :: stratified_division_s, stratified_division_v
-  private :: volume_division_s, volume_division_v
-  private :: rigid_division_s, rigid_division_v
-  private :: adaptive_division_s, adaptive_division_v
-  private :: quadrupole_division_s, quadrupole_division_v
-  private :: copy_history_s, copy_history_v
-  private :: summarize_division_s, summarize_division_v
   public :: create_division, create_empty_division
   public :: copy_division, delete_division
   public :: set_rigid_division, reshape_division
@@ -81,69 +60,6 @@ module divisions
   private :: read_division_raw_unit, read_division_raw_name
   public :: marshal_division_size, marshal_division, unmarshal_division
   public :: marshal_div_history_size, marshal_div_history, unmarshal_div_history
-  interface create_division
-     module procedure create_division_s, create_division_v
-  end interface
-  interface create_empty_division
-     module procedure create_empty_division_s, create_empty_division_v
-  end interface
-  interface copy_division
-     module procedure copy_division_s, copy_division_v, copy_division_a
-  end interface
-  interface set_rigid_division
-     module procedure set_rigid_division_s, set_rigid_division_v
-  end interface
-  interface reshape_division
-     module procedure reshape_division_s, reshape_division_v
-  end interface
-  interface delete_division
-     module procedure delete_division_s, delete_division_v
-  end interface
-  interface inject_division
-     module procedure inject_division_s, inject_division_v
-  end interface
-  interface inject_division_short
-     module procedure inject_division_short_s, inject_division_short_v
-  end interface
-  interface record_integral
-     module procedure record_integral_s, record_integral_v
-  end interface
-  interface record_variance
-     module procedure record_variance_s, record_variance_v
-  end interface
-  interface clear_integral_and_variance
-     module procedure clear_integral_and_variance_s, clear_integral_and_variance_v
-  end interface
-  interface refine_division
-     module procedure refine_division_s, refine_division_v
-  end interface
-  interface probability
-     module procedure probability_s, probability_v
-  end interface
-  interface inside_division
-     module procedure inside_division_s, inside_division_v
-  end interface
-  interface stratified_division
-     module procedure stratified_division_s, stratified_division_v
-  end interface
-  interface volume_division
-     module procedure volume_division_s, volume_division_v
-  end interface
-  interface rigid_division
-     module procedure rigid_division_s, rigid_division_v
-  end interface
-  interface adaptive_division
-     module procedure adaptive_division_s, adaptive_division_v
-  end interface
-  interface quadrupole_division
-     module procedure quadrupole_division_s, quadrupole_division_v
-  end interface
-  interface copy_history
-     module procedure copy_history_s, copy_history_v
-  end interface
-  interface summarize_division
-     module procedure summarize_division_s, summarize_division_v
-  end interface
   interface write_division
      module procedure write_division_unit, write_division_name
   end interface
@@ -193,200 +109,7 @@ module divisions
   character(len=*), public, parameter :: DIVISIONS_RCS_ID = &
        "$Id: divisions.nw 314 2010-04-17 20:32:33Z ohl $"
 contains
-     subroutine create_division_v (d, x_min, x_max, x_min_true, x_max_true)
-    type(division_t), dimension(:), intent(out) :: d
-    real(kind=default), dimension(:), intent(in) :: x_min, x_max
-    real(kind=default), dimension(:), intent(in), optional :: &
-         x_min_true, x_max_true
-    integer :: j
-    do j = 1, size (d)
-       if (present (x_min_true) .and. present (x_max_true)) then
-          call create_division_s &
-               (d(j), x_min(j), x_max(j), x_min_true(j), x_max_true(j))
-       else
-          call create_division_s (d(j), x_min(j), x_max(j))
-       end if
-    end do
-  end subroutine create_division_v
-   subroutine create_empty_division_v (d)
-    type(division_t), dimension(:), intent(out) :: d
-    integer :: j
-    do j = 1, size (d)
-       call create_empty_division_s (d(j))
-    end do
-  end subroutine create_empty_division_v
-   subroutine copy_division_v (lhs, rhs)
-    type(division_t), dimension(:), intent(inout) :: lhs
-    type(division_t), dimension(:), intent(in) :: rhs
-    integer :: j
-    do j = 1, size(lhs)
-       call copy_division_s (lhs(j), rhs(j))
-    end do
-  end subroutine copy_division_v
-   subroutine copy_division_a (lhs, rhs)
-    type(division_t), dimension(:), intent(inout) :: lhs
-    type(division_t), intent(in) :: rhs
-    integer :: j
-    do j = 1, size(lhs)
-       call copy_division_s (lhs(j), rhs)
-    end do
-  end subroutine copy_division_a
-   subroutine set_rigid_division_v (d, ng)
-    type(division_t), dimension(:), intent(inout) :: d
-    integer, dimension(:), intent(in) :: ng
-    integer :: j
-    do j = 1, size(d)
-       call set_rigid_division_s (d(j), ng(j))
-    end do
-  end subroutine set_rigid_division_v
-   subroutine reshape_division_v (d, max_num_div, ng, use_variance)
-    type(division_t), dimension(:), intent(inout) :: d
-    integer, dimension(:), intent(in) :: max_num_div
-    integer, dimension(:), intent(in), optional :: ng
-    logical, intent(in), optional :: use_variance
-    integer :: j
-    do j = 1, size(d)
-       call reshape_division_s (d(j), max_num_div(j), ng(j), use_variance)
-    end do
-  end subroutine reshape_division_v
-   subroutine delete_division_v (d)
-    type(division_t), dimension(:), intent(inout) :: d
-    integer :: j
-    do j = 1, size(d)
-       call delete_division_s (d(j))
-    end do
-  end subroutine delete_division_v
-   subroutine inject_division_v (d, r, cell, x, x_mid, idx, wgt)
-    type(division_t), dimension(:), intent(in) :: d
-    real(kind=default), dimension(:), intent(in) :: r
-    integer, dimension(:), intent(in) :: cell
-    real(kind=default), dimension(:), intent(out) :: x, x_mid
-    integer, dimension(:), intent(out) :: idx
-    real(kind=default), dimension(:), intent(out) :: wgt
-    integer :: j
-    do j = 1, size (d)
-       call inject_division_s (d(j), r(j), cell(j), x(j), &
-                                    x_mid(j), idx(j), wgt(j))
-    end do
-  end subroutine inject_division_v
-   subroutine inject_division_short_v (d, r, x, idx, wgt)
-    type(division_t), dimension(:), intent(in) :: d
-    real(kind=default), dimension(:), intent(in) :: r
-    real(kind=default), dimension(:), intent(out) :: x
-    integer, dimension(:), intent(out) :: idx
-    real(kind=default), dimension(:), intent(out) :: wgt
-    integer :: j
-    do j = 1, size (d)
-       call inject_division_short_s (d(j), r(j), x(j), idx(j), wgt(j))
-    end do
-  end subroutine inject_division_short_v
-   subroutine record_integral_v (d, i, f)
-    type(division_t), dimension(:), intent(inout) :: d
-    integer, dimension(:), intent(in) :: i
-    real(kind=default), intent(in) :: f
-    integer :: j
-    do j = 1, size (d)
-       call record_integral_s (d(j), i(j), f)
-    end do
-  end subroutine record_integral_v
-   subroutine record_variance_v (d, i, var_f)
-    type(division_t), dimension(:), intent(inout) :: d
-    integer, dimension(:), intent(in) :: i
-    real(kind=default), intent(in) :: var_f
-    integer :: j
-    do j = 1, size (d)
-       call record_variance_s (d(j), i(j), var_f)
-    end do
-  end subroutine record_variance_v
-   subroutine clear_integral_and_variance_v (d)
-    type(division_t), dimension(:), intent(inout) :: d
-    integer :: j
-    do j = 1, size (d)
-       call clear_integral_and_variance_s (d(j))
-    end do
-  end subroutine clear_integral_and_variance_v
-   subroutine refine_division_v (d)
-    type(division_t), dimension(:), intent(inout) :: d
-    integer :: j
-    do j = 1, size (d)
-       call refine_division_s (d(j))
-    end do
-  end subroutine refine_division_v
-   function probability_v (d, xi) result (p)
-    type(division_t), dimension(:), intent(in) :: d
-    real(kind=default), dimension(:), intent(in) :: xi
-    real(kind=default), dimension(size(d)) :: p
-    integer :: j
-    do j = 1, size (d)
-       p(j) = probability_s (d(j), xi(j))
-    end do
-  end function probability_v
-   function inside_division_v (d, x) result (theta)
-    type(division_t), dimension(:), intent(in) :: d
-    real(kind=default), dimension(:), intent(in) :: x
-    logical, dimension(size(d)) :: theta
-    integer :: j
-    do j = 1, size (d)
-       theta(j) = inside_division_s (d(j), x(j))
-    end do
-  end function inside_division_v
-   function stratified_division_v (d) result (yorn)
-    type(division_t), dimension(:), intent(in) :: d
-    logical, dimension(size(d)) :: yorn
-    integer :: j
-    do j = 1, size (d)
-       yorn(j) = stratified_division_s (d(j))
-    end do
-  end function stratified_division_v
-   function volume_division_v (d) result (vol)
-    type(division_t), dimension(:), intent(in) :: d
-    real(kind=default), dimension(size(d)) :: vol
-    integer :: j
-    do j = 1, size(d)
-       vol(j) = volume_division_s (d(j))
-    end do
-  end function volume_division_v
-   function rigid_division_v (d) result (n)
-    type(division_t), dimension(:), intent(in) :: d
-    integer, dimension(size(d)) :: n
-    integer :: j
-    do j = 1, size(d)
-       n(j) = rigid_division_s (d(j))
-    end do
-  end function rigid_division_v
-   function adaptive_division_v (d) result (n)
-    type(division_t), dimension(:), intent(in) :: d
-    integer, dimension(size(d)) :: n
-    integer :: j
-    do j = 1, size(d)
-       n(j) = adaptive_division_s (d(j))
-    end do
-  end function adaptive_division_v
-   function quadrupole_division_v (d) result (q)
-    type(division_t), dimension(:), intent(in) :: d
-    real(kind=default), dimension(size(d)) :: q
-    integer :: j
-    do j = 1, size (d)
-       q(j) = quadrupole_division_s (d(j))
-    end do
-  end function quadrupole_division_v
-   subroutine copy_history_v (lhs, rhs)
-    type(div_history), dimension(:), intent(inout) :: lhs
-    type(div_history), dimension(:), intent(in) :: rhs
-    integer :: j
-    do j = 1, size (rhs)
-       call copy_history_s (lhs(j), rhs(j))
-    end do
-  end subroutine copy_history_v
-   function summarize_division_v (d) result (s)
-    type(division_t), dimension(:), intent(in) :: d
-    type(div_history), dimension(size(d))  :: s
-    integer :: j
-    do j = 1, size (d)
-       s(j) = summarize_division_s (d(j))
-    end do
-  end function summarize_division_v
-     subroutine create_division_s &
+  elemental subroutine create_division &
        (d, x_min, x_max, x_min_true, x_max_true)
     type(division_t), intent(out) :: d
     real(kind=default), intent(in) :: x_min, x_max
@@ -411,23 +134,23 @@ contains
     else
        d%x_max_true = x_max
     end if
-  end subroutine create_division_s
+  end subroutine create_division
 
-   subroutine create_empty_division_s (d)
+  elemental subroutine create_empty_division (d)
     type(division_t), intent(out) :: d
     nullify (d%x, d%integral, d%variance)
   ! nullify (d%efficiency)
-  end subroutine create_empty_division_s
+  end subroutine create_empty_division
 
-   subroutine set_rigid_division_s (d, ng)
+  elemental subroutine set_rigid_division (d, ng)
     type(division_t), intent(inout) :: d
     integer, intent(in) :: ng
     d%stratified = ng > 1
     d%ng = ng
     d%dxg = real (ubound (d%x, dim=1), kind=default) / d%ng
-  end subroutine set_rigid_division_s
+  end subroutine set_rigid_division
 
-   subroutine reshape_division_s (d, max_num_div, ng, use_variance)
+  elemental subroutine reshape_division (d, max_num_div, ng, use_variance)
     type(division_t), intent(inout) :: d
     integer, intent(in) :: max_num_div
     integer, intent(in), optional :: ng
@@ -488,9 +211,9 @@ contains
     end if
     d%x = rebin (m, old_x, num_div)
     deallocate (old_x, m)
-  end subroutine reshape_division_s
+  end subroutine reshape_division
 
-   subroutine inject_division_s (d, r, cell, x, x_mid, idx, wgt)
+  elemental subroutine inject_division (d, r, cell, x, x_mid, idx, wgt)
     type(division_t), intent(in) :: d
     real(kind=default), intent(in) :: r
     integer, intent(in) :: cell
@@ -506,9 +229,9 @@ contains
     wgt = delta_x * ubound (d%x, dim=1)
     idx = i
     x_mid = d%x_min + 0.5 * (d%x(i-1) + d%x(i)) * d%dx
-  end subroutine inject_division_s
+  end subroutine inject_division
 
-   subroutine inject_division_short_s (d, r, x, idx, wgt)
+  elemental subroutine inject_division_short (d, r, x, idx, wgt)
     type(division_t), intent(in) :: d
     real(kind=default), intent(in) :: r
     integer, intent(out) :: idx
@@ -521,9 +244,9 @@ contains
     x = d%x_min + (d%x(i-1) + (xi - i) * delta_x) * d%dx
     wgt = delta_x * ubound (d%x, dim=1)
     idx = i
-  end subroutine inject_division_short_s
+  end subroutine inject_division_short
 
-   subroutine record_integral_s (d, i, f)
+  elemental subroutine record_integral (d, i, f)
     type(division_t), intent(inout) :: d
     integer, intent(in) :: i
     real(kind=default), intent(in) :: f
@@ -531,29 +254,29 @@ contains
     if (.not. d%stratified) then 
        d%variance(i) = d%variance(i) + f*f
     end if
-  end subroutine record_integral_s
+  end subroutine record_integral
 
-   subroutine record_variance_s (d, i, var_f)
+  elemental subroutine record_variance (d, i, var_f)
     type(division_t), intent(inout) :: d
     integer, intent(in) :: i
     real(kind=default), intent(in) :: var_f
     if (d%stratified) then 
        d%variance(i) = d%variance(i) + var_f
     end if
-  end subroutine record_variance_s
+  end subroutine record_variance
 
-   subroutine clear_integral_and_variance_s (d)
+  elemental subroutine clear_integral_and_variance (d)
     type(division_t), intent(inout) :: d
     d%integral = 0.0
     d%variance = 0.0
   ! d%efficiency = 0.0
-  end subroutine clear_integral_and_variance_s
-   subroutine refine_division_s (d)
+  end subroutine clear_integral_and_variance
+  elemental subroutine refine_division (d)
     type(division_t), intent(inout) :: d
-    character(len=*), parameter :: FN = "refine_division_s"
+    character(len=*), parameter :: FN = "refine_division"
     d%x = rebin (rebinning_weights (d%variance), d%x, size (d%variance))
-  end subroutine refine_division_s
-   function rebinning_weights (d) result (m)
+  end subroutine refine_division
+  pure function rebinning_weights (d) result (m)
     real(kind=default), dimension(:), intent(in) :: d
     real(kind=default), dimension(size(d)) :: m
     real(kind=default), dimension(size(d)) :: smooth_d
@@ -585,7 +308,7 @@ contains
        endwhere
     end if
   end function rebinning_weights
-   function rebin (m, x, num_div) result (x_new)
+  pure function rebin (m, x, num_div) result (x_new)
     real(kind=default), dimension(:), intent(in) :: m
     real(kind=default), dimension(0:), intent(in) :: x
     integer, intent(in) :: num_div
@@ -609,7 +332,7 @@ contains
     end do
     x_new(num_div) = 1.0
   end function rebin
-   function probability_s (d, x) result (p)
+  elemental function probability (d, x) result (p)
     type(division_t), intent(in) :: d
     real(kind=default), intent(in) :: x
     real(kind=default) :: p
@@ -634,14 +357,14 @@ contains
     else
        p = 0
     end if
-  end function probability_s
-   function quadrupole_division_s (d) result (q)
+  end function probability
+  elemental function quadrupole_division (d) result (q)
     type(division_t), intent(in) :: d
     real(kind=default) :: q
     !!!   q = value_spread_percent (rebinning_weights (d%variance))
     q = standard_deviation_percent (rebinning_weights (d%variance))
-  end function quadrupole_division_s
-   subroutine fork_division (d, ds, sum_calls, num_calls, exc)
+  end function quadrupole_division
+  pure subroutine fork_division (d, ds, sum_calls, num_calls, exc)
     type(division_t), intent(in) :: d
     type(division_t), dimension(:), intent(inout) :: ds
     integer, intent(in) :: sum_calls
@@ -683,7 +406,7 @@ contains
           ds%x_max_true = d%x_max_true
           ds%stratified = d%stratified
           ds%ng = (d%ng * (n1 - n0)) / num_div
-          num_calls = sum_calls !: this is a misnomer, it remains `calls per cell' here
+          num_calls = sum_calls !: this is a misnomer, it remains ``calls per cell'' here
           ds%dxg = real (n1 - n0, kind=default) / ds%ng
        else
           nx = lcm (d%ng / gcd (num_forks, d%ng), num_div)
@@ -711,7 +434,7 @@ contains
           ds%x_max_true = d%x_max_true
           ds%stratified = d%stratified
           ds%ng = ds_ng(1:num_forks) - ds_ng(0:num_forks-1)
-          num_calls = sum_calls !: this is a misnomer, it remains `calls per cell' here
+          num_calls = sum_calls !: this is a misnomer, it remains ``calls per cell'' here
           ds%dxg = real (n1 - n0, kind=default) / ds%ng
           deallocate (d_x, d_integral, d_variance)
           ! deallocate (d_efficiency)
@@ -723,7 +446,7 @@ contains
        num_calls = 0
     end if
   end subroutine fork_division
-   subroutine join_division (d, ds, exc)
+  pure subroutine join_division (d, ds, exc)
     type(division_t), intent(inout) :: d
     type(division_t), dimension(:), intent(in) :: ds
     type(exception), intent(inout), optional :: exc
@@ -772,7 +495,7 @@ contains
        end if
     end if
   end subroutine join_division
-   subroutine subdivide (x, x0)
+  pure subroutine subdivide (x, x0)
     real(kind=default), dimension(0:), intent(inout) :: x
     real(kind=default), dimension(0:), intent(in) :: x0
     integer :: i, n, n0
@@ -783,7 +506,7 @@ contains
        x(i::n) = x0(0:n0-1) * real (n - i) / n + x0(1:n0) * real (i) / n
     end do
   end subroutine subdivide
-   subroutine distribute (x, x0)
+  pure subroutine distribute (x, x0)
     real(kind=default), dimension(:), intent(inout) :: x
     real(kind=default), dimension(:), intent(in) :: x0
     integer :: i, n
@@ -792,7 +515,7 @@ contains
        x(i::n) = x0 / n
     end do
   end subroutine distribute
-   subroutine collect (x0, x)
+  pure subroutine collect (x0, x)
     real(kind=default), dimension(:), intent(inout) :: x0
     real(kind=default), dimension(:), intent(in) :: x
     integer :: i, n, n0
@@ -802,7 +525,7 @@ contains
        x0(i) = sum (x((i-1)*n+1:i*n))
     end do
   end subroutine collect
-   subroutine sum_division (d, ds)
+  pure subroutine sum_division (d, ds)
     type(division_t), intent(inout) :: d
     type(division_t), dimension(:), intent(in) :: ds
     integer :: i
@@ -844,33 +567,33 @@ contains
     print "(2(1x,a),100(1x,e10.3))", prefix, ":v: ", d%variance
   ! print "(2(1x,a),100(1x,e10.3))", prefix, ":e: ", d%efficiency
   end subroutine dump_division
-   function inside_division_s (d, x) result (theta)
+  elemental function inside_division (d, x) result (theta)
     type(division_t), intent(in) :: d
     real(kind=default), intent(in) :: x
     logical :: theta
     theta = (x >= d%x_min_true) .and. (x <= d%x_max_true)
-  end function inside_division_s
-   function stratified_division_s (d) result (yorn)
+  end function inside_division
+  elemental function stratified_division (d) result (yorn)
     type(division_t), intent(in) :: d
     logical :: yorn
     yorn = d%stratified
-  end function stratified_division_s
-   function volume_division_s (d) result (vol)
+  end function stratified_division
+  elemental function volume_division (d) result (vol)
     type(division_t), intent(in) :: d
     real(kind=default) :: vol
     vol = d%dx
-  end function volume_division_s
-   function rigid_division_s (d) result (n)
+  end function volume_division
+  elemental function rigid_division (d) result (n)
     type(division_t), intent(in) :: d
     integer :: n
     n = d%ng
-  end function rigid_division_s
-   function adaptive_division_s (d) result (n)
+  end function rigid_division
+  elemental function adaptive_division (d) result (n)
     type(division_t), intent(in) :: d
     integer :: n
     n = ubound (d%x, dim=1)
-  end function adaptive_division_s
-   function summarize_division_s (d) result (s)
+  end function adaptive_division
+  elemental function summarize_division (d) result (s)
     type(division_t), intent(in) :: d
     type(div_history) :: s
     real(kind=default), dimension(:), allocatable :: p, m
@@ -891,8 +614,8 @@ contains
     s%spread_m = value_spread_percent (m)
     s%stddev_m = standard_deviation_percent (m)
     deallocate (p, m)
-  end function summarize_division_s
-   function probabilities (x) result (p)
+  end function summarize_division
+  pure function probabilities (x) result (p)
     real(kind=default), dimension(0:), intent(in) :: x
     real(kind=default), dimension(ubound(x,dim=1)) :: p
     integer :: num_div
@@ -920,12 +643,12 @@ contains
     end if
     if ((minval (h%x_min) == maxval (h%x_min)) &
          .and. (minval (h%x_max) == maxval (h%x_max))) then
-       write (u, "(1X,A11,1X,2X,1X,2(E10.3,A4,E10.3,A7))") pfx, &
+       write (u, "(1X,A11,1X,2X,1X,2(ES10.3,A4,ES10.3,A7))") pfx, &
             h(1)%x_min, " <= ", h(1)%x_min_true, &
             " < x < ", h(1)%x_max_true, " <= ", h(1)%x_max
     else
        do i = 1, size (h)
-          write (u, "(1X,A11,1X,I2,1X,2(E10.3,A4,E10.3,A7))") pfx, &
+          write (u, "(1X,A11,1X,I2,1X,2(ES10.3,A4,ES10.3,A7))") pfx, &
                i, h(i)%x_min, " <= ", h(i)%x_min_true, &
                " < x < ", h(i)%x_max_true, " <= ", h(i)%x_max
        end do
@@ -1147,7 +870,7 @@ contains
     call read_division_unit (d, unit, read_integrals)
     close (unit = unit)
   end subroutine read_division_raw_name
-   subroutine marshal_division (d, ibuf, dbuf)
+  pure subroutine marshal_division (d, ibuf, dbuf)
     type(division_t), intent(in) :: d
     integer, dimension(:), intent(inout) :: ibuf
     real(kind=default), dimension(:), intent(inout) :: dbuf
@@ -1171,14 +894,14 @@ contains
     dbuf(8+2*num_div:7+3*num_div) = d%variance
   ! dbuf(8+3*num_div:7+4*num_div) = d%efficiency
   end subroutine marshal_division
-   subroutine marshal_division_size (d, iwords, dwords)
+  pure subroutine marshal_division_size (d, iwords, dwords)
     type(division_t), intent(in) :: d
     integer, intent(out) :: iwords, dwords
     iwords = 3
     dwords = 7 + 3 * ubound (d%x, dim=1)
   ! dwords = 7 + 4 * ubound (d%x, dim=1)
   end subroutine marshal_division_size
-   subroutine unmarshal_division (d, ibuf, dbuf)
+  pure subroutine unmarshal_division (d, ibuf, dbuf)
     type(division_t), intent(inout) :: d
     integer, dimension(:), intent(in) :: ibuf
     real(kind=default), dimension(:), intent(in) :: dbuf
@@ -1208,7 +931,7 @@ contains
     d%variance = dbuf(8+2*num_div:7+3*num_div)
   ! d%efficiency = dbuf(8+3*num_div:7+4*num_div)
   end subroutine unmarshal_division
-   subroutine marshal_div_history (h, ibuf, dbuf)
+  pure subroutine marshal_div_history (h, ibuf, dbuf)
     type(div_history), intent(in) :: h
     integer, dimension(:), intent(inout) :: ibuf
     real(kind=default), dimension(:), intent(inout) :: dbuf
@@ -1230,13 +953,13 @@ contains
     dbuf(9) = h%spread_m
     dbuf(10) = h%stddev_m
   end subroutine marshal_div_history
-   subroutine marshal_div_history_size (h, iwords, dwords)
+  pure subroutine marshal_div_history_size (h, iwords, dwords)
     type(div_history), intent(in) :: h
     integer, intent(out) :: iwords, dwords
     iwords = 3
     dwords = 10
   end subroutine marshal_div_history_size
-   subroutine unmarshal_div_history (h, ibuf, dbuf)
+  pure subroutine unmarshal_div_history (h, ibuf, dbuf)
     type(div_history), intent(inout) :: h
     integer, dimension(:), intent(in) :: ibuf
     real(kind=default), dimension(:), intent(in) :: dbuf
@@ -1254,7 +977,7 @@ contains
     h%spread_m = dbuf(9)
     h%stddev_m = dbuf(10)
   end subroutine unmarshal_div_history
-   subroutine copy_division_s (lhs, rhs)
+  elemental subroutine copy_division (lhs, rhs)
     type(division_t), intent(inout) :: lhs
     type(division_t), intent(in) :: rhs
     if (associated (rhs%x)) then
@@ -1285,15 +1008,15 @@ contains
     lhs%x_max_true = rhs%x_max_true
     lhs%ng = rhs%ng
     lhs%stratified = rhs%stratified
-  end subroutine copy_division_s
-   subroutine delete_division_s (d)
+  end subroutine copy_division
+  elemental subroutine delete_division (d)
     type(division_t), intent(inout) :: d
     if (associated (d%x)) then
        deallocate (d%x, d%integral, d%variance)
   !    deallocate (d%efficiency)
     end if
-  end subroutine delete_division_s
-   subroutine copy_history_s (lhs, rhs)
+  end subroutine delete_division
+  elemental subroutine copy_history (lhs, rhs)
     type(div_history), intent(out) :: lhs
     type(div_history), intent(in) :: rhs
     lhs%stratified = rhs%stratified
@@ -1309,5 +1032,5 @@ contains
     lhs%stddev_p = rhs%stddev_p
     lhs%spread_m = rhs%spread_m
     lhs%stddev_m = rhs%stddev_m
-  end subroutine copy_history_s
+  end subroutine copy_history
 end module divisions

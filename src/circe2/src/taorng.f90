@@ -3,7 +3,7 @@
 !       Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !       Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !       Juergen Reuter <juergen.reuter@desy.de>
-!       Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+!       Christian Speckner <cnspeckn@googlemail.com>
 !
 !   Taorng is free software; you can redistribute it and/or modify it
 !   under the terms of the GNU General Public License as published by

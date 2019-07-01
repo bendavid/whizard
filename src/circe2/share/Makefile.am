@@ -5,11 +5,12 @@
 ##
 ########################################################################
 #
-# Copyright (C) 1999-2012 by 
+# Copyright (C) 1999-2014 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
-#     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+#     with contributions from 
+#     Christian Speckner <cnspeckn@googlemail.com>
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by 
@@ -35,6 +36,7 @@ SUBDIRS = doc data
 ## Data files needed for running CIRCE2
 datacirce2dir = $(pkgdatadir)/data
 dist_datacirce2_DATA = \
+  data/ilc_ee_500_polavg.circe \
   data/teslage_500.circe \
   data/teslage_500_polavg.circe \
   data/teslagg_200.circe \

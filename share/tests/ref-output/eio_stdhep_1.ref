@@ -1,0 +1,25 @@
+* Test output: eio_stdhep_1
+*   Purpose: generate an event in STDHEP HEPEVT format
+*      and write weight to file
+
+* Initialize test process
+
+* Generate and write an event
+
+ STDHEP event stream:
+   Writing to file   = eio_stdhep_1.stdhep
+   Keep beams        = F
+
+* File contents:
+
+     Successfully read STDHEP HEPEVT file
+
+* Reset data
+
+ STDHEP event stream:
+   [closed]
+   Keep beams        = T
+
+* Cleanup
+
+* Test output end: eio_stdhep_1

@@ -1,15 +1,15 @@
 # Makefile.am -- Makefile for O'Mega within and without WHIZARD
-# $Id: Makefile.am 3670 2012-01-21 19:33:07Z jr_reuter $
+# $Id: Makefile.am 4926 2013-12-04 12:35:06Z jr_reuter $
 ##
 ## Process this file with automake to produce Makefile.in
 ##
 ########################################################################
 #
-# Copyright (C) 1999-2012 by 
+# Copyright (C) 1999-2014 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
-#     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+#     Christian Speckner <cnspeckn@googlemail.com>
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by 
@@ -45,6 +45,9 @@ OCAMLFLAGS += -I $(top_builddir)/src
 
 $(OMEGA_APPLICATIONS_NATIVE): $(OMEGA_CMXA)
 $(OMEGA_APPLICATIONS_BYTECODE): $(OMEGA_CMA)
+
+omegatop: $(OMEGA_CMA)
+	$(OCAMLMKTOP) $(OCAMLFLAGS) -o $@ unix.cma $(OMEGA_CMA)
 
 ########################################################################
 

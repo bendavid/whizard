@@ -1,0 +1,155 @@
+?openmp_logging = false
+?vis_history = false
+?integration_timer = false
+?pacify = true
+seed = 0
+phs_off_shell = 1
+phs_t_channel = 2
+SM.me =  0.0000000E+00
+SM.mmu =  0.0000000E+00
+| Process library 'smtest_13_lib': recorded process 'smtest_13_1'
+| Process library 'smtest_13_lib': recorded process 'smtest_13_2'
+| Process library 'smtest_13_lib': recorded process 'smtest_13_3'
+sqrts =  5.0000000E+02
+openmp_num_threads = 1
+| Integrate: current process library needs compilation
+| Process library 'smtest_13_lib': compiling ...
+| Process library 'smtest_13_lib': writing makefile
+| Process library 'smtest_13_lib': removing old files
+| Process library 'smtest_13_lib': writing driver
+| Process library 'smtest_13_lib': creating source code
+| Process library 'smtest_13_lib': compiling sources
+| Process library 'smtest_13_lib': linking
+| Process library 'smtest_13_lib': loading
+| Process library 'smtest_13_lib': ... success.
+| Integrate: compilation done
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 0
+| Initializing integration for process smtest_13_1:
+| ------------------------------------------------------------------------
+| Process [scattering]: 'smtest_13_1'
+|   Library name  = 'smtest_13_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'smtest_13_1_i1':   e-, e+ => mu-, mu+ [omega]
+| ------------------------------------------------------------------------
+| Beam structure: [any particles]
+| Beam data (collision):
+|   e-  (mass = 0.0000000E+00 GeV)
+|   e+  (mass = 0.0000000E+00 GeV)
+|   sqrts = 5.000000000000E+02 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'smtest_13_1_i1.phs'
+| Phase space: 2 channels, 2 dimensions
+| Phase space: found 2 channels, collected in 2 groves.
+| Phase space: Using 2 equivalences between channels.
+| Phase space: wood
+Warning: No cuts have been defined.
+| Starting integration for process 'smtest_13_1'
+| Integrate: iterations not specified, using default
+| Integrate: iterations = 3:1000:"gw", 3:10000:""
+| Integrator: 2 chains, 2 channels, 2 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 1000 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1        784   4.28382E+02   7.48E-01    0.17    0.05   40.64
+   2        784   4.27354E+02   5.88E-01    0.14    0.04   71.60
+   3        784   4.29024E+02   5.58E-01    0.13    0.04   54.33
+|-----------------------------------------------------------------------------|
+   3       2352   4.28267E+02   3.56E-01    0.08    0.04   54.33    2.14   3
+|-----------------------------------------------------------------------------|
+   4       9936   4.28309E+02   5.63E-02    0.01    0.01   54.12
+   5       9936   4.28287E+02   5.58E-02    0.01    0.01   54.12
+   6       9936   4.28301E+02   5.61E-02    0.01    0.01   54.12
+|-----------------------------------------------------------------------------|
+   6      29808   4.28299E+02   3.24E-02    0.01    0.01   54.12    0.04   3
+|=============================================================================|
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 1
+| Initializing integration for process smtest_13_2:
+| Process component 'smtest_13_2_i1': matrix element vanishes
+| ------------------------------------------------------------------------
+| Process [scattering]: 'smtest_13_2'
+|   Library name  = 'smtest_13_lib'
+|   Process index = 2
+|   Process components: [none]
+| ------------------------------------------------------------------------
+Warning: Process 'smtest_13_2': matrix element vanishes
+Warning: No cuts have been defined.
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1          0  0.0000000E+00  0.00E+00    0.00    0.00*   0.00
+|=============================================================================|
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 2
+| Initializing integration for process smtest_13_3:
+| ------------------------------------------------------------------------
+| Process [scattering]: 'smtest_13_3'
+|   Library name  = 'smtest_13_lib'
+|   Process index = 3
+|   Process components:
+|     1: 'smtest_13_3_i1':   e-, e+ => tau-, tau+ [omega]
+| ------------------------------------------------------------------------
+| Beam structure: [any particles]
+| Beam data (collision):
+|   e-  (mass = 0.0000000E+00 GeV)
+|   e+  (mass = 0.0000000E+00 GeV)
+|   sqrts = 5.000000000000E+02 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'smtest_13_3_i1.phs'
+| Phase space: 2 channels, 2 dimensions
+| Phase space: found 2 channels, collected in 2 groves.
+| Phase space: Using 2 equivalences between channels.
+| Phase space: wood
+Warning: No cuts have been defined.
+| Starting integration for process 'smtest_13_3'
+| Integrate: iterations not specified, using default
+| Integrate: iterations = 3:1000:"gw", 3:10000:""
+| Integrator: 2 chains, 2 channels, 2 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 1000 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1        784   4.28047E+02   7.94E-01    0.19    0.05   40.65
+   2        784   4.29241E+02   5.39E-01    0.13    0.04   72.80
+   3        784   4.28130E+02   6.61E-01    0.15    0.04   67.26
+|-----------------------------------------------------------------------------|
+   3       2352   4.28635E+02   3.70E-01    0.09    0.04   67.26    1.20   3
+|-----------------------------------------------------------------------------|
+   4       9936   4.28339E+02   6.82E-02    0.02    0.02   69.16
+   5       9936   4.28373E+02   6.79E-02    0.02    0.02   69.15
+   6       9936   4.28220E+02   6.84E-02    0.02    0.02   69.12
+|-----------------------------------------------------------------------------|
+   6      29808   4.28311E+02   3.93E-02    0.01    0.02   69.12    1.40   3
+|=============================================================================|
+smtest_13_3:
+   4.2831114E+02 +- 3.93E-02 fb
+smtest_13_2:
+   0.0000000E+00 +- 0.00E+00 fb
+smtest_13_1:
+   4.2829887E+02 +- 3.24E-02 fb
+n_events = 10
+| Starting simulation for processes 'smtest_13_1' etc.
+| Simulate: using integration grids from file 'smtest_13_1_m1.vg'
+| Simulate: using integration grids from file 'smtest_13_3_m1.vg'
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 3
+Warning: Process 'smtest_13_2': matrix element vanishes, no events can be generated.
+| Simulation: requested number of events = 10
+|             corr. to luminosity [fb-1] =   1.1674E-02
+| Events: writing to raw file 'smtest_13_1.evx'
+| Events: generating 10 unweighted, unpolarized events ...
+| Events: event normalization mode '1'
+|         ... event sample complete.
+| Events: closing raw file 'smtest_13_1.evx'
+| There were no errors and    5 warning(s).
+| WHIZARD run finished.
+|=============================================================================|

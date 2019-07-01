@@ -1,11 +1,13 @@
-! WHIZARD 2.1.1 September 18 2012
+! WHIZARD 2.2.0 May 18 2014
 ! 
-! Copyright (C) 1999-2012 by 
+! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
-!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
+!     
+!     with contributions from
+!     Christian Speckner <cnspeckn@googlemail.com> 
+!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -32,8 +34,10 @@ module expressions
   use iso_varying_string, string_t => varying_string !NODEP!
   use constants !NODEP!
   use file_utils !NODEP!
+  use limits, only: FMT_19 !NODEP!
   use diagnostics !NODEP!
   use lorentz !NODEP!
+  use unit_tests
   use md5
   use formats
   use sorting
@@ -172,6 +176,8 @@ module expressions
      private
      type(var_list_t) :: var_list
      type(eval_node_t), pointer :: root => null ()
+   contains
+     procedure :: write => eval_tree_write
   end type eval_tree_t
 
 
@@ -268,7 +274,7 @@ module expressions
        type(eval_node_t), intent(in) :: arg1, arg2
      end function binary_real
   end interface
-    abstract interface
+  abstract interface
      complex(default) function binary_cmplx (arg1, arg2)
        import default
        import eval_node_t
@@ -746,7 +752,7 @@ contains
     node%result_type = V_SEV
     call eval_node_allocate_value (node)
     node%arg1 => arg1
-    allocate (node%index)
+    allocate (node%index, source = 0)
     allocate (node%prt1)
     node%op1_sev => proc
   end subroutine eval_node_init_prt_fun_unary
@@ -762,7 +768,7 @@ contains
     call eval_node_allocate_value (node)
     node%arg1 => arg1
     node%arg2 => arg2
-    allocate (node%index)
+    allocate (node%index, source = 0)
     allocate (node%prt1)
     allocate (node%prt2)
     node%op2_sev => proc
@@ -777,7 +783,7 @@ contains
     node%result_type = V_REAL
     call eval_node_allocate_value (node)
     node%arg1 => arg1
-    allocate (node%index)
+    allocate (node%index, source = 0)
     allocate (node%prt1)
   end subroutine eval_node_init_eval_fun_unary
 
@@ -791,7 +797,7 @@ contains
     call eval_node_allocate_value (node)
     node%arg1 => arg1
     node%arg2 => arg2
-    allocate (node%index)
+    allocate (node%index, source = 0)
     allocate (node%prt1)
     allocate (node%prt2)
   end subroutine eval_node_init_eval_fun_binary
@@ -806,7 +812,7 @@ contains
     node%result_type = V_LOG
     call eval_node_allocate_value (node)
     node%arg1 => arg1
-    allocate (node%index)
+    allocate (node%index, source = 0)
     allocate (node%prt1)
     node%op1_cut => proc
   end subroutine eval_node_init_log_fun_unary
@@ -822,7 +828,7 @@ contains
     call eval_node_allocate_value (node)
     node%arg1 => arg1
     node%arg2 => arg2
-    allocate (node%index)
+    allocate (node%index, source = 0)
     allocate (node%prt1)
     allocate (node%prt2)
     node%op2_cut => proc
@@ -838,7 +844,7 @@ contains
     node%result_type = V_INT
     call eval_node_allocate_value (node)
     node%arg1 => arg1
-    allocate (node%index)
+    allocate (node%index, source = 0)
     allocate (node%prt1)
     node%op1_evi => proc
   end subroutine eval_node_init_int_fun_unary
@@ -854,7 +860,7 @@ contains
     call eval_node_allocate_value (node)
     node%arg1 => arg1
     node%arg2 => arg2
-    allocate (node%index)
+    allocate (node%index, source = 0)
     allocate (node%prt1)
     allocate (node%prt2)
     node%op2_evi => proc
@@ -870,7 +876,7 @@ contains
     node%result_type = V_INT
     call eval_node_allocate_value (node)
     node%arg1 => arg1
-    allocate (node%index)
+    allocate (node%index, source = 0)
     allocate (node%prt1)
     node%op1_evr => proc
   end subroutine eval_node_init_real_fun_unary
@@ -886,7 +892,7 @@ contains
     call eval_node_allocate_value (node)
     node%arg1 => arg1
     node%arg2 => arg2
-    allocate (node%index)
+    allocate (node%index, source = 0)
     allocate (node%prt1)
     allocate (node%prt2)
     node%op2_evr => proc
@@ -913,7 +919,7 @@ contains
     logical, save, target :: known = .true.
     allocate (node%var_list)
     call var_list_link (node%var_list, var_list)
-    allocate (node%index)
+    allocate (node%index, source = 0)
     call var_list_append_int_ptr &
          (node%var_list, var_str ("Index"), node%index, known, intrinsic=.true.)
     if (.not. associated (node%prt2)) then
@@ -958,50 +964,52 @@ contains
     case (V_LOG)
        if (node%value_is_known) then
           if (node%lval) then
-             write (u, *) "true"
+             write (u, "(1x,A)") "true"
           else
-             write (u, *) "false"
+             write (u, "(1x,A)") "false"
           end if
        else
-          write (u, *) "[unknown logical]"
+          write (u, "(1x,A)") "[unknown logical]"
        end if
     case (V_INT)
        if (node%value_is_known) then
-          write (u, *)  node%ival
+          write (u, "(1x,I0)")  node%ival
        else
-          write (u, *) "[unknown integer]"
+          write (u, "(1x,A)") "[unknown integer]"
        end if
     case (V_REAL)
        if (node%value_is_known) then
-          write (u, *) node%rval
+          write (u, "(1x," // FMT_19 // ")") node%rval
        else
-          write (u, *) "[unknown real]"
+          write (u, "(1x,A)") "[unknown real]"
        end if
    case (V_CMPLX)
        if (node%value_is_known) then
-          write (u, *) node%cval
+          write (u, "(1x,'('," // FMT_19 // ",','," // &
+               FMT_19 // ",')')") node%cval
        else
-          write (u, *) "[unknown complex]"
+          write (u, "(1x,A)") "[unknown complex]"
        end if
     case (V_SEV)
        if (char (node%tag) == "@evt") then
-          write (u, *) "[event subevent]"
+          write (u, "(1x,A)") "[event subevent]"
        else if (node%value_is_known) then
           call subevt_write &
                (node%pval, unit, prefix = repeat ("|  ", ind + 1))
        else
-          write (u, *) "[unknown subevent]"
+          write (u, "(1x,A)") "[unknown subevent]"
        end if
     case (V_PDG)
+       write (u, "(1x)", advance="no")
        call pdg_array_write (node%aval, u);  write (u, *)
     case (V_STR)
        if (node%value_is_known) then
           write (u, "(A)")  '"' // char (node%sval) // '"'
        else
-          write (u, *) "[unknown string]"
+          write (u, "(1x,A)") "[unknown string]"
        end if
     case default
-       write (u, *) "[empty]"
+       write (u, "(1x,A)") "[empty]"
     end select
     select case (node%type)
     case (EN_OBS1_INT, EN_OBS1_REAL, EN_UOBS1_INT, EN_UOBS1_REAL)
@@ -1051,6 +1059,19 @@ contains
             call eval_node_write_rec (node%arg0, unit, ind+1)
        call eval_node_write_rec (node%arg1, unit, ind+1)
        call eval_node_write_rec (node%arg2, unit, ind+1)
+    case (EN_RECORD_CMD)
+       if (associated (node%arg1)) then
+          call eval_node_write_rec (node%arg1, unit, ind+1)
+          if (associated (node%arg2)) then
+             call eval_node_write_rec (node%arg2, unit, ind+1)
+             if (associated (node%arg3)) then
+                call eval_node_write_rec (node%arg3, unit, ind+1)
+                if (associated (node%arg4)) then
+                   call eval_node_write_rec (node%arg4, unit, ind+1)
+                end if
+             end if
+          end if
+       end if
     end select
   end subroutine eval_node_write_rec
 
@@ -1114,7 +1135,7 @@ contains
     en%op2_real => op
   end subroutine eval_node_set_op2_real
   
-    subroutine eval_node_set_op2_cmplx (en, op)
+  subroutine eval_node_set_op2_cmplx (en, op)
     type(eval_node_t), intent(inout) :: en
     procedure(binary_cmplx) :: op
     en%op2_cmplx => op
@@ -1570,6 +1591,8 @@ contains
     type(eval_node_t), intent(in) :: en
     y = tanh (en%rval)
   end function tanh_r
+!!! These are F2008 additions but accepted by nagfor 5.3 and gfortran 4.6+
+!!! Currently not used.
 !   real(default) function asinh_r (en) result (y)
 !     type(eval_node_t), intent(in) :: en
 !     y = asinh (en%rval)
@@ -1706,71 +1729,203 @@ contains
     y = en1%sval /= en2%sval
   end function comp_ne_ss
   
-  logical function comp_sim_ii (en1, en2) result (y)
+  logical function comp_se_ii (en1, en2) result (y)
     type(eval_node_t), intent(in) :: en1, en2
     if (associated (en1%tolerance)) then
        y = abs (en1%ival - en2%ival) <= en1%tolerance
     else
        y = en1%ival == en2%ival
     end if
-  end function comp_sim_ii
-  logical function comp_sim_ri (en1, en2) result (y)
+  end function comp_se_ii
+  logical function comp_se_ri (en1, en2) result (y)
     type(eval_node_t), intent(in) :: en1, en2
     if (associated (en1%tolerance)) then
        y = abs (en1%rval - en2%ival) <= en1%tolerance
     else
        y = en1%rval == en2%ival
     end if
-  end function comp_sim_ri
-  logical function comp_sim_ir (en1, en2) result (y)
+  end function comp_se_ri
+  logical function comp_se_ir (en1, en2) result (y)
     type(eval_node_t), intent(in) :: en1, en2
     if (associated (en1%tolerance)) then
        y = abs (en1%ival - en2%rval) <= en1%tolerance
     else
        y = en1%ival == en2%rval
     end if
-  end function comp_sim_ir
-  logical function comp_sim_rr (en1, en2) result (y)
+  end function comp_se_ir
+  logical function comp_se_rr (en1, en2) result (y)
     type(eval_node_t), intent(in) :: en1, en2
     if (associated (en1%tolerance)) then
        y = abs (en1%rval - en2%rval) <= en1%tolerance
     else
        y = en1%rval == en2%rval
     end if
-  end function comp_sim_rr
-  logical function comp_nsim_ii (en1, en2) result (y)
+  end function comp_se_rr
+  logical function comp_ns_ii (en1, en2) result (y)
     type(eval_node_t), intent(in) :: en1, en2
     if (associated (en1%tolerance)) then
        y = abs (en1%ival - en2%ival) > en1%tolerance
     else
        y = en1%ival /= en2%ival
     end if
-  end function comp_nsim_ii
-  logical function comp_nsim_ri (en1, en2) result (y)
+  end function comp_ns_ii
+  logical function comp_ns_ri (en1, en2) result (y)
     type(eval_node_t), intent(in) :: en1, en2
     if (associated (en1%tolerance)) then
        y = abs (en1%rval - en2%ival) > en1%tolerance
     else
        y = en1%rval /= en2%ival
     end if
-  end function comp_nsim_ri
-  logical function comp_nsim_ir (en1, en2) result (y)
+  end function comp_ns_ri
+  logical function comp_ns_ir (en1, en2) result (y)
     type(eval_node_t), intent(in) :: en1, en2
     if (associated (en1%tolerance)) then
        y = abs (en1%ival - en2%rval) > en1%tolerance
     else
        y = en1%ival /= en2%rval
     end if
-  end function comp_nsim_ir
-  logical function comp_nsim_rr (en1, en2) result (y)
+  end function comp_ns_ir
+  logical function comp_ns_rr (en1, en2) result (y)
     type(eval_node_t), intent(in) :: en1, en2
     if (associated (en1%tolerance)) then
        y = abs (en1%rval - en2%rval) > en1%tolerance
     else
        y = en1%rval /= en2%rval
     end if
-  end function comp_nsim_rr
+  end function comp_ns_rr
   
+  logical function comp_ls_ii (en1, en2) result (y)
+    type(eval_node_t), intent(in) :: en1, en2
+    if (associated (en1%tolerance)) then
+       y = en1%ival <= en2%ival + en1%tolerance
+    else
+       y = en1%ival <= en2%ival
+    end if
+  end function comp_ls_ii
+  logical function comp_ls_ri (en1, en2) result (y)
+    type(eval_node_t), intent(in) :: en1, en2
+    if (associated (en1%tolerance)) then
+       y = en1%rval <= en2%ival + en1%tolerance
+    else
+       y = en1%rval <= en2%ival
+    end if
+  end function comp_ls_ri
+  logical function comp_ls_ir (en1, en2) result (y)
+    type(eval_node_t), intent(in) :: en1, en2
+    if (associated (en1%tolerance)) then
+       y = en1%ival <= en2%rval + en1%tolerance
+    else
+       y = en1%ival <= en2%rval
+    end if
+  end function comp_ls_ir
+  logical function comp_ls_rr (en1, en2) result (y)
+    type(eval_node_t), intent(in) :: en1, en2
+    if (associated (en1%tolerance)) then
+       y = en1%rval <= en2%rval + en1%tolerance
+    else
+       y = en1%rval <= en2%rval
+    end if
+  end function comp_ls_rr
+
+  logical function comp_ll_ii (en1, en2) result (y)
+    type(eval_node_t), intent(in) :: en1, en2
+    if (associated (en1%tolerance)) then
+       y = en1%ival < en2%ival - en1%tolerance
+    else
+       y = en1%ival < en2%ival
+    end if
+  end function comp_ll_ii
+  logical function comp_ll_ri (en1, en2) result (y)
+    type(eval_node_t), intent(in) :: en1, en2
+    if (associated (en1%tolerance)) then
+       y = en1%rval < en2%ival - en1%tolerance
+    else
+       y = en1%rval < en2%ival
+    end if
+  end function comp_ll_ri
+  logical function comp_ll_ir (en1, en2) result (y)
+    type(eval_node_t), intent(in) :: en1, en2
+    if (associated (en1%tolerance)) then
+       y = en1%ival < en2%rval - en1%tolerance
+    else
+       y = en1%ival < en2%rval
+    end if
+  end function comp_ll_ir
+  logical function comp_ll_rr (en1, en2) result (y)
+    type(eval_node_t), intent(in) :: en1, en2
+    if (associated (en1%tolerance)) then
+       y = en1%rval < en2%rval - en1%tolerance
+    else
+       y = en1%rval < en2%rval
+    end if
+  end function comp_ll_rr
+
+  logical function comp_gs_ii (en1, en2) result (y)
+    type(eval_node_t), intent(in) :: en1, en2
+    if (associated (en1%tolerance)) then
+       y = en1%ival >= en2%ival - en1%tolerance
+    else
+       y = en1%ival >= en2%ival
+    end if
+  end function comp_gs_ii
+  logical function comp_gs_ri (en1, en2) result (y)
+    type(eval_node_t), intent(in) :: en1, en2
+    if (associated (en1%tolerance)) then
+       y = en1%rval >= en2%ival - en1%tolerance
+    else
+       y = en1%rval >= en2%ival
+    end if
+  end function comp_gs_ri
+  logical function comp_gs_ir (en1, en2) result (y)
+    type(eval_node_t), intent(in) :: en1, en2
+    if (associated (en1%tolerance)) then
+       y = en1%ival >= en2%rval - en1%tolerance
+    else
+       y = en1%ival >= en2%rval
+    end if
+  end function comp_gs_ir
+  logical function comp_gs_rr (en1, en2) result (y)
+    type(eval_node_t), intent(in) :: en1, en2
+    if (associated (en1%tolerance)) then
+       y = en1%rval >= en2%rval - en1%tolerance
+    else
+       y = en1%rval >= en2%rval
+    end if
+  end function comp_gs_rr
+
+  logical function comp_gg_ii (en1, en2) result (y)
+    type(eval_node_t), intent(in) :: en1, en2
+    if (associated (en1%tolerance)) then
+       y = en1%ival > en2%ival + en1%tolerance
+    else
+       y = en1%ival > en2%ival
+    end if
+  end function comp_gg_ii
+  logical function comp_gg_ri (en1, en2) result (y)
+    type(eval_node_t), intent(in) :: en1, en2
+    if (associated (en1%tolerance)) then
+       y = en1%rval > en2%ival + en1%tolerance
+    else
+       y = en1%rval > en2%ival
+    end if
+  end function comp_gg_ri
+  logical function comp_gg_ir (en1, en2) result (y)
+    type(eval_node_t), intent(in) :: en1, en2
+    if (associated (en1%tolerance)) then
+       y = en1%ival > en2%rval + en1%tolerance
+    else
+       y = en1%ival > en2%rval
+    end if
+  end function comp_gg_ir
+  logical function comp_gg_rr (en1, en2) result (y)
+    type(eval_node_t), intent(in) :: en1, en2
+    if (associated (en1%tolerance)) then
+       y = en1%rval > en2%rval + en1%tolerance
+    else
+       y = en1%rval > en2%rval
+    end if
+  end function comp_gg_rr
+
   logical function not_l (en) result (y)
     type(eval_node_t), intent(in) :: en
     y = .not. en%lval
@@ -2134,9 +2289,8 @@ contains
     type(eval_node_t), intent(inout), optional :: en0
     integer, dimension(:), allocatable :: ival
     real(default), dimension(:), allocatable :: rval
-    integer :: i, n1, n2
+    integer :: i, n1
     n1 = subevt_get_length (en1%pval)
-    n2 = subevt_get_length (en2%pval)
     if (present (en0)) then
        select case (en0%result_type)
        case (V_INT);  allocate (ival (n1))
@@ -2227,6 +2381,31 @@ contains
     end do LOOP1
   end function no_pp
        
+  subroutine eval_pp (en1, en2, en0, rval, is_known)
+    type(eval_node_t), intent(in) :: en1, en2
+    type(eval_node_t), intent(inout) :: en0
+    real(default), intent(out) :: rval
+    logical, intent(out) :: is_known
+    integer :: i, j, n1, n2
+    n1 = subevt_get_length (en1%pval)
+    n2 = subevt_get_length (en2%pval)
+    rval = 0
+    is_known = .false.
+    LOOP1: do i = 1, n1
+       en0%index = i
+       en0%prt1 = subevt_get_prt (en1%pval, i)
+       do j = 1, n2
+          en0%prt2 = subevt_get_prt (en2%pval, j)
+          if (are_disjoint (en0%prt1, en0%prt2)) then
+             call eval_node_evaluate (en0)
+             rval = en0%rval
+             is_known = .true.
+             exit LOOP1
+          end if
+       end do
+    end do LOOP1
+  end subroutine eval_pp
+
   function user_obs_int_pp (en0, prt1, prt2) result (ival)
     integer :: ival
     type(eval_node_t), intent(inout) :: en0
@@ -3122,7 +3301,7 @@ contains
           call eval_node_init_int_ptr &
                (en, var_name, var_entry_get_ival_ptr (var), &
                var_entry_get_known_ptr (var))
-       case ("integral", "error", "accuracy", "chi2", "efficiency")
+       case ("integral", "error")
           call eval_node_init_real_ptr &
                (en, var_name, var_entry_get_rval_ptr (var), &
             var_entry_get_known_ptr (var))
@@ -3198,33 +3377,41 @@ contains
     key = parse_node_get_key (pn_fname)
     if (en1%type == EN_CONSTANT) then
        select case (char (key))
+       case ("complex")
+          select case (t)
+          case (V_INT);  call eval_node_init_cmplx (en, cmplx_i (en1))
+          case (V_REAL); call eval_node_init_cmplx (en, cmplx_r (en1))
+          case (V_CMPLX); deallocate (en);  en => en1;  en1 => null ()
+          case default;  call eval_type_error (pn, char (key), t)          
+          end select
        case ("real")
           select case (t)
           case (V_INT);  call eval_node_init_real (en, real_i (en1))
-          case (V_REAL); deallocate (en);  en => en1
+          case (V_REAL); deallocate (en);  en => en1;  en1 => null ()
+          case (V_CMPLX); call eval_node_init_real (en, real_c (en1))
           case default;  call eval_type_error (pn, char (key), t)          
           end select
        case ("int")
           select case (t)
-          case (V_INT);  deallocate (en);  en => en1
+          case (V_INT);  deallocate (en);  en => en1;  en1 => null ()
           case (V_REAL); call eval_node_init_int  (en, int_r (en1))
           case (V_CMPLX); call eval_node_init_int  (en, int_c (en1))
           end select
        case ("nint")
           select case (t)
-          case (V_INT);  deallocate (en);  en => en1
+          case (V_INT);  deallocate (en);  en => en1;  en1 => null ()
           case (V_REAL); call eval_node_init_int  (en, nint_r (en1))          
           case default;  call eval_type_error (pn, char (key), t)
           end select
        case ("floor")
           select case (t)
-          case (V_INT);  deallocate (en);  en => en1
+          case (V_INT);  deallocate (en);  en => en1;  en1 => null ()
           case (V_REAL); call eval_node_init_int  (en, floor_r (en1))
           case default;  call eval_type_error (pn, char (key), t)          
           end select
        case ("ceiling")
           select case (t)
-          case (V_INT);  deallocate (en);  en => en1
+          case (V_INT);  deallocate (en);  en => en1;  en1 => null ()
           case (V_REAL); call eval_node_init_int  (en, ceiling_r (en1))
           case default;  call eval_type_error (pn, char (key), t)
           end select
@@ -3313,10 +3500,14 @@ contains
        case default
           call parse_node_mismatch ("function name", pn_fname)
        end select
-       call eval_node_final_rec (en1)
-       deallocate (en1)
+       if (associated (en1)) then
+          call eval_node_final_rec (en1)
+          deallocate (en1)
+       end if
     else
        select case (char (key))
+       case ("complex")
+          call eval_node_init_branch (en, key, V_CMPLX, en1)
        case ("real")
           call eval_node_init_branch (en, key, V_REAL, en1)
        case ("int", "nint", "floor", "ceiling")
@@ -3325,10 +3516,18 @@ contains
           call eval_node_init_branch (en, key, t, en1)
        end select
        select case (char (key))
+       case ("complex")
+          select case (t)
+          case (V_INT);  call eval_node_set_op1_cmplx (en, cmplx_i)
+          case (V_REAL); call eval_node_set_op1_cmplx (en, cmplx_r)
+          case (V_CMPLX); deallocate (en);  en => en1
+          case default;  call eval_type_error (pn, char (key), t)
+          end select
        case ("real")
           select case (t)
           case (V_INT);  call eval_node_set_op1_real (en, real_i)
           case (V_REAL); deallocate (en);  en => en1
+          case (V_CMPLX); call eval_node_set_op1_real (en, real_c)
           case default;  call eval_type_error (pn, char (key), t)
           end select
        case ("int")
@@ -3359,7 +3558,9 @@ contains
           select case (t)
           case (V_INT);  call eval_node_set_op1_int  (en, abs_i)
           case (V_REAL); call eval_node_set_op1_real (en, abs_r)
-          case (V_CMPLX); call eval_node_set_op1_real (en, abs_c)
+          case (V_CMPLX); 
+             call eval_node_init_branch (en, key, V_REAL, en1)
+             call eval_node_set_op1_real (en, abs_c)
           end select
        case ("sgn")
           select case (t)
@@ -4216,18 +4417,20 @@ contains
     t2 = en2%result_type
     allocate (en)
     if (en1%type == EN_CONSTANT .and. en2%type == EN_CONSTANT) then
+       var => var_list_get_var_ptr (var_list, var_str ("tolerance"))
+       en1%tolerance => var_entry_get_rval_ptr (var)
        select case (char (key))
        case ("<")
           select case (t1)
           case (V_INT)
              select case (t2)
              case (V_INT);  call eval_node_init_log (en, comp_lt_ii (en1, en2))
-             case (V_REAL); call eval_node_init_log (en, comp_lt_ir (en1, en2))
+             case (V_REAL); call eval_node_init_log (en, comp_ll_ir (en1, en2))
              end select
           case (V_REAL)
              select case (t2)
-             case (V_INT);  call eval_node_init_log (en, comp_lt_ri (en1, en2))
-             case (V_REAL); call eval_node_init_log (en, comp_lt_rr (en1, en2))
+             case (V_INT);  call eval_node_init_log (en, comp_ll_ri (en1, en2))
+             case (V_REAL); call eval_node_init_log (en, comp_ll_rr (en1, en2))
              end select
           end select
        case (">")
@@ -4235,12 +4438,12 @@ contains
           case (V_INT)
              select case (t2)
              case (V_INT);  call eval_node_init_log (en, comp_gt_ii (en1, en2))
-             case (V_REAL); call eval_node_init_log (en, comp_gt_ir (en1, en2))
+             case (V_REAL); call eval_node_init_log (en, comp_gg_ir (en1, en2))
              end select
           case (V_REAL)
              select case (t2)
-             case (V_INT);  call eval_node_init_log (en, comp_gt_ri (en1, en2))
-             case (V_REAL); call eval_node_init_log (en, comp_gt_rr (en1, en2))
+             case (V_INT);  call eval_node_init_log (en, comp_gg_ri (en1, en2))
+             case (V_REAL); call eval_node_init_log (en, comp_gg_rr (en1, en2))
              end select
           end select
        case ("<=")
@@ -4248,12 +4451,12 @@ contains
           case (V_INT)
              select case (t2)
              case (V_INT);  call eval_node_init_log (en, comp_le_ii (en1, en2))
-             case (V_REAL); call eval_node_init_log (en, comp_le_ir (en1, en2))
+             case (V_REAL); call eval_node_init_log (en, comp_ls_ir (en1, en2))
              end select
           case (V_REAL)
              select case (t2)
-             case (V_INT);  call eval_node_init_log (en, comp_le_ri (en1, en2))
-             case (V_REAL); call eval_node_init_log (en, comp_le_rr (en1, en2))
+             case (V_INT);  call eval_node_init_log (en, comp_ls_ri (en1, en2))
+             case (V_REAL); call eval_node_init_log (en, comp_ls_rr (en1, en2))
              end select
           end select
        case (">=")
@@ -4261,12 +4464,12 @@ contains
           case (V_INT)
              select case (t2)
              case (V_INT);  call eval_node_init_log (en, comp_ge_ii (en1, en2))
-             case (V_REAL); call eval_node_init_log (en, comp_ge_ir (en1, en2))
+             case (V_REAL); call eval_node_init_log (en, comp_gs_ir (en1, en2))
              end select
           case (V_REAL)
              select case (t2)
-             case (V_INT);  call eval_node_init_log (en, comp_ge_ri (en1, en2))
-             case (V_REAL); call eval_node_init_log (en, comp_ge_rr (en1, en2))
+             case (V_INT);  call eval_node_init_log (en, comp_gs_ri (en1, en2))
+             case (V_REAL); call eval_node_init_log (en, comp_gs_rr (en1, en2))
              end select
           end select
        case ("==")
@@ -4274,12 +4477,12 @@ contains
           case (V_INT)
              select case (t2)
              case (V_INT);  call eval_node_init_log (en, comp_eq_ii (en1, en2))
-             case (V_REAL); call eval_node_init_log (en, comp_eq_ir (en1, en2))
+             case (V_REAL); call eval_node_init_log (en, comp_se_ir (en1, en2))
              end select
           case (V_REAL)
              select case (t2)
-             case (V_INT);  call eval_node_init_log (en, comp_eq_ri (en1, en2))
-             case (V_REAL); call eval_node_init_log (en, comp_eq_rr (en1, en2))
+             case (V_INT);  call eval_node_init_log (en, comp_se_ri (en1, en2))
+             case (V_REAL); call eval_node_init_log (en, comp_se_rr (en1, en2))
              end select
           case (V_STR)
              select case (t2)
@@ -4291,54 +4494,12 @@ contains
           case (V_INT)
              select case (t2)
              case (V_INT);  call eval_node_init_log (en, comp_ne_ii (en1, en2))
-             case (V_REAL); call eval_node_init_log (en, comp_ne_ir (en1, en2))
+             case (V_REAL); call eval_node_init_log (en, comp_ns_ir (en1, en2))
              end select
           case (V_REAL)
              select case (t2)
-             case (V_INT);  call eval_node_init_log (en, comp_ne_ri (en1, en2))
-             case (V_REAL); call eval_node_init_log (en, comp_ne_rr (en1, en2))
-             end select
-          case (V_STR)
-             select case (t2)
-             case (V_STR);  call eval_node_init_log (en, comp_ne_ss (en1, en2))
-             end select
-          end select
-       case ("==~")
-          var => var_list_get_var_ptr (var_list, var_str ("tolerance"))
-          en1%tolerance => var_entry_get_rval_ptr (var)
-          select case (t1)
-          case (V_INT)
-             select case (t2)
-             case (V_INT);  call eval_node_init_log (en, comp_sim_ii (en1, en2))
-             case (V_REAL); call eval_node_init_log (en, comp_sim_ir (en1, en2))
-             end select
-          case (V_REAL)
-             select case (t2)
-             case (V_INT);  call eval_node_init_log (en, comp_sim_ri (en1, en2))
-             case (V_REAL); call eval_node_init_log (en, comp_sim_rr (en1, en2))
-             end select
-          case (V_STR)
-             select case (t2)
-             case (V_STR);  call eval_node_init_log (en, comp_eq_ss (en1, en2))
-             end select
-          end select
-       case ("<>~")
-          var => var_list_get_var_ptr (var_list, var_str ("tolerance"))
-          en1%tolerance => var_entry_get_rval_ptr (var)
-          select case (t1)
-          case (V_INT)
-             select case (t2)
-             case (V_INT)
-                call eval_node_init_log (en, comp_nsim_ii (en1, en2))
-             case (V_REAL)
-                call eval_node_init_log (en, comp_nsim_ir (en1, en2))
-             end select
-          case (V_REAL)
-             select case (t2)
-             case (V_INT)
-                call eval_node_init_log (en, comp_nsim_ri (en1, en2))
-             case (V_REAL)
-                call eval_node_init_log (en, comp_nsim_rr(en1, en2))
+             case (V_INT);  call eval_node_init_log (en, comp_ns_ri (en1, en2))
+             case (V_REAL); call eval_node_init_log (en, comp_ns_rr (en1, en2))
              end select
           case (V_STR)
              select case (t2)
@@ -4356,12 +4517,12 @@ contains
           case (V_INT)
              select case (t2)
              case (V_INT);  call eval_node_set_op2_log (en, comp_lt_ii)
-             case (V_REAL); call eval_node_set_op2_log (en, comp_lt_ir)
+             case (V_REAL); call eval_node_set_op2_log (en, comp_ll_ir)
              end select
           case (V_REAL)
              select case (t2)
-             case (V_INT);  call eval_node_set_op2_log (en, comp_lt_ri)
-             case (V_REAL); call eval_node_set_op2_log (en, comp_lt_rr)
+             case (V_INT);  call eval_node_set_op2_log (en, comp_ll_ri)
+             case (V_REAL); call eval_node_set_op2_log (en, comp_ll_rr)
              end select
           end select
        case (">")
@@ -4369,12 +4530,12 @@ contains
           case (V_INT)
              select case (t2)
              case (V_INT);  call eval_node_set_op2_log (en, comp_gt_ii)
-             case (V_REAL); call eval_node_set_op2_log (en, comp_gt_ir)
+             case (V_REAL); call eval_node_set_op2_log (en, comp_gg_ir)
              end select
           case (V_REAL)
              select case (t2)
-             case (V_INT);  call eval_node_set_op2_log (en, comp_gt_ri)
-             case (V_REAL); call eval_node_set_op2_log (en, comp_gt_rr)
+             case (V_INT);  call eval_node_set_op2_log (en, comp_gg_ri)
+             case (V_REAL); call eval_node_set_op2_log (en, comp_gg_rr)
              end select
           end select
        case ("<=")
@@ -4382,12 +4543,12 @@ contains
           case (V_INT)
              select case (t2)
              case (V_INT);  call eval_node_set_op2_log (en, comp_le_ii)
-             case (V_REAL); call eval_node_set_op2_log (en, comp_le_ir)
+             case (V_REAL); call eval_node_set_op2_log (en, comp_ls_ir)
              end select
           case (V_REAL)
              select case (t2)
-             case (V_INT);  call eval_node_set_op2_log (en, comp_le_ri)
-             case (V_REAL); call eval_node_set_op2_log (en, comp_le_rr)
+             case (V_INT);  call eval_node_set_op2_log (en, comp_ls_ri)
+             case (V_REAL); call eval_node_set_op2_log (en, comp_ls_rr)
              end select
           end select
        case (">=")
@@ -4395,12 +4556,12 @@ contains
           case (V_INT)
              select case (t2)
              case (V_INT);  call eval_node_set_op2_log (en, comp_ge_ii)
-             case (V_REAL); call eval_node_set_op2_log (en, comp_ge_ir)
+             case (V_REAL); call eval_node_set_op2_log (en, comp_gs_ir)
              end select
           case (V_REAL)
              select case (t2)
-             case (V_INT);  call eval_node_set_op2_log (en, comp_ge_ri)
-             case (V_REAL); call eval_node_set_op2_log (en, comp_ge_rr)
+             case (V_INT);  call eval_node_set_op2_log (en, comp_gs_ri)
+             case (V_REAL); call eval_node_set_op2_log (en, comp_gs_rr)
              end select
           end select
        case ("==")
@@ -4408,12 +4569,12 @@ contains
           case (V_INT)
              select case (t2)
              case (V_INT);  call eval_node_set_op2_log (en, comp_eq_ii)
-             case (V_REAL); call eval_node_set_op2_log (en, comp_eq_ir)
+             case (V_REAL); call eval_node_set_op2_log (en, comp_se_ir)
              end select
           case (V_REAL)
              select case (t2)
-             case (V_INT);  call eval_node_set_op2_log (en, comp_eq_ri)
-             case (V_REAL); call eval_node_set_op2_log (en, comp_eq_rr)
+             case (V_INT);  call eval_node_set_op2_log (en, comp_se_ri)
+             case (V_REAL); call eval_node_set_op2_log (en, comp_se_rr)
              end select
           case (V_STR)
              select case (t2)
@@ -4425,57 +4586,21 @@ contains
           case (V_INT)
              select case (t2)
              case (V_INT);  call eval_node_set_op2_log (en, comp_ne_ii)
-             case (V_REAL); call eval_node_set_op2_log (en, comp_ne_ir)
+             case (V_REAL); call eval_node_set_op2_log (en, comp_ns_ir)
              end select
           case (V_REAL)
              select case (t2)
-             case (V_INT);  call eval_node_set_op2_log (en, comp_ne_ri)
-             case (V_REAL); call eval_node_set_op2_log (en, comp_ne_rr)
+             case (V_INT);  call eval_node_set_op2_log (en, comp_ns_ri)
+             case (V_REAL); call eval_node_set_op2_log (en, comp_ns_rr)
              end select
           case (V_STR)
              select case (t2)
              case (V_STR);  call eval_node_set_op2_log (en, comp_ne_ss)
              end select
           end select
-       case ("==~")
-          select case (t1)
-          case (V_INT)
-             select case (t2)
-             case (V_INT);  call eval_node_set_op2_log (en, comp_sim_ii)
-             case (V_REAL); call eval_node_set_op2_log (en, comp_sim_ir)
-             end select
-          case (V_REAL)
-             select case (t2)
-             case (V_INT);  call eval_node_set_op2_log (en, comp_sim_ri)
-             case (V_REAL); call eval_node_set_op2_log (en, comp_sim_rr)
-             end select
-          case (V_STR)
-             select case (t2)
-             case (V_STR);  call eval_node_set_op2_log (en, comp_eq_ss)
-             end select
-          end select
-          var => var_list_get_var_ptr (var_list, var_str ("tolerance"))
-          en1%tolerance => var_entry_get_rval_ptr (var)
-       case ("<>~")
-          select case (t1)
-          case (V_INT)
-             select case (t2)
-             case (V_INT);  call eval_node_set_op2_log (en, comp_nsim_ii)
-             case (V_REAL); call eval_node_set_op2_log (en, comp_nsim_ir)
-             end select
-          case (V_REAL)
-             select case (t2)
-             case (V_INT);  call eval_node_set_op2_log (en, comp_nsim_ri)
-             case (V_REAL); call eval_node_set_op2_log (en, comp_nsim_rr)
-             end select
-          case (V_STR)
-             select case (t2)
-             case (V_STR);  call eval_node_set_op2_log (en, comp_ne_ss)
-             end select
-          end select
-          var => var_list_get_var_ptr (var_list, var_str ("tolerance"))
-          en1%tolerance => var_entry_get_rval_ptr (var)
        end select
+       var => var_list_get_var_ptr (var_list, var_str ("tolerance"))
+       en1%tolerance => var_entry_get_rval_ptr (var)
     end if
   end subroutine eval_node_compile_comparison
 
@@ -4504,6 +4629,13 @@ contains
        end if
     case ("record_unweighted")
        event_weight => null ()
+    case ("record_excess")
+       var => var_list_get_var_ptr (var_list, var_str ("event_excess"))
+       if (associated (var)) then
+          event_weight => var_entry_get_rval_ptr (var)
+       else
+          event_weight => null ()
+       end if
     end select
     select case (char (parse_node_get_rule_key (pn_tag)))
     case ("analysis_id")
@@ -5091,10 +5223,6 @@ contains
     if (debug) then
        print *, "read cvariable";  call parse_node_write (pn)
     end if
-!     select case (char (parse_node_get_rule_key (pn)))
-!     case ("cvariable");  pn_name => parse_node_get_sub_ptr (pn, 2)
-!     case default;        pn_name => pn
-!     end select
     pn_name => pn
     var_name = parse_node_get_string (pn_name)
     var => var_list_get_var_ptr (var_list, var_name, V_PDG, defined=.true.)
@@ -5171,8 +5299,6 @@ contains
        call eval_node_compile_conditional (en, pn, var_list, V_STR)
     case ("sprintf_fun")
        call eval_node_compile_sprintf (en, pn, var_list)
-    case ("sprintd_fun")
-       call eval_node_compile_sprintd (en, pn, var_list)
     case ("string_literal")
        allocate (en)
        call eval_node_init_string (en, parse_node_get_string (pn))
@@ -5219,34 +5345,6 @@ contains
        print *, "done sprintf_fun"
     end if
   end subroutine eval_node_compile_sprintf
-
-  recursive subroutine eval_node_compile_sprintd (en, pn, var_list)
-    type(eval_node_t), pointer :: en
-    type(parse_node_t), intent(in) :: pn
-    type(var_list_t), intent(in), target :: var_list
-    type(parse_node_t), pointer :: pn_key, pn_args
-    type(eval_node_t), pointer :: en1
-    integer :: n_args
-    type(string_t) :: key
-    if (debug) then
-       print *, "read sprintd_fun";  call parse_node_write (pn)
-    end if
-    pn_key  => parse_node_get_sub_ptr (pn)
-    pn_args => parse_node_get_next_ptr (pn_key)
-    if (associated (pn_args)) then
-       call eval_node_compile_sprintf_args (en1, pn_args, var_list, n_args)
-    else
-       n_args = 0
-       en1 => null ()
-    end if
-    allocate (en)
-    key = parse_node_get_key (pn_key)
-    call eval_node_init_format_string (en, null (), en1, key, n_args)
-    if (debug) then
-       call eval_node_write (en)
-       print *, "done sprintd_fun"
-    end if
-  end subroutine eval_node_compile_sprintd
 
   subroutine eval_node_compile_sprintf_args (en, pn, var_list, n_args)
     type(eval_node_t), pointer :: en
@@ -5494,7 +5592,7 @@ contains
              end if
           end if
        end if
-!       call eval_node_write_rec (en)
+       ! call eval_node_write_rec (en)   !!! Debugging
     case (EN_RECORD_CMD)
        exist = .true.
        en%lval = .false.
@@ -5653,10 +5751,7 @@ contains
           en%arg0%prt1 => en%prt1
           en%arg0%prt2 => en%prt2
           en%index = 1
-          en%prt1 = subevt_get_prt (en%arg1%pval, 1)
-          en%prt2 = subevt_get_prt (en%arg2%pval, 1)
-          call eval_node_evaluate (en%arg0)
-          en%rval = en%arg0%rval
+          call eval_pp (en%arg1, en%arg2, en%arg0, en%rval, en%value_is_known)
        end if
     case (EN_LOG_FUN_UNARY)
        call eval_node_evaluate (en%arg1)
@@ -5865,17 +5960,13 @@ contains
     call ifile_append (ifile, "IDE variable")
     call ifile_append (ifile, "SEQ result = result_key result_arg")
     call ifile_append (ifile, "ALT result_key = " // &
-         "num_id | n_calls | integral | error | accuracy | efficiency | chi2")
+         "num_id | integral | error")
     call ifile_append (ifile, "SEQ user_observable = user_obs user_arg")
     call ifile_append (ifile, "KEY user_obs")
     call ifile_append (ifile, "ARG user_arg = ( sexpr )")
     call ifile_append (ifile, "KEY num_id")
-    call ifile_append (ifile, "KEY n_calls")
     call ifile_append (ifile, "KEY integral")
     call ifile_append (ifile, "KEY error")
-    call ifile_append (ifile, "KEY accuracy")
-    call ifile_append (ifile, "KEY efficiency")
-    call ifile_append (ifile, "KEY chi2")
     call ifile_append (ifile, "GRO result_arg = ( process_id )")
     call ifile_append (ifile, "IDE process_id")
     call ifile_append (ifile, "SEQ unary_function = fun_unary function_arg1")
@@ -6005,24 +6096,24 @@ contains
     call ifile_append (ifile, "SEQ compared_expr = expr comparison+")
     call ifile_append (ifile, "SEQ comparison = compare expr")
     call ifile_append (ifile, "ALT compare = " // &
-         "'<' | '>' | '<=' | '>=' | '==' | '<>' | '==~' | '<>~'")
+         "'<' | '>' | '<=' | '>=' | '==' | '<>'")
     call ifile_append (ifile, "KEY '<'")
     call ifile_append (ifile, "KEY '>'")
     call ifile_append (ifile, "KEY '<='")
     call ifile_append (ifile, "KEY '>='")
     call ifile_append (ifile, "KEY '=='")
     call ifile_append (ifile, "KEY '<>'")
-    call ifile_append (ifile, "KEY '==~'")
-    call ifile_append (ifile, "KEY '<>~'")
     call ifile_append (ifile, "SEQ compared_sexpr = sexpr str_comparison+")
     call ifile_append (ifile, "SEQ str_comparison = str_compare sexpr")
     call ifile_append (ifile, "ALT str_compare = '==' | '<>'")
     if (analysis) then
        call ifile_append (ifile, "SEQ record_cmd = " // &
             "record_key analysis_tag record_arg?")
-       call ifile_append (ifile, "ALT record_key = record | record_unweighted")
+       call ifile_append (ifile, "ALT record_key = " // &
+            "record | record_unweighted | record_excess")
        call ifile_append (ifile, "KEY record")
        call ifile_append (ifile, "KEY record_unweighted")
+       call ifile_append (ifile, "KEY record_excess")
        call ifile_append (ifile, "ALT analysis_tag = analysis_id | sexpr")
        call ifile_append (ifile, "IDE analysis_id")
        call ifile_append (ifile, "ARG record_arg = ( expr+ )")
@@ -6053,9 +6144,7 @@ contains
     call ifile_append (ifile, "SEQ var_string_new = string var_string_spec")
     call ifile_append (ifile, "KEY string")
     call ifile_append (ifile, "SEQ var_string_spec = '$' var_name = sexpr") ! $
-    call ifile_append (ifile, "ALT string_function = sprintd_fun | sprintf_fun")
-    call ifile_append (ifile, "SEQ sprintd_fun = sprintd sprintf_args?")
-    call ifile_append (ifile, "KEY sprintd")
+    call ifile_append (ifile, "ALT string_function = sprintf_fun")
     call ifile_append (ifile, "SEQ sprintf_fun = sprintf_clause sprintf_args?")
     call ifile_append (ifile, "SEQ sprintf_clause = sprintf sexpr")
     call ifile_append (ifile, "KEY sprintf")
@@ -6069,10 +6158,10 @@ contains
     type(ifile_t), intent(inout) :: ifile
     call ifile_append (ifile, "SEQ pexpr = pterm pconcatenation*")
     call ifile_append (ifile, "SEQ pconcatenation = '&' pterm")
-!    call ifile_append (ifile, "KEY '&'")
+    ! call ifile_append (ifile, "KEY '&'")   !!! (Key exists already)
     call ifile_append (ifile, "SEQ pterm = pvalue pcombination*")
     call ifile_append (ifile, "SEQ pcombination = '+' pvalue")
-!    call ifile_append (ifile, "KEY '+'")
+    ! call ifile_append (ifile, "KEY '+'")   !!! (Key exists already)
     call ifile_append (ifile, "ALT pvalue = " // &
          "pexpr_src | pvariable | " // &
          "grouped_pexpr | block_pexpr | conditional_pexpr | " // &
@@ -6303,7 +6392,6 @@ contains
     case (V_STR)
        call parse_tree_init_sexpr (parse_tree, stream, present (subevt))
     end select
-    call parse_tree_write (parse_tree)
     nd_root => parse_tree_get_root_ptr (parse_tree)
     if (associated (nd_root)) then
        select case (type)
@@ -6323,61 +6411,56 @@ contains
   end subroutine eval_tree_init_stream
 
   subroutine eval_tree_init_expr &
-      (eval_tree, parse_node, var_list, subevt, event_vars)
+      (eval_tree, parse_node, var_list, subevt)
     type(eval_tree_t), intent(out), target :: eval_tree
     type(parse_node_t), intent(in), target :: parse_node
     type(var_list_t), intent(in), target :: var_list
     type(subevt_t), intent(in), optional, target :: subevt
-    type(event_vars_t), intent(in), optional, target :: event_vars
-    call eval_tree_set_var_list (eval_tree, var_list, subevt, event_vars)
+    call eval_tree_set_var_list (eval_tree, var_list, subevt)
     call eval_node_compile_expr &
          (eval_tree%root, parse_node, eval_tree%var_list)
   end subroutine eval_tree_init_expr
     
   subroutine eval_tree_init_lexpr &
-      (eval_tree, parse_node, var_list, subevt, event_vars)
+      (eval_tree, parse_node, var_list, subevt)
     type(eval_tree_t), intent(out), target :: eval_tree
     type(parse_node_t), intent(in), target :: parse_node
     type(var_list_t), intent(in), target :: var_list
     type(subevt_t), intent(in), optional, target :: subevt
-    type(event_vars_t), intent(in), optional, target :: event_vars
-    call eval_tree_set_var_list (eval_tree, var_list, subevt, event_vars)
+    call eval_tree_set_var_list (eval_tree, var_list, subevt)
     call eval_node_compile_lexpr &
          (eval_tree%root, parse_node, eval_tree%var_list)
   end subroutine eval_tree_init_lexpr
 
   subroutine eval_tree_init_pexpr &
-      (eval_tree, parse_node, var_list, subevt, event_vars)
+      (eval_tree, parse_node, var_list, subevt)
     type(eval_tree_t), intent(out), target :: eval_tree
     type(parse_node_t), intent(in), target :: parse_node
     type(var_list_t), intent(in), target :: var_list
     type(subevt_t), intent(in), optional, target :: subevt
-    type(event_vars_t), intent(in), optional, target :: event_vars
-    call eval_tree_set_var_list (eval_tree, var_list, subevt, event_vars)
+    call eval_tree_set_var_list (eval_tree, var_list, subevt)
     call eval_node_compile_pexpr &
          (eval_tree%root, parse_node, eval_tree%var_list)
   end subroutine eval_tree_init_pexpr
 
   subroutine eval_tree_init_cexpr &
-      (eval_tree, parse_node, var_list, subevt, event_vars)
+      (eval_tree, parse_node, var_list, subevt)
     type(eval_tree_t), intent(out), target :: eval_tree
     type(parse_node_t), intent(in), target :: parse_node
     type(var_list_t), intent(in), target :: var_list
     type(subevt_t), intent(in), optional, target :: subevt
-    type(event_vars_t), intent(in), optional, target :: event_vars
-    call eval_tree_set_var_list (eval_tree, var_list, subevt, event_vars)
+    call eval_tree_set_var_list (eval_tree, var_list, subevt)
     call eval_node_compile_cexpr &
          (eval_tree%root, parse_node, eval_tree%var_list)
   end subroutine eval_tree_init_cexpr
 
   subroutine eval_tree_init_sexpr &
-      (eval_tree, parse_node, var_list, subevt, event_vars)
+      (eval_tree, parse_node, var_list, subevt)
     type(eval_tree_t), intent(out), target :: eval_tree
     type(parse_node_t), intent(in), target :: parse_node
     type(var_list_t), intent(in), target :: var_list
     type(subevt_t), intent(in), optional, target :: subevt
-    type(event_vars_t), intent(in), optional, target :: event_vars
-    call eval_tree_set_var_list (eval_tree, var_list, subevt, event_vars)
+    call eval_tree_set_var_list (eval_tree, var_list, subevt)
     call eval_node_compile_sexpr &
          (eval_tree%root, parse_node, eval_tree%var_list)
   end subroutine eval_tree_init_sexpr
@@ -6389,18 +6472,15 @@ contains
   end subroutine eval_tree_init_numeric_value
 
   subroutine eval_tree_set_var_list &
-      (eval_tree, var_list, subevt, event_vars)
+      (eval_tree, var_list, subevt)
     type(eval_tree_t), intent(inout), target :: eval_tree
     type(var_list_t), intent(in), target :: var_list
     type(subevt_t), intent(in), optional, target :: subevt
-    type(event_vars_t), intent(in), optional, target :: event_vars
     logical, save, target :: known = .true.
     call var_list_link (eval_tree%var_list, var_list)
     if (present (subevt))  call var_list_append_subevt_ptr &
          (eval_tree%var_list, var_str ("@evt"), subevt, known, &
          intrinsic=.true.)
-    if (present (event_vars)) &
-         call var_list_append_event_vars (eval_tree%var_list, event_vars)
   end subroutine eval_tree_set_var_list
 
   subroutine eval_tree_final (eval_tree)
@@ -6621,7 +6701,7 @@ contains
   end function eval_tree_get_string_ptr
     
   subroutine eval_tree_write (eval_tree, unit, write_var_list)
-    type(eval_tree_t), intent(in) :: eval_tree
+    class(eval_tree_t), intent(in) :: eval_tree
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: write_var_list
     integer :: u
@@ -6650,16 +6730,15 @@ contains
   end function eval_tree_get_md5sum
 
   function eval_log &
-       (parse_node, var_list, subevt, event_vars, is_known) result (lval)
+       (parse_node, var_list, subevt, is_known) result (lval)
     logical :: lval
     type(parse_node_t), intent(in), target :: parse_node
     type(var_list_t), intent(in), target :: var_list
     type(subevt_t), intent(in), optional, target :: subevt
-    type(event_vars_t), intent(in), optional, target :: event_vars
     logical, intent(out), optional :: is_known
     type(eval_tree_t), target :: eval_tree
     call eval_tree_init_lexpr &
-         (eval_tree, parse_node, var_list, subevt, event_vars)
+         (eval_tree, parse_node, var_list, subevt)
     call eval_tree_evaluate (eval_tree)
     if (eval_tree_result_is_known (eval_tree)) then
        if (present (is_known))  is_known = .true.
@@ -6674,16 +6753,15 @@ contains
   end function eval_log
 
   function eval_int &
-       (parse_node, var_list, subevt, event_vars, is_known) result (ival)
+       (parse_node, var_list, subevt, is_known) result (ival)
     integer :: ival
     type(parse_node_t), intent(in), target :: parse_node
     type(var_list_t), intent(in), target :: var_list
     type(subevt_t), intent(in), optional, target :: subevt
-    type(event_vars_t), intent(in), optional, target :: event_vars
     logical, intent(out), optional :: is_known
     type(eval_tree_t), target :: eval_tree
     call eval_tree_init_expr &
-         (eval_tree, parse_node, var_list, subevt, event_vars)
+         (eval_tree, parse_node, var_list, subevt)
     call eval_tree_evaluate (eval_tree)
     if (eval_tree_result_is_known (eval_tree)) then
        if (present (is_known))  is_known = .true.
@@ -6698,16 +6776,15 @@ contains
   end function eval_int
 
   function eval_real &
-       (parse_node, var_list, subevt, event_vars, is_known) result (rval)
+       (parse_node, var_list, subevt, is_known) result (rval)
     real(default) :: rval
     type(parse_node_t), intent(in), target :: parse_node
     type(var_list_t), intent(in), target :: var_list
     type(subevt_t), intent(in), optional, target :: subevt
-    type(event_vars_t), intent(in), optional, target :: event_vars
     logical, intent(out), optional :: is_known
     type(eval_tree_t), target :: eval_tree
     call eval_tree_init_expr &
-         (eval_tree, parse_node, var_list, subevt, event_vars)
+         (eval_tree, parse_node, var_list, subevt)
     call eval_tree_evaluate (eval_tree)
     if (eval_tree_result_is_known (eval_tree)) then
        if (present (is_known))  is_known = .true.
@@ -6722,16 +6799,15 @@ contains
   end function eval_real
 
   function eval_cmplx &
-       (parse_node, var_list, subevt, event_vars, is_known) result (cval)
+       (parse_node, var_list, subevt, is_known) result (cval)
     complex(default) :: cval
     type(parse_node_t), intent(in), target :: parse_node
     type(var_list_t), intent(in), target :: var_list
     type(subevt_t), intent(in), optional, target :: subevt
-    type(event_vars_t), intent(in), optional, target :: event_vars
     logical, intent(out), optional :: is_known
     type(eval_tree_t), target :: eval_tree
     call eval_tree_init_expr &
-         (eval_tree, parse_node, var_list, subevt, event_vars)
+         (eval_tree, parse_node, var_list, subevt)
     call eval_tree_evaluate (eval_tree)
     if (eval_tree_result_is_known (eval_tree)) then
        if (present (is_known))  is_known = .true.
@@ -6746,16 +6822,15 @@ contains
   end function eval_cmplx
 
   function eval_subevt &
-       (parse_node, var_list, subevt, event_vars, is_known) result (pval)
+       (parse_node, var_list, subevt, is_known) result (pval)
     type(subevt_t) :: pval
     type(parse_node_t), intent(in), target :: parse_node
     type(var_list_t), intent(in), target :: var_list
     type(subevt_t), intent(in), optional, target :: subevt
-    type(event_vars_t), intent(in), optional, target :: event_vars
     logical, intent(out), optional :: is_known
     type(eval_tree_t), target :: eval_tree
     call eval_tree_init_pexpr &
-         (eval_tree, parse_node, var_list, subevt, event_vars)
+         (eval_tree, parse_node, var_list, subevt)
     call eval_tree_evaluate (eval_tree)
     if (eval_tree_result_is_known (eval_tree)) then
        if (present (is_known))  is_known = .true.
@@ -6769,16 +6844,15 @@ contains
   end function eval_subevt
 
   function eval_pdg_array &
-       (parse_node, var_list, subevt, event_vars, is_known) result (aval)
+       (parse_node, var_list, subevt, is_known) result (aval)
     type(pdg_array_t) :: aval
     type(parse_node_t), intent(in), target :: parse_node
     type(var_list_t), intent(in), target :: var_list
     type(subevt_t), intent(in), optional, target :: subevt
-    type(event_vars_t), intent(in), optional, target :: event_vars
     logical, intent(out), optional :: is_known
     type(eval_tree_t), target :: eval_tree
     call eval_tree_init_cexpr &
-         (eval_tree, parse_node, var_list, subevt, event_vars)
+         (eval_tree, parse_node, var_list, subevt)
     call eval_tree_evaluate (eval_tree)
     if (eval_tree_result_is_known (eval_tree)) then
        if (present (is_known))  is_known = .true.
@@ -6792,16 +6866,15 @@ contains
   end function eval_pdg_array
 
   function eval_string &
-       (parse_node, var_list, subevt, event_vars, is_known) result (sval)
+       (parse_node, var_list, subevt, is_known) result (sval)
     type(string_t) :: sval
     type(parse_node_t), intent(in), target :: parse_node
     type(var_list_t), intent(in), target :: var_list
     type(subevt_t), intent(in), optional, target :: subevt
-    type(event_vars_t), intent(in), optional, target :: event_vars
     logical, intent(out), optional :: is_known
     type(eval_tree_t), target :: eval_tree
     call eval_tree_init_sexpr &
-         (eval_tree, parse_node, var_list, subevt, event_vars)
+         (eval_tree, parse_node, var_list, subevt)
     call eval_tree_evaluate (eval_tree)
     if (eval_tree_result_is_known (eval_tree)) then
        if (present (is_known))  is_known = .true.
@@ -6816,12 +6889,11 @@ contains
   end function eval_string
 
   subroutine eval_numeric &
-       (parse_node, var_list, subevt, event_vars, ival, rval, cval, &
+       (parse_node, var_list, subevt, ival, rval, cval, &
         is_known, result_type)
     type(parse_node_t), intent(in), target :: parse_node
     type(var_list_t), intent(in), target :: var_list
     type(subevt_t), intent(in), optional, target :: subevt
-    type(event_vars_t), intent(in), optional, target :: event_vars
     integer, intent(out), optional :: ival
     real(default), intent(out), optional :: rval
     complex(default), intent(out), optional :: cval
@@ -6829,7 +6901,7 @@ contains
     integer, intent(out), optional :: result_type
     type(eval_tree_t), target :: eval_tree
     call eval_tree_init_expr &
-         (eval_tree, parse_node, var_list, subevt, event_vars)
+         (eval_tree, parse_node, var_list, subevt)
     call eval_tree_evaluate (eval_tree)
     if (eval_tree_result_is_known (eval_tree)) then
        if (present (ival))  ival = eval_tree_get_int (eval_tree)
@@ -6856,164 +6928,239 @@ contains
     call msg_error ("Evaluation yields an undefined result, inserting default")
   end subroutine eval_tree_unknown
 
-  subroutine expressions_test ()
-     print *
-     print *, "Expressions test 1"
-     print *
-     call expressions_test1 ()
-     print *
-     print *, "Expressions test 2"
-     print *
-     call syntax_expr_init ()
-     call syntax_write (syntax_expr)
-     call expressions_test2
-     call syntax_expr_final ()
-     print *
-     print *, "Expressions test 3"
-     print *
-     call expressions_test3
-     print *
-     print *, "Expressions test 4"
-     print *
-     call syntax_pexpr_init ()
-     call syntax_write (syntax_pexpr)
-     call expressions_test4
-     call syntax_pexpr_final ()
+  subroutine expressions_test (u, results)
+    integer, intent(in) :: u
+    type (test_results_t), intent(inout) :: results
+    call test (expressions_1, "expressions_1", &
+         "check simple observable", &
+         u, results) 
+    call test (expressions_2, "expressions_2", &
+         "check expression transfer to parse tree", &
+         u, results) 
+    call test (expressions_3, "expressions_3", &
+         "check subevent expressions", &
+         u, results) 
+    call test (expressions_4, "expressions_4", &
+         "check pdg array expressions", &
+         u, results)   
   end subroutine expressions_test
-  
-  subroutine expressions_test1 ()
+
+
+  subroutine expressions_1 (u)
+    integer, intent(in) :: u
     type(var_list_t), pointer :: var_list => null ()
     type(eval_node_t), pointer :: node => null ()
     type(prt_t), pointer :: prt => null ()
     type(var_entry_t), pointer :: var => null ()
+
+    write (u, "(A)")  "* Test output: Expressions"
+    write (u, "(A)")  "*   Purpose: test simple observable and node evaluation"
+    write (u, "(A)")       
+
+    write (u, "(A)")  "* Setting a unary observable:"
+    write (u, "(A)")    
+    
     allocate (var_list)
     allocate (prt)
     call var_list_set_observables_unary (var_list, prt)
-    call var_list_write (var_list)
+    call var_list_write (var_list, u)
     var => var_list_get_var_ptr (var_list, var_str ("PDG"))
+
+    write (u, "(A)")  "* Evaluating the observable node:"
+    write (u, "(A)")        
+    
     allocate (node)
     call eval_node_init_obs (node, var)
-    call eval_node_write (node)
+    call eval_node_write (node, u)
+
+    write (u, "(A)")  "* Cleanup"
+    write (u, "(A)")        
+    
     call eval_node_final_rec (node)
     deallocate (node)
     call var_list_final (var_list)
     deallocate (var_list)
     deallocate (prt)
-  end subroutine expressions_test1
+       
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: expressions_1"        
+    
+  end subroutine expressions_1
+  
+  subroutine expressions_2 (u)
+    integer, intent(in) :: u
+    type(ifile_t) :: ifile
+    type(stream_t) :: stream
+    type(eval_tree_t) :: eval_tree
+    type(string_t) :: expr_text
+    type(var_list_t), pointer :: var_list => null ()
+    
+    write (u, "(A)")  "* Test output: Expressions"
+    write (u, "(A)")  "*   Purpose: test parse routines"
+    write (u, "(A)")       
+    
+    call syntax_expr_init ()
+    call syntax_write (syntax_expr, u)     
+    allocate (var_list)
+    call var_list_append_real (var_list, var_str ("tolerance"), 0._default)
+    call var_list_append_real (var_list, var_str ("x"), -5._default)
+    call var_list_append_int  (var_list, var_str ("foo"), -27)
+    call var_list_append_real (var_list, var_str ("mb"), 4._default)
+    expr_text = &
+         "let real twopi = 2 * pi in" // &
+         "  twopi * sqrt (25.d0 - mb^2)" // &
+         "  / (let int mb_or_0 = max (mb, 0) in" // &
+         "       1 + (if -1 TeV <= x < mb_or_0 then abs(x) else x endif))"
+    call ifile_append (ifile, expr_text)
+    call stream_init (stream, ifile)
+    call var_list_write (var_list, unit = u)
+    call eval_tree_init_stream (eval_tree, stream, var_list=var_list)
+    call eval_tree_evaluate (eval_tree)
+    call eval_tree_write (eval_tree, u)
+    
+    write (u, "(A)")  "* Input string:"
+    write (u, "(A,A)")  "     ", char (expr_text)
+    write (u, "(A)") 
+    write (u, "(A)")  "* Cleanup"
+    
+    call stream_final (stream) 
+    call ifile_final (ifile)
+    call eval_tree_final (eval_tree)
+    call var_list_final (var_list)
+    deallocate (var_list)
+    call syntax_expr_final ()     
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: expressions_2"        
+    
+  end subroutine expressions_2 
+  
+  subroutine expressions_3 (u)
+    integer, intent(in) :: u
+    type(subevt_t) :: subevt
 
-   subroutine expressions_test2 ()
-     type(ifile_t) :: ifile
-     type(stream_t) :: stream
-     type(eval_tree_t) :: eval_tree
-     type(string_t) :: expr_text
-     type(var_list_t), pointer :: var_list => null ()
-     allocate (var_list)
-     call var_list_append_real (var_list, var_str ("x"), -5._default)
-     call var_list_append_int  (var_list, var_str ("foo"), -27)
-     call var_list_append_real (var_list, var_str ("mb"), 4._default)
-     expr_text = &
-          "let real twopi = 2 * pi in" // &
-          "  twopi * sqrt (25.d0 - mb^2)" // &
-          "  / (let int mb_or_0 = max (mb, 0) in" // &
-          "       1 + (if -1 TeV <= x < mb_or_0 then abs(x) else x endif))"
-     call ifile_append (ifile, expr_text)
-     call stream_init (stream, ifile)
-     call var_list_write (var_list)
-     call eval_tree_init_stream (eval_tree, stream, var_list=var_list)
-     call eval_tree_evaluate (eval_tree)
-     call eval_tree_write (eval_tree)
-     print "(A)", "Input string:"
-     print *, char (expr_text)
-     call stream_final (stream) 
-     call ifile_final (ifile)
-     call eval_tree_final (eval_tree)
-     call var_list_final (var_list)
-     deallocate (var_list)
-   end subroutine expressions_test2
+    write (u, "(A)")  "* Test output: Expressions"
+    write (u, "(A)")  "*   Purpose: test subevent expressions"
+    write (u, "(A)")       
 
-   subroutine expressions_test3 ()
-     type(subevt_t) :: subevt
-     call subevt_init (subevt)
-     call subevt_reset (subevt, 1)
-     call subevt_set_incoming (subevt, 1, &
-          22, vector4_moving (1.e3_default, 1.e3_default, 1), &
-          0._default, (/ 2 /))
-     call subevt_write (subevt)
-     call subevt_reset (subevt, 4)
-     call subevt_reset (subevt, 3)
-     call subevt_set_incoming (subevt, 1, &
-          21, vector4_moving (1.e3_default, 1.e3_default, 3), &
-          0._default, (/ 1 /))
-     call subevt_polarize (subevt, 1, -1)
-     call subevt_set_outgoing (subevt, 2, &
-          1, vector4_moving (0._default, 1.e3_default, 3), &
-          -1.e6_default, (/ 7 /))
-     call subevt_set_composite (subevt, 3, &
-          vector4_moving (-1.e3_default, 0._default, 3), &
-          (/ 2, 7 /))
-     call subevt_write (subevt)
-   end subroutine expressions_test3
+    write (u, "(A)")  "* Initialize subevent:"
+    write (u, "(A)")       
+            
+    call subevt_init (subevt)
+    call subevt_reset (subevt, 1)
+    call subevt_set_incoming (subevt, 1, &
+         22, vector4_moving (1.e3_default, 1.e3_default, 1), &
+         0._default, [2])
+    call subevt_write (subevt, u)
+    call subevt_reset (subevt, 4)
+    call subevt_reset (subevt, 3)
+    call subevt_set_incoming (subevt, 1, &
+         21, vector4_moving (1.e3_default, 1.e3_default, 3), &
+         0._default, [1])
+    call subevt_polarize (subevt, 1, -1)
+    call subevt_set_outgoing (subevt, 2, &
+         1, vector4_moving (0._default, 1.e3_default, 3), &
+         -1.e6_default, [7])
+    call subevt_set_composite (subevt, 3, &
+         vector4_moving (-1.e3_default, 0._default, 3), &
+         (/ 2, 7 /))
+    call subevt_write (subevt, u)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: expressions_3"        
+    
+  end subroutine expressions_3
+  
+  subroutine expressions_4 (u)
+    integer, intent(in) :: u
+    type(subevt_t), target :: subevt
+    type(string_t) :: expr_text
+    type(ifile_t) :: ifile
+    type(stream_t) :: stream
+    type(eval_tree_t) :: eval_tree
+    type(var_list_t), pointer :: var_list => null ()
+    type(pdg_array_t) :: aval
 
-   subroutine expressions_test4 ()
-     type(subevt_t), target :: subevt
-     type(string_t) :: expr_text
-     type(ifile_t) :: ifile
-     type(stream_t) :: stream
-     type(eval_tree_t) :: eval_tree
-     type(var_list_t), pointer :: var_list => null ()
-     type(pdg_array_t) :: aval
-     allocate (var_list)
-     aval = 0
-     call var_list_append_pdg_array (var_list, var_str ("particle"), aval)
-     aval = (/ 11,-11 /)
-     call var_list_append_pdg_array (var_list, var_str ("lepton"), aval)
-     aval = 22
-     call var_list_append_pdg_array (var_list, var_str ("photon"), aval)
-     aval = 1
-     call var_list_append_pdg_array (var_list, var_str ("u"), aval)
-     call subevt_init (subevt)
-     call subevt_reset (subevt, 6)
-     call subevt_set_incoming (subevt, 1, &
-          1, vector4_moving (1._default, 1._default, 1), 0._default)
-     call subevt_set_incoming (subevt, 2, &
-          -1, vector4_moving (2._default, 2._default, 1), 0._default)
-     call subevt_set_outgoing (subevt, 3, &
-          22, vector4_moving (3._default, 3._default, 1), 0._default)
-     call subevt_set_outgoing (subevt, 4, &
-          22, vector4_moving (4._default, 4._default, 1), 0._default)
-     call subevt_set_outgoing (subevt, 5, &
-          11, vector4_moving (5._default, 5._default, 1), 0._default)
-     call subevt_set_outgoing (subevt, 6, &
-          -11, vector4_moving (6._default, 6._default, 1), 0._default)
-     print *
-     print *, "Expression:"
-     expr_text = &
-          "let alias quark = pdg(1):pdg(2):pdg(3) in" // &
-          "  any E > 3 GeV " // &
-          "    [sort by - Pt " // &
-          "       [select if Index < 6 " // &
-          "          [photon:pdg(-11):pdg(3):quark " // &
-          "           & incoming particle]]]" // &
-          "  and" // &
-          "  eval Theta [extract index -1 [photon]] > 45 degree" // &
-          "  and" // &
-          "  count [incoming photon] * 3 > 0"
-     print *, char (expr_text)
-     print *
-     call ifile_append (ifile, expr_text)
-     call stream_init (stream, ifile)
-     call eval_tree_init_stream (eval_tree, stream, var_list, subevt, V_LOG)
-     print *
-     call eval_tree_write (eval_tree)
-     call eval_tree_evaluate (eval_tree)
-     print *
-     call eval_tree_write (eval_tree)
-     call stream_final (stream)
-     call ifile_final (ifile)
-     call eval_tree_final (eval_tree)
-     call var_list_final (var_list)
-     deallocate (var_list)
-   end subroutine expressions_test4
+    write (u, "(A)")  "* Test output: Expressions"
+    write (u, "(A)")  "*   Purpose: test pdg array expressions"
+    write (u, "(A)")       
+
+    write (u, "(A)")  "* Initialization:"
+    write (u, "(A)")       
+    
+    call syntax_pexpr_init ()
+    call syntax_write (syntax_pexpr, u)
+    allocate (var_list)
+    call var_list_append_real (var_list, var_str ("tolerance"), 0._default)
+    aval = 0
+    call var_list_append_pdg_array (var_list, var_str ("particle"), aval)
+    aval = [11,-11]
+    call var_list_append_pdg_array (var_list, var_str ("lepton"), aval)
+    aval = 22
+    call var_list_append_pdg_array (var_list, var_str ("photon"), aval)
+    aval = 1
+    call var_list_append_pdg_array (var_list, var_str ("u"), aval)
+    call subevt_init (subevt)
+    call subevt_reset (subevt, 6)
+    call subevt_set_incoming (subevt, 1, &
+         1, vector4_moving (1._default, 1._default, 1), 0._default)
+    call subevt_set_incoming (subevt, 2, &
+         -1, vector4_moving (2._default, 2._default, 1), 0._default)
+    call subevt_set_outgoing (subevt, 3, &
+         22, vector4_moving (3._default, 3._default, 1), 0._default)
+    call subevt_set_outgoing (subevt, 4, &
+         22, vector4_moving (4._default, 4._default, 1), 0._default)
+    call subevt_set_outgoing (subevt, 5, &
+         11, vector4_moving (5._default, 5._default, 1), 0._default)
+    call subevt_set_outgoing (subevt, 6, &
+         -11, vector4_moving (6._default, 6._default, 1), 0._default)
+    write (u, "(A)")
+    write (u, "(A)")  "* Expression:"
+    expr_text = &
+         "let alias quark = pdg(1):pdg(2):pdg(3) in" // &
+         "  any E > 3 GeV " // &
+         "    [sort by - Pt " // &
+         "       [select if Index < 6 " // &
+         "          [photon:pdg(-11):pdg(3):quark " // &
+         "           & incoming particle]]]" // &
+         "  and" // &
+         "  eval Theta [extract index -1 [photon]] > 45 degree" // &
+         "  and" // &
+         "  count [incoming photon] * 3 > 0"
+    write (u, "(A,A)")  "     ", char (expr_text)
+    write (u, "(A)")
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Extract the evaluation tree:"
+    write (u, "(A)")
+    
+    call ifile_append (ifile, expr_text)
+    call stream_init (stream, ifile)
+    call eval_tree_init_stream (eval_tree, stream, var_list, subevt, V_LOG)
+    call eval_tree_write (eval_tree, u)
+    call eval_tree_evaluate (eval_tree)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Evaluate the tree:"
+    write (u, "(A)")
+
+    call eval_tree_write (eval_tree, u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+    write (u, "(A)")
+    
+    call stream_final (stream)
+    call ifile_final (ifile)
+    call eval_tree_final (eval_tree)
+    call var_list_final (var_list)
+    deallocate (var_list)
+    call syntax_pexpr_final ()  
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: expressions_4"        
+        
+  end subroutine expressions_4
 
 
 end module expressions

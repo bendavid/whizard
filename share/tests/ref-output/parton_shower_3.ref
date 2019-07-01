@@ -1,0 +1,145 @@
+?openmp_logging = false
+?vis_history = false
+?integration_timer = false
+SM.me =  0.000000000000E+00
+$method = "omega"
+| Process library 'parton_shower_3_lib': recorded process 'parton_shower_3_p1'
+seed = 0
+| Process library 'parton_shower_3_lib': compiling ...
+| Process library 'parton_shower_3_lib': writing makefile
+| Process library 'parton_shower_3_lib': removing old files
+| Process library 'parton_shower_3_lib': writing driver
+| Process library 'parton_shower_3_lib': creating source code
+| Process library 'parton_shower_3_lib': compiling sources
+| Process library 'parton_shower_3_lib': linking
+| Process library 'parton_shower_3_lib': loading
+| Process library 'parton_shower_3_lib': ... success.
+$phs_method = "wood"
+$integration_method = "vamp"
+sqrts =  1.000000000000E+03
+openmp_num_threads = 1
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 0
+| Initializing integration for process parton_shower_3_p1:
+| ------------------------------------------------------------------------
+| Process [scattering]: 'parton_shower_3_p1'
+|   Library name  = 'parton_shower_3_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'parton_shower_3_p1_i1':   e-, e+ => u, ubar [omega]
+| ------------------------------------------------------------------------
+| Beam structure: [any particles]
+| Beam data (collision):
+|   e-  (mass = 0.0000000E+00 GeV)
+|   e+  (mass = 0.0000000E+00 GeV)
+|   sqrts = 1.000000000000E+03 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'parton_shower_3_p1_i1.phs'
+| Phase space: 2 channels, 2 dimensions
+| Phase space: found 2 channels, collected in 2 groves.
+| Phase space: Using 2 equivalences between channels.
+| Phase space: wood
+| Applying user-defined cuts.
+| Starting integration for process 'parton_shower_3_p1'
+| Integrate: iterations = 3:1000:"g", 3:1000
+| Integrator: 2 chains, 2 channels, 2 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 1000 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1        784  1.6879081E+02  1.42E+00    0.84    0.24*  36.50
+   2        784  1.6800261E+02  8.60E-01    0.51    0.14*  36.20
+   3        784  1.6863536E+02  7.93E-01    0.47    0.13*  57.29
+|-----------------------------------------------------------------------------|
+   3       2352  1.6840915E+02  5.39E-01    0.32    0.16   57.29    0.19   3
+|-----------------------------------------------------------------------------|
+   4        784  1.6843609E+02  7.16E-01    0.43    0.12*  56.93
+   5        784  1.6986450E+02  7.15E-01    0.42    0.12*  57.39
+   6        784  1.6914014E+02  6.91E-01    0.41    0.11*  57.15
+|-----------------------------------------------------------------------------|
+   6       2352  1.6914727E+02  4.08E-01    0.24    0.12   57.15    1.00   3
+|=============================================================================|
+n_events = 1
+?allow_shower = true
+?ps_fsr_active = true
+?ps_use_PYTHIA_shower = true
+$sample = "parton_shower_3"
+?sample_pacify = true
+| Starting simulation for process 'parton_shower_3_p1'
+| Simulate: using integration grids from file 'parton_shower_3_p1_m1.vg'
+| Simulate: activating parton shower
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 1
+| Simulation: requested number of events = 1
+|             corr. to luminosity [fb-1] =   5.9120E-03
+| Events: writing to ASCII file 'parton_shower_3.evt'
+| Events: writing to raw file 'parton_shower_3.evx'
+| Events: generating 1 unweighted, unpolarized events ...
+| Events: event normalization mode '1'
+| Using PYTHIA interface for parton showers
+|         ... event sample complete.
+| Events: closing ASCII file 'parton_shower_3.evt'
+| Events: closing raw file 'parton_shower_3.evx'
+| WHIZARD run finished.
+|=============================================================================|
+Contents of parton_shower_3.evt:
+========================================================================
+ Event
+------------------------------------------------------------------------
+   Unweighted         = T
+   Normalization      = '1'
+   Helicity handling  = drop
+   Keep correlations  = F
+------------------------------------------------------------------------
+   Squared matrix el. =  8.054420331018E-03
+   Event weight       =  1.000000000000E+00
+------------------------------------------------------------------------
+   Selected MCI group = 1
+   Selected term      = 1
+   Selected channel   = 1
+------------------------------------------------------------------------
+   Passed selection   = T
+   Reweighting factor =  1.000000000000E+00
+   Analysis flag      = T
+========================================================================
+ Local variables:
+------------------------------------------------------------------------
+sqrts* =  1.000000000000E+03
+sqrts_hat* =>  1.000000000000E+03
+n_in* => 2
+n_out* => 18
+n_tot* => 20
+$process_id* => "parton_shower_3_p1"
+process_num_id* => [unknown integer]
+sqme* =>  8.054420331018E-03
+sqme_ref* =>  8.054420331018E-03
+event_index* => 1
+event_weight* =>  1.000000000000E+00
+event_weight_ref* =>  1.000000000000E+00
+event_excess* =>  0.000000000000E+00
+------------------------------------------------------------------------
+ subevent:
+ 1 prt(i:11|-5.0000000E+02; 0.0000000E+00, 0.0000000E+00,-5.0000000E+02| 0.000000000000E+00| 1)
+ 2 prt(i:-11|-5.0000000E+02; 0.0000000E+00, 0.0000000E+00, 5.0000000E+02| 0.000000000000E+00| 2)
+ 3 prt(o:2| 4.5588799E+02;-4.2212051E+02, 5.6312740E+01,-1.6271757E+02| 0.000000000000E+00| 3)
+ 4 prt(o:21| 1.1977101E+01;-1.0892332E+01, 2.0483357E+00,-4.5400857E+00| 0.000000000000E+00| 4)
+ 5 prt(o:21| 1.5050148E+00;-9.6752989E-01, 5.2077772E-01,-1.0284678E+00| 0.000000000000E+00| 5)
+ 6 prt(o:21| 3.2909255E+01; 2.3327711E+01,-1.7313577E+01,-1.5462115E+01| 0.000000000000E+00| 6)
+ 7 prt(o:21| 3.2465111E+00; 2.3632790E+00,-6.9901713E-01,-2.1133200E+00| 0.000000000000E+00| 7)
+ 8 prt(o:21| 7.7472388E+00; 7.4906397E+00,-1.1836702E+00,-1.5839668E+00| 0.000000000000E+00| 8)
+ 9 prt(o:21| 1.7759262E+00; 9.2243836E-01,-6.4459873E-01,-1.3738682E+00| 0.000000000000E+00| 9)
+ 10 prt(o:21| 6.0794783E+00; 5.8812514E+00,-9.9515891E-01,-1.1749882E+00| 0.000000000000E+00| 10)
+ 11 prt(o:21| 9.4350652E-01; 5.9653835E-01,-3.1780934E-01, 6.5828852E-01| 0.000000000000E+00| 11)
+ 12 prt(o:21| 1.7062353E+00; 1.3140320E+00, 8.4645129E-01, 6.8416314E-01| 0.000000000000E+00| 12)
+ 13 prt(o:21| 1.1427718E+01; 1.6964478E+00, 8.1975940E+00, 7.7790911E+00| 0.000000000000E+00| 13)
+ 14 prt(o:21| 4.3826302E+01; 1.4997226E+01, 3.3070722E+01, 2.4538853E+01| 0.000000000000E+00| 14)
+ 15 prt(o:21| 3.6637888E+00; 9.6716314E-01, 2.5411485E+00, 2.4557094E+00| 0.000000000000E+00| 15)
+ 16 prt(o:21| 3.6694859E+00;-3.7248802E-01, 2.5597699E+00, 2.6026827E+00| 0.000000000000E+00| 16)
+ 17 prt(o:21| 7.6970998E-01; 4.2856834E-01, 6.1596402E-01,-1.7137960E-01| 0.000000000000E+00| 17)
+ 18 prt(o:21| 2.3871089E+01; 2.1447622E+01,-6.2545521E+00, 8.4088635E+00| 0.000000000000E+00| 18)
+ 19 prt(o:21| 2.1577138E+01; 1.9778648E+01,-4.7773665E+00, 7.1801650E+00| 0.000000000000E+00| 19)
+ 20 prt(o:-2| 3.6741651E+02; 3.3314130E+02,-7.4527753E+01, 1.3585795E+02| 0.000000000000E+00| 20)
+========================================================================

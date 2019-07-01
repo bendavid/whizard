@@ -70,6 +70,16 @@ subroutine GetXminM (set, mem, xmin)
   stop
 end subroutine GetXminM
 
+subroutine GetXmin (mem, xmin)
+  integer, intent(in) :: mem
+  double precision, intent(out) :: xmin
+  xmin = 0
+  write (0, "(A)")  "*************************************************************"
+  write (0, "(A)")  "*** LHAPDF: Error: library not linked, WHIZARD terminates ***"
+  write (0, "(A)")  "*************************************************************"
+  stop
+end subroutine GetXmin
+
 subroutine GetXmaxM (set, mem, xmax)
   integer, intent(in) :: set, mem
   double precision, intent(out) :: xmax
@@ -79,6 +89,16 @@ subroutine GetXmaxM (set, mem, xmax)
   write (0, "(A)")  "*************************************************************"
   stop
 end subroutine GetXmaxM
+
+subroutine GetXmax (mem, xmax)
+  integer, intent(in) :: mem
+  double precision, intent(out) :: xmax
+  xmax = 1
+  write (0, "(A)")  "*************************************************************"
+  write (0, "(A)")  "*** LHAPDF: Error: library not linked, WHIZARD terminates ***"
+  write (0, "(A)")  "*************************************************************"
+  stop
+end subroutine GetXmax
 
 subroutine GetQ2minM (set, mem, q2min)
   integer, intent(in) :: set, mem
@@ -90,6 +110,16 @@ subroutine GetQ2minM (set, mem, q2min)
   stop
 end subroutine GetQ2minM
 
+subroutine GetQ2min (mem, q2min)
+  integer, intent(in) :: mem
+  double precision, intent(out) :: q2min
+  q2min = 0
+  write (0, "(A)")  "*************************************************************"
+  write (0, "(A)")  "*** LHAPDF: Error: library not linked, WHIZARD terminates ***"
+  write (0, "(A)")  "*************************************************************"
+  stop
+end subroutine GetQ2min
+
 subroutine GetQ2maxM (set, mem, q2max)
   integer, intent(in) :: set, mem
   double precision, intent(out) :: q2max
@@ -100,8 +130,8 @@ subroutine GetQ2maxM (set, mem, q2max)
   stop
 end subroutine GetQ2maxM
 
-subroutine GetQ2max (set, q2max)
-  integer, intent(in) :: set
+subroutine GetQ2max (mem, q2max)
+  integer, intent(in) :: mem
   double precision, intent(out) :: q2max
   q2max = huge (1.d0)
   write (0, "(A)")  "*************************************************************"

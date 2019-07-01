@@ -1,11 +1,13 @@
-! WHIZARD 2.1.1 September 18 2012
+! WHIZARD 2.2.0 May 18 2014
 ! 
-! Copyright (C) 1999-2012 by 
+! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
-!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
+!     
+!     with contributions from
+!     Christian Speckner <cnspeckn@googlemail.com> 
+!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -30,10 +32,11 @@ module analysis
   use kinds, only: default !NODEP!
   use iso_varying_string, string_t => varying_string !NODEP!
   use limits, only: HISTOGRAM_HEAD_FORMAT, HISTOGRAM_DATA_FORMAT !NODEP!
-  use limits, only: HISTOGRAM_INTG_FORMAT !NODEP!
+  use limits, only: FMT_19 !NODEP!
   use file_utils !NODEP!
   use diagnostics !NODEP!
   use os_interface
+  use unit_tests
   use ifiles
 
   implicit none
@@ -42,7 +45,9 @@ module analysis
   public :: graph_options_t
   public :: graph_options_init
   public :: graph_options_set
+  public :: graph_options_write
   public :: drawing_options_t
+  public :: drawing_options_write
   public :: drawing_options_init_histogram
   public :: drawing_options_init_plot
   public :: drawing_options_set
@@ -63,6 +68,7 @@ module analysis
   public :: analysis_clear
   public :: analysis_record_data
   public :: analysis_fill_graph
+  public :: analysis_exists
   public :: analysis_get_n_elements
   public :: analysis_get_n_entries
   public :: analysis_get_average
@@ -305,6 +311,48 @@ contains
     if (present (gmlcode_fg))  graph_options%gmlcode_fg = gmlcode_fg
   end subroutine graph_options_set
 
+  subroutine graph_options_write (gro, unit)
+    type(graph_options_t), intent(in) :: gro
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = output_unit (unit)
+1   format (A,1x,'"',A,'"')
+2   format (A,1x,L1)
+3   format (A,1x,ES19.12)
+4   format (A,1x,I0)
+5   format (A,1x,'[undefined]')
+    write (u, 1)  "title       =", char (gro%title)
+    write (u, 1)  "description =", char (gro%description)
+    write (u, 1)  "x_label     =", char (gro%x_label)
+    write (u, 1)  "y_label     =", char (gro%y_label)
+    write (u, 2)  "x_log       =", gro%x_log
+    write (u, 2)  "y_log       =", gro%y_log
+    if (gro%x_min_set) then
+       write (u, 3)  "x_min       =", gro%x_min
+    else
+       write (u, 5)  "x_min       ="
+    end if
+    if (gro%x_max_set) then
+       write (u, 3)  "x_max       =", gro%x_max
+    else
+       write (u, 5)  "x_max       ="
+    end if
+    if (gro%y_min_set) then
+       write (u, 3)  "y_min       =", gro%y_min
+    else
+       write (u, 5)  "y_min       ="
+    end if
+    if (gro%y_max_set) then
+       write (u, 3)  "y_max       =", gro%y_max
+    else
+       write (u, 5)  "y_max       ="
+    end if
+    write (u, 4)  "width_mm    =", gro%width_mm
+    write (u, 4)  "height_mm   =", gro%height_mm
+    write (u, 1)  "gmlcode_bg  =", char (gro%gmlcode_bg)
+    write (u, 1)  "gmlcode_fg  =", char (gro%gmlcode_fg)
+  end subroutine graph_options_write
+  
   subroutine graph_options_write_tex_header (gro, unit)
     type(graph_options_t), intent(in) :: gro
     integer, intent(in), optional :: unit
@@ -332,8 +380,16 @@ contains
   subroutine graph_options_write_tex_footer (gro, unit)
     type(graph_options_t), intent(in) :: gro
     integer, intent(in), optional :: unit
-    integer :: u
+    integer :: u, width, height
+    width = gro%width_mm - 10
+    height = gro%height_mm - 10
     u = output_unit (unit)
+    write (u, "(A)")  "  begingmleps ""Whizard-Logo.eps"";"
+    write (u, "(A,I0,A,I0,A)")  &
+         "    base := (", width, "*unitlength,", height, "*unitlength);"
+    write (u, "(A)")  "    height := 9.6*unitlength;"
+    write (u, "(A)")  "    width := 11.2*unitlength;"
+    write (u, "(A)")  "  endgmleps;"
     write (u, "(A)")  "\end{gmlgraph*}"
   end subroutine graph_options_write_tex_footer
 
@@ -378,31 +434,32 @@ contains
     type(graph_options_t), intent(in) :: gro
     real(default), intent(in), optional :: x_min, x_max, y_min, y_max
     type(string_t) :: x_min_str, x_max_str, y_min_str, y_max_str
+    character(*), parameter :: fmt = "(ES15.8)"
     if (gro%x_min_set) then
-       x_min_str = "#" // real2string (gro%x_min)
+       x_min_str = "#" // trim (adjustl (real2string (gro%x_min, fmt)))
     else if (present (x_min)) then
-       x_min_str = "#" // real2string (x_min)
+       x_min_str = "#" // trim (adjustl (real2string (x_min, fmt)))
     else
        x_min_str = "??"
     end if
     if (gro%x_max_set) then
-       x_max_str = "#" // real2string (gro%x_max)
+       x_max_str = "#" // trim (adjustl (real2string (gro%x_max, fmt)))
     else if (present (x_max)) then
-       x_max_str = "#" // real2string (x_max)
+       x_max_str = "#" // trim (adjustl (real2string (x_max, fmt)))
     else
        x_max_str = "??"
     end if
     if (gro%y_min_set) then
-       y_min_str = "#" // real2string (gro%y_min)
+       y_min_str = "#" // trim (adjustl (real2string (gro%y_min, fmt)))
     else if (present (y_min)) then
-       y_min_str = "#" // real2string (y_min)
+       y_min_str = "#" // trim (adjustl (real2string (y_min, fmt)))
     else
        y_min_str = "??"
     end if
     if (gro%y_max_set) then
-       y_max_str = "#" // real2string (gro%y_max)
+       y_max_str = "#" // trim (adjustl (real2string (gro%y_max, fmt)))
     else if (present (y_max)) then
-       y_max_str = "#" // real2string (y_max)
+       y_max_str = "#" // trim (adjustl (real2string (y_max, fmt)))
     else
        y_max_str = "??"
     end if
@@ -444,6 +501,28 @@ contains
          c // "y axis label: " // pl%y_label)
   end subroutine graph_options_get_header
 
+  subroutine drawing_options_write (dro, unit)
+     type(drawing_options_t), intent(in) :: dro
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = output_unit (unit)
+1   format (A,1x,'"',A,'"')
+2   format (A,1x,L1)
+    write (u, 2)  "with_hbars  =", dro%with_hbars
+    write (u, 2)  "with_base   =", dro%with_base
+    write (u, 2)  "piecewise   =", dro%piecewise
+    write (u, 2)  "fill        =", dro%fill
+    write (u, 2)  "draw        =", dro%draw
+    write (u, 2)  "err         =", dro%err
+    write (u, 2)  "symbols     =", dro%symbols
+    write (u, 1)  "fill_options=", char (dro%fill_options)
+    write (u, 1)  "draw_options=", char (dro%draw_options)
+    write (u, 1)  "err_options =", char (dro%err_options)
+    write (u, 1)  "symbol      =", char (dro%symbol)
+    write (u, 1)  "gmlcode_bg  =", char (dro%gmlcode_bg)
+    write (u, 1)  "gmlcode_fg  =", char (dro%gmlcode_fg)
+  end subroutine drawing_options_write
+  
   subroutine drawing_options_init_histogram (dro)
     type(drawing_options_t), intent(out) :: dro
     dro%dataset = "dat"
@@ -711,14 +790,32 @@ contains
        relerr = 0
     end if
     n = observable_get_n_entries (obs)
-    write (u, "(A,1x," // HISTOGRAM_DATA_FORMAT // ")") &
+    if (obs%graph_options%title /= "") then
+       write (u, "(A,1x,3A)") &
+            "title       =", '"', char (obs%graph_options%title), '"'
+    end if
+    if (obs%graph_options%title /= "") then
+       write (u, "(A,1x,3A)") &
+            "description =", '"', char (obs%graph_options%description), '"'
+    end if
+    write (u, "(A,1x," // HISTOGRAM_DATA_FORMAT // ")", advance = "no") &
          "average     =", avg
-    write (u, "(A,1x," // HISTOGRAM_DATA_FORMAT // ")") &
+    call write_unit ()
+    write (u, "(A,1x," // HISTOGRAM_DATA_FORMAT // ")", advance = "no") &
          "error[abs]  =", err
+    call write_unit ()
     write (u, "(A,1x," // HISTOGRAM_DATA_FORMAT // ")") &
          "error[rel]  =", relerr
-    write (u, "(A,1x," // HISTOGRAM_INTG_FORMAT // ")") &
+    write (u, "(A,1x,I0)") &
          "n_entries   =", n
+  contains
+    subroutine write_unit ()
+      if (obs%obs_unit /= "") then
+         write (u, "(1x,A)")  char (obs%obs_unit)
+      else
+         write (u, *)
+      end if
+    end subroutine write_unit
   end subroutine observable_write
 
   subroutine observable_write_driver (obs, unit, write_heading)
@@ -852,9 +949,9 @@ contains
     character(120) :: buffer
     integer :: u
     u = output_unit (unit);  if (u < 0)  return
-    write (buffer, "(A,5(1x," // HISTOGRAM_HEAD_FORMAT // "))") &
+    write (buffer, "(A,4(1x," //HISTOGRAM_HEAD_FORMAT // "),2x,A)") &
          "#", "bin midpoint", "value    ", "error    ", &
-         "n_entries ", "excess     "
+         "excess     ", "n"
     write (u, "(A)")  trim (buffer)
   end subroutine bin_write_header
 
@@ -863,14 +960,12 @@ contains
     integer, intent(in), optional :: unit
     integer :: u
     u = output_unit (unit);  if (u < 0)  return
-    write (u, "(1x,3(1x," // HISTOGRAM_DATA_FORMAT // ")," &
-                       // HISTOGRAM_INTG_FORMAT // "," &
-                       // HISTOGRAM_DATA_FORMAT // ")") &
+    write (u, "(1x,4(1x," // HISTOGRAM_DATA_FORMAT // "),2x,I0)") &
          bin_get_midpoint (bin), &
          bin_get_sum (bin), &
          bin_get_error (bin), &
-         bin_get_n_entries (bin), &
-         bin_get_excess (bin)
+         bin_get_excess (bin), &
+         bin_get_n_entries (bin)
   end subroutine bin_write
 
   subroutine histogram_init_n_bins (h, id, &
@@ -1140,12 +1235,13 @@ contains
     type(histogram_t), intent(in) :: h
     type(string_t), intent(in) :: filename
     integer, intent(in), optional :: unit
+    character(*), parameter :: fmt = "(ES15.8)"    
     integer :: u
     u = output_unit (unit);  if (u < 0)  return
     write (u, "(2x,A)")  'fromfile "' // char (filename) // '":'
     write (u, "(4x,A)")  'key "# Histogram:";'
     write (u, "(4x,A)")  'dx := #' &
-         // real2char (h%width / h%n_bins / 2) // ';'
+         // real2char (h%width / h%n_bins / 2, fmt) // ';'
     write (u, "(4x,A)")  'for i withinblock:' 
     write (u, "(6x,A)")  'get x, y, y.d, y.n, y.e;'
     if (h%drawing_options%with_hbars) then
@@ -1160,8 +1256,9 @@ contains
          // '.err) ' &
             // '(x,y) vbar y.d;'
     end if
-!     write (u, "(6x,A)")  'if show_excess: ' // &
-!                & 'plot(dat.e)(x, y plus y.e) hbar dx; fi'
+    !!! Future excess options for plots
+    ! write (u, "(6x,A)")  'if show_excess: ' // &
+    !            & 'plot(dat.e)(x, y plus y.e) hbar dx; fi'
     write (u, "(4x,A)")  'endfor'
     write (u, "(2x,A)")  'endfrom'
   end subroutine histogram_write_gml_reader
@@ -1286,7 +1383,7 @@ contains
     integer, intent(in), optional :: unit
     integer :: u
     u = output_unit (unit);  if (u < 0)  return
-    write (u, "(1x,4(1x," // HISTOGRAM_DATA_FORMAT // ")),") &
+    write (u, "(1x,4(1x," // HISTOGRAM_DATA_FORMAT // "))") &
          point_get_x (point), &
          point_get_y (point), &
          point_get_yerr (point), &
@@ -1404,8 +1501,8 @@ contains
     end do
     write (u, *)
     write (u, "(A,1x,A)")  "#", "Summary:"
-    write (u, "(A," // HISTOGRAM_INTG_FORMAT // ")") &
-         "n_entries = ", plot_get_n_entries (plot)
+    write (u, "(A,1x,I0)") &
+         "n_entries =", plot_get_n_entries (plot)
     write (u, *)
   end subroutine plot_write
 
@@ -1896,11 +1993,14 @@ contains
     end select
   end function analysis_object_has_plot
 
-  subroutine analysis_object_write (obj, unit)
+  subroutine analysis_object_write (obj, unit, verbose)
     type(analysis_object_t), intent(in) :: obj
     integer, intent(in), optional :: unit
+    logical, intent(in), optional :: verbose
+    logical :: verb
     integer :: u
     u = output_unit (unit);  if (u < 0)  return
+    verb = .false.;  if (present (verbose))  verb = verbose
     write (u, "(A)")  repeat ("#", 79)
     select case (obj%type)
     case (AN_OBSERVABLE)
@@ -1917,10 +2017,26 @@ contains
     end select
     write (u, "(1x,A)")  char (obj%id)
     select case (obj%type)
-    case (AN_OBSERVABLE);  call observable_write (obj%obs, unit)
-    case (AN_HISTOGRAM);   call histogram_write (obj%h, unit)
-    case (AN_PLOT);        call plot_write (obj%p, unit)
-    case (AN_GRAPH);       call graph_write (obj%g, unit)
+    case (AN_OBSERVABLE)
+       call observable_write (obj%obs, unit)
+    case (AN_HISTOGRAM)
+       if (verb) then
+          call graph_options_write (obj%h%graph_options, unit)
+          write (u, *)
+          call drawing_options_write (obj%h%drawing_options, unit)
+          write (u, *)
+       end if
+       call histogram_write (obj%h, unit)
+    case (AN_PLOT)
+       if (verb) then
+          call graph_options_write (obj%p%graph_options, unit)
+          write (u, *)
+          call drawing_options_write (obj%p%drawing_options, unit)
+          write (u, *)
+       end if
+       call plot_write (obj%p, unit)
+    case (AN_GRAPH)
+       call graph_write (obj%g, unit)
     end select
   end subroutine analysis_object_write
 
@@ -2170,26 +2286,33 @@ contains
     integer, intent(in), optional :: unit
     integer :: u
     u = output_unit (unit);  if (u < 0)  return
-    write(u, '(A)') "\documentclass[12pt]{article}"
-    write(u, *)
-    write(u, '(A)') "\usepackage{gamelan}"
-    write(u, '(A)') "\usepackage{amsmath}"
-    write(u, *)
-    write(u, '(A)') "\begin{document}"
-    write(u, '(A)') "\begin{gmlfile}"
-    write(u, *)
-    write(u, '(A)') "\begin{gmlcode}"
-    write(u, '(A)') "  color col.default, col.excess;"
-    write(u, '(A)') "  col.default = 0.9white;"
-    write(u, '(A)') "  col.excess  = red;"
-    write(u, '(A)') "  boolean show_excess;"
-!    if (mcs(1)%plot_excess .and. mcs(1)%unweighted) then
-!       write(u, '(A)') "  show_excess = true;"
-!    else
-    write(u, '(A)') "  show_excess = false;"
-!    end if
-    write(u, '(A)') "\end{gmlcode}"
-    write(u, *)
+    write (u, '(A)') "\documentclass[12pt]{article}"
+    write (u, *)
+    write (u, '(A)') "\usepackage{gamelan}"
+    write (u, '(A)') "\usepackage{amsmath}"
+    write (u, '(A)') "\usepackage{ifpdf}"
+    write (u, '(A)') "\ifpdf"
+    write (u, '(A)') "   \DeclareGraphicsRule{*}{mps}{*}{}"
+    write (u, '(A)') "\else"
+    write (u, '(A)') "   \DeclareGraphicsRule{*}{eps}{*}{}"
+    write (u, '(A)') "\fi"    
+    write (u, *)
+    write (u, '(A)') "\begin{document}"
+    write (u, '(A)') "\begin{gmlfile}"
+    write (u, *)
+    write (u, '(A)') "\begin{gmlcode}"
+    write (u, '(A)') "  color col.default, col.excess;"
+    write (u, '(A)') "  col.default = 0.9white;"
+    write (u, '(A)') "  col.excess  = red;"
+    write (u, '(A)') "  boolean show_excess;"
+    !!! Future excess options for plots
+    ! if (mcs(1)%plot_excess .and. mcs(1)%unweighted) then
+    !    write (u, '(A)') "  show_excess = true;"
+    ! else
+    write (u, '(A)') "  show_excess = false;"
+    ! end if
+    write (u, '(A)') "\end{gmlcode}"
+    write (u, *)
   end subroutine analysis_store_write_driver_header
 
   subroutine analysis_store_write_driver_footer (unit)
@@ -2337,6 +2460,19 @@ contains
     end if
   end subroutine analysis_fill_graph
 
+  function analysis_exists (id) result (flag) 
+    type(string_t), intent(in) :: id
+    logical :: flag
+    type(analysis_object_t), pointer :: obj
+    flag = .true.
+    obj => analysis_store%first
+    do while (associated (obj))
+       if (obj%id == id)  return
+       obj => obj%next
+    end do
+    flag = .false.
+  end function analysis_exists
+
   function analysis_get_n_elements (id) result (n)
     integer :: n
     type(string_t), intent(in) :: id
@@ -2422,26 +2558,28 @@ contains
     if (associated (obj))  call analysis_iterator_init (iterator, obj)
   end subroutine analysis_init_iterator
 
-  subroutine analysis_write_object (id, unit)
+  subroutine analysis_write_object (id, unit, verbose)
     type(string_t), intent(in) :: id
     integer, intent(in), optional :: unit
+    logical, intent(in), optional :: verbose
     type(analysis_object_t), pointer :: obj
     obj => analysis_store_get_object_ptr (id)
     if (associated (obj)) then
-       call analysis_object_write (obj, unit)
+       call analysis_object_write (obj, unit, verbose)
     else
        call msg_error ("Analysis object '" // char (id) // "' not found")
     end if
   end subroutine analysis_write_object
 
-  subroutine analysis_write_all (unit)
+  subroutine analysis_write_all (unit, verbose)
     integer, intent(in), optional :: unit
+    logical, intent(in), optional :: verbose
     type(analysis_object_t), pointer :: obj
     integer :: u
     u = output_unit (unit);  if (u < 0)  return
     obj => analysis_store%first
     do while (associated (obj))
-       call analysis_object_write (obj, unit)
+       call analysis_object_write (obj, unit, verbose)
        obj => obj%next
     end do
   end subroutine analysis_write_all
@@ -2509,51 +2647,63 @@ contains
     end if
   end subroutine analysis_get_header
 
-  subroutine analysis_test ()
-    call analysis_test1 ()
-    call analysis_final ()
+  subroutine analysis_test (u, results)
+    integer, intent(in) :: u
+    type(test_results_t), intent(inout) :: results
+    call test (analysis_1, "analysis_1", &
+         "check elementary analysis building blocks", &
+         u, results)  
   end subroutine analysis_test
 
-  subroutine analysis_test1 ()
+
+  subroutine analysis_1 (u)
+    integer, intent(in) :: u
     type(string_t) :: id1, id2, id3, id4
     integer :: i
     id1 = "foo"
     id2 = "bar"
     id3 = "hist"
     id4 = "plot"
+    
+    write (u, "(A)")  "* Test output: Analysis"
+    write (u, "(A)")  "*   Purpose: test the analysis routines"
+    write (u, "(A)")        
+    
     call analysis_init_observable (id1)
     call analysis_init_observable (id2)
     call analysis_init_histogram_bin_width &
          (id3, 0.5_default, 5.5_default, 1._default, normalize_bins=.false.)
     call analysis_init_plot (id4)
     do i = 1, 3
-       print *, "data = ", real(i,default)
+       write (u, "(A,1x," // FMT_19 // ")")  "data = ", real(i,default)
        call analysis_record_data (id1, real(i,default))
        call analysis_record_data (id2, real(i,default), &
                                         weight=real(i,default))
        call analysis_record_data (id3, real(i,default))
        call analysis_record_data (id4, real(i,default), real(i,default)**2)
     end do
-1   format (A,10(1x,I5))
-2   format (A,10(1x,F5.3))
-    print 1, "n_entries = ", &
+    write (u, "(A,10(1x,I5))") "n_entries = ", &
          analysis_get_n_entries (id1), &
          analysis_get_n_entries (id2), &
          analysis_get_n_entries (id3), &
          analysis_get_n_entries (id3, within_bounds = .true.), &
          analysis_get_n_entries (id4), &
          analysis_get_n_entries (id4, within_bounds = .true.)
-    print 2, "average   = ", &
+    write (u, "(A,10(1x," // FMT_19 // "))")  "average   = ", &
          analysis_get_average (id1), &
          analysis_get_average (id2), &
          analysis_get_average (id3), &
          analysis_get_average (id3, within_bounds = .true.)
-    print 2, "error     = ", &
+    write (u, "(A,10(1x," // FMT_19 // "))")  "error     = ", &
          analysis_get_error (id1), &
          analysis_get_error (id2), &
          analysis_get_error (id3), &
          analysis_get_error (id3, within_bounds = .true.)
-    print *, "clear #2"
+
+    write (u, "(A)")
+    write (u, "(A)") "* Clear analysis #2"
+    write (u, "(A)")
+    
     call analysis_clear (id2)
     do i = 4, 6
        print *, "data = ", real(i,default)
@@ -2563,27 +2713,35 @@ contains
        call analysis_record_data (id3, real(i,default))
        call analysis_record_data (id4, real(i,default), real(i,default)**2)
     end do
-    print 1, "n_entries = ", &
+    write (u, "(A,10(1x,I5))")  "n_entries = ", &
          analysis_get_n_entries (id1), &
          analysis_get_n_entries (id2), &
          analysis_get_n_entries (id3), &
          analysis_get_n_entries (id3, within_bounds = .true.), &
          analysis_get_n_entries (id4), &
          analysis_get_n_entries (id4, within_bounds = .true.)
-    print 2, "average   = ", &
+    write (u, "(A,10(1x," // FMT_19 // "))")  "average   = ", &
          analysis_get_average (id1), &
          analysis_get_average (id2), &
          analysis_get_average (id3), &
          analysis_get_average (id3, within_bounds = .true.)
-    print 2, "error     = ", &
+    write (u, "(A,10(1x," // FMT_19 // "))")  "error     = ", &
          analysis_get_error (id1), &
          analysis_get_error (id2), &
          analysis_get_error (id3), &
          analysis_get_error (id3, within_bounds = .true.)
-    print *
-    call analysis_write ()
+    write (u, "(A)")
+    call analysis_write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"    
+       
     call analysis_clear ()
-  end subroutine analysis_test1
+    call analysis_final ()
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: analysis_1"            
+  end subroutine analysis_1
 
 
 end module analysis

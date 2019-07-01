@@ -1,11 +1,13 @@
-! WHIZARD 2.1.1 September 18 2012
+! WHIZARD 2.2.0 May 18 2014
 ! 
-! Copyright (C) 1999-2012 by 
+! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
-!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
+!     
+!     with contributions from
+!     Christian Speckner <cnspeckn@googlemail.com> 
+!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -31,17 +33,24 @@ module file_utils
   use kinds, only: default !NODEP!
   use iso_varying_string, string_t => varying_string !NODEP!
   use limits, only: MIN_UNIT, MAX_UNIT !NODEP!
+  use, intrinsic :: iso_c_binding !NODEP!
 
   implicit none
   private
 
   public :: free_unit
   public :: output_unit
+  public :: delete_file
   public :: upper_case
   public :: lower_case
   public :: quote_underscore
+  public :: string_f2c
   public :: tex_format
   public :: mp_format
+  public :: write_separator
+  public :: write_separator_double
+  public :: write_indent
+  public :: pac_fmt
 
   interface upper_case
      module procedure upper_case_char, upper_case_string
@@ -49,6 +58,9 @@ module file_utils
   interface lower_case
      module procedure lower_case_char, lower_case_string
   end interface
+  interface string_f2c
+     module procedure string_f2c_char, string_f2c_var_str
+  end interface string_f2c
 
 contains
 
@@ -77,6 +89,18 @@ contains
     end if
   end function output_unit
 
+  subroutine delete_file (name)
+    character(*), intent(in) :: name
+    logical :: exist
+    integer :: u
+    inquire (file = name, exist = exist)
+    if (exist) then
+       u = free_unit ()
+       open (unit = u, file = name)
+       close (u, status = "delete")
+    end if
+  end subroutine delete_file
+  
   function upper_case_char (string) result (new_string)
     character(*), intent(in) :: string
     character(len(string)) :: new_string
@@ -136,6 +160,18 @@ contains
     end do
   end function quote_underscore
 
+  pure function string_f2c_char (i) result (o)
+  character(*), intent(in) :: i
+  character(kind=c_char, len=len (i) + 1) :: o
+     o = i // c_null_char
+  end function string_f2c_char
+
+  pure function string_f2c_var_str (i) result (o)
+  type(string_t), intent(in) :: i
+  character(kind=c_char, len=len (i) + 1) :: o
+     o = char (i) // c_null_char
+  end function string_f2c_var_str
+
   function tex_format (rval, n_digits) result (string)
     type(string_t) :: string
     real(default), intent(in) :: rval
@@ -193,5 +229,37 @@ contains
     string = lower_case (trim (adjustl (trim (tmp))))
   end function mp_format
 
+  subroutine write_separator (u)
+    integer, intent(in) :: u
+    write (u, "(A)")  repeat ("-", 72)
+  end subroutine write_separator
+  
+  subroutine write_separator_double (u)
+    integer, intent(in) :: u
+    write (u, "(A)")  repeat ("=", 72)
+  end subroutine write_separator_double
+  
+  subroutine write_indent (unit, indent)
+    integer, intent(in) :: unit
+    integer, intent(in), optional :: indent
+    if (present (indent)) then
+       write (unit, "(1x,A)", advance="no")  repeat ("  ", indent)
+    end if
+  end subroutine write_indent
+
+  subroutine pac_fmt (fmt, fmt_orig, fmt_pac, pacify) 
+    character(*), intent(in) :: fmt_orig, fmt_pac
+    character(*), intent(out) :: fmt
+    logical, intent(in), optional :: pacify
+    logical :: pacified
+    pacified = .false.
+    if (present (pacify)) pacified = pacify
+    if (pacified) then
+       fmt = fmt_pac
+    else
+       fmt = fmt_orig
+    end if
+  end subroutine pac_fmt
+  
 
 end module file_utils

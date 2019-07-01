@@ -1,3 +1,5 @@
+% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*- 
+% VAMP main code as NOWEB source
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \RCSId$Id: vamp.nw 317 2010-04-18 00:31:03Z ohl $
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -136,9 +138,9 @@ subroutine vamp_equivalence_write (eq, unit)
   integer :: u
   type(vamp_equivalence_t), intent(in) :: eq
   u = 6;  if (present (unit))  u = unit
-  write (u, "(1x,A,2(1x,I4))") "Equivalent channels:", eq%left, eq%right
-  write (u, "(1x,A,25(1x,I2))") "  Permutation:", eq%permutation
-  write (u, "(1x,A,25(1x,I2))") "  Mode:       ", eq%mode
+  write (u, "(3x,A,2(1x,I0))") "Equivalent channels:", eq%left, eq%right
+  write (u, "(5x,A,99(1x,I0))") "Permutation:", eq%permutation
+  write (u, "(5x,A,99(1x,I0))") "Mode:       ", eq%mode
 end subroutine vamp_equivalence_write
 @ %def vamp_equivalence_write
 @
@@ -152,22 +154,27 @@ subroutine vamp_equivalences_write (eq, unit)
   integer :: u
   integer :: ch, i
   u = 6;  if (present (unit))  u = unit
-  write (u, *) "Inequivalent channels:"
-  do ch=1, eq%n_ch
-     if (eq%independent(ch)) then
-        write (u, *) "  Channel", ch, ":", &
-             & "    Mult. =", eq%multiplicity(ch), &
-             & "    Symm. =", eq%symmetry(ch), &
-             & "    Invar.:", eq%div_is_invariant(ch,:)
-     end if
-  end do
-  write (u, *) "Equivalence list:"
+  write (u, "(1x,A)") "Inequivalent channels:"
+  if (allocated (eq%independent)) then
+     do ch=1, eq%n_ch
+        if (eq%independent(ch)) then
+           write (u, "(3x,A,1x,I0,A,4x,A,I0,4x,A,I0,4x,A,999(L1))") &
+                "Channel", ch, ":", &
+                "Mult. = ", eq%multiplicity(ch), &
+                "Symm. = ", eq%symmetry(ch), &
+                "Invar.: ", eq%div_is_invariant(ch,:)
+        end if
+     end do
+  else
+     write (u, "(3x,A)") "[not allocated]"
+  end if
+  write (u, "(1x,A)") "Equivalence list:"
   if (allocated (eq%eq)) then
      do i=1, size (eq%eq)
         call vamp_equivalence_write (eq%eq(i), u)
      end do
   else
-     write (u, *) "[not allocated]"
+     write (u, "(3x,A)") "[not allocated]"
   end if
 end subroutine vamp_equivalences_write
 @ %def vamp_equivalences_write
@@ -231,7 +238,7 @@ contains
   end subroutine set_multiplicities
 end subroutine vamp_equivalences_complete
 @ %def vamp_equivalences_complete
-@ 
+@
 <<[[vamp.f90]]>>=
 module vamp_rest
   use kinds
@@ -307,7 +314,28 @@ end type vamp_grid
 <<Declaration of [[vamp]] procedures>>=
 public :: vamp_copy_grid, vamp_delete_grid
 @
+@ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Container for application data}
+\begin{dubious}
+  By WK for WHIZARD.  We define an empty data type that
+  the application can extend according to its needs.  The purpose is
+  to hold all sorts of data that are predefined and accessed during
+  the call of the sampling function.
+  
+  The actual interface for the sampling function is PURE.
+  Nevertheless, we can implement side effects via pointer components
+  of a [[vamp_data_t]] extension.
+\end{dubious}
+<<Declaration of [[vamp]] types>>=
+type, public :: vamp_data_t
+end type vamp_data_t
 
+@ %def vamp_data_t
+@ This is the object to be passed if we want nothing else:
+<<Declaration of [[vamp]] types>>=
+type(vamp_data_t), parameter, public :: NO_DATA = vamp_data_t ()
+
+@ %def NO_DATA
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Initialization}
 <<Declaration of [[vamp]] procedures>>=
@@ -727,12 +755,12 @@ public :: vamp_refine_grids
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsubsection{Simple Non-Adaptive Sampling: $S_0$}
 <<Implementation of [[vamp]] procedures>>=
-  pure subroutine vamp_sample_grid0 &
-       (rng, g, func, prc_index, channel, weights, grids, exc, &
+  subroutine vamp_sample_grid0 &
+       (rng, g, func, data, channel, weights, grids, exc, &
         negative_weights)
     type(tao_random_state), intent(inout) :: rng
     type(vamp_grid), intent(inout) :: g
-    integer, intent(in) :: prc_index
+    class(vamp_data_t), intent(in) :: data
     integer, intent(in), optional :: channel
     real(kind=default), dimension(:), intent(in), optional :: weights
     type(vamp_grid), dimension(:), intent(in), optional :: grids
@@ -836,12 +864,12 @@ Consequently, it is not supported in the current implementation.
 <<[[f = wgt * func (x, weights, channel)]], iff [[x]] inside [[true_domain]]>>=
 if (associated (g%map)) then
    if (all (inside_division (g%div, x))) then
-      f = wgt * func (x, prc_index, weights, channel, grids)
+      f = wgt * func (x, data, weights, channel, grids)
    else
       f = 0.0
    end if
 else
-   f = wgt * func (x, prc_index, weights, channel, grids)
+   f = wgt * func (x, data, weights, channel, grids)
 end if
 @ %def f
 @ 
@@ -1088,13 +1116,13 @@ real(kind=default), private, parameter :: QUAD_POWER = 0.5_default
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsubsection{Adaptive Sampling: $S_n = S_0(rS_0)^n$}
 <<Implementation of [[vamp]] procedures>>=
-pure subroutine vamp_sample_grid &
-     (rng, g, func, prc_index, iterations, &
+subroutine vamp_sample_grid &
+     (rng, g, func, data, iterations, &
       integral, std_dev, avg_chi2, accuracy, &
       channel, weights, grids, exc, history)
   type(tao_random_state), intent(inout) :: rng
   type(vamp_grid), intent(inout) :: g
-  integer, intent(in) :: prc_index
+  class(vamp_data_t), intent(in) :: data
   integer, intent(in) :: iterations
   real(kind=default), intent(out), optional :: integral, std_dev, avg_chi2
   real(kind=default), intent(in), optional :: accuracy
@@ -1110,7 +1138,7 @@ pure subroutine vamp_sample_grid &
   ndim = size (g%div)
   iterate: do iteration = 1, iterations
      call vamp_sample_grid0 &
-          (rng, g, func, prc_index, channel, weights, grids, exc)
+          (rng, g, func, data, channel, weights, grids, exc)
      call vamp_average_iterations &
           (g, iteration, local_integral, local_std_dev, local_avg_chi2)
      <<Trace results of [[vamp_sample_grid]]>>
@@ -1429,7 +1457,7 @@ pure recursive subroutine vamp_fork_grid_multi (g, gs, gx, d, exc)
         stride = product (d(2,2:))
         joints_offset = 1 + d(2,1)
         joints_stride = vamp_fork_grid_joints (d(:,2:))
-        call vamp`'_create_empty_grid (gx(1:d(2,1)))
+        call vamp_create_empty_grid (gx(1:d(2,1)))
         call vamp_fork_grid_single (g, gx(1:d(2,1)), d(1,1), exc)
         do i = 1, d(2,1)
            call vamp_fork_grid_multi &
@@ -1490,7 +1518,7 @@ pure recursive subroutine vamp_join_grid_multi (g, gs, gx, d, exc)
            joints_offset = joints_offset + joints_stride
         end do
         call vamp_join_grid_single (g, gx(1:d(2,1)), d(1,1), exc)
-        call vamp`'_delete_grid (gx(1:d(2,1)))
+        call vamp_delete_grid (gx(1:d(2,1)))
   end select
 end subroutine vamp_join_grid_multi
 @ %def vamp_join_grid_multi
@@ -1503,12 +1531,12 @@ public :: vamp_distribute_work
 @ HPF~\cite{HPF1.1,HPF2.0,Koelbel/etal:1994:HPF}:
 <<Implementation of [[vamp]] procedures>>=
 subroutine vamp_sample_grid_parallel &
-     (rng, g, func, prc_index, iterations, &
+     (rng, g, func, data, iterations, &
       integral, std_dev, avg_chi2, accuracy, &
       channel, weights, grids, exc, history)
   type(tao_random_state), dimension(:), intent(inout) :: rng
   type(vamp_grid), intent(inout) :: g
-  integer, intent(in) :: prc_index
+  class(vamp_data_t), intent(in) :: data
   integer, intent(in) :: iterations
   real(kind=default), intent(out), optional :: integral, std_dev, avg_chi2
   real(kind=default), intent(in), optional :: accuracy
@@ -1534,23 +1562,23 @@ subroutine vamp_sample_grid_parallel &
      num_workers = max (1, product (d(2,:)))
      if (num_workers > 1) then
         allocate (gs(num_workers), gx(vamp_fork_grid_joints (d)))
-        call vamp`'_create_empty_grid (gs)
+        call vamp_create_empty_grid (gs)
         !: \texttt{vamp\_fork\_grid} is certainly not local.  Speed freaks might
         !: want to tune it to the processor topology, but the gain will be small.
         call vamp_fork_grid (g, gs, gx, d, exc)
         !hpf$ independent
         do i = 1, num_workers
            call vamp_sample_grid0 &
-                (rng(i), gs(i), func, prc_index, &
+                (rng(i), gs(i), func, data, &
                  channel, weights, grids, exc)
         end do
         <<Gather exceptions in [[vamp_sample_grid_parallel]]>>
         call vamp_join_grid (g, gs, gx, d, exc)
-        call vamp`'_delete_grid (gs)
+        call vamp_delete_grid (gs)
         deallocate (gs, gx)
      else
         call vamp_sample_grid0 &
-             (rng(1), g, func, prc_index, channel, weights, grids, exc)
+             (rng(1), g, func, data, channel, weights, grids, exc)
      end if
      <<Bail out if exception [[exc]] raised>>
      call vamp_average_iterations &
@@ -1644,7 +1672,7 @@ if (present (history)) then
    else
       call raise_exception (exc, EXC_WARN, FN, "history too short")
    end if
-   call vamp`'_terminate_history (history(iteration+1:))
+   call vamp_terminate_history (history(iteration+1:))
 end if
 @
 <<Declaration of [[vamp]] procedures>>=
@@ -1850,8 +1878,8 @@ subroutine vamp_write_one_history_unit (u, h, tag)
      else
         s = ""
      end if
-     write (u, "(1X,A8,1X,I2,I9,A1,1X,E11.4,A1,E8.2,A1," &
-          // "1X,E13.6,A1,E8.2,A1,F5.1,1X,F5.3)") pfx, &
+     write (u, "(1X,A8,1X,I2,I9,A1,1X,ES11.4,A1,ES8.2,A1," &
+          // "1X,ES13.6,A1,ES8.2,A1,F5.1,1X,F5.3)") pfx, &
           i, h(i)%calls, s, h(i)%integral, "(", h(i)%std_dev, ")", &
           h(i)%avg_integral, "(", h(i)%avg_std_dev, ")", h(i)%avg_chi2, &
           h(i)%integral / h(i)%f_max
@@ -1957,9 +1985,9 @@ end type vamp_grids
 public :: vamp_multi_channel, vamp_multi_channel0
 @
 <<Implementation of [[vamp]] procedures>>=
-pure function vamp_multi_channel &
-     (func, prc_index, phi, ihp, jacobian, x, weights, channel, grids) result (w_x)
-  integer, intent(in) :: prc_index
+function vamp_multi_channel &
+     (func, data, phi, ihp, jacobian, x, weights, channel, grids) result (w_x)
+  class(vamp_data_t), intent(in) :: data
   real(kind=default), dimension(:), intent(in) :: x
   real(kind=default), dimension(:), intent(in) :: weights
   integer, intent(in) :: channel
@@ -1981,17 +2009,17 @@ pure function vamp_multi_channel &
      end if
   end do
   do i = 1, size (weights)
-     g_phi_x(i) = g_pi_x(i) / g_pi_x(channel) * jacobian (phi_x, prc_index, i)
+     g_phi_x(i) = g_pi_x(i) / g_pi_x(channel) * jacobian (phi_x, data, i)
   end do
-  w_x = func (phi_x, prc_index, weights, channel, grids) &
+  w_x = func (phi_x, data, weights, channel, grids) &
        / dot_product (weights, g_phi_x)
 end function vamp_multi_channel
 @ %def vamp_multi_channel
 @ 
 <<Implementation of [[vamp]] procedures>>=
-pure function vamp_multi_channel0 &
-     (func, prc_index, phi, jacobian, x, weights, channel) result (w_x)
-  integer, intent(in) :: prc_index
+function vamp_multi_channel0 &
+     (func, data, phi, jacobian, x, weights, channel) result (w_x)
+  class(vamp_data_t), intent(in) :: data
   real(kind=default), dimension(:), intent(in) :: x
   real(kind=default), dimension(:), intent(in) :: weights
   integer, intent(in) :: channel
@@ -2004,9 +2032,9 @@ pure function vamp_multi_channel0 &
   integer :: i
   x_prime = phi (x, channel)
   do i = 1, size (weights)
-     g_phi_x(i) = jacobian (x_prime, prc_index, i)
+     g_phi_x(i) = jacobian (x_prime, data, i)
   end do
-  w_x = func (x_prime, prc_index) / dot_product (weights, g_phi_x)
+  w_x = func (x_prime, data) / dot_product (weights, g_phi_x)
 end function vamp_multi_channel0
 @ %def vamp_multi_channel0
 @ 
@@ -2024,7 +2052,7 @@ pure subroutine vamp_jacobian (phi, channel, x, region, jacobian, delta_x)
   real(kind=default), intent(out) :: jacobian
   real(kind=default), intent(in), optional :: delta_x
   interface
-     function phi (xi, channel) result (x)
+     pure function phi (xi, channel) result (x)
        use kinds
        real(kind=default), dimension(:), intent(in) :: xi
        integer, intent(in) :: channel
@@ -2063,11 +2091,11 @@ end subroutine vamp_jacobian
   g(\phi(x)) = \frac{1}{\left|\frac{\partial\phi}{\partial x}\right|(x)}
 \end{equation}
 <<Implementation of [[vamp]] procedures>>=
-pure subroutine vamp_check_jacobian &
-	(rng, n, func, prc_index, phi, channel, region, delta, x_delta)
+subroutine vamp_check_jacobian &
+	(rng, n, func, data, phi, channel, region, delta, x_delta)
   type(tao_random_state), intent(inout) :: rng
   integer, intent(in) :: n
-  integer, intent(in) :: prc_index
+  class(vamp_data_t), intent(in) :: data
   integer, intent(in) :: channel
   real(kind=default), dimension(:,:), intent(in) :: region
   real(kind=default), intent(out) :: delta
@@ -2083,7 +2111,7 @@ pure subroutine vamp_check_jacobian &
      call tao_random_number (rng, r)
      x = region(1,:) + (region(2,:) - region(1,:)) * r
      call vamp_jacobian (phi, channel, x, region, jac)
-     d = func (phi (x, channel), prc_index, wgts, channel) * jac &
+     d = func (phi (x, channel), data, wgts, channel) * jac &
           - 1.0_default
      if (abs (d) >= abs (delta)) then
         delta = d
@@ -2292,12 +2320,12 @@ public :: vamp_sample_grids
 \emph{not} use the latter, allow for integer arithmetic in
 [[g%num_calls]].\par
 <<Implementation of [[vamp]] procedures>>=
-  pure subroutine vamp_sample_grids &
-       (rng, g, func, prc_index, iterations, integral, std_dev, avg_chi2, &
+  subroutine vamp_sample_grids &
+       (rng, g, func, data, iterations, integral, std_dev, avg_chi2, &
         accuracy, history, histories, exc, eq, warn_error, negative_weights)
     type(tao_random_state), intent(inout) :: rng
     type(vamp_grids), intent(inout) :: g
-    integer, intent(in) :: prc_index
+    class(vamp_data_t), intent(in) :: data
     integer, intent(in) :: iterations
     real(kind=default), intent(out), optional :: integral, std_dev, avg_chi2
     real(kind=default), intent(in), optional :: accuracy
@@ -2363,7 +2391,7 @@ public :: vamp_sample_grids
 therefore we use [[vamp_sample_grid0]] instead of [[vamp_sample_grid]]:
 <<Sample the grid [[g%grids(ch)]]>>=
 call vamp_sample_grid0 &
-     (rng, g%grids(ch), func, prc_index, &
+     (rng, g%grids(ch), func, data, &
       ch, weights, g%grids, excs(ch), neg_w)
 if (present (exc) .and. present (warn_error)) then
    if (warn_error) call handle_exception (excs(ch))
@@ -2378,7 +2406,7 @@ if (present (histories)) then
    else
       call raise_exception (exc, EXC_WARN, FN, "history too short")
    end if
-   call vamp`'_terminate_history (histories(iteration+1:,ch))
+   call vamp_terminate_history (histories(iteration+1:,ch))
 end if
 @ 
 <<Declaration of [[vamp]] procedures>>=
@@ -2477,7 +2505,7 @@ pure subroutine vamp_refine_weights (g, power)
      local_power = DEFAULT_POWER
   end if
   call vamp_update_weights &
-       (g, g%weights * vamp`'_get_variance (g%grids) ** local_power)
+       (g, g%weights * vamp_get_variance (g%grids) ** local_power)
 end subroutine vamp_refine_weights
 @ %def vamp_refine_weights
 @ 
@@ -2490,7 +2518,7 @@ if (present (history)) then
    else
       call raise_exception (exc, EXC_WARN, FN, "history too short")
    end if
-   call vamp`'_terminate_history (history(iteration+1:))
+   call vamp_terminate_history (history(iteration+1:))
 end if
 @
 <<Declaration of [[vamp]] procedures>>=
@@ -2532,16 +2560,17 @@ end subroutine vamp_get_history_multi
 public :: vamp_sum_channels
 @
 <<Implementation of [[vamp]] procedures>>=
-pure function vamp_sum_channels (x, weights, func, prc_index, grids) result (g)
+function vamp_sum_channels (x, weights, func, data, grids) result (g)
   real(kind=default), dimension(:), intent(in) :: x, weights
-  integer, intent(in) :: prc_index
+  class(vamp_data_t), intent(in) :: data
   type(vamp_grid), dimension(:), intent(in), optional :: grids
   interface
-     function func (xi, prc_index, weights, channel, grids) result (f)
+     function func (xi, data, weights, channel, grids) result (f)
        use kinds
        use vamp_grid_type !NODEP!
+       import vamp_data_t
        real(kind=default), dimension(:), intent(in) :: xi
-       integer, intent(in) :: prc_index
+       class(vamp_data_t), intent(in) :: data
        real(kind=default), dimension(:), intent(in), optional :: weights
        integer, intent(in), optional :: channel
        type(vamp_grid), dimension(:), intent(in), optional :: grids
@@ -2552,7 +2581,7 @@ pure function vamp_sum_channels (x, weights, func, prc_index, grids) result (g)
   integer :: ch
   g = 0.0
   do ch = 1, size (weights)
-     g = g + weights(ch) * func (x, prc_index, weights, ch, grids)
+     g = g + weights(ch) * func (x, data, weights, ch, grids)
   end do
 end function vamp_sum_channels
 @ %def vamp_sum_channels
@@ -2993,14 +3022,14 @@ private :: vamp_next_event_single, vamp_next_event_multi
 @ Both event generation routines operate in two modes, depending on
 whether the optional argument [[weight]] is present.
 <<Implementation of [[vamp]] procedures>>=
-pure subroutine vamp_next_event_single &
-     (x, rng, g, func, prc_index, &
+subroutine vamp_next_event_single &
+     (x, rng, g, func, data, &
       weight, channel, weights, grids, exc)
   real(kind=default), dimension(:), intent(out) :: x
   type(tao_random_state), intent(inout) :: rng
   type(vamp_grid), intent(inout) :: g
   real(kind=default), intent(out), optional :: weight
-  integer, intent(in) :: prc_index
+  class(vamp_data_t), intent(in) :: data
   integer, intent(in), optional :: channel
   real(kind=default), dimension(:), intent(in), optional :: weights
   type(vamp_grid), dimension(:), intent(in), optional :: grids
@@ -3058,12 +3087,12 @@ and~$\sum_i\alpha_i=1$.
 The non-trivial poblem is that the adaptive grid is diferent in each
 channel, so we can't just reject on~$w(x)$.
 <<Implementation of [[vamp]] procedures>>=
-pure subroutine vamp_next_event_multi &
-     (x, rng, g, func, prc_index, phi, weight, excess, exc)
+subroutine vamp_next_event_multi &
+     (x, rng, g, func, data, phi, weight, excess, exc)
   real(kind=default), dimension(:), intent(out) :: x
   type(tao_random_state), intent(inout) :: rng
   type(vamp_grids), intent(inout) :: g
-  integer, intent(in) :: prc_index
+  class(vamp_data_t), intent(in) :: data
   real(kind=default), intent(out), optional :: weight
   real(kind=default), intent(out), optional :: excess
   type(exception), intent(inout), optional :: exc
@@ -3078,7 +3107,7 @@ pure subroutine vamp_next_event_multi &
   rejection: do
      <<Select [[channel]] from [[weights]]>>
      call vamp_next_event_single &
-          (xi, rng, g%grids(channel), func, prc_index, wgt, &
+          (xi, rng, g%grids(channel), func, data, wgt, &
            channel, g%weights, g%grids, exc)
      if (present (weight)) then
         <<Unconditionally accept weighted multi channel event>>
@@ -3129,9 +3158,9 @@ if (wgt > g%grids(channel)%f_max) then
    if (present(excess)) then
       excess = wgt/g%grids(channel)%f_max - 1
    else
-!     call raise_exception (exc, EXC_WARN, FN, "weight > 1")
-      print *, "weight > 1 (", wgt/g%grids(channel)%f_max, &
-           & ") in channel ", channel
+     call raise_exception (exc, EXC_WARN, FN, "weight > 1")
+!      print *, "weight > 1 (", wgt/g%grids(channel)%f_max, &
+!           & ") in channel ", channel
 
    end if
 !  exit rejection
@@ -3166,19 +3195,19 @@ transparently.
 public :: vamp_warmup_grid, vamp_warmup_grids
 @
 <<Implementation of [[vamp]] procedures>>=
-pure subroutine vamp_warmup_grid &
-     (rng, g, func, prc_index, iterations, exc, history)
+subroutine vamp_warmup_grid &
+     (rng, g, func, data, iterations, exc, history)
   type(tao_random_state), intent(inout) :: rng
   type(vamp_grid), intent(inout) :: g
-  integer, intent(in) :: prc_index
+  class(vamp_data_t), intent(in) :: data
   integer, intent(in) :: iterations
   type(exception), intent(inout), optional :: exc
   type(vamp_history), dimension(:), intent(inout), optional :: history
   <<Interface declaration for [[func]]>>
   call vamp_sample_grid &
-     (rng, g, func, prc_index, &
+     (rng, g, func, data, &
       iterations - 1, exc = exc, history = history)
-  call vamp_sample_grid0 (rng, g, func, prc_index, exc = exc)
+  call vamp_sample_grid0 (rng, g, func, data, exc = exc)
 end subroutine vamp_warmup_grid
 @ %def vamp_warmup_grid
 @
@@ -3186,11 +3215,11 @@ end subroutine vamp_warmup_grid
   \texttt{WHERE ... END WHERE} alert!
 \end{dubious}
 <<Implementation of [[vamp]] procedures>>=
-pure subroutine vamp_warmup_grids &
-     (rng, g, func, prc_index, iterations, history, histories, exc)
+subroutine vamp_warmup_grids &
+     (rng, g, func, data, iterations, history, histories, exc)
   type(tao_random_state), intent(inout) :: rng
   type(vamp_grids), intent(inout) :: g
-  integer, intent(in) :: prc_index
+  class(vamp_data_t), intent(in) :: data
   integer, intent(in) :: iterations
   type(vamp_history), dimension(:), intent(inout), optional :: history
   type(vamp_history), dimension(:,:), intent(inout), optional :: histories
@@ -3206,12 +3235,12 @@ pure subroutine vamp_warmup_grids &
      weights = 0.0
   end where
   weights = weights / sum (weights)
-  call vamp_sample_grids (rng, g, func, prc_index, iterations - 1, &
+  call vamp_sample_grids (rng, g, func, data, iterations - 1, &
                           exc = exc, history = history, histories = histories)
   do ch = 1, size (g%grids)
      if (g%grids(ch)%num_calls >= 2) then
         call vamp_sample_grid0 &
-             (rng, g%grids(ch), func, prc_index, &
+             (rng, g%grids(ch), func, data, &
               ch, weights, g%grids, exc = exc)
      end if
   end do
@@ -3230,12 +3259,12 @@ interface vamp_integrate
 end interface
 @
 <<Implementation of [[vamp]] procedures>>=
-pure subroutine vamp_integrate_grid &
-     (rng, g, func, prc_index, calls, integral, std_dev, avg_chi2, num_div, &
+subroutine vamp_integrate_grid &
+     (rng, g, func, data, calls, integral, std_dev, avg_chi2, num_div, &
       stratified, quadrupole, accuracy, exc, history)
   type(tao_random_state), intent(inout) :: rng
   type(vamp_grid), intent(inout) :: g
-  integer, intent(in) :: prc_index
+  class(vamp_data_t), intent(in) :: data
   integer, dimension(:,:), intent(in) :: calls
   real(kind=default), intent(out), optional :: integral, std_dev, avg_chi2
   integer, dimension(:), intent(in), optional :: num_div
@@ -3251,26 +3280,26 @@ pure subroutine vamp_integrate_grid &
   do step = 1, last_step - 1
      call vamp_discard_integral (g, calls(2,step), num_div, &
                                 stratified, quadrupole, exc = exc)
-     call vamp_sample_grid (rng, g, func, prc_index, calls(1,step), &
+     call vamp_sample_grid (rng, g, func, data, calls(1,step), &
                             exc = exc, history = history(it:))
      <<Bail out if exception [[exc]] raised>>
      it = it + calls(1,step)
   end do
   call vamp_discard_integral (g, calls(2,last_step), exc = exc)
-  call vamp_sample_grid (rng, g, func, prc_index, calls(1,last_step), &
+  call vamp_sample_grid (rng, g, func, data, calls(1,last_step), &
                          integral, std_dev, avg_chi2, accuracy, exc = exc, &
                          history = history(it:))
 end subroutine vamp_integrate_grid
 @ %def vamp_integrate_grid
 @
 <<Implementation of [[vamp]] procedures>>=
-pure subroutine vamp_integrate_region &
-     (rng, region, func, prc_index, calls, &
+subroutine vamp_integrate_region &
+     (rng, region, func, data, calls, &
       integral, std_dev, avg_chi2, num_div, &
       stratified, quadrupole, accuracy, map, covariance, exc, history)
   type(tao_random_state), intent(inout) :: rng
   real(kind=default), dimension(:,:), intent(in) :: region
-  integer, intent(in) :: prc_index
+  class(vamp_data_t), intent(in) :: data
   integer, dimension(:,:), intent(in) :: calls
   real(kind=default), intent(out), optional :: integral, std_dev, avg_chi2
   integer, dimension(:), intent(in), optional :: num_div
@@ -3287,7 +3316,7 @@ pure subroutine vamp_integrate_region &
        (g, region, calls(2,1), num_div, &
         stratified, quadrupole, present (covariance), map, exc)
   call vamp_integrate_grid &
-       (rng, g, func, prc_index, calls, &
+       (rng, g, func, data, calls, &
         integral, std_dev, avg_chi2, num_div, &
         accuracy = accuracy, exc = exc, history = history)
   if (present (covariance)) then
@@ -3308,12 +3337,12 @@ end interface
 @
 <<Implementation of [[vamp]] procedures>>=
 subroutine vamp_integratex_region &
-     (rng, region, func, prc_index, calls, integral, std_dev, avg_chi2, &
+     (rng, region, func, data, calls, integral, std_dev, avg_chi2, &
       num_div, stratified, quadrupole, accuracy, pancake, cigar, &
       exc, history)
   type(tao_random_state), intent(inout) :: rng
   real(kind=default), dimension(:,:), intent(in) :: region
-  integer, intent(in) :: prc_index
+  class(vamp_data_t), intent(in) :: data
   integer, dimension(:,:,:), intent(in) :: calls
   real(kind=default), intent(out), optional :: integral, std_dev, avg_chi2
   integer, dimension(:), intent(in), optional :: num_div
@@ -3332,7 +3361,7 @@ subroutine vamp_integratex_region &
        (g, region, calls(2,1,1), num_div, &
         stratified, quadrupole, covariance = .true., exc = exc)
   call vamp_integrate_grid &
-       (rng, g, func, prc_index, calls(:,:,1), num_div = num_div, &
+       (rng, g, func, data, calls(:,:,1), num_div = num_div, &
         exc = exc, history = history(it:))
   <<Bail out if exception [[exc]] raised>>
   it = it + sum (calls(1,:,1))
@@ -3346,7 +3375,7 @@ subroutine vamp_integratex_region &
           (g, region, calls(2,1,step), num_div, stratified, quadrupole, &
            covariance = .true., map = evec, exc = exc)
      call vamp_integrate_grid &
-          (rng, g, func, prc_index, calls(:,:,step), num_div = num_div, &
+          (rng, g, func, data, calls(:,:,step), num_div = num_div, &
            exc = exc, history = history(it:))
      <<Bail out if exception [[exc]] raised>>
      it = it + sum (calls(1,:,step))
@@ -3359,7 +3388,7 @@ subroutine vamp_integratex_region &
        (g, region, calls(2,1,last_step), num_div, stratified, quadrupole, &
         covariance = .true., map = evec, exc = exc)
   call vamp_integrate_grid &
-       (rng, g, func, prc_index, calls(:,:,last_step), &
+       (rng, g, func, data, calls(:,:,last_step), &
         integral, std_dev, avg_chi2, &
         num_div = num_div, exc = exc, history = history(it:))
   call vamp_delete_grid (g)
@@ -3494,9 +3523,9 @@ character(len=*), parameter, private :: &
      integer_fmt =       "(1x,a17,1x,i15)", &
      integer_array_fmt = "(1x,i17,1x,i15)", &
      logical_fmt =       "(1x,a17,1x,l1)", &
-     double_fmt =        "(1x,a17,1x,e30.22)", &
-     double_array_fmt =  "(1x,i17,1x,e30.22)", &
-     double_array2_fmt =  "(2(1x,i8),1x,e30.22)"
+     double_fmt =        "(1x,a17,1x,e30.22e4)", &
+     double_array_fmt =  "(1x,i17,1x,e30.22e4)", &
+     double_array2_fmt =  "(2(1x,i8),1x,e30.22e4)"
 @ %def descr_fmt integer_fmt integer_array_fmt logical_fmt
 @ %def double_fmt double_array_fmt double_array2_fmt
 @
@@ -3675,14 +3704,14 @@ subroutine read_grids_unit (g, unit, read_integrals)
   read (unit = unit, fmt = integer_fmt) chdum, nch
   if (associated (g%grids)) then
      if (size (g%grids) /= nch) then
-        call vamp`'_delete_grid (g%grids)
+        call vamp_delete_grid (g%grids)
         deallocate (g%grids, g%weights, g%num_calls)
         allocate (g%grids(nch), g%weights(nch), g%num_calls(nch))
-        call vamp`'_create_empty_grid (g%grids)
+        call vamp_create_empty_grid (g%grids)
      end if
   else
      allocate (g%grids(nch), g%weights(nch), g%num_calls(nch))
-     call vamp`'_create_empty_grid (g%grids)
+     call vamp_create_empty_grid (g%grids)
   end if
   read (unit = unit, fmt = double_fmt) chdum, g%sum_integral
   read (unit = unit, fmt = double_fmt) chdum, g%sum_weights
@@ -3955,14 +3984,14 @@ subroutine read_grids_raw_unit (g, unit, read_integrals)
   read (unit = unit) nch
   if (associated (g%grids)) then
      if (size (g%grids) /= nch) then
-        call vamp`'_delete_grid (g%grids)
+        call vamp_delete_grid (g%grids)
         deallocate (g%grids, g%weights, g%num_calls)
         allocate (g%grids(nch), g%weights(nch), g%num_calls(nch))
-        call vamp`'_create_empty_grid (g%grids)
+        call vamp_create_empty_grid (g%grids)
      end if
   else
      allocate (g%grids(nch), g%weights(nch), g%num_calls(nch))
-     call vamp`'_create_empty_grid (g%grids)
+     call vamp_create_empty_grid (g%grids)
   end if
   read (unit = unit) g%sum_integral
   read (unit = unit) g%sum_weights
@@ -4368,7 +4397,7 @@ elemental subroutine vamp_copy_grids (lhs, rhs)
      allocate (lhs%grids(nch))
      call vamp_create_empty_grid (lhs%grids(nch))
   end if
-  call vamp`'_copy_grid (lhs%grids, rhs%grids)
+  call vamp_copy_grid (lhs%grids, rhs%grids)
   call copy_array_pointer (lhs%weights, rhs%weights)
   call copy_array_pointer (lhs%num_calls, rhs%num_calls)
 end subroutine vamp_copy_grids
@@ -4378,7 +4407,7 @@ end subroutine vamp_copy_grids
 elemental subroutine vamp_delete_grids (g)
   type(vamp_grids), intent(inout) :: g
   if (associated (g%grids)) then
-     call vamp`'_delete_grid (g%grids)
+     call vamp_delete_grid (g%grids)
      deallocate (g%weights, g%grids, g%num_calls)
   end if
 end subroutine vamp_delete_grids
@@ -4423,10 +4452,3 @@ end subroutine vamp_delete_grids
 @ %def vamp_delete_history
 
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Local Variables:
-% mode:noweb
-% noweb-doc-mode:latex-mode
-% noweb-code-mode:f90-mode
-% indent-tabs-mode:nil
-% page-delimiter:"^@ %%%.*\n"
-% End:

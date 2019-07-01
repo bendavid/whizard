@@ -1,0 +1,193 @@
+?openmp_logging = false
+?vis_history = false
+?integration_timer = false
+$method = "omega"
+| Process library 'user_cuts_lib': recorded process 'user_cuts_p'
+openmp_num_threads = 1
+SM.me =  0.000000000000E+00
+sqrts =  5.000000000000E+02
+tolerance =  1.000000000000E-12
+[user variable] res =  0.000000000000E+00
+seed = 0
+| Integrate: current process library needs compilation
+| Process library 'user_cuts_lib': compiling ...
+| Process library 'user_cuts_lib': writing makefile
+| Process library 'user_cuts_lib': removing old files
+| Process library 'user_cuts_lib': writing driver
+| Process library 'user_cuts_lib': creating source code
+| Process library 'user_cuts_lib': compiling sources
+| Process library 'user_cuts_lib': linking
+| Process library 'user_cuts_lib': loading
+| Process library 'user_cuts_lib': ... success.
+| Integrate: compilation done
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 0
+| Initializing integration for process user_cuts_p:
+| ------------------------------------------------------------------------
+| Process [scattering]: 'user_cuts_p'
+|   Library name  = 'user_cuts_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'user_cuts_p_i1':   e-, e+ => mu-, mu+ [omega]
+| ------------------------------------------------------------------------
+| Beam structure: [any particles]
+| Beam data (collision):
+|   e-  (mass = 0.0000000E+00 GeV)
+|   e+  (mass = 0.0000000E+00 GeV)
+|   sqrts = 5.000000000000E+02 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'user_cuts_p_i1.phs'
+| Phase space: 2 channels, 2 dimensions
+| Phase space: found 2 channels, collected in 2 groves.
+| Phase space: Using 2 equivalences between channels.
+| Phase space: wood
+| Applying user-defined cuts.
+| Starting integration for process 'user_cuts_p'
+| Integrate: iterations = 1:10000
+| Integrator: 2 chains, 2 channels, 2 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 10000 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1       9216  4.1601189E+02  8.25E-01    0.20    0.19*  39.93
+|-----------------------------------------------------------------------------|
+   1       9216  4.1601189E+02  8.25E-01    0.20    0.19   39.93
+|=============================================================================|
+[user variable] res =  4.160118858592E+02
+seed = 0
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 0
+| Initializing integration for process user_cuts_p:
+| ------------------------------------------------------------------------
+| Process [scattering]: 'user_cuts_p'
+|   Library name  = 'user_cuts_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'user_cuts_p_i1':   e-, e+ => mu-, mu+ [omega]
+| ------------------------------------------------------------------------
+| Beam structure: [any particles]
+| Beam data (collision):
+|   e-  (mass = 0.0000000E+00 GeV)
+|   e+  (mass = 0.0000000E+00 GeV)
+|   sqrts = 5.000000000000E+02 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'user_cuts_p_i1.phs'
+| Phase space: 2 channels, 2 dimensions
+| Phase space: found 2 channels, collected in 2 groves.
+| Phase space: Using 2 equivalences between channels.
+| Phase space: wood
+| Applying user-defined cuts.
+| Starting integration for process 'user_cuts_p'
+| Integrate: iterations = 1:10000
+| Integrator: 2 chains, 2 channels, 2 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 10000 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1       9216  4.1601189E+02  8.25E-01    0.20    0.19*  39.93
+|-----------------------------------------------------------------------------|
+   1       9216  4.1601189E+02  8.25E-01    0.20    0.19   39.93
+|=============================================================================|
+[user variable] res =  4.160118858592E+02
+Comparing results:
+tolerance =  1.0000000E-12
+integral(user_cuts_p) =  4.1601189E+02
+[user variable] res =  4.1601189E+02
+| expect: success
+seed = 0
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 0
+| Initializing integration for process user_cuts_p:
+| ------------------------------------------------------------------------
+| Process [scattering]: 'user_cuts_p'
+|   Library name  = 'user_cuts_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'user_cuts_p_i1':   e-, e+ => mu-, mu+ [omega]
+| ------------------------------------------------------------------------
+| Beam structure: [any particles]
+| Beam data (collision):
+|   e-  (mass = 0.0000000E+00 GeV)
+|   e+  (mass = 0.0000000E+00 GeV)
+|   sqrts = 5.000000000000E+02 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'user_cuts_p_i1.phs'
+| Phase space: 2 channels, 2 dimensions
+| Phase space: found 2 channels, collected in 2 groves.
+| Phase space: Using 2 equivalences between channels.
+| Phase space: wood
+| Applying user-defined cuts.
+| Starting integration for process 'user_cuts_p'
+| Integrate: iterations = 1:10000
+| Integrator: 2 chains, 2 channels, 2 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 10000 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1       9216  4.1601189E+02  8.25E-01    0.20    0.19*  39.93
+|-----------------------------------------------------------------------------|
+   1       9216  4.1601189E+02  8.25E-01    0.20    0.19   39.93
+|=============================================================================|
+[user variable] res =  4.160118858592E+02
+Comparing results:
+tolerance =  1.0000000E-12
+integral(user_cuts_p) =  4.1601189E+02
+[user variable] res =  4.1601189E+02
+| expect: success
+seed = 0
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 0
+| Initializing integration for process user_cuts_p:
+| ------------------------------------------------------------------------
+| Process [scattering]: 'user_cuts_p'
+|   Library name  = 'user_cuts_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'user_cuts_p_i1':   e-, e+ => mu-, mu+ [omega]
+| ------------------------------------------------------------------------
+| Beam structure: [any particles]
+| Beam data (collision):
+|   e-  (mass = 0.0000000E+00 GeV)
+|   e+  (mass = 0.0000000E+00 GeV)
+|   sqrts = 5.000000000000E+02 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'user_cuts_p_i1.phs'
+| Phase space: 2 channels, 2 dimensions
+| Phase space: found 2 channels, collected in 2 groves.
+| Phase space: Using 2 equivalences between channels.
+| Phase space: wood
+| Applying user-defined cuts.
+| Starting integration for process 'user_cuts_p'
+| Integrate: iterations = 1:10000
+| Integrator: 2 chains, 2 channels, 2 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 10000 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1       9216  4.1601189E+02  8.25E-01    0.20    0.19*  39.93
+|-----------------------------------------------------------------------------|
+   1       9216  4.1601189E+02  8.25E-01    0.20    0.19   39.93
+|=============================================================================|
+[user variable] res =  4.160118858592E+02
+Comparing results:
+tolerance =  1.0000000E-12
+integral(user_cuts_p) =  4.1601189E+02
+[user variable] res =  4.1601189E+02
+| expect: success
+| Summary of value checks:
+|   Failures: 0 / Total: 3
+| There were no errors and no warning(s).
+| WHIZARD run finished.
+|=============================================================================|

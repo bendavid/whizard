@@ -25,9 +25,9 @@
 !!! pdfs to derive remnant pdfs is done here.
 
 module muli_remnant
-  use,intrinsic::iso_fortran_env
-  use pdf_builtin!NODEP!
-  use tao_random_numbers!NODEP!
+  use, intrinsic :: iso_fortran_env
+  use pdf_builtin !NODEP!
+  use tao_random_numbers !NODEP!
   use muli_basic
   use muli_interactions
   use muli_momentum
@@ -174,6 +174,34 @@ module muli_remnant
      procedure::get_remnant_parton_flavor_pdf_arrays=>pp_remnant_get_remnant_parton_flavor_pdf_arrays
      
   end type pp_remnant_type
+
+  interface 
+     subroutine getxmin (mem, xmin)
+       integer, intent(in) :: mem
+       double precision, intent(out) :: xmin
+     end subroutine getxmin
+  end interface
+
+  interface 
+     subroutine getxmax (mem, xmax)
+       integer, intent(in) :: mem
+       double precision, intent(out) :: xmax
+     end subroutine getxmax
+  end interface
+
+  interface
+     subroutine getq2min (mem, q2min)
+       integer, intent(in) :: mem
+       double precision, intent(out) :: q2min
+     end subroutine getq2min
+  end interface
+
+  interface
+     subroutine getq2max (mem, q2max)
+       integer, intent(in) :: mem
+       double precision, intent(out) :: q2max
+     end subroutine getq2max
+  end interface
 
 contains
 

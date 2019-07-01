@@ -1,11 +1,12 @@
 ! $Id: parameters.SM_top_anom.f90,v 1.4 2006/06/16 13:31:48 kilian Exp $
 !
-! Copyright (C) 1999-2012 by 
+! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
-!     Fabian Bach <fabian.bach@cern.ch> (only this file)
+!     with contributions from
+!     Christian Speckner <cnspeckn@googlemail.com>
+!     Fabian Bach <fabian.bach@desy.de> (only this file)
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -43,7 +44,8 @@ module parameters_sm_top_anom
        ghbb, ghtt, ghcc, ghtautau, gh3, gh4, ghmm, & 		
        iqw, igzww, igwww, gw4, gzzww, gazww, gaaww, &
        gvl_qbub_n, gvl_qw, gvl_qw_u, gvl_qw_d, &
-       gsl_dttr, gsr_dttr, gsl_dttl, gsl_dbtl
+       gsl_dttr, gsr_dttr, gsl_dttl, gsl_dbtl, &
+       c_quqd1_1, c_quqd1_2, c_quqd8_1, c_quqd8_2
   real(default), public :: vev, lambda, gi_flag, norm_flag, norm, &
        n_tvaa, n_vlrz, n_tvaz, n_vlrw, n_tlrw, n_tvag, n_sph
   complex(default), dimension(2), public :: &
@@ -63,7 +65,7 @@ module parameters_sm_top_anom
 contains
 
   subroutine import_from_whizard (par_array)
-    real(default), dimension(55), intent(in) :: par_array
+    real(default), dimension(57), intent(in) :: par_array
     type :: parameter_set
        real(default) :: gf
        real(default) :: mZ
@@ -108,14 +110,16 @@ contains
        real(default) :: fun
        real(default) :: nrm
        real(default) :: gi
-       real(default) :: re_CqG
-       real(default) :: re_CuG
-       real(default) :: re_CqB
-       real(default) :: re_CuB
        real(default) :: re_CqW
-       real(default) :: re_CDu
-       real(default) :: re_CDd
-       real(default) :: im_CDd
+       real(default) :: re_Cquqd1_1
+       real(default) :: im_Cquqd1_1
+       real(default) :: re_Cquqd1_2
+       real(default) :: im_Cquqd1_2
+       real(default) :: re_Cquqd8_1
+       real(default) :: im_Cquqd8_1
+       real(default) :: re_Cquqd8_2
+       real(default) :: im_Cquqd8_2
+       real(default) :: Rt
        real(default) :: v
        real(default) :: cw
        real(default) :: sw
@@ -169,18 +173,20 @@ contains
     par%fun    = par_array(41)
     par%nrm    = par_array(42)
     par%gi     = par_array(43)
-    par%re_CqG = par_array(44)
-    par%re_CuG = par_array(45)
-    par%re_CqB = par_array(46)
-    par%re_CuB = par_array(47)
-    par%re_CqW = par_array(48)
-    par%re_CDu = par_array(49)
-    par%re_CDd = par_array(50)
-    par%im_CDd = par_array(51)
-    par%v      = par_array(52)
-    par%cw     = par_array(53)
-    par%sw     = par_array(54)
-    par%ee     = par_array(55)
+    par%re_CqW = par_array(44)
+    par%re_Cquqd1_1 = par_array(45)
+    par%im_Cquqd1_1 = par_array(46)
+    par%re_Cquqd1_2 = par_array(47)
+    par%im_Cquqd1_2 = par_array(48)
+    par%re_Cquqd8_1 = par_array(49)
+    par%im_Cquqd8_1 = par_array(50)
+    par%re_Cquqd8_2 = par_array(51)
+    par%im_Cquqd8_2 = par_array(52)
+    par%Rt     = par_array(53)
+    par%v      = par_array(54)
+    par%cw     = par_array(55)
+    par%sw     = par_array(56)
+    par%ee     = par_array(57)
     mass(1:27) = 0
     width(1:27) = 0
     mass(3) = par%ms
@@ -369,10 +375,15 @@ contains
       end if
     end if
 
-    gvlr_qgug(1)   =   gs / 2 / (2*lambda**2) * par%re_CqG
-    gvlr_qgug(2)   =   gs / 2 / (2*lambda**2) * par%re_CuG
-    gvlr_qbub(1)   =   g  / 2 * tanthw / (2*lambda**2) * par%re_CqB
-    gvlr_qbub(2)   =   g  / 2 *tanthw / (2*lambda**2) * par%re_CuB
+    !!! Contact interactions: don't forget the i^2 = -1 factors from the internal handling!
+!     gvlr_qgug(1)   = - gs / sqrt(2) / 2 / (2*lambda**2) * par%re_CqG  ! *i^2
+!     gvlr_qgug(2)   = - gs / sqrt(2) / 2 / (2*lambda**2) * par%re_CuG  ! *i^2
+!     gvlr_qbub(1)   = - g  / 2 * tanthw / (2*lambda**2) * par%re_CqB  ! *i^2
+!     gvlr_qbub(2)   = - g  / 2 *tanthw / (2*lambda**2) * par%re_CuB  ! *i^2
+    gvlr_qgug(1)   =   gs**2 / 48 * (par%Rt/1000.)**2  ! *i^2
+    gvlr_qgug(2)   =   gs**2 / 48 * (par%Rt/1000.)**2  ! *i^2
+    gvlr_qbub(1)   =   0
+    gvlr_qbub(2)   =   0
     gvlr_qbub_u(1) =   1.0_default / 3.0_default / 2
     gvlr_qbub_u(2) =   4.0_default / 3.0_default / 2
     gvlr_qbub_d(1) =   1.0_default / 3.0_default / 2
@@ -380,15 +391,31 @@ contains
     gvlr_qbub_e(1) = - 1.0_default / 2
     gvlr_qbub_e(2) = - 2.0_default / 2
     gvl_qbub_n     = - 1.0_default / 2
-    gvl_qw         =   g / 2 / (lambda**2) * par%re_CqW
+    !!! C_qW normalization
+!    gvl_qw         = - g / 2 / (lambda**2) * par%re_CqW  ! *i^2
+    !!! C_qq3 normalization
+!    gvl_qw         = - 4.0_default / 2 / (lambda**2) * par%re_CqW  ! *i^2
+    !!! v3_4f normalization
+    gvl_qw         = - 1.0_default / 2 / (lambda**2) * par%re_CqW  ! *i^2
     gvl_qw_u       =   0.5_default / 2
     gvl_qw_d       = - 0.5_default / 2
-    gsl_dttr       =   mass(6) / 2 / (sqrt(2.0_default)*vev*lambda**2) * 2.0_default * par%re_CDu
-    gsr_dttr       =   mass(6) / 2 / (sqrt(2.0_default)*vev*lambda**2) * (par%re_CDd + par%im_CDd*(0,1))
-    gsl_dttl       =   mass(6) / 2 / (sqrt(2.0_default)*vev*lambda**2) * (par%re_CDd - par%im_CDd*(0,1))
-    gslr_dbtr(1)   =   mass(6) / 2 / (sqrt(2.0_default)*vev*lambda**2) * 2.0_default * par%re_CDu
-    gslr_dbtr(2)   = - mass(6) / 2 / (sqrt(2.0_default)*vev*lambda**2) * (par%re_CDd + par%im_CDd*(0,1))
-    gsl_dbtl       = - mass(6) / 2 / (sqrt(2.0_default)*vev*lambda**2) * (par%re_CDd - par%im_CDd*(0,1))
+!     gsl_dttr       = - mass(6) / 2 / (sqrt(2.0_default)*vev*lambda**2) * 2.0_default * par%re_CDu         ! *i^2
+!     gsr_dttr       = - mass(6) / 2 / (sqrt(2.0_default)*vev*lambda**2) * (par%re_CDd + par%im_CDd*(0,1))  ! *i^2
+!     gsl_dttl       = - mass(6) / 2 / (sqrt(2.0_default)*vev*lambda**2) * (par%re_CDd - par%im_CDd*(0,1))  ! *i^2
+!     gslr_dbtr(1)   = - mass(6) / 2 / (sqrt(2.0_default)*vev*lambda**2) * 2.0_default * par%re_CDu         ! *i^2
+!     gslr_dbtr(2)   =   mass(6) / 2 / (sqrt(2.0_default)*vev*lambda**2) * (par%re_CDd + par%im_CDd*(0,1))  ! *i^2
+!     gsl_dbtl       =   mass(6) / 2 / (sqrt(2.0_default)*vev*lambda**2) * (par%re_CDd - par%im_CDd*(0,1))  ! *i^2
+    gsl_dttr       =   0
+    gsr_dttr       =   0
+    gsl_dttl       =   0
+    gslr_dbtr(1)   =   0
+    gslr_dbtr(2)   =   0
+    gsl_dbtl       =   0
+    c_quqd1_1      =   1.0_default / 2 / (lambda**2) * (par%re_Cquqd1_1 + par%im_Cquqd1_1*(0,1))  ! *i^2
+    c_quqd1_2      =   1.0_default / 2 / (lambda**2) * (par%re_Cquqd1_2 + par%im_Cquqd1_2*(0,1))  ! *i^2
+    !!! Color flow basis, divide by (sqrt(2))**2
+    c_quqd8_1      =   1.0_default / 4 / (lambda**2) * (par%re_Cquqd8_1 + par%im_Cquqd8_1*(0,1))  ! *i^2
+    c_quqd8_2      =   1.0_default / 4 / (lambda**2) * (par%re_Cquqd8_2 + par%im_Cquqd8_2*(0,1))  ! *i^2
 
   end subroutine import_from_whizard
 
@@ -483,39 +510,44 @@ contains
     complex(default) :: c
     real(default), intent(in) :: k2
     integer, intent(in) :: i
-    c = - sinthw / 2 * gtlr_btw(k2, i)
+    !!! don't touch this relative factor: fixed by ward identity!
+    c = - sinthw * gtlr_btw(k2, i)
   end function gtlr_btwa
 
   pure function gtrl_tbwa(k2, i) result (c)
     complex(default) :: c
     real(default), intent(in) :: k2
     integer, intent(in) :: i
-    c = - sinthw / 2 * gtrl_tbw(k2, i)
+    !!! don't touch this relative factor: fixed by ward identity!
+    c = - sinthw * gtrl_tbw(k2, i)
   end function gtrl_tbwa
 
   pure function gtlr_btwz(k2, i) result (c)
     complex(default) :: c
     real(default), intent(in) :: k2
     integer, intent(in) :: i
-    c = - costhw / 2 * gtlr_btw(k2, i)
+    !!! don't touch this relative factor: fixed by ward identity!
+    c = - costhw * gtlr_btw(k2, i)
   end function gtlr_btwz
 
   pure function gtrl_tbwz(k2, i) result (c)
     complex(default) :: c
     real(default), intent(in) :: k2
     integer, intent(in) :: i
-    c = - costhw / 2 * gtrl_tbw(k2, i)
+    !!! don't touch this relative factor: fixed by ward identity!
+    c = - costhw * gtrl_tbw(k2, i)
   end function gtrl_tbwz
 
   pure function gtva_ttww(k2, i) result (c)
     complex(default) :: c
     real(default), intent(in) :: k2
     integer, intent(in) :: i
+    !!! additional factor 2 wrt. ward relation to cancel explicit 1/2 in "gtlr"
     select case (i)
       case (1)
-        c = - sqrt(0.5_default) * real(gtlr_btw(k2, 2))
+        c = - sqrt(2.0_default) * real(gtlr_btw(k2, 2))
       case (2)
-        c = - sqrt(0.5_default) * aimag(gtlr_btw(k2, 2)) * (0, 1)
+        c = - sqrt(2.0_default) * aimag(gtlr_btw(k2, 2)) * (0, 1)
     end select
   end function gtva_ttww
 
@@ -523,11 +555,12 @@ contains
     complex(default) :: c
     real(default), intent(in) :: k2
     integer, intent(in) :: i
+    !!! additional factor 2 wrt. ward relation to cancel explicit 1/2 in "gtlr"
     select case (i)
       case (1)
-        c = - sqrt(0.5_default) * real(gtlr_btw(k2, 1))
+        c = - sqrt(2.0_default) * real(gtlr_btw(k2, 1))
       case (2)
-        c =   sqrt(0.5_default) * aimag(gtlr_btw(k2, 1)) * (0, 1)
+        c =   sqrt(2.0_default) * aimag(gtlr_btw(k2, 1)) * (0, 1)
     end select
   end function gtva_bbww
 
@@ -542,6 +575,7 @@ contains
     complex(default) :: c
     real(default), intent(in) :: k2
     integer, intent(in) :: i
+    !!! don't touch this relative factor: fixed by ward identity!
     c = - gtva_ttg(k2, i)
   end function gtva_ttgg
 

@@ -1,4 +1,4 @@
-# 24 "../../../../src/omega/src/comphep_lexer.mll"
+# 25 "../../../../src/omega/src/comphep_lexer.mll"
  
 open Comphep_parser
 
@@ -140,72 +140,72 @@ let rec token lexbuf =
 and __ocaml_lex_token_rec lexbuf __ocaml_lex_state =
   match Lexing.engine __ocaml_lex_tables __ocaml_lex_state lexbuf with
       | 0 ->
-# 38 "../../../../src/omega/src/comphep_lexer.mll"
+# 39 "../../../../src/omega/src/comphep_lexer.mll"
                   ( token lexbuf )
 # 146 "comphep_lexer.ml"
 
   | 1 ->
-# 39 "../../../../src/omega/src/comphep_lexer.mll"
+# 40 "../../../../src/omega/src/comphep_lexer.mll"
                   ( LPAREN )
 # 151 "comphep_lexer.ml"
 
   | 2 ->
-# 40 "../../../../src/omega/src/comphep_lexer.mll"
+# 41 "../../../../src/omega/src/comphep_lexer.mll"
                   ( RPAREN )
 # 156 "comphep_lexer.ml"
 
   | 3 ->
-# 41 "../../../../src/omega/src/comphep_lexer.mll"
+# 42 "../../../../src/omega/src/comphep_lexer.mll"
                   ( I )
 # 161 "comphep_lexer.ml"
 
   | 4 ->
-# 42 "../../../../src/omega/src/comphep_lexer.mll"
+# 43 "../../../../src/omega/src/comphep_lexer.mll"
                   ( DOT )
 # 166 "comphep_lexer.ml"
 
   | 5 ->
-# 43 "../../../../src/omega/src/comphep_lexer.mll"
+# 44 "../../../../src/omega/src/comphep_lexer.mll"
                   ( POWER )
 # 171 "comphep_lexer.ml"
 
   | 6 ->
-# 44 "../../../../src/omega/src/comphep_lexer.mll"
+# 45 "../../../../src/omega/src/comphep_lexer.mll"
                   ( MULT )
 # 176 "comphep_lexer.ml"
 
   | 7 ->
-# 45 "../../../../src/omega/src/comphep_lexer.mll"
+# 46 "../../../../src/omega/src/comphep_lexer.mll"
                   ( DIV )
 # 181 "comphep_lexer.ml"
 
   | 8 ->
-# 46 "../../../../src/omega/src/comphep_lexer.mll"
+# 47 "../../../../src/omega/src/comphep_lexer.mll"
                   ( PLUS )
 # 186 "comphep_lexer.ml"
 
   | 9 ->
-# 47 "../../../../src/omega/src/comphep_lexer.mll"
+# 48 "../../../../src/omega/src/comphep_lexer.mll"
                   ( MINUS )
 # 191 "comphep_lexer.ml"
 
   | 10 ->
-# 48 "../../../../src/omega/src/comphep_lexer.mll"
+# 49 "../../../../src/omega/src/comphep_lexer.mll"
                   ( SYMBOL (Lexing.lexeme lexbuf) )
 # 196 "comphep_lexer.ml"
 
   | 11 ->
-# 49 "../../../../src/omega/src/comphep_lexer.mll"
+# 50 "../../../../src/omega/src/comphep_lexer.mll"
                   ( INT (int_of_string (Lexing.lexeme lexbuf)) )
 # 201 "comphep_lexer.ml"
 
   | 12 ->
-# 50 "../../../../src/omega/src/comphep_lexer.mll"
+# 51 "../../../../src/omega/src/comphep_lexer.mll"
                   ( failwith ("lexer fails @" ^ Lexing.lexeme lexbuf) )
 # 206 "comphep_lexer.ml"
 
   | 13 ->
-# 51 "../../../../src/omega/src/comphep_lexer.mll"
+# 52 "../../../../src/omega/src/comphep_lexer.mll"
                   ( END )
 # 211 "comphep_lexer.ml"
 

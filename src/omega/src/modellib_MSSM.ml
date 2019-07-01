@@ -1,11 +1,12 @@
-(* $Id: modellib_MSSM.ml 3939 2012-09-10 13:20:50Z jr_reuter $
+(* $Id: modellib_MSSM.ml 4926 2013-12-04 12:35:06Z jr_reuter $
 
-   Copyright (C) 1999-2012 by
+   Copyright (C) 1999-2014 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
        Juergen Reuter <juergen.reuter@desy.de>
-       Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+       with contributions from
+       Christian Speckner <cnspeckn@googlemail.com>
 
    WHIZARD is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by
@@ -21,11 +22,11 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
-(* $Id: modellib_MSSM.ml 3939 2012-09-10 13:20:50Z jr_reuter $ *)
+(* $Id: modellib_MSSM.ml 4926 2013-12-04 12:35:06Z jr_reuter $ *)
 
 let rcs_file = RCS.parse "Modellib_MSSM" ["MSSM"]
-    { RCS.revision = "$Revision: 3939 $";
-      RCS.date = "$Date: 2012-09-10 15:20:50 +0200 (Mon, 10 Sep 2012) $";
+    { RCS.revision = "$Revision: 4926 $";
+      RCS.date = "$Date: 2013-12-04 13:35:06 +0100 (Wed, 04 Dec 2013) $";
       RCS.author = "$Author: jr_reuter $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/src/omega/src/modellib_MSSM.ml $" }
@@ -531,6 +532,13 @@ module MSSM (Flags : MSSM_flags) =
       | G_Gr4_Z_H1 of neu | G_Gr4_Z_H2 of neu | G_Gr4_Z_H3 of neu
       | G_Gr4_W_H of neu | G_Gr4_W_Hc of neu | G_Gr4_H_A of char
       | G_Gr4_H_Z of char
+
+(* Two integer counters for the QCD and EW order of the couplings. *)
+
+    type orders = int * int
+
+    let orders = function 
+      | _ -> (0,0)
 
     let ferm_of_sff = function
       | SL, g -> (L g) | SN, g -> (N g) 

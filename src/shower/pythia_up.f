@@ -15,7 +15,7 @@ C*                    E-mail torbjorn@thep.lu.se                    **
 C*                                                                  **
 C*                  SUSY and Technicolor parts by                   **
 C*                         Stephen Mrenna                           **
-C*                       Computing Division                         ** 
+C*                       Computing Division                         **
 C*            Generators and Detector Simulation Group              **
 C*              Fermi National Accelerator Laboratory               **
 C*                 MS 234, Batavia, IL  60510, USA                  **
@@ -61,15 +61,15 @@ C...on incoming beams and allowed processes.
 C...New example: handles a standard Les Houches Events File.
 
       SUBROUTINE UPINIT
- 
+
 C...Double precision and integer declarations.
       IMPLICIT DOUBLE PRECISION(A-H, O-Z)
       IMPLICIT INTEGER(I-N)
- 
+
 C...PYTHIA commonblock: only used to provide read unit MSTP(161).
       COMMON/PYPARS/MSTP(200),PARP(200),MSTI(200),PARI(200)
       SAVE /PYPARS/
- 
+
 C...User process initialization commonblock.
       INTEGER MAXPUP
       PARAMETER (MAXPUP=100)
@@ -80,7 +80,7 @@ C...User process initialization commonblock.
      &LPRUP(MAXPUP)
       SAVE /HEPRUP/
 
-C...Lines to read in assumed never longer than 200 characters. 
+C...Lines to read in assumed never longer than 200 characters.
       PARAMETER (MAXLEN=200)
       CHARACTER*(MAXLEN) STRING
 
@@ -89,12 +89,12 @@ C...Format for reading lines.
       STRFMT='(A000)'
       WRITE(STRFMT(3:5),'(I3)') MAXLEN
 
-C...Loop until finds line beginning with "<init>" or "<init ". 
+C...Loop until finds line beginning with "<init>" or "<init ".
   100 READ(MSTP(161),STRFMT,END=130,ERR=130) STRING
       IBEG=0
   110 IBEG=IBEG+1
 C...Allow indentation.
-      IF(STRING(IBEG:IBEG).EQ.' '.AND.IBEG.LT.MAXLEN-5) GOTO 110 
+      IF(STRING(IBEG:IBEG).EQ.' '.AND.IBEG.LT.MAXLEN-5) GOTO 110
       IF(STRING(IBEG:IBEG+5).NE.'<init>'.AND.
      &STRING(IBEG:IBEG+5).NE.'<init ') GOTO 100
 
@@ -113,23 +113,23 @@ C...Error exit: give up if initalization does not work.
   130 WRITE(*,*) ' Failed to read LHEF initialization information.'
       WRITE(*,*) ' Event generation will be stopped.'
       CALL PYSTOP(12)
- 
+
       RETURN
       END
 
 C...Old example: handles a simple Pythia 6.4 initialization file.
- 
+
 c      SUBROUTINE UPINIT
- 
+
 C...Double precision and integer declarations.
 c      IMPLICIT DOUBLE PRECISION(A-H, O-Z)
 c      IMPLICIT INTEGER(I-N)
- 
+
 C...Commonblocks.
 c      COMMON/PYDAT1/MSTU(200),PARU(200),MSTJ(200),PARJ(200)
 c      COMMON/PYPARS/MSTP(200),PARP(200),MSTI(200),PARI(200)
 c      SAVE /PYDAT1/,/PYPARS/
- 
+
 C...User process initialization commonblock.
 c      INTEGER MAXPUP
 c      PARAMETER (MAXPUP=100)
@@ -139,7 +139,7 @@ c      COMMON/HEPRUP/IDBMUP(2),EBMUP(2),PDFGUP(2),PDFSUP(2),
 c     &IDWTUP,NPRUP,XSECUP(MAXPUP),XERRUP(MAXPUP),XMAXUP(MAXPUP),
 c     &LPRUP(MAXPUP)
 c      SAVE /HEPRUP/
- 
+
 C...Read info from file.
 c      IF(MSTP(161).GT.0) THEN
 c        READ(MSTP(161),*,END=110,ERR=110) IDBMUP(1),IDBMUP(2),EBMUP(1),
@@ -152,25 +152,25 @@ c        RETURN
 C...Error or prematurely reached end of file.
 c  110   WRITE(MSTU(11),5000)
 c        STOP
- 
+
 C...Else not implemented.
 c      ELSE
 c        WRITE(MSTU(11),5100)
 c        STOP
 c      ENDIF
- 
+
 C...Format for error printout.
 c 5000 FORMAT(1X,'Error: UPINIT routine failed to read information'/
 c     &1X,'Execution stopped!')
 c 5100 FORMAT(1X,'Error: You have not implemented UPINIT routine'/
 c     &1X,'Dummy routine in PYTHIA file called instead.'/
 c     &1X,'Execution stopped!')
- 
+
 c      RETURN
 c      END
- 
+
 C*********************************************************************
- 
+
 C...UPEVNT
 C...Dummy routine, to be replaced by a user implementing external
 C...processes. Depending on cross section model chosen, it either has
@@ -181,15 +181,19 @@ C...HEPEUP commonblock, including (often) an event weight.
 C...New example: handles a standard Les Houches Events File.
 
       SUBROUTINE UPEVNT
- 
+
 C...Double precision and integer declarations.
       IMPLICIT DOUBLE PRECISION(A-H, O-Z)
       IMPLICIT INTEGER(I-N)
- 
+
 C...PYTHIA commonblock: only used to provide read unit MSTP(162).
       COMMON/PYPARS/MSTP(200),PARP(200),MSTI(200),PARI(200)
       SAVE /PYPARS/
- 
+
+C...Added by WHIZARD
+      COMMON/PYDAT1/MSTU(200),PARU(200),MSTJ(200),PARJ(200)
+      SAVE/PYDAT1/
+
 C...User process event common block.
       INTEGER MAXNUP
       PARAMETER (MAXNUP=500)
@@ -200,7 +204,7 @@ C...User process event common block.
      &VTIMUP(MAXNUP),SPINUP(MAXNUP)
       SAVE /HEPEUP/
 
-C...Lines to read in assumed never longer than 200 characters. 
+C...Lines to read in assumed never longer than 200 characters.
       PARAMETER (MAXLEN=200)
       CHARACTER*(MAXLEN) STRING
 
@@ -209,12 +213,12 @@ C...Format for reading lines.
       STRFMT='(A000)'
       WRITE(STRFMT(3:5),'(I3)') MAXLEN
 
-C...Loop until finds line beginning with "<event>" or "<event ". 
+C...Loop until finds line beginning with "<event>" or "<event ".
   100 READ(MSTP(162),STRFMT,END=130,ERR=130) STRING
       IBEG=0
   110 IBEG=IBEG+1
 C...Allow indentation.
-      IF(STRING(IBEG:IBEG).EQ.' '.AND.IBEG.LT.MAXLEN-6) GOTO 110 
+      IF(STRING(IBEG:IBEG).EQ.' '.AND.IBEG.LT.MAXLEN-6) GOTO 110
       IF(STRING(IBEG:IBEG+6).NE.'<event>'.AND.
      &STRING(IBEG:IBEG+6).NE.'<event ') GOTO 100
 
@@ -231,27 +235,30 @@ C...Read NUP subsequent lines with information on each particle.
       RETURN
 
 C...Error exit, typically when no more events.
-  130 WRITE(*,*) ' Failed to read LHEF event information.'
-      WRITE(*,*) ' Will assume end of file has been reached.'
+  130 CONTINUE
+C      WRITE(*,*) ' Failed to read LHEF event information.'
+C      WRITE(*,*) ' Will assume end of file has been reached.'
       NUP=0
       MSTI(51)=1
- 
+C...Added by WHIZARD, mark these failed events
+      MSTU(23)=1
+
       RETURN
       END
 
 C...Old example: handles a simple Pythia 6.4 event file.
- 
+
 c      SUBROUTINE UPEVNT
- 
+
 C...Double precision and integer declarations.
 c      IMPLICIT DOUBLE PRECISION(A-H, O-Z)
 c      IMPLICIT INTEGER(I-N)
- 
+
 C...Commonblocks.
 c      COMMON/PYDAT1/MSTU(200),PARU(200),MSTJ(200),PARJ(200)
 c      COMMON/PYPARS/MSTP(200),PARP(200),MSTI(200),PARI(200)
 c      SAVE /PYDAT1/,/PYPARS/
- 
+
 C...User process event common block.
 c      INTEGER MAXNUP
 c      PARAMETER (MAXNUP=500)
@@ -261,7 +268,7 @@ c      COMMON/HEPEUP/NUP,IDPRUP,XWGTUP,SCALUP,AQEDUP,AQCDUP,IDUP(MAXNUP),
 c     &ISTUP(MAXNUP),MOTHUP(2,MAXNUP),ICOLUP(2,MAXNUP),PUP(5,MAXNUP),
 c     &VTIMUP(MAXNUP),SPINUP(MAXNUP)
 c      SAVE /HEPEUP/
- 
+
 C...Read info from file.
 c      IF(MSTP(162).GT.0) THEN
 c        READ(MSTP(162),*,END=110,ERR=110) NUP,IDPRUP,XWGTUP,SCALUP,
@@ -274,7 +281,7 @@ c  100   CONTINUE
 c        RETURN
 C...Special when reached end of file or other error.
 c  110   NUP=0
- 
+
 C...Else not implemented.
 c      ELSE
 c        WRITE(MSTU(11),5000)
@@ -285,12 +292,12 @@ C...Format for error printout.
 c 5000 FORMAT(1X,'Error: You have not implemented UPEVNT routine'/
 c     &1X,'Dummy routine in PYTHIA file called instead.'/
 c     &1X,'Execution stopped!')
- 
+
 c      RETURN
 c      END
- 
+
 C*********************************************************************
- 
+
 C...UPVETO
 C...Dummy routine, to be replaced by user, to veto event generation
 C...on the parton level, after parton showers but before multiple
@@ -299,27 +306,27 @@ C...If resonances like W, Z, top, Higgs and SUSY particles are handed
 C...undecayed from UPEVNT, or are generated by PYTHIA, they will also
 C...be undecayed at this stage; if decayed their decay products will
 C...have been allowed to shower.
- 
+
 C...All partons at the end of the shower phase are stored in the
 C...HEPEVT commonblock. The interesting information is
 C...NHEP = the number of such partons, in entries 1 <= i <= NHEP,
 C...IDHEP(I) = the particle ID code according to PDG conventions,
 C...PHEP(J,I) = the (p_x, p_y, p_z, E, m) of the particle.
 C...All ISTHEP entries are 1, while the rest is zeroed.
- 
+
 C...The user decision is to be conveyed by the IVETO value.
 C...IVETO = 0 : retain current event and generate in full;
 C...      = 1 : abort generation of current event and move to next.
 
       SUBROUTINE UPVETO(IVETO)
- 
+
 C...HEPEVT commonblock.
       PARAMETER (NMXHEP=4000)
       COMMON/HEPEVT/NEVHEP,NHEP,ISTHEP(NMXHEP),IDHEP(NMXHEP),
      &JMOHEP(2,NMXHEP),JDAHEP(2,NMXHEP),PHEP(5,NMXHEP),VHEP(4,NMXHEP)
       DOUBLE PRECISION PHEP,VHEP
       SAVE /HEPEVT/
- 
+
 C...Next few lines allow you to see what info PYVETO extracted from
 C...the full event record for the first two events.
 C...Delete if you don't want it.
@@ -332,9 +339,10 @@ C...Delete if you don't want it.
         CALL PYLIST(5)
         NLIST=NLIST+1
       ENDIF
- 
+
 C...Make decision here.
       IVETO = 0
- 
+
       RETURN
       END
+

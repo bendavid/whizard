@@ -1,0 +1,57 @@
+?openmp_logging = false
+?vis_history = false
+?integration_timer = false
+?pacify = true
+$method = "omega"
+| Process library 'ewa_4_lib': recorded process 'ewa_4_p1'
+| Process library 'ewa_4_lib': recorded process 'ewa_4_p2'
+seed = 0
+| Process library 'ewa_4_lib': compiling ...
+| Process library 'ewa_4_lib': writing makefile
+| Process library 'ewa_4_lib': removing old files
+| Process library 'ewa_4_lib': writing driver
+| Process library 'ewa_4_lib': creating source code
+| Process library 'ewa_4_lib': compiling sources
+| Process library 'ewa_4_lib': linking
+| Process library 'ewa_4_lib': loading
+| Process library 'ewa_4_lib': ... success.
+$phs_method = "wood"
+$integration_method = "vamp"
+sqrts =  1.4000000E+04
+openmp_num_threads = 1
+[user variable] n = 1000
+ewa_x_min =  1.0000000E-02
+[user variable] n = 1000
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 0
+| Initializing integration for process ewa_4_p1:
+| ------------------------------------------------------------------------
+| Process [scattering]: 'ewa_4_p1'
+|   Library name  = 'ewa_4_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'ewa_4_p1_i1':   W+, W- => t, tbar [omega]
+| ------------------------------------------------------------------------
+| Beam structure: p, p => pdf_builtin => ewa
+| Beam data (collision):
+|   p  (mass = 0.0000000E+00 GeV)
+|   p  (mass = 0.0000000E+00 GeV)
+|   sqrts = 1.400000000000E+04 GeV
+| Initialized builtin PDF CTEQ6L
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'ewa_4_p1_i1.phs'
+| Phase space: 3 channels, 2 dimensions
+| Phase space: found 3 channels, collected in 2 groves.
+| Phase space: Using 3 equivalences between channels.
+| Phase space: wood
+| Beam structure: pdf_builtin, none => none, pdf_builtin => ewa, none => none, ewa
+| Beam structure: 1 channels, 4 dimensions
+Warning: No cuts have been defined.
+******************************************************************************
+******************************************************************************
+*** FATAL ERROR: EWA structure function only accessible for SM quarks and leptons.
+******************************************************************************
+******************************************************************************
+| There were no errors and    1 warning(s).
+WHIZARD run aborted.

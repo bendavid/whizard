@@ -1,10 +1,10 @@
 ! circe2.f90 -- beam spectra for linear colliders and photon colliders
 ! $Id: circe2.nw,v 1.56 2002/10/14 10:12:06 ohl Exp $
-! Copyright (C) 2001-2012 by 
+! Copyright (C) 2001-2014 by 
 !      Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !      Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !      Juergen Reuter <juergen.reuter@desy.de>
-!      Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+!      Christian Speckner <cnspeckn@googlemail.com>
 !
 ! Circe2 is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -35,6 +35,8 @@ module circe2
   public :: cir2dm
   public :: cir2ld
 
+  public :: rng_type
+
   integer, parameter :: NBMAX = 100, NCMAX = 36
   integer, parameter :: POLAVG = 1, POLHEL = 2, POLGEN = 3
     integer, parameter :: NBMMAX = 1
@@ -63,12 +65,49 @@ module circe2
 
   type(circe2_params_t), public, save :: c2p
 
+  type, abstract :: rng_type
+   contains
+     procedure(rng_generate), deferred :: generate
+  end type rng_type
+  
+     
+  abstract interface
+    subroutine rng_proc (u)
+      import :: double
+      real(kind=double), intent(out) :: u
+    end subroutine rng_proc
+  end interface
+  
+  abstract interface
+     subroutine rng_generate (rng_obj, u)
+       import :: rng_type, double
+       class(rng_type), intent(inout) :: rng_obj
+       real(kind=double), intent(out) :: u
+     end subroutine rng_generate
+  end interface
+  
+
 contains
 
-  subroutine cir2gn (p1, h1, p2, h2, y1, y2, rng)
+  subroutine rng_call (u, rng, rng_obj)
+    real(kind=double), intent(out) :: u
+    procedure(rng_proc), optional :: rng
+    class(rng_type), intent(inout), optional :: rng_obj
+    if (present (rng)) then
+       call rng (u)
+    else if (present (rng_obj)) then
+       call rng_obj%generate (u)
+    else
+       stop "circe2: internal error: generator requires either rng &
+            &or rng_obj argument"
+    end if
+  end subroutine rng_call
+  
+  subroutine cir2gn (p1, h1, p2, h2, y1, y2, rng, rng_obj)
     integer :: p1, h1, p2, h2
     real(kind=double) :: y1, y2
-    external rng
+    procedure(rng_proc), optional :: rng
+    class(rng_type), intent(inout), optional :: rng_obj
     integer :: i, ic, i1, i2, ibot, itop
     real(kind=double) :: x1, x2
     real(kind=double) :: u, tmp
@@ -97,7 +136,7 @@ contains
            y2 = -3.4E+38
            return
         end if
-    call rng (u)
+    call rng_call (u, rng, rng_obj)
           ibot = 0
           itop = c2p%nb1(ic) * c2p%nb2(ic)
           do 
@@ -115,9 +154,9 @@ contains
           end do
           i2 = 1 + (i - 1) / c2p%nb1(ic)
           i1 = i - (i2 - 1) * c2p%nb1(ic)
-          call rng (u)
+          call rng_call (u, rng, rng_obj)
           x1 = c2p%xb1(i1,ic)*u + c2p%xb1(i1-1,ic)*(1-u)
-          call rng (u)
+          call rng_call (u, rng, rng_obj)
           x2 = c2p%xb2(i2,ic)*u + c2p%xb2(i2-1,ic)*(1-u)
         if (c2p%map1(i1,ic) .eq. 0) then
            y1 = x1
@@ -145,7 +184,7 @@ contains
         end if
           if (c2p%triang(ic)) then
              y2 = y1 * y2
-                   call rng (u)
+                   call rng_call (u, rng, rng_obj)
                    if (2*u .ge. 1) then
                       tmp = y1
                       y1 = y2
@@ -154,12 +193,13 @@ contains
           end if
   end subroutine cir2gn
 
-  subroutine cir2ch (p1, h1, p2, h2, rng)
+  subroutine cir2ch (p1, h1, p2, h2, rng, rng_obj)
     integer :: p1, h1, p2, h2
-    external rng
+    procedure(rng_proc), optional :: rng
+    class(rng_type), intent(inout), optional :: rng_obj
     integer :: ic, ibot, itop
     real(kind=double) :: u
-    call rng (u)
+    call rng_call (u, rng, rng_obj)
     ibot = 0
     itop = c2p%nc
     do
@@ -183,15 +223,16 @@ contains
     stop
   end subroutine cir2ch
 
-  subroutine cir2gp (p1, p2, x1, x2, pol, rng)
+  subroutine cir2gp (p1, p2, x1, x2, pol, rng, rng_obj)
     integer :: p1, p2
     real(kind=double) :: x1, x2
     real(kind=double), dimension(0:3,0:3) :: pol
-    external rng
+    procedure(rng_proc), optional :: rng
+    class(rng_type), intent(inout), optional :: rng_obj
     integer :: h1, h2, i1, i2
     real(kind=double) :: pol00
-    call cir2ch (p1, h1, p2, h2, rng)
-    call cir2gn (p1, h1, p2, h2, x1, x2, rng)
+    call cir2ch (p1, h1, p2, h2, rng, rng_obj)
+    call cir2gn (p1, h1, p2, h2, x1, x2, rng, rng_obj)
     call cir2dm (p1, p2, x1, x2, pol)
     pol00 = pol(0,0)
     do i1 = 0, 4

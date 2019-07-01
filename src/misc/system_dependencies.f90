@@ -1,10 +1,10 @@
 ! WHIZARD <<Version>> <<Date>>
 ! 
-! Copyright (C) 1999-2012 by 
+! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+!     Christian Speckner <cnspeckn@googlemail.com>
 !     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
@@ -36,8 +36,8 @@ module system_dependencies
   public
  
   ! Program version
-  character(*), parameter :: WHIZARD_VERSION = "2.1.1"
-  character(*), parameter :: WHIZARD_DATE = "Sep 18 2012"
+  character(*), parameter :: WHIZARD_VERSION = "2.2.0"
+  character(*), parameter :: WHIZARD_DATE = "May 18 2014"
 
   ! System paths
   ! These are used for testing without existing installation
@@ -57,6 +57,8 @@ module system_dependencies
        "/Users/reuter/local/packages/whizard/trunk/build/src"
   character(*), parameter :: WHIZARD_TEST_HEPMC_LIBPATH = &
        "/Users/reuter/local/packages/whizard/trunk/build/src/hepmc"
+  character(*), parameter :: WHIZARD_TEST_HOPPET_LIBPATH = &
+       "/Users/reuter/local/packages/whizard/trunk/build/src/hoppet"
   character(*), parameter :: WHIZARD_TEST_MODELPATH = &
        "/Users/reuter/local/packages/whizard/trunk/share/models"
   character(*), parameter :: WHIZARD_TEST_MODELS_LIBPATH = &
@@ -69,7 +71,8 @@ module system_dependencies
        "/Users/reuter/local/packages/whizard/trunk/share/cuts"
   character(*), parameter :: WHIZARD_TEST_TESTDATAPATH = &
        "/Users/reuter/local/packages/whizard/trunk/share/test"
-  character(*), parameter :: WHIZARD_TEST_TEXPATH = ""
+  character(*), parameter :: WHIZARD_TEST_TEXPATH = &
+       "/Users/reuter/local/packages/whizard/trunk/src/feynmf"
   character(*), parameter :: WHIZARD_TEST_CIRCE2PATH = &
        "/Users/reuter/local/packages/whizard/trunk/src/circe2/share/data"
   character(*), parameter :: WHIZARD_TEST_BEAMSIMPATH = &
@@ -91,7 +94,9 @@ module system_dependencies
       "-L" // WHIZARD_TEST_CORE_LIBPATH // " " // &
       "-L" // WHIZARD_TEST_SRC_LIBPATH // " " // &
       "-L" // WHIZARD_TEST_HEPMC_LIBPATH // " " // &
-       "-lwhizard_main -lwhizard -lomega -lHepMC"
+      "-L" // WHIZARD_TEST_HOPPET_LIBPATH // " " // &
+       "-lwhizard_main -lwhizard -lomega " // &
+       "-lHepMC -L/usr/local/lib -lhoppet_v1"
 
   ! Libtool
   character(*), parameter :: WHIZARD_LIBTOOL_TEST = &
@@ -163,7 +168,8 @@ module system_dependencies
   ! WHIZARD-specific link flags
   character(*), parameter :: WHIZARD_LDFLAGS = &
       "-L" // WHIZARD_OMEGA_LIBPATH // " " // &
-       "-lwhizard_main -lwhizard -lomega -lHepMC"
+       "-lwhizard_main -lwhizard -lomega " // &
+       "-lHepMC -L/usr/local/lib -lhoppet_v1"
 
   ! Libtool
   character(*), parameter :: WHIZARD_LIBTOOL = &
@@ -179,6 +185,16 @@ module system_dependencies
        " -fno-common"
   character(*), parameter :: DEFAULT_FC_SRC_EXT = &
        ".f90"
+
+  ! Fortran compiler
+  character(*), parameter :: DEFAULT_CC = &
+       "gcc"
+  character(*), parameter :: DEFAULT_CFLAGS = &
+       "-g -O2"
+  character(*), parameter :: DEFAULT_CFLAGS_PIC = &
+       ""
+
+  ! Object files
   character(*), parameter :: DEFAULT_OBJ_EXT = &
        ".o"
 
@@ -192,7 +208,13 @@ module system_dependencies
        "-lstdc++"
   character(*), parameter :: DEFAULT_LDFLAGS_HEPMC = &
        "-lHepMC"
+  character(*), parameter :: DEFAULT_LDFLAGS_HOPPET = &
+       "-L/usr/local/lib -lhoppet_v1"
   character(*), parameter :: DEFAULT_SHLIB_EXT = ".so"
+
+  ! Make
+  character(*), parameter :: DEFAULT_MAKEFLAGS = &
+       "-j1"
 
   ! LHAPDF library
   character(*), parameter :: LHAPDF_PDFSETS_PATH = &
@@ -220,7 +242,14 @@ module system_dependencies
   character(*), parameter :: OPT_LATEX  = &
        "-halt-on-error"
   character(*), parameter :: OPT_MPOST  = &
-       "-halt-on-error"
+       "--math=scaled -halt-on-error"
+
+  ! dlopen parameters
+  integer, parameter :: &
+     RTLD_LAZY   = 1 , &
+     RTLD_NOW    = 2 , &
+     RTLD_GLOBAL = 8 , &
+     RTLD_LOCAL  = 4
 
   ! Misc
   logical, parameter :: LHAPDF_AVAILABLE = .true.

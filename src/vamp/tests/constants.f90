@@ -17,7 +17,7 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! This version of the source code of vamp has no comments and
 ! can be hard to understand, modify, and improve.  You should have
-! received a copy of the literate noweb sources of vamp that
+! received a copy of the literate `noweb' sources of vamp that
 ! contain the documentation in full detail.
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 module constants

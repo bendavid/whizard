@@ -4,11 +4,11 @@
 ##
 ## Process this file with automake to produce Makefile.in
 #
-# Copyright (C) 1999-2012 by 
+# Copyright (C) 1999-2014 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
-#     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+#     Christian Speckner <cnspeckn@googlemail.com>
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by 
@@ -28,16 +28,12 @@
 
 
 WEBS = \
-  prelude.nw \
-  divisions.nw vamp.nw \
-  vampi.nw \
+  prelude.nw divisions.nw vamp.nw vampi.nw \
   vamp_test.nw vamp_test0.nw application.nw \
   vamp_kinds.nw constants.nw exceptions.nw \
   tao_random_numbers.nw specfun.nw vamp_stat.nw histograms.nw \
   utils.nw linalg.nw products.nw kinematics.nw coordinates.nw \
-  mpi90.nw \
-  pmep.nw \
-  postlude.nw
+  mpi90.nw postlude.nw
 
 if DISTRIBUTION
 PDFS = vamp.pdf preview.pdf preview2.pdf

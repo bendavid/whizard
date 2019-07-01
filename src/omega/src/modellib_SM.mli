@@ -1,11 +1,11 @@
-(* $Id: modellib_SM.mli 3699 2012-02-24 09:37:54Z fbach $
+(* $Id: modellib_SM.mli 5344 2014-02-21 11:24:08Z msekulla $
 
-   Copyright (C) 1999-2012 by
+   Copyright (C) 1999-2014 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
        Juergen Reuter <juergen.reuter@desy.de>
-       Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+       Christian Speckner <cnspeckn@googlemail.com>
 
    WHIZARD is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by
@@ -52,7 +52,6 @@ module SM_anomalous_top : SM_flags
 module SM : functor (F : SM_flags) -> Model.Gauge with module Ch = Charges.QQ
 
 module SM_Rxi : Model.T with module Ch = Charges.QQ
-module SM_QCD : Model.T with module Ch = Charges.QQ
 
 module Groves : functor (M : Model.Gauge) -> Model.Gauge with module Ch = M.Ch
 module SM_clones : Model.Gauge with module Ch = Charges.QQ

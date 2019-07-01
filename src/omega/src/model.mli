@@ -1,11 +1,12 @@
-(* $Id: model.mli 3670 2012-01-21 19:33:07Z jr_reuter $
+(* $Id: model.mli 4926 2013-12-04 12:35:06Z jr_reuter $
 
-   Copyright (C) 1999-2012 by
+   Copyright (C) 1999-2014 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
        Juergen Reuter <juergen.reuter@desy.de>
-       Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+       with contributions from
+       Christian Speckner <cnspeckn@googlemail.com>
 
    WHIZARD is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by
@@ -69,7 +70,8 @@ module type T =
      It can support an arbitrary numer of color lines.  But we have to test
      whether it is efficient enough.
    \end{dubious} *)
-    type constant
+    type constant 
+    type orders
     val max_degree : unit -> int
     val vertices : unit ->
       ((((flavor * flavor * flavor) * constant Coupling.vertex3 * constant) list)
@@ -78,6 +80,7 @@ module type T =
     val fuse2 : flavor -> flavor -> (flavor * constant Coupling.t) list
     val fuse3 : flavor -> flavor -> flavor -> (flavor * constant Coupling.t) list
     val fuse : flavor list -> (flavor * constant Coupling.t) list
+    val orders : constant -> orders
 
 (* The list of all known flavors. *)
     val flavors : unit -> flavor list

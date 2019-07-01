@@ -1,11 +1,13 @@
-! WHIZARD 2.1.1 September 18 2012
+! WHIZARD 2.2.0 May 18 2014
 ! 
-! Copyright (C) 1999-2012 by 
+! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
-!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
+!     
+!     with contributions from
+!     Christian Speckner <cnspeckn@googlemail.com> 
+!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -32,8 +34,9 @@ module models
   use kinds, only: i8, i32 !NODEP!
   use kinds, only: c_default_float !NODEP!
   use iso_varying_string, string_t => varying_string !NODEP!
-  use limits, only: VERTEX_TABLE_SCALE_FACTOR !NODEP!
+  use limits, only: FMT_19, VERTEX_TABLE_SCALE_FACTOR !NODEP!
   use file_utils !NODEP!
+  use unit_tests
   use md5
   use os_interface
   use hashes, only: hash
@@ -63,6 +66,7 @@ module models
   public :: particle_data_is_right_handed
   public :: particle_data_has_antiparticle
   public :: particle_data_is_stable
+  public :: particle_data_get_decays
   public :: particle_data_decays_isotropically
   public :: particle_data_decays_diagonal
   public :: particle_data_is_polarized
@@ -81,14 +85,26 @@ module models
   public :: model_t
   public :: model_final
   public :: model_write
+  public :: model_show
+  public :: model_show_stable
+  public :: model_show_unstable
+  public :: model_show_polarized
+  public :: model_show_unpolarized
   public :: model_get_name
   public :: model_get_md5sum
   public :: model_get_parameters_md5sum
-  public :: model_get_polarized_md5sum
   public :: model_get_parameter_value
   public :: model_get_n_parameters
   public :: model_parameters_to_array
+  public :: model_parameters_to_c_array
   public :: model_parameters_update
+  public :: model_set_unstable
+  public :: model_set_stable
+  public :: model_set_polarized
+  public :: model_set_unpolarized
+  public :: model_clear_unstable
+  public :: model_clear_polarized
+  public :: model_get_n_particles
   public :: model_get_particle_ptr
   public :: model_test_particle
   public :: model_set_particle_mass
@@ -101,11 +117,10 @@ module models
   public :: syntax_model_file_final
   public :: syntax_model_file_write
   public :: model_read
-  public :: model_list_write
-  public :: model_list_read_model
-  public :: model_list_model_exists
-  public :: model_list_get_model_ptr
-  public :: model_list_final
+  public :: model_list_t
+  public :: model_init_instance
+  public :: model_pointer_to_instance
+  public :: fs_table_t
   public :: models_test
 
   integer, parameter :: PAR_NONE = 0
@@ -118,6 +133,7 @@ module models
      integer :: type  = PAR_NONE
      type(string_t) :: name
      real(default) :: value = 0
+     type(parse_node_t), pointer :: pn => null ()
      type(eval_tree_t) :: eval_tree
   end type parameter_t
 
@@ -147,7 +163,7 @@ module models
   integer, parameter, public :: KEYSTONE = 98
   integer, parameter, public :: COMPOSITE = 99
 
-  integer, parameter, public :: UNKNOWN=0
+  integer, parameter, public:: UNKNOWN=0
   integer, parameter, public :: SCALAR=1, SPINOR=2, VECTOR=3, &
         VECTORSPINOR=4, TENSOR=5
   type :: particle_data_t
@@ -179,6 +195,8 @@ module models
      real(default), pointer :: width_val => null ()
      type(parameter_t), pointer :: width_src => null ()
      integer :: multiplicity = 1
+     type(string_t), dimension(:), allocatable :: p_decay
+     type(string_t), dimension(:), allocatable :: a_decay
   end type particle_data_t
 
   type :: particle_p
@@ -216,6 +234,11 @@ module models
      procedure(model_init_external_parameters), nopass, pointer :: &
           init_external_parameters => null ()
      type(dlaccess_t) :: dlaccess
+     type(parse_tree_t) :: parse_tree
+   contains
+     procedure :: write => model_write
+     procedure :: show => model_show
+     procedure :: get_name => model_get_name
   end type model_t
 
   type :: model_entry_t
@@ -226,8 +249,37 @@ module models
   type :: model_list_t
      type(model_entry_t), pointer :: first => null ()
      type(model_entry_t), pointer :: last => null ()
+   contains
+     procedure :: write => model_list_write
+     procedure :: add => model_list_add
+     procedure :: read_model => model_list_read_model
+     procedure :: model_exists => model_list_model_exists
+     procedure :: get_model_ptr => model_list_get_model_ptr
+     procedure :: final => model_list_final
   end type model_list_t
 
+  type, extends (pdg_array_t) :: fs_entry_t
+     type(fs_entry_t), pointer :: previous => null ()
+     type(fs_entry_t), pointer :: next => null ()
+  end type fs_entry_t
+
+  type :: fs_table_t
+     type(model_t), pointer :: model => null ()
+     integer :: pdg_in = 0
+     integer :: n_max = 0
+     real(default) :: e = 0
+     logical :: radiative = .false.
+     type(fs_entry_t), pointer :: first => null ()
+     type(fs_entry_t), pointer :: last => null ()
+   contains
+     procedure :: write => fs_table_write
+     procedure :: make => fs_table_make
+     procedure :: split => fs_table_split
+     procedure :: record => fs_table_record
+     procedure :: get_length => fs_table_get_length
+     procedure :: get_pdg_out => fs_table_get_pdg_out
+  end type fs_table_t
+     
 
   abstract interface
      subroutine model_init_external_parameters (par) bind (C)
@@ -241,14 +293,16 @@ module models
      module procedure model_set_parameter_parse_node
   end interface
 
+  interface model_get_particle_pdg
+     module procedure model_get_particle_pdg_name
+     module procedure model_get_particle_pdg_index
+  end interface model_get_particle_pdg
   interface model_set_vertex
      module procedure model_set_vertex_pdg
      module procedure model_set_vertex_names
   end interface
 
   type(syntax_t), target, save :: syntax_model_file
-
-  type(model_list_t), target, save :: model_list
 
 
 contains
@@ -268,6 +322,7 @@ contains
     type(parse_node_t), intent(in), target :: pn
     par%type = PAR_INDEPENDENT
     par%name = name
+    par%pn => pn
     call eval_tree_init_numeric_value (par%eval_tree, pn)
     par%value = eval_tree_get_real (par%eval_tree)
   end subroutine parameter_init_independent
@@ -279,6 +334,7 @@ contains
     type(var_list_t), intent(in), target :: var_list
     par%type = PAR_DERIVED
     par%name = name
+    par%pn => pn
     call eval_tree_init_expr (par%eval_tree, pn, var_list=var_list)
     call parameter_reset_derived (par)
   end subroutine parameter_init_derived
@@ -314,24 +370,65 @@ contains
     type(parameter_t), intent(in) :: par
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: write_defs
+    logical :: defs
     integer :: u
     u = output_unit (unit);  if (u < 0)  return
-    write (u, "(3x,A)", advance="no")  "parameter"
-    write (u, "(1x,A,1x,A)", advance="no")  char (par%name), "="
-    write (u, "(G17.10)", advance="no") par%value
+    defs = .false.;  if (present (write_defs))  defs = write_defs
+    select case (par%type)
+    case (PAR_INDEPENDENT)
+       write (u, "(3x,A)", advance="no")  "parameter"
+    case (PAR_DERIVED)
+       write (u, "(3x,A)", advance="no")  "derived"
+    case (PAR_EXTERNAL)
+       write (u, "(3x,A)", advance="no")  "external"
+    end select
+    write (u, "(1x,A,1x,A)", advance="no")  char (par%name), "= "
+    write (u, "(" // FMT_19 // ")", advance="no") par%value
     select case (par%type)
     case (PAR_DERIVED)
-       write (u, *) "  ! derived"
-       if (present (write_defs)) then
-          if (write_defs) then
-             call eval_tree_write (par%eval_tree, unit)
-          end if
+       if (defs) then
+          call eval_tree_write (par%eval_tree, unit)
+       else
+          write (u, *)
        end if
-    case (PAR_EXTERNAL)
-       write (u, *) "  ! external"
+    case default
+       write (u, *)
     end select
   end subroutine parameter_write
 
+  subroutine parameter_show_independent (par, l, u)
+    type(parameter_t), intent(in) :: par
+    integer, intent(in) :: l, u
+    character(len=l) :: buffer
+    select case (par%type)
+    case (PAR_INDEPENDENT)
+       buffer = par%name
+       write (u, "(4x,A,1x,'=',1x," // FMT_19 // ")")  buffer, par%value
+    end select
+  end subroutine parameter_show_independent
+    
+  subroutine parameter_show_derived (par, l, u)
+    type(parameter_t), intent(in) :: par
+    integer, intent(in) :: l, u
+    character(len=l) :: buffer
+    select case (par%type)
+    case (PAR_DERIVED)
+       buffer = par%name
+       write (u, "(4x,A,1x,'=',1x," // FMT_19 // ")")  buffer, par%value
+    end select
+  end subroutine parameter_show_derived
+    
+  subroutine parameter_show_external (par, l, u)
+    type(parameter_t), intent(in) :: par
+    integer, intent(in) :: l, u
+    character(len=l) :: buffer
+    select case (par%type)
+    case (PAR_EXTERNAL)
+       buffer = par%name
+       write (u, "(4x,A,1x,'=',1x," // FMT_19 // ")")  buffer, par%value
+    end select
+  end subroutine parameter_show_external
+    
   subroutine particle_data_init (prt, longname, pdg)
     type(particle_data_t), intent(out) :: prt
     type(string_t), intent(in) :: longname
@@ -350,11 +447,37 @@ contains
     prt%is_gauge = prt_src%is_gauge
     prt%is_left_handed = prt_src%is_left_handed
     prt%is_right_handed = prt_src%is_right_handed
+    prt%p_is_stable =             prt_src%p_is_stable
+    prt%p_decays_isotropically =  prt_src%p_decays_isotropically
+    prt%p_decays_diagonal =       prt_src%p_decays_diagonal   
+    prt%a_is_stable =             prt_src%a_is_stable        
+    prt%a_decays_isotropically =  prt_src%a_decays_isotropically
+    prt%a_decays_diagonal =       prt_src%a_decays_diagonal   
+    prt%p_polarized =             prt_src%p_polarized        
+    prt%a_polarized =             prt_src%a_polarized
     prt%spin_type = prt_src%spin_type
     prt%isospin_type = prt_src%isospin_type
     prt%charge_type = prt_src%charge_type
     prt%color_type = prt_src%color_type
-    call particle_data_set_multiplicity (prt)
+    prt%has_antiparticle = prt_src%has_antiparticle
+    if (allocated (prt_src%name)) then
+       if (allocated (prt%name))  deallocate (prt%name)
+       allocate (prt%name (size (prt_src%name)), source = prt_src%name)
+    end if
+    if (allocated (prt_src%anti)) then
+       if (allocated (prt%anti))  deallocate (prt%anti)
+       allocate (prt%anti (size (prt_src%anti)), source = prt_src%anti)
+    end if
+    prt%tex_name = prt_src%tex_name
+    prt%tex_anti = prt_src%tex_anti
+    if (allocated (prt_src%p_decay)) then
+       if (allocated (prt%p_decay))  deallocate (prt%p_decay)
+       allocate (prt%p_decay (size (prt_src%p_decay)), source = prt_src%p_decay)
+    end if
+    if (allocated (prt_src%a_decay)) then
+       if (allocated (prt%a_decay))  deallocate (prt%a_decay)
+       allocate (prt%a_decay (size (prt_src%a_decay)), source = prt_src%a_decay)
+    end if
   end subroutine particle_data_copy
 
   subroutine particle_data_set (prt, &
@@ -364,7 +487,8 @@ contains
        p_polarized, a_polarized, &
        name, anti, tex_name, tex_anti, &
        spin_type, isospin_type, charge_type, color_type, &
-       mass_src, width_src)
+       mass_src, width_src, &
+       p_decay, a_decay)
     type(particle_data_t), intent(inout) :: prt
     logical, intent(in), optional :: is_visible, is_parton, is_gauge
     logical, intent(in), optional :: is_left_handed, is_right_handed
@@ -377,7 +501,8 @@ contains
     type(string_t), intent(in), optional :: tex_name, tex_anti
     integer, intent(in), optional :: spin_type, isospin_type
     integer, intent(in), optional :: charge_type, color_type
-    type(parameter_t), intent(in), target, optional :: mass_src, width_src
+    type(parameter_t), intent(in), pointer, optional :: mass_src, width_src
+    type(string_t), dimension(:), intent(in), optional :: p_decay, a_decay
     if (present (is_visible))  prt%is_visible = is_visible
     if (present (is_parton))  prt%is_parton = is_parton
     if (present (is_gauge))  prt%is_gauge = is_gauge
@@ -396,12 +521,12 @@ contains
     if (present (p_polarized)) prt%p_polarized = p_polarized
     if (present (a_polarized)) prt%a_polarized = a_polarized
     if (present (name)) then
-       allocate (prt%name (size (name)))
-       prt%name = name
+       if (allocated (prt%name))  deallocate (prt%name)
+       allocate (prt%name (size (name)), source = name)
     end if
     if (present (anti)) then
-       allocate (prt%anti (size (anti)))
-       prt%anti = anti
+       if (allocated (prt%anti))  deallocate (prt%anti)
+       allocate (prt%anti (size (anti)), source = anti)
        prt%has_antiparticle = .true.
     end if
     if (present (tex_name))  prt%tex_name = tex_name
@@ -412,14 +537,32 @@ contains
     if (present (color_type))  prt%color_type = color_type
     if (present (mass_src)) then
        prt%mass_src => mass_src
-       prt%mass_val => parameter_get_value_ptr (mass_src)
+       if (associated (mass_src)) then
+          prt%mass_val => parameter_get_value_ptr (mass_src)
+       else
+          prt%mass_val => null ()
+       end if
     end if
     if (present (width_src)) then
        prt%width_src => width_src
-       prt%width_val => parameter_get_value_ptr (width_src)
+       if (associated (width_src)) then
+          prt%width_val => parameter_get_value_ptr (width_src)
+       else
+          prt%width_val => null ()
+       end if
     end if
     if (present (spin_type) .or. present (mass_src)) then
        call particle_data_set_multiplicity (prt)
+    end if
+    if (present (p_decay)) then
+       if (allocated (prt%p_decay))  deallocate (prt%p_decay)
+       if (size (p_decay) > 0) &
+            allocate (prt%p_decay (size (p_decay)), source = p_decay)
+    end if
+    if (present (a_decay)) then
+       if (allocated (prt%a_decay))  deallocate (prt%a_decay)
+       if (size (a_decay) > 0) &
+            allocate (prt%a_decay (size (a_decay)), source = a_decay)
     end if
   end subroutine particle_data_set
 
@@ -460,12 +603,12 @@ contains
     integer :: u, i
     u = output_unit (unit);  if (u < 0)  return
     write (u, "(3x,A,1x,A)", advance="no") "particle", char (prt%longname)
-    write (u, "(1x,I7)", advance="no") prt%pdg
-    if (.not. prt%is_visible) write (u, "(3x,A)", advance="no") "invisible"
-    if (prt%is_parton)  write (u, "(3x,A)", advance="no") "parton"
-    if (prt%is_gauge)  write (u, "(3x,A)", advance="no") "gauge"
-    if (prt%is_left_handed)  write (u, "(3x,A)", advance="no") "left"
-    if (prt%is_right_handed)  write (u, "(3x,A)", advance="no") "right"
+    write (u, "(1x,I0)", advance="no") prt%pdg
+    if (.not. prt%is_visible) write (u, "(2x,A)", advance="no") "invisible"
+    if (prt%is_parton)  write (u, "(2x,A)", advance="no") "parton"
+    if (prt%is_gauge)  write (u, "(2x,A)", advance="no") "gauge"
+    if (prt%is_left_handed)  write (u, "(2x,A)", advance="no") "left"
+    if (prt%is_right_handed)  write (u, "(2x,A)", advance="no") "right"
     write (u, *)
     write (u, "(5x,A)", advance="no") "name"
     if (allocated (prt%name)) then
@@ -489,44 +632,126 @@ contains
                "tex_anti " // '"' // char (prt%tex_anti) // '"'
        end if
     else
-       write (u, "(A)") "???"
+       write (u, "(A)")  "???"
     end if
     write (u, "(5x,A)", advance="no") "spin "
     select case (mod (prt%spin_type - 1, 2))
-    case (0);  write (u, "(I1)", advance="no") (prt%spin_type-1) / 2
-    case default;  write (u, "(I1,A)", advance="no") prt%spin_type-1, "/2"
+    case (0);  write (u, "(I0)", advance="no") (prt%spin_type-1) / 2
+    case default;  write (u, "(I0,A)", advance="no") prt%spin_type-1, "/2"
     end select
-!    write (u, "(3x,A,I1,A)") "! [multiplicity = ", prt%multiplicity, "]"
+    ! write (u, "(2x,A,I1,A)") "! [multiplicity = ", prt%multiplicity, "]"
     if (abs (prt%isospin_type) /= 1) then
-       write (u, "(5x,A)", advance="no") "isospin "
+       write (u, "(2x,A)", advance="no") "isospin "
        select case (mod (abs (prt%isospin_type) - 1, 2))
-       case (0);  write (u, "(I2)", advance="no") &
+       case (0);  write (u, "(I0)", advance="no") &
             sign (abs (prt%isospin_type) - 1, prt%isospin_type) / 2
-       case default;  write (u, "(I2,A)", advance="no") &
+       case default;  write (u, "(I0,A)", advance="no") &
             sign (abs (prt%isospin_type) - 1, prt%isospin_type), "/2"
        end select
     end if
     if (abs (prt%charge_type) /= 1) then
-       write (u, "(5x,A)", advance="no") "charge "
+       write (u, "(2x,A)", advance="no") "charge "
        select case (mod (abs (prt%charge_type) - 1, 3))
-       case (0);  write (u, "(I2)", advance="no") &
+       case (0);  write (u, "(I0)", advance="no") &
             sign (abs (prt%charge_type) - 1, prt%charge_type) / 3
-       case default;  write (u, "(I2,A)", advance="no") &
+       case default;  write (u, "(I0,A)", advance="no") &
             sign (abs (prt%charge_type) - 1, prt%charge_type), "/3"
        end select
     end if
     if (prt%color_type /= 1) then
-       write (u, "(5x,A,I2)", advance="no") "color ", prt%color_type
+       write (u, "(2x,A,I0)", advance="no") "color ", prt%color_type
     end if
     write (u, *)
     if (associated (prt%mass_src)) then
-       write (u, "(5x,A)") "mass " // char (prt%mass_src%name)
+       write (u, "(5x,A)", advance="no") "mass " // char (prt%mass_src%name)
        if (associated (prt%width_src)) then
-          write (u, "(5x,A)") "width " // char (prt%width_src%name)
+          write (u, "(2x,A)") "width " // char (prt%width_src%name)
+       else
+          write (u, *)
        end if
     end if
+    call particle_data_write_decays (prt, u)
   end subroutine particle_data_write
 
+  subroutine particle_data_write_decays (prt, unit)
+    type(particle_data_t), intent(in) :: prt
+    integer, intent(in), optional :: unit
+    integer :: u, i
+    u = output_unit (unit)
+    if (.not. prt%p_is_stable) then
+       if (allocated (prt%p_decay)) then
+          write (u, "(5x,A)", advance="no") "p_decay"
+          do i = 1, size (prt%p_decay)
+             write (u, "(1x,A)", advance="no")  char (prt%p_decay(i))
+          end do
+          if (prt%p_decays_isotropically) then
+             write (u, "(1x,A)", advance="no")  "isotropic"
+          else if (prt%p_decays_diagonal) then
+             write (u, "(1x,A)", advance="no")  "diagonal"
+          end if
+          write (u, *)
+       end if
+    else if (prt%p_polarized) then
+       write (u, "(5x,A)")  "p_polarized"
+    end if
+    if (.not. prt%a_is_stable) then
+       if (allocated (prt%a_decay)) then
+          write (u, "(5x,A)", advance="no") "a_decay"
+          do i = 1, size (prt%a_decay)
+             write (u, "(1x,A)", advance="no")  char (prt%a_decay(i))
+          end do
+          if (prt%a_decays_isotropically) then
+             write (u, "(1x,A)", advance="no")  "isotropic"
+          else if (prt%a_decays_diagonal) then
+             write (u, "(1x,A)", advance="no")  "diagonal"
+          end if
+          write (u, *)
+       end if
+    else if (prt%a_polarized) then
+       write (u, "(5x,A)")  "a_polarized"
+    end if
+  end subroutine particle_data_write_decays
+  
+  subroutine particle_data_show (prt, l, u)
+    type(particle_data_t), intent(in) :: prt
+    integer, intent(in) :: l, u
+    character(len=l) :: buffer
+    integer :: i
+    type(string_t), dimension(:), allocatable :: decay
+    buffer = particle_data_get_name (prt, .false.)
+    write (u, "(4x,A,1x,I8)", advance="no")  buffer, &
+         particle_data_get_pdg (prt)
+    if (particle_data_is_polarized (prt)) then
+       write (u, "(3x,A)")  "polarized"
+    else if (.not. particle_data_is_stable (prt)) then
+       write (u, "(3x,A)", advance="no")  "decays:"
+       call particle_data_get_decays (prt, decay)
+       do i = 1, size (decay)
+          write (u, "(1x,A)", advance="no")  char (decay(i))
+       end do
+       write (u, *)
+    else
+       write (u, *)
+    end if
+    if (particle_data_has_antiparticle (prt)) then
+       buffer = particle_data_get_name (prt, .true.)
+       write (u, "(4x,A,1x,I8)", advance="no")  buffer, &
+            particle_data_get_pdg_anti (prt)
+       if (particle_data_is_polarized (prt, .true.)) then
+          write (u, "(3x,A)")  "polarized"
+       else if (.not. particle_data_is_stable (prt, .true.)) then
+          write (u, "(3x,A)", advance="no")  "decays:"
+          call particle_data_get_decays (prt, decay, .true.)
+          do i = 1, size (decay)
+             write (u, "(1x,A)", advance="no")  char (decay(i))
+          end do
+          write (u, *)
+       else
+          write (u, *)
+       end if
+    end if
+  end subroutine particle_data_show
+  
   elemental function particle_data_get_pdg (prt) result (pdg)
     integer :: pdg
     type(particle_data_t), intent(in) :: prt
@@ -594,6 +819,21 @@ contains
     end if
   end function particle_data_is_stable
 
+  subroutine particle_data_get_decays (prt, decay, anti)
+    type(particle_data_t), intent(in) :: prt
+    type(string_t), dimension(:), intent(out), allocatable :: decay
+    logical, intent(in), optional :: anti
+    if (present (anti)) then
+       if (anti) then
+          allocate (decay (size (prt%a_decay)), source = prt%a_decay)
+       else
+          allocate (decay (size (prt%p_decay)), source = prt%p_decay)
+       end if
+    else
+       allocate (decay (size (prt%p_decay)), source = prt%p_decay)
+    end if
+  end subroutine particle_data_get_decays
+
   elemental function particle_data_decays_isotropically &
        (prt, anti) result (flag)
     logical :: flag
@@ -648,7 +888,7 @@ contains
     type(string_t) :: name
     type(particle_data_t), intent(in) :: prt
     logical, intent(in) :: is_antiparticle
-    name = "???"
+    name = prt%longname
     if (is_antiparticle) then
        if (prt%has_antiparticle) then
           if (allocated (prt%anti)) then
@@ -818,6 +1058,39 @@ contains
     write (u, *)
   end subroutine vertex_write
 
+  subroutine vertex_get_match (vtx, pdg1, pdg2, radiative)
+    type(vertex_t), intent(in) :: vtx
+    integer, intent(in) :: pdg1
+    integer, dimension(:), allocatable, intent(out) :: pdg2
+    logical, intent(in) :: radiative
+    integer :: i, j
+    do i = 1, size (vtx%pdg)
+       if (vtx%pdg(i) == pdg1) then
+          allocate (pdg2 (size (vtx%pdg) - 1))
+          do j = 1, i-1
+             pdg2(j) = anti (j)
+          end do
+          do j = i, size (pdg2)
+             pdg2(j) = anti (j+1)
+          end do
+          exit
+       end if
+    end do
+    if (allocated (pdg2)) then
+       if (.not. radiative .and. any (pdg2 == pdg1))  deallocate (pdg2)
+    end if
+  contains
+    function anti (i) result (pdg)
+      integer, intent(in) :: i
+      integer :: pdg
+      if (vtx%prt(i)%p%has_antiparticle) then
+         pdg = - vtx%pdg(i)
+      else
+         pdg = vtx%pdg(i)
+      end if
+    end function anti
+  end subroutine vertex_get_match
+
   function vertex_table_size (n_vtx) result (n)
     integer(i32) :: n
     integer, intent(in) :: n_vtx
@@ -842,9 +1115,8 @@ contains
     type(vertex_table_t), intent(out) :: vt
     type(particle_data_t), dimension(:), intent(in) :: prt
     type(vertex_t), dimension(:), intent(in) :: vtx
-    integer :: n_prt, n_vtx, vt_size, i, p1, p2, p3
+    integer :: n_vtx, vt_size, i, p1, p2, p3
     integer, dimension(3) :: p
-    n_prt = size (prt)
     n_vtx = size (vtx)
     vt_size = vertex_table_size (count (vtx%trilinear))
     vt%mask = vt_size - 1
@@ -940,15 +1212,19 @@ contains
     type(vertex_table_t), intent(in) :: vt
     integer, intent(in), optional :: unit
     integer :: u, i
+    character(9) :: size_pdg3
     u = output_unit (unit);  if (u < 0)  return
-    write (u, *) "vertex hash table:"
-    write (u, *) "  size = ", size (vt%entry)
-    write (u, *) "  used = ", count (vt%entry%n /= 0)
-    write (u, *) "  coll = ", vt%n_collisions
+    write (u, "(A)") "vertex hash table:"
+    write (u, "(A,I7)") "  size = ", size (vt%entry)
+    write (u, "(A,I7)") "  used = ", count (vt%entry%n /= 0)
+    write (u, "(A,I7)") "  coll = ", vt%n_collisions
     do i = lbound (vt%entry, 1), ubound (vt%entry, 1)
        if (vt%entry(i)%n /= 0) then
-          write (u, *)  "  ", i, ":", &
-               vt%entry(i)%pdg1, vt%entry(i)%pdg2, "->", vt%entry(i)%pdg3
+          write (size_pdg3, "(I7)") size (vt%entry(i)%pdg3)
+          write (u, "(A,1x,I7,1x,A,2(1x,I7),A," // &
+               size_pdg3 // "(1x,I7))")  &
+               "  ", i, ":", vt%entry(i)%pdg1, &
+               vt%entry(i)%pdg2, "->", vt%entry(i)%pdg3
        end if
     end do
   end subroutine vertex_table_write
@@ -957,8 +1233,6 @@ contains
     type(vertex_table_t), intent(in) :: vt
     integer, intent(in) :: pdg1, pdg2
     integer, dimension(:), allocatable, intent(out) :: pdg3
-    integer :: vt_size
-    vt_size = size (vt%entry)
     call match (hash2 (pdg1, pdg2))
   contains
     recursive subroutine match (hashval)
@@ -980,8 +1254,6 @@ contains
     type(vertex_table_t), intent(in) :: vt
     integer, intent(in) :: pdg1, pdg2, pdg3
     logical :: flag
-    integer :: vt_size
-    vt_size = size (vt%entry)
     flag = check (hash2 (pdg1, pdg2))
   contains
     recursive function check (hashval) result (flag)
@@ -999,22 +1271,20 @@ contains
     end function check
   end function vertex_table_check
 
-  subroutine model_init (model, name, libname, os_data, n_par, n_prt, n_vtx)
-    type(model_t), intent(out) :: model
+  subroutine model_init &
+       (model, name, libname, os_data, n_par, n_prt, n_vtx)
+    type(model_t), intent(inout) :: model
     type(string_t), intent(in) :: name, libname
     type(os_data_t), intent(in) :: os_data
     integer, intent(in) :: n_par, n_prt, n_vtx
     type(c_funptr) :: c_fptr
     type(string_t) :: libpath
-    model%name = name
-    allocate (model%par (n_par))
-    allocate (model%prt (n_prt))
-    allocate (model%vtx (n_vtx))
+    call model_basic_init (model, name, n_par, n_prt, n_vtx)
     if (libname /= "") then
        if (.not. os_data%use_testfiles) then
           libpath = os_data%whizard_models_libpath_local
           model%dlname = os_get_dlname ( &
-            libpath // "/" // libname, os_data, ignore=.true., silent=.true.)
+            libpath // "/" // libname, os_data, ignore=.true.)
        end if
        if (model%dlname == "") then
           libpath = os_data%whizard_models_libpath
@@ -1025,7 +1295,8 @@ contains
     end if
     if (model%dlname /= "") then
        if (.not. dlaccess_is_open (model%dlaccess)) then
-          call msg_message ("Loading model auxiliary library '" &
+          if (logging) &
+               call msg_message ("Loading model auxiliary library '" &
                // char (libpath) // "/" // char (model%dlname) // "'")
           call dlaccess_init (model%dlaccess, os_data%whizard_models_libpath, &
                model%dlname, os_data)
@@ -1048,41 +1319,213 @@ contains
     end if
   end subroutine model_init
 
+  subroutine model_basic_init (model, name, n_par, n_prt, n_vtx)
+    type(model_t), intent(inout) :: model
+    type(string_t), intent(in) :: name
+    integer, intent(in) :: n_par, n_prt, n_vtx
+    model%name = name
+    allocate (model%par (n_par))
+    allocate (model%prt (n_prt))
+    allocate (model%vtx (n_vtx))
+  end subroutine model_basic_init
+    
   subroutine model_final (model)
     type(model_t), intent(inout) :: model
+    integer :: i
+    if (allocated (model%par)) then
+       do i = 1, size (model%par)
+          call parameter_final (model%par(i))
+       end do
+    end if
     call var_list_final (model%var_list)
     if (model%dlname /= "")  call dlaccess_final (model%dlaccess)
+    call parse_tree_final (model%parse_tree)
   end subroutine model_final
 
-  subroutine model_write (model, unit, verbose)
-    type(model_t), intent(in) :: model
+  subroutine model_write (model, unit, verbose, &
+       show_md5sum, show_variables, show_parameters, &
+       show_particles, show_vertices)
+    class(model_t), intent(in) :: model
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: verbose
+    logical, intent(in), optional :: show_md5sum
+    logical, intent(in), optional :: show_variables
+    logical, intent(in), optional :: show_parameters
+    logical, intent(in), optional :: show_particles
+    logical, intent(in), optional :: show_vertices
+    logical :: verb, show_md5, show_var, show_par, show_prt, show_vtx
     integer :: u, i
     u = output_unit (unit);  if (u < 0)  return
-    write (u, *) 'model "', char (model%name), '"'
-    write (u, *) '! md5sum = "', model%md5sum, '"'
-    do i = 1, size (model%par)
-       call parameter_write (model%par(i), unit, verbose)
+    verb = .false.;  if (present (verbose))  verb = verbose
+    show_md5 = .true.;  if (present (show_md5sum)) &
+         show_md5 = show_md5sum
+    show_par = .true.;  if (present (show_parameters)) &
+         show_par = show_parameters
+    show_prt = .true.;  if (present (show_particles)) &
+         show_prt = show_particles
+    show_vtx = .true.;  if (present (show_vertices)) &
+         show_vtx = show_vertices
+    show_var = verb;  if (present (show_variables)) &
+         show_var = show_variables
+    write (u, "(A,A,A)") 'model "', char (model%name), '"'
+    if (show_md5 .and. model%md5sum /= "") &
+         write (u, "(1x,A,A,A)") "! md5sum = '", model%md5sum, "'"
+    if (show_par) then
        write (u, *)
-    end do
-    do i = 1, size (model%prt)
-       call particle_data_write (model%prt(i), unit)
-    end do
-    do i = 1, size (model%vtx)
-       call vertex_write (model%vtx(i), unit)
-    end do
-    if (present (verbose)) then
-       if (verbose) then
+       do i = 1, size (model%par)
+          call parameter_write (model%par(i), unit, verbose)
+       end do
+    end if
+    if (show_prt) then
+       write (u, *)
+       do i = 1, size (model%prt)
+          call particle_data_write (model%prt(i), unit)
+       end do
+    end if
+    if (show_vtx) then
+       write (u, *)
+       do i = 1, size (model%vtx)
+          call vertex_write (model%vtx(i), unit)
+       end do
+       if (verb) then
+          write (u, *)
           call vertex_table_write (model%vt, unit)
-          call var_list_write (model%var_list, unit)
        end if
+    end if
+    if (show_var) then
+       write (u, *)
+       call var_list_write (model%var_list, unit)
     end if
   end subroutine model_write
 
+  subroutine model_show (model, unit)
+    class(model_t), intent(in) :: model
+    integer, intent(in), optional :: unit
+    integer :: i, u, l
+    u = output_unit (unit)
+    write (u, "(A,1x,A)")  "Model:", char (model%name)
+    l = max (maxval (len (particle_data_get_name (model%prt, .false.))), &
+         maxval (len (particle_data_get_name (model%prt, .true.))))
+    write (u, "(2x,A)")  "Particles:"
+    do i = 1, size (model%prt)
+       call particle_data_show (model%prt(i), l, u)
+    end do
+    l = maxval (len (model%par%name))
+    if (any (model%par%type == PAR_INDEPENDENT)) then
+       write (u, "(2x,A)")  "Independent parameters:"
+       do i = 1, size (model%par)
+          call parameter_show_independent (model%par(i), l, u)
+       end do
+    end if
+    if (any (model%par%type == PAR_DERIVED)) then
+       write (u, "(2x,A)")  "Derived parameters:"
+       do i = 1, size (model%par)
+          call parameter_show_derived (model%par(i), l, u)
+       end do
+    end if
+    if (any (model%par%type == PAR_EXTERNAL)) then
+       write (u, "(2x,A)")  "External parameters:"
+       do i = 1, size (model%par)
+          call parameter_show_external (model%par(i), l, u)
+       end do
+    end if
+  end subroutine model_show
+
+  subroutine model_show_stable (model, unit)
+    type(model_t), intent(in) :: model
+    integer, intent(in), optional :: unit
+    integer :: u, i
+    u = output_unit (unit)
+    write (u, "(A,1x)", advance="no")  "Stable particles:"
+    do i = 1, size (model%prt)
+       associate (prt => model%prt(i))
+         if (particle_data_is_stable (prt, .false.)) then
+            write (u, "(1x,A)", advance="no") &
+                 char (particle_data_get_name (prt, .false.))
+         end if
+         if (particle_data_has_antiparticle (prt)) then
+            if (particle_data_is_stable (prt, .true.)) then
+               write (u, "(1x,A)", advance="no") &
+                    char (particle_data_get_name (prt, .true.))
+            end if
+         end if
+       end associate
+    end do
+    write (u, *)
+  end subroutine model_show_stable
+  
+  subroutine model_show_unstable (model, unit)
+    type(model_t), intent(in) :: model
+    integer, intent(in), optional :: unit
+    integer :: u, i
+    u = output_unit (unit)
+    write (u, "(A,1x)", advance="no")  "Unstable particles:"
+    do i = 1, size (model%prt)
+       associate (prt => model%prt(i))
+         if (.not. particle_data_is_stable (prt, .false.)) then
+            write (u, "(1x,A)", advance="no") &
+                 char (particle_data_get_name (prt, .false.))
+         end if
+         if (particle_data_has_antiparticle (prt)) then
+            if (.not. particle_data_is_stable (prt, .true.)) then
+               write (u, "(1x,A)", advance="no") &
+                    char (particle_data_get_name (prt, .true.))
+            end if
+         end if
+       end associate
+    end do
+    write (u, *)
+  end subroutine model_show_unstable
+  
+  subroutine model_show_polarized (model, unit)
+    type(model_t), intent(in) :: model
+    integer, intent(in), optional :: unit
+    integer :: u, i
+    u = output_unit (unit)
+    write (u, "(A,1x)", advance="no")  "Polarized particles:"
+    do i = 1, size (model%prt)
+       associate (prt => model%prt(i))
+         if (particle_data_is_polarized (prt, .false.)) then
+            write (u, "(1x,A)", advance="no") &
+                 char (particle_data_get_name (prt, .false.))
+         end if
+         if (particle_data_has_antiparticle (prt)) then
+            if (particle_data_is_polarized (prt, .true.)) then
+               write (u, "(1x,A)", advance="no") &
+                    char (particle_data_get_name (prt, .true.))
+            end if
+         end if
+       end associate
+    end do
+    write (u, *)
+  end subroutine model_show_polarized
+  
+  subroutine model_show_unpolarized (model, unit)
+    type(model_t), intent(in) :: model
+    integer, intent(in), optional :: unit
+    integer :: u, i
+    u = output_unit (unit)
+    write (u, "(A,1x)", advance="no")  "Unpolarized particles:"
+    do i = 1, size (model%prt)
+       associate (prt => model%prt(i))
+         if (.not. particle_data_is_polarized (prt, .false.)) then
+            write (u, "(1x,A)", advance="no") &
+                 char (particle_data_get_name (prt, .false.))
+         end if
+         if (particle_data_has_antiparticle (prt)) then
+            if (.not. particle_data_is_polarized (prt, .true.)) then
+               write (u, "(1x,A)", advance="no") &
+                    char (particle_data_get_name (prt, .true.))
+            end if
+         end if
+       end associate
+    end do
+    write (u, *)
+  end subroutine model_show_unpolarized
+  
   function model_get_name (model) result (name)
     type(string_t) :: name
-    type(model_t), intent(in) :: model
+    class(model_t), intent(in) :: model
     name = model%name
   end function model_get_name
 
@@ -1096,36 +1539,24 @@ contains
     character(32) :: par_md5sum
     type(model_t), intent(in) :: model
     real(default), dimension(:), allocatable :: par
-    integer :: unit
+    integer :: unit, i
     call model_parameters_to_array (model, par)
     unit = free_unit ()
     open (unit, status="scratch", action="readwrite")
-    write (unit, *)  par
+    write (unit, "(" // FMT_19 // ")")  par
+    do i = 1, size (model%prt)
+       associate (prt => model%prt(i))
+         if (.not. prt%p_is_stable .or. .not. prt%a_is_stable &
+              .or. prt%p_polarized .or. prt%a_polarized) then
+            write (unit, "(3x,A)") char (prt%longname)
+            call particle_data_write_decays (prt, unit)
+         end if
+       end associate
+    end do
     rewind (unit)
     par_md5sum = md5sum (unit)
     close (unit)
   end function model_get_parameters_md5sum
-
-  function model_get_polarized_md5sum (model) result (pol_md5sum)
-    character(32) :: pol_md5sum
-    type(model_t), intent(in) :: model
-    integer :: unit, i
-    unit = free_unit ()
-    open (unit, status="scratch", action="readwrite")
-    if (size (model%prt) > 0) then
-       do i = 1, size (model%prt)
-          write (unit, *) &
-             char (particle_data_get_name (model%prt(i), .false.)), " ", &
-             particle_data_is_polarized (model%prt(i)), " "
-          if (particle_data_has_antiparticle (model%prt(i))) write (unit, *) &
-             char (particle_data_get_name (model%prt(i), .true.)), " ", &
-             particle_data_is_polarized (model%prt(i), .true.), " "
-       end do
-    end if
-    rewind (unit)
-    pol_md5sum = md5sum (unit)
-    close (unit)
-  end function model_get_polarized_md5sum
 
   subroutine model_set_parameter_constant (model, i, name, value)
     type(model_t), intent(inout), target :: model
@@ -1167,6 +1598,27 @@ contains
           is_known=known, locked=.true., intrinsic=.true.)
   end subroutine model_set_parameter_external
 
+  subroutine model_copy_parameter (model, i, par)
+    type(model_t), intent(inout), target :: model
+    integer, intent(in) :: i
+    type(parameter_t), intent(in) :: par
+    select case (par%type)
+    case (PAR_INDEPENDENT)
+       if (associated (par%pn)) then
+          call model_set_parameter_parse_node (model, i, par%name, par%pn, &
+               constant = .true.)
+       else
+          call model_set_parameter_constant (model, i, par%name, par%value)
+       end if
+    case (PAR_DERIVED)
+       call model_set_parameter_parse_node (model, i, par%name, par%pn, &
+            constant = .false.)
+    case (PAR_EXTERNAL)
+       call model_set_parameter_external (model, i, par%name)
+    end select
+    model%par(i)%value = par%value
+  end subroutine model_copy_parameter
+  
   function model_get_parameter_ptr (model, par_name) result (par)
     type(parameter_t), pointer :: par
     type(model_t), intent(in), target :: model
@@ -1235,9 +1687,9 @@ contains
     do i = 1, size (model%par)
        call parameter_reset_derived (model%par(i))
     end do
-    if (associated (model% init_external_parameters)) then
+    if (associated (model%init_external_parameters)) then
        call model_parameters_to_c_array (model, par)
-       call model% init_external_parameters (par)
+       call model%init_external_parameters (par)
        call model_parameters_from_c_array (model, par)
     end if
   end subroutine model_parameters_update
@@ -1255,7 +1707,7 @@ contains
   end subroutine model_init_particle
     
   subroutine model_copy_particle_data (model, i, name_src)
-    type(model_t), intent(inout) :: model
+    type(model_t), intent(inout), target :: model
     integer, intent(in) :: i
     type(string_t), intent(in) :: name_src
     call particle_data_copy (model%prt(i), &
@@ -1276,7 +1728,7 @@ contains
     type(string_t), intent(in), optional :: tex_name, tex_anti
     integer, intent(in), optional :: spin_type, isospin_type
     integer, intent(in), optional :: charge_type, color_type
-    type(parameter_t), intent(in), optional, target :: mass_src, width_src
+    type(parameter_t), intent(in), optional, pointer :: mass_src, width_src
     integer :: j
     type(pdg_array_t) :: aval
     logical, parameter :: is_stable = .true.
@@ -1308,30 +1760,137 @@ contains
     end if
   end subroutine model_set_particle_data
 
+  subroutine model_set_unstable (model, pdg, decay, isotropic, diagonal)
+    type(model_t), intent(inout) :: model
+    integer, intent(in) :: pdg
+    type(string_t), dimension(:), intent(in) :: decay
+    logical, intent(in), optional :: isotropic, diagonal
+    integer :: i
+    i = model_get_particle_index (model, pdg)
+    if (pdg > 0) then
+       call particle_data_set (model%prt(i), &
+            p_is_stable = .false., p_decay = decay, &
+            p_decays_isotropically = isotropic, &
+            p_decays_diagonal = diagonal)
+    else
+       call particle_data_set (model%prt(i), &
+            a_is_stable = .false., a_decay = decay, &
+            a_decays_isotropically = isotropic, &
+            a_decays_diagonal = diagonal)
+    end if
+  end subroutine model_set_unstable
+       
+  subroutine model_set_stable (model, pdg)
+    type(model_t), intent(inout) :: model
+    integer, intent(in) :: pdg
+    integer :: i
+    i = model_get_particle_index (model, pdg)
+    if (pdg > 0) then
+       call particle_data_set (model%prt(i), &
+            p_is_stable = .true.)
+    else
+       call particle_data_set (model%prt(i), &
+            a_is_stable = .true.)
+    end if
+  end subroutine model_set_stable
+       
+  subroutine model_set_polarized (model, pdg)
+    type(model_t), intent(inout) :: model
+    integer, intent(in) :: pdg
+    integer :: i
+    i = model_get_particle_index (model, pdg)
+    if (pdg > 0) then
+       call particle_data_set (model%prt(i), &
+            p_polarized = .true.)
+    else
+       call particle_data_set (model%prt(i), &
+            a_polarized = .true.)
+    end if
+  end subroutine model_set_polarized
+    
+  subroutine model_set_unpolarized (model, pdg)
+    type(model_t), intent(inout) :: model
+    integer, intent(in) :: pdg
+    integer :: i
+    i = model_get_particle_index (model, pdg)
+    if (pdg > 0) then
+       call particle_data_set (model%prt(i), &
+            p_polarized = .false.)
+    else
+       call particle_data_set (model%prt(i), &
+            a_polarized = .false.)
+    end if
+  end subroutine model_set_unpolarized
+    
+  subroutine model_clear_unstable (model)
+    type(model_t), intent(inout) :: model
+    integer :: i
+    do i = 1, size (model%prt)
+       associate (prt => model%prt(i))
+         if (.not. particle_data_is_stable (prt, .false.)) then
+            call particle_data_set (model%prt(i), p_is_stable = .true.)
+         end if
+         if (particle_data_has_antiparticle (prt)) then
+            if (.not. particle_data_is_stable (prt, .true.)) then
+               call particle_data_set (model%prt(i), a_is_stable = .true.)
+            end if
+         end if
+       end associate
+    end do
+  end subroutine model_clear_unstable
+  
+  subroutine model_clear_polarized (model)
+    type(model_t), intent(inout) :: model
+    integer :: i
+    do i = 1, size (model%prt)
+       associate (prt => model%prt(i))
+         if (particle_data_is_polarized (prt, .false.)) then
+            call particle_data_set (model%prt(i), p_polarized = .false.)
+         end if
+         if (particle_data_has_antiparticle (prt)) then
+            if (particle_data_is_polarized (prt, .true.)) then
+               call particle_data_set (model%prt(i), a_polarized = .false.)
+            end if
+         end if
+       end associate
+    end do
+  end subroutine model_clear_polarized
+  
   subroutine model_freeze_particle_data (model, i)
     type(model_t), intent(inout) :: model
     integer, intent(in) :: i
     call particle_data_freeze (model%prt(i))
   end subroutine model_freeze_particle_data
 
+  function model_get_n_particles (model) result (n)
+    type(model_t), intent(in) :: model
+    integer :: n
+    n = size (model%prt)
+  end function model_get_n_particles
+  
+  function model_get_particle_index (model, pdg) result (index)
+    type(model_t), intent(in) :: model
+    integer, intent(in) :: pdg
+    integer :: index
+    integer :: i
+    do i = 1, size (model%prt)
+       if (model%prt(i)%pdg == abs (pdg)) then
+          index = i;  return
+       end if
+    end do
+    write (msg_buffer, "(1x,A,1x,I0)")  "PDG code =", pdg
+    call msg_message
+    call msg_fatal (" Model '" // char (model%name) // "'" // &
+         " has no particle with this PDG code")
+  end function model_get_particle_index
+
   function model_get_particle_ptr (model, pdg) result (prt)
     type(particle_data_t), pointer :: prt
     type(model_t), intent(in), target :: model
     integer, intent(in) :: pdg
-    integer :: i
     prt => null ()
     if (pdg /= UNDEFINED) then
-       do i = 1, size (model%prt)
-          if (model%prt(i)%pdg == abs (pdg)) then
-             prt => model%prt(i);  exit
-          end if
-       end do
-       if (.not. associated (prt)) then
-          write (msg_buffer, "(1x,A,1x,I0)")  "PDG code =", pdg
-          call msg_message
-          call msg_fatal (" Model '" // char (model%name) // "'" // &
-               " has no particle with this PDG code")
-       end if
+       prt => model%prt(model_get_particle_index (model, pdg))
     end if
   end function model_get_particle_ptr
 
@@ -1372,7 +1931,7 @@ contains
     if (associated (prt))  call particle_data_set_width (prt, width)
   end subroutine model_set_particle_width
 
-  function model_get_particle_pdg (model, name) result (pdg)
+  function model_get_particle_pdg_name (model, name) result (pdg)
     integer :: pdg
     type(model_t), intent(in), target :: model
     type(string_t), intent(in) :: name
@@ -1393,8 +1952,15 @@ contains
        call msg_fatal (" Model '" // char (model%name) // "'" // &
             " has no particle with this name")
     end if
-  end function model_get_particle_pdg
+  end function model_get_particle_pdg_name
 
+  function model_get_particle_pdg_index (model, index) result (pdg)
+    type(model_t), intent(in) :: model
+    integer, intent(in) :: index
+    integer :: pdg
+    pdg = model%prt(index)%pdg
+  end function model_get_particle_pdg_index
+  
   function model_get_var_list_ptr (model) result (var_list)
     type(var_list_t), pointer :: var_list
     type(model_t), intent(in), target :: model
@@ -1450,8 +2016,7 @@ contains
     call ifile_append (ifile, "SEQ pos_real_value = '+' real_value")
     call ifile_append (ifile, "KEY parameter")
     call ifile_append (ifile, "IDE par_name")
-!    call ifile_append (ifile, "KEY '='")
-!    call ifile_append (ifile, "REA par_value")
+    ! call ifile_append (ifile, "KEY '='")          !!! Key already exists
     call ifile_append (ifile, "SEQ derived_pars = derived_def*")
     call ifile_append (ifile, "SEQ derived_def = derived par_name " // &
          "'=' expr")
@@ -1492,16 +2057,6 @@ contains
     call ifile_append (ifile, "IDE name_id")
     call ifile_append (ifile, "SEQ prt_spin = spin frac")
     call ifile_append (ifile, "KEY spin")
-!     call ifile_append (ifile, "SEQ frac = signed_int div?")
-!     call ifile_append (ifile, "ALT signed_int = " &
-!          // "neg_int | pos_int | integer_literal")
-!     call ifile_append (ifile, "SEQ neg_int = '-' integer_literal")
-!     call ifile_append (ifile, "SEQ pos_int = '+' integer_literal")
-!    call ifile_append (ifile, "KEY '-'")
-!    call ifile_append (ifile, "KEY '+'")
-!    call ifile_append (ifile, "INT int")
-!     call ifile_append (ifile, "SEQ div = '/' integer_literal")
-!    call ifile_append (ifile, "KEY '/'")
     call ifile_append (ifile, "SEQ prt_isospin = isospin frac")
     call ifile_append (ifile, "KEY isospin")
     call ifile_append (ifile, "SEQ prt_charge = charge frac")
@@ -1555,9 +2110,7 @@ contains
     type(lexer_t) :: lexer
     integer :: unit
     character(32) :: model_md5sum
-    type(parse_tree_t) :: parse_tree
     type(parse_node_t), pointer :: nd_model_def, nd_model_name_def
-    type(parse_node_t), pointer :: nd_model_arg
     type(parse_node_t), pointer :: nd_parameters, nd_derived_pars
     type(parse_node_t), pointer :: nd_external_pars
     type(parse_node_t), pointer :: nd_particles, nd_vertices
@@ -1585,7 +2138,7 @@ contains
        call msg_fatal ("Model file '" // char (filename) // "' not found")
        return
     end if
-    call msg_message ("Reading model file '" // char (file) // "'")
+    if (logging) call msg_message ("Reading model file '" // char (file) // "'")
     call lexer_init_model_file (lexer)
     unit = free_unit ()
     open (file=char(file), unit=unit, action="read", status="old")
@@ -1593,11 +2146,11 @@ contains
     close (unit)
     call stream_init (stream, char (file))
     call lexer_assign_stream (lexer, stream)
-    call parse_tree_init (parse_tree, syntax_model_file, lexer)
+    call parse_tree_init (model%parse_tree, syntax_model_file, lexer)
     call stream_final (stream)
     call lexer_final (lexer)
-!     call parse_tree_write (parse_tree)
-    nd_model_def => parse_tree_get_root_ptr (parse_tree)
+    ! call parse_tree_write (parse_tree)    !!! Debugging 
+    nd_model_def => parse_tree_get_root_ptr (model%parse_tree)
     nd_model_name_def => parse_node_get_sub_ptr (nd_model_def)
     model_name = parse_node_get_string &
          (parse_node_get_sub_ptr (nd_model_name_def, 2))
@@ -1699,7 +2252,6 @@ contains
        call model_read_vertex (model, i, nd_vtx)
        nd_vtx => parse_node_get_next_ptr (nd_vtx)
     end do
-    call parse_tree_final (parse_tree)
     call var_list_append_pdg_array &
          (model%var_list, var_str ("charged"), &
           particle_data_get_charged_pdg (model%prt), locked = .true., &
@@ -1883,32 +2435,32 @@ contains
     end if
   end function read_frac
 
-  subroutine model_list_write (unit, verbose)
+  subroutine model_list_write (object, unit, verbose)
+    class(model_list_t), intent(in) :: object
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: verbose
     type(model_entry_t), pointer :: current
     integer :: u
     u = output_unit (unit);  if (u < 0)  return
-    write (u, *) "List of models:"
-    current => model_list%first
+    current => object%first
     if (associated (current)) then
        do while (associated (current))
-          write (u, *)
           call model_write (current%model, unit, verbose)
           current => current%next
+          if (associated (current))  write (u, *)
        end do
-    else
-       write (u, *) "  [empty]"
     end if
   end subroutine model_list_write
 
-  subroutine model_list_add (name, os_data, n_par, n_prt, n_vtx, model)
+  subroutine model_list_add (model_list, &
+       name, os_data, n_par, n_prt, n_vtx, model)
+    class(model_list_t), intent(inout) :: model_list
     type(string_t), intent(in) :: name
     type(os_data_t), intent(in) :: os_data
     integer, intent(in) :: n_par, n_prt, n_vtx
     type(model_t), pointer :: model
     type(model_entry_t), pointer :: current
-    if (model_list_model_exists (name)) then
+    if (model_list%model_exists (name)) then
        model => null ()
     else
        allocate (current)
@@ -1924,13 +2476,14 @@ contains
     end if
   end subroutine model_list_add
 
-  subroutine model_list_read_model (name, filename, os_data, model)
+  subroutine model_list_read_model (model_list, name, filename, os_data, model)
+    class(model_list_t), intent(inout) :: model_list
     type(string_t), intent(in) :: name, filename
     type(os_data_t), intent(in) :: os_data
     type(model_t), pointer :: model
     type(model_entry_t), pointer :: current
     logical :: exist
-    if (.not. model_list_model_exists (name)) then
+    if (.not. model_list%model_exists (name)) then
        allocate (current)
        call model_read (current%model, filename, os_data, exist)
        if (.not. exist)  return
@@ -1951,11 +2504,12 @@ contains
             (current%model%vt, current%model%prt, current%model%vtx)
        model => current%model
     else
-       model => model_list_get_model_ptr (name)
+       model => model_list%get_model_ptr (name)
     end if
   end subroutine model_list_read_model
 
-  function model_list_model_exists (name) result (exists)
+  function model_list_model_exists (model_list, name) result (exists)
+    class(model_list_t), intent(in) :: model_list
     logical :: exists
     type(string_t), intent(in) :: name
     type(model_entry_t), pointer :: current
@@ -1970,7 +2524,8 @@ contains
     exists = .false.
   end function model_list_model_exists
 
-  function model_list_get_model_ptr (name) result (model)
+  function model_list_get_model_ptr (model_list, name) result (model)
+    class(model_list_t), intent(in) :: model_list
     type(model_t), pointer :: model
     type(string_t), intent(in) :: name
     type(model_entry_t), pointer :: current
@@ -1985,7 +2540,8 @@ contains
     model => null ()
   end function model_list_get_model_ptr
 
-  subroutine model_list_final ()
+  subroutine model_list_final (model_list)
+    class(model_list_t), intent(inout) :: model_list
     type(model_entry_t), pointer :: current
     model_list%last => null ()
     do while (associated (model_list%first))
@@ -1996,25 +2552,261 @@ contains
     end do
   end subroutine model_list_final
 
-  subroutine models_test ()
-    type(os_data_t), pointer :: os_data => null ()
-    call syntax_model_file_init ()
-    call syntax_write (syntax_model_file)
-    print *
-    allocate (os_data)
-    call os_data_init (os_data)
-    call models_test1 (os_data)
-    call models_test2 (os_data)
-    !!! Try to cath the gfortran 4.5.0+(?) seg fault
-    !!! call model_list_write (verbose=.true.)
-    call model_list_write ()
-    call model_list_final ()
-    call syntax_model_file_final ()
-    deallocate (os_data)
+  subroutine model_init_instance (model, orig)
+    type(model_t), intent(out), target :: model
+    type(model_t), intent(in) :: orig
+    integer :: n_par, n_prt, n_vtx
+    integer :: i, j
+    type(pdg_array_t) :: prt_undefined
+    type(pdg_array_t) :: aval
+    n_par = size (orig%par)
+    n_prt = size (orig%prt)
+    n_vtx = size (orig%vtx)
+    call model_basic_init (model, orig%name, n_par, n_prt, n_vtx)
+    model%md5sum = orig%md5sum
+    do i = 1, n_par
+       call model_copy_parameter (model, i, orig%par(i))
+    end do
+    prt_undefined = UNDEFINED
+    call var_list_append_pdg_array &
+         (model%var_list, var_str ("particle"), &
+          prt_undefined, locked = .true., intrinsic=.true.)
+    do i = 1, n_prt
+       associate (prt => model%prt(i))
+         associate (prt_src => orig%prt(i))
+           call model_init_particle (model, i,  prt_src%longname, prt_src%pdg)
+           call particle_data_copy (prt, prt_src)
+           if (associated (prt_src%mass_src)) then
+              prt%mass_src => &
+                   model_get_parameter_ptr (model, prt_src%mass_src%name)
+              prt%mass_val => parameter_get_value_ptr (prt%mass_src)
+           end if
+           if (associated (prt_src%width_src)) then
+              prt%width_src => &
+                   model_get_parameter_ptr (model, prt_src%width_src%name)
+              prt%width_val => parameter_get_value_ptr (prt%width_src)
+           end if
+           call particle_data_set_multiplicity (prt)
+         end associate
+         aval = particle_data_get_pdg (prt)
+         do j = 1, size (prt%name)
+            call var_list_append_pdg_array &
+               (model%var_list, prt%name(j), aval, locked=.true., &
+               intrinsic=.true.)
+         end do
+         if (prt%has_antiparticle) then
+            aval = - particle_data_get_pdg (prt)
+            do j = 1, size (prt%anti)
+               call var_list_append_pdg_array &
+                    (model%var_list, prt%anti(j), aval, locked=.true., &
+                    intrinsic=.true.)
+            end do
+         end if
+       end associate
+    end do
+    model%init_external_parameters => orig%init_external_parameters
+    call model_parameters_update (model)
+    do i = 1, n_vtx
+       call vertex_init (model%vtx(i), orig%vtx(i)%pdg, model)
+    end do
+    model%vt = orig%vt
+    call var_list_append_pdg_array &
+         (model%var_list, var_str ("charged"), &
+          particle_data_get_charged_pdg (model%prt), locked = .true., &
+          intrinsic=.true.)
+    call var_list_append_pdg_array &
+         (model%var_list, var_str ("colored"), &
+          particle_data_get_colored_pdg (model%prt), locked = .true., &
+          intrinsic=.true.)
+  end subroutine model_init_instance
+  
+  subroutine model_pointer_to_instance (model)
+    type(model_t), pointer, intent(inout) :: model
+    type(model_t), pointer :: model_tmp
+    model_tmp => model
+    allocate (model)
+    call model_init_instance (model, model_tmp)
+  end subroutine model_pointer_to_instance
+    
+  subroutine fs_table_write (object, unit)
+    class(fs_table_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    integer, dimension(:), allocatable :: pdg
+    type(fs_entry_t), pointer :: entry
+    integer :: u, j, k
+    u = output_unit (unit)
+    k = model_get_particle_index (object%model, object%pdg_in)
+    write (u, "(1x,A,1x,A)")  "Decays for particle:", &
+         char (particle_data_get_name (object%model%prt(k), object%pdg_in < 0))
+    entry => object%first
+    do while (associated (entry))
+       write (u, "(2x)", advance = "no")
+       pdg = entry%pdg_array_t
+       do j = 1, size (pdg)
+          k = model_get_particle_index (object%model, pdg(j))
+          write (u, "(1x,A)", advance = "no") &
+               char (particle_data_get_name (object%model%prt(k), pdg(j) < 0))
+       end do
+       write (u, *)
+       entry => entry%next
+    end do
+  end subroutine fs_table_write
+          
+  subroutine fs_table_make (table, model, pdg_in, n_max, radiative)
+    class(fs_table_t), intent(out) :: table
+    type(model_t), intent(in), target :: model
+    integer, intent(in) :: pdg_in
+    integer, intent(in) :: n_max
+    logical, intent(in), optional :: radiative
+    type(pdg_array_t) :: pa_in
+    integer :: i
+    table%model => model
+    table%pdg_in = pdg_in
+    table%n_max = n_max
+    i = model_get_particle_index (model, pdg_in)
+    table%e = particle_data_get_mass (model%prt(i))
+    if (present (radiative))  table%radiative = radiative
+    pa_in = [pdg_in]
+    call table%split (pa_in, 1)
+  end subroutine fs_table_make
+    
+  recursive subroutine fs_table_split (table, pa, i, record)
+    class(fs_table_t), intent(inout) :: table
+    type(pdg_array_t), intent(in) :: pa
+    integer, intent(in) :: i
+    logical, intent(in), optional :: record
+    integer :: pdg1, v, l
+    integer, dimension(:), allocatable :: pdg2
+    if (present (record)) then
+       if (record)  call table%record (sort_abs (pa))
+    end if
+    pdg1 = pdg_array_get (pa, i)
+    l = pdg_array_get_length (pa)
+    do v = 1, size (table%model%vtx)
+       call vertex_get_match (table%model%vtx(v), pdg1, pdg2, table%radiative)
+       if (allocated (pdg2)) then
+          if (l + size (pdg2) - 1 <= table%n_max) then
+             call fs_table_split (table, pdg_array_replace (pa, i, pdg2), i, &
+                  record = .true.)
+          end if
+       end if
+    end do
+    if (i < l) then
+       call fs_table_split (table, pa, i + 1)
+    end if
+  end subroutine fs_table_split
+    
+  subroutine fs_table_record (table, pa)
+    class(fs_table_t), intent(inout) :: table
+    type(pdg_array_t), intent(in) :: pa
+    type(fs_entry_t), pointer :: current
+    current => table%first
+    do while (associated (current))
+       if (pa == current%pdg_array_t) then
+          return
+       else if (mass_sum (pa, table%model) >= table%e) then
+          return
+       else if (pa < current%pdg_array_t) then
+          call insert
+          return
+       end if
+       current => current%next
+    end do
+    call insert
+  contains
+    subroutine insert ()
+      type(fs_entry_t), pointer :: entry
+      allocate (entry)
+      entry%pdg_array_t = pa
+      if (associated (current)) then
+         if (associated (current%previous)) then
+            current%previous%next => entry
+            entry%previous => current%previous
+         else
+            table%first => entry
+         end if
+         entry%next => current
+         current%previous => entry
+      else
+         if (associated (table%last)) then
+            table%last%next => entry
+            entry%previous => table%last
+         else
+            table%first => entry
+         end if
+         table%last => entry
+      end if
+    end subroutine insert
+  end subroutine fs_table_record
+    
+  function mass_sum (pa, model) result (m)
+    type(pdg_array_t), intent(in) :: pa
+    type(model_t), intent(in), target :: model
+    real(default) :: m
+    integer :: i, k
+    m = 0
+    do i = 1, pdg_array_get_length (pa)
+       k = model_get_particle_index (model, pdg_array_get (pa, i))
+       m = m + particle_data_get_mass (model%prt(k))
+    end do
+  end function mass_sum
+  
+  function fs_table_get_length (fs_table) result (n)
+    class(fs_table_t), intent(in) :: fs_table
+    integer :: n
+    type(fs_entry_t), pointer :: entry
+    n = 0
+    entry => fs_table%first
+    do while (associated (entry))
+       n = n + 1
+       entry => entry%next
+    end do
+  end function fs_table_get_length
+
+  subroutine fs_table_get_pdg_out (fs_table, i, pdg_out)
+    class(fs_table_t), intent(in) :: fs_table
+    integer, intent(in) :: i
+    integer, dimension(:), allocatable, intent(out) :: pdg_out
+    type(fs_entry_t), pointer :: entry
+    integer :: n
+    n = 0
+    entry => fs_table%first
+    do while (associated (entry))
+       n = n + 1
+       if (n == i) then
+          allocate (pdg_out (pdg_array_get_length (entry%pdg_array_t)))
+          pdg_out = entry%pdg_array_t
+          exit
+       end if
+       entry => entry%next
+    end do
+  end subroutine fs_table_get_pdg_out
+  
+
+  subroutine models_test (u, results)
+    integer, intent(in) :: u
+    type(test_results_t), intent(inout) :: results
+    call test (models_1, "models_1", &
+         "construct model", &
+         u, results)
+    call test (models_2, "models_2", &
+         "read model", &
+         u, results)
+    call test (models_3, "models_3", &
+         "model instance", &
+         u, results)
+    call test (models_4, "models_4", &
+         "handle decays and polarization", &
+         u, results)
+    call test (models_5, "models_5", &
+         "generate decay table", &
+         u, results)
   end subroutine models_test
 
-  subroutine models_test1 (os_data)
-    type(os_data_t), intent(in) :: os_data
+  subroutine models_1 (u)
+    integer, intent(in) :: u
+    type(os_data_t) :: os_data
+    type(model_list_t) :: model_list
     type(model_t), pointer :: model
     type(string_t) :: model_name
     type(string_t) :: x_longname
@@ -2025,13 +2817,17 @@ contains
     type(string_t) :: y_longname
     type(string_t), dimension(2) :: y_name
     type(string_t) :: y_tex_name
+
+    write (u, "(A)")  "* Test output: models_1"
+    write (u, "(A)")  "*   Purpose: create a model"
+    write (u, *)
+
     model_name = "Test model"
-    call model_list_add (model_name, os_data, 2, 2, 3, model)
+    call model_list%add (model_name, os_data, 2, 2, 3, model)
     parname(1) = "mx"
     parname(2) = "coup"
     call model_set_parameter (model, 1, parname(1), 10._default)
     call model_set_parameter (model, 2, parname(2), 1.3_default)
-    print *
     x_longname = "X_LEPTON"
     x_name(1) = "X"
     x_name(2) = "x"
@@ -2055,16 +2851,220 @@ contains
     call model_set_vertex (model, 1, (/ 99, 99, 99 /))
     call model_set_vertex (model, 2, (/ 99, 99, 99, 99 /))
     call model_set_vertex (model, 3, (/ 99, 97, 99 /))
-  end subroutine models_test1
+    call model_list%write (u)
 
-  subroutine models_test2 (os_data)
-    type(os_data_t), intent(in) :: os_data
-    type(string_t) :: name, filename
+    call model_list%final ()
+
+    write (u, *)
+    write (u, "(A)")  "* Test output end: models_1"
+
+  end subroutine models_1
+
+  subroutine models_2 (u)
+    integer, intent(in) :: u
+    type(os_data_t) :: os_data
+    type(model_list_t) :: model_list
     type(model_t), pointer :: model
-    name = "SM"
-    filename = "SM.mdl"
-    call model_list_read_model (name, filename, os_data, model)
-  end subroutine models_test2
+
+    write (u, "(A)")  "* Test output: models_2"
+    write (u, "(A)")  "*   Purpose: read a model from file"
+    write (u, *)
+
+    call syntax_model_file_init ()
+    call os_data_init (os_data)
+
+    call model_list%read_model (var_str ("Test"), var_str ("Test.mdl"), &
+         os_data, model)
+    call model_list%write (u)
+    
+    write (u, *)
+    write (u, "(A)")  "* Variable list"
+    write (u, *)
+    
+    call var_list_write (model%var_list, u)
+
+    write (u, *)
+    write (u, "(A)")  "* Cleanup"
+    
+    call model_list%final ()
+    call syntax_model_file_final ()
+
+    write (u, *)
+    write (u, "(A)")  "* Test output end: models_2"
+
+  end subroutine models_2
+
+  subroutine models_3 (u)
+    integer, intent(in) :: u
+    type(os_data_t) :: os_data
+    type(model_list_t) :: model_list
+    type(model_t), pointer :: model
+    type(model_t), pointer :: instance
+
+    write (u, "(A)")  "* Test output: models_3"
+    write (u, "(A)")  "*   Purpose: create a model instance"
+    write (u, *)
+
+    call syntax_model_file_init ()
+    call os_data_init (os_data)
+
+    call model_list%read_model (var_str ("Test"), var_str ("Test.mdl"), &
+         os_data, model)
+    allocate (instance)
+    call model_init_instance (instance, model)
+    
+    call model_write (instance, u)
+    
+    write (u, *)
+    write (u, "(A)")  "* Variable list"
+    write (u, *)
+    
+    call var_list_write (instance%var_list, u)
+
+    write (u, *)
+    write (u, "(A)")  "* Cleanup"
+    
+    call model_final (instance)
+    deallocate (instance)
+    
+    call model_list%final ()
+    call syntax_model_file_final ()
+
+    write (u, *)
+    write (u, "(A)")  "* Test output end: models_3"
+
+  end subroutine models_3
+
+  subroutine models_4 (u)
+    integer, intent(in) :: u
+    type(os_data_t) :: os_data
+    type(model_list_t) :: model_list
+    type(model_t), pointer :: model, model_instance
+    character(32) :: md5sum
+
+    write (u, "(A)")  "* Test output: models_4"
+    write (u, "(A)")  "*   Purpose: set and unset decays and polarization"
+    write (u, *)
+
+    call syntax_model_file_init ()
+    call os_data_init (os_data)
+
+    write (u, "(A)")  "* Read model from file"
+
+    call model_list%read_model (var_str ("Test"), var_str ("Test.mdl"), &
+         os_data, model)
+
+    md5sum = model_get_parameters_md5sum (model)
+    write (u, *)
+    write (u, "(1x,3A)")  "MD5 sum (parameters) = '", md5sum, "'"
+
+    write (u, *)
+    write (u, "(A)")  "* Set particle decays and polarization"
+    write (u, *)
+
+    call model_set_unstable (model, 25, [var_str ("dec1"), var_str ("dec2")])
+    call model_set_polarized (model, 6)
+    call model_set_unstable (model, -6, [var_str ("fdec")])
+
+    call model_write (model, u)
+
+    md5sum = model_get_parameters_md5sum (model)
+    write (u, *)
+    write (u, "(1x,3A)")  "MD5 sum (parameters) = '", md5sum, "'"
+
+    write (u, *)
+    write (u, "(A)")  "* Create a model instance"
+
+    allocate (model_instance)
+    call model_init_instance (model_instance, model)
+
+    write (u, *)
+    write (u, "(A)")  "* Revert particle decays and polarization"
+    write (u, *)
+
+    call model_set_stable (model, 25)
+    call model_set_unpolarized (model, 6)
+    call model_set_stable (model, -6)
+
+    call model_write (model, u)
+    
+    md5sum = model_get_parameters_md5sum (model)
+    write (u, *)
+    write (u, "(1x,3A)")  "MD5 sum (parameters) = '", md5sum, "'"
+
+    write (u, *)
+    write (u, "(A)")  "* Show the model instance"
+    write (u, *)
+
+    call model_write (model_instance, u)
+
+    md5sum = model_get_parameters_md5sum (model_instance)
+    write (u, *)
+    write (u, "(1x,3A)")  "MD5 sum (parameters) = '", md5sum, "'"
+
+    write (u, *)
+    write (u, "(A)")  "* Cleanup"
+    
+    call model_final (model_instance)
+    deallocate (model_instance)
+    call model_list%final ()
+    call syntax_model_file_final ()
+
+    write (u, *)
+    write (u, "(A)")  "* Test output end: models_4"
+
+  end subroutine models_4
+
+  subroutine models_5 (u)
+    integer, intent(in) :: u
+    type(os_data_t) :: os_data
+    type(model_list_t) :: model_list
+    type(model_t), pointer :: model
+    type(fs_table_t) :: fs_table
+
+    write (u, "(A)")  "* Test output: models_5"
+    write (u, "(A)")  "*   Purpose: determine Higgs decay table"
+    write (u, *)
+
+    call syntax_model_file_init ()
+    call os_data_init (os_data)
+
+    write (u, "(A)")  "* Read Standard Model"
+
+    call model_list%read_model (var_str ("SM"), var_str ("SM.mdl"), &
+         os_data, model)
+
+    write (u, *)
+    write (u, "(A)")  "* Higgs decays n = 2"
+    write (u, *)
+
+    call fs_table%make (model, 25, 2)
+    call fs_table%write (u)
+
+    write (u, *)
+    write (u, "(A)")  "* Higgs decays n = 3 (w/o radiative)"
+    write (u, *)
+
+    call fs_table%make (model, 25, 3, radiative = .false.)
+    call fs_table%write (u)
+
+    write (u, *)
+    write (u, "(A)")  "* Higgs decays n = 3 (w/ radiative)"
+    write (u, *)
+
+    call fs_table%make (model, 25, 3, radiative = .true.)
+    call fs_table%write (u)
+
+    write (u, *)
+    write (u, "(A)")  "* Cleanup"
+    
+    call model_list%final ()
+    call syntax_model_file_final ()
+
+    write (u, *)
+    write (u, "(A)")  "* Test output end: models_5"
+
+  end subroutine models_5
 
 
 end module models

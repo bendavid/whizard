@@ -2,14 +2,20 @@
 #
 #    This is whizard_relocate, a tool to relocate the whizard directory to 
 #    a place that you did not specify in configure stage.
-#    Copyright (C) 2011 Hans-Werner Boschmann
+#    Copyright (C) 1999-2014 by 
+#        Wolfgang Kilian <kilian@physik.uni-siegen.de>
+#        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
+#        Juergen Reuter <juergen.reuter@desy.de>
+#        with contributions from
+#        Christian Speckner <cnspeckn@googlemail.com>
+#        and others
 #
-#    This program is free software: you can redistribute it and/or modify
+#    WHIZARD is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
 #    the Free Software Foundation, either version 3 of the License, or
 #    (at your option) any later version.
 #
-#    This program is distributed in the hope that it will be useful,
+#    WHIZARD is distributed in the hope that it will be useful,
 #    but WITHOUT ANY WARRANTY; without even the implied warranty of
 #    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #    GNU General Public License for more details.
@@ -106,7 +112,7 @@ then
 	then
 	    lhapdf_prefix=$whizard_prefix
 	else
-	    echo I cannot find lhapdf. Please assign a value to lhapdf_prefix or call this script with \"--lhapdf_prefix /path/to/lhapdf\".
+	    echo I cannot find LHAPDF. Please assign a value to lhapdf_prefix or call this script with \"--lhapdf_prefix /path/to/lhapdf\".
 	    exit 4
 	fi
     fi
@@ -148,7 +154,7 @@ echo
 echo whizard-setup.sh --prefix $whizard_prefix
 $whizard_prefix/bin/whizard-setup.sh --prefix $whizard_prefix
 echo
-echo libtool-relocate.sh --prefix $whizard_prefix --lhapdf $lhapdf_libdir
+echo libtool-relocate.sh --prefix $whizard_prefix --lhapdf $lhapdf_libdir 
 $whizard_prefix/bin/libtool-relocate.sh --prefix $whizard_prefix --lhapdf $lhapdf_libdir
 echo
 echo libtool-config.sh --prefix $whizard_prefix

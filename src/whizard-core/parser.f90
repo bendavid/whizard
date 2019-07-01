@@ -1,11 +1,13 @@
-! WHIZARD 2.1.1 September 18 2012
+! WHIZARD 2.2.0 May 18 2014
 ! 
-! Copyright (C) 1999-2012 by 
+! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
-!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
+!     
+!     with contributions from
+!     Christian Speckner <cnspeckn@googlemail.com> 
+!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -29,13 +31,14 @@ module parser
 
   use kinds, only: default !NODEP!
   use iso_varying_string, string_t => varying_string !NODEP!
-  use limits, only: DIGITS !NODEP!
+  use limits, only: DIGITS, FMT_19 !NODEP!
   use file_utils !NODEP!
   use diagnostics !NODEP!
   use md5
+  use unit_tests
   use lexers
   use syntax_rules
-
+  
   implicit none
   private
 
@@ -44,8 +47,13 @@ module parser
   public :: parse_node_write_rec
   public :: parse_node_write
   public :: parse_node_final
+  public :: parse_node_create_key
+  public :: parse_node_create_value
+  public :: parse_node_set_value
   public :: parse_node_create_branch
   public :: parse_node_append_sub
+  public :: parse_node_freeze_branch
+  public :: parse_node_replace_rule
   public :: parse_node_replace_last_sub
   public :: parse_node_get_rule_ptr
   public :: parse_node_get_n_sub
@@ -92,6 +100,8 @@ module parser
      type(parse_node_t), pointer :: sub_first => null ()
      type(parse_node_t), pointer :: sub_last => null ()
      type(parse_node_t), pointer :: next => null ()
+   contains
+     procedure :: write => parse_node_write_rec
   end type parse_node_t
 
   type :: parse_node_p
@@ -106,6 +116,11 @@ module parser
 
   interface assignment(=)
      module procedure token_assign
+     module procedure token_assign_integer
+     module procedure token_assign_real
+     module procedure token_assign_complex
+     module procedure token_assign_logical
+     module procedure token_assign_string
   end interface
 
 
@@ -219,6 +234,14 @@ contains
     end subroutine read_quoted
   end subroutine token_init
 
+  subroutine token_init_key (token, key)
+    type(token_t), intent(out) :: token
+    type(string_t), intent(in) :: key
+    token%type = S_KEYWORD
+    allocate (token%kval)
+    token%kval = key
+  end subroutine token_init_key
+  
   subroutine token_final (token)
     type(token_t), intent(inout) :: token
     token%type = S_UNKNOWN
@@ -243,22 +266,22 @@ contains
     u = output_unit (unit);  if (u < 0)  return
     select case (token%type)
     case (S_LOGICAL)
-       write (u, *) token%lval
+       write (u, "(L1)") token%lval
     case (S_INTEGER)
-       write (u, *) token%ival
+       write (u, "(I0)") token%ival
     case (S_REAL)
-       write (u, *) token%rval
+       write (u, "(" // FMT_19 // ")") token%rval
     case (S_COMPLEX)
-       write (u, *) token%cval
+       write (u, "('('," // FMT_19 // ",','," // FMT_19 // ",')')") token%cval
     case (S_IDENTIFIER)
-       write (u, *) char (token%sval)
+       write (u, "(A)") char (token%sval)
     case (S_KEYWORD)
-       write (u, *) '[keyword] ' // char (token%kval)
+       write (u, "(A,A)") '[keyword] ' // char (token%kval)
     case (S_QUOTED)
-       write (u, *) &
+       write (u, "(A)") &
             char (token%quote(1)) // char (token%sval) // char (token%quote(2))
     case default
-       write (u, *) '[empty]'
+       write (u, "(A)") '[empty]'
     end select
   end subroutine token_write
 
@@ -279,6 +302,47 @@ contains
        allocate (token%kval);  token%kval = token_in%kval
     end if
   end subroutine token_assign
+
+  subroutine token_assign_integer (token, ival)
+    type(token_t), intent(out) :: token
+    integer, intent(in) :: ival
+    token%type = S_INTEGER
+    allocate (token%ival)
+    token%ival = ival
+  end subroutine token_assign_integer
+
+  subroutine token_assign_real (token, rval)
+    type(token_t), intent(out) :: token
+    real(default), intent(in) :: rval
+    token%type = S_REAL
+    allocate (token%rval)
+    token%rval = rval
+  end subroutine token_assign_real
+
+  subroutine token_assign_complex (token, cval)
+    type(token_t), intent(out) :: token
+    complex(default), intent(in) :: cval
+    token%type = S_COMPLEX
+    allocate (token%cval)
+    token%cval = cval
+  end subroutine token_assign_complex
+
+  subroutine token_assign_logical (token, lval)
+    type(token_t), intent(out) :: token
+    logical, intent(in) :: lval
+    token%type = S_LOGICAL
+    allocate (token%lval)
+    token%lval = lval
+  end subroutine token_assign_logical
+
+  subroutine token_assign_string (token, sval)
+    type(token_t), intent(out) :: token
+    type(string_t), intent(in) :: sval
+    token%type = S_QUOTED
+    allocate (token%sval)
+    token%sval = sval
+    allocate (token%quote(2));  token%quote = '"'
+  end subroutine token_assign_string
 
   function token_get_logical (token) result (lval)
     logical :: lval
@@ -359,7 +423,7 @@ contains
   end subroutine token_mismatch
 
   recursive subroutine parse_node_write_rec (node, unit, short, depth)
-    type(parse_node_t), intent(in), target :: node
+    class(parse_node_t), intent(in), target :: node
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: short
     integer, intent(in), optional :: depth
@@ -377,7 +441,7 @@ contains
   end subroutine parse_node_write_rec
 
   subroutine parse_node_write (node, unit, short)
-    type(parse_node_t), intent(in) :: node
+    class(parse_node_t), intent(in) :: node
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: short
     integer :: u
@@ -435,6 +499,45 @@ contains
     if (.not. token_is_valid (node%token))  deallocate (node)
   end subroutine parse_node_create_leaf
 
+  subroutine parse_node_create_key (node, rule)
+    type(parse_node_t), intent(out) :: node
+    type(syntax_rule_t), intent(in), target :: rule
+    node%rule => rule
+    call token_init_key (node%token, syntax_rule_get_key (rule))
+  end subroutine parse_node_create_key
+    
+  subroutine parse_node_create_value (node, rule, ival, rval, cval, sval, lval)
+    type(parse_node_t), intent(out) :: node
+    type(syntax_rule_t), intent(in), target :: rule
+    integer, intent(in), optional :: ival
+    real(default), intent(in), optional :: rval
+    complex(default), intent(in), optional :: cval
+    type(string_t), intent(in), optional :: sval
+    logical, intent(in), optional :: lval
+    node%rule => rule
+    call parse_node_set_value (node, ival, rval, cval, sval, lval)
+  end subroutine parse_node_create_value
+    
+  subroutine parse_node_set_value (node, ival, rval, cval, sval, lval)
+    type(parse_node_t), intent(inout) :: node
+    integer, intent(in), optional :: ival
+    real(default), intent(in), optional :: rval
+    complex(default), intent(in), optional :: cval
+    type(string_t), intent(in), optional :: sval
+    logical, intent(in), optional :: lval
+    if (present (ival)) then
+       node%token = ival
+    else if (present (rval)) then
+       node%token = rval
+    else if (present (cval)) then
+       node%token = cval
+    else if (present (lval)) then
+       node%token = lval
+    else if (present (sval)) then
+       node%token = sval
+    end if
+  end subroutine parse_node_set_value
+    
   subroutine parse_node_create_branch (node, rule)
     type(parse_node_t), pointer :: node
     type(syntax_rule_t), intent(in), target :: rule
@@ -467,25 +570,44 @@ contains
     if (node%n_sub == 0)  deallocate (node)
   end subroutine parse_node_freeze_branch
 
+  subroutine parse_node_replace_rule (node, rule)
+    type(parse_node_t), pointer :: node
+    type(syntax_rule_t), intent(in), target :: rule
+    node%rule => rule
+  end subroutine parse_node_replace_rule
+  
   subroutine parse_node_replace_last_sub (node, pn_target)
     type(parse_node_t), intent(inout), target :: node
     type(parse_node_t), intent(in), target :: pn_target
-    type(parse_node_t), pointer :: current
+    type(parse_node_t), pointer :: current, current_copy, previous
     integer :: i
     select case (node%n_sub)
     case (1)
-       node%sub_first => pn_target
+       allocate (current_copy)
+       current_copy = pn_target
+       node%sub_first => current_copy
     case (2:)
        current => node%sub_first
+       allocate (current_copy)
+       current_copy = current
+       node%sub_first => current_copy
+       previous => current_copy
        do i = 1, node%n_sub - 2
           current => current%next
+          allocate (current_copy)
+          current_copy = current
+          previous%next => current_copy
+          previous => current_copy
        end do
-       current%next => pn_target
+       allocate (current_copy)
+       current_copy = pn_target
+       previous%next => current_copy
     case default
        call parse_node_write (node)
        call msg_bug ("'replace_last_sub' called for non-branch parse node")
     end select
-    node%sub_last => pn_target
+    current_copy%next => null ()
+    node%sub_last => current_copy
   end subroutine parse_node_replace_last_sub
 
   function parse_node_get_rule_ptr (node) result (rule)
@@ -991,14 +1113,25 @@ contains
           end do
           node_process_phs => parse_node_get_next_ptr (node_process_phs)
        end do SCAN_FILE
+       node => null ()
     else
        node => null ()
     end if
   end function parse_tree_get_process_ptr
 
-  subroutine parse_test
+  subroutine parse_test (u, results)
+    integer, intent(in) :: u
+    type(test_results_t), intent(inout) :: results
+    call test (parse_1, "parse_1", &
+         "check the parser", &
+         u, results)  
+  end subroutine parse_test
+  
+
+  subroutine parse_1 (u)
     use ifiles
     use lexers
+    integer, intent(in) :: u    
 
     type(ifile_t) :: ifile
     type(syntax_t), target :: syntax
@@ -1006,8 +1139,9 @@ contains
     type(stream_t), target :: stream
     type(parse_tree_t), target :: parse_tree
     
-    print "(A)", "Parser test"
-    print *
+    write (u, "(A)")  "* Test output: Parsing"
+    write (u, "(A)")  "*   Purpose: test parse routines"
+    write (u, "(A)")      
     
     call ifile_append (ifile, "SEQ expr = term addition*")
     call ifile_append (ifile, "SEQ addition = plus_or_minus term")
@@ -1026,59 +1160,62 @@ contains
     call ifile_append (ifile, "KEY '^'")
     call ifile_append (ifile, "REA real")
     
-    print "(A)", "File contents (syntax definition):"
-    call ifile_write (ifile)
-    print "(A)", "EOF"
-    print *
+    write (u, "(A)")  "* File contents (syntax definition):"
+    call ifile_write (ifile, u)
+    write (u, "(A)")  "EOF"
+    write (u, "(A)")
     
     call syntax_init (syntax, ifile)
     call ifile_final (ifile)
-    call syntax_write (syntax)
-    print *
+    call syntax_write (syntax, u)
+    write (u, "(A)")
     
     call lexer_init (lexer, &
          comment_chars = "", &
          quote_chars = "'", &
          quote_match = "'", &
          single_chars = "+-*/^()", &
-         special_class = (/ "" /) , &
+         special_class = [""] , &
          keyword_list = syntax_get_keyword_list_ptr (syntax))
-    call lexer_write_setup (lexer)
-    print *
+    call lexer_write_setup (lexer, u)
+    write (u, "(A)")
     
     call ifile_append (ifile, "(27+8^3-2/3)*(4+7)^2*99")
-    print "(A)", "File contents (input file):"
-    call ifile_write (ifile)
-    print "(A)", "EOF"
+    write (u, "(A)")  "* File contents (input file):"
+    call ifile_write (ifile, u)
+    write (u, "(A)")  "EOF"
     print *
     
     call stream_init (stream, ifile)
     call lexer_assign_stream (lexer, stream)
     call parse_tree_init (parse_tree, syntax, lexer)
     call stream_final (stream)
-    call parse_tree_write (parse_tree)
+    call parse_tree_write (parse_tree, u, .true.)
     print *
     
-    print "(A)", "Cleanup, everything should now be empty:"
-    print *
+    write (u, "(A)")  "* Cleanup, everything should now be empty:"
+    write (u, "(A)")
     
     call parse_tree_final (parse_tree)
-    call parse_tree_write (parse_tree)
-    print *
+    call parse_tree_write (parse_tree, u, .true.)
+    write (u, "(A)")
     
     call lexer_final (lexer)
-    call lexer_write_setup (lexer)
-    print *
+    call lexer_write_setup (lexer, u)
+    write (u, "(A)")
     
     call ifile_final (ifile)
-    print "(A)", "File contents:"
-    call ifile_write (ifile)
-    print "(A)", "EOF"
-    print *
+    write (u, "(A)")  "* File contents:"
+    call ifile_write (ifile, u)
+    write (u, "(A)")  "EOF"
+    write (u, "(A)")
     
     call syntax_final (syntax)
-    call syntax_write (syntax)
+    call syntax_write (syntax, u)
 
-  end subroutine parse_test
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: parser_1"    
+    
+  end subroutine parse_1
 
 end module parser

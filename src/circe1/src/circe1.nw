@@ -1,19 +1,19 @@
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\RCSId$Id: circe1.nw 67 2002-03-28 17:13:06Z ohl $
+\RCSId$Id: circe1.nw 5607 2014-03-31 09:28:28Z ohl $
 \section{Implementation of [[circe1]]}
 <<[[circe1.f90]]>>=
 ! circe1.f90 -- canonical beam spectra for linear collider physics
-! $Id: circe1.nw 67 2002-03-28 17:13:06Z ohl $
+! $Id: circe1.nw 5607 2014-03-31 09:28:28Z ohl $
 <<Copyleft notice>>
 <<Main module>>
 @
 <<Copyleft notice>>=
 ! 
-! Copyright (C) 1999-2012 by 
+! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+!     Christian Speckner <cnspeckn@googlemail.com>
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -40,7 +40,7 @@ The file \texttt{circe.h} contains symbolic names for various magic
 constants used by \Kirke/:
 <<[[circe.h]]>>=
 c circe.h -- canonical beam spectra for linear collider physics
-c $Id: circe1.nw 67 2002-03-28 17:13:06Z ohl $
+c $Id: circe1.nw 5607 2014-03-31 09:28:28Z ohl $
 <<Main module>>=
 module circe1
   use kinds
@@ -49,6 +49,8 @@ module circe1
   private
   <<Public subroutines>>
 
+  <<Public types>>
+  
   <<Particle codes>>
   <<Accelerator codes>>
   <<Private parameters>>
@@ -59,6 +61,10 @@ module circe1
   <<Declaration: circe1 parameters>>
 
   type(circe1_params_t), public, save :: circe1_params
+
+  <<Abstract types>>
+
+  <<Abstract interfaces>>
 
 contains
 
@@ -154,7 +160,7 @@ all negative variables to ensure initialization:
       if (xchat .ne. 0) then
          call circem ('MESSAGE', 'starting up ...')
          call circem ('MESSAGE', & 
-            '$Id: circe.nw 67 2002-03-28 17:13:06Z ohl $')
+            '$Id: circe1.nw 5607 2014-03-31 09:28:28Z ohl $')
       endif
 @
 <<Update circe1 parameters>>=
@@ -251,9 +257,15 @@ all negative variables to ensure initialization:
       endif
 @ 
 <<Local variables for [[circes]]>>=
-      character(len=6), dimension(NACC) :: accnam
+<<Declaration of [[accnam]]>>
 @
 <<Initializations for [[circes]]>>=
+<<Initialization of [[accnam]]>>
+@ 
+<<Declaration of [[accnam]]>>=
+      character(len=6), dimension(NACC) :: accnam
+@
+<<Initialization of [[accnam]]>>=
       data accnam(SBAND)  /'SBAND'/
       data accnam(TESLA)  /'TESLA'/
       data accnam(JLCNLC) /'JLCNLC'/
@@ -261,6 +273,29 @@ all negative variables to ensure initialization:
       data accnam(TESLEE) /'TESLEE'/
       data accnam(XBNDEE) /'XBNDEE'/
       data accnam(NLCH) /'NLC H'/
+      data accnam(ILC) /'ILC'/
+      data accnam(CLIC) /'CLIC'/
+@
+<<Public subroutines>>=
+  public :: circex
+<<Module subroutines>>=
+  subroutine circex (xx1m, xx2m, xroots, cacc, xver, xrev, xchat)
+    real(kind=double) :: xx1m, xx2m, xroots   
+    character(*) :: cacc
+    integer :: xver, xrev, xchat
+    integer :: xacc, i
+<<Accelerator codes>>
+<<Declaration of [[accnam]]>>
+<<Initialization of [[accnam]]>>
+    xacc = -1
+    do i = 1, NACC
+       if (trim (accnam(i)) == trim (cacc)) then
+         xacc = i
+       end if
+    end do
+    call circes (xx1m, xx2m, xroots, xacc, xver, xrev, xchat)
+  end subroutine circex
+@ %def circex
 @
 <<Warn that no parameter set has been endorsed for $e^-e^-$ yet>>=
       call circem ('WARNING', '***********************************')
@@ -323,6 +358,9 @@ all negative variables to ensure initialization:
       else if (circe1_params%ver .eq. 9) then
          circe1_params%ver = 1
 <<Update version 9 derived parameters in circe1 parameters>>
+      else if (circe1_params%ver .eq. 10) then
+         circe1_params%ver = 1
+<<Update version 10 derived parameters in circe1 parameters>>
 <<[[else]] handle invalid versions>>
 @ 
 <<Local variables for [[circes]]>>=
@@ -331,8 +369,8 @@ all negative variables to ensure initialization:
 <<[[else]] handle invalid versions>>=
       else if (circe1_params%ver .eq. 2) then
 <<Version 2 has been retired>>
-      else if (circe1_params%ver .gt. 9) then
-         call circem ('PANIC', 'versions >9 not available yet')
+      else if (circe1_params%ver .gt. 10) then
+         call circem ('PANIC', 'versions >10 not available yet')
          return
       else
          call circem ('PANIC', 'version must be positive')
@@ -448,8 +486,10 @@ all negative variables to ensure initialization:
 2003 format ('mapping energy ', F6.1, ' to energy index ', I2)
 2013 format ('mapping energy ', F6.1, ' to energy indices ', I2, ' and ', I2)
 @ The energies 250\,GeV, 1.2\,TeV and 1.5\,TeV were entered late into
-the game by teh SLAC people.
+the game by the SLAC people.  And, of course, 200\,GeV and 230\,GeV
+only appeared even much later
 <<Local variables for [[circes]]>>=
+    integer, parameter :: EINVAL = -2
     integer, parameter :: GEV090 = -1
     integer, parameter :: GEV170 = 0
     integer, parameter :: GEV350 = 1
@@ -460,6 +500,8 @@ the game by teh SLAC people.
     integer, parameter :: GEV250 = 6
     integer, parameter :: TEV12  = 7
     integer, parameter :: TEV15  = 8
+    integer, parameter :: GEV200 = 9
+    integer, parameter :: GEV230 = 10
     integer, parameter :: A1NEGY = 5
     integer, parameter :: A1NREV = 5
     integer :: i
@@ -1005,8 +1047,8 @@ where the distributions are
       end do
 @
 <<Local variables for [[circes]]>>=
-    real, dimension(A3NEGY,NACC,0:A3NREV), save :: xa3lum
-    real, dimension(0:7,A3NEGY,NACC,0:A3NREV), save :: xa3
+    real, dimension(A3NEGY,NACC,0:A3NREV), save :: xa3lum = -1
+    real, dimension(0:7,A3NEGY,NACC,0:A3NREV), save :: xa3 = 0
 @ \textbf{Revisions 3 \&\ 4}.  The mother of all revisions.
 <<Initializations for [[circes]]>>=
     xa3lum(GEV800,TESLA,3) = .17196E+03
@@ -1821,6 +1863,142 @@ parameters!
         0.44548E+00,-0.68341E+00, 0.24956E+01, 0.87448E+00 /)
     xa9lum(TEV16,NLCH,0) = -1.0
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection{Version 10}
+<<Update version 10 derived parameters in circe1 parameters>>=
+      if (circe1_params%rev .eq. 0) then
+         r = 0
+      elseif (circe1_params%rev .ge. 20140305) then
+         r = 1
+      elseif (circe1_params%rev .lt. 20140305) then
+         call circem ('ERROR', &
+          'no revision of version 10 available before 2014/03/05')
+         call circem ('MESSAGE', 'falling back to default')
+         r = 1
+      endif
+      <<Log revision mapping>>
+@
+<<Update version 10 derived parameters in circe1 parameters>>=
+      if (circe1_params%acc .ne. ILC) then
+         call circem ('ERROR', 'version 10 applies to ILC only')
+         call circem ('ERROR', 'falling back to ILC')
+         circe1_params%acc = ILC
+      end if
+      if (circe1_params%acc .eq. ILC) then
+        <<Linearly interpolate energies for ILC 2013>>
+      end if
+      <<Log energy mapping>>
+@
+<<Linearly interpolate energies for ILC 2013>>=
+      e = -EINVAL
+      elo = -EINVAL
+      ehi = -EINVAL
+      if (circe1_params%roots .lt. 200d0 - DELTAE) then
+         write (msgbuf, 2004) circe1_params%roots, 200d0
+         call circem ('MESSAGE', msgbuf)
+         e = GEV200
+      elseif (abs (circe1_params%roots-200d0) .le. DELTAE) then
+         e = GEV200
+      elseif (circe1_params%roots .lt. 230d0 - DELTAE) then
+         write (msgbuf, 2006) circe1_params%roots, 200d0, 230d0
+         call circem ('MESSAGE', msgbuf)
+         elo = GEV200
+         ehi = GEV230
+         eloval = 200d0
+         ehival = 230d0
+      elseif (abs (circe1_params%roots-230d0) .le. DELTAE) then
+         e = GEV230
+      elseif (circe1_params%roots .lt. 250d0 - DELTAE) then
+         write (msgbuf, 2006) circe1_params%roots, 230d0, 250d0
+         call circem ('MESSAGE', msgbuf)
+         elo = GEV230
+         ehi = GEV250
+         eloval = 230d0
+         ehival = 250d0
+      elseif (abs (circe1_params%roots-250d0) .le. DELTAE) then
+         e = GEV250
+      elseif (circe1_params%roots .lt. 350d0 - DELTAE) then
+         write (msgbuf, 2006) circe1_params%roots, 250d0, 350d0
+         call circem ('MESSAGE', msgbuf)
+         elo = GEV250
+         ehi = GEV350
+         eloval = 250d0
+         ehival = 350d0
+      elseif (abs (circe1_params%roots-350d0) .le. DELTAE) then
+         e = GEV350
+      elseif (circe1_params%roots .lt. 500d0 - DELTAE) then
+         write (msgbuf, 2006) circe1_params%roots, 350d0, 500d0
+         call circem ('MESSAGE', msgbuf)
+         elo = GEV350
+         ehi = GEV500
+         eloval = 350d0
+         ehival = 500d0
+      elseif (abs (circe1_params%roots-500d0) .le. DELTAE) then
+         e = GEV500
+      else
+         write (msgbuf, 2005) circe1_params%roots, 500d0
+         call circem ('MESSAGE', msgbuf)
+         e = GEV500
+      endif
+@
+<<Local variables for [[circes]]>>=
+    integer, parameter ::  A10NEGY = GEV230, A10NREV = 1
+@ Note that ew \emph{must not} interpolate \texttt{a1(0)} and
+\texttt{a1(7)} because they depend non-linearly on the other
+parameters!
+<<Update version 10 derived parameters in circe1 parameters>>=
+      if (e .ne. EINVAL) then
+         circe1_params%lumi = xa10lum(e,circe1_params%acc,r)
+         do i = 0, 7
+            circe1_params%a1(i) = xa10(i,e,circe1_params%acc,r)
+         end do   
+      else if (elo .ne. EINVAL .and. ehi .ne. EINVAL) then
+         circe1_params%lumi = ((circe1_params%roots-eloval)*xa10lum(ehi,circe1_params%acc,r) &
+             + (ehival-circe1_params%roots)*xa10lum(elo,circe1_params%acc,r)) / (ehival - eloval)
+         do i = 1, 6
+            circe1_params%a1(i) = ((circe1_params%roots-eloval)*xa10(i,ehi,circe1_params%acc,r) &
+                + (ehival-circe1_params%roots)*xa10(i,elo,circe1_params%acc,r)) / (ehival - eloval)
+         end do       
+         circe1_params%a1(0) = 1d0 - circe1_params%a1(1) * beta(circe1_params%a1(2)+1d0,circe1_params%a1(3)+1d0)
+         circe1_params%a1(7) = circe1_params%a1(4) * beta(circe1_params%a1(5)+1d0,circe1_params%a1(6)+1d0)
+      end if
+@
+<<Local variables for [[circes]]>>=
+    real, dimension(GEV090:A10NEGY,ILC:ILC,0:A10NREV) :: xa10lum
+    real, dimension(0:7,GEV090:A10NEGY,ILC:ILC,0:A10NREV) :: xa10
+@ \textbf{Revision 1}.  The mother of all revisions.
+<<Initializations for [[circes]]>>=
+    xa10lum = -1
+    xa10 = -1
+@
+<<Initializations for [[circes]]>>=
+    xa10lum(GEV200,ILC,1) =  56
+    xa10(:,GEV200,ILC,1) = (/ &
+         0.66253E+00,  0.51646E+00,  0.43632E+02, -0.64508E+00, &
+         0.35915E+00, -0.69716E+00,  0.51645E+02,  0.32097E+00 /)
+    xa10lum(GEV230,ILC,1) =  83
+    xa10(:,GEV230,ILC,1) = (/ &
+         0.62360E+00,  0.52780E+00,  0.31915E+02, -0.64171E+00, &
+         0.38375E+00, -0.69529E+00,  0.39717E+02,  0.36597E+00 /)
+    xa10lum(GEV250,ILC,1) =  97
+    xa10(:,GEV250,ILC,1) = (/ &
+         0.59996E+00,  0.52141E+00,  0.26647E+02, -0.64331E+00, &
+         0.39186E+00, -0.69687E+00,  0.33764E+02,  0.39669E+00 /)
+    xa10lum(GEV350,ILC,1) = 100
+    xa10(:,GEV350,ILC,1) = (/ &
+         0.58875E+00,  0.50027E+00,  0.18594E+02, -0.63380E+00, &
+         0.38659E+00, -0.69239E+00,  0.23964E+02,  0.42049E+00 /)
+    xa10lum(GEV500,ILC,1) = 180
+    xa10(:,GEV500,ILC,1) = (/ &
+         0.46755E+00,  0.51768E+00,  0.83463E+01, -0.62311E+00, &
+         0.45704E+00, -0.69165E+00,  0.12372E+02,  0.60192E+00 /)
+@
+<<Initializations for [[circes]]>>=
+@ \textbf{Revision 0}
+The latest is the default:
+<<Initializations for [[circes]]>>=
+    xa10lum(:,:,0) = xa10lum(:,:,A10NREV)
+    xa10(:,:,:,0) = xa10(:,:,:,A10NREV)
+@ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Special Functions}
 <<Module subroutines>>=
   function beta (a, b)      
@@ -2159,31 +2337,100 @@ This simple approximation is good enough
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Generators}
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection{Random-Number Generator}
+The generator routines do not fix or provide a random-number generator.  The
+caller has to provide an implementation which is transferred to the
+subroutines in one of two possible forms:
+\begin{enumerate}
+\item
+  as a subroutine which generates a single random number, working on an
+  implicit external state
+\item
+  as an object with a method the generates a single random number, working on
+  an internal state
+\end{enumerate}
+These snippets should be used by the procedures that use a RNG:
+<<RNG dummy arguments>>=
+rng, rng_obj
+<<RNG dummy declarations>>=
+procedure(rng_proc), optional :: rng
+class(rng_type), intent(inout), optional :: rng_obj
+<<RNG: generate [[u]]>>=
+call rng_call (u, <<RNG dummy arguments>>)
+<<Module subroutines>>=
+  subroutine rng_call (u, <<RNG dummy arguments>>)
+    real(kind=double), intent(out) :: u
+    <<RNG dummy declarations>>
+    if (present (rng)) then
+       call rng (u)
+    else if (present (rng_obj)) then
+       call rng_obj%generate (u)
+    else
+       call circem ('PANIC', &
+            'generator requires either rng or rng_obj argument')
+    end if
+  end subroutine rng_call
+  
+@ %def rng_call
+@ This defines the procedure version of the RNG, corresponding to the
+traditional F77 [[external]] interface.  The abstract interface enables the
+compiler to check conformance.
+<<Abstract interfaces>>=
+  abstract interface
+    subroutine rng_proc (u)
+      import :: double
+      real(kind=double), intent(out) :: u
+    end subroutine rng_proc
+  end interface
+  
+@ %def rng_proc
+@ Here we define the object version of the RNG.  It has to implement a
+[[generate]] method which parallels the [[rng_proc]] procedure above.
+<<Public types>>=
+  public :: rng_type
+<<Abstract types>>=
+  type, abstract :: rng_type
+   contains
+     procedure(rng_generate), deferred :: generate
+  end type rng_type
+  
+@ %def rng_type
+<<Abstract interfaces>>=
+  abstract interface
+     subroutine rng_generate (rng_obj, u)
+       import :: rng_type, double
+       class(rng_type), intent(inout) :: rng_obj
+       real(kind=double), intent(out) :: u
+     end subroutine rng_generate
+  end interface
+  
+@ %def rng_generate  
+@ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsubsection{Version 1}
 Beta distributions have the practical advantage that they have been
 popular among mathematicians.\cite{Devroye:1986:random_deviates}
 <<Public subroutines>>=
   public :: girce
 <<Module subroutines>>=
-  subroutine girce (x1, x2, p1, p2, rng)
+  subroutine girce (x1, x2, p1, p2, <<RNG dummy arguments>>)
     real(kind=double), intent(out) :: x1, x2
     integer :: p1, p2
-    external rng
+    <<RNG dummy declarations>>
     real(kind=double) :: u, w
 <<Initialization check>>
 <<[[x1m]], [[x2m]] kludge, part 1>>
 <<Select particles [[p1]] and [[p2]]>>
       if (abs(p1) .eq. C1_ELECTRON) then
          if (abs(p2) .eq. C1_ELECTRON) then
-            call gircee (x1, x2, rng)
+            call gircee (x1, x2, <<RNG dummy arguments>>)
          else if (p2 .eq. C1_PHOTON) then
-            call girceg (x1, x2, rng)
+            call girceg (x1, x2, <<RNG dummy arguments>>)
          end if
       else if (p1 .eq. C1_PHOTON) then
          if (abs(p2) .eq. C1_ELECTRON) then
-            call girceg (x2, x1, rng)
+            call girceg (x2, x1, <<RNG dummy arguments>>)
          else if (p2 .eq. C1_PHOTON) then
-            call gircgg (x1, x2, rng)
+            call gircgg (x1, x2, <<RNG dummy arguments>>)
          end if
       end if
 <<[[x1m]], [[x2m]] kludge, part 2>>
@@ -2193,13 +2440,13 @@ popular among mathematicians.\cite{Devroye:1986:random_deviates}
 @
 <<Select particles [[p1]] and [[p2]]>>=
       w = 1d0 / (1d0 + circgg (-1d0, -1d0))
-      call rng (u)
+      <<RNG: generate [[u]]>>
       if (u*u .le. w) then
          p1 = C1_POSITRON
       else
          p1 = C1_PHOTON
       end if
-      call rng (u)
+      <<RNG: generate [[u]]>>
       if (u*u .le. w) then
          p2 = C1_ELECTRON
       else
@@ -2222,11 +2469,13 @@ drop below the relative contribution of~$e^+e^-$.
 <<Public subroutines>>=
   public :: gircee
 <<Module subroutines>>=
-  subroutine gircee (x1, x2, rng)
+  subroutine gircee (x1, x2, <<RNG dummy arguments>>)
     real(kind=double), intent(out) :: x1, x2
-    external rng
+    <<RNG dummy declarations>>
     real(kind=double) :: u
     <<Initialization check>>
+    x1 = 1
+    x2 = 1
     if ((circe1_params%ver .eq. 1) .or. (circe1_params%ver .eq. 0)) then
        <<Generate version 1 of the $e^+e^-$ distribution>>
     <<[[else]] handle invalid versions>>
@@ -2243,27 +2492,33 @@ generator of $\beta$-distribitions:
   I(x,a,b) & = & \int_x^1\!d\xi\, \xi^{a-1}(1-\xi)^{b-1}
 \end{eqnarray}
 <<Generate version 1 of the $e^+e^-$ distribution>>=
-      call rng (u)
+      <<RNG: generate [[u]]>>
       if (u .le. circe1_params%a1(0)) then
          x1 = 1d0
       else
-         x1 = 1d0 - girceb (0d0, 1d0-circe1_params%x1m, circe1_params%a1(3)+1d0, circe1_params%a1(2)+1d0, rng)
+         x1 = 1d0 - girceb (0d0, 1d0-circe1_params%x1m, &
+                            circe1_params%a1(3)+1d0, circe1_params%a1(2)+1d0, &
+                            <<RNG dummy arguments>>)
       endif
-      call rng (u)
+      <<RNG: generate [[u]]>>
       if (u .le. circe1_params%a1(0)) then
          x2 = 1d0
       else
-         x2 = 1d0 - girceb (0d0, 1d0-circe1_params%x2m, circe1_params%a1(3)+1d0, circe1_params%a1(2)+1d0, rng)
+         x2 = 1d0 - girceb (0d0, 1d0-circe1_params%x2m, &
+                            circe1_params%a1(3)+1d0, circe1_params%a1(2)+1d0, &
+                            <<RNG dummy arguments>>)
       endif
 @
 <<Public subroutines>>=
   public :: girceg
 <<Module subroutines>>=
-  subroutine girceg (x1, x2, rng)
+  subroutine girceg (x1, x2, <<RNG dummy arguments>>)
     real(kind=double), intent(out) :: x1, x2
-    external rng
+    <<RNG dummy declarations>>
     real(kind=double) :: u
     <<Initialization check>>
+    x1 = 1
+    x2 = 1
     if ((circe1_params%ver .eq. 1) .or. (circe1_params%ver .eq. 0)) then
        <<Generate version 1 of the $e^\pm\gamma$ distribution>>
     <<[[else]] handle invalid versions>>
@@ -2272,21 +2527,27 @@ generator of $\beta$-distribitions:
 @ %def girceg
 @
 <<Generate version 1 of the $e^\pm\gamma$ distribution>>=
-      call rng (u)
+      <<RNG: generate [[u]]>>
       if (u .le. circe1_params%a1(0)) then
          x1 = 1d0
       else
-         x1 = 1d0 - girceb (0d0, 1d0-circe1_params%x1m, circe1_params%a1(3)+1d0, circe1_params%a1(2)+1d0, rng)
+         x1 = 1d0 - girceb (0d0, 1d0-circe1_params%x1m, &
+                            circe1_params%a1(3)+1d0, circe1_params%a1(2)+1d0, &
+                            <<RNG dummy arguments>>)
       endif
-      x2 = girceb (circe1_params%x2m, 1d0, circe1_params%a1(5)+1d0, circe1_params%a1(6)+1d0, rng)
+      x2 = girceb (circe1_params%x2m, 1d0, &
+                   circe1_params%a1(5)+1d0, circe1_params%a1(6)+1d0, &
+                   <<RNG dummy arguments>>)
 @
 <<Public subroutines>>=
   public :: gircgg
 <<Module subroutines>>=  
-  subroutine gircgg (x1, x2, rng)
+  subroutine gircgg (x1, x2, <<RNG dummy arguments>>)
     real(kind=double), intent(out) :: x1, x2
-    external rng
+    <<RNG dummy declarations>>
     <<Initialization check>>
+    x1 = 1
+    x2 = 1
     if ((circe1_params%ver .eq. 1) .or. (circe1_params%ver .eq. 0)) then
        <<Generate version 1 of the $\gamma\gamma$ distribution>>
     <<[[else]] handle invalid versions>>
@@ -2294,8 +2555,12 @@ generator of $\beta$-distribitions:
 
 @
 <<Generate version 1 of the $\gamma\gamma$ distribution>>=
-      x1 = girceb (circe1_params%x1m, 1d0, circe1_params%a1(5)+1d0, circe1_params%a1(6)+1d0, rng)
-      x2 = girceb (circe1_params%x2m, 1d0, circe1_params%a1(5)+1d0, circe1_params%a1(6)+1d0, rng)
+      x1 = girceb (circe1_params%x1m, 1d0, &
+                   circe1_params%a1(5)+1d0, circe1_params%a1(6)+1d0, &
+                   <<RNG dummy arguments>>)
+      x2 = girceb (circe1_params%x2m, 1d0, &
+                   circe1_params%a1(5)+1d0, circe1_params%a1(6)+1d0, &
+                   <<RNG dummy arguments>>)
 @ %def gircgg
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsubsection{Version 2}
@@ -2326,16 +2591,16 @@ which turns out to be the case in our application.
 <<Public subroutines>>=
   public :: girceb
 <<Module subroutines>>=
-  function girceb (xmin, xmax, a, b, rng)
+  function girceb (xmin, xmax, a, b, <<RNG dummy arguments>>)
     real(kind=double) :: xmin, xmax, a, b
     real(kind=double) :: girceb
-    external rng
+    <<RNG dummy declarations>>
     real(kind=double) :: t, p, u, umin, umax, x, w
     <<Check [[a]] and [[b]]>>
     <<Set up [[girceb]] parameters>>
     do 
        <<Generate a trial [[x]] and calculate its weight [[w]]>>
-       call rng (u)
+       <<RNG: generate [[u]]>>
        if (w .gt. u) exit
     end do 
     girceb = x
@@ -2344,9 +2609,9 @@ which turns out to be the case in our application.
 @ %def girceb
 @ In fact, this algorithm works for~$0<a\le1\le b$ only:
 <<Check [[a]] and [[b]]>>=
-      if ((a .gt. 1d0) .or. (b .lt. 1d0)) then
+      if ((a .ge. 1d0) .or. (b .le. 1d0)) then
          girceb = -1d0
-         call circem ('ERROR', 'beta-distribution expects a<=1<=b')
+         call circem ('ERROR', 'beta-distribution expects a<1<b')
          return
       end if
 @ The trick is to split the interval~$[0,1]$ into two parts~$[0,t]$
@@ -2358,7 +2623,7 @@ and~$[t,1]$.  In these intervals we obviously have
         t^{a-1} (1-x)^{b-1} & \text{for}\; x \ge t
       \end{cases}
 \end{equation}
-because we have assumed that~$0<a\le1\le b$.
+because we have assumed that~$0<a<1<b$.
 The integrals of the two dominating distributions are~$t^a/a$
 and~$t^{a-1}(1-t)^b/b$ respectively and therefore the probability for
 picking a random number from the first interval is
@@ -2382,7 +2647,7 @@ We postpone the discussion of the choice of~$t$ until later:
 The beauty of the algorithm is that we can use a single uniform
 deviate~$u$ for both intervals:
 <<Generate a trial [[x]] and calculate its weight [[w]]>>=
-      call rng (u)
+      <<RNG: generate [[u]]>>
       u = umin + (umax - umin) * u
       if (u .le. p) then
          x = t * (u/p)**(1d0/a)
@@ -2734,11 +2999,13 @@ would not be necassary in a modern programming language with currying:
          name = 'TESLA/EE'
       case (XBNDEE)
          name = 'JLCNLC/EE'
+      case (ILC)
+         name = 'ILC'
       case default
          print *, "Accelerator mode not recognized"
     end select
     write (*, 1000) name, circe1_params%roots
-    write (*, 1001) 'e^+ e^-', circe1_params%lumi
+    write (*, 1001) 'e^+/e^-', circe1_params%lumi
     write (*, 1002) 'e^+/e^-', circe1_params%a1(0)
     write (*, 1003) 'e^+/e^-', 1 - circe1_params%a1(0)
     write (*, 1004) 'e^+/e^-', circe1_params%a1(1), circe1_params%a1(2), circe1_params%a1(3)
@@ -2754,7 +3021,7 @@ would not be necassary in a modern programming language with currying:
 % Local Variables:
 % mode:noweb
 % noweb-doc-mode:latex-mode
-% noweb-code-mode:fortran-mode
+% noweb-code-mode:f90-mode
 % indent-tabs-mode:nil
 % page-delimiter:"^@ %%%.*\n"
 % End:

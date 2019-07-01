@@ -1,11 +1,12 @@
-(* $Id: color.ml 3670 2012-01-21 19:33:07Z jr_reuter $
+(* $Id: color.ml 4926 2013-12-04 12:35:06Z jr_reuter $
 
-   Copyright (C) 1999-2012 by
+   Copyright (C) 1999-2014 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
        Juergen Reuter <juergen.reuter@desy.de>
-       Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+       with contributions from
+       Christian Speckner <cnspeckn@googlemail.com>
 
    WHIZARD is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by
@@ -285,7 +286,8 @@ module Flow (* [: Flow] *) =
             square2' (((c1, c1'), (c2, c2')) :: acc) rest1 rest2 in
       square2' [] (cross_out f1) (cross_out f2)
 
-(* Surprisingly, this is missing from [Pervasives]! *)
+(* $\ocwlowerid{int\_power}: n\, p \to n^p$
+   for integers is missing from [Pervasives]! *)
 
     let int_power n p =
       let rec int_power' acc i =

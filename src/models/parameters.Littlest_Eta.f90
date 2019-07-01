@@ -1,10 +1,11 @@
 ! $Id: parameters.Littlest_Eta.f90,v 1.9 2005/10/25 09:21:48 kilian Exp $
 !
-! Copyright (C) 1999-2012 by 
+! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+!     with contributions from
+!     Christian Speckner <cnspeckn@googlemail.com>
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -91,7 +92,8 @@ module parameters_littlest_eta
       gahtht, ghthth, &
       gpsi0tt, gpsi0bb, gpsi0cc, gpsi0tautau, &
       gpsipl3, gpsi0tth, gpsi1tth, gpsipbth, &
-      ghhtt, ghhthth 
+      ghhtt, ghhthth, gpsi1tt, gpsi1bb, gpsi1cc, &
+      gpsi1tautau
   integer, parameter, public :: &
        n0 = 5, nloop = 2   
   real(default), dimension(38), public :: mass, width
@@ -604,10 +606,10 @@ contains
     gpsi0bb = - mass(5)/sqrt(two)/vev * (vev/f_vev - sqrt(two) * spsi0)
     gpsi0cc = - mass(4)/sqrt(two)/vev * (vev/f_vev - sqrt(two) * spsi0)
     gpsi0tautau = -mass(15)/sqrt(two)/vev * (vev/f_vev - sqrt(two) * spsi0)
-    gpsi0tt = imago * mass(6)/sqrt(two)/vev * (vev/f_vev - sqrt(two) * spsi1)
-    gpsi0bb = - imago * mass(5)/sqrt(two)/vev * (vev/f_vev - sqrt(two) * spsi1)
-    gpsi0cc = imago * mass(4)/sqrt(two)/vev * (vev/f_vev - sqrt(two) * spsi1)
-    gpsi0tautau = - imago * mass(15)/sqrt(two)/vev * (vev/f_vev - sqrt(two) * spsi1)
+    gpsi1tt = imago * mass(6)/sqrt(two)/vev * (vev/f_vev - sqrt(two) * spsi1)
+    gpsi1bb = - imago * mass(5)/sqrt(two)/vev * (vev/f_vev - sqrt(two) * spsi1)
+    gpsi1cc = imago * mass(4)/sqrt(two)/vev * (vev/f_vev - sqrt(two) * spsi1)
+    gpsi1tautau = - imago * mass(15)/sqrt(two)/vev * (vev/f_vev - sqrt(two) * spsi1)
     gpsipq2(1) = - mass(6)/sqrt(two)/vev * (vev/f_vev - two * spsip) 
     gpsipq2(2) = - mass(5)/sqrt(two)/vev * (vev/f_vev - two * spsip) 
     gpsipq3(1) = - mass(4)/sqrt(two)/vev * (vev/f_vev - two * spsip) 

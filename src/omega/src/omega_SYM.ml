@@ -1,11 +1,12 @@
-(* $Id: omega_SYM.ml 3930 2012-09-09 18:48:11Z jr_reuter $
+(* $Id: omega_SYM.ml 4926 2013-12-04 12:35:06Z jr_reuter $
 
-   Copyright (C) 1999-2012 by
+   Copyright (C) 1999-2014 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-       Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
-       Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+       Juergen Reuter <juergen.reuter@desy.de>
+       with contributions from
+       Christian Speckner <cnspeckn@googlemail.com>
 
    WHIZARD is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by
@@ -24,8 +25,8 @@
 
 let rcs_file = RCS.parse "omega_SYM"
     ["Super Yang-Mills (incomplete, just for stress-testing Colorize.It())"]
-    { RCS.revision = "$Revision: 3930 $";
-      RCS.date = "$Date: 2012-09-09 20:48:11 +0200 (Sun, 09 Sep 2012) $";
+    { RCS.revision = "$Revision: 4926 $";
+      RCS.date = "$Date: 2013-12-04 13:35:06 +0100 (Wed, 04 Dec 2013) $";
       RCS.author = "$Author: jr_reuter $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/src/omega/src/omega_SYM.ml $" }
@@ -85,6 +86,10 @@ module SYM =
       | G3 of int * int * int
       | I_G3 of int * int * int
       | G4 of int * int * int * int
+
+    type orders = unit
+    let orders = function
+      | _ -> ()
 
     let lorentz = function
       | Q i ->

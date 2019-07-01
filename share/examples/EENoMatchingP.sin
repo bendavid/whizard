@@ -2,12 +2,13 @@
 # Simple complete physics example: e+e- to jets with PYTHIA shower
 ########################################################################
 #
-# Copyright (C) 1999-2012 by 
+# Copyright (C) 1999-2014 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
-#     Sebastian Schmidt <sebastian.t.schmidt@desy.de>
-#     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+#     with contributions from
+#     Sebastian Schmidt 
+#     Christian Speckner <cnspeckn@googlemail.com>
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by 
@@ -33,9 +34,8 @@ compile
 sqrts = 91 GeV
 beams = e1, E1
 
-?ps_fsr_active=true
-?ps_isr_active=true
-!?hadronization_active = true
+?ps_fsr_active = true
+?hadronization_active = false
 ?ps_use_PYTHIA_shower = true
 
 ps_max_n_flavors = 5
@@ -43,19 +43,21 @@ ps_mass_cutoff = 1
 
 ?mlm_matching = false
 
-cuts = all M > 80 GeV [combine[u,U]]
-       and all M < 100 GeV [combine[u,U]]
+cuts = all M > 80 GeV [combine [u,U]]
+       and all M < 100 GeV [combine [u,U]]
 
 seed = 1
 
-integrate(eeuu) { iterations = 2:2000 }
+integrate (eeuu) { iterations = 2:2000 }
 
 n_events = 100000
 
-?rebuild_events=true
+?rebuild_events = true
 $sample = "EENoMatching"
 sample_format = lhef
 
-simulate(eeuu)
+checkpoint = 2500
 
-show(results)
+simulate (eeuu)
+
+show (results)

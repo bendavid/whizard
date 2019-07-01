@@ -9,11 +9,11 @@ model "SM_ac_CKM"
 parameter GF       = 1.16639E-5   # Fermi constant
 parameter mZ       = 91.1882      # Z-boson mass  
 parameter mW       = 80.419       # W-boson mass  
-parameter mH       = 1.E20        # Higgs mass
+parameter mH       = 125          # Higgs mass
 parameter alphas   = 0.1178       # Strong coupling constant (Z point) 
 parameter me       = 0.000511     # electron mass                       
 parameter mmu      = 0.1057       # muon mass                         
-parameter mtau     = 1.777        # tau-lepton mass                               
+parameter mtau     = 1.777        # tau-lepton mass  
 parameter ms       = 0.12         # s-quark mass                         
 parameter mc       = 1.25         # c-quark mass                         
 parameter mb       = 4.2          # b-quark mass                         
@@ -21,7 +21,7 @@ parameter mtop     = 174          # t-quark mass
 parameter wtop     = 1.523        # t-quark width
 parameter wZ       = 2.443        # Z-boson width
 parameter wW       = 2.049        # W-boson width
-parameter wH       = 0            # Higgs width  
+parameter wH       = 0.004143     # Higgs width  
 parameter xi0      = 0       	  # R_xi parameter for Z-boson
 parameter xipm     = 0		  # R_xi parameter for W-boson
 # Here are the values from PDG 2006
@@ -177,15 +177,23 @@ particle PROTON 2212
   name p "p+"
   anti pbar "p-"
 
+# Beam remnants for proton colliders
 particle HADRON_REMNANT 90
-
+  name hr
+  tex_name "had_r"
 particle HADRON_REMNANT_SINGLET 91
-
+  name hr1
+  tex_name "had_r^{(1)}"
 particle HADRON_REMNANT_TRIPLET 92
   color 3
-
+  name hr3
+  tex_name "had_r^{(3)}"
+  anti hr3bar
+  tex_name "had_r^{(\bar 3)}"
 particle HADRON_REMNANT_OCTET 93
   color 8
+  name hr8
+  tex_name "had_r^{(8)}"
 
 ########################################################################
 # Vertices of the Standard model with anomalous couplings

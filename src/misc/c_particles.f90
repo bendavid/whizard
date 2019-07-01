@@ -1,11 +1,13 @@
-! WHIZARD 2.1.1 September 18 2012
+! WHIZARD 2.2.0 May 18 2014
 ! 
-! Copyright (C) 1999-2012 by 
+! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
-!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
+!     
+!     with contributions from
+!     Christian Speckner <cnspeckn@googlemail.com> 
+!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -29,6 +31,7 @@ module c_particles
 
   use iso_c_binding !NODEP!
   use file_utils !NODEP!
+  use limits, only: FMT_14, FMT_19 !NODEP!
 
   implicit none
   private
@@ -63,9 +66,10 @@ contains
     else
        write (u, "(I0,'|')", advance="no") prt%pdg
     end if
-    write (u, "(1PE12.5,';',1PE12.5,',',1PE12.5,',',1PE12.5)", advance="no") &
+    write (u, "(" // FMT_14 // ",';'," // FMT_14 // ",','," // &
+         FMT_14 // ",','," // FMT_14 // ")", advance="no") &
          prt%pe, prt%px, prt%py, prt%pz
-    write (u, "('|',1PE12.5)", advance="no")  prt%p2
+    write (u, "('|'," // FMT_19 // ")", advance="no")  prt%p2
     write (u, "(A)")  ")"
   end subroutine c_prt_write
 

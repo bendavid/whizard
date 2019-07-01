@@ -1,11 +1,13 @@
-! WHIZARD 2.1.1 September 18 2012
+! WHIZARD 2.2.0 May 18 2014
 ! 
-! Copyright (C) 1999-2012 by 
+! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
-!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
+!     
+!     with contributions from
+!     Christian Speckner <cnspeckn@googlemail.com> 
+!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -31,6 +33,7 @@ module interactions
   use file_utils !NODEP!
   use diagnostics !NODEP!
   use lorentz !NODEP!
+  use unit_tests
   use sorting
   use subevents
   use expressions
@@ -47,6 +50,7 @@ module interactions
   public :: external_link_get_index
   public :: interaction_t
   public :: interaction_init
+  public :: reset_interaction_counter
   public :: interaction_final
   public :: interaction_write
   public :: assignment(=)
@@ -58,8 +62,10 @@ module interactions
   public :: interaction_get_quantum_numbers
   public :: interaction_get_matrix_element
   public :: interaction_set_matrix_element
+  public :: interaction_get_diagonal_entries
   public :: interaction_normalize_by_trace
   public :: interaction_normalize_by_max
+  public :: interaction_set_norm
   public :: interaction_get_max_color_value
   public :: interaction_factorize
   public :: interaction_sum
@@ -68,6 +74,7 @@ module interactions
   public :: interaction_evaluate_product_cf
   public :: interaction_evaluate_square_c
   public :: interaction_evaluate_sum
+  public :: interaction_evaluate_me_sum
   public :: interaction_get_tag
   public :: interaction_get_n_tot
   public :: interaction_get_n_in
@@ -84,6 +91,7 @@ module interactions
   public :: interaction_get_s
   public :: interaction_get_cm_transformation
   public :: interaction_get_unstable_particle
+  public :: interaction_get_flv_out
   public :: interaction_set_mask
   public :: interaction_reset_momenta
   public :: interaction_set_momenta
@@ -92,13 +100,18 @@ module interactions
   public :: interaction_relate
   public :: interaction_transfer_relations
   public :: interaction_relate_connections
+  public :: interaction_get_n_children
+  public :: interaction_get_n_parents
   public :: interaction_get_children
   public :: interaction_get_parents
   public :: interaction_set_source_link
   public :: interaction_reassign_links
   public :: interaction_find_link
+  public :: interaction_find_source
   public :: interaction_exchange_mask
   public :: interaction_receive_momenta
+  public :: interaction_send_momenta
+  public :: interaction_pacify_momenta
   public :: find_connections
   public :: interaction_test
 
@@ -108,17 +121,16 @@ module interactions
      integer :: i
   end type external_link_t
 
-  type :: internal_link_t
-     private
-     integer :: i
-     type(internal_link_t), pointer :: next => null ()
-  end type internal_link_t
-
   type :: internal_link_list_t
      private
      integer :: length = 0
-     type(internal_link_t), pointer :: first => null ()
-     type(internal_link_t), pointer :: last => null ()
+     integer, dimension(:), allocatable :: link
+   contains
+     procedure :: write => internal_link_list_write
+     procedure :: append => internal_link_list_append
+     procedure :: has_entries => internal_link_list_has_entries
+     procedure :: get_length => internal_link_list_get_length
+     procedure :: get_link => internal_link_list_get_link
   end type internal_link_list_t
 
   type :: interaction_t
@@ -143,10 +155,6 @@ module interactions
 
 
   interface assignment(=)
-     module procedure internal_link_list_assign
-  end interface
-
-  interface assignment(=)
      module procedure interaction_assign
   end interface
 
@@ -155,6 +163,7 @@ module interactions
      module procedure interaction_set_matrix_element_all
      module procedure interaction_set_matrix_element_array 
      module procedure interaction_set_matrix_element_single
+     module procedure interaction_set_matrix_element_clone
   end interface
   interface interaction_get_momenta
      module procedure interaction_get_momenta_all
@@ -223,79 +232,58 @@ contains
     end if
   end function external_link_get_momentum_ptr
 
-  subroutine internal_link_list_append (link_list, i)
-    type(internal_link_list_t), intent(inout) :: link_list
-    integer, intent(in) :: i
-    type(internal_link_t), pointer :: current
-    allocate (current)
-    current%i = i
-    if (associated (link_list%first)) then
-       link_list%last%next => current
+  subroutine internal_link_list_write (object, unit)
+    class(internal_link_list_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    integer :: u, i
+    u = output_unit (unit)
+    do i = 1, object%length
+       write (u, "(1x,I0)", advance="no")  object%link(i)
+    end do
+  end subroutine internal_link_list_write
+  
+  subroutine internal_link_list_append (link_list, link)
+    class(internal_link_list_t), intent(inout) :: link_list
+    integer, intent(in) :: link
+    integer :: l
+    integer, dimension(:), allocatable :: tmp
+    l = link_list%length
+    if (allocated (link_list%link)) then
+       if (l == size (link_list%link)) then
+          allocate (tmp (2 * l))
+          tmp(:l) = link_list%link
+          call move_alloc (from = tmp, to = link_list%link)
+       end if
     else
-       link_list%first => current
+       allocate (link_list%link (2))
     end if
-    link_list%last => current
-    link_list%length = link_list%length + 1
+    l = l + 1
+    link_list%link(l) = link
+    link_list%length = l
   end subroutine internal_link_list_append
 
-  subroutine internal_link_list_final (link_list)
-     type(internal_link_list_t), intent(inout) :: link_list
-     type(internal_link_t), pointer :: current
-     do while (associated (link_list%first))
-        current => link_list%first
-        link_list%first => current%next
-        deallocate (current)
-     end do
-     link_list%last => null ()
-     link_list%length = 0
-   end subroutine internal_link_list_final
-
-  subroutine internal_link_list_assign (link_list_out, link_list_in)
-     type(internal_link_list_t), intent(in) :: link_list_in
-     type(internal_link_list_t), intent(out) :: link_list_out
-     type(internal_link_t), pointer :: current, copy
-     current => link_list_in%first
-     do while (associated (current))
-        allocate (copy)
-        copy%i = current%i
-        if (associated (link_list_out%first)) then
-           link_list_out%last%next => copy
-        else
-           link_list_out%first => copy
-        end if
-        link_list_out%last => copy
-        current => current%next
-     end do
-   end subroutine internal_link_list_assign
-
   function internal_link_list_has_entries (link_list) result (flag)
+    class(internal_link_list_t), intent(in) :: link_list
     logical :: flag
-    type(internal_link_list_t), intent(in) :: link_list
-    flag = associated (link_list%first)
+    flag = link_list%length > 0
   end function internal_link_list_has_entries
 
-  function internal_link_list_get_first_ptr (link_list) result (link)
-    type(internal_link_list_t), intent(in) :: link_list
-    type(internal_link_t), pointer :: link
-    link => link_list%first
-  end function internal_link_list_get_first_ptr
-
-  subroutine internal_link_advance (link)
-    type(internal_link_t), pointer :: link
-    link => link%next
-  end subroutine internal_link_advance
-
-  function internal_link_get_index (link) result (i)
-    integer :: i
-    type(internal_link_t), intent(in) :: link
-    i = link%i
-  end function internal_link_get_index
-
   function internal_link_list_get_length (link_list) result (length)
+    class(internal_link_list_t), intent(in) :: link_list
     integer :: length
-    type(internal_link_list_t), intent(in) :: link_list
     length = link_list%length
   end function internal_link_list_get_length
+
+  function internal_link_list_get_link (link_list, i) result (link)
+    class(internal_link_list_t), intent(in) :: link_list
+    integer, intent(in) :: i
+    integer :: link
+    if (i <= link_list%length) then
+       link = link_list%link(i)
+    else
+       call msg_bug ("Internal link list: out of bounds")
+    end if
+  end function internal_link_list_get_link
 
   subroutine interaction_init &
        (int, n_in, n_vir, n_out, &
@@ -350,16 +338,27 @@ contains
   end subroutine interaction_init
 
   subroutine interaction_set_tag (int, tag)
-    type(interaction_t), intent(inout) :: int
+    type(interaction_t), intent(inout), optional :: int
     integer, intent(in), optional :: tag
     integer, save :: stored_tag = 1
-    if (present (tag)) then
-       int%tag = tag
+    if (present (int)) then
+       if (present (tag)) then
+          int%tag = tag
+       else
+          int%tag = stored_tag
+          stored_tag = stored_tag + 1
+       end if
+    else if (present (tag)) then
+       stored_tag = tag
     else
-       int%tag = stored_tag
-       stored_tag = stored_tag + 1
+       stored_tag = 1
     end if
   end subroutine interaction_set_tag
+
+  subroutine reset_interaction_counter (tag)
+    integer, intent(in), optional :: tag
+    call interaction_set_tag (tag=tag)
+  end subroutine reset_interaction_counter
 
   elemental subroutine interaction_final (int)
     type(interaction_t), intent(inout) :: int
@@ -367,32 +366,31 @@ contains
   end subroutine interaction_final
 
   subroutine interaction_write &
-       (int, unit, verbose, show_momentum_sum, show_mass, show_state)
+       (int, unit, verbose, show_momentum_sum, show_mass, show_state, testflag)
     type(interaction_t), intent(in) :: int
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: verbose, show_momentum_sum, show_mass
-    logical, intent(in), optional :: show_state
+    logical, intent(in), optional :: show_state, testflag
     integer :: u
     integer :: i, index_link
-    type(internal_link_t), pointer :: link
     type(interaction_t), pointer :: int_link
     logical :: show_st
     u = output_unit (unit);  if (u < 0)  return
     show_st = .true.;  if (present (show_state))  show_st = show_state
     if (int%tag /= 0) then
-       write (u, *)  "Interaction:", int%tag
+       write (u, "(1x,A,I0)")  "Interaction: ", int%tag
        do i = 1, int%n_tot
           if (i == 1 .and. int%n_in > 0) then
-             write (u, *) "Incoming:"
+             write (u, "(1x,A)") "Incoming:"
           else if (i == int%n_in + 1 .and. int%n_vir > 0) then
-             write (u, *) "Virtual:"
+             write (u, "(1x,A)") "Virtual:"
           else if (i == int%n_in + int%n_vir + 1 .and. int%n_out > 0) then
-             write (u, *) "Outgoing:"
+             write (u, "(1x,A)") "Outgoing:"
           end if
           write (u, "(1x,A,1x,I0)", advance="no") "Particle", i
           if (allocated (int%resonant)) then
              if (int%resonant(i)) then
-                write (u, *) "[r]"
+                write (u, "(A)") "[r]"
              else
                 write (u, *)
              end if
@@ -401,38 +399,28 @@ contains
           end if
           if (allocated (int%p)) then
              if (int%p_is_known(i)) then
-                call vector4_write (int%p(i), u, show_mass)
+                call vector4_write (int%p(i), u, show_mass, testflag)
              else
-                write (u, *)  "  [momentum undefined]"
+                write (u, "(A)")  "  [momentum undefined]"
              end if
           else
-             write (u, *) "  [momentum not allocated]"
+             write (u, "(A)") "  [momentum not allocated]"
           end if
           if (allocated (int%mask)) then
              write (u, "(1x,A)", advance="no")  "mask [fch] = "
              call quantum_numbers_mask_write (int%mask(i), u)
              write (u, *)
           end if
-          if (internal_link_list_has_entries (int%parents(i)) &
-               .or. internal_link_list_has_entries (int%children(i))) then
+          if (int%parents(i)%has_entries () &
+               .or. int%children(i)%has_entries ()) then
              write (u, "(1x,A)", advance="no") "internal links:"
-             link => internal_link_list_get_first_ptr (int%parents(i))
-             do while (associated (link))
-                write (u, "(1x,I0)", advance="no") &
-                     internal_link_get_index (link)
-                call internal_link_advance (link)
-             end do
-             if (internal_link_list_has_entries (int%parents(i))) &
+             call int%parents(i)%write (u)
+             if (int%parents(i)%has_entries ()) &
                   write (u, "(1x,A)", advance="no") "=>"
              write (u, "(1x,A)", advance="no") "X"
-             if (internal_link_list_has_entries (int%children(i))) &
+             if (int%children(i)%has_entries ()) &
                   write (u, "(1x,A)", advance="no") "=>" 
-             link => internal_link_list_get_first_ptr (int%children(i))
-             do while (associated (link))
-                write (u, "(1x,I0)", advance="no") &
-                     internal_link_get_index (link)
-                call internal_link_advance (link)
-             end do
+             call int%children(i)%write (u)
              write (u, *)
           end if
           if (allocated (int%hel_lock)) then
@@ -451,21 +439,22 @@ contains
        end do
        if (present (show_momentum_sum)) then
           if (allocated (int%p) .and. show_momentum_sum) then
-             write (u, *) "Incoming particles (sum):"
+             write (u, "(1x,A)") "Incoming particles (sum):"
              call vector4_write &
-                  (sum (int%p(1:int%n_in)), u, show_mass)
-             write (u, *) "Outgoing particles (sum):"
+                  (sum (int%p(1:int%n_in)), u, show_mass = show_mass)
+             write (u, "(1x,A)") "Outgoing particles (sum):"
              call vector4_write &
-                  (sum (int%p(int%n_in+int%n_vir+1:)), u, show_mass)
+                  (sum (int%p(int%n_in+int%n_vir+1:)), u, show_mass = show_mass)
              write (u, *)
           end if
        end if
        if (show_st) then
           call state_matrix_write (int%state_matrix, &
-               write_value_list=verbose, verbose=verbose, unit=unit)
+               write_value_list=verbose, verbose=verbose, &
+               unit=unit, testflag = testflag)
        end if
     else
-       write (u, *) "Interaction: [empty]"
+       write (u, "(1x,A)") "Interaction: [empty]"
     end if
   end subroutine interaction_write
 
@@ -604,6 +593,18 @@ contains
     call state_matrix_set_matrix_element (int%state_matrix, i, value)
   end subroutine interaction_set_matrix_element_single
 
+  subroutine interaction_set_matrix_element_clone (int, int1)
+    type(interaction_t), intent(inout) :: int
+    type(interaction_t), intent(in) :: int1
+    call state_matrix_set_matrix_element (int%state_matrix, int1%state_matrix)
+  end subroutine interaction_set_matrix_element_clone
+
+  subroutine interaction_get_diagonal_entries (int, i)
+    type(interaction_t), intent(in) :: int
+    integer, dimension(:), allocatable, intent(out) :: i
+    call state_matrix_get_diagonal_entries (int%state_matrix, i)
+  end subroutine interaction_get_diagonal_entries
+
   subroutine interaction_normalize_by_trace (int)
     type(interaction_t), intent(inout) :: int
     call state_matrix_normalize_by_trace (int%state_matrix)
@@ -613,6 +614,12 @@ contains
     type(interaction_t), intent(inout) :: int
     call state_matrix_normalize_by_max (int%state_matrix)
   end subroutine interaction_normalize_by_max
+
+  subroutine interaction_set_norm (int, norm)
+    type(interaction_t), intent(inout) :: int
+    real(default), intent(in) :: norm
+    call state_matrix_set_norm (int%state_matrix, norm)
+  end subroutine interaction_set_norm
 
   function interaction_get_max_color_value (int) result (cmax)
     integer :: cmax
@@ -685,6 +692,15 @@ contains
     call state_matrix_evaluate_sum &
          (int%state_matrix, i, int1%state_matrix, index1)
   end subroutine interaction_evaluate_sum
+
+  pure subroutine interaction_evaluate_me_sum (int, i, int1, index1)
+    type(interaction_t), intent(inout) :: int
+    integer, intent(in) :: i
+    type(interaction_t), intent(in) :: int1
+    integer, dimension(:), intent(in) :: index1
+    call state_matrix_evaluate_me_sum &
+         (int%state_matrix, i, int1%state_matrix, index1)
+  end subroutine interaction_evaluate_me_sum
 
   function interaction_get_tag (int) result (tag)
     integer :: tag
@@ -941,6 +957,29 @@ contains
     end do
   end subroutine interaction_get_unstable_particle
 
+  subroutine interaction_get_flv_out (int, flv)
+    type(interaction_t), intent(in), target :: int
+    type(flavor_t), dimension(:,:), allocatable, intent(out) :: flv
+    type(state_iterator_t) :: it
+    type(flavor_t), dimension(:), allocatable :: flv_state
+    integer :: n_in, n_vir, n_out, n_tot, n_state, i
+    n_in = interaction_get_n_in (int)
+    n_vir = interaction_get_n_vir (int)
+    n_out = interaction_get_n_out (int)
+    n_tot = interaction_get_n_tot (int)
+    n_state = interaction_get_n_matrix_elements (int)
+    allocate (flv (n_out, n_state))
+    allocate (flv_state (n_tot))
+    i = 1
+    call state_iterator_init (it, interaction_get_state_matrix_ptr (int))
+    do while (state_iterator_is_valid (it))
+       flv_state = state_iterator_get_flavor (it)
+       flv(:,i) = flv_state(n_in+n_vir+1:)
+       i = i + 1
+       call state_iterator_advance (it)
+    end do
+  end subroutine interaction_get_flv_out
+  
   subroutine interaction_set_mask (int, mask)
     type(interaction_t), intent(inout) :: int
     type(quantum_numbers_mask_t), dimension(:), intent(in) :: mask
@@ -1023,8 +1062,8 @@ contains
     type(interaction_t), intent(inout), target :: int
     integer, intent(in) :: i1, i2
     if (i1 /= 0 .and. i2 /= 0) then
-       call internal_link_list_append (int%children(i1), i2)
-       call internal_link_list_append (int%parents(i2), i1)
+       call int%children(i1)%append (i2)
+       call int%parents(i2)%append (i1)
     end if
   end subroutine interaction_relate
 
@@ -1032,14 +1071,11 @@ contains
     type(interaction_t), intent(in) :: int1
     type(interaction_t), intent(inout), target :: int2
     integer, dimension(:), intent(in) :: map
-    type(internal_link_t), pointer :: link
-    integer :: i, k
+    integer :: i, j, k
     do i = 1, size (map)
-       link => internal_link_list_get_first_ptr (int1%parents(i))
-       do while (associated (link))
-          k = internal_link_get_index (link)
+       do j = 1, int1%parents(i)%get_length ()
+          k = int1%parents(i)%get_link (j)
           call interaction_relate (int2, map(k), map(i))
-          call internal_link_advance (link)
        end do
        if (map(i) /= 0) then
           int2%resonant(map(i)) = int1%resonant(i)
@@ -1056,34 +1092,41 @@ contains
     integer, dimension(:), intent(in) :: map, map_connections
     logical, intent(in), optional :: resonant
     logical :: reson
-    integer :: i, i2, k2
-    type(internal_link_t), pointer :: link
+    integer :: i, j, i2, k2
     reson = .false.;  if (present (resonant))  reson = resonant 
     do i = 1, size (map_connections)
        k2 = connection_index(i)
-       link => internal_link_list_get_first_ptr (int_in%children(k2))
-       do while (associated (link))
-          i2 = internal_link_get_index (link)
+       do j = 1, int_in%children(k2)%get_length ()
+          i2 = int_in%children(k2)%get_link (j)
           call interaction_relate (int, map_connections(i), map(i2))
-          call internal_link_advance (link)
        end do
        int%resonant(map_connections(i)) = reson
     end do
   end subroutine interaction_relate_connections
 
+  function interaction_get_n_children (int, i) result (n)
+    integer :: n
+    type(interaction_t), intent(in) :: int
+    integer, intent(in) :: i
+    n = int%children(i)%get_length ()
+  end function interaction_get_n_children
+
+  function interaction_get_n_parents (int, i) result (n)
+    integer :: n
+    type(interaction_t), intent(in) :: int
+    integer, intent(in) :: i
+    n = int%parents(i)%get_length ()
+  end function interaction_get_n_parents
+
   function interaction_get_children (int, i) result (idx)
     integer, dimension(:), allocatable :: idx
     type(interaction_t), intent(in) :: int
     integer, intent(in) :: i
-    integer :: k
-    type(internal_link_t), pointer :: link
-    allocate (idx (internal_link_list_get_length (int%children(i))))
-    k = 0
-    link => internal_link_list_get_first_ptr (int%children(i))
-    do while (associated (link))
-       k = k + 1
-       idx(k) = internal_link_get_index (link)
-       call internal_link_advance (link)
+    integer :: k, l
+    l = int%children(i)%get_length ()
+    allocate (idx (l))
+    do k = 1, l
+       idx(k) = int%children(i)%get_link (k)
     end do
   end function interaction_get_children
 
@@ -1091,15 +1134,11 @@ contains
     integer, dimension(:), allocatable :: idx
     type(interaction_t), intent(in) :: int
     integer, intent(in) :: i
-    integer :: k
-    type(internal_link_t), pointer :: link
-    allocate (idx (internal_link_list_get_length (int%parents(i))))
-    k = 0
-    link => internal_link_list_get_first_ptr (int%parents(i))
-    do while (associated (link))
-       k = k + 1
-       idx(k) = internal_link_get_index (link)
-       call internal_link_advance (link)
+    integer :: k, l
+    l = int%parents(i)%get_length ()
+    allocate (idx (l))
+    do k = 1, l
+       idx(k) = int%parents(i)%get_link (k)
     end do
   end function interaction_get_parents
 
@@ -1137,6 +1176,17 @@ contains
     i = 0
   end function interaction_find_link
 
+  subroutine interaction_find_source (int, i, int1, i1)
+    type(interaction_t), intent(in) :: int
+    integer, intent(in) :: i
+    type(interaction_t), intent(out), pointer :: int1
+    integer, intent(out) :: i1
+    type(external_link_t) :: link
+    link = interaction_get_ultimate_source (int, i)
+    int1 => external_link_get_ptr (link)
+    i1 = external_link_get_index (link)
+  end subroutine interaction_find_source
+    
   function interaction_get_ultimate_source (int, i) result (link)
     type(external_link_t) :: link
     type(interaction_t), intent(in) :: int
@@ -1186,6 +1236,28 @@ contains
        end if
     end do
   end subroutine interaction_receive_momenta
+
+  subroutine interaction_send_momenta (int)
+    type(interaction_t), intent(in) :: int
+    integer :: i, index_link
+    type(interaction_t), pointer :: int_link
+    do i = 1, int%n_tot
+       if (external_link_is_set (int%source(i))) then
+          int_link => external_link_get_ptr (int%source(i))
+          index_link = external_link_get_index (int%source(i))
+          call interaction_set_momentum (int_link, int%p(i), index_link)
+       end if
+    end do
+  end subroutine interaction_send_momenta
+
+  subroutine interaction_pacify_momenta (int, acc)
+    type(interaction_t), intent(inout) :: int
+    real(default), intent(in) :: acc
+    integer :: i
+    do i = 1, int%n_tot
+       call pacify (int%p(i), acc)
+    end do
+  end subroutine interaction_pacify_momenta
 
   subroutine find_connections (int1, int2, n, connection_index)
     type(interaction_t), intent(in) :: int1, int2
@@ -1257,23 +1329,45 @@ contains
     end if
   end subroutine find_connections
 
-  subroutine interaction_test ()
+  subroutine interaction_test (u, results)
+    integer, intent(in) :: u
+    type(test_results_t), intent(inout) :: results
+    call test (interaction_1, "interaction_1", &
+         "check interaction setup", &
+         u, results)
+  end subroutine interaction_test
+
+
+  subroutine interaction_1 (u)
+    integer, intent(in) :: u
     type(interaction_t), target :: int, rad
     type(vector4_t), dimension(3) :: p
     type(quantum_numbers_mask_t), dimension(3) :: mask
     p(2) = vector4_moving (500._default, 500._default, 1)
     p(3) = vector4_moving (500._default,-500._default, 1)
     p(1) = p(2) + p(3)
-    call interaction_init (int, 1, 0, 2, set_relations=.true., store_values = .true. )
-    call int_set (int, 1, -1, 1, 1, cmplx (0.3_default, 0.1_default, kind=default))
-    call int_set (int, 1, -1,-1, 1, cmplx (0.5_default,-0.7_default, kind=default))
-    call int_set (int, 1, 1, 1, 1, cmplx (0.1_default, 0._default, kind=default))
-    call int_set (int, -1, 1, -1, 2, cmplx (0.4_default, -0.1_default, kind=default))
-    call int_set (int, 1, 1, 1, 2, cmplx (0.2_default, 0._default, kind=default))
+
+    write (u, "(A)")  "* Test output: interaction"
+    write (u, "(A)")  "*   Purpose: check routines for interactions"
+    write (u, "(A)")      
+           
+    call interaction_init (int, 1, 0, 2, set_relations=.true., &
+         store_values = .true. )
+    call int_set (int, 1, -1, 1, 1, &
+         cmplx (0.3_default, 0.1_default, kind=default))
+    call int_set (int, 1, -1,-1, 1, &
+         cmplx (0.5_default,-0.7_default, kind=default))
+    call int_set (int, 1, 1, 1, 1, &
+         cmplx (0.1_default, 0._default, kind=default))
+    call int_set (int, -1, 1, -1, 2, &
+         cmplx (0.4_default, -0.1_default, kind=default))
+    call int_set (int, 1, 1, 1, 2, &
+         cmplx (0.2_default, 0._default, kind=default))
     call interaction_freeze (int)
     call interaction_set_momenta (int, p)
     mask = new_quantum_numbers_mask (.false.,.false., (/.true.,.true.,.true./))
-    call interaction_init (rad, 1, 0, 2, mask=mask, set_relations=.true., store_values = .true.)
+    call interaction_init (rad, 1, 0, 2, &
+         mask=mask, set_relations=.true., store_values = .true.)
     call rad_set (1)
     call rad_set (2)
     call interaction_set_source_link (rad, 1, int, 2)
@@ -1285,12 +1379,17 @@ contains
     call interaction_set_momenta (rad, p(2:3), outgoing=.true.)
     call interaction_freeze (int)
     call interaction_freeze (rad)
-    call interaction_set_matrix_element (rad, cmplx (0._default, 0._default, kind=default))
-    call interaction_write (int)
-    print *
-    call interaction_write (rad)
+    call interaction_set_matrix_element &
+         (rad, cmplx (0._default, 0._default, kind=default))
+    call interaction_write (int, u)
+    write (u, "(A)")
+    call interaction_write (rad, u)
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
     call interaction_final (int)
-    call interaction_final (rad)
+    call interaction_final (rad) 
+    write (u, "(A)")
+    write (u, "(A)")  "* Test interaction_1: successful."   
   contains
     subroutine int_set (int, h1, h2, hq, q, val)
       type(interaction_t), target, intent(inout) :: int
@@ -1303,7 +1402,7 @@ contains
       call flavor_init (flv, (/21, q, -q/))
       call color_init_col_acl (col(2), 5, 0)
       call color_init_col_acl (col(3), 0, 5)
-      call helicity_init (hel, (/h1, hq, -hq/), (/h2, hq, -hq/))
+      call helicity_init (hel, [h1, hq, -hq], [h2, hq, -hq])
       call quantum_numbers_init (qn, flv, col, hel)
       call interaction_add_state (int, qn)
       call interaction_set_matrix_element (int, val)
@@ -1316,7 +1415,7 @@ contains
       call quantum_numbers_init (qn, flv)
       call interaction_add_state (rad, qn)
     end subroutine rad_set
-  end subroutine interaction_test
-
+  end subroutine interaction_1
+  
 
 end module interactions

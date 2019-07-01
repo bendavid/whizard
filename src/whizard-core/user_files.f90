@@ -1,11 +1,13 @@
-! WHIZARD 2.1.1 September 18 2012
+! WHIZARD 2.2.0 May 18 2014
 ! 
-! Copyright (C) 1999-2012 by 
+! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
-!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
+!     
+!     with contributions from
+!     Christian Speckner <cnspeckn@googlemail.com> 
+!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -202,6 +204,7 @@ contains
     type(file_t), pointer :: current
     if (.not. associated (file_list_get_file_ptr (file_list, name))) then
        allocate (current)
+       call msg_message ("Opening file '" // char (name) // "' for output")
        call file_init (current, name, action, status, position)
        if (associated (file_list%last)) then
           file_list%last%next => current
@@ -232,6 +235,7 @@ contains
        else
           file_list%last => current%prev
        end if
+       call msg_message ("Closing file '" // char (name) // "' for output")
        call file_final (current)
        deallocate (current)
     else

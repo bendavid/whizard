@@ -1,12 +1,14 @@
-(* $Id: targets.ml 3832 2012-05-04 02:12:59Z jr_reuter $
+(* $Id: targets.ml 5147 2014-01-23 14:22:34Z msekulla $
 
-   Copyright (C) 1999-2012 by
+   Copyright (C) 1999-2014 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-       Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
-       Christian Speckner <christian.speckner@physik.uni-freiburg.de>
-       Fabian Bach <fabian.bach@cern.ch> (only parts of this file)
+       Juergen Reuter <juergen.reuter@desy.de>
+       with contributions from
+       Christian Speckner <cnspeckn@googlemail.com>
+       Fabian Bach <fabian.bach@desy.de> (only parts of this file)
+       Marco Sekulla <sekulla@physik.uni-siegen.de> (only parts of this file)
 
    WHIZARD is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by
@@ -23,9 +25,9 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 let rcs_file = RCS.parse "Targets" ["Code Generation"]
-    { RCS.revision = "$Revision: 3832 $";
-      RCS.date = "$Date: 2012-05-04 04:12:59 +0200 (Fri, 04 May 2012) $";
-      RCS.author = "$Author: jr_reuter $";
+    { RCS.revision = "$Revision: 5147 $";
+      RCS.date = "$Date: 2014-01-23 15:22:34 +0100 (Thu, 23 Jan 2014) $";
+      RCS.author = "$Author: msekulla $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/src/omega/src/targets.ml $" }
 
@@ -168,8 +170,8 @@ module Fortran_Fermions : Fermions =
           let func_name = (String.sub s 0 offset) and
 	      tail =
 	    (String.sub s (succ offset) (String.length s - offset - 2)) in 
-          if (String.contains func_name ')') or 
-	    (String.contains tail '(') or 
+          if (String.contains func_name ')') ||
+	    (String.contains tail '(') || 
             (String.contains tail ')') then
             failwith "fastener: wrong usage of parentheses"
           else      
@@ -363,7 +365,7 @@ module Make_Fortran (Fermions : Fermions)
         "maximum # of continuation lines";
         "module", Arg.String (fun s -> module_name := s), "module name";
         "single_function", Arg.Unit (fun () -> output_mode := Single_Function),
-        "compute the matrix element(s) in a monolithis function";
+        "compute the matrix element(s) in a monolithic function";
         "split_function", Arg.Int (fun n -> output_mode := Single_Module n),
         "split the matrix element(s) into small functions [default, size = 10]";
         "split_module", Arg.Int (fun n -> output_mode := Single_File n),
@@ -449,7 +451,7 @@ module Make_Fortran (Fermions : Fermions)
     let openmp_tld = "tld"
 
     let flavors_symbol ?(decl = false) flavors =
-      (if !openmp & not decl then openmp_tld ^ "%" else "" ) ^
+      (if !openmp && not decl then openmp_tld ^ "%" else "" ) ^
       "oks_" ^ String.concat "" (List.map CM.flavor_symbol flavors)
 
     let p2s p =
@@ -480,7 +482,7 @@ module Make_Fortran (Fermions : Fermions)
       | Some tag -> name ^ "_" ^ tag
 
     let variable ?(decl = false) wf =
-      (if !openmp & not decl then openmp_tld ^ "%" else "")
+      (if !openmp && not decl then openmp_tld ^ "%" else "")
       ^ add_tag wf ("owf_" ^ CM.flavor_symbol (F.flavor wf) ^ "_" ^ format_p wf)
 
     let momentum wf = "p" ^ format_p wf
@@ -1348,18 +1350,34 @@ i*)
           | Dim5_Scalar_Vector_Vector_U coeff ->
               let c = format_coupling coeff c in
               begin match fusion with
-              | F23 -> printf "(%s)*((%s*%s)*(-(%s+%s)*%s) - (%s*%s)*(-(%s+%s)*%s))" 
-                    c p1 wf2 p1 p2 wf1 wf1 wf2 p1 p2 p1
-              | F32 -> printf "(%s)*((%s*%s)*(-(%s+%s)*%s) - (%s*%s)*(-(%s+%s)*%s))" 
-                    c p2 wf1 p2 p1 wf2 wf2 wf1 p2 p1 p2
-              | F12 -> printf "(%s)*%s*((%s*%s)*%s - (%s*%s)*%s)" 
-                    c wf1 p1 wf2 p2 p1 p2 wf2
-              | F21 -> printf "(%s)*%s*((%s*%s)*%s - (%s*%s)*%s)" 
-                    c wf2 p2 wf1 p1 p2 p1 wf1
-              | F13 -> printf "(%s)*%s*((-((%s+%s)*%s))*%s - (-(%s+%s)*%s)*%s)" 
-                    c wf1 p2 p1 wf2 p1 p1 p2 p1 wf2
-              | F31 -> printf "(%s)*%s*((-((%s+%s)*%s))*%s - (-(%s+%s)*%s)*%s)" 
-                    c wf2 p1 p2 wf1 p2 p2 p1 p2 wf1
+              | (F23|F32) -> printf "phi_u_vv (%s, %s, %s, %s, %s)" c p1 p2 wf1 wf2
+              | (F12|F13) -> printf "v_u_phiv (%s, %s, %s, %s, %s)" c wf1 p1 p2 wf2 
+              | (F21|F31) -> printf "v_u_phiv (%s, %s, %s, %s, %s)" c wf2 p2 p1 wf1
+              end
+
+          | Dim5_Scalar_Vector_Vector_TU coeff ->
+              let c = format_coupling coeff c in
+              begin match fusion with
+              | F23 -> printf "(%s)*((%s*%s)*(-(%s+%s)*%s) - (-(%s+%s)*%s)*(%s*%s))"
+                    c p1 wf2 p1 p2 wf1 p1 p2 p1 wf1 wf2
+              | F32 -> printf "(%s)*((%s*%s)*(-(%s+%s)*%s) - (-(%s+%s)*%s)*(%s*%s))"
+                    c p2 wf1 p1 p2 wf2 p1 p2 p2 wf1 wf2
+              | F12 -> printf "(%s)*%s*((%s*%s)*%s - (%s*%s)*%s)"
+                    c wf1 p1 wf2 p2 p1 p2 wf2 
+              | F21 -> printf "(%s)*%s*((%s*%s)*%s - (%s*%s)*%s)"
+                    c wf2 p2 wf1 p1 p1 p2 wf1  
+              | F13 -> printf "(%s)*%s*((-(%s+%s)*%s)*%s - (-(%s+%s)*%s)*%s)"
+                    c wf1 p1 p2 wf2 p1 p1 p2 p1 wf2
+              | F31 -> printf "(%s)*%s*((-(%s+%s)*%s)*%s - (-(%s+%s)*%s)*%s)"
+                    c wf2 p1 p2 wf1 p2 p1 p2 p2 wf1
+              end                
+
+          | Scalar_Vector_Vector_t coeff ->
+              let c = format_coupling coeff c in
+              begin match fusion with
+              | (F23|F32) -> printf "s_vv_t(%s,%s,%s,%s,%s)" c wf1 p1 wf2 p2
+              | (F12|F13) -> printf "v_sv_t(%s,%s,%s,%s,%s)" c wf1 p1 wf2 p2
+              | (F21|F31) -> printf "v_sv_t(%s,%s,%s,%s,%s)" c wf2 p2 wf1 p1
               end
 
           | Dim6_Vector_Vector_Vector_T coeff ->
@@ -1381,12 +1399,28 @@ i*)
               | (F21|F31) -> printf "v_t2v(%s,%s,%s)" c wf2 wf1
               end
 
+          | Tensor_2_Vector_Vector_1 coeff -> 
+	      let c = format_coupling coeff c in 
+	      begin match fusion with 
+	      | (F23|F32) -> printf "t2_vv_1(%s,%s,%s)" c wf1 wf2 
+	      | (F12|F13) -> printf "v_t2v_1(%s,%s,%s)" c wf1 wf2 
+	      | (F21|F31) -> printf "v_t2v_1(%s,%s,%s)" c wf2 wf1 
+	      end
+
           | Dim5_Tensor_2_Vector_Vector_1 coeff ->
               let c = format_coupling coeff c in
               begin match fusion with
               | (F23|F32) -> printf "t2_vv_d5_1(%s,%s,%s,%s,%s)" c wf1 p1 wf2 p2
               | (F12|F13) -> printf "v_t2v_d5_1(%s,%s,%s,%s,%s)" c wf1 p1 wf2 p2
               | (F21|F31) -> printf "v_t2v_d5_1(%s,%s,%s,%s,%s)" c wf2 p2 wf1 p1
+              end
+
+         | Tensor_2_Vector_Vector_t coeff ->
+              let c = format_coupling coeff c in
+              begin match fusion with
+              | (F23|F32) -> printf "t2_vv_t(%s,%s,%s,%s,%s)" c wf1 p1 wf2 p2
+              | (F12|F13) -> printf "v_t2v_t(%s,%s,%s,%s,%s)" c wf1 p1 wf2 p2
+              | (F21|F31) -> printf "v_t2v_t(%s,%s,%s,%s,%s)" c wf2 p2 wf1 p1
               end
 
           | Dim5_Tensor_2_Vector_Vector_2 coeff ->
@@ -1563,7 +1597,7 @@ i*)
           printf "pr_grav(%s,%s,%s," p m w
       | Aux_Scalar | Aux_Spinor | Aux_ConjSpinor | Aux_Majorana
       | Aux_Vector | Aux_Tensor_1 -> printf "("
-      | Aux_Col_Vector | Aux_Col_Tensor_1 -> printf "%s * (" minus_third
+      | Aux_Col_Scalar | Aux_Col_Vector | Aux_Col_Tensor_1 -> printf "%s * (" minus_third
       | Only_Insertion -> printf "("
 
     let print_projector f p m gamma =
@@ -1599,7 +1633,7 @@ i*)
           printf "pj_tensor(%s,%s,%s," p m gamma
       | Aux_Scalar | Aux_Spinor | Aux_ConjSpinor | Aux_Majorana
       | Aux_Vector | Aux_Tensor_1 -> printf "("
-      | Aux_Col_Vector | Aux_Col_Tensor_1 -> printf "%s * (" minus_third
+      | Aux_Col_Scalar | Aux_Col_Vector | Aux_Col_Tensor_1 -> printf "%s * (" minus_third
       | Only_Insertion -> printf "("
 
     let print_gauss f p m gamma =
@@ -2253,7 +2287,7 @@ i*)
       | None -> "F"
 
     let print_flavor_color_table_old abbrev n_flv n_cflow table =
-      if n_flv <= 0 or n_cflow <= 0 then begin
+      if n_flv <= 0 || n_cflow <= 0 then begin
         printf "  @[<2>logical, dimension(n_flv, n_cflow) ::";
         printf "@ flv_col_is_allowed"; nl ()
       end else begin
@@ -3217,8 +3251,8 @@ module Fortran_Majorana_Fermions : Fermions =
           let func_name = (String.sub s 0 offset) and
 	      tail =
 	    (String.sub s (succ offset) (String.length s - offset - 2)) in 
-          if (String.contains func_name ')') or 
-	    (String.contains tail '(') or 
+          if (String.contains func_name ')') || 
+	    (String.contains tail '(') ||
             (String.contains tail ')') then
             failwith "fastener: wrong usage of parentheses"
           else      

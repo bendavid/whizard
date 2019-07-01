@@ -1,14 +1,15 @@
-# $Id: eeww_polarized.sin 3670 2012-01-21 19:33:07Z jr_reuter $
+# $Id: eeww_polarized.sin 5543 2014-03-21 11:55:08Z jr_reuter $
 # Use WHIZARD's initial and final state polarization facilities to
 # examine the angular distributions for all 36 helicity combinations
 # in e+, e- -> W+, W-
 ########################################################################
 #
-# Copyright (C) 1999-2012 by 
+# Copyright (C) 1999-2014 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
-#     Christian Speckner <Christian.Speckner@physik.uni-freiburg.de>
+#     with contributions from
+#     Christian Speckner <cnspeckn@googlemail.com>
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by 
@@ -40,80 +41,203 @@ n_events = 100000
 # Tell WHIZARD to retain the W polarization in the generated events
 polarized "W+", "W-"
 
+# Define title etc. as global variables, that will be used by PLOT
+$description =
+  "A WHIZARD 2.2 Example. $W$ pair production in polarized ILC beams at 200 GeV. Analysis for polarized $W$s."
+
+# Define histograms for all different final state helicies.
+
+histogram cta_mm_mm (-1, 1, 0.1) { $title = "Polarization: -1 -1 -1 -1" }
+histogram cta_pm_mm (-1, 1, 0.1) { $title = "Polarization: +1 -1 -1 -1" }
+histogram cta_mp_mm (-1, 1, 0.1) { $title = "Polarization: -1 +1 -1 -1" }
+histogram cta_pp_mm (-1, 1, 0.1) { $title = "Polarization: +1 +1 -1 -1" }
+
+histogram cta_mm_m0 (-1, 1, 0.1) { $title = "Polarization: -1 -1 -1 0" }
+histogram cta_pm_m0 (-1, 1, 0.1) { $title = "Polarization: +1 -1 -1 0" }
+histogram cta_mp_m0 (-1, 1, 0.1) { $title = "Polarization: -1 +1 -1 0" }
+histogram cta_pp_m0 (-1, 1, 0.1) { $title = "Polarization: +1 +1 -1 0" }
+
+histogram cta_mm_mp (-1, 1, 0.1) { $title = "Polarization: -1 -1 -1 +1" }
+histogram cta_pm_mp (-1, 1, 0.1) { $title = "Polarization: +1 -1 -1 +1" }
+histogram cta_mp_mp (-1, 1, 0.1) { $title = "Polarization: -1 +1 -1 +1" }
+histogram cta_pp_mp (-1, 1, 0.1) { $title = "Polarization: +1 +1 -1 +1" }
+
+histogram cta_mm_0p (-1, 1, 0.1) { $title = "Polarization: -1 -1 0 +1" }
+histogram cta_pm_0p (-1, 1, 0.1) { $title = "Polarization: +1 -1 0 +1" }
+histogram cta_mp_0p (-1, 1, 0.1) { $title = "Polarization: -1 +1 0 +1" }
+histogram cta_pp_0p (-1, 1, 0.1) { $title = "Polarization: +1 +1 0 +1" }
+
+histogram cta_mm_00 (-1, 1, 0.1) { $title = "Polarization: -1 -1 0 0" }
+histogram cta_pm_00 (-1, 1, 0.1) { $title = "Polarization: +1 -1 0 0" }
+histogram cta_mp_00 (-1, 1, 0.1) { $title = "Polarization: -1 +1 0 0" }
+histogram cta_pp_00 (-1, 1, 0.1) { $title = "Polarization: +1 +1 0 0" }
+
+histogram cta_mm_0m (-1, 1, 0.1) { $title = "Polarization: -1 -1 0 -1" }
+histogram cta_pm_0m (-1, 1, 0.1) { $title = "Polarization: +1 -1 0 -1" }
+histogram cta_mp_0m (-1, 1, 0.1) { $title = "Polarization: -1 +1 0 -1" }
+histogram cta_pp_0m (-1, 1, 0.1) { $title = "Polarization: +1 +1 0 -1" }
+
+histogram cta_mm_pm (-1, 1, 0.1) { $title = "Polarization: -1 -1 +1 -1" }
+histogram cta_pm_pm (-1, 1, 0.1) { $title = "Polarization: +1 -1 +1 -1" }
+histogram cta_mp_pm (-1, 1, 0.1) { $title = "Polarization: -1 +1 +1 -1" }
+histogram cta_pp_pm (-1, 1, 0.1) { $title = "Polarization: +1 +1 +1 -1" }
+
+histogram cta_mm_p0 (-1, 1, 0.1) { $title = "Polarization: -1 -1 +1 0" }
+histogram cta_pm_p0 (-1, 1, 0.1) { $title = "Polarization: +1 -1 +1 0" }
+histogram cta_mp_p0 (-1, 1, 0.1) { $title = "Polarization: -1 +1 +1 0" }
+histogram cta_pp_p0 (-1, 1, 0.1) { $title = "Polarization: +1 +1 +1 0" }
+
+histogram cta_mm_pp (-1, 1, 0.1) { $title = "Polarization: -1 -1 +1 +1" }
+histogram cta_pm_pp (-1, 1, 0.1) { $title = "Polarization: +1 -1 +1 +1" }
+histogram cta_mp_pp (-1, 1, 0.1) { $title = "Polarization: -1 +1 +1 +1" }
+histogram cta_pp_pp (-1, 1, 0.1) { $title = "Polarization: +1 +1 +1 +1" }
+
+
+
 # Loop over e+ / e- helicity
 scan int hel_ep = (-1, 1) {
   scan int hel_em = (-1, 1) {
     # Apply the helicity setup
-    beam_polarization = diagonal_density (hel_ep:1), diagonal_density (hel_em:1)
+    beams_pol_density = @(hel_ep), @(hel_em)
 
     # (Re)calculate the integral for each initial state polarization
     integrate (eeww)
 
-    # Define histograms for all different final state helicies. We
-    # have to automatically generate tags from the initial state
-    # helicites
-    string $hist_mm = sprintf "cta%i_%i_-1_-1" (hel_ep, hel_em)
-    histogram $hist_mm (-1, 1, 0.1) {
-      $title = sprintf "polarization: %i %i -1 -1" (hel_ep, hel_em)
-    }
-    string $hist_ml = sprintf "cta%i_%i_-1_0" (hel_ep, hel_em)
-    histogram $hist_ml (-1, 1, 0.1) {
-      $title = sprintf "polarization: %i %i -1  0" (hel_ep, hel_em)
-    }
-    string $hist_mp = sprintf "cta%i_%i_-1_1" (hel_ep, hel_em)
-    histogram $hist_mp (-1, 1, 0.1) {
-      $title = sprintf "polarization: %i %i -1  1" (hel_ep, hel_em)
-    }
-    string $hist_lm = sprintf "cta%i_%i_0_-1" (hel_ep, hel_em)
-    histogram $hist_lm (-1, 1, 0.1) {
-      $title = sprintf "polarization: %i %i  0 -1" (hel_ep, hel_em)
-    }
-    string $hist_ll = sprintf "cta%i_%i_0_0" (hel_ep, hel_em)
-    histogram $hist_ll (-1, 1, 0.1) {
-      $title = sprintf "polarization: %i %i  0  0" (hel_ep, hel_em)
-    }
-    string $hist_lp = sprintf "cta%i_%i_0_1" (hel_ep, hel_em)
-    histogram $hist_lp (-1, 1, 0.1) {
-      $title = sprintf "polarization: %i %i  0  1" (hel_ep, hel_em)
-    }
-    string $hist_pm = sprintf "cta%i_%i_1_-1" (hel_ep, hel_em)
-    histogram $hist_pm (-1, 1, 0.1) {
-      $title = sprintf "polarization: %i %i  1 -1" (hel_ep, hel_em)
-    }
-    string $hist_pl = sprintf "cta%i_%i_1_0" (hel_ep, hel_em)
-    histogram $hist_pl (-1, 1, 0.1) {
-      $title = sprintf "polarization: %i %i  1  0" (hel_ep, hel_em)
-    }
-    string $hist_pp = sprintf "cta%i_%i_1_1" (hel_ep, hel_em)
-    histogram $hist_pp (-1, 1, 0.1) {
-      $title = sprintf "polarization: %i %i  1  1" (hel_ep, hel_em)
-    }
-
     # The analysis setup fills the different histograms
     analysis =
       if (all Hel == -1 ["W+"] and all Hel == -1 ["W-"] ) then 
-        record $hist_mm (eval cos (Theta) ["W+"])
+	if (all Hel == -1 [incoming "e+"] and 
+	    all Hel == -1 [incoming "e-"]) then
+              record cta_mm_mm (eval cos (Theta) ["W+"]) elsif
+	   (all Hel == -1 [incoming "e+"] and 
+	    all Hel == +1 [incoming "e-"]) then
+ 	      record cta_mp_mm (eval cos (Theta) ["W+"]) elsif
+	   (all Hel == +1 [incoming "e+"] and 
+	    all Hel == -1 [incoming "e-"]) then
+              record cta_pm_mm (eval cos (Theta) ["W+"]) elsif
+	   (all Hel == +1 [incoming "e+"] and 
+	    all Hel == +1 [incoming "e-"]) then
+	      record cta_pp_mm (eval cos (Theta) ["W+"])
+	endif
       endif; if (all Hel == -1 ["W+"] and all Hel ==  0 ["W-"] ) then
-        record $hist_ml (eval cos (Theta) ["W+"])
+	if (all Hel == -1 [incoming "e+"] and 
+	    all Hel == -1 [incoming "e-"]) then
+              record cta_mm_m0 (eval cos (Theta) ["W+"]) elsif
+	   (all Hel == -1 [incoming "e+"] and 
+	    all Hel == +1 [incoming "e-"]) then
+ 	      record cta_mp_m0 (eval cos (Theta) ["W+"]) elsif
+	   (all Hel == +1 [incoming "e+"] and 
+	    all Hel == -1 [incoming "e-"]) then
+              record cta_pm_m0 (eval cos (Theta) ["W+"]) elsif
+	   (all Hel == +1 [incoming "e+"] and 
+	    all Hel == +1 [incoming "e-"]) then
+	      record cta_pp_m0 (eval cos (Theta) ["W+"])
+	endif
       endif; if (all Hel == -1 ["W+"] and all Hel ==  1 ["W-"] ) then
-        record $hist_mp (eval cos (Theta) ["W+"])
+	if (all Hel == -1 [incoming "e+"] and 
+	    all Hel == -1 [incoming "e-"]) then
+              record cta_mm_mp (eval cos (Theta) ["W+"]) elsif
+	   (all Hel == -1 [incoming "e+"] and 
+	    all Hel == +1 [incoming "e-"]) then
+ 	      record cta_mp_mp (eval cos (Theta) ["W+"]) elsif
+	   (all Hel == +1 [incoming "e+"] and 
+	    all Hel == -1 [incoming "e-"]) then
+              record cta_pm_mp (eval cos (Theta) ["W+"]) elsif
+	   (all Hel == +1 [incoming "e+"] and 
+	    all Hel == +1 [incoming "e-"]) then
+	      record cta_pp_mp (eval cos (Theta) ["W+"])
+	endif
       endif; if (all Hel ==  0 ["W+"] and all Hel == -1 ["W-"] ) then
-        record $hist_lm (eval cos (Theta) ["W+"])
+	if (all Hel == -1 [incoming "e+"] and 
+	    all Hel == -1 [incoming "e-"]) then
+              record cta_mm_0m (eval cos (Theta) ["W+"]) elsif
+	   (all Hel == -1 [incoming "e+"] and 
+	    all Hel == +1 [incoming "e-"]) then
+ 	      record cta_mp_0m (eval cos (Theta) ["W+"]) elsif
+	   (all Hel == +1 [incoming "e+"] and 
+	    all Hel == -1 [incoming "e-"]) then
+              record cta_pm_0m (eval cos (Theta) ["W+"]) elsif
+	   (all Hel == +1 [incoming "e+"] and 
+	    all Hel == +1 [incoming "e-"]) then
+	      record cta_pp_0m (eval cos (Theta) ["W+"])
+	endif
       endif; if (all Hel ==  0 ["W+"] and all Hel ==  0 ["W-"] ) then
-        record $hist_ll (eval cos (Theta) ["W+"])
+	if (all Hel == -1 [incoming "e+"] and 
+	    all Hel == -1 [incoming "e-"]) then
+              record cta_mm_00 (eval cos (Theta) ["W+"]) elsif
+	   (all Hel == -1 [incoming "e+"] and 
+	    all Hel == +1 [incoming "e-"]) then
+ 	      record cta_mp_00 (eval cos (Theta) ["W+"]) elsif
+	   (all Hel == +1 [incoming "e+"] and 
+	    all Hel == -1 [incoming "e-"]) then
+              record cta_pm_00 (eval cos (Theta) ["W+"]) elsif
+	   (all Hel == +1 [incoming "e+"] and 
+	    all Hel == +1 [incoming "e-"]) then
+	      record cta_pp_00 (eval cos (Theta) ["W+"])
+	endif
       endif; if (all Hel ==  0 ["W+"] and all Hel ==  1 ["W-"] ) then
-        record $hist_lp (eval cos (Theta) ["W+"])
+	if (all Hel == -1 [incoming "e+"] and 
+	    all Hel == -1 [incoming "e-"]) then
+              record cta_mm_0p (eval cos (Theta) ["W+"]) elsif
+	   (all Hel == -1 [incoming "e+"] and 
+	    all Hel == +1 [incoming "e-"]) then
+ 	      record cta_mp_0p (eval cos (Theta) ["W+"]) elsif
+	   (all Hel == +1 [incoming "e+"] and 
+	    all Hel == -1 [incoming "e-"]) then
+              record cta_pm_0p (eval cos (Theta) ["W+"]) elsif
+	   (all Hel == +1 [incoming "e+"] and 
+	    all Hel == +1 [incoming "e-"]) then
+	      record cta_pp_0p (eval cos (Theta) ["W+"])
+  	endif
       endif; if (all Hel ==  1 ["W+"] and all Hel == -1 ["W-"] ) then
-        record $hist_pm (eval cos (Theta) ["W+"])
+	if (all Hel == -1 [incoming "e+"] and 
+	    all Hel == -1 [incoming "e-"]) then
+              record cta_mm_pm (eval cos (Theta) ["W+"]) elsif
+	   (all Hel == -1 [incoming "e+"] and 
+	    all Hel == +1 [incoming "e-"]) then
+ 	      record cta_mp_pm (eval cos (Theta) ["W+"]) elsif
+	   (all Hel == +1 [incoming "e+"] and 
+	    all Hel == -1 [incoming "e-"]) then
+              record cta_pm_pm (eval cos (Theta) ["W+"]) elsif
+	   (all Hel == +1 [incoming "e+"] and 
+	    all Hel == +1 [incoming "e-"]) then
+	      record cta_pp_pm (eval cos (Theta) ["W+"])
+  	endif
       endif; if (all Hel ==  1 ["W+"] and all Hel ==  0 ["W-"] ) then
-        record $hist_pl (eval cos (Theta) ["W+"])
+	if (all Hel == -1 [incoming "e+"] and 
+	    all Hel == -1 [incoming "e-"]) then
+              record cta_mm_p0 (eval cos (Theta) ["W+"]) elsif
+	   (all Hel == -1 [incoming "e+"] and 
+	    all Hel == +1 [incoming "e-"]) then
+ 	      record cta_mp_p0 (eval cos (Theta) ["W+"]) elsif
+	   (all Hel == +1 [incoming "e+"] and 
+	    all Hel == -1 [incoming "e-"]) then
+              record cta_pm_p0 (eval cos (Theta) ["W+"]) elsif
+	   (all Hel == +1 [incoming "e+"] and 
+	    all Hel == +1 [incoming "e-"]) then
+	      record cta_pp_p0 (eval cos (Theta) ["W+"])
+  	endif
       endif; if (all Hel ==  1 ["W+"] and all Hel ==  1 ["W-"] ) then
-        record $hist_pp (eval cos (Theta) ["W+"])
+	if (all Hel == -1 [incoming "e+"] and 
+	    all Hel == -1 [incoming "e-"]) then
+              record cta_mm_pp (eval cos (Theta) ["W+"]) elsif
+	   (all Hel == -1 [incoming "e+"] and 
+	    all Hel == +1 [incoming "e-"]) then
+ 	      record cta_mp_pp (eval cos (Theta) ["W+"]) elsif
+	   (all Hel == +1 [incoming "e+"] and 
+	    all Hel == -1 [incoming "e-"]) then
+              record cta_pm_pp (eval cos (Theta) ["W+"]) elsif
+	   (all Hel == +1 [incoming "e+"] and 
+	    all Hel == +1 [incoming "e-"]) then
+	      record cta_pp_pp (eval cos (Theta) ["W+"])
+        endif
       endif
 
     # Generate events (keep the helicity information). As this takes
-    # some time, we request status information.
+    # some time, we request status information. The event sample has to 
+    # be rebuilt as it is different for different initial state polarization.
     simulate (eeww) {
+      ?rebuild_events = true
       ?polarized_events = true
       checkpoint = 10000
     }

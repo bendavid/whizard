@@ -1,11 +1,11 @@
 ! circe1_sample.f90 -- canonical beam spectra for linear collider physics
-! $Id: circe1.nw 67 2002-03-28 17:13:06Z ohl $
+! $Id: prelude.nw 5455 2014-03-12 14:26:30Z ohl $
 ! 
-! Copyright (C) 1999-2012 by 
+! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+!     Christian Speckner <cnspeckn@googlemail.com>
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -303,7 +303,6 @@ end module sample_routines
 
     implicit none
 
-      
         integer, parameter :: SBAND  = 1
         integer, parameter :: TESLA  = 2
         integer, parameter :: XBAND  = 3
@@ -312,7 +311,9 @@ end module sample_routines
         integer, parameter :: TESLEE = 5
         integer, parameter :: XBNDEE = 6
         integer, parameter :: NLCH   = 7
-        integer, parameter :: NACC   = 7
+        integer, parameter :: ILC    = 8
+        integer, parameter :: CLIC   = 9
+        integer, parameter :: NACC   = 9
           real(kind=double), parameter :: EPS = 1d-6, PWR = 5d0
           real(kind=double), parameter :: KIREPS = 1D-6
           real(kind=double) :: s       

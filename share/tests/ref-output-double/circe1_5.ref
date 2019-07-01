@@ -1,0 +1,177 @@
+?openmp_logging = false
+?vis_history = false
+?integration_timer = false
+?pacify = true
+$method = "omega"
+| Process library 'circe1_5_lib': recorded process 'circe1_5_p1'
+| Process library 'circe1_5_lib': recorded process 'circe1_5_p2'
+| Process library 'circe1_5_lib': recorded process 'circe1_5_p3'
+| Process library 'circe1_5_lib': compiling ...
+| Process library 'circe1_5_lib': writing makefile
+| Process library 'circe1_5_lib': removing old files
+| Process library 'circe1_5_lib': writing driver
+| Process library 'circe1_5_lib': creating source code
+| Process library 'circe1_5_lib': compiling sources
+| Process library 'circe1_5_lib': linking
+| Process library 'circe1_5_lib': loading
+| Process library 'circe1_5_lib': ... success.
+$phs_method = "wood"
+$integration_method = "vamp"
+sqrts =  5.0000000E+02
+openmp_num_threads = 1
+[user variable] n = 1000
+seed = 0
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 0
+| Initializing integration for process circe1_5_p1:
+| ------------------------------------------------------------------------
+| Process [scattering]: 'circe1_5_p1'
+|   Library name  = 'circe1_5_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'circe1_5_p1_i1':   e-, e+ => mu-, mu+ [omega]
+| ------------------------------------------------------------------------
+| Beam structure: [any particles]
+| Beam data (collision):
+|   e-  (mass = 5.1099700E-04 GeV)
+|   e+  (mass = 5.1099700E-04 GeV)
+|   sqrts = 5.000000000000E+02 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'circe1_5_p1_i1.phs'
+| Phase space: 2 channels, 2 dimensions
+| Phase space: found 2 channels, collected in 2 groves.
+| Phase space: Using 2 equivalences between channels.
+| Phase space: wood
+| Applying user-defined cuts.
+| Starting integration for process 'circe1_5_p1'
+| Integrate: iterations = 3:1000:"g", 3:1000
+| Integrator: 2 chains, 2 channels, 2 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 1000 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1        784   4.28382E+02   7.48E-01    0.17    0.05   40.64
+   2        784   4.27353E+02   5.88E-01    0.14    0.04   71.60
+   3        784   4.29024E+02   5.58E-01    0.13    0.04   54.34
+|-----------------------------------------------------------------------------|
+   3       2352   4.28266E+02   3.56E-01    0.08    0.04   54.34    2.14   3
+|-----------------------------------------------------------------------------|
+   4        784   4.28320E+02   5.68E-01    0.13    0.04   54.25
+   5        784   4.28616E+02   5.51E-01    0.13    0.04   54.27
+   6        784   4.28233E+02   5.68E-01    0.13    0.04   54.22
+|-----------------------------------------------------------------------------|
+   6       2352   4.28394E+02   3.25E-01    0.08    0.04   54.22    0.13   3
+|=============================================================================|
+seed = 0
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 0
+| Initializing integration for process circe1_5_p2:
+| ------------------------------------------------------------------------
+| Process [scattering]: 'circe1_5_p2'
+|   Library name  = 'circe1_5_lib'
+|   Process index = 2
+|   Process components:
+|     1: 'circe1_5_p2_i1':   e-, e+ => mu-, mu+ [omega]
+| ------------------------------------------------------------------------
+| Beam structure: e-, e+ => isr
+| Beam data (collision):
+|   e-  (mass = 5.1099700E-04 GeV)
+|   e+  (mass = 5.1099700E-04 GeV)
+|   sqrts = 5.000000000000E+02 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'circe1_5_p2_i1.phs'
+| Phase space: 2 channels, 2 dimensions
+| Phase space: found 2 channels, collected in 2 groves.
+| Phase space: Using 2 equivalences between channels.
+| Phase space: wood
+| Beam structure: isr, none => none, isr
+| Beam structure: 2 channels, 2 dimensions
+| Applying user-defined cuts.
+| Starting integration for process 'circe1_5_p2'
+| Integrate: iterations = 8:1000:"g", 3:1000
+| Integrator: 2 chains, 2 channels, 4 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 1000 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1       1000   9.90423E+02   2.55E+01    2.58    0.82   11.57
+   2       1000   9.81370E+02   1.20E+01    1.22    0.39   30.38
+   3       1000   9.67155E+02   9.47E+00    0.98    0.31   29.91
+   4       1000   9.95104E+02   1.31E+01    1.32    0.42   15.73
+   5       1000   1.00202E+03   1.07E+01    1.07    0.34   29.94
+   6       1000   9.99430E+02   9.44E+00    0.94    0.30   29.50
+   7       1000   1.00264E+03   9.34E+00    0.93    0.29   32.53
+   8       1000   9.95386E+02   8.48E+00    0.85    0.27   45.01
+|-----------------------------------------------------------------------------|
+   8       8000   9.92048E+02   3.76E+00    0.38    0.34   45.01    1.53   8
+|-----------------------------------------------------------------------------|
+   9       1000   9.83313E+02   9.26E+00    0.94    0.30   43.50
+  10       1000   9.97604E+02   1.02E+01    1.03    0.32   28.75
+  11       1000   9.82274E+02   9.21E+00    0.94    0.30   23.58
+|-----------------------------------------------------------------------------|
+  11       3000   9.87079E+02   5.50E+00    0.56    0.31   23.58    0.75   3
+|=============================================================================|
+$circe1_acc = "TESLA"
+circe1_chat = 2
+circe1_eps =  1.0000000E-05
+?circe1_generate = false
+seed = 0
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 0
+| Initializing integration for process circe1_5_p3:
+| ------------------------------------------------------------------------
+| Process [scattering]: 'circe1_5_p3'
+|   Library name  = 'circe1_5_lib'
+|   Process index = 3
+|   Process components:
+|     1: 'circe1_5_p3_i1':   e-, e+ => mu-, mu+ [omega]
+| ------------------------------------------------------------------------
+| Beam structure: e-, e+ => circe1 => isr
+| Beam data (collision):
+|   e-  (mass = 5.1099700E-04 GeV)
+|   e+  (mass = 5.1099700E-04 GeV)
+|   sqrts = 5.000000000000E+02 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'circe1_5_p3_i1.phs'
+| Phase space: 2 channels, 2 dimensions
+| Phase space: found 2 channels, collected in 2 groves.
+| Phase space: Using 2 equivalences between channels.
+| Phase space: wood
+| Beam structure: circe1 => isr, none => none, isr
+| Beam structure: 2 channels, 4 dimensions
+| Applying user-defined cuts.
+| Starting integration for process 'circe1_5_p3'
+| Integrate: iterations = 8:1000:"gw", 3:1000
+| Integrator: 2 chains, 2 channels, 6 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 1000 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1       1000   9.27188E+02   1.77E+02   19.12    6.05    0.90
+   2        999   1.04697E+03   1.63E+02   15.52    4.91    1.18
+   3        998   9.00446E+02   6.65E+01    7.39    2.33    3.24
+   4        997   9.96782E+02   7.22E+01    7.25    2.29    3.06
+   5        996   1.19215E+03   1.25E+02   10.46    3.30    2.85
+   6        995   1.13176E+03   8.16E+01    7.21    2.28    3.08
+   7        994   1.14664E+03   1.31E+02   11.45    3.61    1.47
+   8        993   1.07954E+03   6.76E+01    6.27    1.97    3.51
+|-----------------------------------------------------------------------------|
+   8       7972   1.03512E+03   3.20E+01    3.09    2.76    3.51    1.27   8
+|-----------------------------------------------------------------------------|
+   9        993   9.89035E+02   5.15E+01    5.21    1.64    3.21
+  10        993   1.01028E+03   9.09E+01    8.99    2.83    2.25
+  11        993   1.05540E+03   9.12E+01    8.64    2.72    1.73
+|-----------------------------------------------------------------------------|
+  11       2979   1.00610E+03   4.02E+01    4.00    2.18    1.73    0.20   3
+|=============================================================================|
+| WHIZARD run finished.
+|=============================================================================|

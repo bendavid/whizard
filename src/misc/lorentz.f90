@@ -1,11 +1,13 @@
-! WHIZARD 2.1.1 September 18 2012
+! WHIZARD 2.2.0 May 18 2014
 ! 
-! Copyright (C) 1999-2012 by 
+! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
-!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
+!     
+!     with contributions from
+!     Christian Speckner <cnspeckn@googlemail.com> 
+!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -30,6 +32,7 @@ module lorentz
   use kinds, only: default !NODEP!
   use constants, only: pi, twopi, degree !NODEP!
   use file_utils !NODEP!
+  use limits, only: FMT_15, FMT_17, FMT_19 !NODEP!
   use diagnostics !NODEP!
   use c_particles
 
@@ -107,6 +110,7 @@ module lorentz
   public :: axis_from_p_r3_r2_b3, axis_from_p_b3
   public :: lambda
   public :: colliding_momenta
+  public :: pacify
 
   type :: vector3_t
      private
@@ -116,19 +120,21 @@ module lorentz
   type :: vector4_t
      private
      real(default), dimension(0:3) :: p = &
-        (/ 0._default, 0._default, 0._default, 0._default /)
+        [0._default, 0._default, 0._default, 0._default]
   end type vector4_t
   type :: lorentz_transformation_t
      private
      real(default), dimension(0:3, 0:3) :: L
+   contains
+     procedure :: write => lorentz_transformation_write
   end type lorentz_transformation_t
 
 
   type(vector3_t), parameter :: vector3_null = &
-       vector3_t ((/ 0._default, 0._default, 0._default /))
+       vector3_t ([ 0._default, 0._default, 0._default ])
 
   type(vector4_t), parameter :: vector4_null = &
-       vector4_t ((/ 0._default, 0._default, 0._default, 0._default /))
+       vector4_t ([ 0._default, 0._default, 0._default, 0._default ])
 
   integer, dimension(3,3), parameter :: delta_three = &
        & reshape( source = (/ 1,0,0, 0,1,0, 0,0,1 /), &
@@ -357,15 +363,24 @@ module lorentz
      module procedure prod_LT_LT
      module procedure prod_vector4_LT
   end interface
+  interface pacify
+     module procedure pacify_vector3
+     module procedure pacify_vector4
+     module procedure pacify_LT
+  end interface pacify
+
 
 contains
 
-  subroutine vector3_write (p, unit)
+  subroutine vector3_write (p, unit, testflag)
     type(vector3_t), intent(in) :: p
     integer, intent(in), optional :: unit
+    logical, intent(in), optional :: testflag
+    character(len=7) :: fmt
     integer :: u
     u = output_unit (unit);  if (u < 0)  return
-    write(u, *) 'P = ', p%p
+    call pac_fmt (fmt, FMT_19, FMT_15, testflag)
+    write(u, "(1x,A,3(1x," // fmt // "))") 'P = ', p%p
   end subroutine vector3_write
 
   elemental function vector3_canonical (k) result (p)
@@ -479,7 +494,14 @@ contains
   elemental function negate_vector3 (p) result (q)
     type(vector3_t) :: q
     type(vector3_t), intent(in) :: p
-    q%p = -p%p
+    integer :: i
+    do i = 1, 3
+       if (p%p(i) == -p%p(i)) then
+          q%p(i) = 0
+       else
+          q%p(i) = -p%p(i)
+       end if
+    end do
   end function negate_vector3
 
   pure function sum_vector3 (p) result (q)
@@ -490,15 +512,6 @@ contains
        q%p(i) = sum (p%p(i))
     end do
   end function sum_vector3
-!   pure function sum_vector3_mask (p, mask) result (q)
-!     type(vector3_t) :: q
-!     type(vector3_t), dimension(:), intent(in) :: p
-!     logical, dimension(:), intent(in) :: mask
-!     integer :: i
-!     do i=1, 3
-!        q%p(i) = sum (p%p(i), mask=mask)
-!     end do
-!   end function sum_vector3_mask
 
   elemental function vector3_get_component (p, k) result (c)
     type(vector3_t), intent(in) :: p
@@ -516,20 +529,29 @@ contains
   elemental function vector3_get_direction (p) result (q)
     type(vector3_t) :: q
     type(vector3_t), intent(in) :: p
-    q%p = p%p / p**1
+    real(default) :: pp
+    pp = p**1
+    if (pp /= 0) then
+       q%p = p%p / pp
+    else
+       q%p = 0
+    end if
   end function vector3_get_direction
 
-  subroutine vector4_write (p, unit, show_mass)
+  subroutine vector4_write (p, unit, show_mass, testflag)
     type(vector4_t), intent(in) :: p
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: show_mass
+    logical, intent(in), optional :: testflag
     integer :: u
+    character(len=7) :: fmt 
+    call pac_fmt (fmt, FMT_19, FMT_15, testflag)    
     u = output_unit (unit);  if (u < 0)  return
-    write(u, *) 'E = ', p%p(0)
-    write(u, *) 'P = ', p%p(1:)
+    write(u, "(1x,A,1x," // fmt // ")") 'E = ', p%p(0)
+    write(u, "(1x,A,3(1x," // fmt // "))") 'P = ', p%p(1:)
     if (present (show_mass)) then
        if (show_mass) &
-            write (u, *) 'M = ', p**1
+            write (u, "(1x,A,1x," // fmt // ")") 'M = ', p**1
     end if
   end subroutine vector4_write
 
@@ -556,7 +578,7 @@ contains
   elemental function vector4_at_rest (m) result (p)
     type(vector4_t) :: p
     real(default), intent(in) :: m
-    p = vector4_t ((/ m, 0._default, 0._default, 0._default /))
+    p = vector4_t ([ m, 0._default, 0._default, 0._default ])
   end function vector4_at_rest
 
   elemental function vector4_moving_canonical (E, p, k) result (q)
@@ -658,7 +680,14 @@ contains
   elemental function negate_vector4 (p) result (q)
     type(vector4_t) :: q
     type(vector4_t), intent(in) :: p
-    q%p = -p%p
+    integer :: i
+    do i = 0, 3
+       if (p%p(i) == -p%p(i)) then
+          q%p(i) = 0
+       else
+          q%p(i) = -p%p(i)
+       end if
+    end do
   end function negate_vector4
 
   pure function sum_vector4 (p) result (q)
@@ -669,15 +698,6 @@ contains
        q%p(i) = sum (p%p(i))
     end do
   end function sum_vector4
-!   pure function sum_vector4_mask (p, mask) result (q)
-!     type(vector4_t) :: q
-!     type(vector4_t), dimension(:), intent(in) :: p
-!     logical, dimension(:), intent(in) :: mask
-!     integer :: i
-!     do i=0, 3
-!        q%p(i) = sum (p%p(i), mask=mask)
-!     end do
-!   end function sum_vector4_mask
 
   subroutine vector4_set_component (p, k, c)
     type(vector4_t), intent(inout) :: p
@@ -708,8 +728,14 @@ contains
   elemental function vector4_get_direction (p) result (q)
     type(vector3_t) :: q
     type(vector4_t), intent(in) :: p
+    real(default) :: qq
     q%p = p%p(1:)
-    q = q / q**1
+    qq = q**1
+    if (qq /= 0) then
+       q%p = q%p / qq
+    else
+       q%p = 0
+    end if
   end function vector4_get_direction
 
   pure function array_from_vector4_1 (p) result (a)
@@ -1021,19 +1047,18 @@ contains
   end function eta_phi_distance_vector4
 
   subroutine lorentz_transformation_write (L, unit)
-    type(lorentz_transformation_t), intent(in) :: L
+    class(lorentz_transformation_t), intent(in) :: L
     integer, intent(in), optional :: unit
     integer :: u
     integer :: i
     u = output_unit (unit);  if (u < 0)  return
-    write (u, *) 'Lorentz transformation:'
-    write (u, *) 'L00:'
-    write (u, *) L%L(0,0)
-    write (u, *) 'L0j:', L%L(0,1:)
-    write (u, *) 'Li0, Lij:'
+    write (u, "(1x,A,3(1x," // FMT_19 // "))")  "L00 = ", L%L(0,0)
+    write (u, "(1x,A,3(1x," // FMT_19 // "))")  "L0j = ", L%L(0,1:3)
     do i = 1, 3
-       write (u, *) L%L(i,0)
-       write (u, *) '    ', L%L(i,1:)
+       write (u, "(1x,A,I0,A,3(1x," // FMT_19 // "))")  &
+            "L", i, "0 = ", L%L(i,0)
+       write (u, "(1x,A,I0,A,3(1x," // FMT_19 // "))")  &
+            "L", i, "j = ", L%L(i,1:3)
     end do
   end subroutine lorentz_transformation_write
 
@@ -1358,4 +1383,22 @@ contains
     end if
   end function colliding_momenta
 
+  elemental subroutine pacify_vector3 (p, tolerance)
+    type(vector3_t), intent(inout) :: p
+    real(default), intent(in) :: tolerance
+    where (abs (p%p) < tolerance)  p%p = 0
+  end subroutine pacify_vector3
+    
+  elemental subroutine pacify_vector4 (p, tolerance)
+    type(vector4_t), intent(inout) :: p
+    real(default), intent(in) :: tolerance
+    where (abs (p%p) < tolerance)  p%p = 0
+  end subroutine pacify_vector4
+    
+  elemental subroutine pacify_LT (LT, tolerance)
+    type(lorentz_transformation_t), intent(inout) :: LT
+    real(default), intent(in) :: tolerance
+    where (abs (LT%L) < tolerance)  LT%L = 0
+  end subroutine pacify_LT
+    
 end module lorentz

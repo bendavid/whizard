@@ -1,0 +1,69 @@
+* Test output: beam_2
+*   Purpose: transfer beam polarization using beam structure
+
+* Reading model file
+
+* 1: Scattering process
+
+ Beam structure: d, dbar
+   polarization (beam 1):
+     @(+1: +1: ( 1.000000000000E+00, 0.000000000000E+00))
+   polarization (beam 2):
+     @(+1: +1: ( 1.000000000000E+00, 0.000000000000E+00))
+     @(-1: -1: ( 1.000000000000E+00, 0.000000000000E+00))
+     @(-1: +1: ( 1.000000000000E+00, 0.000000000000E+00))
+   polarization degree = 0.5000000, 1.0000000
+
+ Beam data (collision):
+   d     (mass = 0.0000000E+00 GeV)  polarized
+   dbar  (mass = 0.0000000E+00 GeV)  polarized
+   sqrts = 5.000000000000E+02 GeV
+
+ Colliding beams:
+ Interaction: 1
+ Outgoing:
+ Particle 1
+ E =   2.500000000000E+02
+ P =   0.000000000000E+00  0.000000000000E+00  2.500000000000E+02
+ mask [fch] = [FFgFd]
+ Particle 2
+ E =   2.500000000000E+02
+ P =   0.000000000000E+00  0.000000000000E+00 -2.500000000000E+02
+ mask [fch] = [FFgF]
+ State matrix:  norm =  1.000000000000E+00
+ [f(1) c(1 ) h(-1)]
+   [f(-1) c(-2 ) h(1)] => ME(1) = ( 1.250000000000E-01, 0.000000000000E+00)
+   [f(-1) c(-2 ) h(-1)] => ME(2) = ( 1.250000000000E-01, 0.000000000000E+00)
+   [f(-1) c(-2 ) h(-1|1)] => ME(3) = ( 1.250000000000E-01, 0.000000000000E+00)
+   [f(-1) c(-2 ) h(1|-1)] => ME(4) = ( 1.250000000000E-01, 0.000000000000E+00)
+ [f(1) c(1 ) h(1)]
+   [f(-1) c(-2 ) h(1)] => ME(5) = ( 3.750000000000E-01, 0.000000000000E+00)
+   [f(-1) c(-2 ) h(-1)] => ME(6) = ( 3.750000000000E-01, 0.000000000000E+00)
+   [f(-1) c(-2 ) h(-1|1)] => ME(7) = ( 3.750000000000E-01, 0.000000000000E+00)
+   [f(-1) c(-2 ) h(1|-1)] => ME(8) = ( 3.750000000000E-01, 0.000000000000E+00)
+
+* 2: Decay
+
+ Beam structure: Z
+   polarization (beam 1):
+     @(+0: +0: ( 1.000000000000E+00, 0.000000000000E+00))
+   polarization degree = 0.4000000
+
+ Beam data (decay):
+   Z  (mass = 9.1188200E+01 GeV)  polarized
+
+ Decaying particle:
+ Interaction: 2
+ Outgoing:
+ Particle 1
+ E =   9.118820000000E+01
+ P =   0.000000000000E+00  0.000000000000E+00  0.000000000000E+00
+ mask [fch] = [FFgFd]
+ State matrix:  norm =  1.000000000000E+00
+ [f(23) h(-1)] => ME(1) = ( 2.000000000000E-01, 0.000000000000E+00)
+ [f(23) h(0)] => ME(2) = ( 6.000000000000E-01, 0.000000000000E+00)
+ [f(23) h(1)] => ME(3) = ( 2.000000000000E-01, 0.000000000000E+00)
+
+* Cleanup
+
+* Test output end: beam_2

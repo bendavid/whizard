@@ -3,27 +3,17 @@
 ! This file handles the prebuilt process libraries
 ! (currently: empty)
 
-function libmanager_get_n_libs () result (n)
-  integer :: n
-  n = 0
-end function libmanager_get_n_libs
-
-function libmanager_get_libname (i) result (name)
+subroutine dispatch_prclib_static (driver, basename)
   use iso_varying_string, string_t => varying_string
-  type(string_t) :: name
-  integer, intent(in) :: i
-  select case (i)
-  case default;  name = ''
-  end select
-end function libmanager_get_libname
-
-function libmanager_get_c_funptr (libname, fname) result (c_fptr)
-  use iso_c_binding
   use prclib_interfaces
-  type(c_funptr) :: c_fptr
-  character(*), intent(in) :: libname, fname
-  select case (libname)
-  case default
-     c_fptr = c_null_funptr
-  end select
-end function libmanager_get_c_funptr
+  implicit none
+  class(prclib_driver_t), intent(inout), allocatable :: driver
+  type(string_t), intent(in) :: basename
+end subroutine dispatch_prclib_static
+
+subroutine get_prclib_static (libname)
+  use iso_varying_string, string_t => varying_string
+  implicit none
+  type(string_t), dimension(:), intent(inout), allocatable :: libname
+  allocate (libname (0))
+end subroutine get_prclib_static

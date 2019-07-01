@@ -1,10 +1,11 @@
 ! $Id: parameters.Littlest.f90,v 1.9 2005/10/25 09:21:48 kilian Exp $
 !
-! Copyright (C) 1999-2012 by 
+! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+!     with contributions from
+!     Christian Speckner <cnspeckn@googlemail.com>
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -91,12 +92,13 @@ module parameters_littlest
       gahtht, ghthth, &
       gpsi0tt, gpsi0bb, gpsi0cc, gpsi0tautau, &
       gpsipl3, gpsi0tth, gpsi1tth, gpsipbth, &
-      ghhtt, ghhthth 
+      ghhtt, ghhthth, gpsi1tt, gpsi1bb, gpsi1cc, &
+      gpsi1tautau
   integer, parameter, public :: &
        n0 = 5, nloop = 2 
     real(default), dimension(38), public :: mass, width
     real(default) :: as
-    complex(default) :: gs, igs
+    complex(default), public :: gs, igs
     real(default), public :: e, g, gp, sinthw, costhw, sin2thw, tanthw, e_em
     real(default), public :: qelep, qeup, qedwn, vev, vevp
     real(default), public :: ttop, tbot, tch, ttau, tw
@@ -377,8 +379,8 @@ contains
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !!! Higgs anomaly couplings
     !!! SM LO loop factor (top,bottom,W)
-    ghgaga = alpha / vev / two / PI * &
-         Abs(( four * (fonehalf(ttop) + fonehalf(tch)) &
+    ghgaga = (-1._default) * alpha / vev / 2.0_default / PI * &
+         (( 4.0_default * (fonehalf(ttop) + fonehalf(tch)) &
          + fonehalf(tbot)) / 3.0_default + fonehalf(ttau) + fone(tw)) &
          * sqrt(par%khgaga)
     !!! asymptotic limit:
@@ -386,28 +388,29 @@ contains
     !!!      9.0_default / pi**2
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !!! SM LO loop factor (only top and W)
-    ghgaz = e * e_em / 8.0_default / PI**2 / vev * Abs( &
-          ( - two + &
+    ghgaz = e * e_em / 8.0_default / PI**2 / vev * ( &
+          ( - 2.0_default + &
           16.0_default/3.0_default * sin2thw) * &
           (tri_i1(ttop,ltop) - tri_i2(ttop,ltop)) / costhw & 
           + ( - 1.0_default + &
-          four/3.0_default * sin2thw) & 
+          4.0_default/3.0_default * sin2thw) & 
           * (tri_i1(tbot,lbot) - tri_i2(tbot,lbot)) / costhw &
-           - costhw * ( four * (3.0_default - tanthw**2) * &
-           tri_i2(tw,lw) + ((1 + two/tw) * tanthw**2 - ( &
-           five + two/tw)) * tri_i1(tw,lw)) &
+          + (-1.0_default + 4.0_default * sin2thw) &
+          * (tri_i1(ttau,ltau) - tri_i2(ttau,ltau)) / costhw &
+           - costhw * ( 4.0_default * (3.0_default - tanthw**2) * &
+           tri_i2(tw,lw) + ((1 + 2.0_default/tw) * tanthw**2 - ( &
+           5.0_default + 2.0_default/tw)) * tri_i1(tw,lw)) &
           )/sinthw * sqrt(par%khgaz)
     !!! SM LO order loop factor with 
     !!! N(N)LO K factor = 2.1 (only top)
     !!! Limit of infinite top quark mass:
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !!! We use par%gg because of sqrt(2) above
-    ghgg = par%alphas / vev / 4.0_default / PI * &
-         Abs(fonehalf(ttop) + fonehalf(tbot) + fonehalf(tch)) * &
+    ghgg = (-1._double) * par%alphas / vev / 4.0_default / PI * &
+         (fonehalf(ttop) + fonehalf(tbot) + fonehalf(tch)) * &
          sqrt(par%khgg)
-    !!! ghgg   = (par%gg)**2 / 1two &
-    !!!      / vev / pi**2 * 2.1_default
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !!! ghgg   = par%alphas / 3.0_default &
+    !!!      / vev / pi * 2.1_default
     ghwhwh = - g**2 * vev / two
     ghahah = - gp**2 * vev / two
     ghwhw = t_fac * ghwhwh
@@ -609,10 +612,10 @@ contains
     gpsi0bb = - mass(5)/sqrt(two)/vev * (vev/f_vev - sqrt(two) * spsi0)
     gpsi0cc = - mass(4)/sqrt(two)/vev * (vev/f_vev - sqrt(two) * spsi0)
     gpsi0tautau = -mass(15)/sqrt(two)/vev * (vev/f_vev - sqrt(two) * spsi0)
-    gpsi0tt = imago * mass(6)/sqrt(two)/vev * (vev/f_vev - sqrt(two) * spsi1)
-    gpsi0bb = - imago * mass(5)/sqrt(two)/vev * (vev/f_vev - sqrt(two) * spsi1)
-    gpsi0cc = imago * mass(4)/sqrt(two)/vev * (vev/f_vev - sqrt(two) * spsi1)
-    gpsi0tautau = - imago * mass(15)/sqrt(two)/vev * (vev/f_vev - sqrt(two) * spsi1)
+    gpsi1tt = imago * mass(6)/sqrt(two)/vev * (vev/f_vev - sqrt(two) * spsi1)
+    gpsi1bb = - imago * mass(5)/sqrt(two)/vev * (vev/f_vev - sqrt(two) * spsi1)
+    gpsi1cc = imago * mass(4)/sqrt(two)/vev * (vev/f_vev - sqrt(two) * spsi1)
+    gpsi1tautau = - imago * mass(15)/sqrt(two)/vev * (vev/f_vev - sqrt(two) * spsi1)
     gpsipq2(1) = - mass(6)/sqrt(two)/vev * (vev/f_vev - two * spsip) 
     gpsipq2(2) = - mass(5)/sqrt(two)/vev * (vev/f_vev - two * spsip) 
     gpsipq3(1) = - mass(4)/sqrt(two)/vev * (vev/f_vev - two * spsip) 

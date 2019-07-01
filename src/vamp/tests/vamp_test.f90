@@ -17,7 +17,7 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! This version of the source code of vamp has no comments and
 ! can be hard to understand, modify, and improve.  You should have
-! received a copy of the literate noweb sources of vamp that
+! received a copy of the literate `noweb' sources of vamp that
 ! contain the documentation in full detail.
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 module vamp_test_functions
@@ -25,6 +25,7 @@ module vamp_test_functions
   use constants, only: PI
   use coordinates
   use vamp, only: vamp_grid, vamp_multi_channel
+  use vamp, only: vamp_data_t
   implicit none
   private
   public :: f, j, phi, ihp, w
@@ -32,7 +33,7 @@ module vamp_test_functions
   private :: lorentzian_normalized
   real(kind=default), public :: width
 contains
-   function lorentzian_normalized (x, x0, x1, x2, a) result (f)
+  pure function lorentzian_normalized (x, x0, x1, x2, a) result (f)
     real(kind=default), intent(in) :: x, x0, x1, x2, a
     real(kind=default) :: f
     if (x1 <= x .and. x <= x2) then
@@ -42,7 +43,7 @@ contains
        f = 0
     end if
   end function lorentzian_normalized
-   function lorentzian (x, x0, x1, x2, r0, a) result (f)
+  pure function lorentzian (x, x0, x1, x2, r0, a) result (f)
     real(kind=default), dimension(:), intent(in) :: x, x0, x1, x2
     real(kind=default), intent(in) :: r0, a
     real(kind=default) :: f
@@ -62,9 +63,9 @@ contains
        f = lorentzian_normalized (x(1), x0(1), x1(1), x2(1), a)
     endif
   end function lorentzian
-   function f (x, prc_index, weights, channel, grids) result (f_x)
+  pure function f (x, data, weights, channel, grids) result (f_x)
     real(kind=default), dimension(:), intent(in) :: x
-    integer, intent(in) :: prc_index
+    class(vamp_data_t), intent(in) :: data
     real(kind=default), dimension(:), intent(in), optional :: weights
     integer, intent(in), optional :: channel
     type(vamp_grid), dimension(:), intent(in), optional :: grids
@@ -87,7 +88,7 @@ contains
     end do
     f_x = dot_product (w_i, f_i) / sum (w_i)
   end function f
-   function phi (xi, channel) result (x)
+  pure function phi (xi, channel) result (x)
     real(kind=default), dimension(:), intent(in) :: xi
     integer, intent(in) :: channel
     real(kind=default), dimension(size(xi)) :: x
@@ -112,7 +113,7 @@ contains
        x = 0
     end if
   end function phi
-   function ihp (x, channel) result (xi)
+  pure function ihp (x, channel) result (xi)
     real(kind=default), dimension(:), intent(in) :: x
     integer, intent(in) :: channel
     real(kind=default), dimension(size(x)) :: xi
@@ -139,9 +140,9 @@ contains
        xi = 0
     end if
   end function ihp
-   function j (x, prc_index, channel) result (j_x)
+  pure function j (x, data, channel) result (j_x)
     real(kind=default), dimension(:), intent(in) :: x
-    integer, intent(in) :: prc_index
+    class(vamp_data_t), intent(in) :: data
     integer, intent(in) :: channel
     real(kind=default) :: j_x
     if (channel == 1) then
@@ -154,14 +155,14 @@ contains
        j_x = 0
     end if
   end function j
-   function w (x, prc_index, weights, channel, grids) result (w_x)
+  function w (x, data, weights, channel, grids) result (w_x)
     real(kind=default), dimension(:), intent(in) :: x
-    integer, intent(in) :: prc_index
+    class(vamp_data_t), intent(in) :: data
     real(kind=default), dimension(:), intent(in), optional :: weights
     integer, intent(in), optional :: channel
     type(vamp_grid), dimension(:), intent(in), optional :: grids
     real(kind=default) :: w_x
-    w_x = vamp_multi_channel (f, prc_index, phi, ihp, j, x, weights, channel, grids)
+    w_x = vamp_multi_channel (f, data, phi, ihp, j, x, weights, channel, grids)
   end function w
 end module vamp_test_functions
 module vamp_tests
@@ -240,13 +241,12 @@ contains
     real(kind=default), intent(out) :: integral, standard_dev, chi_squared
     type(vamp_grid) :: gr
     type(vamp_history), dimension(iterations(1)+iterations(2)) :: history
-    integer, parameter :: PRC_INDEX = 1
     call vamp_create_history (history)
     call vamp_create_grid (gr, region, samples(1))
-    call vamp_sample_grid (rng, gr, f, PRC_INDEX, iterations(1), history = history)
+    call vamp_sample_grid (rng, gr, f, NO_DATA, iterations(1), history = history)
     call vamp_discard_integral (gr, samples(2))
     call vamp_sample_grid &
-         (rng, gr, f, PRC_INDEX, iterations(2), &
+         (rng, gr, f, NO_DATA, iterations(2), &
           integral, standard_dev, chi_squared, &
           history = history(iterations(1)+1:))
     call vamp_write_grid (gr, "vamp_test.grid")
@@ -267,17 +267,16 @@ contains
          history
     type(vamp_history), dimension(size(history),size(weights)) :: histories
     integer :: it, nit
-    integer, parameter :: PRC_INDEX = 1
     nit = size (powers)
     call vamp_create_history (history)
     call vamp_create_history (histories)
     call vamp_create_grids (grs, region, samples(1), weights)
-    call vamp_sample_grids (rng, grs, w, PRC_INDEX, iterations(1) - 1, &
+    call vamp_sample_grids (rng, grs, w, NO_DATA, iterations(1) - 1, &
                             history = history, histories = histories)
     call vamp_print_history (history, "multi")
     call vamp_print_history (histories, "multi")
     do it = 1, nit
-       call vamp_sample_grids (rng, grs, w, PRC_INDEX, 1, &
+       call vamp_sample_grids (rng, grs, w, NO_DATA, 1, &
                                history = history(iterations(1)+it-1:), &
                                histories = histories(iterations(1)+it-1:,:))
        call vamp_print_history (history(iterations(1)+it-1:), "multi")
@@ -286,7 +285,7 @@ contains
     end do
     call vamp_discard_integrals (grs, samples(2))
     call vamp_sample_grids &
-         (rng, grs, w, PRC_INDEX, iterations(2), &
+         (rng, grs, w, NO_DATA, iterations(2), &
           integral, standard_dev, chi_squared, &
           history = history(iterations(1)+nit:), &
           histories = histories(iterations(1)+nit:,:))
@@ -330,7 +329,7 @@ program vamp_test
   use vamp_test_functions !NODEP!
   use vamp_tests !NODEP!
   implicit none
-  integer :: start_ticks
+  integer :: start_ticks, status
   integer, dimension(2) :: iterations, samples
   real(kind=default), dimension(2,5) :: region
   real(kind=default), dimension(5) :: weight_vector
@@ -342,7 +341,12 @@ program vamp_test
   integer :: failures
   failures = 0
   call tao_random_create (rng, 0)
-  call system_clock (start_ticks)
+  call get_environment_variable (name="VAMP_RANDOM_TESTS", status=status)
+  if (status == 0) then
+     call system_clock (start_ticks)
+  else
+     start_ticks = 42
+  end if
   call tao_random_seed (rng, start_ticks)
   iterations = (/ 4, 3 /)
   samples = (/ 20000, 200000 /)

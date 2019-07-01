@@ -1,0 +1,29 @@
+# $Id: structure_1.sin 4873 2013-11-26 19:52:40Z jr_reuter $
+# SINDARIN input for WHIZARD self-test
+
+?logging = true
+int i = 0
+int a = 0
+if a < 1 then
+  i = 1
+elsif a == 1 then
+  i = 2
+else
+  i = 3
+endif
+a = 1
+if a < 1 then
+  i = 1
+elsif a == 1 then
+  i = 2
+else
+  i = 3
+endif
+a = 2
+if a < 1 then
+  i = 1
+elsif a == 1 then
+  i = 2
+else
+  i = 3
+endif

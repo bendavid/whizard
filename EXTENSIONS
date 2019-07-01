@@ -43,3 +43,7 @@ GET_ENVIRONMENT_VARIABLE
 * Statements
 
 FLUSH
+
+* Special functions
+
+ATANH

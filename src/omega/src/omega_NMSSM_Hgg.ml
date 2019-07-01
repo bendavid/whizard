@@ -1,11 +1,12 @@
 (* $Id: omega_NMSSM.ml 1340 2009-12-02 23:45:04Z ohl $
 
-   Copyright (C) 1999-2012 by
+   Copyright (C) 1999-2014 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
        Juergen Reuter <juergen.reuter@desy.de>
-       Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+       with contributions from
+       Christian Speckner <cnspeckn@googlemail.com>
        and Felix Braam (parts of this file only)
 
    WHIZARD is free software; you can redistribute it and/or modify it

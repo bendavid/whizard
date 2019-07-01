@@ -1,11 +1,12 @@
-(* $Id: omega_Zprime.ml 3670 2012-01-21 19:33:07Z jr_reuter $
+(* $Id: omega_Zprime.ml 4926 2013-12-04 12:35:06Z jr_reuter $
 
-   Copyright (C) 1999-2012 by
+   Copyright (C) 1999-2014 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-       Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
-       Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+       Juergen Reuter <juergen.reuter@desy.de>
+       with contributions from
+       Christian Speckner <cnspeckn@googlemail.com>
 
    WHIZARD is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by
@@ -22,8 +23,8 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 let rcs_file = RCS.parse "omega_Zprime" ["Standard Model with Additional Vectors"]
-    { RCS.revision = "$Revision: 3670 $";
-      RCS.date = "$Date: 2012-01-21 20:33:07 +0100 (Sat, 21 Jan 2012) $";
+    { RCS.revision = "$Revision: 4926 $";
+      RCS.date = "$Date: 2013-12-04 13:35:06 +0100 (Wed, 04 Dec 2013) $";
       RCS.author = "$Author: jr_reuter $";
       RCS.source
         = "$Source: /home/sources/ohl/ml/omega/src/omega_Zprime.ml,v $" }
@@ -279,6 +280,13 @@ module Zprime (Flags : SM_flags) =
       | G_Htt | G_Hbb | G_Hcc | G_Htautau | G_H3 | G_H4
       | Gs | I_Gs | G2 
       | Mass of flavor | Width of flavor
+
+(* Two integer counters for the QCD and EW order of the couplings. *)
+
+    type orders = int * int
+
+    let orders = function 
+      | _ -> (0,0)
 
     let input_parameters =
       []

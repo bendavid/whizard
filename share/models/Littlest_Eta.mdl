@@ -211,15 +211,23 @@ particle PROTON 2212
   name p "p+"
   anti pbar "p-"
 
+# Beam remnants for proton colliders
 particle HADRON_REMNANT 90
-
+  name hr
+  tex_name "had_r"
 particle HADRON_REMNANT_SINGLET 91
-
+  name hr1
+  tex_name "had_r^{(1)}"
 particle HADRON_REMNANT_TRIPLET 92
   color 3
-
+  name hr3
+  tex_name "had_r^{(3)}"
+  anti hr3bar
+  tex_name "had_r^{(\bar 3)}"
 particle HADRON_REMNANT_OCTET 93
   color 8
+  name hr8
+  tex_name "had_r^{(8)}"
 
 ########################################################################
 # Vertices of the Standard model
@@ -330,7 +338,8 @@ vertex e3 N3 WHp
 vertex E1 n1 WHm
 vertex E2 n2 WHm
 vertex E3 n3 WHm
-
+vertex TH b WHp
+vertex th B WHm
 
 # Yukawa (neutral)
 ### keeping only 3rd generation for the moment

@@ -1,11 +1,13 @@
-! WHIZARD 2.1.1 September 18 2012
+! WHIZARD 2.2.0 May 18 2014
 ! 
-! Copyright (C) 1999-2012 by 
+! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
-!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
+!     
+!     with contributions from
+!     Christian Speckner <cnspeckn@googlemail.com> 
+!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -602,25 +604,19 @@ contains
   function quantum_numbers_get_max_color_value0 (qn) result (cmax)
     integer :: cmax
     type(quantum_numbers_t), intent(in) :: qn
-    cmax = color_get_max_value0 (qn%c)
-    !!! ifort 11.1 v5 demands this 
-    !!! cmax = color_get_max_value (qn%c)
+    cmax = color_get_max_value (qn%c)
   end function quantum_numbers_get_max_color_value0
     
   function quantum_numbers_get_max_color_value1 (qn) result (cmax)
     integer :: cmax
     type(quantum_numbers_t), dimension(:), intent(in) :: qn
-    cmax = color_get_max_value1 (qn%c)
-    !!! ifort 11.1 v5 demands this
-    !!! cmax = color_get_max_value (qn%c)
+    cmax = color_get_max_value (qn%c)
   end function quantum_numbers_get_max_color_value1
     
   function quantum_numbers_get_max_color_value2 (qn) result (cmax)
     integer :: cmax
     type(quantum_numbers_t), dimension(:,:), intent(in) :: qn
-    cmax = color_get_max_value2 (qn%c)
-    !!! ifort 11.1 v5 demands this
-    !!! cmax = color_get_max_value (qn%c)
+    cmax = color_get_max_value (qn%c)
   end function quantum_numbers_get_max_color_value2
     
   elemental subroutine quantum_numbers_add_color_offset (qn, offset)

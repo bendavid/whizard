@@ -1,0 +1,20 @@
+# $Id: defaultcuts.sin 4878 2013-11-26 19:52:40Z jr_reuter $
+# SINDARIN input for WHIZARD self test
+
+include ("default_cuts.sin")
+
+process defaultcuts_e4 = e1, E1 => e1, E1
+compile
+
+?logging = true
+?openmp_logging = false
+?vis_history = false
+?integration_timer = false
+
+seed = 0
+
+!!! Tests should be run single-threaded 
+openmp_num_threads = 1
+
+sqrts = 200
+integrate (defaultcuts_e4) { iterations = 5:1000, 3:1000 }

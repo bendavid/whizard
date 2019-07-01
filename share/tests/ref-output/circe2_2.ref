@@ -1,0 +1,120 @@
+?openmp_logging = false
+?vis_history = false
+?integration_timer = false
+$method = "omega"
+| Process library 'circe2_2_lib': recorded process 'circe2_2_p1'
+| Process library 'circe2_2_lib': recorded process 'circe2_2_p2'
+seed = 0
+| Process library 'circe2_2_lib': compiling ...
+| Process library 'circe2_2_lib': writing makefile
+| Process library 'circe2_2_lib': removing old files
+| Process library 'circe2_2_lib': writing driver
+| Process library 'circe2_2_lib': creating source code
+| Process library 'circe2_2_lib': compiling sources
+| Process library 'circe2_2_lib': linking
+| Process library 'circe2_2_lib': loading
+| Process library 'circe2_2_lib': ... success.
+$phs_method = "wood"
+$integration_method = "vamp"
+sqrts =  5.000000000000E+02
+openmp_num_threads = 1
+[user variable] n = 1000
+seed = 0
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 0
+| Initializing integration for process circe2_2_p1:
+| ------------------------------------------------------------------------
+| Process [scattering]: 'circe2_2_p1'
+|   Library name  = 'circe2_2_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'circe2_2_p1_i1':   e-, e+ => m-, m+ [omega]
+| ------------------------------------------------------------------------
+| Beam structure: [any particles]
+| Beam data (collision):
+|   e-  (mass = 5.1100000E-04 GeV)
+|   e+  (mass = 5.1100000E-04 GeV)
+|   sqrts = 5.000000000000E+02 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'circe2_2_p1_i1.phs'
+| Phase space: 1 channels, 2 dimensions
+| Phase space: found 1 channel, collected in 1 grove.
+| Phase space: Using 1 equivalence between channels.
+| Phase space: wood
+| Applying user-defined cuts.
+| Starting integration for process 'circe2_2_p1'
+| Integrate: iterations = 3:1000:"g", 3:1000
+| Integrator: 1 chains, 1 channels, 2 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 1000 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1        800  3.4721369E+02  3.08E-01    0.09    0.03*  66.65
+   2        800  3.4793298E+02  2.41E-01    0.07    0.02*  60.65
+   3        800  3.4792475E+02  2.44E-01    0.07    0.02   79.69
+|-----------------------------------------------------------------------------|
+   3       2400  3.4775909E+02  1.50E-01    0.04    0.02   79.69    2.06   3
+|-----------------------------------------------------------------------------|
+   4        800  3.4755512E+02  2.48E-01    0.07    0.02   79.61
+   5        800  3.4721533E+02  2.48E-01    0.07    0.02   79.53
+   6        800  3.4728703E+02  2.46E-01    0.07    0.02*  79.55
+|-----------------------------------------------------------------------------|
+   6       2400  3.4735199E+02  1.43E-01    0.04    0.02   79.55    0.52   3
+|=============================================================================|
+$circe2_file = "ilc_ee_500_polavg.circe"
+$circe2_design = "ILC"
+?circe2_polarized = false
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 1
+| Initializing integration for process circe2_2_p2:
+| ------------------------------------------------------------------------
+| Process [scattering]: 'circe2_2_p2'
+|   Library name  = 'circe2_2_lib'
+|   Process index = 2
+|   Process components:
+|     1: 'circe2_2_p2_i1':   e-, e+ => m-, m+ [omega]
+| ------------------------------------------------------------------------
+| Beam structure: e-, e+ => circe2
+| Beam data (collision):
+|   e-  (mass = 5.1100000E-04 GeV)
+|   e+  (mass = 5.1100000E-04 GeV)
+|   sqrts = 5.000000000000E+02 GeV
+| Circe2: activating generator mode
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 2
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'circe2_2_p2_i1.phs'
+| Phase space: 1 channels, 2 dimensions
+| Phase space: found 1 channel, collected in 1 grove.
+| Phase space: Using 1 equivalence between channels.
+| Phase space: wood
+| Beam structure: circe2
+| Beam structure: 1 channels, 0 dimensions
+| Applying user-defined cuts.
+| Starting integration for process 'circe2_2_p2'
+| Integrate: iterations = 3:1000:"g", 3:1000
+| Integrator: 1 chains, 1 channels, 2 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 1000 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1        800  3.6349379E+02  1.15E+00    0.32    0.09*  45.14
+   2        800  3.6533747E+02  1.21E+00    0.33    0.09   55.27
+   3        800  3.6474862E+02  1.17E+00    0.32    0.09*  49.01
+|-----------------------------------------------------------------------------|
+   3       2400  3.6449523E+02  6.80E-01    0.19    0.09   49.01    0.65   3
+|-----------------------------------------------------------------------------|
+   4        800  3.6332223E+02  1.12E+00    0.31    0.09*  48.82
+   5        800  3.6498549E+02  1.09E+00    0.30    0.08*  49.04
+   6        800  3.6771589E+02  1.31E+00    0.36    0.10   49.41
+|-----------------------------------------------------------------------------|
+   6       2400  3.6510401E+02  6.71E-01    0.18    0.09   49.41    3.26   3
+|=============================================================================|
+| WHIZARD run finished.
+|=============================================================================|

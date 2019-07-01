@@ -6,7 +6,7 @@ To: hep-ph@xxx.lanl.gov
 Subject: put
 
 \\
-Title: CIRCE Version 2.0:
+Title: CIRCE2:
   Beam Spectra for Simulating Linear Collider and Photon Collider Physics
 Author: Thorsten Ohl (Uni Wuerzburg)
 Comments: ?? pages, LaTeX (using amsmath.sty)
@@ -156,7 +156,7 @@ Report-no: WUE-ITP-2002-006
 %END IMAGE
 \bibliographystyle{prsty}%%%{unsrt}%%%{physics}
 \title{%
-  \Kirke/ Version \Version/:\\
+  \KirkeTwo/:\\
   Beam Spectra for Simulating Linear Collider and Photon Collider Physics%
     \thanks{%
        Supported by Bundesministerium f\"ur Bildung,
@@ -190,7 +190,7 @@ Report-no: WUE-ITP-2002-006
 \begin{raggedright}
 \begin{itemize}
   \item \textbf{Title of program:}
-    \Kirke/, Version \Version/ (\Date/)
+    \KirkeTwo/ (\Date/)
 %CPC%  \item \textbf{Catalogue number:}
 %CPC%    ????
   \item \textbf{Program obtainable}
@@ -248,12 +248,12 @@ results of such simulations have to be available as input for physics
 studies, since these spectra affect the sensitivity of experiments for
 the search for deviations from the standard model and to new physics.
 
-\Kirke/ Version~1.x (\KirkeOne/ for short)~\cite{Ohl:1996:Circe} has
+\KirkeOne/~\cite{Ohl:1996:Circe} has
 become a de-facto standard for inclusion of realistic energy spectra
 of TeV-scale $\mathrm{e}^+\mathrm{e}^-$ LCs in physics calculations
 and event generators.  It is supported by the major multi purpose
 event generators~\cite{PYTHIA,HERWIG} and has been used in many
-dedicated analysises.  \Kirke/ provides a fast, concise and convenient
+dedicated analysises.  \KirkeTwo/ provides a fast, concise and convenient
 parameterization of the results of such simulations.
 
 \KirkeOne/ assumed strictly factorized distributions with a very
@@ -271,7 +271,7 @@ of accelerator designs since the release of \KirkeOne/ has made the
 maintenance of parameterizations as FORTRAN77 \texttt{BLOCK DATA}
 unwieldy.
 
-\Kirke/ Version 2.0 (\KirkeTwo/ for short) successfully addresses
+\KirkeTwo/ successfully addresses
 these shortcomings of \KirkeOne/, as can be seen in
 figure~\ref{fig:z}.  It should be noted that the large~$z$ region and
 the blown-up $z\to0$~region are taken from the \emph{same} pair of datasets.  In

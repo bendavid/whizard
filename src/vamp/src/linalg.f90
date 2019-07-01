@@ -17,7 +17,7 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! This version of the source code of vamp has no comments and
 ! can be hard to understand, modify, and improve.  You should have
-! received a copy of the literate noweb sources of vamp that
+! received a copy of the literate `noweb' sources of vamp that
 ! contain the documentation in full detail.
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 module linalg
@@ -33,7 +33,7 @@ module linalg
   character(len=*), public, parameter :: LINALG_RCS_ID = &
        "$Id: linalg.nw 314 2010-04-17 20:32:33Z ohl $"
 contains
-   subroutine lu_decompose (a, pivots, eps, l, u)
+  pure subroutine lu_decompose (a, pivots, eps, l, u)
     real(kind=default), dimension(:,:), intent(inout) :: a
     integer, dimension(:), intent(out), optional :: pivots
     real(kind=default), intent(out), optional :: eps
@@ -93,7 +93,7 @@ contains
        end do
     end if
   end subroutine lu_decompose
-   subroutine determinant (a, det)
+  pure subroutine determinant (a, det)
     real(kind=default), dimension(:,:), intent(in) :: a
     real(kind=default), intent(out) :: det
     real(kind=default), dimension(size(a,dim=1),size(a,dim=2)) :: lu
@@ -104,7 +104,7 @@ contains
        det = det * lu(i,i)
     end do
   end subroutine determinant
-   subroutine diagonalize_real_symmetric (a, eval, evec, num_rot)
+  pure subroutine diagonalize_real_symmetric (a, eval, evec, num_rot)
     real(kind=default), dimension(:,:), intent(in) :: a
     real(kind=default), dimension(:), intent(out) :: eval
     real(kind=default), dimension(:,:), intent(out) :: evec
@@ -174,7 +174,7 @@ contains
     end if
   !!! print *, "linalg::diagonalize_real_symmetric: exceeded sweep count"
   end subroutine diagonalize_real_symmetric
-   subroutine jacobi_rotation (s, tau, vp, vq)
+  pure subroutine jacobi_rotation (s, tau, vp, vq)
     real(kind=default), intent(in) :: s, tau
     real(kind=default), dimension(:), intent(inout) :: vp, vq
     real(kind=default), dimension(size(vp)) :: vp_tmp
@@ -182,7 +182,7 @@ contains
     vp = vp - s * (vq     + tau * vp)
     vq = vq + s * (vp_tmp - tau * vq)
   end subroutine jacobi_rotation
-   subroutine unit (u)
+  pure subroutine unit (u)
     real(kind=default), dimension(:,:), intent(out) :: u
     integer :: i
     u = 0.0
@@ -190,7 +190,7 @@ contains
        u(i,i) = 1.0
     end do
   end subroutine unit
-   function diag (a) result (d)
+  pure function diag (a) result (d)
     real(kind=default), dimension(:,:), intent(in) :: a
     real(kind=default), dimension(min(size(a,dim=1),size(a,dim=2))) :: d
     integer :: i

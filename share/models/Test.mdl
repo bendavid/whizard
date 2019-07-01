@@ -6,6 +6,7 @@ model "Test"
 ### DO NOT CHANGE THE ORDER OF THESE PARAMETERS
 parameter  gy	= 1  	    # Yukawa coupling
 parameter  ms	= 125 GeV   # Scalar mass
+parameter  ff   = 1.5       # Factor mf / ms (for external module)
 
 external   mf	      	    # Fermion mass computed by external module
 
@@ -28,3 +29,4 @@ particle FERMION 6
 # Vertices
 
 vertex F f s
+vertex s s s

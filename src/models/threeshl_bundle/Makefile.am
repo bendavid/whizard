@@ -2,11 +2,12 @@
 ##
 ## Process this file with automake to produce Makefile.in
 #
-# Copyright (C) 1999-2012 by 
+# Copyright (C) 1999-2014 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
-#     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+#     with contributions from
+#     Christian Speckner <cnspeckn@googlemail.com>
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by 
@@ -34,7 +35,7 @@ EXTRA_DIST = threeshl_bundle.f90 threeshl_bundle_lt.f90
 
 libthreeshl_bundle_la_SOURCES = threeshl_bundle.f90
 
-## Unfortunately, the NAG and intel compilers requires these to be happy.
+## Unfortunately, the NAG and intel compilers require these to be happy.
 execmoddir = $(pkglibdir)/mod/models
 nodist_execmod_HEADERS = \
 	tdefs.$(FC_MODULE_EXT) \

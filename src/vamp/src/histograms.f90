@@ -17,7 +17,7 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! This version of the source code of vamp has no comments and
 ! can be hard to understand, modify, and improve.  You should have
-! received a copy of the literate noweb sources of vamp that
+! received a copy of the literate `noweb' sources of vamp that
 ! contain the documentation in full detail.
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 module histograms
@@ -71,7 +71,7 @@ module histograms
   character(len=*), public, parameter :: HISTOGRAMS_RCS_ID = &
        "$Id: histograms.nw 314 2010-04-17 20:32:33Z ohl $"
 contains
-   subroutine create_histogram1 (h, x_min, x_max, nb)
+  elemental subroutine create_histogram1 (h, x_min, x_max, nb)
     type(histogram), intent(out) :: h
     real(kind=default), intent(in) :: x_min, x_max
     integer, intent(in), optional :: nb
@@ -88,7 +88,7 @@ contains
     allocate (h%bins3(0:h%n_bins+1))
     h%bins3 = 0
   end subroutine create_histogram1
-   subroutine create_histogram2 (h, x_min, x_max, nb)
+  pure subroutine create_histogram2 (h, x_min, x_max, nb)
     type(histogram2), intent(out) :: h
     real(kind=default), dimension(:), intent(in) :: x_min, x_max
     integer, intent(in), dimension(:), optional :: nb
@@ -104,7 +104,7 @@ contains
     h%bins = 0
     h%bins2 = 0
   end subroutine create_histogram2
-   subroutine fill_histogram1 (h, x, weight, excess)
+  elemental subroutine fill_histogram1 (h, x, weight, excess)
     type(histogram), intent(inout) :: h
     real(kind=default), intent(in) :: x
     real(kind=default), intent(in), optional :: weight
@@ -127,13 +127,13 @@ contains
     end if
     if (present (excess)) h%bins3(i) = h%bins3(i) + excess
   end subroutine fill_histogram1
-   subroutine fill_histogram2s (h, x1, x2, weight)
+  elemental subroutine fill_histogram2s (h, x1, x2, weight)
     type(histogram2), intent(inout) :: h
     real(kind=default), intent(in) :: x1, x2
     real(kind=default), intent(in), optional :: weight
     call fill_histogram2v (h, (/ x1, x2 /), weight)
   end subroutine fill_histogram2s
-   subroutine fill_histogram2v (h, x, weight)
+  pure subroutine fill_histogram2v (h, x, weight)
     type(histogram2), intent(inout) :: h
     real(kind=default), dimension(:), intent(in) :: x
     real(kind=default), intent(in), optional :: weight
@@ -148,12 +148,12 @@ contains
        h%bins2(i(1),i(2)) = h%bins2(i(1),i(2)) + 1
     end if
   end subroutine fill_histogram2v
-   subroutine delete_histogram1 (h)
+  elemental subroutine delete_histogram1 (h)
     type(histogram), intent(inout) :: h
     deallocate (h%bins, h%bins2)
     deallocate (h%bins3)
   end subroutine delete_histogram1
-   subroutine delete_histogram2 (h)
+  elemental subroutine delete_histogram2 (h)
     type(histogram2), intent(inout) :: h
     deallocate (h%bins, h%bins2)
   end subroutine delete_histogram2
@@ -248,13 +248,13 @@ contains
     end if
   1 format (1x,4(G16.9,2x))
   end subroutine write_histogram1_unit
-   function midpoint1 (h, bin) result (x)
+  elemental function midpoint1 (h, bin) result (x)
     type(histogram), intent(in) :: h
     integer, intent(in) :: bin
     real(kind=default) :: x
     x = h%x_min + (h%x_max - h%x_min) * (bin - 0.5) / h%n_bins
   end function midpoint1
-   function midpoint2 (h, bin, d) result (x)
+  elemental function midpoint2 (h, bin, d) result (x)
     type(histogram2), intent(in) :: h
     integer, intent(in) :: bin, d
     real(kind=default) :: x

@@ -1,11 +1,13 @@
-! WHIZARD 2.1.1 September 18 2012
+! WHIZARD 2.2.0 May 18 2014
 ! 
-! Copyright (C) 1999-2012 by 
+! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
-!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
+!     
+!     with contributions from
+!     Christian Speckner <cnspeckn@googlemail.com> 
+!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -30,8 +32,10 @@ module hepmc_interface
   use iso_c_binding !NODEP!
   use kinds, only: default !NODEP!
   use iso_varying_string, string_t => varying_string !NODEP!
+  use file_utils !NODEP!
   use constants !NODEP!
   use lorentz !NODEP!
+  use unit_tests
   use models
   use flavors
   use colors
@@ -241,6 +245,7 @@ module hepmc_interface
   interface hepmc_polarization_init
      module procedure hepmc_polarization_init_pol
      module procedure hepmc_polarization_init_hel
+     module procedure hepmc_polarization_init_int
   end interface
   interface
      subroutine polarization_delete (pol_obj) bind(C)
@@ -276,6 +281,10 @@ module hepmc_interface
        integer(c_int), value :: code_index, code
      end subroutine gen_particle_set_flow
   end interface
+  interface hepmc_particle_set_color
+     module procedure hepmc_particle_set_color_col
+     module procedure hepmc_particle_set_color_int
+  end interface hepmc_particle_set_color
   interface
      subroutine gen_particle_set_polarization (prt_obj, pol_obj) bind(C)
        import
@@ -285,6 +294,7 @@ module hepmc_interface
   interface hepmc_particle_set_polarization
      module procedure hepmc_particle_set_polarization_pol
      module procedure hepmc_particle_set_polarization_hel
+     module procedure hepmc_particle_set_polarization_int
   end interface
   interface
      function gen_particle_barcode (prt_obj) result (barcode) bind(C)
@@ -757,6 +767,19 @@ contains
     end if
   end subroutine hepmc_polarization_init_hel
 
+  subroutine hepmc_polarization_init_int (hpol, hel)
+    type(hepmc_polarization_t), intent(out) :: hpol
+    integer, intent(in) :: hel
+    select case (hel)
+    case (1:)
+       hpol%polarized = .true.
+       hpol%obj = new_polarization (0._c_double, 0._c_double)
+    case (:-1)
+       hpol%polarized = .true.
+       hpol%obj = new_polarization (real (pi, c_double), 0._c_double)
+    end select
+  end subroutine hepmc_polarization_init_int
+
   subroutine hepmc_polarization_final (hpol)
     type(hepmc_polarization_t), intent(inout) :: hpol
     if (hpol%polarized)  call polarization_delete (hpol%obj)
@@ -793,7 +816,7 @@ contains
     call hepmc_four_vector_final (pp)
   end subroutine hepmc_particle_init
 
-  subroutine hepmc_particle_set_color (prt, col)
+  subroutine hepmc_particle_set_color_col (prt, col)
     type(hepmc_particle_t), intent(inout) :: prt
     type(color_t), intent(in) :: col
     integer(c_int) :: c
@@ -801,7 +824,17 @@ contains
     if (c /= 0)  call gen_particle_set_flow (prt%obj, 1_c_int, c)
     c = color_get_acl (col)
     if (c /= 0)  call gen_particle_set_flow (prt%obj, 2_c_int, c)
-  end subroutine hepmc_particle_set_color
+  end subroutine hepmc_particle_set_color_col
+
+  subroutine hepmc_particle_set_color_int (prt, col)
+    type(hepmc_particle_t), intent(inout) :: prt
+    integer, dimension(2), intent(in) :: col
+    integer(c_int) :: c
+    c = col(1)
+    if (c /= 0)  call gen_particle_set_flow (prt%obj, 1_c_int, c)
+    c = col(2)
+    if (c /= 0)  call gen_particle_set_flow (prt%obj, 2_c_int, c)
+  end subroutine hepmc_particle_set_color_int
 
   subroutine hepmc_particle_set_polarization_pol (prt, pol)
     type(hepmc_particle_t), intent(inout) :: prt
@@ -820,6 +853,15 @@ contains
     if (hpol%polarized)  call gen_particle_set_polarization (prt%obj, hpol%obj)
     call hepmc_polarization_final (hpol)
   end subroutine hepmc_particle_set_polarization_hel
+
+  subroutine hepmc_particle_set_polarization_int (prt, hel)
+    type(hepmc_particle_t), intent(inout) :: prt
+    integer, intent(in) :: hel
+    type(hepmc_polarization_t) :: hpol
+    call hepmc_polarization_init (hpol, hel)
+    if (hpol%polarized)  call gen_particle_set_polarization (prt%obj, hpol%obj)
+    call hepmc_polarization_final (hpol)
+  end subroutine hepmc_particle_set_polarization_int
 
   function hepmc_particle_get_barcode (prt) result (barcode)
     integer :: barcode
@@ -1263,7 +1305,18 @@ contains
     ok = io_gen_event_read_event (iostream%obj, evt%obj)
   end subroutine hepmc_iostream_read_event
 
-  subroutine hepmc_test
+  subroutine hepmc_test (u, results)
+    integer, intent(in) :: u
+    type(test_results_t), intent(inout) :: results
+    call test (hepmc_interface_1, "hepmc_interface_1", &
+         "check HepMC interface", &
+         u, results)
+  end subroutine hepmc_test
+  
+
+  subroutine hepmc_interface_1 (u)
+    integer, intent(in) :: u
+    integer :: u_file, iostat
     type(hepmc_event_t) :: evt
     type(hepmc_vertex_t) :: v1, v2, v3, v4
     type(hepmc_particle_t) :: prt1, prt2, prt3, prt4, prt5, prt6, prt7, prt8
@@ -1272,7 +1325,15 @@ contains
     type(color_t) :: col
     type(polarization_t) :: pol
     type(particle_data_t), target :: photon_data
+    character(80) :: buffer    
 
+    write (u, "(A)")  "* Test output: HepMC interface"
+    write (u, "(A)")  "*   Purpose: test HepMC interface"
+    write (u, "(A)")      
+    
+    write (u, "(A)")  "* Initialization"
+    write (u, "(A)")
+    
     ! Initialize a photon flavor object and some polarization
     call particle_data_init (photon_data, var_str ("PHOTON"), 22)
     call particle_data_set (photon_data, spin_type=VECTOR)
@@ -1284,6 +1345,9 @@ contains
     ! Event initialization
     call hepmc_event_init (evt, 20, 1)
 
+    write (u, "(A)")  "* p -> q splitting"
+    write (u, "(A)")
+            
     ! $p\to q$ splittings
     call hepmc_vertex_init (v1)
     call hepmc_event_add_vertex (evt, v1)
@@ -1300,16 +1364,19 @@ contains
     call particle_init (prt3, &
          .750_default, -1.569_default, 32.191_default, 32.238_default, &
          1, 3)
-    call color_init_from_array (col, (/501/))
+    call color_init_from_array (col, [501])
     call hepmc_particle_set_color (prt3, col)
     call hepmc_vertex_add_particle_out (v1, prt3)
     call particle_init (prt4, &
          -3.047_default, -19._default, -54.629_default, 57.920_default, &
          -2, 3)
-    call color_init_from_array (col, (/-501/))
+    call color_init_from_array (col, [-501])
     call hepmc_particle_set_color (prt4, col)
     call hepmc_vertex_add_particle_out (v2, prt4)
-    
+
+    write (u, "(A)")  "* Hard interaction"
+    write (u, "(A)")
+        
     ! Hard interaction
     call hepmc_vertex_init (v3)
     call hepmc_event_add_vertex (evt, v3)
@@ -1342,23 +1409,48 @@ contains
     
     ! Event output
     call hepmc_event_print (evt)
-    print *, "Writing to file 'hepmc_test.hepmc.dat'"
-    call hepmc_iostream_open_out (iostream , var_str ("hepmc_test.hepmc.dat"))
+    write (u, "(A)")  "Writing to file 'hepmc_test.hepmc'"
+    write (u, "(A)")
+    
+    call hepmc_iostream_open_out (iostream , var_str ("hepmc_test.hepmc"))
     call hepmc_iostream_write_event (iostream, evt)
     call hepmc_iostream_close (iostream)
-    print *, "Write completed"
 
+    write (u, "(A)")  "Writing completed"
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* File contents:"
+    write (u, "(A)")
+
+    u_file = free_unit ()
+    open (u_file, file = "hepmc_test.hepmc", &
+         action = "read", status = "old")
+    do
+       read (u_file, "(A)", iostat = iostat)  buffer
+       if (buffer(1:14) == "HepMC::Version")  buffer = "[...]"
+       if (iostat /= 0)  exit
+       write (u, "(A)") trim (buffer)
+    end do
+    close (u_file)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+    write (u, "(A)")
+        
     ! Wrapup
     call polarization_final (pol)
     call hepmc_event_final (evt)
 
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: hepmc_interface_1"        
+    
   contains
 
     subroutine vertex_init_pos (v, x, y, z, t)
       type(hepmc_vertex_t), intent(out) :: v
       real(default), intent(in) :: x, y, z, t
       type(vector4_t) :: xx
-      xx = vector4_moving (t, vector3_moving ((/x, y, z/)))
+      xx = vector4_moving (t, vector3_moving ([x, y, z]))
       call hepmc_vertex_init (v, xx)
     end subroutine vertex_init_pos
 
@@ -1367,11 +1459,11 @@ contains
       real(default), intent(in) :: px, py, pz, E
       integer, intent(in) :: pdg, status
       type(vector4_t) :: p
-      p = vector4_moving (E, vector3_moving ((/px, py, pz/)))
+      p = vector4_moving (E, vector3_moving ([px, py, pz]))
       call hepmc_particle_init (prt, p, pdg, status)
     end subroutine particle_init
 
-  end subroutine hepmc_test
+  end subroutine hepmc_interface_1
 
 
 end module hepmc_interface

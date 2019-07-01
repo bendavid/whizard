@@ -1,10 +1,10 @@
 ! $Id: external_Test.f90 2364 2010-04-20 12:47:06Z cnspeckn $
 !
-! Copyright (C) 1999-2012 by 
+! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+!     Christian Speckner <cnspeckn@googlemail.com>
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -29,11 +29,12 @@ subroutine init_external_parameters (par) bind (C)
   use iso_c_binding
   use kinds
   real(c_default_float), dimension(*), intent(inout) :: par
-  real(default) :: ms, mf
+  real(default) :: ms, mf, ff
   ! Take the parameter(s) that are needed
   ms = par(2)
+  ff = par(3)
   ! Compute the external parameter(s)
-  mf = 1.5_default * ms
+  mf = ff * ms
   ! Put the results back into the parameter array
-  par(3) = mf
+  par(4) = mf
 end subroutine init_external_parameters

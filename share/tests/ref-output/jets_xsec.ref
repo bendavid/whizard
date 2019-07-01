@@ -1,0 +1,193 @@
+?openmp_logging = false
+?vis_history = false
+?integration_timer = false
+?pacify = true
+[user variable] j = PDG(2, -2, 1, -1, 21)
+| Process library 'jets_xsec_lib': recorded process 'jets_jj'
+| Process library 'jets_xsec_lib': recorded process 'jets_uu'
+| Process library 'jets_xsec_lib': recorded process 'jets_dd'
+| Process library 'jets_xsec_lib': recorded process 'jets_gg'
+| Process library 'jets_xsec_lib': compiling ...
+| Process library 'jets_xsec_lib': writing makefile
+| Process library 'jets_xsec_lib': removing old files
+| Process library 'jets_xsec_lib': writing driver
+| Process library 'jets_xsec_lib': creating source code
+| Process library 'jets_xsec_lib': compiling sources
+| Process library 'jets_xsec_lib': linking
+| Process library 'jets_xsec_lib': loading
+| Process library 'jets_xsec_lib': ... success.
+seed = 0
+sqrts =  5.0000000E+02
+openmp_num_threads = 1
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 0
+| Initializing integration for process jets_jj:
+| ------------------------------------------------------------------------
+| Process [scattering]: 'jets_jj'
+|   Library name  = 'jets_xsec_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'jets_jj_i1':   ubar, u => u:ubar:d:dbar:gl, u:ubar:d:dbar:gl [omega]
+| ------------------------------------------------------------------------
+| Beam structure: ubar, u
+| Beam data (collision):
+|   ubar  (mass = 0.0000000E+00 GeV)
+|   u     (mass = 0.0000000E+00 GeV)
+|   sqrts = 5.000000000000E+02 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'jets_jj_i1.phs'
+| Phase space: 6 channels, 2 dimensions
+| Phase space: found 6 channels, collected in 4 groves.
+| Phase space: Using 6 equivalences between channels.
+| Phase space: wood
+| Applying user-defined cuts.
+| Starting integration for process 'jets_jj'
+| Integrate: iterations = 3:20000
+| Integrator: 4 chains, 6 channels, 2 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 20000 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1      15552   1.42142E+06   1.42E+04    1.00    1.25    5.59
+   2      15552   1.40189E+06   1.41E+04    1.00    1.25    5.48
+   3      15552   1.39620E+06   1.41E+04    1.01    1.26    5.45
+|-----------------------------------------------------------------------------|
+   3      46656   1.40642E+06   8.15E+03    0.58    1.25    5.45    0.87   3
+|=============================================================================|
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 1
+| Initializing integration for process jets_uu:
+| ------------------------------------------------------------------------
+| Process [scattering]: 'jets_uu'
+|   Library name  = 'jets_xsec_lib'
+|   Process index = 2
+|   Process components:
+|     1: 'jets_uu_i1':   ubar, u => ubar, u [omega]
+| ------------------------------------------------------------------------
+| Beam structure: ubar, u
+| Beam data (collision):
+|   ubar  (mass = 0.0000000E+00 GeV)
+|   u     (mass = 0.0000000E+00 GeV)
+|   sqrts = 5.000000000000E+02 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'jets_uu_i1.phs'
+| Phase space: 4 channels, 2 dimensions
+| Phase space: found 4 channels, collected in 3 groves.
+| Phase space: Using 4 equivalences between channels.
+| Phase space: wood
+| Applying user-defined cuts.
+| Starting integration for process 'jets_uu'
+| Integrate: iterations = 3:20000
+| Integrator: 3 chains, 4 channels, 2 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 20000 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1      18432   1.25507E+06   9.15E+03    0.73    0.99    4.73
+   2      18432   1.27906E+06   8.41E+03    0.66    0.89    4.82
+   3      18432   1.24141E+06   9.03E+03    0.73    0.99    4.67
+|-----------------------------------------------------------------------------|
+   3      55296   1.25955E+06   5.11E+03    0.41    0.95    4.67    4.83   3
+|=============================================================================|
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 2
+| Initializing integration for process jets_dd:
+| ------------------------------------------------------------------------
+| Process [scattering]: 'jets_dd'
+|   Library name  = 'jets_xsec_lib'
+|   Process index = 3
+|   Process components:
+|     1: 'jets_dd_i1':   ubar, u => dbar, d [omega]
+| ------------------------------------------------------------------------
+| Beam structure: ubar, u
+| Beam data (collision):
+|   ubar  (mass = 0.0000000E+00 GeV)
+|   u     (mass = 0.0000000E+00 GeV)
+|   sqrts = 5.000000000000E+02 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'jets_dd_i1.phs'
+| Phase space: 4 channels, 2 dimensions
+| Phase space: found 4 channels, collected in 3 groves.
+| Phase space: Using 4 equivalences between channels.
+| Phase space: wood
+| Applying user-defined cuts.
+| Starting integration for process 'jets_dd'
+| Integrate: iterations = 3:20000
+| Integrator: 3 chains, 4 channels, 2 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 20000 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1      18432   2.01091E+04   4.33E+01    0.22    0.29   17.60
+   2      18432   2.00384E+04   4.73E+01    0.24    0.32   17.51
+   3      18432   2.01799E+04   3.92E+01    0.19    0.26   17.64
+|-----------------------------------------------------------------------------|
+   3      55296   2.01179E+04   2.48E+01    0.12    0.29   17.64    2.68   3
+|=============================================================================|
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 3
+| Initializing integration for process jets_gg:
+| ------------------------------------------------------------------------
+| Process [scattering]: 'jets_gg'
+|   Library name  = 'jets_xsec_lib'
+|   Process index = 4
+|   Process components:
+|     1: 'jets_gg_i1':   ubar, u => gl, gl [omega]
+| ------------------------------------------------------------------------
+| Beam structure: ubar, u
+| Beam data (collision):
+|   ubar  (mass = 0.0000000E+00 GeV)
+|   u     (mass = 0.0000000E+00 GeV)
+|   sqrts = 5.000000000000E+02 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'jets_gg_i1.phs'
+| Phase space: 5 channels, 2 dimensions
+| Phase space: found 5 channels, collected in 2 groves.
+| Phase space: Using 18 equivalences between channels.
+| Phase space: wood
+| Applying user-defined cuts.
+| Starting integration for process 'jets_gg'
+| Integrate: iterations = 3:20000
+| Integrator: 2 chains, 5 channels, 2 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 20000 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1      17640   1.25325E+05   4.53E+02    0.36    0.48   21.12
+   2      17640   1.25894E+05   4.31E+02    0.34    0.45   21.21
+   3      17640   1.25436E+05   4.64E+02    0.37    0.49   21.13
+|-----------------------------------------------------------------------------|
+   3      52920   1.25565E+05   2.59E+02    0.21    0.47   21.13    0.47   3
+|=============================================================================|
+[user variable] sigma_jj =  1.4064202E+06
+[user variable] error_jj =  8.1503318E+03
+[user variable] sigma___ =  1.4052305E+06
+[user variable] error___ =  5.1137037E+03
+[user variable] errorsum =  9.6217397E+03
+[user variable] pull =  1.2364388E-01
+tolerance =  4.8108698E+04
+Comparing results:
+[user variable] pull =  1.2364388E-01
+[user variable] sigma_jj =  1.4064202E+06
+[user variable] sigma___ =  1.4052305E+06
+[user variable] errorsum =  9.6217397E+03
+[user variable] error_jj =  8.1503318E+03
+[user variable] error___ =  5.1137037E+03
+tolerance =  4.8108698E+04
+| expect: success
+| Summary of value checks:
+|   Failures: 0 / Total: 1
+| WHIZARD run finished.
+|=============================================================================|

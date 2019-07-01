@@ -1,0 +1,177 @@
+# $Id: model_test.sin 5437 2014-03-07 19:52:34Z jr_reuter $
+# SINDARIN input for WHIZARD self-test
+
+library = "model_test_1_lib"
+ 
+?logging = true
+?openmp_logging = false
+?vis_history = false
+?integration_timer = false
+
+seed = 0
+
+model = "2HDM"
+process models_ccww_2hdm          = 	c, C	=>	Wp, Wm
+
+model = "2HDM_CKM"
+process models_ccww_2hdm_ckm      = 	c, C	=>	Wp, Wm
+
+model = "GravTest"
+process models_ccww_grav_test     = 	c, C	=>	Wp, Wm
+ 
+model = "Littlest"
+st = 0.1
+process models_ccww_littlest      = 	c, C	=>	Wp, Wm
+
+model = "Littlest_Eta"
+st = 0.5
+process models_ccww_littlest_eta  = 	c, C	=>	Wp, Wm
+
+model = "Littlest_Tpar"
+process models_ccww_littlest_tpar  = 	c, C	=>	Wp, Wm
+
+model = "MSSM" 
+read_slha ("sps1ap_decays.slha")
+process models_ccww_mssm	   =    c, C	=>	Wp, Wm
+
+model = "MSSM_CKM" 
+read_slha ("sps1ap_decays.slha")
+process models_ccww_mssm_ckm	   =    c, C	=>	Wp, Wm
+
+model = "MSSM_Grav" 
+read_slha ("sps1ap_decays.slha")
+process models_ccww_mssm_grav	   =    c, C	=>	Wp, Wm
+
+model = "MSSM_Hgg"
+read_slha ("sps1ap_decays.slha")
+process models_ccww_mssm_hgg	   =    c, C	=>	Wp, Wm
+
+model = "NMSSM"
+read_slha ("nmssm.slha")
+process models_ccww_nmssm	   =    c, C	=>	Wp, Wm
+
+model = "NMSSM_CKM"
+read_slha ("nmssm.slha")
+process models_ccww_nmssm_ckm	   =    c, C	=>	Wp, Wm
+
+model = "NMSSM_Hgg"
+read_slha ("nmssm.slha")
+process models_ccww_nmssm_hgg	   =    c, C	=>	Wp, Wm
+
+model = "PSSSM"
+## read_slha ("nmssm.slha")
+process models_ccww_psssm	   =    c, C	=>	Wp, Wm
+
+model = "QCD"
+process models_uudd_qcd 	   = 	u, U	=>	d, D
+
+model = "QED"
+process models_eemm_qed 	   = 	e1, E1	=>	e2, E2
+
+model = "SM"
+process models_ccww_sm		   = 	c, C	=>	Wp, Wm
+
+model = "SM_CKM"
+process models_ccww_sm_ckm 	   = 	c, C	=>	Wp, Wm
+
+model = "SM_ac"
+process models_ccww_sm_ac 	   = 	c, C	=>	Wp, Wm
+
+model = "SM_ac_CKM"
+process models_ccww_sm_ac_ckm 	   = 	c, C	=>	Wp, Wm
+
+model = "SM_rx"
+process models_wwww_sm_rx 	   = 	Wp, Wm	=>	Wp, Wm
+
+model = "NoH_rx"
+process models_wwww_noh_rx 	   = 	Wp, Wm	=>	Wp, Wm
+
+model = "SM_top"
+process models_ccww_sm_top 	   = 	c, C	=>	Wp, Wm
+
+model = "SM_top_anom"
+process models_ccww_sm_top_anom    = 	c, C	=>	Wp, Wm
+
+model = "SM_Higgs"
+process models_ccww_sm_higgs 	   = 	c, C	=>	Wp, Wm
+
+model = "Simplest"
+process models_ccww_simplest 	   = 	c, C	=>	Wp, Wm
+
+model = "Simplest_univ"
+process models_ccww_simplest_univ  = 	c, C	=>	Wp, Wm
+
+model = "Template"
+process models_ccww_template       = 	c, C	=>	Wp, Wm
+
+model = "Threeshl"
+process models_ccww_threeshl       =    c, C    =>      Wp, Wm
+
+model = "Threeshl_nohf"
+process models_ccww_threeshl_nohf  =    c, C    =>      Wp, Wm
+
+model = "UED"
+process models_ccww_ued	           = 	c, C	=>	Wp, Wm
+
+model = "SSC"
+process models_wwww_ssc            =    Wp, Wm  =>      Wp, Wm
+
+model = "AltH"
+process models_wwww_alth           =    Wp, Wm  =>      Wp, Wm
+
+model = "Xdim"
+process models_ccww_xdim	   = 	c, C	=>	Wp, Wm
+
+model = "Zprime"
+process models_ccww_zprime	   = 	c, C	=>	Wp, Wm
+
+compile ()
+
+!---------------------------------------------
+
+me = 0
+mH = 125 GeV
+
+sqrts = 200 GeV
+
+iterations = 3:100
+
+!!! Tests should be run single-threaded 
+openmp_num_threads = 1
+ 
+integrate (models_ccww_2hdm)
+integrate (models_ccww_2hdm_ckm)
+integrate (models_ccww_grav_test)
+integrate (models_ccww_littlest)
+integrate (models_ccww_littlest_eta)
+integrate (models_ccww_littlest_tpar)
+integrate (models_ccww_mssm) 
+integrate (models_ccww_mssm_ckm)
+integrate (models_ccww_mssm_grav)
+integrate (models_ccww_nmssm)
+integrate (models_ccww_nmssm_ckm)
+integrate (models_ccww_nmssm_hgg)
+integrate (models_ccww_psssm)
+integrate (models_uudd_qcd)
+integrate (models_eemm_qed)
+integrate (models_ccww_sm)
+integrate (models_ccww_sm_ckm)
+integrate (models_ccww_sm_ac)
+integrate (models_ccww_sm_ac_ckm)
+integrate (models_wwww_sm_rx)
+integrate (models_wwww_noh_rx)
+integrate (models_ccww_sm_top)
+integrate (models_ccww_sm_top_anom)
+integrate (models_ccww_sm_higgs)
+integrate (models_ccww_simplest)
+integrate (models_ccww_simplest_univ)
+integrate (models_ccww_template)
+integrate (models_ccww_threeshl)
+integrate (models_ccww_threeshl_nohf)
+integrate (models_ccww_ued)
+integrate (models_wwww_ssc)
+integrate (models_wwww_alth)
+integrate (models_ccww_xdim)
+integrate (models_ccww_zprime)
+ 
+show (results)

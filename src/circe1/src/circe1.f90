@@ -1,11 +1,11 @@
 ! circe1.f90 -- canonical beam spectra for linear collider physics
-! $Id: circe1.nw 67 2002-03-28 17:13:06Z ohl $
+! $Id: circe1.nw 5607 2014-03-31 09:28:28Z ohl $
 ! 
-! Copyright (C) 1999-2012 by 
+! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+!     Christian Speckner <cnspeckn@googlemail.com>
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -32,6 +32,7 @@ module circe1
     public :: circe
     public :: circes
     public :: circe1_params_t
+    public :: circex
     public :: circel
     public :: circee
     public :: circeg
@@ -47,10 +48,11 @@ module circe1
     public :: girceb
     public :: circem
 
+    public :: rng_type
+  
     integer, parameter, public :: C1_ELECTRON = 11
     integer, parameter, public :: C1_POSITRON = -11
     integer, parameter, public :: C1_PHOTON = 22
-  
     integer, parameter :: SBAND  = 1
     integer, parameter :: TESLA  = 2
     integer, parameter :: XBAND  = 3
@@ -59,7 +61,9 @@ module circe1
     integer, parameter :: TESLEE = 5
     integer, parameter :: XBNDEE = 6
     integer, parameter :: NLCH   = 7
-    integer, parameter :: NACC   = 7
+    integer, parameter :: ILC    = 8
+    integer, parameter :: CLIC   = 9
+    integer, parameter :: NACC   = 9
     integer :: e, r, ehi, elo
 
   integer, parameter, public :: MAGIC0 = 19040616  
@@ -80,6 +84,28 @@ module circe1
     end type circe1_params_t
 
   type(circe1_params_t), public, save :: circe1_params
+
+    type, abstract :: rng_type
+     contains
+       procedure(rng_generate), deferred :: generate
+    end type rng_type
+    
+
+    abstract interface
+      subroutine rng_proc (u)
+        import :: double
+        real(kind=double), intent(out) :: u
+      end subroutine rng_proc
+    end interface
+    
+    abstract interface
+       subroutine rng_generate (rng_obj, u)
+         import :: rng_type, double
+         class(rng_type), intent(inout) :: rng_obj
+         real(kind=double), intent(out) :: u
+       end subroutine rng_generate
+    end interface
+    
 
 contains
 
@@ -112,6 +138,7 @@ contains
         character(len=60) :: msgbuf
         character(len=6), dimension(NACC) :: accnam
         integer :: ver34
+      integer, parameter :: EINVAL = -2
       integer, parameter :: GEV090 = -1
       integer, parameter :: GEV170 = 0
       integer, parameter :: GEV350 = 1
@@ -122,14 +149,16 @@ contains
       integer, parameter :: GEV250 = 6
       integer, parameter :: TEV12  = 7
       integer, parameter :: TEV15  = 8
+      integer, parameter :: GEV200 = 9
+      integer, parameter :: GEV230 = 10
       integer, parameter :: A1NEGY = 5
       integer, parameter :: A1NREV = 5
       integer :: i
       real(kind=double), dimension(A1NEGY,NACC,0:A1NREV), save :: xa1lum = 0
       real(kind=double), dimension(0:7,A1NEGY,NACC,0:A1NREV), save :: xa1 = 0
       integer, parameter :: A3NEGY = 5, A3NREV = 5
-      real, dimension(A3NEGY,NACC,0:A3NREV), save :: xa3lum
-      real, dimension(0:7,A3NEGY,NACC,0:A3NREV), save :: xa3
+      real, dimension(A3NEGY,NACC,0:A3NREV), save :: xa3lum = -1
+      real, dimension(0:7,A3NEGY,NACC,0:A3NREV), save :: xa3 = 0
       integer, parameter :: A5NEGY = 5, A5NREV = 1
       real, dimension(A5NEGY,NACC,0:A5NREV), save :: xa5lum
       real, dimension(0:7,A5NEGY,NACC,0:A5NREV), save :: xa5
@@ -147,6 +176,9 @@ contains
       integer, parameter ::  A9NEGY = TEV15, A9NREV = 1
       real, dimension(GEV090:A9NEGY,NACC,0:A9NREV) :: xa9lum
       real, dimension(0:7,GEV090:A9NEGY,NACC,0:A9NREV) :: xa9
+      integer, parameter ::  A10NEGY = GEV230, A10NREV = 1
+      real, dimension(GEV090:A10NEGY,ILC:ILC,0:A10NREV) :: xa10lum
+      real, dimension(0:7,GEV090:A10NEGY,ILC:ILC,0:A10NREV) :: xa10
         data accnam(SBAND)  /'SBAND'/
         data accnam(TESLA)  /'TESLA'/
         data accnam(JLCNLC) /'JLCNLC'/
@@ -154,6 +186,8 @@ contains
         data accnam(TESLEE) /'TESLEE'/
         data accnam(XBNDEE) /'XBNDEE'/
         data accnam(NLCH) /'NLC H'/
+        data accnam(ILC) /'ILC'/
+        data accnam(CLIC) /'CLIC'/
       xa1lum(GEV500,SBAND,1) = 5.212299E+01 
       xa1(0:7,GEV500,SBAND,1) = (/ &
          .39192E+00, .66026E+00, .11828E+02,-.62543E+00, &
@@ -750,6 +784,30 @@ contains
           0.38183E+00, 0.40310E+00, 0.13704E+01,-0.57742E+00, &
           0.44548E+00,-0.68341E+00, 0.24956E+01, 0.87448E+00 /)
       xa9lum(TEV16,NLCH,0) = -1.0
+      xa10lum = -1
+      xa10 = -1
+      xa10lum(GEV200,ILC,1) =  56
+      xa10(:,GEV200,ILC,1) = (/ &
+           0.66253E+00,  0.51646E+00,  0.43632E+02, -0.64508E+00, &
+           0.35915E+00, -0.69716E+00,  0.51645E+02,  0.32097E+00 /)
+      xa10lum(GEV230,ILC,1) =  83
+      xa10(:,GEV230,ILC,1) = (/ &
+           0.62360E+00,  0.52780E+00,  0.31915E+02, -0.64171E+00, &
+           0.38375E+00, -0.69529E+00,  0.39717E+02,  0.36597E+00 /)
+      xa10lum(GEV250,ILC,1) =  97
+      xa10(:,GEV250,ILC,1) = (/ &
+           0.59996E+00,  0.52141E+00,  0.26647E+02, -0.64331E+00, &
+           0.39186E+00, -0.69687E+00,  0.33764E+02,  0.39669E+00 /)
+      xa10lum(GEV350,ILC,1) = 100
+      xa10(:,GEV350,ILC,1) = (/ &
+           0.58875E+00,  0.50027E+00,  0.18594E+02, -0.63380E+00, &
+           0.38659E+00, -0.69239E+00,  0.23964E+02,  0.42049E+00 /)
+      xa10lum(GEV500,ILC,1) = 180
+      xa10(:,GEV500,ILC,1) = (/ &
+           0.46755E+00,  0.51768E+00,  0.83463E+01, -0.62311E+00, &
+           0.45704E+00, -0.69165E+00,  0.12372E+02,  0.60192E+00 /)
+      xa10lum(:,:,0) = xa10lum(:,:,A10NREV)
+      xa10(:,:,:,0) = xa10(:,:,:,A10NREV)
       if (circe1_params%magic .ne. 19040616) then
          circe1_params%magic = 19040616
                circe1_params%x1m = 0d0
@@ -762,7 +820,7 @@ contains
                if (xchat .ne. 0) then
                   call circem ('MESSAGE', 'starting up ...')
                   call circem ('MESSAGE', & 
-                     '$Id: circe.nw 67 2002-03-28 17:13:06Z ohl $')
+                     '$Id: circe1.nw 5607 2014-03-31 09:28:28Z ohl $')
                endif
       end if
         if ((xchat .ge. 0) .and. (xchat .ne. circe1_params%chat)) then
@@ -1559,14 +1617,111 @@ contains
            circe1_params%a1(0) = 1d0 - circe1_params%a1(1) * beta(circe1_params%a1(2)+1d0,circe1_params%a1(3)+1d0)
            circe1_params%a1(7) = circe1_params%a1(4) * beta(circe1_params%a1(5)+1d0,circe1_params%a1(6)+1d0)
         end if
+        else if (circe1_params%ver .eq. 10) then
+           circe1_params%ver = 1
+        if (circe1_params%rev .eq. 0) then
+           r = 0
+        elseif (circe1_params%rev .ge. 20140305) then
+           r = 1
+        elseif (circe1_params%rev .lt. 20140305) then
+           call circem ('ERROR', &
+            'no revision of version 10 available before 2014/03/05')
+           call circem ('MESSAGE', 'falling back to default')
+           r = 1
+        endif
+              if (circe1_params%chat .ge. 2) then
+                 write (msgbuf, 2000) circe1_params%rev, r
+                 call circem ('MESSAGE', msgbuf)
+              endif
+        if (circe1_params%acc .ne. ILC) then
+           call circem ('ERROR', 'version 10 applies to ILC only')
+           call circem ('ERROR', 'falling back to ILC')
+           circe1_params%acc = ILC
+        end if
+        if (circe1_params%acc .eq. ILC) then
+                e = -EINVAL
+                elo = -EINVAL
+                ehi = -EINVAL
+                if (circe1_params%roots .lt. 200d0 - DELTAE) then
+                   write (msgbuf, 2004) circe1_params%roots, 200d0
+                   call circem ('MESSAGE', msgbuf)
+                   e = GEV200
+                elseif (abs (circe1_params%roots-200d0) .le. DELTAE) then
+                   e = GEV200
+                elseif (circe1_params%roots .lt. 230d0 - DELTAE) then
+                   write (msgbuf, 2006) circe1_params%roots, 200d0, 230d0
+                   call circem ('MESSAGE', msgbuf)
+                   elo = GEV200
+                   ehi = GEV230
+                   eloval = 200d0
+                   ehival = 230d0
+                elseif (abs (circe1_params%roots-230d0) .le. DELTAE) then
+                   e = GEV230
+                elseif (circe1_params%roots .lt. 250d0 - DELTAE) then
+                   write (msgbuf, 2006) circe1_params%roots, 230d0, 250d0
+                   call circem ('MESSAGE', msgbuf)
+                   elo = GEV230
+                   ehi = GEV250
+                   eloval = 230d0
+                   ehival = 250d0
+                elseif (abs (circe1_params%roots-250d0) .le. DELTAE) then
+                   e = GEV250
+                elseif (circe1_params%roots .lt. 350d0 - DELTAE) then
+                   write (msgbuf, 2006) circe1_params%roots, 250d0, 350d0
+                   call circem ('MESSAGE', msgbuf)
+                   elo = GEV250
+                   ehi = GEV350
+                   eloval = 250d0
+                   ehival = 350d0
+                elseif (abs (circe1_params%roots-350d0) .le. DELTAE) then
+                   e = GEV350
+                elseif (circe1_params%roots .lt. 500d0 - DELTAE) then
+                   write (msgbuf, 2006) circe1_params%roots, 350d0, 500d0
+                   call circem ('MESSAGE', msgbuf)
+                   elo = GEV350
+                   ehi = GEV500
+                   eloval = 350d0
+                   ehival = 500d0
+                elseif (abs (circe1_params%roots-500d0) .le. DELTAE) then
+                   e = GEV500
+                else
+                   write (msgbuf, 2005) circe1_params%roots, 500d0
+                   call circem ('MESSAGE', msgbuf)
+                   e = GEV500
+                endif
+        end if
+              if (circe1_params%chat .ge. 2) then
+                 if (e .ge. GEV090) then
+                    write (msgbuf, 2003) circe1_params%roots, e
+                    call circem ('MESSAGE', msgbuf)
+                 else if (elo .ge. GEV090 .and. ehi .ge. GEV090) then
+                    write (msgbuf, 2013) circe1_params%roots, elo, ehi
+                    call circem ('MESSAGE', msgbuf)
+                 end if
+              endif
+        if (e .ne. EINVAL) then
+           circe1_params%lumi = xa10lum(e,circe1_params%acc,r)
+           do i = 0, 7
+              circe1_params%a1(i) = xa10(i,e,circe1_params%acc,r)
+           end do   
+        else if (elo .ne. EINVAL .and. ehi .ne. EINVAL) then
+           circe1_params%lumi = ((circe1_params%roots-eloval)*xa10lum(ehi,circe1_params%acc,r) &
+               + (ehival-circe1_params%roots)*xa10lum(elo,circe1_params%acc,r)) / (ehival - eloval)
+           do i = 1, 6
+              circe1_params%a1(i) = ((circe1_params%roots-eloval)*xa10(i,ehi,circe1_params%acc,r) &
+                  + (ehival-circe1_params%roots)*xa10(i,elo,circe1_params%acc,r)) / (ehival - eloval)
+           end do       
+           circe1_params%a1(0) = 1d0 - circe1_params%a1(1) * beta(circe1_params%a1(2)+1d0,circe1_params%a1(3)+1d0)
+           circe1_params%a1(7) = circe1_params%a1(4) * beta(circe1_params%a1(5)+1d0,circe1_params%a1(6)+1d0)
+        end if
         else if (circe1_params%ver .eq. 2) then
         call circem ('PANIC', '*********************************')
         call circem ('PANIC', '* version 2 has been retired,   *')
         call circem ('PANIC', '* please use version 1 instead! *')
         call circem ('PANIC', '*********************************')
         return
-        else if (circe1_params%ver .gt. 9) then
-           call circem ('PANIC', 'versions >9 not available yet')
+        else if (circe1_params%ver .gt. 10) then
+           call circem ('PANIC', 'versions >10 not available yet')
            return
         else
            call circem ('PANIC', 'version must be positive')
@@ -1584,6 +1739,40 @@ contains
   2005 format ('energy ', F6.1, 'GeV too high, using spectrum for ', F6.1, 'GeV')
   2006 format ('energy ', F6.1, 'GeV interpolated between ', F6.1, ' and ', F6.1, 'GeV')
     end subroutine circes
+    subroutine circex (xx1m, xx2m, xroots, cacc, xver, xrev, xchat)
+      real(kind=double) :: xx1m, xx2m, xroots   
+      character(*) :: cacc
+      integer :: xver, xrev, xchat
+      integer :: xacc, i
+    integer, parameter :: SBAND  = 1
+    integer, parameter :: TESLA  = 2
+    integer, parameter :: XBAND  = 3
+    integer, parameter :: JLCNLC = 3
+    integer, parameter :: SBNDEE = 4
+    integer, parameter :: TESLEE = 5
+    integer, parameter :: XBNDEE = 6
+    integer, parameter :: NLCH   = 7
+    integer, parameter :: ILC    = 8
+    integer, parameter :: CLIC   = 9
+    integer, parameter :: NACC   = 9
+        character(len=6), dimension(NACC) :: accnam
+        data accnam(SBAND)  /'SBAND'/
+        data accnam(TESLA)  /'TESLA'/
+        data accnam(JLCNLC) /'JLCNLC'/
+        data accnam(SBNDEE) /'SBNDEE'/
+        data accnam(TESLEE) /'TESLEE'/
+        data accnam(XBNDEE) /'XBNDEE'/
+        data accnam(NLCH) /'NLC H'/
+        data accnam(ILC) /'ILC'/
+        data accnam(CLIC) /'CLIC'/
+      xacc = -1
+      do i = 1, NACC
+         if (trim (accnam(i)) == trim (cacc)) then
+           xacc = i
+         end if
+      end do
+      call circes (xx1m, xx2m, xroots, xacc, xver, xrev, xchat)
+    end subroutine circex
     subroutine circel (l)
       real(kind=double), intent(out) :: l    
       l = circe1_params%lumi
@@ -1623,8 +1812,8 @@ contains
         call circem ('PANIC', '* please use version 1 instead! *')
         call circem ('PANIC', '*********************************')
         return
-        else if (circe1_params%ver .gt. 9) then
-           call circem ('PANIC', 'versions >9 not available yet')
+        else if (circe1_params%ver .gt. 10) then
+           call circem ('PANIC', 'versions >10 not available yet')
            return
         else
            call circem ('PANIC', 'version must be positive')
@@ -1664,8 +1853,8 @@ contains
         call circem ('PANIC', '* please use version 1 instead! *')
         call circem ('PANIC', '*********************************')
         return
-        else if (circe1_params%ver .gt. 9) then
-           call circem ('PANIC', 'versions >9 not available yet')
+        else if (circe1_params%ver .gt. 10) then
+           call circem ('PANIC', 'versions >10 not available yet')
            return
         else
            call circem ('PANIC', 'version must be positive')
@@ -1703,8 +1892,8 @@ contains
         call circem ('PANIC', '* please use version 1 instead! *')
         call circem ('PANIC', '*********************************')
         return
-        else if (circe1_params%ver .gt. 9) then
-           call circem ('PANIC', 'versions >9 not available yet')
+        else if (circe1_params%ver .gt. 10) then
+           call circem ('PANIC', 'versions >10 not available yet')
            return
         else
            call circem ('PANIC', 'version must be positive')
@@ -1856,8 +2045,8 @@ contains
             call circem ('PANIC', '* please use version 1 instead! *')
             call circem ('PANIC', '*********************************')
             return
-            else if (circe1_params%ver .gt. 9) then
-               call circem ('PANIC', 'versions >9 not available yet')
+            else if (circe1_params%ver .gt. 10) then
+               call circem ('PANIC', 'versions >10 not available yet')
                return
             else
                call circem ('PANIC', 'version must be positive')
@@ -1899,8 +2088,8 @@ contains
             call circem ('PANIC', '* please use version 1 instead! *')
             call circem ('PANIC', '*********************************')
             return
-            else if (circe1_params%ver .gt. 9) then
-               call circem ('PANIC', 'versions >9 not available yet')
+            else if (circe1_params%ver .gt. 10) then
+               call circem ('PANIC', 'versions >10 not available yet')
                return
             else
                call circem ('PANIC', 'version must be positive')
@@ -1942,8 +2131,8 @@ contains
             call circem ('PANIC', '* please use version 1 instead! *')
             call circem ('PANIC', '*********************************')
             return
-            else if (circe1_params%ver .gt. 9) then
-               call circem ('PANIC', 'versions >9 not available yet')
+            else if (circe1_params%ver .gt. 10) then
+               call circem ('PANIC', 'versions >10 not available yet')
                return
             else
                call circem ('PANIC', 'version must be positive')
@@ -1951,23 +2140,38 @@ contains
             end if
     end function kirkgg
 
-    subroutine girce (x1, x2, p1, p2, rng)
+    subroutine rng_call (u, rng, rng_obj)
+      real(kind=double), intent(out) :: u
+      procedure(rng_proc), optional :: rng
+      class(rng_type), intent(inout), optional :: rng_obj
+      if (present (rng)) then
+         call rng (u)
+      else if (present (rng_obj)) then
+         call rng_obj%generate (u)
+      else
+         call circem ('PANIC', &
+              'generator requires either rng or rng_obj argument')
+      end if
+    end subroutine rng_call
+    
+    subroutine girce (x1, x2, p1, p2, rng, rng_obj)
       real(kind=double), intent(out) :: x1, x2
       integer :: p1, p2
-      external rng
+      procedure(rng_proc), optional :: rng
+      class(rng_type), intent(inout), optional :: rng_obj
       real(kind=double) :: u, w
         if (circe1_params%magic .ne. MAGIC0) then
            call circes (-1d0, -1d0, -1d0, -1, -1, -1, -1)
         endif
       do
         w = 1d0 / (1d0 + circgg (-1d0, -1d0))
-        call rng (u)
+        call rng_call (u, rng, rng_obj)
         if (u*u .le. w) then
            p1 = C1_POSITRON
         else
            p1 = C1_PHOTON
         end if
-        call rng (u)
+        call rng_call (u, rng, rng_obj)
         if (u*u .le. w) then
            p2 = C1_ELECTRON
         else
@@ -1975,40 +2179,47 @@ contains
         end if
         if (abs(p1) .eq. C1_ELECTRON) then
            if (abs(p2) .eq. C1_ELECTRON) then
-              call gircee (x1, x2, rng)
+              call gircee (x1, x2, rng, rng_obj)
            else if (p2 .eq. C1_PHOTON) then
-              call girceg (x1, x2, rng)
+              call girceg (x1, x2, rng, rng_obj)
            end if
         else if (p1 .eq. C1_PHOTON) then
            if (abs(p2) .eq. C1_ELECTRON) then
-              call girceg (x2, x1, rng)
+              call girceg (x2, x1, rng, rng_obj)
            else if (p2 .eq. C1_PHOTON) then
-              call gircgg (x1, x2, rng)
+              call gircgg (x1, x2, rng, rng_obj)
            end if
         end if
         if ((x1 .ge. circe1_params%x1m) .and. (x2 .ge. circe1_params%x2m)) exit
       end do   
     end subroutine girce
 
-    subroutine gircee (x1, x2, rng)
+    subroutine gircee (x1, x2, rng, rng_obj)
       real(kind=double), intent(out) :: x1, x2
-      external rng
+      procedure(rng_proc), optional :: rng
+      class(rng_type), intent(inout), optional :: rng_obj
       real(kind=double) :: u
             if (circe1_params%magic .ne. MAGIC0) then
                call circes (-1d0, -1d0, -1d0, -1, -1, -1, -1)
             endif
+      x1 = 1
+      x2 = 1
       if ((circe1_params%ver .eq. 1) .or. (circe1_params%ver .eq. 0)) then
-               call rng (u)
+               call rng_call (u, rng, rng_obj)
                if (u .le. circe1_params%a1(0)) then
                   x1 = 1d0
                else
-                  x1 = 1d0 - girceb (0d0, 1d0-circe1_params%x1m, circe1_params%a1(3)+1d0, circe1_params%a1(2)+1d0, rng)
+                  x1 = 1d0 - girceb (0d0, 1d0-circe1_params%x1m, &
+                                     circe1_params%a1(3)+1d0, circe1_params%a1(2)+1d0, &
+                                     rng, rng_obj)
                endif
-               call rng (u)
+               call rng_call (u, rng, rng_obj)
                if (u .le. circe1_params%a1(0)) then
                   x2 = 1d0
                else
-                  x2 = 1d0 - girceb (0d0, 1d0-circe1_params%x2m, circe1_params%a1(3)+1d0, circe1_params%a1(2)+1d0, rng)
+                  x2 = 1d0 - girceb (0d0, 1d0-circe1_params%x2m, &
+                                     circe1_params%a1(3)+1d0, circe1_params%a1(2)+1d0, &
+                                     rng, rng_obj)
                endif
             else if (circe1_params%ver .eq. 2) then
             call circem ('PANIC', '*********************************')
@@ -2016,8 +2227,8 @@ contains
             call circem ('PANIC', '* please use version 1 instead! *')
             call circem ('PANIC', '*********************************')
             return
-            else if (circe1_params%ver .gt. 9) then
-               call circem ('PANIC', 'versions >9 not available yet')
+            else if (circe1_params%ver .gt. 10) then
+               call circem ('PANIC', 'versions >10 not available yet')
                return
             else
                call circem ('PANIC', 'version must be positive')
@@ -2025,29 +2236,36 @@ contains
             end if
     end subroutine gircee
 
-    subroutine girceg (x1, x2, rng)
+    subroutine girceg (x1, x2, rng, rng_obj)
       real(kind=double), intent(out) :: x1, x2
-      external rng
+      procedure(rng_proc), optional :: rng
+      class(rng_type), intent(inout), optional :: rng_obj
       real(kind=double) :: u
             if (circe1_params%magic .ne. MAGIC0) then
                call circes (-1d0, -1d0, -1d0, -1, -1, -1, -1)
             endif
+      x1 = 1
+      x2 = 1
       if ((circe1_params%ver .eq. 1) .or. (circe1_params%ver .eq. 0)) then
-               call rng (u)
+               call rng_call (u, rng, rng_obj)
                if (u .le. circe1_params%a1(0)) then
                   x1 = 1d0
                else
-                  x1 = 1d0 - girceb (0d0, 1d0-circe1_params%x1m, circe1_params%a1(3)+1d0, circe1_params%a1(2)+1d0, rng)
+                  x1 = 1d0 - girceb (0d0, 1d0-circe1_params%x1m, &
+                                     circe1_params%a1(3)+1d0, circe1_params%a1(2)+1d0, &
+                                     rng, rng_obj)
                endif
-               x2 = girceb (circe1_params%x2m, 1d0, circe1_params%a1(5)+1d0, circe1_params%a1(6)+1d0, rng)
+               x2 = girceb (circe1_params%x2m, 1d0, &
+                            circe1_params%a1(5)+1d0, circe1_params%a1(6)+1d0, &
+                            rng, rng_obj)
             else if (circe1_params%ver .eq. 2) then
             call circem ('PANIC', '*********************************')
             call circem ('PANIC', '* version 2 has been retired,   *')
             call circem ('PANIC', '* please use version 1 instead! *')
             call circem ('PANIC', '*********************************')
             return
-            else if (circe1_params%ver .gt. 9) then
-               call circem ('PANIC', 'versions >9 not available yet')
+            else if (circe1_params%ver .gt. 10) then
+               call circem ('PANIC', 'versions >10 not available yet')
                return
             else
                call circem ('PANIC', 'version must be positive')
@@ -2055,23 +2273,30 @@ contains
             end if
     end subroutine girceg
 
-    subroutine gircgg (x1, x2, rng)
+    subroutine gircgg (x1, x2, rng, rng_obj)
       real(kind=double), intent(out) :: x1, x2
-      external rng
+      procedure(rng_proc), optional :: rng
+      class(rng_type), intent(inout), optional :: rng_obj
             if (circe1_params%magic .ne. MAGIC0) then
                call circes (-1d0, -1d0, -1d0, -1, -1, -1, -1)
             endif
+      x1 = 1
+      x2 = 1
       if ((circe1_params%ver .eq. 1) .or. (circe1_params%ver .eq. 0)) then
-               x1 = girceb (circe1_params%x1m, 1d0, circe1_params%a1(5)+1d0, circe1_params%a1(6)+1d0, rng)
-               x2 = girceb (circe1_params%x2m, 1d0, circe1_params%a1(5)+1d0, circe1_params%a1(6)+1d0, rng)
+               x1 = girceb (circe1_params%x1m, 1d0, &
+                            circe1_params%a1(5)+1d0, circe1_params%a1(6)+1d0, &
+                            rng, rng_obj)
+               x2 = girceb (circe1_params%x2m, 1d0, &
+                            circe1_params%a1(5)+1d0, circe1_params%a1(6)+1d0, &
+                            rng, rng_obj)
             else if (circe1_params%ver .eq. 2) then
             call circem ('PANIC', '*********************************')
             call circem ('PANIC', '* version 2 has been retired,   *')
             call circem ('PANIC', '* please use version 1 instead! *')
             call circem ('PANIC', '*********************************')
             return
-            else if (circe1_params%ver .gt. 9) then
-               call circem ('PANIC', 'versions >9 not available yet')
+            else if (circe1_params%ver .gt. 10) then
+               call circem ('PANIC', 'versions >10 not available yet')
                return
             else
                call circem ('PANIC', 'version must be positive')
@@ -2079,14 +2304,15 @@ contains
             end if
     end subroutine gircgg
 
-    function girceb (xmin, xmax, a, b, rng)
+    function girceb (xmin, xmax, a, b, rng, rng_obj)
       real(kind=double) :: xmin, xmax, a, b
       real(kind=double) :: girceb
-      external rng
+      procedure(rng_proc), optional :: rng
+      class(rng_type), intent(inout), optional :: rng_obj
       real(kind=double) :: t, p, u, umin, umax, x, w
-            if ((a .gt. 1d0) .or. (b .lt. 1d0)) then
+            if ((a .ge. 1d0) .or. (b .le. 1d0)) then
                girceb = -1d0
-               call circem ('ERROR', 'beta-distribution expects a<=1<=b')
+               call circem ('ERROR', 'beta-distribution expects a<1<b')
                return
             end if
                   t = (1d0 - a) / (b + 1d0 - a)
@@ -2118,7 +2344,7 @@ contains
                return
             endif
       do 
-               call rng (u)
+               call rng_call (u, rng, rng_obj)
                u = umin + (umax - umin) * u
                if (u .le. p) then
                   x = t * (u/p)**(1d0/a)
@@ -2127,7 +2353,7 @@ contains
                   x = 1d0 - (1d0 - t) * ((1d0 - u)/(1d0 - p))**(1d0/b)
                   w = (x/t)**(a-1d0)
                end if
-         call rng (u)
+         call rng_call (u, rng, rng_obj)
          if (w .gt. u) exit
       end do 
       girceb = x

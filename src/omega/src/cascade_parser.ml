@@ -14,11 +14,12 @@ type token =
   | END
 
 open Parsing;;
-# 25 "../../../../src/omega/src/cascade_parser.mly"
+let _ = parse_error;;
+# 26 "../../../../src/omega/src/cascade_parser.mly"
 open Cascade_syntax
 let parse_error msg =
   raise (Syntax_Error (msg, symbol_start (), symbol_end ()))
-# 22 "cascade_parser.ml"
+# 23 "cascade_parser.ml"
 let yytransl_const = [|
   259 (* LPAREN *);
   260 (* RPAREN *);
@@ -121,138 +122,138 @@ let yyact = [|
   (fun _ -> failwith "parser")
 ; (fun __caml_parser_env ->
     Obj.repr(
-# 47 "../../../../src/omega/src/cascade_parser.mly"
+# 48 "../../../../src/omega/src/cascade_parser.mly"
                                     ( mk_true () )
-# 127 "cascade_parser.ml"
+# 128 "cascade_parser.ml"
                :  (string, int list) Cascade_syntax.t ))
 ; (fun __caml_parser_env ->
     let _1 = (Parsing.peek_val __caml_parser_env 1 : 'cascades) in
     Obj.repr(
-# 48 "../../../../src/omega/src/cascade_parser.mly"
+# 49 "../../../../src/omega/src/cascade_parser.mly"
                                     ( _1 )
-# 134 "cascade_parser.ml"
+# 135 "cascade_parser.ml"
                :  (string, int list) Cascade_syntax.t ))
 ; (fun __caml_parser_env ->
     let _1 = (Parsing.peek_val __caml_parser_env 0 : 'cascade) in
     Obj.repr(
-# 52 "../../../../src/omega/src/cascade_parser.mly"
+# 53 "../../../../src/omega/src/cascade_parser.mly"
                                     ( _1 )
-# 141 "cascade_parser.ml"
+# 142 "cascade_parser.ml"
                : 'cascades))
 ; (fun __caml_parser_env ->
     let _2 = (Parsing.peek_val __caml_parser_env 1 : 'cascades) in
     Obj.repr(
-# 53 "../../../../src/omega/src/cascade_parser.mly"
-                                    ( _2 )
-# 148 "cascade_parser.ml"
-               : 'cascades))
-; (fun __caml_parser_env ->
-    let _1 = (Parsing.peek_val __caml_parser_env 2 : 'cascades) in
-    let _3 = (Parsing.peek_val __caml_parser_env 0 : 'cascades) in
-    Obj.repr(
 # 54 "../../../../src/omega/src/cascade_parser.mly"
-                                    ( mk_and _1 _3 )
-# 156 "cascade_parser.ml"
+                                    ( _2 )
+# 149 "cascade_parser.ml"
                : 'cascades))
 ; (fun __caml_parser_env ->
     let _1 = (Parsing.peek_val __caml_parser_env 2 : 'cascades) in
     let _3 = (Parsing.peek_val __caml_parser_env 0 : 'cascades) in
     Obj.repr(
 # 55 "../../../../src/omega/src/cascade_parser.mly"
+                                    ( mk_and _1 _3 )
+# 157 "cascade_parser.ml"
+               : 'cascades))
+; (fun __caml_parser_env ->
+    let _1 = (Parsing.peek_val __caml_parser_env 2 : 'cascades) in
+    let _3 = (Parsing.peek_val __caml_parser_env 0 : 'cascades) in
+    Obj.repr(
+# 56 "../../../../src/omega/src/cascade_parser.mly"
                                     ( mk_or _1 _3 )
-# 164 "cascade_parser.ml"
+# 165 "cascade_parser.ml"
                : 'cascades))
 ; (fun __caml_parser_env ->
     let _1 = (Parsing.peek_val __caml_parser_env 0 : 'momentum_list) in
     Obj.repr(
-# 59 "../../../../src/omega/src/cascade_parser.mly"
+# 60 "../../../../src/omega/src/cascade_parser.mly"
                                     ( mk_any_flavor _1 )
-# 171 "cascade_parser.ml"
+# 172 "cascade_parser.ml"
                : 'cascade))
 ; (fun __caml_parser_env ->
     let _1 = (Parsing.peek_val __caml_parser_env 2 : 'momentum_list) in
     let _3 = (Parsing.peek_val __caml_parser_env 0 : 'flavor_list) in
     Obj.repr(
-# 61 "../../../../src/omega/src/cascade_parser.mly"
+# 62 "../../../../src/omega/src/cascade_parser.mly"
                                     ( mk_on_shell _3 _1 )
-# 179 "cascade_parser.ml"
+# 180 "cascade_parser.ml"
                : 'cascade))
 ; (fun __caml_parser_env ->
     let _1 = (Parsing.peek_val __caml_parser_env 3 : 'momentum_list) in
     let _4 = (Parsing.peek_val __caml_parser_env 0 : 'flavor_list) in
     Obj.repr(
-# 63 "../../../../src/omega/src/cascade_parser.mly"
+# 64 "../../../../src/omega/src/cascade_parser.mly"
                                     ( mk_on_shell_not _4 _1 )
-# 187 "cascade_parser.ml"
+# 188 "cascade_parser.ml"
                : 'cascade))
 ; (fun __caml_parser_env ->
     let _1 = (Parsing.peek_val __caml_parser_env 2 : 'momentum_list) in
     let _3 = (Parsing.peek_val __caml_parser_env 0 : 'flavor_list) in
     Obj.repr(
-# 65 "../../../../src/omega/src/cascade_parser.mly"
+# 66 "../../../../src/omega/src/cascade_parser.mly"
                                     ( mk_off_shell _3 _1 )
-# 195 "cascade_parser.ml"
+# 196 "cascade_parser.ml"
                : 'cascade))
 ; (fun __caml_parser_env ->
     let _1 = (Parsing.peek_val __caml_parser_env 3 : 'momentum_list) in
     let _4 = (Parsing.peek_val __caml_parser_env 0 : 'flavor_list) in
-    Obj.repr(
-# 67 "../../../../src/omega/src/cascade_parser.mly"
-                                    ( mk_off_shell_not _4 _1 )
-# 203 "cascade_parser.ml"
-               : 'cascade))
-; (fun __caml_parser_env ->
-    let _1 = (Parsing.peek_val __caml_parser_env 2 : 'momentum_list) in
-    let _3 = (Parsing.peek_val __caml_parser_env 0 : 'flavor_list) in
     Obj.repr(
 # 68 "../../../../src/omega/src/cascade_parser.mly"
+                                    ( mk_off_shell_not _4 _1 )
+# 204 "cascade_parser.ml"
+               : 'cascade))
+; (fun __caml_parser_env ->
+    let _1 = (Parsing.peek_val __caml_parser_env 2 : 'momentum_list) in
+    let _3 = (Parsing.peek_val __caml_parser_env 0 : 'flavor_list) in
+    Obj.repr(
+# 69 "../../../../src/omega/src/cascade_parser.mly"
                                     ( mk_gauss _3 _1 )
-# 211 "cascade_parser.ml"
+# 212 "cascade_parser.ml"
                : 'cascade))
 ; (fun __caml_parser_env ->
     let _1 = (Parsing.peek_val __caml_parser_env 3 : 'momentum_list) in
     let _4 = (Parsing.peek_val __caml_parser_env 0 : 'flavor_list) in
     Obj.repr(
-# 70 "../../../../src/omega/src/cascade_parser.mly"
+# 71 "../../../../src/omega/src/cascade_parser.mly"
                                     ( mk_gauss_not _4 _1 )
-# 219 "cascade_parser.ml"
+# 220 "cascade_parser.ml"
                : 'cascade))
 ; (fun __caml_parser_env ->
     let _1 = (Parsing.peek_val __caml_parser_env 0 : 'momentum) in
     Obj.repr(
-# 74 "../../../../src/omega/src/cascade_parser.mly"
+# 75 "../../../../src/omega/src/cascade_parser.mly"
                                     ( [_1] )
-# 226 "cascade_parser.ml"
+# 227 "cascade_parser.ml"
                : 'momentum_list))
 ; (fun __caml_parser_env ->
     let _1 = (Parsing.peek_val __caml_parser_env 2 : 'momentum_list) in
     let _3 = (Parsing.peek_val __caml_parser_env 0 : 'momentum) in
     Obj.repr(
-# 75 "../../../../src/omega/src/cascade_parser.mly"
+# 76 "../../../../src/omega/src/cascade_parser.mly"
                                     ( _3 :: _1 )
-# 234 "cascade_parser.ml"
+# 235 "cascade_parser.ml"
                : 'momentum_list))
 ; (fun __caml_parser_env ->
     let _1 = (Parsing.peek_val __caml_parser_env 0 :  int ) in
     Obj.repr(
-# 79 "../../../../src/omega/src/cascade_parser.mly"
+# 80 "../../../../src/omega/src/cascade_parser.mly"
                                     ( _1 )
-# 241 "cascade_parser.ml"
+# 242 "cascade_parser.ml"
                : 'momentum))
 ; (fun __caml_parser_env ->
     let _1 = (Parsing.peek_val __caml_parser_env 0 :  string ) in
     Obj.repr(
-# 83 "../../../../src/omega/src/cascade_parser.mly"
+# 84 "../../../../src/omega/src/cascade_parser.mly"
                                     ( [_1] )
-# 248 "cascade_parser.ml"
+# 249 "cascade_parser.ml"
                : 'flavor_list))
 ; (fun __caml_parser_env ->
     let _1 = (Parsing.peek_val __caml_parser_env 2 : 'flavor_list) in
     let _3 = (Parsing.peek_val __caml_parser_env 0 :  string ) in
     Obj.repr(
-# 84 "../../../../src/omega/src/cascade_parser.mly"
+# 85 "../../../../src/omega/src/cascade_parser.mly"
                                     ( _3 :: _1 )
-# 256 "cascade_parser.ml"
+# 257 "cascade_parser.ml"
                : 'flavor_list))
 (* Entry main *)
 ; (fun __caml_parser_env -> raise (Parsing.YYexit (Parsing.peek_val __caml_parser_env 0)))

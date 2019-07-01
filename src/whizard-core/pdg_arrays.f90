@@ -1,11 +1,13 @@
-! WHIZARD 2.1.1 September 18 2012
+! WHIZARD 2.2.0 May 18 2014
 ! 
-! Copyright (C) 1999-2012 by 
+! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
-!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
+!     
+!     with contributions from
+!     Christian Speckner <cnspeckn@googlemail.com> 
+!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -28,6 +30,7 @@
 module pdg_arrays
 
   use file_utils !NODEP!
+  use sorting
 
   implicit none
   private
@@ -35,10 +38,20 @@ module pdg_arrays
   public :: pdg_array_t
   public :: pdg_array_write
   public :: assignment(=)
+  public :: pdg_array_get_length
+  public :: pdg_array_get
+  public :: pdg_array_replace
   public :: operator(//)
   public :: operator(.match.)
+  public :: operator(<)
+  public :: operator(>)
+  public :: operator(<=)
+  public :: operator(>=)
+  public :: operator(==)
+  public :: operator(/=)
   public :: operator(.eqv.)
   public :: operator(.neqv.)
+  public :: sort_abs
 
   integer, parameter, public :: UNDEFINED = 0
 
@@ -62,6 +75,25 @@ module pdg_arrays
      module procedure pdg_array_match_integer
   end interface
 
+  interface operator(<)
+     module procedure pdg_array_lt
+  end interface
+  interface operator(>)
+     module procedure pdg_array_gt
+  end interface
+  interface operator(<=)
+     module procedure pdg_array_le
+  end interface
+  interface operator(>=)
+     module procedure pdg_array_ge
+  end interface
+  interface operator(==)
+     module procedure pdg_array_eq
+  end interface
+  interface operator(/=)
+     module procedure pdg_array_ne
+  end interface
+
   interface operator(.eqv.)
      module procedure pdg_array_equivalent
   end interface
@@ -69,6 +101,10 @@ module pdg_arrays
      module procedure pdg_array_inequivalent
   end interface
 
+  interface sort_abs
+     module procedure pdg_array_sort_abs
+  end interface
+  
 
 contains
 
@@ -112,6 +148,37 @@ contains
     end if
   end subroutine int_array_from_pdg_array
 
+  elemental function pdg_array_get_length (aval) result (n)
+    type(pdg_array_t), intent(in) :: aval
+    integer :: n
+    if (allocated (aval%pdg)) then
+       n = size (aval%pdg)
+    else
+       n = 0
+    end if
+  end function pdg_array_get_length
+
+  elemental function pdg_array_get (aval, i) result (pdg)
+    type(pdg_array_t), intent(in) :: aval
+    integer, intent(in) :: i
+    integer :: pdg
+    pdg = aval%pdg(i)
+  end function pdg_array_get
+
+  function pdg_array_replace (aval, i, pdg_new) result (aval_new)
+    type(pdg_array_t), intent(in) :: aval
+    integer, intent(in) :: i
+    integer, dimension(:), intent(in) :: pdg_new
+    type(pdg_array_t) :: aval_new
+    integer :: n, l
+    n = size (aval%pdg)
+    l = size (pdg_new)
+    allocate (aval_new%pdg (n + l - 1))
+    aval_new%pdg(:i-1) = aval%pdg(:i-1)
+    aval_new%pdg(i:i+l-1) = pdg_new
+    aval_new%pdg(i+l:) = aval%pdg(i+1:)
+  end function pdg_array_replace
+    
   function concat_pdg_arrays (aval1, aval2) result (aval)
     type(pdg_array_t) :: aval
     type(pdg_array_t), intent(in) :: aval1, aval2
@@ -142,7 +209,64 @@ contains
     end if
   end function pdg_array_match_integer
 
-  function pdg_array_equivalent (aval1, aval2) result (eq)
+  elemental function pdg_array_lt (aval1, aval2) result (flag)
+    type(pdg_array_t), intent(in) :: aval1, aval2
+    logical :: flag
+    integer :: i
+    if (size (aval1%pdg) /= size (aval2%pdg)) then
+       flag = size (aval1%pdg) < size (aval2%pdg)
+    else
+       do i = 1, size (aval1%pdg)
+          if (abs (aval1%pdg(i)) /= abs (aval2%pdg(i))) then
+             flag = abs (aval1%pdg(i)) < abs (aval2%pdg(i))
+             return
+          end if
+       end do
+       do i = 1, size (aval1%pdg)
+          if (aval1%pdg(i) /= aval2%pdg(i)) then
+             flag = aval1%pdg(i) > aval2%pdg(i)
+             return
+          end if
+       end do
+       flag = .false.
+    end if
+  end function pdg_array_lt
+
+  elemental function pdg_array_gt (aval1, aval2) result (flag)
+    type(pdg_array_t), intent(in) :: aval1, aval2
+    logical :: flag
+    flag = .not. (aval1 < aval2 .or. aval1 == aval2)
+  end function pdg_array_gt
+
+  elemental function pdg_array_le (aval1, aval2) result (flag)
+    type(pdg_array_t), intent(in) :: aval1, aval2
+    logical :: flag
+    flag = aval1 < aval2 .or. aval1 == aval2
+  end function pdg_array_le
+
+  elemental function pdg_array_ge (aval1, aval2) result (flag)
+    type(pdg_array_t), intent(in) :: aval1, aval2
+    logical :: flag
+    flag = .not. (aval1 < aval2)
+  end function pdg_array_ge
+
+  elemental function pdg_array_eq (aval1, aval2) result (flag)
+    type(pdg_array_t), intent(in) :: aval1, aval2
+    logical :: flag
+    if (size (aval1%pdg) /= size (aval2%pdg)) then
+       flag = .false.
+    else
+       flag = all (aval1%pdg == aval2%pdg)
+    end if
+  end function pdg_array_eq
+
+  elemental function pdg_array_ne (aval1, aval2) result (flag)
+    type(pdg_array_t), intent(in) :: aval1, aval2
+    logical :: flag
+    flag = .not. (aval1 == aval2)
+  end function pdg_array_ne
+
+  elemental function pdg_array_equivalent (aval1, aval2) result (eq)
     logical :: eq
     type(pdg_array_t), intent(in) :: aval1, aval2
     logical, dimension(:), allocatable :: match1, match2
@@ -168,11 +292,36 @@ contains
     end if
   end function pdg_array_equivalent
 
-  function pdg_array_inequivalent (aval1, aval2) result (neq)
+  elemental function pdg_array_inequivalent (aval1, aval2) result (neq)
     logical :: neq
     type(pdg_array_t), intent(in) :: aval1, aval2
     neq = .not. pdg_array_equivalent (aval1, aval2)
   end function pdg_array_inequivalent
+
+  function pdg_array_sort_abs (aval1, unique) result (aval2)
+    type(pdg_array_t), intent(in) :: aval1
+    logical, intent(in), optional :: unique
+    type(pdg_array_t) :: aval2
+    integer, dimension(:), allocatable :: tmp
+    logical, dimension(:), allocatable :: mask
+    integer :: i, n
+    logical :: uni
+    uni = .false.;  if (present (unique))  uni = unique
+    n = size (aval1%pdg)
+    if (uni) then
+       allocate (tmp (n), mask(n))
+       tmp = sort_abs (aval1%pdg)
+       mask(1) = .true.
+       do i = 2, n
+          mask(i) = tmp(i) /= tmp(i-1)
+       end do
+       allocate (aval2%pdg (count (mask)))
+       aval2%pdg = pack (tmp, mask)
+    else
+       allocate (aval2%pdg (n))
+       aval2%pdg = sort_abs (aval1%pdg)
+    end if
+  end function pdg_array_sort_abs
 
 
 end module pdg_arrays

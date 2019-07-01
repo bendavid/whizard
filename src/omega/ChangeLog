@@ -2,9 +2,92 @@ ChangeLog -- Summary of changes to the O'Mega package
 
 Use svn log to see detailed changes.
 
-	Version 2.0.0 
+	Version 2.2.0 
 
      (cf. also the WHIZARD ChangeLog)
+
+##################################################################
+	
+2014-03-15
+	RELEASE: version 2.2.0
+	
+2014-02-03
+	PRE-RELEASE: version 2.2.0_beta
+
+2014-01-26
+	Feynman diagram generation possible (again)
+	
+2013-11-15
+	PRE-RELEASE: version 2.2.0_alpha-4
+	
+2013-10-15
+	PRE-RELEASE: version 2.2.0_alpha-3
+	
+2013-10-02
+	PRE-RELEASE: version 2.2.0_alpha-2
+	
+2013-09-25
+	PRE-RELEASE: version 2.2.0_alpha-1
+	
+2013-09-12
+	PRE-RELEASE: version 2.2.0_alpha
+
+2012-11-20
+	Unit test suite enabled
+	
+##################################################################
+	
+2012-09-18
+	RELEASE: version 2.1.1
+	
+##################################################################
+	
+2012-06-15
+	RELEASE: version 2.1.0
+	
+##################################################################
+	
+2012-03-19
+	RELEASE: version 2.0.7
+	
+##################################################################
+
+2011-12-07 
+	RELEASE: version 2.0.6
+	
+##################################################################
+
+2011-05-10 
+	RELEASE: version 2.0.5
+
+2011-04-02 
+	OpenMP parallelization for helicity loop
+	
+##################################################################
+
+2010-10-26 
+	RELEASE: version 2.0.4
+
+2010-09-29 
+	Support for anomalous top couplings (form factors etc.)
+	
+##################################################################
+
+2010-10-18 
+	RELEASE: version 2.0.3
+
+2010-07-12
+	Conserved quantum numbers speed up code generation
+	
+##################################################################
+
+2010-05-18 
+	RELEASE: version 2.0.2
+	
+##################################################################
+	
+2010-04-25 
+	RELEASE: version 2.0.1
 	
 ##################################################################
 

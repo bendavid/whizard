@@ -1,0 +1,1371 @@
+! WHIZARD 2.2.0 May 18 2014
+! 
+! Copyright (C) 1999-2014 by 
+!     Wolfgang Kilian <kilian@physik.uni-siegen.de>
+!     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
+!     Juergen Reuter <juergen.reuter@desy.de>
+!     
+!     with contributions from
+!     Christian Speckner <cnspeckn@googlemail.com> 
+!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!
+! WHIZARD is free software; you can redistribute it and/or modify it
+! under the terms of the GNU General Public License as published by 
+! the Free Software Foundation; either version 2, or (at your option)
+! any later version.
+!
+! WHIZARD is distributed in the hope that it will be useful, but
+! WITHOUT ANY WARRANTY; without even the implied warranty of
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! GNU General Public License for more details.
+!
+! You should have received a copy of the GNU General Public License
+! along with this program; if not, write to the Free Software
+! Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! This file has been stripped of most comments.  For documentation, refer
+! to the source 'whizard.nw'
+
+module prc_template_me
+  
+  use iso_c_binding !NODEP!
+  use kinds !NODEP!
+  use file_utils !NODEP!
+  use iso_varying_string, string_t => varying_string !NODEP!
+  use limits, only: TAB !NODEP!
+  use diagnostics !NODEP!
+  use unit_tests
+  use os_interface
+  use lorentz !NODEP!
+  use flavors
+  use sm_qcd
+  use interactions
+  use variables
+  use models
+
+  use process_constants
+  use prclib_interfaces
+  use prc_core_def
+  use particle_specifiers
+  use process_libraries
+  use prc_core
+
+  implicit none
+  private
+
+  public :: template_me_def_t
+  public :: template_me_make_process_component
+  public :: prc_template_me_t
+  public :: prc_template_me_test
+
+  type, extends (prc_core_def_t) :: template_me_def_t
+   contains
+     procedure, nopass :: type_string => template_me_def_type_string
+     procedure :: init => template_me_def_init
+     procedure :: write => template_me_def_write
+     procedure :: read => template_me_def_read
+     procedure :: allocate_driver => template_me_def_allocate_driver
+     procedure, nopass :: needs_code => template_me_def_needs_code
+     procedure, nopass :: get_features => template_me_def_get_features
+     procedure :: connect => template_me_def_connect
+  end type template_me_def_t
+  
+  type, extends (prc_writer_f_module_t) :: template_me_writer_t
+     type(model_t), pointer :: model => null ()
+     type(string_t) :: model_name
+     logical :: unity
+     type(string_t), dimension(:), allocatable :: prt_in
+     type(string_t), dimension(:), allocatable :: prt_out
+     integer :: n_in
+     integer :: n_out
+     integer :: n_tot
+   contains
+     procedure, nopass :: type_name => template_me_writer_type_name
+     procedure, nopass :: get_module_name => template_me_writer_get_module_name
+     procedure :: write => template_me_writer_write
+     procedure :: init => template_me_writer_init
+     procedure :: write_makefile_code => template_me_write_makefile_code
+     procedure :: write_source_code => template_me_write_source_code
+     procedure, nopass :: get_procname => template_me_writer_get_procname
+     procedure :: write_interface => template_me_write_interface
+     procedure :: write_wrapper => template_me_write_wrapper
+  end type template_me_writer_t
+
+  type, extends (prc_core_driver_t) :: template_me_driver_t
+     procedure(init_t), nopass, pointer :: &
+          init => null ()
+     procedure(update_alpha_s_t), nopass, pointer :: &
+          update_alpha_s => null ()
+     procedure(is_allowed_t), nopass, pointer :: &
+          is_allowed => null ()
+     procedure(new_event_t), nopass, pointer :: &
+          new_event => null ()
+     procedure(get_amplitude_t), nopass, pointer :: &
+          get_amplitude => null ()
+   contains
+     procedure, nopass :: type_name => template_me_driver_type_name
+  end type template_me_driver_t
+
+  type, extends (prc_core_t) :: prc_template_me_t
+     real(default), dimension(:), allocatable :: par
+   contains
+     procedure :: allocate_workspace => prc_template_me_allocate_workspace
+     procedure :: write => prc_template_me_write
+     procedure :: set_parameters => prc_template_me_set_parameters
+     procedure :: init => prc_template_me_init
+     procedure :: activate_parameters => prc_template_me_activate_parameters
+     procedure :: needs_mcset => prc_template_me_needs_mcset
+     procedure :: get_n_terms => prc_template_me_get_n_terms
+     procedure :: is_allowed => prc_template_me_is_allowed
+     procedure :: compute_hard_kinematics => &
+          prc_template_me_compute_hard_kinematics
+     procedure :: compute_eff_kinematics => &
+          prc_template_me_compute_eff_kinematics
+     procedure :: recover_kinematics => prc_template_me_recover_kinematics
+     procedure :: compute_amplitude => prc_template_me_compute_amplitude
+  end type prc_template_me_t
+  
+  type, extends (workspace_t) :: template_me_state_t
+     logical :: new_kinematics = .true.
+     real(default) :: alpha_qcd = -1
+   contains
+     procedure :: write => template_me_state_write
+  end type template_me_state_t
+  
+
+  abstract interface
+     subroutine init_t (par) bind(C)
+       import
+       real(c_default_float), dimension(*), intent(in) :: par
+     end subroutine init_t
+  end interface
+  
+  abstract interface
+     subroutine update_alpha_s_t (alpha_s) bind(C)
+       import
+       real(c_default_float), intent(in) :: alpha_s
+     end subroutine update_alpha_s_t
+  end interface
+  
+  abstract interface
+     subroutine is_allowed_t (flv, hel, col, flag) bind(C)
+       import
+       integer(c_int), intent(in) :: flv, hel, col
+       logical(c_bool), intent(out) :: flag
+     end subroutine is_allowed_t
+  end interface
+
+  abstract interface
+     subroutine new_event_t (p) bind(C)
+       import
+       real(c_default_float), dimension(0:3,*), intent(in) :: p
+     end subroutine new_event_t
+  end interface
+  
+  abstract interface
+     subroutine get_amplitude_t (flv, hel, col, amp) bind(C)
+       import
+       integer(c_int), intent(in) :: flv, hel, col
+       complex(c_default_complex), intent(out):: amp
+     end subroutine get_amplitude_t
+  end interface
+
+
+contains
+  
+  function template_me_def_type_string () result (string)
+    type(string_t) :: string
+    string = "template"
+  end function template_me_def_type_string
+
+  subroutine template_me_def_init &
+       (object, model, prt_in, prt_out, unity)
+    class(template_me_def_t), intent(out) :: object
+    type(model_t), intent(in), target :: model
+    type(string_t), dimension(:), intent(in) :: prt_in
+    type(string_t), dimension(:), intent(in) :: prt_out
+    logical, intent(in) :: unity
+    allocate (template_me_writer_t :: object%writer)
+    select type (writer => object%writer)
+    type is (template_me_writer_t)
+       call writer%init (model, prt_in, prt_out, unity)
+    end select
+  end subroutine template_me_def_init
+
+  subroutine template_me_def_write (object, unit)
+    class(template_me_def_t), intent(in) :: object
+    integer, intent(in) :: unit
+    select type (writer => object%writer)
+    type is (template_me_writer_t)
+       call writer%write (unit)
+    end select
+  end subroutine template_me_def_write
+  
+  subroutine template_me_def_read (object, unit)
+    class(template_me_def_t), intent(out) :: object
+    integer, intent(in) :: unit
+    call msg_bug &
+         ("WHIZARD template process definition: input not supported (yet)")
+  end subroutine template_me_def_read
+  
+  subroutine template_me_def_allocate_driver (object, driver, basename)
+    class(template_me_def_t), intent(in) :: object
+    class(prc_core_driver_t), intent(out), allocatable :: driver
+    type(string_t), intent(in) :: basename
+    allocate (template_me_driver_t :: driver)
+  end subroutine template_me_def_allocate_driver
+  
+  function template_me_def_needs_code () result (flag)
+    logical :: flag
+    flag = .true.
+  end function template_me_def_needs_code
+  
+  subroutine template_me_def_get_features (features)
+    type(string_t), dimension(:), allocatable, intent(out) :: features
+    allocate (features (6))
+    features = [ &
+         var_str ("init"), &
+         var_str ("update_alpha_s"), &
+         var_str ("is_allowed"), &
+         var_str ("new_event"), &
+         var_str ("get_amplitude")]
+  end subroutine template_me_def_get_features
+
+  subroutine template_me_def_connect (def, lib_driver, i, proc_driver)
+    class(template_me_def_t), intent(in) :: def
+    class(prclib_driver_t), intent(in) :: lib_driver
+    integer, intent(in) :: i
+    class(prc_core_driver_t), intent(inout) :: proc_driver
+    integer(c_int) :: pid, fid
+    type(c_funptr) :: fptr
+    select type (proc_driver)
+    type is  (template_me_driver_t)
+       pid = i
+       fid = 1
+       call lib_driver%get_fptr (pid, fid, fptr)
+       call c_f_procpointer (fptr, proc_driver%init)
+       fid = 2
+       call lib_driver%get_fptr (pid, fid, fptr)
+       call c_f_procpointer (fptr, proc_driver%update_alpha_s)
+       fid = 3
+       call lib_driver%get_fptr (pid, fid, fptr)
+       call c_f_procpointer (fptr, proc_driver%is_allowed)
+       fid = 4
+       call lib_driver%get_fptr (pid, fid, fptr)
+       call c_f_procpointer (fptr, proc_driver%new_event)
+       fid = 5
+       call lib_driver%get_fptr (pid, fid, fptr)
+       call c_f_procpointer (fptr, proc_driver%get_amplitude)
+    end select
+  end subroutine template_me_def_connect
+
+  function template_me_writer_type_name () result (string)
+    type(string_t) :: string
+    string = "template"
+  end function template_me_writer_type_name
+
+  function template_me_writer_get_module_name (id) result (name)
+    type(string_t) :: name
+    type(string_t), intent(in) :: id
+    name = "tpr_" // id
+  end function template_me_writer_get_module_name
+
+  subroutine template_me_writer_write (object, unit)
+    class(template_me_writer_t), intent(in) :: object
+    integer, intent(in) :: unit
+    integer :: i, j
+    write (unit, "(5x,A,I0)") "# incoming part. = ", object%n_in
+    write (unit, "(7x,A)", advance="no") &
+                              "   Initial state: "  
+    do i = 1, object%n_in - 1
+       write (unit, "(1x,A)", advance="no") char (object%prt_in(i))
+    end do
+    write (unit, "(1x,A)") char (object%prt_in(object%n_in))    
+    write (unit, "(5x,A,I0)") "# outgoing part. = ", object%n_out    
+    write (unit, "(7x,A)", advance="no") &
+                              "   Final state:   "      
+    do j = 1, object%n_out - 1
+       write (unit, "(1x,A)", advance="no") char (object%prt_out(i))
+    end do    
+    write (unit, "(1x,A)") char (object%prt_out(object%n_out))    
+    write (unit, "(5x,A,I0)") "# part. (total) = ", object%n_tot
+  end subroutine template_me_writer_write
+
+  subroutine template_me_writer_init (writer, model, &
+       prt_in, prt_out, unity)
+    class(template_me_writer_t), intent(out) :: writer
+    type(model_t), intent(in), target :: model
+    type(string_t), dimension(:), intent(in) :: prt_in
+    type(string_t), dimension(:), intent(in) :: prt_out
+    logical, intent(in) :: unity
+    writer%model => model
+    writer%model_name = model%get_name ()
+    writer%n_in = size (prt_in)
+    writer%n_out = size (prt_out)
+    writer%n_tot = size (prt_in) + size (prt_out)
+    allocate (writer%prt_in (size (prt_in)), source = prt_in)
+    allocate (writer%prt_out (size (prt_out)), source = prt_out)    
+    writer%unity = unity    
+  end subroutine template_me_writer_init
+
+  subroutine template_me_write_makefile_code (writer, unit, id, os_data, testflag)
+    class(template_me_writer_t), intent(in) :: writer
+    integer, intent(in) :: unit
+    type(string_t), intent(in) :: id
+    type(os_data_t), intent(in) :: os_data
+    logical, intent(in), optional :: testflag
+    write (unit, "(5A)")  "SOURCES += ", char (id), ".f90"
+    write (unit, "(5A)")  "OBJECTS += ", char (id), ".lo"
+    write (unit, "(5A)")  "clean-", char (id), ":"
+    write (unit, "(5A)")  TAB, "rm -f tpr_", char (id), ".mod"
+    write (unit, "(5A)")  TAB, "rm -f ", char (id), ".lo"
+    write (unit, "(5A)")  "CLEAN_SOURCES += ", char (id), ".f90"    
+    write (unit, "(5A)")  "CLEAN_OBJECTS += tpr_", char (id), ".mod"       
+    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), ".lo"
+    write (unit, "(5A)")  char (id), ".lo: ", char (id), ".f90"
+    write (unit, "(5A)")  TAB, "$(LTFCOMPILE) $<"
+  end subroutine template_me_write_makefile_code
+
+  subroutine template_me_write_source_code (writer, id)
+    class(template_me_writer_t), intent(in) :: writer
+    type(string_t), intent(in) :: id
+    integer, dimension(writer%n_in) :: prt_in, mult_in, col_in
+    type(flavor_t), dimension(1:writer%n_in) :: flv_in    
+    integer, dimension(writer%n_out) :: prt_out, mult_out
+    integer, dimension(writer%n_tot) :: prt, mult
+    integer, dimension(:,:), allocatable :: sxxx
+    integer :: dummy, status
+    type(flavor_t), dimension(1:writer%n_out) :: flv_out    
+    type(string_t) :: proc_str, comment_str
+    integer :: u, i, j
+    integer :: hel, hel_in, hel_out, fac, factor, col_fac
+    type(string_t) :: filename
+    comment_str = ""
+    do i = 1, writer%n_in
+       comment_str = comment_str // writer%prt_in(i) // " " 
+    end do   
+    do j = 1, writer%n_out
+       comment_str = comment_str // writer%prt_out(j) // " " 
+    end do       
+    do i = 1, writer%n_in
+       prt_in(i) = model_get_particle_pdg (writer%model, writer%prt_in(i))
+       call flavor_init (flv_in(i), prt_in(i), writer%model)
+       mult_in(i) = flavor_get_multiplicity (flv_in(i))
+       col_in(i) = abs(flavor_get_color_type (flv_in(i)))
+       mult(i) = mult_in(i)
+       end do
+    do j = 1, writer%n_out
+       prt_out(j) = model_get_particle_pdg (writer%model, writer%prt_out(j))    
+       call flavor_init (flv_out(j), prt_out(j), writer%model)       
+       mult_out(j) = flavor_get_multiplicity (flv_out(j))       
+       mult(writer%n_in + j) = mult_out(j)
+       end do
+    prt(1:writer%n_in) = prt_in(1:writer%n_in)
+    prt(writer%n_in+1:writer%n_tot) = prt_out(1:writer%n_out)
+    proc_str = converter (prt)
+    hel_in = product (mult_in)
+    hel_out = product (mult_out)
+    col_fac = product (col_in)
+    hel = hel_in * hel_out
+    fac = hel
+    dummy = 1
+    factor = 1
+    if (writer%n_out >= 3) then
+       do i = 3, writer%n_out
+          factor = factor * (i - 2) * (i - 1)
+       end do
+    end if    
+    factor = factor * col_fac
+    allocate (sxxx(1:hel,1:writer%n_tot))
+    call create_spin_table (dummy,hel,fac,mult,sxxx)
+    call msg_message ("Writing test matrix element for process '" &
+         // char (id) // "'")
+    filename = id // ".f90"
+    u = free_unit ()
+    open (unit=u, file=char(filename), action="write")
+    write (u, "(A)") "! File generated automatically by WHIZARD"   
+    write (u, "(A)") "!                                        "
+    write (u, "(A)") "! Note that irresp. of what you demanded WHIZARD"
+    write (u, "(A)") "! treats this as colorless process       "    
+    write (u, "(A)") "!                                        "
+    write (u, "(A)") "module tpr_" // char(id)
+    write (u, "(A)") "                                         "
+    write (u, "(A)") "  use kinds"    
+    write (u, "(A)") "  use omega_color, OCF => omega_color_factor"        
+    write (u, "(A)") "                                         "
+    write (u, "(A)") "  implicit none"        
+    write (u, "(A)") "  private"            
+    write (u, "(A)") "                                         "    
+    write (u, "(A)") "  public :: md5sum"        
+    write (u, "(A)") "  public :: number_particles_in, number_particles_out"       
+    write (u, "(A)") "  public :: number_spin_states, spin_states"
+    write (u, "(A)") "  public :: number_flavor_states, flavor_states"
+    write (u, "(A)") "  public :: number_color_flows, color_flows"
+    write (u, "(A)") "  public :: number_color_indices, number_color_factors, &"
+    write (u, "(A)") "     color_factors, color_sum, openmp_supported"
+    write (u, "(A)") "  public :: init, final, update_alpha_s"  
+    write (u, "(A)") "                                         "    
+    write (u, "(A)") "  public :: new_event, is_allowed, get_amplitude"        
+    write (u, "(A)") "       "      
+    write (u, "(A)") "  real(default), parameter :: &"
+    write (u, "(A)") "       & conv = 0.38937966e12_default"
+    write (u, "(A)") "       "
+    write (u, "(A)") "  real(default), parameter :: &"
+    write (u, "(A)") "       & pi = 3.1415926535897932384626433832795028841972_default"
+    write (u, "(A)") "       "
+    write (u, "(A)") "  real(default), parameter :: &"
+    if (writer%unity) then
+       write (u, "(A)") "                   & const = 1"
+    else 
+       write (u, "(A,1x,I0,A)") "       & const = (16 * pi / conv) * " &
+          // "(16 * pi**2)**(", writer%n_out, "-2) " 
+    end if
+    write (u, "(A)") "       "    
+    write (u, "(A,1x,I0)") "  integer, parameter, private :: n_prt =  ", &
+       writer%n_tot
+    write (u, "(A,1x,I0)") "  integer, parameter, private :: n_in = ", &
+       writer%n_in
+    write (u, "(A,1x,I0)") "  integer, parameter, private :: n_out = ", &
+       writer%n_out
+    write (u, "(A)") "  integer, parameter, private :: n_cflow = 1"
+    write (u, "(A)") "  integer, parameter, private :: n_cindex = 2"
+    write (u, "(A)") "  !!! We ignore tensor products and take only one flavor state."
+    write (u, "(A)") "  integer, parameter, private :: n_flv = 1"
+    write (u, "(A,1x,I0)") "  integer, parameter, private :: n_hel = ", hel
+    write (u, "(A)") "                                           "
+    write (u, "(A)") "  logical, parameter, private :: T = .true."
+    write (u, "(A)") "  logical, parameter, private :: F = .false."
+    write (u, "(A)") "                                           "    
+    do i = 1, hel
+       write (u, "(A)") "  integer, dimension(n_prt), parameter, private :: &"
+       write (u, "(A)") "    " // s_conv(i) // " = (/ " // &
+            char(converter(sxxx(i,1:writer%n_tot))) // " /)"
+    end do 
+    write (u, "(A)") "  integer, dimension(n_prt,n_hel), parameter, private :: table_spin_states = &"
+    write (u, "(A)") "    reshape ( (/ & "
+    do i = 1, hel-1
+       write (u, "(A)") "                 " // s_conv(i) // ", & " 
+    end do 
+    write (u, "(A)") "                 " // s_conv(hel) // " & "     
+    write (u, "(A)") "              /), (/ n_prt, n_hel /) )"
+    write (u, "(A)") "                                                 "
+    write (u, "(A)") "  integer, dimension(n_prt), parameter, private :: &"
+    write (u, "(A)") "    f0001 = (/ " // char(proc_str) // " /)   !  " // char(comment_str)
+    write (u, "(A)") "  integer, dimension(n_prt,n_flv), parameter, private :: table_flavor_states = &"
+    write (u, "(A)") "    reshape ( (/ f0001 /), (/ n_prt, n_flv /) )"
+    write (u, "(A)") "                                                 " 
+    write (u, "(A)") "  integer, dimension(n_cindex, n_prt), parameter, private :: &"
+    write (u, "(A)") "    c0001 = reshape ( (/ " // char (dummy_colorizer (flv_in)) // " " // &
+      (repeat ("0,0, ", writer%n_out-1)) // "0,0 /), " // " (/ n_cindex, n_prt /) )"
+    write (u, "(A)") "  integer, dimension(n_cindex, n_prt, n_cflow), parameter, private :: &"
+    write (u, "(A)") "  table_color_flows = reshape ( (/ c0001 /), (/ n_cindex, n_prt, n_cflow /) )"
+    write (u, "(A)") "                                           "   
+    write (u, "(A)") "  logical, dimension(n_prt), parameter, private :: & "
+    write (u, "(A)") "    g0001 = (/ "  // (repeat ("F, ", writer%n_tot-1)) // "F /) "
+    write (u, "(A)") "  logical, dimension(n_prt, n_cflow), parameter, private " &
+         // ":: table_ghost_flags = &"
+    write (u, "(A)") "    reshape ( (/ g0001 /), (/ n_prt, n_cflow /) )"
+    write (u, "(A)") "                                           "   
+    write (u, "(A)") "  integer, parameter, private :: n_cfactors = 1"
+    write (u, "(A)") "  type(OCF), dimension(n_cfactors), parameter, private :: &"
+    write (u, "(A)") "    table_color_factors = (/  OCF(1,1,+1._default) /)"
+    write (u, "(A)") "                                           "   
+    write (u, "(A)") "  logical, dimension(n_flv), parameter, private :: a0001 = (/ T /)"   
+    write (u, "(A)") "  logical, dimension(n_flv, n_cflow), parameter, private :: &"   
+    write (u, "(A)") "    flv_col_is_allowed = reshape ( (/ a0001 /), (/ n_flv, n_cflow /) )"   
+    write (u, "(A)") "                                           "   
+    write (u, "(A)") "  complex(default), dimension (n_flv, n_hel, n_cflow), private, save :: amp"    
+    write (u, "(A)") "                                           "
+    write (u, "(A)") "  logical, dimension(n_hel), private, save :: hel_is_allowed = T"
+    write (u, "(A)") "                                           "
+    write (u, "(A)") "contains"          
+    write (u, "(A)") "                                           "      
+    write (u, "(A)") "  pure function md5sum ()"
+    write (u, "(A)") "    character(len=32) :: md5sum"    
+    write (u, "(A)") "    ! DON'T EVEN THINK of modifying the following line!"        
+    write (u, "(A)") "    md5sum = """ // writer%md5sum // """"
+    write (u, "(A)") "  end function md5sum"
+    write (u, "(A)") "                                           "          
+    write (u, "(A)") "  subroutine init (par)"
+    write (u, "(A)") "    real(default), dimension(*), intent(in) :: par"    
+    write (u, "(A)") "  end subroutine init"    
+    write (u, "(A)") "                                           " 
+    write (u, "(A)") "  subroutine final ()" 
+    write (u, "(A)") "  end subroutine final" 
+    write (u, "(A)") "                                           " 
+    write (u, "(A)") "  subroutine update_alpha_s (alpha_s)" 
+    write (u, "(A)") "    real(default), intent(in) :: alpha_s"        
+    write (u, "(A)") "  end subroutine update_alpha_s" 
+    write (u, "(A)") "                                           " 
+    write (u, "(A)") "  pure function number_particles_in () result (n)"
+    write (u, "(A)") "    integer :: n"    
+    write (u, "(A)") "    n = n_in"
+    write (u, "(A)") "  end function number_particles_in"
+    write (u, "(A)") "                                           "              
+    write (u, "(A)") "  pure function number_particles_out () result (n)"
+    write (u, "(A)") "    integer :: n"    
+    write (u, "(A)") "    n = n_out"
+    write (u, "(A)") "  end function number_particles_out"
+    write (u, "(A)") "                                           "                  
+    write (u, "(A)") "  pure function number_spin_states () result (n)"
+    write (u, "(A)") "    integer :: n"    
+    write (u, "(A)") "    n = size (table_spin_states, dim=2)"
+    write (u, "(A)") "  end function number_spin_states"
+    write (u, "(A)") "                                           "                      
+    write (u, "(A)") "  pure subroutine spin_states (a)"
+    write (u, "(A)") "    integer, dimension(:,:), intent(out) :: a"    
+    write (u, "(A)") "    a = table_spin_states"
+    write (u, "(A)") "  end subroutine spin_states"    
+    write (u, "(A)") "                                           "                          
+    write (u, "(A)") "  pure function number_flavor_states () result (n)"
+    write (u, "(A)") "    integer :: n"    
+    write (u, "(A)") "    n = 1"
+    write (u, "(A)") "  end function number_flavor_states"
+    write (u, "(A)") "                                           "                      
+    write (u, "(A)") "  pure subroutine flavor_states (a)"
+    write (u, "(A)") "    integer, dimension(:,:), intent(out) :: a"    
+    write (u, "(A)") "    a = table_flavor_states"
+    write (u, "(A)") "  end subroutine flavor_states"
+    write (u, "(A)") "                                           "                          
+    write (u, "(A)") "  pure function number_color_indices () result (n)"
+    write (u, "(A)") "    integer :: n"    
+    write (u, "(A)") "    n = size(table_color_flows, dim=1)"
+    write (u, "(A)") "  end function number_color_indices"
+    write (u, "(A)") "                                           "                          
+    write (u, "(A)") "  pure subroutine color_factors (cf)"
+    write (u, "(A)") "    type(OCF), dimension(:), intent(out) :: cf"    
+    write (u, "(A)") "    cf = table_color_factors"
+    write (u, "(A)") "  end subroutine color_factors"
+    write (u, "(A)") "                                           "                              
+    write (u, "(A)") "  pure function color_sum (flv, hel) result (amp2)"
+    write (u, "(A)") "    integer, intent(in) :: flv, hel"
+    write (u, "(A)") "    real(kind=default) :: amp2"
+    write (u, "(A)") "    amp2 = real (omega_color_sum (flv, hel, amp, table_color_factors))"
+    write (u, "(A)") "  end function color_sum"
+    write (u, "(A)") "                                           "       
+    write (u, "(A)") "  pure function number_color_flows () result (n)"
+    write (u, "(A)") "    integer :: n"    
+    write (u, "(A)") "    n = size (table_color_flows, dim=3)"
+    write (u, "(A)") "  end function number_color_flows"
+    write (u, "(A)") "                                           "                                  
+    write (u, "(A)") "  pure subroutine color_flows (a, g)"
+    write (u, "(A)") "    integer, dimension(:,:,:), intent(out) :: a"
+    write (u, "(A)") "    logical, dimension(:,:), intent(out) :: g"
+    write (u, "(A)") "    a = table_color_flows"
+    write (u, "(A)") "    g = table_ghost_flags"
+    write (u, "(A)") "  end subroutine color_flows"    
+    write (u, "(A)") "                                           "                              
+    write (u, "(A)") "  pure function number_color_factors () result (n)"
+    write (u, "(A)") "    integer :: n"    
+    write (u, "(A)") "    n = size (table_color_factors)"
+    write (u, "(A)") "  end function number_color_factors"
+    write (u, "(A)") "                                           "                                  
+    write (u, "(A)") "  pure function openmp_supported () result (status)"
+    write (u, "(A)") "    logical :: status"
+    write (u, "(A)") "    status = .false."
+    write (u, "(A)") "  end function openmp_supported"
+    write (u, "(A)") "                                           "                                  
+    write (u, "(A)") "  subroutine new_event (p)"
+    write (u, "(A)") "    real(default), dimension(0:3,*), intent(in) :: p"    
+    write (u, "(A)") "    call calculate_amplitudes (amp, p)"        
+    write (u, "(A)") "  end subroutine new_event"
+    write (u, "(A)") "                                           "              
+    write (u, "(A)") "  pure function is_allowed (flv, hel, col) result (yorn)"                  
+    write (u, "(A)") "    logical :: yorn"                  
+    write (u, "(A)") "    integer, intent(in) :: flv, hel, col"                  
+    write (u, "(A)") "    yorn = hel_is_allowed(hel) .and. flv_col_is_allowed(flv,col)"                  
+    write (u, "(A)") "  end function is_allowed"                     
+    write (u, "(A)") "                                           "                  
+    write (u, "(A)") "  pure function get_amplitude (flv, hel, col) result (amp_result)"
+    write (u, "(A)") "    complex(default) :: amp_result"    
+    write (u, "(A)") "    integer, intent(in) :: flv, hel, col"            
+    write (u, "(A)") "    amp_result = amp (flv, hel, col)"        
+    write (u, "(A)") "  end function get_amplitude"
+    write (u, "(A)") "                                           "                  
+    write (u, "(A)") "  pure subroutine calculate_amplitudes (amp, k)"
+    write (u, "(A)") "    complex(default), dimension(:,:,:), intent(out) :: amp"    
+    write (u, "(A)") "    real(default), dimension(0:3,*), intent(in) :: k"    
+    write (u, "(A)") "    real(default) :: fac"        
+    write (u, "(A)") "    integer :: i"            
+    write (u, "(A)") "    ! We give all helicities the same weight!"            
+    if (writer%unity) then 
+       write (u, "(A,1x,I0,1x,A)") "    fac = ", col_fac
+       write (u, "(A)") "    amp = const * sqrt(fac)"
+    else
+       write (u, "(A,1x,I0,1x,A)") "    fac = ", factor 
+       write (u, "(A)") "    amp = sqrt((2 * (k(0,1)*k(0,2) &"
+       write (u, "(A,1x,I0,A)") "         - dot_product (k(1:,1), k(1:,2)))) ** (3-", &
+                                  writer%n_out, ")) * sqrt(const * fac)"
+    end if                                  
+    write (u, "(A,1x,I0,A)") "    amp = amp / sqrt(", hel_out, "._default)"
+    write (u, "(A)") "  end subroutine calculate_amplitudes"
+    write (u, "(A)") "                                           "                  
+    write (u, "(A)") "end module tpr_" // char(id)    
+    close (u, iostat=status)
+    deallocate (sxxx)
+  contains
+    function s_conv (num) result (chrt)
+      integer, intent(in) :: num
+      character(len=10) :: chrt
+      write (chrt, "(I10)") num
+      chrt = trim(adjustl(chrt))
+      if (num < 10) then
+         chrt = "s000" // chrt
+      else if (num < 100) then
+         chrt = "s00" // chrt
+      else if (num < 1000) then 
+         chrt = "s0" // chrt     
+      else
+         chrt = "s" // chrt            
+      end if             
+    end function s_conv
+    function converter (flv) result (str)
+      integer, dimension(:), intent(in) :: flv
+      type(string_t) :: str
+      character(len=150), dimension(size(flv)) :: chrt
+      integer :: i
+      str = ""
+      do i = 1, size(flv) - 1
+         write (chrt(i), "(I10)") flv(i)
+         str = str // var_str(trim(adjustl(chrt(i)))) // ", "
+      end do    
+      write (chrt(size(flv)), "(I10)") flv(size(flv))
+      str = str // trim(adjustl(chrt(size(flv))))
+    end function converter
+    integer function sj (j,m)
+      integer, intent(in) :: j, m
+      if (((j == 1) .and. (m == 1)) .or. &
+          ((j == 2) .and. (m == 2)) .or. &
+          ((j == 3) .and. (m == 3)) .or. &
+          ((j == 4) .and. (m == 3)) .or. &
+          ((j == 5) .and. (m == 4))) then
+         sj = 1
+      else if (((j == 2) .and. (m == 1)) .or. &
+          ((j == 3) .and. (m == 1)) .or. &         
+          ((j == 4) .and. (m == 2)) .or. &
+          ((j == 5) .and. (m == 2))) then
+         sj = -1
+      else if (((j == 3) .and. (m == 2)) .or. &
+          ((j == 5) .and. (m == 3))) then
+         sj = 0
+      else if (((j == 4) .and. (m == 1)) .or. &
+          ((j == 5) .and. (m == 1))) then         
+         sj = -2
+      else if (((j == 4) .and. (m == 4)) .or. &
+          ((j == 5) .and. (m == 5))) then         
+         sj = 2
+      else
+         call msg_fatal ("template_me_write_source_code: Wrong spin type")
+      end if
+    end function sj    
+    recursive subroutine create_spin_table (index, nhel, fac, mult, inta)
+      integer, intent(inout) :: index, fac
+      integer, intent(in) :: nhel
+      integer, dimension(:), intent(in) :: mult
+      integer, dimension(nhel,size(mult)), intent(out) :: inta    
+      integer :: j
+      if (index > size(mult)) return
+      fac = fac / mult(index)
+      do j = 1, nhel 
+         inta(j,index) = sj (mult(index),mod(((j-1)/fac),mult(index))+1)
+      end do   
+      index = index + 1
+      call create_spin_table (index, nhel, fac, mult, inta)
+    end subroutine create_spin_table  
+    function dummy_colorizer (flv) result (str)
+      type(flavor_t), dimension(:), intent(in) :: flv
+      type(string_t) :: str
+      integer :: i, k
+      str = ""
+      k = 0
+      do i = 1, size(flv)
+         k = k + 1
+         select case (flavor_get_color_type (flv(i)))    
+         case (1,-1)
+            str = str // "0,0, "
+         case (3)
+            str = str // int2string(k) // ",0, "
+         case (-3)
+            str = str // "0," // int2string(-k) // ", "
+         case (8)
+            str = str // int2string(k) // "," // int2string(-k-1) // ", "
+            k = k + 1
+         case default
+            call msg_error ("Color type not supported.")
+         end select
+      end do    
+      str = adjustl(trim(str))
+    end function dummy_colorizer    
+  end subroutine template_me_write_source_code    
+
+  function template_me_writer_get_procname (feature) result (name)
+    type(string_t) :: name
+    type(string_t), intent(in) :: feature
+    select case (char (feature))
+    case ("n_in");   name = "number_particles_in"
+    case ("n_out");  name = "number_particles_out"
+    case ("n_flv");  name = "number_flavor_states"
+    case ("n_hel");  name = "number_spin_states"
+    case ("n_col");  name = "number_color_flows"
+    case ("n_cin");  name = "number_color_indices"
+    case ("n_cf");   name = "number_color_factors"
+    case ("flv_state");  name = "flavor_states"
+    case ("hel_state");  name = "spin_states"
+    case ("col_state");  name = "color_flows"
+    case default
+       name = feature
+    end select
+  end function template_me_writer_get_procname
+  
+  subroutine template_me_write_interface (writer, unit, id, feature)
+    class(template_me_writer_t), intent(in) :: writer
+    integer, intent(in) :: unit
+    type(string_t), intent(in) :: id
+    type(string_t), intent(in) :: feature
+    type(string_t) :: name
+    name = writer%get_c_procname (id, feature)
+    write (unit, "(2x,9A)")  "interface"
+    select case (char (feature))
+    case ("init")
+       write (unit, "(5x,9A)")  "subroutine ", char (name), " (par) bind(C)"
+       write (unit, "(7x,9A)")  "import"
+       write (unit, "(7x,9A)")  "real(c_default_float), dimension(*), &
+            &intent(in) :: par"
+       write (unit, "(5x,9A)")  "end subroutine ", char (name)
+    case ("update_alpha_s")
+       write (unit, "(5x,9A)")  "subroutine ", char (name), " (alpha_s) bind(C)"
+       write (unit, "(7x,9A)")  "import"
+       write (unit, "(7x,9A)")  "real(c_default_float), intent(in) :: alpha_s"
+       write (unit, "(5x,9A)")  "end subroutine ", char (name)
+    case ("is_allowed")
+       write (unit, "(5x,9A)")  "subroutine ", char (name), " &
+            &(flv, hel, col, flag) bind(C)"
+       write (unit, "(7x,9A)")  "import"
+       write (unit, "(7x,9A)")  "integer(c_int), intent(in) :: flv, hel, col"
+       write (unit, "(7x,9A)")  "logical(c_bool), intent(out) :: flag"    
+       write (unit, "(5x,9A)")  "end subroutine ", char (name)
+    case ("new_event")
+       write (unit, "(5x,9A)")  "subroutine ", char (name), " (p) bind(C)"
+       write (unit, "(7x,9A)")  "import"
+       write (unit, "(7x,9A)")  "real(c_default_float), dimension(0:3,*), &
+            &intent(in) :: p"
+       write (unit, "(5x,9A)")  "end subroutine ", char (name)
+    case ("get_amplitude")
+       write (unit, "(5x,9A)")  "subroutine ", char (name), " &
+            &(flv, hel, col, amp) bind(C)"
+       write (unit, "(7x,9A)")  "import"
+       write (unit, "(7x,9A)")  "integer(c_int), intent(in) :: flv, hel, col"
+       write (unit, "(7x,9A)")  "complex(c_default_complex), intent(out) &
+            &:: amp"    
+       write (unit, "(5x,9A)")  "end subroutine ", char (name)
+    end select
+    write (unit, "(2x,9A)")  "end interface"
+  end subroutine template_me_write_interface
+
+  subroutine template_me_write_wrapper (writer, unit, id, feature)
+    class(template_me_writer_t), intent(in) :: writer
+    integer, intent(in) :: unit
+    type(string_t), intent(in) :: id, feature
+    type(string_t) :: name
+    name = writer%get_c_procname (id, feature)
+    write (unit, *)
+    select case (char (feature))
+    case ("init")
+       write (unit, "(9A)")  "subroutine ", char (name), " (par) bind(C)"
+       write (unit, "(2x,9A)")  "use iso_c_binding"
+       write (unit, "(2x,9A)")  "use kinds"
+       write (unit, "(2x,9A)")  "use tpr_", char (id)
+       write (unit, "(2x,9A)")  "real(c_default_float), dimension(*), &
+            &intent(in) :: par"
+       if (c_default_float == default) then
+          write (unit, "(2x,9A)")  "call ", char (feature), " (par)"
+       end if
+       write (unit, "(9A)")  "end subroutine ", char (name)
+    case ("update_alpha_s")
+       write (unit, "(9A)")  "subroutine ", char (name), " (alpha_s) bind(C)"
+       write (unit, "(2x,9A)")  "use iso_c_binding"
+       write (unit, "(2x,9A)")  "use kinds"
+       write (unit, "(2x,9A)")  "use tpr_", char (id)
+       if (c_default_float == default) then
+          write (unit, "(2x,9A)")  "real(c_default_float), intent(in) &
+               &:: alpha_s"
+          write (unit, "(2x,9A)")  "call ", char (feature), " (alpha_s)"
+       end if
+       write (unit, "(9A)")  "end subroutine ", char (name)
+    case ("is_allowed")
+       write (unit, "(9A)")  "subroutine ", char (name), &
+            " (flv, hel, col, flag) bind(C)"
+       write (unit, "(2x,9A)")  "use iso_c_binding"
+       write (unit, "(2x,9A)")  "use kinds"
+       write (unit, "(2x,9A)")  "use tpr_", char (id)
+       write (unit, "(2x,9A)")  "integer(c_int), intent(in) :: flv, hel, col"
+       write (unit, "(2x,9A)")  "logical(c_bool), intent(out) :: flag"    
+       write (unit, "(2x,9A)")  "flag = ", char (feature), &
+            " (int (flv), int (hel), int (col))"
+       write (unit, "(9A)")  "end subroutine ", char (name)
+    case ("new_event")
+       write (unit, "(9A)")  "subroutine ", char (name), " (p) bind(C)"
+       write (unit, "(2x,9A)")  "use iso_c_binding"
+       write (unit, "(2x,9A)")  "use kinds"
+       write (unit, "(2x,9A)")  "use tpr_", char (id)
+       if (c_default_float == default) then
+          write (unit, "(2x,9A)")  "real(c_default_float), dimension(0:3,*), &
+               &intent(in) :: p"
+          write (unit, "(2x,9A)")  "call ", char (feature), " (p)"
+       end if
+       write (unit, "(9A)")  "end subroutine ", char (name)
+    case ("get_amplitude")
+       write (unit, "(9A)")  "subroutine ", char (name), &
+            " (flv, hel, col, amp) bind(C)"
+       write (unit, "(2x,9A)")  "use iso_c_binding"
+       write (unit, "(2x,9A)")  "use kinds"
+       write (unit, "(2x,9A)")  "use tpr_", char (id)
+       write (unit, "(2x,9A)")  "integer(c_int), intent(in) :: flv, hel, col"
+       write (unit, "(2x,9A)")  "complex(c_default_complex), intent(out) &
+            &:: amp"    
+       write (unit, "(2x,9A)")  "amp = ", char (feature), &
+            " (int (flv), int (hel), int (col))"
+       write (unit, "(9A)")  "end subroutine ", char (name)
+    end select
+  end subroutine template_me_write_wrapper
+
+  function template_me_driver_type_name () result (string)
+    type(string_t) :: string
+    string = "template"
+  end function template_me_driver_type_name
+
+  subroutine template_me_make_process_component (entry, component_index, &
+         model, model_name, prt_in, prt_out, unity)
+    class(process_def_entry_t), intent(inout) :: entry
+    integer, intent(in) :: component_index
+    type(string_t), intent(in) :: model_name
+    type(model_t), intent(in), target :: model
+    type(string_t), dimension(:), intent(in) :: prt_in
+    type(string_t), dimension(:), intent(in) :: prt_out
+    logical, intent(in) :: unity
+    class(prc_core_def_t), allocatable :: def
+    allocate (template_me_def_t :: def)
+    select type (def)
+    type is (template_me_def_t)
+       call def%init (model, prt_in, prt_out, unity)
+    end select
+    call entry%process_def_t%import_component (component_index, &
+         n_out = size (prt_out), &
+         prt_in  = new_prt_spec (prt_in), &
+         prt_out = new_prt_spec (prt_out), &
+         method = var_str ("template"), &
+         variant = def)
+  end subroutine template_me_make_process_component
+    
+  subroutine template_me_state_write (object, unit)
+    class(template_me_state_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = output_unit (unit)
+    write (u, "(3x,A,L1)")  "Template ME state: new kinematics = ", &
+         object%new_kinematics
+  end subroutine template_me_state_write
+  
+  subroutine prc_template_me_allocate_workspace (object, tmp)
+    class(prc_template_me_t), intent(in) :: object
+    class(workspace_t), intent(inout), allocatable :: tmp
+    allocate (template_me_state_t :: tmp)
+  end subroutine prc_template_me_allocate_workspace
+  
+  subroutine prc_template_me_write (object, unit)
+    class(prc_template_me_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    integer :: u, i
+    u = output_unit (unit)
+    write (u, "(3x,A)", advance="no")  "Template process core:"
+    if (object%data_known) then
+       write (u, "(1x,A)")  char (object%data%id)
+    else
+       write (u, "(1x,A)")  "[undefined]"
+    end if
+    if (allocated (object%par)) then
+       write (u, "(3x,A)")  "Parameter array:"
+       do i = 1, size (object%par)
+          write (u, "(5x,I0,1x,ES17.10)")  i, object%par(i)
+       end do
+    end if
+  end subroutine prc_template_me_write
+  
+  subroutine prc_template_me_set_parameters (prc_template_me, model)
+    class(prc_template_me_t), intent(inout) :: prc_template_me
+    type(model_t), intent(in), target, optional :: model
+    if (present (model)) then
+       if (allocated (prc_template_me%par))  deallocate (prc_template_me%par)
+       call model_parameters_to_c_array (model, prc_template_me%par)
+    end if
+  end subroutine prc_template_me_set_parameters
+  
+  subroutine prc_template_me_init (object, def, lib, id, i_component)
+    class(prc_template_me_t), intent(inout) :: object
+    class(prc_core_def_t), intent(in), target :: def
+    type(process_library_t), intent(in), target :: lib
+    type(string_t), intent(in) :: id
+    integer, intent(in) :: i_component
+    call object%base_init (def, lib, id, i_component)
+    call object%activate_parameters ()
+  end subroutine prc_template_me_init
+    
+  subroutine prc_template_me_activate_parameters (object)
+    class (prc_template_me_t), intent(inout) :: object
+    if (allocated (object%driver)) then
+       if (allocated (object%par)) then
+          select type (driver => object%driver)
+          type is (template_me_driver_t)
+             if (associated (driver%init))  call driver%init (object%par)
+          end select
+       else
+          call msg_bug ("prc_template_me_activate: parameter set is not allocated")
+       end if
+    else
+       call msg_bug ("prc_template_me_activate: driver is not allocated")
+    end if
+  end subroutine prc_template_me_activate_parameters
+    
+  function prc_template_me_needs_mcset (object) result (flag)
+    class(prc_template_me_t), intent(in) :: object
+    logical :: flag
+    flag = .true.
+  end function prc_template_me_needs_mcset
+  
+  function prc_template_me_get_n_terms (object) result (n)
+    class(prc_template_me_t), intent(in) :: object
+    integer :: n
+    n = 1
+  end function prc_template_me_get_n_terms
+
+ function prc_template_me_is_allowed (object, i_term, f, h, c) result (flag)
+    class(prc_template_me_t), intent(in) :: object
+    integer, intent(in) :: i_term, f, h, c
+    logical :: flag
+    logical(c_bool) :: cflag
+    select type (driver => object%driver)
+    type is (template_me_driver_t)
+       call driver%is_allowed (f, h, c, cflag)
+       flag = cflag
+    end select
+  end function prc_template_me_is_allowed
+ 
+  subroutine prc_template_me_compute_hard_kinematics &
+       (object, p_seed, i_term, int_hard, tmp)
+    class(prc_template_me_t), intent(in) :: object
+    type(vector4_t), dimension(:), intent(in) :: p_seed
+    integer, intent(in) :: i_term
+    type(interaction_t), intent(inout) :: int_hard
+    class(workspace_t), intent(inout), allocatable :: tmp
+    call interaction_set_momenta (int_hard, p_seed)
+    if (allocated (tmp)) then
+       select type (tmp)
+       type is (template_me_state_t);  tmp%new_kinematics = .true.
+       end select
+    end if
+  end subroutine prc_template_me_compute_hard_kinematics
+  
+  subroutine prc_template_me_compute_eff_kinematics &
+       (object, i_term, int_hard, int_eff, tmp)
+    class(prc_template_me_t), intent(in) :: object
+    integer, intent(in) :: i_term
+    type(interaction_t), intent(in) :: int_hard
+    type(interaction_t), intent(inout) :: int_eff
+    class(workspace_t), intent(inout), allocatable :: tmp
+  end subroutine prc_template_me_compute_eff_kinematics
+  
+  function prc_template_me_compute_amplitude &
+       (object, j, p, f, h, c, fac_scale, ren_scale, tmp) result (amp)
+    class(prc_template_me_t), intent(in) :: object
+    integer, intent(in) :: j
+    type(vector4_t), dimension(:), intent(in) :: p
+    integer, intent(in) :: f, h, c
+    real(default), intent(in) :: fac_scale, ren_scale
+    class(workspace_t), intent(inout), allocatable, optional :: tmp
+    complex(default) :: amp
+    integer :: n_tot, i
+    real(c_default_float), dimension(:,:), allocatable :: parray
+    complex(c_default_complex) :: camp
+    logical :: new_event
+    select type (driver => object%driver)
+    type is (template_me_driver_t)
+       new_event = .true.
+       if (present (tmp)) then
+          if (allocated (tmp)) then
+             select type (tmp)
+             type is (template_me_state_t)
+                new_event = tmp%new_kinematics
+                tmp%new_kinematics = .false.
+             end select
+          end if
+       end if
+       if (new_event) then
+          n_tot = object%data%n_in + object%data%n_out
+          allocate (parray (0:3, n_tot))
+          forall (i = 1:n_tot)  parray(:,i) = vector4_get_components (p(i))
+          call driver%new_event (parray)
+       end if
+       if (object%is_allowed (1, f, h, c)) then
+          call driver%get_amplitude &
+               (int (f, c_int), int (h, c_int), int (c, c_int), camp)
+          amp = camp
+       else
+          amp = 0
+       end if
+    end select
+  end function prc_template_me_compute_amplitude
+    
+
+  subroutine prc_template_me_recover_kinematics &
+       (object, p_seed, int_hard, int_eff, tmp)
+    class(prc_template_me_t), intent(in) :: object
+    type(vector4_t), dimension(:), intent(inout) :: p_seed
+    type(interaction_t), intent(inout) :: int_hard
+    type(interaction_t), intent(inout) :: int_eff
+    class(workspace_t), intent(inout), allocatable :: tmp
+    integer :: n_in
+    n_in = interaction_get_n_in (int_eff)
+    call interaction_set_momenta (int_eff, p_seed(1:n_in), outgoing = .false.)
+    p_seed(n_in+1:) = interaction_get_momenta (int_eff, outgoing = .true.)
+  end subroutine prc_template_me_recover_kinematics
+    
+  subroutine prc_template_me_test (u, results)
+    integer, intent(in) :: u
+    type(test_results_t), intent(inout) :: results
+    call test (prc_template_me_1, "prc_template_me_1", &
+         "build and load simple template process", &
+         u, results)
+    call test (prc_template_me_2, "prc_template_me_2", &
+         "build and load simple template_unity process", &
+         u, results)
+end subroutine prc_template_me_test
+
+  subroutine prc_template_me_1 (u)
+    integer, intent(in) :: u
+    type(process_library_t) :: lib
+    class(prc_core_def_t), allocatable :: def
+    type(process_def_entry_t), pointer :: entry
+    type(os_data_t) :: os_data
+    type(model_list_t) :: model_list
+    type(model_t), pointer :: model
+    type(string_t) :: model_name
+    type(string_t), dimension(:), allocatable :: prt_in, prt_out
+    type(process_constants_t) :: data
+    class(prc_core_driver_t), allocatable :: driver
+    integer, parameter :: cdf = c_default_float
+    integer, parameter :: ci = c_int
+    real(cdf), dimension(4) :: par
+    real(cdf), dimension(0:3,4) :: p
+    logical(c_bool) :: flag
+    complex(c_default_complex) :: amp
+    integer :: i
+    
+    write (u, "(A)")  "* Test output: prc_template_me_1"
+    write (u, "(A)")  "*   Purpose: create a template matrix element,"
+    write (u, "(A)")  "*            normalized to give unit integral,"    
+    write (u, "(A)")  "*            build a library, link, load, and &
+         &access the matrix element"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Initialize a process library with one entry"
+    write (u, "(A)")
+    call lib%init (var_str ("template_me1"))
+    call os_data_init (os_data)
+    call syntax_model_file_init ()
+
+    model => null ()
+    call model_list%read_model (var_str ("QED"), var_str ("QED.mdl"), &
+         os_data, model)
+    model_name = model%get_name ()
+    allocate (prt_in (2), prt_out (2))
+    prt_in = [var_str ("e+"), var_str ("e-")]
+    prt_out = [var_str ("m+"), var_str ("m-")]
+    
+    allocate (template_me_def_t :: def)
+    select type (def)
+    type is (template_me_def_t)
+       call def%init (model, prt_in, prt_out, unity = .false.)
+    end select
+    allocate (entry)
+    call entry%init (var_str ("template_me1_a"), model_name = model_name, &
+         n_in = 2, n_components = 1)
+    call entry%import_component (1, n_out = size (prt_out), &
+         prt_in  = new_prt_spec (prt_in), &
+         prt_out = new_prt_spec (prt_out), &
+         method  = var_str ("template"), &
+         variant = def)
+    call lib%append (entry)
+    
+    write (u, "(A)")  "* Configure library"
+    write (u, "(A)")
+    call lib%configure ()
+    
+    write (u, "(A)")  "* Write makefile"
+    write (u, "(A)")
+    call lib%write_makefile (os_data, force = .true.)
+
+    write (u, "(A)")  "* Clean any left-over files"
+    write (u, "(A)")
+    call lib%clean (os_data, distclean = .false.)
+
+    write (u, "(A)")  "* Write driver"
+    write (u, "(A)")
+    call lib%write_driver (force = .true.)
+
+    write (u, "(A)")  "* Write process source code, compile, link, load"
+    write (u, "(A)")
+    call lib%load (os_data)
+
+    call lib%write (u)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Probe library API:"
+    write (u, "(A)")
+       
+    write (u, "(1x,A,L1)")  "is active                 = ", &
+         lib%is_active ()
+    write (u, "(1x,A,I0)")  "n_processes               = ", &
+         lib%get_n_processes ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Constants of template_me1_a_i1:"
+    write (u, "(A)")
+
+    call lib%connect_process (var_str ("template_me1_a"), 1, data, driver)
+
+    write (u, "(1x,A,A)")  "component ID     = ", char (data%id)
+    write (u, "(1x,A,A)")  "model name       = ", char (data%model_name)
+    write (u, "(1x,A,A,A)")  "md5sum           = '", data%md5sum, "'"
+    write (u, "(1x,A,I0)") "n_in  = ", data%n_in
+    write (u, "(1x,A,I0)") "n_out = ", data%n_out
+    write (u, "(1x,A,I0)") "n_flv = ", data%n_flv
+    write (u, "(1x,A,I0)") "n_hel = ", data%n_hel
+    write (u, "(1x,A,I0)") "n_col = ", data%n_col
+    write (u, "(1x,A,I0)") "n_cin = ", data%n_cin
+    write (u, "(1x,A,I0)") "n_cf  = ", data%n_cf
+    write (u, "(1x,A,10(1x,I0))") "flv state =", data%flv_state
+    write (u, "(1x,A,10(1x,I2))") "hel state =", data%hel_state(:,1)
+    do i = 2, 16
+       write (u, "(12x,4(1x,I2))")  data%hel_state(:,i)
+    end do
+    write (u, "(1x,A,10(1x,I0))") "col state =", data%col_state
+    write (u, "(1x,A,10(1x,L1))") "ghost flag =", data%ghost_flag
+    write (u, "(1x,A,10(1x,F5.3))") "color factors =", data%color_factors
+    write (u, "(1x,A,10(1x,I0))") "cf index =", data%cf_index
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Set parameters for template_me1_a and initialize:"
+    write (u, "(A)")
+
+    par = [0.3_cdf, 0.0_cdf, 0.0_cdf, 0.0_cdf]
+    write (u, "(2x,A,F6.4)")  "ee   = ", par(1)
+    write (u, "(2x,A,F6.4)")  "me   = ", par(2)
+    write (u, "(2x,A,F6.4)")  "mmu  = ", par(3)
+    write (u, "(2x,A,F6.4)")  "mtau = ", par(4)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Set kinematics:"
+    write (u, "(A)")
+    
+    p = reshape ([ &
+         1.0_cdf, 0.0_cdf, 0.0_cdf, 1.0_cdf, &
+         1.0_cdf, 0.0_cdf, 0.0_cdf,-1.0_cdf, &
+         1.0_cdf, 1.0_cdf, 0.0_cdf, 0.0_cdf, &
+         1.0_cdf,-1.0_cdf, 0.0_cdf, 0.0_cdf &
+         ], [4,4])
+    do i = 1, 4
+       write (u, "(2x,A,I0,A,4(1x,F7.4))")  "p", i, " =", p(:,i)
+    end do
+
+    select type (driver)
+    type is (template_me_driver_t)
+       call driver%init (par)
+
+       call driver%new_event (p)
+
+       write (u, "(A)")
+       write (u, "(A)")  "* Compute matrix element:"
+       write (u, "(A)")
+
+       call driver%is_allowed (1_ci, 6_ci, 1_ci, flag)
+       write (u, "(1x,A,L1)") "is_allowed (1, 6, 1) = ", flag
+       
+       call driver%get_amplitude (1_ci, 6_ci, 1_ci, amp)
+       write (u, "(1x,A,1x,E11.4)") "|amp (1, 6, 1)| =", abs (amp)
+    end select
+
+    call lib%final ()
+    call model_list%final ()
+    call syntax_model_file_final ()
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: prc_template_me_1"
+    
+  end subroutine prc_template_me_1
+  
+  subroutine prc_template_me_2 (u)
+    integer, intent(in) :: u
+    type(process_library_t) :: lib
+    class(prc_core_def_t), allocatable :: def
+    type(process_def_entry_t), pointer :: entry
+    type(os_data_t) :: os_data
+    type(model_list_t) :: model_list
+    type(model_t), pointer :: model
+    type(string_t) :: model_name
+    type(string_t), dimension(:), allocatable :: prt_in, prt_out
+    type(process_constants_t) :: data
+    class(prc_core_driver_t), allocatable :: driver
+    integer, parameter :: cdf = c_default_float
+    integer, parameter :: ci = c_int
+    real(cdf), dimension(4) :: par
+    real(cdf), dimension(0:3,4) :: p
+    logical(c_bool) :: flag
+    complex(c_default_complex) :: amp
+    integer :: i
+    
+    write (u, "(A)")  "* Test output: prc_template_me_1"
+    write (u, "(A)")  "*   Purpose: create a template matrix element,"
+    write (u, "(A)")  "*            being identical to unity,"    
+    write (u, "(A)")  "*            build a library, link, load, and &
+         &access the matrix element"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Initialize a process library with one entry"
+    write (u, "(A)")
+    call lib%init (var_str ("template_me2"))
+    call os_data_init (os_data)
+    call syntax_model_file_init ()
+
+    model => null ()
+    call model_list%read_model (var_str ("QED"), var_str ("QED.mdl"), &
+         os_data, model)
+    model_name = model%get_name ()
+    allocate (prt_in (2), prt_out (2))
+    prt_in = [var_str ("e+"), var_str ("e-")]
+    prt_out = [var_str ("m+"), var_str ("m-")]
+    
+    allocate (template_me_def_t :: def)
+    select type (def)
+    type is (template_me_def_t)
+       call def%init (model, prt_in, prt_out, unity = .true.)
+    end select
+    allocate (entry)
+    call entry%init (var_str ("template_me2_a"), model_name = model_name, &
+         n_in = 2, n_components = 1)
+    call entry%import_component (1, n_out = size (prt_out), &
+         prt_in  = new_prt_spec (prt_in), &
+         prt_out = new_prt_spec (prt_out), &
+         method  = var_str ("template_unity"), &
+         variant = def)
+    call lib%append (entry)
+    
+    write (u, "(A)")  "* Configure library"
+    write (u, "(A)")
+    call lib%configure ()
+    
+    write (u, "(A)")  "* Write makefile"
+    write (u, "(A)")
+    call lib%write_makefile (os_data, force = .true.)
+
+    write (u, "(A)")  "* Clean any left-over files"
+    write (u, "(A)")
+    call lib%clean (os_data, distclean = .false.)
+
+    write (u, "(A)")  "* Write driver"
+    write (u, "(A)")
+    call lib%write_driver (force = .true.)
+
+    write (u, "(A)")  "* Write process source code, compile, link, load"
+    write (u, "(A)")
+    call lib%load (os_data)
+
+    call lib%write (u)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Probe library API:"
+    write (u, "(A)")
+       
+    write (u, "(1x,A,L1)")  "is active                 = ", &
+         lib%is_active ()
+    write (u, "(1x,A,I0)")  "n_processes               = ", &
+         lib%get_n_processes ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Constants of template_me2_a_i1:"
+    write (u, "(A)")
+
+    call lib%connect_process (var_str ("template_me2_a"), 1, data, driver)
+
+    write (u, "(1x,A,A)")  "component ID     = ", char (data%id)
+    write (u, "(1x,A,A)")  "model name       = ", char (data%model_name)
+    write (u, "(1x,A,A,A)")  "md5sum           = '", data%md5sum, "'"
+    write (u, "(1x,A,I0)") "n_in  = ", data%n_in
+    write (u, "(1x,A,I0)") "n_out = ", data%n_out
+    write (u, "(1x,A,I0)") "n_flv = ", data%n_flv
+    write (u, "(1x,A,I0)") "n_hel = ", data%n_hel
+    write (u, "(1x,A,I0)") "n_col = ", data%n_col
+    write (u, "(1x,A,I0)") "n_cin = ", data%n_cin
+    write (u, "(1x,A,I0)") "n_cf  = ", data%n_cf
+    write (u, "(1x,A,10(1x,I0))") "flv state =", data%flv_state
+    write (u, "(1x,A,10(1x,I2))") "hel state =", data%hel_state(:,1)
+    do i = 2, 16
+       write (u, "(12x,4(1x,I2))")  data%hel_state(:,i)
+    end do
+    write (u, "(1x,A,10(1x,I0))") "col state =", data%col_state
+    write (u, "(1x,A,10(1x,L1))") "ghost flag =", data%ghost_flag
+    write (u, "(1x,A,10(1x,F5.3))") "color factors =", data%color_factors
+    write (u, "(1x,A,10(1x,I0))") "cf index =", data%cf_index
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Set parameters for template_me2_a and initialize:"
+    write (u, "(A)")
+
+    par = [0.3_cdf, 0.0_cdf, 0.0_cdf, 0.0_cdf]
+    write (u, "(2x,A,F6.4)")  "ee   = ", par(1)
+    write (u, "(2x,A,F6.4)")  "me   = ", par(2)
+    write (u, "(2x,A,F6.4)")  "mmu  = ", par(3)
+    write (u, "(2x,A,F6.4)")  "mtau = ", par(4)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Set kinematics:"
+    write (u, "(A)")
+    
+    p = reshape ([ &
+         1.0_cdf, 0.0_cdf, 0.0_cdf, 1.0_cdf, &
+         1.0_cdf, 0.0_cdf, 0.0_cdf,-1.0_cdf, &
+         1.0_cdf, 1.0_cdf, 0.0_cdf, 0.0_cdf, &
+         1.0_cdf,-1.0_cdf, 0.0_cdf, 0.0_cdf &
+         ], [4,4])
+    do i = 1, 4
+       write (u, "(2x,A,I0,A,4(1x,F7.4))")  "p", i, " =", p(:,i)
+    end do
+
+    select type (driver)
+    type is (template_me_driver_t)
+       call driver%init (par)
+
+       call driver%new_event (p)
+
+       write (u, "(A)")
+       write (u, "(A)")  "* Compute matrix element:"
+       write (u, "(A)")
+
+       call driver%is_allowed (1_ci, 6_ci, 1_ci, flag)
+       write (u, "(1x,A,L1)") "is_allowed (1, 6, 1) = ", flag
+       
+       call driver%get_amplitude (1_ci, 6_ci, 1_ci, amp)
+       write (u, "(1x,A,1x,E11.4)") "|amp (1, 6, 1)| =", abs (amp)
+    end select
+
+    call lib%final ()
+    call model_list%final ()
+    call syntax_model_file_final ()
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: prc_template_me_2"
+    
+  end subroutine prc_template_me_2
+  
+
+end module prc_template_me

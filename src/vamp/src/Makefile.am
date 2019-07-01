@@ -4,11 +4,12 @@
 ##
 ## Process this file with automake to produce Makefile.in
 #
-# Copyright (C) 1999-2012 by 
+# Copyright (C) 1999-2014 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
-#     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+#     with contributions from
+#     Christian Speckner <cnspeckn@googlemail.com>
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by 
@@ -38,10 +39,12 @@ else
 depend_filter_extra = -e 's/iso_fortran_env\.lo//'
 endif
 
-SOURCE_FILES = \
+KINDS_FILE = \
+  kinds.f90
+
+NOWEB_SOURCE_FILES = \
   divisions.f90 \
   vamp.f90 \
-  kinds.f90 \
   exceptions.f90 \
   tao_random_numbers.f90 \
   tao52_random_numbers.f90 \
@@ -52,6 +55,8 @@ SOURCE_FILES = \
   linalg.f90 \
   products.f90 \
   $(sources_extra)
+
+SOURCE_FILES = $(KINDS_FILES) $(NOWEB_SOURCE_FILES)
 
 MODULE_FILES = \
   divisions.$(FC_MODULE_EXT) \
@@ -71,7 +76,7 @@ MODULE_FILES = \
   # vamp_equivalences.$(FC_MODULE_EXT)
 
 NOWEB_FILES = \
-    prelude.nw postlude.nw pmep.nw \
+    prelude.nw postlude.nw \
     divisions.nw vamp.nw \
     vamp_kinds.nw constants.nw exceptions.nw \
     tao_random_numbers.nw \
@@ -92,7 +97,7 @@ libvamp_la_SOURCES = $(SOURCE_FILES)
 nodist_moduleexecinclude_DATA = $(MODULE_FILES)
 endif !FC_MPI
 
-EXTRA_DIST = $(NOWEB_FILES) $(SOURCE_FILES) f90.m4 f95.m4 iso_fortran_env_stub.f90
+EXTRA_DIST = $(NOWEB_FILES) $(SOURCE_FILES) iso_fortran_env_stub.f90
 
 # Fortran90 module files are generated at the same time as object files
 .lo.$(FC_MODULE_EXT):
@@ -103,7 +108,6 @@ EXTRA_DIST = $(NOWEB_FILES) $(SOURCE_FILES) f90.m4 f95.m4 iso_fortran_env_stub.f
 # Fortran Compilers
 ########################################################################
 
-FORTRAN_DIALECT = @FORTRAN_DIALECT@
 AM_FCFLAGS = 
 
 ########################################################################
@@ -124,24 +128,15 @@ endif
 ########################################################################
 
 NOTANGLE_IT = \
-  $(NOTANGLE) -R'[[$(@F)]]' $(srcdir)/prelude.nw $(srcdir)/pmep.nw $^ \
-    | $(M4) $(FORTRAN_DIALECT).m4 - | $(CPIF) $@
+  $(NOTANGLE) -R'[[$(@F)]]' $(srcdir)/prelude.nw $^ | $(CPIF) $@
 
-SUFFIXES = .nw 
-
-$(SOURCE_FILES): $(FORTRAN_DIALECT).m4
+SUFFIXES = .nw .lo .$(FC_MODULE_EXT) 
 
 .nw.f90:
 	$(NOTANGLE_IT)
 
 tao52_random_numbers.f90: tao_random_numbers.nw
 	$(NOTANGLE_IT)
-
-f90.m4: pmep.nw
-	$(NOTANGLE) -R'[[$(@F)]]' $(srcdir)/pmep.nw | $(CPIF) $@
-
-f95.m4: pmep.nw
-	$(NOTANGLE) -R'[[$(@F)]]' $(srcdir)/pmep.nw | $(CPIF) $@
 
 ########################################################################
 # The following line just says
@@ -166,8 +161,33 @@ Makefile.depend: $(SOURCE_FILES)
 
 DISTCLEANFILES = Makefile.depend
 
-clean-local:
-	rm -f *.$(FC_MODULE_EXT) *.g90
+########################################################################
+## Non-standard cleanup tasks
+## Remove sources that can be recreated using NOWEB
+if NOWEB_AVAILABLE
+maintainer-clean-noweb:
+	-rm -f $(NOWEB_SOURCE_FILES)
+endif
+.PHONY: maintainer-clean-noweb
+
+## Remove those sources also if builddir and srcdir are different
+if NOWEB_AVAILABLE
+clean-noweb:
+	test "$(srcdir)" != "." && rm -f $(NOWEB_SOURCE_FILES) || true
+endif
+.PHONY: clean-noweb
+
+## Remove F90 module files
+clean-local: clean-noweb
+	-rm -f *.$(FC_MODULE_EXT) 
+
+## Remove backup files
+maintainer-clean-backup:
+	-rm -f *~
+.PHONY: maintainer-clean-backup
+
+## Register additional clean targets
+maintainer-clean-local: maintainer-clean-noweb maintainer-clean-backup
 
 ########################################################################
 # MPI

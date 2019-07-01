@@ -1,22 +1,21 @@
 WHIZARD Core
-* Release 2.1.2
-  - 2->1 processes ?
+* Release 2.2
   - large event numbers (still a problem??)
 
-* 2.2
+* 2.3
   - EWA implementation (some progress in 2.1.1)
-  - reconsider structure function mappings for optimization
+  - reconsider structure function mappings for optimization (done?)
   - integration of multiple observables
   - jet finder
   - reenabling underlying event 
-  - process collections
+  - process collections (preparations in 2.2)
   
-* 2.3
+* 2.4
   - Mathematica interface
   - Parton shower matching (MLM done, CKKW pending)
   - GUI (Tim)
   - parallelization (OpenMP done, MPI pending)
-  - NLO/GoSAM (first things happened)
+  - NLO/GoSAM/FKS (first things happened)
   - Dark Matter
   - Use omega restrictions on diagrams for phase space
 
@@ -27,37 +26,36 @@ Technical stuff
   - include STAT and ERRMSG in allocate and deallocate statements
 
 O'Mega
-* 2.2
+* 2.3
   - arbitrary Lorentz structure
   - flavor sums
   - model files unification
   - helicity optimization (numerically done/analytically pending)
 
 Models
-* Release 2.1.2
-  - more self-checks (trivial processes + all kinds of commands)
+* Release 2.3
   - Tests for 7, 8 fermions ... 
 
-* 2.2
+* 2.3
   - W-gamma couplings to resonances
   - W'
 
 VAMP
-* 2.1.2
+* 2.2
   - unify naming conventions for types with WHIZARD (JR will do, 
 	e.g. type :: division -> division_t (partially done)
-* 2.2
+* 2.3
   - integration of multiple observables
 
 configure
-* 2.2
+* 2.3
   - Windows support?
 
 Misc
-* Release 2.1.2
+* Release 2.3
   - ATLAS/CMS software environment
   - Manual + O'Mega Paper (partially done)
 
-* 2.2
+* 2.3
   - review gamelan (partially done, esp. docu)
 

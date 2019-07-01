@@ -1,11 +1,12 @@
-(* $Id: colorize.ml 3832 2012-05-04 02:12:59Z jr_reuter $
+(* $Id: colorize.ml 5147 2014-01-23 14:22:34Z msekulla $
 
-   Copyright (C) 1999-2012 by
+   Copyright (C) 1999-2014 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
        Juergen Reuter <juergen.reuter@desy.de>
-       Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+       with contributions from
+       Christian Speckner <cnspeckn@googlemail.com>
 
    WHIZARD is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by
@@ -22,9 +23,9 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 let rcs_file = RCS.parse "Colorize" ["Colorizing Monochrome Models"]
-    { RCS.revision = "$Revision: 3832 $";
-      RCS.date = "$Date: 2012-05-04 04:12:59 +0200 (Fri, 04 May 2012) $";
-      RCS.author = "$Author: jr_reuter $";
+    { RCS.revision = "$Revision: 5147 $";
+      RCS.date = "$Date: 2014-01-23 15:22:34 +0100 (Thu, 23 Jan 2014) $";
+      RCS.author = "$Author: msekulla $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/src/omega/src/colorize.ml $" }
 
@@ -93,11 +94,13 @@ module It (M : Model.T) =
 
     type gauge = M.gauge
     type constant = M.constant
+    type orders = M.orders
     let options = M.options
 
     let color = pullback M.color
     let pdg = pullback M.pdg
     let lorentz = pullback M.lorentz
+    let orders = M.orders
 
     module Ch = M.Ch
     let charges = pullback M.charges
@@ -110,11 +113,12 @@ module It (M : Model.T) =
       | Prop_Majorana -> Prop_Col_Majorana   (* Spin 1/2 octets. *)
       | Prop_Feynman -> Prop_Col_Feynman   (* Spin 1 states, massless. *)
       | Prop_Unitarity -> Prop_Col_Unitarity   (* Spin 1 states, massive. *)
+      | Aux_Scalar -> Aux_Col_Scalar  (* constant colored scalar propagator *)
       | Aux_Vector -> Aux_Col_Vector  (* constant colored vector propagator *)
       | Aux_Tensor_1 -> Aux_Col_Tensor_1  (* constant colored tensor propagator *)
       | Prop_Col_Scalar | Prop_Col_Feynman
       | Prop_Col_Majorana | Prop_Col_Unitarity
-      | Aux_Col_Vector | Aux_Col_Tensor_1
+      | Aux_Col_Scalar | Aux_Col_Vector | Aux_Col_Tensor_1
         -> failwith ("Colorize.It().colorize_propagator: already colored particle!")
       | _ -> failwith ("Colorize.It().colorize_propagator: impossible!")
 
@@ -244,13 +248,15 @@ module It (M : Model.T) =
       | White f ->
           M.flavor_to_TeX f
       | CF_in (f, c) ->
-          "{" ^ M.flavor_to_TeX f ^ "}_c" ^ string_of_int c
+          "{" ^ M.flavor_to_TeX f ^ "}_{\\mathstrut " ^ string_of_int c ^ "}"
       | CF_out (f, c) ->
-          "{" ^ M.flavor_to_TeX f ^ "}_a" ^ string_of_int c
+          "{" ^ M.flavor_to_TeX f ^ "}_{\\mathstrut\\overline{" ^
+          string_of_int c ^ "}}"
       | CF_io (f, c1, c2) ->
-          "{" ^ M.flavor_to_TeX f ^ "}_c" ^ string_of_int c1 ^ string_of_int c2
+          "{" ^ M.flavor_to_TeX f ^ "}_{\\mathstrut " ^
+          string_of_int c1 ^ "\\overline{" ^ string_of_int c2 ^ "}}"
       | CF_aux f ->
-          "{" ^ M.flavor_to_TeX f ^ "}_0"
+          "{" ^ M.flavor_to_TeX f ^ "}_{\\mathstrut 0}"
 
     let flavor_symbol = function
       | White f ->
@@ -331,10 +337,18 @@ module It (M : Model.T) =
           Dim5_Scalar_Vector_Vector_T (x * c)
       | Dim5_Scalar_Vector_Vector_U c ->
           Dim5_Scalar_Vector_Vector_U (x * c)
+      | Dim5_Scalar_Vector_Vector_TU c ->
+          Dim5_Scalar_Vector_Vector_TU (x * c)
+      | Scalar_Vector_Vector_t c ->
+          Scalar_Vector_Vector_t (x * c)
       | Dim6_Vector_Vector_Vector_T c ->
           Dim6_Vector_Vector_Vector_T (x * c)
       | Tensor_2_Vector_Vector c ->
           Tensor_2_Vector_Vector (x * c)
+      | Tensor_2_Vector_Vector_1 c ->
+          Tensor_2_Vector_Vector_1 (x * c)
+      | Tensor_2_Vector_Vector_t c ->
+          Tensor_2_Vector_Vector_t (x * c)
       | Dim5_Tensor_2_Vector_Vector_1 c ->
           Dim5_Tensor_2_Vector_Vector_1 (x * c)
       | Dim5_Tensor_2_Vector_Vector_2 c ->
@@ -1264,7 +1278,7 @@ module It (M : Model.T) =
         []
       else
         let color_strings = ThoList.range 1 n_in in
-        List.map
+        List.rev_map
           (fun permutation -> (color_strings, permutation))
           (Combinatorics.permute color_strings)
 
@@ -1353,7 +1367,7 @@ module It (M : Model.T) =
       colorize_crossed_amplitude1 ghosts [] f_list (ecf_in, ecf_out)
 
     let colorize_crossed_amplitude f_list =
-      ThoList.flatmap
+      ThoList.rev_flatmap
         (colorize_crossed_amplitude1 (external_ghosts f_list) f_list)
         (external_color_flows f_list)
 
@@ -1399,7 +1413,9 @@ module Gauge (M : Model.Gauge) =
     type flavor_sans_color = CM.flavor_sans_color
     type gauge = CM.gauge
     type constant = CM.constant
+    type orders = CM.orders
     module Ch = CM.Ch
+    let orders = CM.orders
     let charges = CM.charges
     let flavor_sans_color = CM.flavor_sans_color
     let color = CM.color

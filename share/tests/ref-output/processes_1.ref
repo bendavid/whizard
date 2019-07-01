@@ -1,0 +1,8 @@
+* Test output: processes_1
+*   Purpose: display an empty process object
+
+========================================================================
+ Process [undefined]
+========================================================================
+
+* Test output end: processes_1

@@ -1,11 +1,13 @@
-! WHIZARD 2.1.1 September 18 2012
+! WHIZARD 2.2.0 May 18 2014
 ! 
-! Copyright (C) 1999-2012 by 
+! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
-!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
+!     
+!     with contributions from
+!     Christian Speckner <cnspeckn@googlemail.com> 
+!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -32,6 +34,7 @@ module formats
   use iso_varying_string, string_t => varying_string !NODEP!
   use file_utils !NODEP!
   use diagnostics !NODEP!
+  use unit_tests
 
   implicit none
   private
@@ -121,10 +124,10 @@ contains
     arg%type = ARGTYPE_STR
     if (lval) then
        allocate (arg%sval (5))
-       arg%sval = (/ 't', 'r', 'u', 'e', c_null_char /)
+       arg%sval = ['t', 'r', 'u', 'e', c_null_char]
     else
        allocate (arg%sval (6))
-       arg%sval = (/ 'f', 'a', 'l', 's', 'e', c_null_char /)
+       arg%sval = ['f', 'a', 'l', 's', 'e', c_null_char]
     end if
   end subroutine sprintf_arg_init_log
 
@@ -405,19 +408,32 @@ contains
     end if
   end function sprintf
 
-  subroutine format_test ()
-    print *, "*** 1. Test: a string ***"
-    call test_run (var_str("%s"), 1, (/ 4 /), (/ 'abcdefghij' /))
-    print *, "*** 2. Test: two integers ***"
-    call test_run (var_str("%d,%d"), 2, (/ 2, 2 /), (/ '42', '13' /))
-    print *, "*** 3. Test: floating point number ***"
-    call test_run (var_str("%8.4f"), 1, (/ 3 /), (/ '42567.12345' /))
-    print *, "*** 4. Test: general expression ***"
-    call test_run (var_str("%g"), 1, (/ 3 /), (/ '3.1415' /))
+  subroutine format_test (u, results)
+    integer, intent(in) :: u
+    type(test_results_t), intent(inout) :: results
+    call test (format_1, "format_1", &
+         "check formatting routines", &
+         u, results)
+  end subroutine format_test
+
+
+  subroutine format_1 (u)
+    integer, intent(in) :: u
+    write (u, "(A)")  "*** Test 1: a string ***"
+    write (u, "(A)")
+    call test_run (var_str("%s"), 1, [4], ['abcdefghij'], u)
+    write (u, "(A)")  "*** Test 2: two integers ***"
+    write (u, "(A)")
+    call test_run (var_str("%d,%d"), 2, [2, 2], ['42', '13'], u)
+    write (u, "(A)")  "*** Test 3: floating point number ***"
+    write (u, "(A)")
+    call test_run (var_str("%8.4f"), 1, [3], ['42567.12345'], u)
+    write (u, "(A)")  "*** Test 4: general expression ***"
+    call test_run (var_str("%g"), 1, [3], ['3.1415'], u)
     contains
-      subroutine test_run (fmt, n_args, type, buffer)
-        type(string_t), intent(in) :: fmt
-        integer, intent(in) :: n_args
+      subroutine test_run (fmt, n_args, type, buffer, unit)
+        type(string_t), intent(in) :: fmt        
+        integer, intent(in) :: n_args, unit
         logical :: lval
         integer :: ival
         real(default) :: rval
@@ -426,11 +442,11 @@ contains
         type(sprintf_arg_t), dimension(:), allocatable :: arg
         integer, dimension(n_args), intent(in) :: type
         character(*), dimension(n_args), intent(in) :: buffer
-        print *, "Format string:", char(fmt)
-        print *, "Number of args:", n_args
+        write (unit, "(A,A)")   "Format string :", char(fmt)
+        write (unit, "(A,I1)")  "Number of args:", n_args
         allocate (arg (n_args))
         do i = 1, n_args
-           print *, "Argument (type ) = ", type(i)
+           write (unit, "(A,I1)")  "Argument (type ) = ", type(i)
            select case (type(i))
            case (ARGTYPE_LOG)
               read (buffer(i), *)  lval
@@ -446,10 +462,10 @@ contains
            end select
          end do
          string = sprintf (fmt, arg)
-         print *, "Result: '", char (string), "'"
+         write (unit, "(A,A,A)")  "Result: '", char (string), "'"
          deallocate (arg)
        end subroutine test_run
-  end subroutine format_test
+  end subroutine format_1
 
 
 end module formats

@@ -1,7 +1,0 @@
-# Input file for testing library handling
-
-# Start library 'processes' (SM) as make a static executable
-process static_p1 = e1, E1 => e2, E2
-compile as "whizard.static"
-
-

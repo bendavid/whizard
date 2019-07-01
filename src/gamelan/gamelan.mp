@@ -25,5 +25,6 @@ input gmlscan
 input gmlcoords
 input gmldraw
 input gmlgrid
+input gmleps
 endinput;
 % The End.

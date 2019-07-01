@@ -1,11 +1,12 @@
-(* $Id: omega.ml 3670 2012-01-21 19:33:07Z jr_reuter $
+(* $Id: omega.ml 5170 2014-01-26 13:57:26Z jr_reuter $
 
-   Copyright (C) 1999-2012 by
+   Copyright (C) 1999-2014 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
        Juergen Reuter <juergen.reuter@desy.de>
-       Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+       with contributions from
+       Christian Speckner <cnspeckn@googlemail.com>
 
    WHIZARD is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by
@@ -20,6 +21,9 @@
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
+
+let (<<) f g x = f (g x)
+let (>>) f g x = g (f x)
 
 module P = Momentum.Default
 module P_Whizard = Momentum.DefaultW
@@ -37,10 +41,6 @@ module type T =
 module Make (Fusion_Maker : Fusion.Maker) (Target_Maker : Target.Maker) (M : Model.T) =
   struct
 
-(* \begin{dubious}
-     [max_lines = 8] is plenty, since amplitudes with 8 gluons still take
-     several \emph{days} to construct.
-   \end{dubious} *)
     module CM = Colorize.It(M)
 
     type flavor = M.flavor
@@ -59,21 +59,81 @@ module Make (Fusion_Maker : Fusion.Maker) (Target_Maker : Target.Maker) (M : Mod
     module W = Whizard.Make(Fusion_Maker)(P)(P_Whizard)(M)
     module C = Cascade.Make(M)(P)
 
-    let version () =
-      List.iter (fun s -> prerr_endline ("RCS: " ^ s))
-        (ThoList.flatmap RCS.summary (CM.rcs :: T.rcs_list @ F.rcs_list))
+(* Form a ['a list] from a ['a option array], containing
+   the elements that are not [None] in order. *)
 
-    let debug (str, descr, opt, var) =
-      [ "-warning:" ^ str, Arg.Unit (fun () -> var := (opt, false):: !var),
-        "check " ^ descr ^ " and print warning on error";
-        "-error:" ^ str, Arg.Unit (fun () -> var := (opt, true):: !var),
-        "check " ^ descr ^ " and terminate on error" ]
+    let opt_array_to_list a =
+      let rec opt_array_to_list' acc i a =
+	if i < 0 then
+	  acc
+	else
+	  begin match a.(i) with
+	  | None -> opt_array_to_list' acc (pred i) a
+	  | Some x -> opt_array_to_list' (x :: acc) (pred i) a
+	  end in
+      opt_array_to_list' [] (Array.length a - 1) a
+  
+(* Return a list of [CF.amplitude list]s, corresponig to the diagrams
+   for a specific color flow for each flavor combination. *)
 
-    let rec include_goldstones = function
-      | [] -> false
-      | (T.Gauge, _) :: _ -> true
-      | _ :: rest -> include_goldstones rest
-      
+    let amplitudes_by_flavor amplitudes =
+      List.map opt_array_to_list (Array.to_list (CF.process_table amplitudes))
+
+(* \begin{dubious}
+     If we plan to distiguish different couplings later on,
+     we can no long map all instances of [coupling option]
+     in the tree to [None].  In this case, we will need
+     to normalize different fusion orders [Coupling.fuse2],
+     [Coupling.fuse3] or [Coupling.fusen], because they would
+     otherwise lead to inequivalent diagrams. Unfortunately, this
+     stuff packaged deep in [Fusion.Tagged_Coupling].
+   \end{dubious} *)
+
+(*i
+    let strip_fuse' = function
+      | Coupling.V3 (v, f, c) -> Coupling.V3 (v, Coupling.F12, c)
+      | Coupling.V4 (v, f, c) -> Coupling.V4 (v, Coupling.F123, c)
+      | Coupling.Vn (v, f, c) -> Coupling.Vn (v, [], c)
+
+    let strip_fuse = function
+      | Some c -> Some (strip_fuse' c)
+      | None -> None
+i*)
+
+(* \begin{dubious}
+     The [Tree.canonicalize] below should be necessary to remove
+     topologically equivalent duplicates.
+   \end{dubious} *)
+
+(* Take a [CF.amplitude list] assumed to correspond to the same
+   external states after stripping the color and return a
+   pair of the list of external particles and the corresponding
+   Feynman diagrams without color. *)
+
+    let wf1 amplitude = 
+      match F.externals amplitude with
+      | wf :: _ -> wf
+      | [] -> failwith "Omega.forest_sans_color: no external particles"
+
+    let uniq l =
+      ThoList.uniq (List.sort compare l)
+
+    let forest_sans_color = function
+      | amplitude :: _ as amplitudes ->
+	let externals = F.externals amplitude in
+	let prune_color wf =
+	  (F.flavor_sans_color wf, F.momentum_list wf) in
+	let prune_color_and_couplings (wf, c) =
+	  (prune_color wf, None) in
+	(List.map prune_color externals,
+	 uniq
+	   (List.map
+	      (fun t ->
+		Tree.canonicalize
+		  (Tree.map prune_color_and_couplings prune_color t))
+	      (ThoList.flatmap (fun a -> F.forest (wf1 a) a) amplitudes)))
+      | [] -> ([], [])
+
     let p2s p =
       if p >= 0 && p <= 9 then
         string_of_int p
@@ -85,9 +145,167 @@ module Make (Fusion_Maker : Fusion.Maker) (Target_Maker : Target.Maker) (M : Mod
     let format_p wf =
       String.concat "" (List.map p2s (F.momentum_list wf))
 
-    let variable wf = M.flavor_to_string (F.flavor_sans_color wf) ^ "[" ^ format_p wf ^ "]"
-    let variable' wf = M.flavor_symbol (F.flavor_sans_color wf) ^ "[" ^ format_p wf ^ "]"
+    let variable wf =
+      M.flavor_to_string (F.flavor_sans_color wf) ^ "[" ^ format_p wf ^ "]"
 
+    let variable' wf =
+      CM.flavor_to_TeX (F.flavor wf) ^ "(" ^ format_p wf ^ ")"
+
+    let feynmf_style propagator color =
+      { Tree.style =
+          begin match propagator with
+          | Coupling.Prop_Feynman
+          | Coupling.Prop_Gauge _ ->
+            begin match color with
+            | Color.AdjSUN _ -> Some ("gluon", "")
+            | _ -> Some ("boson", "")
+            end
+          | Coupling.Prop_Col_Feynman -> Some ("gluon", "")
+          | Coupling.Prop_Unitarity
+          | Coupling.Prop_Rxi _ -> Some ("dbl_wiggly", "")
+          | Coupling.Prop_Spinor
+          | Coupling.Prop_ConjSpinor -> Some ("fermion", "")
+          | _ -> None
+          end;
+        Tree.rev =
+          begin match propagator with
+          | Coupling.Prop_Spinor -> true
+          | Coupling.Prop_ConjSpinor -> false
+          | _ -> false
+          end;
+        Tree.label = None;
+        Tree.tension = None }
+
+    let header incoming outgoing =
+      "$ " ^
+      String.concat " "
+	(List.map (CM.flavor_to_TeX << F.flavor) incoming) ^
+      " \\to " ^
+      String.concat " "
+	(List.map (CM.flavor_to_TeX << CM.conjugate << F.flavor) outgoing) ^
+      " $"
+
+    let header_sans_color incoming outgoing =
+      "$ " ^
+      String.concat " "
+	(List.map (M.flavor_to_TeX << fst) incoming) ^
+      " \\to " ^
+      String.concat " "
+	(List.map (M.flavor_to_TeX << M.conjugate << fst) outgoing) ^
+      " $"
+	
+    let diagram incoming tree =
+      let fmf wf =
+	let f = F.flavor wf in
+	feynmf_style (CM.propagator f) (CM.color f) in
+      Tree.map
+        (fun (n, _) ->
+	  let n' = fmf n in
+	  if List.mem n incoming then
+            { n' with Tree.rev = not n'.Tree.rev }
+	  else
+            n')
+        (fun l ->
+	  if List.mem l incoming then
+            l
+	  else
+            F.conjugate l)
+	tree
+
+    let diagram_sans_color incoming (tree) =
+      let fmf (f, p) =
+	feynmf_style (M.propagator f) (M.color f) in
+      Tree.map
+	(fun (n, c) ->
+	  let n' = fmf n in
+	  if List.mem n incoming then
+	    { n' with Tree.rev = not n'.Tree.rev }
+	  else
+	    n')
+	(fun (f, p) ->
+	  if List.mem (f, p) incoming then
+	    (f, p)
+	  else
+	    (M.conjugate f, p))
+	tree
+
+    let feynmf_set amplitude =
+      match F.externals amplitude with
+      | wf1 :: wf2 :: wfs ->
+	let incoming = [wf1; wf2] in
+    	{ Tree.header = header incoming wfs;
+	  Tree.incoming = incoming;
+	  Tree.diagrams =
+	    List.map (diagram incoming) (F.forest wf1 amplitude) }
+      | _ -> failwith "less than two external particles"
+
+    let feynmf_set_sans_color (externals, trees) =
+      match externals with
+      | wf1 :: wf2 :: wfs ->
+	let incoming = [wf1; wf2] in
+	{ Tree.header = header_sans_color incoming wfs;
+	  Tree.incoming = incoming;
+	  Tree.diagrams =
+	    List.map (diagram_sans_color incoming) trees }
+      | _ -> failwith "less than two external particles"
+
+    let feynmf_set_sans_color_empty (externals, trees) =
+      match externals with
+      | wf1 :: wf2 :: wfs ->
+	let incoming = [wf1; wf2] in
+	{ Tree.header = header_sans_color incoming wfs;
+	  Tree.incoming = incoming;
+	  Tree.diagrams = [] }
+      | _ -> failwith "less than two external particles"
+
+    let uncolored_colored amplitudes =
+      { Tree.outer = feynmf_set_sans_color (forest_sans_color amplitudes);
+	Tree.inner = List.map feynmf_set amplitudes }
+
+    let uncolored_only amplitudes =
+      { Tree.outer = feynmf_set_sans_color (forest_sans_color amplitudes);
+	Tree.inner = [] }
+
+    let colored_only amplitudes =
+      { Tree.outer = feynmf_set_sans_color_empty (forest_sans_color amplitudes);
+	Tree.inner = List.map feynmf_set amplitudes }
+
+    let momentum_to_TeX (_, p) =
+      String.concat "" (List.map p2s p)
+
+    let wf_to_TeX (f, _ as wf) =
+      M.flavor_to_TeX f ^ "(" ^ momentum_to_TeX wf ^ ")"
+
+    let amplitudes_to_feynmf latex name amplitudes =
+	Tree.feynmf_sets_wrapped latex name
+	  wf_to_TeX momentum_to_TeX variable' format_p
+	  (List.map uncolored_colored (amplitudes_by_flavor amplitudes))
+	
+    let amplitudes_to_feynmf_sans_color latex name amplitudes =
+	Tree.feynmf_sets_wrapped latex name
+	  wf_to_TeX momentum_to_TeX variable' format_p
+	  (List.map uncolored_only (amplitudes_by_flavor amplitudes))
+
+    let amplitudes_to_feynmf_color_only latex name amplitudes =
+	Tree.feynmf_sets_wrapped latex name
+	  wf_to_TeX momentum_to_TeX variable' format_p
+	  (List.map colored_only (amplitudes_by_flavor amplitudes))
+
+    let version () =
+      List.iter (fun s -> prerr_endline ("RCS: " ^ s))
+        (ThoList.flatmap RCS.summary (CM.rcs :: T.rcs_list @ F.rcs_list))
+
+    let debug (str, descr, opt, var) =
+      [ "-warning:" ^ str, Arg.Unit (fun () -> var := (opt, false):: !var),
+        "         check " ^ descr ^ " and print warning on error";
+        "-error:" ^ str, Arg.Unit (fun () -> var := (opt, true):: !var),
+        "           check " ^ descr ^ " and terminate on error" ]
+
+    let rec include_goldstones = function
+      | [] -> false
+      | (T.Gauge, _) :: _ -> true
+      | _ :: rest -> include_goldstones rest
+      
     let read_lines_rev file =
       let ic = open_in file in
       let rev_lines = ref [] in
@@ -118,7 +336,10 @@ module Make (Fusion_Maker : Fusion.Maker) (Target_Maker : Target.Maker) (M : Mod
     let main () =
       let usage =
         "usage: " ^ Sys.argv.(0) ^
-        " [options] [" ^ String.concat "|" (List.map M.flavor_to_string (M.flavors ())) ^ "]"
+        " [options] [" ^
+	  String.concat "|" (List.map M.flavor_to_string 
+			       (ThoList.flatmap snd
+				  (M.external_flavors ()))) ^ "]"
       and rev_scatterings = ref []
       and rev_decays = ref []
       and cascades = ref []
@@ -126,8 +347,10 @@ module Make (Fusion_Maker : Fusion.Maker) (Target_Maker : Target.Maker) (M : Mod
       and output_file = ref None
       and print_forest = ref false
       and template = ref false
-      and feynmf = ref None
-      and feynmf_tex = ref false
+      and diagrams_all = ref None
+      and diagrams_sans_color = ref None
+      and diagrams_color_only = ref None
+      and diagrams_LaTeX = ref false
       and quiet = ref false
       and write = ref true
       and params = ref false
@@ -139,39 +362,56 @@ module Make (Fusion_Maker : Fusion.Maker) (Target_Maker : Target.Maker) (M : Mod
          Options.cmdline "-model:" M.options @
          Options.cmdline "-fusion:" CF.options @
          ThoList.flatmap debug
-           ["", "arguments", T.All, checks;
-            "a", "# of input arguments", T.Arguments, checks;
+           ["a", "arguments", T.All, checks;
+            "n", "# of input arguments", T.Arguments, checks;
             "m", "input momenta", T.Momenta, checks;
             "g", "internal Ward identities", T.Gauge, checks] @
          [("-o", Arg.String (fun s -> output_file := Some s),
-           "write to given file instead of /dev/stdout");
-          ("-scatter", Arg.String (fun s -> rev_scatterings := s :: !rev_scatterings),
-           "in1 in2 -> out1 out2 ...");
+           "file             write to given file instead of /dev/stdout");
+          ("-scatter",
+           Arg.String (fun s -> rev_scatterings := s :: !rev_scatterings),
+           "expr       in1 in2 -> out1 out2 ...");
           ("-scatter_file",
            Arg.String (fun s -> rev_scatterings := read_lines_rev s @ !rev_scatterings),
-           "in1 in2 -> out1 out2 ...");
+           "name  each line: in1 in2 -> out1 out2 ...");
           ("-decay", Arg.String (fun s -> rev_decays := s :: !rev_decays),
-           "in -> out1 out2 ...");
-          ("-decay_file", Arg.String (fun s -> rev_decays := read_lines_rev s @ !rev_decays),
-           "in -> out1 out2 ...");
-           ("-cascade", Arg.String (fun s -> cascades := s :: !cascades),
-            "select diagrams");
-          ("-initialize", Arg.String (fun s -> cache_option := Cache_Initialize s),
-           "precompute large lookup table(s) and store them in the directory");
+           "expr         in -> out1 out2 ...");
+          ("-decay_file",
+           Arg.String (fun s -> rev_decays := read_lines_rev s @ !rev_decays),
+           "name    each line: in -> out1 out2 ...");
+          ("-cascade", Arg.String (fun s -> cascades := s :: !cascades),
+           "expr       select diagrams");
+          ("-initialize",
+           Arg.String (fun s -> cache_option := Cache_Initialize s),
+           "dir     precompute lookup tables and store them in directory");
           ("-unphysical", Arg.Int (fun i -> unphysical_polarization := Some i),
-           "select unphysical polarization state for one particle to test Ward Identities");
+           "n       use unphysical polarization for n-th particle / test WIs");
           ("-template", Arg.Set template,
-           "write a template for using handwritten amplitudes with WHIZARD");
-          ("-forest", Arg.Set print_forest, "Diagrammatic expansion");
-          ("-feynmf", Arg.String (fun s -> feynmf := Some s), "print feynmf/mp output");
-          ("-feynmf_tex", Arg.Set feynmf_tex, "print feynmf/mp/LaTeX output");
-          ("-revision", Arg.Unit version, "print revision control information");
-          ("-quiet", Arg.Set quiet, "don't print a summary");
-          ("-summary", Arg.Clear write, "print only a summary");
-          ("-params", Arg.Set params, "print the model parameters");
-          ("-poles", Arg.Set poles, "print the Monte Carlo poles");
-          ("-dag", Arg.String (fun s -> dag_out := Some s), "print minimal DAG");
-          ("-full_dag", Arg.String (fun s -> dag0_out := Some s), "print complete DAG")])
+           "          write a template for handwritten amplitudes");
+          ("-forest", Arg.Set print_forest,
+           "            Diagrammatic expansion");
+          ("-diagrams", Arg.String (fun s -> diagrams_sans_color := Some s),
+           "file      produce FeynMP output for Feynman diagrams");
+          ("-diagrams:c", Arg.String (fun s -> diagrams_color_only := Some s),
+           "file    produce FeynMP output for color flow diagrams");
+          ("-diagrams:C", Arg.String (fun s -> diagrams_all := Some s),
+           "file    produce FeynMP output for Feynman and color flow diagrams");
+          ("-diagrams_LaTeX", Arg.Set diagrams_LaTeX,
+           "    enclose FeynMP output in LaTeX wrapper");
+          ("-revision", Arg.Unit version,
+           "          print revision control information");
+          ("-quiet", Arg.Set quiet,
+           "             don't print a summary");
+          ("-summary", Arg.Clear write,
+           "           print only a summary");
+          ("-params", Arg.Set params,
+           "            print the model parameters");
+          ("-poles", Arg.Set poles,
+           "             print the Monte Carlo poles");
+          ("-dag", Arg.String (fun s -> dag_out := Some s),
+           "               print minimal DAG");
+          ("-full_dag", Arg.String (fun s -> dag0_out := Some s),
+           "          print complete DAG")])
 (*i       ("-T", Arg.Int Topology.Binary.debug_triplet, "");
           ("-P", Arg.Int Topology.Binary.debug_partition, "")])
 i*)
@@ -298,42 +538,29 @@ i*)
                 (F.forest (List.hd (F.externals amplitude)) amplitude))
             (CF.processes amplitudes);
 
-(*i HACK: DIAGNOSTICS TEMPORARYLY DISABLED!!!
-        begin match !feynmf with
+        begin match !diagrams_all with
         | Some name ->
-            let fmf wf =
-              { Tree.style =
-                begin match M.propagator (F.flavor wf) with
-                | Coupling.Prop_Feynman
-                | Coupling.Prop_Gauge _ -> Some "photon"
-                | Coupling.Prop_Unitarity
-                | Coupling.Prop_Rxi _ -> Some "double"
-                | Coupling.Prop_Spinor
-                | Coupling.Prop_ConjSpinor -> Some "fermion"
-                | _ -> None
-                end;
-                Tree.rev =
-                begin match M.propagator (F.flavor wf) with
-                | Coupling.Prop_Spinor -> false
-                | Coupling.Prop_ConjSpinor -> true
-                | _ -> false
-                end;
-                Tree.label = None;
-                Tree.tension = None } in
-            let a = CF.processes amplitudes in
-            let wf1 = List.hd (F.externals a)
-            and wf2 = List.hd (List.tl (F.externals a)) 
-            in
-            Tree.to_feynmf feynmf_tex name variable' wf2
-              (List.map (Tree.map (fun (n, _) -> fmf n) (fun l -> l))
-                 (F.forest wf1 a))
+	  amplitudes_to_feynmf !diagrams_LaTeX name amplitudes
         | None -> ()
         end;
-HACK: DIAGNOSTICS TEMPORARYLY DISABLED!!! i*)
+
+        begin match !diagrams_sans_color with
+        | Some name ->
+	  amplitudes_to_feynmf_sans_color !diagrams_LaTeX name amplitudes
+        | None -> ()
+        end;
+
+        begin match !diagrams_color_only with
+        | Some name ->
+	  amplitudes_to_feynmf_color_only !diagrams_LaTeX name amplitudes
+        | None -> ()
+        end;
+
         begin match !output_file with
         | None -> ()
         | Some name -> close_out output_channel
         end;
+
         exit 0
 
       end

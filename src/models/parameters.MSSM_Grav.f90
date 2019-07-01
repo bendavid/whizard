@@ -1,10 +1,11 @@
 ! $Id: parameters.MSSM.omega.f90,v 1.9 2005/10/25 09:21:48 kilian Exp $
 !
-! Copyright (C) 1999-2012 by 
+! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+!     with contributions from
+!     Christian Speckner <cnspeckn@googlemail.com>
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -609,7 +610,7 @@ contains
        real(default) :: ee
     end type parameter_set
     type(parameter_set) :: par
-    real(kind=default) :: e, g, sinthw, costhw, qelep, qeup, qedwn, v
+    real(kind=default) :: sinthw, costhw, qelep, qeup, qedwn, v
     par%gf     = par_array(1)
     par%mZ     = par_array(2)
     par%wZ     = par_array(3)

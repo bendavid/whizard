@@ -10,7 +10,7 @@ libwhizard_prebuilt_la_SOURCES = libmanager.f90
 ## Dependencies of whizard_prebuilt
 $(libwhizard_prebuilt_la_OBJECTS): \
   ../misc/iso_varying_string.$(FC_MODULE_EXT) \
-  ../whizard-core/process_libraries.$(FC_MODULE_EXT)
+  ../whizard-core/prclib_interfaces.$(FC_MODULE_EXT)
 
 auxdir = $(top_builddir)/src/misc
 

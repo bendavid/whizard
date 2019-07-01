@@ -1,0 +1,25 @@
+# $Id: testproc_2.sin 4873 2013-11-26 19:52:40Z jr_reuter $
+# SINDARIN input for WHIZARD self-test
+
+model = "Test"
+
+?logging = true
+?openmp_logging = false
+?vis_history = false
+?integration_timer = false
+error_threshold = 5E-6
+
+$method = "unit_test"
+process testproc_2_p1 = s, s => s, s
+
+seed = 0
+
+compile ()
+
+$phs_method = "single"
+?use_vamp_equivalences = false
+$integration_method = "vamp"
+iterations = 3:1000
+sqrts = 1000
+
+integrate (testproc_2_p1)

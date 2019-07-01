@@ -1,11 +1,13 @@
-! WHIZARD 2.1.1 September 18 2012
+! WHIZARD 2.2.0 May 18 2014
 ! 
-! Copyright (C) 1999-2012 by 
+! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
-!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
+!     
+!     with contributions from
+!     Christian Speckner <cnspeckn@googlemail.com> 
+!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -30,6 +32,7 @@ module subevents
   use iso_c_binding !NODEP!
   use kinds, only: default !NODEP!
   use file_utils !NODEP!
+  use limits, only: FMT_14, FMT_19 !NODEP!
   use c_particles !NODEP!
   use lorentz !NODEP!
   use sorting
@@ -62,10 +65,14 @@ module subevents
   public :: subevt_set_p_beam
   public :: subevt_set_p_incoming
   public :: subevt_set_p_outgoing
+  public :: subevt_set_p2_beam
+  public :: subevt_set_p2_incoming
+  public :: subevt_set_p2_outgoing
   public :: subevt_polarize
   public :: subevt_is_nonempty
   public :: subevt_get_length
   public :: subevt_get_prt
+  public :: subevt_get_sqrts_hat
   public :: subevt_join
   public :: subevt_combine
   public :: subevt_collect
@@ -73,6 +80,7 @@ module subevents
   public :: subevt_extract
   public :: subevt_sort
   public :: subevt_select_pdg_code
+  public :: pacify
 
   integer, parameter, public :: PRT_UNDEFINED = 0 
   integer, parameter, public :: PRT_BEAM = -9
@@ -97,8 +105,10 @@ module subevents
 
   type :: subevt_t
      private
-     integer :: n_tot = 0
+     integer :: n_active = 0
      type(prt_t), dimension(:), allocatable :: prt
+   contains
+     procedure :: write => subevt_write
   end type subevt_t
 
 
@@ -125,6 +135,11 @@ module subevents
      module procedure subevt_sort_real
   end interface
 
+  interface pacify
+     module procedure pacify_prt
+     module procedure pacify_subevt
+  end interface pacify
+  
 
 contains
 
@@ -238,6 +253,12 @@ contains
     prt%p = p
   end subroutine prt_set_p
 
+  elemental subroutine prt_set_p2 (prt, p2)
+    type(prt_t), intent(inout) :: prt
+    real(default), intent(in) :: p2
+    prt%p2 = p2
+  end subroutine prt_set_p2
+
   subroutine prt_polarize (prt, h)
     type(prt_t), intent(inout) :: prt
     integer, intent(in) :: h
@@ -286,9 +307,10 @@ contains
     end select
     select case (prt%type)
     case (PRT_BEAM, PRT_INCOMING, PRT_OUTGOING, PRT_COMPOSITE)
-       write (u, "(1PE12.5,';',1PE12.5,',',1PE12.5,',',1PE12.5)", advance="no") &
+       write (u, "(" // FMT_14 // ",';'," // FMT_14 // ",','," // &
+            FMT_14 // ",','," // FMT_14 // ")", advance="no") &
             array_from_vector4 (prt%p)
-       write (u, "('|',1PE12.5)", advance="no")  prt%p2
+       write (u, "('|'," // FMT_19 // ")", advance="no")  prt%p2
     end select
     if (allocated (prt%src)) then
        write (u, "('|')", advance="no")
@@ -377,34 +399,34 @@ contains
     end do LOOP
   end function index_lists_are_disjoint
 
-  subroutine subevt_init (subevt, n_tot)
+  subroutine subevt_init (subevt, n_active)
     type(subevt_t), intent(out) :: subevt
-    integer, intent(in), optional :: n_tot
-    if (present (n_tot))  subevt%n_tot = n_tot
-    allocate (subevt%prt (subevt%n_tot))
+    integer, intent(in), optional :: n_active
+    if (present (n_active))  subevt%n_active = n_active
+    allocate (subevt%prt (subevt%n_active))
   end subroutine subevt_init
 
-  subroutine subevt_reset (subevt, n_tot)
+  subroutine subevt_reset (subevt, n_active)
     type(subevt_t), intent(inout) :: subevt
-    integer, intent(in) :: n_tot
-    subevt%n_tot = n_tot
-    if (subevt%n_tot > size (subevt%prt)) then
+    integer, intent(in) :: n_active
+    subevt%n_active = n_active
+    if (subevt%n_active > size (subevt%prt)) then
        deallocate (subevt%prt)
-       allocate (subevt%prt (subevt%n_tot))
+       allocate (subevt%prt (subevt%n_active))
     end if
   end subroutine subevt_reset
 
-  subroutine subevt_write (subevt, unit, prefix)
-    type(subevt_t), intent(in) :: subevt
+  subroutine subevt_write (object, unit, prefix)
+    class(subevt_t), intent(in) :: object
     integer, intent(in), optional :: unit
     character(*), intent(in), optional :: prefix
     integer :: u, i
     u = output_unit (unit);  if (u < 0)  return
-    write (u, *) "subevent:"
-    do i = 1, subevt%n_tot
+    write (u, "(1x,A)") "subevent:"
+    do i = 1, object%n_active
        if (present (prefix))  write (u, "(A)", advance="no") prefix
        write (u, "(1x,I0)", advance="no")  i
-       call prt_write (subevt%prt(i), unit)
+       call prt_write (object%prt(i), unit)
     end do
   end subroutine subevt_write
 
@@ -412,11 +434,11 @@ contains
     type(subevt_t), intent(inout) :: subevt
     type(subevt_t), intent(in) :: subevt_in
     if (.not. allocated (subevt%prt)) then
-       call subevt_init (subevt, subevt_in%n_tot)
+       call subevt_init (subevt, subevt_in%n_active)
     else
-       call subevt_reset (subevt, subevt_in%n_tot)
+       call subevt_reset (subevt, subevt_in%n_active)
     end if
-    subevt%prt(:subevt%n_tot) = subevt_in%prt(:subevt%n_tot)
+    subevt%prt(:subevt%n_active) = subevt_in%prt(:subevt%n_active)
   end subroutine subevt_assign
 
   subroutine subevt_set_beam (subevt, i, pdg, p, p2, src)
@@ -474,7 +496,7 @@ contains
     integer, dimension(:), intent(in) :: pdg
     integer :: i, j
     j = 1
-    do i = 1, subevt%n_tot
+    do i = 1, subevt%n_active
        if (subevt%prt(i)%type == PRT_BEAM) then
           call prt_set_pdg (subevt%prt(i), pdg(j))
           j = j + 1
@@ -488,7 +510,7 @@ contains
     integer, dimension(:), intent(in) :: pdg
     integer :: i, j
     j = 1
-    do i = 1, subevt%n_tot
+    do i = 1, subevt%n_active
        if (subevt%prt(i)%type == PRT_INCOMING) then
           call prt_set_pdg (subevt%prt(i), pdg(j))
           j = j + 1
@@ -502,7 +524,7 @@ contains
     integer, dimension(:), intent(in) :: pdg
     integer :: i, j
     j = 1
-    do i = 1, subevt%n_tot
+    do i = 1, subevt%n_active
        if (subevt%prt(i)%type == PRT_OUTGOING) then
           call prt_set_pdg (subevt%prt(i), pdg(j))
           j = j + 1
@@ -516,7 +538,7 @@ contains
     type(vector4_t), dimension(:), intent(in) :: p
     integer :: i, j
     j = 1
-    do i = 1, subevt%n_tot
+    do i = 1, subevt%n_active
        if (subevt%prt(i)%type == PRT_BEAM) then
           call prt_set_p (subevt%prt(i), p(j))
           j = j + 1
@@ -530,7 +552,7 @@ contains
     type(vector4_t), dimension(:), intent(in) :: p
     integer :: i, j
     j = 1
-    do i = 1, subevt%n_tot
+    do i = 1, subevt%n_active
        if (subevt%prt(i)%type == PRT_INCOMING) then
           call prt_set_p (subevt%prt(i), p(j))
           j = j + 1
@@ -544,7 +566,7 @@ contains
     type(vector4_t), dimension(:), intent(in) :: p
     integer :: i, j
     j = 1
-    do i = 1, subevt%n_tot
+    do i = 1, subevt%n_active
        if (subevt%prt(i)%type == PRT_OUTGOING) then
           call prt_set_p (subevt%prt(i), p(j))
           j = j + 1
@@ -552,6 +574,48 @@ contains
        end if
     end do
   end subroutine subevt_set_p_outgoing
+
+  subroutine subevt_set_p2_beam (subevt, p2)
+    type(subevt_t), intent(inout) :: subevt
+    real(default), dimension(:), intent(in) :: p2
+    integer :: i, j
+    j = 1
+    do i = 1, subevt%n_active
+       if (subevt%prt(i)%type == PRT_BEAM) then
+          call prt_set_p2 (subevt%prt(i), p2(j))
+          j = j + 1
+          if (j > size (p2))  exit
+       end if
+    end do
+  end subroutine subevt_set_p2_beam
+
+  subroutine subevt_set_p2_incoming (subevt, p2)
+    type(subevt_t), intent(inout) :: subevt
+    real(default), dimension(:), intent(in) :: p2
+    integer :: i, j
+    j = 1
+    do i = 1, subevt%n_active
+       if (subevt%prt(i)%type == PRT_INCOMING) then
+          call prt_set_p2 (subevt%prt(i), p2(j))
+          j = j + 1
+          if (j > size (p2))  exit
+       end if
+    end do
+  end subroutine subevt_set_p2_incoming
+
+  subroutine subevt_set_p2_outgoing (subevt, p2)
+    type(subevt_t), intent(inout) :: subevt
+    real(default), dimension(:), intent(in) :: p2
+    integer :: i, j
+    j = 1
+    do i = 1, subevt%n_active
+       if (subevt%prt(i)%type == PRT_OUTGOING) then
+          call prt_set_p2 (subevt%prt(i), p2(j))
+          j = j + 1
+          if (j > size (p2))  exit
+       end if
+    end do
+  end subroutine subevt_set_p2_outgoing
 
   subroutine subevt_polarize (subevt, i, h)
     type(subevt_t), intent(inout) :: subevt
@@ -562,13 +626,13 @@ contains
   function subevt_is_nonempty (subevt) result (flag)
     logical :: flag
     type(subevt_t), intent(in) :: subevt
-    flag = subevt%n_tot /= 0
+    flag = subevt%n_active /= 0
   end function subevt_is_nonempty
 
   function subevt_get_length (subevt) result (length)
     integer :: length
     type(subevt_t), intent(in) :: subevt
-    length = subevt%n_tot
+    length = subevt%n_active
   end function subevt_get_length
 
   function subevt_get_prt (subevt, i) result (prt)
@@ -578,6 +642,19 @@ contains
     prt = subevt%prt(i)
   end function subevt_get_prt
 
+  function subevt_get_sqrts_hat (subevt) result (sqrts_hat)
+    type(subevt_t), intent(in) :: subevt
+    real(default) :: sqrts_hat
+    type(vector4_t) :: p
+    integer :: i
+    do i = 1, subevt%n_active
+       if (subevt%prt(i)%type == PRT_INCOMING) then
+          p = p + prt_get_momentum (subevt%prt(i))
+       end if
+    end do
+    sqrts_hat = p ** 1
+  end function subevt_get_sqrts_hat
+    
   function c_prt_from_subevt (subevt, i) result (c_prt)
     type(c_prt_t) :: c_prt
     type(subevt_t), intent(in) :: subevt
@@ -587,8 +664,8 @@ contains
 
   function c_prt_array_from_subevt (subevt) result (c_prt_array)
     type(subevt_t), intent(in) :: subevt
-    type(c_prt_t), dimension(subevt%n_tot) :: c_prt_array
-    c_prt_array = c_prt_from_prt (subevt%prt(1:subevt%n_tot))
+    type(c_prt_t), dimension(subevt%n_active) :: c_prt_array
+    c_prt_array = c_prt_from_prt (subevt%prt(1:subevt%n_active))
   end function c_prt_array_from_subevt
 
   subroutine subevt_join (subevt, pl1, pl2, mask2)
@@ -596,13 +673,13 @@ contains
     type(subevt_t), intent(in) :: pl1, pl2
     logical, dimension(:), intent(in), optional :: mask2
     integer :: n1, n2, i, n
-    n1 = pl1%n_tot
-    n2 = pl2%n_tot
+    n1 = pl1%n_active
+    n2 = pl2%n_active
     call subevt_reset (subevt, n1 + n2)
     subevt%prt(:n1)   = pl1%prt(:n1)
     n = n1
     if (present (mask2)) then
-       do i = 1, pl2%n_tot
+       do i = 1, pl2%n_active
           if (mask2(i)) then
              if (disjoint (i)) then
                 n = n + 1
@@ -611,20 +688,20 @@ contains
           end if
        end do
     else
-       do i = 1, pl2%n_tot
+       do i = 1, pl2%n_active
           if (disjoint (i)) then
              n = n + 1
              subevt%prt(n) = pl2%prt(i)
           end if
        end do
     end if
-    subevt%n_tot = n
+    subevt%n_active = n
   contains
     function disjoint (i) result (flag)
       integer, intent(in) :: i
       logical :: flag
       integer :: j
-      do j = 1, pl1%n_tot
+      do j = 1, pl1%n_active
          if (.not. are_disjoint (pl1%prt(j), pl2%prt(i))) then
             flag = .false.
             return
@@ -640,8 +717,8 @@ contains
     logical, dimension(:,:), intent(in), optional :: mask12
     integer :: n1, n2, i1, i2, n, j
     logical :: ok
-    n1 = pl1%n_tot
-    n2 = pl2%n_tot
+    n1 = pl1%n_active
+    n2 = pl2%n_active
     call subevt_reset (subevt, n1 * n2)
     n = 1
     do i1 = 1, n1
@@ -663,7 +740,7 @@ contains
           end if
        end do
     end do
-    subevt%n_tot = n - 1
+    subevt%n_active = n - 1
   end subroutine subevt_combine
 
   subroutine subevt_collect (subevt, pl1, mask1)
@@ -674,11 +751,11 @@ contains
     integer :: i
     logical :: ok
     call subevt_reset (subevt, 1)
-    subevt%n_tot = 0
-    do i = 1, pl1%n_tot
+    subevt%n_active = 0
+    do i = 1, pl1%n_active
        if (mask1(i)) then
-          if (subevt%n_tot == 0) then
-             subevt%n_tot = 1
+          if (subevt%n_active == 0) then
+             subevt%n_active = 1
              subevt%prt(1) = pl1%prt(i)
           else
              call prt_combine (prt, subevt%prt(1), pl1%prt(i), ok)
@@ -693,15 +770,15 @@ contains
     type(subevt_t), intent(in) :: pl
     logical, dimension(:), intent(in) :: mask1
     integer :: i, n
-    call subevt_reset (subevt, pl%n_tot)
+    call subevt_reset (subevt, pl%n_active)
     n = 0
-    do i = 1, pl%n_tot
+    do i = 1, pl%n_active
        if (mask1(i)) then
           n = n + 1
           subevt%prt(n) = pl%prt(i)
        end if
     end do
-    subevt%n_tot = n
+    subevt%n_active = n
   end subroutine subevt_select
 
   subroutine subevt_extract (subevt, pl, index)
@@ -709,16 +786,16 @@ contains
     type(subevt_t), intent(in) :: pl
     integer, intent(in) :: index
     if (index > 0) then
-       if (index <= pl%n_tot) then
+       if (index <= pl%n_active) then
           call subevt_reset (subevt, 1)
           subevt%prt(1) = pl%prt(index)
        else
           call subevt_reset (subevt, 0)
        end if
     else if (index < 0) then
-       if (abs (index) <= pl%n_tot) then
+       if (abs (index) <= pl%n_active) then
           call subevt_reset (subevt, 1)
-          subevt%prt(1) = pl%prt(pl%n_tot + 1 + index)
+          subevt%prt(1) = pl%prt(pl%n_active + 1 + index)
        else
           call subevt_reset (subevt, 0)
        end if
@@ -731,7 +808,7 @@ contains
     type(subevt_t), intent(inout) :: subevt
     type(subevt_t), intent(in) :: pl
     integer :: n
-    n = subevt%n_tot
+    n = subevt%n_active
     call subevt_sort_int (subevt, pl, abs (3 * subevt%prt(:n)%pdg - 1))
   end subroutine subevt_sort_pdg
 
@@ -739,8 +816,8 @@ contains
     type(subevt_t), intent(inout) :: subevt
     type(subevt_t), intent(in) :: pl
     integer, dimension(:), intent(in) :: ival
-    call subevt_reset (subevt, pl%n_tot)
-    subevt%n_tot = pl%n_tot
+    call subevt_reset (subevt, pl%n_active)
+    subevt%n_active = pl%n_active
     subevt%prt = pl%prt( order (ival) )
   end subroutine subevt_sort_int
 
@@ -748,8 +825,8 @@ contains
     type(subevt_t), intent(inout) :: subevt
     type(subevt_t), intent(in) :: pl
     real(default), dimension(:), intent(in) :: rval
-    call subevt_reset (subevt, pl%n_tot)
-    subevt%n_tot = pl%n_tot
+    call subevt_reset (subevt, pl%n_active)
+    subevt%n_active = pl%n_active
     subevt%prt = pl%prt( order (rval) )
   end subroutine subevt_sort_real
 
@@ -758,26 +835,43 @@ contains
     type(pdg_array_t), intent(in) :: aval
     type(subevt_t), intent(in) :: subevt_in
     integer, intent(in), optional :: prt_type
-    integer :: n_tot, n_match
+    integer :: n_active, n_match
     logical, dimension(:), allocatable :: mask
     integer :: i, j
-    n_tot = subevt_in%n_tot
-    allocate (mask (n_tot))
-    forall (i = 1:n_tot) &
+    n_active = subevt_in%n_active
+    allocate (mask (n_active))
+    forall (i = 1:n_active) &
          mask(i) = aval .match. subevt_in%prt(i)%pdg
     if (present (prt_type)) &
-         mask = mask .and. subevt_in%prt(:n_tot)%type == prt_type
+         mask = mask .and. subevt_in%prt(:n_active)%type == prt_type
     n_match = count (mask)
     call subevt_reset (subevt, n_match)
-!     subevt%prt(:n_match) = pack (subevt_in%prt(:n_tot), mask)
+    !!! !!! !!! Workaround for gfortran compiler bug
+    ! subevt%prt(:n_match) = pack (subevt_in%prt(:n_active), mask)
     j = 0
-    do i = 1, n_tot
+    do i = 1, n_active
        if (mask(i)) then
           j = j + 1
           subevt%prt(j) = subevt_in%prt(i)
        end if
     end do
   end subroutine subevt_select_pdg_code
+
+  subroutine pacify_prt (prt)
+    class(prt_t), intent(inout) :: prt
+    real(default) :: e
+    e = 1e-16_default * energy (prt%p)
+    call pacify (prt%p, 10 * e)
+    call pacify (prt%p2, 1e4 * e)
+  end subroutine pacify_prt
+  
+  subroutine pacify_subevt (subevt)
+    class(subevt_t), intent(inout) :: subevt
+    integer :: i
+    do i = 1, subevt%n_active
+       call pacify (subevt%prt(i))
+    end do
+  end subroutine pacify_subevt
 
 
 end module subevents

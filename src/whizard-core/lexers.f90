@@ -1,11 +1,13 @@
-! WHIZARD 2.1.1 September 18 2012
+! WHIZARD 2.2.0 May 18 2014
 ! 
-! Copyright (C) 1999-2012 by 
+! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
-!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
+!     
+!     with contributions from
+!     Christian Speckner <cnspeckn@googlemail.com> 
+!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -36,7 +38,8 @@ module lexers
   use ifiles, only: ifile_t 
   use ifiles, only: line_p, line_is_associated, line_init, line_final
   use ifiles, only: line_get_string_advance
-
+  use unit_tests
+  
   implicit none
   private
 
@@ -890,7 +893,6 @@ contains
 
   recursive subroutine lexer_show_source (lexer)
     type(lexer_t), intent(in) :: lexer
-    type(string_t) :: loc_str
     if (associated (lexer%parent)) then
        call lexer_show_source (lexer%parent)
        call msg_message ("[includes]")
@@ -903,9 +905,17 @@ contains
     end if
   end subroutine lexer_show_source
 
-  subroutine lexer_test (lexer, unit)
-    type(lexer_t), intent(inout) :: lexer
-    integer, intent(in) :: unit
+  subroutine lexer_test (u, results)
+    integer, intent(in) :: u
+    type(test_results_t), intent(inout) :: results
+    call test (lexer_1, "lexer_1", &
+         "check lexer", u, results)
+  end subroutine lexer_test
+
+
+  subroutine lexer_1 (u)
+    integer, intent(in) :: u
+    type(lexer_t), target :: lexer
     type(stream_t), target :: stream
     type(string_t) :: string
     type(lexeme_t) :: lexeme
@@ -915,18 +925,18 @@ contains
        quote_chars = "<'""", &
        quote_match = ">'""", &
        single_chars = "?*+|=,()", &
-       special_class = (/ "." /), &
+       special_class = ["."], &
        keyword_list = null ())
     call stream_init (stream, string)
     call lexer_assign_stream (lexer, stream)
     do
        call lex (lexeme, lexer)
-       call lexeme_write (lexeme, unit)
+       call lexeme_write (lexeme, u)
        if (lexeme_is_break (lexeme))  exit
     end do
     call stream_final (stream)
     call lexer_final (lexer)
-  end subroutine lexer_test
+  end subroutine lexer_1
 
 
 end module lexers

@@ -1,6 +1,6 @@
-(* $Id: modellib_PSSSM.ml 3670 2012-01-21 19:33:07Z jr_reuter $
+(* $Id: modellib_PSSSM.ml 4926 2013-12-04 12:35:06Z jr_reuter $
 
-   Copyright (C) 1999-2012 by
+   Copyright (C) 1999-2014 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
@@ -22,8 +22,8 @@
 
 
 let rcs_file = RCS.parse "Modellib_PSSSM" ["Extended SUSY models"]
-    { RCS.revision = "$Revision: 3670 $";
-      RCS.date = "$Date: 2012-01-21 20:33:07 +0100 (Sat, 21 Jan 2012) $";
+    { RCS.revision = "$Revision: 4926 $";
+      RCS.date = "$Date: 2013-12-04 13:35:06 +0100 (Wed, 04 Dec 2013) $";
       RCS.author = "$Author: jr_reuter $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/src/omega/src/modellib_PSSSM.ml $" }
@@ -450,6 +450,13 @@ module ExtMSSM (Flags : extMSSM_flags) =
       | G_LQ_P of sfm*sfm*int*phiggs*int
       | G_ZLQ of int*sfm*sfm
       | G_ZZLQLQ | G_ZPLQLQ | G_PPLQLQ | G_ZGlLQLQ | G_PGlLQLQ | G_NLQC | G_GlGlLQLQ
+
+(* Two integer counters for the QCD and EW order of the couplings. *)
+
+    type orders = int * int
+
+    let orders = function 
+      | _ -> (0,0)
 
 (* \begin{subequations}
      \begin{align}

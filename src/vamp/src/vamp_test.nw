@@ -1,3 +1,5 @@
+% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*- 
+% VAMP vamp_test code as NOWEB source
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \RCSId$Id: vamp_test.nw 314 2010-04-17 20:32:33Z ohl $
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -25,6 +27,7 @@ module vamp_test_functions
   use constants, only: PI
   use coordinates
   use vamp, only: vamp_grid, vamp_multi_channel
+  use vamp, only: vamp_data_t
   implicit none
   private
   public :: f, j, phi, ihp, w
@@ -83,9 +86,9 @@ end function lorentzian
 @ %def lorentzian
 @ 
 <<Implementation of [[vamp_test_functions]] procedures>>=
-pure function f (x, prc_index, weights, channel, grids) result (f_x)
+pure function f (x, data, weights, channel, grids) result (f_x)
   real(kind=default), dimension(:), intent(in) :: x
-  integer, intent(in) :: prc_index
+  class(vamp_data_t), intent(in) :: data
   real(kind=default), dimension(:), intent(in), optional :: weights
   integer, intent(in), optional :: channel
   type(vamp_grid), dimension(:), intent(in), optional :: grids
@@ -166,9 +169,9 @@ pure function ihp (x, channel) result (xi)
 end function ihp
 @ 
 <<Implementation of [[vamp_test_functions]] procedures>>=
-pure function j (x, prc_index, channel) result (j_x)
+pure function j (x, data, channel) result (j_x)
   real(kind=default), dimension(:), intent(in) :: x
-  integer, intent(in) :: prc_index
+  class(vamp_data_t), intent(in) :: data
   integer, intent(in) :: channel
   real(kind=default) :: j_x
   if (channel == 1) then
@@ -183,14 +186,14 @@ pure function j (x, prc_index, channel) result (j_x)
 end function j
 @ 
 <<Implementation of [[vamp_test_functions]] procedures>>=
-pure function w (x, prc_index, weights, channel, grids) result (w_x)
+function w (x, data, weights, channel, grids) result (w_x)
   real(kind=default), dimension(:), intent(in) :: x
-  integer, intent(in) :: prc_index
+  class(vamp_data_t), intent(in) :: data
   real(kind=default), dimension(:), intent(in), optional :: weights
   integer, intent(in), optional :: channel
   type(vamp_grid), dimension(:), intent(in), optional :: grids
   real(kind=default) :: w_x
-  w_x = vamp_multi_channel (f, prc_index, phi, ihp, j, x, weights, channel, grids)
+  w_x = vamp_multi_channel (f, data, phi, ihp, j, x, weights, channel, grids)
 end function w
 @ 
 <<Module [[vamp_tests]]>>=
@@ -225,9 +228,8 @@ subroutine check_jacobians (rng, region, weights, samples)
   real(kind=default), dimension(size(region,dim=2)) :: x
   real(kind=default) :: d
   integer :: ch
-  integer, parameter :: prc_index = 1
   do ch = 1, size(weights)
-     call vamp_check_jacobian (rng, samples, j, prc_index, phi, ch, region, d, x)
+     call vamp_check_jacobian (rng, samples, j, NO_DATA, phi, ch, region, d, x)
      print *, "channel", ch, ": delta(j)/j=", real(d), ", @x=", real (x)
   end do
 end subroutine check_jacobians
@@ -306,13 +308,12 @@ subroutine single_channel (rng, region, samples, iterations, &
   real(kind=default), intent(out) :: integral, standard_dev, chi_squared
   type(vamp_grid) :: gr
   type(vamp_history), dimension(iterations(1)+iterations(2)) :: history
-  integer, parameter :: PRC_INDEX = 1
   call vamp_create_history (history)
   call vamp_create_grid (gr, region, samples(1))
-  call vamp_sample_grid (rng, gr, f, PRC_INDEX, iterations(1), history = history)
+  call vamp_sample_grid (rng, gr, f, NO_DATA, iterations(1), history = history)
   call vamp_discard_integral (gr, samples(2))
   call vamp_sample_grid &
-       (rng, gr, f, PRC_INDEX, iterations(2), &
+       (rng, gr, f, NO_DATA, iterations(2), &
         integral, standard_dev, chi_squared, &
         history = history(iterations(1)+1:))
   call vamp_write_grid (gr, "vamp_test.grid")
@@ -341,17 +342,16 @@ type(vamp_history), dimension(iterations(1)+iterations(2)+size(powers)-1) :: &
      history
 type(vamp_history), dimension(size(history),size(weights)) :: histories
 integer :: it, nit
-integer, parameter :: PRC_INDEX = 1
 nit = size (powers)
 call vamp_create_history (history)
 call vamp_create_history (histories)
 call vamp_create_grids (grs, region, samples(1), weights)
-call vamp_sample_grids (rng, grs, w, PRC_INDEX, iterations(1) - 1, &
+call vamp_sample_grids (rng, grs, w, NO_DATA, iterations(1) - 1, &
                         history = history, histories = histories)
 call vamp_print_history (history, "multi")
 call vamp_print_history (histories, "multi")
 do it = 1, nit
-   call vamp_sample_grids (rng, grs, w, PRC_INDEX, 1, &
+   call vamp_sample_grids (rng, grs, w, NO_DATA, 1, &
                            history = history(iterations(1)+it-1:), &
                            histories = histories(iterations(1)+it-1:,:))
    call vamp_print_history (history(iterations(1)+it-1:), "multi")
@@ -360,7 +360,7 @@ do it = 1, nit
 end do
 call vamp_discard_integrals (grs, samples(2))
 call vamp_sample_grids &
-     (rng, grs, w, PRC_INDEX, iterations(2), &
+     (rng, grs, w, NO_DATA, iterations(2), &
       integral, standard_dev, chi_squared, &
       history = history(iterations(1)+nit:), &
       histories = histories(iterations(1)+nit:,:))
@@ -414,7 +414,7 @@ program vamp_test
   use vamp_test_functions !NODEP!
   use vamp_tests !NODEP!
   implicit none
-  integer :: start_ticks
+  integer :: start_ticks, status
   integer, dimension(2) :: iterations, samples
   real(kind=default), dimension(2,5) :: region
   real(kind=default), dimension(5) :: weight_vector
@@ -426,7 +426,12 @@ program vamp_test
   integer :: failures
   failures = 0
   call tao_random_create (rng, 0)
-  call system_clock (start_ticks)
+  call get_environment_variable (name="VAMP_RANDOM_TESTS", status=status)
+  if (status == 0) then
+     call system_clock (start_ticks)
+  else
+     start_ticks = 42
+  end if
   call tao_random_seed (rng, start_ticks)
   iterations = (/ 4, 3 /)
   samples = (/ 20000, 200000 /)
@@ -558,10 +563,3 @@ end program vampi_test
 \subsection{Output}
 <<[[vamp_test.out]]>>=
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Local Variables:
-% mode:noweb
-% noweb-doc-mode:latex-mode
-% noweb-code-mode:f90-mode
-% indent-tabs-mode:nil
-% page-delimiter:"^@ %%%.*\n"
-% End:

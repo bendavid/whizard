@@ -2,11 +2,11 @@
 ##
 ## Process this file with automake to produce Makefile.in
 #
-# Copyright (C) 1999-2012 by 
+# Copyright (C) 1999-2014 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
-#     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+#     Christian Speckner <christian.speckner@googlemail.com>
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by 
@@ -25,13 +25,15 @@
 ########################################################################
 
 ## Subdirectories to configure
-SUBDIRS = doc susy models cuts beam-sim test examples muli
+SUBDIRS = doc susy models cuts beam-sim tests examples muli interfaces
 
 ## Data files needed for running WHIZARD
 ## to be installed with the 'models' prefix kept
 modelsdir = $(pkgdatadir)/models
 dist_models_DATA = \
   models/2HDM.mdl \
+  models/2HDM_CKM.mdl \
+  models/AltH.mdl \
   models/GravTest.mdl \
   models/Littlest_Eta.mdl \
   models/Littlest_Tpar.mdl \
@@ -43,6 +45,7 @@ dist_models_DATA = \
   models/NMSSM.mdl \
   models/NMSSM_CKM.mdl \
   models/NMSSM_Hgg.mdl \
+  models/NoH_rx.mdl \
   models/PSSSM.mdl \
   models/QCD.mdl \
   models/QED.mdl \
@@ -51,20 +54,20 @@ dist_models_DATA = \
   models/SM_ac_CKM.mdl \
   models/SM_ac.mdl \
   models/SM_CKM.mdl \
-  models/SM_km.mdl \
-  models/SM_QCD.mdl \
+  models/SM_rx.mdl \
   models/SM_top.mdl \
   models/SM_top_anom.mdl \
   models/SM.mdl \
   models/SM_Higgs.mdl \
   models/SM_hadrons.mdl \
+  models/SSC.mdl \
   models/Template.mdl \
   models/UED.mdl \
   models/Xdim.mdl \
   models/Zprime.mdl \
   models/Threeshl.mdl \
   models/Threeshl_nohf.mdl \
-  models/Test.mdl
+  models/Test.mdl 
 
 ## SLHA parameter input files
 ## to be installed with the 'susy' prefix kept
@@ -96,6 +99,7 @@ dist_examples_DATA = \
   examples/LEP_higgs.sin \
   examples/LEP_cc10.sin \
   examples/eeww_polarized.sin \
+  examples/circe1.sin \
   examples/HERA_DIS.sin \
   examples/DrellYanMatchingP.sin \
   examples/DrellYanMatchingW.sin \

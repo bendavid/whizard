@@ -1,0 +1,311 @@
+?openmp_logging = false
+?vis_history = false
+?integration_timer = false
+phs_off_shell = 1
+phs_t_channel = 2
+seed = 0
+sqrts =  5.000000000000E+02
+$method = "omega"
+| Process library 'cuts_lib': recorded process 'cuts_cc'
+| Process library 'cuts_lib': compiling ...
+| Process library 'cuts_lib': writing makefile
+| Process library 'cuts_lib': removing old files
+| Process library 'cuts_lib': writing driver
+| Process library 'cuts_lib': creating source code
+| Process library 'cuts_lib': compiling sources
+| Process library 'cuts_lib': linking
+| Process library 'cuts_lib': loading
+| Process library 'cuts_lib': ... success.
+[user variable] ncalls = 500
+openmp_num_threads = 1
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 0
+| Initializing integration for process cuts_cc:
+| ------------------------------------------------------------------------
+| Process [scattering]: 'cuts_cc'
+|   Library name  = 'cuts_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'cuts_cc_i1':   e-, e+ => mu-, numubar, tau+, nutau [omega]
+| ------------------------------------------------------------------------
+| Beam structure: e-, e+
+| Beam data (collision):
+|   e-  (mass = 0.0000000E+00 GeV)
+|   e+  (mass = 0.0000000E+00 GeV)
+|   sqrts = 5.000000000000E+02 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'cuts_cc_i1.phs'
+| Phase space: 13 channels, 8 dimensions
+| Phase space: found 13 channels, collected in 4 groves.
+| Phase space: Using 13 equivalences between channels.
+| Phase space: wood
+| Applying user-defined cuts.
+| Starting integration for process 'cuts_cc'
+| Integrate: iterations = 1:500
+| Integrator: 4 chains, 13 channels, 8 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 500 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1        494  1.2729771E+01  4.25E+00   33.38    7.42*   4.05
+|-----------------------------------------------------------------------------|
+   1        494  1.2729771E+01  4.25E+00   33.38    7.42    4.05
+|=============================================================================|
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 1
+| Initializing integration for process cuts_cc:
+| ------------------------------------------------------------------------
+| Process [scattering]: 'cuts_cc'
+|   Library name  = 'cuts_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'cuts_cc_i1':   e-, e+ => mu-, numubar, tau+, nutau [omega]
+| ------------------------------------------------------------------------
+| Beam structure: e-, e+
+| Beam data (collision):
+|   e-  (mass = 0.0000000E+00 GeV)
+|   e+  (mass = 0.0000000E+00 GeV)
+|   sqrts = 5.000000000000E+02 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'cuts_cc_i1.phs'
+| Phase space: 13 channels, 8 dimensions
+| Phase space: found 13 channels, collected in 4 groves.
+| Phase space: Using 13 equivalences between channels.
+| Phase space: wood
+| Applying user-defined cuts.
+| Starting integration for process 'cuts_cc'
+| Integrate: iterations = 1:500
+| Integrator: 4 chains, 13 channels, 8 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 500 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1        494  7.7454447E+01  1.59E+01   20.51    4.56*   7.53
+|-----------------------------------------------------------------------------|
+   1        494  7.7454447E+01  1.59E+01   20.51    4.56    7.53
+|=============================================================================|
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 2
+| Initializing integration for process cuts_cc:
+| ------------------------------------------------------------------------
+| Process [scattering]: 'cuts_cc'
+|   Library name  = 'cuts_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'cuts_cc_i1':   e-, e+ => mu-, numubar, tau+, nutau [omega]
+| ------------------------------------------------------------------------
+| Beam structure: e-, e+
+| Beam data (collision):
+|   e-  (mass = 0.0000000E+00 GeV)
+|   e+  (mass = 0.0000000E+00 GeV)
+|   sqrts = 5.000000000000E+02 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'cuts_cc_i1.phs'
+| Phase space: 13 channels, 8 dimensions
+| Phase space: found 13 channels, collected in 4 groves.
+| Phase space: Using 13 equivalences between channels.
+| Phase space: wood
+| Applying user-defined cuts.
+| Starting integration for process 'cuts_cc'
+| Integrate: iterations = 1:500
+| Integrator: 4 chains, 13 channels, 8 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 500 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1        494  1.5570131E+00  1.11E+00   71.36   15.86*   2.84
+|-----------------------------------------------------------------------------|
+   1        494  1.5570131E+00  1.11E+00   71.36   15.86    2.84
+|=============================================================================|
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 3
+| Initializing integration for process cuts_cc:
+| ------------------------------------------------------------------------
+| Process [scattering]: 'cuts_cc'
+|   Library name  = 'cuts_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'cuts_cc_i1':   e-, e+ => mu-, numubar, tau+, nutau [omega]
+| ------------------------------------------------------------------------
+| Beam structure: e-, e+
+| Beam data (collision):
+|   e-  (mass = 0.0000000E+00 GeV)
+|   e+  (mass = 0.0000000E+00 GeV)
+|   sqrts = 5.000000000000E+02 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'cuts_cc_i1.phs'
+| Phase space: 13 channels, 8 dimensions
+| Phase space: found 13 channels, collected in 4 groves.
+| Phase space: Using 13 equivalences between channels.
+| Phase space: wood
+| Applying user-defined cuts.
+| Starting integration for process 'cuts_cc'
+| Integrate: iterations = 1:500
+| Integrator: 4 chains, 13 channels, 8 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 500 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1        494  4.0481136E+01  9.79E+00   24.18    5.38*   6.14
+|-----------------------------------------------------------------------------|
+   1        494  4.0481136E+01  9.79E+00   24.18    5.38    6.14
+|=============================================================================|
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 4
+| Initializing integration for process cuts_cc:
+| ------------------------------------------------------------------------
+| Process [scattering]: 'cuts_cc'
+|   Library name  = 'cuts_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'cuts_cc_i1':   e-, e+ => mu-, numubar, tau+, nutau [omega]
+| ------------------------------------------------------------------------
+| Beam structure: e-, e+
+| Beam data (collision):
+|   e-  (mass = 0.0000000E+00 GeV)
+|   e+  (mass = 0.0000000E+00 GeV)
+|   sqrts = 5.000000000000E+02 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'cuts_cc_i1.phs'
+| Phase space: 13 channels, 8 dimensions
+| Phase space: found 13 channels, collected in 4 groves.
+| Phase space: Using 13 equivalences between channels.
+| Phase space: wood
+| Applying user-defined cuts.
+| Starting integration for process 'cuts_cc'
+| Integrate: iterations = 1:500
+| Integrator: 4 chains, 13 channels, 8 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 500 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1        494  1.0269432E+02  2.54E+01   24.71    5.49*   7.23
+|-----------------------------------------------------------------------------|
+   1        494  1.0269432E+02  2.54E+01   24.71    5.49    7.23
+|=============================================================================|
+[user variable] eta_cut =  5.000000000000E+00
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 5
+| Initializing integration for process cuts_cc:
+| ------------------------------------------------------------------------
+| Process [scattering]: 'cuts_cc'
+|   Library name  = 'cuts_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'cuts_cc_i1':   e-, e+ => mu-, numubar, tau+, nutau [omega]
+| ------------------------------------------------------------------------
+| Beam structure: e-, e+
+| Beam data (collision):
+|   e-  (mass = 0.0000000E+00 GeV)
+|   e+  (mass = 0.0000000E+00 GeV)
+|   sqrts = 5.000000000000E+02 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'cuts_cc_i1.phs'
+| Phase space: 13 channels, 8 dimensions
+| Phase space: found 13 channels, collected in 4 groves.
+| Phase space: Using 13 equivalences between channels.
+| Phase space: wood
+| Applying user-defined cuts.
+| Starting integration for process 'cuts_cc'
+| Integrate: iterations = 1:500
+| Integrator: 4 chains, 13 channels, 8 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 500 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1        494  7.3103785E+01  1.67E+01   22.89    5.09*   6.48
+|-----------------------------------------------------------------------------|
+   1        494  7.3103785E+01  1.67E+01   22.89    5.09    6.48
+|=============================================================================|
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 6
+| Initializing integration for process cuts_cc:
+| ------------------------------------------------------------------------
+| Process [scattering]: 'cuts_cc'
+|   Library name  = 'cuts_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'cuts_cc_i1':   e-, e+ => mu-, numubar, tau+, nutau [omega]
+| ------------------------------------------------------------------------
+| Beam structure: e-, e+
+| Beam data (collision):
+|   e-  (mass = 0.0000000E+00 GeV)
+|   e+  (mass = 0.0000000E+00 GeV)
+|   sqrts = 5.000000000000E+02 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'cuts_cc_i1.phs'
+| Phase space: 13 channels, 8 dimensions
+| Phase space: found 13 channels, collected in 4 groves.
+| Phase space: Using 13 equivalences between channels.
+| Phase space: wood
+| Applying user-defined cuts.
+| Starting integration for process 'cuts_cc'
+| Integrate: iterations = 1:500
+| Integrator: 4 chains, 13 channels, 8 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 500 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1        494  8.4655662E+01  1.88E+01   22.16    4.93*   8.21
+|-----------------------------------------------------------------------------|
+   1        494  8.4655662E+01  1.88E+01   22.16    4.93    8.21
+|=============================================================================|
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 7
+| Initializing integration for process cuts_cc:
+| ------------------------------------------------------------------------
+| Process [scattering]: 'cuts_cc'
+|   Library name  = 'cuts_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'cuts_cc_i1':   e-, e+ => mu-, numubar, tau+, nutau [omega]
+| ------------------------------------------------------------------------
+| Beam structure: e-, e+
+| Beam data (collision):
+|   e-  (mass = 0.0000000E+00 GeV)
+|   e+  (mass = 0.0000000E+00 GeV)
+|   sqrts = 5.000000000000E+02 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'cuts_cc_i1.phs'
+| Phase space: 13 channels, 8 dimensions
+| Phase space: found 13 channels, collected in 4 groves.
+| Phase space: Using 13 equivalences between channels.
+| Phase space: wood
+| Applying user-defined cuts.
+| Starting integration for process 'cuts_cc'
+| Integrate: iterations = 1:500
+| Integrator: 4 chains, 13 channels, 8 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 500 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1        494  8.3564672E+01  2.39E+01   28.55    6.35*   5.84
+|-----------------------------------------------------------------------------|
+   1        494  8.3564672E+01  2.39E+01   28.55    6.35    5.84
+|=============================================================================|
+| WHIZARD run finished.
+|=============================================================================|

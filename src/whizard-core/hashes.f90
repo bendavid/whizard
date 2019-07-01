@@ -1,11 +1,13 @@
-! WHIZARD 2.1.1 September 18 2012
+! WHIZARD 2.2.0 May 18 2014
 ! 
-! Copyright (C) 1999-2012 by 
+! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
-!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
+!     
+!     with contributions from
+!     Christian Speckner <cnspeckn@googlemail.com> 
+!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -28,6 +30,7 @@
 module hashes
 
   use kinds, only: i8, i32 !NODEP!
+  use bytes
 
   implicit none
   private
@@ -36,19 +39,21 @@ module hashes
 
 contains
 
-  function hash (key)
+  function hash (key) result (hashval)
+    integer(i32) :: hashval
     integer(i8), dimension(:), intent(in) :: key
-    integer(i32) :: hash
+    type(word32_t) :: w
     integer :: i
-    hash = 0
+    w = 0_i32
     do i = 1, size (key)
-       hash = hash + key(i)
-       hash = hash + ishft (hash, 10)
-       hash = ieor (hash, ishft (hash, -6))
+       w = w + key(i)
+       w = w + ishft (w, 10)
+       w = ieor (w, ishft (w, -6))
     end do
-    hash = hash + ishft (hash, 3)
-    hash = ieor (hash, ishft (hash, -11))
-    hash = hash + ishft (hash, 15)
+    w = w + ishft (w, 3)
+    w = ieor (w, ishft (w, -11))
+    w = w + ishft (w, 15)
+    hashval = w
   end function hash
     
 

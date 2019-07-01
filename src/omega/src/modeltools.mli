@@ -1,11 +1,12 @@
-(* $Id: modeltools.mli 3670 2012-01-21 19:33:07Z jr_reuter $
+(* $Id: modeltools.mli 4926 2013-12-04 12:35:06Z jr_reuter $
 
-   Copyright (C) 1999-2012 by
+   Copyright (C) 1999-2014 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
        Juergen Reuter <juergen.reuter@desy.de>
-       Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+       with contributions from
+       Christian Speckner <cnspeckn@googlemail.com>
 
    WHIZARD is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by
@@ -50,9 +51,9 @@ module Fusions : functor (F : Flavor) ->
 
 (* \thocwmodulesection{Mutable Models} *)
 
-module Mutable : functor (FGC : sig type f and g and c end) ->
-  Model.Mutable with type flavor = FGC.f and type gauge = FGC.g
-  and type constant = FGC.c
+module Mutable : functor (FGC : sig type f and g and c and o end) ->
+  Model.Mutable with type flavor = FGC.f and type gauge = FGC.g 
+  and type constant = FGC.c and type orders = FGC.o
 
 (*i
  *  Local Variables:

@@ -1,11 +1,13 @@
-! WHIZARD 2.1.1 September 18 2012
+! WHIZARD 2.2.0 May 18 2014
 ! 
-! Copyright (C) 1999-2012 by 
+! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
-!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
+!     
+!     with contributions from
+!     Christian Speckner <cnspeckn@googlemail.com> 
+!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -31,6 +33,7 @@ program main
   use system_dependencies !NODEP!
   use limits, only: CMDLINE_ARG_LEN !NODEP!
   use diagnostics !NODEP!
+  use unit_tests
   use ifiles
   use os_interface
   use whizard
@@ -44,8 +47,11 @@ program main
   integer :: i, j, arg_len, arg_status
   logical :: look_for_options
   logical :: interactive
-  type(string_t) :: files, this, model, libname, library, libraries, logfile
-  type(string_t) :: check, checks
+  logical :: banner
+  type(string_t) :: files, this, model, default_lib, library, libraries
+  type(string_t) :: check, checks, logfile
+  type(test_results_t) :: test_results
+  logical :: success
   logical :: user_code_enable = .false.
   integer :: n_user_src = 0, n_user_lib = 0
   type(string_t) :: user_src, user_lib, user_target
@@ -53,9 +59,11 @@ program main
   logical :: rebuild_library, rebuild_user
   logical :: rebuild_phs, rebuild_grids, rebuild_events
   logical :: recompile_library
-  logical :: time_estimate
   type(ifile_t) :: commands
   type(string_t) :: command
+
+  type(whizard_options_t), allocatable :: options
+  type(whizard_t), allocatable, target :: whizard_instance
 
   ! Exit status
   logical :: quit = .false.
@@ -66,10 +74,12 @@ program main
   interactive = .false.
   files = ""
   model = "SM"
-  libname = "processes"
+  default_lib = "default_lib"
   library = ""
+  libraries = ""  
+  banner = .true.
+  logging = .true.
   logfile = "whizard.log"
-  libraries = ""
   check = ""
   checks = ""
   user_src = ""
@@ -81,7 +91,6 @@ program main
   rebuild_grids = .false.
   rebuild_events = .false.
   recompile_library = .false.
-  time_estimate = .true.
   call paths_init (paths)
 
   ! Read and process options
@@ -148,6 +157,12 @@ program main
               library = get_option_value (i, long_option, value)
               libraries = libraries // " " // library
               cycle SCAN_CMDLINE
+           case ("--no-library")
+              call no_option_value (long_option, value)
+              default_lib = ""
+              library = ""              
+              libraries = ""
+              cycle SCAN_CMDLINE
            case ("--localprefix")
               paths%localprefix = get_option_value (i, long_option, value)
               cycle SCAN_CMDLINE
@@ -158,8 +173,28 @@ program main
               call no_option_value (long_option, value)
               logfile = ""
               cycle SCAN_CMDLINE
+           case ("--logging")
+              call no_option_value (long_option, value)
+              logging = .true.
+              cycle SCAN_CMDLINE
+           case ("--no-logging")
+              call no_option_value (long_option, value)
+              logging = .false.
+              cycle SCAN_CMDLINE
+           case ("--banner")
+              call no_option_value (long_option, value)
+              banner = .true.
+              cycle SCAN_CMDLINE
+           case ("--no-banner")
+              call no_option_value (long_option, value)
+              banner = .false.
+              cycle SCAN_CMDLINE
            case ("--model")
               model = get_option_value (i, long_option, value)
+              cycle SCAN_CMDLINE
+           case ("--no-model")
+              call no_option_value (long_option, value)
+              model = ""
               cycle SCAN_CMDLINE
            case ("--rebuild")
               call no_option_value (long_option, value)
@@ -168,6 +203,15 @@ program main
               rebuild_phs = .true.
               rebuild_grids = .true.
               rebuild_events = .true.
+              cycle SCAN_CMDLINE
+           case ("--no-rebuild")
+              call no_option_value (long_option, value)
+              rebuild_library = .false.
+              recompile_library = .false.
+              rebuild_user = .false.
+              rebuild_phs = .false.
+              rebuild_grids = .false.
+              rebuild_events = .false.
               cycle SCAN_CMDLINE
            case ("--rebuild-library")
               call no_option_value (long_option, value)
@@ -193,14 +237,6 @@ program main
               call no_option_value (long_option, value)
               recompile_library = .true.
               rebuild_grids = .true.
-              cycle SCAN_CMDLINE
-           case ("--time-estimate")
-              call no_option_value (long_option, value)
-              time_estimate = .true.
-              cycle SCAN_CMDLINE
-           case ("--no-time-estimate")
-              call no_option_value (long_option, value)
-              time_estimate = .false.
               cycle SCAN_CMDLINE
            case ("--user")
               user_code_enable = .true.
@@ -266,7 +302,7 @@ program main
                     else
                        library = trim (arg(j+1:))
                     end if
-                    libraries = libraries // " " // library
+                    libraries = libraries // " " // library                    
                     cycle SCAN_CMDLINE
                  case ("-L")
                     if (j == len_trim (arg)) then
@@ -307,64 +343,72 @@ program main
 
   ! Overall initialization
   if (logfile /= "")  call logfile_init (logfile)
-  call mask_term_signals ()
-  call msg_banner ()
-  call whizard_init &
-       (preload_model=model, preload_libs=libraries, default_lib=libname, &
-        rebuild_library=rebuild_library, &
-        rebuild_user=rebuild_user, &
-        rebuild_phs=rebuild_phs, &
-        rebuild_grids=rebuild_grids, &
-        rebuild_events=rebuild_events, &
-        recompile_library=recompile_library, &
-        time_estimate=time_estimate, &
-        paths=paths, &
-        user_code_enable=user_code_enable, &
-        n_user_src=n_user_src, user_src=user_src, &
-        n_user_lib=n_user_lib, user_lib=user_lib, &
-        user_target=user_target)
-
-
+  if (banner)  call msg_banner ()
+  
    ! Run any self-checks (and no commands)
    if (checks /= "") then
       checks = trim (adjustl (checks))
       RUN_CHECKS: do while (checks /= "")
          call split (checks, check, " ")
-         call whizard_check (check, LHAPDF_AVAILABLE)
+         call whizard_check (check, test_results)
       end do RUN_CHECKS
+      call test_results%wrapup (6, success)
+      if (.not. success)  quit_code = 7
       quit = .true.
    end if
    
-  ! Run commands given on the command line
-  if (.not. quit .and. ifile_get_length (commands) > 0) then
-     call whizard_process_ifile (commands, quit, quit_code)
-  end if
+   ! Set options and initialize the whizard object
+   allocate (options)
+   options%preload_model = model
+   options%default_lib = default_lib
+   options%preload_libraries = libraries
+   options%rebuild_library = rebuild_library
+   options%recompile_library = recompile_library
+   options%rebuild_user = rebuild_user 
+   options%rebuild_phs = rebuild_phs
+   options%rebuild_grids = rebuild_grids
+   options%rebuild_events = rebuild_events
+  
+   allocate (whizard_instance)
+   call whizard_instance%init (options, paths, logfile)
 
-  if (.not. quit) then
-     ! Process commands from standard input
-     if (.not. interactive .and. files == "") then
-        call whizard_process_stdin (quit, quit_code)
-   
-     ! ... or process commands from file
-     else
-        files = trim (adjustl (files))
-        SCAN_FILES: do while (files /= "")
-           call split (files, this, " ")
-           call whizard_process_file (this, quit, quit_code)
-           if (quit)  exit SCAN_FILES
-        end do SCAN_FILES
-   
-     end if 
-  end if
+   call mask_term_signals ()
 
+   ! Run commands given on the command line
+   if (.not. quit .and. ifile_get_length (commands) > 0) then
+      call whizard_instance%process_ifile (commands, quit, quit_code)
+   end if
+
+   if (.not. quit) then
+      ! Process commands from standard input
+      if (.not. interactive .and. files == "") then
+         call whizard_instance%process_stdin (quit, quit_code)
+
+         ! ... or process commands from file
+      else
+         files = trim (adjustl (files))
+         SCAN_FILES: do while (files /= "")
+            call split (files, this, " ")
+            call whizard_instance%process_file (this, quit, quit_code)
+            if (quit)  exit SCAN_FILES
+         end do SCAN_FILES
+
+      end if
+  end if
+ 
   ! Enter an interactive shell if requested
   if (.not. quit .and. interactive) then
-     call whizard_shell (quit_code)
+     call whizard_instance%shell (quit_code)
   end if
 
   ! Overall finalization
   call ifile_final (commands)
-  call whizard_final ()
+
+  deallocate (options)
+
+  call whizard_instance%final ()
+  deallocate (whizard_instance)
+  
   call terminate_now_if_signal ()
   call release_term_signals ()
   call msg_terminate (quit_code = quit_code)
@@ -417,8 +461,8 @@ contains
 
   subroutine print_version ()
     print "(A)", "WHIZARD " // WHIZARD_VERSION 
-    print "(A)", "Copyright (C) 1999-2012 Wolfgang Kilian, Thorsten Ohl, Juergen Reuter,"
-    print "(A)", "                           Christian Speckner"
+    print "(A)", "Copyright (C) 1999-2014 Wolfgang Kilian, Thorsten Ohl, Juergen Reuter"
+    print "(A)", "              ---------------------------------------                "
     print "(A)", "This is free software; see the source for copying conditions.  There is NO"
     print "(A)", "warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."
     print *
@@ -440,14 +484,21 @@ contains
     print "(A)", "    --lhapdfdir DIR   (PDF sets directory)"
     print "(A)", "Other options:"
     print "(A)", "-h, --help            display this help and exit"
+    print "(A)", "    --banner          display banner at startup (default)"
     print "(A)", "-e, --execute CMDS    execute SINDARIN CMDS before reading FILE(s)"
     print "(A)", "-i, --interactive     run interactively after reading FILE(s)"
     print "(A)", "-l, --library         preload process library NAME"
     print "(A)", "    --localprefix DIR"
     print "(A)", "                      search in DIR for local models (default: ~/.whizard)"
     print "(A)", "-L, --logfile FILE    write log to FILE (default: 'whizard.log'"
+    print "(A)", "    --logging         switch on logging at startup (default)"
     print "(A)", "-m, --model NAME      preload model NAME (default: 'SM')"
+    print "(A)", "    --no-banner       do not display banner at startup"
+    print "(A)", "    --no-library      do not preload process library"
     print "(A)", "    --no-logfile      do not write a logfile"
+    print "(A)", "    --no-logging      switch off logging at startup"
+    print "(A)", "    --no-model        do not preload a model"
+    print "(A)", "    --no-rebuild      do not force rebuilding"
     print "(A)", "-r, --rebuild         rebuild all (see below)"
     print "(A)", "    --rebuild-library"
     print "(A)", "                      rebuild process code library"
@@ -456,7 +507,7 @@ contains
     print "(A)", "                      rebuild phase-space configuration"
     print "(A)", "    --rebuild-grids   rebuild integration grids"
     print "(A)", "    --rebuild-events  rebuild event samples"
-    print "(A)", "    --recompile       recompile process code, ignoring any existing library"
+    print "(A)", "    --recompile       recompile process code"
     print "(A)", "-u  --user            enable user-provided code"
     print "(A)", "    --user-src FILE   user-provided source file"
     print "(A)", "    --user-lib FILE   user-provided library file"

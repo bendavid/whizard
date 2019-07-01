@@ -17,16 +17,13 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! This version of the source code of vamp has no comments and
 ! can be hard to understand, modify, and improve.  You should have
-! received a copy of the literate noweb sources of vamp that
+! received a copy of the literate `noweb' sources of vamp that
 ! contain the documentation in full detail.
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 module utils
   use kinds
   implicit none
   private
-    private :: swap_integer_array, swap_real_array
-    private :: gcd_s, gcd_v, gcd_a
-  private :: lcm_s, lcm_v, lcm_a
   public :: create_array_pointer
   private :: create_integer_array_pointer
   private :: create_real_array_pointer
@@ -48,15 +45,6 @@ module utils
   integer, dimension(13), parameter, private :: &
        PRIMES = (/ 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41 /)
   integer, parameter, private :: MIN_UNIT = 11, MAX_UNIT = 99
-    interface swap
-     module procedure swap_integer_array, swap_real_array
-  end interface
-    interface gcd
-     module procedure gcd_s, gcd_v, gcd_a
-  end interface
-  interface lcm
-     module procedure lcm_s, lcm_v, lcm_a
-  end interface
   interface create_array_pointer
      module procedure &
           create_integer_array_pointer, &
@@ -82,55 +70,7 @@ module utils
   character(len=*), public, parameter :: UTILS_RCS_ID = &
        "$Id: utils.nw 314 2010-04-17 20:32:33Z ohl $"
 contains
-     subroutine swap_integer_array (a, b)
-    integer, dimension(:), intent(inout) :: a, b
-    integer, dimension(max(size(a),size(b))) :: tmp
-    tmp = a
-    a = b
-    b = tmp
-  end subroutine swap_integer_array
-   subroutine swap_real_array (a, b)
-    real(kind=default), dimension(:), intent(inout) :: a, b
-    real(kind=default), dimension(max(size(a),size(b))) :: tmp
-    tmp = a
-    a = b
-    b = tmp
-  end subroutine swap_real_array
-   function gcd_v (m, n) result (gcd_m_n)
-    integer, dimension(:), intent(in) :: m, n
-    integer, dimension(size(m)) :: gcd_m_n
-    integer :: i
-    do i = 1, size (m)
-       gcd_m_n(i) = gcd_s (m(i), n(i))
-    end do
-  end function gcd_v
-   function lcm_v (m, n) result (lcm_m_n)
-    integer, dimension(:), intent(in) :: m, n
-    integer, dimension(size(m)) :: lcm_m_n
-    integer :: i
-    do i = 1, size (m)
-       lcm_m_n(i) = lcm_s (m(i), n(i))
-    end do
-  end function lcm_v
-   function gcd_a (m, n) result (gcd_m_n)
-    integer, dimension(:), intent(in) :: m
-    integer, intent(in) :: n
-    integer, dimension(size(m)) :: gcd_m_n
-    integer :: i
-    do i = 1, size (m)
-       gcd_m_n(i) = gcd_s (m(i), n)
-    end do
-  end function gcd_a
-   function lcm_a (m, n) result (lcm_m_n)
-    integer, dimension(:), intent(in) :: m
-    integer, intent(in) :: n
-    integer, dimension(size(m)) :: lcm_m_n
-    integer :: i
-    do i = 1, size (m)
-       lcm_m_n(i) = lcm_s (m(i), n)
-    end do
-  end function lcm_a
-     subroutine create_integer_array_pointer (lhs, n, lb)
+  pure subroutine create_integer_array_pointer (lhs, n, lb)
     integer, dimension(:), pointer :: lhs
     integer, intent(in) :: n
     integer, intent(in), optional :: lb
@@ -152,7 +92,7 @@ contains
     end if
     lhs = 0
   end subroutine create_integer_array_pointer
-   subroutine create_real_array_pointer (lhs, n, lb)
+  pure subroutine create_real_array_pointer (lhs, n, lb)
     real(kind=default), dimension(:), pointer :: lhs
     integer, intent(in) :: n
     integer, intent(in), optional :: lb
@@ -174,7 +114,7 @@ contains
     end if
     lhs = 0
   end subroutine create_real_array_pointer
-   subroutine create_integer_array2_pointer (lhs, n, lb)
+  pure subroutine create_integer_array2_pointer (lhs, n, lb)
     integer, dimension(:,:), pointer :: lhs
     integer, dimension(:), intent(in) :: n
     integer, dimension(:), intent(in), optional :: lb
@@ -196,7 +136,7 @@ contains
     end if
     lhs = 0
   end subroutine create_integer_array2_pointer
-   subroutine create_real_array2_pointer (lhs, n, lb)
+  pure subroutine create_real_array2_pointer (lhs, n, lb)
     real(kind=default), dimension(:,:), pointer :: lhs
     integer, dimension(:), intent(in) :: n
     integer, dimension(:), intent(in), optional :: lb
@@ -218,21 +158,21 @@ contains
     end if
     lhs = 0
   end subroutine create_real_array2_pointer
-   subroutine copy_integer_array_pointer (lhs, rhs, lb)
+  pure subroutine copy_integer_array_pointer (lhs, rhs, lb)
     integer, dimension(:), pointer :: lhs
     integer, dimension(:), intent(in) :: rhs
     integer, intent(in), optional :: lb
     call create_integer_array_pointer (lhs, size (rhs), lb)
     lhs = rhs
   end subroutine copy_integer_array_pointer
-   subroutine copy_real_array_pointer (lhs, rhs, lb)
+  pure subroutine copy_real_array_pointer (lhs, rhs, lb)
     real(kind=default), dimension(:), pointer :: lhs
     real(kind=default), dimension(:), intent(in) :: rhs
     integer, intent(in), optional :: lb
     call create_real_array_pointer (lhs, size (rhs), lb)
     lhs = rhs
   end subroutine copy_real_array_pointer
-   subroutine copy_integer_array2_pointer (lhs, rhs, lb)
+  pure subroutine copy_integer_array2_pointer (lhs, rhs, lb)
     integer, dimension(:,:), pointer :: lhs
     integer, dimension(:,:), intent(in) :: rhs
     integer, dimension(:), intent(in), optional :: lb
@@ -240,7 +180,7 @@ contains
          (lhs, (/ size (rhs, dim=1), size (rhs, dim=2) /), lb)
     lhs = rhs
   end subroutine copy_integer_array2_pointer
-   subroutine copy_real_array2_pointer (lhs, rhs, lb)
+  pure subroutine copy_real_array2_pointer (lhs, rhs, lb)
     real(kind=default), dimension(:,:), pointer :: lhs
     real(kind=default), dimension(:,:), intent(in) :: rhs
     integer, dimension(:), intent(in), optional :: lb
@@ -248,21 +188,21 @@ contains
          (lhs, (/ size (rhs, dim=1), size (rhs, dim=2) /), lb)
     lhs = rhs
   end subroutine copy_real_array2_pointer
-   subroutine swap_integer (a, b)
+  elemental subroutine swap_integer (a, b)
     integer, intent(inout) :: a, b
     integer :: tmp
     tmp = a
     a = b
     b = tmp
   end subroutine swap_integer
-   subroutine swap_real (a, b)
+  elemental subroutine swap_real (a, b)
     real(kind=default), intent(inout) :: a, b
     real(kind=default) :: tmp
     tmp = a
     a = b
     b = tmp
   end subroutine swap_real
-   subroutine sort_real (key, reverse)
+  pure subroutine sort_real (key, reverse)
     real(kind=default), dimension(:), intent(inout) :: key
     logical, intent(in), optional :: reverse
     logical :: rev
@@ -283,7 +223,7 @@ contains
        end if
     end do
   end subroutine sort_real
-   subroutine sort_real_and_real_array (key, table, reverse)
+  pure subroutine sort_real_and_real_array (key, table, reverse)
     real(kind=default), dimension(:), intent(inout) :: key
     real(kind=default), dimension(:,:), intent(inout) :: table
     logical, intent(in), optional :: reverse
@@ -306,7 +246,7 @@ contains
        end if
     end do
   end subroutine sort_real_and_real_array
-   subroutine sort_real_and_integer (key, table, reverse)
+  pure subroutine sort_real_and_integer (key, table, reverse)
     real(kind=default), dimension(:), intent(inout) :: key
     integer, dimension(:), intent(inout) :: table
     logical, intent(in), optional :: reverse
@@ -329,13 +269,13 @@ contains
        end if
     end do
   end subroutine sort_real_and_integer
-   function outer_product (x, y) result (xy)
+  pure function outer_product (x, y) result (xy)
     real(kind=default), dimension(:), intent(in) :: x, y
     real(kind=default), dimension(size(x),size(y)) :: xy
     xy = spread (x, dim=2, ncopies=size(y)) &
            * spread (y, dim=1, ncopies=size(x))
   end function outer_product
-   recursive function gcd_internal (m, n) result (gcd_m_n)
+  pure recursive function gcd_internal (m, n) result (gcd_m_n)
     integer, intent(in) :: m, n
     integer :: gcd_m_n
     if (n <= 0) then
@@ -344,17 +284,17 @@ contains
        gcd_m_n = gcd_internal (n, modulo (m, n))
     end if
   end function gcd_internal
-   function gcd_s (m, n) result (gcd_m_n)
+  elemental function gcd (m, n) result (gcd_m_n)
     integer, intent(in) :: m, n
     integer :: gcd_m_n
     gcd_m_n = gcd_internal (m, n)
-  end function gcd_s
-   function lcm_s (m, n) result (lcm_m_n)
+  end function gcd
+  elemental function lcm (m, n) result (lcm_m_n)
     integer, intent(in) :: m, n
     integer :: lcm_m_n
-    lcm_m_n = (m * n) / gcd_s (m, n)
-  end function lcm_s
-   subroutine factorize (n, factors, i)
+    lcm_m_n = (m * n) / gcd (m, n)
+  end function lcm
+  pure subroutine factorize (n, factors, i)
     integer, intent(in) :: n
     integer, dimension(:), intent(out) :: factors
     integer, intent(out) :: i

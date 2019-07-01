@@ -17,7 +17,7 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! This version of the source code of vamp has no comments and
 ! can be hard to understand, modify, and improve.  You should have
-! received a copy of the literate noweb sources of vamp that
+! received a copy of the literate `noweb' sources of vamp that
 ! contain the documentation in full detail.
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 module kinematics
@@ -58,7 +58,7 @@ module kinematics
   character(len=*), public, parameter :: KINEMATICS_RCS_ID = &
        "$Id: kinematics.nw 314 2010-04-17 20:32:33Z ohl $"
 contains
-   function boost_one_velocity (p, beta) result (p_prime)
+  pure function boost_one_velocity (p, beta) result (p_prime)
     real(kind=default), dimension(0:), intent(in) :: p
     real(kind=default), dimension(1:), intent(in) :: beta
     real(kind=default), dimension(0:3) :: p_prime
@@ -70,7 +70,7 @@ contains
     p_prime(0) = gamma * p(0) - b_dot_p
     p_prime(1:3) = p(1:3) + (b_dot_p / (1.0 + gamma) - p(0)) * b
   end function boost_one_velocity
-   function boost_many_velocity (p, beta) result (p_prime)
+  pure function boost_many_velocity (p, beta) result (p_prime)
     real(kind=default), dimension(:,0:), intent(in) :: p
     real(kind=default), dimension(1:), intent(in) :: beta
     real(kind=default), dimension(size(p,dim=1),0:3) :: p_prime
@@ -79,23 +79,23 @@ contains
        p_prime(i,:) = boost_one_velocity (p(i,:), beta)
     end do
   end function boost_many_velocity
-   function boost_one_momentum (p, q) result (p_prime)
+  pure function boost_one_momentum (p, q) result (p_prime)
     real(kind=default), dimension(0:), intent(in) :: p, q
     real(kind=default), dimension(0:3) :: p_prime
     p_prime = boost_velocity (p, q(1:3) / abs (q(0)))
   end function boost_one_momentum
-   function boost_many_momentum (p, q) result (p_prime)
+  pure function boost_many_momentum (p, q) result (p_prime)
     real(kind=default), dimension(:,0:), intent(in) :: p
     real(kind=default), dimension(0:), intent(in) :: q
     real(kind=default), dimension(size(p,dim=1),0:3) :: p_prime
     p_prime = boost_many_velocity (p, q(1:3) / abs (q(0)))
   end function boost_many_momentum
-   function lambda (a, b, c) result (lam)
+  pure function lambda (a, b, c) result (lam)
     real(kind=default), intent(in) :: a, b, c
     real(kind=default) :: lam
     lam = a**2 + b**2 + c**2 - 2*(a*b + b*c + c*a)
   end function lambda
-   function two_to_three_massive &
+  pure function two_to_three_massive &
        (s, t1, s2, phi, cos_theta3, phi3, ma, mb, m1, m2, m3) result (p)
     real(kind=default), intent(in) :: &
          s, t1, s2, phi, cos_theta3, phi3, ma, mb, m1, m2, m3
@@ -116,7 +116,7 @@ contains
     p23(0) = on_shell (p23, sqrt (s2))
     p%p(3:2:-1,:) = one_to_two (p23, cos_theta3, phi3, m3, m2)
   end function two_to_three_massive
-   function two_to_three_massless (s, t1, s2, phi, cos_theta3, phi3) &
+  pure function two_to_three_massless (s, t1, s2, phi, cos_theta3, phi3) &
        result (p)
     real(kind=default), intent(in) :: s, t1, s2, phi, cos_theta3, phi3
     type(LIPS3) :: p
@@ -133,7 +133,7 @@ contains
     p23(0) = on_shell (p23, sqrt (s2))
     p%p(3:2:-1,:) = one_to_two (p23, cos_theta3, phi3)
   end function two_to_three_massless
-   function one_to_two_massive (p12, cos_theta, phi, m1, m2) result (p)
+  pure function one_to_two_massive (p12, cos_theta, phi, m1, m2) result (p)
     real(kind=default), dimension(0:), intent(in) :: p12
     real(kind=default), intent(in) :: cos_theta, phi, m1, m2
     real(kind=default), dimension(2,0:3) :: p
@@ -146,7 +146,7 @@ contains
     p(2,0) = on_shell (p(2,:), m2)
     p = boost_momentum (p, - p12)
   end function one_to_two_massive
-   function one_to_two_massless (p12, cos_theta, phi) result (p)
+  pure function one_to_two_massless (p12, cos_theta, phi) result (p)
     real(kind=default), dimension(0:), intent(in) :: p12
     real(kind=default), intent(in) :: cos_theta, phi
     real(kind=default), dimension(2,0:3) :: p
@@ -158,7 +158,7 @@ contains
     p(2,1:3) = - p(1,1:3)
     p = boost_momentum (p, - p12)
   end function one_to_two_massless
-   function polar_to_cartesian (v_abs, cos_theta, phi) result (v)
+  pure function polar_to_cartesian (v_abs, cos_theta, phi) result (v)
     real(kind=default), intent(in) :: v_abs, cos_theta, phi
     real(kind=default), dimension(3) :: v
     real(kind=default) :: sin_phi, cos_phi, sin_theta
@@ -167,13 +167,13 @@ contains
     sin_phi = sin (phi)
     v = (/ sin_theta * cos_phi, sin_theta * sin_phi, cos_theta /) * v_abs
   end function polar_to_cartesian
-   function on_shell (p, m) result (E)
+  pure function on_shell (p, m) result (E)
     real(kind=default), dimension(0:), intent(in) :: p
     real(kind=default), intent(in) :: m
     real(kind=default) :: E
     E = sqrt (m**2 + dot_product (p(1:3), p(1:3)))
   end function on_shell
-   function massless_isotropic_decay (roots, ran) result (p)
+  pure function massless_isotropic_decay (roots, ran) result (p)
     real (kind=default), intent(in) :: roots
     real (kind=default), dimension(:,:), intent(in) :: ran
     real (kind=default), dimension(size(ran,dim=1),0:3) :: p
@@ -200,7 +200,7 @@ contains
        p(k,0) = x * r
     enddo
   end function massless_isotropic_decay
-   function phase_space_volume (n, roots) result (volume)
+  pure function phase_space_volume (n, roots) result (volume)
     integer, intent(in) :: n
     real (kind=default), intent(in) :: roots
     real (kind=default) :: volume
@@ -261,23 +261,23 @@ module phase_space
   character(len=*), public, parameter :: PHASE_SPACE_RCS_ID = &
        "$Id: kinematics.nw 314 2010-04-17 20:32:33Z ohl $"
 contains
-   subroutine random_LIPS3_unit (rng, lips)
+  pure subroutine random_LIPS3_unit (rng, lips)
     type(tao_random_state), intent(inout) :: rng
     type(LIPS3_unit), intent(inout) :: lips
     call tao_random_number (rng, lips%x)
     lips%jacobian = 1
   end subroutine random_LIPS3_unit
-   subroutine random_LIPS3_unit_massless (rng, lips)
+  pure subroutine random_LIPS3_unit_massless (rng, lips)
     type(tao_random_state), intent(inout) :: rng
     type(LIPS3_unit_massless), intent(inout) :: lips
     call tao_random_number (rng, lips%x)
     lips%jacobian = 1
   end subroutine random_LIPS3_unit_massless
-   subroutine LIPS3_unit_to_s2_t1_angles (s2_t1_angles, unit)
+  pure subroutine LIPS3_unit_to_s2_t1_angles (s2_t1_angles, unit)
     type(LIPS3_s2_t1_angles), intent(out) :: s2_t1_angles
     type(LIPS3_unit), intent(in) :: unit
   end subroutine  LIPS3_unit_to_s2_t1_angles
-   subroutine LIPS3_unit_to_s2_t1_angles_m0 (s2_t1_angles, unit)
+  pure subroutine LIPS3_unit_to_s2_t1_angles_m0 (s2_t1_angles, unit)
     type(LIPS3_s2_t1_angles_massless), intent(out) :: s2_t1_angles
     type(LIPS3_unit_massless), intent(in) :: unit
   end subroutine  LIPS3_unit_to_s2_t1_angles_m0

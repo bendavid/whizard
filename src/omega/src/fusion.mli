@@ -1,11 +1,12 @@
-(* $Id: fusion.mli 3670 2012-01-21 19:33:07Z jr_reuter $
+(* $Id: fusion.mli 5023 2013-12-20 12:03:39Z ohl $
 
-   Copyright (C) 1999-2012 by
+   Copyright (C) 1999-2014 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
        Juergen Reuter <juergen.reuter@desy.de>
-       Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+       with contributions from
+       Christian Speckner <cnspeckn@googlemail.com>
 
    WHIZARD is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by
@@ -29,12 +30,13 @@ module type T =
 (* Wavefunctions are an abstract data type, containing a momentum~[p]
    and additional quantum numbers, collected in~[flavor]. *)
     type wf
+    val conjugate : wf -> wf
 
 (* Obviously, [flavor] is not restricted to the physical notion of
    flavor, but can carry spin, color, etc. *)
     type flavor
-    type flavor_sans_color
     val flavor : wf -> flavor
+    type flavor_sans_color
     val flavor_sans_color : wf -> flavor_sans_color
 
 (* Momenta are represented by an abstract datatype (defined
@@ -260,7 +262,7 @@ module type Multi =
     (* The list of all valid helicity combinations. *)
     val helicities : amplitudes -> (int list * int list) list
 
-    (* The list of all amlitudes. *)
+    (* The list of all amplitudes. *)
     val processes : amplitudes -> amplitude list
 
     (* [(process_table a).(f).(c)] returns the amplitude for the [f]th

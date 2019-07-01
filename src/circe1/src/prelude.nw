@@ -1,4 +1,4 @@
-% $Id: prelude.nw 66 2002-03-28 17:00:10Z ohl $
+% $Id: prelude.nw 5455 2014-03-12 14:26:30Z ohl $
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \iffalse %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -6,7 +6,7 @@ To: hep-ph@xxx.lanl.gov
 Subject: put
 
 \\
-Title: CIRCE Version 1.0:  Beam Spectra for Linear Collider Physics
+Title: CIRCE1:  Beam Spectra for Linear Collider Physics
 Author: Thorsten Ohl (TH Darmstadt)
 Comments: 26 pages, LaTeX (using amsmath.sty), PostScript figures
   included, paper saving version formatted for A4 available from
@@ -23,11 +23,11 @@ generators.
 \fi %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\def\Kirke/{\texttt{Circe}}
-\def\Circe/{\texttt{circe}}
+\def\Kirke/{\texttt{Circe1}}
+\def\Circe/{\texttt{circe1}}
 \def\Hydra/{\texttt{Hydra}}
-\def\Version/{1.02$\beta$}
-\def\Date/{September 1996}
+\def\Version/{2.2}
+\def\Date/{March 2014}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \NeedsTeXFormat{LaTeX2e}
 
@@ -102,7 +102,7 @@ generators.
 \begin{document}
 \bibliographystyle{prsty}%%%{unsrt}%%%{physics}
 \title{%
-  \Kirke/ Version \Version/:\\
+  \Kirke/ (internal Version \Version/):\\
   Beam Spectra for Simulating Linear Collider Physics%
     \thanks{%
        Supported by Bundesministerium f\"ur Bildung,
@@ -133,13 +133,13 @@ generators.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \tableofcontents                                               %!MANUAL%
 \begin{RCS}                                                    %!MANUAL%
-\RCSId$Id: prelude.nw 66 2002-03-28 17:00:10Z ohl $     %!MANUAL%
+\RCSId$Id: prelude.nw 5455 2014-03-12 14:26:30Z ohl $     %!MANUAL%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%!MANUAL%
 \newpage
 \section*{Program Summary:}
 \begin{itemize}
   \item \textbf{Title of program:}
-    \Kirke/, Version \Version/ (\Date/)
+    \Kirke/ (\Date/)
 %CPC%  \item \textbf{Catalogue number:}
 %CPC%    ????
   \item \textbf{Program obtainable}
@@ -269,9 +269,9 @@ section~\ref{sec:parameters} with a discussion of the input for the
 microscopic simulations.  In section~\ref{sec:usage} I describe the
 usage of the \Kirke/ library and in
 section~\ref{sec:technical} I discuss some technical details of the
-implementation.   After discussing the parameterizations available in
-version \Version/ in section~\ref{sec:parameterizations}, I conclude
-in section~\ref{sec:conclusions}.
+implementation.   After discussing the parameterizations available (in
+internal version \Version/) in section~\ref{sec:parameterizations}, I
+conclude in section~\ref{sec:conclusions}.
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Parameters}
 \label{sec:parameters}
@@ -605,7 +605,6 @@ section~\ref{sec:mc-usage}.\par
 The parameter [[acc]] selects the accelerator design.
 Currently the following accelerator codes are recognized:
 <<Accelerator codes>>=
-
   integer, parameter :: SBAND  = 1
   integer, parameter :: TESLA  = 2
   integer, parameter :: XBAND  = 3
@@ -614,9 +613,14 @@ Currently the following accelerator codes are recognized:
   integer, parameter :: TESLEE = 5
   integer, parameter :: XBNDEE = 6
   integer, parameter :: NLCH   = 7
-  integer, parameter :: NACC   = 7
+  integer, parameter :: ILC    = 8
+  integer, parameter :: CLIC   = 9
 @ %def SBAND TESLA XBAND 
 @ %def JLCNLC SBNDEE TESLEE XBNDEE
+@ %def ILC CLIC
+@ The total number of accelerator codes
+<<Accelerator codes>>=
+  integer, parameter :: NACC   = 9
 @ %def NACC
 @ The [[ver]] parameter is used to determine the version as follows:
 \begin{description}
@@ -786,7 +790,7 @@ write (*, 1000) 'delta(sigma) (Gauss) =', (s-1d0)*100d0
 over energies and accelerator designs
 <<[[circe1_sample.f90]]>>=
 ! circe1_sample.f90 -- canonical beam spectra for linear collider physics
-! $Id: circe1.nw 67 2002-03-28 17:13:06Z ohl $
+! $Id: prelude.nw 5455 2014-03-12 14:26:30Z ohl $
 <<Copyleft notice>>
 module sample_routines
   use kinds
@@ -833,7 +837,7 @@ end module sample_routines
 @ with the following result
 <<Sample output>>=
  circe1:message: starting up ...
- circe1:message: $Id: prelude.nw 66 2002-03-28 17:00:10Z ohl $
+ circe1:message: $Id: prelude.nw 5455 2014-03-12 14:26:30Z ohl $
  circe1:message: updating `roots' to   90.0                                  
  circe1:message: updating `ver' to  7                                        
  circe1:message: updating `rev' to 20000501                                  
@@ -1080,7 +1084,7 @@ variables, resulting in a more efficient implementation.
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Parameterizations}
 \label{sec:parameterizations}
-Version \Version/ of \Kirke/ supports just one version of the
+The internal Version \Version/ of \Kirke/1 supports just one version of the
 parameterizations.  Future versions will provide additional
 parameterizations. 
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

@@ -59,22 +59,14 @@ Makefile.depend: $(SOURCE_FILES)
 DISTCLEANFILES = Makefile.depend
 
 ########################################################################
-# Fortran Compilers
-########################################################################
-
-FORTRAN_DIALECT = @FORTRAN_DIALECT@
-
-########################################################################
 # noweb
 ########################################################################
 
 NOTANGLE_IT = \
-  $(NOTANGLE) -R'[[$(@F)]]' $(top_srcdir)/src/prelude.nw $(top_srcdir)/src/pmep.nw $^ \
-    | $(M4) $(top_builddir)/src/$(FORTRAN_DIALECT).m4 - | $(CPIF) $@
+  $(NOTANGLE) -R'[[$(@F)]]' $(top_srcdir)/src/prelude.nw $^ \
+    | $(CPIF) $@
 
 SUFFIXES = .nw .f90
-
-$(SOURCE_FILES): $(FORTRAN_DIALECT).m4
 
 .nw.f90:
 	$(NOTANGLE_IT)

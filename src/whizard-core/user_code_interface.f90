@@ -1,11 +1,13 @@
-! WHIZARD 2.1.1 September 18 2012
+! WHIZARD 2.2.0 May 18 2014
 ! 
-! Copyright (C) 1999-2012 by 
+! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
-!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
+!     
+!     with contributions from
+!     Christian Speckner <cnspeckn@googlemail.com> 
+!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -57,28 +59,6 @@ module user_code_interface
   logical, save :: has_user_lib = .false.
   type(string_t), save :: user
 
-
-  interface
-     function libmanager_get_n_libs () result (n)
-       integer :: n
-     end function libmanager_get_n_libs
-  end interface
-
-  interface
-     function libmanager_get_libname (i) result (name)
-       use iso_varying_string, string_t => varying_string !NODEP!
-       type(string_t) :: name
-       integer, intent(in) :: i
-     end function libmanager_get_libname
-  end interface
-
-  interface
-     function libmanager_get_c_funptr (libname, fname) result (c_fptr)
-       use iso_c_binding !NODEP!
-       type(c_funptr) :: c_fptr
-       character(*), intent(in) :: libname, fname
-     end function libmanager_get_c_funptr
-  end interface
 
   abstract interface
      function user_obs_int_unary (prt1) result (ival) bind(C)
@@ -304,7 +284,8 @@ contains
     type(c_funptr) :: fptr
     integer :: i
     fptr = c_null_funptr
-    fptr = libmanager_get_c_funptr (char (user), char (name))
+    !!! Ticket #529
+    ! fptr = libmanager_get_c_funptr (char (user), char (name))
     if (.not. c_associated (fptr)) then
        if (has_user_lib) then
           fptr = dlaccess_get_c_funptr (user_lib_handle, name)

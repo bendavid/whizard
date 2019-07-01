@@ -1,11 +1,12 @@
-(* $Id: thoList.mli 3670 2012-01-21 19:33:07Z jr_reuter $
+(* $Id: thoList.mli 5023 2013-12-20 12:03:39Z ohl $
 
-   Copyright (C) 1999-2012 by
+   Copyright (C) 1999-2014 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-       Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
-       Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+       Juergen Reuter <juergen.reuter@desy.de>
+       with contributions from
+       Christian Speckner <cnspeckn@googlemail.com>
 
    WHIZARD is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by
@@ -66,13 +67,22 @@ val compare : ?cmp:('a -> 'a -> int) -> 'a list -> 'a list -> int
    in the worst case.  *)
 val classify : 'a list -> (int * 'a) list
 
-(* Collect the second factors with a common first factor in lists. *)
+(* Collect the second factors with a common first factor in lists.
+   \label{ThoList.factorize} *)
 val factorize : ('a * 'b) list -> ('a * 'b list) list
 
-(* [flatmap f] is equivalent to $\ocwlowerid{List.flatten} \circ
-   (\ocwlowerid{List.map}\;\ocwlowerid{f})$, but more efficient,
-   because no intermediate lists are built. *)
+(* [flatmap f] is equivalent to $\ocwlowerid{flatten} \circ
+   (\ocwlowerid{map}\;\ocwlowerid{f})$, but more efficient,
+   because no intermediate lists are built.  Unfortunately, it is
+   not tail recursive. *)
 val flatmap : ('a -> 'b list) -> 'a list -> 'b list
+
+(* [rev_flatmap f] is equivalent to $\ocwlowerid{flatten} \circ
+   (\ocwlowerid{rev\_map}\;(\ocwlowerid{rev}\circ\ocwlowerid{f}))
+   = \ocwlowerid{rev}\circ(\ocwlowerid{flatmap}\;\ocwlowerid{f})$,
+   but more efficient, because no intermediate lists are built.
+   It is tail recursive. *)
+val rev_flatmap : ('a -> 'b list) -> 'a list -> 'b list
 
 val clone : int -> 'a -> 'a list
 val multiply : int -> 'a list -> 'a list
@@ -96,6 +106,16 @@ val iteri2 : (int -> int -> 'a -> unit) -> int -> int -> 'a list list -> unit
 (* Transpose a \emph{rectangular} list of lists like a matrix.  *)
 val transpose : 'a list list -> 'a list list
 
+(* [interleave f list] walks through [list] and inserts the result
+   of [f] applied to the reversed list of elements before and the
+   list of elements after.  The empty lists at the beginning and
+   end are included! *)
+val interleave : ('a list -> 'a list -> 'a list) -> 'a list -> 'a list
+
+(* [interleave_nearest f list] is like [interleave f list], but
+   [f] looks only at the nearest neighbors. *)
+val interleave_nearest : ('a -> 'a -> 'a list) -> 'a list -> 'a list
+
 (* [partitioned_sort cmp index_sets list] sorts the sublists of [list] specified
    by the [index_sets] and the complement of their union.  \textbf{NB:} the sorting
    follows to order in the lists in [index_sets].  \textbf{NB:} the indices are
@@ -106,7 +126,7 @@ exception Out_of_bounds
 
 (* [ariadne_sort cmp list] sorts [list] according to [cmp]
    (default [Pervasives.compare]) keeping track of the original order
-   by a 0-based list of infices. *)
+   by a 0-based list of indices. *)
 val ariadne_sort : ?cmp:('a -> 'a -> int) -> 'a list -> 'a list * int list
 
 (* [ariadne_unsort (ariadne_sort cmp list)] returns [list]. *)

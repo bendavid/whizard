@@ -1,11 +1,12 @@
-(* $Id: modeltools.ml 3670 2012-01-21 19:33:07Z jr_reuter $
+(* $Id: modeltools.ml 4926 2013-12-04 12:35:06Z jr_reuter $
 
-   Copyright (C) 1999-2012 by
+   Copyright (C) 1999-2014 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
        Juergen Reuter <juergen.reuter@desy.de>
-       Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+       with contributions from
+       Christian Speckner <cnspeckn@googlemail.com>
 
    WHIZARD is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by
@@ -22,8 +23,8 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 let rcs_file = RCS.parse "Modeltools" ["Lagragians"]
-    { RCS.revision = "$Revision: 3670 $";
-      RCS.date = "$Date: 2012-01-21 20:33:07 +0100 (Sat, 21 Jan 2012) $";
+    { RCS.revision = "$Revision: 4926 $";
+      RCS.date = "$Date: 2013-12-04 13:35:06 +0100 (Wed, 04 Dec 2013) $";
       RCS.author = "$Author: jr_reuter $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/src/omega/src/modeltools.ml $" }
@@ -243,11 +244,12 @@ module Fusions (F : Flavor) : Fusions with type f = F.f and type c = F.c =
 
 (* \thocwmodulesection{Mutable Models} *)
 
-module Mutable (FGC : sig type f and g and c end) =
+module Mutable (FGC : sig type f and g and c and o end) =
   struct
     type flavor = FGC.f
     type gauge = FGC.g
     type constant = FGC.c
+    type orders = FGC.o
 
     let options = Options.empty
 
@@ -269,6 +271,8 @@ module Mutable (FGC : sig type f and g and c end) =
       and lookup arg = !reference arg in
       (update, lookup)
 
+    let set_orders, orders =
+      declare (fun f -> unitialized "orders")
     let set_color, color =
       declare (fun f -> unitialized "color")
     let set_pdg, pdg =

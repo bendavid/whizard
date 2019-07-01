@@ -55,7 +55,7 @@ if test "$enable_hepmc" = "yes"; then
      *)
         wo_ldflags_stdcpp="-lstdc++" ;;
   esac
-  AC_MSG_CHECKING([for wo_ldflags_stdcpp: host system is $host_os: static flag])
+  AC_MSG_CHECKING([for LDFLAGS_STATIC: host system is $host_os: static flag])
   AC_MSG_RESULT([$wo_ldflags_stdcpp])
   AC_MSG_CHECKING([for GenEvent class in -lHepMC])
   if test -n "$HEPMC_DIR"; then

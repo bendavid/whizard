@@ -1,11 +1,12 @@
-(* $Id: thoFilename.ml 3670 2012-01-21 19:33:07Z jr_reuter $
+(* $Id: thoFilename.ml 4926 2013-12-04 12:35:06Z jr_reuter $
 
-   Copyright (C) 1999-2012 by
+   Copyright (C) 1999-2014 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
        Juergen Reuter <juergen.reuter@desy.de>
-       Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+       with contributions from
+       Christian Speckner <cnspeckn@googlemail.com>
 
    WHIZARD is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by
@@ -40,11 +41,3 @@ let expand_home path =
   | ("~" | "$HOME" | "${HOME}") :: rest ->
       join ((try Sys.getenv "HOME" with Not_found -> "/tmp") :: rest)
   | _ -> path
-
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)

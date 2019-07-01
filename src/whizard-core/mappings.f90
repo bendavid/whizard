@@ -1,11 +1,13 @@
-! WHIZARD 2.1.1 September 18 2012
+! WHIZARD 2.2.0 May 18 2014
 ! 
-! Copyright (C) 1999-2012 by 
+! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
-!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
+!     
+!     with contributions from
+!     Christian Speckner <cnspeckn@googlemail.com> 
+!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -30,6 +32,7 @@ module mappings
   use kinds, only: default !NODEP!
   use kinds, only: TC !NODEP!
   use iso_varying_string, string_t => varying_string !NODEP!
+  use limits, only: FMT_19 !NODEP!
   use constants, only: pi !NODEP!
   use file_utils !NODEP!
   use diagnostics !NODEP!
@@ -49,6 +52,7 @@ module mappings
   public :: mapping_set_step_mapping_parameters
   public :: mapping_is_set
   public :: mapping_is_s_channel
+  public :: mapping_is_on_shell
   public :: mapping_get_mass
   public :: mapping_get_width
   public :: operator(==)
@@ -61,7 +65,8 @@ module mappings
        & EXTERNAL_PRT = -1, &
        & NO_MAPPING = 0, S_CHANNEL = 1, T_CHANNEL =  2, U_CHANNEL = 3, &
        & RADIATION = 4, COLLINEAR = 5, INFRARED = 6, &
-       & STEP_MAPPING_E = 11, STEP_MAPPING_H = 12
+       & STEP_MAPPING_E = 11, STEP_MAPPING_H = 12, &
+       & ON_SHELL = 99
 
   type :: mapping_defaults_t
      real(default) :: energy_scale = 10
@@ -70,6 +75,8 @@ module mappings
      logical :: step_mapping = .true.
      logical :: step_mapping_exp = .true.
      logical :: enable_s_mapping = .false.
+   contains
+     procedure :: write => mapping_defaults_write
   end type mapping_defaults_t
 
   type :: mapping_t
@@ -96,6 +103,25 @@ module mappings
   end interface
 
 contains
+
+  subroutine mapping_defaults_write (object, unit)
+    class(mapping_defaults_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = output_unit (unit)
+    write (u, "(3x,A," // FMT_19 // ")") "energy scale  = ", &
+         object%energy_scale
+    write (u, "(3x,A," // FMT_19 // ")") "mass scale    = ", &
+         object%invariant_mass_scale
+    write (u, "(3x,A," // FMT_19 // ")") "q scale       = ", &
+         object%momentum_transfer_scale
+    write (u, "(3x,A,L1)") "step mapping     = ", &
+         object%step_mapping
+    write (u, "(3x,A,L1)") "step exp. mode   = ", &
+         object%step_mapping_exp
+    write (u, "(3x,A,L1)") "allow s mapping  = ", &
+         object%enable_s_mapping
+  end subroutine mapping_defaults_write    
 
   function mapping_defaults_md5sum (mapping_defaults) result (md5sum_map)
     character(32) :: md5sum_map
@@ -130,6 +156,8 @@ contains
     case(U_CHANNEL); str = "u_channel"
     case(STEP_MAPPING_E);  str = "step_exp"
     case(STEP_MAPPING_H);  str = "step_hyp"
+    case(ON_SHELL);  str = "on_shell"
+    case default;    str = "????????"
     end select
     if (map%type /= NO_MAPPING) then
        write (u, '(1x,A,I4,A)') &
@@ -140,19 +168,23 @@ contains
           if (verbose) then
              select case (map%type)
              case (S_CHANNEL, RADIATION, STEP_MAPPING_E, STEP_MAPPING_H)
-                write (u, *)  "  m/w    = ", map%mass, map%width
+                write (u, "(1x,A,3(" // FMT_19 // "))")  &
+                     "  m/w    = ", map%mass, map%width
              case default
-                write (u, *)  "  m      = ", map%mass
+                write (u, "(1x,A,3(" // FMT_19 // "))")  &
+                     "  m      = ", map%mass
              end select
              select case (map%type)
              case (S_CHANNEL, T_CHANNEL, U_CHANNEL, &
                   STEP_MAPPING_E, STEP_MAPPING_H, &
                   COLLINEAR, INFRARED, RADIATION)
-                write (u, *)  "  a1/2/3 = ", map%a1, map%a2, map%a3
+                write (u, "(1x,A,3(" // FMT_19 // "))")  &
+                     "  a1/2/3 = ", map%a1, map%a2, map%a3
              end select
              select case (map%type)
              case (T_CHANNEL, U_CHANNEL, COLLINEAR)
-                write (u, *)  "  b1/2/3 = ", map%b1, map%b2, map%b3
+                write (u, "(1x,A,3(" // FMT_19 // "))")  &
+                     "  b1/2/3 = ", map%b1, map%b2, map%b3
              end select
           end if
        end if
@@ -175,6 +207,10 @@ contains
     case ("u_channel");  mapping%type = U_CHANNEL
     case ("step_exp");  mapping%type = STEP_MAPPING_E
     case ("step_hyp");  mapping%type = STEP_MAPPING_H
+    case ("on_shell");  mapping%type = ON_SHELL
+    case default
+       call msg_bug ("Mappings: encountered undefined mapping key '" &
+            // char (type) // "'")
     end select
     if (present (f) .and. present (model)) &
          call flavor_init (mapping%flv, abs (f), model)
@@ -237,6 +273,12 @@ contains
     type(mapping_t), intent(in) :: mapping
     flag = mapping%type == S_CHANNEL
   end function mapping_is_s_channel
+
+  function mapping_is_on_shell (mapping) result (flag)
+    logical :: flag
+    type(mapping_t), intent(in) :: mapping
+    flag = mapping%type == ON_SHELL
+  end function mapping_is_on_shell
 
   function mapping_get_mass (mapping) result (mass)
     real(default) :: mass

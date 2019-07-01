@@ -1,12 +1,13 @@
-# $Id: W-endpoint.sin 3930 2012-09-09 18:48:11Z jr_reuter $
+# $Id: W-endpoint.sin 5329 2014-02-19 07:01:23Z jr_reuter $
 # Simple complete physics example: W endpoint in the Standard Model
 ########################################################################
 #
-# Copyright (C) 1999-2012 by 
+# Copyright (C) 1999-2014 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
-#     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+#     with contributions from
+#     Christian Speckner <cnspeckn@googlemail.com>
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by 
@@ -44,16 +45,17 @@ mmu = 0
 
 # LHC design energy
 sqrts = 14 TeV
-beams = p, p => lhapdf { $lhapdf_file = "cteq5l.LHgrid" }
+beams = p, p => pdf_builtin 
+$pdf_builtin_set = "cteq6l" 
 
 # Define reasonable cuts and integrate the cross section(s)
 # in order to initialize the phase space grids for similation
 cuts = all Pt >= 10 GeV [jet:lepton]
-integrate (enj) { iterations = 5:20000 }
+integrate (enj) { iterations = 5:20000:"gw", 3:10000 }
  
 # Define title etc. as global variables, that will be used by PLOT
 $description =
-  "A WHIZARD 2.0 Example."
+  "A WHIZARD 2.2 Example. Cuts $p_T($visible$)\ge10 \textrm{ GeV}$."
 $y_label = "$N_{\textrm{events}}$"
 
 # Allocate plots
@@ -78,6 +80,6 @@ analysis = record pt_lepton (eval Pt [extract index 1 [sort by Pt [lepton]]]);
            record e_lepton (eval E [extract index 1 [sort by Pt [lepton]]]);
            record e_jet (eval E [extract index 1 [sort by Pt [jet]]])
 
-simulate (enj) { n_events = 1000 }
+simulate (enj) { n_events = 2000 }
 
 compile_analysis { $out_file = "W-endpoint.dat" }

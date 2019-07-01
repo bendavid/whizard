@@ -17,23 +17,16 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! This version of the source code of vamp has no comments and
 ! can be hard to understand, modify, and improve.  You should have
-! received a copy of the literate noweb sources of vamp that
+! received a copy of the literate `noweb' sources of vamp that
 ! contain the documentation in full detail.
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 module exceptions
   use kinds
   implicit none
   private
-  private :: raise_exception_s, raise_exception_v
-  private :: clear_exception_s, clear_exception_v
   public :: handle_exception
   public :: raise_exception, clear_exception, gather_exceptions
-  interface raise_exception
-     module procedure raise_exception_s, raise_exception_v
-  end interface
-  interface clear_exception
-     module procedure clear_exception_s, clear_exception_v
-  end interface
+  
   integer, public, parameter :: &
        EXC_NONE = 0, &
        EXC_INFO = 1, &
@@ -50,23 +43,7 @@ module exceptions
   character(len=*), public, parameter :: EXCEPTIONS_RCS_ID = &
        "$Id: exceptions.nw 314 2010-04-17 20:32:33Z ohl $"
 contains
-     subroutine raise_exception_v (exc, level, message, origin)
-    type(exception), dimension(:), intent(inout) :: exc
-    integer, dimension(:), intent(in) :: level
-    character(len=*), dimension(:), intent(in), optional :: message, origin
-    integer :: i
-    do i = 1, size (exc)
-       call raise_exception_s (exc(i), level(i), message(i), origin(i))
-    end do
-  end subroutine raise_exception_v
-   subroutine clear_exception_v (exc)
-    type(exception), dimension(:), intent(inout) :: exc
-    integer :: i
-    do i = 1, size (exc)
-       call clear_exception_s (exc(i))
-    end do
-  end subroutine clear_exception_v
-    subroutine handle_exception (exc)
+  subroutine handle_exception (exc)
     type(exception), intent(inout) :: exc
     character(len=10) :: name
     if (exc%level > 0) then
@@ -91,7 +68,7 @@ contains
        end if
     end if
   end subroutine handle_exception
-   subroutine raise_exception_s (exc, level, origin, message)
+  elemental subroutine raise_exception (exc, level, origin, message)
     type(exception), intent(inout), optional :: exc
     integer, intent(in), optional :: level
     character(len=*), intent(in), optional :: origin, message
@@ -116,20 +93,20 @@ contains
           end if
        end if
     end if
-  end subroutine raise_exception_s
-   subroutine clear_exception_s (exc)
+  end subroutine raise_exception
+  elemental subroutine clear_exception (exc)
     type(exception), intent(inout) :: exc
     exc%level = 0
     exc%message = ""
     exc%origin = ""
-  end subroutine clear_exception_s
-   subroutine gather_exceptions (exc, excs)
+  end subroutine clear_exception
+  pure subroutine gather_exceptions (exc, excs)
     type(exception), intent(inout) :: exc
     type(exception), dimension(:), intent(in) :: excs
     integer :: i
     i = sum (maxloc (excs%level))
     if (exc%level < excs(i)%level) then
-       call raise_exception_s (exc, excs(i)%level, excs(i)%origin, &
+       call raise_exception (exc, excs(i)%level, excs(i)%origin, &
                              excs(i)%message)
     end if
   end subroutine gather_exceptions

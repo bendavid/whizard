@@ -1,0 +1,51 @@
+# $Id: alphas.sin 4878 2013-11-26 19:52:40Z jr_reuter $
+# SINDARIN input for WHIZARD self test
+
+model = "QCD"
+
+?logging = true
+?openmp_logging = false
+?vis_history = false
+?integration_timer = false
+
+alias parton = u:b:B:gl
+
+$method = "omega"
+process alphas_ugug =  u, g => u, g
+
+compile ()
+
+!---------------------------------------------
+
+$phs_method = "wood"
+
+$integration_method = "vamp"
+
+sqrts = 500 GeV
+cuts = all Pt >= 50 GeV [parton]
+   and all M2 >= (50 GeV)^2 [combine [parton, parton]]
+
+!!! Tests should be run single-threaded 
+openmp_num_threads = 1
+
+beams = u, g
+
+seed = 0
+integrate (alphas_ugug) { iterations = 5:5000 }
+
+?rebuild_phase_space = false
+#?rebuild_grids = false
+
+?alpha_s_is_fixed = false
+?alpha_s_from_mz = true
+alpha_s_order = 1
+
+seed = 0
+integrate (alphas_ugug) { iterations = 5:5000 }
+
+?alpha_s_is_fixed = false
+?alpha_s_from_mz = false
+?alpha_s_from_pdf_builtin = true 
+seed = 0
+integrate (alphas_ugug) { iterations = 5:5000 }
+

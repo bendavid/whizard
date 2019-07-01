@@ -1,11 +1,12 @@
-(* $Id: color.mli 3670 2012-01-21 19:33:07Z jr_reuter $
+(* $Id: color.mli 4926 2013-12-04 12:35:06Z jr_reuter $
 
-   Copyright (C) 1999-2012 by
+   Copyright (C) 1999-2014 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
        Juergen Reuter <juergen.reuter@desy.de>
-       Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+       with contributions from
+       Christian Speckner <cnspeckn@googlemail.com>
 
    WHIZARD is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by
@@ -56,8 +57,15 @@ module type Flow =
     val in_ghost_flags : t -> bool list
     val out_ghost_flags : t -> bool list
 
+(* A factor is a list of powers
+   \begin{equation}
+     \sum_{i}
+        \left( \frac{\ocwlowerid{num}_i}{\ocwlowerid{den}_i}
+                  \right)^{\ocwlowerid{power}_i}
+   \end{equation} *)
     type power = { num : int; den : int; power : int }
     type factor = power list
+
     val factor : t -> t -> factor
     val zero : factor
 

@@ -17,7 +17,7 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! This version of the source code of vamp has no comments and
 ! can be hard to understand, modify, and improve.  You should have
-! received a copy of the literate noweb sources of vamp that
+! received a copy of the literate `noweb' sources of vamp that
 ! contain the documentation in full detail.
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 module specfun
@@ -32,7 +32,7 @@ module specfun
   real(kind=default), public, parameter :: &
        PI = 3.1415926535897932384626433832795028841972_default
 contains
-   function gamma (x) result (g)
+  pure function gamma (x) result (g)
     real(kind=default), intent(in) :: x
     real(kind=default) :: g
     integer :: i

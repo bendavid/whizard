@@ -16,11 +16,17 @@ module circe2
 
 <<Public procedures>>
 
+<<Public types>>
+
 <<[[parameter]] declarations>>
 
 <<Declaration: circe2 parameters>>
 
   type(circe2_params_t), public, save :: c2p
+
+<<Abstract types>>
+     
+<<Abstract interfaces>>
 
 contains
 
@@ -32,11 +38,11 @@ end module circe2
 @ 
 <<Copyleft notice>>=
 ! $Id: circe2.nw,v 1.56 2002/10/14 10:12:06 ohl Exp $
-! Copyright (C) 2001-2012 by 
+! Copyright (C) 2001-2014 by 
 !      Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !      Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !      Juergen Reuter <juergen.reuter@desy.de>
-!      Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+!      Christian Speckner <cnspeckn@googlemail.com>
 !
 ! Circe2 is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -90,7 +96,7 @@ end module circe2
         Wolfgang Kilian <kilian@physik.uni-siegen.de>
         Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 	Juergen Reuter <juergen.reuter@desy.de>
-	Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+	Christian Speckner <cnspeckn@googlemail.com>
   
    Circe2 is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by
@@ -139,7 +145,7 @@ xmalloc (size_t size)
 //      Wolfgang Kilian <kilian@physik.uni-siegen.de>
 //      Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 //      Juergen Reuter <juergen.reuter@desy.de>
-//      Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+//      Christian Speckner <cnspeckn@googlemail.com>
 //
 // Circe2 is free software; you can redistribute it and/or modify it
 // under the terms of the GNU General Public License as published by
@@ -498,22 +504,93 @@ d->eta = xmalloc (d->n * sizeof(double));
 d->a = xmalloc (d->n * sizeof(double));
 d->b = xmalloc (d->n * sizeof(double));
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Random-Number Generator}
+The generator routines do not fix or provide a random-number generator.  The
+caller has to provide an implementation which is transferred to the
+subroutines in one of two possible forms:
+\begin{enumerate}
+\item
+  as a subroutine which generates a single random number, working on an
+  implicit external state
+\item
+  as an object with a method the generates a single random number, working on
+  an internal state
+\end{enumerate}
+We allow for using both forms, only in the Fortran API.
+
+These snippets should be used by the procedures that use a RNG:
+<<RNG dummy arguments>>=
+rng, rng_obj
+<<RNG dummy declarations>>=
+procedure(rng_proc), optional :: rng
+class(rng_type), intent(inout), optional :: rng_obj
+<<RNG: generate [[u]]>>=
+call rng_call (u, <<RNG dummy arguments>>)
+<<Procedures>>=
+  subroutine rng_call (u, <<RNG dummy arguments>>)
+    real(kind=double), intent(out) :: u
+    <<RNG dummy declarations>>
+    if (present (rng)) then
+       call rng (u)
+    else if (present (rng_obj)) then
+       call rng_obj%generate (u)
+    else
+       stop "circe2: internal error: generator requires either rng &
+            &or rng_obj argument"
+    end if
+  end subroutine rng_call
+  
+@ %def rng_call
+@ This defines the procedure version of the RNG, corresponding to the
+traditional F77 [[external]] interface.  The abstract interface enables the
+compiler to check conformance.
+<<Abstract interfaces>>=
+  abstract interface
+    subroutine rng_proc (u)
+      import :: double
+      real(kind=double), intent(out) :: u
+    end subroutine rng_proc
+  end interface
+  
+@ %def rng_proc
+@ Here we define the object version of the RNG.  It has to implement a
+[[generate]] method which parallels the [[rng_proc]] procedure above.
+<<Public types>>=
+  public :: rng_type
+<<Abstract types>>=
+  type, abstract :: rng_type
+   contains
+     procedure(rng_generate), deferred :: generate
+  end type rng_type
+  
+@ %def rng_type
+<<Abstract interfaces>>=
+  abstract interface
+     subroutine rng_generate (rng_obj, u)
+       import :: rng_type, double
+       class(rng_type), intent(inout) :: rng_obj
+       real(kind=double), intent(out) :: u
+     end subroutine rng_generate
+  end interface
+  
+@ %def rng_generate  
+@ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Event Generation}
 Generate a two-dimensional distribution for~$([[x1]],[[x2]])$
 according to the histogram for channel [[ic]].
 <<Public procedures>>=
   public :: cir2gn
 <<Procedures>>=
-  subroutine cir2gn (p1, h1, p2, h2, y1, y2, rng)
+  subroutine cir2gn (p1, h1, p2, h2, y1, y2, <<RNG dummy arguments>>)
     integer :: p1, h1, p2, h2
     real(kind=double) :: y1, y2
-    external rng
+    <<RNG dummy declarations>>
     integer :: i, ic, i1, i2, ibot, itop
     real(kind=double) :: x1, x2
     real(kind=double) :: u, tmp
     <<Find [[ic]] for [[p1]], [[h1]], [[p2]] and [[h2]]>>
     <<Complain and [[return]] iff $[[ic]] \le 0$>>
-    call rng (u)
+    <<RNG: generate [[u]]>>
     <<Do a binary search for $[[wgt(i-1)]] \le [[u]] < [[wgt(i)]]$>>
     <<$([[i1]],[[i2]]) \leftarrow [[i]]$>>
     <<$[[x1]]\in[ [[xb1(i1-1)]], [[xb1(i1)]] ]$>>
@@ -671,11 +748,11 @@ binary_search (double *x, int bot, int top, double u)
 }
 @ 
 <<$[[x1]]\in[ [[xb1(i1-1)]], [[xb1(i1)]] ]$>>=
-      call rng (u)
+      <<RNG: generate [[u]]>>
       x1 = c2p%xb1(i1,ic)*u + c2p%xb1(i1-1,ic)*(1-u)
 @ 
 <<$[[x2]]\in[ [[xb2(i2-1)]], [[xb2(i2)]] ]$>>=
-      call rng (u)
+      <<RNG: generate [[u]]>>
       x2 = c2p%xb2(i2,ic)*u + c2p%xb2(i2-1,ic)*(1-u)
 @ 
 <<$[[x1]]\in[ [[ch->d1->x[i1-1] ]], [[ch->d1->x[i1] ]] ]$ (C)>>=
@@ -764,7 +841,7 @@ if (ch->triangle) {
 }
 @
 <<Swap [[y1]] and [[y2]] in 50\%{} of the cases>>=
-      call rng (u)
+      <<RNG: generate [[u]]>>
       if (2*u .ge. 1) then
          tmp = y1
          y1 = y2
@@ -787,12 +864,12 @@ caused a lot of confusion.
 <<Public procedures>>=
   public :: cir2ch
 <<Procedures>>=
-  subroutine cir2ch (p1, h1, p2, h2, rng)
+  subroutine cir2ch (p1, h1, p2, h2, <<RNG dummy arguments>>)
     integer :: p1, h1, p2, h2
-    external rng
+    <<RNG dummy declarations>>
     integer :: ic, ibot, itop
     real(kind=double) :: u
-    call rng (u)
+    <<RNG: generate [[u]]>>
     ibot = 0
     itop = c2p%nc
     do
@@ -859,15 +936,15 @@ undoing parts of [[cir2gn]].
 <<Public procedures>>=
   public :: cir2gp
 <<Procedures>>=
-  subroutine cir2gp (p1, p2, x1, x2, pol, rng)
+  subroutine cir2gp (p1, p2, x1, x2, pol, <<RNG dummy arguments>>)
     integer :: p1, p2
     real(kind=double) :: x1, x2
     real(kind=double), dimension(0:3,0:3) :: pol
-    external rng
+    <<RNG dummy declarations>>
     integer :: h1, h2, i1, i2
     real(kind=double) :: pol00
-    call cir2ch (p1, h1, p2, h2, rng)
-    call cir2gn (p1, h1, p2, h2, x1, x2, rng)
+    call cir2ch (p1, h1, p2, h2, <<RNG dummy arguments>>)
+    call cir2gn (p1, h1, p2, h2, x1, x2, <<RNG dummy arguments>>)
     call cir2dm (p1, p2, x1, x2, pol)
     pol00 = pol(0,0)
     do i1 = 0, 4
@@ -1678,7 +1755,7 @@ some correlations that have been observed in testing \KirkeTwo/
     public :: random
 <<Sample procedures>>=
   subroutine random (u)
-    real(kind=double) :: u
+    real(kind=double), intent(out) :: u
     call taornu (u)
   end subroutine random
 

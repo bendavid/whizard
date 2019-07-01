@@ -17,7 +17,7 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! This version of the source code of vamp has no comments and
 ! can be hard to understand, modify, and improve.  You should have
-! received a copy of the literate noweb sources of vamp that
+! received a copy of the literate `noweb' sources of vamp that
 ! contain the documentation in full detail.
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 module coordinates
@@ -36,7 +36,7 @@ module coordinates
        cartesian_to_spherical_cos, cartesian_to_spherical_cos_j
   public :: surface
 contains
-   subroutine spherical_to_cartesian_2 (r, phi, theta, x, jacobian)
+  pure subroutine spherical_to_cartesian_2 (r, phi, theta, x, jacobian)
     real(kind=default), intent(in) :: r, phi
     real(kind=default), dimension(:), intent(in) :: theta
     real(kind=default), dimension(:), intent(out), optional :: x
@@ -60,20 +60,20 @@ contains
        jacobian = r**(n-1) * product (product_sin_theta)
     end if
   end subroutine spherical_to_cartesian_2
-   function spherical_to_cartesian (r, phi, theta) result (x)
+  pure function spherical_to_cartesian (r, phi, theta) result (x)
     real(kind=default), intent(in) :: r, phi
     real(kind=default), dimension(:), intent(in) :: theta
     real(kind=default), dimension(size(theta)+2) :: x
     call spherical_to_cartesian_2 (r, phi, theta, x = x)
   end function spherical_to_cartesian
-   function spherical_to_cartesian_j (r, phi, theta) &
+  pure function spherical_to_cartesian_j (r, phi, theta) &
        result (jacobian)
     real(kind=default), intent(in) :: r, phi
     real(kind=default), dimension(:), intent(in) :: theta
     real(kind=default) :: jacobian
     call spherical_to_cartesian_2 (r, phi, theta, jacobian = jacobian)
   end function spherical_to_cartesian_j
-   subroutine cartesian_to_spherical_2 (x, r, phi, theta, jacobian)
+  pure subroutine cartesian_to_spherical_2 (x, r, phi, theta, jacobian)
     real(kind=default), dimension(:), intent(in) :: x
     real(kind=default), intent(out), optional :: r, phi
     real(kind=default), dimension(:), intent(out), optional :: theta
@@ -127,18 +127,18 @@ contains
       end if
     end if
   end subroutine cartesian_to_spherical_2
-   subroutine cartesian_to_spherical (x, r, phi, theta)
+  pure subroutine cartesian_to_spherical (x, r, phi, theta)
     real(kind=default), dimension(:), intent(in) :: x
     real(kind=default), intent(out) :: r, phi
     real(kind=default), dimension(:), intent(out) :: theta
     call cartesian_to_spherical_2 (x, r, phi, theta)
   end subroutine cartesian_to_spherical
-   function cartesian_to_spherical_j (x) result (jacobian)
+  pure function cartesian_to_spherical_j (x) result (jacobian)
     real(kind=default), dimension(:), intent(in) :: x
     real(kind=default) :: jacobian
     call cartesian_to_spherical_2 (x, jacobian = jacobian)
   end function cartesian_to_spherical_j
-   subroutine spherical_cos_to_cartesian_2 (r, phi, cos_theta, x, jacobian)
+  pure subroutine spherical_cos_to_cartesian_2 (r, phi, cos_theta, x, jacobian)
     real(kind=default), intent(in) :: r, phi
     real(kind=default), dimension(:), intent(in) :: cos_theta
     real(kind=default), dimension(:), intent(out), optional :: x
@@ -160,20 +160,20 @@ contains
        jacobian = r**(n-1) * product (product_sin_theta(2:))
     end if
   end subroutine spherical_cos_to_cartesian_2
-   function spherical_cos_to_cartesian (r, phi, theta) result (x)
+  pure function spherical_cos_to_cartesian (r, phi, theta) result (x)
     real(kind=default), intent(in) :: r, phi
     real(kind=default), dimension(:), intent(in) :: theta
     real(kind=default), dimension(size(theta)+2) :: x
     call spherical_cos_to_cartesian_2 (r, phi, theta, x = x)
   end function spherical_cos_to_cartesian
-   function spherical_cos_to_cartesian_j (r, phi, theta) &
+  pure function spherical_cos_to_cartesian_j (r, phi, theta) &
        result (jacobian)
     real(kind=default), intent(in) :: r, phi
     real(kind=default), dimension(:), intent(in) :: theta
     real(kind=default) :: jacobian
     call spherical_cos_to_cartesian_2 (r, phi, theta, jacobian = jacobian)
   end function spherical_cos_to_cartesian_j
-   subroutine cartesian_to_spherical_cos_2 (x, r, phi, cos_theta, jacobian)
+  pure subroutine cartesian_to_spherical_cos_2 (x, r, phi, cos_theta, jacobian)
     real(kind=default), dimension(:), intent(in) :: x
     real(kind=default), intent(out), optional :: r, phi
     real(kind=default), dimension(:), intent(out), optional :: cos_theta
@@ -227,18 +227,18 @@ contains
       end if
     end if
   end subroutine cartesian_to_spherical_cos_2
-   subroutine cartesian_to_spherical_cos (x, r, phi, cos_theta)
+  pure subroutine cartesian_to_spherical_cos (x, r, phi, cos_theta)
     real(kind=default), dimension(:), intent(in) :: x
     real(kind=default), intent(out) :: r, phi
     real(kind=default), dimension(:), intent(out), optional :: cos_theta
     call cartesian_to_spherical_cos_2 (x, r, phi, cos_theta)
   end subroutine cartesian_to_spherical_cos
-   function cartesian_to_spherical_cos_j (x) result (jacobian)
+  pure function cartesian_to_spherical_cos_j (x) result (jacobian)
     real(kind=default), dimension(:), intent(in) :: x
     real(kind=default) :: jacobian
     call cartesian_to_spherical_cos_2 (x, jacobian = jacobian)
   end function cartesian_to_spherical_cos_j
-   function surface (n) result (vol)
+  pure function surface (n) result (vol)
     integer, intent(in) :: n
     real(kind=default) :: vol
     real(kind=default) :: n_by_2

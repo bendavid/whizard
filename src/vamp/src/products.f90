@@ -17,7 +17,7 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! This version of the source code of vamp has no comments and
 ! can be hard to understand, modify, and improve.  You should have
-! received a copy of the literate noweb sources of vamp that
+! received a copy of the literate `noweb' sources of vamp that
 ! contain the documentation in full detail.
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 module products
@@ -28,18 +28,18 @@ module products
   character(len=*), public, parameter :: PRODUCTS_RCS_ID = &
        "$Id: products.nw 314 2010-04-17 20:32:33Z ohl $"
 contains
-   function dot (p, q) result (pq)
+  pure function dot (p, q) result (pq)
     real(kind=default), dimension(0:), intent(in) :: p, q
     real(kind=default) :: pq
     pq = p(0)*q(0) - dot_product (p(1:), q(1:))
   end function dot
-   function sp (p, q) result (sppq)
+  pure function sp (p, q) result (sppq)
     real(kind=default), dimension(0:), intent(in) :: p, q
     complex(kind=default) :: sppq
     sppq = cmplx (p(2), p(3)) * sqrt ((q(0)-q(1))/(p(0)-p(1))) &
          - cmplx (q(2), q(3)) * sqrt ((p(0)-p(1))/(q(0)-q(1)))
   end function sp
-   function spc (p, q) result (spcpq)
+  pure function spc (p, q) result (spcpq)
     real(kind=default), dimension(0:), intent(in) :: p, q
     complex(kind=default) :: spcpq
     spcpq = conjg (sp (p, q))

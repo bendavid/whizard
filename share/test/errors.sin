@@ -1,8 +1,0 @@
-# Should cause an ordinary error (variable is locked)
-alias u = d
-
-# Should cause a fatal error (sqrts is zero)
-#sqrts = 0  # is default value
-beams = p, p
-
-

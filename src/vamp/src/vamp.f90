@@ -17,7 +17,7 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! This version of the source code of vamp has no comments and
 ! can be hard to understand, modify, and improve.  You should have
-! received a copy of the literate noweb sources of vamp that
+! received a copy of the literate `noweb' sources of vamp that
 ! contain the documentation in full detail.
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 module vamp_grid_type
@@ -127,9 +127,9 @@ contains
     integer :: u
     type(vamp_equivalence_t), intent(in) :: eq
     u = 6;  if (present (unit))  u = unit
-    write (u, "(1x,A,2(1x,I4))") "Equivalent channels:", eq%left, eq%right
-    write (u, "(1x,A,25(1x,I2))") "  Permutation:", eq%permutation
-    write (u, "(1x,A,25(1x,I2))") "  Mode:       ", eq%mode
+    write (u, "(3x,A,2(1x,I0))") "Equivalent channels:", eq%left, eq%right
+    write (u, "(5x,A,99(1x,I0))") "Permutation:", eq%permutation
+    write (u, "(5x,A,99(1x,I0))") "Mode:       ", eq%mode
   end subroutine vamp_equivalence_write
   subroutine vamp_equivalences_write (eq, unit)
     type(vamp_equivalences_t), intent(in) :: eq
@@ -137,22 +137,27 @@ contains
     integer :: u
     integer :: ch, i
     u = 6;  if (present (unit))  u = unit
-    write (u, *) "Inequivalent channels:"
-    do ch=1, eq%n_ch
-       if (eq%independent(ch)) then
-          write (u, *) "  Channel", ch, ":", &
-               & "    Mult. =", eq%multiplicity(ch), &
-               & "    Symm. =", eq%symmetry(ch), &
-               & "    Invar.:", eq%div_is_invariant(ch,:)
-       end if
-    end do
-    write (u, *) "Equivalence list:"
+    write (u, "(1x,A)") "Inequivalent channels:"
+    if (allocated (eq%independent)) then
+       do ch=1, eq%n_ch
+          if (eq%independent(ch)) then
+             write (u, "(3x,A,1x,I0,A,4x,A,I0,4x,A,I0,4x,A,999(L1))") &
+                  "Channel", ch, ":", &
+                  "Mult. = ", eq%multiplicity(ch), &
+                  "Symm. = ", eq%symmetry(ch), &
+                  "Invar.: ", eq%div_is_invariant(ch,:)
+          end if
+       end do
+    else
+       write (u, "(3x,A)") "[not allocated]"
+    end if
+    write (u, "(1x,A)") "Equivalence list:"
     if (allocated (eq%eq)) then
        do i=1, size (eq%eq)
           call vamp_equivalence_write (eq%eq(i), u)
        end do
     else
-       write (u, *) "[not allocated]"
+       write (u, "(3x,A)") "[not allocated]"
     end if
   end subroutine vamp_equivalences_write
   subroutine vamp_equivalence_set (eq, i, left, right, perm, mode)
@@ -217,18 +222,6 @@ module vamp_rest
   use vamp_equivalences !NODEP!
   implicit none
   private
-  private :: vamp_create_empty_grid_s, vamp_create_empty_grid_v
-  private :: vamp_nullify_covariance_s, vamp_nullify_covariance_v
-  private :: vamp_get_variance_s, vamp_get_variance_v
-  private :: vamp_nullify_variance_s, vamp_nullify_variance_v
-  private :: vamp_copy_grid_s, vamp_copy_grid_v
-  private :: vamp_delete_grid_s, vamp_delete_grid_v
-  private :: vamp_copy_grids_s, vamp_copy_grids_v
-  private :: vamp_delete_grids_s, vamp_delete_grids_v
-  private :: vamp_create_history_s, vamp_create_history_v, vamp_create_history_a
-  private :: vamp_terminate_history_s, vamp_terminate_history_v
-  private :: vamp_copy_history_s, vamp_copy_history_v, vamp_copy_history_a
-  private :: vamp_delete_history_s, vamp_delete_history_v, vamp_delete_history_a
   public :: vamp_copy_grid, vamp_delete_grid
   public :: vamp_create_grid, vamp_create_empty_grid
   private :: map_domain
@@ -309,42 +302,6 @@ module vamp_rest
   public :: vamp_marshal_grid_size, vamp_marshal_grid, vamp_unmarshal_grid
   public :: vamp_marshal_history_size, vamp_marshal_history
   public :: vamp_unmarshal_history
-  interface vamp_create_empty_grid
-     module procedure vamp_create_empty_grid_s, vamp_create_empty_grid_v
-  end interface
-  interface vamp_nullify_covariance
-     module procedure vamp_nullify_covariance_s, vamp_nullify_covariance_v
-  end interface
-  interface vamp_get_variance
-     module procedure vamp_get_variance_s, vamp_get_variance_v
-  end interface
-  interface vamp_nullify_variance
-     module procedure vamp_nullify_variance_s, vamp_nullify_variance_v
-  end interface
-  interface vamp_copy_grid
-     module procedure vamp_copy_grid_s, vamp_copy_grid_v
-  end interface
-  interface vamp_delete_grid
-     module procedure vamp_delete_grid_s, vamp_delete_grid_v
-  end interface
-  interface vamp_copy_grids
-     module procedure vamp_copy_grids_s, vamp_copy_grids_v
-  end interface
-  interface vamp_delete_grids
-     module procedure vamp_delete_grids_s, vamp_delete_grids_v
-  end interface
-  interface vamp_create_history
-     module procedure vamp_create_history_s, vamp_create_history_v, vamp_create_history_a
-  end interface
-  interface vamp_terminate_history
-     module procedure vamp_terminate_history_s, vamp_terminate_history_v
-  end interface
-  interface vamp_copy_history
-     module procedure vamp_copy_history_s, vamp_copy_history_v, vamp_copy_history_a
-  end interface
-  interface vamp_delete_history
-     module procedure vamp_delete_history_s, vamp_delete_history_v, vamp_delete_history_a
-  end interface
   interface vamp_average_iterations
      module procedure vamp_average_iterations_grid
   end interface
@@ -414,6 +371,11 @@ module vamp_rest
   integer, parameter, private :: MAGIC_GRIDS = 33333333
   integer, parameter, private :: MAGIC_GRIDS_BEGIN = MAGIC_GRIDS + 1
   integer, parameter, private :: MAGIC_GRIDS_END = MAGIC_GRIDS + 2
+  type, public :: vamp_data_t
+  end type vamp_data_t
+
+  type(vamp_data_t), parameter, public :: NO_DATA = vamp_data_t ()
+
   type, public :: vamp_history
      private
      real(kind=default) :: &
@@ -438,127 +400,13 @@ module vamp_rest
        integer_fmt =       "(1x,a17,1x,i15)", &
        integer_array_fmt = "(1x,i17,1x,i15)", &
        logical_fmt =       "(1x,a17,1x,l1)", &
-       double_fmt =        "(1x,a17,1x,e30.22)", &
-       double_array_fmt =  "(1x,i17,1x,e30.22)", &
-       double_array2_fmt =  "(2(1x,i8),1x,e30.22)"
+       double_fmt =        "(1x,a17,1x,e30.22e4)", &
+       double_array_fmt =  "(1x,i17,1x,e30.22e4)", &
+       double_array2_fmt =  "(2(1x,i8),1x,e30.22e4)"
   character(len=*), public, parameter :: VAMP_RCS_ID = &
        "$Id: vamp.nw 317 2010-04-18 00:31:03Z ohl $"
 contains
-     subroutine vamp_create_empty_grid_v (g)
-    type(vamp_grid), dimension(:), intent(inout) :: g
-    integer :: i
-    do i = 1, size (g)
-       call vamp_create_empty_grid_s (g(i))
-    end do
-  end subroutine vamp_create_empty_grid_v
-   subroutine vamp_nullify_covariance_v (g)
-    type(vamp_grid), dimension(:), intent(inout) :: g
-    integer :: i
-    do i = 1, size (g)
-       call vamp_nullify_covariance_s (g(i))
-    end do
-  end subroutine vamp_nullify_covariance_v
-   function vamp_get_variance_v (g) result (v)
-    type(vamp_grid), dimension(:), intent(in) :: g
-    real(kind=default), dimension(size(g)) :: v
-    integer :: i
-    do i = 1, size (g)
-       v(i) = vamp_get_variance_s (g(i))
-    end do
-  end function vamp_get_variance_v
-   subroutine vamp_nullify_variance_v (g)
-    type(vamp_grid), dimension(:), intent(inout) :: g
-    integer :: i
-    do i = 1, size (g)
-       call vamp_nullify_variance_s (g(i))
-    end do
-  end subroutine vamp_nullify_variance_v
-   subroutine vamp_copy_grid_v (lhs, rhs)
-    type(vamp_grid), dimension(:), intent(inout) :: lhs
-    type(vamp_grid), dimension(:), intent(in) :: rhs
-    integer :: i
-    do i = 1, size (lhs)
-       call vamp_copy_grid_s (lhs(i), rhs(i))
-    end do
-  end subroutine vamp_copy_grid_v
-   subroutine vamp_delete_grid_v (g)
-    type(vamp_grid), dimension(:), intent(inout) :: g
-    integer :: i
-    do i = 1, size (g)
-       call vamp_delete_grid_s (g(i))
-    end do
-  end subroutine vamp_delete_grid_v
-   subroutine vamp_copy_grids_v (lhs, rhs)
-    type(vamp_grids), dimension(:), intent(inout) :: lhs
-    type(vamp_grids), dimension(:), intent(in) :: rhs
-    integer :: i
-    do i = 1, size (lhs)
-       call vamp_copy_grids_s (lhs(i), rhs(i))
-    end do
-  end subroutine vamp_copy_grids_v
-   subroutine vamp_delete_grids_v (g)
-    type(vamp_grids), dimension(:), intent(inout) :: g
-    integer :: i
-    do i = 1, size (g)
-       call vamp_delete_grids_s (g(i))
-    end do
-  end subroutine vamp_delete_grids_v
-   subroutine vamp_create_history_v (h, ndim, verbose)
-    type(vamp_history), dimension(:), intent(inout) :: h
-    integer, intent(in), optional :: ndim
-    logical, intent(in), optional :: verbose
-    integer :: i
-    do i = 1, size (h)
-       call vamp_create_history_s (h(i), ndim, verbose)
-    end do
-  end subroutine vamp_create_history_v
-   subroutine vamp_create_history_a (h, ndim, verbose)
-    type(vamp_history), dimension(:,:), intent(inout) :: h
-    integer, intent(in), optional :: ndim
-    logical, intent(in), optional :: verbose
-    integer :: i
-    do i = 1, size (h, dim=2)
-       call vamp_create_history_v (h(:,i), ndim, verbose)
-    end do
-  end subroutine vamp_create_history_a
-   subroutine vamp_terminate_history_v (h)
-    type(vamp_history), dimension(:), intent(inout) :: h
-    integer :: i
-    do i = 1, size (h)
-       call vamp_terminate_history_s (h(i))
-    end do
-  end subroutine vamp_terminate_history_v
-   subroutine vamp_copy_history_v (lhs, rhs)
-    type(vamp_history), dimension(:), intent(out) :: lhs
-    type(vamp_history), dimension(:), intent(in) :: rhs
-    integer :: i
-    do i = 1, size (rhs)
-       call vamp_copy_history_s (lhs(i), rhs(i))
-    end do
-  end subroutine vamp_copy_history_v
-   subroutine vamp_copy_history_a (lhs, rhs)
-    type(vamp_history), dimension(:,:), intent(out) :: lhs
-    type(vamp_history), dimension(:,:), intent(in) :: rhs
-    integer :: i
-    do i = 1, size (rhs, dim=2)
-       call vamp_copy_history_v (lhs(:,i), rhs(:,i))
-    end do
-  end subroutine vamp_copy_history_a
-   subroutine vamp_delete_history_v (h)
-    type(vamp_history), dimension(:), intent(inout) :: h
-    integer :: i
-    do i = 1, size (h)
-       call vamp_delete_history_s (h(i))
-    end do
-  end subroutine vamp_delete_history_v
-   subroutine vamp_delete_history_a (h)
-    type(vamp_history), dimension(:,:), intent(inout) :: h
-    integer :: i
-    do i = 1, size (h, dim=2)
-       call vamp_delete_history_v (h(:,i))
-    end do
-  end subroutine vamp_delete_history_a
-     subroutine vamp_create_grid &
+  pure subroutine vamp_create_grid &
        (g, domain, num_calls, num_div, &
         stratified, quadrupole, covariance, map, exc)
     type(vamp_grid), intent(inout) :: g
@@ -602,7 +450,7 @@ contains
     call vamp_discard_integral &
          (g, num_calls, num_div, stratified, quadrupole, covariance, exc)
   end subroutine vamp_create_grid
-   subroutine map_domain (map, true_xmin, true_xmax, xmin, xmax)
+  pure subroutine map_domain (map, true_xmin, true_xmax, xmin, xmax)
     real(kind=default), dimension(:,:), intent(in) :: map
     real(kind=default), dimension(:), intent(in) :: true_xmin, true_xmax
     real(kind=default), dimension(:), intent(out) :: xmin, xmax
@@ -619,11 +467,11 @@ contains
     xmin = minval (corners, dim=1)
     xmax = maxval (corners, dim=1)
   end subroutine map_domain
-   subroutine vamp_create_empty_grid_s (g)
+  elemental subroutine vamp_create_empty_grid (g)
     type(vamp_grid), intent(inout) :: g
     nullify (g%div, g%num_div, g%map, g%mu_x, g%mu_xx, g%sum_mu_x, g%sum_mu_xx)
-  end subroutine vamp_create_empty_grid_s
-   subroutine vamp_discard_integral &
+  end subroutine vamp_create_empty_grid
+  pure subroutine vamp_discard_integral &
        (g, num_calls, num_div, stratified, quadrupole, covariance, exc, &
       & independent, equivalent_to_ch, multiplicity)
     type(vamp_grid), intent(inout) :: g
@@ -656,7 +504,7 @@ contains
              g%stratified, g%quadrupole, covariance, exc)
     end if
   end subroutine vamp_discard_integral
-   subroutine set_grid_options &
+  pure subroutine set_grid_options &
        (g, num_calls, num_div, stratified, quadrupole, &
         independent, equivalent_to_ch, multiplicity)
     type(vamp_grid), intent(inout) :: g
@@ -687,7 +535,7 @@ contains
        g%multiplicity = multiplicity
     end if
   end subroutine set_grid_options
-   subroutine vamp_reshape_grid_internal &
+  pure subroutine vamp_reshape_grid_internal &
        (g, num_calls, num_div, &
         stratified, quadrupole, covariance, exc, use_variance, &
         independent, equivalent_to_ch, multiplicity)
@@ -735,7 +583,7 @@ contains
        end if
     end if
   end subroutine vamp_reshape_grid_internal
-   subroutine vamp_reshape_grid &
+  pure subroutine vamp_reshape_grid &
        (g, num_calls, num_div, stratified, quadrupole, covariance, exc, &
         independent, equivalent_to_ch, multiplicity)
     type(vamp_grid), intent(inout) :: g
@@ -751,17 +599,17 @@ contains
           independent=independent, equivalent_to_ch=equivalent_to_ch, &
           multiplicity=multiplicity)
   end subroutine vamp_reshape_grid
-   subroutine vamp_nullify_f_limits (g)
+  elemental subroutine vamp_nullify_f_limits (g)
     type(vamp_grid), intent(inout) :: g
     g%f_min = 1.0
     g%f_max = 0.0
   end subroutine vamp_nullify_f_limits
-   function vamp_rigid_divisions (g) result (ng)
+  pure function vamp_rigid_divisions (g) result (ng)
     type(vamp_grid), intent(in) :: g
     integer, dimension(size(g%div)) :: ng
     ng = rigid_division (g%div)
   end function vamp_rigid_divisions
-   function vamp_get_covariance (g) result (cov)
+  pure function vamp_get_covariance (g) result (cov)
     type(vamp_grid), intent(in) :: g
     real(kind=default), dimension(size(g%div),size(g%div)) :: cov
     if (associated (g%mu_x)) then
@@ -779,14 +627,14 @@ contains
        cov = 0.0
     end if
   end function vamp_get_covariance
-   subroutine vamp_nullify_covariance_s (g)
+  elemental subroutine vamp_nullify_covariance (g)
     type(vamp_grid), intent(inout) :: g
     if (associated (g%mu_x)) then
        g%sum_mu_x = 0
        g%sum_mu_xx = 0
     end if
-  end subroutine vamp_nullify_covariance_s
-   function vamp_get_variance_s (g) result (v)
+  end subroutine vamp_nullify_covariance
+  elemental function vamp_get_variance (g) result (v)
     type(vamp_grid), intent(in) :: g
     real(kind=default) :: v
     if (abs (g%sum_weights) <= tiny (v)) then
@@ -798,27 +646,28 @@ contains
     else
        v = g%sum_mu_gi / g%sum_weights
     end if
-  end function vamp_get_variance_s
-   subroutine vamp_nullify_variance_s (g)
+  end function vamp_get_variance
+  elemental subroutine vamp_nullify_variance (g)
     type(vamp_grid), intent(inout) :: g
     g%sum_mu_gi = 0
-  end subroutine vamp_nullify_variance_s
-     subroutine vamp_sample_grid0 &
-         (rng, g, func, prc_index, channel, weights, grids, exc, &
+  end subroutine vamp_nullify_variance
+    subroutine vamp_sample_grid0 &
+         (rng, g, func, data, channel, weights, grids, exc, &
           negative_weights)
       type(tao_random_state), intent(inout) :: rng
       type(vamp_grid), intent(inout) :: g
-      integer, intent(in) :: prc_index
+      class(vamp_data_t), intent(in) :: data
       integer, intent(in), optional :: channel
       real(kind=default), dimension(:), intent(in), optional :: weights
       type(vamp_grid), dimension(:), intent(in), optional :: grids
       type(exception), intent(inout), optional :: exc
       interface
-          function func (xi, prc_index, weights, channel, grids) result (f)
+         function func (xi, data, weights, channel, grids) result (f)
            use kinds
            use vamp_grid_type !NODEP!
+           import vamp_data_t
            real(kind=default), dimension(:), intent(in) :: xi
-           integer, intent(in) :: prc_index
+           class(vamp_data_t), intent(in) :: data
            real(kind=default), dimension(:), intent(in), optional :: weights
            integer, intent(in), optional :: channel
            type(vamp_grid), dimension(:), intent(in), optional :: grids
@@ -869,12 +718,12 @@ contains
             end if
             if (associated (g%map)) then
                if (all (inside_division (g%div, x))) then
-                  f = wgt * func (x, prc_index, weights, channel, grids)
+                  f = wgt * func (x, data, weights, channel, grids)
                else
                   f = 0.0
                end if
             else
-               f = wgt * func (x, prc_index, weights, channel, grids)
+               f = wgt * func (x, data, weights, channel, grids)
             end if
             if (g%f_min > g%f_max) then
                g%f_min = f * g%calls
@@ -974,7 +823,7 @@ contains
       end if
     end subroutine vamp_sample_grid0
 
-   function vamp_probability (g, x) result (p)
+  pure function vamp_probability (g, x) result (p)
     type(vamp_grid), intent(in) :: g
     real(kind=default), dimension(:), intent(in) :: x
     real(kind=default) :: p
@@ -1027,7 +876,7 @@ contains
     deallocate (var_tmp)
     deallocate (n_bin)
   end subroutine vamp_apply_equivalences
-   subroutine vamp_refine_grid (g, exc)
+  pure subroutine vamp_refine_grid (g, exc)
     type(vamp_grid), intent(inout) :: g
     type(exception), intent(inout), optional :: exc
     real(kind=default), dimension(size(g%div)) :: quad
@@ -1051,13 +900,13 @@ contains
        call vamp_nullify_f_limits (g%grids(ch))
     end do
   end subroutine vamp_refine_grids
-   subroutine vamp_sample_grid &
-       (rng, g, func, prc_index, iterations, &
+  subroutine vamp_sample_grid &
+       (rng, g, func, data, iterations, &
         integral, std_dev, avg_chi2, accuracy, &
         channel, weights, grids, exc, history)
     type(tao_random_state), intent(inout) :: rng
     type(vamp_grid), intent(inout) :: g
-    integer, intent(in) :: prc_index
+    class(vamp_data_t), intent(in) :: data
     integer, intent(in) :: iterations
     real(kind=default), intent(out), optional :: integral, std_dev, avg_chi2
     real(kind=default), intent(in), optional :: accuracy
@@ -1067,11 +916,12 @@ contains
     type(exception), intent(inout), optional :: exc
     type(vamp_history), dimension(:), intent(inout), optional :: history
     interface
-        function func (xi, prc_index, weights, channel, grids) result (f)
+       function func (xi, data, weights, channel, grids) result (f)
          use kinds
          use vamp_grid_type !NODEP!
+         import vamp_data_t
          real(kind=default), dimension(:), intent(in) :: xi
-         integer, intent(in) :: prc_index
+         class(vamp_data_t), intent(in) :: data
          real(kind=default), dimension(:), intent(in), optional :: weights
          integer, intent(in), optional :: channel
          type(vamp_grid), dimension(:), intent(in), optional :: grids
@@ -1084,7 +934,7 @@ contains
     ndim = size (g%div)
     iterate: do iteration = 1, iterations
        call vamp_sample_grid0 &
-            (rng, g, func, prc_index, channel, weights, grids, exc)
+            (rng, g, func, data, channel, weights, grids, exc)
        call vamp_average_iterations &
             (g, iteration, local_integral, local_std_dev, local_avg_chi2)
        if (present (history)) then
@@ -1116,7 +966,7 @@ contains
        avg_chi2 = local_avg_chi2
     end if
   end subroutine vamp_sample_grid
-   subroutine vamp_average_iterations_grid &
+  elemental subroutine vamp_average_iterations_grid &
        (g, iteration, integral, std_dev, avg_chi2)
     type(vamp_grid), intent(in) :: g
     integer, intent(in) :: iteration
@@ -1135,7 +985,7 @@ contains
        avg_chi2 = 0
     end if
   end subroutine vamp_average_iterations_grid
-   subroutine vamp_fork_grid_single (g, gs, d, exc)
+  pure subroutine vamp_fork_grid_single (g, gs, d, exc)
     type(vamp_grid), intent(in) :: g
     type(vamp_grid), dimension(:), intent(inout) :: gs
     integer, intent(in) :: d
@@ -1221,7 +1071,7 @@ contains
     gs%f_min = g%f_min * (gs%jacobi * gs%calls) / (g%jacobi * g%calls)
     gs%f_max = g%f_max * (gs%jacobi * gs%calls) / (g%jacobi * g%calls)
   end subroutine vamp_fork_grid_single
-   subroutine vamp_join_grid_single (g, gs, d, exc)
+  pure subroutine vamp_join_grid_single (g, gs, d, exc)
     type(vamp_grid), intent(inout) :: g
     type(vamp_grid), dimension(:), intent(inout) :: gs
     integer, intent(in) :: d
@@ -1269,7 +1119,7 @@ contains
        g%sum_mu_xx = g%sum_mu_xx + g%mu_xx / g%mu(2)
     end if
   end subroutine vamp_join_grid_single
-   recursive subroutine vamp_fork_grid_multi (g, gs, gx, d, exc)
+  pure recursive subroutine vamp_fork_grid_multi (g, gs, gx, d, exc)
     type(vamp_grid), intent(in) :: g
     type(vamp_grid), dimension(:), intent(inout) :: gs, gx
     integer, dimension(:,:), intent(in) :: d
@@ -1298,7 +1148,7 @@ contains
           end do
     end select
   end subroutine vamp_fork_grid_multi
-   function vamp_fork_grid_joints (d) result (s)
+  pure function vamp_fork_grid_joints (d) result (s)
     integer, dimension(:,:), intent(in) :: d
     integer :: s
     integer :: i
@@ -1307,7 +1157,7 @@ contains
        s = (s + 1) * d(2,i)
     end do
   end function vamp_fork_grid_joints
-   recursive subroutine vamp_join_grid_multi (g, gs, gx, d, exc)
+  pure recursive subroutine vamp_join_grid_multi (g, gs, gx, d, exc)
     type(vamp_grid), intent(inout) :: g
     type(vamp_grid), dimension(:), intent(inout) :: gs, gx
     integer, dimension(:,:), intent(in) :: d
@@ -1337,12 +1187,12 @@ contains
     end select
   end subroutine vamp_join_grid_multi
   subroutine vamp_sample_grid_parallel &
-       (rng, g, func, prc_index, iterations, &
+       (rng, g, func, data, iterations, &
         integral, std_dev, avg_chi2, accuracy, &
         channel, weights, grids, exc, history)
     type(tao_random_state), dimension(:), intent(inout) :: rng
     type(vamp_grid), intent(inout) :: g
-    integer, intent(in) :: prc_index
+    class(vamp_data_t), intent(in) :: data
     integer, intent(in) :: iterations
     real(kind=default), intent(out), optional :: integral, std_dev, avg_chi2
     real(kind=default), intent(in), optional :: accuracy
@@ -1352,11 +1202,12 @@ contains
     type(exception), intent(inout), optional :: exc
     type(vamp_history), dimension(:), intent(inout), optional :: history
     interface
-        function func (xi, prc_index, weights, channel, grids) result (f)
+       function func (xi, data, weights, channel, grids) result (f)
          use kinds
          use vamp_grid_type !NODEP!
+         import vamp_data_t
          real(kind=default), dimension(:), intent(in) :: xi
-         integer, intent(in) :: prc_index
+         class(vamp_data_t), intent(in) :: data
          real(kind=default), dimension(:), intent(in), optional :: weights
          integer, intent(in), optional :: channel
          type(vamp_grid), dimension(:), intent(in), optional :: grids
@@ -1386,7 +1237,7 @@ contains
           !hpf$ independent
           do i = 1, num_workers
              call vamp_sample_grid0 &
-                  (rng(i), gs(i), func, prc_index, &
+                  (rng(i), gs(i), func, data, &
                    channel, weights, grids, exc)
           end do
           if ((present (exc)) .and. (any (excs(1:num_workers)%level > 0))) then
@@ -1397,7 +1248,7 @@ contains
           deallocate (gs, gx)
        else
           call vamp_sample_grid0 &
-               (rng(1), g, func, prc_index, channel, weights, grids, exc)
+               (rng(1), g, func, data, channel, weights, grids, exc)
        end if
        if (present (exc)) then
           if (exc%level > EXC_WARN) then
@@ -1436,7 +1287,7 @@ contains
        avg_chi2 = local_avg_chi2
     end if
   end subroutine vamp_sample_grid_parallel
-   subroutine vamp_distribute_work (num_workers, ng, d)
+  pure subroutine vamp_distribute_work (num_workers, ng, d)
     integer, intent(in) :: num_workers
     integer, dimension(:), intent(in) :: ng
     integer, dimension(:,:), pointer :: d
@@ -1475,7 +1326,7 @@ contains
        return
     end do try
   end subroutine vamp_distribute_work
-   subroutine vamp_create_history_s (h, ndim, verbose)
+  elemental subroutine vamp_create_history (h, ndim, verbose)
     type(vamp_history), intent(out) :: h
     integer, intent(in), optional :: ndim
     logical, intent(in), optional :: verbose
@@ -1491,12 +1342,12 @@ contains
        end if
        allocate (h%div(ndim))
     end if
-  end subroutine vamp_create_history_s
-   subroutine vamp_terminate_history_s (h)
+  end subroutine vamp_create_history
+  elemental subroutine vamp_terminate_history (h)
     type(vamp_history), intent(inout) :: h
     h%calls = 0.0
-  end subroutine vamp_terminate_history_s
-   subroutine vamp_get_history_single (h, g, integral, std_dev, avg_chi2)
+  end subroutine vamp_terminate_history
+  pure subroutine vamp_get_history_single (h, g, integral, std_dev, avg_chi2)
     type(vamp_history), intent(inout) :: h
     type(vamp_grid), intent(in) :: g
     real(kind=default), intent(in) :: integral, std_dev, avg_chi2
@@ -1625,8 +1476,8 @@ contains
        else
           s = ""
        end if
-       write (u, "(1X,A8,1X,I2,I9,A1,1X,E11.4,A1,E8.2,A1," &
-            // "1X,E13.6,A1,E8.2,A1,F5.1,1X,F5.3)") pfx, &
+       write (u, "(1X,A8,1X,I2,I9,A1,1X,ES11.4,A1,ES8.2,A1," &
+            // "1X,ES13.6,A1,ES8.2,A1,F5.1,1X,F5.3)") pfx, &
             i, h(i)%calls, s, h(i)%integral, "(", h(i)%std_dev, ")", &
             h(i)%avg_integral, "(", h(i)%avg_std_dev, ")", h(i)%avg_chi2, &
             h(i)%integral / h(i)%f_max
@@ -1671,19 +1522,20 @@ contains
     write (u, "(1X,A78)") repeat ("=", 78)
     flush (u)
   end subroutine vamp_write_histories_unit
-   function vamp_multi_channel &
-       (func, prc_index, phi, ihp, jacobian, x, weights, channel, grids) result (w_x)
-    integer, intent(in) :: prc_index
+  function vamp_multi_channel &
+       (func, data, phi, ihp, jacobian, x, weights, channel, grids) result (w_x)
+    class(vamp_data_t), intent(in) :: data
     real(kind=default), dimension(:), intent(in) :: x
     real(kind=default), dimension(:), intent(in) :: weights
     integer, intent(in) :: channel
     type(vamp_grid), dimension(:), intent(in) :: grids
     interface
-        function func (xi, prc_index, weights, channel, grids) result (f)
+       function func (xi, data, weights, channel, grids) result (f)
          use kinds
          use vamp_grid_type !NODEP!
+         import vamp_data_t
          real(kind=default), dimension(:), intent(in) :: xi
-         integer, intent(in) :: prc_index
+         class(vamp_data_t), intent(in) :: data
          real(kind=default), dimension(:), intent(in), optional :: weights
          integer, intent(in), optional :: channel
          type(vamp_grid), dimension(:), intent(in), optional :: grids
@@ -1691,7 +1543,7 @@ contains
        end function func
     end interface
     interface
-        function phi (xi, channel) result (x)
+       pure function phi (xi, channel) result (x)
          use kinds
          real(kind=default), dimension(:), intent(in) :: xi
          integer, intent(in) :: channel
@@ -1699,7 +1551,7 @@ contains
        end function phi
     end interface
     interface
-        function ihp (x, channel) result (xi)
+       pure function ihp (x, channel) result (xi)
          use kinds
          real(kind=default), dimension(:), intent(in) :: x
          integer, intent(in) :: channel
@@ -1707,11 +1559,12 @@ contains
        end function ihp
     end interface
     interface
-        function jacobian (x, prc_index, channel) result (j)
+       pure function jacobian (x, data, channel) result (j)
          use kinds
          use vamp_grid_type !NODEP!
+         import vamp_data_t
          real(kind=default), dimension(:), intent(in) :: x
-         integer, intent(in) :: prc_index
+         class(vamp_data_t), intent(in) :: data
          integer, intent(in) :: channel
          real(kind=default) :: j
        end function jacobian
@@ -1729,23 +1582,24 @@ contains
        end if
     end do
     do i = 1, size (weights)
-       g_phi_x(i) = g_pi_x(i) / g_pi_x(channel) * jacobian (phi_x, prc_index, i)
+       g_phi_x(i) = g_pi_x(i) / g_pi_x(channel) * jacobian (phi_x, data, i)
     end do
-    w_x = func (phi_x, prc_index, weights, channel, grids) &
+    w_x = func (phi_x, data, weights, channel, grids) &
          / dot_product (weights, g_phi_x)
   end function vamp_multi_channel
-   function vamp_multi_channel0 &
-       (func, prc_index, phi, jacobian, x, weights, channel) result (w_x)
-    integer, intent(in) :: prc_index
+  function vamp_multi_channel0 &
+       (func, data, phi, jacobian, x, weights, channel) result (w_x)
+    class(vamp_data_t), intent(in) :: data
     real(kind=default), dimension(:), intent(in) :: x
     real(kind=default), dimension(:), intent(in) :: weights
     integer, intent(in) :: channel
     interface
-        function func (xi, prc_index, weights, channel, grids) result (f)
+       function func (xi, data, weights, channel, grids) result (f)
          use kinds
          use vamp_grid_type !NODEP!
+         import vamp_data_t
          real(kind=default), dimension(:), intent(in) :: xi
-         integer, intent(in) :: prc_index
+         class(vamp_data_t), intent(in) :: data
          real(kind=default), dimension(:), intent(in), optional :: weights
          integer, intent(in), optional :: channel
          type(vamp_grid), dimension(:), intent(in), optional :: grids
@@ -1753,7 +1607,7 @@ contains
        end function func
     end interface
     interface
-        function phi (xi, channel) result (x)
+       pure function phi (xi, channel) result (x)
          use kinds
          real(kind=default), dimension(:), intent(in) :: xi
          integer, intent(in) :: channel
@@ -1761,11 +1615,12 @@ contains
        end function phi
     end interface
     interface
-        function jacobian (x, prc_index, channel) result (j)
+       pure function jacobian (x, data, channel) result (j)
          use kinds
          use vamp_grid_type !NODEP!
+         import vamp_data_t
          real(kind=default), dimension(:), intent(in) :: x
-         integer, intent(in) :: prc_index
+         class(vamp_data_t), intent(in) :: data
          integer, intent(in) :: channel
          real(kind=default) :: j
        end function jacobian
@@ -1776,18 +1631,18 @@ contains
     integer :: i
     x_prime = phi (x, channel)
     do i = 1, size (weights)
-       g_phi_x(i) = jacobian (x_prime, prc_index, i)
+       g_phi_x(i) = jacobian (x_prime, data, i)
     end do
-    w_x = func (x_prime, prc_index) / dot_product (weights, g_phi_x)
+    w_x = func (x_prime, data) / dot_product (weights, g_phi_x)
   end function vamp_multi_channel0
-   subroutine vamp_jacobian (phi, channel, x, region, jacobian, delta_x)
+  pure subroutine vamp_jacobian (phi, channel, x, region, jacobian, delta_x)
     integer, intent(in) :: channel
     real(kind=default), dimension(:), intent(in) :: x
     real(kind=default), dimension(:,:), intent(in) :: region
     real(kind=default), intent(out) :: jacobian
     real(kind=default), intent(in), optional :: delta_x
     interface
-       function phi (xi, channel) result (x)
+       pure function phi (xi, channel) result (x)
          use kinds
          real(kind=default), dimension(:), intent(in) :: xi
          integer, intent(in) :: channel
@@ -1821,21 +1676,22 @@ contains
     call determinant (d_phi, jacobian)
     jacobian = abs (jacobian)
   end subroutine vamp_jacobian
-   subroutine vamp_check_jacobian &
-          (rng, n, func, prc_index, phi, channel, region, delta, x_delta)
+  subroutine vamp_check_jacobian &
+          (rng, n, func, data, phi, channel, region, delta, x_delta)
     type(tao_random_state), intent(inout) :: rng
     integer, intent(in) :: n
-    integer, intent(in) :: prc_index
+    class(vamp_data_t), intent(in) :: data
     integer, intent(in) :: channel
     real(kind=default), dimension(:,:), intent(in) :: region
     real(kind=default), intent(out) :: delta
     real(kind=default), dimension(:), intent(out), optional :: x_delta
     interface
-        function func (xi, prc_index, weights, channel, grids) result (f)
+       function func (xi, data, weights, channel, grids) result (f)
          use kinds
          use vamp_grid_type !NODEP!
+         import vamp_data_t
          real(kind=default), dimension(:), intent(in) :: xi
-         integer, intent(in) :: prc_index
+         class(vamp_data_t), intent(in) :: data
          real(kind=default), dimension(:), intent(in), optional :: weights
          integer, intent(in), optional :: channel
          type(vamp_grid), dimension(:), intent(in), optional :: grids
@@ -1843,7 +1699,7 @@ contains
        end function func
     end interface
     interface
-        function phi (xi, channel) result (x)
+       pure function phi (xi, channel) result (x)
          use kinds
          real(kind=default), dimension(:), intent(in) :: xi
          integer, intent(in) :: channel
@@ -1859,7 +1715,7 @@ contains
        call tao_random_number (rng, r)
        x = region(1,:) + (region(2,:) - region(1,:)) * r
        call vamp_jacobian (phi, channel, x, region, jac)
-       d = func (phi (x, channel), prc_index, wgts, channel) * jac &
+       d = func (phi (x, channel), data, wgts, channel) * jac &
             - 1.0_default
        if (abs (d) >= abs (delta)) then
           delta = d
@@ -1869,7 +1725,7 @@ contains
        end if
      end do
   end subroutine vamp_check_jacobian
-   subroutine vamp_create_grids &
+  pure subroutine vamp_create_grids &
        (g, domain, num_calls, weights, maps, num_div, &
         stratified, quadrupole, exc)
     type(vamp_grids), intent(inout) :: g
@@ -1901,11 +1757,11 @@ contains
     g%sum_chi2 = 0.0
     g%sum_weights = 0.0
   end subroutine vamp_create_grids
-   subroutine vamp_create_empty_grids (g)
+  pure subroutine vamp_create_empty_grids (g)
     type(vamp_grids), intent(inout) :: g
     nullify (g%grids, g%weights, g%num_calls)
   end subroutine vamp_create_empty_grids
-   subroutine vamp_discard_integrals &
+  pure subroutine vamp_discard_integrals &
        (g, num_calls, num_div, stratified, quadrupole, exc, eq)
     type(vamp_grids), intent(inout) :: g
     integer, intent(in), optional :: num_calls
@@ -1926,7 +1782,7 @@ contains
             (g, num_calls, num_div, stratified, quadrupole, exc, eq)
     end if
   end subroutine vamp_discard_integrals
-   subroutine vamp_update_weights &
+  pure subroutine vamp_update_weights &
        (g, weights, num_calls, num_div, stratified, quadrupole, exc)
     type(vamp_grids), intent(inout) :: g
     real(kind=default), dimension(:), intent(in) :: weights
@@ -1948,7 +1804,7 @@ contains
                                    stratified, quadrupole, exc)
     end if
   end subroutine vamp_update_weights
-   subroutine vamp_reshape_grids &
+  pure subroutine vamp_reshape_grids &
        (g, num_calls, num_div, stratified, quadrupole, exc, eq)
     type(vamp_grids), intent(inout) :: g
     integer, intent(in) :: num_calls
@@ -1985,12 +1841,12 @@ contains
        end if
     end do
   end subroutine vamp_reshape_grids
-     subroutine vamp_sample_grids &
-         (rng, g, func, prc_index, iterations, integral, std_dev, avg_chi2, &
+    subroutine vamp_sample_grids &
+         (rng, g, func, data, iterations, integral, std_dev, avg_chi2, &
           accuracy, history, histories, exc, eq, warn_error, negative_weights)
       type(tao_random_state), intent(inout) :: rng
       type(vamp_grids), intent(inout) :: g
-      integer, intent(in) :: prc_index
+      class(vamp_data_t), intent(in) :: data
       integer, intent(in) :: iterations
       real(kind=default), intent(out), optional :: integral, std_dev, avg_chi2
       real(kind=default), intent(in), optional :: accuracy
@@ -2000,11 +1856,12 @@ contains
       type(vamp_equivalences_t), intent(in), optional :: eq
       logical, intent(in), optional :: warn_error, negative_weights
       interface
-          function func (xi, prc_index, weights, channel, grids) result (f)
+         function func (xi, data, weights, channel, grids) result (f)
            use kinds
            use vamp_grid_type !NODEP!
+           import vamp_data_t
            real(kind=default), dimension(:), intent(in) :: xi
-           integer, intent(in) :: prc_index
+           class(vamp_data_t), intent(in) :: data
            real(kind=default), dimension(:), intent(in), optional :: weights
            integer, intent(in), optional :: channel
            type(vamp_grid), dimension(:), intent(in), optional :: grids
@@ -2035,7 +1892,7 @@ contains
             if (active(ch)) then
                call vamp_discard_integral (g%grids(ch))
                call vamp_sample_grid0 &
-                    (rng, g%grids(ch), func, prc_index, &
+                    (rng, g%grids(ch), func, data, &
                      ch, weights, g%grids, excs(ch), neg_w)
                if (present (exc) .and. present (warn_error)) then
                   if (warn_error) call handle_exception (excs(ch))
@@ -2053,8 +1910,8 @@ contains
                   call vamp_terminate_history (histories(iteration+1:,ch))
                end if
             else
-               call vamp_nullify_variance_s (g%grids(ch))
-               call vamp_nullify_covariance_s (g%grids(ch))
+               call vamp_nullify_variance (g%grids(ch))
+               call vamp_nullify_covariance (g%grids(ch))
             end if
          end do
          if (present(eq))  call vamp_apply_equivalences (g, eq)
@@ -2102,7 +1959,7 @@ contains
       end if
     end subroutine vamp_sample_grids
 
-   subroutine vamp_reduce_channels (g, integrals, std_devs, active)
+  pure subroutine vamp_reduce_channels (g, integrals, std_devs, active)
     type(vamp_grids), intent(inout) :: g
     real(kind=default), dimension(:), intent(in) :: integrals, std_devs
     logical, dimension(:), intent(in) :: active
@@ -2125,7 +1982,7 @@ contains
     g%sum_integral = g%sum_integral + this_weight * this_integral
     g%sum_chi2 = g%sum_chi2 + this_weight * this_integral**2
   end subroutine vamp_reduce_channels
-   subroutine vamp_average_iterations_grids &
+  elemental subroutine vamp_average_iterations_grids &
        (g, iteration, integral, std_dev, avg_chi2)
     type(vamp_grids), intent(in) :: g
     integer, intent(in) :: iteration
@@ -2144,7 +2001,7 @@ contains
        avg_chi2 = 0
     end if
   end subroutine vamp_average_iterations_grids
-   subroutine vamp_refine_weights (g, power)
+  pure subroutine vamp_refine_weights (g, power)
     type(vamp_grids), intent(inout) :: g
     real(kind=default), intent(in), optional :: power
     real(kind=default) :: local_power 
@@ -2157,7 +2014,7 @@ contains
     call vamp_update_weights &
          (g, g%weights * vamp_get_variance (g%grids) ** local_power)
   end subroutine vamp_refine_weights
-   subroutine vamp_get_history_multi (h, g, integral, std_dev, avg_chi2)
+  pure subroutine vamp_get_history_multi (h, g, integral, std_dev, avg_chi2)
     type(vamp_history), intent(inout) :: h
     type(vamp_grids), intent(in) :: g
     real(kind=default), intent(in) :: integral, std_dev, avg_chi2
@@ -2177,16 +2034,17 @@ contains
        end if
     end if
   end subroutine vamp_get_history_multi
-   function vamp_sum_channels (x, weights, func, prc_index, grids) result (g)
+  function vamp_sum_channels (x, weights, func, data, grids) result (g)
     real(kind=default), dimension(:), intent(in) :: x, weights
-    integer, intent(in) :: prc_index
+    class(vamp_data_t), intent(in) :: data
     type(vamp_grid), dimension(:), intent(in), optional :: grids
     interface
-       function func (xi, prc_index, weights, channel, grids) result (f)
+       function func (xi, data, weights, channel, grids) result (f)
          use kinds
          use vamp_grid_type !NODEP!
+         import vamp_data_t
          real(kind=default), dimension(:), intent(in) :: xi
-         integer, intent(in) :: prc_index
+         class(vamp_data_t), intent(in) :: data
          real(kind=default), dimension(:), intent(in), optional :: weights
          integer, intent(in), optional :: channel
          type(vamp_grid), dimension(:), intent(in), optional :: grids
@@ -2197,7 +2055,7 @@ contains
     integer :: ch
     g = 0.0
     do ch = 1, size (weights)
-       g = g + weights(ch) * func (x, prc_index, weights, ch, grids)
+       g = g + weights(ch) * func (x, data, weights, ch, grids)
     end do
   end function vamp_sum_channels
   subroutine more_pancake_than_cigar (eval, yes_or_no)
@@ -2412,24 +2270,25 @@ contains
                                              :clusters(i,2))) ** POWER
     end do
   end function condense_action
-   subroutine vamp_next_event_single &
-       (x, rng, g, func, prc_index, &
+  subroutine vamp_next_event_single &
+       (x, rng, g, func, data, &
         weight, channel, weights, grids, exc)
     real(kind=default), dimension(:), intent(out) :: x
     type(tao_random_state), intent(inout) :: rng
     type(vamp_grid), intent(inout) :: g
     real(kind=default), intent(out), optional :: weight
-    integer, intent(in) :: prc_index
+    class(vamp_data_t), intent(in) :: data
     integer, intent(in), optional :: channel
     real(kind=default), dimension(:), intent(in), optional :: weights
     type(vamp_grid), dimension(:), intent(in), optional :: grids
     type(exception), intent(inout), optional :: exc
     interface
-        function func (xi, prc_index, weights, channel, grids) result (f)
+       function func (xi, data, weights, channel, grids) result (f)
          use kinds
          use vamp_grid_type !NODEP!
+         import vamp_data_t
          real(kind=default), dimension(:), intent(in) :: xi
-         integer, intent(in) :: prc_index
+         class(vamp_data_t), intent(in) :: data
          real(kind=default), dimension(:), intent(in), optional :: weights
          integer, intent(in), optional :: channel
          type(vamp_grid), dimension(:), intent(in), optional :: grids
@@ -2452,12 +2311,12 @@ contains
        end if
        if (associated (g%map)) then
           if (all (inside_division (g%div, x))) then
-             f = wgt * func (x, prc_index, weights, channel, grids)
+             f = wgt * func (x, data, weights, channel, grids)
           else
              f = 0.0
           end if
        else
-          f = wgt * func (x, prc_index, weights, channel, grids)
+          f = wgt * func (x, data, weights, channel, grids)
        end if
        ! call record_efficiency (g%div, ia, f/g%f_max)
        if (present (weight)) then
@@ -2476,21 +2335,22 @@ contains
        end if
     end do rejection
   end subroutine vamp_next_event_single
-   subroutine vamp_next_event_multi &
-       (x, rng, g, func, prc_index, phi, weight, excess, exc)
+  subroutine vamp_next_event_multi &
+       (x, rng, g, func, data, phi, weight, excess, exc)
     real(kind=default), dimension(:), intent(out) :: x
     type(tao_random_state), intent(inout) :: rng
     type(vamp_grids), intent(inout) :: g
-    integer, intent(in) :: prc_index
+    class(vamp_data_t), intent(in) :: data
     real(kind=default), intent(out), optional :: weight
     real(kind=default), intent(out), optional :: excess
     type(exception), intent(inout), optional :: exc
     interface
-        function func (xi, prc_index, weights, channel, grids) result (f)
+       function func (xi, data, weights, channel, grids) result (f)
          use kinds
          use vamp_grid_type !NODEP!
+         import vamp_data_t
          real(kind=default), dimension(:), intent(in) :: xi
-         integer, intent(in) :: prc_index
+         class(vamp_data_t), intent(in) :: data
          real(kind=default), dimension(:), intent(in), optional :: weights
          integer, intent(in), optional :: channel
          type(vamp_grid), dimension(:), intent(in), optional :: grids
@@ -2498,7 +2358,7 @@ contains
        end function func
     end interface
     interface
-        function phi (xi, channel) result (x)
+       pure function phi (xi, channel) result (x)
          use kinds
          real(kind=default), dimension(:), intent(in) :: xi
          integer, intent(in) :: channel
@@ -2526,7 +2386,7 @@ contains
        end do select_channel
        channel = min (channel, size (g%weights)) !: for $r=1$ and rounding errors
        call vamp_next_event_single &
-            (xi, rng, g%grids(channel), func, prc_index, wgt, &
+            (xi, rng, g%grids(channel), func, data, wgt, &
              channel, g%weights, g%grids, exc)
        if (present (weight)) then
           weight = wgt * g%weights(channel) / weights(channel)
@@ -2536,9 +2396,9 @@ contains
              if (present(excess)) then
                 excess = wgt/g%grids(channel)%f_max - 1
              else
-          !     call raise_exception (exc, EXC_WARN, FN, "weight > 1")
-                print *, "weight > 1 (", wgt/g%grids(channel)%f_max, &
-                     & ") in channel ", channel
+               call raise_exception (exc, EXC_WARN, FN, "weight > 1")
+          !      print *, "weight > 1 (", wgt/g%grids(channel)%f_max, &
+          !           & ") in channel ", channel
 
              end if
           !  exit rejection
@@ -2553,20 +2413,21 @@ contains
     end do rejection
     x = phi (xi, channel)
   end subroutine vamp_next_event_multi
-   subroutine vamp_warmup_grid &
-       (rng, g, func, prc_index, iterations, exc, history)
+  subroutine vamp_warmup_grid &
+       (rng, g, func, data, iterations, exc, history)
     type(tao_random_state), intent(inout) :: rng
     type(vamp_grid), intent(inout) :: g
-    integer, intent(in) :: prc_index
+    class(vamp_data_t), intent(in) :: data
     integer, intent(in) :: iterations
     type(exception), intent(inout), optional :: exc
     type(vamp_history), dimension(:), intent(inout), optional :: history
     interface
-        function func (xi, prc_index, weights, channel, grids) result (f)
+       function func (xi, data, weights, channel, grids) result (f)
          use kinds
          use vamp_grid_type !NODEP!
+         import vamp_data_t
          real(kind=default), dimension(:), intent(in) :: xi
-         integer, intent(in) :: prc_index
+         class(vamp_data_t), intent(in) :: data
          real(kind=default), dimension(:), intent(in), optional :: weights
          integer, intent(in), optional :: channel
          type(vamp_grid), dimension(:), intent(in), optional :: grids
@@ -2574,25 +2435,26 @@ contains
        end function func
     end interface
     call vamp_sample_grid &
-       (rng, g, func, prc_index, &
+       (rng, g, func, data, &
         iterations - 1, exc = exc, history = history)
-    call vamp_sample_grid0 (rng, g, func, prc_index, exc = exc)
+    call vamp_sample_grid0 (rng, g, func, data, exc = exc)
   end subroutine vamp_warmup_grid
-   subroutine vamp_warmup_grids &
-       (rng, g, func, prc_index, iterations, history, histories, exc)
+  subroutine vamp_warmup_grids &
+       (rng, g, func, data, iterations, history, histories, exc)
     type(tao_random_state), intent(inout) :: rng
     type(vamp_grids), intent(inout) :: g
-    integer, intent(in) :: prc_index
+    class(vamp_data_t), intent(in) :: data
     integer, intent(in) :: iterations
     type(vamp_history), dimension(:), intent(inout), optional :: history
     type(vamp_history), dimension(:,:), intent(inout), optional :: histories
     type(exception), intent(inout), optional :: exc
     interface
-        function func (xi, prc_index, weights, channel, grids) result (f)
+       function func (xi, data, weights, channel, grids) result (f)
          use kinds
          use vamp_grid_type !NODEP!
+         import vamp_data_t
          real(kind=default), dimension(:), intent(in) :: xi
-         integer, intent(in) :: prc_index
+         class(vamp_data_t), intent(in) :: data
          real(kind=default), dimension(:), intent(in), optional :: weights
          integer, intent(in), optional :: channel
          type(vamp_grid), dimension(:), intent(in), optional :: grids
@@ -2609,22 +2471,22 @@ contains
        weights = 0.0
     end where
     weights = weights / sum (weights)
-    call vamp_sample_grids (rng, g, func, prc_index, iterations - 1, &
+    call vamp_sample_grids (rng, g, func, data, iterations - 1, &
                             exc = exc, history = history, histories = histories)
     do ch = 1, size (g%grids)
        if (g%grids(ch)%num_calls >= 2) then
           call vamp_sample_grid0 &
-               (rng, g%grids(ch), func, prc_index, &
+               (rng, g%grids(ch), func, data, &
                 ch, weights, g%grids, exc = exc)
        end if
     end do
   end subroutine vamp_warmup_grids
-   subroutine vamp_integrate_grid &
-       (rng, g, func, prc_index, calls, integral, std_dev, avg_chi2, num_div, &
+  subroutine vamp_integrate_grid &
+       (rng, g, func, data, calls, integral, std_dev, avg_chi2, num_div, &
         stratified, quadrupole, accuracy, exc, history)
     type(tao_random_state), intent(inout) :: rng
     type(vamp_grid), intent(inout) :: g
-    integer, intent(in) :: prc_index
+    class(vamp_data_t), intent(in) :: data
     integer, dimension(:,:), intent(in) :: calls
     real(kind=default), intent(out), optional :: integral, std_dev, avg_chi2
     integer, dimension(:), intent(in), optional :: num_div
@@ -2633,11 +2495,12 @@ contains
     type(exception), intent(inout), optional :: exc
     type(vamp_history), dimension(:), intent(inout), optional :: history
     interface
-        function func (xi, prc_index, weights, channel, grids) result (f)
+       function func (xi, data, weights, channel, grids) result (f)
          use kinds
          use vamp_grid_type !NODEP!
+         import vamp_data_t
          real(kind=default), dimension(:), intent(in) :: xi
-         integer, intent(in) :: prc_index
+         class(vamp_data_t), intent(in) :: data
          real(kind=default), dimension(:), intent(in), optional :: weights
          integer, intent(in), optional :: channel
          type(vamp_grid), dimension(:), intent(in), optional :: grids
@@ -2651,7 +2514,7 @@ contains
     do step = 1, last_step - 1
        call vamp_discard_integral (g, calls(2,step), num_div, &
                                   stratified, quadrupole, exc = exc)
-       call vamp_sample_grid (rng, g, func, prc_index, calls(1,step), &
+       call vamp_sample_grid (rng, g, func, data, calls(1,step), &
                               exc = exc, history = history(it:))
        if (present (exc)) then
           if (exc%level > EXC_WARN) then
@@ -2661,17 +2524,17 @@ contains
        it = it + calls(1,step)
     end do
     call vamp_discard_integral (g, calls(2,last_step), exc = exc)
-    call vamp_sample_grid (rng, g, func, prc_index, calls(1,last_step), &
+    call vamp_sample_grid (rng, g, func, data, calls(1,last_step), &
                            integral, std_dev, avg_chi2, accuracy, exc = exc, &
                            history = history(it:))
   end subroutine vamp_integrate_grid
-   subroutine vamp_integrate_region &
-       (rng, region, func, prc_index, calls, &
+  subroutine vamp_integrate_region &
+       (rng, region, func, data, calls, &
         integral, std_dev, avg_chi2, num_div, &
         stratified, quadrupole, accuracy, map, covariance, exc, history)
     type(tao_random_state), intent(inout) :: rng
     real(kind=default), dimension(:,:), intent(in) :: region
-    integer, intent(in) :: prc_index
+    class(vamp_data_t), intent(in) :: data
     integer, dimension(:,:), intent(in) :: calls
     real(kind=default), intent(out), optional :: integral, std_dev, avg_chi2
     integer, dimension(:), intent(in), optional :: num_div
@@ -2682,11 +2545,12 @@ contains
     type(exception), intent(inout), optional :: exc
     type(vamp_history), dimension(:), intent(inout), optional :: history
     interface
-        function func (xi, prc_index, weights, channel, grids) result (f)
+       function func (xi, data, weights, channel, grids) result (f)
          use kinds
          use vamp_grid_type !NODEP!
+         import vamp_data_t
          real(kind=default), dimension(:), intent(in) :: xi
-         integer, intent(in) :: prc_index
+         class(vamp_data_t), intent(in) :: data
          real(kind=default), dimension(:), intent(in), optional :: weights
          integer, intent(in), optional :: channel
          type(vamp_grid), dimension(:), intent(in), optional :: grids
@@ -2699,21 +2563,21 @@ contains
          (g, region, calls(2,1), num_div, &
           stratified, quadrupole, present (covariance), map, exc)
     call vamp_integrate_grid &
-         (rng, g, func, prc_index, calls, &
+         (rng, g, func, data, calls, &
           integral, std_dev, avg_chi2, num_div, &
           accuracy = accuracy, exc = exc, history = history)
     if (present (covariance)) then
        covariance = vamp_get_covariance (g)
     end if
-    call vamp_delete_grid_s (g)
+    call vamp_delete_grid (g)
   end subroutine vamp_integrate_region
   subroutine vamp_integratex_region &
-       (rng, region, func, prc_index, calls, integral, std_dev, avg_chi2, &
+       (rng, region, func, data, calls, integral, std_dev, avg_chi2, &
         num_div, stratified, quadrupole, accuracy, pancake, cigar, &
         exc, history)
     type(tao_random_state), intent(inout) :: rng
     real(kind=default), dimension(:,:), intent(in) :: region
-    integer, intent(in) :: prc_index
+    class(vamp_data_t), intent(in) :: data
     integer, dimension(:,:,:), intent(in) :: calls
     real(kind=default), intent(out), optional :: integral, std_dev, avg_chi2
     integer, dimension(:), intent(in), optional :: num_div
@@ -2723,11 +2587,12 @@ contains
     type(exception), intent(inout), optional :: exc
     type(vamp_history), dimension(:), intent(inout), optional :: history
     interface
-        function func (xi, prc_index, weights, channel, grids) result (f)
+       function func (xi, data, weights, channel, grids) result (f)
          use kinds
          use vamp_grid_type !NODEP!
+         import vamp_data_t
          real(kind=default), dimension(:), intent(in) :: xi
-         integer, intent(in) :: prc_index
+         class(vamp_data_t), intent(in) :: data
          real(kind=default), dimension(:), intent(in), optional :: weights
          integer, intent(in), optional :: channel
          type(vamp_grid), dimension(:), intent(in), optional :: grids
@@ -2743,7 +2608,7 @@ contains
          (g, region, calls(2,1,1), num_div, &
           stratified, quadrupole, covariance = .true., exc = exc)
     call vamp_integrate_grid &
-         (rng, g, func, prc_index, calls(:,:,1), num_div = num_div, &
+         (rng, g, func, data, calls(:,:,1), num_div = num_div, &
           exc = exc, history = history(it:))
     if (present (exc)) then
        if (exc%level > EXC_WARN) then
@@ -2756,12 +2621,12 @@ contains
        call diagonalize_real_symmetric (vamp_get_covariance(g), eval, evec)
        call sort (eval, evec)
        call select_rotation_axis (vamp_get_covariance(g), evec, pancake, cigar)
-       call vamp_delete_grid_s (g)
+       call vamp_delete_grid (g)
        call vamp_create_grid &
             (g, region, calls(2,1,step), num_div, stratified, quadrupole, &
              covariance = .true., map = evec, exc = exc)
        call vamp_integrate_grid &
-            (rng, g, func, prc_index, calls(:,:,step), num_div = num_div, &
+            (rng, g, func, data, calls(:,:,step), num_div = num_div, &
              exc = exc, history = history(it:))
        if (present (exc)) then
           if (exc%level > EXC_WARN) then
@@ -2773,15 +2638,15 @@ contains
     call diagonalize_real_symmetric (vamp_get_covariance(g), eval, evec)
     call sort (eval, evec)
     call select_rotation_axis (vamp_get_covariance(g), evec, pancake, cigar)
-    call vamp_delete_grid_s (g)
+    call vamp_delete_grid (g)
     call vamp_create_grid &
          (g, region, calls(2,1,last_step), num_div, stratified, quadrupole, &
           covariance = .true., map = evec, exc = exc)
     call vamp_integrate_grid &
-         (rng, g, func, prc_index, calls(:,:,last_step), &
+         (rng, g, func, data, calls(:,:,last_step), &
           integral, std_dev, avg_chi2, &
           num_div = num_div, exc = exc, history = history(it:))
-    call vamp_delete_grid_s (g)
+    call vamp_delete_grid (g)
   end subroutine vamp_integratex_region
   subroutine write_grid_unit (g, unit, write_integrals)
     type(vamp_grid), intent(in) :: g
@@ -3313,7 +3178,7 @@ contains
     call read_grids_raw_unit (g, unit, read_integrals)
     close (unit = unit)
   end subroutine read_grids_raw_name
-   subroutine vamp_marshal_grid (g, ibuf, dbuf)
+  pure subroutine vamp_marshal_grid (g, ibuf, dbuf)
     type(vamp_grid), intent(in) :: g
     integer, dimension(:), intent(inout) :: ibuf
     real(kind=default), dimension(:), intent(inout) :: dbuf
@@ -3384,7 +3249,7 @@ contains
     end if
     iidx = iidx + 1
   end subroutine vamp_marshal_grid
-   subroutine vamp_marshal_grid_size (g, iwords, dwords)
+  pure subroutine vamp_marshal_grid_size (g, iwords, dwords)
     type(vamp_grid), intent(in) :: g
     integer, intent(out) :: iwords, dwords
     integer :: i, ndim, iw, dw
@@ -3405,7 +3270,7 @@ contains
        dwords = dwords + 2 * (ndim + ndim**2)
     end if
   end subroutine vamp_marshal_grid_size
-   subroutine vamp_unmarshal_grid (g, ibuf, dbuf)
+  pure subroutine vamp_unmarshal_grid (g, ibuf, dbuf)
     type(vamp_grid), intent(inout) :: g
     integer, dimension(:), intent(in) :: ibuf
     real(kind=default), dimension(:), intent(in) :: dbuf
@@ -3487,7 +3352,7 @@ contains
     end if
     iidx = iidx + 1
   end subroutine vamp_unmarshal_grid
-   subroutine vamp_marshal_history (h, ibuf, dbuf)
+  pure subroutine vamp_marshal_history (h, ibuf, dbuf)
     type(vamp_history), intent(in) :: h
     integer, dimension(:), intent(inout) :: ibuf
     real(kind=default), dimension(:), intent(inout) :: dbuf
@@ -3524,7 +3389,7 @@ contains
        didx = didx + dwords
     end do
   end subroutine vamp_marshal_history
-   subroutine vamp_marshal_history_size (h, iwords, dwords)
+  pure subroutine vamp_marshal_history_size (h, iwords, dwords)
     type(vamp_history), intent(in) :: h
     integer, intent(out) :: iwords, dwords
     integer :: i, ndim, iw, dw
@@ -3541,7 +3406,7 @@ contains
        dwords = dwords + dw
     end do
   end subroutine vamp_marshal_history_size
-   subroutine vamp_unmarshal_history (h, ibuf, dbuf)
+  pure subroutine vamp_unmarshal_history (h, ibuf, dbuf)
     type(vamp_history), intent(inout) :: h
     integer, dimension(:), intent(in) :: ibuf
     real(kind=default), dimension(:), intent(in) :: dbuf
@@ -3578,7 +3443,7 @@ contains
        end do
     end if
   end subroutine vamp_unmarshal_history
-   subroutine vamp_copy_grid_s (lhs, rhs)
+  elemental subroutine vamp_copy_grid (lhs, rhs)
     type(vamp_grid), intent(inout) :: lhs
     type(vamp_grid), intent(in) :: rhs
     integer :: ndim
@@ -3623,8 +3488,8 @@ contains
     else if (associated (lhs%mu_x)) then
        deallocate (lhs%mu_x, lhs%mu_xx, lhs%sum_mu_x, lhs%sum_mu_xx)
     end if
-  end subroutine vamp_copy_grid_s
-   subroutine vamp_delete_grid_s (g)
+  end subroutine vamp_copy_grid
+  elemental subroutine vamp_delete_grid (g)
     type(vamp_grid), intent(inout) :: g
     if (associated (g%div)) then
        call delete_division (g%div)
@@ -3636,8 +3501,8 @@ contains
     if (associated (g%mu_x)) then
        deallocate (g%mu_x, g%mu_xx, g%sum_mu_x, g%sum_mu_xx)
     end if
-  end subroutine vamp_delete_grid_s
-   subroutine vamp_copy_grids_s (lhs, rhs)
+  end subroutine vamp_delete_grid
+  elemental subroutine vamp_copy_grids (lhs, rhs)
     type(vamp_grids), intent(inout) :: lhs
     type(vamp_grids), intent(in) :: rhs
     integer :: nch
@@ -3649,24 +3514,24 @@ contains
        if (size (lhs%grids) /= nch) then
           deallocate (lhs%grids)
           allocate (lhs%grids(nch))
-          call vamp_create_empty_grid_s (lhs%grids(nch))
+          call vamp_create_empty_grid (lhs%grids(nch))
        end if
     else
        allocate (lhs%grids(nch))
-       call vamp_create_empty_grid_s (lhs%grids(nch))
+       call vamp_create_empty_grid (lhs%grids(nch))
     end if
     call vamp_copy_grid (lhs%grids, rhs%grids)
     call copy_array_pointer (lhs%weights, rhs%weights)
     call copy_array_pointer (lhs%num_calls, rhs%num_calls)
-  end subroutine vamp_copy_grids_s
-   subroutine vamp_delete_grids_s (g)
+  end subroutine vamp_copy_grids
+  elemental subroutine vamp_delete_grids (g)
     type(vamp_grids), intent(inout) :: g
     if (associated (g%grids)) then
        call vamp_delete_grid (g%grids)
        deallocate (g%weights, g%grids, g%num_calls)
     end if
-  end subroutine vamp_delete_grids_s
-     subroutine vamp_copy_history_s (lhs, rhs)
+  end subroutine vamp_delete_grids
+    elemental subroutine vamp_copy_history (lhs, rhs)
       type(vamp_history), intent(inout) :: lhs
       type(vamp_history), intent(in) :: rhs
       lhs%calls = rhs%calls
@@ -3690,14 +3555,14 @@ contains
          end if
          call copy_history (lhs%div, rhs%div)
       end if
-    end subroutine vamp_copy_history_s
+    end subroutine vamp_copy_history
 
-     subroutine vamp_delete_history_s (h)
+    elemental subroutine vamp_delete_history (h)
       type(vamp_history), intent(inout) :: h
       if (associated (h%div)) then
          deallocate (h%div)
       end if
-    end subroutine vamp_delete_history_s
+    end subroutine vamp_delete_history
 end module vamp_rest
 module vamp
   use vamp_grid_type    !NODEP!

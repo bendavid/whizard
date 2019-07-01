@@ -28,7 +28,7 @@ Prerequisites are:
 
  - Make
  - Objective Caml compiler (version 3.10 or higher)
- - Fortran 95/03 compiler
+ - Fortran 2003 compiler
  - C/C++ (for HepMC interfaces)
 
 The Objective Caml (O'Caml) compiler is available from 
@@ -74,10 +74,11 @@ WHIZARD:
 MAC OS X:
 
 WHIZARD has been tested and partially developed under MAC OS X 
-Darwin 9.6.0-9.8.0 (Leopard) and Darwin 10.0.0-10.2.0 (Snow 
-Leopard). The single pass linker here forces to explicitly include
-static C++ libraries when externally linking HepMC. The necessary
-flags are automatically taken care of by the configure script.
+Darwin 9.6.0-9.8.0 (Leopard) and Darwin 10.0.0-10.6.0 (Snow 
+Leopard) as well as Darwin 10.7.0 (Lion). The single pass linker 
+here forces to explicitly include static C++ libraries when 
+externally linking HepMC. The necessary flags are automatically 
+taken care of by the configure script.
 
 #-------------------------------------------------------------
 #  installing from a source code tar ball
@@ -197,6 +198,7 @@ Optional Features:
   --enable-stdhep	  enable STDHEP for binary event files [[yes]]
   --enable-shower         enable parton showers [[yes]]
   --enable-mpi            enable multi-parton interactions [[no]]
+  --enable-hoppet         enable HOPPET for b quark pdf matching [[no]]
   --enable-optimization-for-parameter-files
 			  enable (useless) optimization for parameter file
 			  [[no]]

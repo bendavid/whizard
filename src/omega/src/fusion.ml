@@ -1,11 +1,12 @@
-(* $Id: fusion.ml 3670 2012-01-21 19:33:07Z jr_reuter $
+(* $Id: fusion.ml 5023 2013-12-20 12:03:39Z ohl $
 
-   Copyright (C) 1999-2012 by
+   Copyright (C) 1999-2014 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
        Juergen Reuter <juergen.reuter@desy.de>
-       Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+       with contributions from
+       Christian Speckner <cnspeckn@googlemail.com>
 
    WHIZARD is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by
@@ -22,9 +23,9 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 let rcs_file = RCS.parse "Fusion" ["General Fusions"]
-    { RCS.revision = "$Revision: 3670 $";
-      RCS.date = "$Date: 2012-01-21 20:33:07 +0100 (Sat, 21 Jan 2012) $";
-      RCS.author = "$Author: jr_reuter $";
+    { RCS.revision = "$Revision: 5023 $";
+      RCS.date = "$Date: 2013-12-20 13:03:39 +0100 (Fri, 20 Dec 2013) $";
+      RCS.author = "$Author: ohl $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/src/omega/src/fusion.ml $" }
 
@@ -32,6 +33,7 @@ module type T =
   sig
     val options : Options.t
     type wf
+    val conjugate : wf -> wf
     type flavor
     type flavor_sans_color
     val flavor : wf -> flavor
@@ -225,7 +227,7 @@ module type Tags =
     val fuse : coupling -> wf children -> wf
     val wf_to_string : wf -> string option
     val coupling_to_string : coupling -> string option
-  end
+   end
 
 module type Tagger =
     functor (PT : Tuple.Poly) -> Tags with type 'a children = 'a PT.t
@@ -268,6 +270,18 @@ module Loop_Tags (PT : Tuple.Poly) =
     let wf_to_string n = Some (string_of_int n)
     let coupling_to_string n = Some (string_of_int n)
   end
+
+module Order_Tags (PT : Tuple.Poly) =
+  struct
+    type wf = int
+    type coupling = int
+    type 'a children = 'a PT.t
+    let null_wf = 0
+    let null_coupling = 0
+    let fuse c wfs = PT.fold_left (+) c wfs
+    let wf_to_string n = Some (string_of_int n)
+    let coupling_to_string n = Some (string_of_int n)
+  end
     
 (* \thocwmodulesection{[Tagged], the [Fusion.Make] Functor} *)
 
@@ -280,12 +294,37 @@ module Tagged (Tagger : Tagger) (PT : Tuple.Poly)
 
     type cache_mode = Cache_Use | Cache_Ignore | Cache_Overwrite
     let cache_option = ref Cache_Use
+    type qcd_order = 
+      | QCD_order of int
+    type ew_order = 
+      | EW_order of int
+    let qcd_order = ref (QCD_order 99)
+    let ew_order = ref (EW_order 99)
 
     let options = Options.create
         [ "ignore-cache", Arg.Unit (fun () -> cache_option := Cache_Ignore),
           "ignore cached model tables";
           "overwrite-cache", Arg.Unit (fun () -> cache_option := Cache_Overwrite),
-          "overwrite cached model tables" ]
+          "overwrite cached model tables";
+	  "qcd", Arg.Int (fun n -> qcd_order := QCD_order n), 
+	  "set QCD order n [>= 0, default = 99]";
+	  "ew", Arg.Int (fun n -> ew_order := EW_order n), 
+	  "set QCD order n [>=0, default = 99]"]
+
+    exception Negative_QCD_order
+    exception Negative_EW_order
+    exception Vanishing_couplings      
+    exception Negative_QCD_EW_orders
+
+    let int_orders = 
+      match !qcd_order, !ew_order with
+	| QCD_order n, EW_order n' when n < 0 &&  n' >= 0 -> 
+	    raise Negative_QCD_order
+	| QCD_order n, EW_order n' when n >= 0 &&  n' < 0 -> 
+	    raise Negative_EW_order
+	| QCD_order n, EW_order n' when n < 0 && n' < 0 -> 
+	    raise Negative_QCD_EW_orders
+	| QCD_order n, EW_order n' -> (n, n')
 
     open Coupling
 
@@ -367,6 +406,7 @@ module Tagged (Tagger : Tagger) (PT : Tuple.Poly)
         val momentum : wf -> p
         val momentum_list : wf -> int list
         val wf_tag : wf -> string option
+	val wf_tag_raw : wf -> Tags.wf
         val order_wf : wf -> wf -> int
         val external_wfs : int -> (flavor * int) list -> wf list
 
@@ -768,6 +808,16 @@ module Tagged (Tagger : Tagger) (PT : Tuple.Poly)
           end
       | _ -> true
 
+(* Counting QCD and EW orders. *)
+
+    let qcd_ew_check orders = 
+      if fst (orders) <= fst (int_orders) &&
+	 snd (orders) <= snd (int_orders) then
+	true
+      else
+	false
+
+
 (* Match a set of flavors to a set of momenta.  Form the direct product for
    the lists of momenta two and three with the list of couplings and flavors
    two and three.  *)
@@ -833,8 +883,9 @@ i*)
           let wfs, ss = PT.split wfss in
           let flavors = PT.map A.flavor wfs
           and momenta = PT.map A.momentum wfs
-          (* not yet: [and wf_tags = PT.map wf_tag_raw wfs] *) in
+          and wf_tags = PT.map A.wf_tag_raw wfs in
           let p = PT.fold_left_internal P.add momenta in
+(*i	  let wft = PT.fold_left Tags.fuse wf_tags in i*)
           List.fold_left
             (fun acc (f, c) ->
               if select_wf f p (PT.to_list momenta) && kmatrix_cuts c momenta then
@@ -1288,7 +1339,9 @@ i*)
               (List.filter match_flavor (fuse_c_wf c_children)))
           (PT.product (PT.map find_colored children)) in
       let bundle =
-        List.fold_right (fun (c_wf, _) -> CWFBundle.add c_wf) fusions fibered_dag.bundle in
+        List.fold_right
+          (fun (c_wf, _) -> CWFBundle.add c_wf)
+          fusions fibered_dag.bundle in
       (fusions, bundle)
 
     let colorize_braket1 (wf, (coupling, children)) fibered_dag =
@@ -1304,20 +1357,43 @@ i*)
             acc (fuse_c_wf ket))
         (find_colored wf) (PT.product (PT.map find_colored children)) []
 
-    module CWFMap = Map.Make (struct type t = CA.wf let compare = CA.order_wf end)
-    module CKetSet = Set.Make (struct type t = CA.rhs let compare = compare end)
+    module CWFMap =
+      Map.Make (struct type t = CA.wf let compare = CA.order_wf end)
+
+    module CKetSet =
+      Set.Make (struct type t = CA.rhs let compare = compare end)
+
+    (* Find a set of kets in [map] that belong to [bra].
+       Return the empty set, if nothing is found. *)
+
+    let lookup_ketset bra map =
+      try CWFMap.find bra map with Not_found -> CKetSet.empty
+
+    (* Return the set of kets belonging to [bra] in [map],
+       augmented by [ket]. *)
+
+    let addto_ketset bra ket map =
+      CKetSet.add ket (lookup_ketset bra map)
+
+    (* Augment or update [map] with a new [(bra, ket)] relation. *)
+
+    let addto_ketset_map map (bra, ket) =
+      CWFMap.add bra (addto_ketset bra ket map) map
+
+    (* Take a list of [(bra, ket)] pairs and group the [ket]s
+       according to [bra].  This is very similar to
+       [ThoList.factorize] on page~\pageref{ThoList.factorize},
+       but the latter keeps duplicate copies, while we keep
+       only one, with equality determined by [CA.order_wf]. *)
+
+    (* \begin{dubious}
+         Isn't [Bundle]~\ref{Bundle} the correct framework for this?
+       \end{dubious} *)
 
     let factorize_brakets brakets =
       CWFMap.fold
-        (fun bra ket acc ->
-          (bra, CKetSet.elements ket) :: acc)
-        (List.fold_left
-           (fun map (bra, ket) ->
-             CWFMap.add
-               bra
-               (CKetSet.add ket (try CWFMap.find bra map with Not_found -> CKetSet.empty))
-               map)
-           CWFMap.empty brakets)
+        (fun bra ket acc -> (bra, CKetSet.elements ket) :: acc)
+        (List.fold_left addto_ketset_map CWFMap.empty brakets)
         []
 
     let colorize_braket (wf, rhs_list) fibered_dag =
@@ -1335,10 +1411,13 @@ i*)
       let wf_bundle = CWFBundle.of_list external_wfs  in
 
       let fibered_dag =
-        colorize_dag colorize_fusion colorize_external a.A.fusion_dag wf_bundle in
+        colorize_dag
+          colorize_fusion colorize_external a.A.fusion_dag wf_bundle in
 
       let brakets =
-        ThoList.flatmap (fun braket -> colorize_braket braket fibered_dag) a.A.brakets in
+        ThoList.flatmap
+          (fun braket -> colorize_braket braket fibered_dag)
+          a.A.brakets in
 
       let dag = CA.D.harvest_list fibered_dag.dag (CA.wavefunctions brakets) in
 
@@ -1346,7 +1425,9 @@ i*)
         List.filter (function (_, []) -> false | _ -> true) (CA.D.lists dag) in
 
       let dependencies_map =
-        CA.D.fold (fun wf _ -> CWFMap.add wf (CA.D.dependencies dag wf)) dag CWFMap.empty in
+        CA.D.fold
+          (fun wf _ -> CWFMap.add wf (CA.D.dependencies dag wf))
+          dag CWFMap.empty in
 
       { CA.fusions = fusions;
         CA.brakets = brakets;
@@ -1383,6 +1464,7 @@ i*)
     type flavor_sans_color = A.flavor
     type p = A.p
     type wf = CA.wf
+    let conjugate = CA.conjugate
     let flavor = CA.flavor
     let flavor_sans_color wf = CM.flavor_sans_color (CA.flavor wf)
     let momentum = CA.momentum
@@ -1454,11 +1536,6 @@ i*)
         0 a.CA.brakets
 
     exception Impossible
-        
-(* \begin{dubious}
-     We still need to perform the appropriate charge conjugations so that we
-     get the correct flavors for the external tree representation.
-   \end{dubious} *)
 
     let forest' a =
       let below wf = CA.D.forest_memoized wf a.CA.fusion_dag in
@@ -1483,6 +1560,37 @@ i*)
       
     let forest wf a =
       List.map (fuse_trees wf) (forest' a)
+
+(*i
+(* \begin{dubious}
+     The following duplication should be replaced by polymorphism
+     or a functor.
+   \end{dubious} *)
+
+    let forest_uncolored' a =
+      let below wf = A.D.forest_memoized wf a.A.fusion_dag in
+      ThoList.flatmap
+        (fun (bra, ket) ->
+          (Product.list2 (fun bra' ket' -> bra' :: ket')
+             (below bra)
+             (ThoList.flatmap
+                (fun (_, wfs) ->
+                  Product.list (fun w -> w) (PT.to_list (PT.map below wfs)))
+                ket)))
+        a.A.brakets
+
+    let cross_uncolored wf =
+      { A.flavor = M.conjugate wf.A.flavor;
+        A.momentum = P.neg wf.A.momentum;
+        A.wf_tag = wf.A.wf_tag }
+
+    let fuse_trees_uncolored wf ts =
+      Tree.fuse (fun (wf', e) -> (cross_uncolored wf', e))
+        wf (fun t -> List.mem wf (Tree.leafs t)) ts
+      
+    let forest_sans_color wf a =
+      List.map (fuse_trees_uncolored wf) (forest_uncolored' a)
+i*)
 
     let poles_beneath wf dag =
       CA.D.eval_memoized (fun wf' -> [[]])
@@ -1586,7 +1694,7 @@ i*)
 
   end
 
-module Make = Tagged(No_Tags)
+module Make = Tagged(Order_Tags)
 
 module Binary = Make(Tuple.Binary)(Stat_Dirac)(Topology.Binary)
 module Tagged_Binary (T : Tagger) =
@@ -1596,8 +1704,8 @@ module Tagged_Binary (T : Tagger) =
 
 module Stat_Majorana (M : Model.T) : (Stat with type flavor = M.flavor) =
   struct 
-    let rcs = RCS.rename rcs_file "Fusion.Stat_Dirac()"
-        [ "Fermi statistics for Dirac fermions"]
+    let rcs = RCS.rename rcs_file "Fusion.Stat_Majorana()"
+        [ "Fermi statistics with fermion number violation"]
 
     type flavor = M.flavor
 

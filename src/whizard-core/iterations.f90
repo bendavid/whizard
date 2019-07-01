@@ -1,11 +1,13 @@
-! WHIZARD 2.1.1 September 18 2012
+! WHIZARD 2.2.0 May 18 2014
 ! 
-! Copyright (C) 1999-2012 by 
+! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
-!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
+!     
+!     with contributions from
+!     Christian Speckner <cnspeckn@googlemail.com> 
+!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -29,28 +31,15 @@ module iterations
 
   use iso_varying_string, string_t => varying_string !NODEP!
   use file_utils !NODEP!
-  use limits, only: ITERATIONS_DEFAULT_LIST_SIZE !NODEP!
   use diagnostics !NODEP!
+  use unit_tests
   use processes
 
   implicit none
   private
 
   public :: iterations_list_t
-  public :: iterations_list_init
-  public :: iterations_list_complete
-  public :: iterations_list_clear
-  public :: iterations_list_write
-  public :: iterations_list_get_pass_array
-  public :: iterations_list_get_n_calls_array
-  public :: iterations_list_get_n_pass
-  public :: iterations_list_get_n_calls
-  public :: iterations_list_has_custom_adaptation
-  public :: iterations_list_adapt_grids
-  public :: iterations_list_adapt_weights
-  public :: iterations_list_get_n_it
-  public :: iterations_list_adjust_n_calls
-  public :: iterations_lists_init_default
+  public :: iterations_test
 
   type :: iterations_spec_t
      private
@@ -65,22 +54,29 @@ module iterations
      private
      integer :: n_pass = 0
      type(iterations_spec_t), dimension(:), allocatable :: pass
+   contains
+     procedure :: init => iterations_list_init
+     procedure :: clear => iterations_list_clear
+     procedure :: write => iterations_list_write
+     procedure :: to_string => iterations_list_to_string
+     procedure :: get_n_pass => iterations_list_get_n_pass
+     procedure :: get_n_calls => iterations_list_get_n_calls
+     procedure :: adapt_grids => iterations_list_adapt_grids
+     procedure :: adapt_weights => iterations_list_adapt_weights
+     procedure :: get_n_it => iterations_list_get_n_it
   end type iterations_list_t
      
 
-  interface iterations_list_get_n_it
-     module procedure iterations_list_get_n_it_tot
-     module procedure iterations_list_get_n_it_pass
-  end interface
-
-
 contains
 
-  subroutine iterations_list_init (it_list, n_it, n_calls, adapt, adapt_code)
-    type(iterations_list_t), intent(inout) :: it_list
+  subroutine iterations_list_init &
+       (it_list, n_it, n_calls, adapt, adapt_code, adapt_grids, adapt_weights)
+    class(iterations_list_t), intent(inout) :: it_list
     integer, dimension(:), intent(in) :: n_it, n_calls
     logical, dimension(:), intent(in), optional :: adapt
     type(string_t), dimension(:), intent(in), optional :: adapt_code
+    logical, dimension(:), intent(in), optional :: adapt_grids, adapt_weights
+    integer :: i
     it_list%n_pass = size (n_it)
     if (allocated (it_list%pass)) deallocate (it_list%pass)    
     allocate (it_list%pass (it_list%n_pass))
@@ -88,41 +84,45 @@ contains
     it_list%pass%n_calls = n_calls
     if (present (adapt)) then
        it_list%pass%custom_adaptation = adapt
-       if (any (verify (adapt_code, "wg") /= 0)) then
-          call msg_error ("iteration specification: " &
-               // "adaptation code letters must be 'w' or 'g'")
-       end if
-       it_list%pass%adapt_grids = scan (adapt_code, "g") /= 0
-       it_list%pass%adapt_weights = scan (adapt_code, "w") /= 0
+       do i = 1, it_list%n_pass
+          if (adapt(i)) then
+             if (verify (adapt_code(i), "wg") /= 0) then
+                call msg_error ("iteration specification: " &
+                     // "adaptation code letters must be 'w' or 'g'")
+             end if
+             it_list%pass(i)%adapt_grids = scan (adapt_code(i), "g") /= 0
+             it_list%pass(i)%adapt_weights = scan (adapt_code(i), "w") /= 0
+          end if
+       end do
+    else if (present (adapt_grids) .and. present (adapt_weights)) then
+       it_list%pass%custom_adaptation = .true.
+       it_list%pass%adapt_grids = adapt_grids
+       it_list%pass%adapt_weights = adapt_weights
     end if
+    do i = 1, it_list%n_pass - 1
+       if (.not. it_list%pass(i)%custom_adaptation) then
+          it_list%pass(i)%adapt_grids = .true.
+          it_list%pass(i)%adapt_weights = .true.
+       end if
+    end do
   end subroutine iterations_list_init
 
-  subroutine iterations_list_complete (it_list, it_list_default)
-    type(iterations_list_t), intent(inout) :: it_list
-    type(iterations_list_t), intent(in) :: it_list_default
-    if (it_list%n_pass >= 1) then
-       if (it_list%pass(1)%n_it == 0)  &
-            it_list%pass(1)%n_it = it_list_default%pass(1)%n_it
-       if (it_list%pass(1)%n_calls == 0)  &
-            it_list%pass(1)%n_calls = it_list_default%pass(1)%n_calls
-    end if
-    if (it_list%n_pass >= 2) then
-       where (it_list%pass%n_it == 0) &
-            it_list%pass%n_it = it_list_default%pass(2)%n_it
-       where (it_list%pass%n_calls == 0) &
-            it_list%pass%n_calls = it_list_default%pass(2)%n_calls
-    end if
-  end subroutine iterations_list_complete
-    
   subroutine iterations_list_clear (it_list)
-    type(iterations_list_t), intent(inout) :: it_list
+    class(iterations_list_t), intent(inout) :: it_list
     it_list%n_pass = 0
     deallocate (it_list%pass)
   end subroutine iterations_list_clear
 
   subroutine iterations_list_write (it_list, unit)
-    type(iterations_list_t), intent(in) :: it_list
+    class(iterations_list_t), intent(in) :: it_list
     integer, intent(in), optional :: unit
+    integer :: u
+    u = output_unit (unit)
+    write (u, "(A)")  char (it_list%to_string ())
+  end subroutine iterations_list_write
+
+  function iterations_list_to_string (it_list) result (buffer)
+    class(iterations_list_t), intent(in) :: it_list
     type(string_t) :: buffer
     character(30) :: ibuf
     integer :: i
@@ -133,8 +133,10 @@ contains
           write (ibuf, "(I0,':',I0)") &
                it_list%pass(i)%n_it, it_list%pass(i)%n_calls
           buffer = buffer // trim (ibuf)
-          if (it_list%pass(i)%custom_adaptation) then
-             buffer = buffer // '"'
+          if (it_list%pass(i)%custom_adaptation &
+               .or. it_list%pass(i)%adapt_grids &
+               .or. it_list%pass(i)%adapt_weights) then
+             buffer = buffer // ':"'
              if (it_list%pass(i)%adapt_grids)  buffer = buffer // "g"
              if (it_list%pass(i)%adapt_weights)  buffer = buffer // "w"
              buffer = buffer // '"'
@@ -143,42 +145,17 @@ contains
     else
        buffer = buffer // "[undefined]"
     end if
-    call msg_message (char (buffer), unit)
-  end subroutine iterations_list_write
-
-  function iterations_list_get_pass_array (it_list) result (pass)
-    integer, dimension(:), allocatable :: pass
-    type(iterations_list_t), intent(in) :: it_list
-    integer :: it, i
-    allocate (pass (sum (it_list%pass%n_it)))
-    it = 0
-    do i = 1, it_list%n_pass
-       pass(it+1 : it+it_list%pass(i)%n_it) = i
-       it = it + it_list%pass(i)%n_it
-    end do
-  end function iterations_list_get_pass_array
-
-  function iterations_list_get_n_calls_array (it_list) result (n_calls)
-    integer, dimension(:), allocatable :: n_calls
-    type(iterations_list_t), intent(in) :: it_list
-    integer :: it, i
-    allocate (n_calls (sum (it_list%pass%n_it)))
-    it = 0
-    do i = 1, it_list%n_pass
-       n_calls(it+1 : it+it_list%pass(i)%n_it) = it_list%pass(i)%n_calls
-       it = it + it_list%pass(i)%n_it
-    end do
-  end function iterations_list_get_n_calls_array
-
+  end function iterations_list_to_string
+    
   function iterations_list_get_n_pass (it_list) result (n_pass)
+    class(iterations_list_t), intent(in) :: it_list
     integer :: n_pass
-    type(iterations_list_t), intent(in) :: it_list
     n_pass = it_list%n_pass
   end function iterations_list_get_n_pass
 
   function iterations_list_get_n_calls (it_list, pass) result (n_calls)
+    class(iterations_list_t), intent(in) :: it_list
     integer :: n_calls
-    type(iterations_list_t), intent(in) :: it_list
     integer, intent(in) :: pass
     if (pass <= it_list%n_pass) then
        n_calls = it_list%pass(pass)%n_calls
@@ -187,20 +164,9 @@ contains
     end if
   end function iterations_list_get_n_calls
 
-  function iterations_list_has_custom_adaptation (it_list, pass) result (flag)
-    logical :: flag
-    type(iterations_list_t), intent(in) :: it_list
-    integer, intent(in) :: pass
-    if (pass <= it_list%n_pass) then
-       flag = it_list%pass(pass)%custom_adaptation
-    else
-       flag = .false.
-    end if
-  end function iterations_list_has_custom_adaptation
-
   function iterations_list_adapt_grids (it_list, pass) result (flag)
     logical :: flag
-    type(iterations_list_t), intent(in) :: it_list
+    class(iterations_list_t), intent(in) :: it_list
     integer, intent(in) :: pass
     if (pass <= it_list%n_pass) then
        flag = it_list%pass(pass)%adapt_grids
@@ -211,7 +177,7 @@ contains
 
   function iterations_list_adapt_weights (it_list, pass) result (flag)
     logical :: flag
-    type(iterations_list_t), intent(in) :: it_list
+    class(iterations_list_t), intent(in) :: it_list
     integer, intent(in) :: pass
     if (pass <= it_list%n_pass) then
        flag = it_list%pass(pass)%adapt_weights
@@ -220,60 +186,84 @@ contains
     end if
   end function iterations_list_adapt_weights
 
-  function iterations_list_get_n_it_tot (it_list) result (n_it)
+  function iterations_list_get_n_it (it_list, pass) result (n_it)
+    class(iterations_list_t), intent(in) :: it_list
     integer :: n_it
-    type(iterations_list_t), intent(in) :: it_list
-    n_it = sum (it_list%pass%n_it)
-  end function iterations_list_get_n_it_tot
-
-  function iterations_list_get_n_it_pass (it_list, pass) result (n_it)
-    integer :: n_it
-    type(iterations_list_t), intent(in) :: it_list
     integer, intent(in) :: pass
     if (pass <= it_list%n_pass) then
        n_it = it_list%pass(pass)%n_it
     else
        n_it = 0
     end if
-  end function iterations_list_get_n_it_pass
+  end function iterations_list_get_n_it
 
-   subroutine iterations_list_adjust_n_calls (it_list, process, grid_parameters)
-     type(iterations_list_t), intent(inout), target :: it_list
-     type(process_t), intent(in) :: process
-     type(grid_parameters_t), intent(in) :: grid_parameters
-     type(iterations_spec_t), pointer :: it_spec
-     integer :: n_calls, pass
-     logical :: changed
-     changed = .false.
-     do pass = 1, it_list%n_pass
-        it_spec => it_list%pass(pass)
-        n_calls = max (it_spec%n_calls, &
-             process_get_n_channels (process) &
-             * grid_parameters%min_calls_per_channel)
-        if (n_calls /= it_spec%n_calls) then
-           it_spec%n_calls = n_calls
-           changed = .true.
-        end if
-     end do
-     if (changed) then
-        write (msg_buffer, "(A,I0)") "Process '" &
-             // char (process_get_id (process)) // "': " &
-             // "resetting n_calls to ", n_calls
-        call msg_warning ()
-     end if
-  end subroutine iterations_list_adjust_n_calls
 
-  subroutine iterations_lists_init_default (it_list)
-    type(iterations_list_t), dimension(:), pointer :: it_list
-    allocate (it_list (ITERATIONS_DEFAULT_LIST_SIZE))
-    call iterations_list_init (it_list(1), (/  1 /), (/ 100 /))
-    call iterations_list_init (it_list(2), (/  3, 3 /), (/   1000,  10000 /))
-    call iterations_list_init (it_list(3), (/  5, 3 /), (/   5000,  10000 /))
-    call iterations_list_init (it_list(4), (/ 10, 5 /), (/  10000,  20000 /))
-    call iterations_list_init (it_list(5), (/ 10, 5 /), (/  20000,  50000 /))
-    call iterations_list_init (it_list(6), (/ 15, 5 /), (/  50000, 100000 /))
-    call iterations_list_init (it_list(7), (/ 20, 5 /), (/  50000, 200000 /))
-  end subroutine iterations_lists_init_default
+  subroutine iterations_test (u, results)
+    integer, intent(in) :: u
+    type(test_results_t), intent(inout) :: results
+    call test (iterations_1, "iterations_1", &
+         "empty iterations list", &
+         u, results)
+    call test (iterations_2, "iterations_2", &
+         "create iterations list", &
+         u, results)
+end subroutine iterations_test
 
+  subroutine iterations_1 (u)
+    integer, intent(in) :: u
+    type(iterations_list_t) :: it_list
+    
+    write (u, "(A)")  "* Test output: iterations_1"
+    write (u, "(A)")  "*   Purpose: display empty iterations list"
+    write (u, "(A)")
+
+    call it_list%write (u)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: iterations_1"
+    
+  end subroutine iterations_1
+  
+  subroutine iterations_2 (u)
+    integer, intent(in) :: u
+    type(iterations_list_t) :: it_list
+    
+    write (u, "(A)")  "* Test output: iterations_2"
+    write (u, "(A)")  "*   Purpose: fill and display iterations list"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Minimal setup (2 passes)"
+    write (u, "(A)")
+
+    call it_list%init ([2, 4], [5000, 20000])
+
+    call it_list%write (u)
+    call it_list%clear ()
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Setup with flags (3 passes)"
+    write (u, "(A)")
+
+    call it_list%init ([2, 4, 5], [5000, 20000, 400], &
+         [.false., .true., .true.], &
+         [var_str (""), var_str ("g"), var_str ("wg")])
+
+    call it_list%write (u)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Extract data"
+    write (u, "(A)")
+    
+    write (u, "(A,I0)")  "n_pass = ", it_list%get_n_pass ()
+    write (u, "(A)")
+    write (u, "(A,I0)")  "n_calls(2) = ", it_list%get_n_calls (2)
+    write (u, "(A)")
+    write (u, "(A,I0)")  "n_it(3) = ", it_list%get_n_it (3)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: iterations_2"
+    
+  end subroutine iterations_2
+  
 
 end module iterations

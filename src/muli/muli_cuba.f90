@@ -913,7 +913,8 @@ subroutine integrate_divonne_userdata(this,integrand,userdata)
        if(mod(size(xgiven_flat),this%dim_x)==0)then
           this%ngiven=size(xgiven_flat)/this%dim_x
           this%ldxgiven=this%dim_x
-          allocate(this%xgiven(this%ldxgiven,this%ngiven),source=reshape(xgiven_flat,[this%ldxgiven,this%ngiven]))
+          allocate(this%xgiven(this%ldxgiven,this%ngiven))
+          this%xgiven = reshape(xgiven_flat,[this%ldxgiven,this%ngiven])
        else
           print *,"cuba_divonne_set_deferred: size of xgiven_flat is no multiple of dim_x."
           this%ngiven=0

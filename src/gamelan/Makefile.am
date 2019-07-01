@@ -1,11 +1,11 @@
 ## Makefile.am -- Makefile for WHIZARD
 ##
 #
-# Copyright (C) 1999-2012 by  
+# Copyright (C) 1999-2014 by  
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de> 
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de> 
 #     Juergen Reuter <juergen.reuter@desy.de> 
-#     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+#     Christian Speckner <cnspeckn@googlemail.com>
 # 
 # WHIZARD is free software; you can redistribute it and/or modify it 
 # under the terms of the GNU General Public License as published by  
@@ -24,13 +24,13 @@
 ######################################################################## 
 ## Process this file with automake to produce Makefile.in
 
-## Install the gml executable here:
+## Install the gml executable and WHIZARD logo here:
 GML=gml
-gmlexeclibdir = $(pkglibdir)/gamelan
+gmlexeclibdir = $(PKGLIBDIR)/gamelan
 dist_gmlexeclib_SCRIPTS = $(GML)
 
 ## Install the gml MetaPost code here:
-gmllibdir = $(pkglibdir)/gamelan
+gmllibdir = $(PKGLIBDIR)/gamelan
 
 ## The NOWEB source and the test / demofiles generated from it must be distributed,
 ## but not installed.
@@ -41,7 +41,7 @@ dist_noinst_DATA = \
 
 ## Mem files are no longer existent in MetaPost, hence we need to install 
 ## all the gamelan includes.
-dist_gmllib_DATA = $(GML_MPOST_SRC)
+dist_gmllib_DATA = $(GML_MPOST_SRC) $(GML_WHIZARD_LOGO)
 
 ## Distribute the style file and color definition files, and install them here:
 gmltexdir = $(PKGTEXDIR)
@@ -56,14 +56,18 @@ dist_gmltex_DATA = \
 GML_FROM_GAMELAN_NW = \
   $(GML_MPOST_SRC) $(GML_STY) $(GML_TEX_SRC) \
   $(GML_TEX_EXAMPLES_SRC) $(GML_TEX_EXAMPLES_DAT) \
-  $(GML_TEX_TEST_SRC) $(GML_TEX_TEST_DAT)
+  $(GML_TEX_TEST_SRC) $(GML_TEX_TEST_DAT) $(GML_WHIZARD_LOGO)
+
+## The WHIZARD logo as EPS file
+GML_WHIZARD_LOGO = \
+  Whizard-Logo.eps
 
 ## Gamelan MetaPost sources
 GML_MPOST_SRC = \
   gamelan.mp \
   gmlaux.mp gmlhatch.mp gmlbox.mp gmlshapes.mp gmlspectra.mp \
   gmlarith.mp gmlformat.mp gmlfiles.mp gmlset.mp gmlscan.mp \
-  gmlcoords.mp gmldraw.mp gmlgrid.mp
+  gmlcoords.mp gmldraw.mp gmlgrid.mp gmleps.mp
 
 ## LaTeX style file
 GML_STY = \
@@ -167,7 +171,7 @@ clean-noweb:
 	-rm -f $(GML_TEX_EXAMPLES_MP) $(GML_TEX_TEST_MP)
 else !NOWEB_AVAILABLE
 clean-noweb:
-	test "$(srcdir)" != "." && rm -f *.sty *.tex *.mp *.dat || true
+	test "$(srcdir)" != "." && rm -f *.sty *.tex *.mp *.dat *.eps || true
 endif
 .PHONY: clean-noweb
 

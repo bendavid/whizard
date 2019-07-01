@@ -1,11 +1,12 @@
-(* $Id: tree.mli 3670 2012-01-21 19:33:07Z jr_reuter $
+(* $Id: tree.mli 5170 2014-01-26 13:57:26Z jr_reuter $
 
-   Copyright (C) 1999-2012 by
+   Copyright (C) 1999-2014 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-       Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
-       Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+       Juergen Reuter <juergen.reuter@desy.de>
+       with contributions from
+       Christian Speckner <cnspeckn@googlemail.com>
 
    WHIZARD is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by
@@ -27,20 +28,31 @@
 (* \thocwmodulesection{Abstract Data Type} *)
 type ('n, 'l) t
 
-(* [leaf n l] returns a tree consisting of a single leaf of type [n]
-   connected to [l]. *)
+(* [leaf n l] returns a tree consisting of a single leaf node
+   of type [n] with a label [l]. *)
 val leaf : 'n -> 'l -> ('n, 'l) t
 
 (* [cons n ch] returns a tree node. *)
 val cons : 'n -> ('n, 'l) t list -> ('n, 'l) t
 
+(* Note that [cons node []] constructs a terminal node, but
+   \emph{not} a leaf, since the latter \emph{must} have a label!
+   \begin{dubious}
+     \label{Tree.Leaf}
+     This approach was probably tailored to Feynman diagrams,
+     where we have external propagators as nodes with additional
+     labels (cf.~the function [to_feynmf] on page~\pageref{Tree.to_feynmf}
+     below). I'm not so sure anymore that this was a good choice.
+   \end{dubious} *)
+
 (* [node t] returns the top node of the tree [t]. *)
 val node : ('n, 'l) t -> 'n
 
-(* [leafs t] returns a list of all leafs \textit{in order}. *)
+(* [leafs t] returns a list of all leaf labels \textit{in order}. *)
 val leafs : ('n, 'l) t -> 'l list
 
-(* [nodes t] returns a list of all nodes in post-order. This guarantees
+(* [nodes t] returns a list of all nodes that are not leafs
+   in post-order. This guarantees
    that the root node can be stripped from the result by [List.tl]. *)
 val nodes :  ('n, 'l) t -> 'n list
 
@@ -55,6 +67,7 @@ val fuse : ('n -> 'n) -> 'l -> (('n, 'l) t -> bool) -> ('n, 'l) t list -> ('n, '
    labels are ignored and nodes are according to the supremum of the
    leaf labels in the corresponding subtree. *)
 val sort : ('l -> 'l -> bool) -> ('n, 'l) t -> ('n, 'l) t
+val canonicalize : ('n, 'l) t -> ('n, 'l) t
 
 (* \thocwmodulesection{Homomorphisms} *)
 val map : ('n1 -> 'n2) -> ('l1 -> 'l2) -> ('n1, 'l1) t -> ('n2, 'l2) t
@@ -78,11 +91,47 @@ type feynmf =
 val vanilla : feynmf
 val sty : (string * string) * bool * string -> feynmf
 
-(* [to_feynmf file to_string i2 t] write the trees in the
-   list~[t] to the file named~[file].  The leaf~[i2] is used as
-   the second incoming particle and~[to_string] is use to convert
+(* [to_feynmf file to_string incoming t] write the trees in the
+   list~[t] to the file named~[file].  The leaves~[incoming] are
+   used as incoming particles and~[to_string] is use to convert
    leaf labels to \LaTeX-strings. *)
-val to_feynmf : bool ref -> string -> ('l -> string) -> 'l -> (feynmf, 'l) t list -> unit
+(* \label{Tree.to_feynmf} *)
+
+type 'l feynmf_set =
+  { header : string;
+    incoming : 'l list;
+    diagrams : (feynmf, 'l) t list }
+
+type ('l, 'm) feynmf_sets =
+  { outer : 'l feynmf_set;
+    inner : 'm feynmf_set list }
+
+val feynmf_sets_plain : bool -> int -> string ->
+  ('l -> string) -> ('l -> string) ->
+  ('m -> string) -> ('m -> string) -> ('l, 'm) feynmf_sets list -> unit
+
+val feynmf_sets_wrapped : bool -> string ->
+  ('l -> string) -> ('l -> string) ->
+  ('m -> string) -> ('m -> string) -> ('l, 'm) feynmf_sets list -> unit
+
+(* If the diagrams at all levels are of the same type,
+   we can recurse to arbitrary depth. *)
+
+type 'l feynmf_levels =
+  { this : 'l feynmf_set;
+    lower : 'l feynmf_levels list }
+
+(* [to_feynmf_levels_plain sections level file wf_to_TeX p_to_TeX levels]
+   \ldots *)
+
+val feynmf_levels_plain : bool -> int -> string ->
+  ('l -> string) -> ('l -> string) -> 'l feynmf_levels list -> unit
+
+(* [to_feynmf_levels_wrapped file wf_to_TeX p_to_TeX levels]
+   \ldots *)
+
+val feynmf_levels_wrapped : string ->
+  ('l -> string) -> ('l -> string) -> 'l feynmf_levels list -> unit
 
 (* \thocwmodulesubsection{Least Squares Layout} *)
 

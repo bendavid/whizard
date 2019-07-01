@@ -1,11 +1,13 @@
-! WHIZARD 2.1.1 September 18 2012
+! WHIZARD 2.2.0 May 18 2014
 ! 
-! Copyright (C) 1999-2012 by 
+! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
-!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
+!     
+!     with contributions from
+!     Christian Speckner <cnspeckn@googlemail.com> 
+!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -30,7 +32,8 @@ module colors
   use kinds, only: default !NODEP!
   use file_utils !NODEP!
   use diagnostics !NODEP!
-
+  use unit_tests
+  
   implicit none
   private
 
@@ -49,10 +52,6 @@ module colors
   public :: color_get_col
   public :: color_get_acl
   public :: color_get_max_value
-  !!! ifort 11.1 rev5 bug
-  public :: color_get_max_value0
-  public :: color_get_max_value1
-  public :: color_get_max_value2
   public :: operator(.match.)
   public :: operator(==)
   public :: operator(/=)
@@ -69,7 +68,6 @@ module colors
 
   type :: color_t
      private
-!     integer, dimension(:), allocatable :: c1, c2
      integer, dimension(2) :: c1 = 0, c2 = 0
      logical :: ghost = .false.
   end type color_t
@@ -134,8 +132,6 @@ contains
   pure subroutine color_init_array (col, c1)
     type(color_t), intent(out) :: col
     integer, dimension(:), intent(in) :: c1
-!    allocate (col%c1 (size (c1)))
-!    allocate (col%c2 (size (c1)))
     col%c1 = pack (c1, c1 /= 0, col%c1)
     col%c2 = col%c1
   end subroutine color_init_array
@@ -152,18 +148,12 @@ contains
     type(color_t), intent(out) :: col
     integer, dimension(:), intent(in) :: c1, c2
     if (size (c1) == size (c2)) then
-!       allocate (col%c1 (size (c1)))
-!       allocate (col%c2 (size (c2)))
        col%c1 = pack (c1, c1 /= 0, col%c1)
        col%c2 = pack (c2, c2 /= 0, col%c2)
     else if (size (c1) /= 0) then
-!       allocate (col%c1 (size (c1)))
-!       allocate (col%c2 (size (c1)))
        col%c1 = pack (c1, c1 /= 0, col%c1)
        col%c2 = col%c1
     else if (size (c2) /= 0) then
-!       allocate (col%c1 (size (c2)))
-!       allocate (col%c2 (size (c2)))
        col%c1 = pack (c2, c2 /= 0, col%c2)
        col%c2 = col%c1
     end if
@@ -204,8 +194,6 @@ contains
     integer, dimension(:), intent(in) :: c1
     logical, dimension(size(c1)) :: mask
     mask = c1 /= 0
-!    allocate (col%c1 (count (mask)))
-!    allocate (col%c2 (size (col%c1)))
     col%c1 = pack (c1, mask, col%c1)
     col%c2 = col%c1
   end subroutine color_init_from_array1
@@ -244,8 +232,6 @@ contains
   elemental subroutine color_undefine (col, undefine_ghost)
     type(color_t), intent(inout) :: col
     logical, intent(in), optional :: undefine_ghost
-!    if (allocated (col%c1))  deallocate (col%c1)
-!    if (allocated (col%c2))  deallocate (col%c2)
     col%c1 = 0
     col%c2 = 0
     if (present (undefine_ghost)) then
@@ -318,7 +304,6 @@ contains
   elemental function color_is_defined (col) result (defined)
     logical :: defined
     type(color_t), intent(in) :: col
-!    defined = allocated (col%c1)
     defined = any (col%c1 /= 0)
   end function color_is_defined
 
@@ -358,11 +343,10 @@ contains
   elemental function color_number (col) result (n)
     integer :: n
     type(color_t), intent(in) :: col
-!    n = size (col%c1)
     n = count (col%c1 /= 0)
   end function color_number
 
-  function color_get_col (col) result (c)
+  elemental function color_get_col (col) result (c)
     integer :: c
     type(color_t), intent(in) :: col
     integer :: i
@@ -375,7 +359,7 @@ contains
     c = 0
   end function color_get_col
 
-  function color_get_acl (col) result (c)
+  elemental function color_get_acl (col) result (c)
     integer :: c
     type(color_t), intent(in) :: col
     integer :: i
@@ -415,11 +399,7 @@ contains
     logical :: eq
     type(color_t), intent(in) :: col1, col2
     if (color_is_defined (col1) .and. color_is_defined (col2)) then
-!       if (size (col1%c1) == size (col2%c1)) then
           eq = all (col1%c1 == col2%c1) .and. all (col1%c2 == col2%c2)
-!       else
-!          eq = .false.
-!       end if
     else
        eq = .true.
     end if
@@ -429,12 +409,8 @@ contains
     logical :: eq
     type(color_t), intent(in) :: col1, col2
     if (color_is_defined (col1) .and. color_is_defined (col2)) then
-!       if (size (col1%c1) == size (col2%c1)) then
           eq = all (col1%c1 == col2%c1) .and. all (col1%c2 == col2%c2) &
                .and. (col1%ghost .eqv. col2%ghost)
-!       else
-!          eq = .false.
-!       end if
     else if (.not. color_is_defined (col1) &
        .and. .not. color_is_defined (col2)) then
        eq = col1%ghost .eqv. col2%ghost
@@ -466,10 +442,6 @@ contains
     integer, intent(in) :: offset
     where (col%c1 /= 0)  col%c1 = col%c1 + sign (offset, col%c1)
     where (col%c2 /= 0)  col%c2 = col%c2 + sign (offset, col%c2)
-!    if (allocated (col%c1)) then
-!       col%c1 = col%c1 + sign (offset, col%c1)
-!       col%c2 = col%c2 + sign (offset, col%c2)
-!    end if
   end subroutine color_add_offset
 
   subroutine color_canonicalize (col)
@@ -565,7 +537,7 @@ contains
     integer :: i, j, c
     n_prt = size (col_in)
     call extract_color_line_indices (col_in, c_index, col_pos)
-    ! print *, c_index
+    ! print *, c_index     !!! Debugging
     n_c_index = size (c_index)
     allocate (map (n_c_index))
     map = 0
@@ -619,7 +591,7 @@ contains
          if (any (entry%col(i)%c1 /= 0) .and. &
               entry%col(i)%c1(1) == - entry%col(i)%c1(2))  return
       end do
-      ! call color_write (entry%col); print *, map
+      ! call color_write (entry%col); print *, map     !!! Debugging
       if (associated (list%last)) then
          list%last%next => entry
       else
@@ -774,21 +746,21 @@ contains
     type(color_t), dimension(:), intent(in) :: col
     type(color_t), dimension(size(col)) :: cc
     integer :: i, n, offset
-!    print *, "Count color loops:"
-!    call color_write (col); print *
+    ! print *, "Count color loops:"      !!! Debugging
+    ! call color_write (col); print *    !!! Debugging
     cc = col
     n = size (cc)
     offset = n
     call color_add_offset (cc, offset)
-!    print *, offset
-!    call color_write (cc); print *
+    ! print *, offset                    !!! Debugging
+    ! call color_write (cc); print *     !!! Debugging
     count = 0
     SCAN_LOOPS: do
        do i = 1, n
-!          print *, i, ':', cc(i)%c1
+          ! print *, i, ':', cc(i)%c1    !!! Debugging 
           if (color_is_defined (cc(i))) then
              if (any (cc(i)%c1 > offset)) then
-!                print *, 'start', i
+                ! print *, 'start', i    !!! Debugging
                 count = count + 1
                 call follow_line1 (pick_new_line (cc(i)%c1, count, 1))
                 cycle SCAN_LOOPS
@@ -831,16 +803,16 @@ contains
     recursive subroutine follow_line1 (line)
       integer, intent(in) :: line
       integer :: i
-!      print *, 'follow line 1:', line
+      ! print *, 'follow line 1:', line     !!! Debugging
       if (line == count) then
-!         print *, 'loop closed'
+         ! print *, 'loop closed'           !!! Debugging
          return
       end if
       do i = 1, n
          if (any (cc(i)%c1 == -line)) then
             call reset_line (cc(i)%c1, -line)
-!            print *, 'found', -line, ' resetting c1:'
-!            call color_write (cc); print *
+            ! print *, 'found', -line, ' resetting c1:'   !!! Debugging
+            ! call color_write (cc); print *              !!! Debugging
             call follow_line2 (pick_new_line (cc(i)%c2, 0, sign (1, -line)))
             return
          end if
@@ -850,12 +822,12 @@ contains
     recursive subroutine follow_line2 (line)
       integer, intent(in) :: line
       integer :: i
-!      print *, 'follow line 2:', line
+      ! print *, 'follow line 2:', line     !!! Debugging   
       do i = 1, n
          if (any (cc(i)%c2 == -line)) then
             call reset_line (cc(i)%c2, -line)
-!            print *, 'found', -line, ' resetting c2:'
-!            call color_write (cc); print *
+            ! print *, 'found', -line, ' resetting c2:'   !!! Debugging
+            ! call color_write (cc); print *              !!! Debugging
             call follow_line1 (pick_new_line (cc(i)%c1, 0, sign (1, -line)))
             return
          end if
@@ -869,50 +841,70 @@ contains
     end subroutine color_mismatch
   end function count_color_loops
 
-  subroutine color_test ()
+  subroutine color_test (u, results)
+    integer, intent(in) :: u
+    type(test_results_t), intent(inout) :: results
+    call test (color_1, "color_1", &
+         "check color counting", &
+         u, results)  
+  end subroutine color_test
+  
+
+  subroutine color_1 (u)
+    integer, intent(in) :: u
     type(color_t), dimension(4) :: col1, col2, col
     type(color_t), dimension(:), allocatable :: col3
     type(color_t), dimension(:,:), allocatable :: col_array
     integer :: count, i
-    call color_init_col_acl (col1, (/ 1, 0, 2, 3 /), (/ 0, 1, 3, 2 /))
+    call color_init_col_acl (col1, [1, 0, 2, 3], [0, 1, 3, 2])
     col2 = col1
-    call color_write (col1); print *
-    call color_write (col2); print *
+    call color_write (col1, u)
+    write (u, "(A)")
+    call color_write (col2, u)
+    write (u, "(A)")
     col = col1 .merge. col2
-    call color_write (col); print *
+    call color_write (col, u)
+    write (u, "(A)")
     count = count_color_loops (col)
-    print *, "Number of color loops (3): ", count
-    call color_init_col_acl (col2, (/ 1, 0, 2, 3 /), (/ 0, 2, 3, 1 /))
-    call color_write (col1); print *
-    call color_write (col2); print *
+    write (u, "(A,I1)") "Number of color loops (3): ", count
+    call color_init_col_acl (col2, [1, 0, 2, 3], [0, 2, 3, 1])
+    call color_write (col1, u)
+    write (u, "(A)")
+    call color_write (col2, u)
+    write (u, "(A)")
     col = col1 .merge. col2
-    call color_write (col); print *
+    call color_write (col, u)
+    write (u, "(A)")
     count = count_color_loops (col)
-    print *, "Number of color loops (2): ", count
-    print *
+    write (u, "(A,I1)")  "Number of color loops (2): ", count
+    write (u, "(A)")
     allocate (col3 (4))
     call color_init_from_array (col3, &
-         reshape ((/ 1, 0,   0, -1,  2, -3,  3, -2 /), & 
-                  (/ 2, 4 /)))
-    call color_write (col3); print *
+         reshape ([1, 0,   0, -1,  2, -3,  3, -2], & 
+                  [2, 4]))
+    call color_write (col3, u)
+    write (u, "(A)")
     call color_array_make_contractions (col3, col_array)
-    print *, "Contractions:"
+    write (u, "(A)")  "Contractions:"
     do i = 1, size (col_array, 2)
-       call color_write (col_array(:,i)); print *
+       call color_write (col_array(:,i), u)
+       write (u, "(A)")
     end do
     deallocate (col3)
-    print *
+    write (u, "(A)")
     allocate (col3 (6))
     call color_init_from_array (col3, &
-         reshape ((/ 1, -2,   3, 0,  0, -1,  2, -4,  -3, 0,  4, 0 /), & 
-                  (/ 2, 6 /)))
-    call color_write (col3); print *
+         reshape ([1, -2,   3, 0,  0, -1,  2, -4,  -3, 0,  4, 0], & 
+                  [2, 6]))
+    call color_write (col3, u)
+    write (u, "(A)")
     call color_array_make_contractions (col3, col_array)
-    print *, "Contractions:"
+    write (u, "(A)")  "Contractions:"
     do i = 1, size (col_array, 2)
-       call color_write (col_array(:,i)); print *
+       call color_write (col_array(:,i), u)
+       write (u, "(A)")
     end do
-  end subroutine color_test
+  end subroutine color_1
 
 
 end module colors

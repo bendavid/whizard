@@ -1,11 +1,12 @@
-(* $Id: thoList.ml 3670 2012-01-21 19:33:07Z jr_reuter $
+(* $Id: thoList.ml 4926 2013-12-04 12:35:06Z jr_reuter $
 
-   Copyright (C) 1999-2012 by
+   Copyright (C) 1999-2014 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-       Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
-       Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+       Juergen Reuter <juergen.reuter@desy.de>
+       with contributions from
+       Christian Speckner <cnspeckn@googlemail.com>
 
    WHIZARD is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by
@@ -102,9 +103,17 @@ let enumerate ?(stride=1) n l =
       (n, []) l in
   List.rev l_rev
 
+(* This is \emph{not} tail recursive! *)
 let rec flatmap f = function
   | [] -> []
   | x :: rest -> f x @ flatmap f rest
+
+(* This is! *)
+let rev_flatmap f l =
+  let rec rev_flatmap' acc f = function
+    | [] -> acc
+    | x :: rest -> rev_flatmap' (List.rev_append (f x) acc) f rest in
+  rev_flatmap' [] f l
 
 let fold_left2 f acc lists =
   List.fold_left (List.fold_left f) acc lists
@@ -211,6 +220,23 @@ let rec clone n x =
   else
     x :: clone (pred n) x
 
+let interleave f list =
+  let rec interleave' rev_head tail =
+    let rev_head' = List.rev_append (f rev_head tail) rev_head in
+    match tail with
+    | [] -> List.rev rev_head'
+    | x :: tail' -> interleave' (x :: rev_head') tail'
+  in
+  interleave' [] list
+
+let interleave_nearest f list =
+  interleave
+    (fun head tail ->
+      match head, tail with
+      | h :: _, t :: _ -> f h t
+      | _ -> [])
+    list
+
 let rec rev_multiply n rl l =
   if n < 0 then
     invalid_arg "ThoList.multiply"
@@ -268,16 +294,3 @@ let ariadne_unsort (sorted, indices) =
     (List.sort
        (fun (n1, a1) (n2, a2) -> Pervasives.compare n1 n2)
        (List.map2 (fun n a -> (n, a)) indices sorted))
-
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)
-
-
-
-
-

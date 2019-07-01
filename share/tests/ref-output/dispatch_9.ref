@@ -1,0 +1,46 @@
+* Test output: dispatch_9
+*   Purpose: allocate an event I/O (eio) stream
+
+* Allocate as raw
+
+ Raw event stream:
+   Check MD5 sum     = T
+   [closed]
+
+* Allocate as checkpoints:
+
+ Event-sample checkpoints:  off
+
+* Allocate as LHEF:
+
+ LHEF event stream:
+   [closed]
+   Keep beams        = F
+   Recover beams     = T
+   Version           = 2.0
+   File extension    = 'lhe_custom'
+
+* Allocate as HepMC:
+
+ HepMC event stream:
+   [closed]
+   Keep beams        = F
+
+* Allocate as weight_stream
+
+ Weight stream:
+   [closed]
+
+* Allocate as debug format
+
+ ASCII event stream (Debugging format):
+   [closed]
+   Keep beams        = F
+   Show process      = T
+   Show transforms   = T
+   Show decay tree   = T
+   Verbose output    = F
+
+* Cleanup
+
+* Test output end: dispatch_9

@@ -1,0 +1,135 @@
+?openmp_logging = false
+?vis_history = false
+?integration_timer = false
+?pacify = true
+$method = "omega"
+| Process library 'ewa_3_lib': recorded process 'ewa_3_p1'
+| Process library 'ewa_3_lib': recorded process 'ewa_3_p2'
+seed = 0
+| Process library 'ewa_3_lib': compiling ...
+| Process library 'ewa_3_lib': writing makefile
+| Process library 'ewa_3_lib': removing old files
+| Process library 'ewa_3_lib': writing driver
+| Process library 'ewa_3_lib': creating source code
+| Process library 'ewa_3_lib': compiling sources
+| Process library 'ewa_3_lib': linking
+| Process library 'ewa_3_lib': loading
+| Process library 'ewa_3_lib': ... success.
+$phs_method = "wood"
+$integration_method = "vamp"
+sqrts =  1.0000000E+03
+openmp_num_threads = 1
+[user variable] n = 1000
+$circe1_acc = "TESLA"
+circe1_chat = 2
+circe1_eps =  1.0000000E-05
+?circe1_generate = true
+?circe1_map = true
+ewa_x_min =  1.0000000E-02
+ewa_mass =  5.1099700E-04
+[user variable] n = 1000
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 0
+| Initializing integration for process ewa_3_p1:
+| ------------------------------------------------------------------------
+| Process [scattering]: 'ewa_3_p1'
+|   Library name  = 'ewa_3_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'ewa_3_p1_i1':   W-, W+ => t, tbar [omega]
+| ------------------------------------------------------------------------
+| Beam structure: e-, e+ => circe1 => isr => ewa
+| Beam data (collision):
+|   e-  (mass = 5.1099700E-04 GeV)
+|   e+  (mass = 5.1099700E-04 GeV)
+|   sqrts = 1.000000000000E+03 GeV
+| Circe1: activating generator mode
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 1
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'ewa_3_p1_i1.phs'
+| Phase space: 3 channels, 2 dimensions
+| Phase space: found 3 channels, collected in 2 groves.
+| Phase space: Using 3 equivalences between channels.
+| Phase space: wood
+| Beam structure: circe1 => isr, none => none, isr => ewa, none => none, ewa
+| Beam structure: 1 channels, 4 dimensions
+Warning: No cuts have been defined.
+| Starting integration for process 'ewa_3_p1'
+| Integrate: iterations = 5:1000:"g", 3:1000
+| Integrator: 2 chains, 3 channels, 6 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 1000 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1        999   2.27091E+00   1.83E-01    8.05    2.54    5.25
+   2        999   2.47608E+00   9.21E-02    3.72    1.18   13.77
+   3        999   2.44322E+00   7.95E-02    3.25    1.03   14.14
+   4        999   2.24479E+00   6.62E-02    2.95    0.93   19.22
+   5        999   2.41119E+00   8.75E-02    3.63    1.15    8.63
+|-----------------------------------------------------------------------------|
+   5       4995   2.36697E+00   3.88E-02    1.64    1.16    8.63    1.56   5
+|-----------------------------------------------------------------------------|
+   6        999   2.33364E+00   6.83E-02    2.93    0.92    8.22
+   7        999   2.26355E+00   6.67E-02    2.95    0.93    7.62
+   8        999   2.40992E+00   6.73E-02    2.79    0.88    8.11
+|-----------------------------------------------------------------------------|
+   8       2997   2.33527E+00   3.89E-02    1.67    0.91    8.11    1.19   3
+|=============================================================================|
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 2
+| Initializing integration for process ewa_3_p2:
+| ------------------------------------------------------------------------
+| Process [scattering]: 'ewa_3_p2'
+|   Library name  = 'ewa_3_lib'
+|   Process index = 2
+|   Process components:
+|     1: 'ewa_3_p2_i1':   Z, Z => t, tbar [omega]
+| ------------------------------------------------------------------------
+| Beam structure: e-, e+ => circe1 => isr => ewa
+| Beam data (collision):
+|   e-  (mass = 5.1099700E-04 GeV)
+|   e+  (mass = 5.1099700E-04 GeV)
+|   sqrts = 1.000000000000E+03 GeV
+| Circe1: activating generator mode
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 3
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'ewa_3_p2_i1.phs'
+| Phase space: 5 channels, 2 dimensions
+| Phase space: found 5 channels, collected in 2 groves.
+| Phase space: Using 9 equivalences between channels.
+| Phase space: wood
+| Beam structure: circe1 => isr, none => none, isr => ewa, none => none, ewa
+| Beam structure: 1 channels, 4 dimensions
+Warning: No cuts have been defined.
+| Starting integration for process 'ewa_3_p2'
+| Integrate: iterations = 5:1000:"g", 3:1000
+| Integrator: 2 chains, 5 channels, 6 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 1000 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1       1000   2.01029E-02   1.46E-03    7.25    2.29    5.67
+   2       1000   2.25621E-02   6.89E-04    3.05    0.97   20.25
+   3       1000   2.27158E-02   5.66E-04    2.49    0.79   25.47
+   4       1000   2.31215E-02   7.11E-04    3.07    0.97   12.13
+   5       1000   2.28265E-02   6.63E-04    2.90    0.92   18.54
+|-----------------------------------------------------------------------------|
+   5       5000   2.26658E-02   3.17E-04    1.40    0.99   18.54    0.90   5
+|-----------------------------------------------------------------------------|
+   6       1000   2.37293E-02   7.57E-04    3.19    1.01   12.18
+   7       1000   2.18643E-02   5.92E-04    2.71    0.86   11.22
+   8       1000   2.35120E-02   6.47E-04    2.75    0.87   12.07
+|-----------------------------------------------------------------------------|
+   8       3000   2.28933E-02   3.78E-04    1.65    0.91   12.07    2.58   3
+|=============================================================================|
+| There were no errors and    2 warning(s).
+| WHIZARD run finished.
+|=============================================================================|

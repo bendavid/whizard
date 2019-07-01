@@ -1,11 +1,12 @@
-(* $Id: dAG.ml 3670 2012-01-21 19:33:07Z jr_reuter $
+(* $Id: dAG.ml 4983 2013-12-11 16:46:32Z ohl $
 
-   Copyright (C) 1999-2012 by
+   Copyright (C) 1999-2014 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
        Juergen Reuter <juergen.reuter@desy.de>
-       Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+       with contributions from
+       Christian Speckner <cnspeckn@googlemail.com>
 
    WHIZARD is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by
@@ -22,9 +23,9 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 let rcs_file = RCS.parse "DAG" ["Directed Acyclical Graph"]
-    { RCS.revision = "$Revision: 3670 $";
-      RCS.date = "$Date: 2012-01-21 20:33:07 +0100 (Sat, 21 Jan 2012) $";
-      RCS.author = "$Author: jr_reuter $";
+    { RCS.revision = "$Revision: 4983 $";
+      RCS.date = "$Date: 2013-12-11 17:46:32 +0100 (Wed, 11 Dec 2013) $";
+      RCS.author = "$Author: ohl $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/src/omega/src/dAG.ml $" }
 
@@ -70,15 +71,15 @@ module type T =
     val lists : t -> (node * (edge * children) list) list
     val dependencies : t -> node -> (node, edge) Tree2.t
     val harvest : t -> node -> t -> t
-    val size : t -> int
-    val eval : (node -> 'a) -> (node -> edge -> 'b -> 'c) ->
-      ('a -> 'b -> 'b) -> ('c -> 'a -> 'a) -> 'a -> 'b -> node -> t -> 'a
-    val eval_memoized : (node -> 'a) -> (node -> edge -> 'b -> 'c) ->
-      ('a -> 'b -> 'b) -> ('c -> 'a -> 'a) -> 'a -> 'b -> node -> t -> 'a
     val harvest_list : t -> node list -> t
-    val count_trees : node -> t -> int
+    val size : t -> int
+    val eval : (node -> 'a) -> (node -> edge -> 'c -> 'd) ->
+      ('a -> 'c -> 'c) -> ('d -> 'a -> 'a) -> 'a -> 'c -> node -> t -> 'a
+    val eval_memoized : (node -> 'a) -> (node -> edge -> 'c -> 'd) ->
+      ('a -> 'c -> 'c) -> ('d -> 'a -> 'a) -> 'a -> 'c -> node -> t -> 'a
     val forest : node -> t -> (node * edge option, node) Tree.t list
     val forest_memoized : node -> t -> (node * edge option, node) Tree.t list
+    val count_trees : node -> t -> int
     val rcs : RCS.t
    end
 

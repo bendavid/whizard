@@ -17,7 +17,7 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! This version of the source code of vamp has no comments and
 ! can be hard to understand, modify, and improve.  You should have
-! received a copy of the literate noweb sources of vamp that
+! received a copy of the literate `noweb' sources of vamp that
 ! contain the documentation in full detail.
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 module vamp_serial_mpi
@@ -191,11 +191,12 @@ contains
     type(exception), intent(inout), optional :: exc
     type(vamp_history), dimension(:), intent(inout), optional :: history
     interface
-        function func (xi, prc_index, weights, channel, grids) result (f)
+       function func (xi, data, weights, channel, grids) result (f)
          use kinds
          use vamp_grid_type !NODEP!
+         import vamp_data_t
          real(kind=default), dimension(:), intent(in) :: xi
-         integer, intent(in) :: prc_index
+         class(vamp_data_t), intent(in) :: data
          real(kind=default), dimension(:), intent(in), optional :: weights
          integer, intent(in), optional :: channel
          type(vamp_grid), dimension(:), intent(in), optional :: grids
@@ -390,11 +391,12 @@ contains
     type(vamp_history), dimension(:,:), intent(inout), optional :: histories
     type(exception), intent(inout), optional :: exc
     interface
-        function func (xi, prc_index, weights, channel, grids) result (f)
+       function func (xi, data, weights, channel, grids) result (f)
          use kinds
          use vamp_grid_type !NODEP!
+         import vamp_data_t
          real(kind=default), dimension(:), intent(in) :: xi
-         integer, intent(in) :: prc_index
+         class(vamp_data_t), intent(in) :: data
          real(kind=default), dimension(:), intent(in), optional :: weights
          integer, intent(in), optional :: channel
          type(vamp_grid), dimension(:), intent(in), optional :: grids
@@ -446,7 +448,7 @@ contains
                       else
                          call raise_exception (exc, EXC_WARN, FN, "history too short")
                       end if
-                      call vamp_terminate_history (histories(iteration+1:,ch))
+                      call vamp`'_terminate_history (histories(iteration+1:,ch))
                    end if
                 end if
              else
@@ -527,7 +529,7 @@ contains
                 else
                    call raise_exception (exc, EXC_WARN, FN, "history too short")
                 end if
-                call vamp_terminate_history (history(iteration+1:))
+                call vamp`'_terminate_history (history(iteration+1:))
              end if
           end if
        end if
@@ -556,12 +558,12 @@ contains
        avg_chi2 = local_avg_chi2
     end if
   end subroutine vamp_sample_grids
-   function object (ch, obj) result (tag)
+  pure function object (ch, obj) result (tag)
     integer, intent(in) :: ch, obj
     integer :: tag
     tag = 100 * ch + obj
   end function object
-   subroutine schedule (jobs, num_procs, assign, waste)
+  pure subroutine schedule (jobs, num_procs, assign, waste)
     real(kind=default), dimension(:), intent(in) :: jobs
     integer, intent(in) :: num_procs
     integer, dimension(:), intent(out) :: assign
@@ -595,11 +597,12 @@ contains
     type(vamp_grid), dimension(:), intent(in), optional :: grids
     type(exception), intent(inout), optional :: exc
     interface
-        function func (xi, prc_index, weights, channel, grids) result (f)
+       function func (xi, data, weights, channel, grids) result (f)
          use kinds
          use vamp_grid_type !NODEP!
+         import vamp_data_t
          real(kind=default), dimension(:), intent(in) :: xi
-         integer, intent(in) :: prc_index
+         class(vamp_data_t), intent(in) :: data
          real(kind=default), dimension(:), intent(in), optional :: weights
          integer, intent(in), optional :: channel
          type(vamp_grid), dimension(:), intent(in), optional :: grids
@@ -620,11 +623,12 @@ contains
     real(kind=default), intent(out), optional :: weight
     type(exception), intent(inout), optional :: exc
     interface
-        function func (xi, prc_index, weights, channel, grids) result (f)
+       function func (xi, data, weights, channel, grids) result (f)
          use kinds
          use vamp_grid_type !NODEP!
+         import vamp_data_t
          real(kind=default), dimension(:), intent(in) :: xi
-         integer, intent(in) :: prc_index
+         class(vamp_data_t), intent(in) :: data
          real(kind=default), dimension(:), intent(in), optional :: weights
          integer, intent(in), optional :: channel
          type(vamp_grid), dimension(:), intent(in), optional :: grids
@@ -632,7 +636,7 @@ contains
        end function func
     end interface
     interface
-        function phi (xi, channel) result (x)
+       pure function phi (xi, channel) result (x)
          use kinds
          real(kind=default), dimension(:), intent(in) :: xi
          integer, intent(in) :: channel
@@ -652,11 +656,12 @@ contains
     type(exception), intent(inout), optional :: exc
     type(vamp_history), dimension(:), intent(inout), optional :: history
     interface
-        function func (xi, prc_index, weights, channel, grids) result (f)
+       function func (xi, data, weights, channel, grids) result (f)
          use kinds
          use vamp_grid_type !NODEP!
+         import vamp_data_t
          real(kind=default), dimension(:), intent(in) :: xi
-         integer, intent(in) :: prc_index
+         class(vamp_data_t), intent(in) :: data
          real(kind=default), dimension(:), intent(in), optional :: weights
          integer, intent(in), optional :: channel
          type(vamp_grid), dimension(:), intent(in), optional :: grids
@@ -676,11 +681,12 @@ contains
     type(vamp_history), dimension(:,:), intent(inout), optional :: histories
     type(exception), intent(inout), optional :: exc
     interface
-        function func (xi, prc_index, weights, channel, grids) result (f)
+       function func (xi, data, weights, channel, grids) result (f)
          use kinds
          use vamp_grid_type !NODEP!
+         import vamp_data_t
          real(kind=default), dimension(:), intent(in) :: xi
-         integer, intent(in) :: prc_index
+         class(vamp_data_t), intent(in) :: data
          real(kind=default), dimension(:), intent(in), optional :: weights
          integer, intent(in), optional :: channel
          type(vamp_grid), dimension(:), intent(in), optional :: grids

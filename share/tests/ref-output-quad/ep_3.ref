@@ -1,0 +1,478 @@
+?openmp_logging = false
+?vis_history = false
+?integration_timer = false
+?fatal_beam_decay = false
+?pacify = true
+$method = "omega"
+| Process library 'ep_3_lib': recorded process 'ep_3_p1'
+| Process library 'ep_3_lib': recorded process 'ep_3_p2'
+| Process library 'ep_3_lib': recorded process 'ep_3_p3'
+| Process library 'ep_3_lib': recorded process 'ep_3_p4'
+| Process library 'ep_3_lib': recorded process 'ep_3_q1'
+| Process library 'ep_3_lib': recorded process 'ep_3_q2'
+| Process library 'ep_3_lib': recorded process 'ep_3_q3'
+| Process library 'ep_3_lib': recorded process 'ep_3_q4'
+seed = 0
+| Process library 'ep_3_lib': compiling ...
+| Process library 'ep_3_lib': writing makefile
+| Process library 'ep_3_lib': removing old files
+| Process library 'ep_3_lib': writing driver
+| Process library 'ep_3_lib': creating source code
+| Process library 'ep_3_lib': compiling sources
+| Process library 'ep_3_lib': linking
+| Process library 'ep_3_lib': loading
+| Process library 'ep_3_lib': ... success.
+$phs_method = "wood"
+$integration_method = "vamp"
+sqrts =  1.0000000E+03
+openmp_num_threads = 1
+[user variable] n = 1000
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 0
+| Initializing integration for process ep_3_p1:
+| ------------------------------------------------------------------------
+| Process [scattering]: 'ep_3_p1'
+|   Library name  = 'ep_3_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'ep_3_p1_i1':   Z, u => Z, u [omega]
+| ------------------------------------------------------------------------
+| Beam structure: Z, p => none, pdf_builtin
+| Beam data (collision):
+|   Z  (mass = 9.1188200E+01 GeV)
+|   p  (mass = 0.0000000E+00 GeV)
+|   sqrts = 1.000000000000E+03 GeV
+| Initialized builtin PDF CTEQ6L
+| Phase space: generating configuration ...
+|  Z -> u u
+|  mass(Z) =  0.9118820000E+02
+|  mass(u) =  0.0000000000E+00
+|  mass(u) =  0.0000000000E+00
+Warning:  Phase space: Initial beam particle can decay
+|  Z -> u u
+|  mass(Z) =  0.9118820000E+02
+|  mass(u) =  0.0000000000E+00
+|  mass(u) =  0.0000000000E+00
+Warning:  Phase space: Initial beam particle can decay
+| Phase space: ... success.
+| Phase space: writing configuration file 'ep_3_p1_i1.phs'
+| Phase space: 3 channels, 2 dimensions
+| Phase space: found 3 channels, collected in 3 groves.
+| Phase space: Using 3 equivalences between channels.
+| Phase space: wood
+| Beam structure: none, pdf_builtin
+| Beam structure: 1 channels, 1 dimensions
+| Applying user-defined cuts.
+| Starting integration for process 'ep_3_p1'
+| Integrate: iterations = 5:1000:"g", 3:1000
+| Integrator: 3 chains, 3 channels, 3 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 1000 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1        999   7.37821E+02   8.92E+01   12.09    3.82    3.51
+   2        999   8.00236E+02   4.01E+01    5.01    1.58    9.24
+   3        999   7.93323E+02   2.16E+01    2.72    0.86   23.16
+   4        999   7.95589E+02   2.78E+01    3.50    1.11    9.65
+   5        999   7.89248E+02   2.04E+01    2.59    0.82   20.23
+|-----------------------------------------------------------------------------|
+   5       4995   7.91877E+02   1.23E+01    1.56    1.10   20.23    0.11   5
+|-----------------------------------------------------------------------------|
+   6        999   7.72234E+02   2.14E+01    2.77    0.88   14.44
+   7        999   7.97422E+02   2.03E+01    2.55    0.81   13.37
+   8        999   8.27676E+02   2.78E+01    3.35    1.06    8.17
+|-----------------------------------------------------------------------------|
+   8       2997   7.94765E+02   1.30E+01    1.64    0.90    8.17    1.26   3
+|=============================================================================|
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 1
+| Initializing integration for process ep_3_p2:
+| ------------------------------------------------------------------------
+| Process [scattering]: 'ep_3_p2'
+|   Library name  = 'ep_3_lib'
+|   Process index = 2
+|   Process components:
+|     1: 'ep_3_p2_i1':   W+, u => W+, u [omega]
+| ------------------------------------------------------------------------
+| Beam structure: W+, p => none, pdf_builtin
+| Beam data (collision):
+|   W+  (mass = 8.0419000E+01 GeV)
+|   p   (mass = 0.0000000E+00 GeV)
+|   sqrts = 1.000000000000E+03 GeV
+| Phase space: generating configuration ...
+|  W- -> d u
+|  mass(W-) =  0.8041900000E+02
+|  mass(d) =  0.0000000000E+00
+|  mass(u) =  0.0000000000E+00
+Warning:  Phase space: Initial beam particle can decay
+| Phase space: ... success.
+| Phase space: writing configuration file 'ep_3_p2_i1.phs'
+| Phase space: 4 channels, 2 dimensions
+| Phase space: found 4 channels, collected in 3 groves.
+| Phase space: Using 4 equivalences between channels.
+| Phase space: wood
+| Beam structure: none, pdf_builtin
+| Beam structure: 1 channels, 1 dimensions
+| Applying user-defined cuts.
+| Starting integration for process 'ep_3_p2'
+| Integrate: iterations = 5:1000:"g", 3:1000
+| Integrator: 3 chains, 4 channels, 3 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 1000 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1       1000   6.50985E+04   9.11E+03   13.99    4.42    2.71
+   2       1000   5.28748E+04   2.48E+03    4.69    1.48    9.63
+   3       1000   5.62808E+04   1.69E+03    3.00    0.95   20.07
+   4       1000   5.45017E+04   1.51E+03    2.76    0.87   19.08
+   5       1000   6.14351E+04   4.43E+03    7.21    2.28    4.47
+|-----------------------------------------------------------------------------|
+   5       5000   5.53277E+04   9.91E+02    1.79    1.27    4.47    1.16   5
+|-----------------------------------------------------------------------------|
+   6       1000   6.07832E+04   5.03E+03    8.27    2.62    3.82
+   7       1000   5.55899E+04   1.69E+03    3.05    0.96    3.30
+   8       1000   5.40499E+04   1.52E+03    2.82    0.89    3.21
+|-----------------------------------------------------------------------------|
+   8       3000   5.50299E+04   1.10E+03    2.01    1.10    3.21    0.92   3
+|=============================================================================|
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 2
+| Initializing integration for process ep_3_q1:
+| ------------------------------------------------------------------------
+| Process [scattering]: 'ep_3_q1'
+|   Library name  = 'ep_3_lib'
+|   Process index = 5
+|   Process components:
+|     1: 'ep_3_q1_i1':   u, Z => Z, u [omega]
+| ------------------------------------------------------------------------
+| Beam structure: p, Z => pdf_builtin, none
+| Beam data (collision):
+|   p  (mass = 0.0000000E+00 GeV)
+|   Z  (mass = 9.1188200E+01 GeV)
+|   sqrts = 1.000000000000E+03 GeV
+| Phase space: generating configuration ...
+|  Z -> u u
+|  mass(Z) =  0.9118820000E+02
+|  mass(u) =  0.0000000000E+00
+|  mass(u) =  0.0000000000E+00
+Warning:  Phase space: Initial beam particle can decay
+|  Z -> u u
+|  mass(Z) =  0.9118820000E+02
+|  mass(u) =  0.0000000000E+00
+|  mass(u) =  0.0000000000E+00
+Warning:  Phase space: Initial beam particle can decay
+| Phase space: ... success.
+| Phase space: writing configuration file 'ep_3_q1_i1.phs'
+| Phase space: 3 channels, 2 dimensions
+| Phase space: found 3 channels, collected in 3 groves.
+| Phase space: Using 3 equivalences between channels.
+| Phase space: wood
+| Beam structure: pdf_builtin, none
+| Beam structure: 1 channels, 1 dimensions
+| Applying user-defined cuts.
+| Starting integration for process 'ep_3_q1'
+| Integrate: iterations = 5:1000:"g", 3:1000
+| Integrator: 3 chains, 3 channels, 3 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 1000 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1        999   6.97900E+02   7.58E+01   10.86    3.43    3.09
+   2        999   7.53408E+02   3.92E+01    5.21    1.65    8.32
+   3        999   7.58958E+02   2.31E+01    3.05    0.96   20.07
+   4        999   7.99156E+02   2.12E+01    2.66    0.84   16.06
+   5        999   7.63610E+02   2.04E+01    2.67    0.84   20.55
+|-----------------------------------------------------------------------------|
+   5       4995   7.70724E+02   1.17E+01    1.52    1.07   20.55    0.82   5
+|-----------------------------------------------------------------------------|
+   6        999   7.93082E+02   2.04E+01    2.58    0.81   19.44
+   7        999   7.67447E+02   2.05E+01    2.68    0.85   17.71
+   8        999   7.92599E+02   1.96E+01    2.47    0.78   16.77
+|-----------------------------------------------------------------------------|
+   8       2997   7.84682E+02   1.16E+01    1.48    0.81   16.77    0.52   3
+|=============================================================================|
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 3
+| Initializing integration for process ep_3_q2:
+| ------------------------------------------------------------------------
+| Process [scattering]: 'ep_3_q2'
+|   Library name  = 'ep_3_lib'
+|   Process index = 6
+|   Process components:
+|     1: 'ep_3_q2_i1':   u, W+ => W+, u [omega]
+| ------------------------------------------------------------------------
+| Beam structure: p, W+ => pdf_builtin, none
+| Beam data (collision):
+|   p   (mass = 0.0000000E+00 GeV)
+|   W+  (mass = 8.0419000E+01 GeV)
+|   sqrts = 1.000000000000E+03 GeV
+| Phase space: generating configuration ...
+|  W- -> d u
+|  mass(W-) =  0.8041900000E+02
+|  mass(d) =  0.0000000000E+00
+|  mass(u) =  0.0000000000E+00
+Warning:  Phase space: Initial beam particle can decay
+| Phase space: ... success.
+| Phase space: writing configuration file 'ep_3_q2_i1.phs'
+| Phase space: 4 channels, 2 dimensions
+| Phase space: found 4 channels, collected in 3 groves.
+| Phase space: Using 4 equivalences between channels.
+| Phase space: wood
+| Beam structure: pdf_builtin, none
+| Beam structure: 1 channels, 1 dimensions
+| Applying user-defined cuts.
+| Starting integration for process 'ep_3_q2'
+| Integrate: iterations = 5:1000:"g", 3:1000
+| Integrator: 3 chains, 4 channels, 3 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 1000 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1       1000   6.87799E+04   9.51E+03   13.83    4.37    2.61
+   2       1000   5.61338E+04   2.35E+03    4.19    1.32   13.68
+   3       1000   5.68285E+04   1.79E+03    3.15    1.00   18.19
+   4       1000   5.66855E+04   1.62E+03    2.85    0.90   25.83
+   5       1000   5.65214E+04   1.54E+03    2.73    0.86   18.02
+|-----------------------------------------------------------------------------|
+   5       5000   5.66927E+04   8.75E+02    1.54    1.09   18.02    0.42   5
+|-----------------------------------------------------------------------------|
+   6       1000   5.62914E+04   1.56E+03    2.77    0.88   16.51
+   7       1000   5.65087E+04   1.65E+03    2.91    0.92   15.90
+   8       1000   5.79783E+04   2.10E+03    3.62    1.15    9.45
+|-----------------------------------------------------------------------------|
+   8       3000   5.67502E+04   9.96E+02    1.76    0.96    9.45    0.22   3
+|=============================================================================|
+ewa_x_min =  1.0000000E-02
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 4
+| Initializing integration for process ep_3_p3:
+| ------------------------------------------------------------------------
+| Process [scattering]: 'ep_3_p3'
+|   Library name  = 'ep_3_lib'
+|   Process index = 3
+|   Process components:
+|     1: 'ep_3_p3_i1':   Z, u => Z, u [omega]
+| ------------------------------------------------------------------------
+| Beam structure: e+, p => ewa, pdf_builtin
+| Beam data (collision):
+|   e+  (mass = 5.1099700E-04 GeV)
+|   p   (mass = 0.0000000E+00 GeV)
+|   sqrts = 1.000000000000E+03 GeV
+| Phase space: generating configuration ...
+|  Z -> u u
+|  mass(Z) =  0.9118820000E+02
+|  mass(u) =  0.0000000000E+00
+|  mass(u) =  0.0000000000E+00
+Warning:  Phase space: Initial beam particle can decay
+|  Z -> u u
+|  mass(Z) =  0.9118820000E+02
+|  mass(u) =  0.0000000000E+00
+|  mass(u) =  0.0000000000E+00
+Warning:  Phase space: Initial beam particle can decay
+| Phase space: ... success.
+| Phase space: writing configuration file 'ep_3_p3_i1.phs'
+| Phase space: 3 channels, 2 dimensions
+| Phase space: found 3 channels, collected in 3 groves.
+| Phase space: Using 3 equivalences between channels.
+| Phase space: wood
+| Beam structure: ewa, none => none, pdf_builtin
+| Beam structure: 1 channels, 2 dimensions
+| Applying user-defined cuts.
+| Starting integration for process 'ep_3_p3'
+| Integrate: iterations = 5:1000:"g", 3:1000
+| Integrator: 3 chains, 3 channels, 4 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 1000 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1        999   1.85847E+00   3.72E-01   20.02    6.33    1.11
+   2        999   1.55188E+00   8.46E-02    5.45    1.72    7.72
+   3        999   1.62088E+00   8.02E-02    4.95    1.56    9.99
+   4        999   1.58765E+00   6.94E-02    4.37    1.38   12.77
+   5        999   1.57663E+00   6.72E-02    4.26    1.35    9.81
+|-----------------------------------------------------------------------------|
+   5       4995   1.58722E+00   3.70E-02    2.33    1.65    9.81    0.23   5
+|-----------------------------------------------------------------------------|
+   6        999   1.70104E+00   1.83E-01   10.77    3.41    2.44
+   7        999   1.59171E+00   7.71E-02    4.84    1.53    2.24
+   8        999   1.73460E+00   8.53E-02    4.92    1.55    2.44
+|-----------------------------------------------------------------------------|
+   8       2997   1.65995E+00   5.46E-02    3.29    1.80    2.44    0.80   3
+|=============================================================================|
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 5
+| Initializing integration for process ep_3_p4:
+| ------------------------------------------------------------------------
+| Process [scattering]: 'ep_3_p4'
+|   Library name  = 'ep_3_lib'
+|   Process index = 4
+|   Process components:
+|     1: 'ep_3_p4_i1':   W+, u => W+, u [omega]
+| ------------------------------------------------------------------------
+| Beam structure: e+, p => ewa, pdf_builtin
+| Beam data (collision):
+|   e+  (mass = 5.1099700E-04 GeV)
+|   p   (mass = 0.0000000E+00 GeV)
+|   sqrts = 1.000000000000E+03 GeV
+| Phase space: generating configuration ...
+|  W- -> d u
+|  mass(W-) =  0.8041900000E+02
+|  mass(d) =  0.0000000000E+00
+|  mass(u) =  0.0000000000E+00
+Warning:  Phase space: Initial beam particle can decay
+| Phase space: ... success.
+| Phase space: writing configuration file 'ep_3_p4_i1.phs'
+| Phase space: 4 channels, 2 dimensions
+| Phase space: found 4 channels, collected in 3 groves.
+| Phase space: Using 4 equivalences between channels.
+| Phase space: wood
+| Beam structure: ewa, none => none, pdf_builtin
+| Beam structure: 1 channels, 2 dimensions
+| Applying user-defined cuts.
+| Starting integration for process 'ep_3_p4'
+| Integrate: iterations = 5:1000:"g", 3:1000
+| Integrator: 3 chains, 4 channels, 4 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 1000 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1       1000   3.06939E+02   6.02E+01   19.62    6.20    1.47
+   2       1000   3.68588E+02   2.40E+01    6.51    2.06    7.20
+   3       1000   3.67771E+02   3.02E+01    8.22    2.60    3.99
+   4       1000   3.58089E+02   2.12E+01    5.93    1.87    6.07
+   5       1000   2.99387E+02   1.53E+01    5.11    1.62    8.42
+|-----------------------------------------------------------------------------|
+   5       5000   3.33483E+02   1.02E+01    3.06    2.16    8.42    2.48   5
+|-----------------------------------------------------------------------------|
+   6       1000   3.42774E+02   2.13E+01    6.22    1.97    4.29
+   7       1000   3.35092E+02   1.84E+01    5.51    1.74    4.19
+   8       1000   3.69426E+02   5.24E+01   14.19    4.49    1.82
+|-----------------------------------------------------------------------------|
+   8       3000   3.40433E+02   1.35E+01    3.96    2.17    1.82    0.20   3
+|=============================================================================|
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 6
+| Initializing integration for process ep_3_q3:
+| ------------------------------------------------------------------------
+| Process [scattering]: 'ep_3_q3'
+|   Library name  = 'ep_3_lib'
+|   Process index = 7
+|   Process components:
+|     1: 'ep_3_q3_i1':   u, Z => Z, u [omega]
+| ------------------------------------------------------------------------
+| Beam structure: p, e+ => pdf_builtin, ewa
+| Beam data (collision):
+|   p   (mass = 0.0000000E+00 GeV)
+|   e+  (mass = 5.1099700E-04 GeV)
+|   sqrts = 1.000000000000E+03 GeV
+| Phase space: generating configuration ...
+|  Z -> u u
+|  mass(Z) =  0.9118820000E+02
+|  mass(u) =  0.0000000000E+00
+|  mass(u) =  0.0000000000E+00
+Warning:  Phase space: Initial beam particle can decay
+|  Z -> u u
+|  mass(Z) =  0.9118820000E+02
+|  mass(u) =  0.0000000000E+00
+|  mass(u) =  0.0000000000E+00
+Warning:  Phase space: Initial beam particle can decay
+| Phase space: ... success.
+| Phase space: writing configuration file 'ep_3_q3_i1.phs'
+| Phase space: 3 channels, 2 dimensions
+| Phase space: found 3 channels, collected in 3 groves.
+| Phase space: Using 3 equivalences between channels.
+| Phase space: wood
+| Beam structure: pdf_builtin, none => none, ewa
+| Beam structure: 1 channels, 2 dimensions
+| Applying user-defined cuts.
+| Starting integration for process 'ep_3_q3'
+| Integrate: iterations = 5:1000:"g", 3:1000
+| Integrator: 3 chains, 3 channels, 4 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 1000 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1        999   1.29369E+00   2.55E-01   19.72    6.23    1.41
+   2        999   1.66809E+00   1.19E-01    7.15    2.26    5.32
+   3        999   1.59150E+00   8.08E-02    5.08    1.60    9.58
+   4        999   1.65333E+00   7.51E-02    4.54    1.44    9.09
+   5        999   1.57029E+00   6.70E-02    4.27    1.35   12.24
+|-----------------------------------------------------------------------------|
+   5       4995   1.60254E+00   3.96E-02    2.47    1.75   12.24    0.62   5
+|-----------------------------------------------------------------------------|
+   6        999   1.66652E+00   7.35E-02    4.41    1.39    7.43
+   7        999   1.59682E+00   6.80E-02    4.26    1.35    6.02
+   8        999   1.69530E+00   6.87E-02    4.05    1.28    6.40
+|-----------------------------------------------------------------------------|
+   8       2997   1.65187E+00   4.04E-02    2.44    1.34    6.40    0.55   3
+|=============================================================================|
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 7
+| Initializing integration for process ep_3_q4:
+| ------------------------------------------------------------------------
+| Process [scattering]: 'ep_3_q4'
+|   Library name  = 'ep_3_lib'
+|   Process index = 8
+|   Process components:
+|     1: 'ep_3_q4_i1':   u, W+ => W+, u [omega]
+| ------------------------------------------------------------------------
+| Beam structure: p, e+ => pdf_builtin, ewa
+| Beam data (collision):
+|   p   (mass = 0.0000000E+00 GeV)
+|   e+  (mass = 5.1099700E-04 GeV)
+|   sqrts = 1.000000000000E+03 GeV
+| Phase space: generating configuration ...
+|  W- -> d u
+|  mass(W-) =  0.8041900000E+02
+|  mass(d) =  0.0000000000E+00
+|  mass(u) =  0.0000000000E+00
+Warning:  Phase space: Initial beam particle can decay
+| Phase space: ... success.
+| Phase space: writing configuration file 'ep_3_q4_i1.phs'
+| Phase space: 4 channels, 2 dimensions
+| Phase space: found 4 channels, collected in 3 groves.
+| Phase space: Using 4 equivalences between channels.
+| Phase space: wood
+| Beam structure: pdf_builtin, none => none, ewa
+| Beam structure: 1 channels, 2 dimensions
+| Applying user-defined cuts.
+| Starting integration for process 'ep_3_q4'
+| Integrate: iterations = 5:1000:"g", 3:1000
+| Integrator: 3 chains, 4 channels, 4 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 1000 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1       1000   5.40660E+02   1.12E+02   20.67    6.54    1.63
+   2       1000   3.41920E+02   1.82E+01    5.31    1.68    7.65
+   3       1000   2.93778E+02   1.39E+01    4.73    1.50   11.24
+   4       1000   3.46115E+02   2.14E+01    6.19    1.96    5.61
+   5       1000   3.28039E+02   2.10E+01    6.41    2.03    5.60
+|-----------------------------------------------------------------------------|
+   5       5000   3.21833E+02   8.86E+00    2.75    1.95    5.60    2.63   5
+|-----------------------------------------------------------------------------|
+   6       1000   3.32662E+02   1.46E+01    4.40    1.39    5.34
+   7       1000   3.59626E+02   2.39E+01    6.64    2.10    3.42
+   8       1000   3.55443E+02   1.84E+01    5.17    1.64    3.38
+|-----------------------------------------------------------------------------|
+   8       3000   3.44898E+02   1.03E+01    2.99    1.64    3.38    0.70   3
+|=============================================================================|
+| There were no errors and   12 warning(s).
+| WHIZARD run finished.
+|=============================================================================|

@@ -17,7 +17,7 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! This version of the source code of vamp has no comments and
 ! can be hard to understand, modify, and improve.  You should have
-! received a copy of the literate noweb sources of vamp that
+! received a copy of the literate `noweb' sources of vamp that
 ! contain the documentation in full detail.
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 module vamp_stat
@@ -29,7 +29,7 @@ module vamp_stat
   character(len=*), public, parameter :: VAMP_STAT_RCS_ID = &
        "$Id: vamp_stat.nw 314 2010-04-17 20:32:33Z ohl $"
 contains
-   function average (x) result (a)
+  pure function average (x) result (a)
     real(kind=default), dimension(:), intent(in) :: x
     real(kind=default) :: a
     integer :: n
@@ -40,7 +40,7 @@ contains
        a = sum (x) / n
     end if
   end function average
-   function standard_deviation (x) result (s)
+  pure function standard_deviation (x) result (s)
     real(kind=default), dimension(:), intent(in) :: x
     real(kind=default) :: s
     integer :: n
@@ -52,12 +52,12 @@ contains
                       0.0_default))
     end if
   end function standard_deviation
-   function value_spread (x) result (s)
+  pure function value_spread (x) result (s)
     real(kind=default), dimension(:), intent(in) :: x
     real(kind=default) :: s
     s = maxval(x) - minval(x)
   end function value_spread
-   function standard_deviation_percent (x) result (s)
+  pure function standard_deviation_percent (x) result (s)
     real(kind=default), dimension(:), intent(in) :: x
     real(kind=default) :: s
     real(kind=default) :: abs_avg
@@ -68,7 +68,7 @@ contains
        s = 100.0 * standard_deviation (x) / abs_avg
     end if
   end function standard_deviation_percent
-   function value_spread_percent (x) result (s)
+  pure function value_spread_percent (x) result (s)
     real(kind=default), dimension(:), intent(in) :: x
     real(kind=default) :: s
     real(kind=default) :: abs_avg

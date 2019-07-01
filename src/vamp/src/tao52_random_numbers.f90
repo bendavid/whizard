@@ -17,7 +17,7 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! This version of the source code of vamp has no comments and
 ! can be hard to understand, modify, and improve.  You should have
-! received a copy of the literate noweb sources of vamp that
+! received a copy of the literate `noweb' sources of vamp that
 ! contain the documentation in full detail.
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 module tao52_random_numbers
@@ -129,18 +129,18 @@ contains
     s_virginal = .false.
     s_last = size (s_buffer)
   end subroutine seed_static
-   subroutine seed_raw_state (s, seed)
+  elemental subroutine seed_raw_state (s, seed)
     type(tao_random_raw_state), intent(inout) :: s
     integer, optional, intent(in) :: seed
     call seed_stateless (s%x, seed)
   end subroutine seed_raw_state
-   subroutine seed_state (s, seed)
+  elemental subroutine seed_state (s, seed)
     type(tao_random_state), intent(inout) :: s
     integer, optional, intent(in) :: seed
     call seed_raw_state (s%state, seed)
     s%last = size (s%buffer)
   end subroutine seed_state
-   subroutine create_state_from_seed (s, seed, buffer_size)
+  elemental subroutine create_state_from_seed (s, seed, buffer_size)
     type(tao_random_state), intent(out) :: s
     integer, intent(in) :: seed
     integer, intent(in), optional :: buffer_size
@@ -153,14 +153,14 @@ contains
     allocate (s%buffer(s%buffer_end))
     call tao_random_flush (s)
   end subroutine create_state_from_seed
-   subroutine create_state_from_state (s, state)
+  elemental subroutine create_state_from_state (s, state)
     type(tao_random_state), intent(out) :: s
     type(tao_random_state), intent(in) :: state
     call create_raw_state_from_raw_st (s%state, state%state)
     allocate (s%buffer(size(state%buffer)))
     call tao_random_copy (s, state)
   end subroutine create_state_from_state
-   subroutine create_state_from_raw_state &
+  elemental subroutine create_state_from_raw_state &
        (s, raw_state, buffer_size)
     type(tao_random_state), intent(out) :: s
     type(tao_random_raw_state), intent(in) :: raw_state
@@ -174,29 +174,29 @@ contains
     allocate (s%buffer(s%buffer_end))
     call tao_random_flush (s)
   end subroutine create_state_from_raw_state
-   subroutine create_raw_state_from_seed (s, seed)
+  elemental subroutine create_raw_state_from_seed (s, seed)
     type(tao_random_raw_state), intent(out) :: s
     integer, intent(in) :: seed
     call seed_raw_state (s, seed)
   end subroutine create_raw_state_from_seed
-   subroutine create_raw_state_from_state (s, state)
+  elemental subroutine create_raw_state_from_state (s, state)
     type(tao_random_raw_state), intent(out) :: s
     type(tao_random_state), intent(in) :: state
     call copy_state_to_raw_state (s, state)
   end subroutine create_raw_state_from_state
-   subroutine create_raw_state_from_raw_st (s, raw_state)
+  elemental subroutine create_raw_state_from_raw_st (s, raw_state)
     type(tao_random_raw_state), intent(out) :: s
     type(tao_random_raw_state), intent(in) :: raw_state
     call copy_raw_state (s, raw_state)
   end subroutine create_raw_state_from_raw_st
-   subroutine destroy_state (s)
+  elemental subroutine destroy_state (s)
     type(tao_random_state), intent(inout) :: s
     deallocate (s%buffer)
   end subroutine destroy_state
-   subroutine destroy_raw_state (s)
+  elemental subroutine destroy_raw_state (s)
     type(tao_random_raw_state), intent(inout) :: s
   end subroutine destroy_raw_state
-   subroutine copy_state (lhs, rhs)
+  elemental subroutine copy_state (lhs, rhs)
     type(tao_random_state), intent(inout) :: lhs
     type(tao_random_state), intent(in) :: rhs
     call copy_raw_state (lhs%state, rhs%state)
@@ -208,23 +208,23 @@ contains
     lhs%buffer_end = rhs%buffer_end
     lhs%last = rhs%last
   end subroutine copy_state
-   subroutine copy_raw_state (lhs, rhs)
+  elemental subroutine copy_raw_state (lhs, rhs)
     type(tao_random_raw_state), intent(out) :: lhs
     type(tao_random_raw_state), intent(in) :: rhs
     lhs%x = rhs%x
   end subroutine copy_raw_state
-   subroutine copy_raw_state_to_state (lhs, rhs)
+  elemental subroutine copy_raw_state_to_state (lhs, rhs)
     type(tao_random_state), intent(inout) :: lhs
     type(tao_random_raw_state), intent(in) :: rhs
     call copy_raw_state (lhs%state, rhs)
     call tao_random_flush (lhs)
   end subroutine copy_raw_state_to_state
-   subroutine copy_state_to_raw_state (lhs, rhs)
+  elemental subroutine copy_state_to_raw_state (lhs, rhs)
     type(tao_random_raw_state), intent(out) :: lhs
     type(tao_random_state), intent(in) :: rhs
     call copy_raw_state (lhs, rhs%state)
   end subroutine copy_state_to_raw_state
-   subroutine tao_random_flush (s)
+  elemental subroutine tao_random_flush (s)
     type(tao_random_state), intent(inout) :: s
     s%last = size (s%buffer)
   end subroutine tao_random_flush
@@ -332,7 +332,7 @@ contains
     call read_raw_state_unit (s, unit)
     close (unit = unit)
   end subroutine read_raw_state_name
-   subroutine luxury_stateless &
+  pure subroutine luxury_stateless &
        (buffer_size, buffer_end, last, consumption)
     integer, intent(in) :: buffer_size
     integer, intent(inout) :: buffer_end
@@ -347,16 +347,16 @@ contains
        buffer_end = buffer_size
     end if
   end subroutine luxury_stateless
-   subroutine luxury_state (s)
+  elemental subroutine luxury_state (s)
     type(tao_random_state), intent(inout) :: s
     call luxury_state_integer (s, size (s%buffer))
   end subroutine luxury_state
-   subroutine luxury_state_integer (s, consumption)
+  elemental subroutine luxury_state_integer (s, consumption)
     type(tao_random_state), intent(inout) :: s
     integer, intent(in) :: consumption
     call luxury_stateless (size (s%buffer), s%buffer_end, s%last, consumption)
   end subroutine luxury_state_integer
-   subroutine luxury_state_real (s, consumption)
+  elemental subroutine luxury_state_real (s, consumption)
     type(tao_random_state), intent(inout) :: s
     real(kind=default), intent(in) :: consumption
     call luxury_state_integer (s, int (consumption * size (s%buffer)))
@@ -381,7 +381,7 @@ contains
     end if
     call luxury_static_integer (int (consumption * size (s_buffer)))
   end subroutine luxury_static_real
-   subroutine generate (a, state)
+  pure subroutine generate (a, state)
     real(kind=tao_r64), dimension(:), intent(inout) :: a
     real(kind=tao_r64), dimension(:), intent(inout) :: state
     integer :: j, n
@@ -395,7 +395,7 @@ contains
        state(j) = modulo (a(n+j-K) + state(j-L), M)
     end do
   end subroutine generate
-   subroutine seed_stateless (state, seed)
+  pure subroutine seed_stateless (state, seed)
     real(kind=tao_r64), dimension(:), intent(out) :: state
     integer, optional, intent(in) :: seed
     integer, parameter :: DEFAULT_SEED = 0
@@ -467,7 +467,7 @@ contains
        a(i) = 2.0_tao_r64**(-52) * x
     end do
   end subroutine read_state_array
-   subroutine marshal_state (s, ibuf, dbuf)
+  pure subroutine marshal_state (s, ibuf, dbuf)
     type(tao_random_state), intent(in) :: s
     integer, dimension(:), intent(inout) :: ibuf
     real(kind=tao_r64), dimension(:), intent(inout) :: dbuf
@@ -479,14 +479,14 @@ contains
     dbuf(1:buf_size) = s%buffer
     call marshal_raw_state (s%state, ibuf(4:), dbuf(buf_size+1:))
   end subroutine marshal_state
-   subroutine marshal_state_size (s, iwords, dwords)
+  pure subroutine marshal_state_size (s, iwords, dwords)
     type(tao_random_state), intent(in) :: s
     integer, intent(out) :: iwords, dwords
     call marshal_raw_state_size (s%state, iwords, dwords)
     iwords = iwords + 3
     dwords = dwords + size(s%buffer)
   end subroutine marshal_state_size
-   subroutine unmarshal_state (s, ibuf, dbuf)
+  pure subroutine unmarshal_state (s, ibuf, dbuf)
     type(tao_random_state), intent(inout) :: s
     integer, dimension(:), intent(in) :: ibuf
     real(kind=tao_r64), dimension(:), intent(in) :: dbuf
@@ -497,20 +497,20 @@ contains
     s%buffer = dbuf(1:buf_size)
     call unmarshal_raw_state (s%state, ibuf(4:), dbuf(buf_size+1:))
   end subroutine unmarshal_state
-   subroutine marshal_raw_state (s, ibuf, dbuf)
+  pure subroutine marshal_raw_state (s, ibuf, dbuf)
     type(tao_random_raw_state), intent(in) :: s
     integer, dimension(:), intent(inout) :: ibuf
     real(kind=tao_r64), dimension(:), intent(inout) :: dbuf
     ibuf(1) = size (s%x)
     dbuf(1:size(s%x)) = s%x
   end subroutine marshal_raw_state
-   subroutine marshal_raw_state_size (s, iwords, dwords)
+  pure subroutine marshal_raw_state_size (s, iwords, dwords)
     type(tao_random_raw_state), intent(in) :: s
     integer, intent(out) :: iwords, dwords
     iwords = 1
     dwords = size (s%x)
   end subroutine marshal_raw_state_size
-   subroutine unmarshal_raw_state (s, ibuf, dbuf)
+  pure subroutine unmarshal_raw_state (s, ibuf, dbuf)
     type(tao_random_raw_state), intent(inout) :: s
     integer, dimension(:), intent(in) :: ibuf
     real(kind=tao_r64), dimension(:), intent(in) :: dbuf
@@ -518,7 +518,7 @@ contains
     buf_size = ibuf(1)
     s%x = dbuf(1:buf_size)
   end subroutine unmarshal_raw_state
-   subroutine real_stateless (state, buffer, buffer_end, last, r)
+  pure subroutine real_stateless (state, buffer, buffer_end, last, r)
     real(kind=tao_r64), dimension(:), intent(inout) :: state, buffer
     integer, intent(in) :: buffer_end
     integer, intent(inout) :: last
@@ -531,7 +531,7 @@ contains
     end if
     r = NORM * buffer(last) 
   end subroutine real_stateless
-   subroutine real_array_stateless &
+  pure subroutine real_array_stateless &
        (state, buffer, buffer_end, last, v, num)
     real(kind=tao_r64), dimension(:), intent(inout) :: state, buffer
     integer, intent(in) :: buffer_end
@@ -566,12 +566,12 @@ contains
        v(done+1:done+chunk) = NORM * buffer(1:chunk)
     end do
   end subroutine real_array_stateless
-   subroutine real_state (s, r)
+  elemental subroutine real_state (s, r)
     type(tao_random_state), intent(inout) :: s
     real(kind=default), intent(out) :: r
     call real_stateless (s%state%x, s%buffer, s%buffer_end, s%last, r)
   end subroutine real_state
-   subroutine real_array_state (s, v, num)
+  pure subroutine real_array_state (s, v, num)
     type(tao_random_state), intent(inout) :: s
     real(kind=default), dimension(:), intent(out) :: v
     integer, optional, intent(in) :: num

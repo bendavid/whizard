@@ -5,11 +5,11 @@
 ##
 ########################################################################
 #
-# Copyright (C) 1999-2012 by 
+# Copyright (C) 1999-2014 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
-#     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+#     Christian Speckner <cnspeckn@googlemail.com>
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by 
@@ -58,7 +58,7 @@ WHIZARD_SRC_FROM_WHIZARD_NW = \
   c_particles.f90 lorentz.f90 sm_physics.f90
 
 ## Explicit dependencies:
-limits.lo: $(iso_fortran_env_depend)
+limits.lo: kinds.lo $(iso_fortran_env_depend)
 constants.lo: kinds.lo
 file_utils.lo: kinds.lo iso_varying_string.lo limits.lo \
   $(iso_fortran_env_depend)

@@ -1,12 +1,13 @@
-(* $Id: modellib_NMSSM.ml 3670 2012-01-21 19:33:07Z jr_reuter $
+(* $Id: modellib_NMSSM.ml 4926 2013-12-04 12:35:06Z jr_reuter $
 
-   Copyright (C) 1999-2012 by
+   Copyright (C) 1999-2014 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
        Juergen Reuter <juergen.reuter@desy.de>
-       Christian Speckner <christian.speckner@physik.uni-freiburg.de>
-       with contributions from Felix Braam (this file only)
+       with contributions from
+       Christian Speckner <cnspeckn@googlemail.com>
+       Felix Braam (this file only)
 
    WHIZARD is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by
@@ -23,8 +24,8 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 let rcs_file = RCS.parse "Modellib_NMSSM" ["NMSSM"]
-    { RCS.revision = "$Revision: 3670 $";
-      RCS.date = "$Date: 2012-01-21 20:33:07 +0100 (Sat, 21 Jan 2012) $";
+    { RCS.revision = "$Revision: 4926 $";
+      RCS.date = "$Date: 2013-12-04 13:35:06 +0100 (Wed, 04 Dec 2013) $";
       RCS.author = "$Author: jr_reuter $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/src/omega/src/modellib_NMSSM.ml $" }
@@ -423,6 +424,13 @@ module NMSSM_func (Flags : NMSSM_flags) =
       | G_GlZSFSF of sff*int*sfm*sfm | G_GlPSQSQ 
       | G_GlWSUSD of vc*sfm*sfm*int*int
       | G_GLUGLUA0 of phiggs | G_GLUGLUH0 of shiggs 
+
+(* Two integer counters for the QCD and EW order of the couplings. *)
+
+    type orders = int * int
+
+    let orders = function 
+      | _ -> (0,0)
 
 (* \begin{subequations}
      \begin{align}

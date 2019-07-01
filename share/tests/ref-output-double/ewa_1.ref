@@ -1,0 +1,212 @@
+?openmp_logging = false
+?vis_history = false
+?integration_timer = false
+?pacify = true
+$method = "omega"
+| Process library 'ewa_1_lib': recorded process 'ewa_1_p1'
+| Process library 'ewa_1_lib': recorded process 'ewa_1_p2'
+| Process library 'ewa_1_lib': recorded process 'ewa_1_p3'
+| Process library 'ewa_1_lib': recorded process 'ewa_1_p4'
+seed = 0
+| Process library 'ewa_1_lib': compiling ...
+| Process library 'ewa_1_lib': writing makefile
+| Process library 'ewa_1_lib': removing old files
+| Process library 'ewa_1_lib': writing driver
+| Process library 'ewa_1_lib': creating source code
+| Process library 'ewa_1_lib': compiling sources
+| Process library 'ewa_1_lib': linking
+| Process library 'ewa_1_lib': loading
+| Process library 'ewa_1_lib': ... success.
+$phs_method = "wood"
+$integration_method = "vamp"
+sqrts =  3.0000000E+03
+openmp_num_threads = 1
+[user variable] n = 1000
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 0
+| Initializing integration for process ewa_1_p1:
+| ------------------------------------------------------------------------
+| Process [scattering]: 'ewa_1_p1'
+|   Library name  = 'ewa_1_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'ewa_1_p1_i1':   W-, W+ => t, tbar [omega]
+| ------------------------------------------------------------------------
+| Beam structure: [any particles]
+| Beam data (collision):
+|   W-  (mass = 8.0419000E+01 GeV)
+|   W+  (mass = 8.0419000E+01 GeV)
+|   sqrts = 3.000000000000E+03 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'ewa_1_p1_i1.phs'
+| Phase space: 3 channels, 2 dimensions
+| Phase space: found 3 channels, collected in 2 groves.
+| Phase space: Using 3 equivalences between channels.
+| Phase space: wood
+| Applying user-defined cuts.
+| Starting integration for process 'ewa_1_p1'
+| Integrate: iterations = 3:1000:"g", 3:1000
+| Integrator: 2 chains, 3 channels, 2 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 1000 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1        864   2.63848E+03   1.35E+02    5.10    1.50    2.52
+   2        864   4.19435E+03   3.74E+02    8.93    2.62    2.73
+   3        864   4.43404E+03   2.31E+02    5.22    1.53    4.43
+|-----------------------------------------------------------------------------|
+   3       2592   3.19005E+03   1.11E+02    3.48    1.77    4.43   26.44   3
+|-----------------------------------------------------------------------------|
+   4        864   4.61378E+03   3.13E+02    6.79    2.00    3.57
+   5        864   4.39510E+03   4.38E+02    9.96    2.93    2.02
+   6        864   4.75819E+03   4.50E+02    9.45    2.78    1.64
+|-----------------------------------------------------------------------------|
+   6       2592   4.59279E+03   2.22E+02    4.83    2.46    1.64    0.17   3
+|=============================================================================|
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 1
+| Initializing integration for process ewa_1_p2:
+| ------------------------------------------------------------------------
+| Process [scattering]: 'ewa_1_p2'
+|   Library name  = 'ewa_1_lib'
+|   Process index = 2
+|   Process components:
+|     1: 'ewa_1_p2_i1':   Z, Z => t, tbar [omega]
+| ------------------------------------------------------------------------
+| Beam structure: [any particles]
+| Beam data (collision):
+|   Z  (mass = 9.1188200E+01 GeV)
+|   Z  (mass = 9.1188200E+01 GeV)
+|   sqrts = 3.000000000000E+03 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'ewa_1_p2_i1.phs'
+| Phase space: 5 channels, 2 dimensions
+| Phase space: found 5 channels, collected in 2 groves.
+| Phase space: Using 9 equivalences between channels.
+| Phase space: wood
+| Applying user-defined cuts.
+| Starting integration for process 'ewa_1_p2'
+| Integrate: iterations = 3:1000:"g", 3:1000
+| Integrator: 2 chains, 5 channels, 2 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 1000 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1       1000   1.54401E+03   1.20E+02    7.75    2.45    3.93
+   2       1000   1.44503E+03   4.82E+01    3.33    1.05    8.05
+   3       1000   1.43397E+03   2.77E+01    1.93    0.61   17.22
+|-----------------------------------------------------------------------------|
+   3       3000   1.44088E+03   2.36E+01    1.64    0.90   17.22    0.41   3
+|-----------------------------------------------------------------------------|
+   4       1000   1.47484E+03   2.79E+01    1.89    0.60   16.42
+   5       1000   1.40280E+03   2.60E+01    1.85    0.59   14.94
+   6       1000   1.47700E+03   2.92E+01    1.98    0.63   15.29
+|-----------------------------------------------------------------------------|
+   6       3000   1.44836E+03   1.59E+01    1.10    0.60   15.29    2.47   3
+|=============================================================================|
+ewa_x_min =  1.0000000E-02
+ewa_mass =  5.1099700E-04
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 2
+| Initializing integration for process ewa_1_p3:
+| ------------------------------------------------------------------------
+| Process [scattering]: 'ewa_1_p3'
+|   Library name  = 'ewa_1_lib'
+|   Process index = 3
+|   Process components:
+|     1: 'ewa_1_p3_i1':   W-, W+ => t, tbar [omega]
+| ------------------------------------------------------------------------
+| Beam structure: e-, e+ => ewa
+| Beam data (collision):
+|   e-  (mass = 5.1099700E-04 GeV)
+|   e+  (mass = 5.1099700E-04 GeV)
+|   sqrts = 3.000000000000E+03 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'ewa_1_p3_i1.phs'
+| Phase space: 3 channels, 2 dimensions
+| Phase space: found 3 channels, collected in 2 groves.
+| Phase space: Using 3 equivalences between channels.
+| Phase space: wood
+| Beam structure: ewa, none => none, ewa
+| Beam structure: 1 channels, 2 dimensions
+| Applying user-defined cuts.
+| Starting integration for process 'ewa_1_p3'
+| Integrate: iterations = 5:1000:"g", 3:1000
+| Integrator: 2 chains, 3 channels, 4 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 1000 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1        999   5.78324E+01   8.84E+00   15.29    4.83    1.70
+   2        999   5.94959E+01   3.04E+00    5.11    1.61    6.01
+   3        999   6.13302E+01   3.20E+00    5.22    1.65    5.69
+   4        999   6.04978E+01   2.10E+00    3.47    1.10   17.38
+   5        999   6.04954E+01   1.92E+00    3.18    1.01   15.49
+|-----------------------------------------------------------------------------|
+   5       4995   6.04111E+01   1.18E+00    1.96    1.38   15.49    0.07   5
+|-----------------------------------------------------------------------------|
+   6        999   6.17149E+01   1.93E+00    3.13    0.99   14.53
+   7        999   5.58899E+01   1.78E+00    3.19    1.01   12.03
+   8        999   6.06259E+01   1.87E+00    3.08    0.97   12.89
+|-----------------------------------------------------------------------------|
+   8       2997   5.92463E+01   1.07E+00    1.81    0.99   12.89    2.86   3
+|=============================================================================|
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 3
+| Initializing integration for process ewa_1_p4:
+| ------------------------------------------------------------------------
+| Process [scattering]: 'ewa_1_p4'
+|   Library name  = 'ewa_1_lib'
+|   Process index = 4
+|   Process components:
+|     1: 'ewa_1_p4_i1':   Z, Z => t, tbar [omega]
+| ------------------------------------------------------------------------
+| Beam structure: e-, e+ => ewa
+| Beam data (collision):
+|   e-  (mass = 5.1099700E-04 GeV)
+|   e+  (mass = 5.1099700E-04 GeV)
+|   sqrts = 3.000000000000E+03 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'ewa_1_p4_i1.phs'
+| Phase space: 5 channels, 2 dimensions
+| Phase space: found 5 channels, collected in 2 groves.
+| Phase space: Using 9 equivalences between channels.
+| Phase space: wood
+| Beam structure: ewa, none => none, ewa
+| Beam structure: 1 channels, 2 dimensions
+| Applying user-defined cuts.
+| Starting integration for process 'ewa_1_p4'
+| Integrate: iterations = 5:1000:"g", 3:1000
+| Integrator: 2 chains, 5 channels, 4 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 1000 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1       1000   8.32798E-01   7.25E-02    8.70    2.75    5.80
+   2       1000   8.31288E-01   2.51E-02    3.02    0.95   19.08
+   3       1000   8.30753E-01   2.35E-02    2.83    0.90   18.24
+   4       1000   8.90354E-01   2.31E-02    2.59    0.82   19.46
+   5       1000   8.42374E-01   2.36E-02    2.80    0.89   13.79
+|-----------------------------------------------------------------------------|
+   5       5000   8.49196E-01   1.17E-02    1.38    0.98   13.79    1.11   5
+|-----------------------------------------------------------------------------|
+   6       1000   8.38858E-01   2.45E-02    2.92    0.92   11.30
+   7       1000   8.51336E-01   2.34E-02    2.75    0.87   11.24
+   8       1000   8.96015E-01   2.57E-02    2.87    0.91   11.33
+|-----------------------------------------------------------------------------|
+   8       3000   8.60737E-01   1.41E-02    1.64    0.90   11.33    1.42   3
+|=============================================================================|
+| WHIZARD run finished.
+|=============================================================================|

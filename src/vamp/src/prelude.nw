@@ -1,3 +1,4 @@
+% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*- 
 % $Id: prelude.nw 314 2010-04-17 20:32:33Z ohl $
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -186,6 +187,9 @@ parallel on workstation clusters and other parallel hardware.
   variation. This implementation also supports multi channel sampling
   with individual adaptive grids. Sampling can be performed in
   parallel on workstation clusters and other parallel hardware.
+  Note that for maintenance of the code, and especially its usage within
+  the event generator WHIZARD, some features of Fortran2003 have been 
+  added.
 \end{abstract}
 \fi
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -217,6 +221,9 @@ parallel on workstation clusters and other parallel hardware.
   \item \textbf{Licensing provisions:}
     Free software under the GNU General Public License.
   \item \textbf{Programming language used:}
+    From version 2.2.0 of the program:
+    Fortran2003~\cite{Fortran03}
+    Until version 2.1.x of the program:
     Fortran95~\cite{Fortran95} (Fortran90~\cite{Fortran90} and
     F~\cite{Metcalf/Reid:1996:F} versions available as well)
   \item \textbf{Number of program lines in distributed program, including
@@ -256,6 +263,9 @@ Fortran95~\cite{Fortran95,Adams/etal:1997:Fortran95}\footnote{%
   standard~\protect\cite{FORTRAN77} is possible in principle, but
   extremely tedious and error prone if the full functionality shall be
   preserved.} 
+(Note that for the maintenance of the program and especially its usage
+within the event generator WHIZARD parts of the program have been
+adapted to Fortran2003).
 The purpose of this reimplementation is two-fold: for pedagogical reasons
 it is useful to employ Fortran95 features (in particular the
 array language) together with literate
@@ -1439,11 +1449,12 @@ Let us consider the alternatives
 \end{procedures}
 <<Interface declaration for [[func]]>>=
 interface
-   pure function func (xi, prc_index, weights, channel, grids) result (f)
+   function func (xi, data, weights, channel, grids) result (f)
      use kinds
      use vamp_grid_type !NODEP!
+     import vamp_data_t
      real(kind=default), dimension(:), intent(in) :: xi
-     integer, intent(in) :: prc_index
+     class(vamp_data_t), intent(in) :: data
      real(kind=default), dimension(:), intent(in), optional :: weights
      integer, intent(in), optional :: channel
      type(vamp_grid), dimension(:), intent(in), optional :: grids
@@ -1965,11 +1976,12 @@ end interface
 @ 
 <<Interface declaration for [[jacobian]]>>=
 interface
-   pure function jacobian (x, prc_index, channel) result (j)
+   pure function jacobian (x, data, channel) result (j)
      use kinds
      use vamp_grid_type !NODEP!
+     import vamp_data_t
      real(kind=default), dimension(:), intent(in) :: x
-     integer, intent(in) :: prc_index
+     class(vamp_data_t), intent(in) :: data
      integer, intent(in) :: channel
      real(kind=default) :: j
    end function jacobian
@@ -2363,10 +2375,3 @@ end interface
 \end{procedures}
 
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Local Variables:
-% mode:noweb
-% noweb-doc-mode:latex-mode
-% noweb-code-mode:f90-mode
-% indent-tabs-mode:nil
-% page-delimiter:"^@ %%%.*\n"
-% End:

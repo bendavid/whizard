@@ -1,0 +1,112 @@
+* Test output: processes_14
+*   Purpose: initialize a process with structure functions
+*            and compute MD5 sum
+
+* Build and initialize a process object
+
+* Set beam, structure functions, and mappings
+
+========================================================================
+ Process [scattering]: 'processes7'
+   Run ID        = 'run7'
+   Library name  = 'processes7'
+   Process index = 1
+   Process components:
+     1: 'processes7_i1':   s, s => s, s [test_me]
+------------------------------------------------------------------------
+ Variable list: [not shown]
+------------------------------------------------------------------------
+ Configuration data:
+   Number of incoming particles = 2
+   Number of process components = 1
+   Number of process terms      = 0
+   Number of MCI configurations = 1
+   Model = Test
+   QCD parameters (coupling undefined)
+   RNG factory: test (1)
+------------------------------------------------------------------------
+------------------------------------------------------------------------
+   Expressions (cut, scales, weight): [not shown]
+------------------------------------------------------------------------
+   MD5 sum (config)  = 'E85C166A89F2ED8F38B9490D6E844732'
+========================================================================
+ Process component configuration:
+------------------------------------------------------------------------
+ Component #1
+   Component ID        = processes7_i1
+   Initial component   = T
+   N (in, out, tot)    = 2 2 4
+   Particle content    = s, s => s, s
+   Method              = test_me
+   Process variant     = test_me
+   MD5 sum (def)       = '21ED79524E14AB7F6A911E111431A595'
+   MD5 sum (phs)       = '0C0E0D2300F2F5D4DBCD15436F83AC15'
+ Process core:
+   test type implementing prc_test
+ Referenced data:
+   Terms                    = [undefined]
+   MC dataset               = 1
+ Partonic phase-space configuration:
+   ID        = 'processes7_i1'
+   n_in      = 2
+   n_out     = 2
+   n_tot     = 4
+   n_state   = 1
+   n_par     = 2
+   n_channel = 2
+   sqrts     =  1.000000000000E+03
+   s_fixed   = T
+   cm_frame  = T
+   azim.dep. = F
+ Flavor combinations:
+   1: s s s s
+ Phase-space / structure-function channels:
+   1: 1
+   2: 1
+   MD5 sum (model par)  = '34AE44487D84198697E1368F11F2C8D8'
+   MD5 sum (phs config) = '0C0E0D2300F2F5D4DBCD15436F83AC15'
+========================================================================
+ Process term configuration: [undefined]
+========================================================================
+ Beam data (collision):
+   s  (mass = 1.2500000E+02 GeV)
+   s  (mass = 1.2500000E+02 GeV)
+   sqrts = 1.000000000000E+03 GeV
+   Azimuthal dependence    = F
+   Lab frame is c.m. frame = T
+   MD5 sum (beams/strf) = 'E0F93E0D5C27F1B7E52C7070BA08809B'
+ Structure-function configuration: beam(s) 1
+ SF test data:
+   model     = Test
+   incoming  = f(25)
+   outgoing  = f(25)
+   radiated  = f(25)
+   mass      =  1.250000000000E+02
+   collinear = T
+ Structure-function configuration: beam(s) 2
+ SF test data:
+   model     = Test
+   incoming  = f(25)
+   outgoing  = f(25)
+   radiated  = f(25)
+   mass      =  1.250000000000E+02
+   collinear = T
+ Structure-function mappings per channel:
+   1: - -
+   2: + +
+   3: s s / map: standard (1.00000)
+========================================================================
+ Multi-channel integrator configurations:
+------------------------------------------------------------------------
+ MCI #1:
+   Associated components = 1
+   MC input parameters   = 4
+   MC parameters (SF)    = 2
+   MC parameters (PHS)   = 2
+   MD5 sum (components)  = '385D010964893DAF44BA5DF1F1E01BE4'
+ Call statistics (current run): [no calls]
+========================================================================
+
+* Cleanup
+
+* Test output end: processes_14

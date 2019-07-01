@@ -1,11 +1,13 @@
-! WHIZARD 2.1.1 September 18 2012
+! WHIZARD 2.2.0 May 18 2014
 ! 
-! Copyright (C) 1999-2012 by 
+! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
-!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
+!     
+!     with contributions from
+!     Christian Speckner <cnspeckn@googlemail.com> 
+!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -29,7 +31,9 @@ module state_matrices
 
   use kinds, only: default !NODEP!
   use file_utils !NODEP!
+  use limits, only: FMT_17, FMT_19 !NODEP!
   use diagnostics !NODEP!
+  use unit_tests
   use models
   use flavors
   use colors
@@ -73,9 +77,11 @@ module state_matrices
   public :: state_iterator_get_matrix_element
   public :: state_iterator_set_matrix_element
   public :: assignment(=)
+  public :: state_matrix_get_diagonal_entries
   public :: state_matrix_renormalize
   public :: state_matrix_normalize_by_trace
   public :: state_matrix_normalize_by_max
+  public :: state_matrix_set_norm
   public :: state_matrix_sum
   public :: state_matrix_trace
   public :: state_matrix_add_color_contractions
@@ -84,6 +90,7 @@ module state_matrices
   public :: state_matrix_evaluate_product_cf
   public :: state_matrix_evaluate_square_c
   public :: state_matrix_evaluate_sum
+  public :: state_matrix_evaluate_me_sum
   public :: outer_multiply
   public :: state_matrix_factorize
   public :: state_matrix_test
@@ -134,6 +141,7 @@ module state_matrices
      module procedure state_matrix_set_matrix_element_all
      module procedure state_matrix_set_matrix_element_array 
      module procedure state_matrix_set_matrix_element_single
+     module procedure state_matrix_set_matrix_element_clone
   end interface
   interface state_iterator_get_quantum_numbers
      module procedure state_iterator_get_qn_multi
@@ -183,6 +191,7 @@ contains
        node%child_first => node%child_first%next
        call node_delete_offspring (child)
        deallocate (child)
+       child => node%child_first
     end do
     node%child_last => null ()
   end subroutine node_delete_offspring
@@ -217,13 +226,15 @@ contains
     child%parent => node
   end subroutine node_append_child
 
-  subroutine node_write (node, me_array, verbose, unit)
+  subroutine node_write (node, me_array, verbose, unit, testflag)
     type(node_t), intent(in) :: node
     complex(default), dimension(:), intent(in), optional :: me_array
-    logical, intent(in), optional :: verbose
+    logical, intent(in), optional :: verbose, testflag
     integer, intent(in), optional :: unit
     logical :: verb
     integer :: u
+    character(len=7) :: fmt
+    call pac_fmt (fmt, FMT_19, FMT_17, testflag)
     verb = .false.;  if (present (verbose)) verb = verbose
     u = output_unit (unit);  if (u < 0)  return
     call quantum_numbers_write (node%qn, u)
@@ -231,11 +242,8 @@ contains
        write (u, "(A,I0,A)", advance="no")  " => ME(", node%me_index, ")"
        if (present (me_array)) then
           write (u, "(A)", advance="no")  " = "
-          if (aimag (me_array(node%me_index)) == 0) then
-             write (u, "(1P,G19.12)", advance="no")  real (me_array(node%me_index))
-          else
-             write (u, "(1P,G19.12,',',G19.12)", advance="no") me_array(node%me_index)
-          end if
+          write (u, "('('," // fmt // ",','," // fmt // ",')')", &
+               advance="no") pacify_complex (me_array(node%me_index))
        end if
     end if
     write (u, *)
@@ -258,10 +266,11 @@ contains
     end subroutine ptr_write
   end subroutine node_write
 
-  recursive subroutine node_write_rec (node, me_array, verbose, indent, unit)
+  recursive subroutine node_write_rec (node, me_array, verbose, &
+        indent, unit, testflag)
     type(node_t), intent(in), target :: node
     complex(default), dimension(:), intent(in), optional :: me_array
-    logical, intent(in), optional :: verbose
+    logical, intent(in), optional :: verbose, testflag
     integer, intent(in), optional :: indent
     integer, intent(in), optional :: unit
     type(node_t), pointer :: current
@@ -273,8 +282,10 @@ contains
     current => node%child_first
     do while (associated (current))
        write (u, "(A)", advance="no")  repeat (" ", i)
-       call node_write (current, me_array, verb, u)
-       call node_write_rec (current, me_array, verb, i+2, u)
+       call node_write (current, me_array, verbose=verb, &
+          unit=u, testflag=testflag)
+       call node_write_rec (current, me_array, verbose=verb, &
+          indent=i+2, unit=u, testflag = testflag)
        current => current%next
     end do
   end subroutine node_write_rec
@@ -292,6 +303,7 @@ contains
        call node_write_raw_rec (node%child_first, u)
     else
        write (u)  node%me_index
+       write (u)  node%me
     end if
     if (associated_next) then
        call node_write_raw_rec (node%next, u)
@@ -321,6 +333,7 @@ contains
        end do
     else
        read (u, iostat=iostat)  node%me_index
+       read (u, iostat=iostat)  node%me
     end if
     if (associated_next) then
        allocate (node%next)
@@ -346,26 +359,42 @@ contains
     state%n_matrix_elements = 0
   end subroutine state_matrix_final
 
-  subroutine state_matrix_write (state, unit, write_value_list, verbose)
+  subroutine state_matrix_write (state, unit, write_value_list, &
+        verbose, testflag)
     type(state_matrix_t), intent(in) :: state
-    logical, intent(in), optional :: write_value_list, verbose
+    logical, intent(in), optional :: write_value_list, verbose, testflag
     integer, intent(in), optional :: unit
+    complex(default) :: me_dum
+    character(len=7) :: fmt
     integer :: u
     integer :: i
+    call pac_fmt (fmt, FMT_19, FMT_17, testflag)        
     u = output_unit (unit);  if (u < 0)  return
-    write (u, *) "State matrix:  norm = ", state%norm
+    write (u, "(1x,A," // fmt // ")") "State matrix:  norm = ", state%norm
     if (associated (state%root)) then
        if (allocated (state%me)) then
-          call node_write_rec (state%root, state%me, verbose, 1, u)
+          call node_write_rec (state%root, state%me, verbose=verbose, &
+             indent=1, unit=u, testflag=testflag)
        else
-          call node_write_rec (state%root, verbose=verbose, indent=1, unit=u)
+          call node_write_rec (state%root, verbose=verbose, indent=1, &
+             unit=u, testflag=testflag)
        end if
     end if
     if (present (write_value_list)) then
        if (write_value_list .and. allocated (state%me)) then
           do i = 1, size (state%me)
              write (u, "(1x,I0,A)", advance="no")  i, ":"
-             write (u, *)  state%me(i)
+             me_dum = state%me(i)             
+             if (real(state%me(i)) == -real(state%me(i))) then
+                me_dum = &
+                     cmplx (0._default, aimag(me_dum), kind=default)
+             end if
+             if (aimag(me_dum) == -aimag(me_dum)) then
+                me_dum = &
+                     cmplx (real(me_dum), 0._default, kind=default)
+             end if
+             write (u, "('('," // fmt // ",','," // fmt // &
+                  ",')')")  me_dum
           end do
        end if
     end if
@@ -661,6 +690,14 @@ contains
     state%me(i) = value
   end subroutine state_matrix_set_matrix_element_single
 
+  subroutine state_matrix_set_matrix_element_clone (state, state1)
+    type(state_matrix_t), intent(inout) :: state
+    type(state_matrix_t), intent(in) :: state1
+    if (.not. allocated (state1%me)) return
+    if (.not. allocated (state%me)) allocate (state%me (size (state1%me)))
+    state%me = state1%me
+  end subroutine state_matrix_set_matrix_element_clone
+
   subroutine state_matrix_add_to_matrix_element (state, i, value)
     type(state_matrix_t), intent(inout) :: state
     integer, intent(in) :: i
@@ -914,6 +951,26 @@ contains
     end if
   end subroutine state_matrix_assign
 
+  subroutine state_matrix_get_diagonal_entries (state, i)
+    type(state_matrix_t), intent(in) :: state
+    integer, dimension(:), allocatable, intent(out) :: i
+    integer, dimension(state%n_matrix_elements) :: tmp
+    integer :: n
+    type(state_iterator_t) :: it
+    n = 0
+    call state_iterator_init (it, state)
+    do while (state_iterator_is_valid (it))
+       if (all (quantum_numbers_are_diagonal ( &
+             state_iterator_get_quantum_numbers (it)))) then
+          n = n + 1
+          tmp(n) = state_iterator_get_me_index (it)
+       end if
+       call state_iterator_advance (it)
+    end do
+    allocate (i(n))
+    if (n > 0) i = tmp(:n)
+  end subroutine state_matrix_get_diagonal_entries
+
   subroutine state_matrix_renormalize (state, factor)
     type(state_matrix_t), intent(inout) :: state
     complex(default), intent(in) :: factor
@@ -940,6 +997,12 @@ contains
     end if
   end subroutine state_matrix_normalize_by_max
 
+  subroutine state_matrix_set_norm (state, norm)
+    type(state_matrix_t), intent(inout) :: state
+    real(default), intent(in) :: norm
+    state%norm = norm
+  end subroutine state_matrix_set_norm
+  
   function state_matrix_sum (state) result (value)
     complex(default) :: value
     type(state_matrix_t), intent(in) :: state
@@ -1063,6 +1126,14 @@ contains
     state%me(i) = &
          sum (state1%me(index1)) * state1%norm
   end subroutine state_matrix_evaluate_sum
+
+  pure subroutine state_matrix_evaluate_me_sum (state, i, state1, index1)
+    type(state_matrix_t), intent(inout) :: state
+    integer, intent(in) :: i
+    type(state_matrix_t), intent(in) :: state1
+    integer, dimension(:), intent(in) :: index1
+    state%me(i) = sum (state1%me(index1))
+  end subroutine state_matrix_evaluate_me_sum
 
   subroutine outer_multiply_pair (state1, state2, state3)
     type(state_matrix_t), intent(in), target :: state1, state2
@@ -1225,65 +1296,118 @@ contains
          call state_matrix_freeze (correlated_state)
   end subroutine state_matrix_factorize
 
-  subroutine state_matrix_test ()
-    print *, "State matrix test 1"
-    call state_matrix_test1 ()
-    print *
-    print *, "State matrix test 2"
-    call state_matrix_test2 ()
-    print *
-    print *, "State matrix test 3"
-    call state_matrix_test3 ()
-  end subroutine state_matrix_test
+  elemental function pacify_complex (c_in) result (c_pac)
+    complex(default), intent(in) :: c_in
+    complex(default) :: c_pac
+    c_pac = c_in
+    if (real(c_pac) == -real(c_pac)) then
+       c_pac = &
+            cmplx (0._default, aimag(c_pac), kind=default)
+    end if
+    if (aimag(c_pac) == -aimag(c_pac)) then
+       c_pac = &
+            cmplx (real(c_pac), 0._default, kind=default)
+    end if
+  end function pacify_complex
+  
+  subroutine state_matrix_test (u, results)
+    integer, intent(in) :: u
+    type(test_results_t), intent(inout) :: results
+    call test (state_matrix_1, "state_matrix_1", &
+         "check merge of quantum states of equal depth", &
+         u, results)
+    call test (state_matrix_2, "state_matrix_2", &
+         "check factorizing 3-particle state matrix", &
+         u, results)
+    call test (state_matrix_3, "state_matrix_3", &
+         "check factorizing 3-particle state matrix", &
+         u, results)  
+  end subroutine state_matrix_test 
+  
 
-  subroutine state_matrix_test1 ()
+  subroutine state_matrix_1 (u)
+    integer, intent(in) :: u
     type(state_matrix_t) :: state1, state2, state3
     type(flavor_t), dimension(3) :: flv
     type(color_t), dimension(3) :: col
     type(helicity_t), dimension(3) :: hel
     type(quantum_numbers_t), dimension(3) :: qn
+    
+    write (u, "(A)")  "* Test output: state_matrix_1"
+    write (u, "(A)")  "*   Purpose: create and merge two quantum states"
+    write (u, "(A)")
+
+    write (u, "(A)")  "*  Initialization"
+    write (u, "(A)")    
+        
+    write (u, "(A)")  "*  State matrix 1"
+    write (u, "(A)")        
+    
     call state_matrix_init (state1)
-    call flavor_init (flv, (/ 1, 2, 11 /))
-    call helicity_init (hel, (/ 1, 1, 1 /))
+    call flavor_init (flv, [1, 2, 11])
+    call helicity_init (hel, [1, 1, 1])
     call quantum_numbers_init (qn, flv, hel)
     call state_matrix_add_state (state1, qn)
-    call helicity_init (hel, (/ 1, 1, 1 /), (/ -1, 1, -1/))
+    call helicity_init (hel, [1, 1, 1], [-1, 1, -1])
     call quantum_numbers_init (qn, flv, hel)
     call state_matrix_add_state (state1, qn)
     call state_matrix_freeze (state1)
-    call state_matrix_write (state1)
-    print *
+    call state_matrix_write (state1, u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "*  State matrix 2"
+    write (u, "(A)")
+
     call state_matrix_init (state2)
-    call color_init (col(1), (/  501 /))
-    call color_init (col(2), (/ -501 /))
-    call color_init (col(3), (/ 0 /))
-    call helicity_init (hel, (/ -1, -1, 0 /))
+    call color_init (col(1), [501])
+    call color_init (col(2), [-501])
+    call color_init (col(3), [0])
+    call helicity_init (hel, [-1, -1, 0])
     call quantum_numbers_init (qn, col, hel)
     call state_matrix_add_state (state2, qn)
-    call color_init (col(3), (/ 99 /))
-    call helicity_init (hel, (/ -1, -1, 0 /))
+    call color_init (col(3), [99])
+    call helicity_init (hel, [-1, -1, 0])
     call quantum_numbers_init (qn, col, hel)
     call state_matrix_add_state (state2, qn)
     call state_matrix_freeze (state2)
-    call state_matrix_write (state2)
-    print *
+    call state_matrix_write (state2, u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Merge the state matrices"   
+    write (u, "(A)")
+        
     call merge_state_matrices (state1, state2, state3)
-    call state_matrix_write (state3)
-    print *
+    call state_matrix_write (state3, u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Collapse the state matrix"    
+    write (u, "(A)")
+    
     call state_matrix_collapse (state3, &
          new_quantum_numbers_mask (.false., .false., &
                                    (/.true.,.false.,.false./)))
-    call state_matrix_write (state3)
+    call state_matrix_write (state3, u)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"    
+    write (u, "(A)")    
+    
     call state_matrix_final (state1)
     call state_matrix_final (state2)
     call state_matrix_final (state3)
-  end subroutine state_matrix_test1
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: state_matrix_1"    
+    write (u, "(A)")    
+    
+  end subroutine state_matrix_1
 
-  subroutine state_matrix_test2
+  subroutine state_matrix_2 (u)
+    integer, intent(in) :: u
     type(state_matrix_t) :: state
     type(state_matrix_t), dimension(:), allocatable :: single_state
     type(state_matrix_t) :: correlated_state
-    complex(default) :: u, val
+    complex(default) :: z, val
     complex(default), dimension(-1:1) :: v
     integer :: f, h11, h12, h21, h22, i, mode
     type(flavor_t), dimension(2) :: flv
@@ -1291,7 +1415,16 @@ contains
     type(helicity_t), dimension(2) :: hel
     type(quantum_numbers_t), dimension(2) :: qn
     logical :: ok
-    u = 1 / 2._default
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output: state_matrix_2"
+    write (u, "(A)")  "*   Purpose: factorize correlated 3-particle state"
+    write (u, "(A)")        
+    
+    write (u, "(A)")  "*  Initialization"
+    write (u, "(A)")    
+        
+    z = 1 / 2._default
     v(-1) = (0.6_default, 0._default)
     v( 1) = (0._default, 0.8_default)
     call state_matrix_init (state)
@@ -1300,12 +1433,12 @@ contains
           do h12 = -1, 1, 2
              do h21 = -1, 1, 2
                 do h22 = -1, 1, 2
-                   call flavor_init (flv, (/f, -f/))
-                   call color_init (col(1), (/ 1/))
-                   call color_init (col(2), (/-1/))
-                   call helicity_init (hel, (/h11,h12/), (/h21, h22/))
+                   call flavor_init (flv, [f, -f])
+                   call color_init (col(1), [1])
+                   call color_init (col(2), [-1])
+                   call helicity_init (hel, [h11,h12], [h21, h22])
                    call quantum_numbers_init (qn, flv, col, hel)
-                   val = u * v(h11) * v(h12) * conjg (v(h21) * v(h22))
+                   val = z * v(h11) * v(h12) * conjg (v(h21) * v(h22))
                    call state_matrix_add_state (state, qn)
                 end do
              end do
@@ -1313,57 +1446,95 @@ contains
        end do
     end do
     call state_matrix_freeze (state)
-    call state_matrix_write (state)
-    print *, "trace = ", state_matrix_trace (state)
+    call state_matrix_write (state, u)
+
+    write (u, "(A)")
+    write (u, "(A,'('," // FMT_19 // ",','," // FMT_19 // ",')')") &
+         "* Trace = ", state_matrix_trace (state)
+    write (u, "(A)")
+    
     do mode = 1, 3
-       print *
-       print *, "Mode = ", mode
+       write (u, "(A)")
+       write (u, "(A,I1)")  "* Mode = ", mode
        call state_matrix_factorize &
             (state, mode, 0.15_default, ok, single_state, correlated_state)
        do i = 1, size (single_state)
-          print *
-          call state_matrix_write (single_state(i))
-          print *, "trace = ", state_matrix_trace (single_state(i))
+          write (u, "(A)")
+          call state_matrix_write (single_state(i), u)
+          write (u, "(A,'('," // FMT_19 // ",','," // FMT_19 // ",')')") &
+               "Trace = ", state_matrix_trace (single_state(i))
        end do
-       print *
-       call state_matrix_write (correlated_state)
-       print *, "trace = ", state_matrix_trace (correlated_state)
+       write (u, "(A)")
+       call state_matrix_write (correlated_state, u)
+       write (u, "(A,'('," // FMT_19 // ",','," // FMT_19 // ",')')")  &
+            "Trace = ", state_matrix_trace (correlated_state)
        call state_matrix_final (single_state)
        call state_matrix_final (correlated_state)
     end do
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+    
     call state_matrix_final (state)
-  end subroutine state_matrix_test2
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: state_matrix_2"
+    
+  end subroutine state_matrix_2
 
-  subroutine state_matrix_test3
+  subroutine state_matrix_3 (u)
+    integer, intent(in) :: u
     type(state_matrix_t) :: state
     type(flavor_t), dimension(4) :: flv
     type(color_t), dimension(4) :: col
     type(quantum_numbers_t), dimension(4) :: qn
+    
+    write (u, "(A)")  "* Test output: state_matrix_3"
+    write (u, "(A)")  "*   Purpose: add color connections to colored state"
+    write (u, "(A)")    
+       
+    write (u, "(A)")  "*  Initialization"
+    write (u, "(A)")    
+    
     call state_matrix_init (state)
     call flavor_init (flv, &
          (/ 1, -HADRON_REMNANT_TRIPLET, -1, HADRON_REMNANT_TRIPLET /))
-    call color_init (col(1), (/17/))
-    call color_init (col(2), (/-17/))
-    call color_init (col(3), (/-19/))
-    call color_init (col(4), (/19/))
+    call color_init (col(1), [17])
+    call color_init (col(2), [-17])
+    call color_init (col(3), [-19])
+    call color_init (col(4), [19])
     call quantum_numbers_init (qn, flv=flv, col=col)
     call state_matrix_add_state (state, qn)
     call flavor_init (flv, &
          (/ 1, -HADRON_REMNANT_TRIPLET, 21, HADRON_REMNANT_OCTET /))
-    call color_init (col(1), (/17/))
-    call color_init (col(2), (/-17/))
-    call color_init (col(3), (/3, -5/))
-    call color_init (col(4), (/5, -3/))
+    call color_init (col(1), [17])
+    call color_init (col(2), [-17])
+    call color_init (col(3), [3, -5])
+    call color_init (col(4), [5, -3])
     call quantum_numbers_init (qn, flv=flv, col=col)
     call state_matrix_add_state (state, qn)
     call state_matrix_freeze (state)
-    print *, "State:"
-    call state_matrix_write (state)
+
+    write (u, "(A)") "* State:"
+    write (u, "(A)") 
+    
+    call state_matrix_write (state, u)
     call state_matrix_add_color_contractions (state)
-    print *, "State with contractions:"
-    call state_matrix_write (state)
+
+    write (u, "(A)") "* State with contractions:"
+    write (u, "(A)")
+    
+    call state_matrix_write (state, u)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+        
     call state_matrix_final (state)
-  end subroutine state_matrix_test3
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: state_matrx_3"    
+    
+  end subroutine state_matrix_3
 
 
 end module state_matrices

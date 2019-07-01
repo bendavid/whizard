@@ -2,8 +2,108 @@ ChangeLog -- Summary of changes to the WHIZARD package
 
 Use svn log to see detailed changes.
 
-	Version 2.1.1
+	Version 2.2.0
 
+2014-05-18
+	RELEASE: version 2.2.0
+
+2014-04-11
+	Multiple components: inclusive process definitions,
+	   syntax: process A + B + ... 
+	
+2014-03-13
+	Improved PS mappings for e+e- ISR 
+	ILC TDR and CLIC spectra included in CIRCE1
+	
+2014-02-23
+	New models: AltH w\ Higgs for exclusion purposes,
+	  SM_rx for Dim 6-/Dim-8 operators, SSC for 
+	  general strong interactions (w/ Higgs), and
+	  NoH_rx (w\ Higgs)
+	
+2014-02-14
+	Improved s-channel mapping, new on-shell
+	  production mapping (e.g. Drell-Yan)
+	
+2014-02-03
+	PRE-RELEASE: version 2.2.0_beta
+
+2013-12-16
+	HOPPET interface for b parton matching
+	
+2013-11-15
+	PRE-RELEASE: version 2.2.0_alpha-4
+	
+2013-10-27
+	LHEF standards 1.0/2.0/3.0 implemented
+	
+2013-10-15
+	PRE-RELEASE: version 2.2.0_alpha-3
+	
+2013-10-02
+	PRE-RELEASE: version 2.2.0_alpha-2
+	
+2013-09-25
+	PRE-RELEASE: version 2.2.0_alpha-1
+	
+2013-09-12
+	PRE-RELEASE: version 2.2.0_alpha
+
+2013-09-03
+	General 2HDM implemented
+	
+2013-08-18
+	Rescanning/recalculating events 
+	
+2013-06-07
+	Reconstruction of complete event 
+	  from 4-momenta possible
+	
+2013-05-06
+	Process library stacks
+	
+2013-05-02
+	Process stacks
+	
+2013-04-29
+	Single-particle phase space module
+	
+2013-04-26
+	Abstract interface for random
+	  number generator
+	
+2013-04-24
+	More object-orientation on modules
+	Midpoint-rule integrator 
+	
+2013-04-05
+	Object-oriented integration and
+	  event generation
+	
+2013-03-12
+	Processes recasted object-oriented:
+	  MEs, scales, structure functions
+	First infrastructure for general Lorentz
+	  structures
+	
+2013-01-17
+	Object-orientated reworking of library and 
+	process core, more variable internal structure,
+	unit tests
+	
+2012-12-14
+	Update Pythia version to 6.4.27
+	
+2012-12-04
+	Fix the phase in HAZ vertices
+	
+2012-11-21
+	First O'Mega unit tests, some infrastructure
+	
+2012-11-13
+	Bugfix in anom. HVV Lorentz structures
+	
+##################################################################
 	
 2012-09-18
 	RELEASE: version 2.1.1

@@ -1,10 +1,11 @@
 ! $Id: parameters.SM_higgs.f90,v 1.4 2006/06/16 13:31:48 kilian Exp $
 !
-! Copyright (C) 1999-2012 by 
+! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+!     with contributions from
+!     Christian Speckner <cnspeckn@googlemail.com>
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -187,7 +188,7 @@ contains
     igs = cmplx (0.0_default, 1.0_default, kind=default) * gs    
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !!! Higgs anomaly couplings
-    !!! SM LO loop factor (top,bottom,W)
+    !!! SM LO loop factor (top, bottom, charm, tau and W)
     ghgaga = (-1._default) * alpha / vev / 2.0_default / PI * &
          (( 4.0_default * (fonehalf(ttop) + fonehalf(tch)) &
          + fonehalf(tbot)) / 3.0_default + fonehalf(ttau) + fone(tw)) &
@@ -196,28 +197,29 @@ contains
     !!! ghgaga = (par%ee)**2 / vev / &
     !!!      9.0_default / pi**2
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    !!! SM LO loop factor (only top and W)
-    ghgaz = e * e_em / 8.0_default / PI**2 / vev * abs( &
-          ( - 2.0_default + &
-          16.0_default/3.0_default * sin2thw) * &
-          (tri_i1(ttop,ltop) - tri_i2(ttop,ltop)) / costhw & 
-          + ( - 1.0_default + &
-          4.0_default/3.0_default * sin2thw) & 
-          * (tri_i1(tbot,lbot) - tri_i2(tbot,lbot)) / costhw &
-           - costhw * ( 4.0_default * (3.0_default - tanthw**2) * &
-           tri_i2(tw,lw) + ((1 + 2.0_default/tw) * tanthw**2 - ( &
-           5.0_default + 2.0_default/tw)) * tri_i1(tw,lw))) &
-          /sinthw * sqrt(par%khgaz)
-    !!! SM LO order loop factor with 
-    !!! N(N)LO K factor = 2.1 (only top)
-    !!! Limit of infinite top quark mass:
+    !!! SM LO loop factor (top, bottom, charm, tau and W)
+    ghgaz = e * e_em / 8.0_default / PI**2 / vev * ( &
+               af (NC , qeup ,  TR, ttop, ltop) &
+             + af (NC , qedwn, -TR, tbot, lbot) &
+             + af (NC , qeup ,  TR, tch , lc  ) & 
+             + af (one, qelep, -TR, ttau, ltau) &
+             !!! and W:
+             - costhw / sinthw * ( &
+                 4.0_default * (3.0_default - tanthw**2) * tri_i2(tw,lw) &
+               + ((1.0_default + 2.0_default/tw) * tanthw**2 &
+               -  (5.0_default + 2.0_default/tw)) * tri_i1(tw,lw) ) &
+            ) * sqrt(par%khgaz)
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    !!! We use par%gg because of sqrt(2) above
+    !!! SM LO loop factor (top, bottom, charm)
     ghgg = (-1._double) * par%alphas / vev / 4.0_default / PI * &
          (fonehalf(ttop) + fonehalf(tbot) + fonehalf(tch)) * &
          sqrt(par%khgg)
+    !!! SM LO order loop factor with 
+    !!! N(N)LO K factor = 2.1 (only top)
+    !!! Limit of infinite top quark mass:
     !!! ghgg   = par%alphas / 3.0_default &
     !!!      / vev / pi * 2.1_default
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   end subroutine import_from_whizard
 
   subroutine model_update_alpha_s (alpha_s)
@@ -226,4 +228,16 @@ contains
     igs = cmplx (0.0_default, 1.0_default, kind=default) * gs     
     !!! The Hgg coupling should not get a running alpha_s
   end subroutine model_update_alpha_s
+
+  pure function af (ncf, qef, t3f, tau, lam) result (a)
+    real(default), intent(in) :: ncf
+    real(default), intent(in) :: qef
+    real(default), intent(in) :: t3f
+    real(default), intent(in) :: tau
+    real(default), intent(in) :: lam
+    complex(default) :: a
+    a = - 2.0_default * ncf * qef &
+          * ( t3f - 2.0_default * qef * sin2thw ) / sinthw / costhw &
+          * ( tri_i1(tau,lam) - tri_i2(tau,lam) )
+  end function af
 end module parameters_sm_higgs

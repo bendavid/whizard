@@ -1,11 +1,13 @@
-! WHIZARD 2.1.1 September 18 2012
+! WHIZARD 2.2.0 May 18 2014
 ! 
-! Copyright (C) 1999-2012 by 
+! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
-!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
+!     
+!     with contributions from
+!     Christian Speckner <cnspeckn@googlemail.com> 
+!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -259,7 +261,7 @@ contains
     if (present (delimiter)) then
        rule%delimiter = delimiter
     else
-       rule%delimiter = (/ "(", ")" /)
+       rule%delimiter = ["(", ")"]
     end if
   end subroutine syntax_rule_set_delimiter
 
@@ -411,7 +413,7 @@ contains
        quote_chars = "<'""", &
        quote_match = ">'""", &
        single_chars = "?*+|=,()", &
-       special_class = (/ "." /), &
+       special_class = ["."], &
        keyword_list = null ())
     allocate (syntax%rule (ifile_get_length (ifile)))
     call line_init (line, ifile)

@@ -2,11 +2,12 @@
 ##
 ## Process this file with automake to produce Makefile.in
 #
-# Copyright (C) 1999-2012 by 
+# Copyright (C) 1999-2014 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
-#     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+#     with contributions from
+#     Christian Speckner <cnspeckn@googlemail.com>
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by 
@@ -26,7 +27,7 @@
 
 ## Subdirectories to configure
 SUBDIRS = \
-  pythia hepmc lhapdf stdhep circe1 circe2 misc pdf_builtin vamp \
+  pythia hepmc lhapdf stdhep hoppet circe1 circe2 misc pdf_builtin vamp \
   shower muli whizard-core prebuilt omega models 
 if MPOST_AVAILABLE
 SUBDIRS += gamelan feynmf
@@ -40,6 +41,7 @@ endif
 lib_LTLIBRARIES = libwhizard.la libomega.la
 
 libwhizard_la_SOURCES =
+libwhizard_la_LDFLAGS = $(LIBRARY_VERSION)
 
 libomega_la_SOURCES =
 
@@ -93,6 +95,12 @@ else
 libwhizard_la_LIBADD += stdhep/libstdhep_dummy.la
 endif 
 
+if HOPPET_AVAILABLE
+libwhizard_la_LIBADD += $(LDFLAGS_HOPPET) hoppet/libhoppet.la
+else
+libwhizard_la_LIBADD += hoppet/libhoppet_dummy.la
+endif 
+
 ## -------------------------------------------------------------------
 ## Build a standalone program
 bin_PROGRAMS = whizard 
@@ -109,6 +117,7 @@ whizard_LDADD += prebuilt/libwhizard_prebuilt.la
 whizard_LDADD += $(LDFLAGS_LHAPDF)
 whizard_LDADD += $(LDFLAGS_STDHEP)
 whizard_LDADD += $(LDFLAGS_HEPMC)
+whizard_LDADD += $(LDFLAGS_HOPPET)
 
 AM_FCFLAGS =
 

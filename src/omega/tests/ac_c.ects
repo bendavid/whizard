@@ -1,4 +1,4 @@
-! $Id: ac_c.ects 3930 2012-09-09 18:48:11Z jr_reuter $
+! $Id: ac_c.ects 4073 2013-02-12 13:42:18Z fbach $
 !ects:model QCD
 !ects:scatter
 !ects:process gl ubar -> ubar

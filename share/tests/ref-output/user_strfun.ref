@@ -1,0 +1,110 @@
+?openmp_logging = false
+?vis_history = false
+?integration_timer = false
+$method = "omega"
+| Process library 'user_strfun_lib': recorded process 'user_strfun_p'
+openmp_num_threads = 1
+SM.me =  0.000000000000E+00
+sqrts =  5.000000000000E+02
+tolerance =  1.000000000000E-12
+[user variable] res =  0.000000000000E+00
+seed = 0
+| Integrate: current process library needs compilation
+| Process library 'user_strfun_lib': compiling ...
+| Process library 'user_strfun_lib': writing makefile
+| Process library 'user_strfun_lib': removing old files
+| Process library 'user_strfun_lib': writing driver
+| Process library 'user_strfun_lib': creating source code
+| Process library 'user_strfun_lib': compiling sources
+| Process library 'user_strfun_lib': linking
+| Process library 'user_strfun_lib': loading
+| Process library 'user_strfun_lib': ... success.
+| Integrate: compilation done
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 0
+| Initializing integration for process user_strfun_p:
+| ------------------------------------------------------------------------
+| Process [scattering]: 'user_strfun_p'
+|   Library name  = 'user_strfun_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'user_strfun_p_i1':   e-, e+ => mu-, mu+ [omega]
+| ------------------------------------------------------------------------
+| Beam structure: e-, e+ => energy_scan
+| Beam data (collision):
+|   e-  (mass = 0.0000000E+00 GeV)
+|   e+  (mass = 0.0000000E+00 GeV)
+|   sqrts = 5.000000000000E+02 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'user_strfun_p_i1.phs'
+| Phase space: 2 channels, 2 dimensions
+| Phase space: found 2 channels, collected in 2 groves.
+| Phase space: Using 2 equivalences between channels.
+| Phase space: wood
+| Beam structure: energy_scan
+| Beam structure: 2 channels, 1 dimensions
+| Applying user-defined cuts.
+| Starting integration for process 'user_strfun_p'
+| Integrate: iterations = 1:10000
+| Integrator: 2 chains, 2 channels, 3 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 10000 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1       6912  7.2560698E+05  2.17E+04    3.00    2.49*   1.53
+|-----------------------------------------------------------------------------|
+   1       6912  7.2560698E+05  2.17E+04    3.00    2.49    1.53
+|=============================================================================|
+[user variable] res =  7.256069844296E+05
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 0
+| Initializing integration for process user_strfun_p:
+| ------------------------------------------------------------------------
+| Process [scattering]: 'user_strfun_p'
+|   Library name  = 'user_strfun_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'user_strfun_p_i1':   e-, e+ => mu-, mu+ [omega]
+| ------------------------------------------------------------------------
+| Beam structure: e-, e+ => energy_scan
+| Beam data (collision):
+|   e-  (mass = 0.0000000E+00 GeV)
+|   e+  (mass = 0.0000000E+00 GeV)
+|   sqrts = 5.000000000000E+02 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'user_strfun_p_i1.phs'
+| Phase space: 2 channels, 2 dimensions
+| Phase space: found 2 channels, collected in 2 groves.
+| Phase space: Using 2 equivalences between channels.
+| Phase space: wood
+| Beam structure: energy_scan
+| Beam structure: 2 channels, 1 dimensions
+| Applying user-defined cuts.
+| Starting integration for process 'user_strfun_p'
+| Integrate: iterations = 1:10000
+| Integrator: 2 chains, 2 channels, 3 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 10000 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1       6912  7.2560698E+05  2.17E+04    3.00    2.49*   1.53
+|-----------------------------------------------------------------------------|
+   1       6912  7.2560698E+05  2.17E+04    3.00    2.49    1.53
+|=============================================================================|
+Comparing results:
+tolerance =  1.0000000E-12
+integral(user_strfun_p) =  7.2560698E+05
+[user variable] res =  7.2560698E+05
+| expect: success
+| Summary of value checks:
+|   Failures: 0 / Total: 1
+| There were no errors and no warning(s).
+| WHIZARD run finished.
+|=============================================================================|
+

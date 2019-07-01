@@ -1,10 +1,11 @@
 ! $Id: parameters.SM_ac.f90,v 1.4 2006/06/16 13:31:48 kilian Exp $
 !
-! Copyright (C) 1999-2012 by 
+! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+!     with contributions from
+!     Christian Speckner <cnspeckn@googlemail.com>
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -284,33 +285,36 @@ contains
          (( 4.0_default * (fonehalf(ttop) + fonehalf(tch)) &
          + fonehalf(tbot)) / 3.0_default + fonehalf(ttau) + fone(tw))
     !!! asymptotic limit:
-    !!! ghgaga = (par%ee)**2 / vev / &
+    !!! ghgaga_sm = (par%ee)**2 / vev / &
     !!!      9.0_default / pi**2
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !!! SM LO loop factor (only top and W)
-    ghgaz_sm = e * e_em / 8.0_default / PI**2 / vev * abs( &
+    ghgaz_sm = e * e_em / 8.0_default / PI**2 / vev * ( &
           ( - 2.0_default + &
           16.0_default/3.0_default * sin2thw) * &
           (tri_i1(ttop,ltop) - tri_i2(ttop,ltop)) / costhw & 
           + ( - 1.0_default + &
           4.0_default/3.0_default * sin2thw) & 
           * (tri_i1(tbot,lbot) - tri_i2(tbot,lbot)) / costhw &
+          + (-1.0_default + 4.0_default * sin2thw) &
+          * (tri_i1(ttau,ltau) - tri_i2(ttau,ltau)) / costhw &
            - costhw * ( 4.0_default * (3.0_default - tanthw**2) * &
            tri_i2(tw,lw) + ((1 + 2.0_default/tw) * tanthw**2 - ( &
-           5.0_default + 2.0_default/tw)) * tri_i1(tw,lw))) &
-          /sinthw 
+           5.0_default + 2.0_default/tw)) * tri_i1(tw,lw)) &
+          )/sinthw 
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     h_anom = g * mass(25) / par%lambdah**2
-    ghgaga_ac = par%fghgaga * ghgaga_sm - h_anom * &
-         sin2thw * (par%fbb + par%fww) / 2.0_default
-    ghgaz_ac  = par%fghgaz * ghgaz_sm + h_anom * &
+    ghgaga_ac = par%fghgaga * ghgaga_sm + 2.0_default * h_anom * &
+         sin2thw * (par%fbb + par%fww) 
+    ghgaz_ac  = par%fghgaz * ghgaz_sm + 2.0_default * h_anom * &
          sinthw * (sinthw**2 * par%fbb - costhw**2 * par%fww) / costhw
-    ghzz_ac = - h_anom * (sinthw**4 * par%fbb + costhw**4 * par%fww) / &
+    ghzz_ac = + 2.0_default * h_anom * (sinthw**4 * par%fbb + &
+         costhw**4 * par%fww) / costhw**2
+    ghww_ac = + 2.0_default * h_anom * par%fww
+    ghgaz_u = - h_anom * sinthw * (par%fw - par%fb) / 2.0_default / costhw
+    ghzz_u = - h_anom * (costhw**2 * par%fw + sinthw**2 * par%fb) / &
          2.0_default / costhw**2
-    ghww_ac = - h_anom * par%fww
-    ghgaz_u = h_anom * sinthw * (par%fw - par%fb) / 2.0_default / costhw
-    ghzz_u = h_anom * (costhw**2 * par%fw + sinthw**2 * par%fb) / &
-         2.0_default / costhw**2
-    ghww_u = h_anom * par%fw / 2.0_default
+    ghww_u = - h_anom * par%fw / 2.0_default
   end subroutine import_from_whizard
 
   subroutine model_update_alpha_s (alpha_s)

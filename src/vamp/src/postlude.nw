@@ -1,3 +1,4 @@
+% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*- 
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \RCSId$Id: postlude.nw 314 2010-04-17 20:32:33Z ohl $
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -106,6 +107,11 @@
   \textit{ISO/IEC 1539:1991, Information technology --- Programming
     Languages --- Fortran,}
   Geneva, 1991.
+\bibitem{Fortran03}
+  International Standards Organization,
+  \textit{ISO/IEC 1539-1:2004, Information technology --- Programming
+    Languages --- Fortran,}
+  Geneva, 2004.
 \bibitem{Fortran95}
   International Standards Organization,
   \textit{ISO/IEC 1539:1997, Information technology --- Programming
@@ -185,10 +191,3 @@
 \end{empfile}
 \end{RCS}
 \end{document}
-% Local Variables:
-% mode:noweb
-% noweb-doc-mode:latex-mode
-% noweb-code-mode:f90-mode
-% indent-tabs-mode:nil
-% page-delimiter:"^@ %%%.*\n"
-% End:

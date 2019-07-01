@@ -1,11 +1,13 @@
-! WHIZARD 2.1.1 September 18 2012
+! WHIZARD 2.2.0 May 18 2014
 ! 
-! Copyright (C) 1999-2012 by 
+! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
-!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
+!     
+!     with contributions from
+!     Christian Speckner <cnspeckn@googlemail.com> 
+!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -32,6 +34,7 @@ module phs_trees
   use iso_varying_string, string_t => varying_string !NODEP!
   use constants, only: twopi, twopi2, twopi5 !NODEP!
   use file_utils !NODEP!
+  use limits, only: FMT_19 !NODEP!
   use diagnostics !NODEP!
   use lorentz !NODEP!
   use permutations, only: permutation_t, permutation_size
@@ -70,6 +73,7 @@ module phs_trees
   public :: phs_tree_equivalent
   public :: phs_tree_find_msq_permutation
   public :: phs_tree_find_angle_permutation
+  public :: phs_tree_compute_volume
   public :: phs_tree_compute_momenta_from_x
   public :: phs_tree_compute_x_from_momenta
   public :: phs_tree_combine_particles
@@ -167,9 +171,9 @@ contains
     u = output_unit (unit);  if (u < 0)  return
     if (prt%defined) then
        call vector4_write (prt%p, u)
-       write (u, *) "M2 =", prt%p2
+       write (u, "(1x,A,1x," // FMT_19 // ")") "T = ", prt%p2
     else
-       write (u, *) "[undefined]"
+       write (u, "(3x,A)") "[undefined]"
     end if
   end subroutine phs_prt_write
 
@@ -215,11 +219,11 @@ contains
     integer :: u
     integer(TC) :: k
     u = output_unit (unit);  if (u < 0)  return
-    write (u,'(1X,A,I2,5X,A,I3)') &
+    write (u, '(3X,A,1x,I0,5X,A,I3)') &
          'External:', tree%n_externals, 'Mask:', tree%mask
-    write (u,'(1X,A,I2,5X,A,I3)') &
+    write (u, '(3X,A,1x,I0,5X,A,I3)') &
          'Incoming:', tree%n_in, 'Mask:', tree%mask_in
-    write (u,'(1X,A,I2,5X,A,I3)') &
+    write (u, '(3X,A,1x,I0,5X,A,I3)') &
          'Branches:', tree%n_branches
     do k = size (tree%branch), 1, -1
        if (tree%branch(k)%set) &
@@ -228,10 +232,10 @@ contains
     do k = 1, size (tree%mapping)
        call mapping_write (tree%mapping (k), unit, verbose=.true.)
     end do
-    write (u, *) "Arrays: mass_sum, effective_mass, effective_width"
+    write (u, "(3x,A)") "Arrays: mass_sum, effective_mass, effective_width"
     do k = 1, size (tree%mass_sum)
        if (tree%branch(k)%set) then
-          write (u, *) "  ", k, tree%mass_sum(k), &
+          write (u, "(5x,I0,3(2x," // FMT_19 // "))") k, tree%mass_sum(k), &
                tree%effective_mass(k), tree%effective_width(k)
        end if
     end do
@@ -272,14 +276,14 @@ contains
     end if
     if (b%has_children) then
        if (b%has_friend) then
-          write(u,'(1X,A,I4,1x,A,2X,A,I4,A,I4,A,2X,A,3X,A,I4)') &
+          write(u,'(4X,A1,I0,3x,A,1X,A,I0,A1,1x,I0,A1,1X,A1,1X,A,1x,I0)') &
                &   '*', k, tmp, &
                &   'Daughters: ', &
                &   b%daughter(1), firstborn(1), &
                &   b%daughter(2), firstborn(2), sign_decay, &
                &   'Friend:    ', b%friend
        else
-          write(u,'(1X,A,I4,1x,A,2X,A,I4,A,I4,A,2X,A,2X,A)') &
+          write(u,'(4X,A1,I0,3x,A,1X,A,I0,A1,1x,I0,A1,1X,A1,1X,A)') &
                &   '*', k, tmp, &
                &   'Daughters: ', &
                &   b%daughter(1), firstborn(1), &
@@ -287,7 +291,7 @@ contains
                &   '(axis '//sign_axis//')'
        end if
     else
-       write(u,'(2X,I4,3X,A,I4,I4)') k
+       write(u,'(5X,I0)') k
     end if
   end subroutine phs_branch_write
 
@@ -484,7 +488,6 @@ contains
   
   subroutine phs_tree_set_effective_masses (tree)
     type(phs_tree_t), intent(inout) :: tree
-    integer(TC) :: k
     tree%effective_mass = 0
     tree%effective_width = 0
     call set_masses_x (tree%mask_out)
@@ -517,14 +520,13 @@ contains
     logical, intent(in) :: exp_type
     logical, intent(in) :: variable_limits
     type(string_t) :: map_str
-    integer(TC) :: k, k_res
+    integer(TC) :: k
     if (exp_type) then
        map_str = "step_exp"
     else
        map_str = "step_hyp"
     end if
     k = tree%mask_out
-    k_res = 0
     call set_step_mappings_x (k, 0._default, 0._default)
   contains
     recursive subroutine set_step_mappings_x (k, m_limit, w_limit)
@@ -702,6 +704,44 @@ contains
     end subroutine tree_scan
   end subroutine phs_tree_find_angle_permutation
 
+  subroutine phs_tree_compute_volume (tree, sqrts, volume)
+    type(phs_tree_t), intent(in) :: tree
+    real(default), intent(in) :: sqrts
+    real(default), intent(out) :: volume
+    integer(TC) :: k
+    k  = tree%mask_out
+    if (tree%branch(k)%has_children) then
+       call compute_volume_x (tree%branch(k), k, volume, .true.)
+    else
+       volume = 1
+    end if
+  contains
+    recursive subroutine compute_volume_x (b, k, volume, initial)
+      type(phs_branch_t), intent(in) :: b
+      integer(TC), intent(in) :: k
+      real(default), intent(out) :: volume
+      logical, intent(in) :: initial
+      integer(TC) :: k1, k2
+      real(default) :: v1, v2
+      k1 = b%daughter(1);  k2 = b%daughter(2)
+      if (tree%branch(k1)%has_children) then
+         call compute_volume_x (tree%branch(k1), k1, v1, .false.)
+      else
+         v1 = 1
+      end if
+      if (tree%branch(k2)%has_children) then
+         call compute_volume_x (tree%branch(k2), k2, v2, .false.)
+      else
+         v2 = 1
+      end if
+      if (initial) then
+         volume = v1 * v2 / (4 * twopi5)
+      else
+         volume = v1 * v2 * sqrts**2 / (4 * twopi2)
+      end if
+    end subroutine compute_volume_x
+  end subroutine phs_tree_compute_volume
+
   subroutine phs_tree_compute_momenta_from_x &
        (tree, prt, factor, volume, sqrts, x, ok)
     type(phs_tree_t), intent(inout) :: tree
@@ -850,14 +890,14 @@ contains
               (tree%mapping(k), sqrts**2, ct, st, f, x(ix));  ix = ix + 1
          factor = factor * f
          if (.not. b%has_friend) then
-!            L = boost (bg,3) * rotation (phi,3) * rotation (ct,st,2)
             L = LT_compose_r2_r3_b3 (ct, st, cos(phi), sin(phi), bg)
+            !!! The function above is equivalent to:
+            ! L = boost (bg,3) * rotation (phi,3) * rotation (ct,st,2)
          else
             LL = boost (-bg,3);  if (present (L0))  LL = LL * inverse(L0)
             axis = space_part ( &
                  LL * phs_prt_get_momentum (prt(tree%branch(k)%friend)) )
             L = boost(bg,3) * rotation_to_2nd (vector3_canonical(3), axis) &
-!                 & * rotation(phi,3) * rotation(ct,st,2)
                  * LT_compose_r2_r3_b3 (ct, st, cos(phi), sin(phi), 0._default)
          end if
          if (present (L0))  L = L0 * L

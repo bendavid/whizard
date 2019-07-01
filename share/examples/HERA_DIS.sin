@@ -2,11 +2,12 @@
 # Simple complete physics example: Deep inelastic scattering at HERA
 ########################################################################
 #
-# Copyright (C) 1999-2012 by 
+# Copyright (C) 1999-2014 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
-#     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+#     with contributions from
+#     Christian Speckner <cnspeckn@googlemail.com>
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by 
@@ -33,11 +34,9 @@ ms = 0
 mc = 0
 
 # The HERA collider
-# (LHAPDF structure functions for the proton beam)
-beams = e, p { 
-  beam1_momentum = 27.5 GeV 
-  beam2_momentum = 920 GeV
-} => none, lhapdf
+# (Builtin structure functions for the proton beam)
+beams_momentum = 27.5 GeV, 920 GeV
+beams = e, p => none, pdf_builtin
 
 # Charged-current and neutral-current processes
 alias q = u:d:s:c:U:D:S:C
@@ -59,7 +58,7 @@ integrate (dis_cc, dis_nc) {
 # Weighted events are suitable for plotting 'smooth' distributions
 # with proper normalization
 ?unweighted = false
-$event_normalization = "sigma/n"
+$sample_normalization = "sigma/n"
 
 # Generate events and record them
 simulate (dis_cc) { n_events = 200000 
