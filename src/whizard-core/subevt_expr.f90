@@ -1,4 +1,4 @@
-! WHIZARD 2.2.2 July 6 2014
+! WHIZARD 2.2.3 Nov 30 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,8 +6,10 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
+!     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     Christian Weiss <christian.weiss@desy.de>
+!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -28,33 +30,27 @@
 ! to the source 'whizard.nw'
 module subevt_expr
 
-  use kinds, only: default !NODEP!
-  use iso_varying_string, string_t => varying_string !NODEP!
-  use file_utils !NODEP!
-  use limits, only: FMT_12 !NODEP!
-  use diagnostics !NODEP!
-  use unit_tests
-  use os_interface
-
-  use ifiles
-  use lexers
-  use parser
-
-  use lorentz !NODEP!
+  use kinds, only: default
+  use iso_varying_string, string_t => varying_string
+  use io_units
+  use format_utils, only: write_separator
+  use diagnostics
+  use lorentz
   use subevents
   use variables
-  use expressions
-  use models
   use flavors
+  use quantum_numbers
   use interactions
   use particles
+  use expr_base
 
   implicit none
   private
 
   public :: parton_expr_t
+!  public :: interaction_to_subevt
+!  public :: interaction_momenta_to_subevt
   public :: event_expr_t
-  public :: subevt_expr_test
 
   type, extends (subevt_t), abstract :: subevt_expr_t
      logical :: subevt_filled = .false.
@@ -64,7 +60,7 @@ module subevt_expr
      integer :: n_out = 0
      integer :: n_tot = 0
      logical :: has_selection = .false.
-     type(eval_tree_t) :: selection
+     class(expr_t), allocatable :: selection
    contains
      procedure :: base_write => subevt_expr_write
      procedure (subevt_expr_final), deferred :: final
@@ -86,15 +82,17 @@ module subevt_expr
      logical :: has_fac_scale = .false.
      logical :: has_ren_scale = .false.
      logical :: has_weight = .false.
-     type(eval_tree_t) :: scale
-     type(eval_tree_t) :: fac_scale
-     type(eval_tree_t) :: ren_scale
-     type(eval_tree_t) :: weight
+     class(expr_t), allocatable :: scale
+     class(expr_t), allocatable :: fac_scale
+     class(expr_t), allocatable :: ren_scale
+     class(expr_t), allocatable :: weight
    contains
      procedure :: final => parton_expr_final
      procedure :: write => parton_expr_write
      procedure :: setup_vars => parton_expr_setup_vars
-     procedure :: setup_scales => parton_expr_setup_scales
+     procedure :: setup_scale => parton_expr_setup_scale
+     procedure :: setup_fac_scale => parton_expr_setup_fac_scale
+     procedure :: setup_ren_scale => parton_expr_setup_ren_scale
      procedure :: setup_weight => parton_expr_setup_weight
      procedure :: setup_subevt => parton_expr_setup_subevt
      procedure :: fill_subevt => parton_expr_fill_subevt
@@ -106,8 +104,8 @@ module subevt_expr
   type, extends (subevt_expr_t) :: event_expr_t
      logical :: has_reweight = .false.
      logical :: has_analysis = .false.
-     type(eval_tree_t) :: reweight
-     type(eval_tree_t) :: analysis
+     class(expr_t), allocatable :: reweight
+     class(expr_t), allocatable :: analysis
      logical :: has_id = .false.
      type(string_t) :: id
      logical :: has_num_id = .false.
@@ -145,13 +143,19 @@ module subevt_expr
   end type event_expr_t
      
 
+  interface interaction_momenta_to_subevt
+     module procedure interaction_momenta_to_subevt_id
+     module procedure interaction_momenta_to_subevt_tr
+  end interface
+
+
 contains
   
   subroutine subevt_expr_write (object, unit)
     class(subevt_expr_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     write (u, "(1x,A)")  "Local variables:"
     call write_separator (u)
     call var_list_write (object%var_list, u, follow_link=.false.)
@@ -162,7 +166,7 @@ contains
           call write_separator (u)
           write (u, "(1x,A)")  "Selection expression:"
           call write_separator (u)
-          call eval_tree_write (object%selection, u)
+          call object%selection%write (u)
        end if
     else
        write (u, "(1x,A)")  "subevt: [undefined]"
@@ -173,7 +177,7 @@ contains
     class(subevt_expr_t), intent(inout) :: object
     call var_list_final (object%var_list)
     if (object%has_selection) then
-       call eval_tree_final (object%selection)
+       call object%selection%final ()
     end if
   end subroutine subevt_expr_final
   
@@ -208,12 +212,12 @@ contains
     call var_list_link (expr%var_list, var_list)
   end subroutine subevt_expr_link_var_list
 
-  subroutine subevt_expr_setup_selection (expr, pn_selection)
+  subroutine subevt_expr_setup_selection (expr, ef_cuts)
     class(subevt_expr_t), intent(inout), target :: expr
-    type(parse_node_t), intent(in), pointer :: pn_selection
-    if (associated (pn_selection)) then
-       call eval_tree_init_lexpr (expr%selection, &
-            pn_selection, expr%var_list, expr%subevt_t)
+    class(expr_factory_t), intent(in) :: ef_cuts
+    call ef_cuts%build (expr%selection)
+    if (allocated (expr%selection)) then
+       call expr%selection%setup_lexpr (expr%var_list, expr%subevt_t)
        expr%has_selection = .true.
     end if
   end subroutine subevt_expr_setup_selection
@@ -227,9 +231,9 @@ contains
     class(subevt_expr_t), intent(inout) :: expr
     logical, intent(out) :: passed 
     if (expr%has_selection) then
-       call eval_tree_evaluate (expr%selection)
-       if (eval_tree_result_is_known (expr%selection)) then
-          passed = eval_tree_get_log (expr%selection)
+       call expr%selection%evaluate ()
+       if (expr%selection%is_known ()) then
+          passed = expr%selection%get_log ()
        else
           call msg_error ("Evaluate selection expression: result undefined")
           passed = .false.
@@ -243,16 +247,16 @@ contains
     class(parton_expr_t), intent(inout) :: object
     call object%base_final ()
     if (object%has_scale) then
-       call eval_tree_final (object%scale)
+       call object%scale%final ()
     end if
     if (object%has_fac_scale) then
-       call eval_tree_final (object%fac_scale)
+       call object%fac_scale%final ()
     end if
     if (object%has_ren_scale) then
-       call eval_tree_final (object%ren_scale)
+       call object%ren_scale%final ()
     end if
     if (object%has_weight) then
-       call eval_tree_final (object%weight)
+       call object%weight%final ()
     end if
   end subroutine parton_expr_final
 
@@ -261,32 +265,32 @@ contains
     integer, intent(in), optional :: unit
     character(*), intent(in), optional :: prefix
     integer :: u
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     call object%base_write (u)
     if (object%subevt_filled) then
        if (object%has_scale) then
           call write_separator (u)
           write (u, "(1x,A)")  "Scale expression:"
           call write_separator (u)
-          call eval_tree_write (object%scale, u)
+          call object%scale%write (u)
        end if
        if (object%has_fac_scale) then
           call write_separator (u)
           write (u, "(1x,A)")  "Factorization scale expression:"
           call write_separator (u)
-          call eval_tree_write (object%fac_scale, u)
+          call object%fac_scale%write (u)
        end if
        if (object%has_ren_scale) then
           call write_separator (u)
           write (u, "(1x,A)")  "Renormalization scale expression:"
           call write_separator (u)
-          call eval_tree_write (object%ren_scale, u)
+          call object%ren_scale%write (u)
        end if
        if (object%has_weight) then
           call write_separator (u)
           write (u, "(1x,A)")  "Weight expression:"
           call write_separator (u)
-          call eval_tree_write (object%weight, u)
+          call object%weight%write (u)
        end if
     end if
   end subroutine parton_expr_write
@@ -297,34 +301,42 @@ contains
     call expr%base_setup_vars (sqrts)
   end subroutine parton_expr_setup_vars
 
-  subroutine parton_expr_setup_scales &
-       (expr, pn_scale, pn_fac_scale, pn_ren_scale)
+  subroutine parton_expr_setup_scale (expr, ef_scale)
     class(parton_expr_t), intent(inout), target :: expr
-    type(parse_node_t), intent(in), pointer :: pn_scale
-    type(parse_node_t), intent(in), pointer :: pn_fac_scale, pn_ren_scale
-    if (associated (pn_scale)) then
-       call eval_tree_init_expr (expr%scale, &
-            pn_scale, expr%var_list, expr%subevt_t)
+    class(expr_factory_t), intent(in) :: ef_scale
+    call ef_scale%build (expr%scale)
+    if (allocated (expr%scale)) then
+       call expr%scale%setup_expr (expr%var_list, expr%subevt_t)
        expr%has_scale = .true.
     end if
-    if (associated (pn_fac_scale)) then
-       call eval_tree_init_expr (expr%fac_scale, &
-            pn_fac_scale, expr%var_list, expr%subevt_t)
+  end subroutine parton_expr_setup_scale
+
+  subroutine parton_expr_setup_fac_scale (expr, ef_fac_scale)
+    class(parton_expr_t), intent(inout), target :: expr
+    class(expr_factory_t), intent(in) :: ef_fac_scale
+    call ef_fac_scale%build (expr%fac_scale)
+    if (allocated (expr%fac_scale)) then
+       call expr%fac_scale%setup_expr (expr%var_list, expr%subevt_t)
        expr%has_fac_scale = .true.
     end if
-    if (associated (pn_ren_scale)) then
-       call eval_tree_init_expr (expr%ren_scale, &
-            pn_ren_scale, expr%var_list, expr%subevt_t)
+  end subroutine parton_expr_setup_fac_scale
+
+  subroutine parton_expr_setup_ren_scale (expr, ef_ren_scale)
+    class(parton_expr_t), intent(inout), target :: expr
+    class(expr_factory_t), intent(in) :: ef_ren_scale
+    call ef_ren_scale%build (expr%ren_scale)
+    if (allocated (expr%ren_scale)) then
+       call expr%ren_scale%setup_expr (expr%var_list, expr%subevt_t)
        expr%has_ren_scale = .true.
     end if
-  end subroutine parton_expr_setup_scales
+  end subroutine parton_expr_setup_ren_scale
 
-  subroutine parton_expr_setup_weight (expr, pn_weight)
+  subroutine parton_expr_setup_weight (expr, ef_weight)
     class(parton_expr_t), intent(inout), target :: expr
-    type(parse_node_t), intent(in), pointer :: pn_weight
-    if (associated (pn_weight)) then
-       call eval_tree_init_expr (expr%weight, &
-            pn_weight, expr%var_list, expr%subevt_t)
+    class(expr_factory_t), intent(in) :: ef_weight
+    call ef_weight%build (expr%weight)
+    if (allocated (expr%weight)) then
+       call expr%weight%setup_expr (expr%var_list, expr%subevt_t)
        expr%has_weight = .true.
     end if
   end subroutine parton_expr_setup_weight
@@ -354,6 +366,67 @@ contains
     expr%n_tot = expr%n_in + expr%n_out
   end subroutine parton_expr_setup_subevt
 
+  subroutine interaction_to_subevt (int, j_beam, j_in, j_out, subevt)
+    type(interaction_t), intent(in), target :: int
+    integer, dimension(:), intent(in) :: j_beam, j_in, j_out
+    type(subevt_t), intent(out) :: subevt
+    type(flavor_t), dimension(:), allocatable :: flv
+    integer :: n_beam, n_in, n_out, i, j
+    allocate (flv (interaction_get_n_tot (int)))
+    flv = quantum_numbers_get_flavor (interaction_get_quantum_numbers (int, 1))
+    n_beam = size (j_beam)
+    n_in = size (j_in)
+    n_out = size (j_out)
+    call subevt_init (subevt, n_beam + n_in + n_out)
+    do i = 1, n_beam
+       j = j_beam(i)
+       call subevt_set_beam (subevt, i, &
+            flavor_get_pdg (flv(j)), &
+            vector4_null, &
+            flavor_get_mass (flv(j)) ** 2)
+    end do
+    do i = 1, n_in
+       j = j_in(i)
+       call subevt_set_incoming (subevt, n_beam + i, &
+            flavor_get_pdg (flv(j)), &
+            vector4_null, &
+            flavor_get_mass (flv(j)) ** 2)
+    end do
+    do i = 1, n_out
+       j = j_out(i)
+       call subevt_set_outgoing (subevt, n_beam + n_in + i, &
+            flavor_get_pdg (flv(j)), &
+            vector4_null, &
+            flavor_get_mass (flv(j)) ** 2)
+    end do
+  end subroutine interaction_to_subevt
+
+  subroutine interaction_momenta_to_subevt_id (int, j_beam, j_in, j_out, subevt)
+    type(interaction_t), intent(in) :: int
+    integer, dimension(:), intent(in) :: j_beam, j_in, j_out
+    type(subevt_t), intent(inout) :: subevt
+    call subevt_set_p_beam &
+         (subevt, - interaction_get_momenta (int, j_beam))
+    call subevt_set_p_incoming &
+         (subevt, - interaction_get_momenta (int, j_in))
+    call subevt_set_p_outgoing &
+         (subevt, interaction_get_momenta (int, j_out))
+  end subroutine interaction_momenta_to_subevt_id
+
+  subroutine interaction_momenta_to_subevt_tr &
+       (int, j_beam, j_in, j_out, lt, subevt)
+    type(interaction_t), intent(in) :: int
+    integer, dimension(:), intent(in) :: j_beam, j_in, j_out
+    type(subevt_t), intent(inout) :: subevt
+    type(lorentz_transformation_t), intent(in) :: lt
+    call subevt_set_p_beam &
+         (subevt, - lt * interaction_get_momenta (int, j_beam))
+    call subevt_set_p_incoming &
+         (subevt, - lt * interaction_get_momenta (int, j_in))
+    call subevt_set_p_outgoing &
+         (subevt, lt * interaction_get_momenta (int, j_out))
+  end subroutine interaction_momenta_to_subevt_tr
+
   subroutine parton_expr_fill_subevt (expr, int)
     class(parton_expr_t), intent(inout) :: expr
     type(interaction_t), intent(in), target :: int
@@ -374,9 +447,9 @@ contains
     call expr%base_evaluate (passed)
     if (passed) then
        if (expr%has_scale) then
-          call eval_tree_evaluate (expr%scale)
-          if (eval_tree_result_is_known (expr%scale)) then
-             scale = eval_tree_get_real (expr%scale)
+          call expr%scale%evaluate ()
+          if (expr%scale%is_known ()) then
+             scale = expr%scale%get_real ()
           else
              call msg_error ("Evaluate scale expression: result undefined")
              scale = 0
@@ -385,9 +458,9 @@ contains
           scale = expr%sqrts_hat
        end if
        if (expr%has_fac_scale) then
-          call eval_tree_evaluate (expr%fac_scale)
-          if (eval_tree_result_is_known (expr%fac_scale)) then
-             fac_scale = eval_tree_get_real (expr%fac_scale)
+          call expr%fac_scale%evaluate ()
+          if (expr%fac_scale%is_known ()) then
+             fac_scale = expr%fac_scale%get_real ()
           else
              call msg_error ("Evaluate factorization scale expression: &
                   &result undefined")
@@ -397,9 +470,9 @@ contains
           fac_scale = scale
        end if
        if (expr%has_ren_scale) then
-          call eval_tree_evaluate (expr%ren_scale)
-          if (eval_tree_result_is_known (expr%ren_scale)) then
-             ren_scale = eval_tree_get_real (expr%ren_scale)
+          call expr%ren_scale%evaluate ()
+          if (expr%ren_scale%is_known ()) then
+             ren_scale = expr%ren_scale%get_real ()
           else
              call msg_error ("Evaluate renormalization scale expression: &
                   &result undefined")
@@ -409,9 +482,9 @@ contains
           ren_scale = scale
        end if
        if (expr%has_weight) then
-          call eval_tree_evaluate (expr%weight)
-          if (eval_tree_result_is_known (expr%weight)) then
-             weight = eval_tree_get_real (expr%weight)
+          call expr%weight%evaluate ()
+          if (expr%weight%is_known ()) then
+             weight = expr%weight%get_real ()
           else
              call msg_error ("Evaluate weight expression: result undefined")
              weight = 0
@@ -438,10 +511,10 @@ contains
     class(event_expr_t), intent(inout) :: object
     call object%base_final ()
     if (object%has_reweight) then
-       call eval_tree_final (object%reweight)
+       call object%reweight%final ()
     end if
     if (object%has_analysis) then
-       call eval_tree_final (object%analysis)
+       call object%analysis%final ()
     end if
   end subroutine event_expr_final
 
@@ -450,20 +523,20 @@ contains
     integer, intent(in), optional :: unit
     character(*), intent(in), optional :: prefix
     integer :: u
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     call object%base_write (u)
     if (object%subevt_filled) then
        if (object%has_reweight) then
           call write_separator (u)
           write (u, "(1x,A)")  "Reweighting expression:"
           call write_separator (u)
-          call eval_tree_write (object%reweight, u)
+          call object%reweight%write (u)
        end if
        if (object%has_analysis) then
           call write_separator (u)
           write (u, "(1x,A)")  "Analysis expression:"
           call write_separator (u)
-          call eval_tree_write (object%analysis, u)
+          call object%analysis%write (u)
        end if
     end if
   end subroutine event_expr_write
@@ -516,22 +589,22 @@ contains
          locked = .true., verbose = .false., intrinsic = .true.)
   end subroutine event_expr_setup_vars
 
-  subroutine event_expr_setup_analysis (expr, pn_analysis)
+  subroutine event_expr_setup_analysis (expr, ef_analysis)
     class(event_expr_t), intent(inout), target :: expr
-    type(parse_node_t), intent(in), pointer :: pn_analysis
-    if (associated (pn_analysis)) then
-       call eval_tree_init_lexpr (expr%analysis, &
-            pn_analysis, expr%var_list, expr%subevt_t)
+    class(expr_factory_t), intent(in) :: ef_analysis
+    call ef_analysis%build (expr%analysis)
+    if (allocated (expr%analysis)) then
+       call expr%analysis%setup_lexpr (expr%var_list, expr%subevt_t)
        expr%has_analysis = .true.
     end if
   end subroutine event_expr_setup_analysis
 
-  subroutine event_expr_setup_reweight (expr, pn_reweight)
+  subroutine event_expr_setup_reweight (expr, ef_reweight)
     class(event_expr_t), intent(inout), target :: expr
-    type(parse_node_t), intent(in), pointer :: pn_reweight
-    if (associated (pn_reweight)) then
-       call eval_tree_init_expr (expr%reweight, &
-            pn_reweight, expr%var_list, expr%subevt_t)
+    class(expr_factory_t), intent(in) :: ef_reweight
+    call ef_reweight%build (expr%reweight)
+    if (allocated (expr%reweight)) then
+       call expr%reweight%setup_expr (expr%var_list, expr%subevt_t)
        expr%has_reweight = .true.
     end if
   end subroutine event_expr_setup_reweight
@@ -626,9 +699,9 @@ contains
     call expr%base_evaluate (passed)
     if (passed) then
        if (expr%has_reweight) then
-          call eval_tree_evaluate (expr%reweight)
-          if (eval_tree_result_is_known (expr%reweight)) then
-             reweight = eval_tree_get_real (expr%reweight)
+          call expr%reweight%evaluate ()
+          if (expr%reweight%is_known ()) then
+             reweight = expr%reweight%get_real ()
           else
              call msg_error ("Evaluate reweight expression: &
                   &result undefined")
@@ -638,9 +711,9 @@ contains
           reweight = 1
        end if
        if (expr%has_analysis) then
-          call eval_tree_evaluate (expr%analysis)
-          if (eval_tree_result_is_known (expr%analysis)) then
-             analysis_flag = eval_tree_get_log (expr%analysis)
+          call expr%analysis%evaluate ()
+          if (expr%analysis%is_known ()) then
+             analysis_flag = expr%analysis%get_log ()
           else
              call msg_error ("Evaluate analysis expression: &
                   &result undefined")
@@ -651,309 +724,6 @@ contains
        end if
     end if
   end subroutine event_expr_evaluate
-  
-
-  subroutine subevt_expr_test (u, results)
-    integer, intent(in) :: u
-    type(test_results_t), intent(inout) :: results
-    call test (subevt_expr_1, "subevt_expr_1", &
-         "parton-event expressions", &
-         u, results)
-    call test (subevt_expr_2, "subevt_expr_2", &
-         "parton-event expressions", &
-         u, results)
-end subroutine subevt_expr_test
-
-  subroutine subevt_expr_1 (u)
-    integer, intent(in) :: u
-    type(string_t) :: expr_text
-    type(ifile_t) :: ifile
-    type(stream_t) :: stream
-    type(parse_tree_t) :: pt_cuts, pt_scale, pt_fac_scale, pt_ren_scale
-    type(parse_tree_t) :: pt_weight
-    type(parse_node_t), pointer :: pn_cuts, pn_scale, pn_fac_scale, pn_ren_scale
-    type(parse_node_t), pointer :: pn_weight
-    type(os_data_t) :: os_data
-    type(model_list_t) :: model_list
-    type(model_t), pointer :: model => null ()
-    type(parton_expr_t), target :: expr
-    real(default) :: E, Ex, m
-    type(vector4_t), dimension(6) :: p
-    integer :: i, pdg
-    logical :: passed
-    real(default) :: scale, fac_scale, ren_scale, weight
-    
-    write (u, "(A)")  "* Test output: subevt_expr_1"
-    write (u, "(A)")  "*   Purpose: Set up a subevt and associated &
-         &process-specific expressions"
-    write (u, "(A)")
-
-    call syntax_pexpr_init ()
-    call syntax_model_file_init ()
-    call os_data_init (os_data)
-    call model_list%read_model (var_str ("Test"), &
-         var_str ("Test.mdl"), os_data, model)
-
-    write (u, "(A)")  "* Expression texts"
-    write (u, "(A)")
-
-
-    expr_text = "all Pt > 100 [s]"
-    write (u, "(A,A)")  "cuts = ", char (expr_text)
-    call ifile_clear (ifile)
-    call ifile_append (ifile, expr_text)
-    call stream_init (stream, ifile)
-    call parse_tree_init_lexpr (pt_cuts, stream, .true.)
-    call stream_final (stream)
-    pn_cuts => parse_tree_get_root_ptr (pt_cuts)
-
-    expr_text = "sqrts"
-    write (u, "(A,A)")  "scale = ", char (expr_text)
-    call ifile_clear (ifile)
-    call ifile_append (ifile, expr_text)
-    call stream_init (stream, ifile)
-    call parse_tree_init_expr (pt_scale, stream, .true.)
-    call stream_final (stream)
-    pn_scale => parse_tree_get_root_ptr (pt_scale)
-
-    expr_text = "sqrts_hat"
-    write (u, "(A,A)")  "fac_scale = ", char (expr_text)
-    call ifile_clear (ifile)
-    call ifile_append (ifile, expr_text)
-    call stream_init (stream, ifile)
-    call parse_tree_init_expr (pt_fac_scale, stream, .true.)
-    call stream_final (stream)
-    pn_fac_scale => parse_tree_get_root_ptr (pt_fac_scale)
-
-    expr_text = "100"
-    write (u, "(A,A)")  "ren_scale = ", char (expr_text)
-    call ifile_clear (ifile)
-    call ifile_append (ifile, expr_text)
-    call stream_init (stream, ifile)
-    call parse_tree_init_expr (pt_ren_scale, stream, .true.)
-    call stream_final (stream)
-    pn_ren_scale => parse_tree_get_root_ptr (pt_ren_scale)
-
-    expr_text = "n_tot - n_in - n_out"
-    write (u, "(A,A)")  "weight = ", char (expr_text)
-    call ifile_clear (ifile)
-    call ifile_append (ifile, expr_text)
-    call stream_init (stream, ifile)
-    call parse_tree_init_expr (pt_weight, stream, .true.)
-    call stream_final (stream)
-    pn_weight => parse_tree_get_root_ptr (pt_weight)
-
-    call ifile_final (ifile)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Initialize process expr"
-    write (u, "(A)")
-
-    call expr%setup_vars (1000._default)
-    call var_list_append_real (expr%var_list, var_str ("tolerance"), 0._default)
-    call expr%link_var_list (model_get_var_list_ptr (model))
-
-    call expr%setup_selection (pn_cuts)
-    call expr%setup_scales (pn_scale, pn_fac_scale, pn_ren_scale)
-    call expr%setup_weight (pn_weight)
-
-    call write_separator (u)
-    call expr%write (u)
-    call write_separator (u)
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Fill subevt and evaluate expressions"
-    write (u, "(A)")
-
-    call subevt_init (expr%subevt_t, 6)
-    E = 500._default
-    Ex = 400._default
-    m = 125._default
-    pdg = 25
-    p(1) = vector4_moving (E, sqrt (E**2 - m**2), 3)
-    p(2) = vector4_moving (E, -sqrt (E**2 - m**2), 3)
-    p(3) = vector4_moving (Ex, sqrt (Ex**2 - m**2), 3)
-    p(4) = vector4_moving (Ex, -sqrt (Ex**2 - m**2), 3)
-    p(5) = vector4_moving (Ex, sqrt (Ex**2 - m**2), 1)
-    p(6) = vector4_moving (Ex, -sqrt (Ex**2 - m**2), 1)
-
-    call expr%reset ()
-    do i = 1, 2
-       call subevt_set_beam (expr%subevt_t, i, pdg, p(i), m**2)
-    end do
-    do i = 3, 4
-       call subevt_set_incoming (expr%subevt_t, i, pdg, p(i), m**2)
-    end do
-    do i = 5, 6
-       call subevt_set_outgoing (expr%subevt_t, i, pdg, p(i), m**2)
-    end do
-    expr%sqrts_hat = subevt_get_sqrts_hat (expr%subevt_t)
-    expr%n_in = 2
-    expr%n_out = 2
-    expr%n_tot = 4
-    expr%subevt_filled = .true.
-
-    call expr%evaluate (passed, scale, fac_scale, ren_scale, weight)
-    
-    write (u, "(A,L1)")      "Event has passed      = ", passed
-    write (u, "(A," // FMT_12 // ")")  "Scale                 = ", scale
-    write (u, "(A," // FMT_12 // ")")  "Factorization scale   = ", fac_scale
-    write (u, "(A," // FMT_12 // ")")  "Renormalization scale = ", ren_scale
-    write (u, "(A," // FMT_12 // ")")  "Weight                = ", weight
-    write (u, "(A)")
-    
-    call write_separator (u)
-    call expr%write (u)
-    call write_separator (u)
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
-    
-    call expr%final ()
-
-    call model_list%final ()
-    call syntax_model_file_final ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: subevt_expr_1"
-    
-  end subroutine subevt_expr_1
-  
-  subroutine subevt_expr_2 (u)
-    integer, intent(in) :: u
-    type(string_t) :: expr_text
-    type(ifile_t) :: ifile
-    type(stream_t) :: stream
-    type(parse_tree_t) :: pt_selection
-    type(parse_tree_t) :: pt_reweight, pt_analysis
-    type(parse_node_t), pointer :: pn_selection
-    type(parse_node_t), pointer :: pn_reweight, pn_analysis
-    type(os_data_t) :: os_data
-    type(model_list_t) :: model_list
-    type(model_t), pointer :: model => null ()
-    type(event_expr_t), target :: expr
-    real(default) :: E, Ex, m
-    type(vector4_t), dimension(6) :: p
-    integer :: i, pdg
-    logical :: passed
-    real(default) :: reweight
-    logical :: analysis_flag
-    
-    write (u, "(A)")  "* Test output: subevt_expr_2"
-    write (u, "(A)")  "*   Purpose: Set up a subevt and associated &
-         &process-specific expressions"
-    write (u, "(A)")
-
-    call syntax_pexpr_init ()
-    call syntax_model_file_init ()
-    call os_data_init (os_data)
-    call model_list%read_model (var_str ("Test"), &
-         var_str ("Test.mdl"), os_data, model)
-
-    write (u, "(A)")  "* Expression texts"
-    write (u, "(A)")
-
-
-    expr_text = "all Pt > 100 [s]"
-    write (u, "(A,A)")  "selection = ", char (expr_text)
-    call ifile_clear (ifile)
-    call ifile_append (ifile, expr_text)
-    call stream_init (stream, ifile)
-    call parse_tree_init_lexpr (pt_selection, stream, .true.)
-    call stream_final (stream)
-    pn_selection => parse_tree_get_root_ptr (pt_selection)
-
-    expr_text = "n_tot - n_in - n_out"
-    write (u, "(A,A)")  "reweight = ", char (expr_text)
-    call ifile_clear (ifile)
-    call ifile_append (ifile, expr_text)
-    call stream_init (stream, ifile)
-    call parse_tree_init_expr (pt_reweight, stream, .true.)
-    call stream_final (stream)
-    pn_reweight => parse_tree_get_root_ptr (pt_reweight)
-
-    expr_text = "true"
-    write (u, "(A,A)")  "analysis = ", char (expr_text)
-    call ifile_clear (ifile)
-    call ifile_append (ifile, expr_text)
-    call stream_init (stream, ifile)
-    call parse_tree_init_lexpr (pt_analysis, stream, .true.)
-    call stream_final (stream)
-    pn_analysis => parse_tree_get_root_ptr (pt_analysis)
-
-    call ifile_final (ifile)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Initialize process expr"
-    write (u, "(A)")
-
-    call expr%setup_vars (1000._default)
-    call expr%link_var_list (model_get_var_list_ptr (model))
-    call var_list_append_real (expr%var_list, var_str ("tolerance"), 0._default)
-
-    call expr%setup_selection (pn_selection)
-    call expr%setup_analysis (pn_analysis)
-    call expr%setup_reweight (pn_reweight)
-
-    call write_separator (u)
-    call expr%write (u)
-    call write_separator (u)
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Fill subevt and evaluate expressions"
-    write (u, "(A)")
-
-    call subevt_init (expr%subevt_t, 6)
-    E = 500._default
-    Ex = 400._default
-    m = 125._default
-    pdg = 25
-    p(1) = vector4_moving (E, sqrt (E**2 - m**2), 3)
-    p(2) = vector4_moving (E, -sqrt (E**2 - m**2), 3)
-    p(3) = vector4_moving (Ex, sqrt (Ex**2 - m**2), 3)
-    p(4) = vector4_moving (Ex, -sqrt (Ex**2 - m**2), 3)
-    p(5) = vector4_moving (Ex, sqrt (Ex**2 - m**2), 1)
-    p(6) = vector4_moving (Ex, -sqrt (Ex**2 - m**2), 1)
-
-    call expr%reset ()
-    do i = 1, 2
-       call subevt_set_beam (expr%subevt_t, i, pdg, p(i), m**2)
-    end do
-    do i = 3, 4
-       call subevt_set_incoming (expr%subevt_t, i, pdg, p(i), m**2)
-    end do
-    do i = 5, 6
-       call subevt_set_outgoing (expr%subevt_t, i, pdg, p(i), m**2)
-    end do
-    expr%sqrts_hat = subevt_get_sqrts_hat (expr%subevt_t)
-    expr%n_in = 2
-    expr%n_out = 2
-    expr%n_tot = 4
-    expr%subevt_filled = .true.
-
-    call expr%evaluate (passed, reweight, analysis_flag)
-    
-    write (u, "(A,L1)")      "Event has passed      = ", passed
-    write (u, "(A," // FMT_12 // ")")  "Reweighting factor    = ", reweight
-    write (u, "(A,L1)")      "Analysis flag         = ", analysis_flag
-    write (u, "(A)")
-    
-    call write_separator (u)
-    call expr%write (u)
-    call write_separator (u)
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
-    
-    call expr%final ()
-
-    call model_list%final ()
-    call syntax_model_file_final ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: subevt_expr_2"
-    
-  end subroutine subevt_expr_2
   
 
 end module subevt_expr

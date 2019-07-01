@@ -1,4 +1,4 @@
-(* $Id: omega_SYM.ml 4926 2013-12-04 12:35:06Z jr_reuter $
+(* $Id: omega_SYM.ml 6004 2014-07-09 15:46:54Z cweiss $
 
    Copyright (C) 1999-2014 by
 
@@ -25,9 +25,9 @@
 
 let rcs_file = RCS.parse "omega_SYM"
     ["Super Yang-Mills (incomplete, just for stress-testing Colorize.It())"]
-    { RCS.revision = "$Revision: 4926 $";
-      RCS.date = "$Date: 2013-12-04 13:35:06 +0100 (Wed, 04 Dec 2013) $";
-      RCS.author = "$Author: jr_reuter $";
+    { RCS.revision = "$Revision: 6004 $";
+      RCS.date = "$Date: 2014-07-09 17:46:54 +0200 (Wed, 09 Jul 2014) $";
+      RCS.author = "$Author: cweiss $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/omega/src/omega_SYM.ml $" }
 

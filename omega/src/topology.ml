@@ -1,4 +1,4 @@
-(* $Id: topology.ml 4926 2013-12-04 12:35:06Z jr_reuter $
+(* $Id: topology.ml 6222 2014-10-13 08:40:53Z ohl $
 
    Copyright (C) 1999-2014 by
 
@@ -23,9 +23,9 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 let rcs_file = RCS.parse "Topology" ["Topologies"]
-    { RCS.revision = "$Revision: 4926 $";
-      RCS.date = "$Date: 2013-12-04 13:35:06 +0100 (Wed, 04 Dec 2013) $";
-      RCS.author = "$Author: jr_reuter $";
+    { RCS.revision = "$Revision: 6222 $";
+      RCS.date = "$Date: 2014-10-13 10:40:53 +0200 (Mon, 13 Oct 2014) $";
+      RCS.author = "$Author: ohl $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/omega/src/topology.ml $" }
 
@@ -65,7 +65,7 @@ module Binary =
    for comparison in the future.
    \begin{table}
      \begin{center}
-       \begin{tabular}{r|l}
+       \begin{tabular}{ r | l }
          [n]& [partitions n] \\\hline
           4 & (1,1,2) \\
           5 & (1,2,2) \\
@@ -264,7 +264,7 @@ module Binary =
    \end{dubious}
    \begin{table}
      \begin{center}
-       \begin{tabular}{r|r|l}
+       \begin{tabular}{ r | r | l }
          $n$ & $(2n-5)!!$ & $\sum N(n_1,n_2,n_3)$ \\\hline
           4  &         3 & $3\cdot(1,1,2)$ \\
           5  &        15 & $15\cdot(1,2,2)$ \\
@@ -368,7 +368,7 @@ module Nary (B : Tuple.Bound) =
 
 (* \begin{table}
      \begin{center}
-       \begin{tabular}{r|r|l}
+       \begin{tabular}{ r | r | l }
          $n$ & $\sum$    & $\sum$ \\\hline
           4  &         4 & $1\cdot(1,1,1,1) + 3\cdot(1,1,2)$ \\
           5  &        25 & $10\cdot(1,1,1,2) + 15\cdot(1,2,2)$ \\
@@ -395,7 +395,7 @@ module Nary (B : Tuple.Bound) =
    \end{table}
    \begin{table}
      \begin{center}
-       \begin{tabular}{r|r|l}
+       \begin{tabular}{ r | r | l }
          $n$ & $\sum$    & $\sum$ \\\hline
           4  &         4 & $1\cdot(1,1,1,1) + 3\cdot(1,1,2)$ \\
           5  &        26 & $1\cdot(1,1,1,1,1) + 10\cdot(1,1,1,2) + 15\cdot(1,2,2)$ \\
@@ -775,7 +775,7 @@ i*)
    with $n = n_1 + n_2 + \cdots + n_d$ and
    \begin{equation}
      \tilde F(d_{\max},N_{d,n}) =
-       \frac{n!}{|\mathcal{S}(N_{d,n})|\sigma(n_d,n)}
+       \frac{n!}{ |\mathcal{S}(N_{d,n})| \sigma(n_d,n)}
        \prod_{i=1}^{d} \frac{F(d_{\max},n_i+1)}{n_i!}
    \end{equation}
    with~$|\mathcal{S}(N)|$ the size of the symmetric group of~$N$,

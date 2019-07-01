@@ -157,7 +157,7 @@ Optional Features:
   			  [[no]]
   --disable-noweb         disable the noweb programs, even if available [[no]]
   --disable-openmp	  do not use OpenMP
-  --enable-fc-quadruple   use quadruple precision in Fortran code [[no]]
+  --enable-fc-extended    use extended precision in Fortran code [[no]]
   --enable-fc-profiling   use profiling for the Fortran code [[no]]
   --enable-fc-impure      compile Omega libraries impure [[no]]
   --enable-install-all-caches

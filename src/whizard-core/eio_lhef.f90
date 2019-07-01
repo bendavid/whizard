@@ -1,4 +1,4 @@
-! WHIZARD 2.2.2 July 6 2014
+! WHIZARD 2.2.3 Nov 30 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,8 +6,10 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
+!     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     Christian Weiss <christian.weiss@desy.de>
+!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -29,16 +31,16 @@
 
 module eio_lhef
   
-  use kinds !NODEP!
-  use file_utils !NODEP!
-  use iso_varying_string, string_t => varying_string !NODEP!
-  use diagnostics !NODEP!
-  use os_interface
+  use kinds
+  use io_units
+  use iso_varying_string, string_t => varying_string
   use unit_tests
+  use diagnostics
+  use os_interface
 
   use xml
-  use lorentz !NODEP!
-  use models
+  use lorentz
+  use model_data
   use particles
   use beams
   use processes
@@ -47,6 +49,7 @@ module eio_lhef
   use eio_base
   use hep_common
   use hep_events
+  use models
 
   implicit none
   private
@@ -111,9 +114,8 @@ module eio_lhef
 
 contains
   
-  subroutine eio_lhef_set_parameters (eio, keep_beams, recover_beams, version, &
-       extension, &
-       write_sqme_ref, write_sqme_prc, write_sqme_alt)
+  subroutine eio_lhef_set_parameters (eio, keep_beams, recover_beams, &
+       version, extension, write_sqme_ref, write_sqme_prc, write_sqme_alt)
     class(eio_lhef_t), intent(inout) :: eio
     logical, intent(in), optional :: keep_beams
     logical, intent(in), optional :: recover_beams
@@ -148,7 +150,7 @@ contains
     class(eio_lhef_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u, i
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     write (u, "(1x,A)")  "LHEF event stream:"
     if (object%writing) then
        write (u, "(3x,A,A)")  "Writing to file   = ", char (object%filename)
@@ -217,8 +219,6 @@ contains
     eio%sample = sample
     if (present (extension)) then
        eio%extension = extension
-    else
-       eio%extension = "lhe"
     end if
     call eio%set_filename ()
     eio%unit = free_unit ()
@@ -259,7 +259,7 @@ contains
        allocate (eio%tag_generator)
        call eio%tag_generator%init ( &
             var_str ("generator"), &
-            [xml_attribute (var_str ("version"), var_str ("2.2.2"))], &
+            [xml_attribute (var_str ("version"), var_str ("2.2.3"))], &
             .true.)
        allocate (eio%tag_xsecinfo)
        call eio%tag_xsecinfo%init ( &
@@ -332,18 +332,17 @@ contains
     end select
   end subroutine eio_lhef_init_tags
   
-  subroutine eio_lhef_init_out (eio, sample, process_ptr, data, success)
+  subroutine eio_lhef_init_out &
+       (eio, sample, process_ptr, data, success, extension)
     class(eio_lhef_t), intent(inout) :: eio
     type(string_t), intent(in) :: sample
+    type(string_t), intent(in), optional :: extension
     type(process_ptr_t), dimension(:), intent(in) :: process_ptr
     type(event_sample_data_t), intent(in), optional :: data
     logical, intent(out), optional :: success
     integer :: u, i
-    if (.not. present (data)) &
-         call msg_bug ("LHEF initialization: missing data")
-    eio%sample = sample
     call eio%set_splitting (data)
-    call eio%common_init (sample, data)
+    call eio%common_init (sample, data, extension)
     write (msg_buffer, "(A,A,A)")  "Events: writing to LHEF file '", &
          char (eio%filename), "'"
     call msg_message ()
@@ -500,7 +499,7 @@ contains
     integer, intent(in) :: i_prc
     logical, intent(in), optional :: reading
     integer :: u
-    u = output_unit (eio%unit);  if (u < 0)  return
+    u = given_output_unit (eio%unit);  if (u < 0)  return
     if (eio%writing) then
        call hepeup_from_event (event, &
             process_index = eio%proc_num_id (i_prc), &
@@ -581,10 +580,10 @@ contains
     call event%select (1, 1, 1)
     call hepeup_to_event (event, eio%fallback_model, &
          recover_beams = eio%recover_beams)
-!    if (associated (event%process)) then
-!       pset => event%get_particle_set_ptr ()
-!       call particle_set_set_model (pset, event%process%get_model_ptr ())
-!    end if
+    ! if (associated (event%process)) then
+    !    pset => event%get_particle_set_ptr ()
+    !    call particle_set_set_model (pset, event%process%get_model_ptr ())
+    ! end if
     select case (eio%version)
     case ("1.0")
        call eio%tag_event%read_content (eio%cstream, s, closing = closing)
@@ -604,7 +603,7 @@ contains
   subroutine eio_lhef_write_header (eio)
     class(eio_lhef_t), intent(in) :: eio
     integer :: u
-    u = output_unit (eio%unit);  if (u < 0)  return
+    u = given_output_unit (eio%unit);  if (u < 0)  return
     call eio%tag_lhef%write (u);  write (u, *)
     call eio%tag_head%write (u);  write (u, *)
     select case (eio%version)
@@ -613,7 +612,7 @@ contains
        call eio%tag_gen_n%write (var_str ("WHIZARD"), u)
        write (u, *)
        write (u, "(2x)", advance = "no")
-       call eio%tag_gen_v%write (var_str ("2.2.2"), u)
+       call eio%tag_gen_v%write (var_str ("2.2.3"), u)
        write (u, *)
     end select
     call eio%tag_head%close (u);  write (u, *)
@@ -622,7 +621,7 @@ contains
   subroutine eio_lhef_write_footer (eio)
     class(eio_lhef_t), intent(in) :: eio
     integer :: u
-    u = output_unit (eio%unit);  if (u < 0)  return
+    u = given_output_unit (eio%unit);  if (u < 0)  return
     call eio%tag_lhef%close (u)
   end subroutine eio_lhef_write_footer
 
@@ -688,7 +687,7 @@ contains
     u = eio%unit
     call eio%tag_generator%write (u)
     write (u, "(A)", advance="no")  "WHIZARD"
-    call eiO%tag_generator%close (u);  write (u, *)
+    call eio%tag_generator%close (u);  write (u, *)
     call eio%tag_xsecinfo%write (u);  write (u, *)
   end subroutine eio_lhef_write_init_20
     
@@ -802,7 +801,7 @@ contains
     type(event_sample_data_t), intent(in) :: data
     real(default), parameter :: pb_per_fb = 1.e-3_default
     integer :: u, i
-    u = output_unit (eio%unit)
+    u = given_output_unit (eio%unit)
     call eio%tag_generator%write (u)
     write (u, "(A)", advance="no")  "WHIZARD"
     call eiO%tag_generator%close (u);  write (u, *)
@@ -1006,7 +1005,7 @@ contains
   
   subroutine eio_lhef_1 (u)
     integer, intent(in) :: u
-    type(model_list_t) :: model_list
+    type(model_data_t), target :: model
     type(event_t), allocatable, target :: event
     type(process_t), allocatable, target :: process
     type(process_ptr_t) :: process_ptr
@@ -1021,14 +1020,14 @@ contains
     write (u, "(A)")  "*   Purpose: generate an event and write weight to file"
     write (u, "(A)")
 
-    call syntax_model_file_init ()
+    call model%init_test ()
 
     write (u, "(A)")  "* Initialize test process"
  
     allocate (process)
     process_ptr%ptr => process
     allocate (process_instance)
-    call prepare_test_process (process, process_instance, model_list)
+    call prepare_test_process (process, process_instance, model)
     call process_instance%setup_event_data ()
  
     allocate (event)
@@ -1108,8 +1107,7 @@ contains
     deallocate (process_instance)
     deallocate (process)
     
-    call model_list%final ()
-    call syntax_model_file_final ()
+    call model%final ()
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: eio_lhef_1"
@@ -1118,7 +1116,7 @@ contains
   
   subroutine eio_lhef_2 (u)
     integer, intent(in) :: u
-    type(model_list_t) :: model_list
+    type(model_data_t), target :: model
     type(event_t), allocatable, target :: event
     type(process_t), allocatable, target :: process
     type(process_ptr_t) :: process_ptr
@@ -1133,14 +1131,14 @@ contains
     write (u, "(A)")  "*   Purpose: generate an event and write weight to file"
     write (u, "(A)")
 
-    call syntax_model_file_init ()
+    call model%init_test ()
 
     write (u, "(A)")  "* Initialize test process"
  
     allocate (process)
     process_ptr%ptr => process
     allocate (process_instance)
-    call prepare_test_process (process, process_instance, model_list)
+    call prepare_test_process (process, process_instance, model)
     call process_instance%setup_event_data ()
  
     allocate (event)
@@ -1204,8 +1202,7 @@ contains
     deallocate (process_instance)
     deallocate (process)
     
-    call model_list%final ()
-    call syntax_model_file_final ()
+    call model%final ()
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: eio_lhef_2"
@@ -1214,7 +1211,7 @@ contains
   
   subroutine eio_lhef_3 (u)
     integer, intent(in) :: u
-    type(model_list_t) :: model_list
+    type(model_data_t), target :: model
     type(event_t), allocatable, target :: event
     type(process_t), allocatable, target :: process
     type(process_ptr_t) :: process_ptr
@@ -1229,14 +1226,14 @@ contains
     write (u, "(A)")  "*   Purpose: generate an event and write weight to file"
     write (u, "(A)")
 
-    call syntax_model_file_init ()
+    call model%init_test ()
 
     write (u, "(A)")  "* Initialize test process"
  
     allocate (process)
     process_ptr%ptr => process
     allocate (process_instance)
-    call prepare_test_process (process, process_instance, model_list)
+    call prepare_test_process (process, process_instance, model)
     call process_instance%setup_event_data ()
  
     allocate (event)
@@ -1300,8 +1297,7 @@ contains
     deallocate (process_instance)
     deallocate (process)
     
-    call model_list%final ()
-    call syntax_model_file_final ()
+    call model%final ()
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: eio_lhef_3"
@@ -1310,7 +1306,7 @@ contains
   
   subroutine eio_lhef_4 (u)
     integer, intent(in) :: u
-    type(model_list_t) :: model_list
+    type(model_data_t), target :: model
     type(model_t), pointer :: fallback_model
     type(os_data_t) :: os_data
     type(event_t), allocatable, target :: event
@@ -1371,13 +1367,15 @@ contains
 
     call syntax_model_file_init ()
     call os_data_init (os_data)
-    call model_list%read_model (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"), &
-         os_data, fallback_model)
+    allocate (fallback_model)
+    call fallback_model%read (var_str ("SM_hadrons.mdl"), os_data)
+
+    call model%init_test ()
  
     allocate (process)
     process_ptr%ptr => process
     allocate (process_instance)
-    call prepare_test_process (process, process_instance, model_list)
+    call prepare_test_process (process, process_instance, model)
     call process_instance%setup_event_data ()
  
     allocate (event)
@@ -1398,7 +1396,6 @@ contains
     data%pdg_beam = 25
     data%energy_beam = 500
     data%proc_num_id = [42]
-    data%norm_mode = NORM_UNIT
     call data%write (u)
     write (u, *)
 
@@ -1452,7 +1449,9 @@ contains
     deallocate (process_instance)
     deallocate (process)
     
-    call model_list%final ()
+    call model%final ()
+    call fallback_model%final ()
+    deallocate (fallback_model)
     call syntax_model_file_final ()
 
     write (u, "(A)")
@@ -1462,7 +1461,7 @@ contains
   
   subroutine eio_lhef_5 (u)
     integer, intent(in) :: u
-    type(model_list_t) :: model_list
+    type(model_data_t), target :: model
     type(model_t), pointer :: fallback_model
     type(os_data_t) :: os_data
     type(event_t), allocatable, target :: event
@@ -1494,7 +1493,7 @@ contains
          &-1 -1 -1 -1 4 1'
     write (u_file, "(A)")  '  1.0000000000E-01  1.0000000000E-03 &
          & 0.0000000000E+00 42'
-    write (u_file, "(A)")  '<generator version="2.2.0">WHIZARD&
+    write (u_file, "(A)")  '<generator version="2.2.3">WHIZARD&
          &</generator>'
     write (u_file, "(A)")  '<xsecinfo neve="1" totxsec="1.0000000000E-01" />'
     write (u_file, "(A)")  '</init>'
@@ -1523,13 +1522,15 @@ contains
 
     call syntax_model_file_init ()
     call os_data_init (os_data)
-    call model_list%read_model (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"), &
-         os_data, fallback_model)
+    allocate (fallback_model)
+    call fallback_model%read (var_str ("SM_hadrons.mdl"), os_data)
  
+    call model%init_test ()
+
     allocate (process)
     process_ptr%ptr => process
     allocate (process_instance)
-    call prepare_test_process (process, process_instance, model_list)
+    call prepare_test_process (process, process_instance, model)
     call process_instance%setup_event_data ()
  
     allocate (event)
@@ -1603,7 +1604,9 @@ contains
     deallocate (process_instance)
     deallocate (process)
     
-    call model_list%final ()
+    call model%final ()
+    call fallback_model%final ()
+    deallocate (fallback_model)
     call syntax_model_file_final ()
 
     write (u, "(A)")
@@ -1613,7 +1616,7 @@ contains
   
   subroutine eio_lhef_6 (u)
     integer, intent(in) :: u
-    type(model_list_t) :: model_list
+    type(model_data_t), target :: model
     type(model_t), pointer :: fallback_model
     type(os_data_t) :: os_data
     type(event_t), allocatable, target :: event
@@ -1645,7 +1648,7 @@ contains
          &-1 -1 -1 -1 4 1'
     write (u_file, "(A)")  '  1.0000000000E-01  1.0000000000E-03 &
          & 0.0000000000E+00 42'
-    write (u_file, "(A)")  '<generator version="2.2.0">WHIZARD&
+    write (u_file, "(A)")  '<generator version="2.2.3">WHIZARD&
          &</generator>'
     write (u_file, "(A)")  '<xsecinfo neve="1" totxsec="1.0000000000E-01" />'
     write (u_file, "(A)")  '<weightinfo name="sqme_prc" />'
@@ -1675,13 +1678,15 @@ contains
 
     call syntax_model_file_init ()
     call os_data_init (os_data)
-    call model_list%read_model (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"), &
-         os_data, fallback_model)
+    allocate (fallback_model)
+    call fallback_model%read (var_str ("SM_hadrons.mdl"), os_data)
  
+    call model%init_test ()
+
     allocate (process)
     process_ptr%ptr => process
     allocate (process_instance)
-    call prepare_test_process (process, process_instance, model_list)
+    call prepare_test_process (process, process_instance, model)
     call process_instance%setup_event_data ()
  
     allocate (event)
@@ -1755,7 +1760,9 @@ contains
     deallocate (process_instance)
     deallocate (process)
     
-    call model_list%final ()
+    call model%final ()
+    call fallback_model%final ()
+    deallocate (fallback_model)
     call syntax_model_file_final ()
 
     write (u, "(A)")

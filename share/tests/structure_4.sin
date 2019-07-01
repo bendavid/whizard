@@ -22,7 +22,7 @@ scan factorization_scale = (240) { show (factorization_scale) }
 scan selection = (true) { show (selection) }
 scan reweight = (0.9) { show (reweight) }
 scan analysis = (true) { show (analysis) }
-scan model = ("QCD", QED) { show ($model_name) }
+scan model = ("QCD", QED) { show ($model_name)}
 library = "structure_4_lib1"
 scan library = ("structure_4_lib1")
 

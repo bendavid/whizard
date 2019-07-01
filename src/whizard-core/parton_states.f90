@@ -1,4 +1,4 @@
-! WHIZARD 2.2.2 July 6 2014
+! WHIZARD 2.2.3 Nov 30 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,8 +6,10 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
+!     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     Christian Weiss <christian.weiss@desy.de>
+!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -28,16 +30,16 @@
 ! to the source 'whizard.nw'
 module parton_states
 
-  use kinds, only: default !NODEP!
-  use iso_varying_string, string_t => varying_string !NODEP!
-  use file_utils !NODEP!
-  use diagnostics !NODEP!
-  use parser
-  use lorentz !NODEP!
+  use kinds, only: default
+  use iso_varying_string, string_t => varying_string
+  use io_units
+  use format_utils, only: write_separator
+  use diagnostics
+  use lorentz
   use subevents
   use variables
-  use expressions
-  use models
+  use expr_base
+  use model_data
   use flavors
   use helicities
   use colors
@@ -104,7 +106,11 @@ module parton_states
      procedure :: setup_connected_flows => connected_state_setup_connected_flows
      procedure :: setup_subevt => connected_state_setup_subevt
      procedure :: setup_var_list => connected_state_setup_var_list
-     procedure :: setup_expressions => connected_state_setup_expressions
+     procedure :: setup_cuts => connected_state_setup_cuts
+     procedure :: setup_scale => connected_state_setup_scale
+     procedure :: setup_fac_scale => connected_state_setup_fac_scale
+     procedure :: setup_ren_scale => connected_state_setup_ren_scale
+     procedure :: setup_weight => connected_state_setup_weight
      procedure :: reset_expressions => connected_state_reset_expressions
      procedure :: evaluate_expressions => connected_state_evaluate_expressions
      procedure :: get_beam_index => connected_state_get_beam_index
@@ -119,7 +125,7 @@ contains
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: testflag
     integer :: u
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     select type (state)
     class is (isolated_state_t)
        if (state%sf_chain_is_allocated) then
@@ -244,7 +250,7 @@ contains
        (state, core, model, qn_mask_in, col)
     class(isolated_state_t), intent(inout), target :: state
     class(prc_core_t), intent(in) :: core
-    type(model_t), intent(in), target :: model
+    class(model_data_t), intent(in), target :: model
     type(quantum_numbers_mask_t), dimension(:), intent(in) :: qn_mask_in
     integer, dimension(:), intent(in) :: col
     type(quantum_numbers_mask_t), dimension(:), allocatable :: qn_mask
@@ -285,7 +291,7 @@ contains
   subroutine isolated_state_setup_square_flows (state, core, model, qn_mask_in)
     class(isolated_state_t), intent(inout), target :: state
     class(prc_core_t), intent(in) :: core
-    type(model_t), intent(in), target :: model
+    class(model_data_t), intent(in), target :: model
     type(quantum_numbers_mask_t), dimension(:), intent(in) :: qn_mask_in
     type(quantum_numbers_mask_t), dimension(:), allocatable :: qn_mask
     type(flavor_t), dimension(:), allocatable :: flv
@@ -414,18 +420,35 @@ contains
     call state%expr%link_var_list (process_var_list)
   end subroutine connected_state_setup_var_list
   
-  subroutine connected_state_setup_expressions (state, &
-       pn_cuts, pn_scale, pn_fac_scale, pn_ren_scale, pn_weight)
+  subroutine connected_state_setup_cuts (state, ef_cuts)
     class(connected_state_t), intent(inout), target :: state
-    type(parse_node_t), intent(in), pointer :: pn_cuts
-    type(parse_node_t), intent(in), pointer :: pn_scale
-    type(parse_node_t), intent(in), pointer :: pn_fac_scale
-    type(parse_node_t), intent(in), pointer :: pn_ren_scale
-    type(parse_node_t), intent(in), pointer :: pn_weight
-    call state%expr%setup_selection (pn_cuts)
-    call state%expr%setup_scales (pn_scale, pn_fac_scale, pn_ren_scale)
-    call state%expr%setup_weight (pn_weight)
-  end subroutine connected_state_setup_expressions
+    class(expr_factory_t), intent(in) :: ef_cuts
+    call state%expr%setup_selection (ef_cuts)
+  end subroutine connected_state_setup_cuts
+    
+  subroutine connected_state_setup_scale (state, ef_scale)
+    class(connected_state_t), intent(inout), target :: state
+    class(expr_factory_t), intent(in) :: ef_scale
+    call state%expr%setup_scale (ef_scale)
+  end subroutine connected_state_setup_scale
+    
+  subroutine connected_state_setup_fac_scale (state, ef_fac_scale)
+    class(connected_state_t), intent(inout), target :: state
+    class(expr_factory_t), intent(in) :: ef_fac_scale
+    call state%expr%setup_fac_scale (ef_fac_scale)
+  end subroutine connected_state_setup_fac_scale
+    
+  subroutine connected_state_setup_ren_scale (state, ef_ren_scale)
+    class(connected_state_t), intent(inout), target :: state
+    class(expr_factory_t), intent(in) :: ef_ren_scale
+    call state%expr%setup_ren_scale (ef_ren_scale)
+  end subroutine connected_state_setup_ren_scale
+    
+  subroutine connected_state_setup_weight (state, ef_weight)
+    class(connected_state_t), intent(inout), target :: state
+    class(expr_factory_t), intent(in) :: ef_weight
+    call state%expr%setup_weight (ef_weight)
+  end subroutine connected_state_setup_weight
     
   subroutine connected_state_reset_expressions (state)
     class(connected_state_t), intent(inout) :: state

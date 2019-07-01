@@ -2,7 +2,7 @@
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Implementation of [[circe2]]}
 <<Version>>=
-'Version 2.2.2'
+'Version 2.2.3'
 @ 
 <<[[implicit none]]>>=
 implicit none
@@ -392,9 +392,9 @@ end do
 <<$[[x]]\in[ [[x(ib-1)]], [[x(ib)]] ]$>>=
 call rng%generate (v(1))
 call rng%generate (v(2))
-forall (d = 1:2)
+do d = 1, 2
   x(d) = ch%d(d)%x(ib(d))*v(d) + ch%d(d)%x(ib(d)-1)*(1-v(d))
-end forall
+end do
 @ The NAG compiler is picky and doesn't like $(-0)^\alpha$ at all.
 <<$y\leftarrow(a(x-\xi))^\alpha/b + \eta$>>=
 z = d%a(b) * (x - d%xi(b))
@@ -849,11 +849,11 @@ An alternative would be to introduce sentinels [[alpha(1,0,:)]],
 [[xi(1,0,:)]], etc.
 \end{dubious}
 <<Calculate [[y]]>>=
-forall (d = 1:2)
-   forall (i = 0:ubound (ch%d(d)%x, dim=1))
+do d = 1, 2
+   do i = 0, ubound (ch%d(d)%x, dim=1)
       ch%d(d)%y(i) = circe2_map (ch%d(d), ch%d(d)%x(i), max (i, 1))
-   end forall
-end forall
+   end do
+end do
 @ cf.~(\ref{eq:jacobian-Delta_x-Delta_y})
 <<Load weights [[wgt]] and [[val]]>>=
 read (lun, *)

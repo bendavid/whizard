@@ -79,8 +79,10 @@ $(DISP).lo: $(DISP).f90 $(LIBRARIES)
 # Executable
 $(EXE): $(DISP).lo $(LIBRARIES)
 	$(LINK) $(FC) -static-libtool-libs $(FCFLAGS) \
-	   $(LDWHIZARD) $(LDFLAGS) $(LDFLAGS_STATIC) \
-	     -o $(EXE) $^ $(LDFLAGS_HEPMC) $(LDFLAGS_HOPPET)
+	   $(LDWHIZARD) $(LDFLAGS) \
+	   -o $(EXE) $^ \
+	   $(LDFLAGS_HEPMC) $(LDFLAGS_HOPPET) \
+	   $(LDFLAGS_STATIC)
 
 # Main targets
 link: compile $(EXE)

@@ -1,4 +1,4 @@
-! WHIZARD 2.2.2 July 6 2014
+! WHIZARD 2.2.3 Nov 30 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,8 +6,10 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
+!     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     Christian Weiss <christian.weiss@desy.de>
+!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -29,23 +31,19 @@
 
 module events
   
-  use kinds, only: default !NODEP!
-  use iso_varying_string, string_t => varying_string !NODEP!
-  use file_utils !NODEP!
-  use limits, only: FMT_12 !NODEP!
-  use diagnostics !NODEP!
+  use kinds, only: default
+  use iso_varying_string, string_t => varying_string
+  use io_units
+  use string_utils, only: lower_case
+  use format_utils, only: write_separator
+  use format_defs, only: FMT_12
   use unit_tests
+  use diagnostics
   use os_interface
-  
-  use ifiles
-  use lexers
-  use parser
-
   use subevents
   use variables
-  use expressions
-  use models
-
+  use expr_base
+  use model_data
   use state_matrices
   use particles
   use interactions
@@ -83,9 +81,9 @@ module events
      real(default) :: sigma = 1
      integer :: n = 1
      real(default) :: safety_factor = 1
-     type(parse_node_t), pointer :: pn_selection => null ()
-     type(parse_node_t), pointer :: pn_reweight => null ()
-     type(parse_node_t), pointer :: pn_analysis => null ()
+     class(expr_factory_t), allocatable :: ef_selection
+     class(expr_factory_t), allocatable :: ef_reweight
+     class(expr_factory_t), allocatable :: ef_analysis
    contains
      procedure :: write => event_config_write
   end type event_config_t
@@ -177,7 +175,7 @@ contains
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: show_expressions
     integer :: u
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     write (u, "(3x,A,L1)")  "Unweighted         = ", object%unweighted
     write (u, "(3x,A,A)")   "Normalization      = ", &
          char (event_normalization_string (object%norm_mode))
@@ -197,20 +195,20 @@ contains
     end if
     if (present (show_expressions)) then
        if (show_expressions) then
-          if (associated (object%pn_selection)) then
+          if (allocated (object%ef_selection)) then
              call write_separator (u)
              write (u, "(3x,A)") "Event selection expression:"
-             call object%pn_selection%write (u)
+             call object%ef_selection%write (u)
           end if
-          if (associated (object%pn_reweight)) then
+          if (allocated (object%ef_reweight)) then
              call write_separator (u)
              write (u, "(3x,A)") "Event reweighting expression:"
-             call object%pn_reweight%write (u)
+             call object%ef_reweight%write (u)
           end if
-          if (associated (object%pn_analysis)) then
+          if (allocated (object%ef_analysis)) then
              call write_separator (u)
              write (u, "(3x,A)") "Analysis expression:"
-             call object%pn_analysis%write (u)
+             call object%ef_analysis%write (u)
           end if
        end if
     end if
@@ -304,12 +302,12 @@ contains
     logical :: prc, trans, dec, verb
     class(evt_t), pointer :: evt
     integer :: u, i
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     prc = .true.;  if (present (show_process))  prc = show_process
     trans = .true.;  if (present (show_transforms))  trans = show_transforms
     dec = .true.;  if (present (show_decay))  dec = show_decay
     verb = .false.;  if (present (verbose))  verb = verbose
-    call write_separator_double (u)
+    call write_separator (u, 2)
     if (object%is_complete) then
        write (u, "(1x,A)")  "Event"
     else
@@ -374,20 +372,20 @@ contains
              type is (evt_shower_t)
                 call evt%write (u)
              end select
-             call write_separator_double (u)
+             call write_separator (u, 2)
              evt => evt%next
           end do
        else
-          call write_separator_double (u)
+          call write_separator (u, 2)
        end if
        if (object%expr%subevt_filled) then
           call object%expr%write (u)
-          call write_separator_double (u)
+          call write_separator (u, 2)
        end if
     else
-       call write_separator_double (u)
+       call write_separator (u, 2)
        write (u, "(1x,A)")  "Process instance: [undefined]"
-       call write_separator_double (u)
+       call write_separator (u, 2)
     end if
   end subroutine event_write
 
@@ -452,7 +450,7 @@ contains
   subroutine event_connect (event, process_instance, model, process_stack)
     class(event_t), intent(inout), target :: event
     type(process_instance_t), intent(in), target :: process_instance
-    type(model_t), intent(in), target :: model
+    class(model_data_t), intent(in), target :: model
     type(process_stack_t), intent(in), optional :: process_stack
     type(string_t) :: id
     integer :: num_id
@@ -473,29 +471,29 @@ contains
     end do
   end subroutine event_connect
 
-  subroutine event_set_selection (event, pn_selection)
+  subroutine event_set_selection (event, ef_selection)
     class(event_t), intent(inout) :: event
-    type(parse_node_t), intent(in), pointer :: pn_selection
-    event%config%pn_selection => pn_selection
+    class(expr_factory_t), intent(in) :: ef_selection
+    allocate (event%config%ef_selection, source = ef_selection)
   end subroutine event_set_selection
 
-  subroutine event_set_reweight (event, pn_reweight)
+  subroutine event_set_reweight (event, ef_reweight)
     class(event_t), intent(inout) :: event
-    type(parse_node_t), intent(in), pointer :: pn_reweight
-    event%config%pn_reweight => pn_reweight
+    class(expr_factory_t), intent(in) :: ef_reweight
+    allocate (event%config%ef_reweight, source = ef_reweight)
   end subroutine event_set_reweight
 
-  subroutine event_set_analysis (event, pn_analysis)
+  subroutine event_set_analysis (event, ef_analysis)
     class(event_t), intent(inout) :: event
-    type(parse_node_t), intent(in), pointer :: pn_analysis
-    event%config%pn_analysis => pn_analysis
+    class(expr_factory_t), intent(in) :: ef_analysis
+    allocate (event%config%ef_analysis, source = ef_analysis)
   end subroutine event_set_analysis
   
   subroutine event_setup_expressions (event)
     class(event_t), intent(inout), target :: event
-    call event%expr%setup_selection (event%config%pn_selection)
-    call event%expr%setup_analysis (event%config%pn_analysis)
-    call event%expr%setup_reweight (event%config%pn_reweight)
+    call event%expr%setup_selection (event%config%ef_selection)
+    call event%expr%setup_analysis (event%config%ef_analysis)
+    call event%expr%setup_reweight (event%config%ef_reweight)
   end subroutine event_setup_expressions
   
   subroutine event_evaluate_transforms (event, r)
@@ -913,9 +911,6 @@ contains
     call test (events_2, "events_2", &
          "generate event", &
          u, results)
-    call test (events_3, "events_3", &
-         "expression evaluation", &
-         u, results)
     call test (events_4, "events_4", &
          "recover event", &
          u, results)
@@ -950,19 +945,19 @@ contains
     type(event_t), allocatable, target :: event
     type(process_t), allocatable, target :: process
     type(process_instance_t), allocatable, target :: process_instance
-    type(model_list_t) :: model_list
+    type(model_data_t), target :: model
 
     write (u, "(A)")  "* Test output: events_2"
     write (u, "(A)")  "*   Purpose: generate and display an event"
     write (u, "(A)")
 
-    call syntax_model_file_init ()
+    call model%init_test ()
 
     write (u, "(A)")  "* Generate test process event"
 
     allocate (process)
     allocate (process_instance)
-    call prepare_test_process (process, process_instance, model_list)
+    call prepare_test_process (process, process_instance, model)
     call process_instance%setup_event_data ()
 
     write (u, "(A)")
@@ -995,116 +990,14 @@ contains
     deallocate (process_instance)
     deallocate (process)
     
-    call model_list%final ()
-    call syntax_model_file_final ()
+!    call model_list%final ()
+!    call syntax_model_file_final ()
+    call model%final ()
     
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: events_2"
     
   end subroutine events_2
-  
-  subroutine events_3 (u)
-    integer, intent(in) :: u
-    type(string_t) :: expr_text
-    type(ifile_t) :: ifile
-    type(stream_t) :: stream
-    type(parse_tree_t) :: pt_selection, pt_reweight, pt_analysis
-    type(event_t), allocatable, target :: event
-    type(process_t), allocatable, target :: process
-    type(process_instance_t), allocatable, target :: process_instance
-    type(model_list_t) :: model_list
-
-    write (u, "(A)")  "* Test output: events_3"
-    write (u, "(A)")  "*   Purpose: generate an event and evaluate expressions"
-    write (u, "(A)")
-
-    call syntax_model_file_init ()
-    call syntax_pexpr_init ()
-
-    write (u, "(A)")  "* Expression texts"
-    write (u, "(A)")
-
-    expr_text = "all Pt > 100 [s]"
-    write (u, "(A,A)")  "selection = ", char (expr_text)
-    call ifile_clear (ifile)
-    call ifile_append (ifile, expr_text)
-    call stream_init (stream, ifile)
-    call parse_tree_init_lexpr (pt_selection, stream, .true.)
-    call stream_final (stream)
-
-    expr_text = "1 + sqrts_hat / sqrts"
-    write (u, "(A,A)")  "reweight = ", char (expr_text)
-    call ifile_clear (ifile)
-    call ifile_append (ifile, expr_text)
-    call stream_init (stream, ifile)
-    call parse_tree_init_expr (pt_reweight, stream, .true.)
-    call stream_final (stream)
-    
-    expr_text = "true"
-    write (u, "(A,A)")  "analysis = ", char (expr_text)
-    call ifile_clear (ifile)
-    call ifile_append (ifile, expr_text)
-    call stream_init (stream, ifile)
-    call parse_tree_init_lexpr (pt_analysis, stream, .true.)
-    call stream_final (stream)
-
-    call ifile_final (ifile)
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Initialize test process event"
-
-    allocate (process)
-    allocate (process_instance)
-    call prepare_test_process (process, process_instance, model_list)
-    call process%set_var_list &
-         (model_get_var_list_ptr (process%get_model_ptr ()))
-    call process_instance%setup_event_data ()
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Initialize event object and set expressions"
-
-    allocate (event)
-    call event%basic_init ()
-
-    call event%set_selection (parse_tree_get_root_ptr (pt_selection))
-    call event%set_reweight (parse_tree_get_root_ptr (pt_reweight))
-    call event%set_analysis (parse_tree_get_root_ptr (pt_analysis))
-    
-    call event%connect (process_instance, process%get_model_ptr ())
-    call var_list_append_real &
-         (event%expr%var_list, var_str ("tolerance"), 0._default)
-    call event%setup_expressions ()
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Generate test process event"
-
-    call process%generate_weighted_event (process_instance, 1)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Fill event object and evaluate expressions"
-    write (u, "(A)")
-
-    call event%generate (1, [0.4_default, 0.4_default])
-    call event%evaluate_expressions ()
-    call event%write (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
-
-    call event%final ()
-    deallocate (event)
-
-    call cleanup_test_process (process, process_instance)
-    deallocate (process_instance)
-    deallocate (process)
-    
-    call model_list%final ()
-    call syntax_model_file_final ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: events_3"
-    
-  end subroutine events_3
   
   subroutine events_4 (u)
     integer, intent(in) :: u
@@ -1112,20 +1005,20 @@ contains
     type(process_t), allocatable, target :: process
     type(process_instance_t), allocatable, target :: process_instance
     type(particle_set_t) :: particle_set
-    type(model_list_t) :: model_list
+    type(model_data_t), target :: model
 
     write (u, "(A)")  "* Test output: events_4"
     write (u, "(A)")  "*   Purpose: generate and recover an event"
     write (u, "(A)")
 
-    call syntax_model_file_init ()
+    call model%init_test ()
 
     write (u, "(A)")  "* Generate test process event and save particle set"
     write (u, "(A)")
 
     allocate (process)
     allocate (process_instance)
-    call prepare_test_process (process, process_instance, model_list)
+    call prepare_test_process (process, process_instance, model)
     call process_instance%setup_event_data ()
 
     allocate (event)
@@ -1151,7 +1044,7 @@ contains
     
     allocate (process)
     allocate (process_instance)
-    call prepare_test_process (process, process_instance, model_list)
+    call prepare_test_process (process, process_instance, model)
     call process_instance%setup_event_data ()
 
     allocate (event)
@@ -1193,8 +1086,9 @@ contains
     deallocate (process_instance)
     deallocate (process)
     
-    call model_list%final ()
-    call syntax_model_file_final ()
+!    call model_list%final ()
+!    call syntax_model_file_final ()
+    call model%final ()
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: events_4"
@@ -1208,20 +1102,20 @@ contains
     type(process_instance_t), allocatable, target :: process_instance
     type(particle_set_t) :: particle_set
     real(default) :: sqme, weight
-    type(model_list_t) :: model_list
+    type(model_data_t), target :: model
 
     write (u, "(A)")  "* Test output: events_5"
     write (u, "(A)")  "*   Purpose: generate and recover an event"
     write (u, "(A)")
 
-    call syntax_model_file_init ()
+    call model%init_test ()
 
     write (u, "(A)")  "* Generate test process event and save particle set"
     write (u, "(A)")
 
     allocate (process)
     allocate (process_instance)
-    call prepare_test_process (process, process_instance, model_list)
+    call prepare_test_process (process, process_instance, model)
     call process_instance%setup_event_data ()
 
     allocate (event)
@@ -1249,7 +1143,7 @@ contains
     
     allocate (process)
     allocate (process_instance)
-    call prepare_test_process (process, process_instance, model_list)
+    call prepare_test_process (process, process_instance, model)
     call process_instance%setup_event_data ()
 
     allocate (event)
@@ -1283,8 +1177,9 @@ contains
     deallocate (process_instance)
     deallocate (process)
     
-    call model_list%final ()
-    call syntax_model_file_final ()
+!    call model_list%final ()
+!    call syntax_model_file_final ()
+    call model%final ()
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: events_5"
@@ -1294,8 +1189,7 @@ contains
   subroutine events_6 (u)
     integer, intent(in) :: u
     type(os_data_t) :: os_data
-    type(model_list_t) :: model_list
-    type(model_t), pointer :: model
+    class(model_data_t), pointer :: model
     type(string_t) :: prefix, procname1, procname2
     type(process_library_t), target :: lib
     type(process_stack_t) :: process_stack
@@ -1311,21 +1205,21 @@ contains
     write (u, "(A)")  "* Generate test process and decay"
     write (u, "(A)")
 
-    call syntax_model_file_init ()
     call os_data_init (os_data)
 
     prefix = "events_6"
     procname1 = prefix // "_p"
     procname2 = prefix // "_d"
     call prepare_testbed &
-         (lib, process_stack, model_list, model, prefix, os_data, &
+         (lib, process_stack, prefix, os_data, &
          scattering=.true., decay=.true.)
 
     write (u, "(A)")  "* Initialize decay process"
 
-    call model_set_unstable (model, 25, [procname2])
-
     process => process_stack%get_process_ptr (procname1)
+    model => process%get_model_ptr ()
+    call model%set_unstable (25, [procname2])
+
     allocate (process_instance)
     call process_instance%init (process)
     call process_instance%setup_event_data ()
@@ -1367,9 +1261,6 @@ contains
 
     call process_stack%final ()
     
-    call model_list%final ()
-    call syntax_model_file_final ()
-
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: events_6"
     
@@ -1378,8 +1269,7 @@ contains
   subroutine events_7 (u)
     integer, intent(in) :: u
     type(os_data_t) :: os_data
-    type(model_list_t) :: model_list
-    type(model_t), pointer :: model
+    class(model_data_t), pointer :: model
     type(string_t) :: prefix, procname2
     type(process_library_t), target :: lib
     type(process_stack_t) :: process_stack
@@ -1393,21 +1283,21 @@ contains
     write (u, "(A)")  "* Prepare test process"
     write (u, "(A)")
 
-    call syntax_model_file_init ()
     call os_data_init (os_data)
 
     prefix = "events_7"
     procname2 = prefix // "_d"
     call prepare_testbed &
-         (lib, process_stack, model_list, model, prefix, os_data, &
+         (lib, process_stack, prefix, os_data, &
          scattering=.false., decay=.true.)
 
     write (u, "(A)")  "* Generate decay event, default options"
     write (u, "(A)")
 
-    call model_set_unstable (model, 25, [procname2])
-
     process => process_stack%get_process_ptr (procname2)
+    model => process%get_model_ptr ()
+    call model%set_unstable (25, [procname2])
+
     allocate (process_instance)
     call process_instance%init (process)
     call process_instance%setup_event_data (model)
@@ -1423,9 +1313,9 @@ contains
     write (u, "(A)")  "* Generate decay event, helicity-diagonal decay"
     write (u, "(A)")
 
-    call model_set_unstable (model, 25, [procname2], diagonal = .true.)
-
     process => process_stack%get_process_ptr (procname2)
+    model => process%get_model_ptr ()
+    call model%set_unstable (25, [procname2], diagonal = .true.)
 
     allocate (process_instance)
     call process_instance%init (process)
@@ -1443,11 +1333,11 @@ contains
          &polarized final state"
     write (u, "(A)")
 
-    call model_set_unstable (model, 25, [procname2], isotropic = .true.)
-    call model_set_polarized (model, 6)
-    call model_set_polarized (model, -6)
-
     process => process_stack%get_process_ptr (procname2)
+    model => process%get_model_ptr ()
+    call model%set_unstable (25, [procname2], isotropic = .true.)
+    call model%set_polarized (6)
+    call model%set_polarized (-6)
 
     allocate (process_instance)
     call process_instance%init (process)
@@ -1465,9 +1355,6 @@ contains
     
     call process_stack%final ()
     
-    call model_list%final ()
-    call syntax_model_file_final ()
-
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: events_7"
     

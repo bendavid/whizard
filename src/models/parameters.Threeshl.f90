@@ -1,4 +1,4 @@
-! $Id: parameters.Threeshl.f90 4926 2013-12-04 12:35:06Z jr_reuter $
+! $Id: parameters.Threeshl.f90 6124 2014-09-16 09:51:26Z kilian $
 !
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -26,7 +26,7 @@ module parameters_threeshl
 use threeshl
 use tglue
 use kinds, only:default
-use file_utils, only: free_unit
+use io_units, only: free_unit
 implicit none
 public
 

@@ -12,7 +12,7 @@ seed = 0
 | Process library 'mssmtest_lib': linking
 | Process library 'mssmtest_lib': loading
 | Process library 'mssmtest_lib': ... success.
-MSSM.me =  0.000000000000E+00
+MSSM.me =>  0.000000000000E+00
 sqrts =  1.000000000000E+03
 openmp_num_threads = 1
 | RNG: Initializing TAO random-number generator

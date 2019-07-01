@@ -1,3 +1,32 @@
+!$Id: lhapdf.f90 6133 2014-09-17 14:42:33Z kilian $
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+! Copyright (C) 1999-2014 by 
+!     Wolfgang Kilian <kilian@physik.uni-siegen.de>
+!     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
+!     Juergen Reuter <juergen.reuter@desy.de>
+!     with contributions from
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
+!     Fabian Bach <fabian.bach@desy.de>
+!     Christian Speckner <cnspeckn@googlemail.com>
+!
+! WHIZARD is free software; you can redistribute it and/or modify it
+! under the terms of the GNU General Public License as published by 
+! the Free Software Foundation; either version 2, or (at your option)
+! any later version.
+!
+! WHIZARD is distributed in the hope that it will be useful, but
+! WITHOUT ANY WARRANTY; without even the implied warranty of
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! GNU General Public License for more details.
+!
+! You should have received a copy of the GNU General Public License
+! along with this program; if not, write to the Free Software
+! Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 module lhapdf
 
   use, intrinsic :: iso_c_binding
@@ -26,6 +55,7 @@ module lhapdf
      procedure :: get_qmass => lhapdf_get_qmass
      procedure :: num_pdfm => lhapdf_num_pdfm
      procedure :: alphas_pdf => lhapdf_alphas_pdf
+     procedure :: final => lhapdf_final
   end type lhapdf_pdf_t
 
   ! Interface for generic operators
@@ -147,7 +177,7 @@ contains
     class(lhapdf_pdf_t), intent(out) :: pdf
     character(*), intent(in) :: setname
     integer, intent(in) :: imem
-    character(len=1, kind=c_char), dimension(len(setname)) :: pdf_setname
+    character(len=1, kind=c_char), dimension(len(setname)+1) :: pdf_setname
     integer(c_int) :: pdf_imem
     integer :: i, strlen
     strlen = len(setname)
@@ -256,4 +286,9 @@ contains
     as = lhapdf_alphaspdf (pdf%cptr, c_q)
   end function lhapdf_alphas_pdf
 
+  subroutine lhapdf_final (pdf)
+    class(lhapdf_pdf_t), intent(inout) :: pdf
+    call lhapdf_pdf_delete (pdf%cptr)
+  end subroutine lhapdf_final
+  
 end module lhapdf

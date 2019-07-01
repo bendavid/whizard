@@ -1,7 +1,7 @@
 ?openmp_logging = false
 ?vis_history = false
 ?integration_timer = false
-SM.me =  0.000000000000E+00
+SM.me =>  0.000000000000E+00
 | Process library 'smtest_9_lib': recorded process 'smtest_9_res'
 | Process library 'smtest_9_lib': recorded process 'smtest_9_pro'
 | Process library 'smtest_9_lib': recorded process 'smtest_9_dec'
@@ -10,7 +10,7 @@ sqrts =  1.000000000000E+03
 ?phs_keep_nonresonant = false
 ?phs_s_mapping = true
 openmp_num_threads = 1
-SM.wW =  2.049000000000E-02
+SM.wW =>  2.049000000000E-02
 seed = 1
 | Integrate: current process library needs compilation
 | Process library 'smtest_9_lib': compiling ...

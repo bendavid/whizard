@@ -1,4 +1,4 @@
-! WHIZARD 2.2.2 July 6 2014
+! WHIZARD 2.2.3 Nov 30 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,8 +6,10 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
+!     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     Christian Weiss <christian.weiss@desy.de>
+!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -29,12 +31,13 @@
 
 module rt_data
 
-  use kinds, only: default !NODEP!
-  use iso_varying_string, string_t => varying_string !NODEP!
-  use file_utils !NODEP!
-  use system_dependencies !NODEP!
-  use diagnostics !NODEP!
+  use kinds, only: default
+  use iso_varying_string, string_t => varying_string
+  use io_units
+  use format_utils, only: write_separator
   use unit_tests
+  use system_dependencies
+  use diagnostics
   use pdf_builtin !NODEP!
   use sf_lhapdf !NODEP!
   use os_interface
@@ -44,8 +47,10 @@ module rt_data
   use models
   use flavors
   use jets
+  use subevents
+  use pdg_arrays
   use variables
-  use expressions
+  use eval_trees
   use polarizations
   use beams
   use process_libraries
@@ -78,43 +83,20 @@ module rt_data
      procedure :: show => rt_parse_nodes_show
   end type rt_parse_nodes_t
      
-  type :: rt_particle_entry_t
-     integer :: pdg = 0
-     logical :: stable = .true.
-     logical :: isotropic = .false.
-     logical :: diagonal = .false.
-     logical :: polarized = .false.
-     type(rt_particle_entry_t), pointer :: next => null ()
-  end type rt_particle_entry_t
-  
-  type :: rt_particle_stack_t
-     type(model_t), pointer :: model => null ()
-     type(rt_particle_entry_t), pointer :: first => null ()
-   contains
-     procedure :: final => rt_particle_stack_final
-     procedure :: write => rt_particle_stack_write
-     procedure :: init => rt_particle_stack_init
-     procedure :: reset => rt_particle_stack_reset
-     procedure :: push => rt_particle_stack_push
-     procedure :: is_empty => rt_particle_stack_is_empty
-     procedure :: contains => rt_particle_stack_contains
-     procedure :: restore_model => rt_particle_stack_restore_model
-  end type rt_particle_stack_t
-  
   type :: rt_data_t
      type(lexer_t), pointer :: lexer => null ()
+     type(rt_data_t), pointer :: context => null ()
      type(var_list_t) :: var_list
      type(iterations_list_t) :: it_list
      type(os_data_t) :: os_data
      type(model_list_t) :: model_list
      type(model_t), pointer :: model => null ()
+     logical :: model_is_copy = .false.
+     type(model_t), pointer :: preload_model => null ()
      type(model_t), pointer :: fallback_model => null ()
-     type(rt_particle_stack_t) :: particle_stack
      type(prclib_stack_t) :: prclib_stack
      type(process_library_t), pointer :: prclib => null ()
      type(beam_structure_t) :: beam_structure
-     type(pdf_builtin_status_t) :: pdf_builtin_status
-     type(lhapdf_status_t) :: lhapdf_status
      type(rt_parse_nodes_t) :: pn
      type(process_stack_t) :: process_stack
      type(string_t), dimension(:), allocatable :: sample_fmt
@@ -122,6 +104,8 @@ module rt_data
      logical :: quit = .false.
      integer :: quit_code = 0
      type(string_t) :: logfile 
+     logical :: nlo_calculation = .false.
+     logical, dimension(3) :: active_nlo_components
    contains
      procedure :: write => rt_data_write
      procedure :: write_vars => rt_data_write_vars
@@ -133,23 +117,53 @@ module rt_data
      procedure :: clear_beams => rt_data_clear_beams
      procedure :: global_init => rt_data_global_init
      procedure :: local_init => rt_data_local_init
-     procedure :: copy_globals => rt_data_copy_globals
      procedure :: init_pointer_variables => rt_data_init_pointer_variables
-     procedure :: link => rt_data_link
-     procedure :: restore => rt_data_restore
+     procedure :: activate => rt_data_activate
+     procedure :: deactivate => rt_data_deactivate
+     procedure :: copy_globals => rt_data_copy_globals
      procedure :: restore_globals => rt_data_restore_globals
      procedure :: final => rt_data_global_final
      procedure :: local_final => rt_data_local_final
-     procedure :: init_fallback_model => rt_data_init_fallback_model
      procedure :: read_model => rt_data_read_model
+     procedure :: init_fallback_model => rt_data_init_fallback_model
      procedure :: select_model => rt_data_select_model
+     procedure :: unselect_model => rt_data_unselect_model
+     procedure :: ensure_model_copy => rt_data_ensure_model_copy
+   !   procedure :: delete_model_copy => rt_data_delete_model_copy
+     procedure :: model_set_real => rt_data_model_set_real
      procedure :: modify_particle => rt_data_modify_particle
+     procedure :: get_var_list_ptr => rt_data_get_var_list_ptr
+     procedure :: append_log => rt_data_append_log
+     procedure :: append_int => rt_data_append_int
+     procedure :: append_real => rt_data_append_real
+     procedure :: append_cmplx => rt_data_append_cmplx
+     procedure :: append_subevt => rt_data_append_subevt
+     procedure :: append_pdg_array => rt_data_append_pdg_array
+     procedure :: append_string => rt_data_append_string
+     procedure :: import_values => rt_data_import_values
+     procedure :: unset_values => rt_data_unset_values
+     procedure :: set_log => rt_data_set_log
+     procedure :: set_int => rt_data_set_int
+     procedure :: set_real => rt_data_set_real
+     procedure :: set_cmplx => rt_data_set_cmplx
+     procedure :: set_subevt => rt_data_set_subevt
+     procedure :: set_pdg_array => rt_data_set_pdg_array
+     procedure :: set_string => rt_data_set_string
+     procedure :: get_lval => rt_data_get_lval
+     procedure :: get_ival => rt_data_get_ival
+     procedure :: get_rval => rt_data_get_rval
+     procedure :: get_cval => rt_data_get_cval
+     procedure :: get_pval => rt_data_get_pval
+     procedure :: get_aval => rt_data_get_aval
+     procedure :: get_sval => rt_data_get_sval
      procedure :: add_prclib => rt_data_add_prclib
      procedure :: update_prclib => rt_data_update_prclib
      procedure :: get_helicity_selection => rt_data_get_helicity_selection
      procedure :: show_beams => rt_data_show_beams
      procedure :: get_sqrts => rt_data_get_sqrts
      procedure :: pacify => rt_data_pacify
+     procedure :: change_to_gosam => rt_data_change_to_gosam
+     procedure :: change_to_omega => rt_data_change_to_omega
      procedure :: fix_system_dependencies => rt_data_fix_system_dependencies
   end type rt_data_t
 
@@ -183,7 +197,7 @@ contains
     class(rt_parse_nodes_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u, i
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     call wrt ("Cuts", object%cuts_lexpr)
     call write_separator (u)
     call wrt ("Scale", object%scale_expr)
@@ -193,14 +207,14 @@ contains
     call wrt ("Renormalization scale", object%ren_scale_expr)
     call write_separator (u)
     call wrt ("Weight", object%weight_expr)
-    call write_separator_double (u)
+    call write_separator (u, 2)
     call wrt ("Event selection", object%selection_lexpr)
     call write_separator (u)
     call wrt ("Event reweighting factor", object%reweight_expr)
     call write_separator (u)
     call wrt ("Event analysis", object%analysis_lexpr)
     if (allocated (object%alt_setup)) then
-       call write_separator_double (u)
+       call write_separator (u, 2)
        write (u, "(1x,A,':')")  "Alternative setups"
        do i = 1, size (object%alt_setup)
           call write_separator (u)
@@ -227,7 +241,7 @@ contains
     integer, intent(in), optional :: unit
     type(parse_node_t), pointer :: pn
     integer :: u
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     select case (char (name))
     case ("cuts")
        pn => rt_pn%cuts_lexpr
@@ -254,163 +268,42 @@ contains
     end if
   end subroutine rt_parse_nodes_show
   
-  subroutine rt_particle_stack_final (object)
-    class(rt_particle_stack_t), intent(inout) :: object
-    type(rt_particle_entry_t), pointer :: entry
-    do while (associated (object%first))
-       entry => object%first
-       object%first => entry%next
-       deallocate (entry)
-    end do
-    object%model => null ()
-  end subroutine rt_particle_stack_final
-
-  subroutine rt_particle_stack_write (object, unit)
-    class(rt_particle_stack_t), intent(in) :: object
-    integer, intent(in), optional :: unit
-    integer :: u
-    type(rt_particle_entry_t), pointer :: entry
-    u = output_unit (unit)
-    if (.not. object%is_empty ()) then
-       write (u, "(1x,A)")  "Stored particle data"
-       if (associated (object%model)) then
-          write (u, "(3x,A,A)") "Model = ", char (object%model%get_name ())
-       else
-          write (u, "(3x,A,A)") "Model = [undefined]"
-       end if
-       entry => object%first
-       do while (associated (entry))
-          write (u, "(3x,I0,':',4(2x,A,L1))")  entry%pdg, &
-               "stable = ", entry%stable, &
-               "isotropic = ", entry%isotropic, &
-               "diagonal = ", entry%diagonal, &
-               "polarized = ", entry%polarized
-          entry => entry%next
-       end do
-    end if
-  end subroutine rt_particle_stack_write
-
-  subroutine rt_particle_stack_init (stack, model)
-    class(rt_particle_stack_t), intent(out) :: stack
-    type(model_t), intent(in), target :: model
-    stack%model => model
-  end subroutine rt_particle_stack_init
-    
-  subroutine rt_particle_stack_reset (stack, model)
-    class(rt_particle_stack_t), intent(inout) :: stack
-    type(model_t), intent(in), target :: model
-    if (associated (stack%model)) then
-       if (model%get_name () /= stack%model%get_name ()) then
-          call stack%final ()
-          call stack%init (model)
-       end if
-    else
-       call stack%init (model)
-    end if
-  end subroutine rt_particle_stack_reset
-
-  subroutine rt_particle_stack_push (stack, pdg)
-    class(rt_particle_stack_t), intent(inout) :: stack
-    integer, intent(in) :: pdg
-    type(rt_particle_entry_t), pointer :: entry
-    type(particle_data_t), pointer :: prt_data
-    logical :: anti
-    allocate (entry)
-    entry%pdg = pdg
-    anti = pdg < 0
-    prt_data => model_get_particle_ptr (stack%model, pdg)
-    entry%stable = particle_data_is_stable (prt_data, anti)
-    entry%polarized = particle_data_is_polarized (prt_data, anti)
-    entry%isotropic = particle_data_decays_isotropically (prt_data, anti)
-    entry%diagonal = particle_data_decays_diagonal (prt_data, anti)
-    entry%next => stack%first
-    stack%first => entry
-  end subroutine rt_particle_stack_push
-    
-  function rt_particle_stack_is_empty (stack) result (flag)
-    class(rt_particle_stack_t), intent(in) :: stack
-    logical :: flag
-    flag = .not. associated (stack%first)
-  end function rt_particle_stack_is_empty
-  
-  function rt_particle_stack_contains (stack, pdg) result (flag)
-    class(rt_particle_stack_t), intent(in) :: stack
-    integer, intent(in) :: pdg
-    logical :: flag
-    type(rt_particle_entry_t), pointer :: entry
-    flag = .false.
-    entry => stack%first
-    do while (associated (entry))
-       if (entry%pdg == pdg) then
-          flag = .true.;  return
-       end if
-       entry => entry%next
-    end do
-  end function rt_particle_stack_contains
-  
-  subroutine rt_particle_stack_restore_model (stack)
-    class(rt_particle_stack_t), intent(inout) :: stack
-    type(rt_particle_entry_t), pointer :: entry
-    type(particle_data_t), pointer :: prt_data
-    if (associated (stack%model)) then
-       entry => stack%first
-       do while (associated (entry))
-          prt_data => model_get_particle_ptr (stack%model, entry%pdg)
-          if (entry%pdg > 0) then
-             call particle_data_set (prt_data, &
-                  p_is_stable = entry%stable, &
-                  p_polarized = entry%polarized, &
-                  p_decays_isotropically = entry%isotropic, &
-                  p_decays_diagonal = entry%diagonal)
-          else
-             call particle_data_set (prt_data, &
-                  a_is_stable = entry%stable, &
-                  a_polarized = entry%polarized, &
-                  a_decays_isotropically = entry%isotropic, &
-                  a_decays_diagonal = entry%diagonal)
-          end if
-          entry => entry%next
-       end do
-    end if
-    call stack%final ()
-  end subroutine rt_particle_stack_restore_model
-    
   subroutine rt_data_write (object, unit, vars, pacify)
     class(rt_data_t), intent(in) :: object
     integer, intent(in), optional :: unit
     type(string_t), dimension(:), intent(in), optional :: vars
     logical, intent(in), optional :: pacify
     integer :: u, i
-    u = output_unit (unit)
-    call write_separator_double (u)
+    u = given_output_unit (unit)
+    call write_separator (u, 2)
     write (u, "(1x,A)")  "Runtime data:"
     if (present (vars)) then
        if (size (vars) /= 0) then
-          call write_separator_double (u)
+          call write_separator (u, 2)
           write (u, "(1x,A)")  "Selected variables:"
           call write_separator (u)
           call object%write_vars (u, vars)
        end if
     else
-       call write_separator_double (u)
-       call var_list_write (object%var_list, u, follow_link=.true.)
+       call write_separator (u, 2)
+       if (associated (object%model)) then
+          call object%model%write_var_list (u, follow_link=.true.)
+       else
+          call var_list_write (object%var_list, u, follow_link=.true.)
+       end if
     end if
     if (object%it_list%get_n_pass () > 0) then
-       call write_separator_double (u)
+       call write_separator (u, 2)
        write (u, "(1x)", advance="no")
        call object%it_list%write (u)
     end if
     if (associated (object%model)) then
-       call write_separator_double (u)
-       call object%model_list%write (u)
-       if (.not. object%particle_stack%is_empty ()) then
-          call write_separator (u)
-          call object%particle_stack%write (u)
-       end if
+       call write_separator (u, 2)
+       call object%model%write (u)
     end if
     call object%prclib_stack%write (u)
     call object%beam_structure%write (u)
-    call write_separator_double (u)
+    call write_separator (u, 2)
     call object%pn%write (u)
     if (allocated (object%sample_fmt)) then
        call write_separator (u)
@@ -424,21 +317,27 @@ contains
     call object%process_stack%write (u, pacify)
     write (u, "(1x,A,1x,L1)")  "quit     :", object%quit
     write (u, "(1x,A,1x,I0)")  "quit_code:", object%quit_code
-    call write_separator_double (u)
+    call write_separator (u, 2)
     write (u, "(1x,A,1x,A)")   "Logfile  :", "'" // trim (char (object%logfile)) // "'"
-    call write_separator_double (u)
+    call write_separator (u, 2)
   end subroutine rt_data_write
   
   subroutine rt_data_write_vars (object, unit, vars)
-    class(rt_data_t), intent(in) :: object
+    class(rt_data_t), intent(in), target :: object
     integer, intent(in), optional :: unit
     type(string_t), dimension(:), intent(in), optional :: vars
+    type(var_list_t), pointer :: var_list
     integer :: u, i
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     if (present (vars)) then
+       var_list => object%get_var_list_ptr ()
        do i = 1, size (vars)
-          call var_list_write_var (object%var_list, vars(i), unit = u, &
-               follow_link = .true.)
+          associate (var => vars(i))
+            if (var_list_exists (var_list, var, follow_link=.true.)) then
+               call var_list_write_var (var_list, var, unit = u, &
+                    follow_link = .true.)
+            end if
+          end associate
        end do
     end if
   end subroutine rt_data_write_vars
@@ -447,7 +346,7 @@ contains
     class(rt_data_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     call object%model_list%write (u)
   end subroutine rt_data_write_model_list
 
@@ -456,7 +355,7 @@ contains
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: libpath
     integer :: u
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     call object%prclib_stack%write (u, libpath)
   end subroutine rt_data_write_libraries
 
@@ -464,20 +363,20 @@ contains
     class(rt_data_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u
-    u = output_unit (unit)
-    call write_separator_double (u)
+    u = given_output_unit (unit)
+    call write_separator (u, 2)
     call object%beam_structure%write (u)
-    call write_separator_double (u)
+    call write_separator (u, 2)
   end subroutine rt_data_write_beams
 
   subroutine rt_data_write_expr (object, unit)
     class(rt_data_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u
-    u = output_unit (unit)
-    call write_separator_double (u)
+    u = given_output_unit (unit)
+    call write_separator (u, 2)
     call object%pn%write (u)
-    call write_separator_double (u)
+    call write_separator (u, 2)
   end subroutine rt_data_write_expr
   
   subroutine rt_data_write_process_stack (object, unit)
@@ -1000,6 +899,9 @@ contains
          (global%var_list, var_str ("$extension_hepmc"), var_str ("hepmc"), &
           intrinsic=.true.)
     call var_list_append_string &
+         (global%var_list, var_str ("$extension_lcio"), var_str ("slcio"), &
+          intrinsic=.true.)    
+    call var_list_append_string &
          (global%var_list, var_str ("$extension_stdhep"), var_str ("hep"), &
           intrinsic=.true.)
     call var_list_append_string &
@@ -1299,34 +1201,56 @@ contains
     call var_list_append_log &
          (global%var_list, var_str ("?openmp_logging"), &
          .true., intrinsic=.true.)    
+    call var_list_append_log &
+        (global%var_list, var_str ("?use_gosam_loops"), &
+         .true., intrinsic = .true.)
+    call var_list_append_log &
+        (global%var_list, var_str ("?use_gosam_correlations"), &
+         .false., intrinsic = .true.)
+    call var_list_append_log &
+        (global%var_list, var_str ("?use_gosam_real_trees"), &
+         .false., intrinsic = .true.)
+    call var_list_append_real &
+        (global%var_list, var_str ("fks_dij_exp1"), &
+         1._default, intrinsic = .true.)
+    call var_list_append_real &
+        (global%var_list, var_str ("fks_dij_exp2"), &
+         1._default, intrinsic = .true.)
+    call var_list_append_int &
+        (global%var_list, var_str ("fks_mapping_type"), &
+         1, intrinsic = .true.)
+    call var_list_append_int &
+        (global%var_list, var_str ("alpha_power"), &
+         2, intrinsic = .true.)
+    call var_list_append_int &
+        (global%var_list, var_str ("alphas_power"), &
+         0, intrinsic = .true.)
     call global%init_pointer_variables ()
     call global%process_stack%init_var_list (global%var_list)
   end subroutine rt_data_global_init
 
   subroutine rt_data_local_init (local, global, env)
     class(rt_data_t), intent(inout), target :: local
-    class(rt_data_t), intent(in), target :: global
+    type(rt_data_t), intent(in), target :: global
     integer, intent(in), optional :: env
-    call var_list_link (local%var_list, global%var_list)
-    if (associated (global%model)) then
-       call var_list_init_copies (local%var_list, &
-            model_get_var_list_ptr (global%model), &
-            derived_only = .true.)
-    end if
+    local%context => global
+    call local%process_stack%link (global%process_stack)
+    call local%process_stack%init_var_list (local%var_list)
+    call local%process_stack%link_var_list (global%var_list)
+    call var_list_append_string &
+         (local%var_list, var_str ("$model_name"), var_str (""), &
+          intrinsic=.true.)
     call local%init_pointer_variables ()
     local%fallback_model => global%fallback_model
     local%os_data = global%os_data
     local%logfile = global%logfile
+    call local%model_list%link (global%model_list)
+    local%model => global%model
+    if (associated (local%model)) then
+       call local%model%link_var_list (local%var_list)
+    end if
   end subroutine rt_data_local_init
 
-  subroutine rt_data_copy_globals (global, local)
-    class(rt_data_t), intent(in) :: global
-    class(rt_data_t), intent(inout) :: local
-    local%model_list = global%model_list
-    local%prclib_stack = global%prclib_stack
-    local%process_stack = global%process_stack
-  end subroutine rt_data_copy_globals
- 
   subroutine rt_data_init_pointer_variables (local)
     class(rt_data_t), intent(inout), target :: local
     logical, target, save :: known = .true.
@@ -1338,88 +1262,99 @@ contains
          intrinsic=.true.)
   end subroutine rt_data_init_pointer_variables
 
-  subroutine rt_data_link (local, global)
+  subroutine rt_data_activate (local)
     class(rt_data_t), intent(inout), target :: local
-    class(rt_data_t), intent(in), target :: global
-    local%lexer => global%lexer
-    call global%copy_globals (local)
-    local%os_data = global%os_data
-    local%logfile = global%logfile
-    call var_list_link (local%var_list, global%var_list)
-    if (associated (global%model)) then
-       local%model => &
-            local%model_list%get_model_ptr (global%model%get_name ())
-       call var_list_synchronize (local%var_list, &
-            model_get_var_list_ptr (local%model), reset_pointers = .true.)
-       call local%particle_stack%init (local%model)
+    class(rt_data_t), pointer :: global
+    global => local%context
+    if (associated (global)) then
+       local%lexer => global%lexer
+       call global%copy_globals (local)
+       local%os_data = global%os_data
+       local%logfile = global%logfile
+       if (associated (global%prclib)) then
+          local%prclib => &
+               local%prclib_stack%get_library_ptr (global%prclib%get_name ())
+       end if
+       call local%import_values ()
+       call local%process_stack%link (global%process_stack)
+       local%it_list = global%it_list
+       local%beam_structure = global%beam_structure
+       local%pn = global%pn
+       if (allocated (local%sample_fmt))  deallocate (local%sample_fmt)
+       if (allocated (global%sample_fmt)) then
+          allocate (local%sample_fmt (size (global%sample_fmt)), &
+               source = global%sample_fmt)
+       end if
+       local%out_files => global%out_files
+       local%model => global%model
+       local%model_is_copy = .false.
+    else if (.not. associated (local%model)) then
+       local%model => local%preload_model
+       local%model_is_copy = .false.
     end if
-    if (associated (global%prclib)) then
-       local%prclib => &
-            local%prclib_stack%get_library_ptr (global%prclib%get_name ())
-    end if
-    local%it_list = global%it_list
-    local%beam_structure = global%beam_structure
-    local%lhapdf_status = global%lhapdf_status
-    local%pn = global%pn
-    if (allocated (local%sample_fmt))  deallocate (local%sample_fmt)
-    if (allocated (global%sample_fmt)) then
-       allocate (local%sample_fmt (size (global%sample_fmt)), &
-            source = global%sample_fmt)
-    end if
-    local%out_files => global%out_files
-  end subroutine rt_data_link
-
-  subroutine rt_data_restore (global, local, keep_model_vars, keep_local)
-    class(rt_data_t), intent(inout) :: global
-    class(rt_data_t), intent(inout) :: local
-    logical, intent(in), optional :: keep_model_vars, keep_local
-    logical :: same_model, restore, delete
-    delete = .true.;  if (present (keep_local))  delete = .not. keep_local
-    if (delete) then
-       call var_list_undefine (local%var_list, follow_link=.false.)
+    if (associated (local%model)) then
+       call local%model%link_var_list (local%var_list)
+       call var_list_set_string (local%var_list, var_str ("$model_name"), &
+            local%model%get_name (), is_known = .true.)
     else
-       if (associated (local%model)) then
-          call model_pointer_to_instance (local%model)
-          call var_list_synchronize (local%var_list, &
-               model_get_var_list_ptr (local%model), reset_pointers = .true.)
-       end if
+       call var_list_set_string (local%var_list, var_str ("$model_name"), &
+            var_str (""), is_known = .false.)
     end if
-    if (associated (global%model)) then 
-       call local%particle_stack%restore_model ()
-       same_model = &
-            global%model%get_name () == local%model%get_name ()
-       if (present (keep_model_vars) .and. same_model) then
-          restore = .not. keep_model_vars
-       else
-          if (.not. same_model)  call msg_message ("Restoring model '" // &
-               char (global%model%get_name ()) // "'")
-          restore = .true.
-       end if
-       if (restore) then
-          call var_list_restore (global%var_list)
-       else
-          call var_list_synchronize &
-               (global%var_list, model_get_var_list_ptr (global%model))
-       end if
-    end if
-    call global%restore_globals (local)
-  end subroutine rt_data_restore
+  end subroutine rt_data_activate
 
+  subroutine rt_data_deactivate (local, global, keep_local)
+    class(rt_data_t), intent(inout), target :: local
+    class(rt_data_t), intent(inout), optional, target :: global
+    logical, intent(in), optional :: keep_local
+    type(string_t) :: global_model, local_model
+    logical :: same_model, delete
+    delete = .true.;  if (present (keep_local))  delete = .not. keep_local
+    if (present (global)) then
+       if (associated (global%model) .and. associated (local%model)) then 
+          global_model = global%model%get_name ()
+          local_model = local%model%get_name ()
+          same_model = global_model == local_model
+       else
+          same_model = .false.
+       end if
+       if (delete) then
+          call local%process_stack%clear ()
+          call local%unselect_model ()
+          call local%unset_values ()
+       else if (associated (local%model)) then
+          call local%ensure_model_copy ()
+       end if
+       if (.not. same_model .and. global_model /= "") then
+          call msg_message ("Restoring model '" // char (global_model) // "'")
+       end if
+       if (associated (global%model)) then
+          call global%model%link_var_list (global%var_list)
+       end if
+       call global%restore_globals (local)
+    else
+       call local%unselect_model ()
+    end if
+  end subroutine rt_data_deactivate
+
+  subroutine rt_data_copy_globals (global, local)
+    class(rt_data_t), intent(in) :: global
+    class(rt_data_t), intent(inout) :: local
+    local%prclib_stack = global%prclib_stack
+  end subroutine rt_data_copy_globals
+ 
   subroutine rt_data_restore_globals (global, local)
     class(rt_data_t), intent(inout) :: global
     class(rt_data_t), intent(in) :: local
-    global%model_list = local%model_list
     global%prclib_stack = local%prclib_stack
-    global%process_stack = local%process_stack
   end subroutine rt_data_restore_globals
  
   subroutine rt_data_global_final (global)
     class(rt_data_t), intent(inout) :: global
     call global%process_stack%final ()
     call global%prclib_stack%final ()
-    call global%particle_stack%final ()
+!    call global%delete_model_copy ()
     call global%model_list%final ()
-    call var_list_final (global%var_list)
+    call var_list_final (global%var_list, follow_link=.false.)
     if (associated (global%out_files)) then
        call file_list_final (global%out_files)
        deallocate (global%out_files)
@@ -1428,9 +1363,22 @@ contains
 
   subroutine rt_data_local_final (local)
     class(rt_data_t), intent(inout) :: local
-    call var_list_final (local%var_list)
+    call local%process_stack%clear ()
+!    call local%delete_model_copy ()
+    call local%model_list%final ()
+    call var_list_final (local%var_list, follow_link=.false.)
   end subroutine rt_data_local_final
 
+  subroutine rt_data_read_model (global, name, model)
+    class(rt_data_t), intent(inout) :: global
+    type(string_t), intent(in) :: name
+    type(model_t), pointer, intent(out) :: model
+    type(string_t) :: filename
+    filename = name // ".mdl"
+    call global%model_list%read_model &
+         (name, filename, global%os_data, model)
+  end subroutine rt_data_read_model
+    
   subroutine rt_data_init_fallback_model (global, name, filename)
     class(rt_data_t), intent(inout) :: global
     type(string_t), intent(in) :: name, filename
@@ -1438,72 +1386,315 @@ contains
          (name, filename, global%os_data, global%fallback_model)
   end subroutine rt_data_init_fallback_model
   
-  subroutine rt_data_read_model (global, name, filename, synchronize)
-    class(rt_data_t), intent(inout) :: global
-    type(string_t), intent(in) :: name, filename
-    type(var_list_t), pointer :: model_vars
-    logical, intent(in), optional :: synchronize
-    logical :: sync
-    sync = .true.;  if (present (synchronize))  sync = synchronize
-    call global%model_list%read_model &
-         (name, filename, global%os_data, global%model)
-    if (associated (global%model)) then
-       call var_list_set_string (global%var_list, var_str ("$model_name"), &
-            name, is_known = .true.)
-       model_vars => model_get_var_list_ptr (global%model)
-       call var_list_init_copies (global%var_list, model_vars)
-       if (sync) then
-          call var_list_synchronize (global%var_list, model_vars, &
-               reset_pointers = .true.)
-       end if
-       call global%particle_stack%reset (global%model)
-    end if
-  end subroutine rt_data_read_model
-    
   subroutine rt_data_select_model (global, name)
-    class(rt_data_t), intent(inout) :: global
+    class(rt_data_t), intent(inout), target :: global
     type(string_t), intent(in) :: name
-    type(var_list_t), pointer :: model_vars
-    global%model => global%model_list%get_model_ptr (name)
+    logical :: same_model
     if (associated (global%model)) then
+       same_model = global%model%get_name () == name
+    else
+       same_model = .false.
+    end if
+    if (.not. same_model) then
+!       call global%delete_model_copy () 
+       global%model => global%model_list%get_model_ptr (name)
+       if (.not. associated (global%model)) then
+          call global%read_model (name, global%model)
+          global%model_is_copy = .false.
+       else if (associated (global%context)) then
+          global%model_is_copy = &
+               global%model_list%model_exists (name, follow_link=.false.)
+       else
+          global%model_is_copy = .false.
+       end if
+    end if
+    if (associated (global%model)) then
+       call global%model%link_var_list (global%var_list)
        call var_list_set_string (global%var_list, var_str ("$model_name"), &
             name, is_known = .true.)
-       model_vars => model_get_var_list_ptr (global%model)
-       call var_list_synchronize (global%var_list, model_vars, &
-            reset_pointers = .true.)
-       call global%particle_stack%reset (global%model)
+       call msg_message ("Switching to model '" // char (name) // "'")
+    else
+       call var_list_set_string (global%var_list, var_str ("$model_name"), &
+            var_str (""), is_known = .false.)
     end if
   end subroutine rt_data_select_model
   
+  subroutine rt_data_unselect_model (global)
+    class(rt_data_t), intent(inout), target :: global
+    if (associated (global%model)) then
+!       call global%delete_model_copy ()
+       global%model => null ()
+       global%model_is_copy = .false.
+       call var_list_set_string (global%var_list, var_str ("$model_name"), &
+            var_str (""), is_known = .false.)
+    end if
+  end subroutine rt_data_unselect_model
+  
+  subroutine rt_data_ensure_model_copy (global)
+    class(rt_data_t), intent(inout), target :: global
+    if (associated (global%context)) then
+       if (.not. global%model_is_copy) then
+          call global%model_list%append_copy (global%model, global%model)
+          global%model_is_copy = .true.
+          call global%model%link_var_list (global%var_list)
+       end if
+    end if
+  end subroutine rt_data_ensure_model_copy
+
+!   subroutine rt_data_delete_model_copy (global)
+!     class(rt_data_t), intent(inout), target :: global
+!     if (global%model_is_copy) then
+!        call model_pointer_delete_instance (global%model)
+!        global%model_is_copy = .false.
+!     else
+!        global%model => null ()
+!     end if
+!   end subroutine rt_data_delete_model_copy
+
+  subroutine rt_data_model_set_real (global, name, rval, verbose, pacified)
+    class(rt_data_t), intent(inout), target :: global
+    type(string_t), intent(in) :: name
+    real(default), intent(in) :: rval
+    logical, intent(in), optional :: verbose, pacified
+    call global%ensure_model_copy ()
+    call global%model%set_real (name, rval, verbose, pacified)
+  end subroutine rt_data_model_set_real
+
   subroutine rt_data_modify_particle &
        (global, pdg, polarized, stable, decay, isotropic_decay, diagonal_decay)
-    class(rt_data_t), intent(inout) :: global
+    class(rt_data_t), intent(inout), target :: global
     integer, intent(in) :: pdg
     logical, intent(in), optional :: polarized, stable
     logical, intent(in), optional :: isotropic_decay, diagonal_decay
     type(string_t), dimension(:), intent(in), optional :: decay
-    if (.not. global%particle_stack%contains (pdg)) then
-       call global%particle_stack%push (pdg)
-    end if
+    call global%ensure_model_copy ()
     if (present (polarized)) then
        if (polarized) then
-          call model_set_polarized (global%model, pdg)
+          call global%model%set_polarized (pdg)
        else
-          call model_set_unpolarized (global%model, pdg)
+          call global%model%set_unpolarized (pdg)
        end if
     end if
     if (present (stable)) then
        if (stable) then
-          call model_set_stable (global%model, pdg)
+          call global%model%set_stable (pdg)
        else if (present (decay)) then
-          call model_set_unstable &
-               (global%model, pdg, decay, isotropic_decay, diagonal_decay)
+          call global%model%set_unstable &
+               (pdg, decay, isotropic_decay, diagonal_decay)
        else
           call msg_bug ("Setting particle unstable: missing decay processes")
        end if
     end if
   end subroutine rt_data_modify_particle
 
+  function rt_data_get_var_list_ptr (global) result (var_list)
+    class(rt_data_t), intent(in), target :: global
+    type(var_list_t), pointer :: var_list
+    if (associated (global%model)) then
+       var_list => global%model%get_var_list_ptr ()
+    else
+       var_list => global%var_list
+    end if
+  end function rt_data_get_var_list_ptr
+
+  subroutine rt_data_append_log (local, name, lval, intrinsic, user)
+    class(rt_data_t), intent(inout) :: local
+    type(string_t), intent(in) :: name
+    logical, intent(in), optional :: lval
+    logical, intent(in), optional :: intrinsic, user
+    call var_list_append_log (local%var_list, name, lval, &
+         intrinsic = intrinsic, user = user)
+  end subroutine rt_data_append_log
+  
+  subroutine rt_data_append_int (local, name, ival, intrinsic, user)
+    class(rt_data_t), intent(inout) :: local
+    type(string_t), intent(in) :: name
+    integer, intent(in), optional :: ival
+    logical, intent(in), optional :: intrinsic, user
+    call var_list_append_int (local%var_list, name, ival, &
+         intrinsic = intrinsic, user = user)
+  end subroutine rt_data_append_int
+  
+  subroutine rt_data_append_real (local, name, rval, intrinsic, user)
+    class(rt_data_t), intent(inout) :: local
+    type(string_t), intent(in) :: name
+    real(default), intent(in), optional :: rval
+    logical, intent(in), optional :: intrinsic, user
+    call var_list_append_real (local%var_list, name, rval, &
+         intrinsic = intrinsic, user = user)
+  end subroutine rt_data_append_real
+  
+  subroutine rt_data_append_cmplx (local, name, cval, intrinsic, user)
+    class(rt_data_t), intent(inout) :: local
+    type(string_t), intent(in) :: name
+    complex(default), intent(in), optional :: cval
+    logical, intent(in), optional :: intrinsic, user
+    call var_list_append_cmplx (local%var_list, name, cval, &
+         intrinsic = intrinsic, user = user)
+  end subroutine rt_data_append_cmplx
+  
+  subroutine rt_data_append_subevt (local, name, pval, intrinsic, user)
+    class(rt_data_t), intent(inout) :: local
+    type(string_t), intent(in) :: name
+    type(subevt_t), intent(in), optional :: pval
+    logical, intent(in) :: intrinsic, user
+    call var_list_append_subevt (local%var_list, name, &
+         intrinsic = intrinsic, user = user)
+  end subroutine rt_data_append_subevt
+  
+  subroutine rt_data_append_pdg_array (local, name, aval, intrinsic, user)
+    class(rt_data_t), intent(inout) :: local
+    type(string_t), intent(in) :: name
+    type(pdg_array_t), intent(in), optional :: aval
+    logical, intent(in), optional :: intrinsic, user
+    call var_list_append_pdg_array (local%var_list, name, aval, &
+         intrinsic = intrinsic, user = user)
+  end subroutine rt_data_append_pdg_array
+  
+  subroutine rt_data_append_string (local, name, sval, intrinsic, user)
+    class(rt_data_t), intent(inout) :: local
+    type(string_t), intent(in) :: name
+    type(string_t), intent(in), optional :: sval
+    logical, intent(in), optional :: intrinsic, user
+    call var_list_append_string (local%var_list, name, sval, &
+         intrinsic = intrinsic, user = user)
+  end subroutine rt_data_append_string
+  
+  subroutine rt_data_import_values (local)
+    class(rt_data_t), intent(inout) :: local
+    type(string_t) :: name
+    integer :: type
+    type(rt_data_t), pointer :: global
+    global => local%context
+    if (associated (global)) then
+       call var_list_import (local%var_list, global%var_list)
+    end if
+  end subroutine rt_data_import_values
+    
+  subroutine rt_data_unset_values (global)
+    class(rt_data_t), intent(inout) :: global
+    call var_list_undefine (global%var_list, follow_link=.false.)
+  end subroutine rt_data_unset_values
+  
+  subroutine rt_data_set_log (global, name, lval, is_known, verbose)
+    class(rt_data_t), intent(inout) :: global
+    type(string_t), intent(in) :: name
+    logical, intent(in) :: lval
+    logical, intent(in) :: is_known
+    logical, intent(in), optional :: verbose
+    call var_list_set_log (global%var_list, name, lval, is_known, &
+         verbose=verbose)
+  end subroutine rt_data_set_log
+
+  subroutine rt_data_set_int (global, name, ival, is_known, verbose)
+    class(rt_data_t), intent(inout) :: global
+    type(string_t), intent(in) :: name
+    integer, intent(in) :: ival
+    logical, intent(in) :: is_known
+    logical, intent(in), optional :: verbose
+    call var_list_set_int (global%var_list, name, ival, is_known, &
+         verbose=verbose)
+  end subroutine rt_data_set_int
+
+  subroutine rt_data_set_real (global, name, rval, is_known, verbose, pacified)
+    class(rt_data_t), intent(inout) :: global
+    type(string_t), intent(in) :: name
+    real(default), intent(in) :: rval
+    logical, intent(in) :: is_known
+    logical, intent(in), optional :: verbose, pacified
+    call var_list_set_real (global%var_list, name, rval, is_known, &
+         verbose=verbose, pacified=pacified)
+  end subroutine rt_data_set_real
+
+  subroutine rt_data_set_cmplx (global, name, cval, is_known, verbose, pacified)
+    class(rt_data_t), intent(inout) :: global
+    type(string_t), intent(in) :: name
+    complex(default), intent(in) :: cval
+    logical, intent(in) :: is_known
+    logical, intent(in), optional :: verbose, pacified
+    call var_list_set_cmplx (global%var_list, name, cval, is_known, &
+         verbose=verbose, pacified=pacified)
+  end subroutine rt_data_set_cmplx
+
+  subroutine rt_data_set_subevt (global, name, pval, is_known, verbose)
+    class(rt_data_t), intent(inout) :: global
+    type(string_t), intent(in) :: name
+    type(subevt_t), intent(in) :: pval
+    logical, intent(in) :: is_known
+    logical, intent(in), optional :: verbose
+    call var_list_set_subevt (global%var_list, name, pval, is_known, &
+         verbose=verbose)
+  end subroutine rt_data_set_subevt
+
+  subroutine rt_data_set_pdg_array (global, name, aval, is_known, verbose)
+    class(rt_data_t), intent(inout) :: global
+    type(string_t), intent(in) :: name
+    type(pdg_array_t), intent(in) :: aval
+    logical, intent(in) :: is_known
+    logical, intent(in), optional :: verbose
+    call var_list_set_pdg_array (global%var_list, name, aval, is_known, &
+         verbose=verbose)
+  end subroutine rt_data_set_pdg_array
+
+  subroutine rt_data_set_string (global, name, sval, is_known, verbose)
+    class(rt_data_t), intent(inout) :: global
+    type(string_t), intent(in) :: name
+    type(string_t), intent(in) :: sval
+    logical, intent(in) :: is_known
+    logical, intent(in), optional :: verbose
+    call var_list_set_string (global%var_list, name, sval, is_known, &
+         verbose=verbose)
+  end subroutine rt_data_set_string
+
+  function rt_data_get_lval (global, name) result (lval)
+    logical :: lval
+    class(rt_data_t), intent(in), target :: global
+    type(string_t), intent(in) :: name
+    lval = var_list_get_lval (global%get_var_list_ptr (), name)
+  end function rt_data_get_lval
+  
+  function rt_data_get_ival (global, name) result (ival)
+    integer :: ival
+    class(rt_data_t), intent(in), target :: global
+    type(string_t), intent(in) :: name
+    ival = var_list_get_ival (global%get_var_list_ptr (), name)
+  end function rt_data_get_ival
+  
+  function rt_data_get_rval (global, name) result (rval)
+    real(default) :: rval
+    class(rt_data_t), intent(in), target :: global
+    type(string_t), intent(in) :: name
+    rval = var_list_get_rval (global%get_var_list_ptr (), name)
+  end function rt_data_get_rval
+    
+  function rt_data_get_cval (global, name) result (cval)
+    complex(default) :: cval
+    class(rt_data_t), intent(in), target :: global
+    type(string_t), intent(in) :: name
+    cval = var_list_get_cval (global%get_var_list_ptr (), name)
+  end function rt_data_get_cval
+
+  function rt_data_get_aval (global, name) result (aval)
+    type(pdg_array_t) :: aval
+    class(rt_data_t), intent(in), target :: global
+    type(string_t), intent(in) :: name
+    aval = var_list_get_aval (global%get_var_list_ptr (), name)
+  end function rt_data_get_aval
+  
+  function rt_data_get_pval (global, name) result (pval)
+    type(subevt_t) :: pval
+    class(rt_data_t), intent(in), target :: global
+    type(string_t), intent(in) :: name
+    pval = var_list_get_pval (global%get_var_list_ptr (), name)
+  end function rt_data_get_pval
+  
+  function rt_data_get_sval (global, name) result (sval)
+    type(string_t) :: sval
+    class(rt_data_t), intent(in), target :: global
+    type(string_t), intent(in) :: name
+    sval = var_list_get_sval (global%get_var_list_ptr (), name)
+  end function rt_data_get_sval
+  
   subroutine rt_data_add_prclib (global, prclib_entry)
     class(rt_data_t), intent(inout) :: global
     type(prclib_entry_t), intent(inout), pointer :: prclib_entry
@@ -1548,7 +1739,7 @@ contains
     integer, intent(in), optional :: unit
     type(string_t) :: s
     integer :: u
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     associate (beams => rt_data%beam_structure, var_list => rt_data%var_list)
       call beams%write (u)
       if (.not. beams%asymmetric () .and. beams%get_n_beam () == 2) then
@@ -1692,6 +1883,22 @@ contains
     end do    
   end subroutine rt_data_pacify
 
+  subroutine rt_data_change_to_gosam (global, success)
+    class(rt_data_t), intent(inout) :: global
+    logical, intent(out) :: success
+    call var_list_replace_string &
+         (global%var_list, var_str ("$method"), var_str ("gosam"), &
+          intrinsic = .true., success = success)
+  end subroutine rt_data_change_to_gosam
+
+  subroutine rt_data_change_to_omega (global)
+    class(rt_data_t), intent(inout) :: global
+    logical :: success
+    call var_list_replace_string &
+         (global%var_list, var_str ("$method"), var_str ("omega"), &
+          intrinsic = .true., success = success)
+  end subroutine rt_data_change_to_omega
+
 
   subroutine rt_data_test (u, results)
     integer, intent(in) :: u
@@ -1719,6 +1926,9 @@ contains
          u, results)
     call test (rt_data_8, "rt_data_8", &
          "beam energy", &
+         u, results)
+    call test (rt_data_9, "rt_data_9", &
+         "local variables", &
          u, results)
   end subroutine rt_data_test
 
@@ -1768,8 +1978,7 @@ contains
     call rt_data%global_init (logfile = var_str ("rt_data.log"))
 
     call rt_data%fix_system_dependencies ()
-    call var_list_set_int (rt_data%var_list, var_str ("seed"), &
-         0, is_known=.true.)            
+    call rt_data%set_int (var_str ("seed"), 0, is_known=.true.)            
 
     call rt_data%it_list%init ([2, 3], [5000, 20000])
 
@@ -1801,17 +2010,17 @@ contains
     call rt_data%global_init ()
     call rt_data%fix_system_dependencies ()
 
-    call rt_data%read_model (var_str ("Test"), var_str ("Test.mdl"))
+    call rt_data%select_model (var_str ("Test"))
 
-    call var_list_set_real (rt_data%var_list, var_str ("sqrts"),&
+    call rt_data%set_real (var_str ("sqrts"), &
          1000._default, is_known = .true.)
-    call var_list_set_int (rt_data%var_list, var_str ("seed"), &
+    call rt_data%set_int (var_str ("seed"), &
          0, is_known=.true.)        
     call flavor_init (flv, [25,25], rt_data%model)
     
-    call var_list_set_string (rt_data%var_list, var_str ("$run_id"), &
+    call rt_data%set_string (var_str ("$run_id"), &
          var_str ("run1"), is_known = .true.)
-    call var_list_set_real (rt_data%var_list, var_str ("luminosity"), &
+    call rt_data%set_real (var_str ("luminosity"), &
          33._default, is_known = .true.)
     
     call syntax_pexpr_init ()
@@ -1844,7 +2053,6 @@ contains
     integer, intent(in) :: u
     type(rt_data_t), target :: rt_data, local
     type(var_list_t), pointer :: model_vars
-    type(var_entry_t), pointer :: var
     type(flavor_t), dimension(2) :: flv
     type(string_t) :: cut_expr_text
     type(ifile_t) :: ifile
@@ -1865,21 +2073,21 @@ contains
 
     call rt_data%global_init ()
     call rt_data%fix_system_dependencies ()
-    call var_list_set_int (rt_data%var_list, var_str ("seed"), &
+    call rt_data%set_int (var_str ("seed"), &
          0, is_known=.true.)        
 
-    call rt_data%read_model (var_str ("Test"), var_str ("Test.mdl"))
+    call rt_data%select_model (var_str ("Test"))
 
-    call var_list_set_real (rt_data%var_list, var_str ("sqrts"),&
+    call rt_data%set_real (var_str ("sqrts"),&
          1000._default, is_known = .true.)
     call flavor_init (flv, [25,25], rt_data%model)
     
     call rt_data%beam_structure%init_sf (flavor_get_name (flv), [1])
     call rt_data%beam_structure%set_sf (1, 1, var_str ("pdf_builtin"))
 
-    call var_list_set_string (rt_data%var_list, var_str ("$run_id"), &
+    call rt_data%set_string (var_str ("$run_id"), &
          var_str ("run1"), is_known = .true.)
-    call var_list_set_real (rt_data%var_list, var_str ("luminosity"), &
+    call rt_data%set_real (var_str ("luminosity"), &
          33._default, is_known = .true.)
     
     call syntax_pexpr_init ()
@@ -1901,32 +2109,19 @@ contains
     write (u, "(A)")
 
     call local%local_init (rt_data)
-    call local%link (rt_data)
+    call local%append_string (var_str ("$integration_method"), intrinsic=.true.)
+    call local%append_string (var_str ("$phs_method"), intrinsic=.true.)
+
+    call local%activate ()
 
     write (u, "(1x,A,L1)")  "model associated   = ", associated (local%model)
     write (u, "(1x,A,L1)")  "library associated = ", associated (local%prclib)
     write (u, *)
 
-    var => var_list_get_var_ptr (local%var_list, var_str ("ms"))
-    if (var_entry_is_copy (var)) then
-       call var_list_init_copy (local%var_list, var, user=.true.)
-       model_vars => model_get_var_list_ptr (local%model)
-       call var_list_set_original_pointer (local%var_list, var_str ("ms"), &
-            model_vars)
-       call var_list_set_real (local%var_list, var_str ("ms"), &
-         150._default, is_known = .true., model_name = var_str ("Test"))
-       call model_parameters_update (local%model)
-       call var_list_synchronize (local%var_list, model_vars)
-    end if
-
-    call var_list_append_string (local%var_list, &
-         var_str ("$integration_method"), intrinsic = .true., user = .true.)
-    call var_list_set_string (local%var_list, var_str ("$integration_method"), &
+    call local%model_set_real (var_str ("ms"), 150._default)
+    call local%set_string (var_str ("$integration_method"), &
          var_str ("midpoint"), is_known = .true.)
-    
-    call var_list_append_string (local%var_list, &
-         var_str ("$phs_method"), intrinsic = .true., user = .true.)
-    call var_list_set_string (local%var_list, var_str ("$phs_method"), &
+    call local%set_string (var_str ("$phs_method"), &
          var_str ("single"), is_known = .true.)
 
     local%os_data%fc = "Local compiler"
@@ -1941,7 +2136,7 @@ contains
     write (u, "(A)")  "* Restore global data"
     write (u, "(A)")
     
-    call rt_data%restore (local)
+    call local%deactivate (rt_data)
 
     write (u, "(1x,A,L1)")  "model associated   = ", associated (rt_data%model)
     write (u, "(1x,A,L1)")  "library associated = ", associated (rt_data%prclib)
@@ -2060,8 +2255,7 @@ contains
     call syntax_model_file_init ()
 
     call rt_data%global_init ()
-    call rt_data%read_model (var_str ("Test"), var_str ("Test.mdl"), &
-         synchronize=.true.)
+    call rt_data%select_model (var_str ("Test"))
     
     write (u, "(A)")  "* Original model"
     write (u, "(A)")
@@ -2076,37 +2270,24 @@ contains
     var_name = "ff"
 
     write (u, "(A)", advance="no")  "Global model variable: "
-    model_vars => model_get_var_list_ptr (rt_data%model)
+    model_vars => rt_data%model%get_var_list_ptr ()
     call var_list_write_var (model_vars, var_name, u)
-
-    write (u, "(A)", advance="no")  "Global variable: "
-    call var_list_write_var (rt_data%var_list, var_name, u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Apply local modifications: unstable"
     write (u, "(A)")
 
     call local%local_init (rt_data)
-    call local%link (rt_data)
+    call local%activate ()
 
-    var_entry => var_list_get_var_ptr &
-       (rt_data%var_list, var_name, V_REAL, follow_link=.false.)
-    call var_list_init_copy (local%var_list, var_entry, user=.true.)
-
-    call var_list_set_original_pointer (local%var_list, var_name, &
-         model_get_var_list_ptr (local%model))
-    call var_list_set_real (local%var_list, var_name, 0.4_default, &
-         is_known = .true., verbose = .true., model_name = var_str ("Test"))
-    call var_list_restore (local%var_list)
-    call model_parameters_update (local%model)
-
+    call local%model_set_real (var_name, 0.4_default)
     call local%modify_particle (25, stable = .false., decay = [var_str ("d1")])
     call local%modify_particle (6, stable = .false., &
          decay = [var_str ("f1")], isotropic_decay = .true.)
     call local%modify_particle (-6, stable = .false., &
          decay = [var_str ("f2"), var_str ("f3")], diagonal_decay = .true.)
 
-    call model_write (local%model, u)
+    call local%model%write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Further modifications"
@@ -2118,7 +2299,7 @@ contains
     call local%modify_particle (-6, stable = .false., &
          decay = [var_str ("f2"), var_str ("f3")], &
          diagonal_decay = .false., isotropic_decay = .true.)
-    call model_write (local%model, u)
+    call local%model%write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Further modifications: f stable but polarized"
@@ -2126,17 +2307,13 @@ contains
 
     call local%modify_particle (6, stable = .true., polarized = .true.)
     call local%modify_particle (-6, stable = .true.)
-    call model_write (local%model, u)
-
-    write (u, *)
-    
-    call local%particle_stack%write (u)
+    call local%model%write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Global model"
     write (u, "(A)")
 
-    call model_write (local%model, u)
+    call rt_data%model%write (u)
     write (u, *)
     write (u, "(A,L1)")  "s is stable    = ", is_stable (25, rt_data)
     write (u, "(A,L1)")  "f is polarized = ", is_polarized (6, rt_data)
@@ -2145,7 +2322,7 @@ contains
     write (u, "(A)")  "* Local model"
     write (u, "(A)")
 
-    call model_write (local%model, u)
+    call local%model%write (u)
     write (u, *)
     write (u, "(A,L1)")  "s is stable    = ", is_stable (25, local)
     write (u, "(A,L1)")  "f is polarized = ", is_polarized (6, local)
@@ -2153,29 +2330,23 @@ contains
     write (u, *)
 
     write (u, "(A)", advance="no")  "Global model variable: "
-    model_vars => model_get_var_list_ptr (rt_data%model)
+    model_vars => rt_data%model%get_var_list_ptr ()
     call var_list_write_var (model_vars, var_name, u)
 
     write (u, "(A)", advance="no")  "Local model variable: "
-    call var_list_write_var (model_get_var_list_ptr (local%model), &
+    call var_list_write_var (local%model%get_var_list_ptr (), &
          var_name, u)
-
-    write (u, "(A)", advance="no")  "Global variable: "
-    call var_list_write_var (rt_data%var_list, var_name, u)
-
-    write (u, "(A)", advance="no")  "Local variable: "
-    call var_list_write_var (local%var_list, var_name, u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Restore global"
 
-    call rt_data%restore (local, keep_local = .true.)
+    call local%deactivate (rt_data, keep_local = .true.)
 
     write (u, "(A)")
     write (u, "(A)")  "* Global model"
     write (u, "(A)")
 
-    call model_write (rt_data%model, u)
+    call rt_data%model%write (u)
     write (u, *)
     write (u, "(A,L1)")  "s is stable    = ", is_stable (25, rt_data)
     write (u, "(A,L1)")  "f is polarized = ", is_polarized (6, rt_data)
@@ -2184,7 +2355,7 @@ contains
     write (u, "(A)")  "* Local model"
     write (u, "(A)")
 
-    call model_write (local%model, u)
+    call local%model%write (u)
     write (u, *)
     write (u, "(A,L1)")  "s is stable    = ", is_stable (25, local)
     write (u, "(A,L1)")  "f is polarized = ", is_polarized (6, local)
@@ -2192,23 +2363,17 @@ contains
     write (u, *)
 
     write (u, "(A)", advance="no")  "Global model variable: "
-    model_vars => model_get_var_list_ptr (rt_data%model)
+    model_vars => rt_data%model%get_var_list_ptr ()
     call var_list_write_var (model_vars, var_name, u)
 
     write (u, "(A)", advance="no")  "Local model variable: "
-    call var_list_write_var (model_get_var_list_ptr (local%model), &
+    call var_list_write_var (local%model%get_var_list_ptr (), &
          var_name, u)
-
-    write (u, "(A)", advance="no")  "Global variable: "
-    call var_list_write_var (rt_data%var_list, var_name, u)
-
-    write (u, "(A)", advance="no")  "Local variable: "
-    call var_list_write_var (local%var_list, var_name, u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
 
-    call model_final (local%model)
+    call local%model%final ()
     deallocate (local%model)
     
     call rt_data%final ()
@@ -2277,6 +2442,164 @@ contains
     write (u, "(A)")  "* Test output end: rt_data_8"
     
   end subroutine rt_data_8
+  
+  subroutine rt_data_9 (u)
+    integer, intent(in) :: u
+    type(rt_data_t), target :: global, local
+    type(var_list_t), pointer :: var_list
+    type(var_entry_t), pointer :: var_entry
+    type(string_t) :: var_name
+
+    write (u, "(A)")  "* Test output: rt_data_9"
+    write (u, "(A)")  "*   Purpose: handle local variables"
+    write (u, "(A)")
+
+    call syntax_model_file_init ()
+
+    write (u, "(A)")  "* Initialize global record and set some variables"
+    write (u, "(A)")
+
+    call global%global_init ()
+    call global%select_model (var_str ("Test"))
+    
+    call global%set_real (var_str ("sqrts"), 17._default, is_known = .true.)
+    call global%set_real (var_str ("luminosity"), 2._default, is_known = .true.)
+    call global%model_set_real (var_str ("ff"), 0.5_default)
+    call global%model_set_real (var_str ("gy"), 1.2_default)
+
+    var_list => global%get_var_list_ptr ()
+
+    call var_list_write_var (var_list, var_str ("sqrts"), u)
+    call var_list_write_var (var_list, var_str ("luminosity"), u)
+    call var_list_write_var (var_list, var_str ("ff"), u)
+    call var_list_write_var (var_list, var_str ("gy"), u)
+    call var_list_write_var (var_list, var_str ("mf"), u)
+    call var_list_write_var (var_list, var_str ("x"), u)
+
+    write (u, "(A)")
+    
+    write (u, "(1x,A,1x,F5.2)")  "sqrts      = ", &
+         global%get_rval (var_str ("sqrts"))
+    write (u, "(1x,A,1x,F5.2)")  "luminosity = ", &
+         global%get_rval (var_str ("luminosity"))
+    write (u, "(1x,A,1x,F5.2)")  "ff         = ", &
+         global%get_rval (var_str ("ff"))
+    write (u, "(1x,A,1x,F5.2)")  "gy         = ", &
+         global%get_rval (var_str ("gy"))
+    write (u, "(1x,A,1x,F5.2)")  "mf         = ", &
+         global%get_rval (var_str ("mf"))
+    write (u, "(1x,A,1x,F5.2)")  "x          = ", &
+         global%get_rval (var_str ("x"))
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Create local record with local variables"
+    write (u, "(A)")
+
+    call local%local_init (global)
+
+    call local%append_real (var_str ("luminosity"), intrinsic = .true.)
+    call local%append_real (var_str ("x"), user = .true.)
+
+    call local%activate ()
+
+    var_list => local%get_var_list_ptr ()
+
+    call var_list_write_var (var_list, var_str ("sqrts"), u)
+    call var_list_write_var (var_list, var_str ("luminosity"), u)
+    call var_list_write_var (var_list, var_str ("ff"), u)
+    call var_list_write_var (var_list, var_str ("gy"), u)
+    call var_list_write_var (var_list, var_str ("mf"), u)
+    call var_list_write_var (var_list, var_str ("x"), u)
+
+    write (u, "(A)")
+    
+    write (u, "(1x,A,1x,F5.2)")  "sqrts      = ", &
+         local%get_rval (var_str ("sqrts"))
+    write (u, "(1x,A,1x,F5.2)")  "luminosity = ", &
+         local%get_rval (var_str ("luminosity"))
+    write (u, "(1x,A,1x,F5.2)")  "ff         = ", &
+         local%get_rval (var_str ("ff"))
+    write (u, "(1x,A,1x,F5.2)")  "gy         = ", &
+         local%get_rval (var_str ("gy"))
+    write (u, "(1x,A,1x,F5.2)")  "mf         = ", &
+         local%get_rval (var_str ("mf"))
+    write (u, "(1x,A,1x,F5.2)")  "x          = ", &
+         local%get_rval (var_str ("x"))
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Modify some local variables"
+    write (u, "(A)")
+
+    call local%set_real (var_str ("luminosity"), 42._default, is_known=.true.)
+    call local%set_real (var_str ("x"), 6.66_default, is_known=.true.)
+    call local%model_set_real (var_str ("ff"), 0.7_default)
+
+    var_list => local%get_var_list_ptr ()
+
+    call var_list_write_var (var_list, var_str ("sqrts"), u)
+    call var_list_write_var (var_list, var_str ("luminosity"), u)
+    call var_list_write_var (var_list, var_str ("ff"), u)
+    call var_list_write_var (var_list, var_str ("gy"), u)
+    call var_list_write_var (var_list, var_str ("mf"), u)
+    call var_list_write_var (var_list, var_str ("x"), u)
+
+    write (u, "(A)")
+    
+    write (u, "(1x,A,1x,F5.2)")  "sqrts      = ", &
+         local%get_rval (var_str ("sqrts"))
+    write (u, "(1x,A,1x,F5.2)")  "luminosity = ", &
+         local%get_rval (var_str ("luminosity"))
+    write (u, "(1x,A,1x,F5.2)")  "ff         = ", &
+         local%get_rval (var_str ("ff"))
+    write (u, "(1x,A,1x,F5.2)")  "gy         = ", &
+         local%get_rval (var_str ("gy"))
+    write (u, "(1x,A,1x,F5.2)")  "mf         = ", &
+         local%get_rval (var_str ("mf"))
+    write (u, "(1x,A,1x,F5.2)")  "x          = ", &
+         local%get_rval (var_str ("x"))
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Restore globals"
+    write (u, "(A)")
+
+    call local%deactivate (global)
+    
+    var_list => global%get_var_list_ptr ()
+
+    call var_list_write_var (var_list, var_str ("sqrts"), u)
+    call var_list_write_var (var_list, var_str ("luminosity"), u)
+    call var_list_write_var (var_list, var_str ("ff"), u)
+    call var_list_write_var (var_list, var_str ("gy"), u)
+    call var_list_write_var (var_list, var_str ("mf"), u)
+    call var_list_write_var (var_list, var_str ("x"), u)
+
+    write (u, "(A)")
+    
+    write (u, "(1x,A,1x,F5.2)")  "sqrts      = ", &
+         global%get_rval (var_str ("sqrts"))
+    write (u, "(1x,A,1x,F5.2)")  "luminosity = ", &
+         global%get_rval (var_str ("luminosity"))
+    write (u, "(1x,A,1x,F5.2)")  "ff         = ", &
+         global%get_rval (var_str ("ff"))
+    write (u, "(1x,A,1x,F5.2)")  "gy         = ", &
+         global%get_rval (var_str ("gy"))
+    write (u, "(1x,A,1x,F5.2)")  "mf         = ", &
+         global%get_rval (var_str ("mf"))
+    write (u, "(1x,A,1x,F5.2)")  "x          = ", &
+         global%get_rval (var_str ("x"))
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+
+    call local%local_final ()
+
+    call global%final ()
+    call syntax_model_file_final ()
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: rt_data_9"
+    
+  end subroutine rt_data_9
   
 
 end module rt_data

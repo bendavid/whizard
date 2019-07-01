@@ -1,4 +1,4 @@
-! WHIZARD 2.2.2 July 6 2014
+! WHIZARD 2.2.3 Nov 30 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,8 +6,10 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
+!     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     Christian Weiss <christian.weiss@desy.de>
+!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -29,16 +31,19 @@
 
 module hep_common
   
-  use kinds !NODEP!
-  use file_utils !NODEP!
-  use iso_varying_string, string_t => varying_string !NODEP!
-  use diagnostics !NODEP!
-
-  use lorentz !NODEP!
+  use kinds
+  use io_units
+  use iso_varying_string, string_t => varying_string
+  use diagnostics
+  use physics_defs, only: HADRON_REMNANT
+  use physics_defs, only: HADRON_REMNANT_SINGLET
+  use physics_defs, only: HADRON_REMNANT_TRIPLET
+  use physics_defs, only: HADRON_REMNANT_OCTET
+  use lorentz
   use flavors
   use colors
   use polarizations
-  use models
+  use model_data
   use particles
   use subevents
   use processes
@@ -262,7 +267,7 @@ contains
   subroutine heprup_write_verbose (unit)
     integer, intent(in), optional :: unit
     integer :: u, i
-    u = output_unit (unit);  if (u < 0)  return
+    u = given_output_unit (unit);  if (u < 0)  return
     write (u, "(A)")  "HEPRUP Common Block"
     write (u, "(3x,A6,' = ',I9,3x,1x,I9,3x,8x,A)")  "IDBMUP", IDBMUP, &
          "PDG code of beams"
@@ -292,7 +297,7 @@ contains
   subroutine heprup_write_lhef (unit)
     integer, intent(in), optional :: unit
     integer :: u, i
-    u = output_unit (unit);  if (u < 0)  return
+    u = given_output_unit (unit);  if (u < 0)  return
     write (u, "(2(1x,I0),2(1x,ES17.10),6(1x,I0))") &
          IDBMUP, EBMUP, PDFGUP, PDFSUP, IDWTUP, NPRUP
     do i = 1, NPRUP
@@ -304,7 +309,7 @@ contains
   subroutine heprup_write_ascii (unit)
     integer, intent(in), optional :: unit
     integer :: u, i
-    u = output_unit (unit);  if (u < 0)  return
+    u = given_output_unit (unit);  if (u < 0)  return
     write (u, "(2(1x,I0),2(1x,ES17.10),6(1x,I0))") &
          IDBMUP, EBMUP, PDFGUP, PDFSUP, IDWTUP, NPRUP
     do i = 1, NPRUP
@@ -534,7 +539,7 @@ contains
   subroutine hepevt_write_verbose (unit)
     integer, intent(in), optional :: unit
     integer :: u, i
-    u = output_unit (unit);  if (u < 0)  return
+    u = given_output_unit (unit);  if (u < 0)  return
     write (u, "(A)")  "HEPEVT Common Block"
     write (u, "(3x,A6,' = ',I9,3x,1x,20x,A)")  "NEVHEP", NEVHEP, &
          "Event number"
@@ -580,7 +585,7 @@ contains
   subroutine hepeup_write_verbose (unit)
     integer, intent(in), optional :: unit
     integer :: u, i
-    u = output_unit (unit);  if (u < 0)  return
+    u = given_output_unit (unit);  if (u < 0)  return
     write (u, "(A)")  "HEPEUP Common Block"
     write (u, "(3x,A6,' = ',I9,3x,1x,20x,A)")  "NUP   ", NUP, &
          "Number of particles in event"
@@ -631,7 +636,7 @@ contains
   subroutine hepeup_write_lhef (unit)
     integer, intent(in), optional :: unit
     integer :: u, i
-    u = output_unit (unit);  if (u < 0)  return
+    u = given_output_unit (unit);  if (u < 0)  return
     write (u, "(2(1x,I0),4(1x,ES17.10))") &
          NUP, IDPRUP, XWGTUP, SCALUP, AQEDUP, AQCDUP
     do i = 1, NUP
@@ -646,7 +651,7 @@ contains
     integer :: u, i
     integer, dimension(MAXNUP) :: spin_up
     spin_up = SPINUP
-    u = output_unit (unit);  if (u < 0)  return
+    u = given_output_unit (unit);  if (u < 0)  return
     write (u, "(2(1x,I5),1x,ES17.10,3(1x,ES13.6))") &
          NUP, IDPRUP, XWGTUP, SCALUP, AQEDUP, AQCDUP
     write (u, "(500(1x,I5))") IDUP(:NUP)
@@ -665,7 +670,7 @@ contains
   subroutine hepevt_write_hepevt (unit)
     integer, intent(in), optional :: unit
     integer :: u, i
-    u = output_unit (unit);  if (u < 0)  return
+    u = given_output_unit (unit);  if (u < 0)  return
     write (u, "(3(1x,I0),(1x,ES17.10))") &
          NHEP, hepevt_n_out, hepevt_n_remnants, hepevt_weight
     do i = 1, NHEP
@@ -680,7 +685,7 @@ contains
     integer, intent(in), optional :: unit
     logical, intent(in) :: long   
     integer :: u, i
-    u = output_unit (unit);  if (u < 0)  return
+    u = given_output_unit (unit);  if (u < 0)  return
     write (u, "(3(1x,I0),(1x,ES17.10))") &
          NHEP, hepevt_n_out, hepevt_n_remnants, hepevt_weight
     do i = 1, NHEP
@@ -699,7 +704,7 @@ contains
     integer :: u, i, num_event
     num_event = 0
     if (present (i_evt)) num_event = i_evt
-    u = output_unit (unit);  if (u < 0)  return
+    u = given_output_unit (unit);  if (u < 0)  return
     write (u, "(2(1x,I0))") num_event, NHEP
     do i = 1, NHEP
        write (u, "(7(1x,I0))") &
@@ -712,7 +717,7 @@ contains
   subroutine hepevt_write_mokka (unit)
     integer, intent(in), optional :: unit
     integer :: u, i
-    u = output_unit (unit);  if (u < 0)  return
+    u = given_output_unit (unit);  if (u < 0)  return
     write (u, "(3(1x,I0),(1x,ES17.10))") &
          NHEP, hepevt_n_out, hepevt_n_remnants, hepevt_weight
     do i = 1, NHEP
@@ -771,7 +776,7 @@ contains
        (particle_set, recover_beams, model, alt_model)
     type(particle_set_t), intent(inout), target :: particle_set
     logical, intent(in), optional :: recover_beams
-    type(model_t), intent(in), target :: model, alt_model
+    class(model_data_t), intent(in), target :: model, alt_model
     type(particle_t), dimension(:), allocatable :: prt
     integer, dimension(2) :: parent
     integer, dimension(:), allocatable :: child

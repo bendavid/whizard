@@ -2,10 +2,27 @@ ChangeLog -- Summary of changes to the O'Mega package
 
 Use svn log to see detailed changes.
 
-	Version 2.2.0 
+	Version 2.2.3
 
      (cf. also the WHIZARD ChangeLog)
 
+2014-11-30
+	RELEASE: version 2.2.3
+
+2014-11-21
+	OVM: O'Mega Virtual Machine, bytecode instructions
+	   instead of compiled Fortran code
+	
+##################################################################
+	
+2014-07-06
+	RELEASE: version 2.2.2
+
+##################################################################
+	
+2014-06-03
+	RELEASE: version 2.2.1
+	
 ##################################################################
 	
 2014-03-15

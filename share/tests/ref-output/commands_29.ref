@@ -181,8 +181,8 @@ model "MSSM"
 
 * Selected global variables
 
-mch1 =  1.000000000000E+03
-wch1 =  0.000000000000E+00
+mch1 =>  1.000000000000E+03
+wch1 =>  0.000000000000E+00
 
 * Execute command list
 
@@ -330,8 +330,8 @@ model "MSSM"
 
 * Selected global variables
 
-mch1 =  1.836703610000E+02
-wch1 =  7.729070990000E-02
+mch1 =>  1.836703610000E+02
+wch1 =>  7.729070990000E-02
 
 * Cleanup
 

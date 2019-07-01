@@ -1,4 +1,4 @@
-! WHIZARD 2.2.2 July 6 2014
+! WHIZARD 2.2.3 Nov 30 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,8 +6,10 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
+!     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     Christian Weiss <christian.weiss@desy.de>
+!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -29,14 +31,14 @@
 
 module eio_checkpoints
   
-  use kinds !NODEP!
-  use file_utils !NODEP!
-  use iso_varying_string, string_t => varying_string !NODEP!
-  use diagnostics !NODEP!
+  use kinds
+  use io_units
+  use iso_varying_string, string_t => varying_string
   use unit_tests
+  use diagnostics
 
   use cputime
-  use models
+  use model_data
   use processes
   use events
   use eio_data
@@ -96,7 +98,7 @@ contains
     class(eio_checkpoints_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     if (object%active) then
        write (u, "(1x,A)")  "Event-sample checkpoints:  active"
        write (u, "(3x,A,I0)")  "interval  = ", object%val
@@ -116,9 +118,10 @@ contains
   end subroutine eio_checkpoints_final
   
   subroutine eio_checkpoints_init_out &
-       (eio, sample, process_ptr, data, success)
+       (eio, sample, process_ptr, data, success, extension)
     class(eio_checkpoints_t), intent(inout) :: eio
     type(string_t), intent(in) :: sample
+    type(string_t), intent(in), optional :: extension
     type(process_ptr_t), dimension(:), intent(in) :: process_ptr
     type(event_sample_data_t), intent(in), optional :: data
     logical, intent(out), optional :: success
@@ -247,7 +250,7 @@ contains
   
   subroutine eio_checkpoints_1 (u)
     integer, intent(in) :: u
-    type(model_list_t) :: model_list
+    type(model_data_t), target :: model
     type(event_t), allocatable, target :: event
     type(process_t), allocatable, target :: process
     type(process_ptr_t) :: process_ptr
@@ -262,14 +265,14 @@ contains
          &with screen output"
     write (u, "(A)")
 
-    call syntax_model_file_init ()
+    call model%init_test ()
 
     write (u, "(A)")  "* Initialize test process"
  
     allocate (process)
     process_ptr%ptr => process
     allocate (process_instance)
-    call prepare_test_process (process, process_instance, model_list)
+    call prepare_test_process (process, process_instance, model)
     call process_instance%setup_event_data ()
  
     allocate (event)
@@ -316,8 +319,7 @@ contains
     deallocate (process_instance)
     deallocate (process)
 
-    call model_list%final ()
-    call syntax_model_file_final ()
+    call model%final ()
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: eio_checkpoints_1"

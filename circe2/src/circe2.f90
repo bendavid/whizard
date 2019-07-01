@@ -139,9 +139,9 @@ contains
     ib(1) = i - (ib(2) - 1) * ubound (ch%d(1)%x, dim=1)
     call rng%generate (v(1))
     call rng%generate (v(2))
-    forall (d = 1:2)
+    do d = 1, 2
       x(d) = ch%d(d)%x(ib(d))*v(d) + ch%d(d)%x(ib(d)-1)*(1-v(d))
-    end forall
+    end do
     y = circe2_map (ch%d, x, ib)
     if (ch%triang) then
        y(2) = y(1) * y(2)
@@ -372,7 +372,7 @@ contains
        return
     end if
     if (ierror .gt. 0) then
-       write (*, '(2A)') 'circe2_load: ', 'Version 2.2.2'                         
+       write (*, '(2A)') 'circe2_load: ', 'Version 2.2.3'                         
     end if
     prefix = index (design, '*') - 1
     do
@@ -509,11 +509,11 @@ contains
           end if
        end do
     end do
-    forall (d = 1:2)
-       forall (i = 0:ubound (ch%d(d)%x, dim=1))
+    do d = 1, 2
+       do i = 0, ubound (ch%d(d)%x, dim=1)
           ch%d(d)%y(i) = circe2_map (ch%d(d), ch%d(d)%x(i), max (i, 1))
-       end forall
-    end forall
+       end do
+    end do
     read (lun, *)
     allocate (ch%wgt(0:product(nb)), ch%val(nb(1),nb(2)))
     ch%wgt(0) = 0

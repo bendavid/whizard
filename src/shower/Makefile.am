@@ -7,6 +7,7 @@
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
 #     with contributions from
+#     Bijan Chokoufe <bijan.chokoufe@desy.de>
 #     Christian Speckner <cnspeckn@googlemail.com>
 #     Sebastian Schmidt, Daniel Wiesler
 #
@@ -44,9 +45,14 @@ AM_FCFLAGS += -dcfuns -w
 endif
 
 libshower_la_SOURCES = \
-pythia_up.f shower_base.f90 shower_partons.f90 \
-shower_core.f90 shower_topythia.f90 mlm_matching.f90 \
-ckkw_pseudo_weights.f90 ckkw_matching.f90
+   pythia_up.f \
+   shower_base.f90 \
+   shower_partons.f90 \
+   shower_core.f90 \
+   shower_topythia.f90 \
+   mlm_matching.f90 \
+   ckkw_pseudo_weights.f90 \
+   ckkw_matching.f90
 
 libshower_dummy_la_SOURCES = shower_dummy.f90
 
@@ -74,15 +80,17 @@ Makefile.depend: $(libshower_la_SOURCES)
 
 DISTCLEANFILES = Makefile.depend 
 
-## Dependency libaux (kinds, strings)
+## Dependency libbasics / libaux (kinds, strings)
 ## (tao_random_numbers will be removed when switching to rng_factory)
 $(libshower_la_OBJECTS): \
-../misc/kinds.$(FC_MODULE_EXT) \
-../misc/constants.$(FC_MODULE_EXT) \
-../misc/file_utils.$(FC_MODULE_EXT) \
-../misc/diagnostics.$(FC_MODULE_EXT) \
-../misc/lorentz.$(FC_MODULE_EXT) \
-../../vamp/src/tao_random_numbers.$(FC_MODULE_EXT)
+../basics/kinds.$(FC_MODULE_EXT) \
+../basics/io_units.$(FC_MODULE_EXT) \
+../basics/constants.$(FC_MODULE_EXT) \
+../system/diagnostics.$(FC_MODULE_EXT) \
+../physics/lorentz.$(FC_MODULE_EXT) \
+../../vamp/src/tao_random_numbers.$(FC_MODULE_EXT) \
+../pdf_builtin/pdf_builtin.$(FC_MODULE_EXT) \
+../lhapdf/lhapdf.$(FC_MODULE_EXT)
 
 libshower_la_LIBADD = ../../pythia/libpythia_wo.la
 
@@ -92,7 +100,7 @@ SUFFIXES = .lo .$(FC_MODULE_EXT)
         @:
 #       touch $@
 
-AM_FCFLAGS += -I../misc -I../../vamp/src/ -I../../pythia
+AM_FCFLAGS += -I../basics -I../utilities -I../system -I../physics -I../../vamp/src/ -I../../pythia -I../pdf_builtin -I../lhapdf
 
 ########################################################################
 ## Default Fortran compiler options
@@ -114,15 +122,18 @@ endif
 ## (Re)create F90 sources from NOWEB source.
 if NOWEB_AVAILABLE
 
-SHOWER_SRC = $(libshower_la_SOURCES) $(libshower_dummy_la_SOURCES) 
+PRELUDE = $(top_srcdir)/src/noweb-frame/whizard-prelude.nw
+POSTLUDE = $(top_srcdir)/src/noweb-frame/whizard-postlude.nw
 
-shower.stamp: $(srcdir)/shower.nw
+shower.stamp: $(PRELUDE) $(srcdir)/shower.nw $(POSTLUDE)
 	@rm -f shower.tmp
 	@touch shower.tmp
 	for src in $(SHOWER_SRC); do \
-	   $(NOTANGLE) -R[[$$src]] $< | $(CPIF) $$src; \
-	done
+	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src; \
+        done
 	@mv -f shower.tmp shower.stamp
+
+SHOWER_SRC = $(libshower_la_SOURCES) $(libshower_dummy_la_SOURCES) 
 
 $(SHOWER_SRC): shower.stamp
 ## Recover from the removal of $@

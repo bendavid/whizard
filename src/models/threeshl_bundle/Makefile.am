@@ -50,16 +50,16 @@ $(nodist_execmod_HEADERS): threeshl_bundle.lo
 ########################################################################
 ## Dependencies on global WHIZARD modules
 
-auxdir = $(top_builddir)/src/misc
+basicsdir = $(top_builddir)/src/basics
 
 KINDS_MOD = kinds.$(FC_MODULE_EXT)
 CONSTANTS_MOD = constants.$(FC_MODULE_EXT)
 
-AM_FCFLAGS = -I$(auxdir)
+AM_FCFLAGS = -I$(basicsdir) 
 
 $(libthreeshl_bundle_la_OBJECTS): \
-  $(auxdir)/$(KINDS_MOD) \
-  $(auxdir)/$(CONSTANTS_MOD)
+  $(basicsdir)/$(KINDS_MOD) \
+  $(basicsdir)/$(CONSTANTS_MOD)
 
 ########################################################################
 ## Default Fortran compiler options

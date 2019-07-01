@@ -1,4 +1,4 @@
-! WHIZARD 2.2.2 July 6 2014
+! WHIZARD 2.2.3 Nov 30 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,8 +6,10 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
+!     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     Christian Weiss <christian.weiss@desy.de>
+!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -29,17 +31,16 @@
 
 module phs_wood
 
-  use kinds, only: default !NODEP!
-  use iso_varying_string, string_t => varying_string !NODEP!
-  use file_utils !NODEP!
-  use diagnostics !NODEP!
+  use kinds, only: default
+  use iso_varying_string, string_t => varying_string
+  use io_units
+  use constants
   use unit_tests
+  use diagnostics
   use os_interface
   use md5
-  use constants !NODEP!
-  use lorentz !NODEP!
-  use variables
-  use models
+  use lorentz
+  use model_data
   use flavors
   use process_constants
   use sf_mappings
@@ -82,6 +83,8 @@ module phs_wood
      procedure :: write_phase_space => phs_wood_config_write_phase_space
      procedure :: clear_phase_space => phs_wood_config_clear_phase_space
      procedure :: configure => phs_wood_config_configure
+     procedure :: reshuffle_flavors => phs_wood_config_reshuffle_flavors
+     procedure :: set_momentum_links => phs_wood_config_set_momentum_links
      procedure :: record_s_mappings => phs_wood_config_record_s_mappings
      procedure :: record_on_shell => phs_wood_config_record_on_shell
      procedure :: compute_md5sum_forest => phs_wood_config_compute_md5sum_forest
@@ -122,7 +125,7 @@ contains
     class(phs_wood_config_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     write (u, "(1x,A)") &
          "Partonic phase-space configuration (phase-space forest):"
     call object%base_write (unit)
@@ -136,7 +139,7 @@ contains
     class(phs_wood_config_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     call phs_forest_write (object%forest, u)
   end subroutine phs_wood_config_write_forest
   
@@ -293,7 +296,8 @@ contains
   end subroutine phs_wood_config_clear_phase_space
   
   subroutine phs_wood_config_configure (phs_config, sqrts, &
-       sqrts_fixed, cm_frame, azimuthal_dependence, rebuild, ignore_mismatch)
+       sqrts_fixed, cm_frame, azimuthal_dependence, rebuild, ignore_mismatch, &
+       nlo_type)
     class(phs_wood_config_t), intent(inout) :: phs_config
     real(default), intent(in) :: sqrts
     logical, intent(in), optional :: sqrts_fixed
@@ -301,10 +305,16 @@ contains
     logical, intent(in), optional :: azimuthal_dependence
     logical, intent(in), optional :: rebuild
     logical, intent(in), optional :: ignore_mismatch
+    type(string_t), intent(inout), optional :: nlo_type
     type(string_t) :: filename, filename_vis
     logical :: variable_limits
     logical :: ok, exist, found, check, match, rebuild_phs
     integer :: g, c0, c1, n
+    if (present (nlo_type)) then
+      phs_config%nlo_type = nlo_type
+    else
+      phs_config%nlo_type = 'Born'
+    end if
     phs_config%sqrts = sqrts
     phs_config%par%sqrts = sqrts
     if (present (sqrts_fixed)) &
@@ -365,7 +375,7 @@ contains
     if (phs_config%io_unit == 0) then
        ok = .true.
     else
-       call phs_forest_read (phs_config%forest, phs_config%io_unit, &
+      call phs_forest_read (phs_config%forest, phs_config%io_unit, &
             phs_config%id, phs_config%n_in, phs_config%n_out, &
             phs_config%model, ok)
        if (.not. phs_config%io_unit_keep_open) then
@@ -408,6 +418,19 @@ contains
     end if
   end subroutine phs_wood_config_configure
   
+  subroutine phs_wood_config_reshuffle_flavors (phs_config, reshuffle, flv_extra)
+    class(phs_wood_config_t), intent(inout) :: phs_config
+    integer, intent(in), dimension(:), allocatable :: reshuffle
+    type(flavor_t), intent(in) :: flv_extra
+    call phs_forest_set_flavors (phs_config%forest, phs_config%flv(:,1), reshuffle, flv_extra)
+  end subroutine phs_wood_config_reshuffle_flavors
+
+  subroutine phs_wood_config_set_momentum_links (phs_config, reshuffle)
+    class(phs_wood_config_t), intent(inout) :: phs_config
+    integer, intent(in), dimension(:), allocatable :: reshuffle
+    call phs_forest_set_momentum_links (phs_config%forest, reshuffle)
+  end subroutine phs_wood_config_set_momentum_links
+
   subroutine phs_wood_config_record_s_mappings (phs_config)
     class(phs_wood_config_t), intent(inout) :: phs_config
     logical :: flag
@@ -544,7 +567,7 @@ contains
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: verbose
     integer :: u
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     call object%base_write (u)
   end subroutine phs_wood_write
     
@@ -552,7 +575,7 @@ contains
     class(phs_wood_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     call phs_forest_write (object%forest, u)
   end subroutine phs_wood_write_forest
   
@@ -671,9 +694,7 @@ contains
 
   subroutine phs_wood_1 (u)
     integer, intent(in) :: u
-    type(os_data_t) :: os_data
-    type(model_list_t) :: model_list
-    type(model_t), pointer :: model
+    type(model_data_t), target :: model
     type(process_constants_t) :: process_data
     class(phs_config_t), allocatable :: phs_data
     type(mapping_defaults_t) :: mapping_defaults
@@ -686,10 +707,7 @@ contains
          &phase-space configuration data"
     write (u, "(A)")
     
-    call os_data_init (os_data)
-    call syntax_model_file_init ()
-    call model_list%read_model (var_str ("Test"), &
-         var_str ("Test.mdl"), os_data, model)
+    call model%init_test ()
 
     call syntax_phs_forest_init ()
     
@@ -741,8 +759,7 @@ contains
 
     close (u_phs)
     call phs_data%final ()
-    call model_list%final ()
-    call syntax_model_file_final ()
+    call model%final ()
     
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: phs_wood_1"
@@ -751,9 +768,7 @@ contains
 
   subroutine phs_wood_2 (u)
     integer, intent(in) :: u
-    type(os_data_t) :: os_data
-    type(model_list_t) :: model_list
-    type(model_t), pointer :: model
+    type(model_data_t), target :: model
     type(flavor_t) :: flv
     type(process_constants_t) :: process_data
     real(default) :: sqrts, E
@@ -766,10 +781,7 @@ contains
     write (u, "(A)")  "*   Purpose: test simple single-channel phase space"
     write (u, "(A)")
     
-    call os_data_init (os_data)
-    call syntax_model_file_init ()
-    call model_list%read_model (var_str ("Test"), &
-         var_str ("Test.mdl"), os_data, model)
+    call model%init_test ()
     call flavor_init (flv, 25, model)
 
     write (u, "(A)")  "* Initialize a process and a matching &
@@ -857,8 +869,7 @@ contains
     
     close (u_phs)
     call phs_data%final ()
-    call model_list%final ()
-    call syntax_model_file_final ()
+    call model%final ()
     
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: phs_wood_2"
@@ -867,9 +878,7 @@ contains
 
   subroutine phs_wood_3 (u)
     integer, intent(in) :: u
-    type(os_data_t) :: os_data
-    type(model_list_t) :: model_list
-    type(model_t), pointer :: model
+    type(model_data_t), target :: model
     type(process_constants_t) :: process_data
     type(phs_parameters_t) :: phs_par
     class(phs_config_t), allocatable :: phs_data
@@ -880,10 +889,7 @@ contains
     write (u, "(A)")  "*   Purpose: generate a phase-space configuration"
     write (u, "(A)")
     
-    call os_data_init (os_data)
-    call syntax_model_file_init ()
-    call model_list%read_model (var_str ("Test"), &
-         var_str ("Test.mdl"), os_data, model)
+    call model%init_test ()
 
     call syntax_phs_forest_init ()
     
@@ -921,8 +927,7 @@ contains
     write (u, "(A)")  "* Cleanup"
 
     call phs_data%final ()
-    call model_list%final ()
-    call syntax_model_file_final ()
+    call model%final ()
     
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: phs_wood_3"
@@ -931,9 +936,7 @@ contains
 
   subroutine phs_wood_4 (u)
     integer, intent(in) :: u
-    type(os_data_t) :: os_data
-    type(model_list_t) :: model_list
-    type(model_t), pointer :: model
+    type(model_data_t), target :: model
     type(process_constants_t) :: process_data
     type(phs_parameters_t) :: phs_par
     class(phs_config_t), allocatable, target :: phs_data
@@ -948,10 +951,7 @@ contains
     write (u, "(A)")  "*   Purpose: generate a phase-space configuration"
     write (u, "(A)")
     
-    call os_data_init (os_data)
-    call syntax_model_file_init ()
-    call model_list%read_model (var_str ("Test"), &
-         var_str ("Test.mdl"), os_data, model)
+    call model%init_test ()
 
     call syntax_phs_forest_init ()
     
@@ -1048,8 +1048,7 @@ contains
     deallocate (phs)
 
     call phs_data%final ()
-    call model_list%final ()
-    call syntax_model_file_final ()
+    call model%final ()
     
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: phs_wood_4"
@@ -1058,9 +1057,7 @@ contains
 
   subroutine phs_wood_5 (u)
     integer, intent(in) :: u
-    type(os_data_t) :: os_data
-    type(model_list_t) :: model_list
-    type(model_t), pointer :: model
+    type(model_data_t), target :: model
     type(process_constants_t) :: process_data
     type(phs_parameters_t) :: phs_par
     class(phs_config_t), allocatable :: phs_data
@@ -1069,10 +1066,7 @@ contains
     write (u, "(A)")  "*   Purpose: generate a phase-space configuration"
     write (u, "(A)")
     
-    call os_data_init (os_data)
-    call syntax_model_file_init ()
-    call model_list%read_model (var_str ("Test"), &
-         var_str ("Test.mdl"), os_data, model)
+    call model%init_test ()
 
     call syntax_phs_forest_init ()
     
@@ -1107,8 +1101,7 @@ contains
     write (u, "(A)")  "* Cleanup"
 
     call phs_data%final ()
-    call model_list%final ()
-    call syntax_model_file_final ()
+    call model%final ()
     
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: phs_wood_5"
@@ -1117,25 +1110,19 @@ contains
 
   subroutine phs_wood_6 (u)
     integer, intent(in) :: u
-    type(os_data_t) :: os_data
-    type(model_list_t) :: model_list
-    type(model_t), pointer :: model
+    type(model_data_t), target :: model
     type(process_constants_t) :: process_data
     type(phs_parameters_t) :: phs_par
     class(phs_config_t), allocatable :: phs_data
     logical :: exist, found, match
     integer :: u_phs
     character(*), parameter :: filename = "phs_wood_6_p.phs"
-    type(var_list_t), pointer :: var_list
    
     write (u, "(A)")  "* Test output: phs_wood_6"
     write (u, "(A)")  "*   Purpose: generate and check  phase-space file"
     write (u, "(A)")
     
-    call os_data_init (os_data)
-    call syntax_model_file_init ()
-    call model_list%read_model (var_str ("Test"), &
-         var_str ("Test.mdl"), os_data, model)
+    call model%init_test ()
 
     call syntax_phs_forest_init ()
     
@@ -1326,9 +1313,7 @@ contains
     call phs_data%final ()
     deallocate (phs_data)
     allocate (phs_wood_config_t :: phs_data)
-    var_list => model_get_var_list_ptr (model)
-    call var_list_set_real (var_list, var_str ("ms"), 100._default, &
-         is_known = .true.)
+    call model%set_par (var_str ("ms"), 100._default)
     call phs_data%init (process_data, model)
     phs_par%sqrts = 1000
     phs_par%off_shell = 1
@@ -1359,8 +1344,7 @@ contains
     write (u, "(A)")  "* Cleanup"
 
     call phs_data%final ()
-    call model_list%final ()
-    call syntax_model_file_final ()
+    call model%final ()
     
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: phs_wood_6"
@@ -1370,8 +1354,7 @@ contains
   subroutine phs_wood_vis_1 (u)
     integer, intent(in) :: u
     type(os_data_t) :: os_data
-    type(model_list_t) :: model_list
-    type(model_t), pointer :: model
+    type(model_data_t), target :: model
     type(process_constants_t) :: process_data
     class(phs_config_t), allocatable :: phs_data
     type(mapping_defaults_t) :: mapping_defaults
@@ -1387,9 +1370,7 @@ contains
     write (u, "(A)")
     
     call os_data_init (os_data)
-    call syntax_model_file_init ()
-    call model_list%read_model (var_str ("Test"), &
-         var_str ("Test.mdl"), os_data, model)
+    call model%init_test ()
 
     call syntax_phs_forest_init ()
     
@@ -1474,8 +1455,7 @@ contains
 
     close (u_phs)
     call phs_data%final ()
-    call model_list%final ()
-    call syntax_model_file_final ()
+    call model%final ()
     
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: phs_wood_vis_1"

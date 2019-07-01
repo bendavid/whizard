@@ -7,61 +7,13 @@ This is the code for the \whizard\ QCD parton shower for final state
 radiation (FSR) and initial state radiation (ISR) as well as the interface
 to the \pythia\ module for showering and hadronization.
 
-<<Version>>=
-2.2.0
-<<Date>>=
-Mar 03 2014
-
-<<File header>>=
-! WHIZARD <<Version>> <<Date>>
-!
-! Copyright (C) 1999-2014 by
-!     Wolfgang Kilian <kilian@physik.uni-siegen.de>
-!     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-!     Juergen Reuter <juergen.reuter@desy.de>
-!
-!     with contributions from
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     and Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler
-!
-! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by
-! the Free Software Foundation; either version 2, or (at your option)
-! any later version.
-!
-! WHIZARD is distributed in the hope that it will be useful, but
-! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-! GNU General Public License for more details.
-!
-! You should have received a copy of the GNU General Public License
-! along with this program; if not, write to the Free Software
-! Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! This file has been stripped of most comments.  For documentation, refer
-! to the source 'shower.nw'
-@
-We are strict with our names:
-<<Standard module head>>=
-  implicit none
-  private
-@ This is the way to envoke the kinds module (not contained in this source)
-<<Use kinds>>=
-  use kinds, only: default !NODEP!
-@ %def default
-@ And we make heavy use of variable-length strings
-<<Use strings>>=
-  use iso_varying_string, string_t => varying_string !NODEP!
-@ %def string_t
-@
 \section{Basics of the shower}
 <<[[shower_base.f90]]>>=
 <<File header>>
 
 module shower_base
 
-<<Use kinds>>
+<<Use kinds>> !NODEP!
   use constants !NODEP!
   use tao_random_numbers !NODEP!
 
@@ -80,21 +32,18 @@ contains
 end module shower_base
 @ %def shower_base
 @
-\subsection{PDF Interface of the shower}
-<<Shower base: public>>=
-  public :: shower_pdf
-<<Shower base: interfaces>>=
-  interface
-     subroutine shower_pdf (set, x, q, ff)
-       integer, intent(in) :: set
-       double precision, intent(in) :: x, q
-       double precision, dimension(-6:6), intent(out) :: ff
-     end subroutine shower_pdf
-  end interface
-
-@ %def shower_pdf
-@
-\subsection{Parameters}
+\subsection{PDF Parameters}
+The shower has to know about the PDF set used for the parent process,
+if any.  We support the following:
+<<Shower base: parameters>>=
+  integer, parameter, public :: STRF_NONE = 0
+  integer, parameter, public :: STRF_LHAPDF6 = 1
+  integer, parameter, public :: STRF_LHAPDF5 = 2
+  integer, parameter, public :: STRF_PDF_BUILTIN = 3
+  
+@ %def STRF_NONE STRF_LHAPDF6 STRF_LHAPDF5 STRF_PDF_BUILTIN
+@     
+\subsection{Additional parameters}
 This decides whether to print out additional information.
 <<Shower base: parameters>>=
   logical, parameter, public :: D_print = .false.
@@ -181,28 +130,8 @@ Temporary parameters for the $P_t$-ordered shower:
 Then, there are the variables for the PDF functions:
 <<Shower base: parameters>>=
   integer, public :: shower_pdf_set = 0
+  integer, public :: shower_pdf_type = STRF_NONE
 @ %def shower_pdf_set
-@
-And the PDF function itself, as a procedure pointer:
-<<Shower base: parameters>>=
-  procedure(shower_pdf), pointer, public :: shower_pdf_func
-
-@ %def shower_pdf_func
-@
-<<Shower base: procedures>>=
-  subroutine randomseed (seed)
-    integer, intent(in), optional :: seed
-    integer :: clock
-
-    if (present (seed)) then
-       clock = seed
-    else
-       call system_clock (count = clock)
-    end if
-    call tao_random_seed (clock)
-  end subroutine randomseed
-
-@ %def randomseed
 @
 <<Shower base: public>>=
   public :: D_alpha_s_isr
@@ -434,8 +363,7 @@ should be unified at some point.
   public :: shower_set_minenergy_timelike
   public :: shower_set_tscalefactor_isr
   public :: shower_set_isr_only_onshell_emitted_partons
-  public :: shower_set_pdf_func
-  public :: shower_set_pdf_set
+  public :: shower_set_pdf_set_and_type
 <<Shower base: procedures>>=
   subroutine shower_set_D_Min_t (input)
     real(default) :: input
@@ -512,15 +440,11 @@ should be unified at some point.
     isr_only_onshell_emitted_partons = input
   end subroutine shower_set_isr_only_onshell_emitted_partons
 
-  subroutine shower_set_pdf_func (func)
-    procedure(shower_pdf), pointer, intent(in) :: func
-    shower_pdf_func => func
-  end subroutine shower_set_pdf_func
-
-  subroutine shower_set_pdf_set (set)
-    integer, intent(in) :: set
+  subroutine shower_set_pdf_set_and_type (set, type)
+    integer, intent(in) :: set, type
     shower_pdf_set = set
-  end subroutine shower_set_pdf_set
+    shower_pdf_type = type
+  end subroutine shower_set_pdf_set_and_type
 
 @ %def shower_set_D_Min_t shower_set_D_Lambda_fsr
 @ %def shower_set_D_Lambda_isr shower_set_D_Nf
@@ -534,8 +458,7 @@ should be unified at some point.
 @ %def shower_set_maxz_isr shower_set_minenergy_timelike
 @ %def shower_set_tscalefactor_isr
 @ %def shower_set_isr_only_onshell_emitted_partons
-@ %def shower_set_pdf_func
-@ %def shower_set_pdf_set
+@ %def shower_set_pdf_set_and_type
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Parton module for the shower}
@@ -544,10 +467,10 @@ should be unified at some point.
 
 module shower_partons
 
-<<Use kinds>>
+<<Use kinds>> !NODEP!
+  use io_units !NODEP!
   use constants !NODEP!
-  use limits, only: TAB !NODEP!
-  use file_utils !NODEP!
+  use system_defs, only: TAB !NODEP!
   use diagnostics !NODEP!
   use tao_random_numbers !NODEP!
   use lorentz !NODEP!
@@ -744,7 +667,7 @@ parton and first daughter.
     type(parton_t), intent(in) :: prt
     integer, intent(in), optional :: unit
     integer :: u
-    u = output_unit (unit); if (u < 0) return
+    u = given_output_unit (unit); if (u < 0) return
 
     write (u, "(1x,4A)", advance ="no")  "Shower parton <nr>", &
          TAB, "<type>", TAB
@@ -1212,7 +1135,7 @@ parton [[prt]] into its daughters are allowed or not.
   recursive subroutine parton_apply_z(prt, newz)
     type(parton_t), intent(inout) :: prt
     real(default), intent(in) :: newz
-    if (D_print) print *, "old z:", prt%z , " new z: ", newz
+    if (D_print) print *, "old z = ", prt%z , " new z = ", newz
     prt%z = newz
     if (associated (prt%child1) .and. associated (prt%child2)) then
        call parton_set_energy (prt%child1, newz * parton_get_energy (prt))
@@ -1309,7 +1232,7 @@ three-momenta of its children.
     type(vector3_t) :: pchild1_direction
     type(lorentz_transformation_t) :: L, rotation
 
-    if (D_print) print *, " generate_ps for parton " , prt%nr
+    if (D_print) print *, "parton_generate_ps for parton " , prt%nr
     if (.not. (associated (prt%child1) .and. associated (prt%child2))) then
        print *, "no children for generate_ps"
        return
@@ -1388,7 +1311,7 @@ three-momenta of its children.
        if (pabs > p1abs + p2abs .or. &
             pabs < abs(p1abs - p2abs)) then
           if (D_print) then
-             print *,"error at generate_ps, Dreiecksungleichung for parton ", &
+             print *, "error at parton_generate_ps Dreiecksungleichung for parton ", &
                      prt%nr, " ", parton_p3abs(prt)," ",p1abs," ",p2abs
              call parton_write (prt)
              call parton_write (prt%child1)
@@ -1443,7 +1366,7 @@ generates the two remaining three-momenta.
     real(default) :: scproduct, pabs, p1abs, p2abs, x, ptabs, phi
     real(default), dimension(1:3) :: momentum
 
-    if (D_print) print *, " generate_ps_ini for parton " , prt%nr
+    if (D_print) print *, "parton_generate_ps_ini for parton " , prt%nr
     if (.not. (associated(prt%child1) .and. associated(prt%child2))) then
        print *, "error in parton_generate_ps_ini"
        return
@@ -1490,7 +1413,7 @@ generates the two remaining three-momenta.
           call parton_write (prt%child2)
           return
        end if
-       if (D_print) print *, "x:",x
+       if (D_print) print *, "parton_generate_ps_ini : x = ", x
        ptabs = sqrt (p1abs * p1abs - x**2)
        call tao_random_number (phi)
        phi = twopi * phi
@@ -1525,7 +1448,7 @@ generates the two remaining three-momenta.
 
     if (signal_is_pending ()) return
     if (D_print) then
-       print *, "next_t_ana for parton " , prt%nr
+       print *, "parton_next_t_ana for parton " , prt%nr
     end if
 
     ! check if branchings are possible at all
@@ -1744,7 +1667,7 @@ used for the integration.
                 gtoqq = 0
              else
                 call tao_random_number (temprand)
-                gtoqq = 1 + temprand * number_of_flavors (prt%t)
+                gtoqq = 1 + int (temprand * number_of_flavors (prt%t))
              end if
           end if
        else
@@ -1800,13 +1723,15 @@ one module needs to access it.
 
 module shower_core
 
-<<Use kinds>>
+<<Use kinds>> !NODEP!
+  use io_units !NODEP!
   use constants !NODEP!
-  use limits !NODEP!
   use lorentz !NODEP!
+  use system_defs, only: TAB !NODEP!
   use diagnostics !NODEP!
-  use file_utils !NODEP!
   use tao_random_numbers !NODEP!
+  use pdf_builtin !NODEP!
+  use lhapdf !NODEP!
   use shower_base
   use shower_partons
   use ckkw_pseudo_weights
@@ -1819,12 +1744,25 @@ module shower_core
 
 <<Shower core: types>>
 
+<<Shower core: interfaces>>
+
 contains
 
 <<Shower core: procedures>>
 
 end module shower_core
 @ %def shower_core
+@
+<<Shower core: interfaces>>=
+  interface
+     subroutine evolvePDFM (set, x, q, ff)
+       integer, intent(in) :: set
+       double precision, intent(in) :: x, q
+       double precision, dimension(-6:6), intent(out) :: ff
+     end subroutine evolvePDFM
+  end interface
+
+@ %def evolvePDFM
 @
 <<Shower core: public>>=
   public :: shower_interaction_t
@@ -1847,6 +1785,7 @@ end module shower_core
      type(shower_interaction_pointer_t), dimension(:), allocatable :: &
           interactions
      type(parton_pointer_t), dimension(:), allocatable :: partons
+     type(lhapdf_pdf_t) :: pdf
      integer :: next_free_nr
      integer :: next_color_nr
      logical :: valid
@@ -2169,9 +2108,9 @@ CLUSTERING: do
          !!! calculate the jet measure
          if (.not.associated (new_partons(i)%p)) cycle INNER
          if (.not.associated (new_partons(j)%p)) cycle INNER
-         if (.not. shower_clustering_allowed &
-              (shower, new_partons, i,j)) &
-              cycle inner
+         !if (.not. shower_clustering_allowed &
+              !(shower, new_partons, i,j)) &
+              !cycle inner
          !!! Durham jet-measure ! don't care about constants
          y = min (parton_get_energy (new_partons(i)%p), &
               parton_get_energy (new_partons(j)%p)) * &
@@ -2236,7 +2175,7 @@ if (allocated (shower%partons)) then
    end do
 end if
 @
-<<Procedures of [[shower_add_interaction_2ton_CKKW]]>>=
+<<Procedures of [[shower_add_interaction_2ton_CKKW]] (not used)>>=
 function shower_clustering_allowed (shower, partons, i, j) result (allowed)
   type(shower_t), intent(inout) :: shower
   logical :: allowed
@@ -2516,8 +2455,9 @@ end subroutine set_starting_scale
 <<Shower core: shower: TBP>>=
   procedure :: create => shower_create
 <<Shower core: procedures>>=
-  subroutine shower_create (shower)
+  subroutine shower_create (shower, pdf)
     class(shower_t), intent(inout) :: shower
+    type(lhapdf_pdf_t), intent(in), target :: pdf
     shower%next_free_nr = 1
     shower%next_color_nr = 1
     if (allocated (shower%interactions)) then
@@ -2531,6 +2471,7 @@ end subroutine set_starting_scale
     treat_light_quarks_massless = .true.
     treat_duscb_quarks_massless = .false.
     shower%valid = .true.
+    shower%pdf = pdf
   end subroutine shower_create
 
 @ %def shower_create
@@ -2549,6 +2490,7 @@ end subroutine set_starting_scale
     end do
     deallocate (shower%interactions)
     deallocate (shower%partons)
+    call shower%pdf%final
   end subroutine shower_final
 
 @ %def shower_final
@@ -2983,7 +2925,7 @@ end subroutine set_starting_scale
 
 @ %def shower_isr_is_finished
 @
-<<Shower core: procedures>>=
+<<Shower core: procedures (not used)>>=
   function shower_is_finished (shower) result (finished)
     type(shower_t), intent(in) :: shower
     logical :: finished
@@ -3462,7 +3404,7 @@ to be aligned along the z-axis).
     type(shower_interaction_t), intent(in) :: interaction
     integer, intent(in), optional :: unit
     integer :: i, u
-    u = output_unit (unit); if (u < 0) return
+    u = given_output_unit (unit); if (u < 0) return
     if (associated (interaction%partons(1)%p)) then
        if (associated (interaction%partons(1)%p%initial)) &
             call parton_write (interaction%partons(1)%p%initial, u)
@@ -3488,7 +3430,7 @@ to be aligned along the z-axis).
     class(shower_t), intent(in) :: shower
     integer, intent(in), optional :: unit
     integer :: i, u
-    u = output_unit (unit); if (u < 0) return
+    u = given_output_unit (unit); if (u < 0) return
     if (size (shower%interactions) > 0) then
        write (u, "(3x,A)") "Interactions: "
        do i = 1, size (shower%interactions)
@@ -3543,7 +3485,7 @@ to be aligned along the z-axis).
     integer :: u
     integer :: i
     integer :: c1, c2
-    u = output_unit (unit);  if (u < 0)  return
+    u = given_output_unit (unit);  if (u < 0)  return
     write(u,'(A)') '<LesHouchesEvents version="1.0">'
     write(u,'(A)') '<-- not a complete lhe file - just one event -->'
     write(u,'(A)') '<event>'
@@ -3693,7 +3635,7 @@ to be aligned along the z-axis).
             zstep = min(zstep, maxz - z)
             integral = integral + zstep * (D_alpha_s_isr ((one - &
                  (z + 0.5_default * zstep)) * abs(prt%t)) / (abs(prt%t))) * &
-                 P_ggg (z + 0.5_default * zstep) * get_pdf (prt%initial%type, &
+                 P_ggg (z + 0.5_default * zstep) * shower%get_pdf (prt%initial%type, &
                  prt%x / (z + 0.5_default * zstep), abs(prt%t), 21)
             if (integral > final) then
                exit
@@ -3713,7 +3655,7 @@ to be aligned along the z-axis).
                pdfsum = zero
                do quark = -D_Nf, D_Nf
                   if (quark == 0) cycle
-                  pdfsum = pdfsum + get_pdf (prt%initial%type, &
+                  pdfsum = pdfsum + shower%get_pdf (prt%initial%type, &
                        prt%x / (z + 0.5_default * zstep), abs(prt%t), quark)
                end do
                integral = integral + zstep * (D_alpha_s_isr &
@@ -3736,7 +3678,7 @@ to be aligned along the z-axis).
             zstep = min(zstep, maxz - z)
             integral = integral + zstep * (D_alpha_s_isr ((one - &
                  (z + 0.5_default * zstep)) * abs(prt%t)) / (abs(prt%t))) * &
-                 P_qqg (z + 0.5_default * zstep) * get_pdf (prt%initial%type, &
+                 P_qqg (z + 0.5_default * zstep) * shower%get_pdf (prt%initial%type, &
                  prt%x / (z + 0.5_default * zstep), abs(prt%t), prt%type)
             if (integral > final) then
                exit
@@ -3755,7 +3697,7 @@ to be aligned along the z-axis).
                zstep = min(zstep, maxz - z)
                integral = integral + zstep * (D_alpha_s_isr &
                     ((one - (z + 0.5_default * zstep)) * abs(prt%t)) / (abs(prt%t))) * &
-                    P_gqq (z + 0.5_default * zstep) * get_pdf (prt%initial%type, &
+                    P_gqq (z + 0.5_default * zstep) * shower%get_pdf (prt%initial%type, &
                     prt%x / (z + 0.5_default * zstep), abs(prt%t), 21)
                if (integral > final) then
                   exit
@@ -3768,7 +3710,7 @@ to be aligned along the z-axis).
          end if
 
       end if
-      integral = integral / get_pdf (prt%initial%type, prt%x, &
+      integral = integral / shower%get_pdf (prt%initial%type, prt%x, &
            abs(prt%t), prt%type)
     end function integral_over_z_simple
 
@@ -3934,7 +3876,7 @@ to be aligned along the z-axis).
 
 @ %def shower_prepare_for_simulate_isr_ana_test
 @
-<<Shower core: procedures>>=
+<<Shower core: procedures (not used)>>=
   subroutine shower_prepare_for_simulate_isr_ana (shower, prt1, prt2)
     type(shower_t), intent(inout) :: shower
     type(parton_t), intent(inout), target :: prt1, prt2
@@ -3945,7 +3887,6 @@ to be aligned along the z-axis).
     integer :: i
 
     if (signal_is_pending ()) return
-    ! print *, " shower_prepare_for_simulate_isr_ana"
 
     if (.not. associated (prt1%initial) .or. &
         .not. associated (prt2%initial)) then
@@ -4034,7 +3975,6 @@ to be aligned along the z-axis).
        end if
     end do FIRST_BRANCHINGS
 
-    ! print *, "  shower_prepare_for_simulate_isr_ana finished"
   end subroutine shower_prepare_for_simulate_isr_ana
 
 @ %def shower_prepare_for_simulate_isr_ana
@@ -4149,7 +4089,7 @@ to be aligned along the z-axis).
     if (signal_is_pending ()) return
     gtoqq = 0
 
-    if (D_print) print *, " simulate_children_ana for parton " , prt%nr
+    if (D_print) print *, "shower_simulate_children_ana for parton " , prt%nr
 
     if (.not. associated (prt%child1) .or. .not. associated (prt%child2)) then
        call msg_error ("Shower: error in simulate_children_ana: no children.")
@@ -4340,7 +4280,7 @@ do daughter = 1, 2
    end if
 end do
 @
-<<Shower core: procedures>>=
+<<Shower core: procedures (not used)>>=
   subroutine shower_generate_next_fsr_branchings (shower)
     type(shower_t), intent(inout) :: shower
     integer i, index
@@ -4405,7 +4345,7 @@ number and the integral.
     else
        prt%scale = scale - 0.5_default * scalestep
        factor = scalestep * (D_alpha_s_isr (prt%scale) / (prt%scale * &
-            get_pdf (prt%initial%type, prt%x, prt%scale, prt%type)))
+            shower%get_pdf (prt%initial%type, prt%x, prt%scale, prt%type)))
        integral = integral + factor * integral_over_z_isr_pt &
             (prt, otherprt, (random - integral) / factor)
        if (integral > random) then
@@ -4460,18 +4400,18 @@ number and the integral.
          if (parton_is_gluon (prt)) then
             QUARKS: do quark = -D_Nf, D_Nf
                if (quark == 0) cycle quarks
-               quarkpdfsum = quarkpdfsum + get_pdf &
+               quarkpdfsum = quarkpdfsum + shower%get_pdf &
                     (prt%initial%type, prt%x / z, prt%scale, quark)
             end do QUARKS
             !!! g -> gg or q -> gq
             integral = integral + (zstep / z) * ((P_ggg (z) + &
-                 P_ggg (one - z)) * get_pdf (prt%initial%type, &
+                 P_ggg (one - z)) * shower%get_pdf (prt%initial%type, &
                  prt%x / z, prt%scale, 21) + P_qqg (one - z) * quarkpdfsum)
          else if (parton_is_quark (prt)) then
             !!! q -> qg or g -> qq
             integral = integral + (zstep / z) * ( P_qqg (z) * &
-                 get_pdf (prt%initial%type, prt%x / z, prt%scale, prt%type) + &
-                 P_gqq(z) * get_pdf (prt%initial%type, prt%x / z, prt%scale, 21))
+                 shower%get_pdf (prt%initial%type, prt%x / z, prt%scale, prt%type) + &
+                 P_gqq(z) * shower%get_pdf (prt%initial%type, prt%x / z, prt%scale, 21))
          else
             ! call msg_fatal ("Bug neither quark nor gluon in" &
             !           // " integral_over_z_isr_pt")
@@ -4482,7 +4422,7 @@ number and the integral.
             !!! decide typ of father partons
               if (parton_is_gluon (prt)) then
                  if (temprand > (P_qqg (one - z) * quarkpdfsum) / &
-                      ((P_ggg (z) + P_ggg (one - z)) * get_pdf &
+                      ((P_ggg (z) + P_ggg (one - z)) * shower%get_pdf &
                       (prt%initial%type, prt%x / z, prt%scale, 21) &
                       + P_qqg (one - z) * quarkpdfsum)) then
                     !!! gluon => gluon + gluon
@@ -4493,23 +4433,23 @@ number and the integral.
                     r = temprand * quarkpdfsum
                     WHICH_QUARK: do quark = -D_Nf, D_Nf
                        if (quark == 0) cycle WHICH_QUARK
-                       if (r > quarkpdfsum - get_pdf (prt%initial%type, &
+                       if (r > quarkpdfsum - shower%get_pdf (prt%initial%type, &
                             prt%x / z, prt%scale, quark)) then
                           prt%aux_pt = quark
                           exit WHICH_QUARK
                        else
-                          quarkpdfsum = quarkpdfsum - get_pdf &
+                          quarkpdfsum = quarkpdfsum - shower%get_pdf &
                                (prt%initial%type, prt%x / z, prt%scale, quark)
                        end if
                     end do WHICH_QUARK
                  end if
 
               else if (parton_is_quark (prt)) then
-                 if (temprand > (P_qqg (z) * get_pdf (prt%initial%type, &
+                 if (temprand > (P_qqg (z) * shower%get_pdf (prt%initial%type, &
                       prt%x / z, prt%scale, prt%type)) / &
-                      (P_qqg (z) * get_pdf (prt%initial%type, prt%x / z, &
+                      (P_qqg (z) * shower%get_pdf (prt%initial%type, prt%x / z, &
                       prt%scale, prt%type) + &
-                      P_gqq (z) * get_pdf (prt%initial%type, prt%x / z, &
+                      P_gqq (z) * shower%get_pdf (prt%initial%type, prt%x / z, &
                       prt%scale, 21))) then
                     !!! gluon => quark + antiquark
                     prt%aux_pt = 21
@@ -4608,19 +4548,19 @@ branching, while FSR branchings are ignored.
 
        temp1 = (D_alpha_s_isr ((one - prt%z) * abs(prt%t)) &
             / sqrt (alphasxpdfmax))
-       temp2 = get_xpdf (prt%initial%type, prt%x, prt%t, &
+       temp2 = shower%get_xpdf (prt%initial%type, prt%x, prt%t, &
             prt%type) / sqrt (alphasxpdfmax)
-       temp3 = get_xpdf (prt%initial%type, prt%child1%x, prt%child1%t, &
+       temp3 = shower%get_xpdf (prt%initial%type, prt%child1%x, prt%child1%t, &
             prt%child1%type) / &
-            get_xpdf (prt%initial%type, prt%child1%x, prt%t, prt%child1%type)
+            shower%get_xpdf (prt%initial%type, prt%child1%x, prt%t, prt%child1%type)
        if (temp1 * temp2 * temp3 > one) then
           print *, "weights:", temp1, temp2, temp3
        end if
        weight = (D_alpha_s_isr ((one - prt%z) * abs(prt%t))) * &
-            get_xpdf (prt%initial%type, prt%x, prt%t, prt%type) * &
-            get_xpdf (prt%initial%type, prt%child1%x, prt%child1%t, &
+            shower%get_xpdf (prt%initial%type, prt%x, prt%t, prt%type) * &
+            shower%get_xpdf (prt%initial%type, prt%child1%x, prt%child1%t, &
             prt%child1%type) / &
-            get_xpdf (prt%initial%type, prt%child1%x, prt%t, prt%child1%type)
+            shower%get_xpdf (prt%initial%type, prt%child1%x, prt%t, prt%child1%type)
        if (weight > alphasxpdfmax) then
           print *, "Setting alphasxpdfmax from ", alphasxpdfmax, " to ", weight
           alphasxpdfmax = weight
@@ -4690,7 +4630,7 @@ branching, while FSR branchings are ignored.
       else
          print *, "neither quark nor gluon in generate_next_trial_scale"
       end if
-      F = F / get_xpdf (prt%child1%initial%type, prt%child1%x, &
+      F = F / shower%get_xpdf (prt%child1%initial%type, prt%child1%x, &
            prt%child1%t, prt%child1%type)
       prt%t = prt%t * random**(one / F)
       if (abs (prt%t) - parton_mass_squared (prt) < D_Min_t) then
@@ -4835,7 +4775,6 @@ branching, while FSR branchings are ignored.
     type(parton_t), pointer :: recoiler
     type(parton_t), pointer :: otherprt1, otherprt2
     integer :: n_int
-    logical :: goon
     otherprt1 => null()
     otherprt2 => null()
     DO_INTERACTIONS: do n_int = 1, size(shower%interactions)
@@ -5022,7 +4961,7 @@ branching, while FSR branchings are ignored.
         real(default), parameter :: zstepfactor = 0.1_default
         real(default), parameter :: zstepmin = 0.0001_default
         if (D_print) print *, "integral_over_z_part_isr"
-        pdf_divisor = get_pdf &
+        pdf_divisor = shower%get_pdf &
              (prt%initial%type, prt%child1%x, prt%t, prt%child1%type)
         z = minz
         s1 = shat + abs(otherprt%t) + abs(prt%child1%t)
@@ -5091,7 +5030,7 @@ branching, while FSR branchings are ignored.
               retvalue = retvalue + (zstep / prt%z) * &
                    (D_alpha_s_isr ((one - prt%z) * prt%t) * &
                    P_prt_to_child1 (prt) * &
-                   get_pdf (prt%initial%type, prt%child1%x / prt%z, &
+                   shower%get_pdf (prt%initial%type, prt%child1%x / prt%z, &
                    prt%t, prt%type)) / (abs(prt%t) * pdf_divisor)
            end if
            if (retvalue > final) then
@@ -5780,11 +5719,12 @@ intended for branched FSR-partons emitted in the ISR.
 
 @ %def shower_parton_update_color_connections
 @ The next two routines are for PDFs. Wrapper function to return
-parton densities. Note that the arguments for [[evolvepdf]] need to be
-defined as [[double]] explicitly.
+parton densities. 
+<<Shower core: shower: TBP>>=
+  procedure :: get_pdf => shower_get_pdf
 <<Shower core: procedures>>=
-  function get_pdf (mother, x, Q2, daughter) result (pdf)
-    !   type(shower_t), intent(in), pointer :: shower
+  function shower_get_pdf (shower, mother, x, Q2, daughter) result (pdf)
+    class(shower_t), intent(inout) :: shower
     integer, intent(in) :: mother, daughter
     real(default), intent(in) :: x, Q2
     real(default) :: pdf
@@ -5792,12 +5732,12 @@ defined as [[double]] explicitly.
     real(double), save :: lastx, lastQ2 = 0._double
 
     if (abs (mother) /= 2212) then
+       pdf = zero
        call msg_fatal ("Shower: pdf only implemented for (anti-)proton")
     else
        if (x > zero .and. x < one) then
           if (dble(Q2) /= lastQ2 .or. dble(x) /= lastx) then
-             ! call evolvePDF(DBLE(x),sqrt(abs(DBLE(Q2))),f)  !! LHAPDF
-             call shower_pdf_func &
+             call shower%pdf_func &
                   (shower_pdf_set, dble(x), sqrt (abs (dble(Q2))), f)
           end if
           if (abs (daughter) >= 1 .and. abs (daughter) <= 6) then
@@ -5814,14 +5754,15 @@ defined as [[double]] explicitly.
     end if
     lastQ2 = dble(Q2)
     lastx  = dble(x)
-  end function get_pdf
+  end function shower_get_pdf
 
-@ %def get_pdf
-@ Wrapper function to return momentum densities. The arguments for
-[[evolvepdf]] need to be defined as [[double]] explicitly.
+@ %def shower_get_pdf
+@ Wrapper function to return momentum densities. 
+<<Shower core: shower: TBP>>=
+  procedure :: get_xpdf => shower_get_xpdf
 <<Shower core: procedures>>=
-  function get_xpdf (mother, x, Q2, daughter) result (pdf)
-    !   type(shower_t), intent(in), pointer :: shower
+  function shower_get_xpdf (shower, mother, x, Q2, daughter) result (pdf)
+    class(shower_t), intent(inout) :: shower
     integer, intent(in) :: mother, daughter
     real(default), intent(in) :: x, Q2
     real(default) :: pdf
@@ -5829,12 +5770,12 @@ defined as [[double]] explicitly.
     real(double), save :: lastx, lastQ2 =0._double
 
     if (abs (mother) /= 2212) then
+       pdf = zero
        call msg_fatal ("Shower: pdf only implemented for (anti-)proton")
     else
        if (x > zero .and. x < one) then
           if (dble(Q2) /= lastQ2 .or. dble(x) /= lastx) then
-             ! call evolvePDF(DBLE(x),sqrt(abs(DBLE(Q2))),f)  !! LHAPDF
-             call shower_pdf_func &
+             call shower%pdf_func &
                   (shower_pdf_set, dble(x), sqrt (abs (dble(Q2))), f)
           end if
           if (abs(daughter) >= 1 .and. abs(daughter) <= 6) then
@@ -5851,10 +5792,30 @@ defined as [[double]] explicitly.
     end if
     lastQ2 = dble(Q2)
     lastx  = dble(x)
-  end function get_xpdf
+  end function shower_get_xpdf
 
-@ %def get_xpdf
+@ %def shower_get_xpdf
 @
+<<Shower core: shower: TBP>>=
+  procedure :: pdf_func => shower_pdf_func
+<<Shower core: procedures>>=
+  subroutine shower_pdf_func (shower, set, x, q2, f)
+    class(shower_t), intent(inout) :: shower
+    integer, intent(in) :: set
+    real(double) :: x, q2
+    real(double), dimension(-6:6), intent(out) :: f
+    select case (shower_pdf_type)
+    case (STRF_PDF_BUILTIN) 
+       call pdf_evolve_LHAPDF (set, x, q2, f)
+    case (STRF_LHAPDF6)
+       call shower%pdf%evolve_pdfm (x, q2, f)
+    case (STRF_LHAPDF5)       
+       call evolvePDFM (set, x, q2, f)
+    case default
+       call msg_fatal ("Shower PDF function: unknown PDF method.")   
+    end select
+  end subroutine shower_pdf_func
+@ 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Talking to PYTHIA}
 <<[[shower_topythia.f90]]>>=
@@ -5862,7 +5823,7 @@ defined as [[double]] explicitly.
 
 module shower_topythia
 
-<<Use kinds>>
+<<Use kinds>> !NODEP!
   use lorentz !NODEP!
   use shower_base
   use shower_partons
@@ -6737,12 +6698,14 @@ C...Make decision here.
 
 module mlm_matching
 
-<<Use kinds>>
+<<Use kinds>> !NODEP!
   use kinds, only: double !NODEP!
+  use io_units !NODEP!
+  use format_utils, only: write_separator !NODEP!
   use constants !NODEP!
   use diagnostics !NODEP!
-  use lorentz !NODEP!
   use file_utils !NODEP!
+  use lorentz !NODEP!
 
 <<Standard module head>>
 
@@ -6797,7 +6760,7 @@ jet momenta.
     type(mlm_matching_settings_t), intent(in) :: settings
     integer, intent(in), optional :: unit
     integer :: u
-    u = output_unit (unit);  if (u < 0)  return
+    u = given_output_unit (unit);  if (u < 0)  return
     write (u, "(3x,A,ES19.12)") &
          "mlm_Qcut_ME                  = ", settings%mlm_Qcut_ME
     write (u, "(3x,A,ES19.12)") &
@@ -6834,7 +6797,7 @@ jet momenta.
     integer, intent(in), optional :: unit
     integer :: i
     integer :: u
-    u = output_unit (unit);  if (u < 0)  return
+    u = given_output_unit (unit);  if (u < 0)  return
 
     write (u, "(1x,A)") "MLM matching data:"
     write (u, "(3x,A)") "Momenta of ME partons:"
@@ -7256,6 +7219,7 @@ end if
 !C-----------------------------------------------------------------------
 !C-----------------------------------------------------------------------
 !C-----------------------------------------------------------------------
+<<MLM matching: procedures (not used)>>=
   SUBROUTINE KTCLUS(IMODE,PP,NN,ECUT,Y,*)
     IMPLICIT NONE
 !C---DO CLUSTER ANALYSIS OF PARTICLES IN PP
@@ -7281,6 +7245,7 @@ end if
 999 RETURN 1
   END SUBROUTINE KTCLUS
 !C-----------------------------------------------------------------------
+<<MLM matching: procedures>>=
   SUBROUTINE KTCLUR(IMODE,PP,NN,R,ECUT,Y,*)
     IMPLICIT NONE
 !C---DO CLUSTER ANALYSIS OF PARTICLES IN PP
@@ -7337,7 +7302,7 @@ end if
     IF (NN.LT.2.AND.TYPE.EQ.1) CALL KTWARN('KT-LT2',100,*999)
     IF (TYPE.LT.1.OR.TYPE.GT.4.OR.ANGL.LT.1.OR.ANGL.GT.4.OR. &
          MONO.LT.1.OR.MONO.GT.2.OR.RECO.LT.1.OR.RECO.GT.3) CALL KTWARN('KTCLUS',101,*999)
-    u = output_unit ()
+    u = given_output_unit ()
     IF (FIRST) THEN
        WRITE (u,'(/,1X,54(''*'')/A)') &
             ' KTCLUS: written by Mike Seymour, July 1992.'
@@ -7446,6 +7411,7 @@ end if
 999 RETURN 1
   END SUBROUTINE KTCLUR
 !C-----------------------------------------------------------------------
+<<MLM matching: procedures (not used)>>=
       SUBROUTINE KTYCUT(ECUT,NY,YCUT,NJET,*)
       IMPLICIT NONE
 !C---COUNT THE NUMBER OF JETS AT EACH VALUE OF YCUT, FOR EVENT WHICH HAS
@@ -7610,6 +7576,7 @@ end if
       RETURN
 999   RETURN 1
     END SUBROUTINE KTJOIN
+<<MLM matching: procedures>>=
 !C-----------------------------------------------------------------------
     SUBROUTINE KTRECO(RECO,PP,NN,ECUT,YCUT,YMAC,PJET,JET,NJET,NSUB,*)
       IMPLICIT NONE
@@ -7712,6 +7679,7 @@ end if
 999   RETURN 1
     END SUBROUTINE KTRECO
 !C-----------------------------------------------------------------------
+<<MLM matching: procedures (not used)>>=
     SUBROUTINE KTINCL(RECO,PP,NN,PJET,JET,NJET,*)
       IMPLICIT NONE
 !C---RECONSTRUCT KINEMATICS OF JET SYSTEM, WHICH HAS ALREADY BEEN
@@ -8166,6 +8134,7 @@ end if
       RETURN
 999   RETURN 1
     END SUBROUTINE KTHADR
+<<MLM matching: procedures>>=
 !C-----------------------------------------------------------------------
     FUNCTION KTPAIR(ANGL,P,Q,ANGLE)
       IMPLICIT NONE
@@ -8174,7 +8143,7 @@ end if
 !C   WHERE f(eta,phi)=2(COSH(eta)-COS(phi)) IS THE QCD EMISSION METRIC
 !C---IF ANGLE<0, IT IS SET TO THE ANGULAR PART OF THE LOCAL KT ON RETURN
 !C   IF ANGLE>0, IT IS USED INSTEAD OF THE ANGULAR PART OF THE LOCAL KT
-      INTEGER ANGL,I
+      INTEGER ANGL
 ! CHANGE      DOUBLE PRECISION P(9),Q(9),KTPAIR,R,KTMDPI,ANGLE,ETA,PHI,ESQ
       DOUBLE PRECISION P(9),Q(9),KTPAIR,R,ANGLE,ETA,PHI,ESQ
 !C---COMPONENTS OF MOMENTA ARE PX,PY,PZ,E,1/P,PT,ETA,PHI,PT**2
@@ -8453,6 +8422,7 @@ end if
       KTS(J)=KTS(N)
     END SUBROUTINE KTMOVE
 !C-----------------------------------------------------------------------
+<<MLM matching: procedures (not used)>>=
     SUBROUTINE KTUNIT(R)
       IMPLICIT NONE
 !C   SET R EQUAL TO THE 4 BY 4 IDENTITY MATRIX
@@ -8666,6 +8636,7 @@ end if
       END DO
     END SUBROUTINE KTINVT
 !C-----------------------------------------------------------------------
+<<MLM matching: procedures>>=
     FUNCTION KTMDPI(PHI)
       IMPLICIT NONE
 !C---RETURNS PHI, MOVED ONTO THE RANGE [-PI,PI)
@@ -8725,11 +8696,11 @@ end if
 
 module ckkw_matching
 
-<<Use kinds>>
+<<Use kinds>> !NODEP!
   use kinds, only: double !NODEP!
   use constants !NODEP!
   use lorentz !NODEP!
-  use file_utils !NODEP!
+  use io_units !NODEP!
   use diagnostics !NODEP!
   use tao_random_numbers !NODEP!
   use shower_base
@@ -8777,7 +8748,7 @@ end module ckkw_matching
     integer :: i
 
     if (signal_is_pending ()) return
-    weight = 1.0
+    weight = one
 
     call shower%write ()
 
@@ -9051,8 +9022,8 @@ for a running $alpha_s$ at the scales of the clusterings.
 
 module ckkw_pseudo_weights
 
-<<Use kinds>>
-  use file_utils !NODEP!
+<<Use kinds>> !NODEP!
+  use io_units !NODEP!
   use constants !NODEP!
 
 <<Standard module head>>
@@ -9099,7 +9070,7 @@ end module ckkw_pseudo_weights
     type(ckkw_pseudo_shower_weights_t), intent(in) :: weights
     integer, intent(in), optional :: unit
     integer :: s, i, u
-    u = output_unit (unit); if (u < 0) return
+    u = given_output_unit (unit); if (u < 0) return
     s = size (weights%weights)
     write (u, "(1x,A)")  "CKKW (pseudo) shower weights: "
     do i = 1, s
@@ -9202,19 +9173,14 @@ module shower_base
   public :: shower_set_primordial_kt_cutoff
   public :: shower_set_tscalefactor_isr
   public :: shower_set_isr_only_onshell_emitted_partons
-  public :: shower_set_pdf_func
-  public :: shower_set_pdf_set
-  public :: shower_pdf
+  public :: shower_set_pdf_set_and_type
 
   real(default), public :: D_Min_t = one
-
-  interface
-     subroutine shower_pdf (set, x, q, ff)
-       integer, intent(in) :: set
-       double precision, intent(in) :: x, q
-       double precision, dimension(-6:6), intent(out) :: ff
-     end subroutine shower_pdf
-  end interface
+  integer, parameter, public :: STRF_NONE = 0
+  integer, parameter, public :: STRF_LHAPDF6 = 1
+  integer, parameter, public :: STRF_LHAPDF5 = 2
+  integer, parameter, public :: STRF_PDF_BUILTIN = 3
+  
 contains
   subroutine shower_set_minenergy_timelike (input)
     real(default), intent(in) :: input
@@ -9276,15 +9242,11 @@ contains
     logical, intent(in) :: input
     <<Shower dummy: error message>>
   end subroutine shower_set_isr_only_onshell_emitted_partons
-  subroutine shower_set_pdf_func(func)
-    procedure(shower_pdf), pointer, intent(in) :: func
-    <<Shower dummy: error message>>
-  end subroutine shower_set_pdf_func
 
-  subroutine shower_set_pdf_set(set)
-    integer, intent(in) :: set
+  subroutine shower_set_pdf_set_and_type(set,type)
+    integer, intent(in) :: set, type
     <<Shower dummy: error message>>
-  end subroutine shower_set_pdf_set
+  end subroutine shower_set_pdf_set_and_type
 end module shower_base
 
 module shower_partons
@@ -9320,6 +9282,7 @@ module shower_core
   use shower_partons
   use ckkw_pseudo_weights
   use pythia_dummy
+  use lhapdf
 
 <<Shower core: public>>
 
@@ -9420,8 +9383,9 @@ contains
       integer, intent(in) :: index
       <<Shower dummy: error message>>
     end subroutine shower_set_next_color_nr
-    subroutine shower_create (shower)
+    subroutine shower_create (shower, pdf)
       class(shower_t), intent(inout) :: shower
+      type(lhapdf_pdf_t), intent(in), target :: pdf
       <<Shower dummy: error message>>
     end subroutine shower_create
     subroutine shower_final (shower)
@@ -9464,10 +9428,26 @@ contains
       type(parton_t), intent(in) :: prt
       <<Shower dummy: error message>>
     end subroutine shower_add_parent
+    subroutine shower_get_pdf (shower, mother, x, Q2, daughter)
+      class(shower_t), intent(inout) :: shower
+      integer, intent(in) :: mother, daughter
+      real(default), intent(in) :: x, Q2
+    end subroutine shower_get_pdf
+    subroutine shower_get_xpdf (shower, mother, x, Q2, daughter)
+      class(shower_t), intent(inout) :: shower
+      integer, intent(in) :: mother, daughter
+      real(default), intent(in) :: x, Q2
+    end subroutine shower_get_xpdf    
+    subroutine shower_pdf_func (shower, set, x, q2, f)
+      class(shower_t), intent(inout) :: shower
+      integer, intent(in) :: set
+      real(default), intent(in) :: x, q2
+      real(default), dimension(-6:6), intent(out) :: f
+    end subroutine shower_pdf_func
 end module shower_core
 
 module shower_topythia
-<<Use kinds>>
+<<Use kinds>> !NODEP!
   use shower_base
   use shower_partons
   use shower_core
@@ -9480,7 +9460,7 @@ contains
 end module shower_topythia
 
 module mlm_matching
-<<Use kinds>>
+<<Use kinds>> !NODEP!
   use kinds, only: double !NODEP!
   use constants !NODEP!
   use lorentz !NODEP!
@@ -9513,7 +9493,7 @@ end module mlm_matching
 
 
 module ckkw_matching
-<<Use kinds>>
+<<Use kinds>> !NODEP!
   use kinds, only: double !NODEP!
   use shower_core
   use ckkw_pseudo_weights

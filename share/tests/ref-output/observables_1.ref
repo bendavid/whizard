@@ -2,7 +2,7 @@
 ?vis_history = false
 ?integration_timer = false
 seed = 0
-QED.me =  0.000000000000E+00
+QED.me =>  0.000000000000E+00
 | Process library 'observables_1_lib': recorded process 'observables_1_p'
 sqrts =  1.000000000000E+03
 ?debug_process = false

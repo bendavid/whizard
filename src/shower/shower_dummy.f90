@@ -112,19 +112,14 @@ module shower_base
   public :: shower_set_primordial_kt_cutoff
   public :: shower_set_tscalefactor_isr
   public :: shower_set_isr_only_onshell_emitted_partons
-  public :: shower_set_pdf_func
-  public :: shower_set_pdf_set
-  public :: shower_pdf
+  public :: shower_set_pdf_set_and_type
 
   real(default), public :: D_Min_t = one
-
-  interface
-     subroutine shower_pdf (set, x, q, ff)
-       integer, intent(in) :: set
-       double precision, intent(in) :: x, q
-       double precision, dimension(-6:6), intent(out) :: ff
-     end subroutine shower_pdf
-  end interface
+  integer, parameter, public :: STRF_NONE = 0
+  integer, parameter, public :: STRF_LHAPDF6 = 1
+  integer, parameter, public :: STRF_LHAPDF5 = 2
+  integer, parameter, public :: STRF_PDF_BUILTIN = 3
+  
 contains
   subroutine shower_set_minenergy_timelike (input)
     real(default), intent(in) :: input
@@ -231,21 +226,14 @@ contains
     write (0, "(A)")  "**************************************************************"
     stop
   end subroutine shower_set_isr_only_onshell_emitted_partons
-  subroutine shower_set_pdf_func(func)
-    procedure(shower_pdf), pointer, intent(in) :: func
-    write (0, "(A)")  "**************************************************************"
-    write (0, "(A)")  "*** Error: Shower has not been enabled, WHIZARD terminates ***"
-    write (0, "(A)")  "**************************************************************"
-    stop
-  end subroutine shower_set_pdf_func
 
-  subroutine shower_set_pdf_set(set)
-    integer, intent(in) :: set
+  subroutine shower_set_pdf_set_and_type(set,type)
+    integer, intent(in) :: set, type
     write (0, "(A)")  "**************************************************************"
     write (0, "(A)")  "*** Error: Shower has not been enabled, WHIZARD terminates ***"
     write (0, "(A)")  "**************************************************************"
     stop
-  end subroutine shower_set_pdf_set
+  end subroutine shower_set_pdf_set_and_type
 end module shower_base
 
 module shower_partons
@@ -360,6 +348,7 @@ module shower_core
   use shower_partons
   use ckkw_pseudo_weights
   use pythia_dummy
+  use lhapdf
 
   public :: shower_interaction_t
   public :: shower_t
@@ -379,6 +368,7 @@ module shower_core
      type(shower_interaction_pointer_t), dimension(:), allocatable :: &
           interactions
      type(parton_pointer_t), dimension(:), allocatable :: partons
+     type(lhapdf_pdf_t) :: pdf
      integer :: next_free_nr
      integer :: next_color_nr
      logical :: valid
@@ -413,6 +403,9 @@ module shower_core
      procedure :: set_max_isr_scale => shower_set_max_isr_scale
      procedure :: interaction_generate_fsr_2ton => &
           shower_interaction_generate_fsr_2ton
+     procedure :: get_pdf => shower_get_pdf
+     procedure :: get_xpdf => shower_get_xpdf
+     procedure :: pdf_func => shower_pdf_func
   end type shower_t
 
 
@@ -571,8 +564,9 @@ contains
       write (0, "(A)")  "**************************************************************"
       stop
     end subroutine shower_set_next_color_nr
-    subroutine shower_create (shower)
+    subroutine shower_create (shower, pdf)
       class(shower_t), intent(inout) :: shower
+      type(lhapdf_pdf_t), intent(in), target :: pdf
       write (0, "(A)")  "**************************************************************"
       write (0, "(A)")  "*** Error: Shower has not been enabled, WHIZARD terminates ***"
       write (0, "(A)")  "**************************************************************"
@@ -642,6 +636,22 @@ contains
       write (0, "(A)")  "**************************************************************"
       stop
     end subroutine shower_add_parent
+    subroutine shower_get_pdf (shower, mother, x, Q2, daughter)
+      class(shower_t), intent(inout) :: shower
+      integer, intent(in) :: mother, daughter
+      real(default), intent(in) :: x, Q2
+    end subroutine shower_get_pdf
+    subroutine shower_get_xpdf (shower, mother, x, Q2, daughter)
+      class(shower_t), intent(inout) :: shower
+      integer, intent(in) :: mother, daughter
+      real(default), intent(in) :: x, Q2
+    end subroutine shower_get_xpdf    
+    subroutine shower_pdf_func (shower, set, x, q2, f)
+      class(shower_t), intent(inout) :: shower
+      integer, intent(in) :: set
+      real(default), intent(in) :: x, q2
+      real(default), dimension(-6:6), intent(out) :: f
+    end subroutine shower_pdf_func
 end module shower_core
 
 module shower_topythia

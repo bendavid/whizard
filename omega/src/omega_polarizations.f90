@@ -1,18 +1,18 @@
-!  $Id: omegalib.nw 5434 2014-03-06 18:17:45Z msekulla $
+!  $Id: omegalib.nw 6301 2014-11-25 09:34:00Z bchokoufe $
 !
-!  Copyright (C) 1999-2009 by 
+!  Copyright (C) 1999-2009 by
 !      Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !      Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !      Juergen Reuter <juergen.reuter@desy.de>
 !
 !  WHIZARD is free software; you can redistribute it and/or modify it
-!  under the terms of the GNU General Public License as published by 
+!  under the terms of the GNU General Public License as published by
 !  the Free Software Foundation; either version 2, or (at your option)
 !  any later version.
 !
 !  WHIZARD is distributed in the hope that it will be useful, but
 !  WITHOUT ANY WARRANTY; without even the implied warranty of
-!  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+!  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 !  GNU General Public License for more details.
 !
 !  You should have received a copy of the GNU General Public License
@@ -44,8 +44,8 @@ contains
        select case (s)
        case (1)
           kt = sqrt (k%x(1)**2 + k%x(2)**2)
-          if (abs(kt) <= epsilon(kt) * kabs) then 
-             if (k%x(3) > 0) then           
+          if (abs(kt) <= epsilon(kt) * kabs) then
+             if (k%x(3) > 0) then
                 e%x(1) = cmplx (   1,   0, kind=default) / sqrt2
                 e%x(2) = cmplx (   0,   1, kind=default) / sqrt2
              else
@@ -64,10 +64,10 @@ contains
           if (abs(kt) <= epsilon(kt) * kabs) then
              if (k%x(3) > 0) then
                 e%x(1) = cmplx (   1,   0, kind=default) / sqrt2
-                e%x(2) = cmplx (   0, - 1, kind=default) / sqrt2           
+                e%x(2) = cmplx (   0, - 1, kind=default) / sqrt2
              else
                 e%x(1) = cmplx (  -1,   0, kind=default) / sqrt2
-                e%x(2) = cmplx (   0, - 1, kind=default) / sqrt2           
+                e%x(2) = cmplx (   0, - 1, kind=default) / sqrt2
              end if
           else
              e%x(1) = cmplx (   k%x(3)*k%x(1)/kabs, &
@@ -79,9 +79,9 @@ contains
        case (0)
           if (m > 0) then
              e%t = kabs / m
-             e%x = k%t / (m*kabs) * k%x 
+             e%x = k%t / (m*kabs) * k%x
           end if
-       case (3) 
+       case (3)
           e = (0,1) * k
        case (4)
           if (m > 0) then
@@ -90,7 +90,7 @@ contains
              e = (1 / k%t) * k
           end if
        end select
-    else   !!! for particles in their rest frame defined to be 
+    else   !!! for particles in their rest frame defined to be
            !!! polarized along the 3-direction
        select case (s)
        case (1)

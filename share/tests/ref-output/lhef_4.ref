@@ -75,11 +75,11 @@ $sample = "lhef_4a"
 [user variable] alphas0 =  1.178000000000E-01
 $rescan_input_format = "lhef"
 $sample = "lhef_4b"
-QCD.alphas =  1.178000000000E-01
+QCD.alphas =>  1.178000000000E-01
 ?update_sqme = true
 ?recover_beams = false
-QCD.alphas =  2.356000000000E-01
-QCD.alphas =  3.534000000000E-01
+QCD.alphas =>  2.356000000000E-01
+QCD.alphas =>  3.534000000000E-01
 | Starting simulation for process 'lhef_4_p'
 | Simulate: initializing alternate process setup ...
 | RNG: Initializing TAO random-number generator

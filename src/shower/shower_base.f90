@@ -1,23 +1,24 @@
-! WHIZARD 2.2.0 Mar 03 2014
-
-!
-! Copyright (C) 1999-2014 by
+! WHIZARD 2.2.3 Nov 30 2014
+! 
+! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!
+!     
 !     with contributions from
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     and Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler
+!     Fabian Bach <fabian.bach@desy.de>
+!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Weiss <christian.weiss@desy.de>
+!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by
+! under the terms of the GNU General Public License as published by 
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -26,7 +27,7 @@
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! This file has been stripped of most comments.  For documentation, refer
-! to the source 'shower.nw'
+! to the source 'whizard.nw'
 
 module shower_base
 
@@ -37,7 +38,6 @@ module shower_base
   implicit none
   private
 
-  public :: shower_pdf
   public :: D_alpha_s_isr
   public :: D_alpha_s_fsr
   public :: mass_type
@@ -64,9 +64,13 @@ module shower_base
   public :: shower_set_minenergy_timelike
   public :: shower_set_tscalefactor_isr
   public :: shower_set_isr_only_onshell_emitted_partons
-  public :: shower_set_pdf_func
-  public :: shower_set_pdf_set
+  public :: shower_set_pdf_set_and_type
 
+  integer, parameter, public :: STRF_NONE = 0
+  integer, parameter, public :: STRF_LHAPDF6 = 1
+  integer, parameter, public :: STRF_LHAPDF5 = 2
+  integer, parameter, public :: STRF_PDF_BUILTIN = 3
+  
   logical, parameter, public :: D_print = .false.
   real(default), public :: D_Min_t = one
   real(default), public :: D_min_scale = 0.5_default
@@ -90,31 +94,11 @@ module shower_base
   real(default), public :: scalefactor1 = 0.02_default
   real(default), public :: scalefactor2 = 0.02_default
   integer, public :: shower_pdf_set = 0
-  procedure(shower_pdf), pointer, public :: shower_pdf_func
+  integer, public :: shower_pdf_type = STRF_NONE
 
-
-  interface
-     subroutine shower_pdf (set, x, q, ff)
-       integer, intent(in) :: set
-       double precision, intent(in) :: x, q
-       double precision, dimension(-6:6), intent(out) :: ff
-     end subroutine shower_pdf
-  end interface
 
 
 contains
-
-  subroutine randomseed (seed)
-    integer, intent(in), optional :: seed
-    integer :: clock
-
-    if (present (seed)) then
-       clock = seed
-    else
-       call system_clock (count = clock)
-    end if
-    call tao_random_seed (clock)
-  end subroutine randomseed
 
   function D_alpha_s_isr (tin) result(alpha_s)
     real(default), intent(in) :: tin
@@ -368,15 +352,11 @@ contains
     isr_only_onshell_emitted_partons = input
   end subroutine shower_set_isr_only_onshell_emitted_partons
 
-  subroutine shower_set_pdf_func (func)
-    procedure(shower_pdf), pointer, intent(in) :: func
-    shower_pdf_func => func
-  end subroutine shower_set_pdf_func
-
-  subroutine shower_set_pdf_set (set)
-    integer, intent(in) :: set
+  subroutine shower_set_pdf_set_and_type (set, type)
+    integer, intent(in) :: set, type
     shower_pdf_set = set
-  end subroutine shower_set_pdf_set
+    shower_pdf_type = type
+  end subroutine shower_set_pdf_set_and_type
 
 
 end module shower_base

@@ -24,8 +24,9 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 module parameters_sm_higgs
   use kinds
-  use constants 
-  use sm_physics !NODEP!
+  use constants
+  use physics_defs 
+  use sm_physics
   implicit none
   private
 

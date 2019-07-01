@@ -209,7 +209,8 @@ and __ocaml_lex_token_rec lexbuf __ocaml_lex_state =
                   ( END )
 # 211 "comphep_lexer.ml"
 
-  | __ocaml_lex_state -> lexbuf.Lexing.refill_buff lexbuf; __ocaml_lex_token_rec lexbuf __ocaml_lex_state
+  | __ocaml_lex_state -> lexbuf.Lexing.refill_buff lexbuf; 
+      __ocaml_lex_token_rec lexbuf __ocaml_lex_state
 
 ;;
 

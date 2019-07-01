@@ -1,4 +1,4 @@
-! WHIZARD 2.2.2 July 6 2014
+! WHIZARD 2.2.3 Nov 30 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,8 +6,10 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
+!     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     Christian Weiss <christian.weiss@desy.de>
+!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -28,11 +30,11 @@
 ! to the source 'whizard.nw'
 module prc_core
   
-  use kinds, only: default !NODEP!
-  use iso_varying_string, string_t => varying_string !NODEP!
-  use file_utils !NODEP!
-  use diagnostics !NODEP!
-  use lorentz !NODEP!
+  use kinds, only: default
+  use iso_varying_string, string_t => varying_string
+  use io_units
+  use diagnostics
+  use lorentz
   use interactions
 
   use sf_base
@@ -79,7 +81,8 @@ module prc_core
   
   type, abstract :: workspace_t
    contains
-     procedure(workspace_write), deferred :: write
+     procedure(workspace_write), deferred :: write     
+     procedure(workspace_reset_new_kinematics), deferred :: reset_new_kinematics
   end type workspace_t
   
   type :: helicity_selection_t
@@ -182,6 +185,13 @@ module prc_core
      end subroutine workspace_write
   end interface
 
+  abstract interface
+    subroutine workspace_reset_new_kinematics (object)
+      import
+      class(workspace_t), intent(inout) :: object
+    end subroutine workspace_reset_new_kinematics
+  end interface
+
 
 contains
 
@@ -235,7 +245,7 @@ contains
     class(helicity_selection_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     if (object%active) then
        write (u, "(3x,A)")  "Helicity selection data:"
        write (u, "(5x,A,ES17.10)") &

@@ -1,4 +1,4 @@
-! WHIZARD 2.2.2 July 6 2014
+! WHIZARD 2.2.3 Nov 30 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,8 +6,10 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
+!     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     Christian Weiss <christian.weiss@desy.de>
+!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -29,14 +31,15 @@
 
 module process_stacks
   
-  use iso_varying_string, string_t => varying_string !NODEP!
-  use file_utils !NODEP!
-  use diagnostics !NODEP!
+  use iso_varying_string, string_t => varying_string
+  use io_units
+  use format_utils, only: write_separator
   use unit_tests
+  use diagnostics
   use os_interface
   use sm_qcd
   use variables
-  use models
+  use model_data
   use rng_base
 
   use process_libraries
@@ -58,13 +61,17 @@ module process_stacks
      integer :: n = 0
      type(process_entry_t), pointer :: first => null ()
      type(var_list_t), pointer :: var_list => null ()
+     type(process_stack_t), pointer :: next => null ()
    contains
+     procedure :: clear => process_stack_clear
      procedure :: final => process_stack_final
      procedure :: write => process_stack_write
      procedure :: write_var_list => process_stack_write_var_list
      procedure :: show => process_stack_show
-     procedure :: push => process_stack_push
+     procedure :: link => process_stack_link
      procedure :: init_var_list => process_stack_init_var_list
+     procedure :: link_var_list => process_stack_link_var_list
+     procedure :: push => process_stack_push
      procedure :: init_result_vars => process_stack_init_result_vars
      procedure :: fill_result_vars => process_stack_fill_result_vars
      procedure :: exists => process_stack_exists
@@ -74,34 +81,42 @@ module process_stacks
 
 contains
   
-  subroutine process_stack_final (object)
-    class(process_stack_t), intent(inout) :: object
+  subroutine process_stack_clear (stack)
+    class(process_stack_t), intent(inout) :: stack
     type(process_entry_t), pointer :: process
-    if (associated (object%var_list)) then
-       call var_list_final (object%var_list)
-       deallocate (object%var_list)
+    if (associated (stack%var_list)) then
+       call var_list_final (stack%var_list)
     end if
-    do while (associated (object%first))
-       process => object%first
-       object%first => process%next
+    do while (associated (stack%first))
+       process => stack%first
+       stack%first => process%next
        call process%final ()
        deallocate (process)
     end do
-    object%n = 0
+    stack%n = 0
+  end subroutine process_stack_clear
+  
+  subroutine process_stack_final (object)
+    class(process_stack_t), intent(inout) :: object
+    type(process_entry_t), pointer :: process
+    call object%clear ()
+    if (associated (object%var_list)) then
+       deallocate (object%var_list)
+    end if
   end subroutine process_stack_final
   
-  subroutine process_stack_write (object, unit, pacify)
+  recursive subroutine process_stack_write (object, unit, pacify)
     class(process_stack_t), intent(in) :: object
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: pacify
     type(process_entry_t), pointer :: process
     integer :: u
-    u = output_unit (unit)
-    call write_separator_double (u)
+    u = given_output_unit (unit)
+    call write_separator (u, 2)
     select case (object%n)
     case (0)
        write (u, "(1x,A)")  "Process stack: [empty]"
-       call write_separator_double (u)
+       call write_separator (u, 2)
     case default
        write (u, "(1x,A)")  "Process stack:"
        process => object%first
@@ -110,6 +125,10 @@ contains
           process => process%next
        end do
     end select
+    if (associated (object%next)) then
+       write (u, "(1x,A)")  "[Processes from context environment:]"
+       call object%next%write (u, pacify)
+    end if
   end subroutine process_stack_write
 
   subroutine process_stack_write_var_list (object, unit)
@@ -120,12 +139,12 @@ contains
     end if
   end subroutine process_stack_write_var_list
 
-  subroutine process_stack_show (object, unit)
+  recursive subroutine process_stack_show (object, unit)
     class(process_stack_t), intent(in) :: object
     integer, intent(in), optional :: unit
     type(process_entry_t), pointer :: process
     integer :: u
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     select case (object%n)
     case (0)
     case default
@@ -135,8 +154,28 @@ contains
           process => process%next
        end do
     end select
+    if (associated (object%next))  call object%next%show ()
   end subroutine process_stack_show
 
+  subroutine process_stack_link (local_stack, global_stack)
+    class(process_stack_t), intent(inout) :: local_stack
+    type(process_stack_t), intent(in), target :: global_stack
+    local_stack%next => global_stack
+  end subroutine process_stack_link
+
+  subroutine process_stack_init_var_list (stack, var_list)
+    class(process_stack_t), intent(inout) :: stack
+    type(var_list_t), intent(inout), optional :: var_list
+    allocate (stack%var_list)
+    if (present (var_list))  call var_list_link (var_list, stack%var_list)
+  end subroutine process_stack_init_var_list
+  
+  subroutine process_stack_link_var_list (stack, var_list)
+    class(process_stack_t), intent(inout) :: stack
+    type(var_list_t), intent(in), target :: var_list
+    call var_list_link (stack%var_list, var_list)
+  end subroutine process_stack_link_var_list
+  
   subroutine process_stack_push (stack, process)
     class(process_stack_t), intent(inout) :: stack
     type(process_entry_t), intent(inout), pointer :: process
@@ -145,13 +184,6 @@ contains
     process => null ()
     stack%n = stack%n + 1
   end subroutine process_stack_push
-  
-  subroutine process_stack_init_var_list (stack, var_list)
-    class(process_stack_t), intent(inout) :: stack
-    type(var_list_t), intent(inout), optional :: var_list
-    allocate (stack%var_list)
-    if (present (var_list))  call var_list_link (var_list, stack%var_list)
-  end subroutine process_stack_init_var_list
   
   subroutine process_stack_init_result_vars (stack, id)
     class(process_stack_t), intent(inout) :: stack
@@ -186,7 +218,7 @@ contains
     flag = associated (process)
   end function process_stack_exists
 
-  function process_stack_get_process_ptr (stack, id) result (ptr)
+  recursive function process_stack_get_process_ptr (stack, id) result (ptr)
     class(process_stack_t), intent(in) :: stack
     type(string_t), intent(in) :: id
     type(process_t), pointer :: ptr
@@ -200,6 +232,7 @@ contains
        end if
        entry => entry%next
     end do
+    if (associated (stack%next))  ptr => stack%next%get_process_ptr (id)
   end function process_stack_get_process_ptr
 
 
@@ -214,6 +247,9 @@ contains
          u, results)
     call test (process_stacks_3, "process_stacks_3", &
          "process variables", &
+         u, results)
+    call test (process_stacks_4, "process_stacks_4", &
+         "linked stacks", &
          u, results)
   end subroutine process_stacks_test
   
@@ -242,7 +278,7 @@ contains
     type(os_data_t) :: os_data
     type(qcd_t) :: qcd
     class(rng_factory_t), allocatable :: rng_factory
-    type(model_list_t) :: model_list
+    class(model_data_t), pointer :: model
     type(process_entry_t), pointer :: process => null ()
 
     write (u, "(A)")  "* Test output: process_stacks_2"
@@ -257,18 +293,23 @@ contains
     call os_data_init (os_data)
     allocate (rng_test_factory_t :: rng_factory)
     call prc_test_create_library (libname, lib)
-    call syntax_model_file_init ()
+
+    allocate (model)
+    call model%init_test ()
 
     allocate (process)
     run_id = "run1"
     call process%init &
-         (procname, run_id, lib, os_data, qcd, rng_factory, model_list) 
+         (procname, run_id, lib, os_data, qcd, rng_factory, model) 
     call stack%push (process)
     
+    allocate (model)
+    call model%init_test ()
+
     allocate (process)
     run_id = "run2"
     call process%init &
-         (procname, run_id, lib, os_data, qcd, rng_factory, model_list) 
+         (procname, run_id, lib, os_data, qcd, rng_factory, model) 
     call stack%push (process)
     
     call stack%write (u)
@@ -278,9 +319,6 @@ contains
 
     call stack%final ()
 
-    call model_list%final ()
-    call syntax_model_file_final ()
-    
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: process_stacks_2"
     
@@ -289,7 +327,7 @@ contains
   subroutine process_stacks_3 (u)
     integer, intent(in) :: u
     type(process_stack_t) :: stack
-    type(model_list_t) :: model_list
+    type(model_data_t), target :: model
     type(string_t) :: procname
     type(process_entry_t), pointer :: process => null ()
     type(process_instance_t), target :: process_instance
@@ -302,7 +340,7 @@ contains
     write (u, "(A)")
 
     procname = "processes_test"
-    call syntax_model_file_init ()
+    call model%init_test ()
 
     write (u, "(A)")  "* Initialize process variables"
     write (u, "(A)")
@@ -316,7 +354,7 @@ contains
     write (u, "(A)")
 
     allocate (process)
-    call prepare_test_process (process%process_t, process_instance, model_list)
+    call prepare_test_process (process%process_t, process_instance, model)
     call process%integrate (process_instance, 1, 1, 1000)
     call process_instance%final ()
     call process%final_integration (1)
@@ -333,13 +371,85 @@ contains
 
     call stack%final ()
 
-    call model_list%final ()
-    call syntax_model_file_final ()
+    call model%final ()
     
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: process_stacks_3"
     
   end subroutine process_stacks_3
+  
+  subroutine process_stacks_4 (u)
+    integer, intent(in) :: u
+    type(process_library_t), target :: lib
+    type(process_stack_t), target :: stack1, stack2
+    class(model_data_t), pointer :: model
+    type(string_t) :: libname
+    type(string_t) :: procname
+    type(string_t) :: run_id
+    type(os_data_t) :: os_data
+    type(qcd_t) :: qcd
+    class(rng_factory_t), allocatable :: rng_factory
+    type(process_entry_t), pointer :: process => null ()
+
+    write (u, "(A)")  "* Test output: process_stacks_4"
+    write (u, "(A)")  "*   Purpose: link process stacks"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Initialize process variables"
+    write (u, "(A)")
+
+    libname = "process_stacks_4_lib"
+    procname = "process_stacks_4a"
+
+    call os_data_init (os_data)
+    allocate (rng_test_factory_t :: rng_factory)
+
+    write (u, "(A)")  "* Initialize first process"
+    write (u, "(A)")
+
+    call prc_test_create_library (procname, lib)
+
+    allocate (model)
+    call model%init_test ()
+
+    allocate (process)
+    run_id = "run1"
+    call process%init &
+         (procname, run_id, lib, os_data, qcd, rng_factory, model) 
+    call stack1%push (process)
+    
+    write (u, "(A)")  "* Initialize second process"
+    write (u, "(A)")
+
+    call stack2%link (stack1)
+
+    procname = "process_stacks_4b"
+    call prc_test_create_library (procname, lib)
+
+    allocate (model)
+    call model%init_test ()
+
+    allocate (process)
+    run_id = "run2"
+    call process%init &
+         (procname, run_id, lib, os_data, qcd, rng_factory, model) 
+    call stack2%push (process)
+    
+    write (u, "(A)")  "* Show linked stacks"
+    write (u, "(A)")
+
+    call stack2%write (u)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+
+    call stack2%final ()
+    call stack1%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: process_stacks_4"
+    
+  end subroutine process_stacks_4
   
 
 end module process_stacks

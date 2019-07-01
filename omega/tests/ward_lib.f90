@@ -1,21 +1,21 @@
-! $Id: ward_lib.f90 4926 2013-12-04 12:35:06Z jr_reuter $
-! ward_lib.f90 -- check On Shell Ward Identities in O'Mega 
+! $Id: ward_lib.f90 6301 2014-11-25 09:34:00Z bchokoufe $
+! ward_lib.f90 -- check On Shell Ward Identities in O'Mega
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
-! Copyright (C) 1999-2014 by 
+! Copyright (C) 1999-2014 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com>
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -52,15 +52,13 @@ contains
     logical :: match, passed
     integer :: n_out, n_flv, n_hel, n_col
     integer :: i, i_flv, i_hel, i_col
-    integer :: i_prt
+    ! integer :: i_prt
     integer, dimension(:,:), allocatable :: spin_states_phys, spin_states_unphys
     real(kind=default), dimension(:,:), allocatable :: p
     complex(kind=default), dimension(:), allocatable :: a
     character(len=80) :: msg
     complex(kind=default) :: wi
-    real(kind=default) :: r, phi, tolerance, a_avg
-    integer :: size
-    integer, dimension(:), allocatable :: seeds
+    real(kind=default) :: a_avg
     failures = 0
     attempts = 0
     call quantum_numbers (physical, unphysical, n_out, n_flv, n_hel, n_col, match)
@@ -255,12 +253,6 @@ contains
     pq = p(0)*q(0) - dot_product (p(1:), q(1:))
   end function dot
 
-  pure function mass2 (p) result (m2)
-    real(kind=default), dimension(0:), intent(in) :: p
-    real(kind=default) :: m2
-    m2 = p(0)*p(0) - p(1)*p(1) - p(2)*p(2) - p(3)*p(3)
-  end function mass2
-
   pure subroutine beams (roots, m1, m2, p1, p2)
     real(kind=default), intent(in) :: roots, m1, m2
     real(kind=default), dimension(0:), intent(out) :: p1, p2
@@ -295,7 +287,7 @@ contains
        c = 2*ran(3)-1
        f = 2*PI*ran(4)
        s = sqrt(1-c*c)
-       q(2,k) = q(0,k)*s*sin(f)  
+       q(2,k) = q(0,k)*s*sin(f)
        q(3,k) = q(0,k)*s*cos(f)
        q(1,k) = q(0,k)*c
     enddo

@@ -5,6 +5,7 @@
 
 * Input file
 
+model = "Test"
 library = "lib1"
 library = "lib2"
 compile ()

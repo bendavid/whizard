@@ -1,21 +1,21 @@
-! $Id: test_openmp.f90 4926 2013-12-04 12:35:06Z jr_reuter $
+! $Id: test_openmp.f90 6081 2014-08-26 18:16:22Z bchokoufe $
 ! driver.f90 -- O'Mega self test driver
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
-! Copyright (C) 1999-2014 by 
+! Copyright (C) 1999-2014 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
 !      Christian Speckner <cnspeckn@googlemail.com>
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -32,6 +32,7 @@ program test_openmp
   use kinds
   use constants
   use amplitude_openmp
+  use omega_testtools
 
   implicit none
 
@@ -42,8 +43,11 @@ program test_openmp
   real(kind=default) :: elapsed
   real(kind=default), dimension(:), allocatable :: amp2
   integer :: max_threads, num_threads
-  
+  logical :: passed
+
   call init_parameters_qcd ()
+
+  passed = .true.
 
   max_threads = omp_get_max_threads ()
   write (unit = *, fmt = "(1X, 'max. threads: ', I3)")  max_threads
@@ -51,7 +55,7 @@ program test_openmp
 
   call omp_set_dynamic (.true.)
   call evaluate (NCALLS, ROOTS, 1, 1, amp2(0), elapsed)
-  write (unit = *, fmt = "(1X, A, F8.4, A, F8.4, A, E10.4)") &
+  write (unit = *, fmt = "(1X, A, F8.4, A, F8.4, A, E19.10)") &
        '      dynamic: elapsed ', elapsed, ' seconds, elapsed * #threads: ', &
        elapsed * max_threads, ' seconds, amp2 = ', amp2(0)
 
@@ -59,15 +63,20 @@ program test_openmp
   do num_threads = 1, max_threads
      call omp_set_num_threads (num_threads)
      call evaluate (NCALLS, ROOTS, 1, 1, amp2(num_threads), elapsed)
-     write (unit = *, fmt = "(1X, A, I2, A, F8.4, A, F8.4, A, E10.4)") &
+     write (unit = *, fmt = "(1X, A, I2, A, F8.4, A, F8.4, A, E19.10)") &
           '#threads = ', num_threads, ', elapsed ', elapsed, &
           ' seconds, elapsed * #threads: ', elapsed*num_threads, &
           ' seconds, amp2 = ', amp2(num_threads)
   end do
 
-  call expect (minval(amp2), maxval(amp2), 10)
+  call expect (minval(amp2), maxval(amp2), "test_openmp", passed, &
+       quiet=.false., threshold = 0.60_default)
 
-  stop 0
+  if (passed) then
+     stop 0
+  else
+     stop 1
+  end if
 
   contains
 
@@ -103,7 +112,7 @@ program test_openmp
       amp2 = sum_amp2 / n
 
     end subroutine evaluate
-      
+
     pure function dot (p, q) result (pq)
       real(kind=default), dimension(0:), intent(in) :: p, q
       real(kind=default) :: pq
@@ -146,7 +155,7 @@ program test_openmp
          c = 2*ran(3)-1
          f = 2*PI*ran(4)
          s = sqrt(1-c*c)
-         q(2,k) = q(0,k)*s*sin(f)  
+         q(2,k) = q(0,k)*s*sin(f)
          q(3,k) = q(0,k)*s*cos(f)
          q(1,k) = q(0,k)*c
       enddo
@@ -161,14 +170,6 @@ program test_openmp
          p(0,k) = x*r
       enddo
     end subroutine massless_isotropic_decay
-
-    subroutine expect (x, y, tolerance)
-      real(kind=default), intent(in) :: x, y
-      integer, intent(in) :: tolerance
-      if (abs (x - y) .gt. tolerance * epsilon (max (x, y))) then
-         stop 1
-      end if
-    end subroutine expect
 
 end program test_openmp
 

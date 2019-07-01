@@ -1,24 +1,24 @@
 # Makefile.sources -- Makefile component for O'Mega
-# $Id: Makefile.sources 5351 2014-02-22 11:50:48Z msekulla $
+# $Id: Makefile.sources 6294 2014-11-21 09:35:45Z bchokoufe $
 ##
 ## Process Makefile.am with automake to include this file in Makefile.in
 ##
 ########################################################################
 #
-# Copyright (C) 1999-2014 by 
+# Copyright (C) 1999-2014 by
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
 #     Christian Speckner <cnspeckn@googlemail.com>
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
-# under the terms of the GNU General Public License as published by 
+# under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2, or (at your option)
 # any later version.
 #
 # WHIZARD is distributed in the hope that it will be useful, but
 # WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
@@ -80,7 +80,7 @@ OMEGA_DERIVED_CAML = \
 OMEGA_INTERFACES_MLI = \
     coupling.mli \
     model.mli \
-    target.mli 
+    target.mli
 
 ########################################################################
 # We need lists of all modules including and excluding derived
@@ -111,10 +111,10 @@ OMEGA_CORE_ML_PRIMARY = \
     $(OMEGA_CORE_ML_PART1) $(OMEGA_CORE_ML_PART2_PRIMARY) $(OMEGA_CORE_ML_PART3)
 
 OMEGA_CORE_ML = \
-    $(OMEGA_CORE_ML_PART1) $(OMEGA_CORE_ML_PART2) $(OMEGA_CORE_ML_PART3) 
+    $(OMEGA_CORE_ML_PART1) $(OMEGA_CORE_ML_PART2) $(OMEGA_CORE_ML_PART3)
 
-OMEGA_CORE_MLI_PRIMARY = $(OMEGA_INTERFACES_MLI) $(OMEGA_CORE_ML_PRIMARY:.ml=.mli) 
-OMEGA_CORE_MLI = $(OMEGA_INTERFACES_MLI) $(OMEGA_CORE_ML:.ml=.mli) 
+OMEGA_CORE_MLI_PRIMARY = $(OMEGA_INTERFACES_MLI) $(OMEGA_CORE_ML_PRIMARY:.ml=.mli)
+OMEGA_CORE_MLI = $(OMEGA_INTERFACES_MLI) $(OMEGA_CORE_ML:.ml=.mli)
 
 OMEGA_MODELLIB_ML = \
     modellib_SM.ml \
@@ -122,13 +122,14 @@ OMEGA_MODELLIB_ML = \
     modellib_NoH.ml \
     modellib_NMSSM.ml \
     modellib_PSSSM.ml \
-    modellib_BSM.ml
+    modellib_BSM.ml \
+    modellib_Zprime.ml
 
 OMEGA_MODELLIB_MLI = $(OMEGA_MODELLIB_ML:.ml=.mli)
 
 OMEGA_TARGETLIB_ML = \
     targets_Kmatrix.ml \
-    targets.ml 
+    targets.ml
 
 OMEGA_TARGETLIB_MLI = $(OMEGA_TARGETLIB_ML:.ml=.mli)
 
@@ -143,16 +144,24 @@ OMEGA_MINIMAL_APPLICATIONS_ML = \
 
 OMEGA_APPLICATIONS_ML = \
     omega_QED.ml \
+    omega_QED_VM.ml \
     omega_QCD.ml \
+    omega_QCD_VM.ml \
     omega_SM.ml \
+    omega_SM_VM.ml \
     omega_SM_CKM.ml \
+    omega_SM_CKM_VM.ml \
     omega_SM_ac.ml \
     omega_SM_ac_CKM.ml \
     omega_SM_top.ml \
     omega_SM_top_anom.ml \
+    omega_SM_tt_threshold.ml \
     omega_SM_Higgs.ml \
+    omega_SM_Higgs_VM.ml \
     omega_2HDM.ml \
+    omega_2HDM_VM.ml \
     omega_2HDM_CKM.ml \
+    omega_2HDM_CKM_VM.ml \
     omega_MSSM.ml \
     omega_MSSM_CKM.ml \
     omega_MSSM_Grav.ml \
@@ -174,8 +183,11 @@ OMEGA_APPLICATIONS_ML = \
     omega_SSC.ml \
     omega_UED.ml \
     omega_Zprime.ml \
+    omega_Zprime_VM.ml \
     omega_Threeshl.ml \
     omega_Threeshl_nohf.ml \
+    omega_HSExt.ml \
+    omega_HSExt_VM.ml \
     omega_Template.ml \
     omega_SYM.ml
 
@@ -247,7 +259,8 @@ endif
 if STANDALONE_OMEGA_BUILD
   KINDS_F90 = kinds.f90
   CONSTANTS_F90 = constants.f90
-  OMEGA_PARAMETERS_F90 = # omega_parameters.f90 omega_parameters_madgraph.f90 
+  STRINGS_F90 = iso_varying_string.f90
+  OMEGA_PARAMETERS_F90 = # omega_parameters.f90 omega_parameters_madgraph.f90
 else
 # use the copies in ../../misc instead
 endif
@@ -259,10 +272,10 @@ OMEGALIB_DERIVED_F90 = \
     omega_polarizations.f90 omega_polarizations_madgraph.f90 \
     omega_tensor_polarizations.f90 omega_vspinor_polarizations.f90 \
     omega_color.f90 omega_utils.f90 \
-    omega95.f90 omega95_bispinors.f90
+    omega95.f90 omega95_bispinors.f90 omegavm95.f90
 
 OMEGALIB_F90 = \
-    $(KINDS_F90) $(CONSTANTS_F90) \
+    $(KINDS_F90) $(CONSTANTS_F90) $(STRINGS_F90) \
     $(OMEGALIB_DERIVED_F90) \
     $(OMEGA_PARAMETERS_F90)
 

@@ -1,0 +1,4057 @@
+%% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*- 
+% WHIZARD code as NOWEB source: integration and event generation
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Multi-Channel Integration}
+
+The abstract representation of multi-channel
+Monte Carlo algorithms for integration and event generation.
+\begin{description}
+\item[Module [[mci_base]]:]
+  The abstract types and their methods.  It provides a test integrator
+  that is referenced in later unit tests.
+\item[iterations]
+  Container for defining integration call and pass settings.
+\item[integration\_results]
+  This module handles results from integrating processes.  It records passes
+  and iterations, calculates statistical averages, and provides the user
+  output of integration results.
+\end{description}
+
+\clearpage
+\section{Generic Integrator}
+This module provides a multi-channel integrator (MCI) base type, a
+corresponding configuration type, and methods for integration and event
+generation. 
+
+<<[[mci_base.f90]]>>=
+<<File header>>
+
+module mci_base
+
+  use kinds
+<<Use strings>>
+  use io_units
+  use format_utils, only: pac_fmt
+  use format_defs, only: FMT_14, FMT_17
+  use unit_tests
+  use diagnostics
+  use cputime
+  use phs_base
+  use rng_base
+
+<<Standard module head>>
+
+<<MCI base: public>>
+
+<<MCI base: types>>
+
+<<MCI base: interfaces>>
+
+<<MCI base: test types>>
+
+contains
+  
+<<MCI base: procedures>>
+
+<<MCI base: tests>>
+
+end module mci_base
+@ %def mci_base
+@
+\subsection{MCI: integrator}
+The MCI object contains the methods for integration and event generation.
+For the actual work and data storage, it spawns an MCI instance object.
+
+The base object contains the number of integration dimensions and the number
+of channels as configuration data.  Further configuration data are stored in
+the concrete extensions.
+
+The MCI sum contains all relevant information about the integrand.  It can be
+used for comparing the current configuration against a previous one.  If they
+match, we can skip an actual integration.  (Implemented only for the VAMP
+version.) 
+
+There is a random-number generator (its state with associated methods)
+available as [[rng]].  It may or may not be used for integration.  It
+will be used for event generation.
+<<MCI base: public>>=
+  public :: mci_t
+<<MCI base: types>>=
+  type, abstract :: mci_t
+     integer :: n_dim = 0
+     integer :: n_channel = 0
+     integer :: n_chain = 0
+     integer, dimension(:), allocatable :: chain
+     real(default), dimension(:), allocatable :: chain_weights
+     character(32) :: md5sum = ""
+     logical :: integral_known = .false.
+     logical :: error_known = .false.
+     logical :: efficiency_known = .false.
+     real(default) :: integral = 0
+     real(default) :: error = 0
+     real(default) :: efficiency = 0
+     logical :: use_timer = .false.
+     type(timer_t) :: timer
+     class(rng_t), allocatable :: rng
+   contains
+   <<MCI base: mci: TBP>>
+  end type mci_t
+  
+@ %def mci_t
+@ Finalizer: the random-number generator may need one.
+<<MCI base: mci: TBP>>=
+  procedure :: base_final => mci_final
+  procedure (mci_final), deferred :: final
+<<MCI base: procedures>>=
+  subroutine mci_final (object)
+    class(mci_t), intent(inout) :: object
+    if (allocated (object%rng))  call object%rng%final ()
+  end subroutine mci_final
+
+@ %def mci_final
+@ Output: basic and extended output.
+<<MCI base: mci: TBP>>=
+  procedure :: base_write => mci_write
+  procedure (mci_write), deferred :: write
+<<MCI base: procedures>>=
+  subroutine mci_write (object, unit, pacify, md5sum_version)
+    class(mci_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    logical, intent(in), optional :: pacify
+    logical, intent(in), optional :: md5sum_version
+    logical :: md5sum_ver
+    integer :: u, i, j
+    character(len=7) :: fmt 
+    call pac_fmt (fmt, FMT_17, FMT_14, pacify)
+    u = given_output_unit (unit)
+    md5sum_ver = .false.
+    if (present (md5sum_version))  md5sum_ver = md5sum_version
+    if (object%use_timer .and. .not. md5sum_ver) then
+       write (u, "(2x)", advance="no")
+       call object%timer%write (u)
+    end if
+    if (object%integral_known) then
+       write (u, "(3x,A," // fmt // ")") &
+            "Integral             = ", object%integral
+    end if
+    if (object%error_known) then
+       write (u, "(3x,A," // fmt // ")") &
+            "Error                = ", object%error
+    end if
+    if (object%efficiency_known) then
+       write (u, "(3x,A," // fmt // ")")  &
+            "Efficiency           = ", object%efficiency
+    end if
+    write (u, "(3x,A,I0)")  "Number of channels   = ", object%n_channel
+    write (u, "(3x,A,I0)")  "Number of dimensions = ", object%n_dim
+    if (object%n_chain > 0) then
+       write (u, "(3x,A,I0)")  "Number of chains     = ", object%n_chain
+       write (u, "(3x,A)")  "Chains:"
+       do i = 1, object%n_chain
+          write (u, "(5x,I0,':')", advance = "no")  i
+          do j = 1, object%n_channel
+             if (object%chain(j) == i) &
+                  write (u, "(1x,I0)", advance = "no")  j
+          end do
+          write (u, "(A)")
+       end do
+    end if
+  end subroutine mci_write
+
+@ %def mci_write
+@ Print an informative message when starting integration.
+<<MCI base: mci: TBP>>=
+  procedure (mci_startup_message), deferred :: startup_message
+  procedure :: base_startup_message => mci_startup_message
+<<MCI base: procedures>>=
+  subroutine mci_startup_message (mci, unit, n_calls)
+    class(mci_t), intent(in) :: mci
+    integer, intent(in), optional :: unit, n_calls
+    if (mci%n_chain > 0) then
+       write (msg_buffer, "(A,3(1x,I0,1x,A))") &
+            "Integrator:", mci%n_chain, "chains,", &
+            mci%n_channel, "channels,", &
+            mci%n_dim, "dimensions"
+    else
+       write (msg_buffer, "(A,3(1x,I0,1x,A))") &
+            "Integrator:", &
+            mci%n_channel, "channels,", &
+            mci%n_dim, "dimensions"
+    end if
+    call msg_message (unit = unit)
+  end subroutine mci_startup_message
+
+@ %def mci_startup_message
+@ Record the index of the MCI object within a process.  For
+multi-component processes with more than one integrator, the
+integrator should know about its own index, so file names can be
+unique, etc.  The default implementation does nothing, however.
+<<MCI base: mci: TBP>>=
+  procedure :: record_index => mci_record_index
+<<MCI base: procedures>>=
+  subroutine mci_record_index (mci, i_mci)
+    class(mci_t), intent(inout) :: mci
+    integer, intent(in) :: i_mci
+  end subroutine mci_record_index
+
+@ %def mci_record_index
+@ There is no Initializer for the abstract type, but a generic setter
+for the number of channels and dimensions.  We make two aliases
+available, to be able to override it.
+<<MCI base: mci: TBP>>=
+  procedure :: set_dimensions => mci_set_dimensions
+  procedure :: base_set_dimensions => mci_set_dimensions
+<<MCI base: procedures>>=
+  subroutine mci_set_dimensions (mci, n_dim, n_channel)
+    class(mci_t), intent(inout) :: mci
+    integer, intent(in) :: n_dim
+    integer, intent(in) :: n_channel
+    mci%n_dim = n_dim
+    mci%n_channel = n_channel
+  end subroutine mci_set_dimensions
+  
+@ %def mci_set_dimensions
+@ Declare particular dimensions as flat.  This information can be used
+to simplify integration.  When generating events, the flat dimensions
+should be sampled with uniform and uncorrelated distribution.  It
+depends on the integrator what to do with that information.
+<<MCI base: mci: TBP>>=
+  procedure (mci_declare_flat_dimensions), deferred :: declare_flat_dimensions
+<<MCI base: interfaces>>=
+  abstract interface
+     subroutine mci_declare_flat_dimensions (mci, dim_flat)
+       import
+       class(mci_t), intent(inout) :: mci
+       integer, dimension(:), intent(in) :: dim_flat
+     end subroutine mci_declare_flat_dimensions
+  end interface
+  
+@ %def mci_declare_flat_dimensions
+@ Declare particular channels as equivalent, possibly allowing for
+permutations or reflections of dimensions.  We use the information
+stored in the [[phs_channel_t]] object array that the phase-space module
+provides.
+
+(We do not test this here, deferring the unit test to the [[mci_vamp]]
+implementation where we actually use this feature.)
+<<MCI base: mci: TBP>>=
+  procedure (mci_declare_equivalences), deferred :: declare_equivalences
+<<MCI base: interfaces>>=
+  abstract interface
+     subroutine mci_declare_equivalences (mci, channel, dim_offset)
+       import
+       class(mci_t), intent(inout) :: mci
+       type(phs_channel_t), dimension(:), intent(in) :: channel
+       integer, intent(in) :: dim_offset
+     end subroutine mci_declare_equivalences
+  end interface
+  
+@ %def mci_declare_equivalences
+@ Declare particular channels as chained together.  The implementation may use
+this array for keeping their weights equal to each other, etc.
+
+The chain array is an array sized by the number of channels.  For each
+channel, there is an integer entry that indicates the correponding
+chains.  The total number of chains is the maximum value of this
+entry.
+<<MCI base: mci: TBP>>=
+  procedure :: declare_chains => mci_declare_chains
+<<MCI base: procedures>>=
+  subroutine mci_declare_chains (mci, chain)
+    class(mci_t), intent(inout) :: mci
+    integer, dimension(:), intent(in) :: chain
+    allocate (mci%chain (size (chain)))
+    mci%n_chain = maxval (chain)
+    allocate (mci%chain_weights (mci%n_chain), source = 0._default)
+    mci%chain = chain
+  end subroutine mci_declare_chains
+  
+@ %def mci_declare_chains
+@ Collect channel weights according to chains and store them in the
+[[chain_weights]] for output.  We sum up the weights for all channels that
+share the same [[chain]] index and store the results in the [[chain_weights]]
+array.
+<<MCI base: mci: TBP>>=
+  procedure :: collect_chain_weights => mci_collect_chain_weights
+<<MCI base: procedures>>=
+  subroutine mci_collect_chain_weights (mci, weight)
+    class(mci_t), intent(inout) :: mci
+    real(default), dimension(:), intent(in) :: weight
+    integer :: i, c
+    if (allocated (mci%chain)) then
+       mci%chain_weights = 0
+       do i = 1, size (mci%chain)
+          c = mci%chain(i)
+          mci%chain_weights(c) = mci%chain_weights(c) + weight(i)
+       end do
+    end if
+  end subroutine mci_collect_chain_weights
+    
+@ %def mci_collect_chain_weights
+@ Check if there are chains.
+<<MCI base: mci: TBP>>=
+  procedure :: has_chains => mci_has_chains
+<<MCI base: procedures>>=
+  function mci_has_chains (mci) result (flag)
+    class(mci_t), intent(in) :: mci
+    logical :: flag
+    flag = allocated (mci%chain)
+  end function mci_has_chains
+
+@ %def mci_has_chains
+@ Output of the chain weights, kept separate from the main [[write]] method.
+
+[The formatting will work as long as the number of chains is less than
+  $10^{10}$\ldots]
+<<MCI base: mci: TBP>>=
+  procedure :: write_chain_weights => mci_write_chain_weights
+<<MCI base: procedures>>=
+  subroutine mci_write_chain_weights (mci, unit)
+    class(mci_t), intent(in) :: mci
+    integer, intent(in), optional :: unit
+    integer :: u, i, n, n_digits
+    character(4) :: ifmt
+    u = given_output_unit (unit)
+    if (allocated (mci%chain_weights)) then
+       write (u, "(1x,A)")  "Weights of channel chains (groves):"
+       n_digits = 0
+       n = size (mci%chain_weights)
+       do while (n > 0)
+          n = n / 10
+          n_digits = n_digits + 1
+       end do
+       write (ifmt, "(A1,I1)") "I", n_digits
+       do i = 1, size (mci%chain_weights)
+          write (u, "(3x," // ifmt // ",F13.10)")  i, mci%chain_weights(i)
+       end do
+    end if
+  end subroutine mci_write_chain_weights
+  
+@ %def mci_write_chain_weights
+@ Set the MD5 sum, independent of initialization.
+<<MCI base: mci: TBP>>=
+  procedure :: set_md5sum => mci_set_md5sum
+<<MCI base: procedures>>=
+  subroutine mci_set_md5sum (mci, md5sum)
+    class(mci_t), intent(inout) :: mci
+    character(32), intent(in) :: md5sum
+    mci%md5sum = md5sum
+  end subroutine mci_set_md5sum
+  
+@ %def mci_set_md5sum
+@ Initialize a new integration pass.  This is not necessarily
+meaningful, so we provide an empty base method.  The [[mci_vamp]]
+implementation overrides this.
+<<MCI base: mci: TBP>>=
+  procedure :: add_pass => mci_add_pass
+<<MCI base: procedures>>=
+  subroutine mci_add_pass (mci, adapt_grids, adapt_weights, final)
+    class(mci_t), intent(inout) :: mci
+    logical, intent(in), optional :: adapt_grids
+    logical, intent(in), optional :: adapt_weights
+    logical, intent(in), optional :: final
+  end subroutine mci_add_pass
+    
+@ %def mci_add_pass
+@ Allocate an instance with matching type.  This must be deferred.
+<<MCI base: mci: TBP>>=
+  procedure (mci_allocate_instance), deferred :: allocate_instance
+<<MCI base: interfaces>>=
+  abstract interface
+     subroutine mci_allocate_instance (mci, mci_instance)
+       import
+       class(mci_t), intent(in) :: mci
+       class(mci_instance_t), intent(out), pointer :: mci_instance
+     end subroutine mci_allocate_instance
+  end interface
+       
+@ %def mci_allocate_instance
+@ Import a random-number generator.  We transfer the allocation of an
+existing generator state into the object.  The generator state may
+already be initialized, or we can reset it by its [[init]]
+method.
+<<MCI base: mci: TBP>>=
+  procedure :: import_rng => mci_import_rng
+<<MCI base: procedures>>=
+  subroutine mci_import_rng (mci, rng)
+    class(mci_t), intent(inout) :: mci
+    class(rng_t), intent(inout), allocatable :: rng
+    call move_alloc (rng, mci%rng)
+  end subroutine mci_import_rng
+  
+@ %def mci_import_rng
+@ Activate or deactivate the timer.
+<<MCI base: mci: TBP>>=
+  procedure :: set_timer => mci_set_timer
+<<MCI base: procedures>>=
+  subroutine mci_set_timer (mci, active)
+    class(mci_t), intent(inout) :: mci
+    logical, intent(in) :: active
+    mci%use_timer = active
+  end subroutine mci_set_timer
+    
+@ %def mci_set_timer
+@ Start and stop signal for the timer, if active.  The elapsed time
+can then be retrieved from the MCI record.
+<<MCI base: mci: TBP>>=
+  procedure :: start_timer => mci_start_timer
+  procedure :: stop_timer => mci_stop_timer
+<<MCI base: procedures>>=
+  subroutine mci_start_timer (mci)
+    class(mci_t), intent(inout) :: mci
+    if (mci%use_timer)  call mci%timer%start ()
+  end subroutine mci_start_timer
+  
+  subroutine mci_stop_timer (mci)
+    class(mci_t), intent(inout) :: mci
+    if (mci%use_timer)  call mci%timer%stop ()
+  end subroutine mci_stop_timer
+  
+@ %def mci_start_timer
+@ %def mci_stop_timer
+@ Sampler test.  Evaluate the sampler a given number of times.  Results are
+discarded, so we don't need the MCI instance which would record them.
+
+The evaluation channel is iterated, and the [[x]] parameters are randomly
+chosen.
+<<MCI base: mci: TBP>>=
+  procedure :: sampler_test => mci_sampler_test
+<<MCI base: procedures>>=
+  subroutine mci_sampler_test (mci, sampler, n_calls)
+    class(mci_t), intent(inout) :: mci
+    class(mci_sampler_t), intent(inout), target :: sampler
+    integer, intent(in) :: n_calls
+    real(default), dimension(:), allocatable :: x_in, f
+    real(default), dimension(:,:), allocatable :: x_out
+    real(default) :: val
+    integer :: i, c
+    allocate (x_in (mci%n_dim))
+    allocate (f (mci%n_channel))
+    allocate (x_out (mci%n_dim, mci%n_channel))
+    do i = 1, n_calls
+       c = mod (i, mci%n_channel) + 1
+       call mci%rng%generate_array (x_in)
+       call sampler%evaluate (c, x_in, val, x_out, f)
+    end do
+  end subroutine mci_sampler_test
+  
+@ %def mci_sampler_test
+@ Integrate: this depends on the implementation. We foresee a pacify
+flag to take care of small numerical noise on different platforms.
+<<MCI base: mci: TBP>>=
+  procedure (mci_integrate), deferred :: integrate
+<<MCI base: interfaces>>=
+  abstract interface
+     subroutine mci_integrate (mci, instance, sampler, &
+          n_it, n_calls, results, pacify)
+       import
+       class(mci_t), intent(inout) :: mci
+       class(mci_instance_t), intent(inout) :: instance
+       class(mci_sampler_t), intent(inout) :: sampler
+       integer, intent(in) :: n_it
+       integer, intent(in) :: n_calls
+       logical, intent(in), optional :: pacify
+       class(mci_results_t), intent(inout), optional :: results
+     end subroutine mci_integrate
+  end interface
+  
+@ %def mci_integrate
+@ Event generation.  Depending on the implementation,
+event generation may or may not require a previous integration pass.
+
+Instead of a black-box [[simulate]] method, we require an initializer,
+a finalizer, and procedures for generating a single event.  This
+allows us to interface simulation event by event from the outside, and
+it facilitates the further processing of an event after successful
+generation.  For integration, this is not necessary.
+
+The initializer has [[intent(inout)]] for the [[mci]] passed object.  The
+reason is that the initializer can read integration results and grids from
+file, where the results can modify the [[mci]] record.
+<<MCI base: mci: TBP>>=
+  procedure (mci_prepare_simulation), deferred :: prepare_simulation
+@ %def mci_final_simulation
+<<MCI base: interfaces>>=
+  abstract interface
+     subroutine mci_prepare_simulation (mci)
+       import
+       class(mci_t), intent(inout) :: mci
+     end subroutine mci_prepare_simulation
+  end interface
+  
+@ %def mci_prepare_simulation
+@ 
+The generated event will reside in in the [[instance]] object (overall
+results and weight) and in the [[sampler]] object (detailed data).  In
+the real application, we can subsequently call methods of the
+[[sampler]] in order to further process the generated event.
+
+The [[target]] attributes are required by the VAMP implementation,
+which uses pointers to refer to the instance and sampler objects from
+within the integration function.
+<<MCI base: mci: TBP>>=
+  procedure (mci_generate), deferred :: generate_weighted_event
+  procedure (mci_generate), deferred :: generate_unweighted_event
+@ %def mci_generate_weighted_event
+@ %def mci_generate_unweighted_event
+<<MCI base: interfaces>>=
+  abstract interface
+     subroutine mci_generate (mci, instance, sampler)
+       import
+       class(mci_t), intent(inout) :: mci
+       class(mci_instance_t), intent(inout), target :: instance
+       class(mci_sampler_t), intent(inout), target :: sampler
+     end subroutine mci_generate
+  end interface
+  
+@ %def mci_generate
+@ This is analogous, but we rebuild the event from the information
+stored in [[state]] instead of generating it.
+
+Note: currently unused outside of tests, might be deleted later.
+<<MCI base: mci: TBP>>=
+  procedure (mci_rebuild), deferred :: rebuild_event
+<<MCI base: interfaces>>=
+  abstract interface
+     subroutine mci_rebuild (mci, instance, sampler, state)
+       import
+       class(mci_t), intent(inout) :: mci
+       class(mci_instance_t), intent(inout) :: instance
+       class(mci_sampler_t), intent(inout) :: sampler
+       class(mci_state_t), intent(in) :: state
+     end subroutine mci_rebuild
+  end interface
+  
+@ %def mci_rebuild
+@ Return the value of the integral, error, efficiency, and time per call.
+<<MCI base: mci: TBP>>=
+  procedure :: get_integral => mci_get_integral
+  procedure :: get_error => mci_get_error
+  procedure :: get_efficiency => mci_get_efficiency
+  procedure :: get_time => mci_get_time
+<<MCI base: procedures>>=
+  function mci_get_integral (mci) result (integral)
+    class(mci_t), intent(in) :: mci
+    real(default) :: integral
+    if (mci%integral_known) then
+       integral = mci%integral
+    else
+       call msg_bug ("The integral is unknown. This is presumably a" // &
+            "WHIZARD bug.")
+    end if
+  end function mci_get_integral
+  
+  function mci_get_error (mci) result (error)
+    class(mci_t), intent(in) :: mci
+    real(default) :: error
+    if (mci%error_known) then
+       error = mci%error
+    else
+       error = 0
+    end if
+  end function mci_get_error
+  
+  function mci_get_efficiency (mci) result (efficiency)
+    class(mci_t), intent(in) :: mci
+    real(default) :: efficiency
+    if (mci%efficiency_known) then
+       efficiency = mci%efficiency
+    else
+       efficiency = 0
+    end if
+  end function mci_get_efficiency
+  
+  function mci_get_time (mci) result (time)
+    class(mci_t), intent(in) :: mci
+    real(default) :: time
+    if (mci%use_timer) then
+       time = mci%timer
+    else
+       time = 0
+    end if
+  end function mci_get_time
+  
+@ %def mci_get_integral
+@ %def mci_get_error
+@ %def mci_get_efficiency
+@ %def mci_get_time
+@ Return the MD5 sum of the configuration.  This may be overridden in
+an extension, to return a different MD5 sum.
+<<MCI base: mci: TBP>>=
+  procedure :: get_md5sum => mci_get_md5sum
+<<MCI base: procedures>>=
+  function mci_get_md5sum (mci) result (md5sum)
+    class(mci_t), intent(in) :: mci
+    character(32) :: md5sum
+    md5sum = mci%md5sum
+  end function mci_get_md5sum
+  
+@ %def mci_get_md5sum
+@
+\subsection{MCI instance}
+The base type contains an array of channel weights.  The value [[mci_weight]]
+is the combined MCI weight that corresponds to a particular sampling point.
+
+For convenience, we also store the [[x]] and Jacobian values for this sampling
+point.
+<<MCI base: public>>=
+  public :: mci_instance_t
+<<MCI base: types>>=
+  type, abstract :: mci_instance_t
+     logical :: valid = .false.
+     real(default), dimension(:), allocatable :: w
+     real(default), dimension(:), allocatable :: f
+     real(default), dimension(:,:), allocatable :: x
+     integer :: selected_channel = 0
+     real(default) :: mci_weight = 0
+     real(default) :: integrand  = 0
+   contains
+   <<MCI base: mci instance: TBP>>
+  end type mci_instance_t
+  
+@ %def mci_instance_t
+@ Output: deferred
+<<MCI base: mci instance: TBP>>=
+  procedure (mci_instance_write), deferred :: write
+<<MCI base: interfaces>>=
+  abstract interface
+     subroutine mci_instance_write (object, unit, pacify)
+       import
+       class(mci_instance_t), intent(in) :: object
+       integer, intent(in), optional :: unit
+       logical, intent(in), optional :: pacify
+     end subroutine mci_instance_write
+  end interface
+    
+@ %def mci_instance_write
+@ A finalizer, just in case.
+<<MCI base: mci instance: TBP>>=
+  procedure (mci_instance_final), deferred :: final
+<<MCI base: interfaces>>=
+  abstract interface
+     subroutine mci_instance_final (object)
+       import
+       class(mci_instance_t), intent(inout) :: object
+     end subroutine mci_instance_final
+  end interface
+  
+@ %def mci_instance_final
+@ Init: basic initializer for the arrays, otherwise deferred.  Assigning
+the [[mci]] object is also deferred, because it depends on the concrete type.
+
+The weights are initialized with an uniform normalized value.
+<<MCI base: mci instance: TBP>>=
+  procedure (mci_instance_base_init), deferred :: init
+  procedure :: base_init => mci_instance_base_init
+<<MCI base: procedures>>=
+  subroutine mci_instance_base_init (mci_instance, mci)
+    class(mci_instance_t), intent(out) :: mci_instance
+    class(mci_t), intent(in), target :: mci
+    allocate (mci_instance%w (mci%n_channel))
+    allocate (mci_instance%f (mci%n_channel))
+    allocate (mci_instance%x (mci%n_dim, mci%n_channel))
+    if (size (mci_instance%w) /= 0) then
+       mci_instance%w = 1._default / size (mci_instance%w)
+    end if
+    mci_instance%f = 0
+    mci_instance%x = 0
+  end subroutine mci_instance_base_init
+    
+@ %def mci_instance_base_init
+@ Compute the overall weight factor for a configuration of $x$ values and
+Jacobians $f$.  The $x$ values come in [[n_channel]] rows with [[n_dim]]
+entries each.  The $f$ factors constitute an array with [[n_channel]] entries.
+
+We assume that the $x$ and $f$ arrays are already stored inside the MC
+instance.  The result is also stored there.
+<<MCI base: mci instance: TBP>>=
+  procedure (mci_instance_compute_weight), deferred :: compute_weight
+<<MCI base: interfaces>>=
+  abstract interface
+     subroutine mci_instance_compute_weight (mci, c)
+       import
+       class(mci_instance_t), intent(inout) :: mci
+       integer, intent(in) :: c
+     end subroutine mci_instance_compute_weight
+  end interface
+    
+@ %def mci_instance_compute_weight
+@ Record the integrand as returned by the sampler.  Depending on the
+implementation, this may merely copy the value, or do more complicated things.
+
+We may need the MCI weight for the actual computations, so this should
+be called after the previous routine.
+<<MCI base: mci instance: TBP>>=
+  procedure (mci_instance_record_integrand), deferred :: record_integrand
+<<MCI base: interfaces>>=
+  abstract interface
+     subroutine mci_instance_record_integrand (mci, integrand)
+       import
+       class(mci_instance_t), intent(inout) :: mci
+       real(default), intent(in) :: integrand
+     end subroutine mci_instance_record_integrand
+  end interface
+  
+@ %def mci_instance_record_integrand
+@ Sample a point directly: evaluate the sampler, then compute the weight and
+the weighted integrand.  Finally, record the integrand within the MCI instance.
+
+If a signal (interrupt) was raised recently, we abort the calculation before
+entering the sampler.  Thus, a previous calculation will have
+completed and any data are already recorded, but any new point can be
+discarded.  If the [[abort]] flag is present, we may delay the interrupt, so
+we can do some cleanup.
+<<MCI base: mci instance: TBP>>=
+  procedure :: evaluate => mci_instance_evaluate
+<<MCI base: procedures>>=
+  subroutine mci_instance_evaluate (mci, sampler, c, x)
+    class(mci_instance_t), intent(inout) :: mci
+    class(mci_sampler_t), intent(inout) :: sampler
+    integer, intent(in) :: c
+    real(default), dimension(:), intent(in) :: x
+    real(default) :: val
+    call sampler%evaluate (c, x, val, mci%x, mci%f)
+    mci%valid = sampler%is_valid ()
+    if (mci%valid) then
+       call mci%compute_weight (c)
+       call mci%record_integrand (val)
+    end if
+  end subroutine mci_instance_evaluate
+    
+@ %def mci_instance_evaluate
+@ Initiate and terminate simulation.  In contrast to integration, we implement
+these as methods of the process instance, since the [[mci]] configuration
+object is unchanged.
+
+The safety factor reduces the acceptance probability for unweighted
+events.  The implementation of this feature depends on the concrete type.
+<<MCI base: mci instance: TBP>>=
+  procedure (mci_instance_init_simulation), deferred :: init_simulation
+  procedure (mci_instance_final_simulation), deferred :: final_simulation
+<<MCI base: interfaces>>=
+  abstract interface
+     subroutine mci_instance_init_simulation (instance, safety_factor)
+       import
+       class(mci_instance_t), intent(inout) :: instance
+       real(default), intent(in), optional :: safety_factor
+     end subroutine mci_instance_init_simulation
+  end interface
+  
+  abstract interface
+     subroutine mci_instance_final_simulation (instance)
+       import
+       class(mci_instance_t), intent(inout) :: instance
+     end subroutine mci_instance_final_simulation
+  end interface
+  
+@ %def mci_instance_init_simulation mci_instance_final_simulation
+@ Assuming that the sampler is in a completely defined state, just
+extract the data that [[evaluate]] would compute.  Also record the integrand.
+<<MCI base: mci instance: TBP>>=
+  procedure :: fetch => mci_instance_fetch
+<<MCI base: procedures>>=
+  subroutine mci_instance_fetch (mci, sampler, c)
+    class(mci_instance_t), intent(inout) :: mci
+    class(mci_sampler_t), intent(in) :: sampler
+    integer, intent(in) :: c
+    real(default) :: val
+    mci%valid = sampler%is_valid ()
+    if (mci%valid) then
+       call sampler%fetch (val, mci%x, mci%f)
+       call mci%compute_weight (c)
+       call mci%record_integrand (val)
+    end if
+  end subroutine mci_instance_fetch
+
+@ %def mci_instance_fetch
+@ The value, i.e., the weighted integrand, is the integrand (which
+should be taken as-is from the sampler) multiplied by the MCI weight.
+<<MCI base: mci instance: TBP>>=
+  procedure :: get_value => mci_instance_get_value
+<<MCI base: procedures>>=
+  function mci_instance_get_value (mci) result (value)
+    class(mci_instance_t), intent(in) :: mci
+    real(default) :: value
+    if (mci%valid) then
+       value = mci%integrand * mci%mci_weight
+    else
+       value = 0
+    end if
+  end function mci_instance_get_value
+
+@ %def mci_instance_get_value
+@ This is an extra routine.  By default, the event weight is equal to
+the value returned by the previous routine.  However, if we select a
+channel for event generation not just based on the channel weights,
+the event weight has to account for this bias, so the event weight
+that applies to event generation is different.  In that case, we
+should override the default routine.
+<<MCI base: mci instance: TBP>>=
+  procedure :: get_event_weight => mci_instance_get_value
+@ %def mci_instance_get_event_weight
+@ Excess weight can occur during unweighted event generation, if the
+assumed maximum value of the integrand is too small.  This excess
+should be normalized in the same way as the event weight above (which
+for unweighted events becomes unity).
+<<MCI base: mci instance: TBP>>=
+  procedure (mci_instance_get_event_excess), deferred :: get_event_excess
+<<MCI base: interfaces>>=
+  abstract interface
+     function mci_instance_get_event_excess (mci) result (excess)
+       import
+       class(mci_instance_t), intent(in) :: mci
+       real(default) :: excess
+     end function mci_instance_get_event_excess
+  end interface
+  
+@ %def mci_instance_get_event_excess
+@
+\subsection{MCI state}
+This object can hold the relevant information that allows us to
+reconstruct the MCI instance without re-evaluating the sampler completely.
+
+We store the [[x_in]] MC input parameter set, which coincides with the
+section of the complete [[x]] array that belongs to a particular
+channel.  We also store the MC function value.  When we want to
+reconstruct the state, we can use the input array to recover the
+complete [[x]] and [[f]] arrays (i.e., the kinematics), but do not
+need to recompute the MC function value (the dynamics).
+
+The [[mci_state_t]] may be extended, to allow storing/recalling more
+information.  In that case, we would override the type-bound
+procedures.  However, the base type is also a concrete type and
+self-contained.
+<<MCI base: public>>=
+  public :: mci_state_t
+<<MCI base: types>>=
+  type :: mci_state_t
+     integer :: selected_channel = 0
+     real(default), dimension(:), allocatable :: x_in
+     real(default) :: val
+   contains
+   <<MCI base: mci state: TBP>>
+  end type mci_state_t
+  
+@ %def mci_state_t
+@ Output:
+<<MCI base: mci state: TBP>>=
+  procedure :: write => mci_state_write
+<<MCI base: procedures>>=
+  subroutine mci_state_write (object, unit)
+    class(mci_state_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit)
+    write (u, "(1x,A)")  "MCI state:"
+    write (u, "(3x,A,I0)")  "Channel   = ", object%selected_channel
+    write (u, "(3x,A,999(1x,F12.10))")  "x (in)    =", object%x_in
+    write (u, "(3x,A,ES19.12)")  "Integrand = ", object%val
+  end subroutine mci_state_write
+  
+@ %def mci_state_write
+@ To store the object, we take the relevant section of the [[x]]
+array.  The channel used for storing data is taken from the
+[[instance]] object, but it could be arbitrary in principle.
+<<MCI base: mci instance: TBP>>=
+  procedure :: store => mci_instance_store
+<<MCI base: procedures>>=
+  subroutine mci_instance_store (mci, state)
+    class(mci_instance_t), intent(in) :: mci
+    class(mci_state_t), intent(out) :: state
+    state%selected_channel = mci%selected_channel
+    allocate (state%x_in (size (mci%x, 1)))
+    state%x_in = mci%x(:,mci%selected_channel)
+    state%val = mci%integrand
+  end subroutine mci_instance_store
+    
+@ %def mci_instance_store
+@ Recalling the state, we must consult the sampler in order to fully
+reconstruct the [[x]] and [[f]] arrays.  The integrand value is known,
+and we also give it to the sampler, bypassing evaluation.
+
+The final steps are equivalent to the [[evaluate]] method above.
+<<MCI base: mci instance: TBP>>=
+  procedure :: recall => mci_instance_recall
+<<MCI base: procedures>>=
+  subroutine mci_instance_recall (mci, sampler, state)
+    class(mci_instance_t), intent(inout) :: mci
+    class(mci_sampler_t), intent(inout) :: sampler
+    class(mci_state_t), intent(in) :: state
+    if (size (state%x_in) == size (mci%x, 1) &
+         .and. state%selected_channel <= size (mci%x, 2)) then
+       call sampler%rebuild (state%selected_channel, &
+            state%x_in, state%val, mci%x, mci%f)
+       call mci%compute_weight (state%selected_channel)
+       call mci%record_integrand (state%val)
+    else
+       call msg_fatal ("Recalling event: mismatch in channel or dimension")
+    end if
+  end subroutine mci_instance_recall
+    
+@ %def mci_instance_recall
+@
+\subsection{MCI sampler}
+A sampler is an object that implements a multi-channel parameterization of the
+unit hypercube.  Specifically, it is able to compute, given a channel and a
+set of $x$ MC parameter values, a the complete set of $x$ values and
+associated Jacobian factors $f$ for all channels.
+
+Furthermore, the sampler should return a single real value, the integrand, for
+the given point in the hypercube.
+
+It must implement a method [[evaluate]] for performing the above
+computations.
+<<MCI base: public>>=
+  public :: mci_sampler_t
+<<MCI base: types>>=
+  type, abstract :: mci_sampler_t
+   contains
+   <<MCI base: mci sampler: TBP>>
+  end type mci_sampler_t
+
+@ %def mci_sampler_t
+@ Output, deferred to the implementation.
+<<MCI base: mci sampler: TBP>>=
+  procedure (mci_sampler_write), deferred :: write
+<<MCI base: interfaces>>=
+  abstract interface
+     subroutine mci_sampler_write (object, unit, testflag)
+       import
+       class(mci_sampler_t), intent(in) :: object
+       integer, intent(in), optional :: unit
+       logical, intent(in), optional :: testflag
+     end subroutine mci_sampler_write
+  end interface
+  
+@ %def mci_sampler_write
+@ The evaluation routine.  Input is the channel index [[c]] and the
+one-dimensional parameter array [[x_in]].  Output are the integrand value
+[[val]], the two-dimensional parameter array [[x]] and the Jacobian array
+[[f]].
+<<MCI base: mci sampler: TBP>>=
+  procedure (mci_sampler_evaluate), deferred :: evaluate
+<<MCI base: interfaces>>=
+  abstract interface
+     subroutine mci_sampler_evaluate (sampler, c, x_in, val, x, f)
+       import
+       class(mci_sampler_t), intent(inout) :: sampler
+       integer, intent(in) :: c
+       real(default), dimension(:), intent(in) :: x_in
+       real(default), intent(out) :: val
+       real(default), dimension(:,:), intent(out) :: x
+       real(default), dimension(:), intent(out) :: f
+     end subroutine mci_sampler_evaluate
+  end interface
+
+@ %def mci_sampler_evaluate
+@ Query the validity of the sampling point.  Can be called after
+[[evaluate]].
+<<MCI base: mci sampler: TBP>>=
+  procedure (mci_sampler_is_valid), deferred :: is_valid
+<<MCI base: interfaces>>=
+  abstract interface
+     function mci_sampler_is_valid (sampler) result (valid)
+       import
+       class(mci_sampler_t), intent(in) :: sampler
+       logical :: valid
+     end function mci_sampler_is_valid
+  end interface
+
+@ %def mci_sampler_is_valid
+@ The shortcut.  Again, the channel index [[c]] and the parameter
+array [[x_in]] are input.  However, we also provide the integrand
+value [[val]], and we just require that the complete parameter array
+[[x]] and Jacobian array [[f]] are recovered.
+<<MCI base: mci sampler: TBP>>=
+  procedure (mci_sampler_rebuild), deferred :: rebuild
+<<MCI base: interfaces>>=
+  abstract interface
+     subroutine mci_sampler_rebuild (sampler, c, x_in, val, x, f)
+       import
+       class(mci_sampler_t), intent(inout) :: sampler
+       integer, intent(in) :: c
+       real(default), dimension(:), intent(in) :: x_in
+       real(default), intent(in) :: val
+       real(default), dimension(:,:), intent(out) :: x
+       real(default), dimension(:), intent(out) :: f
+     end subroutine mci_sampler_rebuild
+  end interface
+  
+@ %def mci_sampler_rebuild
+@ This routine should extract the important data from a sampler that
+has been filled by other means.  We fetch the integrand value [[val]],
+the two-dimensional parameter array [[x]] and the Jacobian array [[f]].
+<<MCI base: mci sampler: TBP>>=
+  procedure (mci_sampler_fetch), deferred :: fetch
+<<MCI base: interfaces>>=
+  abstract interface
+     subroutine mci_sampler_fetch (sampler, val, x, f)
+       import
+       class(mci_sampler_t), intent(in) :: sampler
+       real(default), intent(out) :: val
+       real(default), dimension(:,:), intent(out) :: x
+       real(default), dimension(:), intent(out) :: f
+     end subroutine mci_sampler_fetch
+  end interface
+  
+@ %def mci_sampler_fetch
+@
+\subsection{Results record}
+This is an abstract type which allows us to implement callback: each
+integration results can optionally be recorded to an instance of this
+object.  The actual object may store a new result, average results,
+etc.  It may also display a result on-line or otherwise, whenever
+the [[record]] method is called.
+<<MCI base: public>>=
+  public :: mci_results_t
+<<MCI base: types>>=
+  type, abstract :: mci_results_t
+   contains
+   <<MCI base: mci results: TBP>>
+  end type mci_results_t
+  
+@ %def mci_results_t
+@ The output routine is deferred.  We provide an extra [[verbose]]
+flag, which could serve any purpose.
+<<MCI base: mci results: TBP>>=
+  procedure (mci_results_write), deferred :: write
+<<MCI base: interfaces>>=
+  abstract interface
+     subroutine mci_results_write (object, unit, verbose, suppress)
+       import
+       class(mci_results_t), intent(in) :: object
+       integer, intent(in), optional :: unit
+       logical, intent(in), optional :: verbose, suppress
+     end subroutine mci_results_write
+  end interface
+  
+@ %def mci_results_write
+@ This is the [[record]] method, which can be called directly from the
+integrator.
+<<MCI base: mci results: TBP>>=
+  procedure (mci_results_record), deferred :: record
+<<MCI base: interfaces>>=
+  abstract interface
+     subroutine mci_results_record (object, n_it, &
+          n_calls, integral, error, efficiency, chain_weights, suppress)
+       import
+       class(mci_results_t), intent(inout) :: object
+       integer, intent(in) :: n_it
+       integer, intent(in) :: n_calls
+       real(default), intent(in) :: integral
+       real(default), intent(in) :: error
+       real(default), intent(in) :: efficiency
+       real(default), dimension(:), intent(in), optional :: chain_weights
+       logical, intent(in), optional :: suppress
+     end subroutine mci_results_record
+  end interface
+
+@ %def mci_results_record
+@
+\subsection{Unit tests}
+<<MCI base: public>>=
+  public :: mci_base_test
+<<MCI base: tests>>=
+  subroutine mci_base_test (u, results)
+    integer, intent(in) :: u
+    type(test_results_t), intent(inout) :: results
+  <<MCI base: execute tests>>
+  end subroutine mci_base_test
+  
+@ %def mci_base_test
+@
+\subsubsection{Test implementation of the configuration type}
+The concrete type contains the number of requested calls and the integral
+result, to be determined.
+
+The [[max_factor]] entry is set for the actual test integration, where the
+integrand is not unity but some other constant value.  This value should be
+set here, such that the actual maximum of the integrand is known when
+vetoing unweighted events.
+<<MCI base: public>>=
+  public :: mci_test_t
+<<MCI base: test types>>=
+  type, extends (mci_t) :: mci_test_t
+     integer :: divisions = 0
+     integer :: tries = 0
+     real(default) :: max_factor = 1
+   contains
+     procedure :: final => mci_test_final
+     procedure :: write => mci_test_write
+     procedure :: startup_message => mci_test_startup_message
+     procedure :: declare_flat_dimensions => mci_test_ignore_flat_dimensions
+     procedure :: declare_equivalences => mci_test_ignore_equivalences
+     procedure :: set_divisions => mci_test_set_divisions
+     procedure :: set_max_factor => mci_test_set_max_factor
+     procedure :: allocate_instance => mci_test_allocate_instance
+     procedure :: integrate => mci_test_integrate
+     procedure :: prepare_simulation => mci_test_ignore_prepare_simulation
+     procedure :: generate_weighted_event => mci_test_generate_weighted_event
+     procedure :: generate_unweighted_event => &
+          mci_test_generate_unweighted_event
+     procedure :: rebuild_event => mci_test_rebuild_event
+  end type mci_test_t
+  
+@ %def mci_test_t
+@ Finalizer: base version is sufficient
+<<MCI base: tests>>=
+  subroutine mci_test_final (object)
+    class(mci_test_t), intent(inout) :: object
+    call object%base_final ()
+  end subroutine mci_test_final
+  
+@ %def mci_test_final
+@ Output: trivial
+<<MCI base: tests>>=
+  subroutine mci_test_write (object, unit, pacify, md5sum_version)
+    class(mci_test_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    logical, intent(in), optional :: pacify
+    logical, intent(in), optional :: md5sum_version
+    integer :: u
+    u = given_output_unit (unit)
+    write (u, "(1x,A)")  "Test integrator:"
+    call object%base_write (u, pacify, md5sum_version)
+    if (object%divisions /= 0) then
+       write (u, "(3x,A,I0)")  "Number of divisions  = ", object%divisions
+    end if
+    if (allocated (object%rng))  call object%rng%write (u)
+  end subroutine mci_test_write
+  
+@ %def mci_test_write
+@ Short version.
+<<MCI base: tests>>=
+  subroutine mci_test_startup_message (mci, unit, n_calls)
+    class(mci_test_t), intent(in) :: mci
+    integer, intent(in), optional :: unit, n_calls
+    call mci%base_startup_message (unit = unit, n_calls = n_calls)
+    write (msg_buffer, "(A,1x,I0,1x,A)") &
+         "Integrator: Test:", mci%divisions, "divisions"
+    call msg_message (unit = unit)
+  end subroutine mci_test_startup_message
+  
+@ %def mci_test_startup_message
+@ This is a no-op for the test integrator.
+<<MCI base: tests>>=
+  subroutine mci_test_ignore_flat_dimensions (mci, dim_flat)
+    class(mci_test_t), intent(inout) :: mci
+    integer, dimension(:), intent(in) :: dim_flat
+  end subroutine mci_test_ignore_flat_dimensions
+  
+@ %def mci_test_ignore_flat_dimensions
+@ Ditto.
+<<MCI base: tests>>=
+  subroutine mci_test_ignore_equivalences (mci, channel, dim_offset)
+    class(mci_test_t), intent(inout) :: mci
+    type(phs_channel_t), dimension(:), intent(in) :: channel
+    integer, intent(in) :: dim_offset
+  end subroutine mci_test_ignore_equivalences
+  
+@ %def mci_test_ignore_equivalences
+@ Set the number of divisions to a nonzero value.
+<<MCI base: tests>>=
+  subroutine mci_test_set_divisions (object, divisions)
+    class(mci_test_t), intent(inout) :: object
+    integer, intent(in) :: divisions
+    object%divisions = divisions
+  end subroutine mci_test_set_divisions
+  
+@ %def mci_test_set_divisions
+@ Set the maximum factor (default is 1).
+<<MCI base: tests>>=
+  subroutine mci_test_set_max_factor (object, max_factor)
+    class(mci_test_t), intent(inout) :: object
+    real(default), intent(in) :: max_factor
+    object%max_factor = max_factor
+  end subroutine mci_test_set_max_factor
+  
+@ %def mci_test_set_max_factor
+@ Allocate instance with matching type.
+<<MCI base: tests>>=
+  subroutine mci_test_allocate_instance (mci, mci_instance)
+    class(mci_test_t), intent(in) :: mci
+    class(mci_instance_t), intent(out), pointer :: mci_instance
+    allocate (mci_test_instance_t :: mci_instance)
+  end subroutine mci_test_allocate_instance
+  
+@ %def mci_test_allocate_instance
+@ Integrate: sample at the midpoints of uniform bits and add the results.
+We implement this for one and for two dimensions.  In the latter case,
+we scan over two channels and multiply with the channel weights.
+
+The arguments [[n_it]] and [[n_calls]] are ignored in this implementations.
+
+The test integrator does not set error or efficiency, so those will
+remain undefined.
+<<MCI base: tests>>=
+  subroutine mci_test_integrate (mci, instance, sampler, &
+       n_it, n_calls, results, pacify)
+    class(mci_test_t), intent(inout) :: mci
+    class(mci_instance_t), intent(inout) :: instance
+    class(mci_sampler_t), intent(inout) :: sampler
+    integer, intent(in) :: n_it
+    integer, intent(in) :: n_calls
+    logical, intent(in), optional :: pacify
+    class(mci_results_t), intent(inout), optional :: results
+    real(default), dimension(:), allocatable :: integral
+    real(default), dimension(:), allocatable :: x
+    integer :: i, j, c
+    select type (instance)
+    type is (mci_test_instance_t)
+       allocate (integral (mci%n_channel))
+       integral = 0
+       allocate (x (mci%n_dim))
+       select case (mci%n_dim)
+       case (1)
+          do c = 1, mci%n_channel
+             do i = 1, mci%divisions
+                x(1) = (i - 0.5_default) / mci%divisions
+                call instance%evaluate (sampler, c, x)
+                integral(c) = integral(c) + instance%get_value ()
+             end do
+          end do
+          mci%integral = dot_product (instance%w, integral) &
+               / mci%divisions
+          mci%integral_known = .true.
+       case (2)
+          do c = 1, mci%n_channel
+             do i = 1, mci%divisions
+                x(1) = (i - 0.5_default) / mci%divisions
+                do j = 1, mci%divisions
+                   x(2) = (j - 0.5_default) / mci%divisions
+                   call instance%evaluate (sampler, c, x)
+                   integral(c) = integral(c) + instance%get_value ()
+                end do
+             end do
+          end do
+          mci%integral = dot_product (instance%w, integral) &
+               / mci%divisions / mci%divisions
+          mci%integral_known = .true.
+       end select
+       if (present (results)) then
+          call results%record (n_it, n_calls, &
+               mci%integral, mci%error, &
+               efficiency = 0._default)
+       end if
+    end select
+  end subroutine mci_test_integrate
+  
+@ %def mci_test_integrate
+@ Simulation initializer and finalizer: nothing to do here.
+<<MCI base: tests>>=
+  subroutine mci_test_ignore_prepare_simulation (mci)
+    class(mci_test_t), intent(inout) :: mci
+  end subroutine mci_test_ignore_prepare_simulation
+  
+@ %def mci_test_ignore_prepare_simulation
+@ Event generator.  We use mock random numbers for first selecting the
+channel and then setting the $x$ values.  The results reside in the
+state of [[instance]] and [[sampler]].
+<<MCI base: tests>>=
+  subroutine mci_test_generate_weighted_event (mci, instance, sampler)
+    class(mci_test_t), intent(inout) :: mci
+    class(mci_instance_t), intent(inout), target :: instance
+    class(mci_sampler_t), intent(inout), target :: sampler
+    real(default) :: r
+    real(default), dimension(:), allocatable :: x
+    integer :: c
+    select type (instance)
+    type is (mci_test_instance_t)
+       allocate (x (mci%n_dim))
+       select case (mci%n_channel)
+       case (1)
+          c = 1
+          call mci%rng%generate (x(1))
+       case (2)
+          call mci%rng%generate (r)
+          if (r < instance%w(1)) then
+             c = 1
+          else
+             c = 2
+          end if
+          call mci%rng%generate (x)
+       end select
+       call instance%evaluate (sampler, c, x)
+    end select
+  end subroutine mci_test_generate_weighted_event
+       
+@ %def mci_test_generate_weighted_event
+@ For unweighted events, we generate weighted events and apply a
+simple rejection step to the relative event weight, until an event passes.
+
+(This might result in an endless loop if we happen to be in sync with
+the mock random generator cycle.  Therefore, limit the number of tries.)
+<<MCI base: tests>>=
+  subroutine mci_test_generate_unweighted_event (mci, instance, sampler)
+    class(mci_test_t), intent(inout) :: mci
+    class(mci_instance_t), intent(inout), target :: instance
+    class(mci_sampler_t), intent(inout), target :: sampler
+    real(default) :: r
+    integer :: i 
+    select type (instance)
+    type is (mci_test_instance_t)
+       mci%tries = 0
+       do i = 1, 10
+          call mci%generate_weighted_event (instance, sampler)
+          mci%tries = mci%tries + 1
+          call mci%rng%generate (r)
+          if (r < instance%rel_value)  exit
+       end do
+    end select
+  end subroutine mci_test_generate_unweighted_event
+    
+@ %def mci_test_generate_unweighted_event
+@ Here, we rebuild the event from the state without consulting the rng.
+<<MCI base: tests>>=
+  subroutine mci_test_rebuild_event (mci, instance, sampler, state)
+    class(mci_test_t), intent(inout) :: mci
+    class(mci_instance_t), intent(inout) :: instance
+    class(mci_sampler_t), intent(inout) :: sampler
+    class(mci_state_t), intent(in) :: state
+    select type (instance)
+    type is (mci_test_instance_t)
+       call instance%recall (sampler, state)
+    end select
+  end subroutine mci_test_rebuild_event
+    
+@ %def mci_test_rebuild_event
+@
+\subsubsection{Instance of the test MCI type}
+This instance type simulates the VAMP approach.  We implement the VAMP
+multi-channel formula, but keep the channel-specific probability
+functions $g_i$ smooth and fixed.  We also keep the weights fixed.
+
+The setup is as follows: we have $n$ mappings of the unit hypercube
+\begin{equation}
+  x = x (x^{(k)}) \qquad \text{where $x=(x_1,\ldots)$}.
+\end{equation}
+The Jacobian factors are the determinants
+\begin{equation}
+  f^{(k)}(x^{(k)}) = \left|\frac{\partial x}{\partial x^{(k)}}\right|
+\end{equation}
+We introduce arbitrary probability functions
+\begin{equation}
+  g^{(k)}(x^{(k)}) \qquad 
+  \text{with}\quad \int dx^{(k)} g^{(k)}(x^{(k)}) = 1
+\end{equation}
+and weights
+\begin{equation}
+  w_k \qquad \text{with}\quad \sum_k w_k = 1
+\end{equation}
+and construct the joint probability function
+\begin{equation}
+  g(x) = \sum_k w_k\frac{g^{(k)}(x^{(k)}(x))}{f^{(k)}(x^{(k)}(x))}
+\end{equation}
+which also satisfies
+\begin{equation}
+  \int g(x)\,dx = 1.
+\end{equation}
+The algorithm implements a resolution of unity as follows
+\begin{align}
+  1 &= \int dx = \int\frac{g(x)}{g(x)} dx
+  \nonumber\\
+  &= \sum w_k \int \frac{g^{(k)}(x^{(k)}(x))}{f^{(k)}(x^{(k)}(x))}
+  \,\frac{dx}{g(x)}
+  \nonumber\\
+  &= \sum w_k \int g^{(k)}(x^{(k)}) \frac{dx^{(k)}}{g(x(x^{(k)}))}
+\end{align}
+where each of the integrals in the sum is evaluated using the
+channel-specific variables $x^{(k)}$.
+
+We provide two examples: (1) trivial with one channel, one dimension,
+and all functions unity and (2) two channels and two dimensions with
+\begin{align}
+  x (x^{(1)}) &= (x^{(1)}_1, x^{(1)}_2)
+  \nonumber\\
+  x (x^{(2)}) &= (x^{(2)}_1{}^2, x^{(2)}_2)
+\end{align}
+hence
+\begin{align}
+  f^{(1)}&\equiv 1,
+  &f^{(2)}(x^{(2)}) &= 2x^{(2)}_1
+\end{align}
+The probability functions are
+\begin{align}
+  g^{(1)}&\equiv 1,
+  &g^{(2)}(x^{(2)}) = 2 x^{(2)}_2
+\end{align}
+
+In the concrete implementation of the integrator instance we store
+values for the channel probabilities $g_i$ and the accumulated
+probability $g$.
+
+We also store the result (product of integrand and MCI weight), the
+expected maximum for the result in each channel.
+<<MCI base: public>>=
+  public :: mci_test_instance_t
+<<MCI base: test types>>=
+  type, extends (mci_instance_t) :: mci_test_instance_t
+     type(mci_test_t), pointer :: mci => null ()
+     real(default) :: g = 0
+     real(default), dimension(:), allocatable :: gi
+     real(default) :: value = 0
+     real(default) :: rel_value = 0
+     real(default), dimension(:), allocatable :: max
+   contains
+     procedure :: write => mci_test_instance_write
+     procedure :: final => mci_test_instance_final
+     procedure :: init => mci_test_instance_init
+     procedure :: compute_weight => mci_test_instance_compute_weight
+     procedure :: record_integrand => mci_test_instance_record_integrand
+     procedure :: init_simulation => mci_test_instance_init_simulation
+     procedure :: final_simulation => mci_test_instance_final_simulation
+     procedure :: get_event_excess => mci_test_instance_get_event_excess
+  end type mci_test_instance_t
+
+@ %def mci_test_instance_t
+@ Output: trivial
+<<MCI base: tests>>=
+  subroutine mci_test_instance_write (object, unit, pacify)
+    class(mci_test_instance_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    logical, intent(in), optional :: pacify
+    integer :: u, c
+    u = given_output_unit (unit)
+    write (u, "(1x,A,ES13.7)") "Result value = ", object%value
+    write (u, "(1x,A,ES13.7)") "Rel. weight  = ", object%rel_value
+    write (u, "(1x,A,ES13.7)") "Integrand    = ", object%integrand
+    write (u, "(1x,A,ES13.7)") "MCI weight   = ", object%mci_weight
+    write (u, "(3x,A,I0)")  "c = ", object%selected_channel
+    write (u, "(3x,A,ES13.7)") "g = ", object%g
+    write (u, "(1x,A)")  "Channel parameters:"
+    do c = 1, object%mci%n_channel
+       write (u, "(1x,I0,A,4(1x,ES13.7))")  c, ": w/f/g/m =", &
+            object%w(c), object%f(c), object%gi(c), object%max(c)
+       write (u, "(4x,A,9(1x,F9.7))")  "x =", object%x(:,c)
+    end do
+  end subroutine mci_test_instance_write
+  
+@ %def mci_test_instance_write
+@ The finalizer is empty.
+<<MCI base: tests>>=
+  subroutine mci_test_instance_final (object)
+    class(mci_test_instance_t), intent(inout) :: object
+  end subroutine mci_test_instance_final
+  
+@ %def mci_test_instance_final
+@ Initializer.  We make use of the analytical result that the maximum of
+the weighted integrand, in each channel, is equal to $1$
+(one-dimensional case) and $2$ (two-dimensional case), respectively.
+<<MCI base: tests>>=
+  subroutine mci_test_instance_init (mci_instance, mci)
+    class(mci_test_instance_t), intent(out) :: mci_instance
+    class(mci_t), intent(in), target :: mci
+    call mci_instance%base_init (mci)
+    select type (mci)
+    type is (mci_test_t)
+       mci_instance%mci => mci
+    end select
+    allocate (mci_instance%gi (mci%n_channel))
+    mci_instance%gi = 0
+    allocate (mci_instance%max (mci%n_channel))
+    select case (mci%n_channel)
+    case (1)
+       mci_instance%max = 1._default
+    case (2)
+       mci_instance%max = 2._default
+    end select
+  end subroutine mci_test_instance_init
+    
+@ %def mci_test_instance_init
+@ Compute weight: we implement the VAMP multi-channel formula.  The channel
+probabilities [[gi]] are predefined functions.
+<<MCI base: tests>>=
+  subroutine mci_test_instance_compute_weight (mci, c)
+    class(mci_test_instance_t), intent(inout) :: mci
+    integer, intent(in) :: c
+    integer :: i
+    mci%selected_channel = c
+    select case (mci%mci%n_dim)
+    case (1)
+       mci%gi(1) = 1
+    case (2)
+       mci%gi(1) = 1
+       mci%gi(2) = 2 * mci%x(2,2)
+    end select
+    mci%g = 0
+    do i = 1, mci%mci%n_channel
+       mci%g = mci%g + mci%w(i) * mci%gi(i) / mci%f(i)
+    end do
+    mci%mci_weight = mci%gi(c) / mci%g
+  end subroutine mci_test_instance_compute_weight
+    
+@ %def mci_test_instance_compute_weight
+@ Record the integrand.  Apply the Jacobian weight to get the absolute value.
+Divide by the channel maximum and by any overall factor to get the value
+relative to the maximum.
+<<MCI base: tests>>=
+  subroutine mci_test_instance_record_integrand (mci, integrand)
+    class(mci_test_instance_t), intent(inout) :: mci
+    real(default), intent(in) :: integrand
+    mci%integrand = integrand
+    mci%value = mci%integrand * mci%mci_weight
+    mci%rel_value = mci%value / mci%max(mci%selected_channel) &
+         / mci%mci%max_factor
+  end subroutine mci_test_instance_record_integrand
+  
+@ %def mci_test_instance_record_integrand
+@ Nothing to do here.
+<<MCI base: tests>>=
+  subroutine mci_test_instance_init_simulation (instance, safety_factor)
+    class(mci_test_instance_t), intent(inout) :: instance
+    real(default), intent(in), optional :: safety_factor
+  end subroutine mci_test_instance_init_simulation
+  
+  subroutine mci_test_instance_final_simulation (instance)
+    class(mci_test_instance_t), intent(inout) :: instance
+  end subroutine mci_test_instance_final_simulation
+  
+@ %def mci_test_instance_init_simulation
+@ %def mci_test_instance_final_simulation
+@ Return always zero.
+<<MCI base: tests>>=
+  function mci_test_instance_get_event_excess (mci) result (excess)
+    class(mci_test_instance_t), intent(in) :: mci
+    real(default) :: excess
+    excess = 0
+  end function mci_test_instance_get_event_excess
+  
+@ %def mci_test_instance_get_event_excess
+@
+\subsubsection{Test sampler}
+The test sampler implements a fixed configuration, either trivial
+(one-channel, one-dimension), or slightly nontrivial (two-channel,
+two-dimension).  In the second channel, the first parameter is mapped
+according to $x_1 = x^{(2)}_1{}^2$, so we have $f^{(2)}(x^{(2)}) =
+2x^{(2)}_1$.
+
+For display purposes, we store the return values inside the object.  This is
+not strictly necessary.
+<<MCI base: test types>>=
+  type, extends (mci_sampler_t) :: test_sampler_t
+     real(default) :: integrand = 0
+     integer :: selected_channel = 0
+     real(default), dimension(:,:), allocatable :: x
+     real(default), dimension(:), allocatable :: f
+   contains
+     procedure :: init => test_sampler_init
+     procedure :: write => test_sampler_write
+     procedure :: compute => test_sampler_compute
+     procedure :: is_valid => test_sampler_is_valid
+     procedure :: evaluate => test_sampler_evaluate
+     procedure :: rebuild => test_sampler_rebuild
+     procedure :: fetch => test_sampler_fetch
+  end type test_sampler_t
+  
+@ %def test_sampler_t
+<<MCI base: tests>>=
+  subroutine test_sampler_init (sampler, n)
+    class(test_sampler_t), intent(out) :: sampler
+    integer, intent(in) :: n
+    allocate (sampler%x (n, n))
+    allocate (sampler%f (n))
+  end subroutine test_sampler_init
+  
+@ %def test_sampler_init
+@ Output
+<<MCI base: tests>>=
+  subroutine test_sampler_write (object, unit, testflag)
+    class(test_sampler_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    logical, intent(in), optional :: testflag
+    integer :: u, c
+    u = given_output_unit (unit)
+    write (u, "(1x,A)")  "Test sampler:"
+    write (u, "(3x,A,ES13.7)")  "Integrand = ", object%integrand
+    write (u, "(3x,A,I0)")      "Channel   = ", object%selected_channel
+    do c = 1, size (object%f)
+       write (u, "(1x,I0,':',1x,A,ES13.7)") c, "f = ", object%f(c)
+       write (u, "(4x,A,9(1x,F9.7))") "x =", object%x(:,c)
+    end do
+  end subroutine test_sampler_write
+  
+@ %def test_sampler_write
+@ Compute $x$ and Jacobians, given the input parameter array.  This is called
+both by [[evaluate]] and [[rebuild]].
+<<MCI base: tests>>=
+  subroutine test_sampler_compute (sampler, c, x_in)
+    class(test_sampler_t), intent(inout) :: sampler
+    integer, intent(in) :: c
+    real(default), dimension(:), intent(in) :: x_in
+    sampler%selected_channel = c
+    select case (size (sampler%f))
+    case (1)
+       sampler%x(:,1) = x_in
+       sampler%f = 1
+    case (2)
+       select case (c)
+       case (1)
+          sampler%x(:,1) = x_in
+          sampler%x(1,2) = sqrt (x_in(1))
+          sampler%x(2,2) = x_in(2)
+       case (2)
+          sampler%x(1,1) = x_in(1) ** 2
+          sampler%x(2,1) = x_in(2)
+          sampler%x(:,2) = x_in
+       end select
+       sampler%f(1) = 1
+       sampler%f(2) = 2 * sampler%x(1,2)
+    end select
+  end subroutine test_sampler_compute
+
+@ %def test_sampler_kineamtics
+@ The point is always valid.
+<<MCI base: tests>>=
+  function test_sampler_is_valid (sampler) result (valid)
+    class(test_sampler_t), intent(in) :: sampler
+    logical :: valid
+    valid = .true.
+  end function test_sampler_is_valid
+  
+@ %def test_sampler_is_valid
+@ The integrand is always equal to 1.
+<<MCI base: tests>>=
+  subroutine test_sampler_evaluate (sampler, c, x_in, val, x, f)
+    class(test_sampler_t), intent(inout) :: sampler
+    integer, intent(in) :: c
+    real(default), dimension(:), intent(in) :: x_in
+    real(default), intent(out) :: val
+    real(default), dimension(:,:), intent(out) :: x
+    real(default), dimension(:), intent(out) :: f
+    call sampler%compute (c, x_in)
+    sampler%integrand = 1
+    val = sampler%integrand
+    x = sampler%x
+    f = sampler%f
+  end subroutine test_sampler_evaluate
+
+@ %def test_sampler_evaluate
+@ Construct kinematics from the input $x$ array.  Set the integrand
+instead of evaluating it.
+<<MCI base: tests>>=
+  subroutine test_sampler_rebuild (sampler, c, x_in, val, x, f)
+    class(test_sampler_t), intent(inout) :: sampler
+    integer, intent(in) :: c
+    real(default), dimension(:), intent(in) :: x_in
+    real(default), intent(in) :: val
+    real(default), dimension(:,:), intent(out) :: x
+    real(default), dimension(:), intent(out) :: f
+    call sampler%compute (c, x_in)
+    sampler%integrand = val
+    x = sampler%x
+    f = sampler%f
+  end subroutine test_sampler_rebuild
+
+@ %def test_sampler_rebuild
+@ Recall contents.
+<<MCI base: tests>>=
+  subroutine test_sampler_fetch (sampler, val, x, f)
+    class(test_sampler_t), intent(in) :: sampler
+    real(default), intent(out) :: val
+    real(default), dimension(:,:), intent(out) :: x
+    real(default), dimension(:), intent(out) :: f
+    val = sampler%integrand
+    x = sampler%x
+    f = sampler%f
+  end subroutine test_sampler_fetch
+
+@ %def test_sampler_fetch
+@
+\subsubsection{Test results object}
+This mock object just stores and displays the current result.
+<<MCI base: test types>>=
+  type, extends (mci_results_t) :: mci_test_results_t
+     integer :: n_it = 0
+     integer :: n_calls = 0
+     real(default) :: integral = 0
+     real(default) :: error = 0
+     real(default) :: efficiency = 0
+   contains
+   <<MCI base: mci test results: TBP>>
+  end type mci_test_results_t
+  
+@ %def mci_test_results_t
+@ Output.
+<<MCI base: mci test results: TBP>>=
+  procedure :: write => mci_test_results_write
+<<MCI base: tests>>=
+  subroutine mci_test_results_write (object, unit, verbose, suppress)
+    class(mci_test_results_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    logical, intent(in), optional :: verbose, suppress
+    integer :: u
+    u = given_output_unit (unit)
+    write (u, "(3x,A,1x,I0)") "Iterations = ", object%n_it
+    write (u, "(3x,A,1x,I0)") "Calls      = ", object%n_calls
+    write (u, "(3x,A,1x,F12.10)")  "Integral   = ", object%integral
+    write (u, "(3x,A,1x,F12.10)")  "Error      = ", object%error
+    write (u, "(3x,A,1x,F12.10)")  "Efficiency = ", object%efficiency
+  end subroutine mci_test_results_write
+  
+@ %def mci_test_results_write
+@ Record result.
+<<MCI base: mci test results: TBP>>=
+  procedure :: record => mci_test_results_record
+<<MCI base: tests>>=
+  subroutine mci_test_results_record (object, n_it, n_calls, &
+       integral, error, efficiency, chain_weights, suppress)
+    class(mci_test_results_t), intent(inout) :: object
+    integer, intent(in) :: n_it
+    integer, intent(in) :: n_calls
+    real(default), intent(in) :: integral
+    real(default), intent(in) :: error
+    real(default), intent(in) :: efficiency
+    real(default), dimension(:), intent(in), optional :: chain_weights
+    logical, intent(in), optional :: suppress
+    object%n_it = n_it
+    object%n_calls = n_calls
+    object%integral = integral
+    object%error = error
+    object%efficiency = efficiency
+  end subroutine mci_test_results_record
+
+@ %def mci_test_results_record
+@
+\subsubsection{Integrator configuration data}
+Construct and display a test integrator configuration object.
+<<MCI base: execute tests>>=
+  call test (mci_base_1, "mci_base_1", &
+       "integrator configuration", &
+       u, results)
+<<MCI base: tests>>=
+  subroutine mci_base_1 (u)
+    integer, intent(in) :: u
+    class(mci_t), allocatable, target :: mci
+    class(mci_instance_t), pointer :: mci_instance => null ()
+    class(mci_sampler_t), allocatable :: sampler
+
+    real(default) :: integrand
+    
+    write (u, "(A)")  "* Test output: mci_base_1"
+    write (u, "(A)")  "*   Purpose: initialize and display &
+         &test integrator"
+    write (u, "(A)")
+    
+    write (u, "(A)")  "* Initialize integrator"
+    write (u, "(A)")
+
+    allocate (mci_test_t :: mci)
+    call mci%set_dimensions (2, 2)
+    
+    call mci%write (u)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Initialize instance"
+    write (u, "(A)")
+    
+    call mci%allocate_instance (mci_instance)
+    call mci_instance%init (mci)
+    
+    write (u, "(A)")  "* Initialize test sampler"
+    write (u, "(A)")
+    
+    allocate (test_sampler_t :: sampler)
+    select type (sampler)
+    type is (test_sampler_t)
+       call sampler%init (2)
+    end select
+
+    write (u, "(A)")  "* Evaluate sampler for given point and channel"
+    write (u, "(A)")
+    
+    call sampler%evaluate (1, [0.25_default, 0.8_default], &
+         integrand, mci_instance%x, mci_instance%f)
+
+    call sampler%write (u)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Compute MCI weight"
+    write (u, "(A)")
+    
+    call mci_instance%compute_weight (1)
+    call mci_instance%write (u)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Get integrand and compute weight for another point"
+    write (u, "(A)")
+    
+    call mci_instance%evaluate (sampler, 2, [0.5_default, 0.6_default])
+    call mci_instance%write (u)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Recall results, again"
+    write (u, "(A)")
+    
+    call mci_instance%final ()
+    deallocate (mci_instance)
+    
+    call mci%allocate_instance (mci_instance)
+    call mci_instance%init (mci)
+
+    call mci_instance%fetch (sampler, 2)
+    call mci_instance%write (u)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Retrieve value"
+    write (u, "(A)")
+    
+    write (u, "(1x,A,ES13.7)")  "Weighted integrand = ", &
+         mci_instance%get_value ()
+
+    call mci_instance%final ()
+    call mci%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: mci_base_1"
+
+  end subroutine mci_base_1
+
+@ %def mci_base_1
+@
+\subsubsection{Trivial integral}
+Use the MCI approach to compute a trivial one-dimensional integral.
+<<MCI base: execute tests>>=
+  call test (mci_base_2, "mci_base_2", &
+       "integration", &
+       u, results)
+<<MCI base: tests>>=
+  subroutine mci_base_2 (u)
+    integer, intent(in) :: u
+    class(mci_t), allocatable, target :: mci
+    class(mci_instance_t), pointer :: mci_instance => null ()
+    class(mci_sampler_t), allocatable :: sampler
+    
+    write (u, "(A)")  "* Test output: mci_base_2"
+    write (u, "(A)")  "*   Purpose: perform a test integral"
+    write (u, "(A)")
+    
+    write (u, "(A)")  "* Initialize integrator"
+    write (u, "(A)")
+
+    allocate (mci_test_t :: mci)
+    call mci%set_dimensions (1, 1)
+    select type (mci)
+    type is (mci_test_t)
+       call mci%set_divisions (10)
+    end select
+    
+    call mci%write (u)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Initialize instance"
+    write (u, "(A)")
+    
+    call mci%allocate_instance (mci_instance)
+    call mci_instance%init (mci)
+    
+    write (u, "(A)")  "* Initialize test sampler"
+    write (u, "(A)")
+    
+    allocate (test_sampler_t :: sampler)
+    select type (sampler)
+    type is (test_sampler_t)
+       call sampler%init (1)
+    end select
+    
+    write (u, "(A)")  "* Integrate"
+    write (u, "(A)")
+    
+    call mci%integrate (mci_instance, sampler, 0, 0)
+    
+    call mci%write (u)
+    
+    call mci_instance%final ()
+    call mci%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: mci_base_2"
+
+  end subroutine mci_base_2
+
+@ %def mci_base_2
+@
+\subsubsection{Nontrivial integral}
+Use the MCI approach to compute a simple two-dimensional integral with
+two channels.
+<<MCI base: execute tests>>=
+  call test (mci_base_3, "mci_base_3", &
+       "integration (two channels)", &
+       u, results)
+<<MCI base: tests>>=
+  subroutine mci_base_3 (u)
+    integer, intent(in) :: u
+    class(mci_t), allocatable, target :: mci
+    class(mci_instance_t), pointer :: mci_instance => null ()
+    class(mci_sampler_t), allocatable :: sampler
+    
+    write (u, "(A)")  "* Test output: mci_base_3"
+    write (u, "(A)")  "*   Purpose: perform a nontrivial test integral"
+    write (u, "(A)")
+    
+    write (u, "(A)")  "* Initialize integrator"
+    write (u, "(A)")
+
+    allocate (mci_test_t :: mci)
+    call mci%set_dimensions (2, 2)
+    select type (mci)
+    type is (mci_test_t)
+       call mci%set_divisions (10)
+    end select
+
+    write (u, "(A)")  "* Initialize instance"
+    write (u, "(A)")
+    
+    call mci%allocate_instance (mci_instance)
+    call mci_instance%init (mci)
+    
+    write (u, "(A)")  "* Initialize test sampler"
+    write (u, "(A)")
+    
+    allocate (test_sampler_t :: sampler)
+    select type (sampler)
+    type is (test_sampler_t)
+       call sampler%init (2)
+    end select
+    
+    write (u, "(A)")  "* Integrate"
+    write (u, "(A)")
+    
+    call mci%integrate (mci_instance, sampler, 0, 0)
+    call mci%write (u)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Integrate with higher resolution"
+    write (u, "(A)")
+
+    select type (mci)
+    type is (mci_test_t)
+       call mci%set_divisions (100)
+    end select
+
+    call mci%integrate (mci_instance, sampler, 0, 0)
+    call mci%write (u)
+
+    call mci_instance%final ()
+    call mci%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: mci_base_3"
+
+  end subroutine mci_base_3
+
+@ %def mci_base_3
+@
+\subsubsection{Event generation}
+We generate ``random'' events, one weighted and one unweighted.  The
+test implementation does not require an integration pass, we can
+generate events immediately.
+<<MCI base: execute tests>>=
+  call test (mci_base_4, "mci_base_4", &
+       "event generation (two channels)", &
+       u, results)
+<<MCI base: tests>>=
+  subroutine mci_base_4 (u)
+    integer, intent(in) :: u
+    class(mci_t), allocatable, target :: mci
+    class(mci_instance_t), pointer :: mci_instance => null ()
+    class(mci_sampler_t), allocatable :: sampler
+    class(rng_t), allocatable :: rng
+    
+    write (u, "(A)")  "* Test output: mci_base_4"
+    write (u, "(A)")  "*   Purpose: generate events"
+    write (u, "(A)")
+    
+    write (u, "(A)")  "* Initialize integrator, instance, sampler"
+    write (u, "(A)")
+
+    allocate (mci_test_t :: mci)
+    call mci%set_dimensions (2, 2)
+    select type (mci)
+    type is (mci_test_t)
+       call mci%set_divisions (10)
+    end select
+    
+    call mci%allocate_instance (mci_instance)
+    call mci_instance%init (mci)
+    
+    allocate (test_sampler_t :: sampler)
+    select type (sampler)
+    type is (test_sampler_t)
+       call sampler%init (2)
+    end select
+    
+    allocate (rng_test_t :: rng)
+    call mci%import_rng (rng)
+    
+    write (u, "(A)")  "* Generate weighted event"
+    write (u, "(A)")
+    
+    call mci%generate_weighted_event (mci_instance, sampler)
+
+    call sampler%write (u)
+    write (u, *)
+    call mci_instance%write (u)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Generate unweighted event"
+    write (u, "(A)")
+    
+    call mci%generate_unweighted_event (mci_instance, sampler)
+
+    select type (mci)
+    type is (mci_test_t)
+       write (u, "(A,I0)")  " Success in try ", mci%tries
+       write (u, "(A)")
+    end select
+    
+    call sampler%write (u)
+    write (u, *)
+    call mci_instance%write (u)
+    
+    call mci_instance%final ()
+    call mci%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: mci_base_4"
+
+  end subroutine mci_base_4
+
+@ %def mci_base_4
+@
+\subsubsection{Store and recall data}
+We generate an event and store the relevant data, i.e., the input
+parameters and the result value for a particular channel.  Then we use
+those data to recover the event, as far as the MCI record is concerned.
+<<MCI base: execute tests>>=
+  call test (mci_base_5, "mci_base_5", &
+       "store and recall", &
+       u, results)
+<<MCI base: tests>>=
+  subroutine mci_base_5 (u)
+    integer, intent(in) :: u
+    class(mci_t), allocatable, target :: mci
+    class(mci_instance_t), pointer :: mci_instance => null ()
+    class(mci_sampler_t), allocatable :: sampler
+    class(rng_t), allocatable :: rng
+    class(mci_state_t), allocatable :: state
+    
+    write (u, "(A)")  "* Test output: mci_base_5"
+    write (u, "(A)")  "*   Purpose: store and recall an event"
+    write (u, "(A)")
+    
+    write (u, "(A)")  "* Initialize integrator, instance, sampler"
+    write (u, "(A)")
+
+    allocate (mci_test_t :: mci)
+    call mci%set_dimensions (2, 2)
+    select type (mci)
+    type is (mci_test_t)
+       call mci%set_divisions (10)
+    end select
+    
+    call mci%allocate_instance (mci_instance)
+    call mci_instance%init (mci)
+    
+    allocate (test_sampler_t :: sampler)
+    select type (sampler)
+    type is (test_sampler_t)
+       call sampler%init (2)
+    end select
+    
+    allocate (rng_test_t :: rng)
+    call mci%import_rng (rng)
+    
+    write (u, "(A)")  "* Generate weighted event"
+    write (u, "(A)")
+    
+    call mci%generate_weighted_event (mci_instance, sampler)
+
+    call sampler%write (u)
+    write (u, *)
+    call mci_instance%write (u)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Store data"
+    write (u, "(A)")
+    
+    allocate (state)
+    call mci_instance%store (state)
+    call mci_instance%final ()
+    deallocate (mci_instance)
+    
+    call state%write (u)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Recall data and rebuild event"
+    write (u, "(A)")
+    
+    call mci%allocate_instance (mci_instance)
+    call mci_instance%init (mci)
+    call mci%rebuild_event (mci_instance, sampler, state)
+
+    call sampler%write (u)
+    write (u, *)
+    call mci_instance%write (u)
+    
+    call mci_instance%final ()
+    call mci%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: mci_base_5"
+
+  end subroutine mci_base_5
+
+@ %def mci_base_5
+@
+\subsubsection{Chained channels}
+Chain channels together.  In the base configuration, this just fills entries
+in an extra array (each channel may belong to a chain).  In type
+implementations, this will be used for grouping equivalent channels by keeping
+their weights equal.
+<<MCI base: execute tests>>=
+  call test (mci_base_6, "mci_base_6", &
+       "chained channels", &
+       u, results)
+<<MCI base: tests>>=
+  subroutine mci_base_6 (u)
+    integer, intent(in) :: u
+    class(mci_t), allocatable, target :: mci
+    
+    write (u, "(A)")  "* Test output: mci_base_6"
+    write (u, "(A)")  "*   Purpose: initialize and display &
+         &test integrator with chains"
+    write (u, "(A)")
+    
+    write (u, "(A)")  "* Initialize integrator"
+    write (u, "(A)")
+
+    allocate (mci_test_t :: mci)
+    call mci%set_dimensions (1, 5)
+    
+    write (u, "(A)")  "* Introduce chains"
+    write (u, "(A)")
+    
+    call mci%declare_chains ([1, 2, 2, 1, 2])
+
+    call mci%write (u)
+    
+    call mci%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: mci_base_6"
+
+  end subroutine mci_base_6
+
+@ %def mci_base_6
+@
+\subsubsection{Recording results}
+Compute a simple two-dimensional integral and record the result.
+<<MCI base: execute tests>>=
+  call test (mci_base_7, "mci_base_7", &
+       "recording results", &
+       u, results)
+<<MCI base: tests>>=
+  subroutine mci_base_7 (u)
+    integer, intent(in) :: u
+    class(mci_t), allocatable, target :: mci
+    class(mci_instance_t), pointer :: mci_instance => null ()
+    class(mci_sampler_t), allocatable :: sampler
+    class(mci_results_t), allocatable :: results
+    
+    write (u, "(A)")  "* Test output: mci_base_7"
+    write (u, "(A)")  "*   Purpose: perform a nontrivial test integral &
+         &and record results"
+    write (u, "(A)")
+    
+    write (u, "(A)")  "* Initialize integrator"
+    write (u, "(A)")
+
+    allocate (mci_test_t :: mci)
+    call mci%set_dimensions (2, 2)
+    select type (mci)
+    type is (mci_test_t)
+       call mci%set_divisions (10)
+    end select
+
+    write (u, "(A)")  "* Initialize instance"
+    write (u, "(A)")
+    
+    call mci%allocate_instance (mci_instance)
+    call mci_instance%init (mci)
+    
+    write (u, "(A)")  "* Initialize test sampler"
+    write (u, "(A)")
+    
+    allocate (test_sampler_t :: sampler)
+    select type (sampler)
+    type is (test_sampler_t)
+       call sampler%init (2)
+    end select
+    
+    allocate (mci_test_results_t :: results)
+
+    write (u, "(A)")  "* Integrate"
+    write (u, "(A)")
+    
+    call mci%integrate (mci_instance, sampler, 1, 1000, results)
+    call mci%write (u)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Display results"
+    write (u, "(A)")
+
+    call results%write (u)
+    
+    call mci_instance%final ()
+    call mci%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: mci_base_7"
+
+  end subroutine mci_base_7
+
+@ %def mci_base_7
+@
+\subsubsection{Timer}
+Simple checks for the embedded timer.
+<<MCI base: execute tests>>=
+  call test (mci_base_8, "mci_base_8", &
+       "timer", &
+       u, results)
+<<MCI base: tests>>=
+  subroutine mci_base_8 (u)
+    integer, intent(in) :: u
+    class(mci_t), allocatable, target :: mci
+    
+    write (u, "(A)")  "* Test output: mci_base_8"
+    write (u, "(A)")  "*   Purpose: check timer availability"
+    write (u, "(A)")
+    
+    write (u, "(A)")  "* Initialize integrator with timer"
+    write (u, "(A)")
+
+    allocate (mci_test_t :: mci)
+    call mci%set_dimensions (2, 2)
+    select type (mci)
+    type is (mci_test_t)
+       call mci%set_divisions (10)
+    end select
+
+    call mci%set_timer (active = .true.)
+    call mci%write (u)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Start timer"
+    write (u, "(A)")
+
+    call mci%start_timer ()
+    call mci%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Stop timer"
+    write (u, "(A)")
+
+    call mci%stop_timer ()
+    call mci%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Readout"
+    write (u, "(A)")
+
+    write (u, "(1x,A,F6.3)")  "Time = ", mci%get_time ()
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Deactivate timer"
+    write (u, "(A)")
+
+    call mci%set_timer (active = .false.)
+    call mci%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+
+    call mci%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: mci_base_8"
+
+  end subroutine mci_base_8
+
+@ %def mci_base_8
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Iterations}
+This module defines a container for the list of iterations and calls, to be
+submitted to integration.
+<<[[iterations.f90]]>>=
+<<File header>>
+
+module iterations
+
+<<Use strings>>
+  use io_units
+  use unit_tests
+  use diagnostics
+
+<<Standard module head>>
+
+<<Iterations: public>>
+
+<<Iterations: types>>
+
+contains
+
+<<Iterations: procedures>>
+
+<<Iterations: tests>>
+
+end module iterations
+@ %def iterations
+@ 
+\subsection{The iterations list}
+Each integration pass has a number of iterations and a number of calls
+per iteration.  The last pass produces the end result; the previous
+passes are used for adaptation.
+
+The flags [[adapt_grid]] and [[adapt_weight]] are used only if
+[[custom_adaptation]] is set.  Otherwise, default settings are used
+that depend on the integration pass.
+<<Iterations: types>>=
+  type :: iterations_spec_t
+     private
+     integer :: n_it = 0
+     integer :: n_calls = 0
+     logical :: custom_adaptation = .false.
+     logical :: adapt_grids = .false.
+     logical :: adapt_weights = .false.
+  end type iterations_spec_t
+
+@ %def iterations_spec_t
+@ We build up a list of iterations.
+<<Iterations: public>>=
+  public :: iterations_list_t
+<<Iterations: types>>=
+  type :: iterations_list_t
+     private
+     integer :: n_pass = 0
+     type(iterations_spec_t), dimension(:), allocatable :: pass
+   contains
+   <<Iterations: iterations list: TBP>>
+  end type iterations_list_t
+     
+@ %def iterations_list_t
+@ Initialize an iterations list.  For each pass, we have to specify
+the number of iterations and calls.  We may provide the adaption
+conventions explicitly, either as character codes or as logicals.  
+
+For passes where the adaptation conventions are not specified, we use
+the following default setting: adapt weights and grids for all passes
+except the last one.
+<<Iterations: iterations list: TBP>>=
+  procedure :: init => iterations_list_init
+<<Iterations: procedures>>=
+  subroutine iterations_list_init &
+       (it_list, n_it, n_calls, adapt, adapt_code, adapt_grids, adapt_weights)
+    class(iterations_list_t), intent(inout) :: it_list
+    integer, dimension(:), intent(in) :: n_it, n_calls
+    logical, dimension(:), intent(in), optional :: adapt
+    type(string_t), dimension(:), intent(in), optional :: adapt_code
+    logical, dimension(:), intent(in), optional :: adapt_grids, adapt_weights
+    integer :: i
+    it_list%n_pass = size (n_it)
+    if (allocated (it_list%pass)) deallocate (it_list%pass)    
+    allocate (it_list%pass (it_list%n_pass))
+    it_list%pass%n_it = n_it
+    it_list%pass%n_calls = n_calls
+    if (present (adapt)) then
+       it_list%pass%custom_adaptation = adapt
+       do i = 1, it_list%n_pass
+          if (adapt(i)) then
+             if (verify (adapt_code(i), "wg") /= 0) then
+                call msg_error ("iteration specification: " &
+                     // "adaptation code letters must be 'w' or 'g'")
+             end if
+             it_list%pass(i)%adapt_grids = scan (adapt_code(i), "g") /= 0
+             it_list%pass(i)%adapt_weights = scan (adapt_code(i), "w") /= 0
+          end if
+       end do
+    else if (present (adapt_grids) .and. present (adapt_weights)) then
+       it_list%pass%custom_adaptation = .true.
+       it_list%pass%adapt_grids = adapt_grids
+       it_list%pass%adapt_weights = adapt_weights
+    end if
+    do i = 1, it_list%n_pass - 1
+       if (.not. it_list%pass(i)%custom_adaptation) then
+          it_list%pass(i)%adapt_grids = .true.
+          it_list%pass(i)%adapt_weights = .true.
+       end if
+    end do
+  end subroutine iterations_list_init
+
+@ %def iterations_list_init
+<<Iterations: iterations list: TBP>>=
+  procedure :: clear => iterations_list_clear
+<<Iterations: procedures>>=
+  subroutine iterations_list_clear (it_list)
+    class(iterations_list_t), intent(inout) :: it_list
+    it_list%n_pass = 0
+    deallocate (it_list%pass)
+  end subroutine iterations_list_clear
+
+@ %def iterations_list_clear
+@ Write the list of iterations.
+<<Iterations: iterations list: TBP>>=
+  procedure :: write => iterations_list_write
+<<Iterations: procedures>>=
+  subroutine iterations_list_write (it_list, unit)
+    class(iterations_list_t), intent(in) :: it_list
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit)
+    write (u, "(A)")  char (it_list%to_string ())
+  end subroutine iterations_list_write
+
+@ %def iterations_list_write
+@ The output as a single-line string.
+<<Iterations: iterations list: TBP>>=
+  procedure :: to_string => iterations_list_to_string
+<<Iterations: procedures>>=
+  function iterations_list_to_string (it_list) result (buffer)
+    class(iterations_list_t), intent(in) :: it_list
+    type(string_t) :: buffer
+    character(30) :: ibuf
+    integer :: i
+    buffer = "iterations = "
+    if (it_list%n_pass > 0) then
+       do i = 1, it_list%n_pass
+          if (i > 1)  buffer = buffer // ", "
+          write (ibuf, "(I0,':',I0)") &
+               it_list%pass(i)%n_it, it_list%pass(i)%n_calls
+          buffer = buffer // trim (ibuf)
+          if (it_list%pass(i)%custom_adaptation &
+               .or. it_list%pass(i)%adapt_grids &
+               .or. it_list%pass(i)%adapt_weights) then
+             buffer = buffer // ':"'
+             if (it_list%pass(i)%adapt_grids)  buffer = buffer // "g"
+             if (it_list%pass(i)%adapt_weights)  buffer = buffer // "w"
+             buffer = buffer // '"'
+          end if          
+       end do
+    else
+       buffer = buffer // "[undefined]"
+    end if
+  end function iterations_list_to_string
+    
+@ %def iterations_list_to_string
+@ 
+\subsection{Tools}
+Return the total number of passes.
+<<Iterations: iterations list: TBP>>=
+  procedure :: get_n_pass => iterations_list_get_n_pass
+<<Iterations: procedures>>=
+  function iterations_list_get_n_pass (it_list) result (n_pass)
+    class(iterations_list_t), intent(in) :: it_list
+    integer :: n_pass
+    n_pass = it_list%n_pass
+  end function iterations_list_get_n_pass
+
+@ %def iterations_list_get_n_pass
+@ Return the number of calls for a specific pass.
+<<Iterations: iterations list: TBP>>=
+  procedure :: get_n_calls => iterations_list_get_n_calls
+<<Iterations: procedures>>=
+  function iterations_list_get_n_calls (it_list, pass) result (n_calls)
+    class(iterations_list_t), intent(in) :: it_list
+    integer :: n_calls
+    integer, intent(in) :: pass
+    if (pass <= it_list%n_pass) then
+       n_calls = it_list%pass(pass)%n_calls
+    else
+       n_calls = 0
+    end if
+  end function iterations_list_get_n_calls
+
+@ %def iterations_list_get_n_calls
+@ Get the adaptation mode (automatic/custom) and, for custom adaptation, the
+flags for a specific pass.
+<<Iterations: iterations list: TBP>>=
+  procedure :: adapt_grids => iterations_list_adapt_grids
+  procedure :: adapt_weights => iterations_list_adapt_weights
+<<Iterations: procedures>>=
+  function iterations_list_adapt_grids (it_list, pass) result (flag)
+    logical :: flag
+    class(iterations_list_t), intent(in) :: it_list
+    integer, intent(in) :: pass
+    if (pass <= it_list%n_pass) then
+       flag = it_list%pass(pass)%adapt_grids
+    else
+       flag = .false.
+    end if
+  end function iterations_list_adapt_grids
+
+  function iterations_list_adapt_weights (it_list, pass) result (flag)
+    logical :: flag
+    class(iterations_list_t), intent(in) :: it_list
+    integer, intent(in) :: pass
+    if (pass <= it_list%n_pass) then
+       flag = it_list%pass(pass)%adapt_weights
+    else
+       flag = .false.
+    end if
+  end function iterations_list_adapt_weights
+
+@ %def iterations_list_has_custom_adaptation
+@ %def iterations_list_adapt_grids
+@ %def iterations_list_adapt_weights
+@ Return the total number of iterations / the iterations for a specific pass.
+<<Iterations: iterations list: TBP>>=
+  procedure :: get_n_it => iterations_list_get_n_it
+<<Iterations: procedures>>=
+  function iterations_list_get_n_it (it_list, pass) result (n_it)
+    class(iterations_list_t), intent(in) :: it_list
+    integer :: n_it
+    integer, intent(in) :: pass
+    if (pass <= it_list%n_pass) then
+       n_it = it_list%pass(pass)%n_it
+    else
+       n_it = 0
+    end if
+  end function iterations_list_get_n_it
+
+@ %def iterations_list_get_n_it
+@
+\subsection{Test}
+This is the master for calling self-test procedures.
+<<Iterations: public>>=
+  public :: iterations_test
+<<Iterations: tests>>=
+  subroutine iterations_test (u, results)
+    integer, intent(in) :: u
+    type(test_results_t), intent(inout) :: results
+  <<Iterations: execute tests>>
+end subroutine iterations_test
+
+@ %def iterations_test
+@ 
+\subsubsection{Empty list}
+<<Iterations: execute tests>>=
+  call test (iterations_1, "iterations_1", &
+       "empty iterations list", &
+       u, results)
+<<Iterations: tests>>=
+  subroutine iterations_1 (u)
+    integer, intent(in) :: u
+    type(iterations_list_t) :: it_list
+    
+    write (u, "(A)")  "* Test output: iterations_1"
+    write (u, "(A)")  "*   Purpose: display empty iterations list"
+    write (u, "(A)")
+
+    call it_list%write (u)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: iterations_1"
+    
+  end subroutine iterations_1
+  
+@ %def iterations_1
+@ 
+\subsubsection{Fill list}
+<<Iterations: execute tests>>=
+  call test (iterations_2, "iterations_2", &
+       "create iterations list", &
+       u, results)
+<<Iterations: tests>>=
+  subroutine iterations_2 (u)
+    integer, intent(in) :: u
+    type(iterations_list_t) :: it_list
+    
+    write (u, "(A)")  "* Test output: iterations_2"
+    write (u, "(A)")  "*   Purpose: fill and display iterations list"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Minimal setup (2 passes)"
+    write (u, "(A)")
+
+    call it_list%init ([2, 4], [5000, 20000])
+
+    call it_list%write (u)
+    call it_list%clear ()
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Setup with flags (3 passes)"
+    write (u, "(A)")
+
+    call it_list%init ([2, 4, 5], [5000, 20000, 400], &
+         [.false., .true., .true.], &
+         [var_str (""), var_str ("g"), var_str ("wg")])
+
+    call it_list%write (u)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Extract data"
+    write (u, "(A)")
+    
+    write (u, "(A,I0)")  "n_pass = ", it_list%get_n_pass ()
+    write (u, "(A)")
+    write (u, "(A,I0)")  "n_calls(2) = ", it_list%get_n_calls (2)
+    write (u, "(A)")
+    write (u, "(A,I0)")  "n_it(3) = ", it_list%get_n_it (3)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: iterations_2"
+    
+  end subroutine iterations_2
+  
+@ %def iterations_2
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Integration results}
+
+We record integration results and errors in a dedicated type.  This
+allows us to do further statistics such as weighted average,
+chi-squared, grouping by integration passes, etc.
+
+Note WHIZARD 2.2.0: This code is taken from the previous [[processes]]
+module essentially unchanged and converted into a separate module.  It
+lacks an overhaul and, in particular, self-tests.
+<<[[integration_results.f90]]>>=
+module integration_results
+  
+<<Use kinds>>
+<<Use strings>>
+  use io_units
+  use format_utils, only: mp_format, pac_fmt
+  use format_defs, only: FMT_10, FMT_14
+  use diagnostics
+  use md5
+  use os_interface
+  use mci_base
+  
+<<Standard module head>>
+
+<<Integration results: public>>
+
+<<Integration results: parameters>>
+
+<<Integration results: types>>
+
+contains
+  
+<<Integration results: procedures>>
+
+end module integration_results
+@ %def integration_results
+@ 
+\subsection{Integration results entry}
+This object collects the results of an integration pass and makes them
+available to the outside.
+
+The results object has to distinguish the process type:
+
+We store the process type, the index of the integration pass and the
+absolute iteration index, the number of iterations contained in this
+result (for averages), and the integral (cross section or partial
+width), error estimate, efficiency.
+
+For intermediate results, we set a flag if this result is an
+improvement w.r.t. previous ones.
+
+The process type indicates decay or scattering.  Dummy entries
+(skipped iterations) have a process type of [[PRC_UNKNOWN]].
+<<Integration results: types>>=
+  type :: integration_entry_t
+     private
+     integer :: process_type = PRC_UNKNOWN
+     integer :: pass = 0
+     integer :: it = 0
+     integer :: n_it = 0
+     integer :: n_calls = 0
+     logical :: improved = .false.
+     real(default) :: integral = 0
+     real(default) :: error = 0
+     real(default) :: efficiency = 0
+     real(default) :: chi2 = 0
+     real(default), dimension(:), allocatable :: chain_weights
+  end type integration_entry_t
+
+@ %def integration_result_t
+@
+The possible values of the type indicator:
+<<Integration results: parameters>>=
+  integer, parameter, public :: PRC_UNKNOWN = 0
+  integer, parameter, public :: PRC_DECAY = 1
+  integer, parameter, public :: PRC_SCATTERING = 2
+
+@ %def PRC_UNKNOWN PRC_DECAY PRC_SCATTERING
+@ Initialize with all relevant data
+<<Integration results: procedures>>=
+  subroutine integration_entry_init (entry, &
+       process_type, pass, it, n_it, n_calls, improved, &
+       integral, error, efficiency, chi2, chain_weights)
+    type(integration_entry_t), intent(out) :: entry
+    integer, intent(in) :: process_type, pass, it, n_it, n_calls
+    logical, intent(in) :: improved
+    real(default), intent(in) :: integral, error, efficiency
+    real(default), intent(in), optional :: chi2
+    real(default), dimension(:), intent(in), optional :: chain_weights
+    entry%process_type = process_type
+    entry%pass = pass
+    entry%it = it
+    entry%n_it = n_it
+    entry%n_calls = n_calls
+    entry%improved = improved
+    entry%integral = integral
+    entry%error = error
+    entry%efficiency = efficiency
+    if (present (chi2)) &
+         entry%chi2 = chi2
+    if (present (chain_weights)) then
+       allocate (entry%chain_weights (size (chain_weights)))
+       entry%chain_weights = chain_weights
+    end if
+  end subroutine integration_entry_init
+
+@ %def integration_entry_init
+@ Access values, some of them computed on demand:
+<<Integration results: procedures>>=
+  elemental function integration_entry_get_pass (entry) result (n)
+    integer :: n
+    type(integration_entry_t), intent(in) :: entry
+    n = entry%pass
+  end function integration_entry_get_pass
+
+  elemental function integration_entry_get_n_calls (entry) result (n)
+    integer :: n
+    type(integration_entry_t), intent(in) :: entry
+    n = entry%n_calls
+  end function integration_entry_get_n_calls
+
+  elemental function integration_entry_get_integral (entry) result (int)
+    real(default) :: int
+    type(integration_entry_t), intent(in) :: entry
+    int = entry%integral
+  end function integration_entry_get_integral
+
+  elemental function integration_entry_get_error (entry) result (err)
+    real(default) :: err
+    type(integration_entry_t), intent(in) :: entry
+    err = entry%error
+  end function integration_entry_get_error
+
+  elemental function integration_entry_get_relative_error (entry) result (err)
+    real(default) :: err
+    type(integration_entry_t), intent(in) :: entry
+    if (entry%integral /= 0) then
+       err = entry%error / entry%integral
+    else
+       err = 0
+    end if
+  end function integration_entry_get_relative_error
+
+  elemental function integration_entry_get_accuracy (entry) result (acc)
+    real(default) :: acc
+    type(integration_entry_t), intent(in) :: entry
+    acc = accuracy (entry%integral, entry%error, entry%n_calls)
+  end function integration_entry_get_accuracy
+
+  elemental function accuracy (integral, error, n_calls) result (acc)
+    real(default) :: acc
+    real(default), intent(in) :: integral, error
+    integer, intent(in) :: n_calls
+    if (integral /= 0) then
+       acc = error / integral * sqrt (real (n_calls, default))
+    else
+       acc = 0
+    end if
+  end function accuracy
+
+  elemental function integration_entry_get_efficiency (entry) result (eff)
+    real(default) :: eff
+    type(integration_entry_t), intent(in) :: entry
+    eff = entry%efficiency
+  end function integration_entry_get_efficiency
+
+  elemental function integration_entry_get_chi2 (entry) result (chi2)
+    real(default) :: chi2
+    type(integration_entry_t), intent(in) :: entry
+    chi2 = entry%chi2
+  end function integration_entry_get_chi2
+
+  elemental function integration_entry_has_improved (entry) result (flag)
+    logical :: flag
+    type(integration_entry_t), intent(in) :: entry
+    flag = entry%improved
+  end function integration_entry_has_improved
+
+  elemental function integration_entry_get_n_groves (entry) result (n_groves)
+    integer :: n_groves
+    type(integration_entry_t), intent(in) :: entry
+    if (allocated (entry%chain_weights)) then
+       n_groves = size (entry%chain_weights, 1)
+    else
+       n_groves = 0
+    end if
+  end function integration_entry_get_n_groves
+
+@ %def integration_entry_get_pass
+@ %def integration_entry_get_integral
+@ %def integration_entry_get_error
+@ %def integration_entry_get_relative_error
+@ %def integration_entry_get_accuracy
+@ %def accuracy
+@ %def integration_entry_get_efficiency
+@ %def integration_entry_get_chi2
+@ %def integration_entry_has_improved
+@ %def integration_entry_get_n_groves
+@ Output. This writes the header line for the result account below:
+<<Integration results: procedures>>=
+  subroutine write_header (process_type, unit, logfile)
+    integer, intent(in) :: process_type
+    integer, intent(in), optional :: unit
+    logical, intent(in), optional :: logfile
+    character(5) :: phys_unit
+    integer :: u
+    u = given_output_unit (unit);  if (u < 0)  return
+    select case (process_type)
+    case (PRC_DECAY);      phys_unit = "[GeV]"
+    case (PRC_SCATTERING); phys_unit = "[fb] "
+    case default
+       phys_unit = ""
+    end select
+    write (msg_buffer, "(A)") &
+         "It      Calls  Integral" // phys_unit // &
+         " Error" // phys_unit // &
+         "  Err[%]    Acc  Eff[%]   Chi2 N[It] |"
+    call msg_message (unit=u, logfile=logfile)
+  end subroutine write_header
+       
+@ %def write_header
+@ This writes a separator for result display:
+<<Integration results: procedures>>=
+  subroutine write_hline (unit)
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit);  if (u < 0)  return
+    write (u, "(A)")  "|" // (repeat ("-", 77)) // "|"
+    flush (u)
+  end subroutine write_hline
+  
+  subroutine write_dline (unit)
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit);  if (u < 0)  return
+    write (u, "(A)")  "|" // (repeat ("=", 77)) // "|"
+    flush (u)
+  end subroutine write_dline
+  
+@ %def write_hline
+@ %def write_dline
+@ This writes the standard result account into one screen line.  The
+verbose version uses multiple lines and prints the unabridged values.
+Dummy entries are not written.
+<<Integration results: procedures>>=
+  subroutine integration_entry_write (entry, unit, verbose, suppress)
+    type(integration_entry_t), intent(in) :: entry
+    integer, intent(in), optional :: unit
+    logical, intent(in), optional :: verbose
+    logical, intent(in), optional :: suppress	
+    integer :: u
+    character(1) :: star
+    character(12) :: fmt
+    character(7) :: fmt2
+    logical :: verb, supp
+    u = given_output_unit (unit);  if (u < 0)  return
+    verb = .false.;  if (present (verbose))  verb = verbose
+    supp = .false.;  if (present (suppress)) supp = suppress 
+    if (verb)  then
+       write (u, *)  "process_type = ", entry%process_type
+       write (u, *)  "        pass = ", entry%pass
+       write (u, *)  "          it = ", entry%it
+       write (u, *)  "        n_it = ", entry%n_it
+       write (u, *)  "     n_calls = ", entry%n_calls
+       write (u, *)  "    improved = ", entry%improved
+       write (u, *)  "    integral = ", entry%integral
+       write (u, *)  "       error = ", entry%error
+       write (u, *)  "  efficiency = ", entry%efficiency
+       write (u, *)  "        chi2 = ", entry%chi2
+       if (allocated (entry%chain_weights)) then
+          write (u, *)  "    n_groves = ", size (entry%chain_weights)
+          write (u, *)  "chain_weights = ", entry%chain_weights
+       else
+          write (u, *)  "    n_groves = 0"
+       end if
+    else if (entry%process_type /= PRC_UNKNOWN) then
+       if (entry%improved .and. .not. supp) then
+          star = "*"
+       else
+          star = " "
+       end if
+       call pac_fmt (fmt, FMT_14, "3x," // FMT_10 // ",1x", suppress)
+       call pac_fmt (fmt2, "1x,F6.2", "2x,F5.1", suppress)
+       if (entry%n_it /= 1) then
+          write (u, "(1x,I3,1x,I10,1x," // fmt // ",1x,ES9.2,1x,F7.2," // &
+            "1x,F7.2,A1," // fmt2 // ",1x,F7.2,1x,I3)") &
+               entry%it, &
+               entry%n_calls, &
+               entry%integral, &
+               abs(entry%error), &
+               abs(integration_entry_get_relative_error (entry)) * 100, &
+               abs(integration_entry_get_accuracy (entry)), &
+               star, &
+               entry%efficiency * 100, &
+               entry%chi2, &
+               entry%n_it
+       else
+          write (u, "(1x,I3,1x,I10,1x," // fmt // ",1x,ES9.2,1x,F7.2," // &
+            "1x,F7.2,A1," // fmt2 // ",1x,F7.2,1x,I3)") &          
+               entry%it, &
+               entry%n_calls, &
+               entry%integral, &
+               abs(entry%error), &
+               abs(integration_entry_get_relative_error (entry)) * 100, &
+               abs(integration_entry_get_accuracy (entry)), &
+               star, &
+               entry%efficiency * 100
+       end if
+    end if
+    flush (u)
+  end subroutine integration_entry_write
+
+@ %def integration_entry_write
+@ Read the entry, assuming it has been written in verbose format.
+<<Integration results: procedures>>=
+  subroutine integration_entry_read (entry, unit)
+    type(integration_entry_t), intent(out) :: entry
+    integer, intent(in) :: unit
+    character(30) :: dummy
+    character :: equals
+    integer :: n_groves
+    read (unit, *)  dummy, equals, entry%process_type
+    read (unit, *)  dummy, equals, entry%pass
+    read (unit, *)  dummy, equals, entry%it
+    read (unit, *)  dummy, equals, entry%n_it
+    read (unit, *)  dummy, equals, entry%n_calls
+    read (unit, *)  dummy, equals, entry%improved
+    read (unit, *)  dummy, equals, entry%integral
+    read (unit, *)  dummy, equals, entry%error
+    read (unit, *)  dummy, equals, entry%efficiency
+    read (unit, *)  dummy, equals, entry%chi2
+    read (unit, *)  dummy, equals, n_groves
+    if (n_groves /= 0) then
+       allocate (entry%chain_weights (n_groves))
+       read (unit, *)  dummy, equals, entry%chain_weights
+    end if
+  end subroutine integration_entry_read
+    
+@ %def integration_entry_read
+@ Write an account of the channel weights, accumulated by groves.
+<<Integration results: procedures>>=
+  subroutine integration_entry_write_chain_weights (entry, unit)
+    type(integration_entry_t), intent(in) :: entry
+    integer, intent(in), optional :: unit
+    integer :: u, i
+    u = given_output_unit (unit);  if (u < 0)  return    
+    if (allocated (entry%chain_weights)) then
+       do i = 1, size (entry%chain_weights)
+          write (u, "(1x,I3)", advance="no")  nint (entry%chain_weights(i) * 100)
+       end do
+       write (u, *)
+    end if
+  end subroutine integration_entry_write_chain_weights
+
+@ %def integration_entry_write_chain_weights
+@ Compute the average for all entries in the specified integration
+pass.  The integrals are weighted w.r.t.\ their individual errors.
+
+The quoted error of the result is the expected error, computed from
+the weighted average of the given individual errors.
+
+This should be compared to the actual distribution of the results,
+from which we also can compute an error estimate if there is more than
+one iteration.  The ratio of the distribution error and the averaged
+error, is the $\chi^2$ value.
+
+All error distributions are assumed Gaussian, of course.  The $\chi^2$
+value is a partial check for this assumption.  If it is significantly
+greater than unity, there is something wrong with the individual errors.
+
+The efficiency returned is the one of the last entry in the
+integration pass. 
+
+If any error vanishes, averaging by this algorithm would fail.  In this case,
+we simply average the entries and use the deviations from this average (if
+any) to estimate the error.
+<<Integration results: procedures>>=
+  function compute_average (entry, pass) result (result)
+    type(integration_entry_t) :: result
+    type(integration_entry_t), dimension(:), intent(in) :: entry
+    integer, intent(in) :: pass
+    integer :: i
+    logical, dimension(size(entry)) :: mask
+    real(default), dimension(size(entry)) :: ivar
+    real(default) :: sum_ivar, variance
+    result%process_type = entry(1)%process_type
+    result%pass = pass
+    mask = entry%pass == pass .and. entry%process_type /= PRC_UNKNOWN
+    result%it = maxval (entry%it, mask)
+    result%n_it = count (mask)
+    result%n_calls = sum (entry%n_calls, mask)
+    if (.not. any (mask .and. entry%error == 0)) then
+       where (mask)
+          ivar = 1 / entry%error ** 2
+       elsewhere
+          ivar = 0
+       end where
+       sum_ivar = sum (ivar, mask)
+       if (sum_ivar /= 0) then
+          variance = 1 / sum_ivar
+       else
+          variance = 0
+       end if
+       result%integral = sum (entry%integral * ivar, mask) * variance
+       if (result%n_it > 1) then
+          result%chi2 = &
+               sum ((entry%integral - result%integral)**2 * ivar, mask) &
+               / (result%n_it - 1)
+       end if
+    else if (result%n_it /= 0) then
+       result%integral = sum (entry%integral, mask) / result%n_it
+       if (result%n_it > 1) then
+          variance = &
+               sum ((entry%integral - result%integral)**2, mask) &
+               / (result%n_it - 1)
+          if (result%integral /= 0) then
+             if (abs (variance / result%integral) &
+                  < 100 * epsilon (1._default)) then
+                variance = 0
+             end if
+          end if
+          result%chi2 = variance / result%n_it
+       else
+          variance = 0
+       end if
+    end if
+    result%error = sqrt (variance)
+    do i = size (entry), 1, -1
+       if (mask(i)) then
+          result%efficiency = entry(i)%efficiency
+          exit
+       end if
+    end do
+  end function compute_average
+
+@ %def compute_average
+@ 
+\subsection{Combined integration results}
+We collect a list of results which grows during the execution of the
+program.  This is implemented as an array which grows if necessary; so
+we can easily compute averages.
+
+We implement this as an extension of the [[mci_results_t]] which is
+defined in [[mci_base]] as an abstract type.  We thus decouple the
+implementation of the integrator from the implementation of the
+results display, but nevertheless can record intermediate results
+during integration.  This implies that the present extension
+implements a [[record]] method.
+<<Integration results: public>>=
+  public :: integration_results_t
+<<Integration results: types>>=
+  type, extends (mci_results_t) :: integration_results_t
+     private
+     integer :: process_type = PRC_UNKNOWN
+     integer :: current_pass = 0
+     integer :: n_pass = 0
+     integer :: n_it = 0
+     logical :: screen = .false.
+     integer :: unit = 0
+     real(default) :: error_threshold = 0
+     type(integration_entry_t), dimension(:), allocatable :: entry
+     type(integration_entry_t), dimension(:), allocatable :: average
+   contains
+   <<Integration results: integration results: TBP>>
+  end type integration_results_t
+
+@ %def integration_results_t
+@ The array is extended in chunks of 10 entries.
+<<Integration results: parameters>>=
+  integer, parameter :: RESULTS_CHUNK_SIZE = 10
+
+@ %def RESULTS_CHUNK_SIZE
+@ The standard does not require to explicitly initialize the integers;
+however, some gfortran version has a bug here and misses the default
+initialization in the type definition.
+<<Integration results: integration results: TBP>>=
+  procedure :: init => integration_results_init
+<<Integration results: procedures>>=
+  subroutine integration_results_init (results, process_type)
+    class(integration_results_t), intent(out) :: results
+    integer, intent(in) :: process_type
+    results%process_type = process_type
+    results%n_pass = 0
+    results%n_it = 0
+    allocate (results%entry (RESULTS_CHUNK_SIZE))
+    allocate (results%average (RESULTS_CHUNK_SIZE))
+  end subroutine integration_results_init
+
+@ %def integration_results_init
+@ Set addititional parameters: the [[error_threshold]] declares that any error
+value (in absolute numbers) smaller than this is to be considered zero.
+<<Integration results: integration results: TBP>>=
+  procedure :: set_error_threshold => integration_results_set_error_threshold
+<<Integration results: procedures>>=
+  subroutine integration_results_set_error_threshold (results, error_threshold)
+    class(integration_results_t), intent(inout) :: results
+    real(default), intent(in) :: error_threshold
+    results%error_threshold = error_threshold
+  end subroutine integration_results_set_error_threshold
+  
+@ %def integration_results_set_error_threshold
+@ Output (ASCII format).  The [[verbose]] format is used for writing
+the header in grid files.
+<<Integration results: integration results: TBP>>=
+  procedure :: write => integration_results_write
+<<Integration results: procedures>>=
+  subroutine integration_results_write (object, unit, verbose, suppress)
+    class(integration_results_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    logical, intent(in), optional :: verbose
+    logical, intent(in), optional :: suppress
+    logical :: verb
+    integer :: u, n
+    u = given_output_unit (unit);  if (u < 0)  return
+    verb = .false.;  if (present (verbose))  verb = verbose
+    if (.not. verb) then
+       call write_dline (unit)
+       if (object%n_it /= 0) then
+          call write_header (object%entry(1)%process_type, unit, &
+               logfile=.false.)
+          call write_dline (unit)
+          do n = 1, object%n_it
+             if (n > 1) then
+                if (object%entry(n)%pass /= object%entry(n-1)%pass) then
+                   call write_hline (unit)
+                   call integration_entry_write &
+                        (object%average(object%entry(n-1)%pass), &
+                           unit, suppress = suppress)
+                   call write_hline (unit)
+                end if
+             end if
+             call integration_entry_write (object%entry(n), unit, &
+                     suppress = suppress)
+          end do
+          call write_hline(unit)
+          call integration_entry_write (object%average(object%n_pass), &
+                   unit, suppress = suppress)
+       else
+          call msg_message ("[WHIZARD integration results: empty]", unit)
+       end if
+       call write_dline (unit)
+    else
+       write (u, *)  "begin(integration_results)"
+       write (u, *)  "  n_pass = ", object%n_pass
+       write (u, *)  "    n_it = ", object%n_it
+       if (object%n_it > 0) then
+          write (u, *)  "begin(integration_pass)"
+          do n = 1, object%n_it
+             if (n > 1) then
+                if (object%entry(n)%pass /= object%entry(n-1)%pass) then
+                   write (u, *)  "end(integration_pass)"
+                   write (u, *)  "begin(integration_pass)"
+                end if
+             end if
+             write (u, *)  "begin(iteration)"
+             call integration_entry_write (object%entry(n), unit, &
+                      verbose = verb, suppress = suppress)
+             write (u, *)  "end(iteration)"
+          end do
+          write (u, *)  "end(integration_pass)"
+       end if
+       write (u, *)  "end(integration_results)"
+    end if
+    flush (u)
+  end subroutine integration_results_write
+
+@ %def integration_results_write
+@ During integration, we do not want to print all results at once, but
+each intermediate result as soon as we get it.  Thus, the previous procedure
+is chopped in pieces.  First piece: store the
+output unit and a flag whether we want to print to standard output as
+well.  Then write the header if the results are still empty, i.e.,
+before integration has started.  The second piece writes a single
+result to the saved output channels.  We call this from the [[record]]
+method, which can be called from the integrator directly.  The third
+piece writes the average result, once a pass has been completed.  The
+fourth piece writes a footer (if any), assuming that this is the final result.
+<<Integration results: integration results: TBP>>=
+  procedure :: display_init => integration_results_display_init
+  procedure :: display_current => integration_results_display_current
+  procedure :: display_pass => integration_results_display_pass
+  procedure :: display_final => integration_results_display_final
+<<Integration results: procedures>>=
+  subroutine integration_results_display_init &
+       (results, process_type, screen, unit)
+    class(integration_results_t), intent(inout) :: results
+    integer, intent(in) :: process_type
+    logical, intent(in) :: screen
+    integer, intent(in), optional :: unit
+    integer :: u
+    if (present (unit))  results%unit = unit
+    u = given_output_unit ()
+    results%screen = screen
+    if (results%n_it == 0) then
+       if (results%screen) then
+          call write_dline (u)
+          call write_header (process_type, u, &
+               logfile=.false.)
+          call write_dline (u)
+       end if
+       if (results%unit /= 0) then
+          call write_dline (results%unit)
+          call write_header (process_type, results%unit, &
+               logfile=.false.)
+          call write_dline (results%unit)
+       end if
+    else
+       if (results%screen) then
+          call write_hline (u)
+       end if
+       if (results%unit /= 0) then
+          call write_hline (results%unit)
+       end if
+    end if
+  end subroutine integration_results_display_init
+  
+  subroutine integration_results_display_current (results, pacify)
+    class(integration_results_t), intent(in) :: results
+    integer :: u
+    logical, intent(in), optional :: pacify
+    u = given_output_unit ()
+    if (results%screen) then
+       call integration_entry_write (results%entry(results%n_it), u, &
+            suppress = pacify)
+    end if
+    if (results%unit /= 0) then
+       call integration_entry_write (results%entry(results%n_it), &
+            results%unit, suppress = pacify)
+    end if
+  end subroutine integration_results_display_current
+
+  subroutine integration_results_display_pass (results, pacify)
+    class(integration_results_t), intent(in) :: results
+    logical, intent(in), optional :: pacify
+    integer :: u
+    u = given_output_unit ()
+    if (results%screen) then
+       call write_hline (u)
+       call integration_entry_write &
+            (results%average(results%entry(results%n_it)%pass), &
+                u, suppress = pacify)
+    end if
+    if (results%unit /= 0) then
+       call write_hline (results%unit)
+       call integration_entry_write &
+            (results%average(results%entry(results%n_it)%pass), &
+                results%unit, suppress = pacify)
+    end if
+  end subroutine integration_results_display_pass
+
+  subroutine integration_results_display_final (results)
+    class(integration_results_t), intent(inout) :: results
+    integer :: u
+    u = given_output_unit ()
+    if (results%screen) then
+       call write_dline (u)
+    end if
+    if (results%unit /= 0) then
+       call write_dline (results%unit)
+    end if
+    results%screen = .false.
+    results%unit = 0
+  end subroutine integration_results_display_final
+
+@ %def integration_results_display_init
+@ %def integration_results_display_current
+@ %def integration_results_display_pass
+@ Write a concise table of chain weights, i.e., the channel history where
+channels are collected by chains.
+<<Integration results: integration results: TBP>>=
+  procedure :: write_chain_weights => &
+       integration_results_write_chain_weights 
+<<Integration results: procedures>>=
+  subroutine integration_results_write_chain_weights (results, unit)
+    class(integration_results_t), intent(in) :: results
+    integer, intent(in), optional :: unit
+    integer :: u, i, n
+    u = given_output_unit (unit);  if (u < 0)  return
+    if (allocated (results%entry(1)%chain_weights) .and. results%n_it /= 0) then
+       call msg_message ("Phase-space chain (grove) weight history: " &
+            // "(numbers in %)", unit)
+       write (u, "(A9)", advance="no")  "| chain |"
+	  do i = 1, integration_entry_get_n_groves (results%entry(1))
+          write (u, "(1x,I3)", advance="no")  i
+       end do
+       write (u, *)
+       call write_dline (unit)
+       do n = 1, results%n_it
+          if (n > 1) then
+             if (results%entry(n)%pass /= results%entry(n-1)%pass) then
+                call write_hline (unit)
+             end if
+          end if
+          write (u, "(1x,I6,1x,A1)", advance="no")  n, "|"
+          call integration_entry_write_chain_weights (results%entry(n), unit)
+       end do
+       flush (u)
+       call write_dline(unit)
+    end if
+  end subroutine integration_results_write_chain_weights
+
+@ %def integration_results_write_chain_weights
+@ Read the list from file.  The file must be written using the
+[[verbose]] option of the writing routine.
+<<Integration results: procedures>>=
+  subroutine integration_results_read (results, unit)
+    type(integration_results_t), intent(out) :: results
+    integer, intent(in) :: unit
+    character(80) :: buffer
+    character :: equals
+    integer :: pass, it
+    read (unit, *)  buffer
+    if (trim (adjustl (buffer)) /= "begin(integration_results)") then
+       call read_err ();  return
+    end if
+    read (unit, *)  buffer, equals, results%n_pass
+    read (unit, *)  buffer, equals, results%n_it
+    allocate (results%entry (results%n_it + RESULTS_CHUNK_SIZE))
+    allocate (results%average (results%n_it + RESULTS_CHUNK_SIZE))
+    it = 0
+    do pass = 1, results%n_pass
+       read (unit, *)  buffer
+       if (trim (adjustl (buffer)) /= "begin(integration_pass)") then
+          call read_err ();  return
+       end if
+       READ_ENTRIES: do
+          read (unit, *)  buffer
+          if (trim (adjustl (buffer)) /= "begin(iteration)") then
+             exit READ_ENTRIES
+          end if
+          it = it + 1
+          call integration_entry_read (results%entry(it), unit)
+          read (unit, *)  buffer
+          if (trim (adjustl (buffer)) /= "end(iteration)") then
+             call read_err (); return
+          end if
+       end do READ_ENTRIES
+       if (trim (adjustl (buffer)) /= "end(integration_pass)") then
+          call read_err (); return
+       end if
+       results%average(pass) = compute_average (results%entry, pass)
+    end do
+    read (unit, *)  buffer
+    if (trim (adjustl (buffer)) /= "end(integration_results)") then
+       call read_err (); return
+    end if
+  contains
+    subroutine read_err ()
+      call msg_fatal ("Reading integration results from file: syntax error")
+    end subroutine read_err
+  end subroutine integration_results_read
+
+@ %def integration_results_read
+@ Check integration results for consistency.  We compare against an
+array of pass indices and call numbers.  If there is a difference, up
+to the number of iterations done so far, we return failure.  Dummy
+entries (where [[pass]] = 0) are ignored.
+<<Integration results: procedures>>=
+  function integration_results_iterations_are_consistent &
+       (results, pass, n_calls) result (flag)
+    logical :: flag
+    type(integration_results_t), intent(in) :: results
+    integer, dimension(:), intent(in) :: pass, n_calls
+    integer :: n_it
+    n_it = results%n_it
+    flag = size (pass) >= n_it .and. size (n_calls) >= n_it
+    if (flag) then
+       flag = all (results%entry(:n_it)%pass == pass(:n_it) &
+                   .and. &
+                   (results%entry(:n_it)%n_calls == n_calls(:n_it) &
+                    .or. &
+                    results%entry(:n_it)%process_type == PRC_UNKNOWN))
+    end if
+  end function integration_results_iterations_are_consistent
+
+@ %def integration_results_iterations_are_consistent
+@ Discard all results starting from the specified iteration.
+<<Integration results: procedures>>=
+  subroutine integration_results_discard (results, it)
+    type(integration_results_t), intent(inout) :: results
+    integer, intent(in) :: it
+    if (it <= results%n_it) then
+       select case (it)
+       case (:1)
+          results%n_it = 0
+          results%n_pass = 0
+          results%current_pass = 0
+       case default
+          results%n_it = it - 1
+          results%n_pass = maxval (results%entry(1:results%n_it)%pass)
+          results%current_pass = results%n_pass
+       end select
+    end if
+  end subroutine integration_results_discard
+
+@ %def integration_results_discard
+@ Expand the list of entries if the limit has been reached:
+<<Integration results: integration results: TBP>>=
+  procedure :: expand => integration_results_expand
+<<Integration results: procedures>>=
+  subroutine integration_results_expand (results)
+    class(integration_results_t), intent(inout) :: results
+    type(integration_entry_t), dimension(:), allocatable :: entry_tmp
+    if (results%n_it == size (results%entry)) then
+       allocate (entry_tmp (results%n_it))
+       entry_tmp = results%entry
+       deallocate (results%entry)
+       allocate (results%entry (results%n_it + RESULTS_CHUNK_SIZE))
+       results%entry(:results%n_it) = entry_tmp
+       deallocate (entry_tmp)
+    end if
+    if (results%n_pass == size (results%average)) then
+       allocate (entry_tmp (results%n_pass))
+       entry_tmp = results%average
+       deallocate (results%average)
+       allocate (results%average (results%n_it + RESULTS_CHUNK_SIZE))
+       results%average(:results%n_pass) = entry_tmp
+       deallocate (entry_tmp)
+    end if
+  end subroutine integration_results_expand
+
+@ %def integration_results_expand
+@ Increment the [[current_pass]] counter.  Can be done before
+integration; after integration, the recording method may use the value
+of this counter to define the entry.
+<<Integration results: integration results: TBP>>=
+  procedure :: new_pass => integration_results_new_pass
+<<Integration results: procedures>>=
+  subroutine integration_results_new_pass (results)
+    class(integration_results_t), intent(inout) :: results
+    results%current_pass = results%current_pass + 1
+  end subroutine integration_results_new_pass
+  
+@ %def integration_results_new_pass
+@ Append a new entry to the list and, if appropriate, compute the average.
+<<Integration results: integration results: TBP>>=
+  procedure :: append_entry => integration_results_append_entry
+<<Integration results: procedures>>=
+  subroutine integration_results_append_entry (results, entry)
+    class(integration_results_t), intent(inout) :: results
+    type(integration_entry_t), intent(in), optional :: entry
+    if (results%n_it == 0) then
+       results%n_it = 1
+       results%n_pass = 1
+    else
+       call results%expand ()
+       if (present (entry)) then
+          if (entry%pass /= results%entry(results%n_it)%pass) &
+               results%n_pass = results%n_pass + 1
+       end if
+       results%n_it = results%n_it + 1
+    end if
+    if (present (entry)) then
+       results%entry(results%n_it) = entry
+       results%average(results%n_pass) = &
+            compute_average (results%entry, entry%pass)
+    end if
+  end subroutine integration_results_append_entry
+
+@ %def integration_results_append_entry
+@ Enter results into the results list.  For the error value, we may compare
+them with a given threshold.  This guards against numerical noise, if the
+exact error would be zero.
+<<Integration results: integration results: TBP>>=
+  procedure :: append => integration_results_append
+<<Integration results: procedures>>=
+  subroutine integration_results_append (results, &
+       n_it, n_calls, &
+       integral, error, efficiency, &      
+       chain_weights)
+    class(integration_results_t), intent(inout) :: results
+    integer, intent(in) :: n_it, n_calls
+    real(default), intent(in) :: integral, error, efficiency
+    real(default), dimension(:), intent(in), optional :: chain_weights
+    logical :: improved
+    type(integration_entry_t) :: entry
+    real(default) :: err_checked
+    if (results%n_it /= 0) then
+       improved = abs(accuracy (integral, error, n_calls)) &
+            < abs(integration_entry_get_accuracy (results%entry(results%n_it)))
+    else
+       improved = .true.
+    end if
+    if (abs (error) >= results%error_threshold) then
+       err_checked = error
+    else
+       err_checked = 0
+    end if
+    call integration_entry_init (entry, &
+         results%process_type, results%current_pass, &
+         results%n_it+1, n_it, n_calls, improved, & 
+         integral, err_checked, efficiency, &
+         chain_weights=chain_weights)
+    call results%append_entry (entry)
+  end subroutine integration_results_append
+         
+@ %def integration_results_append
+@ Enter an empty result into the results list.
+<<Integration results: public>>=
+  public :: integration_results_append_null
+<<Integration results: procedures>>=
+  subroutine integration_results_append_null (results, pass, n_it)
+    type(integration_results_t), intent(inout) :: results
+    integer, intent(in) :: pass, n_it
+    type(integration_entry_t) :: entry
+    call integration_entry_init (entry, &
+         PRC_UNKNOWN, results%current_pass, n_it, 1, 0, .false., &
+         0._default, 0._default, 0._default)
+    call results%append_entry (entry)
+  end subroutine integration_results_append_null
+         
+@ %def integration_results_append_null
+@ Record an integration pass executed by an [[mci]] integrator
+object.
+
+There is a tolerance below we treat an error (relative to the
+integral) as zero.
+<<Integration results: parameters>>=
+  real(default), parameter, public :: INTEGRATION_ERROR_TOLERANCE = 1e-10
+@ %def INTEGRATION_ERROR_TOLERANCE
+@ 
+<<Integration results: integration results: TBP>>=
+  procedure :: record => integration_results_record
+<<Integration results: procedures>>=
+  subroutine integration_results_record &
+       (object, n_it, n_calls, integral, error, efficiency, &
+        chain_weights, suppress)
+    class(integration_results_t), intent(inout) :: object
+    integer, intent(in) :: n_it, n_calls
+    real(default), intent(in) :: integral, error, efficiency
+    real(default), dimension(:), intent(in), optional :: chain_weights    
+    real(default) :: err
+    logical, intent(in), optional :: suppress
+    
+    if (abs (error) >= abs (integral) * INTEGRATION_ERROR_TOLERANCE) then
+       err = error
+    else
+       err = 0
+    end if
+    call object%append (n_it, n_calls, integral, err, efficiency, chain_weights)
+    call object%display_current (suppress)
+  end subroutine integration_results_record
+    
+@ %def integration_results_record
+@ 
+\subsection{Access results}
+Return true if the results object has entries.
+<<Integration results: integration results: TBP>>=
+  procedure :: exist => integration_results_exist
+<<Integration results: procedures>>=
+  function integration_results_exist (results) result (flag)
+    logical :: flag
+    class(integration_results_t), intent(in) :: results
+    flag = results%n_pass > 0
+  end function integration_results_exist
+
+@ %def integration_results_exist
+@ Retrieve information from the results record.  If [[last]] is set and
+true, take the last iteration.  If [[it]] is set instead, take this
+iteration.  If [[pass]] is set, take this average.  If none is set,
+take the final average.
+
+If the result would be invalid, the entry is not assigned.  Due to
+default initialization, this returns a null entry.
+<<Integration results: integration results: TBP>>=
+  procedure :: get_entry => results_get_entry
+<<Integration results: procedures>>=
+  function results_get_entry (results, last, it, pass) result (entry)
+    class(integration_results_t), intent(in) :: results
+    type(integration_entry_t) :: entry
+    logical, intent(in), optional :: last
+    integer, intent(in), optional :: it, pass
+    if (present (last)) then
+       if (allocated (results%entry) .and. results%n_it > 0) then
+          entry = results%entry(results%n_it)
+       else
+          call error ()
+       end if
+    else if (present (it)) then
+       if (allocated (results%entry) .and. it > 0 .and. it <= results%n_it) then
+          entry = results%entry(it)
+       else
+          call error ()
+       end if
+    else if (present (pass)) then
+       if (allocated (results%average) &
+            .and. pass > 0 .and. pass <= results%n_pass) then
+          entry = results%average (pass)
+       else
+          call error ()
+       end if
+    else
+       if (allocated (results%average) .and. results%n_pass > 0) then
+          entry = results%average (results%n_pass)
+       else
+          call error ()
+       end if
+    end if
+  contains
+    subroutine error ()
+      call msg_fatal ("Requested integration result is not available")
+    end subroutine error
+  end function results_get_entry
+  
+@ %def results_get_entry
+@ The individual procedures.  The [[results]] record should have the
+[[target]] attribute, but only locally within the function.
+<<Integration results: integration results: TBP>>=
+  procedure :: get_n_calls => integration_results_get_n_calls
+  procedure :: get_integral => integration_results_get_integral
+  procedure :: get_error => integration_results_get_error
+  procedure :: get_accuracy => integration_results_get_accuracy
+  procedure :: get_chi2 => integration_results_get_chi2
+  procedure :: get_efficiency => integration_results_get_efficiency
+<<Integration results: procedures>>=
+  function integration_results_get_n_calls (results, last, it, pass) &
+       result (n_calls)
+    class(integration_results_t), intent(in), target :: results
+    integer :: n_calls
+    logical, intent(in), optional :: last
+    integer, intent(in), optional :: it, pass
+    n_calls = integration_entry_get_n_calls &
+         (results%get_entry (last, it, pass))
+  end function integration_results_get_n_calls
+
+  function integration_results_get_integral (results, last, it, pass) &
+       result (integral)
+    class(integration_results_t), intent(in), target :: results
+    real(default) :: integral
+    logical, intent(in), optional :: last
+    integer, intent(in), optional :: it, pass
+    integral = integration_entry_get_integral &
+         (results%get_entry (last, it, pass))
+  end function integration_results_get_integral
+
+  function integration_results_get_error (results, last, it, pass) &
+       result (error)
+    class(integration_results_t), intent(in), target :: results
+    real(default) :: error
+    logical, intent(in), optional :: last
+    integer, intent(in), optional :: it, pass
+    error = integration_entry_get_error &
+         (results%get_entry (last, it, pass))
+  end function integration_results_get_error
+
+  function integration_results_get_accuracy (results, last, it, pass) &
+       result (accuracy)
+    class(integration_results_t), intent(in), target :: results
+    real(default) :: accuracy
+    logical, intent(in), optional :: last
+    integer, intent(in), optional :: it, pass
+    accuracy = integration_entry_get_accuracy &
+         (results%get_entry (last, it, pass))
+  end function integration_results_get_accuracy
+
+  function integration_results_get_chi2 (results, last, it, pass) &
+       result (chi2)
+    class(integration_results_t), intent(in), target :: results
+    real(default) :: chi2
+    logical, intent(in), optional :: last
+    integer, intent(in), optional :: it, pass
+    chi2 = integration_entry_get_chi2 &
+         (results%get_entry (last, it, pass))
+  end function integration_results_get_chi2
+
+  function integration_results_get_efficiency (results, last, it, pass) &
+       result (efficiency)
+    class(integration_results_t), intent(in), target :: results
+    real(default) :: efficiency
+    logical, intent(in), optional :: last
+    integer, intent(in), optional :: it, pass
+    efficiency = integration_entry_get_efficiency &
+         (results%get_entry (last, it, pass))
+  end function integration_results_get_efficiency
+
+@ %def integration_results_get_n_calls
+@ %def integration_results_get_integral
+@ %def integration_results_get_error
+@ %def integration_results_get_accuracy
+@ %def integration_results_get_chi2
+@ %def integration_results_get_efficiency
+@ Return the last pass index and the index of the last iteration
+\emph{within} the last pass.  The third routine returns the absolute
+index of the last iteration.
+<<Integration results: procedures>>=
+  function integration_results_get_current_pass (results) result (pass)
+    integer :: pass
+    type(integration_results_t), intent(in) :: results
+    pass = results%n_pass
+  end function integration_results_get_current_pass
+
+  function integration_results_get_current_it (results) result (it)
+    integer :: it
+    type(integration_results_t), intent(in) :: results
+    if (allocated (results%entry)) then
+       it = count (results%entry(1:results%n_it)%pass == results%n_pass)
+    else
+       it = 0
+    end if
+  end function integration_results_get_current_it
+
+  function integration_results_get_last_it (results) result (it)
+    integer :: it
+    type(integration_results_t), intent(in) :: results
+    it = results%n_it
+  end function integration_results_get_last_it
+
+@ %def integration_results_get_current_pass
+@ %def integration_results_get_current_it
+@ %def integration_results_get_last_it
+@ Return the index of the best iteration (lowest accuracy value)
+within the current pass.  If none qualifies, return zero.
+<<Integration results: procedures>>=
+  function integration_results_get_best_it (results) result (it)
+    integer :: it
+    type(integration_results_t), intent(in) :: results
+    integer :: i
+    real(default) :: acc, acc_best
+    acc_best = -1
+    it = 0
+    do i = 1, results%n_it
+       if (results%entry(i)%pass == results%n_pass) then
+          acc = integration_entry_get_accuracy (results%entry(i))
+          if (acc_best < 0 .or. acc <= acc_best) then
+             acc_best = acc
+             it = i
+          end if
+       end if
+    end do
+  end function integration_results_get_best_it
+
+@ %def integration_results_get_best_it
+@ Compute the MD5 sum by printing everything and checksumming the
+resulting file.
+<<Integration results: procedures>>=
+  function integration_results_get_md5sum (results) result (md5sum_results)
+    character(32) :: md5sum_results
+    type(integration_results_t), intent(in) :: results
+    integer :: u
+    u = free_unit ()
+    open (unit = u, status = "scratch", action = "readwrite")
+    call integration_results_write (results, u, verbose=.true.)
+    rewind (u)
+    md5sum_results = md5sum (u)
+    close (u)
+  end function integration_results_get_md5sum
+
+@ %def integration_results_get_md5sum
+@
+This is (ab)used to suppress numerical noise when integrating constant
+matrix elements. 
+<<Integration results: integration results: TBP>>=
+  procedure :: pacify => integration_results_pacify
+<<Integration results: procedures>>=
+  subroutine integration_results_pacify (results, efficiency_reset)
+    class(integration_results_t), intent(inout) :: results
+    logical, intent(in), optional :: efficiency_reset
+    integer :: i 
+    logical :: reset    
+    reset = .false.
+    if (present (efficiency_reset))  reset = efficiency_reset
+    if (allocated (results%entry)) then
+       do i = 1, size (results%entry)
+          call pacify (results%entry(i)%error, &
+               results%entry(i)%integral * 1.E-9_default)
+          if (reset)  results%entry(i)%efficiency = 1
+       end do
+    end if    
+    if (allocated (results%average)) then
+       do i = 1, size (results%average)
+          call pacify (results%average(i)%error, &
+               results%average(i)%integral * 1.E-9_default)
+          if (reset)  results%average(i)%efficiency = 1
+       end do
+    end if    
+  end subroutine integration_results_pacify
+        
+@ %def integration_results_pacify
+@
+<<Integration results: integration results: TBP>>=
+  procedure :: record_correction => integration_results_record_correction
+<<Integration results: procedures>>=
+  subroutine integration_results_record_correction (object, corr, err)
+    class(integration_results_t), intent(inout) :: object
+    real(default), intent(in) :: corr, err
+    integer :: u
+    u = given_output_unit ()
+    if (object%screen) then
+      call write_hline (u)
+      call msg_message ("NLO Results: O(alpha_s+1)/O(alpha_s)")
+      write(u,'(1X,F6.4,A4,F7.5)') corr, ' +- ', err
+    end if
+  end subroutine integration_results_record_correction
+
+@ %def integration_results_record_correction
+@
+\subsection{Results display}
+Write a driver file for history visualization.
+
+The ratio of $y$ range over $y$ value must not become too small, otherwise
+we run into an arithmetic overflow in GAMELAN.  2\% appears to be safe.
+<<Integration results: parameters>>=
+  real, parameter, public :: GML_MIN_RANGE_RATIO = 0.02
+<<Integration results: public>>=
+  public :: integration_results_write_driver
+<<Integration results: procedures>>=
+  subroutine integration_results_write_driver (results, filename, eff_reset)
+    type(integration_results_t), intent(inout) :: results
+    type(string_t), intent(in) :: filename
+    logical, intent(in), optional :: eff_reset
+    type(string_t) :: file_tex
+    integer :: unit
+    integer :: n, i, n_pass, pass
+    integer, dimension(:), allocatable :: ipass
+    real(default) :: ymin, ymax, yavg, ydif, y0, y1
+    logical :: reset 
+    file_tex = filename // ".tex"
+    unit = free_unit ()
+    open (unit=unit, file=char(file_tex), action="write", status="replace")
+    reset = .false.; if (present (eff_reset))  reset = eff_reset
+    n = results%n_it
+    n_pass = results%n_pass
+    allocate (ipass (results%n_pass))
+    ipass(1) = 0
+    pass = 2
+    do i = 1, n-1
+       if (integration_entry_get_pass (results%entry(i)) &
+           /= integration_entry_get_pass (results%entry(i+1))) then
+          ipass(pass) = i
+          pass = pass + 1
+       end if
+    end do
+    ymin = minval (integration_entry_get_integral (results%entry(:n)) &
+                   - integration_entry_get_error (results%entry(:n)))
+    ymax = maxval (integration_entry_get_integral (results%entry(:n)) &
+                   + integration_entry_get_error (results%entry(:n)))
+    yavg = (ymax + ymin) / 2
+    ydif = (ymax - ymin)
+    if (ydif * 1.5 > GML_MIN_RANGE_RATIO * yavg) then
+       y0 = yavg - ydif * 0.75
+       y1 = yavg + ydif * 0.75
+    else
+       y0 = yavg * (1 - GML_MIN_RANGE_RATIO / 2)
+       y1 = yavg * (1 + GML_MIN_RANGE_RATIO / 2)
+    end if
+    write (unit, "(A)") "\documentclass{article}"
+    write (unit, "(A)") "\usepackage{a4wide}"
+    write (unit, "(A)") "\usepackage{gamelan}"
+    write (unit, "(A)") "\usepackage{amsmath}"
+    write (unit, "(A)") ""
+    write (unit, "(A)") "\begin{document}"
+    write (unit, "(A)") "\begin{gmlfile}"
+    write (unit, "(A)") "\section*{Integration Results Display}"
+    write (unit, "(A)") ""
+    write (unit, "(A)") "Process: \verb|" // char (filename) // "|"
+    write (unit, "(A)") ""
+    write (unit, "(A)") "\vspace*{2\baselineskip}"
+    write (unit, "(A)") "\unitlength 1mm"
+    write (unit, "(A)") "\begin{gmlcode}"
+    write (unit, "(A)") "  picture sym;  sym = fshape (circle scaled 1mm)();"
+    write (unit, "(A)") "  color col.band;  col.band = 0.9white;"
+    write (unit, "(A)") "  color col.eband;  col.eband = 0.98white;"
+    write (unit, "(A)") "\end{gmlcode}"
+    write (unit, "(A)") "\begin{gmlgraph*}(130,180)[history]"
+    write (unit, "(A)") "  setup (linear, linear);"
+    write (unit, "(A,I0,A)") "  history.n_pass = ", n_pass, ";"
+    write (unit, "(A,I0,A)") "  history.n_it   = ", n, ";"
+    write (unit, "(A,A,A)")  "  history.y0 = #""", char (mp_format (y0)), """;"
+    write (unit, "(A,A,A)")  "  history.y1 = #""", char (mp_format (y1)), """;"
+    write (unit, "(A)") &
+         "  graphrange (#0.5, history.y0), (#(n+0.5), history.y1);"
+    do pass = 1, n_pass
+       write (unit, "(A,I0,A,I0,A)") &
+            "  history.pass[", pass, "] = ", ipass(pass), ";"
+       write (unit, "(A,I0,A,A,A)") &
+            "  history.avg[", pass, "] = #""", &
+            char (mp_format &
+               (integration_entry_get_integral (results%average(pass)))), &
+            """;"
+       write (unit, "(A,I0,A,A,A)") &
+            "  history.err[", pass, "] = #""", &
+            char (mp_format &
+               (integration_entry_get_error (results%average(pass)))), &
+            """;"
+       write (unit, "(A,I0,A,A,A)") &
+            "  history.chi[", pass, "] = #""", &
+            char (mp_format &
+               (integration_entry_get_chi2 (results%average(pass)))), &
+            """;"
+    end do
+    write (unit, "(A,I0,A,I0,A)") &
+         "  history.pass[", n_pass + 1, "] = ", n, ";"
+    write (unit, "(A)")  "  for i = 1 upto history.n_pass:"
+    write (unit, "(A)")  "    if history.chi[i] greater one:"
+    write (unit, "(A)")  "    fill plot ("
+    write (unit, "(A)")  &
+         "      (#(history.pass[i]  +.5), " &
+         // "history.avg[i] minus history.err[i] times history.chi[i]),"
+    write (unit, "(A)")  &
+         "      (#(history.pass[i+1]+.5), " &
+         // "history.avg[i] minus history.err[i] times history.chi[i]),"
+    write (unit, "(A)")  &
+         "      (#(history.pass[i+1]+.5), " &
+         // "history.avg[i] plus history.err[i] times history.chi[i]),"
+    write (unit, "(A)")  &
+         "      (#(history.pass[i]  +.5), " &
+         // "history.avg[i] plus history.err[i] times history.chi[i])"
+    write (unit, "(A)")  "    ) withcolor col.eband fi;"
+    write (unit, "(A)")  "    fill plot ("
+    write (unit, "(A)")  &
+         "      (#(history.pass[i]  +.5), history.avg[i] minus history.err[i]),"
+    write (unit, "(A)")  &
+         "      (#(history.pass[i+1]+.5), history.avg[i] minus history.err[i]),"
+    write (unit, "(A)")  &
+         "      (#(history.pass[i+1]+.5), history.avg[i] plus history.err[i]),"
+    write (unit, "(A)")  &
+         "      (#(history.pass[i]  +.5), history.avg[i] plus history.err[i])"
+    write (unit, "(A)")  "    ) withcolor col.band;"
+    write (unit, "(A)")  "    draw plot ("
+    write (unit, "(A)")  &
+         "      (#(history.pass[i]  +.5), history.avg[i]),"
+    write (unit, "(A)")  &
+         "      (#(history.pass[i+1]+.5), history.avg[i])"
+    write (unit, "(A)")  "      ) dashed evenly;"
+    write (unit, "(A)")  "  endfor"
+    write (unit, "(A)")  "  for i = 1 upto history.n_pass + 1:"
+    write (unit, "(A)")  "    draw plot ("
+    write (unit, "(A)")  &
+         "      (#(history.pass[i]+.5), history.y0),"
+    write (unit, "(A)")  &
+         "      (#(history.pass[i]+.5), history.y1)"
+    write (unit, "(A)")  "      ) dashed withdots;"
+    write (unit, "(A)")  "  endfor"
+    do i = 1, n
+       write (unit, "(A,I0,A,A,A,A,A)") "  plot (history) (#", &
+          i, ", #""", &
+	  char (mp_format (integration_entry_get_integral (results%entry(i)))),&
+          """) vbar #""", &
+          char (mp_format (integration_entry_get_error (results%entry(i)))), &
+          """;"
+    end do
+    write (unit, "(A)") "  draw piecewise from (history) " &
+      // "withsymbol sym;"
+    write (unit, "(A)") "  fullgrid.lr (5,20);"
+    write (unit, "(A)") "  standardgrid.bt (n);"
+    write (unit, "(A)")  "  begingmleps ""Whizard-Logo.eps"";"
+    write (unit, "(A)")  "    base := (120*unitlength,170*unitlength);"
+    write (unit, "(A)")  "    height := 9.6*unitlength;"
+    write (unit, "(A)")  "    width := 11.2*unitlength;"
+    write (unit, "(A)")  "  endgmleps;"    
+    write (unit, "(A)") "\end{gmlgraph*}"
+    write (unit, "(A)") "\end{gmlfile}"
+    write (unit, "(A)") "\clearpage"
+    write (unit, "(A)") "\begin{verbatim}"
+    if (reset) then
+      call results%pacify (reset)
+    end if     	
+    call integration_results_write (results, unit)
+    write (unit, "(A)") "\end{verbatim}"
+    write (unit, "(A)") "\end{document}"
+    close (unit)
+  end subroutine integration_results_write_driver
+
+@ %def integration_results_write_driver
+@ Call \LaTeX\ and Metapost for the history driver file, and convert to PS and
+PDF.
+<<Integration results: public>>=
+  public :: integration_results_compile_driver
+<<Integration results: procedures>>=
+  subroutine integration_results_compile_driver (results, filename, os_data)
+    type(integration_results_t), intent(in) :: results
+    type(string_t), intent(in) :: filename
+    type(os_data_t), intent(in) :: os_data
+    integer :: unit_dev, status
+    type(string_t) :: file_tex, file_dvi, file_ps, file_pdf, file_mp
+    type(string_t) :: setenv_tex, setenv_mp, pipe, pipe_dvi
+    if (.not. os_data%event_analysis) then
+       call msg_warning ("Skipping integration history display " &
+           // "because latex or mpost is not available")
+       return
+    end if
+    file_tex = filename // ".tex"
+    file_dvi = filename // ".dvi"
+    file_ps = filename // ".ps"
+    file_pdf = filename // ".pdf"
+    file_mp = filename // ".mp"
+    call msg_message ("Creating integration history display "& 
+         // char (file_ps) // " and " // char (file_pdf))
+    BLOCK: do
+       unit_dev = free_unit ()
+       open (file = "/dev/null", unit = unit_dev, &
+              action = "write", iostat = status)
+       if (status /= 0) then
+          pipe = ""
+          pipe_dvi = ""
+       else
+          pipe = " > /dev/null"
+          pipe_dvi = " 2>/dev/null 1>/dev/null"
+       end if
+       close (unit_dev)
+       if (os_data%whizard_texpath /= "") then
+          setenv_tex = &
+               "TEXINPUTS=" // os_data%whizard_texpath // ":$TEXINPUTS "
+          setenv_mp = &
+               "MPINPUTS=" // os_data%whizard_texpath // ":$MPINPUTS "
+       else
+          setenv_tex = ""
+          setenv_mp = ""
+       end if
+       call os_system_call (setenv_tex // os_data%latex // " " // &
+            file_tex // pipe, status)
+       if (status /= 0)  exit BLOCK
+       if (os_data%gml /= "") then
+          call os_system_call (setenv_mp // os_data%gml // " " // &
+               file_mp // pipe, status)
+       else 
+          call msg_error ("Could not use GAMELAN/MetaPOST.")
+          exit BLOCK
+       end if
+       if (status /= 0)  exit BLOCK
+       call os_system_call (setenv_tex // os_data%latex // " " // &
+             file_tex // pipe, status)
+       if (status /= 0)  exit BLOCK
+       if (os_data%event_analysis_ps) then
+          call os_system_call (os_data%dvips // " " // &
+             file_dvi // pipe_dvi, status)
+          if (status /= 0)  exit BLOCK
+       else
+          call msg_warning ("Skipping PostScript generation because dvips " &
+               // "is not available")
+          exit BLOCK
+       end if
+       if (os_data%event_analysis_pdf) then
+          call os_system_call (os_data%ps2pdf // " " // &
+                  file_ps, status)
+          if (status /= 0)  exit BLOCK
+       else
+          call msg_warning ("Skipping PDF generation because ps2pdf " &
+               // "is not available")
+          exit BLOCK
+       end if
+       exit BLOCK
+    end do BLOCK
+    if (status /= 0) then
+       call msg_error ("Unable to compile integration history display")
+    end if
+  end subroutine integration_results_compile_driver
+
+@ %def integration_results_compile_driver

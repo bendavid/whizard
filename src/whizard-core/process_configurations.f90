@@ -1,4 +1,4 @@
-! WHIZARD 2.2.2 July 6 2014
+! WHIZARD 2.2.3 Nov 30 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,8 +6,10 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
+!     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     Christian Weiss <christian.weiss@desy.de>
+!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -29,9 +31,10 @@
 
 module process_configurations
   
-  use iso_varying_string, string_t => varying_string !NODEP!
-  use diagnostics !NODEP!
+  use iso_varying_string, string_t => varying_string
   use unit_tests
+  use diagnostics
+
   use variables
   use models
   use prc_core_def
@@ -42,6 +45,8 @@ module process_configurations
   use prc_omega
   use rt_data
   use dispatch
+
+  use prc_gosam
   
   implicit none
   private
@@ -79,37 +84,64 @@ contains
             var_list_get_ival (global%var_list, var_str ("process_num_id"))
        call config%entry%init (prc_name, &
             model = model, n_in = n_in, n_components = n_components, &
-            num_id = config%num_id)
+            num_id = config%num_id, nlo_process = global%nlo_calculation)
     else
        call config%entry%init (prc_name, &
-            model = model, n_in = n_in, n_components = n_components)
+            model = model, n_in = n_in, n_components = n_components, &
+            nlo_process = global%nlo_calculation)
     end if
   end subroutine process_configuration_init
     
   subroutine process_configuration_setup_component &
-       (config, i_component, prt_in, prt_out, global)
+       (config, i_component, prt_in, prt_out, global, &
+        nlo_type, associated_born, active_in)
     class(process_configuration_t), intent(inout) :: config
     integer, intent(in) :: i_component
     type(prt_spec_t), dimension(:), intent(in) :: prt_in
     type(prt_spec_t), dimension(:), intent(in) :: prt_out
-    type(rt_data_t), intent(in) :: global
+    type(rt_data_t), intent(inout) :: global
+    type(string_t), intent(in), optional :: nlo_type
+    integer, intent(in), optional :: associated_born
+    logical, intent(in), optional :: active_in
     type(string_t), dimension(:), allocatable :: prt_str_in
     type(string_t), dimension(:), allocatable :: prt_str_out
     class(prc_core_def_t), allocatable :: core_def
     type(string_t) :: method
     integer :: i
+    logical :: active
+
     allocate (prt_str_in  (size (prt_in)))
     allocate (prt_str_out (size (prt_out)))
     forall (i = 1:size (prt_in))  prt_str_in(i)  = prt_in(i)% get_name ()
     forall (i = 1:size (prt_out)) prt_str_out(i) = prt_out(i)%get_name ()
-    call dispatch_core_def (core_def, prt_str_in, prt_str_out, global)
+    if (present (active_in)) then
+      active = active_in
+    else
+      active = .true.
+    end if
+
+    call dispatch_core_def (core_def, prt_str_in, prt_str_out, global, config%id)
     method = var_list_get_sval (global%var_list, var_str ("$method"))
-    call config%entry%import_component (i_component, &
+    if (present (nlo_type) .and. present (associated_born)) then
+      call config%entry%import_component (i_component, &
+          n_out = size (prt_out), &
+          prt_in = prt_in, &
+          prt_out = prt_out, &
+          method = method, &
+          variant = core_def, &
+          nlo_type = nlo_type, &
+          i_born = associated_born, &
+          active = active)
+    else
+      call config%entry%import_component (i_component, &
          n_out = size (prt_out), &
          prt_in = prt_in, &
          prt_out = prt_out, &
          method = method, &
-         variant = core_def)
+         variant = core_def, &
+         i_born = i_component, &
+         active = active)
+     end if
   end subroutine process_configuration_setup_component
   
   subroutine process_configuration_record (config, global)
@@ -145,30 +177,23 @@ contains
     call test (process_configurations_2, "process_configurations_2", &
          "omega options", &
          u, results)
-end subroutine process_configurations_test
+  end subroutine process_configurations_test
 
   subroutine prepare_test_library (global, libname, mode, procname)
     type(rt_data_t), intent(inout), target :: global
     type(string_t), intent(in) :: libname
     integer, intent(in) :: mode
     type(string_t), intent(in), dimension(:), optional :: procname
-   
     type(prclib_entry_t), pointer :: lib
     type(string_t) :: prc_name
     type(string_t), dimension(:), allocatable :: prt_in, prt_out
     integer :: n_components
     type(process_configuration_t) :: prc_config
 
-    allocate (lib)
-    call lib%init (libname)
-    call global%add_prclib (lib)
-
-    if (btest (mode, 0) .or. btest (mode, 2)) then
-       call global%read_model (var_str ("Test"), var_str ("Test.mdl"))
-    end if
-
-    if (btest (mode, 1)) then
-       call global%read_model (var_str ("QED"), var_str ("QED.mdl"))
+    if (.not. associated (global%prclib_stack%get_first_ptr ())) then
+       allocate (lib)
+       call lib%init (libname)
+       call global%add_prclib (lib)
     end if
 
     if (btest (mode, 0)) then
@@ -314,7 +339,7 @@ end subroutine process_configurations_test
     call lib%init (libname)
     call global%add_prclib (lib)
 
-    call global%read_model (var_str ("QED"), var_str ("QED.mdl"))
+    call global%select_model (var_str ("QED"))
 
     prc_name = "prc_config_c"
     n_components = 2

@@ -1,4 +1,4 @@
-! WHIZARD 2.2.2 July 6 2014
+! WHIZARD 2.2.3 Nov 30 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,8 +6,10 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
+!     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     Christian Weiss <christian.weiss@desy.de>
+!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -29,14 +31,15 @@
 
 module compilations
 
-  use iso_varying_string, string_t => varying_string !NODEP!
-  use file_utils !NODEP!
-  use diagnostics !NODEP!
-  use limits, only: TAB !NODEP!
-  use os_interface
+  use iso_varying_string, string_t => varying_string
+  use io_units
   use unit_tests
+  use system_defs, only: TAB
+  use diagnostics
+  use os_interface
   use md5
   use variables
+  use model_data
   use models
   use process_libraries
   use prclib_stacks
@@ -94,8 +97,9 @@ contains
          var_list_get_lval (var_list, var_str ("?recompile_library"))
   end subroutine compilation_item_init
 
-  subroutine compilation_item_compile (comp, os_data, force, recompile)
+  subroutine compilation_item_compile (comp, model, os_data, force, recompile)
     class(compilation_item_t), intent(inout) :: comp
+    class(model_data_t), intent(in), target :: model
     type(os_data_t), intent(in) :: os_data
     logical, intent(in) :: force, recompile
     if (associated (comp%lib)) then
@@ -103,7 +107,7 @@ contains
             // char (comp%libname) // "': compiling ...")
        call comp%lib%configure (os_data)
        if (signal_is_pending ())  return
-       call comp%lib%compute_md5sum ()
+       call comp%lib%compute_md5sum (model)
        call comp%lib%write_makefile (os_data, force)
        if (signal_is_pending ())  return
        if (force) then
@@ -133,6 +137,9 @@ contains
     if (associated (comp%lib)) then
        call msg_message ("Process library '" // char (comp%libname) &
             // "': ... success.")
+    else
+       call msg_fatal ("Process library '" // char (comp%libname) &
+            // "': ... failure.")
     end if
   end subroutine compilation_item_success
 
@@ -145,11 +152,16 @@ contains
          var_list_get_lval (global%var_list, var_str ("?rebuild_library"))
     recompile = &
          var_list_get_lval (global%var_list, var_str ("?recompile_library"))
-    call comp%init (libname, global%prclib_stack, global%var_list)
-    call comp%compile (global%os_data, force, recompile)
-    if (signal_is_pending ())  return
-    call comp%load (global%os_data)
-    if (signal_is_pending ())  return
+    if (associated (global%model)) then
+       call comp%init (libname, global%prclib_stack, global%var_list)
+       call comp%compile (global%model, global%os_data, force, recompile)
+       if (signal_is_pending ())  return
+       call comp%load (global%os_data)
+       if (signal_is_pending ())  return
+    else
+       call msg_fatal ("Process library compilation: " &
+            // " model is undefined.")
+    end if
     call comp%success ()
   end subroutine compile_library
 
@@ -157,7 +169,7 @@ contains
     class(compilation_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u, i
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     write (u, "(1x,A)")  "Compilation object:"
     write (u, "(3x,3A)")  "executable        = '", &
          char (object%exe_name), "'"
@@ -291,8 +303,10 @@ contains
     write (u, "(A)") "# Executable"
     write (u, "(A)") "$(EXE): $(DISP).lo $(LIBRARIES)"
     write (u, "(A)") TAB // "$(LINK) $(FC) -static-libtool-libs $(FCFLAGS) \"
-    write (u, "(A)") TAB // "   $(LDWHIZARD) $(LDFLAGS) $(LDFLAGS_STATIC) \" 
-    write (u, "(A)") TAB // "     -o $(EXE) $^ $(LDFLAGS_HEPMC) $(LDFLAGS_HOPPET)"
+    write (u, "(A)") TAB // "   $(LDWHIZARD) $(LDFLAGS) \" 
+    write (u, "(A)") TAB // "   -o $(EXE) $^ \"
+    write (u, "(A)") TAB // "   $(LDFLAGS_HEPMC) $(LDFLAGS_HOPPET) \"
+    write (u, "(A)") TAB // "   $(LDFLAGS_STATIC)" 
     write (u, "(A)") ""
     write (u, "(A)") "# Main targets"
     write (u, "(A)") "link: compile $(EXE)"
@@ -356,7 +370,8 @@ contains
     if (signal_is_pending ())  return
     do i = 1, size (libname)
        call item%init (libname(i), global%prclib_stack, global%var_list)
-       call item%compile (global%os_data, force=force, recompile=recompile)
+       call item%compile (global%model, global%os_data, &
+            force=force, recompile=recompile)
        if (signal_is_pending ())  return
        call item%success ()
     end do
@@ -575,7 +590,8 @@ end subroutine compilations_static_test
     write (u, "(A)")  "* Build libraries"
 
     call item%init (libname, global%prclib_stack, global%var_list)
-    call item%compile (global%os_data, force=.true., recompile=.false.)
+    call item%compile &
+         (global%model, global%os_data, force=.true., recompile=.false.)
     call item%success ()
 
     write (u, "(A)")

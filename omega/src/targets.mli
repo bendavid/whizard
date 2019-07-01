@@ -1,4 +1,4 @@
-(* $Id: targets.mli 4926 2013-12-04 12:35:06Z jr_reuter $
+(* $Id: targets.mli 6044 2014-07-24 18:33:19Z bchokoufe $
 
    Copyright (C) 1999-2014 by
 
@@ -27,9 +27,9 @@ module Dummy : Target.Maker
 (* \thocwmodulesection{Supported Targets} *)
 module Fortran : Target.Maker
 module Fortran_Majorana : Target.Maker
+module VM : Target.Maker
 
 (* \thocwmodulesection{Potential Targets} *)
-module VM : Target.Maker
 module Fortran77 : Target.Maker
 module C : Target.Maker
 module Cpp : Target.Maker

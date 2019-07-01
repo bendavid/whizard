@@ -9,12 +9,10 @@ libwhizard_prebuilt_la_SOURCES = libmanager.f90
 
 ## Dependencies of whizard_prebuilt
 $(libwhizard_prebuilt_la_OBJECTS): \
-  ../misc/iso_varying_string.$(FC_MODULE_EXT) \
-  ../whizard-core/prclib_interfaces.$(FC_MODULE_EXT)
+  ../basics/iso_varying_string.$(FC_MODULE_EXT) \
+  ../matrix_elements/prclib_interfaces.$(FC_MODULE_EXT)
 
-auxdir = $(top_builddir)/src/misc
-
-AM_FCFLAGS = -I$(auxdir) -I../whizard-core
+AM_FCFLAGS = -I../basics -I../testing -I../system -I../matrix_elements
 
 ########################################################################
 ## Default Fortran compiler options

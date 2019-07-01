@@ -26,9 +26,9 @@ Prerequisites are:
  - Make
  - Objective Caml compiler (version 3.12 or higher)
  - Fortran 2003 compiler
- - C/C++ (for HepMC interfaces)
+ - C/C++ (for FastJet/HepMC/LHAPDF/LCIO interfaces)
 
-The Objective Caml (O'Caml) compiler is available from 
+The Objective Caml (OCaml) compiler is available from 
 http://pauillac.inria.fr/ocaml/
 
 #-------------------------------------------------------------
@@ -54,8 +54,22 @@ WHIZARD:
 -- HOPPET for perturbative evolution and matching of PDFs.
    You can get it from: http://projects.hepforge.org/hoppet
 
+-- FastJet for jet clustering. 
+   You can get it from: http://fastjet.fr/
+
+-- GoSAM/Ninja/FORM/Qgraf for NLO matrix elements.
+   You can get GoSAM/Ninja from: http://gosam.hepforge.org/
+   You can get Qgraf from: http://cfif.ist.utl.pt/~paulo/qgraf.html
+   You can get FORM from: http://www.nikhef.nl/~form/
+
 -- HepMC for the corresponding event file standard.	
    Available from: http://lcgapp.cern.ch/project/simu/HepMC
+
+-- StdHEP for the corresponding event file standard.
+   Available from: http://cepa.fnal.gov/psm/stdhep/
+
+-- LCIO for the corresponding file standard.
+   Available from: http://lcio.desy.de/
 
 -- Other external programs like PYTHIA and HERWIG for parton
    showering and hadronization can be included in a standard
@@ -63,6 +77,9 @@ WHIZARD:
 
 -- ROOT and DELPHES can be interfaced via event file and 
    ASCII histogram file output
+
+-- An interface to SARAH exists and is included in the
+   SARAH program: https://sarah.hepforge.org/
 
 -- An interface to FeynRules exists and is included in the 
    FeynRules program: http://feynrules.irmp.ucl.ac.be
@@ -74,11 +91,13 @@ WHIZARD:
 MAC OS X:
 
 WHIZARD has been tested and partially developed under MAC OS X 
-Darwin 9.6.0-9.8.0 (Leopard) and Darwin 10.0.0-10.6.0 (Snow 
-Leopard) as well as Darwin 10.7.0 (Lion). The single pass linker 
-here forces to explicitly include static C++ libraries when 
-externally linking HepMC. The necessary flags are automatically 
-taken care of by the configure script.
+Darwin 9.6.X-9.8.X (Leopard) and Darwin 10.0.X-10.6.X (Snow 
+Leopard), Darwin 10.7.X (Lion), Darwin 10.8.X (Mountain Lion),
+Darwin 10.9.X (Maverick) as well as Darwin 10.10.X (Yosemite).
+The single pass linker here forces to explicitly include static
+C++ libraries when externally linking HepMC, FastJet, LHAPDF or
+LCIO. The necessary flags are automatically taken care of by
+the configure script.
 
 #-------------------------------------------------------------
 #  installing from a source code tar ball
@@ -187,7 +206,7 @@ Optional Features:
   --disable-iso_fortran_env                                                   
                           disable use of iso_fortran_env, even if the compiler
                           supports it   
-  --enable-fc-quadruple   use quadruple precision in Fortran code [[no]]
+  --enable-fc-extended    use extended precision in Fortran code [[no]]
   --enable-fc-openmp      use OpenMP for the Fortran code [[no]]
   --enable-fc-profiling   use profiling for the Fortran code [[no]]
   --enable-fc-impure	  compile Omega libraries impure [[no]]
@@ -196,7 +215,9 @@ Optional Features:
   --enable-lhapdf         enable LHAPDF for structure functions [[yes]]
   --enable-hepmc          enable HepMC for handling event data [[yes]]
   --enable-stdhep	  enable STDHEP for binary event files [[yes]]
+  --enable-lcio		  enable LCIO for binary event files [[yes]]
   --enable-shower         enable parton showers [[yes]]
+  --enable-gosam	  enable GoSAM for external NLO matrix elements [[no]]
   --enable-mpi            enable multi-parton interactions [[no]]
   --enable-hoppet         enable HOPPET for b quark pdf matching [[no]]
   --enable-fastjet	  enable FastJet for handling event data [[no]]

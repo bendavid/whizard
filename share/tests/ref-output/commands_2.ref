@@ -21,8 +21,6 @@ Parse tree:
 
 * Execute command list
 
-global model = 'Test'
-
 * Cleanup
 
 * Test output end: commands_2

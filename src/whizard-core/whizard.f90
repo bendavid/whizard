@@ -1,4 +1,4 @@
-! WHIZARD 2.2.2 July 6 2014
+! WHIZARD 2.2.3 Nov 30 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,8 +6,10 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
+!     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     Christian Weiss <christian.weiss@desy.de>
+!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -29,17 +31,19 @@
 
 module whizard
 
-  use file_utils !NODEP!
-  use iso_varying_string, string_t => varying_string !NODEP!
-  use limits, only: VERSION_STRING !NODEP!
-  use limits, only: EOF, BACKSLASH !NODEP!
-  use diagnostics !NODEP!
+  use io_units
+  use iso_varying_string, string_t => varying_string
   use unit_tests
-  use ifiles
+  use system_defs, only: VERSION_STRING
+  use system_defs, only: EOF, BACKSLASH
+  use diagnostics
+  use os_interface
   use formats
   use md5
-  use os_interface
+  use sorting
   use cputime
+  use sm_qcd
+  use ifiles
   use lexers
   use parser
   use xml
@@ -48,16 +52,14 @@ module whizard
   use analysis
   use variables
   use user_code_interface
-  use expressions
+  use eval_trees
   use particles
   use models
   use auto_components
-  use sorting
   use evaluators
   use phs_forests
   use beams
   use polarizations
-  use sm_qcd
   use sf_aux
   use sf_mappings
   use sf_base
@@ -109,6 +111,7 @@ module whizard
   use eio_checkpoints
   use eio_lhef
   use eio_hepmc
+  use eio_lcio
   use eio_stdhep
   use eio_ascii
   use eio_weights
@@ -122,6 +125,9 @@ module whizard
   use integrations
   use event_streams
   use simulations
+  use fks_calculation
+
+  use expr_tests
 
   use commands
 
@@ -249,12 +255,13 @@ contains
 
   subroutine whizard_preload_model (whizard)
     class(whizard_t), intent(inout), target :: whizard
-    type(string_t) :: model_name, filename
+    type(string_t) :: model_name
     model_name = whizard%options%preload_model
     if (model_name /= "") then
-       filename = model_name // ".mdl"
-       call whizard%global%read_model (model_name, filename)
+       call whizard%global%read_model (model_name, whizard%global%preload_model)
+       whizard%global%model => whizard%global%preload_model
        if (associated (whizard%global%model)) then
+          call whizard%global%model%link_var_list (whizard%global%var_list)
           call msg_message ("Preloaded model: " &
                // char (model_name))
        else
@@ -421,6 +428,7 @@ contains
        call command_list%compile (parse_tree_get_root_ptr (parse_tree), &
             whizard%global)
     end if
+    call whizard%global%activate ()
     call command_list%execute (whizard%global)
     call command_list%final ()
     quit = whizard%global%quit
@@ -593,7 +601,9 @@ contains
     case ("processes")
        call processes_test (u, results)       
     case ("process_stacks")
-       call process_stacks_test (u, results)       
+       call process_stacks_test (u, results)   
+    case ("fks_calculation")
+       call fks_calculation_test (u, results)    
     case ("event_transforms")
        call event_transforms_test (u, results)       
     case ("decays")
@@ -620,6 +630,8 @@ contains
        call eio_lhef_test (u, results)
     case ("eio_hepmc")
        call eio_hepmc_test (u, results)
+    case ("eio_lcio")
+       call eio_lcio_test (u, results)
     case ("eio_stdhep")
        call eio_stdhep_test (u, results)
     case ("eio_ascii")
@@ -705,7 +717,8 @@ contains
        call prc_test_test (u, results)
        call subevt_expr_test (u, results)
        call processes_test (u, results)
-       call process_stacks_test (u, results)       
+       call process_stacks_test (u, results)   
+       call fks_calculation_test (u, results)    
        call event_transforms_test (u, results)
        call decays_test (u, results)
        call shower_test (u, results)
@@ -719,6 +732,7 @@ contains
        call eio_checkpoints_test (u, results)
        call eio_lhef_test (u, results)
        call eio_hepmc_test (u, results)
+       call eio_lcio_test (u, results)
        call eio_stdhep_test (u, results)
        call eio_ascii_test (u, results)
        call eio_weights_test (u, results)

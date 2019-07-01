@@ -2,8 +2,35 @@ ChangeLog -- Summary of changes to the WHIZARD package
 
 Use svn log to see detailed changes.
 
-	Version 2.2.2
+	Version 2.2.3
 
+2014-11-30
+	RELEASE: version 2.2.3
+
+2014-11-29
+	Beta version of LO continuum/NLL-threshold
+	matched top threshold model for e+e- physics
+
+2014-11-28	
+	More internal refactoring: disentanglement of module
+	   dependencies
+	
+2014-11-21
+	OVM: O'Mega Virtual Machine, bytecode instructions
+	   instead of compiled Fortran code
+	
+2014-11-01
+	Higgs Singlet extension model included
+
+2014-10-18
+	Internal restructuring of code; half-way 
+	  WHIZARD main code file dissambled
+	
+2014-07-09
+	Alpha version of NLO infrastructure
+	
+##################################################################
+	
 2014-07-06
 	RELEASE: version 2.2.2
 

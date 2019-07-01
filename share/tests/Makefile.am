@@ -37,7 +37,7 @@ TESTSUITE_MACROS = testsuite.m4
 
 REF_OUTPUT_FILES = \
     $(REF_OUTPUT_FILES_BASE) $(REF_OUTPUT_FILES_DOUBLE) \
-    $(REF_OUTPUT_FILES_QUAD)
+    $(REF_OUTPUT_FILES_EXT)
 
 REF_OUTPUT_FILES_BASE = \
     ref-output/analysis_1.ref \
@@ -82,6 +82,7 @@ REF_OUTPUT_FILES_BASE = \
     ref-output/models_2.ref \
     ref-output/models_3.ref \
     ref-output/models_4.ref \
+    ref-output/models_5.ref \
     ref-output/auto_components_1.ref \
     ref-output/auto_components_2.ref \
     ref-output/auto_components_3.ref \
@@ -255,6 +256,7 @@ REF_OUTPUT_FILES_BASE = \
     ref-output/process_stacks_1.ref \
     ref-output/process_stacks_2.ref \
     ref-output/process_stacks_3.ref \
+    ref-output/process_stacks_4.ref \
     ref-output/slha_1.ref \
     ref-output/event_transforms_1.ref \
     ref-output/decays_1.ref \
@@ -293,6 +295,7 @@ REF_OUTPUT_FILES_BASE = \
     ref-output/eio_lhef_5.ref \
     ref-output/eio_lhef_6.ref \
     ref-output/eio_hepmc_1.ref \
+    ref-output/eio_hepmc_2.ref \
     ref-output/eio_stdhep_1.ref \
     ref-output/eio_stdhep_2.ref \
     ref-output/eio_ascii_1.ref \
@@ -317,6 +320,7 @@ REF_OUTPUT_FILES_BASE = \
     ref-output/rt_data_6.ref \
     ref-output/rt_data_7.ref \
     ref-output/rt_data_8.ref \
+    ref-output/rt_data_9.ref \
     ref-output/dispatch_1.ref \
     ref-output/dispatch_2.ref \
     ref-output/dispatch_3.ref \
@@ -425,7 +429,10 @@ REF_OUTPUT_FILES_BASE = \
     ref-output/libraries_4.ref \
     ref-output/rebuild_2.ref \
     ref-output/rebuild_3.ref \
+    ref-output/rebuild_4.ref \
     ref-output/fatal.ref \
+    ref-output/model_change_1.ref \
+    ref-output/model_change_2.ref \
     ref-output/model_test.ref \
     ref-output/cuts.ref \
     ref-output/user_cuts.ref \
@@ -471,6 +478,7 @@ REF_OUTPUT_FILES_BASE = \
     ref-output/hepmc_3.ref \
     ref-output/hepmc_4.ref \
     ref-output/hepmc_5.ref \
+    ref-output/hepmc_6.ref \
     ref-output/lhef_1.ref \
     ref-output/lhef_2.ref \
     ref-output/lhef_3.ref \
@@ -494,6 +502,8 @@ REF_OUTPUT_FILES_BASE = \
     ref-output/smtest_13.ref \
     ref-output/smtest_14.ref \
     ref-output/smtest_15.ref \
+    ref-output/smtest_16.ref \
+    ref-output/smtest_17.ref \
     ref-output/mssmtest.ref \
     ref-output/show_1.ref \
     ref-output/show_2.ref \
@@ -502,6 +512,8 @@ REF_OUTPUT_FILES_BASE = \
     ref-output/multi_comp_4.ref \
     ref-output/flvsum_1.ref \
     ref-output/circe1_2.ref \
+    ref-output/circe1_3.ref \
+    ref-output/circe1_6.ref \
     ref-output/circe1_errors_1.ref \
     ref-output/circe2_1.ref \
     ref-output/circe2_2.ref \
@@ -534,10 +546,8 @@ REF_OUTPUT_FILES_DOUBLE = \
     ref-output-double/ep_2.ref \
     ref-output-double/ep_3.ref \
     ref-output-double/circe1_1.ref \
-    ref-output-double/circe1_3.ref \
     ref-output-double/circe1_4.ref \
     ref-output-double/circe1_5.ref \
-    ref-output-double/circe1_6.ref \
     ref-output-double/circe1_7.ref \
     ref-output-double/circe1_8.ref \
     ref-output-double/circe1_9.ref \
@@ -553,47 +563,45 @@ REF_OUTPUT_FILES_DOUBLE = \
     ref-output-double/beam_events_2.ref \
     ref-output-double/beam_events_3.ref
 
-REF_OUTPUT_FILES_QUAD = \
-    ref-output-quad/sf_isr_5.ref \
-    ref-output-quad/qedtest_3.ref \
-    ref-output-quad/qedtest_4.ref \
-    ref-output-quad/qcdtest_1.ref \
-    ref-output-quad/qcdtest_2.ref \
-    ref-output-quad/qcdtest_3.ref \
-    ref-output-quad/smtest_2.ref \
-    ref-output-quad/smtest_8.ref \
-    ref-output-quad/defaultcuts.ref \
-    ref-output-quad/parton_shower_2.ref \
-    ref-output-quad/helicity.ref \
-    ref-output-quad/lhef_7.ref \
-    ref-output-quad/multi_comp_1.ref \
-    ref-output-quad/multi_comp_2.ref \
-    ref-output-quad/multi_comp_3.ref \
-    ref-output-quad/pdf_builtin.ref \
-    ref-output-quad/lhapdf5.ref \
-    ref-output-quad/lhapdf6.ref \
-    ref-output-quad/ep_1.ref \
-    ref-output-quad/ep_2.ref \
-    ref-output-quad/ep_3.ref \
-    ref-output-quad/circe1_1.ref \
-    ref-output-quad/circe1_3.ref \
-    ref-output-quad/circe1_4.ref \
-    ref-output-quad/circe1_5.ref \
-    ref-output-quad/circe1_6.ref \
-    ref-output-quad/circe1_7.ref \
-    ref-output-quad/circe1_8.ref \
-    ref-output-quad/circe1_9.ref \
-    ref-output-quad/circe1_photons_1.ref \
-    ref-output-quad/circe1_photons_2.ref \
-    ref-output-quad/circe1_photons_3.ref \
-    ref-output-quad/circe1_photons_4.ref \
-    ref-output-quad/circe1_photons_5.ref \
-    ref-output-quad/ewa_1.ref \
-    ref-output-quad/ewa_2.ref \
-    ref-output-quad/ewa_3.ref \
-    ref-output-quad/ilc.ref \
-    ref-output-quad/beam_events_2.ref \
-    ref-output-quad/beam_events_3.ref
+REF_OUTPUT_FILES_EXT = \
+    ref-output-ext/sf_isr_5.ref \
+    ref-output-ext/qedtest_3.ref \
+    ref-output-ext/qedtest_4.ref \
+    ref-output-ext/qcdtest_1.ref \
+    ref-output-ext/qcdtest_2.ref \
+    ref-output-ext/qcdtest_3.ref \
+    ref-output-ext/smtest_2.ref \
+    ref-output-ext/smtest_8.ref \
+    ref-output-ext/defaultcuts.ref \
+    ref-output-ext/parton_shower_2.ref \
+    ref-output-ext/helicity.ref \
+    ref-output-ext/lhef_7.ref \
+    ref-output-ext/multi_comp_1.ref \
+    ref-output-ext/multi_comp_2.ref \
+    ref-output-ext/multi_comp_3.ref \
+    ref-output-ext/pdf_builtin.ref \
+    ref-output-ext/lhapdf5.ref \
+    ref-output-ext/lhapdf6.ref \
+    ref-output-ext/ep_1.ref \
+    ref-output-ext/ep_2.ref \
+    ref-output-ext/ep_3.ref \
+    ref-output-ext/circe1_1.ref \
+    ref-output-ext/circe1_4.ref \
+    ref-output-ext/circe1_5.ref \
+    ref-output-ext/circe1_7.ref \
+    ref-output-ext/circe1_8.ref \
+    ref-output-ext/circe1_9.ref \
+    ref-output-ext/circe1_photons_1.ref \
+    ref-output-ext/circe1_photons_2.ref \
+    ref-output-ext/circe1_photons_3.ref \
+    ref-output-ext/circe1_photons_4.ref \
+    ref-output-ext/circe1_photons_5.ref \
+    ref-output-ext/ewa_1.ref \
+    ref-output-ext/ewa_2.ref \
+    ref-output-ext/ewa_3.ref \
+    ref-output-ext/ilc.ref \
+    ref-output-ext/beam_events_2.ref \
+    ref-output-ext/beam_events_3.ref
 
 TESTSUITES_M4 = \
     $(MISC_TESTS_M4) \
@@ -699,6 +707,8 @@ MISC_TESTS_SIN = \
     fatal.sin \
     defaultcuts.sin \
     cuts.sin \
+    model_change_1.sin \
+    model_change_2.sin \
     model_test.sin \
     structure_1.sin \
     structure_2.sin \
@@ -727,6 +737,7 @@ MISC_TESTS_SIN = \
     rebuild_1.sin \
     rebuild_2.sin \
     rebuild_3.sin \
+    rebuild_4.sin \
     qedtest_1.sin \
     qedtest_2.sin \
     qedtest_3.sin \
@@ -784,6 +795,7 @@ MISC_TESTS_SIN = \
     hepmc_3.sin \
     hepmc_4.sin \
     hepmc_5.sin \
+    hepmc_6.sin \
     stdhep_1.sin \
     stdhep_2.sin \
     stdhep_3.sin \
@@ -803,6 +815,8 @@ MISC_TESTS_SIN = \
     smtest_13.sin \
     smtest_14.sin \
     smtest_15.sin \
+    smtest_16.sin \
+    smtest_17.sin \
     mssmtest.sin \
     show_1.sin \
     show_2.sin \

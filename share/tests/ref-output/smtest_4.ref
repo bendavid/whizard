@@ -1,9 +1,9 @@
 ?openmp_logging = false
 ?vis_history = false
 ?integration_timer = false
-SM.me =  0.000000000000E+00
-SM.mmu =  0.000000000000E+00
-SM.mtau =  0.000000000000E+00
+SM.me =>  0.000000000000E+00
+SM.mmu =>  0.000000000000E+00
+SM.mtau =>  0.000000000000E+00
 | Process library 'smtest_4_lib': recorded process 'smtest_4_ww'
 | Process library 'smtest_4_lib': recorded process 'smtest_4_wp'
 | Process library 'smtest_4_lib': recorded process 'smtest_4_wm2'

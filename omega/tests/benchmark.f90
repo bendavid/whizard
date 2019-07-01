@@ -1,4 +1,4 @@
-! $Id: benchmark.f90 4926 2013-12-04 12:35:06Z jr_reuter $
+! $Id: benchmark.f90 6107 2014-09-11 12:02:16Z bchokoufe $
 ! benchmark.f90 -- race O'Mega matrix elements
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
@@ -54,6 +54,7 @@ program benchmark
   call init_parameters
   allocate (p(0:3,number_particles_in()+number_particles_out()))
   call beams (roots, 0.0_default, 0.0_default, p(:,1), p(:,2))
+
   call cpu_time (wtime_start)
   do i = 1, NCALLS
      call massless_isotropic_decay (roots, p(:,3:))
@@ -62,6 +63,7 @@ program benchmark
   call cpu_time (wtime)
   write (*, "(1X,A,F10.4,A)") "single function: " ,&
        1000 * (wtime - wtime_start) / NCALLS, ' milliseconds / evaluation'
+
   call cpu_time (wtime_start)
   do i = 1, NCALLS
      call massless_isotropic_decay (roots, p(:,3:))
@@ -70,6 +72,7 @@ program benchmark
   call cpu_time (wtime)
   write (*, "(1X,A,F10.4,A)") "single module:   " ,&
        1000 * (wtime - wtime_start) / NCALLS, ' milliseconds / evaluation'
+
   call cpu_time (wtime_start)
   do i = 1, NCALLS
      call massless_isotropic_decay (roots, p(:,3:))
@@ -78,6 +81,7 @@ program benchmark
   call cpu_time (wtime)
   write (*, "(1X,A,F10.4,A)") "single file:     " ,&
        1000 * (wtime - wtime_start) / NCALLS, ' milliseconds / evaluation'
+
 ! call cpu_time (wtime_start)
 ! do i = 1, NCALLS
 !    call massless_isotropic_decay (roots, p(:,3:))

@@ -11,7 +11,7 @@ TESTS = \
   smooth.run oversmooth.run \
   scale.run
 
-XFAIL_TESTS = fail.run oversmooth.run scale.run
+XFAIL_TESTS =
 
 BUILT_SOURCES = \
     OCAML_FLAG

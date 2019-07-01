@@ -5,8 +5,8 @@ phs_off_shell = 1
 phs_t_channel = 2
 seed = 0
 | Process library 'smtest_6_lib': recorded process 'smtest_6_nnh'
-SM.me =  0.000000000000E+00
-SM.mH =  1.250000000000E+02
+SM.me =>  0.000000000000E+00
+SM.mH =>  1.250000000000E+02
 sqrts =  5.000000000000E+02
 n_events = 1000
 openmp_num_threads = 1

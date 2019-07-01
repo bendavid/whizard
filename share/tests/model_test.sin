@@ -1,4 +1,4 @@
-# $Id: model_test.sin 5437 2014-03-07 19:52:34Z jr_reuter $
+# $Id: model_test.sin 6306 2014-11-28 07:40:42Z kilian $
 # SINDARIN input for WHIZARD self-test
 
 library = "model_test_1_lib"
@@ -17,17 +17,25 @@ model = "2HDM_CKM"
 process models_ccww_2hdm_ckm      = 	c, C	=>	Wp, Wm
 
 model = "GravTest"
+mH = 125 GeV
 process models_ccww_grav_test     = 	c, C	=>	Wp, Wm
+
+model = "HSExt"
+mH = 125 GeV
+process models_ccww_hsext         =     c, C    =>      Wp, Wm
  
 model = "Littlest"
 st = 0.1
+mH = 125 GeV
 process models_ccww_littlest      = 	c, C	=>	Wp, Wm
 
 model = "Littlest_Eta"
 st = 0.5
+mH = 125 GeV
 process models_ccww_littlest_eta  = 	c, C	=>	Wp, Wm
 
 model = "Littlest_Tpar"
+mH = 125 GeV
 process models_ccww_littlest_tpar  = 	c, C	=>	Wp, Wm
 
 model = "MSSM" 
@@ -69,68 +77,80 @@ model = "QED"
 process models_eemm_qed 	   = 	e1, E1	=>	e2, E2
 
 model = "SM"
+mH = 125 GeV
 process models_ccww_sm		   = 	c, C	=>	Wp, Wm
 
 model = "SM_CKM"
+mH = 125 GeV
 process models_ccww_sm_ckm 	   = 	c, C	=>	Wp, Wm
 
 model = "SM_ac"
+mH = 125 GeV
 process models_ccww_sm_ac 	   = 	c, C	=>	Wp, Wm
 
 model = "SM_ac_CKM"
+mH = 125 GeV
 process models_ccww_sm_ac_ckm 	   = 	c, C	=>	Wp, Wm
 
 model = "SM_rx"
+mH = 125 GeV
 process models_wwww_sm_rx 	   = 	Wp, Wm	=>	Wp, Wm
 
 model = "NoH_rx"
 process models_wwww_noh_rx 	   = 	Wp, Wm	=>	Wp, Wm
 
 model = "SM_top"
+mH = 125 GeV
 process models_ccww_sm_top 	   = 	c, C	=>	Wp, Wm
 
 model = "SM_top_anom"
+mH = 125 GeV
 process models_ccww_sm_top_anom    = 	c, C	=>	Wp, Wm
 
 model = "SM_Higgs"
+mH = 125 GeV
 process models_ccww_sm_higgs 	   = 	c, C	=>	Wp, Wm
 
 model = "Simplest"
+mH = 125 GeV
 process models_ccww_simplest 	   = 	c, C	=>	Wp, Wm
 
 model = "Simplest_univ"
+mH = 125 GeV
 process models_ccww_simplest_univ  = 	c, C	=>	Wp, Wm
 
 model = "Template"
+mH = 125 GeV
 process models_ccww_template       = 	c, C	=>	Wp, Wm
 
 model = "Threeshl"
-process models_ccww_threeshl       =    c, C    =>      Wp, Wm
+process models_ccww_threeshl       =    c, cbar =>      "W+", "W-"
 
 model = "Threeshl_nohf"
-process models_ccww_threeshl_nohf  =    c, C    =>      Wp, Wm
+process models_ccww_threeshl_nohf  =    c, cbar =>      "W+", "W-"
 
 model = "UED"
+mH = 125 GeV
 process models_ccww_ued	           = 	c, C	=>	Wp, Wm
 
 model = "SSC"
+mH = 125 GeV
 process models_wwww_ssc            =    Wp, Wm  =>      Wp, Wm
 
 model = "AltH"
 process models_wwww_alth           =    Wp, Wm  =>      Wp, Wm
 
 model = "Xdim"
+mH = 125 GeV
 process models_ccww_xdim	   = 	c, C	=>	Wp, Wm
 
 model = "Zprime"
+mH = 125 GeV
 process models_ccww_zprime	   = 	c, C	=>	Wp, Wm
 
 compile ()
 
 !---------------------------------------------
-
-me = 0
-mH = 125 GeV
 
 sqrts = 200 GeV
 
@@ -139,39 +159,40 @@ iterations = 3:100
 !!! Tests should be run single-threaded 
 openmp_num_threads = 1
  
-integrate (models_ccww_2hdm)
-integrate (models_ccww_2hdm_ckm)
-integrate (models_ccww_grav_test)
-integrate (models_ccww_littlest)
-integrate (models_ccww_littlest_eta)
-integrate (models_ccww_littlest_tpar)
-integrate (models_ccww_mssm) 
-integrate (models_ccww_mssm_ckm)
-integrate (models_ccww_mssm_grav)
-integrate (models_ccww_nmssm)
-integrate (models_ccww_nmssm_ckm)
-integrate (models_ccww_nmssm_hgg)
-integrate (models_ccww_psssm)
-integrate (models_uudd_qcd)
-integrate (models_eemm_qed)
-integrate (models_ccww_sm)
-integrate (models_ccww_sm_ckm)
-integrate (models_ccww_sm_ac)
-integrate (models_ccww_sm_ac_ckm)
-integrate (models_wwww_sm_rx)
-integrate (models_wwww_noh_rx)
-integrate (models_ccww_sm_top)
-integrate (models_ccww_sm_top_anom)
-integrate (models_ccww_sm_higgs)
-integrate (models_ccww_simplest)
-integrate (models_ccww_simplest_univ)
-integrate (models_ccww_template)
-integrate (models_ccww_threeshl)
-integrate (models_ccww_threeshl_nohf)
-integrate (models_ccww_ued)
-integrate (models_wwww_ssc)
-integrate (models_wwww_alth)
-integrate (models_ccww_xdim)
-integrate (models_ccww_zprime)
+integrate (models_ccww_2hdm)         { seed = 0 }
+integrate (models_ccww_2hdm_ckm)     { seed = 1 }
+integrate (models_ccww_grav_test)    { seed = 2 }
+integrate (models_ccww_hsext)        { seed = 3 }
+integrate (models_ccww_littlest)     { seed = 4 }
+integrate (models_ccww_littlest_eta) { seed = 5 }
+integrate (models_ccww_littlest_tpar){ seed = 6 }
+integrate (models_ccww_mssm)         { seed = 7 }
+integrate (models_ccww_mssm_ckm)     { seed = 8 }
+integrate (models_ccww_mssm_grav)    { seed = 9 }
+integrate (models_ccww_nmssm)        { seed = 10 }
+integrate (models_ccww_nmssm_ckm)    { seed = 11 }
+integrate (models_ccww_nmssm_hgg)    { seed = 12 }
+integrate (models_ccww_psssm)        { seed = 13 }
+integrate (models_uudd_qcd)          { seed = 14 }
+integrate (models_eemm_qed)          { seed = 15 }
+integrate (models_ccww_sm)           { seed = 16 }
+integrate (models_ccww_sm_ckm)       { seed = 17 }
+integrate (models_ccww_sm_ac)        { seed = 18 }
+integrate (models_ccww_sm_ac_ckm)    { seed = 19 }
+integrate (models_wwww_sm_rx)        { seed = 20 }
+integrate (models_wwww_noh_rx)       { seed = 21 }
+integrate (models_ccww_sm_top)       { seed = 22 }
+integrate (models_ccww_sm_top_anom)  { seed = 23 }
+integrate (models_ccww_sm_higgs)     { seed = 24 }
+integrate (models_ccww_simplest)     { seed = 25 }
+integrate (models_ccww_simplest_univ){ seed = 26 }
+integrate (models_ccww_template)     { seed = 27 }
+integrate (models_ccww_threeshl)     { seed = 28 }
+integrate (models_ccww_threeshl_nohf){ seed = 29 }
+integrate (models_ccww_ued)          { seed = 30 }
+integrate (models_wwww_ssc)          { seed = 31 }
+integrate (models_wwww_alth)         { seed = 32 }
+integrate (models_ccww_xdim)         { seed = 33 }
+integrate (models_ccww_zprime)       { seed = 34 }
  
 show (results)

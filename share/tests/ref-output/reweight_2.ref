@@ -69,7 +69,7 @@ Warning: No cuts have been defined.
 | Events: closing raw file 'reweight_2a.evx'
 ?write_raw = false
 $sample = "reweight_2b"
-QED.ee =  6.057200000000E-01
+QED.ee =>  6.057200000000E-01
 | Starting simulation for process 'reweight_2_p1'
 | Simulate: initializing alternate process setup ...
 | RNG: Initializing TAO random-number generator

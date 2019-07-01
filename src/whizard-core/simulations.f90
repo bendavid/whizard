@@ -1,4 +1,4 @@
-! WHIZARD 2.2.2 July 6 2014
+! WHIZARD 2.2.3 Nov 30 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,8 +6,10 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
+!     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     Christian Weiss <christian.weiss@desy.de>
+!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -29,19 +31,21 @@
 
 module simulations
 
-  use kinds, only: default !NODEP!
-  use iso_varying_string, string_t => varying_string !NODEP!
-  use file_utils !NODEP!
-  use limits, only: FMT_19 !NODEP!
-  use diagnostics !NODEP!
+  use kinds, only: default
+  use iso_varying_string, string_t => varying_string
+  use io_units
+  use format_utils, only: write_separator
+  use format_defs, only: FMT_19
   use unit_tests
+  use diagnostics
   use sm_qcd
   use md5
   use ifiles
   use lexers
   use parser
   use variables
-  use expressions
+  use eval_trees
+  use model_data
   use flavors
   use particles
   use state_matrices
@@ -125,8 +129,9 @@ module simulations
      type(mci_set_t), dimension(:), allocatable :: mci_set
      type(selector_t) :: mci_selector
      type(core_safe_t), dimension(:), allocatable :: core_safe
-     type(model_t), pointer :: model => null ()
+     class(model_data_t), pointer :: model => null ()
      type(qcd_t) :: qcd
+     logical :: nlo_event = .false.
    contains
      procedure :: write_config => entry_write_config
      procedure :: final => entry_final
@@ -136,6 +141,7 @@ module simulations
      procedure :: record => entry_record
      procedure :: update_process => entry_update_process
      procedure :: restore_process => entry_restore_process
+     procedure :: combine_mci_sets => entry_combine_mci_sets
   end type entry_t
 
   type, extends (entry_t) :: alt_entry_t
@@ -220,7 +226,7 @@ contains
     class(counter_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u
-    u = output_unit (unit)
+    u = given_output_unit (unit)
 1   format (3x,A,I0)
 2   format (5x,A,I0)
 3   format (5x,A,ES19.12)
@@ -291,7 +297,7 @@ contains
     class(mci_set_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u, i
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     write (u, "(3x,A)")  "Components:"
     do i = 1, object%n_components
        write (u, "(5x,I0,A,A,A)")  object%i_component(i), &
@@ -326,12 +332,18 @@ contains
     end if
   end subroutine mci_set_init
     
-  subroutine prepare_process (process, process_id, integrate, global)
+  subroutine prepare_process &
+       (process, process_id, integrate, local, global)
     type(process_t), pointer, intent(out) :: process
     type(string_t), intent(in) :: process_id
     logical, intent(in) :: integrate
-    type(rt_data_t), intent(inout), target :: global
-    process => global%process_stack%get_process_ptr (process_id)
+    type(rt_data_t), intent(inout), target :: local
+    type(rt_data_t), intent(inout), optional, target :: global
+    if (present (global)) then
+       process => global%process_stack%get_process_ptr (process_id)
+    else
+       process => local%process_stack%get_process_ptr (process_id)
+    end if
     if (.not. associated (process)) then
        if (integrate) then
           call msg_message ("Simulate: process '" &
@@ -340,7 +352,13 @@ contains
           call msg_message ("Simulate: process '" &
                // char (process_id) // "' needs initialization")
        end if
-       call integrate_process (process_id, global, init_only = .not. integrate)
+       if (present (global)) then
+          call integrate_process (process_id, local, global, &
+            init_only = .not. integrate)
+       else
+          call integrate_process (process_id, local, local_stack=.true., &
+            init_only = .not. integrate)
+       end if
        if (signal_is_pending ())  return
        process => global%process_stack%get_process_ptr (process_id)
        if (associated (process)) then
@@ -361,7 +379,7 @@ contains
     class(entry_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u, i
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     write (u, "(3x,A,A,A)")  "Process   = '", char (object%process_id), "'"
     write (u, "(3x,A,A,A)")  "Library   = '", char (object%library), "'"
     write (u, "(3x,A,A,A)")  "Run       = '", char (object%run_id), "'"
@@ -401,27 +419,29 @@ contains
     call object%event_t%final ()
   end subroutine entry_final
   
-  subroutine entry_init (entry, process_id, integrate, generate, global, n_alt)
+  subroutine entry_init &
+       (entry, process_id, integrate, generate, local, global, n_alt)
     class(entry_t), intent(inout), target :: entry
     type(string_t), intent(in) :: process_id
     logical, intent(in) :: integrate, generate
-    type(rt_data_t), intent(inout), target :: global
+    type(rt_data_t), intent(inout), target :: local
+    type(rt_data_t), intent(inout), optional, target :: global
     integer, intent(in), optional :: n_alt
     type(process_t), pointer :: process
     type(process_instance_t), pointer :: process_instance
+    type(eval_tree_factory_t) :: expr_factory
     class(evt_t), pointer :: evt
     integer :: i
     logical :: enable_qcd
     
-    enable_qcd = var_list_get_lval (global%var_list, var_str ("?ps_isr_active")) &
-            .or. var_list_get_lval (global%var_list, var_str ("?ps_fsr_active")) &
-            .or. var_list_get_lval (global%var_list, var_str &
-                     ("?hadronization_active")) &
-            .or. var_list_get_lval (global%var_list, var_str ("?mlm_matching")) &
-            .or. var_list_get_lval (global%var_list, var_str ("?ckkw_matching")) &
-            .or. var_list_get_lval (global%var_list, var_str ("?muli_active"))
+    enable_qcd = local%get_lval (var_str ("?ps_isr_active")) &
+            .or. local%get_lval (var_str ("?ps_fsr_active")) &
+            .or. local%get_lval (var_str ("?hadronization_active")) &
+            .or. local%get_lval (var_str ("?mlm_matching")) &
+            .or. local%get_lval (var_str ("?ckkw_matching")) &
+            .or. local%get_lval (var_str ("?muli_active"))
     
-    call prepare_process (process, process_id, integrate, global)
+    call prepare_process (process, process_id, integrate, local, global)
     if (signal_is_pending ())  return
 
     if (.not. process%has_matrix_element ()) then
@@ -431,7 +451,7 @@ contains
        return
     end if
     
-    call entry%basic_init (global%var_list, n_alt)
+    call entry%basic_init (local%var_list, n_alt)
 
     allocate (process_instance)
     call process_instance%init (process)
@@ -446,6 +466,10 @@ contains
     do i = 1, size (entry%mci_set)
        call entry%mci_set(i)%init (i, process)
     end do
+    if (process%is_nlo_calculation ()) then
+      entry%nlo_event = .true.
+      call entry%combine_mci_sets ()
+    end if
     if (process%has_integral ()) then
        entry%integral = process%get_integral ()
        entry%error = process%get_error ()
@@ -453,9 +477,12 @@ contains
        entry%has_integral = .true.
     end if
 
-    call entry%set_selection (global%pn%selection_lexpr)
-    call entry%set_reweight (global%pn%reweight_expr)
-    call entry%set_analysis (global%pn%analysis_lexpr)
+    call expr_factory%init (local%pn%selection_lexpr)
+    call entry%set_selection (expr_factory)
+    call expr_factory%init (local%pn%reweight_expr)
+    call entry%set_reweight (expr_factory)
+    call expr_factory%init (local%pn%analysis_lexpr)
+    call entry%set_analysis (expr_factory)
     if (generate) then
        do i = 1, entry%n_mci
           call process%prepare_simulation (i)
@@ -463,20 +490,24 @@ contains
        end do
     end if
 
-    if (process%contains_unstable (global%model)) then
-       call dispatch_evt_decay (evt, global)
+    if (process%contains_unstable (local%model)) then
+       call dispatch_evt_decay (evt, local)
        if (associated (evt))  call entry%import_transform (evt)
     end if
     
     if (enable_qcd) then 
-       call dispatch_evt_shower (evt, global, process)
+       call dispatch_evt_shower (evt, local, process)
        if (associated (evt))  call entry%import_transform (evt)
     end if
 
-    call entry%connect (process_instance, global%model, global%process_stack)
+    if (present (global)) then
+       call entry%connect (process_instance, local%model, global%process_stack)
+    else
+       call entry%connect (process_instance, local%model, local%process_stack)
+    end if
     call entry%setup_expressions ()
     entry%model => process%get_model_ptr ()
-    call dispatch_qcd (entry%qcd, global)
+    call dispatch_qcd (entry%qcd, local)
     entry%valid = .true.
     
   end subroutine entry_init
@@ -511,13 +542,13 @@ contains
     
   subroutine entry_update_process (entry, model, qcd, helicity_selection)
     class(entry_t), intent(inout) :: entry
-    type(model_t), intent(in), optional, target :: model
+    class(model_data_t), intent(in), optional, target :: model
     type(qcd_t), intent(in), optional :: qcd
     type(helicity_selection_t), intent(in), optional :: helicity_selection
     type(process_t), pointer :: process
     class(prc_core_t), allocatable :: core
     integer :: i, n_components
-    type(model_t), pointer :: model_local
+    class(model_data_t), pointer :: model_local
     type(qcd_t) :: qcd_local
     if (present (model)) then
        model_local => model
@@ -560,48 +591,59 @@ contains
     deallocate (entry%core_safe)
   end subroutine entry_restore_process
   
-  subroutine alt_entry_init (entry, process_id, &
-       master_process, global)
+  subroutine entry_combine_mci_sets (entry)
+    class(entry_t), intent(inout) :: entry
+    integer :: n_components_lo, i_component, i_virt
+    n_components_lo = entry%n_mci / 3
+    do i_component = 1, n_components_lo
+      i_virt = i_component + 2*n_components_lo
+      entry%mci_set(i_component)%integral = &
+        entry%mci_set(i_component)%integral + entry%mci_set(i_virt)%integral
+      entry%mci_set(i_component)%error = sqrt (&
+        entry%mci_set(i_component)%error**2 + entry%mci_set(i_virt)%error**2)
+      entry%mci_set(i_virt)%integral = 0._default
+      entry%mci_set(i_virt)%has_integral = .false.
+    end do
+  end subroutine entry_combine_mci_sets
+ 
+  subroutine alt_entry_init (entry, process_id, master_process, local)
     class(alt_entry_t), intent(inout), target :: entry
     type(string_t), intent(in) :: process_id
     type(process_t), intent(in), target :: master_process
-    type(rt_data_t), intent(inout), target :: global
+    type(rt_data_t), intent(inout), target :: local
     class(rng_factory_t), allocatable :: rng_factory
     type(process_t), pointer :: process
     type(process_instance_t), pointer :: process_instance
+    type(eval_tree_factory_t) :: expr_factory
     class(evt_t), pointer :: evt
     type(string_t) :: run_id
     type(integration_t) :: intg
     integer :: i
     logical :: enable_qcd
     
-    enable_qcd = var_list_get_lval (global%var_list, var_str ("?ps_isr_active")) &
-            .or. var_list_get_lval (global%var_list, var_str ("?ps_fsr_active")) &
-            .or. var_list_get_lval (global%var_list, var_str &
-                     ("?hadronization_active")) &
-            .or. var_list_get_lval (global%var_list, var_str ("?mlm_matching")) &
-            .or. var_list_get_lval (global%var_list, var_str ("?ckkw_matching")) &
-            .or. var_list_get_lval (global%var_list, var_str ("?muli_active"))    
+    enable_qcd = local%get_lval (var_str ("?ps_isr_active")) &
+            .or. local%get_lval (var_str ("?ps_fsr_active")) &
+            .or. local%get_lval (var_str ("?hadronization_active")) &
+            .or. local%get_lval (var_str ("?mlm_matching")) &
+            .or. local%get_lval (var_str ("?ckkw_matching")) &
+            .or. local%get_lval (var_str ("?muli_active"))    
 
     call msg_message ("Simulate: initializing alternate process setup ...")
 
-    run_id = var_list_get_sval (global%var_list, var_str ("$run_id"))
-    call var_list_set_log (global%var_list, var_str ("?rebuild_phase_space"), &
+    run_id = var_list_get_sval (local%var_list, var_str ("$run_id"))
+    call local%set_log (var_str ("?rebuild_phase_space"), &
          .false., is_known = .true.)
-    call var_list_set_log (global%var_list, var_str ("?check_phs_file"), &
+    call local%set_log (var_str ("?check_phs_file"), &
          .false., is_known = .true.)
-    call var_list_set_log (global%var_list, var_str ("?rebuild_grids"), &
+    call local%set_log (var_str ("?rebuild_grids"), &
          .false., is_known = .true.)
     
-    call dispatch_qcd (entry%qcd, global)
-    call dispatch_rng_factory (rng_factory, global)
+    call intg%create_process (process_id)
+    call intg%init_process (local)
+    call intg%setup_process (local)
+    process => intg%get_process_ptr ()
 
-    allocate (process)
-    call process%init (process_id, run_id, global%prclib, &
-         global%os_data, entry%qcd, rng_factory, global%model_list)
-    call intg%setup_process (global, process)
-
-    call entry%basic_init (global%var_list)
+    call entry%basic_init (local%var_list)
     
     allocate (process_instance)
     call process_instance%init (process)
@@ -621,21 +663,24 @@ contains
        entry%has_integral = .true.
     end if
     
-    call entry%set_selection (global%pn%selection_lexpr)
-    call entry%set_reweight (global%pn%reweight_expr)
-    call entry%set_analysis (global%pn%analysis_lexpr)
+    call expr_factory%init (local%pn%selection_lexpr)
+    call entry%set_selection (expr_factory)
+    call expr_factory%init (local%pn%reweight_expr)
+    call entry%set_reweight (expr_factory)
+    call expr_factory%init (local%pn%analysis_lexpr)
+    call entry%set_analysis (expr_factory)
 
-    if (process%contains_unstable (global%model)) then
-       call dispatch_evt_decay (evt, global)
+    if (process%contains_unstable (local%model)) then
+       call dispatch_evt_decay (evt, local)
        if (associated (evt))  call entry%import_transform (evt)
     end if
 
     if (enable_qcd) then
-       call dispatch_evt_shower (evt, global)
+       call dispatch_evt_shower (evt, local)
        if (associated (evt))  call entry%import_transform (evt)
     end if
 
-    call entry%connect (process_instance, global%model, global%process_stack)
+    call entry%connect (process_instance, local%model, local%process_stack)
     call entry%setup_expressions ()
 
     entry%model => process%get_model_ptr ()
@@ -657,8 +702,8 @@ contains
     class(simulation_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u, i
-    u = output_unit (unit)
-    call write_separator_double (u)
+    u = given_output_unit (unit)
+    call write_separator (u, 2)
     write (u, "(1x,A,A,A)")  "Event sample: '", char (object%sample_id), "'"
     write (u, "(3x,A,I0)")  "Processes    = ", object%n_prc
     if (object%n_alt > 0) then
@@ -712,7 +757,7 @@ contains
     if (allocated (object%entry)) then
        do i = 1, size (object%entry)
           if (i == 1) then
-             call write_separator_double (u)
+             call write_separator (u, 2)
           else
              call write_separator (u)
           end if
@@ -720,7 +765,7 @@ contains
           call object%entry(i)%write_config (u)
        end do
     end if
-    call write_separator_double (u)
+    call write_separator (u, 2)
   end subroutine simulation_write
   
   subroutine simulation_write_event_unit (object, unit, i_prc, verbose, testflag)
@@ -792,36 +837,28 @@ contains
     if (allocated (object%rng))  call object%rng%final ()
   end subroutine simulation_final
   
-  subroutine simulation_init &
-       (simulation, process_id, integrate, generate, global, alt_env)
+  subroutine simulation_init (simulation, &
+       process_id, integrate, generate, local, global, alt_env)
     class(simulation_t), intent(out), target :: simulation
     type(string_t), dimension(:), intent(in) :: process_id
     logical, intent(in) :: integrate, generate
-    type(rt_data_t), intent(inout), target :: global
-    type(rt_data_t), dimension(:), intent(inout), target, optional :: alt_env
+    type(rt_data_t), intent(inout), target :: local
+    type(rt_data_t), intent(inout), optional, target :: global
+    type(rt_data_t), dimension(:), intent(inout), optional, target :: alt_env
     class(rng_factory_t), allocatable :: rng_factory
     type(string_t) :: norm_string, version_string
     integer :: i, j
-    simulation%sample_id = var_list_get_sval (global%var_list, &
-         var_str ("$sample"))
-    simulation%unweighted = var_list_get_lval (global%var_list, &
-         var_str ("?unweighted"))
-    simulation%negative_weights = var_list_get_lval (global%var_list, &
-         var_str ("?negative_weights"))
-    version_string = var_list_get_sval (global%var_list, &
-         var_str ("$event_file_version"))
-    norm_string = var_list_get_sval (global%var_list, &
-         var_str ("$sample_normalization"))
+    simulation%sample_id = local%get_sval (var_str ("$sample"))
+    simulation%unweighted = local%get_lval (var_str ("?unweighted"))
+    simulation%negative_weights = local%get_lval (var_str ("?negative_weights"))
+    version_string = local%get_sval (var_str ("$event_file_version"))
+    norm_string = local%get_sval (var_str ("$sample_normalization"))
     simulation%norm_mode = &
          event_normalization_mode (norm_string, simulation%unweighted)
-    simulation%pacify = var_list_get_lval (global%var_list, &
-         var_str ("?sample_pacify"))
-    simulation%n_max_tries = var_list_get_ival (global%var_list, &
-         var_str ("sample_max_tries"))
-    simulation%split_n_evt = var_list_get_ival (global%var_list, &
-         var_str ("sample_split_n_evt"))
-    simulation%split_index = var_list_get_ival (global%var_list, &
-         var_str ("sample_split_index"))
+    simulation%pacify = local%get_lval (var_str ("?sample_pacify"))
+    simulation%n_max_tries = local%get_ival (var_str ("sample_max_tries"))
+    simulation%split_n_evt = local%get_ival (var_str ("sample_split_n_evt"))
+    simulation%split_index = local%get_ival (var_str ("sample_split_index"))
     select case (size (process_id))
     case (0)
        call msg_error ("Simulation: no process selected")
@@ -851,8 +888,8 @@ contains
     if (present (alt_env)) then
        simulation%n_alt = size (alt_env)
        do i = 1, simulation%n_prc
-          call simulation%entry(i)%init &
-               (process_id(i), integrate, generate, global, simulation%n_alt)
+          call simulation%entry(i)%init (process_id(i), integrate, generate, &
+               local, global, simulation%n_alt)
           if (signal_is_pending ())  return
        end do
        if (.not. any (simulation%entry%valid)) then
@@ -875,7 +912,7 @@ contains
     else       
        do i = 1, simulation%n_prc
           call simulation%entry(i)%init &
-               (process_id(i), integrate, generate, global)
+               (process_id(i), integrate, generate, local, global)
           if (signal_is_pending ())  return          
        end do
        if (.not. any (simulation%entry%valid)) then
@@ -885,7 +922,7 @@ contains
           return
        end if
     end if
-    call dispatch_rng_factory (rng_factory, global)
+    call dispatch_rng_factory (rng_factory, local)
     call rng_factory%make (simulation%rng)
     if (all (simulation%entry%has_integral)) then
        simulation%integral = sum (simulation%entry%integral)
@@ -1226,7 +1263,7 @@ contains
   subroutine simulation_update_processes (simulation, &
        model, qcd, helicity_selection)
     class(simulation_t), intent(inout) :: simulation
-    type(model_t), intent(in), optional, target :: model
+    class(model_data_t), intent(in), optional, target :: model
     type(qcd_t), intent(in), optional :: qcd
     type(helicity_selection_t), intent(in), optional :: helicity_selection
     integer :: i
@@ -1530,9 +1567,9 @@ contains
     call syntax_model_file_init ()
 
     call global%global_init ()
-    call var_list_set_log (global%var_list, var_str ("?omega_openmp"), &
+    call global%set_log (var_str ("?omega_openmp"), &
          .false., is_known = .true.)
-    call var_list_set_int (global%var_list, var_str ("seed"), &
+    call global%set_int (var_str ("seed"), &
          0, is_known = .true.)    
     
     libname = "simulation_1a"
@@ -1541,43 +1578,42 @@ contains
     call prepare_test_library (global, libname, 1, [procname1])
     call compile_library (libname, global)
 
-    call var_list_set_string (global%var_list, var_str ("$method"), &
+    call global%set_string (var_str ("$method"), &
          var_str ("unit_test"), is_known = .true.)
-    call var_list_set_string (global%var_list, var_str ("$phs_method"), &
+    call global%set_string (var_str ("$phs_method"), &
          var_str ("single"), is_known = .true.)
-    call var_list_set_string (global%var_list, var_str ("$integration_method"),&
+    call global%set_string (var_str ("$integration_method"),&
          var_str ("midpoint"), is_known = .true.)
-    call var_list_set_log (global%var_list, var_str ("?vis_history"),&
+    call global%set_log (var_str ("?vis_history"),&
          .false., is_known = .true.)    
-    call var_list_set_log (global%var_list, var_str ("?integration_timer"),&
+    call global%set_log (var_str ("?integration_timer"),&
          .false., is_known = .true.)    
     
-    call var_list_set_real (global%var_list, var_str ("sqrts"),&
+    call global%set_real (var_str ("sqrts"),&
          1000._default, is_known = .true.)
 
     call global%it_list%init ([1], [1000])
 
-    call var_list_set_string (global%var_list, var_str ("$run_id"), &
+    call global%set_string (var_str ("$run_id"), &
          var_str ("simulations1"), is_known = .true.)
-    call integrate_process (procname1, global)
+    call integrate_process (procname1, global, local_stack=.true.)
 
-    libname = "simulation_1b"
     procname2 = "sim_extra"
     
     call prepare_test_library (global, libname, 1, [procname2])
     call compile_library (libname, global)
-    call var_list_set_string (global%var_list, var_str ("$run_id"), &
+    call global%set_string (var_str ("$run_id"), &
          var_str ("simulations2"), is_known = .true.)
 
 
     write (u, "(A)")  "* Initialize event generation"
     write (u, "(A)")
 
-    call var_list_set_string (global%var_list, var_str ("$sample"), &
+    call global%set_string (var_str ("$sample"), &
          var_str ("sim1"), is_known = .true.)
-    call integrate_process (procname2, global)
+    call integrate_process (procname2, global, local_stack=.true.)
 
-    call simulation%init ([procname1, procname2], .true., .true., global)
+    call simulation%init ([procname1, procname2], .false., .true., global)
     call simulation%init_process_selector ()
     call simulation%write (u)
 
@@ -1615,9 +1651,9 @@ contains
     call syntax_model_file_init ()
 
     call global%global_init ()
-    call var_list_set_log (global%var_list, var_str ("?omega_openmp"), &
+    call global%set_log (var_str ("?omega_openmp"), &
          .false., is_known = .true.)
-    call var_list_set_int (global%var_list, var_str ("seed"), &
+    call global%set_int (var_str ("seed"), &
          0, is_known = .true.)    
     
     libname = "simulation_2a"
@@ -1626,33 +1662,33 @@ contains
     call prepare_test_library (global, libname, 1, [procname1])
     call compile_library (libname, global)
 
-    call var_list_append_log (global%var_list, &
+    call global%append_log (&
          var_str ("?rebuild_events"), .true., intrinsic = .true.)
 
-    call var_list_set_string (global%var_list, var_str ("$method"), &
+    call global%set_string (var_str ("$method"), &
          var_str ("unit_test"), is_known = .true.)
-    call var_list_set_string (global%var_list, var_str ("$phs_method"), &
+    call global%set_string (var_str ("$phs_method"), &
          var_str ("single"), is_known = .true.)
-    call var_list_set_string (global%var_list, var_str ("$integration_method"),&
+    call global%set_string (var_str ("$integration_method"),&
          var_str ("midpoint"), is_known = .true.)
-    call var_list_set_log (global%var_list, var_str ("?vis_history"),&
+    call global%set_log (var_str ("?vis_history"),&
          .false., is_known = .true.)    
-    call var_list_set_log (global%var_list, var_str ("?integration_timer"),&
+    call global%set_log (var_str ("?integration_timer"),&
          .false., is_known = .true.)    
 
-    call var_list_set_real (global%var_list, var_str ("sqrts"),&
+    call global%set_real (var_str ("sqrts"),&
          1000._default, is_known = .true.)
 
     call global%it_list%init ([1], [1000])
 
-    call var_list_set_string (global%var_list, var_str ("$run_id"), &
+    call global%set_string (var_str ("$run_id"), &
          var_str ("simulations1"), is_known = .true.)
-    call integrate_process (procname1, global)
+    call integrate_process (procname1, global, local_stack=.true.)
 
     write (u, "(A)")  "* Initialize event generation"
     write (u, "(A)")
 
-    call var_list_set_log (global%var_list, var_str ("?unweighted"), &
+    call global%set_log (var_str ("?unweighted"), &
          .false., is_known = .true.)
     call simulation%init ([procname1], .true., .true., global)
     call simulation%init_process_selector ()
@@ -1702,9 +1738,9 @@ contains
     call syntax_model_file_init ()
 
     call global%global_init ()
-    call var_list_set_log (global%var_list, var_str ("?omega_openmp"), &
+    call global%set_log (var_str ("?omega_openmp"), &
          .false., is_known = .true.)
-    call var_list_set_int (global%var_list, var_str ("seed"), &
+    call global%set_int (var_str ("seed"), &
          0, is_known = .true.)    
     
     libname = "simulation_3a"
@@ -1713,28 +1749,28 @@ contains
     call prepare_test_library (global, libname, 1, [procname1])
     call compile_library (libname, global)
 
-    call var_list_append_log (global%var_list, &
+    call global%append_log (&
          var_str ("?rebuild_events"), .true., intrinsic = .true.)
 
-    call var_list_set_string (global%var_list, var_str ("$method"), &
+    call global%set_string (var_str ("$method"), &
          var_str ("unit_test"), is_known = .true.)
-    call var_list_set_string (global%var_list, var_str ("$phs_method"), &
+    call global%set_string (var_str ("$phs_method"), &
          var_str ("single"), is_known = .true.)
-    call var_list_set_string (global%var_list, var_str ("$integration_method"),&
+    call global%set_string (var_str ("$integration_method"),&
          var_str ("midpoint"), is_known = .true.)
-    call var_list_set_log (global%var_list, var_str ("?vis_history"),&
+    call global%set_log (var_str ("?vis_history"),&
          .false., is_known = .true.)    
-    call var_list_set_log (global%var_list, var_str ("?integration_timer"),&
+    call global%set_log (var_str ("?integration_timer"),&
          .false., is_known = .true.)    
 
-    call var_list_set_real (global%var_list, var_str ("sqrts"),&
+    call global%set_real (var_str ("sqrts"),&
          1000._default, is_known = .true.)
 
     call global%it_list%init ([1], [1000])
 
-    call var_list_set_string (global%var_list, var_str ("$run_id"), &
+    call global%set_string (var_str ("$run_id"), &
          var_str ("simulations1"), is_known = .true.)
-    call integrate_process (procname1, global)
+    call integrate_process (procname1, global, local_stack=.true.)
 
     write (u, "(A)")  "* Initialize event generation"
     write (u, "(A)")
@@ -1789,9 +1825,9 @@ contains
     call syntax_phs_forest_init ()
 
     call global%global_init ()
-    call var_list_set_log (global%var_list, var_str ("?omega_openmp"), &
+    call global%set_log (var_str ("?omega_openmp"), &
          .false., is_known = .true.)
-    call var_list_set_int (global%var_list, var_str ("seed"), &
+    call global%set_int (var_str ("seed"), &
          0, is_known = .true.)    
     
     libname = "simulation_4a"
@@ -1800,30 +1836,30 @@ contains
     call prepare_test_library (global, libname, 1, [procname1])
     call compile_library (libname, global)
 
-    call var_list_append_log (global%var_list, &
+    call global%append_log (&
          var_str ("?rebuild_phase_space"), .true., intrinsic = .true.)
-    call var_list_append_log (global%var_list, &
+    call global%append_log (&
          var_str ("?rebuild_grids"), .true., intrinsic = .true.)
-    call var_list_append_log (global%var_list, &
+    call global%append_log (&
          var_str ("?rebuild_events"), .true., intrinsic = .true.)
 
-    call var_list_set_string (global%var_list, var_str ("$run_id"), &
+    call global%set_string (var_str ("$run_id"), &
          var_str ("r1"), is_known = .true.)
-    call var_list_set_string (global%var_list, var_str ("$method"), &
+    call global%set_string (var_str ("$method"), &
          var_str ("unit_test"), is_known = .true.)
-    call var_list_set_string (global%var_list, var_str ("$phs_method"), &
+    call global%set_string (var_str ("$phs_method"), &
          var_str ("wood"), is_known = .true.)
-    call var_list_set_string (global%var_list, var_str ("$integration_method"),&
+    call global%set_string (var_str ("$integration_method"),&
          var_str ("vamp"), is_known = .true.)
-    call var_list_set_log (global%var_list, var_str ("?use_vamp_equivalences"),&
+    call global%set_log (var_str ("?use_vamp_equivalences"),&
          .true., is_known = .true.)
-    call var_list_set_real (global%var_list, var_str ("sqrts"),&
+    call global%set_real (var_str ("sqrts"),&
          1000._default, is_known = .true.)
-    call var_list_set_real (global%var_list, var_str ("ms"), &
-         0._default, is_known = .true.)
-    call var_list_set_log (global%var_list, var_str ("?vis_history"),&
+    call global%model_set_real (var_str ("ms"), &
+         0._default)
+    call global%set_log (var_str ("?vis_history"),&
          .false., is_known = .true.)    
-    call var_list_set_log (global%var_list, var_str ("?integration_timer"),&
+    call global%set_log (var_str ("?integration_timer"),&
          .false., is_known = .true.)    
     
     call reset_interaction_counter ()
@@ -1837,16 +1873,16 @@ contains
 
     call global%it_list%init ([1], [1000])
 
-    call var_list_set_string (global%var_list, var_str ("$run_id"), &
+    call global%set_string (var_str ("$run_id"), &
          var_str ("r1"), is_known = .true.)
-    call integrate_process (procname1, global)
+    call integrate_process (procname1, global, local_stack=.true.)
 
     write (u, "(A)")  "* Initialize event generation"
     write (u, "(A)")
 
-    call var_list_set_log (global%var_list, var_str ("?unweighted"), &
+    call global%set_log (var_str ("?unweighted"), &
          .false., is_known = .true.)
-    call var_list_set_string (global%var_list, var_str ("$sample"), &
+    call global%set_string (var_str ("$sample"), &
          var_str ("simulations4"), is_known = .true.)
     call simulation%init ([procname1], .true., .true., global)
     call simulation%init_process_selector ()
@@ -1897,9 +1933,9 @@ contains
     call syntax_model_file_init ()
 
     call global%global_init ()
-    call var_list_set_log (global%var_list, var_str ("?omega_openmp"), &
+    call global%set_log (var_str ("?omega_openmp"), &
          .false., is_known = .true.)
-    call var_list_set_int (global%var_list, var_str ("seed"), &
+    call global%set_int (var_str ("seed"), &
          0, is_known = .true.)    
     
     libname = "simulation_5a"
@@ -1908,36 +1944,36 @@ contains
     call prepare_test_library (global, libname, 1, [procname1])
     call compile_library (libname, global)
 
-    call var_list_append_log (global%var_list, &
+    call global%append_log (&
          var_str ("?rebuild_events"), .true., intrinsic = .true.)
 
-    call var_list_set_string (global%var_list, var_str ("$method"), &
+    call global%set_string (var_str ("$method"), &
          var_str ("unit_test"), is_known = .true.)
-    call var_list_set_string (global%var_list, var_str ("$phs_method"), &
+    call global%set_string (var_str ("$phs_method"), &
          var_str ("single"), is_known = .true.)
-    call var_list_set_string (global%var_list, var_str ("$integration_method"),&
+    call global%set_string (var_str ("$integration_method"),&
          var_str ("midpoint"), is_known = .true.)   
-    call var_list_set_log (global%var_list, var_str ("?vis_history"),&
+    call global%set_log (var_str ("?vis_history"),&
          .false., is_known = .true.)    
-    call var_list_set_log (global%var_list, var_str ("?integration_timer"),&
+    call global%set_log (var_str ("?integration_timer"),&
          .false., is_known = .true.)    
 
-    call var_list_set_real (global%var_list, var_str ("sqrts"),&
+    call global%set_real (var_str ("sqrts"),&
          1000._default, is_known = .true.)
 
     call global%it_list%init ([1], [1000])
 
-    call var_list_set_string (global%var_list, var_str ("$run_id"), &
+    call global%set_string (var_str ("$run_id"), &
          var_str ("simulations5"), is_known = .true.)
-    call integrate_process (procname1, global)
+    call integrate_process (procname1, global, local_stack=.true.)
 
     write (u, "(A)")  "* Initialize event generation"
     write (u, "(A)")
 
-    call var_list_set_log (global%var_list, var_str ("?unweighted"), &
+    call global%set_log (var_str ("?unweighted"), &
          .false., is_known = .true.)
     sample = "simulations5"
-    call var_list_set_string (global%var_list, var_str ("$sample"), &
+    call global%set_string (var_str ("$sample"), &
          sample, is_known = .true.)
     allocate (simulation)
     call simulation%init ([procname1], .true., .true., global)
@@ -2016,9 +2052,9 @@ contains
     call syntax_model_file_init ()
 
     call global%global_init ()
-    call var_list_set_log (global%var_list, var_str ("?omega_openmp"), &
+    call global%set_log (var_str ("?omega_openmp"), &
          .false., is_known = .true.)
-    call var_list_set_int (global%var_list, var_str ("seed"), &
+    call global%set_int (var_str ("seed"), &
          0, is_known = .true.)    
     
     libname = "simulation_6"
@@ -2027,30 +2063,30 @@ contains
     call prepare_test_library (global, libname, 1, [procname1])
     call compile_library (libname, global)
 
-    call var_list_append_log (global%var_list, &
+    call global%append_log (&
          var_str ("?rebuild_phase_space"), .true., intrinsic = .true.)
-    call var_list_append_log (global%var_list, &
+    call global%append_log (&
          var_str ("?rebuild_grids"), .true., intrinsic = .true.)
-    call var_list_append_log (global%var_list, &
+    call global%append_log (&
          var_str ("?rebuild_events"), .true., intrinsic = .true.)
 
-    call var_list_set_string (global%var_list, var_str ("$method"), &
+    call global%set_string (var_str ("$method"), &
          var_str ("unit_test"), is_known = .true.)
-    call var_list_set_string (global%var_list, var_str ("$phs_method"), &
+    call global%set_string (var_str ("$phs_method"), &
          var_str ("wood"), is_known = .true.)
-    call var_list_set_string (global%var_list, var_str ("$integration_method"),&
+    call global%set_string (var_str ("$integration_method"),&
          var_str ("vamp"), is_known = .true.)
-    call var_list_set_log (global%var_list, var_str ("?use_vamp_equivalences"),&
+    call global%set_log (var_str ("?use_vamp_equivalences"),&
          .true., is_known = .true.)
-    call var_list_set_log (global%var_list, var_str ("?vis_history"),&
+    call global%set_log (var_str ("?vis_history"),&
          .false., is_known = .true.)    
-    call var_list_set_log (global%var_list, var_str ("?integration_timer"),&
+    call global%set_log (var_str ("?integration_timer"),&
          .false., is_known = .true.)    
 
-    call var_list_set_real (global%var_list, var_str ("sqrts"),&
+    call global%set_real (var_str ("sqrts"),&
          1000._default, is_known = .true.)
-    call var_list_set_real (global%var_list, var_str ("ms"), &
-         0._default, is_known = .true.)
+    call global%model_set_real (var_str ("ms"), &
+         0._default)
 
     call flavor_init (flv, 25, global%model)
     call global%beam_structure%init_sf (flavor_get_name ([flv, flv]), [1])
@@ -2058,19 +2094,19 @@ contains
 
     call global%it_list%init ([1], [1000])
 
-    call var_list_set_string (global%var_list, var_str ("$run_id"), &
+    call global%set_string (var_str ("$run_id"), &
          var_str ("r1"), is_known = .true.)
-    call integrate_process (procname1, global)
+    call integrate_process (procname1, global, local_stack=.true.)
 
     write (u, "(A)")  "* Initialize event generation"
     write (u, "(A)")
 
     call reset_interaction_counter ()
     
-    call var_list_set_log (global%var_list, var_str ("?unweighted"), &
+    call global%set_log (var_str ("?unweighted"), &
          .false., is_known = .true.)
     sample = "simulations6"
-    call var_list_set_string (global%var_list, var_str ("$sample"), &
+    call global%set_string (var_str ("$sample"), &
          sample, is_known = .true.)
     allocate (simulation)
     call simulation%init ([procname1], .true., .true., global)
@@ -2156,9 +2192,9 @@ contains
     call global%init_fallback_model &
          (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"))
 
-    call var_list_set_log (global%var_list, var_str ("?omega_openmp"), &
+    call global%set_log (var_str ("?omega_openmp"), &
          .false., is_known = .true.)
-    call var_list_set_int (global%var_list, var_str ("seed"), &
+    call global%set_int (var_str ("seed"), &
          0, is_known = .true.)    
     
     libname = "simulation_7"
@@ -2167,30 +2203,30 @@ contains
     call prepare_test_library (global, libname, 1, [procname1])
     call compile_library (libname, global)
 
-    call var_list_append_log (global%var_list, &
+    call global%append_log (&
          var_str ("?rebuild_phase_space"), .true., intrinsic = .true.)
-    call var_list_append_log (global%var_list, &
+    call global%append_log (&
          var_str ("?rebuild_grids"), .true., intrinsic = .true.)
-    call var_list_append_log (global%var_list, &
+    call global%append_log (&
          var_str ("?rebuild_events"), .true., intrinsic = .true.)
 
-    call var_list_set_string (global%var_list, var_str ("$method"), &
+    call global%set_string (var_str ("$method"), &
          var_str ("unit_test"), is_known = .true.)
-    call var_list_set_string (global%var_list, var_str ("$phs_method"), &
+    call global%set_string (var_str ("$phs_method"), &
          var_str ("wood"), is_known = .true.)
-    call var_list_set_string (global%var_list, var_str ("$integration_method"),&
+    call global%set_string (var_str ("$integration_method"),&
          var_str ("vamp"), is_known = .true.)
-    call var_list_set_log (global%var_list, var_str ("?use_vamp_equivalences"),&
+    call global%set_log (var_str ("?use_vamp_equivalences"),&
          .true., is_known = .true.)
-    call var_list_set_log (global%var_list, var_str ("?vis_history"),&
+    call global%set_log (var_str ("?vis_history"),&
          .false., is_known = .true.)    
-    call var_list_set_log (global%var_list, var_str ("?integration_timer"),&
+    call global%set_log (var_str ("?integration_timer"),&
          .false., is_known = .true.)    
 
-    call var_list_set_real (global%var_list, var_str ("sqrts"),&
+    call global%set_real (var_str ("sqrts"),&
          1000._default, is_known = .true.)
-    call var_list_set_real (global%var_list, var_str ("ms"), &
-         0._default, is_known = .true.)
+    call global%model_set_real (var_str ("ms"), &
+         0._default)
 
     call flavor_init (flv, 25, global%model)
     call global%beam_structure%init_sf (flavor_get_name ([flv, flv]), [1])
@@ -2198,19 +2234,19 @@ contains
 
     call global%it_list%init ([1], [1000])
 
-    call var_list_set_string (global%var_list, var_str ("$run_id"), &
+    call global%set_string (var_str ("$run_id"), &
          var_str ("r1"), is_known = .true.)
-    call integrate_process (procname1, global)
+    call integrate_process (procname1, global, local_stack=.true.)
 
     write (u, "(A)")  "* Initialize event generation"
     write (u, "(A)")
 
     call reset_interaction_counter ()
     
-    call var_list_set_log (global%var_list, var_str ("?unweighted"), &
+    call global%set_log (var_str ("?unweighted"), &
          .false., is_known = .true.)
     sample = "simulations7"
-    call var_list_set_string (global%var_list, var_str ("$sample"), &
+    call global%set_string (var_str ("$sample"), &
          sample, is_known = .true.)
     allocate (simulation)
     call simulation%init ([procname1], .true., .true., global)
@@ -2237,7 +2273,7 @@ contains
     write (u, "(A)")  "* Re-read the event from file and generate another one"
     write (u, "(A)")
     
-    call var_list_set_log (global%var_list, &
+    call global%set_log (&
          var_str ("?rebuild_events"), .false., is_known = .true.)
 
     call reset_interaction_counter ()
@@ -2319,9 +2355,9 @@ contains
     call global%init_fallback_model &
          (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"))
 
-    call var_list_set_log (global%var_list, var_str ("?omega_openmp"), &
+    call global%set_log (var_str ("?omega_openmp"), &
          .false., is_known = .true.)
-    call var_list_set_int (global%var_list, var_str ("seed"), &
+    call global%set_int (var_str ("seed"), &
          0, is_known = .true.)        
 
     libname = "simulation_8"
@@ -2330,30 +2366,30 @@ contains
     call prepare_test_library (global, libname, 1, [procname1])
     call compile_library (libname, global)
 
-    call var_list_append_log (global%var_list, &
+    call global%append_log (&
          var_str ("?rebuild_phase_space"), .true., intrinsic = .true.)
-    call var_list_append_log (global%var_list, &
+    call global%append_log (&
          var_str ("?rebuild_grids"), .true., intrinsic = .true.)
-    call var_list_append_log (global%var_list, &
+    call global%append_log (&
          var_str ("?rebuild_events"), .true., intrinsic = .true.)
 
-    call var_list_set_string (global%var_list, var_str ("$method"), &
+    call global%set_string (var_str ("$method"), &
          var_str ("unit_test"), is_known = .true.)
-    call var_list_set_string (global%var_list, var_str ("$phs_method"), &
+    call global%set_string (var_str ("$phs_method"), &
          var_str ("wood"), is_known = .true.)
-    call var_list_set_string (global%var_list, var_str ("$integration_method"),&
+    call global%set_string (var_str ("$integration_method"),&
          var_str ("vamp"), is_known = .true.)
-    call var_list_set_log (global%var_list, var_str ("?use_vamp_equivalences"),&
+    call global%set_log (var_str ("?use_vamp_equivalences"),&
          .true., is_known = .true.)   
-    call var_list_set_log (global%var_list, var_str ("?vis_history"),&
+    call global%set_log (var_str ("?vis_history"),&
          .false., is_known = .true.)    
-    call var_list_set_log (global%var_list, var_str ("?integration_timer"),&
+    call global%set_log (var_str ("?integration_timer"),&
          .false., is_known = .true.)    
 
-    call var_list_set_real (global%var_list, var_str ("sqrts"),&
+    call global%set_real (var_str ("sqrts"),&
          1000._default, is_known = .true.)
-    call var_list_set_real (global%var_list, var_str ("ms"), &
-         0._default, is_known = .true.)
+    call global%model_set_real (var_str ("ms"), &
+         0._default)
 
     call flavor_init (flv, 25, global%model)
     call global%beam_structure%init_sf (flavor_get_name ([flv, flv]), [1])
@@ -2361,19 +2397,19 @@ contains
 
     call global%it_list%init ([1], [1000])
 
-    call var_list_set_string (global%var_list, var_str ("$run_id"), &
+    call global%set_string (var_str ("$run_id"), &
          var_str ("r1"), is_known = .true.)
-    call integrate_process (procname1, global)
+    call integrate_process (procname1, global, local_stack=.true.)
 
     write (u, "(A)")  "* Initialize event generation"
     write (u, "(A)")
 
     call reset_interaction_counter ()
     
-    call var_list_set_log (global%var_list, var_str ("?unweighted"), &
+    call global%set_log (var_str ("?unweighted"), &
          .false., is_known = .true.)
     sample = "simulations8"
-    call var_list_set_string (global%var_list, var_str ("$sample"), &
+    call global%set_string (var_str ("$sample"), &
          sample, is_known = .true.)
     allocate (simulation)
     call simulation%init ([procname1], .true., .true., global)
@@ -2504,9 +2540,9 @@ contains
     call global%init_fallback_model &
          (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"))
 
-    call var_list_set_log (global%var_list, var_str ("?omega_openmp"), &
+    call global%set_log (var_str ("?omega_openmp"), &
          .false., is_known = .true.)
-    call var_list_set_int (global%var_list, var_str ("seed"), &
+    call global%set_int (var_str ("seed"), &
          0, is_known = .true.)    
     
     libname = "simulation_9"
@@ -2515,30 +2551,30 @@ contains
     call prepare_test_library (global, libname, 1, [procname1])
     call compile_library (libname, global)
 
-    call var_list_append_log (global%var_list, &
+    call global%append_log (&
          var_str ("?rebuild_phase_space"), .true., intrinsic = .true.)
-    call var_list_append_log (global%var_list, &
+    call global%append_log (&
          var_str ("?rebuild_grids"), .true., intrinsic = .true.)
-    call var_list_append_log (global%var_list, &
+    call global%append_log (&
          var_str ("?rebuild_events"), .true., intrinsic = .true.)
 
-    call var_list_set_string (global%var_list, var_str ("$method"), &
+    call global%set_string (var_str ("$method"), &
          var_str ("unit_test"), is_known = .true.)
-    call var_list_set_string (global%var_list, var_str ("$phs_method"), &
+    call global%set_string (var_str ("$phs_method"), &
          var_str ("wood"), is_known = .true.)
-    call var_list_set_string (global%var_list, var_str ("$integration_method"),&
+    call global%set_string (var_str ("$integration_method"),&
          var_str ("vamp"), is_known = .true.)
-    call var_list_set_log (global%var_list, var_str ("?use_vamp_equivalences"),&
+    call global%set_log (var_str ("?use_vamp_equivalences"),&
          .true., is_known = .true.)
-    call var_list_set_log (global%var_list, var_str ("?vis_history"),&
+    call global%set_log (var_str ("?vis_history"),&
          .false., is_known = .true.)    
-    call var_list_set_log (global%var_list, var_str ("?integration_timer"),&
+    call global%set_log (var_str ("?integration_timer"),&
          .false., is_known = .true.)    
 
-    call var_list_set_real (global%var_list, var_str ("sqrts"),&
+    call global%set_real (var_str ("sqrts"),&
          1000._default, is_known = .true.)
-    call var_list_set_real (global%var_list, var_str ("ms"), &
-         0._default, is_known = .true.)
+    call global%model_set_real (var_str ("ms"), &
+         0._default)
 
     call flavor_init (flv, 25, global%model)
     call global%beam_structure%init_sf (flavor_get_name ([flv, flv]), [1])
@@ -2546,19 +2582,19 @@ contains
 
     call global%it_list%init ([1], [1000])
 
-    call var_list_set_string (global%var_list, var_str ("$run_id"), &
+    call global%set_string (var_str ("$run_id"), &
          var_str ("r1"), is_known = .true.)
-    call integrate_process (procname1, global)
+    call integrate_process (procname1, global, local_stack=.true.)
 
     write (u, "(A)")  "* Initialize event generation"
     write (u, "(A)")
 
     call reset_interaction_counter ()
     
-    call var_list_set_log (global%var_list, var_str ("?unweighted"), &
+    call global%set_log (var_str ("?unweighted"), &
          .false., is_known = .true.)
     sample = "simulations9"
-    call var_list_set_string (global%var_list, var_str ("$sample"), &
+    call global%set_string (var_str ("$sample"), &
          sample, is_known = .true.)
     allocate (simulation)
     call simulation%init ([procname1], .true., .true., global)
@@ -2652,9 +2688,9 @@ contains
     call syntax_pexpr_init ()
 
     call global%global_init ()
-    call var_list_set_log (global%var_list, var_str ("?omega_openmp"), &
+    call global%set_log (var_str ("?omega_openmp"), &
          .false., is_known = .true.)
-    call var_list_set_int (global%var_list, var_str ("seed"), &
+    call global%set_int (var_str ("seed"), &
          0, is_known = .true.)    
     
     libname = "simulation_10a"
@@ -2663,38 +2699,38 @@ contains
     call prepare_test_library (global, libname, 1, [procname1])
     call compile_library (libname, global)
 
-    call var_list_append_log (global%var_list, &
+    call global%append_log (&
          var_str ("?rebuild_phase_space"), .true., intrinsic = .true.)
-    call var_list_append_log (global%var_list, &
+    call global%append_log (&
          var_str ("?rebuild_grids"), .true., intrinsic = .true.)
-    call var_list_append_log (global%var_list, &
+    call global%append_log (&
          var_str ("?rebuild_events"), .true., intrinsic = .true.)
 
-    call var_list_set_string (global%var_list, var_str ("$method"), &
+    call global%set_string (var_str ("$method"), &
          var_str ("unit_test"), is_known = .true.)
-    call var_list_set_string (global%var_list, var_str ("$phs_method"), &
+    call global%set_string (var_str ("$phs_method"), &
          var_str ("single"), is_known = .true.)
-    call var_list_set_string (global%var_list, var_str ("$integration_method"),&
+    call global%set_string (var_str ("$integration_method"),&
          var_str ("midpoint"), is_known = .true.)
-    call var_list_set_log (global%var_list, var_str ("?vis_history"),&
+    call global%set_log (var_str ("?vis_history"),&
          .false., is_known = .true.)    
-    call var_list_set_log (global%var_list, var_str ("?integration_timer"),&
+    call global%set_log (var_str ("?integration_timer"),&
          .false., is_known = .true.)    
 
-    call var_list_set_real (global%var_list, var_str ("sqrts"),&
+    call global%set_real (var_str ("sqrts"),&
          1000._default, is_known = .true.)
 
     call global%it_list%init ([1], [1000])
 
-    call var_list_set_string (global%var_list, var_str ("$run_id"), &
+    call global%set_string (var_str ("$run_id"), &
          var_str ("simulations1"), is_known = .true.)
-    call integrate_process (procname1, global)
+    call integrate_process (procname1, global, local_stack=.true.)
 
     write (u, "(A)")  "* Initialize alternative environment with custom weight"
     write (u, "(A)")
     
     call alt_env(1)%local_init (global)
-    call alt_env(1)%link (global)
+    call alt_env(1)%activate ()
 
     expr_text = "2"
     write (u, "(A,A)")  "weight = ", char (expr_text)
@@ -2712,9 +2748,9 @@ contains
     write (u, "(A)")  "* Initialize event generation"
     write (u, "(A)")
 
-    call var_list_set_log (global%var_list, var_str ("?unweighted"), &
+    call global%set_log (var_str ("?unweighted"), &
          .false., is_known = .true.)
-    call simulation%init ([procname1], .true., .true., global, alt_env)
+    call simulation%init ([procname1], .true., .true., global, alt_env=alt_env)
     call simulation%init_process_selector ()
 
     data = simulation%get_data ()
@@ -2758,6 +2794,7 @@ contains
     type(rt_data_t), target :: global
     type(prclib_entry_t), pointer :: lib
     type(string_t) :: prefix, procname1, procname2
+    type(process_t), pointer :: process
     type(simulation_t), target :: simulation
     
     write (u, "(A)")  "* Test output: simulations_11"
@@ -2773,17 +2810,23 @@ contains
     allocate (lib)
     call global%add_prclib (lib)
 
-    call var_list_set_int (global%var_list, var_str ("seed"), &
+    call global%set_int (var_str ("seed"), &
          0, is_known = .true.)        
     
     prefix = "simulation_11"
     procname1 = prefix // "_p"
     procname2 = prefix // "_d"
     call prepare_testbed &
-         (global%prclib, global%process_stack, global%model_list, &
-         global%model, prefix, global%os_data, &
+         (global%prclib, global%process_stack, &
+         prefix, global%os_data, &
          scattering=.true., decay=.true.)
-    call model_set_unstable (global%model, 25, [procname2])
+
+    call global%select_model (var_str ("Test"))
+    call global%model%set_par (var_str ("ff"), 0.4_default)
+    call global%model%set_par (var_str ("mf"), &
+         global%model%get_real (var_str ("ff")) &
+         * global%model%get_real (var_str ("ms")))
+    call global%model%set_unstable (25, [procname2])
 
     write (u, "(A)")  "* Initialize simulation object"
     write (u, "(A)")
@@ -2836,9 +2879,9 @@ contains
     call syntax_model_file_init ()
 
     call global%global_init ()
-    call var_list_set_log (global%var_list, var_str ("?omega_openmp"), &
+    call global%set_log (var_str ("?omega_openmp"), &
          .false., is_known = .true.)
-    call var_list_set_int (global%var_list, var_str ("seed"), &
+    call global%set_int (var_str ("seed"), &
          0, is_known = .true.)    
     
     libname = "simulation_12"
@@ -2847,48 +2890,48 @@ contains
     call prepare_test_library (global, libname, 1, [procname1])
     call compile_library (libname, global)
 
-    call var_list_append_log (global%var_list, &
+    call global%append_log (&
          var_str ("?rebuild_phase_space"), .true., intrinsic = .true.)
-    call var_list_append_log (global%var_list, &
+    call global%append_log (&
          var_str ("?rebuild_grids"), .true., intrinsic = .true.)
-    call var_list_append_log (global%var_list, &
+    call global%append_log (&
          var_str ("?rebuild_events"), .true., intrinsic = .true.)
 
-    call var_list_set_string (global%var_list, var_str ("$method"), &
+    call global%set_string (var_str ("$method"), &
          var_str ("unit_test"), is_known = .true.)
-    call var_list_set_string (global%var_list, var_str ("$phs_method"), &
+    call global%set_string (var_str ("$phs_method"), &
          var_str ("single"), is_known = .true.)
-    call var_list_set_string (global%var_list, var_str ("$integration_method"),&
+    call global%set_string (var_str ("$integration_method"),&
          var_str ("midpoint"), is_known = .true.)
-    call var_list_set_log (global%var_list, var_str ("?vis_history"),&
+    call global%set_log (var_str ("?vis_history"),&
          .false., is_known = .true.)    
-    call var_list_set_log (global%var_list, var_str ("?integration_timer"),&
+    call global%set_log (var_str ("?integration_timer"),&
          .false., is_known = .true.)    
 
-    call var_list_set_real (global%var_list, var_str ("sqrts"),&
+    call global%set_real (var_str ("sqrts"),&
          1000._default, is_known = .true.)
-    call var_list_set_real (global%var_list, var_str ("ms"), &
-         0._default, is_known = .true.)
+    call global%model_set_real (var_str ("ms"), &
+         0._default)
 
     call flavor_init (flv, 25, global%model)
 
     call global%it_list%init ([1], [1000])
 
-    call var_list_set_string (global%var_list, var_str ("$run_id"), &
+    call global%set_string (var_str ("$run_id"), &
          var_str ("r1"), is_known = .true.)
-    call integrate_process (procname1, global)
+    call integrate_process (procname1, global, local_stack=.true.)
 
     write (u, "(A)")  "* Initialize event generation"
     write (u, "(A)")
 
-    call var_list_set_log (global%var_list, var_str ("?unweighted"), &
+    call global%set_log (var_str ("?unweighted"), &
          .false., is_known = .true.)
     sample = "simulations_12"
-    call var_list_set_string (global%var_list, var_str ("$sample"), &
+    call global%set_string (var_str ("$sample"), &
          sample, is_known = .true.)
-    call var_list_set_int (global%var_list, var_str ("sample_split_n_evt"), &
+    call global%set_int (var_str ("sample_split_n_evt"), &
          2, is_known = .true.)
-    call var_list_set_int (global%var_list, var_str ("sample_split_index"), &
+    call global%set_int (var_str ("sample_split_index"), &
          42, is_known = .true.)
     allocate (simulation)
     call simulation%init ([procname1], .true., .true., global)

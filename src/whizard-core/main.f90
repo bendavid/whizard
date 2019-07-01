@@ -1,4 +1,4 @@
-! WHIZARD 2.2.2 July 6 2014
+! WHIZARD 2.2.3 Nov 30 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,8 +6,10 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
+!     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     Christian Weiss <christian.weiss@desy.de>
+!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -29,16 +31,17 @@
 
 program main
 
-  use iso_varying_string, string_t => varying_string !NODEP!
-  use system_dependencies !NODEP!
-  use limits, only: CMDLINE_ARG_LEN !NODEP!
-  use diagnostics !NODEP!
+  use iso_varying_string, string_t => varying_string
   use unit_tests
+  use system_dependencies
+  use diagnostics
   use ifiles
   use os_interface
   use whizard
 
   implicit none
+
+  integer, parameter :: CMDLINE_ARG_LEN = 1000
 
   ! Main program variable declarations
   character(CMDLINE_ARG_LEN) :: arg
@@ -357,22 +360,27 @@ program main
       quit = .true.
    end if
    
-   ! Set options and initialize the whizard object
    allocate (options)
-   options%preload_model = model
-   options%default_lib = default_lib
-   options%preload_libraries = libraries
-   options%rebuild_library = rebuild_library
-   options%recompile_library = recompile_library
-   options%rebuild_user = rebuild_user 
-   options%rebuild_phs = rebuild_phs
-   options%rebuild_grids = rebuild_grids
-   options%rebuild_events = rebuild_events
-  
    allocate (whizard_instance)
-   call whizard_instance%init (options, paths, logfile)
 
-   call mask_term_signals ()
+   if (.not. quit) then
+
+      ! Set options and initialize the whizard object
+      options%preload_model = model
+      options%default_lib = default_lib
+      options%preload_libraries = libraries
+      options%rebuild_library = rebuild_library
+      options%recompile_library = recompile_library
+      options%rebuild_user = rebuild_user 
+      options%rebuild_phs = rebuild_phs
+      options%rebuild_grids = rebuild_grids
+      options%rebuild_events = rebuild_events
+      
+      call whizard_instance%init (options, paths, logfile)
+      
+      call mask_term_signals ()
+
+   end if
 
    ! Run commands given on the command line
    if (.not. quit .and. ifile_get_length (commands) > 0) then

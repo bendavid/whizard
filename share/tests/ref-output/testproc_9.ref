@@ -5,7 +5,7 @@ $method = "unit_test"
 | Process library 'testproc_9_lib': recorded process 'testproc_9_p'
 | Process library 'testproc_9_lib': recorded process 'testproc_9_d'
 seed = 0
-Test.ff =  4.000000000000E-01
+Test.ff =>  4.000000000000E-01
 | Process library 'testproc_9_lib': compiling ...
 | Process library 'testproc_9_lib': ... success.
 $phs_method = "single"

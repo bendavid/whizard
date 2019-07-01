@@ -67,7 +67,7 @@
 ------------------------------------------------------------------------
  Process #2:
    Process   = 'sim_extra'
-   Library   = 'simulation_1b'
+   Library   = 'simulation_1a'
    Run       = 'simulations2'
    is valid  = T
    Integral  =  7.746462203555E+03

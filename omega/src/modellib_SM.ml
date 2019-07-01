@@ -1,4 +1,4 @@
-(* $Id: modellib_SM.ml 5864 2014-06-02 13:12:47Z ohl $
+(* $Id: modellib_SM.ml 6275 2014-11-17 17:02:10Z jr_reuter $
 
    Copyright (C) 1999-2014 by
 
@@ -24,9 +24,9 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 let rcs_file = RCS.parse "Modellib_SM" ["Lagragians"]
-    { RCS.revision = "$Revision: 5864 $";
-      RCS.date = "$Date: 2014-06-02 15:12:47 +0200 (Mon, 02 Jun 2014) $";
-      RCS.author = "$Author: ohl $";
+    { RCS.revision = "$Revision: 6275 $";
+      RCS.date = "$Date: 2014-11-17 18:02:10 +0100 (Mon, 17 Nov 2014) $";
+      RCS.author = "$Author: jr_reuter $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/omega/src/modellib_SM.ml $" }
 
@@ -465,17 +465,17 @@ module QCD =
 
     let flavor_to_TeX = function
       | U -> "u"
-      | Ubar -> "\bar{u}"
+      | Ubar -> "\\bar{u}"
       | D -> "d"
-      | Dbar -> "\bar{d}"
+      | Dbar -> "\\bar{d}"
       | C -> "c"
-      | Cbar -> "bar{c}"
+      | Cbar -> "\\bar{c}"
       | S -> "s"
-      | Sbar -> "\bar{s}"
+      | Sbar -> "\\bar{s}"
       | T -> "t"
-      | Tbar -> "\bar{t}"
+      | Tbar -> "\\bar{t}"
       | B -> "b"
-      | Bbar -> "\bar{b}"
+      | Bbar -> "\\bar{b}"
       | Gl -> "g"
 
     let flavor_symbol = function
@@ -505,7 +505,7 @@ module QCD =
       | T -> 6 | Tbar -> -6
       | Gl -> 21
 
-    let mass_symbol f =
+    let mass_symbol f = 
       "mass(" ^ string_of_int (abs (pdg f)) ^ ")"
 
     let width_symbol f =
@@ -531,6 +531,7 @@ module type SM_flags =
     val ckm_present : bool
     val top_anom : bool
     val top_anom_4f : bool
+    val tt_threshold : bool
   end
 
 module SM_no_anomalous : SM_flags =
@@ -544,6 +545,7 @@ module SM_no_anomalous : SM_flags =
     let ckm_present = false
     let top_anom = false
     let top_anom_4f = false
+    let tt_threshold = false
   end
 
 module SM_no_anomalous_ckm : SM_flags =
@@ -557,6 +559,7 @@ module SM_no_anomalous_ckm : SM_flags =
     let ckm_present = true
     let top_anom = false
     let top_anom_4f = false
+    let tt_threshold = false
   end
 
 module SM_anomalous : SM_flags =
@@ -570,6 +573,7 @@ module SM_anomalous : SM_flags =
     let ckm_present = false
     let top_anom = false
     let top_anom_4f = false
+    let tt_threshold = false
   end
 
 module SM_anomalous_ckm : SM_flags =
@@ -583,6 +587,7 @@ module SM_anomalous_ckm : SM_flags =
     let ckm_present = true
     let top_anom = false
     let top_anom_4f = false
+    let tt_threshold = false
   end
 
 module SM_k_matrix : SM_flags =
@@ -596,6 +601,7 @@ module SM_k_matrix : SM_flags =
     let ckm_present = false
     let top_anom = false
     let top_anom_4f = false
+    let tt_threshold = false
   end
 
 module SM_Higgs : SM_flags =
@@ -609,6 +615,7 @@ module SM_Higgs : SM_flags =
     let ckm_present = false
     let top_anom = false
     let top_anom_4f = false
+    let tt_threshold = false
   end
 
 module SM_anomalous_top : SM_flags =
@@ -622,6 +629,21 @@ module SM_anomalous_top : SM_flags =
     let ckm_present = false
     let top_anom = true
     let top_anom_4f = true
+    let tt_threshold = false
+  end
+  
+module SM_tt_threshold : SM_flags =
+  struct
+    let higgs_triangle = false
+    let higgs_hmm = false
+    let triple_anom = false
+    let quartic_anom = false
+    let higgs_anom = false
+    let k_matrix = false
+    let ckm_present = false
+    let top_anom = false
+    let top_anom_4f = false
+    let tt_threshold = true
   end
 
 (* \thocwmodulesection{Complete Minimal Standard Model (including some extensions)} *)
@@ -889,6 +911,7 @@ module SM (Flags : SM_flags) =
       | G_NC_neutrino | G_NC_lepton | G_NC_up | G_NC_down 
       | G_TVA_ttA | G_TVA_bbA 
       | G_VLR_ttZ | G_TVA_ttZ | G_TVA_bbZ 
+      | VA_ILC_ttA | VA_ILC_ttZ
       | G_VLR_btW | G_VLR_tbW
       | G_TLR_btW | G_TRL_tbW
       | G_TLR_btWZ | G_TRL_tbWZ
@@ -956,6 +979,7 @@ module SM (Flags : SM_flags) =
       | I_lambda_AWW | I_lambda_ZWW | I_lambda5_AWW 
       | I_lambda5_ZWW | G_TVA_ttA | G_TVA_bbA 
       | G_VLR_ttZ | G_TVA_ttZ | G_TVA_bbZ 
+      | VA_ILC_ttA | VA_ILC_ttZ
       | G_VLR_btW | G_VLR_tbW | G_TLR_btW | G_TRL_tbW
       | G_TLR_btWA | G_TRL_tbWA | G_TLR_btWZ | G_TRL_tbWZ	
       | G_VLR_qBuB | G_VLR_qBuB_u | G_VLR_qBuB_d
@@ -1378,8 +1402,8 @@ module SM (Flags : SM_flags) =
      Trivial proof:
      \begin{equation}
        -1 = \textrm{Im}\left(\frac{1}{a_\chi(s)}\right)
-          = \frac{\textrm{Im}(a_\chi^*(s))}{|a_\chi(s)|^2}
-          = - \frac{\textrm{Im}(a_\chi(s))}{|a_\chi(s)|^2}
+          = \frac{\textrm{Im}(a_\chi^*(s))}{ |a_\chi(s)|^2 }
+          = - \frac{\textrm{Im}(a_\chi(s))}{ |a_\chi(s)|^2 }
      \end{equation}
      i.\,e.~$\textrm{Im}(a_\chi(s)) = |a_\chi(s)|^2$.}
    \begin{equation}
@@ -1645,6 +1669,12 @@ i*)
       else
         []
 
+    let tt_threshold_ttA =
+      if Flags.tt_threshold then
+        [ ((M (U (-3)), G Ga, M (U 3)), FBF (1, Psibar, VAM, Psi), VA_ILC_ttA) ]
+      else
+        []
+
 (* \begin{equation}
      \Delta\mathcal{L}_{bb\gamma} =
         - e \frac{\upsilon}{\Lambda^2}
@@ -1682,6 +1712,12 @@ i*)
       if Flags.top_anom then
         [ ((M (U (-3)), G Z, M (U 3)), FBF (1, Psibar, VLRM, Psi), G_VLR_ttZ);
           ((M (U (-3)), G Z, M (U 3)), FBF (1, Psibar, TVAM, Psi), G_TVA_ttZ) ]
+      else
+        []
+
+    let tt_threshold_ttZ =
+      if Flags.tt_threshold then
+        [ ((M (U (-3)), G Z, M (U 3)), FBF (1, Psibar, VAM, Psi), VA_ILC_ttZ) ]
       else
         []
 
@@ -1922,6 +1958,7 @@ effective operators:
        yukawa @ triple_gauge @
        gauge_higgs @ higgs @ higgs_triangle_vertices 
        @ goldstone_vertices @
+       tt_threshold_ttA @ tt_threshold_ttZ @
        anomalous_ttA @ anomalous_bbA @
        anomalous_ttZ @ anomalous_bbZ @
        anomalous_tbW @ anomalous_tbWA @ anomalous_tbWZ @
@@ -2147,7 +2184,10 @@ effective operators:
           end
 
     let mass_symbol f = 
-      "mass(" ^ string_of_int (abs (pdg f)) ^ ")"
+      if ( Flags.tt_threshold && (abs (pdg f)) == 6 ) then
+        "ttv_mtpole(p12*p12)"
+      else
+        "mass(" ^ string_of_int (abs (pdg f)) ^ ")"
 
     let width_symbol f =
       "width(" ^ string_of_int (abs (pdg f)) ^ ")"
@@ -2162,6 +2202,7 @@ effective operators:
       | G_NC_up -> "gncup" | G_NC_down -> "gncdwn"
       | G_TVA_ttA -> "gtva_tta" | G_TVA_bbA -> "gtva_bba" 
       | G_VLR_ttZ -> "gvlr_ttz" | G_TVA_ttZ -> "gtva_ttz" | G_TVA_bbZ -> "gtva_bbz"
+      | VA_ILC_ttA -> "va_ilc_tta" | VA_ILC_ttZ -> "va_ilc_ttz"
       | G_VLR_btW -> "gvlr_btw" | G_VLR_tbW -> "gvlr_tbw"
       | G_TLR_btW -> "gtlr_btw" | G_TRL_tbW -> "gtrl_tbw"
       | G_TLR_btWA -> "gtlr_btwa" | G_TRL_tbWA -> "gtrl_tbwa"

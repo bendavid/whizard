@@ -80,8 +80,10 @@ Expression: analysis (parse tree):
 +  SEQUENCE    <lsinglet>  =  <lterm>
 |  +  SEQUENCE    <lterm>  =  true
 |  |  +  KEYWORD     true  = [keyword] true
+| Switching to model 'QCD'
 $model_name = "QCD"
 | Restoring model 'SM'
+| Switching to model 'QED'
 $model_name = "QED"
 | Restoring model 'SM'
 | Process library 'structure_4_lib1': initialized

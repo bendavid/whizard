@@ -1,4 +1,4 @@
-! WHIZARD 2.2.2 July 6 2014
+! WHIZARD 2.2.3 Nov 30 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,8 +6,10 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
+!     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     Christian Weiss <christian.weiss@desy.de>
+!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -29,22 +31,22 @@
 
 module sf_pdf_builtin
 
-  use kinds, only: default !NODEP!
-  use kinds, only: double !NODEP!
-  use iso_varying_string, string_t => varying_string !NODEP!
-  use limits, only: PDF_BUILTIN_DEFAULT_PROTON !NODEP!
-  use limits, only: PDF_BUILTIN_DEFAULT_PION !NODEP!
-  use limits, only: PDF_BUILTIN_DEFAULT_PHOTON !NODEP!
-  use limits, only: FMT_17 !NODEP!
-  use file_utils !NODEP!
-  use diagnostics !NODEP!
-  use lorentz !NODEP!
-  use pdf_builtin !NODEP!
+  use kinds, only: default
+  use kinds, only: double
+  use iso_varying_string, string_t => varying_string
+  use io_units
+  use format_defs, only: FMT_17
   use unit_tests
+  use diagnostics
   use os_interface
+  use physics_defs, only: PROTON, PHOTON, GLUON
+  use physics_defs, only: HADRON_REMNANT_SINGLET
+  use physics_defs, only: HADRON_REMNANT_TRIPLET
+  use physics_defs, only: HADRON_REMNANT_OCTET
   use sm_qcd
+  use lorentz
   use pdg_arrays
-  use models
+  use model_data
   use flavors
   use colors
   use quantum_numbers
@@ -53,6 +55,7 @@ module sf_pdf_builtin
   use interactions
   use sf_aux
   use sf_base
+  use pdf_builtin !NODEP!
   use hoppet_interface
 
   implicit none
@@ -66,7 +69,7 @@ module sf_pdf_builtin
      private
      integer :: id = -1
      type (string_t) :: name
-     type(model_t), pointer :: model => null ()
+     class(model_data_t), pointer :: model => null ()
      type(flavor_t) :: flv_in
      logical :: invert
      logical :: has_photon
@@ -107,13 +110,16 @@ module sf_pdf_builtin
   end type alpha_qcd_pdf_builtin_t
   
 
+  character(*), parameter :: PDF_BUILTIN_DEFAULT_PROTON = "CTEQ6L"
+  character(*), parameter :: PDF_BUILTIN_DEFAULT_PION   = "NONE"
+  character(*), parameter :: PDF_BUILTIN_DEFAULT_PHOTON = "MRST2004QEDp"
+
 contains
 
-  subroutine pdf_builtin_data_init (data, pdf_status, &
+  subroutine pdf_builtin_data_init (data, &
        model, pdg_in, name, path, hoppet_b_matching)
     class(pdf_builtin_data_t), intent(out) :: data
-    type(pdf_builtin_status_t), intent(inout) :: pdf_status
-    type(model_t), intent(in), target :: model
+    class(model_data_t), intent(in), target :: model
     type(pdg_array_t), intent(in) :: pdg_in
     type(string_t), intent(in) :: name
     type(string_t), intent(in) :: path
@@ -155,7 +161,7 @@ contains
     if (data%id < 0) call msg_fatal ("unknown PDF set " // char (data%name))
     data%has_photon = pdf_provides_photon (data%id)
     if (present (hoppet_b_matching))  data%hoppet_b_matching = hoppet_b_matching
-    call pdf_init (pdf_status, data%id, path)
+    call pdf_init (data%id, path)
     if (data%hoppet_b_matching)  call hoppet_init (.true., pdf_id = data%id)
   end subroutine pdf_builtin_data_init
 
@@ -170,7 +176,7 @@ contains
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: verbose    
     integer :: u
-    u = output_unit (unit);  if (u < 0)  return
+    u = given_output_unit (unit);  if (u < 0)  return
     write (u, "(1x,A)")  "PDF builtin data:"
     if (data%id < 0) then
        write (u, "(3x,A)") "[undefined]"
@@ -234,7 +240,7 @@ contains
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: testflag
     integer :: u
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     if (associated (object%data)) then
        call object%data%write (u)
        if (object%status >= SF_DONE_KINEMATICS) then
@@ -406,7 +412,7 @@ contains
     class(alpha_qcd_pdf_builtin_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     write (u, "(3x,A)")  "QCD parameters (pdf_builtin):"
     write (u, "(5x,A,A)")  "PDF set = ", char (object%pdfset_name)
     write (u, "(5x,A,I0)") "PDF ID  = ", object%pdfset_id
@@ -419,9 +425,8 @@ contains
     alpha = pdf_alphas (alpha_qcd%pdfset_id, scale)
   end function alpha_qcd_pdf_builtin_get
   
-  subroutine alpha_qcd_pdf_builtin_init (alpha_qcd, status, name, path)
+  subroutine alpha_qcd_pdf_builtin_init (alpha_qcd, name, path)
     class(alpha_qcd_pdf_builtin_t), intent(out) :: alpha_qcd
-    type(pdf_builtin_status_t), intent(inout) :: status
     type(string_t), intent(in) :: name
     type(string_t), intent(in) :: path
     alpha_qcd%pdfset_name = name
@@ -429,7 +434,7 @@ contains
     if (alpha_qcd%pdfset_id < 0) &
          call msg_fatal ("QCD parameter initialization: PDF set " &
          // char (name) // " is unknown")
-    call pdf_init (status, alpha_qcd%pdfset_id, path)
+    call pdf_init (alpha_qcd%pdfset_id, path)
   end subroutine alpha_qcd_pdf_builtin_init
     
 
@@ -450,13 +455,11 @@ contains
   subroutine sf_pdf_builtin_1 (u)
     integer, intent(in) :: u
     type(os_data_t) :: os_data
-    type(model_list_t) :: model_list
-    type(model_t), pointer :: model
+    type(model_data_t), target :: model
     type(pdg_array_t) :: pdg_in
     type(pdg_array_t), dimension(1) :: pdg_out
     integer, dimension(:), allocatable :: pdg1
     class(sf_data_t), allocatable :: data
-    type(pdf_builtin_status_t) :: status
     type(string_t) :: name
     
     write (u, "(A)")  "* Test output: sf_pdf_builtin_1"
@@ -468,9 +471,8 @@ contains
     write (u, "(A)")
 
     call os_data_init (os_data)
-    call syntax_model_file_init ()
-    call model_list%read_model (var_str ("QCD"), &
-         var_str ("QCD.mdl"), os_data, model)
+
+    call model%init_sm_test ()
     pdg_in = PROTON
 
     allocate (pdf_builtin_data_t :: data)
@@ -484,7 +486,7 @@ contains
 
     select type (data)
     type is (pdf_builtin_data_t)
-       call data%init (status, model, pdg_in, name, &
+       call data%init (model, pdg_in, name, &
             os_data%pdf_builtin_datapath)
     end select
 
@@ -497,8 +499,7 @@ contains
     pdg1 = pdg_out(1)
     write (u, "(2x,99(1x,I0))")  pdg1
 
-    call model_list%final ()
-    call syntax_model_file_final ()
+    call model%final ()
     
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: sf_pdf_builtin_1"
@@ -508,13 +509,11 @@ contains
   subroutine sf_pdf_builtin_2 (u)
     integer, intent(in) :: u
     type(os_data_t) :: os_data
-    type(model_list_t) :: model_list
-    type(model_t), pointer :: model
+    type(model_data_t), target :: model
     type(flavor_t) :: flv
     type(pdg_array_t) :: pdg_in
     class(sf_data_t), allocatable, target :: data
     class(sf_int_t), allocatable :: sf_int
-    type(pdf_builtin_status_t) :: status
     type(string_t) :: name
     type(vector4_t) :: k
     type(vector4_t), dimension(2) :: q
@@ -531,9 +530,7 @@ contains
     write (u, "(A)")
 
     call os_data_init (os_data)
-    call syntax_model_file_init ()
-    call model_list%read_model (var_str ("QCD"), &
-         var_str ("QCD.mdl"), os_data, model)
+    call model%init_sm_test ()
     call flavor_init (flv, PROTON, model)
     pdg_in = PROTON
 
@@ -544,7 +541,7 @@ contains
     allocate (pdf_builtin_data_t :: data)
     select type (data)
     type is (pdf_builtin_data_t)
-       call data%init (status, model, pdg_in, name, &
+       call data%init (model, pdg_in, name, &
             os_data%pdf_builtin_datapath)
     end select
        
@@ -613,8 +610,7 @@ contains
     write (u, "(A)")  "* Cleanup"
 
     call sf_int%final ()
-    call model_list%final ()
-    call syntax_model_file_final ()
+    call model%final ()
     
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: sf_pdf_builtin_2"
@@ -624,8 +620,6 @@ contains
   subroutine sf_pdf_builtin_3 (u)
     integer, intent(in) :: u
     type(os_data_t) :: os_data
-    type(model_list_t) :: model_list
-    type(pdf_builtin_status_t) :: status
     type(qcd_t) :: qcd
     type(string_t) :: name
     
@@ -646,7 +640,7 @@ contains
     allocate (alpha_qcd_pdf_builtin_t :: qcd%alpha)
     select type (alpha => qcd%alpha)
     type is (alpha_qcd_pdf_builtin_t)
-       call alpha%init (status, name, os_data%pdf_builtin_datapath)
+       call alpha%init (name, os_data%pdf_builtin_datapath)
     end select
     call qcd%write (u)
 
@@ -659,8 +653,6 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
 
-    call model_list%final ()
-    
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: sf_pdf_builtin_3"
 

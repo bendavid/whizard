@@ -1,18 +1,18 @@
-!  $Id: omegalib.nw 5434 2014-03-06 18:17:45Z msekulla $
+!  $Id: omegalib.nw 6301 2014-11-25 09:34:00Z bchokoufe $
 !
-!  Copyright (C) 1999-2009 by 
+!  Copyright (C) 1999-2009 by
 !      Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !      Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !      Juergen Reuter <juergen.reuter@desy.de>
 !
 !  WHIZARD is free software; you can redistribute it and/or modify it
-!  under the terms of the GNU General Public License as published by 
+!  under the terms of the GNU General Public License as published by
 !  the Free Software Foundation; either version 2, or (at your option)
 !  any later version.
 !
 !  WHIZARD is distributed in the hope that it will be useful, but
 !  WITHOUT ANY WARRANTY; without even the implied warranty of
-!  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+!  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 !  GNU General Public License for more details.
 !
 !  You should have received a copy of the GNU General Public License
@@ -29,26 +29,26 @@ module omega_bispinor_couplings
   use omega_couplings
   implicit none
   private
-  public :: u, v, ghost       
+  public :: u, v, ghost
   public :: brs_u, brs_v
   public :: va_ff, v_ff, a_ff, vl_ff, vr_ff, vlr_ff, va2_ff
-  public :: f_vaf, f_vf, f_af, f_vlf, f_vrf, f_vlrf, f_va2f 
+  public :: f_vaf, f_vf, f_af, f_vlf, f_vrf, f_vlrf, f_va2f
   public :: sp_ff, s_ff, p_ff, sl_ff, sr_ff, slr_ff
   public :: f_spf, f_sf, f_pf, f_slf, f_srf, f_slrf
   private :: vv_ff, f_vvf
   public :: vmom_ff, mom_ff, mom5_ff, moml_ff, momr_ff, lmom_ff, rmom_ff
   public :: f_vmomf, f_momf, f_mom5f, f_momlf, f_momrf, f_lmomf, f_rmomf
   public :: v2_ff, sv1_ff, sv2_ff, pv1_ff, pv2_ff, svl1_ff, svl2_ff, &
-       svr1_ff, svr2_ff, svlr1_ff, svlr2_ff  
+       svr1_ff, svr2_ff, svlr1_ff, svlr2_ff
   public :: f_v2f, f_svf, f_pvf, f_svlf, f_svrf, f_svlrf
   public :: pot_grf, pot_fgr, s_grf, s_fgr, p_grf, p_fgr, &
        sl_grf, sl_fgr, sr_grf, sr_fgr, slr_grf, slr_fgr
   private :: fgvgr, fgvg5gr, fggvvgr, grkgf, grkggf, grkkggf, &
-             fgkgr, fg5gkgr, grvgf, grg5vgf, grkgggf, fggkggr
+       fgkgr, fg5gkgr, grvgf, grg5vgf, grkgggf, fggkggr
   public :: f_potgr, f_sgr, f_pgr, f_vgr, f_vlrgr, f_slgr, f_srgr, f_slrgr
   public :: gr_potf, gr_sf, gr_pf, gr_vf, gr_vlrf, gr_slf, gr_srf, gr_slrf
-  public :: v_grf, v_fgr 
-  public :: vlr_grf, vlr_fgr 
+  public :: v_grf, v_fgr
+  public :: vlr_grf, vlr_fgr
   public :: f_s2gr, f_svgr, f_slvgr, f_srvgr, f_slrvgr, f_pvgr, f_v2gr, f_v2lrgr
   public :: gr_s2f, gr_svf, gr_pvf, gr_slvf, gr_srvf, gr_slrvf, gr_v2f, gr_v2lrf
   public :: s2_grf, s2_fgr, sv1_grf, sv2_grf, sv1_fgr, sv2_fgr, &
@@ -57,7 +57,7 @@ module omega_bispinor_couplings
             slrv1_grf, slrv2_grf, slrv1_fgr, slrv2_fgr, &
             pv1_grf, pv2_grf, pv1_fgr, pv2_fgr, v2_grf, v2_fgr, &
             v2lr_grf, v2lr_fgr
-  public :: pr_psi, pr_grav 
+  public :: pr_psi, pr_grav
   public :: pj_psi, pg_psi
   integer, parameter, public :: omega_bispinor_cpls_2010_01_A = 0
 contains
@@ -71,7 +71,7 @@ contains
     m = abs(mass)
     pabs = sqrt (dot_product (p%x, p%x))
     if (m < epsilon (m) * pabs) then
-        delta = 0 
+        delta = 0
     else
         delta = sqrt (max (p%t - pabs, 0._default))
     end if
@@ -110,7 +110,7 @@ contains
     pabs = sqrt (dot_product (p%x, p%x))
     m = abs(mass)
     if (m < epsilon (m) * pabs) then
-        delta = 0 
+        delta = 0
     else
         delta = sqrt (max (p%t - pabs, 0._default))
     end if
@@ -137,35 +137,35 @@ contains
     if (mass < 0) then
        psi%a(1:2) = - imago * psi%a(1:2)
        psi%a(3:4) = + imago * psi%a(3:4)
-    end if 
+    end if
   end function v
-  pure function ghost (m, p, s) result (psi) 
+  pure function ghost (m, p, s) result (psi)
       type(bispinor) :: psi
-      real(kind=default), intent(in) :: m 
-      type(momentum), intent(in) :: p 
-      integer, intent(in) :: s    
+      real(kind=default), intent(in) :: m
+      type(momentum), intent(in) :: p
+      integer, intent(in) :: s
       psi%a(:) = 0
       select case (s)
       case (1)
-          psi%a(1)   = 1
-          psi%a(2:4) = 0 
+         psi%a(1)   = 1
+         psi%a(2:4) = 0
       case (2)
-          psi%a(1)   = 0
-          psi%a(2)   = 1
-          psi%a(3:4) = 0
+         psi%a(1)   = 0
+         psi%a(2)   = 1
+         psi%a(3:4) = 0
       case (3)
-          psi%a(1:2) = 0
-          psi%a(3)   = 1
-          psi%a(4)   = 0   
-      case (4) 
-          psi%a(1:3) = 0
-          psi%a(4)   = 1  
+         psi%a(1:2) = 0
+         psi%a(3)   = 1
+         psi%a(4)   = 0
+      case (4)
+         psi%a(1:3) = 0
+         psi%a(4)   = 1
       case (5)
-          psi%a(1) =    1.4
-          psi%a(2) = -  2.3
-          psi%a(3) = - 71.5
-          psi%a(4) =    0.1
-      end select 
+         psi%a(1) =    1.4
+         psi%a(2) = -  2.3
+         psi%a(3) = - 71.5
+         psi%a(4) =    0.1
+      end select
   end function ghost
   pure function brs_u (m, p, s) result (dpsi)
       type(bispinor) :: dpsi, psi
@@ -209,7 +209,7 @@ contains
     j%x(1) =  gr * (   g13 - g24) + gl * (   g31 - g42)
     j%x(2) = (gr * (   g13 + g24) + gl * (   g31 + g42)) * (0, 1)
     j%x(3) =  gr * ( - g14 - g23) + gl * ( - g32 - g41)
-  end function va_ff 
+  end function va_ff
   pure function va2_ff (gva, psil, psir) result (j)
     type(vector) :: j
     complex(kind=default), intent(in), dimension(2) :: gva
@@ -230,7 +230,7 @@ contains
     j%x(1) =  gr * (   g13 - g24) + gl * (   g31 - g42)
     j%x(2) = (gr * (   g13 + g24) + gl * (   g31 + g42)) * (0, 1)
     j%x(3) =  gr * ( - g14 - g23) + gl * ( - g32 - g41)
-  end function va2_ff 
+  end function va2_ff
   pure function v_ff (gv, psil, psir) result (j)
     type(vector) :: j
     complex(kind=default), intent(in) :: gv
@@ -248,7 +248,7 @@ contains
     j%x(1) =   gv * (   g13 - g24 + g31 - g42)
     j%x(2) =   gv * (   g13 + g24 + g31 + g42) * (0, 1)
     j%x(3) =   gv * ( - g14 - g23 - g32 - g41)
-  end function v_ff           
+  end function v_ff
   pure function a_ff (ga, psil, psir) result (j)
     type(vector) :: j
     complex(kind=default), intent(in) :: ga
@@ -266,7 +266,7 @@ contains
     j%x(1) =  -ga * (   g13 - g24 - g31 + g42)
     j%x(2) =  -ga * (   g13 + g24 - g31 - g42) * (0, 1)
     j%x(3) =  -ga * ( - g14 - g23 + g32 + g41)
-  end function a_ff      
+  end function a_ff
   pure function vl_ff (gl, psil, psir) result (j)
     type(vector) :: j
     complex(kind=default), intent(in) :: gl
@@ -282,7 +282,7 @@ contains
     j%x(1) =   gl2 * (   g31 - g42)
     j%x(2) =   gl2 * (   g31 + g42) * (0, 1)
     j%x(3) =   gl2 * ( - g32 - g41)
-  end function vl_ff      
+  end function vl_ff
   pure function vr_ff (gr, psil, psir) result (j)
     type(vector) :: j
     complex(kind=default), intent(in) :: gr
@@ -298,7 +298,7 @@ contains
     j%x(1) = gr2 * (   g13 - g24)
     j%x(2) = gr2 * (   g13 + g24) * (0, 1)
     j%x(3) = gr2 * ( - g14 - g23)
-  end function vr_ff      
+  end function vr_ff
   pure function vlr_ff (gl, gr, psibar, psi) result (j)
     type(vector) :: j
     complex(kind=default), intent(in) :: gl, gr
@@ -323,7 +323,7 @@ contains
     vpsi%a(2) = gr * ( - v12 * psi%a(3) + vp   * psi%a(4))
     vpsi%a(3) = gl * (   vp  * psi%a(1) + v12s * psi%a(2))
     vpsi%a(4) = gl * (   v12 * psi%a(1) + vm   * psi%a(2))
-  end function f_vaf   
+  end function f_vaf
   pure function f_va2f (gva, v, psi) result (vpsi)
     type(bispinor) :: vpsi
     complex(kind=default), intent(in), dimension(2) :: gva
@@ -341,7 +341,7 @@ contains
     vpsi%a(2) = gr * ( - v12 * psi%a(3) + vp   * psi%a(4))
     vpsi%a(3) = gl * (   vp  * psi%a(1) + v12s * psi%a(2))
     vpsi%a(4) = gl * (   v12 * psi%a(1) + vm   * psi%a(2))
-  end function f_va2f   
+  end function f_va2f
   pure function f_vf (gv, v, psi) result (vpsi)
     type(bispinor) :: vpsi
     complex(kind=default), intent(in) :: gv
@@ -356,7 +356,7 @@ contains
     vpsi%a(2) = gv * ( - v12 * psi%a(3) + vp   * psi%a(4))
     vpsi%a(3) = gv * (   vp  * psi%a(1) + v12s * psi%a(2))
     vpsi%a(4) = gv * (   v12 * psi%a(1) + vm   * psi%a(2))
-  end function f_vf    
+  end function f_vf
   pure function f_af (ga, v, psi) result (vpsi)
     type(bispinor) :: vpsi
     complex(kind=default), intent(in) :: ga
@@ -371,7 +371,7 @@ contains
     vpsi%a(2) = ga * (   v12 * psi%a(3) - vp   * psi%a(4))
     vpsi%a(3) = ga * (   vp  * psi%a(1) + v12s * psi%a(2))
     vpsi%a(4) = ga * (   v12 * psi%a(1) + vm   * psi%a(2))
-  end function f_af   
+  end function f_af
   pure function f_vlf (gl, v, psi) result (vpsi)
     type(bispinor) :: vpsi
     complex(kind=default), intent(in) :: gl
@@ -388,7 +388,7 @@ contains
     vpsi%a(2) = 0
     vpsi%a(3) = gl2 * (   vp  * psi%a(1) + v12s * psi%a(2))
     vpsi%a(4) = gl2 * (   v12 * psi%a(1) + vm   * psi%a(2))
-  end function f_vlf 
+  end function f_vlf
   pure function f_vrf (gr, v, psi) result (vpsi)
     type(bispinor) :: vpsi
     complex(kind=default), intent(in) :: gr
@@ -444,7 +444,7 @@ contains
     complex(kind=default), intent(in) :: gr
     type(bispinor), intent(in) :: psil, psir
     j = 2 * gr * (- psil%a(3)*psir%a(4) + psil%a(4)*psir%a(3))
-  end function sr_ff    
+  end function sr_ff
   pure function slr_ff (gl, gr, psibar, psi) result (j)
     complex(kind=default) :: j
     complex(kind=default), intent(in) :: gl, gr
@@ -482,7 +482,7 @@ contains
     type(bispinor), intent(in) :: psi
     phipsi%a(1:2) = (2 * gl * phi) * psi%a(1:2)
     phipsi%a(3:4) = 0
-  end function f_slf 
+  end function f_slf
   pure function f_srf (gr, phi, psi) result (phipsi)
     type(bispinor) :: phipsi
     complex(kind=default), intent(in) :: gr
@@ -490,7 +490,7 @@ contains
     type(bispinor), intent(in) :: psi
     phipsi%a(1:2) = 0
     phipsi%a(3:4) = (2 * gr * phi) * psi%a(3:4)
-  end function f_srf                  
+  end function f_srf
   pure function f_slrf (gl, gr, phi, psi) result (phipsi)
     type(bispinor) :: phipsi
     complex(kind=default), intent(in) :: gl, gr
@@ -501,38 +501,38 @@ contains
   pure function vv_ff (psibar, psi, k) result (psibarpsi)
     type(vector) :: psibarpsi
     type(bispinor), intent(in) :: psibar, psi
-    type(vector), intent(in) :: k 
+    type(vector), intent(in) :: k
     complex(kind=default) :: kp, km, k12, k12s
     type(bispinor) :: kgpsi1, kgpsi2, kgpsi3, kgpsi4
     kp = k%t + k%x(3)
     km = k%t - k%x(3)
     k12  =  k%x(1) + (0,1)*k%x(2)
     k12s =  k%x(1) - (0,1)*k%x(2)
-    kgpsi1%a(1) = -k%x(3) * psi%a(1) - k12s * psi%a(2) 
-    kgpsi1%a(2) = -k12 * psi%a(1) + k%x(3) * psi%a(2) 
+    kgpsi1%a(1) = -k%x(3) * psi%a(1) - k12s * psi%a(2)
+    kgpsi1%a(2) = -k12 * psi%a(1) + k%x(3) * psi%a(2)
     kgpsi1%a(3) = k%x(3) * psi%a(3) + k12s * psi%a(4)
     kgpsi1%a(4) = k12 * psi%a(3) - k%x(3) * psi%a(4)
     kgpsi2%a(1) = ((0,-1) * k%x(2)) * psi%a(1) - km * psi%a(2)
-    kgpsi2%a(2) = - kp * psi%a(1) + ((0,1) * k%x(2)) * psi%a(2) 
+    kgpsi2%a(2) = - kp * psi%a(1) + ((0,1) * k%x(2)) * psi%a(2)
     kgpsi2%a(3) = ((0,-1) * k%x(2)) * psi%a(3) + kp * psi%a(4)
-    kgpsi2%a(4) = km * psi%a(3) + ((0,1) * k%x(2)) * psi%a(4) 
-    kgpsi3%a(1) = (0,1) * (k%x(1) * psi%a(1) + km * psi%a(2))  
-    kgpsi3%a(2) = (0,-1) * (kp * psi%a(1) + k%x(1) * psi%a(2)) 
+    kgpsi2%a(4) = km * psi%a(3) + ((0,1) * k%x(2)) * psi%a(4)
+    kgpsi3%a(1) = (0,1) * (k%x(1) * psi%a(1) + km * psi%a(2))
+    kgpsi3%a(2) = (0,-1) * (kp * psi%a(1) + k%x(1) * psi%a(2))
     kgpsi3%a(3) = (0,1) * (k%x(1) * psi%a(3) - kp * psi%a(4))
-    kgpsi3%a(4) = (0,1) * (km * psi%a(3) - k%x(1) * psi%a(4)) 
-    kgpsi4%a(1) = -k%t * psi%a(1) - k12s * psi%a(2) 
-    kgpsi4%a(2) = k12 * psi%a(1) + k%t * psi%a(2) 
-    kgpsi4%a(3) = k%t * psi%a(3) - k12s * psi%a(4) 
-    kgpsi4%a(4) = k12 * psi%a(3) - k%t * psi%a(4) 
+    kgpsi3%a(4) = (0,1) * (km * psi%a(3) - k%x(1) * psi%a(4))
+    kgpsi4%a(1) = -k%t * psi%a(1) - k12s * psi%a(2)
+    kgpsi4%a(2) = k12 * psi%a(1) + k%t * psi%a(2)
+    kgpsi4%a(3) = k%t * psi%a(3) - k12s * psi%a(4)
+    kgpsi4%a(4) = k12 * psi%a(3) - k%t * psi%a(4)
     psibarpsi%t    = 2 * (psibar * kgpsi1)
-    psibarpsi%x(1) = 2 * (psibar * kgpsi2) 
-    psibarpsi%x(2) = 2 * (psibar * kgpsi3) 
+    psibarpsi%x(1) = 2 * (psibar * kgpsi2)
+    psibarpsi%x(2) = 2 * (psibar * kgpsi3)
     psibarpsi%x(3) = 2 * (psibar * kgpsi4)
   end function vv_ff
   pure function f_vvf (v, psi, k) result (kvpsi)
     type(bispinor) :: kvpsi
     type(bispinor), intent(in) :: psi
-    type(vector), intent(in) :: k, v 
+    type(vector), intent(in) :: k, v
       complex(kind=default) :: kv30, kv21, kv01, kv31, kv02, kv32
     complex(kind=default) :: ap, am, bp, bm, bps, bms
     kv30 = k%x(3) * v%t - k%t * v%x(3)
@@ -544,170 +544,170 @@ contains
     ap  = 2 * (kv30 + kv21)
     am  = 2 * (-kv30 + kv21)
     bp  = 2 * (kv01 + kv31 + kv02 + kv32)
-    bm  = 2 * (kv01 - kv31 + kv02 - kv32) 
-    bps = 2 * (kv01 + kv31 - kv02 - kv32) 
+    bm  = 2 * (kv01 - kv31 + kv02 - kv32)
+    bps = 2 * (kv01 + kv31 - kv02 - kv32)
     bms = 2 * (kv01 - kv31 - kv02 + kv32)
     kvpsi%a(1) = am * psi%a(1) + bms * psi%a(2)
-    kvpsi%a(2) = bp * psi%a(1) - am * psi%a(2) 
+    kvpsi%a(2) = bp * psi%a(1) - am * psi%a(2)
     kvpsi%a(3) = ap * psi%a(3) - bps * psi%a(4)
-    kvpsi%a(4) = -bm * psi%a(3) - ap * psi%a(4) 
+    kvpsi%a(4) = -bm * psi%a(3) - ap * psi%a(4)
   end function f_vvf
   pure function vmom_ff (g, psibar, psi, k) result (psibarpsi)
     type(vector) :: psibarpsi
-    complex(kind=default), intent(in) :: g 
+    complex(kind=default), intent(in) :: g
     type(bispinor), intent(in) :: psibar, psi
-    type(momentum), intent(in) :: k 
+    type(momentum), intent(in) :: k
     type(vector) :: vk
-    vk = k 
+    vk = k
     psibarpsi = g * vv_ff (psibar, psi, vk)
   end function vmom_ff
   pure function mom_ff (g, m, psibar, psi, k) result (psibarpsi)
     complex(kind=default) :: psibarpsi
     type(bispinor), intent(in) :: psibar, psi
-    type(momentum), intent(in) :: k 
+    type(momentum), intent(in) :: k
     complex(kind=default), intent(in) :: g, m
-    type(bispinor) :: kmpsi 
+    type(bispinor) :: kmpsi
     complex(kind=default) :: kp, km, k12, k12s
     kp = k%t + k%x(3)
     km = k%t - k%x(3)
     k12  =  k%x(1) + (0,1)*k%x(2)
     k12s =  k%x(1) - (0,1)*k%x(2)
-    kmpsi%a(1) = km * psi%a(3) - k12s * psi%a(4) 
-    kmpsi%a(2) = kp * psi%a(4) - k12 * psi%a(3) 
-    kmpsi%a(3) = kp * psi%a(1) + k12s * psi%a(2) 
-    kmpsi%a(4) = k12 * psi%a(1) + km * psi%a(2) 
+    kmpsi%a(1) = km * psi%a(3) - k12s * psi%a(4)
+    kmpsi%a(2) = kp * psi%a(4) - k12 * psi%a(3)
+    kmpsi%a(3) = kp * psi%a(1) + k12s * psi%a(2)
+    kmpsi%a(4) = k12 * psi%a(1) + km * psi%a(2)
     psibarpsi = g * (psibar * kmpsi) + s_ff (m, psibar, psi)
-  end function mom_ff 
-  pure function mom5_ff (g, m, psibar, psi, k) result (psibarpsi) 
+  end function mom_ff
+  pure function mom5_ff (g, m, psibar, psi, k) result (psibarpsi)
     complex(kind=default) :: psibarpsi
     type(bispinor), intent(in) :: psibar, psi
-    type(momentum), intent(in) :: k 
+    type(momentum), intent(in) :: k
     complex(kind=default), intent(in) :: g, m
     type(bispinor) :: g5psi
     g5psi%a(1:2) = - psi%a(1:2)
     g5psi%a(3:4) = psi%a(3:4)
     psibarpsi = mom_ff (g, m, psibar, g5psi, k)
-  end function mom5_ff 
-  pure function moml_ff (g, m, psibar, psi, k) result (psibarpsi) 
+  end function mom5_ff
+  pure function moml_ff (g, m, psibar, psi, k) result (psibarpsi)
     complex(kind=default) :: psibarpsi
     type(bispinor), intent(in) :: psibar, psi
-    type(momentum), intent(in) :: k 
+    type(momentum), intent(in) :: k
     complex(kind=default), intent(in) :: g, m
     type(bispinor) :: leftpsi
     leftpsi%a(1:2) = 2 * psi%a(1:2)
-    leftpsi%a(3:4) = 0 
+    leftpsi%a(3:4) = 0
     psibarpsi = mom_ff (g, m, psibar, leftpsi, k)
-  end function moml_ff 
-  pure function momr_ff (g, m, psibar, psi, k) result (psibarpsi) 
+  end function moml_ff
+  pure function momr_ff (g, m, psibar, psi, k) result (psibarpsi)
     complex(kind=default) :: psibarpsi
     type(bispinor), intent(in) :: psibar, psi
-    type(momentum), intent(in) :: k 
+    type(momentum), intent(in) :: k
     complex(kind=default), intent(in) :: g, m
     type(bispinor) :: rightpsi
-    rightpsi%a(1:2) = 0 
+    rightpsi%a(1:2) = 0
     rightpsi%a(3:4) = 2 * psi%a(3:4)
     psibarpsi = mom_ff (g, m, psibar, rightpsi, k)
-  end function momr_ff 
-  pure function lmom_ff (g, m, psibar, psi, k) result (psibarpsi) 
+  end function momr_ff
+  pure function lmom_ff (g, m, psibar, psi, k) result (psibarpsi)
     complex(kind=default) :: psibarpsi
     type(bispinor), intent(in) :: psibar, psi
-    type(momentum), intent(in) :: k 
-    complex(kind=default), intent(in) :: g, m  
-    psibarpsi = mom_ff  (g, m, psibar, psi, k) + & 
-                mom5_ff (g,-m, psibar, psi, k) 
-  end function lmom_ff 
-  pure function rmom_ff (g, m, psibar, psi, k) result (psibarpsi) 
+    type(momentum), intent(in) :: k
+    complex(kind=default), intent(in) :: g, m
+    psibarpsi = mom_ff  (g, m, psibar, psi, k) + &
+                mom5_ff (g,-m, psibar, psi, k)
+  end function lmom_ff
+  pure function rmom_ff (g, m, psibar, psi, k) result (psibarpsi)
     complex(kind=default) :: psibarpsi
     type(bispinor), intent(in) :: psibar, psi
-    type(momentum), intent(in) :: k 
-    complex(kind=default), intent(in) :: g, m  
-    psibarpsi = mom_ff  (g, m, psibar, psi, k) - & 
-                mom5_ff (g,-m, psibar, psi, k) 
-  end function rmom_ff 
+    type(momentum), intent(in) :: k
+    complex(kind=default), intent(in) :: g, m
+    psibarpsi = mom_ff  (g, m, psibar, psi, k) - &
+                mom5_ff (g,-m, psibar, psi, k)
+  end function rmom_ff
   pure function f_vmomf (g, v, psi, k) result (kvpsi)
     type(bispinor) :: kvpsi
     type(bispinor), intent(in) :: psi
     complex(kind=default), intent(in) :: g
     type(momentum), intent(in) :: k
-    type(vector), intent(in) :: v 
+    type(vector), intent(in) :: v
     type(vector) :: vk
-    vk = k 
-    kvpsi = g * f_vvf (v, psi, vk) 
+    vk = k
+    kvpsi = g * f_vvf (v, psi, vk)
   end function f_vmomf
   pure function f_momf (g, m, phi, psi, k) result (kmpsi)
     type(bispinor) :: kmpsi
     type(bispinor), intent(in) :: psi
     complex(kind=default), intent(in) :: phi, g, m
-    type(momentum), intent(in) :: k 
+    type(momentum), intent(in) :: k
     complex(kind=default) :: kp, km, k12, k12s
     kp = k%t + k%x(3)
     km = k%t - k%x(3)
     k12  =  k%x(1) + (0,1)*k%x(2)
     k12s =  k%x(1) - (0,1)*k%x(2)
-    kmpsi%a(1) = km * psi%a(3) - k12s * psi%a(4) 
-    kmpsi%a(2) = -k12 * psi%a(3) + kp * psi%a(4) 
-    kmpsi%a(3) = kp * psi%a(1) + k12s * psi%a(2) 
-    kmpsi%a(4) = k12 * psi%a(1) + km * psi%a(2) 
+    kmpsi%a(1) = km * psi%a(3) - k12s * psi%a(4)
+    kmpsi%a(2) = -k12 * psi%a(3) + kp * psi%a(4)
+    kmpsi%a(3) = kp * psi%a(1) + k12s * psi%a(2)
+    kmpsi%a(4) = k12 * psi%a(1) + km * psi%a(2)
     kmpsi = g * (phi * kmpsi) + f_sf (m, phi, psi)
-  end function f_momf  
+  end function f_momf
   pure function f_mom5f (g, m, phi, psi, k) result (kmpsi)
     type(bispinor) :: kmpsi
     type(bispinor), intent(in) :: psi
     complex(kind=default), intent(in) :: phi, g, m
-    type(momentum), intent(in) :: k 
+    type(momentum), intent(in) :: k
     type(bispinor) :: g5psi
     g5psi%a(1:2) = - psi%a(1:2)
     g5psi%a(3:4) =   psi%a(3:4)
     kmpsi = f_momf (g, m, phi, g5psi, k)
-  end function f_mom5f  
+  end function f_mom5f
   pure function f_momlf (g, m, phi, psi, k) result (kmpsi)
     type(bispinor) :: kmpsi
     type(bispinor), intent(in) :: psi
     complex(kind=default), intent(in) :: phi, g, m
-    type(momentum), intent(in) :: k 
-    type(bispinor) :: leftpsi 
+    type(momentum), intent(in) :: k
+    type(bispinor) :: leftpsi
     leftpsi%a(1:2) = 2 * psi%a(1:2)
-    leftpsi%a(3:4) = 0 
-    kmpsi = f_momf (g, m, phi, leftpsi, k) 
-  end function f_momlf  
+    leftpsi%a(3:4) = 0
+    kmpsi = f_momf (g, m, phi, leftpsi, k)
+  end function f_momlf
   pure function f_momrf (g, m, phi, psi, k) result (kmpsi)
     type(bispinor) :: kmpsi
     type(bispinor), intent(in) :: psi
     complex(kind=default), intent(in) :: phi, g, m
-    type(momentum), intent(in) :: k 
-    type(bispinor) :: rightpsi 
+    type(momentum), intent(in) :: k
+    type(bispinor) :: rightpsi
     rightpsi%a(1:2) = 0
-    rightpsi%a(3:4) = 2 * psi%a(3:4) 
-    kmpsi = f_momf (g, m, phi, rightpsi, k) 
-  end function f_momrf  
+    rightpsi%a(3:4) = 2 * psi%a(3:4)
+    kmpsi = f_momf (g, m, phi, rightpsi, k)
+  end function f_momrf
   pure function f_lmomf (g, m, phi, psi, k) result (kmpsi)
     type(bispinor) :: kmpsi
     type(bispinor), intent(in) :: psi
     complex(kind=default), intent(in) :: phi, g, m
-    type(momentum), intent(in) :: k 
+    type(momentum), intent(in) :: k
     kmpsi = f_momf  (g, m, phi, psi, k) + &
-            f_mom5f (g,-m, phi, psi, k) 
-  end function f_lmomf  
+            f_mom5f (g,-m, phi, psi, k)
+  end function f_lmomf
   pure function f_rmomf (g, m, phi, psi, k) result (kmpsi)
     type(bispinor) :: kmpsi
     type(bispinor), intent(in) :: psi
     complex(kind=default), intent(in) :: phi, g, m
-    type(momentum), intent(in) :: k 
+    type(momentum), intent(in) :: k
     kmpsi = f_momf  (g, m, phi, psi, k) - &
-            f_mom5f (g,-m, phi, psi, k) 
-  end function f_rmomf  
+            f_mom5f (g,-m, phi, psi, k)
+  end function f_rmomf
   pure function v2_ff (g, psibar, v, psi) result (v2)
-    type(vector) :: v2 
-    complex (kind=default), intent(in) :: g 
-    type(bispinor), intent(in) :: psibar, psi 
+    type(vector) :: v2
+    complex (kind=default), intent(in) :: g
+    type(bispinor), intent(in) :: psibar, psi
     type(vector), intent(in) :: v
     v2 = (-g) * vv_ff (psibar, psi, v)
   end function v2_ff
   pure function sv1_ff (g, psibar, v, psi) result (phi)
     complex(kind=default) :: phi
     type(bispinor), intent(in) :: psibar, psi
-    type(vector), intent(in) :: v 
-    complex(kind=default), intent(in) :: g 
+    type(vector), intent(in) :: v
+    complex(kind=default), intent(in) :: g
     phi = psibar * f_vf (g, v, psi)
   end function sv1_ff
   pure function sv2_ff (g, psibar, phi, psi) result (v)
@@ -719,8 +719,8 @@ contains
   pure function pv1_ff (g, psibar, v, psi) result (phi)
     complex(kind=default) :: phi
     type(bispinor), intent(in) :: psibar, psi
-    type(vector), intent(in) :: v 
-    complex(kind=default), intent(in) :: g 
+    type(vector), intent(in) :: v
+    complex(kind=default), intent(in) :: g
     phi = - (psibar * f_af (g, v, psi))
   end function pv1_ff
   pure function pv2_ff (g, psibar, phi, psi) result (v)
@@ -732,8 +732,8 @@ contains
   pure function svl1_ff (g, psibar, v, psi) result (phi)
     complex(kind=default) :: phi
     type(bispinor), intent(in) :: psibar, psi
-    type(vector), intent(in) :: v 
-    complex(kind=default), intent(in) :: g 
+    type(vector), intent(in) :: v
+    complex(kind=default), intent(in) :: g
     phi = psibar * f_vlf (g, v, psi)
   end function svl1_ff
   pure function svl2_ff (g, psibar, phi, psi) result (v)
@@ -745,8 +745,8 @@ contains
   pure function svr1_ff (g, psibar, v, psi) result (phi)
     complex(kind=default) :: phi
     type(bispinor), intent(in) :: psibar, psi
-    type(vector), intent(in) :: v 
-    complex(kind=default), intent(in) :: g 
+    type(vector), intent(in) :: v
+    complex(kind=default), intent(in) :: g
     phi = psibar * f_vrf (g, v, psi)
   end function svr1_ff
   pure function svr2_ff (g, psibar, phi, psi) result (v)
@@ -758,8 +758,8 @@ contains
   pure function svlr1_ff (gl, gr, psibar, v, psi) result (phi)
     complex(kind=default) :: phi
     type(bispinor), intent(in) :: psibar, psi
-    type(vector), intent(in) :: v 
-    complex(kind=default), intent(in) :: gl, gr 
+    type(vector), intent(in) :: v
+    complex(kind=default), intent(in) :: gl, gr
     phi = psibar * f_vlrf (gl, gr, v, psi)
   end function svlr1_ff
   pure function svlr2_ff (gl, gr, psibar, phi, psi) result (v)
@@ -770,55 +770,55 @@ contains
   end function svlr2_ff
   pure function f_v2f (g, v1, v2, psi) result (vpsi)
     type(bispinor) :: vpsi
-    complex(kind=default), intent(in) :: g 
+    complex(kind=default), intent(in) :: g
     type(bispinor), intent(in) :: psi
     type(vector), intent(in) :: v1, v2
-    vpsi = g * f_vvf (v2, psi, v1) 
-  end function f_v2f 
+    vpsi = g * f_vvf (v2, psi, v1)
+  end function f_v2f
   pure function f_svf (g, phi, v, psi) result (pvpsi)
     type(bispinor) :: pvpsi
     complex(kind=default), intent(in) :: g, phi
     type(bispinor), intent(in) :: psi
     type(vector), intent(in) :: v
     pvpsi = phi * f_vf (g, v, psi)
-  end function f_svf 
+  end function f_svf
   pure function f_pvf (g, phi, v, psi) result (pvpsi)
     type(bispinor) :: pvpsi
     complex(kind=default), intent(in) :: g, phi
     type(bispinor), intent(in) :: psi
     type(vector), intent(in) :: v
     pvpsi = -(phi * f_af (g, v, psi))
-  end function f_pvf 
+  end function f_pvf
   pure function f_svlf (g, phi, v, psi) result (pvpsi)
     type(bispinor) :: pvpsi
     complex(kind=default), intent(in) :: g, phi
     type(bispinor), intent(in) :: psi
     type(vector), intent(in) :: v
     pvpsi = phi * f_vlf (g, v, psi)
-  end function f_svlf 
+  end function f_svlf
   pure function f_svrf (g, phi, v, psi) result (pvpsi)
     type(bispinor) :: pvpsi
     complex(kind=default), intent(in) :: g, phi
     type(bispinor), intent(in) :: psi
     type(vector), intent(in) :: v
     pvpsi = phi * f_vrf (g, v, psi)
-  end function f_svrf 
+  end function f_svrf
   pure function f_svlrf (gl, gr, phi, v, psi) result (pvpsi)
     type(bispinor) :: pvpsi
     complex(kind=default), intent(in) :: gl, gr, phi
     type(bispinor), intent(in) :: psi
     type(vector), intent(in) :: v
     pvpsi = phi * f_vlrf (gl, gr, v, psi)
-  end function f_svlrf 
+  end function f_svlrf
   pure function pot_grf (g, gravbar, psi) result (j)
     complex(kind=default) :: j
     complex(kind=default), intent(in) :: g
     type(vectorspinor), intent(in) :: gravbar
-    type(bispinor), intent(in) :: psi 
+    type(bispinor), intent(in) :: psi
     type(vectorspinor) :: gamma_psi
-    gamma_psi%psi(1)%a(1) = psi%a(3) 
+    gamma_psi%psi(1)%a(1) = psi%a(3)
     gamma_psi%psi(1)%a(2) = psi%a(4)
-    gamma_psi%psi(1)%a(3) = psi%a(1) 
+    gamma_psi%psi(1)%a(3) = psi%a(1)
     gamma_psi%psi(1)%a(4) = psi%a(2)
     gamma_psi%psi(2)%a(1) = psi%a(4)
     gamma_psi%psi(2)%a(2) = psi%a(3)
@@ -840,16 +840,16 @@ contains
     type(bispinor), intent(in) :: psibar
     type(vectorspinor), intent(in) :: grav
     type(bispinor) :: gamma_grav
-    gamma_grav%a(1) = grav%psi(1)%a(3) - grav%psi(2)%a(4) + & 
-                 ((0,1)*grav%psi(3)%a(4)) - grav%psi(4)%a(3)
+    gamma_grav%a(1) = grav%psi(1)%a(3) - grav%psi(2)%a(4) + &
+           ((0,1)*grav%psi(3)%a(4)) - grav%psi(4)%a(3)
     gamma_grav%a(2) = grav%psi(1)%a(4) - grav%psi(2)%a(3) - &
-                 ((0,1)*grav%psi(3)%a(3)) + grav%psi(4)%a(4)
+           ((0,1)*grav%psi(3)%a(3)) + grav%psi(4)%a(4)
     gamma_grav%a(3) = grav%psi(1)%a(1) + grav%psi(2)%a(2) - &
-                 ((0,1)*grav%psi(3)%a(2)) + grav%psi(4)%a(1)
+           ((0,1)*grav%psi(3)%a(2)) + grav%psi(4)%a(1)
     gamma_grav%a(4) = grav%psi(1)%a(2) + grav%psi(2)%a(1) + &
-                 ((0,1)*grav%psi(3)%a(1)) - grav%psi(4)%a(2)
+           ((0,1)*grav%psi(3)%a(1)) - grav%psi(4)%a(2)
     j = g * (psibar * gamma_grav)
-  end function pot_fgr 
+  end function pot_fgr
   pure function grvgf (gravbar, psi, k) result (j)
     complex(kind=default) :: j
     complex(kind=default) :: kp, km, k12, k12s
@@ -860,10 +860,10 @@ contains
     kp = k%t + k%x(3)
     km = k%t - k%x(3)
     k12  =  k%x(1) + (0,1)*k%x(2)
-    k12s =  k%x(1) - (0,1)*k%x(2) 
+    k12s =  k%x(1) - (0,1)*k%x(2)
     !!! Since we are taking the spinor product here, NO explicit
-    !!! charge conjugation matrix is needed!  
-    kg_psi%psi(1)%a(1) = km * psi%a(1) - k12s * psi%a(2) 
+    !!! charge conjugation matrix is needed!
+    kg_psi%psi(1)%a(1) = km * psi%a(1) - k12s * psi%a(2)
     kg_psi%psi(1)%a(2) = (-k12) * psi%a(1) + kp * psi%a(2)
     kg_psi%psi(1)%a(3) = kp * psi%a(3) + k12s * psi%a(4)
     kg_psi%psi(1)%a(4) = k12 * psi%a(3) + km * psi%a(4)
@@ -878,9 +878,9 @@ contains
     kg_psi%psi(4)%a(1) = (-km) * psi%a(1) - k12s * psi%a(2)
     kg_psi%psi(4)%a(2) = k12 * psi%a(1) + kp * psi%a(2)
     kg_psi%psi(4)%a(3) = kp * psi%a(3) - k12s * psi%a(4)
-    kg_psi%psi(4)%a(4) = k12 * psi%a(3) - km * psi%a(4) 
+    kg_psi%psi(4)%a(4) = k12 * psi%a(3) - km * psi%a(4)
     j = gravbar * kg_psi
-  end function grvgf  
+  end function grvgf
   pure function grg5vgf (gravbar, psi, k) result (j)
     complex(kind=default) :: j
     type(vectorspinor), intent(in) :: gravbar
@@ -898,7 +898,7 @@ contains
     type(bispinor), intent(in) :: psi
     type(momentum), intent(in) :: k
     type(vector) :: vk
-    vk = k 
+    vk = k
     j = g * grvgf (gravbar, psi, vk)
   end function s_grf
   pure function sl_grf (gl, gravbar, psi, k) result (j)
@@ -941,29 +941,29 @@ contains
     kp = k%t + k%x(3)
     km = k%t - k%x(3)
     k12  =  k%x(1) + (0,1)*k%x(2)
-    k12s =  k%x(1) - (0,1)*k%x(2) 
+    k12s =  k%x(1) - (0,1)*k%x(2)
     !!! Since we are taking the spinor product here, NO explicit
     !!! charge conjugation matrix is needed!
     gk_grav%a(1) =  kp * grav%psi(1)%a(1) + k12s * grav%psi(1)%a(2) &
-                  - k12 * grav%psi(2)%a(1) - km * grav%psi(2)%a(2) &
-                  + (0,1) * k12 * grav%psi(3)%a(1)   &
-                  + (0,1) * km * grav%psi(3)%a(2) &
-                  - kp * grav%psi(4)%a(1) - k12s * grav%psi(4)%a(2) 
+                 - k12 * grav%psi(2)%a(1) - km * grav%psi(2)%a(2) &
+                 + (0,1) * k12 * grav%psi(3)%a(1)   &
+                 + (0,1) * km * grav%psi(3)%a(2) &
+                 - kp * grav%psi(4)%a(1) - k12s * grav%psi(4)%a(2)
     gk_grav%a(2) = k12 * grav%psi(1)%a(1) + km * grav%psi(1)%a(2) &
-                  - kp * grav%psi(2)%a(1) - k12s * grav%psi(2)%a(2) &
-                  - (0,1) * kp * grav%psi(3)%a(1) &
-                  - (0,1) * k12s * grav%psi(3)%a(2)  &
-                  + k12 * grav%psi(4)%a(1) + km * grav%psi(4)%a(2)
+                 - kp * grav%psi(2)%a(1) - k12s * grav%psi(2)%a(2) &
+                 - (0,1) * kp * grav%psi(3)%a(1) &
+                 - (0,1) * k12s * grav%psi(3)%a(2)  &
+                 + k12 * grav%psi(4)%a(1) + km * grav%psi(4)%a(2)
     gk_grav%a(3) = km * grav%psi(1)%a(3) - k12s * grav%psi(1)%a(4) &
-                  - k12 * grav%psi(2)%a(3) + kp * grav%psi(2)%a(4) &
-                  + (0,1) * k12 * grav%psi(3)%a(3)   &
-                  - (0,1) * kp * grav%psi(3)%a(4) & 
-                  + km * grav%psi(4)%a(3) - k12s * grav%psi(4)%a(4)
+                 - k12 * grav%psi(2)%a(3) + kp * grav%psi(2)%a(4) &
+                 + (0,1) * k12 * grav%psi(3)%a(3)   &
+                 - (0,1) * kp * grav%psi(3)%a(4) &
+                 + km * grav%psi(4)%a(3) - k12s * grav%psi(4)%a(4)
     gk_grav%a(4) = - k12 * grav%psi(1)%a(3) + kp * grav%psi(1)%a(4) &
-                  + km * grav%psi(2)%a(3) - k12s * grav%psi(2)%a(4) &
-                  + (0,1) * km * grav%psi(3)%a(3) &
-                  - (0,1) * k12s * grav%psi(3)%a(4)  &
-                  + k12 * grav%psi(4)%a(3) - kp * grav%psi(4)%a(4)
+                 + km * grav%psi(2)%a(3) - k12s * grav%psi(2)%a(4) &
+                 + (0,1) * km * grav%psi(3)%a(3) &
+                 - (0,1) * k12s * grav%psi(3)%a(4)  &
+                 + k12 * grav%psi(4)%a(3) - kp * grav%psi(4)%a(4)
     j = psibar * gk_grav
   end function fgkgr
   pure function fg5gkgr (psibar, grav, k) result (j)
@@ -983,7 +983,7 @@ contains
     type(vectorspinor), intent(in) :: grav
     type(momentum), intent(in) :: k
     type(vector) :: vk
-    vk = k 
+    vk = k
     j = g * fgkgr (psibar, grav, vk)
   end function s_fgr
   pure function sl_fgr (gl, psibar, grav, k) result (j)
@@ -1012,7 +1012,6 @@ contains
     complex(kind=default) :: j
     complex(kind=default), intent(in) :: gl, gr
     type(bispinor), intent(in) :: psibar
-    type(bispinor) :: psibar_r
     type(vectorspinor), intent(in) :: grav
     type(momentum), intent(in) :: k
     j = sl_fgr (gl, psibar, grav, k) + sr_fgr (gr, psibar, grav, k)
@@ -1024,7 +1023,7 @@ contains
     type(bispinor), intent(in) :: psi
     type(momentum), intent(in) :: k
     type(vector) :: vk
-    vk = k 
+    vk = k
     j = g * grg5vgf (gravbar, psi, vk)
   end function p_grf
   pure function p_fgr (g, psibar, grav, k) result (j)
@@ -1034,7 +1033,7 @@ contains
     type(vectorspinor), intent(in) :: grav
     type(momentum), intent(in) :: k
     type(vector) :: vk
-    vk = k 
+    vk = k
     j = g * fg5gkgr (psibar, grav, vk)
   end function p_fgr
   pure function f_potgr (g, phi, psi) result (phipsi)
@@ -1042,15 +1041,15 @@ contains
     complex(kind=default), intent(in) :: g
     complex(kind=default), intent(in) :: phi
     type(vectorspinor), intent(in) :: psi
-    phipsi%a(1) = (g * phi) * (psi%psi(1)%a(3) - psi%psi(2)%a(4) + & 
-                   ((0,1)*psi%psi(3)%a(4)) - psi%psi(4)%a(3))
+    phipsi%a(1) = (g * phi) * (psi%psi(1)%a(3) - psi%psi(2)%a(4) + &
+                  ((0,1)*psi%psi(3)%a(4)) - psi%psi(4)%a(3))
     phipsi%a(2) = (g * phi) * (psi%psi(1)%a(4) - psi%psi(2)%a(3) - &
-                   ((0,1)*psi%psi(3)%a(3)) + psi%psi(4)%a(4)) 
+                  ((0,1)*psi%psi(3)%a(3)) + psi%psi(4)%a(4))
     phipsi%a(3) = (g * phi) * (psi%psi(1)%a(1) + psi%psi(2)%a(2) - &
-                   ((0,1)*psi%psi(3)%a(2)) + psi%psi(4)%a(1))
+                  ((0,1)*psi%psi(3)%a(2)) + psi%psi(4)%a(1))
     phipsi%a(4) = (g * phi) * (psi%psi(1)%a(2) + psi%psi(2)%a(1) + &
-                   ((0,1)*psi%psi(3)%a(1)) - psi%psi(4)%a(2))
-  end function f_potgr 
+                  ((0,1)*psi%psi(3)%a(1)) - psi%psi(4)%a(2))
+  end function f_potgr
   pure function fgvgr (psi, k) result (kpsi)
     type(bispinor) :: kpsi
     complex(kind=default) :: kp, km, k12, k12s
@@ -1059,23 +1058,23 @@ contains
     kp = k%t + k%x(3)
     km = k%t - k%x(3)
     k12  =  k%x(1) + (0,1)*k%x(2)
-    k12s =  k%x(1) - (0,1)*k%x(2) 
+    k12s =  k%x(1) - (0,1)*k%x(2)
     kpsi%a(1) = kp * psi%psi(1)%a(1) + k12s * psi%psi(1)%a(2) &
-          - k12 * psi%psi(2)%a(1) - km * psi%psi(2)%a(2) &
-          + (0,1) * k12 * psi%psi(3)%a(1) + (0,1) * km * psi%psi(3)%a(2) &
-          - kp * psi%psi(4)%a(1) - k12s * psi%psi(4)%a(2)
+              - k12 * psi%psi(2)%a(1) - km * psi%psi(2)%a(2) &
+              + (0,1) * k12 * psi%psi(3)%a(1) + (0,1) * km * psi%psi(3)%a(2) &
+              - kp * psi%psi(4)%a(1) - k12s * psi%psi(4)%a(2)
     kpsi%a(2) = k12 * psi%psi(1)%a(1) + km * psi%psi(1)%a(2) &
-          - kp * psi%psi(2)%a(1) - k12s * psi%psi(2)%a(2) &
-          - (0,1) * kp * psi%psi(3)%a(1) - (0,1) * k12s * psi%psi(3)%a(2) &
-          + k12 * psi%psi(4)%a(1) + km * psi%psi(4)%a(2)
+              - kp * psi%psi(2)%a(1) - k12s * psi%psi(2)%a(2) &
+              - (0,1) * kp * psi%psi(3)%a(1) - (0,1) * k12s * psi%psi(3)%a(2) &
+              + k12 * psi%psi(4)%a(1) + km * psi%psi(4)%a(2)
     kpsi%a(3) = km * psi%psi(1)%a(3) - k12s * psi%psi(1)%a(4) &
-          - k12 * psi%psi(2)%a(3) + kp * psi%psi(2)%a(4) &
-          + (0,1) * k12 * psi%psi(3)%a(3) - (0,1) * kp * psi%psi(3)%a(4) &
-          + km * psi%psi(4)%a(3) - k12s * psi%psi(4)%a(4)
+              - k12 * psi%psi(2)%a(3) + kp * psi%psi(2)%a(4) &
+              + (0,1) * k12 * psi%psi(3)%a(3) - (0,1) * kp * psi%psi(3)%a(4) &
+              + km * psi%psi(4)%a(3) - k12s * psi%psi(4)%a(4)
     kpsi%a(4) = - k12 * psi%psi(1)%a(3) + kp * psi%psi(1)%a(4) &
-          + km * psi%psi(2)%a(3) - k12s * psi%psi(2)%a(4) &
-          + (0,1) * km * psi%psi(3)%a(3) - (0,1) * k12s * psi%psi(3)%a(4) &
-          + k12 * psi%psi(4)%a(3) - kp * psi%psi(4)%a(4)
+              + km * psi%psi(2)%a(3) - k12s * psi%psi(2)%a(4) &
+              + (0,1) * km * psi%psi(3)%a(3) - (0,1) * k12s * psi%psi(3)%a(4) &
+              + k12 * psi%psi(4)%a(3) - kp * psi%psi(4)%a(4)
   end function fgvgr
   pure function f_sgr (g, phi, psi, k) result (phipsi)
     type(bispinor) :: phipsi
@@ -1084,9 +1083,9 @@ contains
     type(momentum), intent(in) :: k
     type(vectorspinor), intent(in) :: psi
     type(vector) :: vk
-    vk = k 
+    vk = k
     phipsi = (g * phi) * fgvgr (psi, vk)
-  end function f_sgr 
+  end function f_sgr
   pure function f_slgr (gl, phi, psi, k) result (phipsi)
     type(bispinor) :: phipsi
     complex(kind=default), intent(in) :: gl
@@ -1095,7 +1094,7 @@ contains
     type(vectorspinor), intent(in) :: psi
     phipsi = f_sgr (gl, phi, psi, k)
     phipsi%a(3:4) = 0
-  end function f_slgr 
+  end function f_slgr
   pure function f_srgr (gr, phi, psi, k) result (phipsi)
     type(bispinor) :: phipsi
     complex(kind=default), intent(in) :: gr
@@ -1104,7 +1103,7 @@ contains
     type(vectorspinor), intent(in) :: psi
     phipsi = f_sgr (gr, phi, psi, k)
     phipsi%a(1:2) = 0
-  end function f_srgr 
+  end function f_srgr
   pure function f_slrgr (gl, gr, phi, psi, k) result (phipsi)
     type(bispinor) :: phipsi, phipsi_l, phipsi_r
     complex(kind=default), intent(in) :: gl, gr
@@ -1115,7 +1114,7 @@ contains
     phipsi_r = f_srgr (gr, phi, psi, k)
     phipsi%a(1:2) = phipsi_l%a(1:2)
     phipsi%a(3:4) = phipsi_r%a(3:4)
-  end function f_slrgr 
+  end function f_slrgr
   pure function fgvg5gr (psi, k) result (kpsi)
     type(bispinor) :: kpsi
     type(vector), intent(in) :: k
@@ -1150,25 +1149,25 @@ contains
     ap  = 2 * (kv30 + kv21)
     am  = 2 * (-kv30 + kv21)
     bp  = 2 * (kv01 + kv31 + kv02 + kv32)
-    bm  = 2 * (kv01 - kv31 + kv02 - kv32) 
-    bps = 2 * (kv01 + kv31 - kv02 - kv32) 
+    bm  = 2 * (kv01 - kv31 + kv02 - kv32)
+    bps = 2 * (kv01 + kv31 - kv02 - kv32)
     bms = 2 * (kv01 - kv31 - kv02 + kv32)
-    psikv%a(1) =  (-ap) * psi%psi(1)%a(3) + bps * psi%psi(1)%a(4) &
-                  + (-bm) * psi%psi(2)%a(3) + (-ap) * psi%psi(2)%a(4) &
-                  + (0,1) * (bm * psi%psi(3)%a(3) + ap * psi%psi(3)%a(4)) &
-                  + ap * psi%psi(4)%a(3) + (-bps) * psi%psi(4)%a(4)
+    psikv%a(1) = (-ap) * psi%psi(1)%a(3) + bps * psi%psi(1)%a(4) &
+               + (-bm) * psi%psi(2)%a(3) + (-ap) * psi%psi(2)%a(4) &
+               + (0,1) * (bm * psi%psi(3)%a(3) + ap * psi%psi(3)%a(4)) &
+               + ap * psi%psi(4)%a(3) + (-bps) * psi%psi(4)%a(4)
     psikv%a(2) =  bm * psi%psi(1)%a(3) + ap * psi%psi(1)%a(4) &
-                  + ap * psi%psi(2)%a(3) + (-bps) * psi%psi(2)%a(4) &
-                  + (0,1) * (ap * psi%psi(3)%a(3) - bps * psi%psi(3)%a(4)) &
-                  + bm * psi%psi(4)%a(3) + ap * psi%psi(4)%a(4)
+               + ap * psi%psi(2)%a(3) + (-bps) * psi%psi(2)%a(4) &
+               + (0,1) * (ap * psi%psi(3)%a(3) - bps * psi%psi(3)%a(4)) &
+               + bm * psi%psi(4)%a(3) + ap * psi%psi(4)%a(4)
     psikv%a(3) =  am * psi%psi(1)%a(1) + bms * psi%psi(1)%a(2) &
-                  + bp * psi%psi(2)%a(1) + (-am) * psi%psi(2)%a(2) &
-                  + (0,-1) * (bp * psi%psi(3)%a(1) + (-am) * psi%psi(3)%a(2)) &
-                  + am * psi%psi(4)%a(1) + bms * psi%psi(4)%a(2)
+               + bp * psi%psi(2)%a(1) + (-am) * psi%psi(2)%a(2) &
+               + (0,-1) * (bp * psi%psi(3)%a(1) + (-am) * psi%psi(3)%a(2)) &
+               + am * psi%psi(4)%a(1) + bms * psi%psi(4)%a(2)
     psikv%a(4) =  bp * psi%psi(1)%a(1) + (-am) * psi%psi(1)%a(2) &
-                  + am * psi%psi(2)%a(1) + bms * psi%psi(2)%a(2) &
-                  + (0,1) * (am * psi%psi(3)%a(1) + bms * psi%psi(3)%a(2)) &
-                  + (-bp) * psi%psi(4)%a(1) + am * psi%psi(4)%a(2)
+               + am * psi%psi(2)%a(1) + bms * psi%psi(2)%a(2) &
+               + (0,1) * (am * psi%psi(3)%a(1) + bms * psi%psi(3)%a(2)) &
+               + (-bp) * psi%psi(4)%a(1) + am * psi%psi(4)%a(2)
   end function fggvvgr
   pure function f_vgr (g, v, psi, k) result (psikkkv)
     type(bispinor) :: psikkkv
@@ -1177,7 +1176,7 @@ contains
     type(momentum), intent(in) :: k
     complex(kind=default), intent(in) :: g
     type(vector) :: vk
-    vk = k 
+    vk = k
     psikkkv = g * (fggvvgr (v, psi, vk))
   end function f_vgr
   pure function f_vlrgr (gl, gr, v, psi, k) result (psikv)
@@ -1187,7 +1186,7 @@ contains
     type(momentum), intent(in) :: k
     complex(kind=default), intent(in) :: gl, gr
     type(vector) :: vk
-    vk = k 
+    vk = k
     psikv = fggvvgr (v, psi, vk)
     psikv%a(1:2) = gl * psikv%a(1:2)
     psikv%a(3:4) = gr * psikv%a(3:4)
@@ -1213,7 +1212,7 @@ contains
     phipsi%psi(4)%a(2) = ((-g) * phi) * psi%a(4)
     phipsi%psi(4)%a(3) = ((-g) * phi) * psi%a(1)
     phipsi%psi(4)%a(4) = (g * phi) * psi%a(2)
-  end function gr_potf 
+  end function gr_potf
   pure function grkgf (psi, k) result (kpsi)
     type(vectorspinor) :: kpsi
     complex(kind=default) :: kp, km, k12, k12s
@@ -1222,7 +1221,7 @@ contains
     kp = k%t + k%x(3)
     km = k%t - k%x(3)
     k12  =  k%x(1) + (0,1)*k%x(2)
-    k12s =  k%x(1) - (0,1)*k%x(2) 
+    k12s =  k%x(1) - (0,1)*k%x(2)
     kpsi%psi(1)%a(1) = km * psi%a(1) - k12s * psi%a(2)
     kpsi%psi(1)%a(2) = (-k12) * psi%a(1) + kp * psi%a(2)
     kpsi%psi(1)%a(3) = kp * psi%a(3) + k12s * psi%a(4)
@@ -1247,7 +1246,7 @@ contains
     type(bispinor), intent(in) :: psi
     type(momentum), intent(in) :: k
     type(vector) :: vk
-    vk = k 
+    vk = k
     phipsi = (g * phi) * grkgf (psi, vk)
   end function gr_sf
   pure function gr_slf (gl, phi, psi, k) result (phipsi)
@@ -1277,9 +1276,8 @@ contains
     complex(kind=default), intent(in) :: gl, gr
     complex(kind=default), intent(in) :: phi
     type(bispinor), intent(in) :: psi
-    type(bispinor) :: psi_r
     type(momentum), intent(in) :: k
-    phipsi = gr_slf (gl, phi, psi, k) + gr_srf (gr, phi, psi, k)  
+    phipsi = gr_slf (gl, phi, psi, k) + gr_srf (gr, phi, psi, k)
   end function gr_slrf
   pure function grkggf (psi, k) result (kpsi)
     type(vectorspinor) :: kpsi
@@ -1289,7 +1287,7 @@ contains
     kp = k%t + k%x(3)
     km = k%t - k%x(3)
     k12  =  k%x(1) + (0,1)*k%x(2)
-    k12s =  k%x(1) - (0,1)*k%x(2) 
+    k12s =  k%x(1) - (0,1)*k%x(2)
     kpsi%psi(1)%a(1) = (-km) * psi%a(1) + k12s * psi%a(2)
     kpsi%psi(1)%a(2) = k12 * psi%a(1) - kp * psi%a(2)
     kpsi%psi(1)%a(3) = kp * psi%a(3) + k12s * psi%a(4)
@@ -1315,8 +1313,8 @@ contains
     type(momentum), intent(in) :: k
     type(vector) :: vk
     vk = k
-    phipsi = (g * phi) * grkggf (psi, vk) 
-  end function gr_pf 
+    phipsi = (g * phi) * grkggf (psi, vk)
+  end function gr_pf
   pure function grkkggf (v, psi, k) result (psikv)
     type(vectorspinor) :: psikv
     type(bispinor), intent(in) :: psi
@@ -1333,8 +1331,8 @@ contains
     ap  = 2 * (kv30 + kv21)
     am  = 2 * ((-kv30) + kv21)
     bp  = 2 * (kv01 + kv31 + kv02 + kv32)
-    bm  = 2 * (kv01 - kv31 + kv02 - kv32) 
-    bps = 2 * (kv01 + kv31 - kv02 - kv32) 
+    bm  = 2 * (kv01 - kv31 + kv02 - kv32)
+    bps = 2 * (kv01 + kv31 - kv02 - kv32)
     bms = 2 * (kv01 - kv31 - kv02 + kv32)
     psikv%psi(1)%a(1) = am * psi%a(3) + bms * psi%a(4)
     psikv%psi(1)%a(2) = bp * psi%a(3) + (-am) * psi%a(4)
@@ -1344,14 +1342,14 @@ contains
     psikv%psi(2)%a(2) = (-am) * psi%a(3) + bp * psi%a(4)
     psikv%psi(2)%a(3) = (-bps) * psi%a(1) + ap * psi%a(2)
     psikv%psi(2)%a(4) = (-ap) * psi%a(1) + (-bm) * psi%a(2)
-    psikv%psi(3)%a(1) = imago * (bms * psi%a(3) - am * psi%a(4)) 
+    psikv%psi(3)%a(1) = imago * (bms * psi%a(3) - am * psi%a(4))
     psikv%psi(3)%a(2) = (-imago) * (am * psi%a(3) + bp * psi%a(4))
     psikv%psi(3)%a(3) = (-imago) * (bps * psi%a(1) + ap * psi%a(2))
     psikv%psi(3)%a(4) = imago * ((-ap) * psi%a(1) + bm * psi%a(2))
     psikv%psi(4)%a(1) = am * psi%a(3) + (-bms) * psi%a(4)
-    psikv%psi(4)%a(2) = bp * psi%a(3) + am * psi%a(4) 
+    psikv%psi(4)%a(2) = bp * psi%a(3) + am * psi%a(4)
     psikv%psi(4)%a(3) = ap * psi%a(1) + bps * psi%a(2)
-    psikv%psi(4)%a(4) = (-bm) * psi%a(1) + ap * psi%a(2) 
+    psikv%psi(4)%a(4) = (-bm) * psi%a(1) + ap * psi%a(2)
   end function grkkggf
   pure function gr_vf (g, v, psi, k) result (psikv)
     type(vectorspinor) :: psikv
@@ -1360,7 +1358,7 @@ contains
     type(momentum), intent(in) :: k
     complex(kind=default), intent(in) :: g
     type(vector) :: vk
-    vk = k 
+    vk = k
     psikv = g * (grkkggf (v, psi, vk))
   end function gr_vf
   pure function gr_vlrf (gl, gr, v, psi, k) result (psikv)
@@ -1371,7 +1369,7 @@ contains
     type(momentum), intent(in) :: k
     complex(kind=default), intent(in) :: gl, gr
     type(vector) :: vk
-    vk = k 
+    vk = k
     psi_l%a(1:2) = psi%a(1:2)
     psi_l%a(3:4) = 0
     psi_r%a(1:2) = 0
@@ -1388,7 +1386,7 @@ contains
     kp = k%t + k%x(3)
     km = k%t - k%x(3)
     k12  =  (k%x(1) + (0,1)*k%x(2))
-    k12s =  (k%x(1) - (0,1)*k%x(2))       
+    k12s =  (k%x(1) - (0,1)*k%x(2))
     ik2 = (0,1) * k%x(2)
     !!! New version:
     c_psir0%psi(1)%a(1) = (-k%x(3)) * psir%a(3) + (-k12s) * psir%a(4)
@@ -1406,11 +1404,11 @@ contains
     c_psir0%psi(4)%a(1) = (-k%x(3)) * psir%a(3) + k12s * psir%a(4)
     c_psir0%psi(4)%a(2) = (-k12) * psir%a(3) + (-k%x(3)) * psir%a(4)
     c_psir0%psi(4)%a(3) = k%x(3) * psir%a(1) + (-k12s) * psir%a(2)
-    c_psir0%psi(4)%a(4) = k12 * psir%a(1) + k%x(3) * psir%a(2) 
+    c_psir0%psi(4)%a(4) = k12 * psir%a(1) + k%x(3) * psir%a(2)
     !!!
     c_psir1%psi(1)%a(1) = (-ik2) * psir%a(3) + (-km) * psir%a(4)
     c_psir1%psi(1)%a(2) = (-kp) * psir%a(3) + ik2 * psir%a(4)
-    c_psir1%psi(1)%a(3) = ik2 * psir%a(1) + (-kp) * psir%a(2) 
+    c_psir1%psi(1)%a(3) = ik2 * psir%a(1) + (-kp) * psir%a(2)
     c_psir1%psi(1)%a(4) = (-km) * psir%a(1) + (-ik2) * psir%a(2)
     c_psir1%psi(2)%a(1) = (-km) * psir%a(3) + (-ik2) * psir%a(4)
     c_psir1%psi(2)%a(2) = ik2 * psir%a(3) + (-kp) * psir%a(4)
@@ -1422,12 +1420,12 @@ contains
     c_psir1%psi(3)%a(4) = (-k%x(2)) * psir%a(1) + ((0,-1) * km) * psir%a(2)
     c_psir1%psi(4)%a(1) = (-ik2) * psir%a(3) + km * psir%a(4)
     c_psir1%psi(4)%a(2) = (-kp) * psir%a(3) + (-ik2) * psir%a(4)
-    c_psir1%psi(4)%a(3) = (-ik2) *  psir%a(1) + (-kp) * psir%a(2) 
+    c_psir1%psi(4)%a(3) = (-ik2) *  psir%a(1) + (-kp) * psir%a(2)
     c_psir1%psi(4)%a(4) = km * psir%a(1) + (-ik2) * psir%a(2)
     !!!
-    c_psir2%psi(1)%a(1) = (0,1) * (k%x(1) * psir%a(3) + km * psir%a(4))  
+    c_psir2%psi(1)%a(1) = (0,1) * (k%x(1) * psir%a(3) + km * psir%a(4))
     c_psir2%psi(1)%a(2) = (0,-1) * (kp * psir%a(3) + k%x(1) * psir%a(4))
-    c_psir2%psi(1)%a(3) = (0,1) * ((-k%x(1)) * psir%a(1) + kp * psir%a(2)) 
+    c_psir2%psi(1)%a(3) = (0,1) * ((-k%x(1)) * psir%a(1) + kp * psir%a(2))
     c_psir2%psi(1)%a(4) = (0,1) * ((-km) * psir%a(1) + k%x(1) * psir%a(2))
     c_psir2%psi(2)%a(1) = (0,1) * (km * psir%a(3) + k%x(1) * psir%a(4))
     c_psir2%psi(2)%a(2) = (0,-1) * (k%x(1) * psir%a(3) + kp * psir%a(4))
@@ -1435,7 +1433,7 @@ contains
     c_psir2%psi(2)%a(4) = (0,-1) * (k%x(1) * psir%a(1) + (-km) * psir%a(2))
     c_psir2%psi(3)%a(1) = (-km) * psir%a(3) + k%x(1) * psir%a(4)
     c_psir2%psi(3)%a(2) = k%x(1) * psir%a(3) + (-kp) * psir%a(4)
-    c_psir2%psi(3)%a(3) = kp * psir%a(1) + k%x(1) * psir%a(2) 
+    c_psir2%psi(3)%a(3) = kp * psir%a(1) + k%x(1) * psir%a(2)
     c_psir2%psi(3)%a(4) = k%x(1) * psir%a(1) + km * psir%a(2)
     c_psir2%psi(4)%a(1) = (0,1) * (k%x(1) * psir%a(3) + (-km) * psir%a(4))
     c_psir2%psi(4)%a(2) = (0,1) * ((-kp) * psir%a(3) + k%x(1) * psir%a(4))
@@ -1445,20 +1443,20 @@ contains
     c_psir3%psi(1)%a(1) = (-k%t) * psir%a(3) - k12s * psir%a(4)
     c_psir3%psi(1)%a(2) = k12 * psir%a(3) + k%t * psir%a(4)
     c_psir3%psi(1)%a(3) = (-k%t) * psir%a(1) + k12s * psir%a(2)
-    c_psir3%psi(1)%a(4) = (-k12) * psir%a(1) + k%t * psir%a(2) 
+    c_psir3%psi(1)%a(4) = (-k12) * psir%a(1) + k%t * psir%a(2)
     c_psir3%psi(2)%a(1) = (-k12s) * psir%a(3) + (-k%t) * psir%a(4)
     c_psir3%psi(2)%a(2) = k%t * psir%a(3) + k12 * psir%a(4)
-    c_psir3%psi(2)%a(3) = (-k12s) * psir%a(1) + k%t * psir%a(2) 
+    c_psir3%psi(2)%a(3) = (-k12s) * psir%a(1) + k%t * psir%a(2)
     c_psir3%psi(2)%a(4) = (-k%t) * psir%a(1) + k12 * psir%a(2)
-    c_psir3%psi(3)%a(1) = (0,-1) * (k12s * psir%a(3) + (-k%t) * psir%a(4)) 
+    c_psir3%psi(3)%a(1) = (0,-1) * (k12s * psir%a(3) + (-k%t) * psir%a(4))
     c_psir3%psi(3)%a(2) = (0,1) * (k%t * psir%a(3) + (-k12) * psir%a(4))
     c_psir3%psi(3)%a(3) = (0,-1) * (k12s * psir%a(1) + k%t * psir%a(2))
     c_psir3%psi(3)%a(4) = (0,-1) * (k%t * psir%a(1) + k12 * psir%a(2))
     c_psir3%psi(4)%a(1) = (-k%t) * psir%a(3) + k12s * psir%a(4)
     c_psir3%psi(4)%a(2) = k12 * psir%a(3) + (-k%t) * psir%a(4)
-    c_psir3%psi(4)%a(3) = k%t * psir%a(1) + k12s * psir%a(2) 
+    c_psir3%psi(4)%a(3) = k%t * psir%a(1) + k12s * psir%a(2)
     c_psir3%psi(4)%a(4) = k12 * psir%a(1) + k%t * psir%a(2)
-    j%t    =   2 * (psil * c_psir0) 
+    j%t    =   2 * (psil * c_psir0)
     j%x(1) =   2 * (psil * c_psir1)
     j%x(2) =   2 * (psil * c_psir2)
     j%x(3) =   2 * (psil * c_psir3)
@@ -1470,7 +1468,7 @@ contains
     type(bispinor), intent(in) :: psir
     type(momentum), intent(in) :: k
     type(vector) :: vk
-    vk = k 
+    vk = k
     j = g * grkgggf (psil, psir, vk)
   end function v_grf
   pure function vlr_grf (gl, gr, psil, psir, k) result (j)
@@ -1481,11 +1479,11 @@ contains
     type(bispinor) :: psir_l, psir_r
     type(momentum), intent(in) :: k
     type(vector) :: vk
-    vk = k 
-    psir_l%a(1:2) = psir%a(1:2) 
-    psir_l%a(3:4) = 0 
+    vk = k
+    psir_l%a(1:2) = psir%a(1:2)
+    psir_l%a(3:4) = 0
     psir_r%a(1:2) = 0
-    psir_r%a(3:4) = psir%a(3:4) 
+    psir_r%a(3:4) = psir%a(3:4)
     j = gl * grkgggf (psil, psir_l, vk) + gr * grkgggf (psil, psir_r, vk)
   end function vlr_grf
   pure function fggkggr (psil, psir, k) result (j)
@@ -1498,83 +1496,83 @@ contains
     kp = k%t + k%x(3)
     km = k%t - k%x(3)
     k12  =  k%x(1) + (0,1)*k%x(2)
-    k12s =  k%x(1) - (0,1)*k%x(2) 
+    k12s =  k%x(1) - (0,1)*k%x(2)
     ik1 = (0,1) * k%x(1)
     ik2 = (0,1) * k%x(2)
     c_psir0%a(1) = k%x(3) * (psir%psi(1)%a(4) + psir%psi(4)%a(4) &
-                  + psir%psi(2)%a(3) + (0,1) * psir%psi(3)%a(3)) - &  
-                  k12 * (psir%psi(1)%a(3) + psir%psi(4)%a(3)) + & 
-                  k12s * (psir%psi(2)%a(4) + (0,1) * psir%psi(3)%a(4)) 
+                 + psir%psi(2)%a(3) + (0,1) * psir%psi(3)%a(3)) &
+                 - k12 * (psir%psi(1)%a(3) + psir%psi(4)%a(3)) &
+                 + k12s * (psir%psi(2)%a(4) + (0,1) * psir%psi(3)%a(4))
     c_psir0%a(2) = k%x(3) * (psir%psi(1)%a(3) - psir%psi(4)%a(3) + &
-                  psir%psi(2)%a(4) - (0,1) * psir%psi(3)%a(4)) + &
-                  k12s * (psir%psi(1)%a(4) - psir%psi(4)%a(4)) - &
-                  k12 * (psir%psi(2)%a(3) - (0,1) * psir%psi(3)%a(3))
+                   psir%psi(2)%a(4) - (0,1) * psir%psi(3)%a(4)) + &
+                   k12s * (psir%psi(1)%a(4) - psir%psi(4)%a(4)) - &
+                   k12 * (psir%psi(2)%a(3) - (0,1) * psir%psi(3)%a(3))
     c_psir0%a(3) = k%x(3) * (-psir%psi(1)%a(2) + psir%psi(4)%a(2) + &
-                  psir%psi(2)%a(1) + (0,1) * psir%psi(3)%a(1)) + &
-                  k12 * (psir%psi(1)%a(1) - psir%psi(4)%a(1)) + &
-                  k12s * (psir%psi(2)%a(2) + (0,1) * psir%psi(3)%a(2))
+                   psir%psi(2)%a(1) + (0,1) * psir%psi(3)%a(1)) + &
+                   k12 * (psir%psi(1)%a(1) - psir%psi(4)%a(1)) + &
+                   k12s * (psir%psi(2)%a(2) + (0,1) * psir%psi(3)%a(2))
     c_psir0%a(4) = k%x(3) * (-psir%psi(1)%a(1) - psir%psi(4)%a(1) + &
-                  psir%psi(2)%a(2) - (0,1) * psir%psi(3)%a(2)) -  &
-                  k12s * (psir%psi(1)%a(2) + psir%psi(4)%a(2)) - &
-                  k12 * (psir%psi(2)%a(1) - (0,1) * psir%psi(3)%a(1))
+                   psir%psi(2)%a(2) - (0,1) * psir%psi(3)%a(2)) -  &
+                   k12s * (psir%psi(1)%a(2) + psir%psi(4)%a(2)) - &
+                   k12 * (psir%psi(2)%a(1) - (0,1) * psir%psi(3)%a(1))
     !!!
-    c_psir1%a(1) = ik2 * (-psir%psi(1)%a(4) - psir%psi(4)%a(4) - & 
-                  psir%psi(2)%a(3) - (0,1) * psir%psi(3)%a(3)) - & 
-                  km * (psir%psi(1)%a(3) + psir%psi(4)%a(3)) + & 
-                  kp * (psir%psi(2)%a(4) + (0,1) * psir%psi(3)%a(4))
+    c_psir1%a(1) = ik2 * (-psir%psi(1)%a(4) - psir%psi(4)%a(4) - &
+                   psir%psi(2)%a(3) - (0,1) * psir%psi(3)%a(3)) - &
+                   km * (psir%psi(1)%a(3) + psir%psi(4)%a(3)) + &
+                   kp * (psir%psi(2)%a(4) + (0,1) * psir%psi(3)%a(4))
     c_psir1%a(2) = ik2 * (-psir%psi(1)%a(3) - psir%psi(2)%a(4) + &
-                  psir%psi(4)%a(3) + (0,1) * psir%psi(3)%a(4)) + &
-                  kp * (psir%psi(1)%a(4) - psir%psi(4)%a(4)) - &
-                  km * (psir%psi(2)%a(3) - (0,1) * psir%psi(3)%a(3))
+                   psir%psi(4)%a(3) + (0,1) * psir%psi(3)%a(4)) + &
+                   kp * (psir%psi(1)%a(4) - psir%psi(4)%a(4)) - &
+                   km * (psir%psi(2)%a(3) - (0,1) * psir%psi(3)%a(3))
     c_psir1%a(3) = ik2 * (-psir%psi(1)%a(2) + psir%psi(2)%a(1) + &
-                  psir%psi(4)%a(2) + (0,1) * psir%psi(3)%a(1)) + &
-                  kp * (psir%psi(1)%a(1) - psir%psi(4)%a(1)) + &
-                  km * (psir%psi(2)%a(2) + (0,1) * psir%psi(3)%a(2))
+                   psir%psi(4)%a(2) + (0,1) * psir%psi(3)%a(1)) + &
+                   kp * (psir%psi(1)%a(1) - psir%psi(4)%a(1)) + &
+                   km * (psir%psi(2)%a(2) + (0,1) * psir%psi(3)%a(2))
     c_psir1%a(4) = ik2 * (-psir%psi(1)%a(1) + psir%psi(2)%a(2) - &
-                  psir%psi(4)%a(1) - (0,1) * psir%psi(3)%a(2)) - &
-                  km * (psir%psi(1)%a(2) + psir%psi(4)%a(2)) - &
-                  kp * (psir%psi(2)%a(1) - (0,1) * psir%psi(3)%a(1))
+                   psir%psi(4)%a(1) - (0,1) * psir%psi(3)%a(2)) - &
+                   km * (psir%psi(1)%a(2) + psir%psi(4)%a(2)) - &
+                   kp * (psir%psi(2)%a(1) - (0,1) * psir%psi(3)%a(1))
     !!!
-    c_psir2%a(1) = ik1 * (psir%psi(2)%a(3) + psir%psi(1)%a(4) & 
-                  + psir%psi(4)%a(4) + (0,1) * psir%psi(3)%a(3)) - &
-                  ((0,1)*km) * (psir%psi(1)%a(3) + psir%psi(4)%a(3)) &
-                  + kp * (psir%psi(3)%a(4) - (0,1) * psir%psi(2)%a(4)) 
+    c_psir2%a(1) = ik1 * (psir%psi(2)%a(3) + psir%psi(1)%a(4) &
+                   + psir%psi(4)%a(4) + (0,1) * psir%psi(3)%a(3)) - &
+                   ((0,1)*km) * (psir%psi(1)%a(3) + psir%psi(4)%a(3)) &
+                   + kp * (psir%psi(3)%a(4) - (0,1) * psir%psi(2)%a(4))
     c_psir2%a(2) = ik1 * (psir%psi(1)%a(3) + psir%psi(2)%a(4) - &
-                  psir%psi(4)%a(3) - (0,1) * psir%psi(3)%a(4)) - &
-                  ((0,1)*kp) * (psir%psi(1)%a(4) - psir%psi(4)%a(4)) &
-                  - km * (psir%psi(3)%a(3) + (0,1) * psir%psi(2)%a(3))
+                   psir%psi(4)%a(3) - (0,1) * psir%psi(3)%a(4)) - &
+                   ((0,1)*kp) * (psir%psi(1)%a(4) - psir%psi(4)%a(4)) &
+                   - km * (psir%psi(3)%a(3) + (0,1) * psir%psi(2)%a(3))
     c_psir2%a(3) = ik1 * (psir%psi(1)%a(2) - psir%psi(2)%a(1) - &
-                  psir%psi(4)%a(2) - (0,1) * psir%psi(3)%a(1)) + &
-                  ((0,1)*kp) * (psir%psi(1)%a(1) - psir%psi(4)%a(1)) &
-                  + km * (psir%psi(3)%a(2) - (0,1) * psir%psi(2)%a(2))
+                   psir%psi(4)%a(2) - (0,1) * psir%psi(3)%a(1)) + &
+                   ((0,1)*kp) * (psir%psi(1)%a(1) - psir%psi(4)%a(1)) &
+                   + km * (psir%psi(3)%a(2) - (0,1) * psir%psi(2)%a(2))
     c_psir2%a(4) = ik1 * (psir%psi(1)%a(1) - psir%psi(2)%a(2) + &
-                  psir%psi(4)%a(1) + (0,1) * psir%psi(3)%a(2)) + &
-                  ((0,1)*km) * (psir%psi(1)%a(2) + psir%psi(4)%a(2)) - &
-                  kp * (psir%psi(3)%a(1) + (0,1) * psir%psi(2)%a(1))
+                   psir%psi(4)%a(1) + (0,1) * psir%psi(3)%a(2)) + &
+                   ((0,1)*km) * (psir%psi(1)%a(2) + psir%psi(4)%a(2)) - &
+                   kp * (psir%psi(3)%a(1) + (0,1) * psir%psi(2)%a(1))
     !!!
     c_psir3%a(1) = k%t * (psir%psi(1)%a(4) + psir%psi(4)%a(4) + &
-                  psir%psi(2)%a(3) + (0,1) * psir%psi(3)%a(3)) - &
-                  k12 * (psir%psi(1)%a(3) + psir%psi(4)%a(3)) - &
-                  k12s * (psir%psi(2)%a(4) + (0,1) * psir%psi(3)%a(4))
-    c_psir3%a(2) = k%t * (psir%psi(1)%a(3) - psir%psi(4)%a(3) + & 
-                  psir%psi(2)%a(4) - (0,1) * psir%psi(3)%a(4)) - & 
-                  k12s * (psir%psi(1)%a(4) - psir%psi(4)%a(4)) - &
-                  k12 * (psir%psi(2)%a(3) - (0,1) * psir%psi(3)%a(3))
+                   psir%psi(2)%a(3) + (0,1) * psir%psi(3)%a(3)) - &
+                   k12 * (psir%psi(1)%a(3) + psir%psi(4)%a(3)) - &
+                   k12s * (psir%psi(2)%a(4) + (0,1) * psir%psi(3)%a(4))
+    c_psir3%a(2) = k%t * (psir%psi(1)%a(3) - psir%psi(4)%a(3) + &
+                   psir%psi(2)%a(4) - (0,1) * psir%psi(3)%a(4)) - &
+                   k12s * (psir%psi(1)%a(4) - psir%psi(4)%a(4)) - &
+                   k12 * (psir%psi(2)%a(3) - (0,1) * psir%psi(3)%a(3))
     c_psir3%a(3) = k%t * (-psir%psi(1)%a(2) + psir%psi(2)%a(1) + &
-                  psir%psi(4)%a(2) + (0,1) * psir%psi(3)%a(1)) - &
-                  k12 * (psir%psi(1)%a(1) - psir%psi(4)%a(1)) + &
-                  k12s * (psir%psi(2)%a(2) + (0,1) * psir%psi(3)%a(2))
+                   psir%psi(4)%a(2) + (0,1) * psir%psi(3)%a(1)) - &
+                   k12 * (psir%psi(1)%a(1) - psir%psi(4)%a(1)) + &
+                   k12s * (psir%psi(2)%a(2) + (0,1) * psir%psi(3)%a(2))
     c_psir3%a(4) = k%t * (-psir%psi(1)%a(1) + psir%psi(2)%a(2) - &
-                  psir%psi(4)%a(1) - (0,1) * psir%psi(3)%a(2)) - &
-                  k12s * (psir%psi(1)%a(2) + psir%psi(4)%a(2)) + &
-                  k12 * (psir%psi(2)%a(1) - (0,1) * psir%psi(3)%a(1))
+                   psir%psi(4)%a(1) - (0,1) * psir%psi(3)%a(2)) - &
+                   k12s * (psir%psi(1)%a(2) + psir%psi(4)%a(2)) + &
+                   k12 * (psir%psi(2)%a(1) - (0,1) * psir%psi(3)%a(1))
     !!! Because we explicitly multiplied the charge conjugation matrix
-    !!! we have to omit it from the spinor product and take the 
+    !!! we have to omit it from the spinor product and take the
     !!! ordinary product!
-    j%t    =   2 * dot_product (conjg (psil%a), c_psir0%a) 
+    j%t    =   2 * dot_product (conjg (psil%a), c_psir0%a)
     j%x(1) =   2 * dot_product (conjg (psil%a), c_psir1%a)
     j%x(2) =   2 * dot_product (conjg (psil%a), c_psir2%a)
-    j%x(3) =   2 * dot_product (conjg (psil%a), c_psir3%a) 
+    j%x(3) =   2 * dot_product (conjg (psil%a), c_psir3%a)
   end function fggkggr
   pure function v_fgr (g, psil, psir, k) result (j)
     type(vector) :: j
@@ -1583,7 +1581,7 @@ contains
     type(bispinor), intent(in) :: psil
     type(momentum), intent(in) :: k
     type(vector) :: vk
-    vk = k 
+    vk = k
     j = g * fggkggr (psil, psir, vk)
   end function v_fgr
   pure function vlr_fgr (gl, gr, psil, psir, k) result (j)
@@ -1595,7 +1593,7 @@ contains
     type(bispinor) :: psil_r
     type(momentum), intent(in) :: k
     type(vector) :: vk
-    vk = k 
+    vk = k
     psil_l%a(1:2) = psil%a(1:2)
     psil_l%a(3:4) = 0
     psil_r%a(1:2) = 0
@@ -1607,8 +1605,8 @@ contains
     type(vectorspinor), intent(in) :: psi
     complex(kind=default), intent(in) :: g
     complex(kind=default), intent(in) :: phi1, phi2
-    phipsi = phi2 * f_potgr (g, phi1, psi) 
-  end function f_s2gr 
+    phipsi = phi2 * f_potgr (g, phi1, psi)
+  end function f_s2gr
   pure function f_svgr (g, phi, v, grav) result (phigrav)
     type(bispinor) :: phigrav
     type(vectorspinor), intent(in) :: grav
@@ -1635,7 +1633,7 @@ contains
     phigrav%a(3:4) = phidum%a(3:4)
   end function f_srvgr
   pure function f_slrvgr (gl, gr, phi, v, grav) result (phigrav)
-    type(bispinor) :: phigrav, phidum
+    type(bispinor) :: phigrav
     type(vectorspinor), intent(in) :: grav
     type(vector), intent(in) :: v
     complex(kind=default), intent(in) :: gl, gr, phi
@@ -1669,8 +1667,8 @@ contains
     type(bispinor), intent(in) :: psi
     complex(kind=default), intent(in) :: g
     complex(kind=default), intent(in) :: phi1, phi2
-    phipsi = phi2 * gr_potf (g, phi1, psi) 
-  end function gr_s2f 
+    phipsi = phi2 * gr_potf (g, phi1, psi)
+  end function gr_s2f
   pure function gr_svf (g, phi, v, psi) result (phipsi)
     type(vectorspinor) :: phipsi
     type(bispinor), intent(in) :: psi
@@ -1701,7 +1699,6 @@ contains
   pure function gr_slrvf (gl, gr, phi, v, psi) result (phipsi)
     type(vectorspinor) :: phipsi
     type(bispinor), intent(in) :: psi
-    type(bispinor) :: psi_r
     type(vector), intent(in) :: v
     complex(kind=default), intent(in) :: gl, gr, phi
     phipsi = gr_slvf (gl, phi, v, psi) + gr_srvf (gr, phi, v, psi)
@@ -1718,7 +1715,7 @@ contains
     complex(kind=default), intent(in) :: g
     type(bispinor), intent(in) :: psi
     type(vector), intent(in) :: v1, v2
-    vvpsi = g * grkkggf (v2, psi, v1) 
+    vvpsi = g * grkkggf (v2, psi, v1)
   end function gr_v2f
   pure function gr_v2lrf (gl, gr, v1, v2, psi) result (vvpsi)
     type(vectorspinor) :: vvpsi
@@ -1730,21 +1727,21 @@ contains
     psi_l%a(3:4) = 0
     psi_r%a(1:2) = 0
     psi_r%a(3:4) = psi%a(3:4)
-    vvpsi = gl * grkkggf (v2, psi_l, v1) + gr * grkkggf (v2, psi_r, v1) 
+    vvpsi = gl * grkkggf (v2, psi_l, v1) + gr * grkkggf (v2, psi_r, v1)
   end function gr_v2lrf
   pure function s2_grf (g, gravbar, phi, psi) result (j)
     complex(kind=default) :: j
     complex(kind=default), intent(in) :: g, phi
     type(vectorspinor), intent(in) :: gravbar
-    type(bispinor), intent(in) :: psi 
-    j = phi * pot_grf (g, gravbar, psi) 
+    type(bispinor), intent(in) :: psi
+    j = phi * pot_grf (g, gravbar, psi)
   end function s2_grf
   pure function s2_fgr (g, psibar, phi, grav) result (j)
     complex(kind=default) :: j
     complex(kind=default), intent(in) :: g, phi
     type(bispinor), intent(in) :: psibar
-    type(vectorspinor), intent(in) :: grav 
-    j = phi * pot_fgr (g, psibar, grav) 
+    type(vectorspinor), intent(in) :: grav
+    j = phi * pot_fgr (g, psibar, grav)
   end function s2_fgr
   pure function sv1_grf (g, gravbar, v, psi) result (j)
     complex(kind=default) :: j
@@ -1789,54 +1786,54 @@ contains
     psi_r%a(3:4) = psi%a(3:4)
     j = gl * grg5vgf (gravbar, psi_l, v) + gr * grg5vgf (gravbar, psi_r, v)
   end function slrv1_grf
-  pure function sv2_grf (g, gravbar, phi, psi) result (j) 
-    type(vector) :: j 
+  pure function sv2_grf (g, gravbar, phi, psi) result (j)
+    type(vector) :: j
     complex(kind=default), intent(in) :: g, phi
     type(vectorspinor), intent(in) :: gravbar
     type(bispinor), intent(in) :: psi
     type(vectorspinor) :: g0_psi, g1_psi, g2_psi, g3_psi
-    g0_psi%psi(1)%a(1:2) = - psi%a(1:2) 
-    g0_psi%psi(1)%a(3:4) = psi%a(3:4) 
+    g0_psi%psi(1)%a(1:2) = - psi%a(1:2)
+    g0_psi%psi(1)%a(3:4) = psi%a(3:4)
     g0_psi%psi(2)%a(1) = psi%a(2)
     g0_psi%psi(2)%a(2) = psi%a(1)
     g0_psi%psi(2)%a(3) = psi%a(4)
     g0_psi%psi(2)%a(4) = psi%a(3)
-    g0_psi%psi(3)%a(1) = (0,-1) * psi%a(2) 
+    g0_psi%psi(3)%a(1) = (0,-1) * psi%a(2)
     g0_psi%psi(3)%a(2) = (0,1) * psi%a(1)
     g0_psi%psi(3)%a(3) = (0,-1) * psi%a(4)
     g0_psi%psi(3)%a(4) = (0,1) * psi%a(3)
     g0_psi%psi(4)%a(1) = psi%a(1)
-    g0_psi%psi(4)%a(2) = - psi%a(2) 
+    g0_psi%psi(4)%a(2) = - psi%a(2)
     g0_psi%psi(4)%a(3) = psi%a(3)
-    g0_psi%psi(4)%a(4) = - psi%a(4) 
+    g0_psi%psi(4)%a(4) = - psi%a(4)
     g1_psi%psi(1)%a(1:4) = - g0_psi%psi(2)%a(1:4)
     g1_psi%psi(2)%a(1:4) = - g0_psi%psi(1)%a(1:4)
     g1_psi%psi(3)%a(1) = (0,1) * psi%a(1)
     g1_psi%psi(3)%a(2) = (0,-1) * psi%a(2)
     g1_psi%psi(3)%a(3) = (0,-1) * psi%a(3)
-    g1_psi%psi(3)%a(4) = (0,1) * psi%a(4) 
+    g1_psi%psi(3)%a(4) = (0,1) * psi%a(4)
     g1_psi%psi(4)%a(1) = - psi%a(2)
     g1_psi%psi(4)%a(2) = psi%a(1)
     g1_psi%psi(4)%a(3) = psi%a(4)
-    g1_psi%psi(4)%a(4) = - psi%a(3) 
+    g1_psi%psi(4)%a(4) = - psi%a(3)
     g2_psi%psi(1)%a(1:4) = - g0_psi%psi(3)%a(1:4)
     g2_psi%psi(2)%a(1:4) = - g1_psi%psi(3)%a(1:4)
     g2_psi%psi(3)%a(1:4) = - g0_psi%psi(1)%a(1:4)
-    g2_psi%psi(4)%a(1) = (0,1) * psi%a(2)  
+    g2_psi%psi(4)%a(1) = (0,1) * psi%a(2)
     g2_psi%psi(4)%a(2) = (0,1) * psi%a(1)
     g2_psi%psi(4)%a(3) = (0,-1) * psi%a(4)
-    g2_psi%psi(4)%a(4) = (0,-1) * psi%a(3) 
+    g2_psi%psi(4)%a(4) = (0,-1) * psi%a(3)
     g3_psi%psi(1)%a(1:4) = - g0_psi%psi(4)%a(1:4)
     g3_psi%psi(2)%a(1:4) = - g1_psi%psi(4)%a(1:4)
     g3_psi%psi(3)%a(1:4) = - g2_psi%psi(4)%a(1:4)
-    g3_psi%psi(4)%a(1:4) = - g0_psi%psi(1)%a(1:4) 
-    j%t    =   (g * phi) * (gravbar * g0_psi) 
+    g3_psi%psi(4)%a(1:4) = - g0_psi%psi(1)%a(1:4)
+    j%t    =   (g * phi) * (gravbar * g0_psi)
     j%x(1) =   (g * phi) * (gravbar * g1_psi)
     j%x(2) =   (g * phi) * (gravbar * g2_psi)
-    j%x(3) =   (g * phi) * (gravbar * g3_psi) 
+    j%x(3) =   (g * phi) * (gravbar * g3_psi)
   end function sv2_grf
-  pure function slv2_grf (gl, gravbar, phi, psi) result (j) 
-    type(vector) :: j 
+  pure function slv2_grf (gl, gravbar, phi, psi) result (j)
+    type(vector) :: j
     complex(kind=default), intent(in) :: gl, phi
     type(vectorspinor), intent(in) :: gravbar
     type(bispinor), intent(in) :: psi
@@ -1845,8 +1842,8 @@ contains
     psi_l%a(3:4) = 0
     j = sv2_grf (gl, gravbar, phi, psi_l)
   end function slv2_grf
-  pure function srv2_grf (gr, gravbar, phi, psi) result (j) 
-    type(vector) :: j 
+  pure function srv2_grf (gr, gravbar, phi, psi) result (j)
+    type(vector) :: j
     complex(kind=default), intent(in) :: gr, phi
     type(vectorspinor), intent(in) :: gravbar
     type(bispinor), intent(in) :: psi
@@ -1855,8 +1852,8 @@ contains
     psi_r%a(3:4) = psi%a(3:4)
     j = sv2_grf (gr, gravbar, phi, psi_r)
   end function srv2_grf
-  pure function slrv2_grf (gl, gr, gravbar, phi, psi) result (j) 
-    type(vector) :: j 
+  pure function slrv2_grf (gl, gr, gravbar, phi, psi) result (j)
+    type(vector) :: j
     complex(kind=default), intent(in) :: gl, gr, phi
     type(vectorspinor), intent(in) :: gravbar
     type(bispinor), intent(in) :: psi
@@ -1873,7 +1870,7 @@ contains
     type(bispinor), intent(in) :: psibar
     type(vectorspinor), intent(in) :: grav
     type(vector), intent(in) :: v
-    j = g * fg5gkgr (psibar, grav, v) 
+    j = g * fg5gkgr (psibar, grav, v)
   end function sv1_fgr
   pure function slv1_fgr (gl, psibar, v, grav) result (j)
     complex(kind=default) :: j
@@ -1884,7 +1881,7 @@ contains
     type(vector), intent(in) :: v
     psibar_l%a(1:2) = psibar%a(1:2)
     psibar_l%a(3:4) = 0
-    j = gl * fg5gkgr (psibar_l, grav, v) 
+    j = gl * fg5gkgr (psibar_l, grav, v)
   end function slv1_fgr
   pure function srv1_fgr (gr, psibar, v, grav) result (j)
     complex(kind=default) :: j
@@ -1895,7 +1892,7 @@ contains
     type(vector), intent(in) :: v
     psibar_r%a(1:2) = 0
     psibar_r%a(3:4) = psibar%a(3:4)
-    j = gr * fg5gkgr (psibar_r, grav, v) 
+    j = gr * fg5gkgr (psibar_r, grav, v)
   end function srv1_fgr
   pure function slrv1_fgr (gl, gr, psibar, v, grav) result (j)
     complex(kind=default) :: j
@@ -1908,7 +1905,7 @@ contains
     psibar_l%a(3:4) = 0
     psibar_r%a(1:2) = 0
     psibar_r%a(3:4) = psibar%a(3:4)
-    j = gl * fg5gkgr (psibar_l, grav, v)  + gr * fg5gkgr (psibar_r, grav, v) 
+    j = gl * fg5gkgr (psibar_l, grav, v)  + gr * fg5gkgr (psibar_r, grav, v)
   end function slrv1_fgr
   pure function sv2_fgr (g, psibar, phi, grav) result (j)
     type(vector) :: j
@@ -1925,8 +1922,8 @@ contains
     g0_grav%a(4) = grav%psi(1)%a(4) + grav%psi(2)%a(3) + &
                   (0,1) * grav%psi(3)%a(3) - grav%psi(4)%a(4)
     !!!
-    g1_grav%a(1) = grav%psi(1)%a(2) - grav%psi(2)%a(1) + & 
-                  (0,1) * grav%psi(3)%a(1) - grav%psi(4)%a(2) 
+    g1_grav%a(1) = grav%psi(1)%a(2) - grav%psi(2)%a(1) + &
+                  (0,1) * grav%psi(3)%a(1) - grav%psi(4)%a(2)
     g1_grav%a(2) = grav%psi(1)%a(1) - grav%psi(2)%a(2) - &
                   (0,1) * grav%psi(3)%a(2) + grav%psi(4)%a(1)
     g1_grav%a(3) = grav%psi(1)%a(4) + grav%psi(2)%a(3) - &
@@ -1938,10 +1935,10 @@ contains
                   grav%psi(4)%a(2)) - grav%psi(3)%a(1)
     g2_grav%a(2) = (0,1) * (grav%psi(1)%a(1) + grav%psi(2)%a(2) + &
                   grav%psi(4)%a(1)) - grav%psi(3)%a(2)
-    g2_grav%a(3) = (0,1) * (-grav%psi(1)%a(4) + grav%psi(2)%a(3) - & 
+    g2_grav%a(3) = (0,1) * (-grav%psi(1)%a(4) + grav%psi(2)%a(3) - &
                   grav%psi(4)%a(4)) + grav%psi(3)%a(3)
     g2_grav%a(4) = (0,1) * (grav%psi(1)%a(3) - grav%psi(2)%a(4) - &
-                  grav%psi(4)%a(3)) + grav%psi(3)%a(4)  
+                  grav%psi(4)%a(3)) + grav%psi(3)%a(4)
     !!!
     g3_grav%a(1) = -grav%psi(1)%a(2) + grav%psi(2)%a(2) - &
                   (0,1) * grav%psi(3)%a(2) - grav%psi(4)%a(1)
@@ -1995,7 +1992,7 @@ contains
     type(bispinor), intent(in) :: psi
     type(vector), intent(in) :: v
     j = g * grvgf (gravbar, psi, v)
-  end function pv1_grf 
+  end function pv1_grf
   pure function pv2_grf (g, gravbar, phi, psi) result (j)
     type(vector) :: j
     complex(kind=default), intent(in) :: g, phi
@@ -2012,7 +2009,7 @@ contains
     type(bispinor), intent(in) :: psibar
     type(vectorspinor), intent(in) :: grav
     type(vector), intent(in) :: v
-    j = g * fgkgr (psibar, grav, v) 
+    j = g * fgkgr (psibar, grav, v)
   end function pv1_fgr
   pure function pv2_fgr (g, psibar, phi, grav) result (j)
     type(vector) :: j
@@ -2023,15 +2020,15 @@ contains
     psibar_g5%a(1:2) = - psibar%a(1:2)
     psibar_g5%a(3:4) = psibar%a(3:4)
     j = sv2_fgr (g, psibar_g5, phi, grav)
-  end function pv2_fgr 
+  end function pv2_fgr
   pure function v2_grf (g, gravbar, v, psi) result (j)
     type(vector) :: j
     complex(kind=default), intent(in) :: g
     type(vectorspinor), intent(in) :: gravbar
     type(bispinor), intent(in) :: psi
     type(vector), intent(in) :: v
-    j = -g * grkgggf (gravbar, psi, v) 
-  end function v2_grf 
+    j = -g * grkgggf (gravbar, psi, v)
+  end function v2_grf
   pure function v2lr_grf (gl, gr, gravbar, v, psi) result (j)
     type(vector) :: j
     complex(kind=default), intent(in) :: gl, gr
@@ -2044,14 +2041,14 @@ contains
     psi_r%a(1:2) = 0
     psi_r%a(3:4) = psi%a(3:4)
     j = -(gl * grkgggf (gravbar, psi_l, v) + gr * grkgggf (gravbar, psi_r, v))
-  end function v2lr_grf 
+  end function v2lr_grf
   pure function v2_fgr (g, psibar, v, grav) result (j)
     type(vector) :: j
     complex(kind=default), intent(in) :: g
     type(vectorspinor), intent(in) :: grav
     type(bispinor), intent(in) :: psibar
     type(vector), intent(in) :: v
-    j = -g * fggkggr (psibar, grav, v) 
+    j = -g * fggkggr (psibar, grav, v)
   end function v2_fgr
   pure function v2lr_fgr (gl, gr, psibar, v, grav) result (j)
     type(vector) :: j
@@ -2075,7 +2072,7 @@ contains
     complex(kind=default), parameter :: one = (1, 0)
     vp = p
     ppsi = (1 / cmplx (p*p - m**2, m*w, kind=default)) &
-         * (- f_vf (one, vp, psi) + m * psi)  
+         * (- f_vf (one, vp, psi) + m * psi)
   end function pr_psi
   pure function pj_psi (p, m, w, psi) result (ppsi)
     type(bispinor) :: ppsi
@@ -2085,7 +2082,7 @@ contains
     type(vector) :: vp
     complex(kind=default), parameter :: one = (1, 0)
     vp = p
-    ppsi = (0, -1) * sqrt (PI / m / w) * (- f_vf (one, vp, psi) + m * psi)  
+    ppsi = (0, -1) * sqrt (PI / m / w) * (- f_vf (one, vp, psi) + m * psi)
   end function pj_psi
   pure function pg_psi (p, m, w, psi) result (ppsi)
     type(bispinor) :: ppsi
@@ -2095,7 +2092,7 @@ contains
     type(vector) :: vp
     complex(kind=default), parameter :: one = (1, 0)
     vp = p
-    ppsi = gauss (p*p, m, w) * (- f_vf (one, vp, psi) + m * psi)  
+    ppsi = gauss (p*p, m, w) * (- f_vf (one, vp, psi) + m * psi)
   end function pg_psi
   pure function pr_grav (p, m, w, grav) result (propgrav)
     type(vectorspinor) :: propgrav
@@ -2108,7 +2105,7 @@ contains
                           gg_grav_dum, gg_grav
     complex(kind=default), parameter :: one = (1, 0)
     real(kind=default) :: minv
-    integer :: i 
+    integer :: i
     vp = p
     minv = 1/m
     pgrav = p%t    * grav%psi(1) - p%x(1) * grav%psi(2) - &
@@ -2121,12 +2118,12 @@ contains
                  grav%psi(3)%a(2) + grav%psi(4)%a(1)
     ggrav%a(4) = grav%psi(1)%a(2) + grav%psi(2)%a(1) + (0,1) * &
                  grav%psi(3)%a(1) - grav%psi(4)%a(2)
-    ggrav1 = ggrav - minv * pgrav 
+    ggrav1 = ggrav - minv * pgrav
     ggrav2 = f_vf (one, vp, ggrav1) + m * ggrav - pgrav
     ppgrav = (-minv**2) * f_vf (one, vp, pgrav) + minv * pgrav
     do i = 1, 4
     etagrav_dum%psi(i) = f_vf (one, vp, grav%psi(i))
-    end do 
+    end do
     etagrav = etagrav_dum - m * grav
     pppgrav%psi(1) = p%t    * ppgrav
     pppgrav%psi(2) = p%x(1) * ppgrav
@@ -2136,7 +2133,7 @@ contains
     gg_grav_dum%psi(2) = p%x(1) * ggrav2
     gg_grav_dum%psi(3) = p%x(2) * ggrav2
     gg_grav_dum%psi(4) = p%x(3) * ggrav2
-    gg_grav = gr_potf (one, one, ggrav2) - minv * gg_grav_dum  
+    gg_grav = gr_potf (one, one, ggrav2) - minv * gg_grav_dum
     propgrav = (1 / cmplx (p*p - m**2, m*w, kind=default)) * &
          (etagrav + pppgrav + (1/3.0_default) * gg_grav)
   end function pr_grav

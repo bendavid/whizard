@@ -675,6 +675,9 @@
   ME(48) =
     + ME1(14) x ME2(6)
     + ME1(16) x ME2(12)
+
+
+*** Evaluator for matrix square
  Interaction: 6
  Incoming:
  Particle 1
@@ -707,6 +710,7 @@
        [f(21) c(2 -3)] => ME(2) = ( 4.000000000000E+00, 1.000000000000E+00)
      [f(21) c(2 -1)]
        [f(21)c*] => ME(3) = (-3.000000000000E+00, 0.000000000000E+00)
+
  Interaction: 7
  Incoming:
  Particle 1
@@ -745,6 +749,7 @@
   ME(1) =
     + ME1(1)* x ME2(1) x ( 3.000000000000E+00, 0.000000000000E+00)
     + ME1(2)* x ME2(2) x ( 3.000000000000E+00, 0.000000000000E+00)
+
  Interaction: 8
  Incoming:
  Particle 1
@@ -783,6 +788,7 @@
   ME(1) =
     + ME1(1)* x ME2(1) x ( 3.000000000000E+00, 0.000000000000E+00)
     + ME1(2)* x ME2(2) x ( 3.000000000000E+00, 0.000000000000E+00)
+
  Interaction: 9
  Incoming:
  Particle 1

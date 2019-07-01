@@ -27,17 +27,7 @@
 #
 ########################################################################
 
-
-## include the iso_fortran_env stub if required and make sure that it is
-## distributed in any case.
-if ISO_FORTRAN_ENV_STUB
-sources_extra = iso_fortran_env_stub.f90
-depend_filter_extra = -e 's/iso_fortran_env/iso_fortran_env_stub/'
-modules_extra = iso_fortran_env.mod
-iso_fortran_env.mod: iso_fortran_env_stub.lo
-else
 depend_filter_extra = -e 's/iso_fortran_env\.lo//'
-endif
 
 KINDS_FILE = \
   kinds.f90

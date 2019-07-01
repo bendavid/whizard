@@ -1,4 +1,4 @@
-! WHIZARD 2.2.2 July 6 2014
+! WHIZARD 2.2.3 Nov 30 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,8 +6,10 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
+!     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     Christian Weiss <christian.weiss@desy.de>
+!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -29,24 +31,24 @@
 
 module sf_isr
  
-  use kinds, only: default !NODEP!
-  use iso_varying_string, string_t => varying_string !NODEP!
-  use constants, only: pi !NODEP!
-  use file_utils !NODEP!
-  use limits, only: FMT_12, FMT_17, FMT_19 !NODEP!
-  use diagnostics !NODEP!
-  use lorentz !NODEP!
-  use sm_physics, only: Li2 !NODEP!
+  use kinds, only: default
+  use iso_varying_string, string_t => varying_string
+  use io_units
+  use constants, only: pi
+  use format_defs, only: FMT_12, FMT_17, FMT_19
   use unit_tests
-  use os_interface
+  use diagnostics
+  use physics_defs, only: ELECTRON, PHOTON
+  use lorentz
+  use sm_physics, only: Li2
   use pdg_arrays
-  use models
+  use model_data
   use flavors
   use colors
   use quantum_numbers
   use state_matrices
-  use polarizations
   use interactions
+  use polarizations
   use sf_mappings
   use sf_aux
   use sf_base
@@ -68,7 +70,7 @@ module sf_isr
 
   type, extends (sf_data_t) :: isr_data_t
      private
-     type(model_t), pointer :: model => null ()
+     class(model_data_t), pointer :: model => null ()
      type(flavor_t), dimension(:), allocatable :: flv_in
      real(default) :: alpha = 0
      real(default) :: q_max = 0
@@ -110,7 +112,7 @@ contains
   subroutine isr_data_init &
        (data, model, pdg_in, alpha, q_max, mass, order, recoil)
     class(isr_data_t), intent(out) :: data
-    type(model_t), intent(in), target :: model
+    class(model_data_t), intent(in), target :: model
     type(pdg_array_t), intent(in) :: pdg_in
     real(default), intent(in) :: alpha
     real(default), intent(in) :: q_max
@@ -204,7 +206,7 @@ contains
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: verbose
     integer :: u, i
-    u = output_unit (unit);  if (u < 0)  return
+    u = given_output_unit (unit);  if (u < 0)  return
     write (u, "(1x,A)") "ISR data:"
     if (allocated (data%flv_in)) then
        write (u, "(3x,A)", advance="no") "  flavor =  "
@@ -268,7 +270,7 @@ contains
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: testflag
     integer :: u
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     if (associated (object%data)) then
        call object%data%write (u)
        if (object%status >= SF_DONE_KINEMATICS) then
@@ -485,9 +487,7 @@ contains
   
   subroutine sf_isr_1 (u)
     integer, intent(in) :: u
-    type(os_data_t) :: os_data
-    type(model_list_t) :: model_list
-    type(model_t), pointer :: model
+    type(model_data_t), target :: model
     type(pdg_array_t) :: pdg_in
     type(pdg_array_t), dimension(1) :: pdg_out
     integer, dimension(:), allocatable :: pdg1
@@ -501,10 +501,7 @@ contains
     write (u, "(A)")  "* Create empty data object"
     write (u, "(A)")
 
-    call os_data_init (os_data)
-    call syntax_model_file_init ()
-    call model_list%read_model (var_str ("QED"), &
-         var_str ("QED.mdl"), os_data, model)
+    call model%init_qed_test ()
     pdg_in = ELECTRON
 
     allocate (isr_data_t :: data)
@@ -529,8 +526,7 @@ contains
     pdg1 = pdg_out(1)
     write (u, "(2x,99(1x,I0))")  pdg1
         
-    call model_list%final ()
-    call syntax_model_file_final ()
+    call model%final ()
     
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: sf_isr_1"
@@ -539,9 +535,7 @@ contains
 
   subroutine sf_isr_2 (u)
     integer, intent(in) :: u
-    type(os_data_t) :: os_data
-    type(model_list_t) :: model_list
-    type(model_t), pointer :: model
+    type(model_data_t), target :: model
     type(pdg_array_t) :: pdg_in
     type(flavor_t) :: flv
     class(sf_data_t), allocatable, target :: data
@@ -559,10 +553,7 @@ contains
     write (u, "(A)")  "* Initialize configuration data"
     write (u, "(A)")
 
-    call os_data_init (os_data)
-    call syntax_model_file_init ()
-    call model_list%read_model (var_str ("QED"), &
-         var_str ("QED.mdl"), os_data, model)
+    call model%init_qed_test ()
     pdg_in = ELECTRON
     call flavor_init (flv, ELECTRON, model)
 
@@ -653,8 +644,7 @@ contains
     write (u, "(A)")  "* Cleanup"
     
     call sf_int%final ()
-    call model_list%final ()
-    call syntax_model_file_final ()
+    call model%final ()
     
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: sf_isr_2"
@@ -663,9 +653,7 @@ contains
 
   subroutine sf_isr_3 (u)
     integer, intent(in) :: u
-    type(os_data_t) :: os_data
-    type(model_list_t) :: model_list
-    type(model_t), pointer :: model
+    type(model_data_t), target :: model
     type(flavor_t) :: flv
     type(pdg_array_t) :: pdg_in
     class(sf_data_t), allocatable, target :: data
@@ -683,10 +671,7 @@ contains
     write (u, "(A)")  "* Initialize configuration data"
     write (u, "(A)")
 
-    call os_data_init (os_data)
-    call syntax_model_file_init ()
-    call model_list%read_model (var_str ("QED"), &
-         var_str ("QED.mdl"), os_data, model)
+    call model%init_qed_test ()
     call flavor_init (flv, ELECTRON, model)
     pdg_in = ELECTRON
 
@@ -777,8 +762,7 @@ contains
     write (u, "(A)")  "* Cleanup"
     
     call sf_int%final ()
-    call model_list%final ()
-    call syntax_model_file_final ()
+    call model%final ()
     
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: sf_isr_3"
@@ -787,9 +771,7 @@ contains
 
   subroutine sf_isr_4 (u)
     integer, intent(in) :: u
-    type(os_data_t) :: os_data
-    type(model_list_t) :: model_list
-    type(model_t), pointer :: model
+    type(model_data_t), target :: model
     type(flavor_t) :: flv
     type(pdg_array_t) :: pdg_in
     class(sf_data_t), allocatable, target :: data
@@ -810,10 +792,7 @@ contains
     write (u, "(A)")  "* Initialize configuration data"
     write (u, "(A)")
 
-    call os_data_init (os_data)
-    call syntax_model_file_init ()
-    call model_list%read_model (var_str ("QED"), &
-         var_str ("QED.mdl"), os_data, model)
+    call model%init_qed_test ()
     call flavor_init (flv, ELECTRON, model)
     pdg_in = ELECTRON
 
@@ -918,8 +897,7 @@ contains
     write (u, "(A)")  "* Cleanup"
     
     call sf_int%final ()
-    call model_list%final ()
-    call syntax_model_file_final ()
+    call model%final ()
     
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: sf_isr_4"
@@ -928,9 +906,7 @@ contains
 
   subroutine sf_isr_5 (u)
     integer, intent(in) :: u
-    type(os_data_t) :: os_data
-    type(model_list_t) :: model_list
-    type(model_t), pointer :: model
+    type(model_data_t), target :: model
     type(flavor_t) :: flv
     type(pdg_array_t) :: pdg_in
     class(sf_data_t), allocatable, target :: data
@@ -950,10 +926,7 @@ contains
     write (u, "(A)")  "* Initialize configuration data"
     write (u, "(A)")
 
-    call os_data_init (os_data)
-    call syntax_model_file_init ()
-    call model_list%read_model (var_str ("QED"), &
-         var_str ("QED.mdl"), os_data, model)
+    call model%init_qed_test ()
     call flavor_init (flv, ELECTRON, model)
     pdg_in = ELECTRON
 
@@ -1081,8 +1054,7 @@ contains
     do i = 1, 2
        call sf_int(i)%final ()
     end do
-    call model_list%final ()
-    call syntax_model_file_final ()
+    call model%final ()
     
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: sf_isr_5"

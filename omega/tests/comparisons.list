@@ -1,6 +1,6 @@
-# $Id: comparisons.list 4073 2013-02-12 13:42:18Z fbach $
+# $Id: comparisons.list 6081 2014-08-26 18:16:22Z bchokoufe $
 # ----------------------------------------------------------------------
-#      thr     n roots model process ...
+#      thr   abs_thr n     roots  model process ...
 # ----------------------------------------------------------------------
-gggg   0.99 1000  1000   QCD scatter gl gl -> gl gl
-ggggg  0.99  500  1000   QCD scatter gl gl -> gl gl gl
+gggg   0.60  1E-11   1000  1000   QCD   scatter gl gl -> gl gl
+ggggg  0.60  1E-11   200   1000   QCD   scatter gl gl -> gl gl gl

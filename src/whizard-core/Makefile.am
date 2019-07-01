@@ -32,49 +32,35 @@
 noinst_LTLIBRARIES = libwhizard_core.la
 
 libwhizard_core_la_SOURCES = \
-  unit_tests.f90 \
-  os_interface.f90 cputime.f90 \
-  hashes.f90 sprintf_interface.c formats.f90 bytes.f90 md5.f90 \
-  permutations.f90 sorting.f90 ifiles.f90 \
-  lexers.f90 syntax_rules.f90 parser.f90 xml.f90 \
-  user_files.f90 analysis.f90 \
-  jets.f90 pdg_arrays.f90 subevents.f90 \
+  user_files.f90 \
   user_code_interface.f90 \
-  variables.f90 expressions.f90 \
+  eval_trees.f90 \
   models.f90 auto_components.f90 \
-  helicities.f90 colors.f90 flavors.f90 quantum_numbers.f90 \
-  state_matrices.f90 interactions.f90 evaluators.f90 \
-  polarizations.f90 particles.f90 \
-  beam_structures.f90 beams.f90 \
-  sm_qcd.f90 \
-  sf_aux.f90 sf_mappings.f90 sf_base.f90 \
   sf_pdf_builtin.f90 sf_lhapdf.f90 sf_circe1.f90 \
   sf_circe2.f90 sf_isr.f90 sf_epa.f90 sf_ewa.f90 \
   sf_escan.f90 sf_beam_events.f90 sf_user.f90 \
-  process_constants.f90 \
-  phs_base.f90 phs_single.f90 \
-  mappings.f90 phs_trees.f90 phs_forests.f90 cascades.f90 phs_wood.f90 \
-  rng_base.f90 rng_tao.f90 selectors.f90 \
-  mci_base.f90 mci_midpoint.f90 mci_vamp.f90 \
-  prclib_interfaces.f90 \
-  prc_core_def.f90 particle_specifiers.f90 \
-  process_libraries.f90 prclib_stacks.f90 \
-  prc_test.f90 \
-  integration_results.f90 \
+  phs_single.f90 \
+  mappings.f90 phs_trees.f90 phs_forests.f90 cascades.f90 phs_wood.f90\
+  fks_calculation.f90 fks_regions.f90 phs_fks.f90 \
+  radiation_generator.f90 \
+  rng_tao.f90 \
+  mci_midpoint.f90 mci_vamp.f90 \
   prc_core.f90 subevt_expr.f90 parton_states.f90 \
   processes.f90 process_stacks.f90 \
   event_transforms.f90 decays.f90 shower.f90 \
-  events.f90 prc_omega.f90 prc_template_me.f90 \
-  hep_common.f90 hep_events.f90 hepmc_interface.f90 \
+  events.f90 prc_omega.f90 prc_template_me.f90 prc_gosam.f90 \
+  loop_archive.f90 \
+  hep_common.f90 hep_events.f90 \
   hoppet_interface.f90 \
   eio_data.f90 eio_base.f90 eio_raw.f90 eio_checkpoints.f90 \
-  eio_lhef.f90 \
-  eio_hepmc.f90 eio_ascii.f90 eio_stdhep.f90 eio_weights.f90 \
-  iterations.f90 rt_data.f90  \
+  eio_lhef.f90 eio_hepmc.f90 eio_ascii.f90 \
+  eio_lcio.f90 eio_stdhep.f90 eio_weights.f90 \
+  rt_data.f90  \
   blha_config.f90 blha_interface.f90 blha_driver.f90 \
   slha_interface.f90 dispatch.f90 \
   process_configurations.f90 compilations.f90 integrations.f90 \
   event_streams.f90 simulations.f90 \
+  expr_tests.f90 \
   commands.f90 \
   whizard.f90
 ### Old NLO files
@@ -85,9 +71,6 @@ libwhizard_core_la_SOURCES = \
 EXTRA_libwhizard_core_la_SOURCES = whizard-c-interface.f90
 libwhizard_core_la_LIBADD = whizard-c-interface.lo
 
-## This C file has no dependencies
-sprintf_interface.c:
-
 ## The main program makes up a library on its own.
 lib_LTLIBRARIES = libwhizard_main.la
 
@@ -97,11 +80,49 @@ libwhizard_main_la_SOURCES = main.f90
 dist_noinst_DATA = whizard.nw
 
 ## Fortran module dependencies
+# Get module lists from other directories
+module_lists = \
+  ../basics/Modules \
+  ../utilities/Modules \
+  ../testing/Modules \
+  ../system/Modules \
+  ../combinatorics/Modules \
+  ../parsing/Modules \
+  ../rng/Modules \
+  ../physics/Modules \
+  ../qft/Modules \
+  ../types/Modules \
+  ../matrix_elements/Modules \
+  ../particles/Modules \
+  ../beams/Modules \
+  ../phase_space/Modules \
+  ../mci/Modules
+
+$(module_lists):
+	$(MAKE) -C `dirname $@` Modules
+
+Module_dependencies.sed: $(module_lists)
+	@rm -f $@
+	echo 's/, *only:.*//' >> $@
+	echo 's/, *&//' >> $@
+	echo 's/, *.*=>.*//' >> $@
+	echo 's/$$/.lo/' >> $@
+	for list in $^; do \
+	  dir="`dirname $$list`"; \
+	  for mod in `cat $$list`; do \
+	    echo 's!: '$$mod'.lo$$!': $$dir/$$mod'.lo!' >> $@; \
+	  done ; \
+	done
+
+DISTCLEANFILES = Module_dependencies.sed
+
+
 # The following line just says
 #    include Makefile.depend
 # but in a portable fashion (depending on automake's AM_MAKE_INCLUDE
 @am__include@ @am__quote@Makefile.depend@am__quote@
 
+Makefile.depend: Module_dependencies.sed
 Makefile.depend: $(libwhizard_core_la_SOURCES) $(libwhizard_main_la_SOURCES) $(EXTRA_libwhizard_core_la_SOURCES)
 	@rm -f $@
 	for src in $^; do \
@@ -109,26 +130,13 @@ Makefile.depend: $(libwhizard_core_la_SOURCES) $(libwhizard_main_la_SOURCES) $(E
 	  grep '^ *use ' $$src \
 	    | grep -v '!NODEP!' \
 	    | sed -e 's/^ *use */'$$module'.lo: /' \
-	          -e 's/, *only:.*//' \
-	          -e 's/, *&//' \
-	          -e 's/, *.*=>.*//' \
-	          -e 's/$$/.lo/' ; \
+	          -f Module_dependencies.sed; \
 	done > $@
 
-DISTCLEANFILES = Makefile.depend 
+DISTCLEANFILES += Makefile.depend 
 
-## Dependency libaux (kinds, constants, strings) and VAMP, CIRCE1, CIRCE2
+## Dependencies across directories and packages, if not automatically generated
 $(libwhizard_core_la_OBJECTS): \
-  ../misc/kinds.$(FC_MODULE_EXT) \
-  ../misc/constants.$(FC_MODULE_EXT) \
-  ../misc/iso_varying_string.$(FC_MODULE_EXT) \
-  ../misc/system_dependencies.$(FC_MODULE_EXT) \
-  ../misc/limits.$(FC_MODULE_EXT) \
-  ../misc/file_utils.$(FC_MODULE_EXT) \
-  ../misc/diagnostics.$(FC_MODULE_EXT) \
-  ../misc/c_particles.$(FC_MODULE_EXT) \
-  ../misc/lorentz.$(FC_MODULE_EXT) \
-  ../misc/sm_physics.$(FC_MODULE_EXT) \
   ../lhapdf/lhapdf.$(FC_MODULE_EXT) \
   ../../vamp/src/vamp.$(FC_MODULE_EXT) \
   ../../circe1/src/circe1.$(FC_MODULE_EXT) \
@@ -147,7 +155,7 @@ SUFFIXES = .lo .$(FC_MODULE_EXT)
 	@:
 #	touch $@
 
-AM_FCFLAGS = -I../misc -I../../vamp/src -I../shower -I../pdf_builtin -I../muli -I../../circe1/src -I../../circe2/src -I../lhapdf -I../fastjet
+AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../parsing -I../rng -I../physics -I../qft -I../matrix_elements -I../types -I../particles -I../beams -I../phase_space -I../mci -I../../vamp/src -I../shower -I../pdf_builtin -I../muli -I../../circe1/src -I../../circe2/src -I../lhapdf -I../fastjet
 
 ########################################################################
 ## Default Fortran compiler options
@@ -169,21 +177,21 @@ endif
 ## and by the user code library
 execmoddir = $(pkglibdir)/mod/whizard-core
 nodist_execmod_HEADERS = \
-  unit_tests.$(FC_MODULE_EXT) \
-  os_interface.$(FC_MODULE_EXT) \
-  user_code_interface.$(FC_MODULE_EXT) \
-  prclib_interfaces.$(FC_MODULE_EXT)
+  user_code_interface.$(FC_MODULE_EXT)
 
 ## (Re)create F90 sources from NOWEB source.
 if NOWEB_AVAILABLE
 
 WHIZARD_SRC = $(libwhizard_core_la_SOURCES) $(EXTRA_libwhizard_core_la_SOURCES) main.f90
 
-whizard.stamp: $(srcdir)/whizard.nw
+PRELUDE = $(top_srcdir)/src/noweb-frame/whizard-prelude.nw
+POSTLUDE = $(top_srcdir)/src/noweb-frame/whizard-postlude.nw
+
+whizard.stamp: $(PRELUDE) $(srcdir)/whizard.nw $(POSTLUDE)
 	@rm -f whizard.tmp
 	@touch whizard.tmp
 	for src in $(WHIZARD_SRC); do \
-	  $(NOTANGLE) -R[[$$src]] $< | $(CPIF) $$src; \
+	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src; \
         done
 	@mv -f whizard.tmp whizard.stamp
 

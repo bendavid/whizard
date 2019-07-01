@@ -1,4 +1,4 @@
-! WHIZARD 2.2.2 July 6 2014
+! WHIZARD 2.2.3 Nov 30 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,8 +6,10 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
+!     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     Christian Weiss <christian.weiss@desy.de>
+!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -29,14 +31,15 @@
 
 module hep_events
   
-  use kinds !NODEP!
-  use file_utils !NODEP!
-   use diagnostics !NODEP!
+  use kinds
+  use io_units
+  use diagnostics
 
-  use models
+  use model_data
   use particles
   use processes
   use hep_common
+  use hepmc_interface
   use events
 
   implicit none
@@ -45,6 +48,7 @@ module hep_events
   public :: hepeup_from_event
   public :: hepeup_to_event
   public :: hepevt_from_event
+  public :: hepmc_to_event
 
 contains
   
@@ -78,11 +82,11 @@ contains
   subroutine hepeup_to_event &
        (event, fallback_model, process_index, recover_beams)
     type(event_t), intent(inout), target :: event
-    type(model_t), intent(in), target :: fallback_model
+    class(model_data_t), intent(in), target :: fallback_model
     integer, intent(out), optional :: process_index
     logical, intent(in), optional :: recover_beams
     type(process_t), pointer :: process
-    type(model_t), pointer :: model
+    class(model_data_t), pointer :: model
     real(default) :: weight, scale, alpha_qcd
     type(particle_set_t) :: particle_set
     process => event%get_process_ptr ()
@@ -124,5 +128,28 @@ contains
     end if
   end subroutine hepevt_from_event
 
+  subroutine hepmc_to_event &
+       (event, hepmc_event, fallback_model, process_index, recover_beams)
+    type(event_t), intent(inout), target :: event
+    type(hepmc_event_t), intent(inout) :: hepmc_event
+    class(model_data_t), intent(in), target :: fallback_model
+    integer, intent(out), optional :: process_index
+    logical, intent(in), optional :: recover_beams
+    type(process_t), pointer :: process
+    class(model_data_t), pointer :: model
+    real(default) :: weight, scale, alpha_qcd
+    type(particle_set_t) :: particle_set
+    process => event%get_process_ptr ()
+    model => process%get_model_ptr ()
+    call particle_set_init &
+         (particle_set, hepmc_event, model, fallback_model, PRT_DEFINITE_HELICITY)
+    call event%set_particle_set_hard_proc (particle_set)
+    call particle_set_final (particle_set)
+    call event%set ()
+!!! Not implemented yet:
+!     if (scale > 0)  call event%set_scales (scale)
+!     if (alpha_qcd > 0)  call event%set_alpha_qcd (alpha_qcd)
+  end subroutine hepmc_to_event
+  
 
 end module hep_events

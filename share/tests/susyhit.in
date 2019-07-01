@@ -18,4 +18,11 @@ GAMZ     = 2.490D0
 VUS      = 0.2205D0
 VCB      = 0.04D0
 VUB/VCB  = 0.08D0
-EOF
+* FCNC stop decays for SDECAY:
+------------------------------
+  (0) No flavour violation at tree-level.
+  (1) FCNC stop decays in SDECAY. Works only with output in SLHA format, and input parameters have to be provided in an SLHA2 file.
+0 
+  (0) Light stop four-body decay widths summed up.
+  (1) Stop four-body decay separated by final states.
+1

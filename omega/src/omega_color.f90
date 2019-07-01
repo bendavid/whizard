@@ -1,18 +1,18 @@
-!  $Id: omegalib.nw 5434 2014-03-06 18:17:45Z msekulla $
+!  $Id: omegalib.nw 6301 2014-11-25 09:34:00Z bchokoufe $
 !
-!  Copyright (C) 1999-2009 by 
+!  Copyright (C) 1999-2009 by
 !      Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !      Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !      Juergen Reuter <juergen.reuter@desy.de>
 !
 !  WHIZARD is free software; you can redistribute it and/or modify it
-!  under the terms of the GNU General Public License as published by 
+!  under the terms of the GNU General Public License as published by
 !  the Free Software Foundation; either version 2, or (at your option)
 !  any later version.
 !
 !  WHIZARD is distributed in the hope that it will be useful, but
 !  WITHOUT ANY WARRANTY; without even the implied warranty of
-!  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+!  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 !  GNU General Public License for more details.
 !
 !  You should have received a copy of the GNU General Public License
@@ -27,21 +27,45 @@ module omega_color
   public :: omega_color_factor
   type omega_color_factor
      integer :: i1, i2
-     complex(kind=default) :: factor
+     real(kind=default) :: factor
   end type omega_color_factor
   public :: omega_color_sum
+  public :: ovm_color_sum
   integer, parameter, public :: omega_color_2010_01_A = 0
 contains
-  pure function omega_color_sum (flv, hel, amp, cf) result (amp2)
+  
+  function omega_color_sum (flv, hel, amp, cf) result (amp2)
     complex(kind=default) :: amp2
     integer, intent(in) :: flv, hel
     complex(kind=default), dimension(:,:,:), intent(in) :: amp
     type(omega_color_factor), dimension(:), intent(in) :: cf
     integer :: n
     amp2 = 0
+    !$omp parallel do reduction(+:amp2)
     do n = 1, size (cf)
-       amp2 = amp2 &
-            + cf(n)%factor * amp(flv,cf(n)%i1,hel) * conjg (amp(flv,cf(n)%i2,hel))
+       amp2 = amp2 + cf(n)%factor * &
+                     amp(flv,cf(n)%i1,hel) * conjg (amp(flv,cf(n)%i2,hel))
     end do
+    !$omp end parallel do
   end function omega_color_sum
+  
+  function ovm_color_sum (flv, hel, amp, cf) result (amp2)
+    real(kind=default) :: amp2
+    integer, intent(in) :: flv, hel
+    complex(kind=default), dimension(:,:,:), intent(in) :: amp
+    type(omega_color_factor), dimension(:), intent(in) :: cf
+    integer :: n
+    amp2 = 0
+    !$omp parallel do reduction(+:amp2)
+    do n = 1, size (cf)
+       if (cf(n)%i1 == cf(n)%i2) then
+          amp2 = amp2 + cf(n)%factor * &
+                 real(amp(flv,cf(n)%i1,hel) * conjg(amp(flv,cf(n)%i2,hel)))
+       else
+          amp2 = amp2 + cf(n)%factor * 2 * &
+                 real(amp(flv,cf(n)%i1,hel) * conjg(amp(flv,cf(n)%i2,hel)))
+       end if
+    end do
+    !$omp end parallel do
+  end function ovm_color_sum
 end module omega_color

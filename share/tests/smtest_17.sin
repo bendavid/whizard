@@ -1,0 +1,37 @@
+# $Id: smtest_17.sin 4873 2013-11-26 19:52:40Z jr_reuter $
+# SINDARIN input for WHIZARD self-test
+# Test comparison between O'Mega compiled and OVM matrix elements
+
+?logging = true
+?openmp_logging = false
+?vis_history = false
+?integration_timer = false
+?pacify = true
+
+seed = 0
+
+phs_off_shell = 1
+phs_t_channel = 2
+
+me = 0
+mmu = 0
+
+!!! Tests should be run single-threaded 
+openmp_num_threads = 1
+
+process smtest_17_1 = e1, E1 => e2, E2 { $method = "omega" }
+process smtest_17_2 = e1, E1 => e2, E2 { $method = "ovm" }
+
+sqrts = 250 GeV
+
+integrate (smtest_17_1)
+integrate (smtest_17_2)
+
+real errorsum = sqrt (error(smtest_17_1)**2 + error(smtest_17_2)**2)
+
+tolerance = 5 * errorsum
+
+real sigma_j1 = integral (smtest_17_1)
+real sigma_j2 = integral (smtest_17_2)
+
+expect (sigma_j1 == sigma_j2)

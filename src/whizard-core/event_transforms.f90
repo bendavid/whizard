@@ -1,4 +1,4 @@
-! WHIZARD 2.2.2 July 6 2014
+! WHIZARD 2.2.3 Nov 30 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,8 +6,10 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
+!     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     Christian Weiss <christian.weiss@desy.de>
+!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -29,14 +31,15 @@
 
 module event_transforms
 
-  use kinds, only: default !NODEP!
-  use iso_varying_string, string_t => varying_string !NODEP!
-  use file_utils !NODEP!
-  use diagnostics !NODEP!
+  use kinds, only: default
+  use iso_varying_string, string_t => varying_string
+  use io_units
+  use format_utils, only: write_separator
   use unit_tests
+  use diagnostics
   use os_interface
   use sm_qcd
-  use models
+  use model_data
   use state_matrices
   use interactions
   use particles
@@ -62,7 +65,7 @@ module event_transforms
   type, abstract :: evt_t
      type(process_t), pointer :: process => null ()
      type(process_instance_t), pointer :: process_instance => null ()
-     type(model_t), pointer :: model => null ()
+     class(model_data_t), pointer :: model => null ()
      class(rng_t), allocatable :: rng
      integer :: rejection_count = 0
      logical :: particle_set_exists = .false.
@@ -138,7 +141,7 @@ contains
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: verbose, testflag
     integer :: u
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     if (associated (object%process)) then
        write (u, "(3x,A,A,A)")   "Associated process: '", &
             char (object%process%get_id ()), "'"
@@ -156,7 +159,7 @@ contains
   subroutine evt_connect (evt, process_instance, model, process_stack)
     class(evt_t), intent(inout), target :: evt
     type(process_instance_t), intent(in), target :: process_instance
-    type(model_t), intent(in), target :: model
+    class(model_data_t), intent(in), target :: model
     type(process_stack_t), intent(in), optional :: process_stack
     evt%process => process_instance%process
     evt%process_instance => process_instance
@@ -236,8 +239,8 @@ contains
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: verbose, testflag
     integer :: u
-    u = output_unit (unit)
-    call write_separator_double (u)
+    u = given_output_unit (unit)
+    call write_separator (u, 2)
     write (u, "(1x,A)")  "Event transform: trivial (hard process)"
     call write_separator (u)
     call object%base_write (u, testflag = testflag)
@@ -289,8 +292,7 @@ contains
     type(os_data_t) :: os_data
     type(qcd_t) :: qcd
     class(rng_factory_t), allocatable :: rng_factory
-    type(model_list_t) :: model_list
-    type(model_t), pointer :: model
+    class(model_data_t), pointer :: model
     type(process_library_t), target :: lib
     type(string_t) :: libname, procname1, run_id
     class(prc_core_t), allocatable :: core_template
@@ -310,11 +312,8 @@ contains
     write (u, "(A)")  "* Initialize environment and parent process"
     write (u, "(A)")
 
-    call syntax_model_file_init ()
     call os_data_init (os_data)
     allocate (rng_test_factory_t :: rng_factory)
-    call model_list%read_model (var_str ("Test"), &
-         var_str ("Test.mdl"), os_data, model)
 
     libname = "event_transforms_1_lib"
     procname1 = "event_transforms_1_p"
@@ -323,9 +322,13 @@ contains
     call prc_test_create_library (libname, lib, &
          scattering = .true., procname1 = procname1)
     call reset_interaction_counter ()
+
+    allocate (model)
+    call model%init_test ()
+
     allocate (process)
     call process%init &
-         (procname1, run_id, lib, os_data, qcd, rng_factory, model_list)
+         (procname1, run_id, lib, os_data, qcd, rng_factory, model)
     
     allocate (test_t :: core_template)
     allocate (mci_midpoint_t :: mci_template)
@@ -355,6 +358,7 @@ contains
     write (u, "(A)")
 
     allocate (evt_trivial_t :: evt)
+    model => process%get_model_ptr ()
     call evt%connect (process_instance, model)
     
     write (u, "(A)")  "* Generate event and subsequent transform"
@@ -368,9 +372,9 @@ contains
 
     select type (evt)
     type is (evt_trivial_t)
-       call write_separator_double (u)
+       call write_separator (u, 2)
        call evt%write (u)
-       call write_separator_double (u)
+       call write_separator (u, 2)
     end select
 
     write (u, "(A)")
@@ -384,9 +388,9 @@ contains
 
     select type (evt)
     type is (evt_trivial_t)
-       call write_separator_double (u)
+       call write_separator (u, 2)
        call evt%write (u)
-       call write_separator_double (u)
+       call write_separator (u, 2)
     end select
 
     write (u, "(A)")
@@ -395,9 +399,6 @@ contains
     call evt%final ()
     call process_instance%final ()
     deallocate (process_instance)
-    
-    call model_list%final ()
-    call syntax_model_file_final ()
     
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: event_transforms_1"

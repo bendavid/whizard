@@ -182,6 +182,7 @@
 \newcommand{\circetwo}{\texttt{CIRCE2}}
 \newcommand{\gamelan}{\textsf{gamelan}}
 \newcommand{\stdhep}{\texttt{STDHEP}}
+\newcommand{\lcio}{\texttt{LCIO}}
 \newcommand{\pdflib}{\texttt{PDFLIB}}
 \newcommand{\lhapdf}{\texttt{LHAPDF}}
 \newcommand{\hepmc}{\texttt{HepMC}}
@@ -263,7 +264,7 @@ Parameter & Value & Default & Description \\
 }
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %END LATEX
-\newcommand{\thisversion}{2.2.2}
+\newcommand{\thisversion}{2.2.3}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -298,7 +299,9 @@ Parameter & Value & Default & Description \\
     \thanks{e-mail: \texttt{juergen.reuter@desy.de}}
   with contributions from 
   Fabian Bach, %
-    \thanks{e-mail: \texttt{fabian.bach@desy.de}},
+    \thanks{e-mail: \texttt{fabian.bach@desy.de}}
+  Bijan Chokouf\'{e} Nejad, %
+    \thanks{e-mail: \texttt{bijan.chokoufe@desy.de}}
   Sebastian Schmidt, %
   Christian Speckner
     \thanks{e-mail: \texttt{cnspeckn@googlemail.com}},
@@ -319,12 +322,15 @@ Parameter & Value & Default & Description \\
  \includegraphics[width=4cm]{Whizard-Logo}
  \end{center}
  \mbox{} \\
- \vspace{.2cm}
+ \vspace{2cm}
  \mbox{} when using \whizard\ please cite: \\
- W. Kilian, T. Ohl, J. Reuter, \\ WHIZARD: Simulating Multi-Particle
- Processes at LHC and ILC, \\
- Eur.Phys.J.C71 (2011) 1742, arXiv:
- 0708.4233 [hep-ph] 
+ W. Kilian, T. Ohl, J. Reuter, \\ {\em WHIZARD: Simulating Multi-Particle
+ Processes at LHC and ILC}, \\
+ Eur.Phys.J.{\bf C71} (2011) 1742, arXiv:
+ 0708.4233 [hep-ph]; \\
+ M. Moretti, T. Ohl, J. Reuter, \\ {\em O'Mega: An Optimizing Matrix
+ Element Generator}, \\
+ arXiv: hep-ph/0102195
 }
 %END LATEX
 %BEGIN LATEX
@@ -332,7 +338,7 @@ Parameter & Value & Default & Description \\
 \whizard\ is a program system designed for the efficient calculation
 of multi-particle scattering cross sections and simulated event
 samples.  The generated events can be written to file in various formats
-(including HepMC, LHEF, STDHEP, and ASCII) or analyzed directly on the
+(including HepMC, LHEF, STDHEP, LCIO, and ASCII) or analyzed directly on the
 parton or hadron level using a built-in \LaTeX-compatible graphics
 package. 
 \\[\baselineskip]
@@ -623,7 +629,9 @@ of \whizard:
   processes \\
   2.2.1 & 05/2014 & CJ12 PDFs; FastJet interface \\
   2.2.2 & 07/2014 & LHAPDF6 support; correlated LC beams; GuineaPig
-  interface 
+  interface \\
+  2.2.3 & 11/2014 & O'Mega virtual machine; lepton collider top
+     pair threshold; Higgs singlet extension
   \\\hline  
 \end{tabular}
 \end{center}
@@ -782,6 +790,8 @@ them, before you install \whizard.
   The \fastjet\ jet-algorithm package.  See Sec.~\ref{sec:fastjet}.
 \item
   The \stdhep\ event-format package.  See Sec.~\ref{sec:stdhep}.
+\item
+  The \lcio\ event-format package.  See Sec.~\ref{sec:lcio}.
 \end{itemize}
 Once these prerequisites are met, you may unpack the package in a
 directory of your choice
@@ -1212,6 +1222,10 @@ If \stdhep\ is installed in a non-default directory where
 \ttt{STDHEP\_DIR} to the correct installation path when configuring
 \whizard.
 
+%%%%%
+
+\subsection{LCIO}
+\label{sec:lcio}
 
 \section{Installation}
 \label{sec:installation}
@@ -1344,6 +1358,9 @@ The most important options are
 \item
   \ttt{STDHEP\_DIR} (variable): The location of the optional \stdhep\
   package, if non-default.
+\item
+  \ttt{LCIO\_DIR} (variable): The location of the optional \lcio\
+  package, if non-default.
 \end{itemize}
 
 Other flags that might help to work around possible problems are the
@@ -1374,7 +1391,7 @@ process.
   \ttt{LDFLAGS} (variable): non-standard linker flags
 \end{itemize}
 
-For other options (like e.g. \ttt{--enable-fc-quadruple} etc.) please
+For other options (like e.g. \ttt{--enable-fc-extended} etc.) please
 see the \ttt{configure --help} option.
 
 %%%%%
@@ -2257,7 +2274,7 @@ named \verb|hello.sin|.
 		|        M. Moretti, T. Ohl, J. Reuter, arXiv: hep-ph/0102195                 |
 		|                                                                             |
 		|=============================================================================|
-		|                               WHIZARD 2.2.2
+		|                               WHIZARD 2.2.3
 		|=============================================================================|
 		| Reading model file '/usr/local/share/whizard/models/SM.mdl'
 		| Preloaded model: SM
@@ -2288,7 +2305,7 @@ including the \whizard\ banner is shown in Fig.~\ref{fig:helloworld})
 \centerline{[... here a banner is displayed]}
 \begin{Verbatim}
 |=============================================================================|
-|                               WHIZARD 2.2.2
+|                               WHIZARD 2.2.3
 |=============================================================================|
 | Reading model file '/usr/local/share/whizard/models/SM.mdl'
 | Preloaded model: SM
@@ -2347,7 +2364,7 @@ This produces a lot of output which looks similar to this:
  | Writing log to 'whizard.log'
 [... banner ...]
  |=============================================================================|
- |                               WHIZARD 2.2.2
+ |                               WHIZARD 2.2.3
  |=============================================================================|
  | Reading model file '/usr/local/share/whizard/models/SM.mdl'
  | Preloaded model: SM
@@ -5726,7 +5743,7 @@ chattiness or verbosity of the \circeone\ package, i.e. how many
 messages and warnings from the beamstrahlung generation/sampling will
 be issued. 
 
-The actual internal version and revision of the \circeone\ pacakge are
+The actual internal version and revision of the \circeone\ package are
 set by the two integer parameters \ttt{circe1\_ver} and
 \ttt{circe1\_rev}. The default is in any case always the newest
 version and revision, while older versions are still kept for
@@ -6173,7 +6190,7 @@ beams = e1, E1 => circe1 => isr => epa
 \label{sec:userstrfun}
 
 {\color{red}
-{\em Note that in \whizard\ version v2.2.0 this mechanism is
+{\em Note that in \whizard\ version v2.2.0-2 this mechanism is
   temporarily disabled due to the refactoring procedure from v2.1 to
   v2.2. It is expected to be switched on again as soon as possible,
   most likely in one of the upcoming minor versions, v2.2.x}}
@@ -8218,7 +8235,7 @@ cf. Chap.~\ref{chap:extmodels}.
              \tt{SSC}/\tt{AltH} \\\hline
              SM with $Z'$ & \tt{---} & \tt{Zprime} \\
              \hline
-             Two-Higgs Doublet Model & \tt{2HDM} & \tt{2HDM\_CKM} \\ \hline\hline
+             Two-Higgs Doublet Model & \tt{2HDM\_CKM} & \tt{2HDM} \\ \hline\hline
              MSSM &   \tt{MSSM\_CKM} & \tt{MSSM} \\
              \hline
              MSSM with gravitinos &   \tt{---} & \tt{MSSM\_Grav} \\
@@ -8975,7 +8992,7 @@ This is the modern version of the Les Houches accord event format
 <LesHouchesEvents version="1.0">
 <header>
   <generator_name>WHIZARD</generator_name>
-  <generator_version>2.2.2</generator_version>
+  <generator_version>2.2.3</generator_version>
 </header>
 <init>
  25 25  5.0000000000E+02  5.0000000000E+02 -1 -1 -1 -1 3 1
@@ -13761,6 +13778,14 @@ the HepMC format are written. If not set, the default file name and suffix is
 \ttt{\$sample})  
 %%%%%
 \item
+\ttt{\$extension\_lcio} \qquad (default: \ttt{"slcio"}) \newline
+String variable that allows via \ttt{\$extension\_lcio = "{\em <suffix>}"} to 
+specify the suffix for the file \ttt{name.suffix} to which events in
+the LCIO format are written. If not set, the default file name and suffix is
+\ttt{{\em <process\_name>}.slcio}. (cf. also \ttt{sample\_format},
+\ttt{\$sample})  
+%%%%%
+\item
 \ttt{\$extension\_lha} \qquad (default: \ttt{"lha"}) \newline
 String variable that allows via \ttt{\$extension\_lha = "{\em <suffix>}"} to 
 specify the suffix for the file \ttt{name.suffix} to which events in
@@ -14517,6 +14542,13 @@ Integer parameter that modifies the settings of the \vamp\
 integrator's grid parameters. It sets the maximal number of bins per
 integration dimension. (cf. \ttt{iterations}, \ttt{min\_bins},
 \ttt{min\_calls\_per\_channel}, \ttt{min\_calls\_per\_bin})  
+%%%%%
+\item
+\ttt{\$method} \qquad (default: \ttt{"omega"}) \newline
+This string variable specifies the method for the matrix elements
+to be used in the evaluation. The default is the intrinsic O'Mega
+matrix element generator (\ttt{"omega"}), other options are: 
+\ttt{"ovm"}, \ttt{"unit\_test"}, \ttt{"template"}, \ttt{"template\_unity"}.
 %%%%%
 \item
 \ttt{meV} \newline

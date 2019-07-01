@@ -1,18 +1,18 @@
-!  $Id: omegalib.nw 5434 2014-03-06 18:17:45Z msekulla $
+!  $Id: omegalib.nw 6301 2014-11-25 09:34:00Z bchokoufe $
 !
-!  Copyright (C) 1999-2009 by 
+!  Copyright (C) 1999-2009 by
 !      Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !      Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !      Juergen Reuter <juergen.reuter@desy.de>
 !
 !  WHIZARD is free software; you can redistribute it and/or modify it
-!  under the terms of the GNU General Public License as published by 
+!  under the terms of the GNU General Public License as published by
 !  the Free Software Foundation; either version 2, or (at your option)
 !  any later version.
 !
 !  WHIZARD is distributed in the hope that it will be useful, but
 !  WITHOUT ANY WARRANTY; without even the implied warranty of
-!  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+!  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 !  GNU General Public License for more details.
 !
 !  You should have received a copy of the GNU General Public License
@@ -30,7 +30,7 @@ module omega_bispinors
   type, public :: bispinor
      ! private (omegalib needs access, but DON'T TOUCH IT!)
      complex(kind=default), dimension(4) :: a
-  end type bispinor 
+  end type bispinor
   interface operator (*)
     module procedure spinor_product
   end interface
@@ -40,7 +40,7 @@ module omega_bispinors
             real_bispinor, double_bispinor, &
             complex_bispinor, dcomplex_bispinor, &
             bispinor_real, bispinor_double, &
-            bispinor_complex, bispinor_dcomplex 
+            bispinor_complex, bispinor_dcomplex
   end interface
   private :: integer_bispinor, bispinor_integer, real_bispinor, &
        double_bispinor, complex_bispinor, dcomplex_bispinor, &
@@ -75,7 +75,7 @@ contains
     psidum%a(2) = - psir%a(1)
     psidum%a(3) = - psir%a(4)
     psidum%a(4) = psir%a(3)
-    psilpsir = dot_product (conjg (psil%a), psidum%a)    
+    psilpsir = dot_product (conjg (psil%a), psidum%a)
   end function spinor_product
   pure function integer_bispinor (x, y) result (xy)
     type(bispinor) :: xy
@@ -94,7 +94,7 @@ contains
     real(kind=default), intent(in) :: x
     type(bispinor), intent(in) :: y
     xy%a = x * y%a
-  end function double_bispinor      
+  end function double_bispinor
   pure function complex_bispinor (x, y) result (xy)
     type(bispinor) :: xy
     complex(kind=single), intent(in) :: x
@@ -106,7 +106,7 @@ contains
     complex(kind=default), intent(in) :: x
     type(bispinor), intent(in) :: y
     xy%a = x * y%a
-  end function dcomplex_bispinor   
+  end function dcomplex_bispinor
   pure function bispinor_integer (y, x) result (xy)
     type(bispinor) :: xy
     integer, intent(in) :: x
@@ -124,7 +124,7 @@ contains
     real(kind=default), intent(in) :: x
     type(bispinor), intent(in) :: y
     xy%a = x * y%a
-  end function bispinor_double         
+  end function bispinor_double
   pure function bispinor_complex (y, x) result (xy)
     type(bispinor) :: xy
     complex(kind=single), intent(in) :: x
@@ -136,7 +136,7 @@ contains
     complex(kind=default), intent(in) :: x
     type(bispinor), intent(in) :: y
     xy%a = x * y%a
-  end function bispinor_dcomplex         
+  end function bispinor_dcomplex
   pure function plus_bispinor (x) result (plus_x)
     type(bispinor) :: plus_x
     type(bispinor), intent(in) :: x
@@ -160,6 +160,6 @@ contains
   pure function abs_bispinor (psi) result (x)
     real(kind=default) :: x
     type(bispinor), intent(in) :: psi
-    x = sqrt (dot_product (psi%a, psi%a))
+    x = sqrt (real (dot_product (psi%a, psi%a)))
   end function abs_bispinor
-end module omega_bispinors                                      
+end module omega_bispinors

@@ -1,4 +1,4 @@
-! WHIZARD 2.2.2 July 6 2014
+! WHIZARD 2.2.3 Nov 30 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,8 +6,10 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
+!     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     Christian Weiss <christian.weiss@desy.de>
+!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -29,18 +31,18 @@
 
 module sf_user
 
-  use iso_c_binding !NODEP!
-  use kinds, only: default !NODEP!
-  use iso_varying_string, string_t => varying_string !NODEP!
-  use file_utils !NODEP!
-  use limits, only: FMT_17 !NODEP!
-  use diagnostics !NODEP!
-  use c_particles !NODEP!
-  use lorentz !NODEP!
+  use, intrinsic :: iso_c_binding !NODEP!
+  use kinds, only: default
+  use iso_varying_string, string_t => varying_string
+  use io_units
+  use format_defs, only: FMT_17
+  use diagnostics
+  use c_particles
+  use lorentz
   use subevents
   use user_code_interface
   use pdg_arrays
-  use models
+  use model_data
   use flavors
   use helicities
   use colors
@@ -67,7 +69,7 @@ module sf_user
      integer :: n_dim
      integer :: n_var
      integer, dimension(2) :: pdg_in
-     type(model_t), pointer :: model => null ()
+     class(model_data_t), pointer :: model => null ()
      procedure(user_int_info), nopass, pointer :: info => null ()
      procedure(user_int_mask), nopass, pointer :: mask => null ()
      procedure(user_int_state), nopass, pointer :: state => null ()
@@ -102,7 +104,7 @@ contains
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: verbose        
     integer :: u
-    u = output_unit (unit);  if (u < 0)  return
+    u = given_output_unit (unit);  if (u < 0)  return
     write (u, "(1x,A,A)") "User structure function: ", char (data%name)
   end subroutine user_data_write
 
@@ -218,7 +220,7 @@ contains
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: testflag
     integer :: u
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     if (associated (object%data)) then
        call object%data%write (u)
        if (object%status >= SF_DONE_KINEMATICS) then

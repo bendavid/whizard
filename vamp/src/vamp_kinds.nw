@@ -22,7 +22,7 @@ module kinds
        & selected_real_kind (precision(1.0), range(1.0))
   integer, parameter, private :: double = &
        & selected_real_kind (precision(1.0_single) + 1, range(1.0_single) + 1)
-  integer, parameter, private :: quadruple = &
+  integer, parameter, private :: extended = &
        & selected_real_kind (precision (1.0_double) + 1, range (1.0_double))
   integer, parameter, public :: default = double
   character(len=*), public, parameter :: KINDS_RCS_ID = &

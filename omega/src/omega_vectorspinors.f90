@@ -1,18 +1,18 @@
-!  $Id: omegalib.nw 5434 2014-03-06 18:17:45Z msekulla $
+!  $Id: omegalib.nw 6301 2014-11-25 09:34:00Z bchokoufe $
 !
-!  Copyright (C) 1999-2009 by 
+!  Copyright (C) 1999-2009 by
 !      Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !      Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !      Juergen Reuter <juergen.reuter@desy.de>
 !
 !  WHIZARD is free software; you can redistribute it and/or modify it
-!  under the terms of the GNU General Public License as published by 
+!  under the terms of the GNU General Public License as published by
 !  the Free Software Foundation; either version 2, or (at your option)
 !  any later version.
 !
 !  WHIZARD is distributed in the hope that it will be useful, but
 !  WITHOUT ANY WARRANTY; without even the implied warranty of
-!  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+!  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 !  GNU General Public License for more details.
 !
 !  You should have received a copy of the GNU General Public License
@@ -32,7 +32,7 @@ module omega_vectorspinors
   type, public :: vectorspinor
      ! private (omegalib needs access, but DON'T TOUCH IT!)
      type(bispinor), dimension(4) :: psi
-  end type vectorspinor 
+  end type vectorspinor
   interface operator (*)
     module procedure vspinor_product
   end interface
@@ -47,7 +47,7 @@ module omega_vectorspinors
   end interface
   private :: integer_vectorspinor, vectorspinor_integer, real_vectorspinor, &
        double_vectorspinor, complex_vectorspinor, dcomplex_vectorspinor, &
-       vectorspinor_real, vectorspinor_double, vectorspinor_complex, & 
+       vectorspinor_real, vectorspinor_double, vectorspinor_complex, &
        vectorspinor_dcomplex
   interface operator (+)
      module procedure plus_vectorspinor
@@ -74,17 +74,17 @@ contains
   pure function vspinor_product (psil, psir) result (psilpsir)
     complex(kind=default) :: psilpsir
     type(vectorspinor), intent(in) :: psil, psir
-    psilpsir =   psil%psi(1) * psir%psi(1) &
-               - psil%psi(2) * psir%psi(2) &
-               - psil%psi(3) * psir%psi(3) &
-               - psil%psi(4) * psir%psi(4) 
+    psilpsir = psil%psi(1) * psir%psi(1) &
+             - psil%psi(2) * psir%psi(2) &
+             - psil%psi(3) * psir%psi(3) &
+             - psil%psi(4) * psir%psi(4)
   end function vspinor_product
   pure function integer_vectorspinor (x, y) result (xy)
     type(vectorspinor) :: xy
     integer, intent(in) :: x
     type(vectorspinor), intent(in) :: y
     integer :: k
-    do k = 1,4 
+    do k = 1,4
       xy%psi(k) = x * y%psi(k)
     end do
   end function integer_vectorspinor
@@ -95,7 +95,7 @@ contains
     integer :: k
     do k = 1,4
     xy%psi(k) = x * y%psi(k)
-    end do 
+    end do
   end function real_vectorspinor
   pure function double_vectorspinor (x, y) result (xy)
     type(vectorspinor) :: xy
@@ -105,7 +105,7 @@ contains
     do k = 1,4
     xy%psi(k) = x * y%psi(k)
     end do
-  end function double_vectorspinor      
+  end function double_vectorspinor
   pure function complex_vectorspinor (x, y) result (xy)
     type(vectorspinor) :: xy
     complex(kind=single), intent(in) :: x
@@ -123,7 +123,7 @@ contains
     do k = 1,4
     xy%psi(k) = x * y%psi(k)
     end do
-  end function dcomplex_vectorspinor   
+  end function dcomplex_vectorspinor
   pure function vectorspinor_integer (y, x) result (xy)
     type(vectorspinor) :: xy
     integer, intent(in) :: x
@@ -150,7 +150,7 @@ contains
     do k = 1,4
     xy%psi(k) = y%psi(k) * x
     end do
-  end function vectorspinor_double         
+  end function vectorspinor_double
   pure function vectorspinor_complex (y, x) result (xy)
     type(vectorspinor) :: xy
     complex(kind=single), intent(in) :: x
@@ -168,7 +168,7 @@ contains
     do k = 1,4
     xy%psi(k) = y%psi(k) * x
     end do
-  end function vectorspinor_dcomplex         
+  end function vectorspinor_dcomplex
   pure function momentum_vectorspinor (y, x) result (xy)
     type(bispinor) :: xy
     type(momentum), intent(in) :: y
@@ -224,9 +224,9 @@ contains
   pure function abs_vectorspinor (psi) result (x)
     real(kind=default) :: x
     type(vectorspinor), intent(in) :: psi
-    x = sqrt (dot_product (psi%psi(1)%a, psi%psi(1)%a) &
-          - dot_product (psi%psi(2)%a, psi%psi(2)%a)   &
-          - dot_product (psi%psi(3)%a, psi%psi(3)%a)   &
-          - dot_product (psi%psi(4)%a, psi%psi(4)%a))
+    x = sqrt (real (dot_product (psi%psi(1)%a, psi%psi(1)%a) &
+            - dot_product (psi%psi(2)%a, psi%psi(2)%a)   &
+            - dot_product (psi%psi(3)%a, psi%psi(3)%a)   &
+            - dot_product (psi%psi(4)%a, psi%psi(4)%a)))
   end function abs_vectorspinor
-end module omega_vectorspinors                                      
+end module omega_vectorspinors

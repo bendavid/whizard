@@ -1,9 +1,10 @@
 ?openmp_logging = false
 ?vis_history = false
 ?integration_timer = false
+| Switching to model 'QED'
 | Process library 'qedtest_10_lib': recorded process 'qedtest_10_p'
-QED.me =  0.000000000000E+00
-QED.mmu =  0.000000000000E+00
+QED.me =>  0.000000000000E+00
+QED.mmu =>  0.000000000000E+00
 seed = 0
 sqrts =  5.000000000000E+02
 openmp_num_threads = 1

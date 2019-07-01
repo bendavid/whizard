@@ -29,7 +29,6 @@ s is stable    = T
 f is polarized = F
 
 Global model variable: ff =>  1.500000000000E+00
-Global variable: ff =  1.500000000000E+00
 
 * Apply local modifications: unstable
 
@@ -111,12 +110,6 @@ model "Test"
    vertex "fbar" "f" "s"
    vertex "s" "s" "s"
 
- Stored particle data
-   Model = Test
-   -6:  stable = T  isotropic = F  diagonal = F  polarized = F
-   6:  stable = T  isotropic = F  diagonal = F  polarized = F
-   25:  stable = T  isotropic = F  diagonal = F  polarized = F
-
 * Global model
 
 model "Test"
@@ -124,27 +117,25 @@ model "Test"
 
    parameter gy =  1.000000000000E+00
    parameter ms =  1.250000000000E+02
-   parameter ff =  4.000000000000E-01
-   external mf =  5.000000000000E+01
+   parameter ff =  1.500000000000E+00
+   external mf =  1.875000000000E+02
 
    particle SCALAR 25
      name "s"
      spin 0
      mass ms
-     p_decay d1   
    particle FERMION 6
      name "f"
      anti "fbar" "F"
      tex_anti "\bar{f}"
      spin 1/2  isospin 1/2  charge 2/3  color 3
      mass mf
-     p_polarized
 
    vertex "fbar" "f" "s"
    vertex "s" "s" "s"
 
-s is stable    = F
-f is polarized = T
+s is stable    = T
+f is polarized = F
 
 * Local model
 
@@ -175,10 +166,8 @@ model "Test"
 s is stable    = F
 f is polarized = T
 
-Global model variable: ff =>  4.000000000000E-01
+Global model variable: ff =>  1.500000000000E+00
 Local model variable: ff =>  4.000000000000E-01
-Global variable: ff =  1.500000000000E+00
-Local variable: ff =  4.000000000000E-01
 
 * Restore global
 
@@ -240,8 +229,6 @@ f is polarized = T
 
 Global model variable: ff =>  1.500000000000E+00
 Local model variable: ff =>  4.000000000000E-01
-Global variable: ff =  1.500000000000E+00
-Local variable: ff =  4.000000000000E-01
 
 * Cleanup
 

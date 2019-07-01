@@ -1,4 +1,4 @@
-! WHIZARD 2.2.2 July 6 2014
+! WHIZARD 2.2.3 Nov 30 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,8 +6,10 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
+!     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     Christian Weiss <christian.weiss@desy.de>
+!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -29,14 +31,15 @@
 
 module auto_components
 
-  use kinds, only: default !NODEP!
-  use iso_varying_string, string_t => varying_string !NODEP!
-  use file_utils !NODEP!
-  use diagnostics !NODEP!
-  use os_interface
+  use kinds, only: default
+  use iso_varying_string, string_t => varying_string
+  use io_units
   use unit_tests
-  use pdg_arrays
+  use diagnostics
+  use os_interface
+  use model_data, only: field_data_t, vertex_iterator_t
   use models
+  use pdg_arrays
 
   implicit none
   private
@@ -51,6 +54,7 @@ module auto_components
   public :: constrain_in_state
   public :: ps_table_t
   public :: ds_table_t
+  public :: if_table_t
   public :: auto_components_test
 
   type, abstract :: split_constraint_t
@@ -141,6 +145,7 @@ module auto_components
      procedure :: final => ps_table_final
      procedure :: base_write => ps_table_base_write
      procedure (ps_table_write), deferred :: write
+     procedure :: get_particle_string => ps_table_get_particle_string
      generic :: init => ps_table_init
      procedure, private :: ps_table_init
      procedure :: enable_loops => ps_table_enable_loops
@@ -431,9 +436,9 @@ contains
     integer, intent(in), optional :: n_in
     integer, dimension(:), allocatable :: pdg
     type(ps_entry_t), pointer :: entry
-    type(particle_data_t), pointer :: prt
+    type(field_data_t), pointer :: prt
     integer :: u, i, j, n0
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     entry => object%first
     do while (associated (entry))
        write (u, "(2x)", advance = "no")
@@ -442,10 +447,10 @@ contains
              write (u, "(1x)", advance = "no")
              pdg = entry%get (i)
              do j = 1, size (pdg)
-                prt => model_get_particle_ptr (object%model, pdg(j))
+                prt => object%model%get_field_ptr (pdg(j))
                 if (j > 1)  write (u, "(':')", advance = "no")
                 write (u, "(A)", advance = "no") &
-                     char (particle_data_get_name (prt, pdg(j) >= 0))
+                     char (prt%get_name (pdg(j) >= 0))
              end do
           end do
           write (u, "(1x,A)", advance = "no")  "=>"
@@ -457,10 +462,10 @@ contains
           write (u, "(1x)", advance = "no")
           pdg = entry%get (i)
           do j = 1, size (pdg)
-             prt => model_get_particle_ptr (object%model, pdg(j))
+             prt => object%model%get_field_ptr (pdg(j))
              if (j > 1)  write (u, "(':')", advance = "no")
              write (u, "(A)", advance = "no") &
-                  char (particle_data_get_name (prt, pdg(j) < 0))
+                  char (prt%get_name (pdg(j) < 0))
           end do
        end do
        if (object%loops) then
@@ -475,12 +480,12 @@ contains
   subroutine ds_table_write (object, unit)
     class(ds_table_t), intent(in) :: object
     integer, intent(in), optional :: unit
-    type(particle_data_t), pointer :: prt
+    type(field_data_t), pointer :: prt
     integer :: u
-    u = output_unit (unit)
-    prt => model_get_particle_ptr (object%model, object%pdg_in)
+    u = given_output_unit (unit)
+    prt => object%model%get_field_ptr (object%pdg_in)
     write (u, "(1x,A,1x,A)")  "Decays for particle:", &
-         char (particle_data_get_name (prt, object%pdg_in < 0))
+         char (prt%get_name (object%pdg_in < 0))
     call object%base_write (u)
   end subroutine ds_table_write
           
@@ -488,7 +493,7 @@ contains
     class(fs_table_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     write (u, "(1x,A)")  "Table of final states:"
     call object%base_write (u)
   end subroutine fs_table_write
@@ -497,11 +502,56 @@ contains
     class(if_table_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     write (u, "(1x,A)")  "Table of in/out states:"
     call object%base_write (u, n_in = 2)
   end subroutine if_table_write
           
+  subroutine ps_table_get_particle_string (object, index, n_in, prt_in, prt_out)
+    class(ps_table_t), intent(in) :: object
+    integer, intent(in) :: index
+    integer, intent(in) :: n_in
+    type(string_t), intent(out), dimension(:), allocatable :: prt_in, prt_out
+    type(string_t) :: prt_tmp
+    type(field_data_t), pointer :: prt
+    type(ps_entry_t), pointer :: entry
+    integer, dimension(:), allocatable :: pdg
+    integer :: n0
+    integer :: i, j 
+    entry => object%first
+    i = 1
+    do while (i < index)
+      if (associated (entry%next)) then
+        entry => entry%next
+        i=i+1
+      else
+        call msg_fatal ("ps_table: entry with requested index does not exist!")
+      end if
+    end do
+    n0 = n_in + 1
+    allocate (prt_in (n_in), prt_out (entry%get_size () - n_in))
+    do i = 1, n_in
+      prt_in(i) = ""
+      pdg = entry%get(i)
+      do j = 1, size(pdg)
+        prt => object%model%get_field_ptr (pdg(j))
+        prt_in(i) = prt_in(i) // prt%get_name (pdg(j) >= 0)
+        if (j /= size(pdg)) &
+           prt_in(i) = prt_in(i) // ":"
+      end do
+    end do
+    do i = n0, entry%get_size ()
+      prt_out(i-n_in) = ""
+      pdg = entry%get(i)
+      do j = 1, size(pdg)
+         prt => object%model%get_field_ptr (pdg(j))
+         prt_out(i-n_in) = prt_out(i-n_in) // prt%get_name (pdg(j) < 0)
+         if (j /= size(pdg)) &
+            prt_out(i-n_in) = prt_out(i-n_in) // ":"
+      end do
+    end do
+  end subroutine ps_table_get_particle_string
+                        
   subroutine ps_table_init (table, model, pl, constraints)
     class(ps_table_t), intent(out) :: table
     type(model_t), intent(in), target :: model
@@ -747,13 +797,13 @@ contains
     type(model_t), intent(in), target :: model
     integer, dimension(:), allocatable :: pdg
     real(default) :: m
-    type(particle_data_t), pointer :: prt
+    type(field_data_t), pointer :: prt
     integer :: i
     m = 0
     do i = n1, n2
        pdg = pl%get (i)
-       prt => model_get_particle_ptr (model, pdg(1))
-       m = m + particle_data_get_mass (prt)
+       prt => model%get_field_ptr (pdg(1))
+       m = m + prt%get_mass ()
     end do
   end function mass_sum
   
@@ -761,13 +811,13 @@ contains
     type(pdg_array_t), intent(in) :: pa
     type(model_t), intent(in), target :: model
     type(pdg_array_t) :: pa_inv
-    type(particle_data_t), pointer :: prt
+    type(field_data_t), pointer :: prt
     integer :: i, pdg
     pa_inv = pa
     do i = 1, pa_inv%get_length ()
        pdg = pa_inv%get (i)
-       prt => model_get_particle_ptr (model, pdg)
-       if (particle_data_has_antiparticle (prt))  call pa_inv%set (i, -pdg)
+       prt => model%get_field_ptr (pdg)
+       if (prt%has_antiparticle ())  call pa_inv%set (i, -pdg)
     end do
   end function invert_pdg_array
           
@@ -827,7 +877,7 @@ contains
     type(os_data_t) :: os_data
     type(model_list_t) :: model_list
     type(model_t), pointer :: model
-    type(particle_data_t), pointer :: prt
+    type(field_data_t), pointer :: prt
     type(ds_table_t) :: ds_table
     type(split_constraints_t) :: constraints
 
@@ -843,7 +893,7 @@ contains
     call model_list%read_model (var_str ("SM"), var_str ("SM.mdl"), &
          os_data, model)
 
-    prt => model_get_particle_ptr (model, 25)
+    prt => model%get_field_ptr (25)
 
     write (u, *)
     write (u, "(A)")  "* Higgs decays n = 2"
@@ -851,7 +901,7 @@ contains
 
     call constraints%init (2)
     call constraints%set (1, constrain_n_tot (2))
-    call constraints%set (2, constrain_mass_sum (particle_data_get_mass (prt)))
+    call constraints%set (2, constrain_mass_sum (prt%get_mass ()))
 
     call ds_table%make (model, 25, constraints)
     call ds_table%write (u)
@@ -863,7 +913,7 @@ contains
 
     call constraints%init (3)
     call constraints%set (1, constrain_n_tot (3))
-    call constraints%set (2, constrain_mass_sum (particle_data_get_mass (prt)))
+    call constraints%set (2, constrain_mass_sum (prt%get_mass ()))
     call constraints%set (3, constrain_radiation ())
 
     call ds_table%make (model, 25, constraints)
@@ -876,7 +926,7 @@ contains
 
     call constraints%init (2)
     call constraints%set (1, constrain_n_tot (3))
-    call constraints%set (2, constrain_mass_sum (particle_data_get_mass (prt)))
+    call constraints%set (2, constrain_mass_sum (prt%get_mass ()))
 
     call ds_table%make (model, 25, constraints)
     call ds_table%write (u)

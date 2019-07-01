@@ -291,6 +291,10 @@ extern "C" int gen_particle_status( GenParticle* prt ) {
   return prt->status();
 }
 
+extern "C" bool gen_particle_is_beam( GenParticle* prt ) {
+  return prt->is_beam();
+}
+
 extern "C" GenVertex* gen_particle_production_vertex( GenParticle* prt ) {
   return prt->production_vertex();
 }

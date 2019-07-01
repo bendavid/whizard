@@ -1,4 +1,4 @@
-! WHIZARD 2.2.2 July 6 2014
+! WHIZARD 2.2.3 Nov 30 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,8 +6,10 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
+!     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     Christian Weiss <christian.weiss@desy.de>
+!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -29,18 +31,22 @@
 
 module dispatch
   
-  use kinds, only: default !NODEP!
-  use kinds, only: i16 !NODEP!
-  use iso_varying_string, string_t => varying_string !NODEP!
-  use limits, only: MZ_REF, ALPHA_QCD_MZ_REF !NODEP!
-  use constants, only: PI !NODEP!
-  use file_utils !NODEP!
-  use diagnostics !NODEP!
-  use os_interface
+  use kinds, only: default
+  use kinds, only: i16
+  use iso_varying_string, string_t => varying_string
+  use constants, only: PI
+  use system_dependencies, only: LHAPDF6_AVAILABLE
+  use io_units
+  use format_utils, only: write_separator
   use unit_tests
+  use diagnostics
+  use os_interface
+  use physics_defs, only: MZ_REF, ALPHA_QCD_MZ_REF
+  use physics_defs, only: PROTON, PHOTON, ELECTRON
   use sm_qcd
   use pdg_arrays
   use variables
+  use model_data
   use flavors
   use interactions
   use models
@@ -84,11 +90,15 @@ module dispatch
   use eio_checkpoints
   use eio_lhef
   use eio_hepmc
+  use eio_lcio
   use eio_stdhep
   use eio_ascii
   use eio_weights
   use rt_data
-  
+  use prc_gosam
+  use phs_fks
+  use fks_calculation
+
   implicit none
   private
 
@@ -98,6 +108,7 @@ module dispatch
   public :: dispatch_core_restore
   public :: dispatch_mci
   public :: dispatch_phs
+  public :: dispatch_fks
   public :: dispatch_rng_factory
   public :: sf_prop_t
   public :: dispatch_sf_data
@@ -118,11 +129,12 @@ module dispatch
 
 contains
   
-  subroutine dispatch_core_def (core_def, prt_in, prt_out, global)
+  subroutine dispatch_core_def (core_def, prt_in, prt_out, global, id)
     class(prc_core_def_t), allocatable, intent(inout) :: core_def
     type(string_t), dimension(:), intent(in) :: prt_in
     type(string_t), dimension(:), intent(in) :: prt_out
     type(rt_data_t), intent(in) :: global
+    type(string_t), intent(in), optional :: id
     type(string_t) :: method
     type(string_t) :: model_name
     type(string_t) :: restrictions
@@ -132,9 +144,13 @@ contains
     type(string_t) :: extra_options
     type(model_t), pointer :: model
     model => global%model
-    associate (var_list => global%var_list)
+    associate (var_list => global%get_var_list_ptr ())
       method = var_list_get_sval (var_list, var_str ("$method"))
-      model_name = var_list_get_sval (var_list, var_str ("$model_name"))
+      if (associated (model)) then
+         model_name = model%get_name ()
+      else
+         model_name = ""
+      end if
       select case (char (method))
       case ("unit_test")
          allocate (prc_test_def_t :: core_def)
@@ -167,13 +183,48 @@ contains
               var_str ("?report_progress"))
          extra_options = var_list_get_sval (var_list, &
               var_str ("$omega_flags"))
-         allocate (omega_def_t :: core_def)
+         allocate (omega_omega_def_t :: core_def)
          select type (core_def)
-         type is (omega_def_t)
+         type is (omega_omega_def_t)
             call core_def%init (model_name, prt_in, prt_out, &
                  restrictions, openmp_support, report_progress, &
                  extra_options, diags, diags_color)
          end select
+      case ("ovm")
+         diags = var_list_get_lval (var_list, &
+              var_str ("?diags"))
+         diags_color = var_list_get_lval (var_list, &
+              var_str ("?diags_color"))         
+         restrictions = var_list_get_sval (var_list, &
+              var_str ("$restrictions"))
+         openmp_support = var_list_get_lval (var_list, &
+              var_str ("?omega_openmp"))
+         report_progress = var_list_get_lval (var_list, &
+              var_str ("?report_progress"))
+         extra_options = var_list_get_sval (var_list, &
+              var_str ("$omega_flags"))
+         allocate (omega_ovm_def_t :: core_def)
+         select type (core_def)
+         type is (omega_ovm_def_t)
+            call core_def%init (model_name, prt_in, prt_out, &
+                 restrictions, openmp_support, report_progress, &
+                 extra_options, diags, diags_color)
+         end select         
+      case ("gosam")
+        allocate (gosam_def_t :: core_def)
+        select type (core_def)
+        type is (gosam_def_t)
+          if (present (id)) then
+             ! call core_def%init (id, prt_in, prt_out, &
+             !          global%os_data, global%model)
+             call core_def%init (id)
+          else
+             ! call core_def%init (var_str ('undefined_process'), &
+             !          prt_in, prt_out, global%os_data, &
+             !          global%model)
+             call core_def%init (var_str ('undefined_process'))
+          end if
+        end select
       case default
          call msg_fatal ("Process configuration: method '" &
               // char (method) // "' not implemented")
@@ -185,7 +236,7 @@ contains
        helicity_selection, qcd, use_color_factors)
     class(prc_core_t), allocatable, intent(inout) :: core
     class(prc_core_def_t), intent(in) :: core_def
-    type(model_t), intent(in), target, optional :: model
+    class(model_data_t), intent(in), target, optional :: model
     type(helicity_selection_t), intent(in), optional :: helicity_selection
     type(qcd_t), intent(in), optional :: qcd
     logical, intent(in), optional :: use_color_factors
@@ -198,13 +249,19 @@ contains
        type is (prc_template_me_t)
           call core%set_parameters (model) 
        end select       
-    type is (omega_def_t)
-       allocate (prc_omega_t :: core)
+    class is (omega_def_t)
+       if (.not. allocated (core)) allocate (prc_omega_t :: core)
        select type (core)
        type is (prc_omega_t)
           call core%set_parameters (model, & 
                helicity_selection, qcd, use_color_factors)
        end select
+    type is (gosam_def_t)
+      if (.not. allocated (core)) allocate (prc_gosam_t :: core)
+      select type (core)
+      type is (prc_gosam_t)
+        call core%set_parameters (qcd)
+      end select
     class default
        call msg_bug ("Process core: unexpected process definition type")
     end select
@@ -213,7 +270,7 @@ contains
   subroutine dispatch_core_update (core, model, helicity_selection, qcd, &
        saved_core)
     class(prc_core_t), allocatable, intent(inout) :: core
-    type(model_t), intent(in), optional, target :: model
+    class(model_data_t), intent(in), optional, target :: model
     type(helicity_selection_t), intent(in), optional :: helicity_selection
     type(qcd_t), intent(in), optional :: qcd
     class(prc_core_t), allocatable, intent(inout), optional :: saved_core
@@ -225,6 +282,8 @@ contains
     type is (prc_omega_t)
        call core%set_parameters (model, helicity_selection, qcd)
        call core%activate_parameters ()
+    type is (prc_gosam_t)
+      call msg_message ("dispatch core restore: Gosam implementation not present yet!")
     class default
        call msg_bug ("Process core update: unexpected process definition type")
     end select
@@ -258,7 +317,7 @@ contains
     case ("midpoint")
        allocate (mci_midpoint_t :: mci)
     case ("vamp", "default")
-       associate (var_list => global%var_list)
+       associate (var_list => global%get_var_list_ptr ())
          grid_par%threshold_calls = &
               var_list_get_ival (var_list, var_str ("threshold_calls"))
          grid_par%min_calls_per_channel = &
@@ -323,18 +382,24 @@ contains
     end select
   end subroutine dispatch_mci
   
-  subroutine dispatch_phs (phs, global, process_id, mapping_defaults, phs_par)
+  subroutine dispatch_phs (phs, global, process_id, mapping_defaults, phs_par, &
+                           phs_method_in)
     class(phs_config_t), allocatable, intent(inout) :: phs
     type(rt_data_t), intent(in) :: global
     type(string_t), intent(in) :: process_id
     type(mapping_defaults_t), intent(in), optional :: mapping_defaults
     type(phs_parameters_t), intent(in), optional :: phs_par
+    type(string_t), intent(in), optional :: phs_method_in
     type(string_t) :: phs_method, phs_file, run_id
     logical :: use_equivalences, vis_channels, fatal_beam_decay
     integer :: u_phs
     logical :: exist
-    phs_method = var_list_get_sval (global%var_list, &
-         var_str ("$phs_method"))
+    if (present (phs_method_in)) then
+       phs_method = phs_method_in
+    else
+       phs_method = var_list_get_sval (global%var_list, &
+            var_str ("$phs_method"))
+    end if
     phs_file = var_list_get_sval (global%var_list, &
          var_str ("$phs_file"))
     use_equivalences = var_list_get_lval (global%var_list, &
@@ -352,6 +417,8 @@ contains
           call msg_warning ("Visualizing phase space channels not " // &
                "available for method 'single'.")
        end if
+    case ("fks")
+      allocate (phs_fks_config_t :: phs)
     case ("wood", "default")
        allocate (phs_wood_config_t :: phs)
        select type (phs)
@@ -387,15 +454,40 @@ contains
     end select
   end subroutine dispatch_phs
   
-  subroutine dispatch_rng_factory (rng_factory, global)
-    class(rng_factory_t), allocatable, intent(out) :: rng_factory
-    type(rt_data_t), intent(inout) :: global
+  subroutine dispatch_fks (fks_template, global)
+    type(fks_template_t), intent(inout) :: fks_template
+    type(rt_data_t), intent(in) :: global
+    real(default) :: fks_dij_exp1, fks_dij_exp2
+    integer :: fks_mapping_type
+    
+    fks_dij_exp1 = var_list_get_rval (global%var_list, &
+         var_str ("fks_dij_exp1"))
+    fks_dij_exp2 = var_list_get_rval (global%var_list, &
+         var_str ("fks_dij_exp2")) 
+    fks_mapping_type = var_list_get_ival (global%var_list, &
+         var_str ("fks_mapping_type"))
+
+    call fks_template%set_dij_exp (fks_dij_exp1, fks_dij_exp2)
+    call fks_template%set_mapping_type (fks_mapping_type)
+    
+  end subroutine dispatch_fks
+
+  subroutine dispatch_rng_factory (rng_factory, global, local_input)
+    class(rng_factory_t), allocatable, intent(inout) :: rng_factory
+    type(rt_data_t), intent(inout), target :: global
+    type(rt_data_t), intent(in), target, optional :: local_input
+    type(rt_data_t), pointer :: local
     type(string_t) :: rng_method
     integer :: seed
     character(30) :: buffer
     integer(i16) :: s
-    rng_method = var_list_get_sval (global%var_list, var_str ("$rng_method"))
-    seed = var_list_get_ival (global%var_list, var_str ("seed"))
+    if (present (local_input)) then
+       local => local_input
+    else
+       local => global
+    end if
+    rng_method = var_list_get_sval (local%var_list, var_str ("$rng_method"))
+    seed = var_list_get_ival (local%var_list, var_str ("seed"))
     s = mod (seed, 32768)
     select case (char (rng_method))
     case ("unit_test")
@@ -461,7 +553,7 @@ contains
          var_str ("SASG.LHgrid")]
     model => global%model
     sqrts = global%get_sqrts ()
-    associate (var_list => global%var_list)
+    associate (var_list => global%get_var_list_ptr ())
       select case (char (sf_method))
       case ("sf_test_0", "sf_test_1")
          allocate (sf_test_data_t :: data)
@@ -481,7 +573,7 @@ contains
                  var_list_get_sval (var_list, var_str ("$pdf_builtin_set"))
             hoppet_b_matching = &
                  var_list_get_lval (var_list, var_str ("?hoppet_b_matching"))
-            call data%init (global%pdf_builtin_status, &
+            call data%init ( &
                  model, pdg_in(i_beam(1)), &
                  name = pdf_name, &
                  path = global%os_data%pdf_builtin_datapath, &
@@ -510,7 +602,7 @@ contains
          select type (data)
          type is (lhapdf_data_t)
             call data%init &
-                 (global%lhapdf_status, model, pdg_in(i_beam(1)), &
+                 (model, pdg_in(i_beam(1)), &
                   lhapdf_dir, lhapdf_file, lhapdf_member, &
                   lhapdf_photon_scheme, hoppet_b_matching)
          end select
@@ -536,7 +628,7 @@ contains
          select type (data)
          type is (lhapdf_data_t)
             call data%init &
-                 (global%lhapdf_status, model, pdg_in(i_beam(1)), &
+                 (model, pdg_in(i_beam(1)), &
                   lhapdf_dir, lhapdf_file, lhapdf_member, &
                   lhapdf_photon_scheme)
          end select         
@@ -903,7 +995,7 @@ contains
        allocate (s_mapping (2), source = [1, 2])
     case ("circe1")
        if (circe1_generate) then
-          ! no mapping
+          !!! no mapping
        else if (circe1_map) then
           allocate (s_mapping (1), source = [1])
           endpoint_mapping = .true.
@@ -1098,7 +1190,7 @@ contains
          extension_lha, extension_hepevt, extension_ascii_short, &
          extension_ascii_long, extension_athena, extension_mokka, &
          extension_stdhep, extension_stdhep_up, extension_raw, &
-         extension_hepevt_verb, extension_lha_verb
+         extension_hepevt_verb, extension_lha_verb, extension_lcio
     integer :: checkpoint
     logical :: show_process, show_transforms, show_decay, verbose, pacify
     select case (char (method))
@@ -1150,10 +1242,24 @@ contains
        type is (eio_hepmc_t)
           keep_beams = &
                var_list_get_lval (global%var_list, var_str ("?keep_beams"))
+          recover_beams = &
+               var_list_get_lval (global%var_list, var_str ("?recover_beams"))
           extension_hepmc = var_list_get_sval ( &
                global%var_list, var_str ("$extension_hepmc"))          
-          call eio%set_parameters (keep_beams, extension_hepmc)
+          call eio%set_parameters (keep_beams, recover_beams, extension_hepmc)
        end select
+    case ("lcio")
+       allocate (eio_lcio_t :: eio)
+       select type (eio)
+       type is (eio_lcio_t)
+          keep_beams = &
+               var_list_get_lval (global%var_list, var_str ("?keep_beams"))
+          recover_beams = &
+               var_list_get_lval (global%var_list, var_str ("?recover_beams"))
+          extension_lcio = var_list_get_sval ( &
+               global%var_list, var_str ("$extension_lcio"))
+          call eio%set_parameters (keep_beams, recover_beams, extension_lcio)
+       end select       
     case ("stdhep")
        allocate (eio_stdhep_hepevt_t :: eio)
        select type (eio)
@@ -1300,13 +1406,13 @@ contains
   
   subroutine dispatch_qcd (qcd, global)
     type(qcd_t), intent(inout) :: qcd
-    type(rt_data_t), intent(inout), target :: global
+    type(rt_data_t), intent(in), target :: global
     type(var_list_t), pointer :: var_list
     logical :: fixed, from_mz, from_pdf_builtin, from_lhapdf, from_lambda_qcd
     real(default) :: mz, alpha_val, lambda
     integer :: nf, order, lhapdf_member
     type(string_t) :: pdfset, lhapdf_dir, lhapdf_file
-    var_list => global%var_list
+    var_list => global%get_var_list_ptr ()
     fixed = &
          var_list_get_lval (var_list, var_str ("?alpha_s_is_fixed"))
     from_mz = &
@@ -1331,7 +1437,7 @@ contains
          var_list_get_sval (var_list, var_str ("$lhapdf_file"))
     lhapdf_member = &
          var_list_get_ival (var_list, var_str ("lhapdf_member"))         
-    var_list => model_get_var_list_ptr (global%model)
+    var_list => global%get_var_list_ptr ()
     if (var_list_exists (var_list, var_str ("mZ"))) then
        mz = var_list_get_rval (var_list, var_str ("mZ"))
     else
@@ -1384,11 +1490,10 @@ contains
        alpha%order = order
        alpha%nf = nf
     type is (alpha_qcd_pdf_builtin_t)
-       call alpha%init (global%pdf_builtin_status, pdfset, &
+       call alpha%init (pdfset, &
             global%os_data%pdf_builtin_datapath)
     type is (alpha_qcd_lhapdf_t)
-       call alpha%init (global%lhapdf_status, lhapdf_file, &
-            lhapdf_member, lhapdf_dir)
+       call alpha%init (lhapdf_file, lhapdf_member, lhapdf_dir)
     end select
   end subroutine dispatch_qcd
   
@@ -1396,7 +1501,7 @@ contains
     class(shower_settings_t), intent(inout) :: shower_settings
     type(rt_data_t), intent(in), target :: global
     type(var_list_t), pointer :: var_list
-    var_list => global%var_list
+    var_list => global%get_var_list_ptr ()
     call shower_settings%init (var_list)
   end subroutine dispatch_shower
 
@@ -1419,9 +1524,17 @@ contains
     type(rt_data_t), intent(in) :: global
     type(process_t), intent(in), optional, target :: process
     logical :: allow_shower
+    type(string_t) :: lhapdf_file, lhapdf_dir
+    integer :: lhapdf_member
     type(shower_settings_t) :: settings
     allow_shower = &
-         var_list_get_lval (global%var_list, var_str ("?allow_shower"))    
+         var_list_get_lval (global%var_list, var_str ("?allow_shower"))
+    lhapdf_dir = &
+         var_list_get_sval (global%var_list, var_str ("$lhapdf_dir"))    
+    lhapdf_file = &
+         var_list_get_sval (global%var_list, var_str ("$lhapdf_file"))
+    lhapdf_member = &
+         var_list_get_ival (global%var_list, var_str ("lhapdf_member"))             
     if (allow_shower) then
        allocate (evt_shower_t :: evt)
        call msg_message ("Simulate: activating parton shower")
@@ -1434,6 +1547,10 @@ contains
             call msg_message ("Simulate: applying hadronization")
        select type (evt)
        type is (evt_shower_t)
+          if (LHAPDF6_AVAILABLE) then
+             call lhapdf_initialize &
+                  (1, lhapdf_dir, lhapdf_file, lhapdf_member, evt%pdf)
+          end if
           call evt%init (settings, global%fallback_model, global%os_data)
           if (present (process)) &
                call evt%setup_pdf (process, global%beam_structure)
@@ -1513,6 +1630,7 @@ contains
     write (u, "(A)")
 
     call global%global_init ()
+    
     call var_list_set_log (global%var_list, var_str ("?omega_openmp"), &
          .false., is_known = .true.)
 
@@ -1539,7 +1657,7 @@ contains
          var_str ("omega"), is_known = .true.)
     call dispatch_core_def (core_def, prt_in, prt_out, global)
     select type (core_def)
-    type is (omega_def_t)
+    type is (omega_omega_def_t)
        call core_def%write (u)
     end select
     
@@ -1591,7 +1709,7 @@ contains
          var_str ("omega"), is_known = .true.)
     call dispatch_core_def (core_def, prt_in, prt_out, global)
 
-    call global%read_model (var_str ("Test"), var_str ("Test.mdl"))
+    call global%select_model (var_str ("Test"))
 
     call var_list_set_log (global%var_list, &
          var_str ("?helicity_selection_active"), &
@@ -1848,7 +1966,7 @@ contains
 
     call os_data_init (os_data)
     call syntax_model_file_init ()
-    call global%read_model (var_str ("Test"), var_str ("Test.mdl"))
+    call global%select_model (var_str ("Test"))
 
     call syntax_phs_forest_init ()
     
@@ -1914,7 +2032,7 @@ contains
     
     call os_data_init (os_data)
     call syntax_model_file_init ()
-    call global%read_model (var_str ("QCD"), var_str ("QCD.mdl"))
+    call global%select_model (var_str ("QCD"))
     
     call reset_interaction_counter ()
     call var_list_set_real (global%var_list, var_str ("sqrts"), &
@@ -1923,10 +2041,6 @@ contains
     call global%beam_structure%init_sf ([prt, prt], [1])
     pdg_in = 2212
     
-    write (u, "(1x,A,L1)")  "Initialized = ", &
-         pdf_builtin_status_is_initialized (global%pdf_builtin_status)
-    write (u, "(A)")
-
     write (u, "(A)")  "* Allocate data as sf_pdf_builtin_t"
     write (u, "(A)")
 
@@ -1935,9 +2049,6 @@ contains
          (data, sf_method, [1], sf_prop, global, pdg_in, pdg_prc)
     call data%write (u)
 
-    write (u, "(A)")
-    write (u, "(1x,A,L1)")  "Initialized = ", &
-         pdf_builtin_status_is_initialized (global%pdf_builtin_status)
     call data%get_pdg_out (pdg_out)
     pdg1 = pdg_out(1)
     write (u, "(A)")
@@ -1946,16 +2057,11 @@ contains
     deallocate (data)
     
     write (u, "(A)")
-    write (u, "(A)")  "* Reset and allocate data for different PDF set"
+    write (u, "(A)")  "* Allocate data for different PDF set"
     write (u, "(A)")
 
-    call pdf_builtin_status_reset (global%pdf_builtin_status)
     pdg_in = 2212
     
-    write (u, "(1x,A,L1)")  "Initialized = ", &
-         pdf_builtin_status_is_initialized (global%pdf_builtin_status)
-    write (u, "(A)")
-
     call var_list_set_string (global%var_list, var_str ("$pdf_builtin_set"), &
          var_str ("CTEQ6M"), is_known = .true.)
     sf_method = "pdf_builtin"
@@ -1963,9 +2069,6 @@ contains
          (data, sf_method, [1], sf_prop, global, pdg_in, pdg_prc)
     call data%write (u)
 
-    write (u, "(A)")
-    write (u, "(1x,A,L1)")  "Initialized = ", &
-         pdf_builtin_status_is_initialized (global%pdf_builtin_status)
     call data%get_pdg_out (pdg_out)
     pdg1 = pdg_out(1)
     write (u, "(A)")
@@ -2002,7 +2105,7 @@ contains
     
     call os_data_init (os_data)
     call syntax_model_file_init ()
-    call global%read_model (var_str ("QCD"), var_str ("QCD.mdl"))
+    call global%select_model (var_str ("QCD"))
     
     write (u, "(A)")  "* Allocate LHC beams with PDF builtin"
     write (u, "(A)")
@@ -2033,7 +2136,7 @@ contains
     write (u, "(A)")  "* Allocate ILC beams with CIRCE1"
     write (u, "(A)")
 
-    call global%read_model (var_str ("QED"), var_str ("QED.mdl"))
+    call global%select_model (var_str ("QED"))
     call flavor_init (flv(1), ELECTRON, global%model)
     call flavor_init (flv(2),-ELECTRON, global%model)
 
@@ -2188,7 +2291,7 @@ contains
          var_str ("omega"), is_known = .true.)
     call dispatch_core_def (core_def, prt_in, prt_out, global)
 
-    call global%read_model (var_str ("Test"), var_str ("Test.mdl"))
+    call global%select_model (var_str ("Test"))
 
     call dispatch_core (core, core_def, global%model)
     call core_def%allocate_driver (core%driver, var_str (""))
@@ -2202,10 +2305,10 @@ contains
     write (u, "(A)")  "* Update core with modified model and helicity selection"
     write (u, "(A)")
 
-    var_list => model_get_var_list_ptr (global%model)
+    var_list => global%get_var_list_ptr ()
     call var_list_set_real (var_list, var_str ("gy"), 2._default, &
          is_known = .true.)
-    call model_parameters_update (global%model)
+    call global%model%update_parameters ()
 
     call var_list_set_log (global%var_list, &
          var_str ("?helicity_selection_active"), &
@@ -2255,8 +2358,8 @@ contains
 
     call syntax_model_file_init ()
     call global%global_init ()
-    call global%read_model (var_str ("SM"), var_str ("SM.mdl"))
-    model_vars => model_get_var_list_ptr (global%model)
+    call global%select_model (var_str ("SM"))
+    model_vars => global%get_var_list_ptr ()
 
     write (u, "(A)")  "* Allocate alpha_s as fixed"
     write (u, "(A)")
@@ -2415,7 +2518,7 @@ contains
     select type (evt)
     type is (evt_shower_t)
        call evt%write (u)
-       call write_separator_double (u)
+       call write_separator (u, 2)
     end select
 
     call evt%final ()

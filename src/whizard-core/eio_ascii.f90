@@ -1,4 +1,4 @@
-! WHIZARD 2.2.2 July 6 2014
+! WHIZARD 2.2.3 Nov 30 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,8 +6,10 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
+!     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     Christian Weiss <christian.weiss@desy.de>
+!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -29,14 +31,14 @@
 
 module eio_ascii
   
-  use kinds !NODEP!
-  use file_utils !NODEP!
-  use iso_varying_string, string_t => varying_string !NODEP!
-  use diagnostics !NODEP!
+  use kinds
+  use io_units
+  use iso_varying_string, string_t => varying_string
   use unit_tests
+  use diagnostics
 
-  use lorentz !NODEP!
-  use models
+  use lorentz
+  use model_data
   use particles
   use beams
   use processes
@@ -164,7 +166,7 @@ contains
     class(eio_ascii_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     select type (object)
     type is (eio_ascii_ascii_t)
        write (u, "(1x,A)")  "ASCII event stream (default format):"
@@ -213,9 +215,11 @@ contains
     end if
   end subroutine eio_ascii_final
   
-  subroutine eio_ascii_init_out (eio, sample, process_ptr, data, success)
+  subroutine eio_ascii_init_out &
+       (eio, sample, process_ptr, data, success, extension)
     class(eio_ascii_t), intent(inout) :: eio
     type(string_t), intent(in) :: sample
+    type(string_t), intent(in), optional :: extension
     type(process_ptr_t), dimension(:), intent(in) :: process_ptr
     type(event_sample_data_t), intent(in), optional :: data
     logical, intent(out), optional :: success
@@ -458,7 +462,7 @@ contains
   
   subroutine eio_ascii_1 (u)
     integer, intent(in) :: u
-    type(model_list_t) :: model_list
+    type(model_data_t), target :: model
     type(event_t), allocatable, target :: event
     type(process_t), allocatable, target :: process
     type(process_ptr_t) :: process_ptr
@@ -474,14 +478,14 @@ contains
     write (u, "(A)")  "*      and write weight to file"
     write (u, "(A)")
 
-    call syntax_model_file_init ()
+    call model%init_test ()
 
     write (u, "(A)")  "* Initialize test process"
  
     allocate (process)
     process_ptr%ptr => process
     allocate (process_instance)
-    call prepare_test_process (process, process_instance, model_list)
+    call prepare_test_process (process, process_instance, model)
     call process_instance%setup_event_data ()
  
     allocate (event)
@@ -555,8 +559,7 @@ contains
     deallocate (process_instance)
     deallocate (process)
 
-    call model_list%final ()
-    call syntax_model_file_final ()
+    call model%final ()
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: eio_ascii_1"
@@ -565,7 +568,7 @@ contains
   
   subroutine eio_ascii_2 (u)
     integer, intent(in) :: u
-    type(model_list_t) :: model_list
+    type(model_data_t), target :: model
     type(event_t), allocatable, target :: event
     type(process_t), allocatable, target :: process
     type(process_ptr_t) :: process_ptr
@@ -581,14 +584,14 @@ contains
     write (u, "(A)")  "*      and write weight to file"
     write (u, "(A)")
 
-    call syntax_model_file_init ()
+    call model%init_test ()
 
     write (u, "(A)")  "* Initialize test process"
  
     allocate (process)
     process_ptr%ptr => process
     allocate (process_instance)
-    call prepare_test_process (process, process_instance, model_list)
+    call prepare_test_process (process, process_instance, model)
     call process_instance%setup_event_data ()
  
     allocate (event)
@@ -662,8 +665,7 @@ contains
     deallocate (process_instance)
     deallocate (process)
 
-    call model_list%final ()
-    call syntax_model_file_final ()
+    call model%final ()
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: eio_ascii_2"
@@ -672,7 +674,7 @@ contains
   
   subroutine eio_ascii_3 (u)
     integer, intent(in) :: u
-    type(model_list_t) :: model_list
+    type(model_data_t), target :: model
     type(event_t), allocatable, target :: event
     type(process_t), allocatable, target :: process
     type(process_ptr_t) :: process_ptr
@@ -688,14 +690,14 @@ contains
     write (u, "(A)")  "*      and write weight to file"
     write (u, "(A)")
 
-    call syntax_model_file_init ()
+    call model%init_test ()
 
     write (u, "(A)")  "* Initialize test process"
  
     allocate (process)
     process_ptr%ptr => process
     allocate (process_instance)
-    call prepare_test_process (process, process_instance, model_list)
+    call prepare_test_process (process, process_instance, model)
     call process_instance%setup_event_data ()
  
     allocate (event)
@@ -769,8 +771,7 @@ contains
     deallocate (process_instance)
     deallocate (process)
 
-    call model_list%final ()
-    call syntax_model_file_final ()
+    call model%final ()
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: eio_ascii_3"
@@ -779,7 +780,7 @@ contains
   
   subroutine eio_ascii_4 (u)
     integer, intent(in) :: u
-    type(model_list_t) :: model_list
+    type(model_data_t), target :: model
     type(event_t), allocatable, target :: event
     type(process_t), allocatable, target :: process
     type(process_ptr_t) :: process_ptr
@@ -795,14 +796,14 @@ contains
     write (u, "(A)")  "*      and write weight to file"
     write (u, "(A)")
 
-    call syntax_model_file_init ()
+    call model%init_test ()
 
     write (u, "(A)")  "* Initialize test process"
  
     allocate (process)
     process_ptr%ptr => process
     allocate (process_instance)
-    call prepare_test_process (process, process_instance, model_list)
+    call prepare_test_process (process, process_instance, model)
     call process_instance%setup_event_data ()
  
     allocate (event)
@@ -876,8 +877,7 @@ contains
     deallocate (process_instance)
     deallocate (process)
 
-    call model_list%final ()
-    call syntax_model_file_final ()
+    call model%final ()
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: eio_ascii_4"
@@ -886,7 +886,7 @@ contains
   
   subroutine eio_ascii_5 (u)
     integer, intent(in) :: u
-    type(model_list_t) :: model_list
+    type(model_data_t), target :: model
     type(event_t), allocatable, target :: event
     type(process_t), allocatable, target :: process
     type(process_ptr_t) :: process_ptr
@@ -902,14 +902,14 @@ contains
     write (u, "(A)")  "*      and write weight to file"
     write (u, "(A)")
 
-    call syntax_model_file_init ()
+    call model%init_test ()
 
     write (u, "(A)")  "* Initialize test process"
  
     allocate (process)
     process_ptr%ptr => process
     allocate (process_instance)
-    call prepare_test_process (process, process_instance, model_list)
+    call prepare_test_process (process, process_instance, model)
     call process_instance%setup_event_data ()
  
     allocate (event)
@@ -983,8 +983,7 @@ contains
     deallocate (process_instance)
     deallocate (process)
 
-    call model_list%final ()
-    call syntax_model_file_final ()
+    call model%final ()
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: eio_ascii_5"
@@ -993,7 +992,7 @@ contains
   
   subroutine eio_ascii_6 (u)
     integer, intent(in) :: u
-    type(model_list_t) :: model_list
+    type(model_data_t), target :: model
     type(event_t), allocatable, target :: event
     type(process_t), allocatable, target :: process
     type(process_ptr_t) :: process_ptr
@@ -1009,14 +1008,14 @@ contains
     write (u, "(A)")  "*      and write weight to file"
     write (u, "(A)")
 
-    call syntax_model_file_init ()
+    call model%init_test ()
 
     write (u, "(A)")  "* Initialize test process"
  
     allocate (process)
     process_ptr%ptr => process
     allocate (process_instance)
-    call prepare_test_process (process, process_instance, model_list)
+    call prepare_test_process (process, process_instance, model)
     call process_instance%setup_event_data ()
  
     allocate (event)
@@ -1090,8 +1089,7 @@ contains
     deallocate (process_instance)
     deallocate (process)
 
-    call model_list%final ()
-    call syntax_model_file_final ()
+    call model%final ()
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: eio_ascii_6"
@@ -1100,7 +1098,7 @@ contains
   
   subroutine eio_ascii_7 (u)
     integer, intent(in) :: u
-    type(model_list_t) :: model_list
+    type(model_data_t), target :: model
     type(event_t), allocatable, target :: event
     type(process_t), allocatable, target :: process
     type(process_ptr_t) :: process_ptr
@@ -1116,14 +1114,14 @@ contains
     write (u, "(A)")  "*      and write weight to file"
     write (u, "(A)")
 
-    call syntax_model_file_init ()
+    call model%init_test ()
 
     write (u, "(A)")  "* Initialize test process"
  
     allocate (process)
     process_ptr%ptr => process
     allocate (process_instance)
-    call prepare_test_process (process, process_instance, model_list)
+    call prepare_test_process (process, process_instance, model)
     call process_instance%setup_event_data ()
  
     allocate (event)
@@ -1197,8 +1195,7 @@ contains
     deallocate (process_instance)
     deallocate (process)
 
-    call model_list%final ()
-    call syntax_model_file_final ()
+    call model%final ()
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: eio_ascii_7"
@@ -1207,7 +1204,7 @@ contains
   
   subroutine eio_ascii_8 (u)
     integer, intent(in) :: u
-    type(model_list_t) :: model_list
+    type(model_data_t), target :: model
     type(event_t), allocatable, target :: event
     type(process_t), allocatable, target :: process
     type(process_ptr_t) :: process_ptr
@@ -1223,14 +1220,14 @@ contains
     write (u, "(A)")  "*      and write weight to file"
     write (u, "(A)")
 
-    call syntax_model_file_init ()
+    call model%init_test ()
 
     write (u, "(A)")  "* Initialize test process"
  
     allocate (process)
     process_ptr%ptr => process
     allocate (process_instance)
-    call prepare_test_process (process, process_instance, model_list)
+    call prepare_test_process (process, process_instance, model)
     call process_instance%setup_event_data ()
  
     allocate (event)
@@ -1304,8 +1301,7 @@ contains
     deallocate (process_instance)
     deallocate (process)
 
-    call model_list%final ()
-    call syntax_model_file_final ()
+    call model%final ()
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: eio_ascii_8"
@@ -1314,7 +1310,7 @@ contains
   
   subroutine eio_ascii_9 (u)
     integer, intent(in) :: u
-    type(model_list_t) :: model_list
+    type(model_data_t), target :: model
     type(event_t), allocatable, target :: event
     type(process_t), allocatable, target :: process
     type(process_ptr_t) :: process_ptr
@@ -1330,14 +1326,14 @@ contains
     write (u, "(A)")  "*      and write weight to file"
     write (u, "(A)")
 
-    call syntax_model_file_init ()
+    call model%init_test ()
 
     write (u, "(A)")  "* Initialize test process"
  
     allocate (process)
     process_ptr%ptr => process
     allocate (process_instance)
-    call prepare_test_process (process, process_instance, model_list)
+    call prepare_test_process (process, process_instance, model)
     call process_instance%setup_event_data ()
  
     allocate (event)
@@ -1411,8 +1407,7 @@ contains
     deallocate (process_instance)
     deallocate (process)
 
-    call model_list%final ()
-    call syntax_model_file_final ()
+    call model%final ()
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: eio_ascii_9"
@@ -1421,7 +1416,7 @@ contains
   
   subroutine eio_ascii_10 (u)
     integer, intent(in) :: u
-    type(model_list_t) :: model_list
+    type(model_data_t), target :: model
     type(event_t), allocatable, target :: event
     type(process_t), allocatable, target :: process
     type(process_ptr_t) :: process_ptr
@@ -1437,14 +1432,14 @@ contains
     write (u, "(A)")  "*      and write weight to file"
     write (u, "(A)")
 
-    call syntax_model_file_init ()
+    call model%init_test ()
 
     write (u, "(A)")  "* Initialize test process"
  
     allocate (process)
     process_ptr%ptr => process
     allocate (process_instance)
-    call prepare_test_process (process, process_instance, model_list)
+    call prepare_test_process (process, process_instance, model)
     call process_instance%setup_event_data ()
  
     allocate (event)
@@ -1518,8 +1513,7 @@ contains
     deallocate (process_instance)
     deallocate (process)
 
-    call model_list%final ()
-    call syntax_model_file_final ()
+    call model%final ()
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: eio_ascii_10"

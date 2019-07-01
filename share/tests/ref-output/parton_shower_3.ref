@@ -1,7 +1,7 @@
 ?openmp_logging = false
 ?vis_history = false
 ?integration_timer = false
-SM.me =  0.000000000000E+00
+SM.me =>  0.000000000000E+00
 $method = "omega"
 | Process library 'parton_shower_3_lib': recorded process 'parton_shower_3_p1'
 seed = 0

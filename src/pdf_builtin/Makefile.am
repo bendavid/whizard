@@ -1,5 +1,5 @@
 ## Makefile.am -- Makefile for WHIZARD
-# $Id: Makefile.am 5837 2014-05-21 18:32:54Z jr_reuter $
+# $Id: Makefile.am 6231 2014-10-16 18:18:17Z jr_reuter $
 ##
 ## Process this file with automake to produce Makefile.in
 ##
@@ -9,6 +9,7 @@
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
+#     with contributions from
 #     Christian Speckner <cnspeckn@googlemail.com>
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
@@ -36,13 +37,14 @@ libpdf_builtin_la_SOURCES = \
 	ct10pdf.f CJpdf.f
 
 $(libpdf_builtin_la_OBJECTS): \
-	../misc/kinds.$(FC_MODULE_EXT) \
-	../misc/iso_varying_string.$(FC_MODULE_EXT) \
-	../misc/diagnostics.$(FC_MODULE_EXT) \
-	../misc/file_utils.$(FC_MODULE_EXT)
+	../basics/kinds.$(FC_MODULE_EXT) \
+	../basics/iso_varying_string.$(FC_MODULE_EXT) \
+	../basics/io_units.$(FC_MODULE_EXT) \
+	../utilities/format_utils.$(FC_MODULE_EXT) \
+	../system/diagnostics.$(FC_MODULE_EXT)
 
-AM_FFLAGS = -I../misc/
-AM_FCFLAGS = -I../misc/
+AM_FFLAGS = -I../basics -I../utilities -I../system
+AM_FCFLAGS = -I../basics -I../utilities -I../system
 
 # After hacking, those .f files are actually fixed-form F90 -> make sure they
 # get compiled with the appropiate compiler.

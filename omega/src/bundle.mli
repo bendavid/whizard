@@ -1,4 +1,4 @@
-(* $Id: bundle.mli 5023 2013-12-20 12:03:39Z ohl $
+(* $Id: bundle.mli 6004 2014-07-09 15:46:54Z cweiss $
 
    Copyright (C) 1999-2014 by
 

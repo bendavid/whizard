@@ -22,16 +22,16 @@
 gy =  1.000000000000E+00
 ms =  1.250000000000E+02
 ff =  1.500000000000E+00
-mf* =  1.875000000000E+02
-particle* = PDG(0)
-SCALAR* = PDG(25)
-s* = PDG(25)
-FERMION* = PDG(6)
-f* = PDG(6)
-fbar* = PDG(-6)
-F* = PDG(-6)
-charged* = PDG(6, -6)
-colored* = PDG(6, -6)
+mf =  1.875000000000E+02
+particle = PDG(0)
+SCALAR = PDG(25)
+s = PDG(25)
+FERMION = PDG(6)
+f = PDG(6)
+fbar = PDG(-6)
+F = PDG(-6)
+charged = PDG(6, -6)
+colored = PDG(6, -6)
 [user variable] tolerance =  0.000000000000E+00
 ------------------------------------------------------------------------
  Configuration data:

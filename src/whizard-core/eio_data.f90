@@ -1,4 +1,4 @@
-! WHIZARD 2.2.2 July 6 2014
+! WHIZARD 2.2.3 Nov 30 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,8 +6,10 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
+!     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     Christian Weiss <christian.weiss@desy.de>
+!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -29,11 +31,11 @@
 
 module eio_data
   
-  use kinds !NODEP!
-  use file_utils !NODEP!
-  use iso_varying_string, string_t => varying_string !NODEP!
-  use diagnostics !NODEP!
+  use kinds
+  use io_units
+  use iso_varying_string, string_t => varying_string
   use unit_tests
+  use diagnostics
 
   use events
 
@@ -86,7 +88,7 @@ contains
     class(event_sample_data_t), intent(in) :: data
     integer, intent(in), optional :: unit
     integer :: u, i
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     write (u, "(1x,A)")  "Event sample properties:"
     write (u, "(3x,A,A,A)")  "MD5 sum (proc)   = '", data%md5sum_prc, "'"
     write (u, "(3x,A,A,A)")  "MD5 sum (config) = '", data%md5sum_cfg, "'"

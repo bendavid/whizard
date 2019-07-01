@@ -12,10 +12,22 @@
 ========================================================================
  Runtime data:
 ========================================================================
-mf* =  2.250000000000E+02
+gy =>  1.000000000000E+00
+ms =>  1.500000000000E+02
+ff =>  1.500000000000E+00
+mf* =>  2.250000000000E+02
+particle* = PDG(0)
+SCALAR* = PDG(25)
+s* = PDG(25)
+FERMION* = PDG(6)
+f* = PDG(6)
+fbar* = PDG(-6)
+F* = PDG(-6)
+charged* = PDG(6, -6)
+colored* = PDG(6, -6)
+$model_name = "Test"
 $fc => "Local compiler"
 $fcflags => "Fortran-flags"
-ms =  1.500000000000E+02
 $integration_method = "midpoint"
 $phs_method = "single"
 $library_name = "library_2"
@@ -176,6 +188,7 @@ $lhef_extension = "lhe"
 ?lhef_write_sqme_alt = true
 $extension_lha = "lha"
 $extension_hepmc = "hepmc"
+$extension_lcio = "slcio"
 $extension_stdhep = "hep"
 $extension_stdhep_up = "up.hep"
 $extension_hepevt_verb = "hepevt.verb"
@@ -274,21 +287,16 @@ $pdf_builtin_set = "CTEQ6L"
 openmp_num_threads_default* = 1
 openmp_num_threads = 1
 ?openmp_logging = true
+?use_gosam_loops = true
+?use_gosam_correlations = false
+?use_gosam_real_trees = false
+fks_dij_exp1 =  1.000000000000E+00
+fks_dij_exp2 =  1.000000000000E+00
+fks_mapping_type = 1
+alpha_power = 2
+alphas_power = 0
 $fc => "Fortran-compiler"
 $fcflags => "Fortran-flags"
-gy =  1.000000000000E+00
-ms =  1.250000000000E+02
-ff =  1.500000000000E+00
-mf* =  1.875000000000E+02
-particle* = PDG(0)
-SCALAR* = PDG(25)
-s* = PDG(25)
-FERMION* = PDG(6)
-f* = PDG(6)
-fbar* = PDG(-6)
-F* = PDG(-6)
-charged* = PDG(6, -6)
-colored* = PDG(6, -6)
 ========================================================================
 model "Test"
  ! md5sum = 'DB28187ADA60804A3CFC14A025DED784'
@@ -380,6 +388,10 @@ model "Test"
 ========================================================================
  Process stack: [empty]
 ========================================================================
+ [Processes from context environment:]
+========================================================================
+ Process stack: [empty]
+========================================================================
  quit     : F
  quit_code: 0
 ========================================================================
@@ -394,6 +406,19 @@ model "Test"
 ========================================================================
  Runtime data:
 ========================================================================
+gy =>  1.000000000000E+00
+ms =>  1.250000000000E+02
+ff =>  1.500000000000E+00
+mf* =>  1.875000000000E+02
+particle* = PDG(0)
+SCALAR* = PDG(25)
+s* = PDG(25)
+FERMION* = PDG(6)
+f* = PDG(6)
+fbar* = PDG(-6)
+F* = PDG(-6)
+charged* = PDG(6, -6)
+colored* = PDG(6, -6)
 ?logging => true
 seed = 0
 $model_name = "Test"
@@ -551,6 +576,7 @@ $lhef_extension = "lhe"
 ?lhef_write_sqme_alt = true
 $extension_lha = "lha"
 $extension_hepmc = "hepmc"
+$extension_lcio = "slcio"
 $extension_stdhep = "hep"
 $extension_stdhep_up = "up.hep"
 $extension_hepevt_verb = "hepevt.verb"
@@ -649,21 +675,16 @@ $pdf_builtin_set = "CTEQ6L"
 openmp_num_threads_default* = 1
 openmp_num_threads = 1
 ?openmp_logging = true
+?use_gosam_loops = true
+?use_gosam_correlations = false
+?use_gosam_real_trees = false
+fks_dij_exp1 =  1.000000000000E+00
+fks_dij_exp2 =  1.000000000000E+00
+fks_mapping_type = 1
+alpha_power = 2
+alphas_power = 0
 $fc => "Fortran-compiler"
 $fcflags => "Fortran-flags"
-gy =  1.000000000000E+00
-ms =  1.250000000000E+02
-ff =  1.500000000000E+00
-mf* =  1.875000000000E+02
-particle* = PDG(0)
-SCALAR* = PDG(25)
-s* = PDG(25)
-FERMION* = PDG(6)
-f* = PDG(6)
-fbar* = PDG(-6)
-F* = PDG(-6)
-charged* = PDG(6, -6)
-colored* = PDG(6, -6)
 ========================================================================
 model "Test"
  ! md5sum = 'DB28187ADA60804A3CFC14A025DED784'

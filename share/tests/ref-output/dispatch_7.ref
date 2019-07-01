@@ -1,8 +1,6 @@
 * Test output: dispatch_7
 *   Purpose: select and configure structure function data
 
- Initialized = F
-
 * Allocate data as sf_pdf_builtin_t
 
  PDF builtin data:
@@ -14,13 +12,9 @@
    photon mask  = T
    hoppet_b     = F
 
- Initialized = T
-
  PDG(out) =  -6 -5 -4 -3 -2 -1 0 1 2 3 4 5 6
 
-* Reset and allocate data for different PDF set
-
- Initialized = F
+* Allocate data for different PDF set
 
  PDF builtin data:
    flavor       = f(2212)
@@ -30,8 +24,6 @@
    mask         = T T T T T T * T * T T T T T T
    photon mask  = T
    hoppet_b     = F
-
- Initialized = T
 
  PDG(out) =  -6 -5 -4 -3 -2 -1 0 1 2 3 4 5 6
 

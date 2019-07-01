@@ -1,4 +1,4 @@
-! WHIZARD 2.2.2 July 6 2014
+! WHIZARD 2.2.3 Nov 30 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,8 +6,10 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
+!     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     Christian Weiss <christian.weiss@desy.de>
+!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -29,16 +31,15 @@
 
 module phs_single
 
-  use kinds, only: default !NODEP!
-  use iso_varying_string, string_t => varying_string !NODEP!
-  use file_utils !NODEP!
-  use diagnostics !NODEP!
+  use kinds, only: default
+  use iso_varying_string, string_t => varying_string
+  use io_units
+  use constants
   use unit_tests
+  use diagnostics
   use os_interface
-  use constants !NODEP!
-  use lorentz !NODEP!
-  use variables
-  use models
+  use lorentz
+  use model_data
   use flavors
   use process_constants
   use sf_mappings
@@ -84,13 +85,14 @@ contains
     class(phs_single_config_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     write (u, "(1x,A)")  "Partonic phase-space configuration (single-particle):"
     call object%base_write (unit)
   end subroutine phs_single_config_write
   
   subroutine phs_single_config_configure (phs_config, sqrts, &
-       sqrts_fixed, cm_frame, azimuthal_dependence, rebuild, ignore_mismatch)
+       sqrts_fixed, cm_frame, azimuthal_dependence, rebuild, ignore_mismatch, &
+       nlo_type)
     class(phs_single_config_t), intent(inout) :: phs_config
     real(default), intent(in) :: sqrts
     logical, intent(in), optional :: sqrts_fixed
@@ -98,6 +100,9 @@ contains
     logical, intent(in), optional :: azimuthal_dependence
     logical, intent(in), optional :: rebuild
     logical, intent(in), optional :: ignore_mismatch
+    type(string_t), intent(inout), optional :: nlo_type
+    if (.not. present (nlo_type)) &
+      phs_config%nlo_type = 'Born'
     if (phs_config%n_out == 2) then
        phs_config%n_channel = 1
        phs_config%n_par = 2
@@ -138,7 +143,7 @@ contains
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: verbose
     integer :: u
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     call object%base_write (u)
   end subroutine phs_single_write
     
@@ -267,9 +272,7 @@ contains
   
   subroutine phs_single_1 (u)
     integer, intent(in) :: u
-    type(os_data_t) :: os_data
-    type(model_list_t) :: model_list
-    type(model_t), pointer :: model
+    type(model_data_t), target :: model
     type(process_constants_t) :: process_data
     class(phs_config_t), allocatable :: phs_data
     real(default) :: sqrts
@@ -279,10 +282,7 @@ contains
          &phase-space configuration data"
     write (u, "(A)")
     
-    call os_data_init (os_data)
-    call syntax_model_file_init ()
-    call model_list%read_model (var_str ("Test"), &
-         var_str ("Test.mdl"), os_data, model)
+    call model%init_test ()
 
     write (u, "(A)")  "* Initialize a process and a matching &
          &phase-space configuration"
@@ -299,8 +299,7 @@ contains
     call phs_data%write (u)
   
     call phs_data%final ()
-    call model_list%final ()
-    call syntax_model_file_final ()
+    call model%final ()
     
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: phs_single_1"
@@ -309,9 +308,7 @@ contains
 
   subroutine phs_single_2 (u)
     integer, intent(in) :: u
-    type(os_data_t) :: os_data
-    type(model_list_t) :: model_list
-    type(model_t), pointer :: model
+    type(model_data_t), target :: model
     type(flavor_t) :: flv
     type(process_constants_t) :: process_data
     real(default) :: sqrts, E
@@ -323,10 +320,7 @@ contains
     write (u, "(A)")  "*   Purpose: test simple two-channel phase space"
     write (u, "(A)")
     
-    call os_data_init (os_data)
-    call syntax_model_file_init ()
-    call model_list%read_model (var_str ("Test"), &
-         var_str ("Test.mdl"), os_data, model)
+    call model%init_test ()
     call flavor_init (flv, 25, model)
 
     write (u, "(A)")  "* Initialize a process and a matching &
@@ -396,8 +390,7 @@ contains
     deallocate (phs)
     
     call phs_data%final ()
-    call model_list%final ()
-    call syntax_model_file_final ()
+    call model%final ()
     
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: phs_single_2"
@@ -406,9 +399,7 @@ contains
 
   subroutine phs_single_3 (u)
     integer, intent(in) :: u
-    type(os_data_t) :: os_data
-    type(model_list_t) :: model_list
-    type(model_t), pointer :: model
+    type(model_data_t), target :: model
     type(flavor_t) :: flv
     type(process_constants_t) :: process_data
     real(default) :: sqrts, E
@@ -422,10 +413,7 @@ contains
     write (u, "(A)")  "*            without c.m. kinematics assumption"
     write (u, "(A)")
     
-    call os_data_init (os_data)
-    call syntax_model_file_init ()
-    call model_list%read_model (var_str ("Test"), &
-         var_str ("Test.mdl"), os_data, model)
+    call model%init_test ()
     call flavor_init (flv, 25, model)
 
     write (u, "(A)")  "* Initialize a process and a matching &
@@ -508,8 +496,7 @@ contains
     deallocate (phs)
     
     call phs_data%final ()
-    call model_list%final ()
-    call syntax_model_file_final ()
+    call model%final ()
     
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: phs_single_3"
@@ -518,10 +505,7 @@ contains
 
   subroutine phs_single_4 (u)
     integer, intent(in) :: u
-    type(os_data_t) :: os_data
-    type(model_list_t) :: model_list
-    type(model_t), pointer :: model
-    type(var_list_t), pointer :: var_list
+    type(model_data_t), target :: model
     type(flavor_t) :: flv
     type(process_constants_t) :: process_data
     class(phs_config_t), allocatable, target :: phs_data
@@ -533,14 +517,11 @@ contains
     write (u, "(A)")  "*   Purpose: test simple two-channel phase space"
     write (u, "(A)")
     
-    call os_data_init (os_data)
-    call syntax_model_file_init ()
-    call model_list%read_model (var_str ("Test"), &
-         var_str ("Test.mdl"), os_data, model)
-    var_list => model_get_var_list_ptr (model)
-    call var_list_set_real (var_list, &
-         var_str ("ff"), 0.4_default, is_known = .true.)
-    call model_parameters_update (model)
+    call model%init_test ()
+
+    call model%set_par (var_str ("ff"), 0.4_default)
+    call model%set_par (var_str ("mf"), &
+         model%get_real (var_str ("ff")) * model%get_real (var_str ("ms")))
     call flavor_init (flv, 25, model)
 
     write (u, "(A)")  "* Initialize a decay and a matching &
@@ -606,8 +587,7 @@ contains
     deallocate (phs)
     
     call phs_data%final ()
-    call model_list%final ()
-    call syntax_model_file_final ()
+    call model%final ()
     
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: phs_single_4"

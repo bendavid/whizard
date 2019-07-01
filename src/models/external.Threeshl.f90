@@ -1,4 +1,4 @@
-! $Id: external.Threeshl.f90 4926 2013-12-04 12:35:06Z jr_reuter $
+! $Id: external.Threeshl.f90 6124 2014-09-16 09:51:26Z kilian $
 !
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -25,10 +25,10 @@
 subroutine init_external_parameters (par) bind (C)
 use iso_c_binding
 use kinds
+use io_units
 use threeshl
 use tglue
 use diagnostics
-use file_utils
 implicit none
 
 real(c_default_float), dimension(*), intent(inout) :: par

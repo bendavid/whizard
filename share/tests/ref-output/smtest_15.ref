@@ -5,8 +5,8 @@
 seed = 0
 phs_off_shell = 1
 phs_t_channel = 2
-SM.me =  0.0000000E+00
-SM.mmu =  0.0000000E+00
+SM.me =>  0.0000000E+00
+SM.mmu =>  0.0000000E+00
 openmp_num_threads = 1
 | Process library 'smtest_15_lib': recorded process 'smtest_15_1'
 | Starting simulation for process 'smtest_15_1'

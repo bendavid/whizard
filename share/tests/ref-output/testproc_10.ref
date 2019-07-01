@@ -128,7 +128,6 @@ Warning: No cuts have been defined.
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 3
 | Initializing integration for process testproc_10_p1:
-| QCD alpha: using a running strong coupling
 | ------------------------------------------------------------------------
 | Process [scattering]: 'testproc_10_p1'
 |   Library name  = 'testproc_10_lib'

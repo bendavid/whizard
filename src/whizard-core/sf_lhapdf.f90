@@ -1,4 +1,4 @@
-! WHIZARD 2.2.2 July 6 2014
+! WHIZARD 2.2.3 Nov 30 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,8 +6,10 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
+!     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     Christian Weiss <christian.weiss@desy.de>
+!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -29,24 +31,23 @@
 
 module sf_lhapdf
 
-  use kinds, only: default !NODEP!
-  use iso_varying_string, string_t => varying_string !NODEP!
-  use system_dependencies, only: LHAPDF_PDFSETS_PATH !NODEP!
-  use system_dependencies, only: LHAPDF5_AVAILABLE !NODEP!
-  use system_dependencies, only: LHAPDF6_AVAILABLE !NODEP!  
-  use limits, only: LHAPDF5_DEFAULT_PROTON !NODEP!
-  use limits, only: LHAPDF5_DEFAULT_PION !NODEP!
-  use limits, only: LHAPDF5_DEFAULT_PHOTON !NODEP!
-  use limits, only: LHAPDF6_DEFAULT_PROTON !NODEP!
-  use limits, only: FMT_17, FMT_19 !NODEP!
-  use file_utils !NODEP!
-  use diagnostics !NODEP!
-  use lorentz !NODEP!
+  use kinds, only: default
+  use iso_varying_string, string_t => varying_string
+  use format_defs, only: FMT_17, FMT_19
+  use io_units
   use unit_tests
-  use os_interface
+  use system_dependencies, only: LHAPDF_PDFSETS_PATH
+  use system_dependencies, only: LHAPDF5_AVAILABLE
+  use system_dependencies, only: LHAPDF6_AVAILABLE  
+  use diagnostics
+  use physics_defs, only: PROTON, PHOTON, PIPLUS, GLUON
+  use physics_defs, only: HADRON_REMNANT_SINGLET
+  use physics_defs, only: HADRON_REMNANT_TRIPLET
+  use physics_defs, only: HADRON_REMNANT_OCTET
+  use lorentz
   use sm_qcd
   use pdg_arrays
-  use models
+  use model_data
   use flavors
   use colors
   use quantum_numbers
@@ -61,17 +62,16 @@ module sf_lhapdf
   implicit none
   private
 
-  public :: lhapdf_status_t
-  public :: lhapdf_status_reset
+  public :: lhapdf_global_reset
   public :: lhapdf_initialize
   public :: lhapdf_data_t
   public :: alpha_qcd_lhapdf_t
   public :: sf_lhapdf_test
 
-  type :: lhapdf_status_t
+  type :: lhapdf_global_status_t
      private
      logical, dimension(3) :: initialized = .false.
-  end type lhapdf_status_t
+  end type lhapdf_global_status_t
 
   type, extends (sf_data_t) :: lhapdf_data_t
      private
@@ -79,7 +79,7 @@ module sf_lhapdf
      type(string_t) :: file
      type(lhapdf_pdf_t) :: pdf 
      integer :: member = 0
-     type(model_t), pointer :: model => null ()
+     class(model_data_t), pointer :: model => null ()
      type(flavor_t) :: flv_in
      integer :: set = 0
      logical :: invert = .false.
@@ -125,6 +125,13 @@ module sf_lhapdf
      procedure :: init => alpha_qcd_lhapdf_init
   end type alpha_qcd_lhapdf_t
   
+
+  character(*), parameter :: LHAPDF5_DEFAULT_PROTON = "cteq6ll.LHpdf"
+  character(*), parameter :: LHAPDF5_DEFAULT_PION   = "ABFKWPI.LHgrid"
+  character(*), parameter :: LHAPDF5_DEFAULT_PHOTON = "GSG960.LHgrid"
+  character(*), parameter :: LHAPDF6_DEFAULT_PROTON = "CT10"
+
+  type(lhapdf_global_status_t) :: lhapdf_global_status
 
   interface
      subroutine InitPDFsetM (set, file)
@@ -215,33 +222,29 @@ module sf_lhapdf
 
 contains
 
-  subroutine lhapdf_status_reset (lhapdf_status)
-    type(lhapdf_status_t), intent(inout) :: lhapdf_status
-    lhapdf_status%initialized = .false.
-  end subroutine lhapdf_status_reset
-
-  function lhapdf_status_is_initialized (lhapdf_status, set) result (flag)
+  function lhapdf_global_status_is_initialized (set) result (flag)
     logical :: flag
-    type(lhapdf_status_t), intent(in) :: lhapdf_status
     integer, intent(in), optional :: set
     if (present (set)) then
        select case (set)
-       case (1:3);    flag = lhapdf_status%initialized(set)
+       case (1:3);    flag = lhapdf_global_status%initialized(set)
        case default;  flag = .false.
        end select
     else
-       flag = any (lhapdf_status%initialized)
+       flag = any (lhapdf_global_status%initialized)
     end if
-  end function lhapdf_status_is_initialized
+  end function lhapdf_global_status_is_initialized
 
-  subroutine lhapdf_status_set_initialized (lhapdf_status, set)
-    type(lhapdf_status_t), intent(inout) :: lhapdf_status
+  subroutine lhapdf_global_status_set_initialized (set)
     integer, intent(in) :: set
-    lhapdf_status%initialized(set) = .true.
-  end subroutine lhapdf_status_set_initialized
+    lhapdf_global_status%initialized(set) = .true.
+  end subroutine lhapdf_global_status_set_initialized
 
-  subroutine lhapdf_initialize (status, set, prefix, file, member, pdf, b_match)
-    type(lhapdf_status_t), intent(inout) :: status
+  subroutine lhapdf_global_reset ()
+    lhapdf_global_status%initialized = .false.
+  end subroutine lhapdf_global_reset
+
+  subroutine lhapdf_initialize (set, prefix, file, member, pdf, b_match)
     integer, intent(in) :: set
     type(string_t), intent(inout) :: prefix
     type(string_t), intent(inout) :: file
@@ -250,7 +253,7 @@ contains
     logical, intent(in), optional :: b_match
     if (prefix == "")  prefix = LHAPDF_PDFSETS_PATH
     if (LHAPDF5_AVAILABLE) then
-       if (lhapdf_status_is_initialized (status, set))  return       
+       if (lhapdf_global_status_is_initialized (set))  return
        if (file == "") then
           select case (set)
           case (1);  file = LHAPDF5_DEFAULT_PROTON
@@ -272,15 +275,15 @@ contains
        end if
        call InitPDFM (set, member)
     else if (LHAPDF6_AVAILABLE) then
-       if (lhapdf_status_is_initialized (status, set) .and. &
+       if (lhapdf_global_status_is_initialized (set) .and. &
             pdf%is_associated ())  return
        if (file == "") then
           select case (set)
           case (1);  file = LHAPDF6_DEFAULT_PROTON
           case (2);  
-             call msg_fatal ("LHAPDF6: no pion PDFs supported (yet)")
+             call msg_fatal ("LHAPDF6: no pion PDFs supported")
           case (3);  
-             call msg_fatal ("LHAPDF6: no photon PDFs supported (yet)")
+             call msg_fatal ("LHAPDF6: no photon PDFs supported")
           end select
        end if
        if (data_file_exists (prefix // "/" // file // "/" // file // ".info")) then          
@@ -289,7 +292,7 @@ contains
           call msg_fatal ("LHAPDF: Data file '" &
                // char (file) // "' not found in '" // char (prefix) // "'.")
           return
-       end if 
+       end if        
     end if
     if (present (b_match)) then
        if (b_match) then
@@ -300,7 +303,7 @@ contains
           end if
        end if
     end if
-    call lhapdf_status_set_initialized (status, set)
+    call lhapdf_global_status_set_initialized (set)
   contains
     function data_file_exists (fq_name) result (exist)
       type(string_t), intent(in) :: fq_name
@@ -373,11 +376,10 @@ contains
   end subroutine lhapdf_inverse_kinematics
 
   subroutine lhapdf_data_init &
-       (data, status, model, pdg_in, prefix, file, member, photon_scheme, &
+       (data, model, pdg_in, prefix, file, member, photon_scheme, &
             hoppet_b_matching)
     class(lhapdf_data_t), intent(out) :: data
-    type(lhapdf_status_t), intent(inout) :: status
-    type(model_t), intent(in), target :: model
+    class(model_data_t), intent(in), target :: model
     type(pdg_array_t), intent(in) :: pdg_in
     type(string_t), intent(in), optional :: prefix, file
     integer, intent(in), optional :: member
@@ -427,8 +429,8 @@ contains
     if (present (hoppet_b_matching))  data%hoppet_b_matching = hoppet_b_matching    
     if (LHAPDF5_AVAILABLE) then
        call lhapdf_initialize &
-            (status, data%set, data%prefix, data%file, data%member, &
-            b_match = data%hoppet_b_matching)       
+            (data%set, data%prefix, data%file, data%member, &
+            b_match = data%hoppet_b_matching) 
        call GetXminM (data%set, data%member, xmin)
        call GetXmaxM (data%set, data%member, xmax)
        call GetQ2minM (data%set, data%member, q2min)
@@ -440,13 +442,13 @@ contains
        data%has_photon = has_photon ()       
     else if (LHAPDF6_AVAILABLE) then
        call lhapdf_initialize &
-            (status, data%set, data%prefix, data%file, data%member, &
+            (data%set, data%prefix, data%file, data%member, &
             data%pdf, data%hoppet_b_matching)              
        data%xmin = data%pdf%getxmin ()
        data%xmax = data%pdf%getxmax ()
        data%qmin = sqrt(data%pdf%getq2min ())
        data%qmax = sqrt(data%pdf%getq2max ())
-       data%has_photon = data%pdf%has_photon ()
+       data%has_photon = data%pdf%has_photon ()       
     end if
   end subroutine lhapdf_data_init
 
@@ -461,7 +463,7 @@ contains
     else
        verb = .false.
     end if       
-    u = output_unit (unit);  if (u < 0)  return
+    u = given_output_unit (unit);  if (u < 0)  return
     write (u, "(1x,A)") "LHAPDF data:"
     if (data%set /= 0) then
        write (u, "(3x,A)", advance="no") "flavor       =  "
@@ -537,7 +539,7 @@ contains
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: testflag
     integer :: u
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     if (associated (object%data)) then
        call object%data%write (u)
        if (object%status >= SF_DONE_KINEMATICS) then
@@ -683,7 +685,7 @@ contains
     class(alpha_qcd_lhapdf_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     write (u, "(3x,A)")  "QCD parameters (lhapdf):"
     write (u, "(5x,A,A)")  "PDF set    = ", char (object%pdfset_file)
     write (u, "(5x,A,I0)") "PDF member = ", object%pdfset_member
@@ -700,9 +702,8 @@ contains
     end if
   end function alpha_qcd_lhapdf_get
   
-  subroutine alpha_qcd_lhapdf_init (alpha_qcd, status, file, member, path)
+  subroutine alpha_qcd_lhapdf_init (alpha_qcd, file, member, path)
     class(alpha_qcd_lhapdf_t), intent(out) :: alpha_qcd
-    type(lhapdf_status_t), intent(inout) :: status
     type(string_t), intent(inout) :: file
     integer, intent(inout) :: member
     type(string_t), intent(inout) :: path
@@ -712,10 +713,10 @@ contains
          call msg_fatal ("QCD parameter initialization: PDF set " &
          // char (file) // " is unknown")
     if (LHAPDF5_AVAILABLE) then
-       call lhapdf_initialize (status, 1, path, file, member)
+       call lhapdf_initialize (1, path, file, member)
     else if (LHAPDF6_AVAILABLE) then
        call lhapdf_initialize &
-            (status, 1, path, file, member, alpha_qcd%pdf)
+            (1, path, file, member, alpha_qcd%pdf)
     end if
   end subroutine alpha_qcd_lhapdf_init
     
@@ -754,14 +755,11 @@ contains
   
   subroutine sf_lhapdf_1 (u)
     integer, intent(in) :: u
-    type(os_data_t) :: os_data
-    type(model_list_t) :: model_list
-    type(model_t), pointer :: model
+    type(model_data_t), target :: model
     type(pdg_array_t) :: pdg_in
     type(pdg_array_t), dimension(1) :: pdg_out
     integer, dimension(:), allocatable :: pdg1
     class(sf_data_t), allocatable :: data
-    type(lhapdf_status_t) :: status
     
     write (u, "(A)")  "* Test output: sf_lhapdf_1"
     write (u, "(A)")  "*   Purpose: initialize and display &
@@ -771,10 +769,7 @@ contains
     write (u, "(A)")  "* Create empty data object"
     write (u, "(A)")
 
-    call os_data_init (os_data)
-    call syntax_model_file_init ()
-    call model_list%read_model (var_str ("QCD"), &
-         var_str ("QCD.mdl"), os_data, model)
+    call model%init_sm_test ()
     pdg_in = PROTON
 
     allocate (lhapdf_data_t :: data)
@@ -786,7 +781,7 @@ contains
 
     select type (data)
     type is (lhapdf_data_t)
-       call data%init (status, model, pdg_in)
+       call data%init (model, pdg_in)
     end select
 
     call data%write (u)
@@ -798,8 +793,7 @@ contains
     pdg1 = pdg_out(1)
     write (u, "(2x,99(1x,I0))")  pdg1
 
-    call model_list%final ()
-    call syntax_model_file_final ()
+    call model%final ()
     
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: sf_lhapdf_1"
@@ -808,14 +802,11 @@ contains
 
   subroutine sf_lhapdf_2 (u)
     integer, intent(in) :: u
-    type(os_data_t) :: os_data
-    type(model_list_t) :: model_list
-    type(model_t), pointer :: model
+    type(model_data_t), target :: model
     type(flavor_t) :: flv
     type(pdg_array_t) :: pdg_in
     class(sf_data_t), allocatable, target :: data
     class(sf_int_t), allocatable :: sf_int
-    type(lhapdf_status_t) :: status
     type(vector4_t) :: k
     type(vector4_t), dimension(2) :: q
     real(default) :: E
@@ -830,19 +821,17 @@ contains
     write (u, "(A)")  "* Initialize configuration data"
     write (u, "(A)")
 
-    call os_data_init (os_data)
-    call syntax_model_file_init ()
-    call model_list%read_model (var_str ("QCD"), &
-         var_str ("QCD.mdl"), os_data, model)
+    call model%init_sm_test ()
     call flavor_init (flv, PROTON, model)
     pdg_in = PROTON
-
+    call lhapdf_global_reset ()
+    
     call reset_interaction_counter ()
     
     allocate (lhapdf_data_t :: data)
     select type (data)
     type is (lhapdf_data_t)
-       call data%init (status, model, pdg_in)
+       call data%init (model, pdg_in)
     end select
        
     write (u, "(A)")  "* Initialize structure-function object"
@@ -910,8 +899,7 @@ contains
     write (u, "(A)")  "* Cleanup"
 
     call sf_int%final ()
-    call model_list%final ()
-    call syntax_model_file_final ()
+    call model%final ()
     
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: sf_lhapdf_2"
@@ -920,9 +908,6 @@ contains
 
   subroutine sf_lhapdf_3 (u)
     integer, intent(in) :: u
-    type(os_data_t) :: os_data
-    type(model_list_t) :: model_list
-    type(lhapdf_status_t) :: status
     type(qcd_t) :: qcd
     type(string_t) :: name, path
     integer :: member
@@ -934,7 +919,7 @@ contains
     write (u, "(A)")  "* Initialize configuration data"
     write (u, "(A)")
 
-    call os_data_init (os_data)
+    call lhapdf_global_reset ()
 
     if (LHAPDF5_AVAILABLE) then
        name = "cteq6ll.LHpdf"
@@ -952,7 +937,7 @@ contains
     allocate (alpha_qcd_lhapdf_t :: qcd%alpha)
     select type (alpha => qcd%alpha)
     type is (alpha_qcd_lhapdf_t)
-       call alpha%init (status, name, member, path)
+       call alpha%init (name, member, path)
     end select
     call qcd%write (u)
 
@@ -965,8 +950,6 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
 
-    call model_list%final ()
-    
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: sf_lhapdf_3"
 

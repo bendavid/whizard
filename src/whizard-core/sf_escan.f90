@@ -1,4 +1,4 @@
-! WHIZARD 2.2.2 July 6 2014
+! WHIZARD 2.2.3 Nov 30 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,8 +6,10 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
+!     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     Christian Weiss <christian.weiss@desy.de>
+!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -29,16 +31,16 @@
 
 module sf_escan
 
-  use kinds, only: default !NODEP!
-  use iso_varying_string, string_t => varying_string !NODEP!
-  use file_utils !NODEP!
-  use limits, only: FMT_12 !NODEP!
-  use diagnostics !NODEP!
-  use lorentz !NODEP!
-  use os_interface
+  use kinds, only: default
+  use iso_varying_string, string_t => varying_string
+  use io_units
+  use format_defs, only: FMT_12
   use unit_tests
+  use diagnostics
+  use lorentz
+  use physics_defs, only: ELECTRON
   use pdg_arrays
-  use models
+  use model_data
   use flavors
   use helicities
   use colors
@@ -85,7 +87,7 @@ contains
 
   subroutine escan_data_init (data, model, pdg_in, norm)
     class(escan_data_t), intent(out) :: data
-    type(model_t), intent(in), target :: model
+    class(model_data_t), intent(in), target :: model
     type(pdg_array_t), dimension(2), intent(in) :: pdg_in
     real(default), intent(in), optional :: norm
     real(default), dimension(2) :: m2
@@ -112,7 +114,7 @@ contains
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: verbose
     integer :: u, i, j
-    u = output_unit (unit);  if (u < 0)  return
+    u = given_output_unit (unit);  if (u < 0)  return
     write (u, "(1x,A)") "Energy-scan data:"
     write (u, "(3x,A)", advance="no")  "prt_in = "
     do i = 1, 2
@@ -164,7 +166,7 @@ contains
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: testflag
     integer :: u
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     if (associated (object%data)) then
        call object%data%write (u)
        call object%base_write (u, testflag)
@@ -312,9 +314,7 @@ contains
   
   subroutine sf_escan_1 (u)
     integer, intent(in) :: u
-    type(os_data_t) :: os_data
-    type(model_list_t) :: model_list
-    type(model_t), pointer :: model
+    type(model_data_t), target :: model
     type(pdg_array_t), dimension(2) :: pdg_in
     type(pdg_array_t), dimension(2) :: pdg_out
     integer, dimension(:), allocatable :: pdg1, pdg2
@@ -325,10 +325,7 @@ contains
          &energy-scan structure function data"
     write (u, "(A)")
     
-    call os_data_init (os_data)
-    call syntax_model_file_init ()
-    call model_list%read_model (var_str ("QED"), &
-         var_str ("QED.mdl"), os_data, model)
+    call model%init_qed_test ()
     pdg_in(1) = ELECTRON
     pdg_in(2) = -ELECTRON
 
@@ -348,8 +345,7 @@ contains
     pdg2 = pdg_out(2)
     write (u, "(2x,99(1x,I0))")  pdg1, pdg2
 
-    call model_list%final ()
-    call syntax_model_file_final ()
+    call model%final ()
     
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: sf_escan_1"
@@ -358,9 +354,7 @@ contains
 
   subroutine sf_escan_2 (u)
     integer, intent(in) :: u
-    type(os_data_t) :: os_data
-    type(model_list_t) :: model_list
-    type(model_t), pointer :: model
+    type(model_data_t), target :: model
     type(flavor_t), dimension(2) :: flv
     type(pdg_array_t), dimension(2) :: pdg_in
     class(sf_data_t), allocatable, target :: data
@@ -375,10 +369,7 @@ contains
          &beam-events structure function data"
     write (u, "(A)")
     
-    call os_data_init (os_data)
-    call syntax_model_file_init ()
-    call model_list%read_model (var_str ("QED"), &
-         var_str ("QED.mdl"), os_data, model)
+    call model%init_qed_test ()
     call flavor_init (flv(1), ELECTRON, model)
     call flavor_init (flv(2), -ELECTRON, model)
     pdg_in(1) = ELECTRON
@@ -452,8 +443,7 @@ contains
     write (u, "(A)")  "* Cleanup"
 
     call sf_int%final ()
-    call model_list%final ()
-    call syntax_model_file_final ()
+    call model%final ()
     
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: sf_escan_2"

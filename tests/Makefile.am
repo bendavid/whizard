@@ -10,6 +10,7 @@
 #     Juergen Reuter <juergen.reuter@desy.de>
 #     with contributions from
 #     Christian Speckner <cnspeckn@googlemail.com>
+#     Christian Weiss <christian.weiss@desy.de>
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by 
@@ -152,6 +153,7 @@ TESTS_DEFAULT = \
     testproc_9.run \
     testproc_10.run \
     rebuild_1.run \
+    rebuild_4.run \
     susyhit.run \
     helicity.run \
     libraries_4.run
@@ -169,6 +171,8 @@ TESTS_REQ_OCAML = \
     rebuild_3.run \
     defaultcuts.run \
     cuts.run \
+    model_change_1.run \
+    model_change_2.run \
     model_test.run \
     qedtest_1.run \
     qedtest_2.run \
@@ -229,6 +233,8 @@ TESTS_REQ_OCAML = \
     smtest_13.run \
     smtest_14.run \
     smtest_15.run \
+    smtest_16.run \
+    smtest_17.run \
     mssmtest.run \
     show_1.run \
     show_2.run \
@@ -284,7 +290,8 @@ TESTS_REQ_HEPMC = \
     hepmc_2.run \
     hepmc_3.run \
     hepmc_4.run \
-    hepmc_5.run
+    hepmc_5.run \
+    hepmc_6.run
 
 UNIT_TESTS_REQ_LHAPDF5 = \
     sf_lhapdf5.run 
@@ -358,6 +365,7 @@ TEST_DRIVERS_SH = $(TEST_DRIVERS_RUN:.run=.sh)
 
 TESTS = 
 XFAIL_TESTS =
+TESTS_SRC =
 
 UNIT_TESTS += $(UNIT_TESTS_REQ_GAMELAN)
 UNIT_TESTS += $(UNIT_TESTS_REQ_FASTJET)
@@ -452,7 +460,8 @@ EXTENDED_NMSSM_TEST_DRIVERS_SH = $(EXTENDED_NMSSM_TEST_DRIVERS:.run=.sh)
 
 EXTRA_DIST = $(TEST_DRIVERS_SH) \
     $(EXTENDED_MSSM_TEST_DRIVERS_SH) \
-    $(EXTENDED_NMSSM_TEST_DRIVERS_SH)
+    $(EXTENDED_NMSSM_TEST_DRIVERS_SH) \
+    $(TESTS_SRC)
 
 ########################################################################
 
@@ -539,6 +548,15 @@ $(top_builddir)/src/gamelan/gamelan.sty:
 	$(MAKE) -C $(top_builddir)/src/gamelan gamelan.sty
 endif
 
+if HEPMC_AVAILABLE
+TESTS_SRC += $(hepmc_6_rd_SOURCES)
+noinst_PROGRAMS = hepmc_6_rd
+hepmc_6_rd_SOURCES = hepmc_6_rd.cpp
+hepmc_6_rd_CXXFLAGS = $(HEPMC_INCLUDES) $(AM_CXXFLAGS)
+hepmc_6_rd_LDADD = $(LDFLAGS_HEPMC)
+hepmc_6.run: hepmc_6_rd
+endif
+
 susyhit.in: $(top_builddir)/share/tests/susyhit.in
 	cp $< $@
 
@@ -614,11 +632,11 @@ if STATIC_AVAILABLE
 endif
 
 # The reference output files are in the source directory.  Copy them here.
-if FC_QUAD
+if FC_EXT
 ref-output: $(top_srcdir)/share/tests/ref-output 
 	mkdir -p ref-output
 	for f in $</*.ref; do cp $$f $@; done
-	for f in $</../ref-output-quad/*.ref; do cp $$f $@; done
+	for f in $</../ref-output-ext/*.ref; do cp $$f $@; done
 else
 ref-output: $(top_srcdir)/share/tests/ref-output 
 	mkdir -p ref-output
@@ -648,7 +666,7 @@ clean-local:
 	rm -f *.makefile
 	rm -rf err-output
 	rm -rf ref-output
-	rm -f *.sin
+	rm -f *.sin *.hbc
 	rm -f *.phs *.vg *.vgb *.evt *.evx *.lhe *.hepmc *.dat *.debug 
 	rm -f *.tmp *.hepevt *.hepevt.verb *.lha *.lha.verb
 	rm -f prc_omega_diags_1_p_i1_diags.out prc_omega_diags_1_p_i1_diags.toc

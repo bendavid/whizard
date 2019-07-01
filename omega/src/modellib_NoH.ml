@@ -770,8 +770,8 @@ module NoH (Flags : NoH_flags) =
      Trivial proof:
      \begin{equation}
        -1 = \textrm{Im}\left(\frac{1}{a_\chi(s)}\right)
-          = \frac{\textrm{Im}(a_\chi^*(s))}{|a_\chi(s)|^2}
-          = - \frac{\textrm{Im}(a_\chi(s))}{|a_\chi(s)|^2}
+          = \frac{\textrm{Im}(a_\chi^*(s))}{ |a_\chi(s)|^2 }
+          = - \frac{\textrm{Im}(a_\chi(s))}{ |a_\chi(s)|^2 }
      \end{equation}
      i.\,e.~$\textrm{Im}(a_\chi(s)) = |a_\chi(s)|^2$.}
    \begin{equation}
@@ -2165,8 +2165,8 @@ module AltH (Flags : NoH_flags) =
      Trivial proof:
      \begin{equation}
        -1 = \textrm{Im}\left(\frac{1}{a_\chi(s)}\right)
-          = \frac{\textrm{Im}(a_\chi^*(s))}{|a_\chi(s)|^2}
-          = - \frac{\textrm{Im}(a_\chi(s))}{|a_\chi(s)|^2}
+          = \frac{\textrm{Im}(a_\chi^*(s))}{ |a_\chi(s)|^2 }
+          = - \frac{\textrm{Im}(a_\chi(s))}{ |a_\chi(s)|^2 }
      \end{equation}
      i.\,e.~$\textrm{Im}(a_\chi(s)) = |a_\chi(s)|^2$.}
    \begin{equation}

@@ -27,43 +27,43 @@
 #
 ########################################################################
 
-bin_PROGRAMS = circe1_plot circe1_fit.bin circe1_fit.sh \
-	circe1_sample.bin circe1_minuit1.sh circe1_minuit2.sh \
-	circe1_minuit1.bin circe1_minuit2.bin circe1_int.bin \
-	circe1_int.sh
+bin_PROGRAMS = circe1_plot circe1_fit circe1_sample \
+	circe1_minuit1 circe1_minuit2 circe1_int
 
-circe1_fit_sh_SOURCES = circe1_fit.sh
-
-circe1_int_sh_SOURCES = circe1_int.sh
+bin_SCRIPTS = circe1_fit.run circe1_minuit1.run circe1_minuit2.run \
+	circe1_int.run
 
 circe1_plot_SOURCES = circe1_plot.f90
 circe1_plot_LDADD = $(top_builddir)/src/libcirce1.la
 
-circe1_sample_bin_SOURCES = circe1_sample.f90
-circe1_sample_bin_LDADD = $(top_builddir)/src/libcirce1.la
+circe1_sample_SOURCES = circe1_sample.f90
+circe1_sample_LDADD = $(top_builddir)/src/libcirce1.la
 
-circe1_minuit1_sh_SOURCES = circe1_minuit1.sh
-circe1_minuit2_sh_SOURCES = circe1_minuit2.sh
-
-circe1_fit_bin_SOURCES = circe1_fit.f90
-circe1_fit_bin_LDADD = $(top_builddir)/minuit/libminuit.la \
+circe1_fit_SOURCES = circe1_fit.f90
+circe1_fit_LDADD = $(top_builddir)/minuit/libminuit.la \
 	$(top_builddir)/src/libcirce1.la
 
-circe1_int_bin_SOURCES = circe1_int.f90
-circe1_int_bin_LDADD = $(top_builddir)/src/libcirce1.la
+circe1_int_SOURCES = circe1_int.f90
+circe1_int_LDADD = $(top_builddir)/src/libcirce1.la
 
-circe1_minuit1_bin_SOURCES = circe1_minuit1.f90
-circe1_minuit1_bin_LDADD = $(top_builddir)/minuit/libminuit.la \
+circe1_minuit1_SOURCES = circe1_minuit1.f90
+circe1_minuit1_LDADD = $(top_builddir)/minuit/libminuit.la \
 	$(top_builddir)/src/libcirce1.la
 
-circe1_minuit2_bin_SOURCES = circe1_minuit2.f90
-circe1_minuit2_bin_LDADD = $(top_builddir)/minuit/libminuit.la \
+circe1_minuit2_SOURCES = circe1_minuit2.f90
+circe1_minuit2_LDADD = $(top_builddir)/minuit/libminuit.la \
 	$(top_builddir)/src/libcirce1.la
 
-EXTRA_DIST = $(circe1_plot_SOURCES) $(circe1_fit_bin_SOURCES) \
-	$(circe1_fit_sh_SOURCES) $(circe1_sample_bin_SOURCES) \
-	$(circe1_minuit1_sh_SOURCES) $(circe1_minuit2_sh_SOURCES) \
-	$(circe1_int_bin_SOURCES) $(circe1_int_sh_SOURCES)
+EXTRA_DIST = $(circe1_plot_SOURCES) $(circe1_fit_SOURCES) \
+	$(circe1_sample_SOURCES) $(circe1_int_SOURCES) \
+	$(bin_SCRIPTS:.run=.sh)
+
+SUFFIXES = .nw .lo .$(FC_MODULE_EXT) .sh. .run
+
+.sh.run:
+	@rm -f @$
+	$(SED) 's|@name@|$*|g' $< >$@
+	chmod +x $@
 
 # Fortran90 module files are generated at the same time as object files
 .lo.$(FC_MODULE_EXT):
@@ -94,8 +94,6 @@ endif
 BRACKET = $(top_srcdir)/src/prelude.nw $(top_srcdir)/src/postlude.nw
 TRIPLE = $(top_srcdir)/src/prelude.nw $< $(top_srcdir)/src/postlude.nw
 
-SUFFIXES = .nw .lo .$(FC_MODULE_EXT)
-
 if NOWEB_AVAILABLE
 circe1_plot.f90: $(top_srcdir)/src/circe1.nw $(BRACKET)
 	cat $(TRIPLE) | $(NOTANGLE) -R'[[$@]]' | $(CPIF) $@
@@ -112,7 +110,6 @@ circe1_fit.f90: $(top_srcdir)/src/minuit.nw $(BRACKET)
 
 circe1_fit.sh: $(top_srcdir)/src/minuit.nw $(BRACKET)
 	cat $(TRIPLE) | $(NOTANGLE) -R'[[$@]]' | $(CPIF) $@
-	chmod 755 $@
 
 circe1_minuit1.f90: $(top_srcdir)/src/minuit.nw $(BRACKET)
 	cat $(TRIPLE) | $(NOTANGLE) -R'[[$@]]' | $(CPIF) $@
@@ -122,18 +119,15 @@ circe1_minuit2.f90: $(top_srcdir)/src/minuit.nw $(BRACKET)
 
 circe1_minuit1.sh: $(top_srcdir)/src/minuit.nw $(BRACKET)
 	cat $(TRIPLE) | $(NOTANGLE) -R'[[$@]]' | $(CPIF) $@
-	chmod 755 $@
 
 circe1_minuit2.sh: $(top_srcdir)/src/minuit.nw $(BRACKET)
 	cat $(TRIPLE) | $(NOTANGLE) -R'[[$@]]' | $(CPIF) $@
-	chmod 755 $@
 
 circe1_int.f90: $(top_srcdir)/src/interpol.nw $(BRACKET)
 	cat $(TRIPLE) | $(NOTANGLE) -R'[[$@]]' | $(CPIF) $@
 
 circe1_int.sh: $(top_srcdir)/src/interpol.nw $(BRACKET)
 	cat $(TRIPLE) | $(NOTANGLE) -R'[[$@]]' | $(CPIF) $@
-	chmod 755 $@
 endif
 
 ########################################################################
@@ -144,7 +138,7 @@ endif
 @am__include@ @am__quote@Makefile.depend@am__quote@
 
 Makefile.depend: $(circe1_plot_SOURCES) $(circe1_fit_SOURCES) \
-	$(circe1_sample_bin_SOURCES) $(circe1_int_SOURCES)
+	$(circe1_sample_SOURCES) $(circe1_int_SOURCES)
 	@rm -f $@
 	for src in $^; do \
           module="`basename $$src | sed 's/\.f90//'`"; \
@@ -180,6 +174,7 @@ endif
 
 ## Remove F90 module files
 clean-local: clean-noweb
+	-rm -f *.run
 	-rm -f *.$(FC_MODULE_EXT) *.g90 circemacs.mp4
 
 ## Remove backup files

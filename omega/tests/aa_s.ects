@@ -1,4 +1,4 @@
-! $Id: aa_s.ects 4073 2013-02-12 13:42:18Z fbach $
+! $Id: aa_s.ects 6004 2014-07-09 15:46:54Z cweiss $
 !ects:model SYM
 !ects:scatter
 !ects:process g1 g1 -> phi

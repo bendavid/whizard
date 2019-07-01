@@ -1,5 +1,5 @@
 #! /bin/sh
-# $Id: compare_driver.sh 4073 2013-02-12 13:42:18Z fbach $
+# $Id: compare_driver.sh 6040 2014-07-23 15:17:31Z bchokoufe $
 ########################################################################
 
 tag="$1"
@@ -12,7 +12,7 @@ models="qed qcd sym"
 modules=""
 
 ########################################################################
-while read module threshold n roots model mode process; do 
+while read module threshold abs_threshold n roots model mode process; do
 
   case $module in
 
@@ -26,6 +26,7 @@ while read module threshold n roots model mode process; do
       ########################################################################
       modules="$modules $module"
       eval threshold_$module=$threshold
+      eval abs_threshold_$module=$abs_threshold
       eval n_$module=$n
       eval roots_$module=$roots
       eval process_$module="'$process'"
@@ -113,7 +114,6 @@ done
 cat <<EOF
   implicit none
   integer, parameter :: N = 1000
-  real(kind=default), parameter :: THRESHOLD = 0.8
   real(kind=default), parameter :: ROOTS = 1000
   integer, parameter :: SEED = 42
   integer :: failures, attempts, failed_processes, attempted_processes
@@ -132,6 +132,7 @@ for module in $modules; do
 eval process="\${process_$module}"
 eval n="\${n_$module}"
 eval threshold="\${threshold_$module}"
+eval abs_threshold="\${abs_threshold_$module}"
 eval roots="\${roots_$module}"
 
 cat <<EOF
@@ -140,6 +141,7 @@ cat <<EOF
               roots = real ($roots, kind=default), &
               threshold = real ($threshold, kind=default), &
               n = $n, seed = SEED, &
+              abs_threshold = real ($abs_threshold, kind=default), &
               failures = failures, attempts = attempts)
   if (failures > 0) then
      print *, failures, " failures in ", attempts, " attempts"

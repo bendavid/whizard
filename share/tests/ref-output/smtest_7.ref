@@ -2,8 +2,8 @@
 ?vis_history = false
 ?integration_timer = false
 | Process library 'smtest_7_lib': recorded process 'smtest_7_nnh'
-SM.me =  0.000000000000E+00
-SM.mH =  1.250000000000E+02
+SM.me =>  0.000000000000E+00
+SM.mH =>  1.250000000000E+02
 seed = 0
 sqrts =  5.000000000000E+02
 openmp_num_threads = 1

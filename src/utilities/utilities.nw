@@ -1,0 +1,399 @@
+% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*- 
+% WHIZARD code as NOWEB source: Utilities
+
+@ 
+\chapter{Utilities}
+
+These modules are intended as part of WHIZARD, but in fact they are
+generic and could be useful for any purpose.
+
+The modules depend only on modules from the [[basics]] set.
+\begin{description}
+\item[file\_utils]
+  Procedures that deal with external files, if not covered by Fortran
+  built-ins.
+\item[string\_utils]
+  Some string-handling utilities.  Includes conversion to C string.
+\item[format\_utils]
+  Utilities for pretty-printing.
+\item[format\_defs]
+  Predefined format strings.
+\end{description}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{File Utilities}
+
+This module provides miscellaneous tools associated with named
+external files.  Currently only:
+\begin{itemize}
+\item
+  Delete a named file
+\end{itemize}
+<<[[file_utils.f90]]>>=
+<<File header>>
+
+module file_utils
+
+  use io_units
+
+<<Standard module head>>
+
+<<File utils: public>>
+
+contains
+
+<<File utils: procedures>>
+
+end module file_utils
+@ %def file_utils
+@
+\subsection{Deleting a file}
+Fortran does not contain a command for deleting a file.  Here, we
+provide a subroutine that deletes a file if it exists.  We do not
+handle the subtleties, so we assume that it is writable if it exists.
+<<File utils: public>>=
+  public :: delete_file
+<<File utils: procedures>>=
+  subroutine delete_file (name)
+    character(*), intent(in) :: name
+    logical :: exist
+    integer :: u
+    inquire (file = name, exist = exist)
+    if (exist) then
+       u = free_unit ()
+       open (unit = u, file = name)
+       close (u, status = "delete")
+    end if
+  end subroutine delete_file
+  
+@ %def delete_file
+@ 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+\section{String Utilities}
+
+This module provides tools associated with strings
+(built-in and variable).  Currently:
+\begin{itemize}
+\item
+  Upper and lower case for strings
+\item
+  Convert to null-terminated C string
+\end{itemize}
+<<[[string_utils.f90]]>>=
+<<File header>>
+
+module string_utils
+
+  use, intrinsic :: iso_c_binding
+<<Use strings>>
+
+<<Standard module head>>
+
+<<String utils: public>>
+
+<<String utils: interfaces>>
+
+contains
+
+<<String utils: procedures>>
+
+end module string_utils
+@ %def string_utils
+@ 
+\subsection{Upper and Lower Case}
+These are, unfortunately, not part of Fortran.
+<<String utils: public>>=
+  public :: upper_case
+  public :: lower_case
+<<String utils: interfaces>>=
+  interface upper_case
+     module procedure upper_case_char, upper_case_string
+  end interface
+  interface lower_case
+     module procedure lower_case_char, lower_case_string
+  end interface
+<<String utils: procedures>>=
+  function upper_case_char (string) result (new_string)
+    character(*), intent(in) :: string
+    character(len(string)) :: new_string
+    integer :: pos, code
+    integer, parameter :: offset = ichar('A')-ichar('a')
+    do pos = 1, len (string)
+       code = ichar (string(pos:pos))
+       select case (code)
+       case (ichar('a'):ichar('z'))
+          new_string(pos:pos) = char (code + offset)
+       case default
+          new_string(pos:pos) = string(pos:pos)
+       end select
+    end do
+  end function upper_case_char
+
+  function lower_case_char (string) result (new_string)
+    character(*), intent(in) :: string
+    character(len(string)) :: new_string
+    integer :: pos, code
+    integer, parameter :: offset = ichar('a')-ichar('A')
+    do pos = 1, len (string)
+       code = ichar (string(pos:pos))
+       select case (code)
+       case (ichar('A'):ichar('Z'))
+          new_string(pos:pos) = char (code + offset)
+       case default
+          new_string(pos:pos) = string(pos:pos)
+       end select
+    end do
+  end function lower_case_char
+
+  function upper_case_string (string) result (new_string)
+    type(string_t), intent(in) :: string
+    type(string_t) :: new_string
+    new_string = upper_case_char (char (string))
+  end function upper_case_string
+
+  function lower_case_string (string) result (new_string)
+    type(string_t), intent(in) :: string
+    type(string_t) :: new_string
+    new_string = lower_case_char (char (string))
+  end function lower_case_string
+
+@ %def upper_case lower_case
+@ 
+\subsection{C-compatible Output}
+Convert a FORTRAN string into a zero terminated C string.
+<<String utils: public>>=
+  public :: string_f2c
+<<String utils: interfaces>>=
+  interface string_f2c
+     module procedure string_f2c_char, string_f2c_var_str
+  end interface string_f2c
+<<String utils: procedures>>=
+  pure function string_f2c_char (i) result (o)
+    character(*), intent(in) :: i
+    character(kind=c_char, len=len (i) + 1) :: o
+    o = i // c_null_char
+  end function string_f2c_char
+
+  pure function string_f2c_var_str (i) result (o)
+    type(string_t), intent(in) :: i
+    character(kind=c_char, len=len (i) + 1) :: o
+    o = char (i) // c_null_char
+  end function string_f2c_var_str
+
+@ %def string_f2c
+@ 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+\section{Format Utilities}
+
+This module provides miscellaneous tools associated with formatting and
+pretty-printing.
+\begin{itemize}
+\item
+  Horizontal separator lines in output
+\item
+  Indenting an output line
+\item
+  Formatting a number for \TeX\ output.
+\item
+  Formatting a number for MetaPost output.
+\item
+  Alternate numeric formats.
+\end{itemize}
+<<[[format_utils.f90]]>>=
+<<File header>>
+
+module format_utils
+
+<<Use kinds>>
+<<Use strings>>
+  use string_utils, only: lower_case
+
+<<Standard module head>>
+
+<<Format utils: public>>
+
+contains
+
+<<Format utils: procedures>>
+
+end module format_utils
+@ %def format_utils
+@
+\subsection{Line Output}
+Write a separator line.
+<<Format utils: public>>=
+  public :: write_separator
+<<Format utils: procedures>>=
+  subroutine write_separator (u, mode)
+    integer, intent(in) :: u
+    integer, intent(in), optional :: mode
+    integer :: m
+    m = 1;  if (present (mode))  m = mode
+    select case (m)
+    case default
+       write (u, "(A)")  repeat ("-", 72)
+    case (1)
+       write (u, "(A)")  repeat ("-", 72)
+    case (2)
+       write (u, "(A)")  repeat ("=", 72)
+    end select
+  end subroutine write_separator
+  
+@ %def write_separator
+@
+Indent the line with given number of blanks.
+<<Format utils: public>>=
+  public :: write_indent
+<<Format utils: procedures>>=
+  subroutine write_indent (unit, indent)
+    integer, intent(in) :: unit
+    integer, intent(in), optional :: indent
+    if (present (indent)) then
+       write (unit, "(1x,A)", advance="no")  repeat ("  ", indent)
+    end if
+  end subroutine write_indent
+
+@ %def write_indent
+@
+\subsection{\TeX-compatible Output}
+Quote underscore characters for use in \TeX\ output.
+<<Format utils: public>>=
+  public :: quote_underscore
+<<Format utils: procedures>>=
+  function quote_underscore (string) result (quoted)
+    type(string_t) :: quoted
+    type(string_t), intent(in) :: string
+    type(string_t) :: part
+    type(string_t) :: buffer
+    buffer = string
+    quoted = ""
+    do
+      call split (part, buffer, "_")
+      quoted = quoted // part
+      if (buffer == "")  exit
+      quoted = quoted // "\_"
+    end do
+  end function quote_underscore
+
+@ %def quote_underscore
+@ Format a number with $n$ significant digits for use in \TeX\ documents.
+<<Format utils: public>>=
+  public :: tex_format
+<<Format utils: procedures>>=
+  function tex_format (rval, n_digits) result (string)
+    type(string_t) :: string
+    real(default), intent(in) :: rval
+    integer, intent(in) :: n_digits
+    integer :: e, n, w, d
+    real(default) :: absval
+    real(default) :: mantissa
+    character :: sign
+    character(20) :: format
+    character(80) :: cstr
+    n = min (abs (n_digits), 16)
+    if (rval == 0) then
+       string = "0"
+    else
+       absval = abs (rval)
+       e = log10 (absval)
+       if (rval < 0) then
+          sign = "-"
+       else
+          sign = ""
+       end if
+       select case (e)
+       case (:-3)
+          d = max (n - 1, 0)
+          w = max (d + 2, 2)
+          write (format, "('(F',I0,'.',I0,',A,I0,A)')")  w, d
+          mantissa = absval * 10._default ** (1 - e)
+          write (cstr, fmt=format)  mantissa, "\times 10^{", e - 1, "}"
+       case (-2:0)
+          d = max (n - e, 1 - e)
+          w = max (d + e + 2, d + 2)
+          write (format, "('(F',I0,'.',I0,')')")  w, d
+          write (cstr, fmt=format)  absval
+       case (1:2)
+          d = max (n - e - 1, -e, 0)
+          w = max (d + e + 2, d + 2, e + 2)
+          write (format, "('(F',I0,'.',I0,')')")  w, d
+          write (cstr, fmt=format)  absval
+       case default
+          d = max (n - 1, 0)
+          w = max (d + 2, 2)
+          write (format, "('(F',I0,'.',I0,',A,I0,A)')")  w, d
+          mantissa = absval * 10._default ** (- e)
+          write (cstr, fmt=format)  mantissa, "\times 10^{", e, "}"
+       end select
+       string = sign // trim (cstr)
+    end if
+  end function tex_format
+
+@ %def tex_format
+@ 
+\subsection{Metapost-compatible Output}
+Write a number for use in Metapost code:
+<<Format utils: public>>=
+  public :: mp_format
+<<Format utils: procedures>>=
+  function mp_format (rval) result (string)
+    type(string_t) :: string
+    real(default), intent(in) :: rval
+    character(16) :: tmp
+    write (tmp, "(G16.8)")  rval
+    string = lower_case (trim (adjustl (trim (tmp))))
+  end function mp_format
+
+@ %def mp_format
+@
+\subsection{Conditional Formatting}
+Conditional format string, intended for switchable numeric precision.
+<<Format utils: public>>=
+  public :: pac_fmt
+<<Format utils: procedures>>=
+  subroutine pac_fmt (fmt, fmt_orig, fmt_pac, pacify) 
+    character(*), intent(in) :: fmt_orig, fmt_pac
+    character(*), intent(out) :: fmt
+    logical, intent(in), optional :: pacify
+    logical :: pacified
+    pacified = .false.
+    if (present (pacify))  pacified = pacify
+    if (pacified) then
+       fmt = fmt_pac
+    else
+       fmt = fmt_orig
+    end if
+  end subroutine pac_fmt
+  
+@ %def pac_fmt
+@ 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+\section{Format Definitions}
+
+This module provides named integer parameters that specify certain
+format strings, used for numerical output.
+<<[[format_defs.f90]]>>=
+<<File header>>
+
+module format_defs
+
+<<Standard module head>>
+
+<<Format defs: public parameters>>
+
+end module format_defs
+@ %def format_defs
+@ We collect format strings for various numerical output formats here.
+<<Format defs: public parameters>>=
+  character(*), parameter, public :: FMT_19 = "ES19.12"
+  character(*), parameter, public :: FMT_18 = "ES18.11"
+  character(*), parameter, public :: FMT_17 = "ES17.10"  
+  character(*), parameter, public :: FMT_16 = "ES16.9"
+  character(*), parameter, public :: FMT_15 = "ES15.8"
+  character(*), parameter, public :: FMT_14 = "ES14.7"    
+  character(*), parameter, public :: FMT_13 = "ES13.6"    
+  character(*), parameter, public :: FMT_12 = "ES12.5"
+  character(*), parameter, public :: FMT_11 = "ES11.4"
+  character(*), parameter, public :: FMT_10 = "ES10.3"
+
+@ %def FMT_10 FMT_11 FMT_12 FMT_13 FMT_14 
+@ %def FMT_15 FMT_16 FMT_17 FMT_18 FMT_19

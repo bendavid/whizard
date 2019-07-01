@@ -7,61 +7,13 @@ This is the code for the \whizard\ QCD parton shower for final state
 radiation (FSR) and initial state radiation (ISR) as well as the interface
 to the \pythia\ module for showering and hadronization.
 
-\nwfilename{../../../src/shower/shower.nw}\nwbegincode{1}\moddef{Version}\endmoddef
-2.2.0
-\nwendcode{}\nwbegincode{2}\moddef{Date}\endmoddef
-Mar 03 2014
-
-\nwendcode{}\nwbegincode{3}\moddef{File header}\endmoddef
-! WHIZARD \LA{}Version\RA{} \LA{}Date\RA{}
-!
-! Copyright (C) 1999-2014 by
-!     Wolfgang Kilian <kilian@physik.uni-siegen.de>
-!     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-!     Juergen Reuter <juergen.reuter@desy.de>
-!
-!     with contributions from
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     and Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler
-!
-! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by
-! the Free Software Foundation; either version 2, or (at your option)
-! any later version.
-!
-! WHIZARD is distributed in the hope that it will be useful, but
-! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-! GNU General Public License for more details.
-!
-! You should have received a copy of the GNU General Public License
-! along with this program; if not, write to the Free Software
-! Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! This file has been stripped of most comments.  For documentation, refer
-! to the source 'shower.nw'
-\nwendcode{}\nwbegindocs{4}\nwdocspar
-We are strict with our names:
-\nwenddocs{}\nwbegincode{5}\moddef{Standard module head}\endmoddef
-  implicit none
-  private
-\nwendcode{}\nwbegindocs{6}This is the way to envoke the kinds module (not contained in this source)
-\nwenddocs{}\nwbegincode{7}\moddef{Use kinds}\endmoddef
-  use kinds, only: default !NODEP!
-\eatline
-\nwendcode{}\nwbegindocs{8}And we make heavy use of variable-length strings
-\nwenddocs{}\nwbegincode{9}\moddef{Use strings}\endmoddef
-  use iso_varying_string, string_t => varying_string !NODEP!
-\eatline
-\nwendcode{}\nwbegindocs{10}\nwdocspar
 \section{Basics of the shower}
-\nwenddocs{}\nwbegincode{11}\moddef{\code{}shower{\char95}base.f90\edoc{}}\endmoddef
+\nwfilename{../../../src/shower/shower.nw}\nwbegincode{1}\moddef{\code{}shower{\char95}base.f90\edoc{}}\endmoddef
 \LA{}File header\RA{}
 
 module shower_base
 
-\LA{}Use kinds\RA{}
+\LA{}Use kinds\RA{} !NODEP!
   use constants !NODEP!
   use tao_random_numbers !NODEP!
 
@@ -79,51 +31,48 @@ contains
 
 end module shower_base
 \eatline
-\nwendcode{}\nwbegindocs{12}\nwdocspar
-\subsection{PDF Interface of the shower}
-\nwenddocs{}\nwbegincode{13}\moddef{Shower base: public}\endmoddef
-  public :: shower_pdf
-\nwendcode{}\nwbegincode{14}\moddef{Shower base: interfaces}\endmoddef
-  interface
-     subroutine shower_pdf (set, x, q, ff)
-       integer, intent(in) :: set
-       double precision, intent(in) :: x, q
-       double precision, dimension(-6:6), intent(out) :: ff
-     end subroutine shower_pdf
-  end interface
-
+\nwendcode{}\nwbegindocs{2}\nwdocspar
+\subsection{PDF Parameters}
+The shower has to know about the PDF set used for the parent process,
+if any.  We support the following:
+\nwenddocs{}\nwbegincode{3}\moddef{Shower base: parameters}\endmoddef
+  integer, parameter, public :: STRF_NONE = 0
+  integer, parameter, public :: STRF_LHAPDF6 = 1
+  integer, parameter, public :: STRF_LHAPDF5 = 2
+  integer, parameter, public :: STRF_PDF_BUILTIN = 3
+  
 \eatline
-\nwendcode{}\nwbegindocs{15}\nwdocspar
-\subsection{Parameters}
+\nwendcode{}\nwbegindocs{4}    
+\subsection{Additional parameters}
 This decides whether to print out additional information.
-\nwenddocs{}\nwbegincode{16}\moddef{Shower base: parameters}\endmoddef
+\nwenddocs{}\nwbegincode{5}\moddef{Shower base: parameters}\plusendmoddef
   logical, parameter, public :: D_print = .false.
 \eatline
-\nwendcode{}\nwbegindocs{17}\nwdocspar
+\nwendcode{}\nwbegindocs{6}\nwdocspar
 These parameters are the cut-off scale $t_{\text{cut}}$, given in
 GeV$^2$ ({\tt{}PARJ(82)}), the cut-off scale for the $P_t^2$-ordered
 shower in GeV$^2$, and the two shower parameters {\tt{}PARP(72)} and
 {\tt{}PARP(61)}, respectively.
-\nwenddocs{}\nwbegincode{18}\moddef{Shower base: parameters}\plusendmoddef
+\nwenddocs{}\nwbegincode{7}\moddef{Shower base: parameters}\plusendmoddef
   real(default), public :: D_Min_t = one
   real(default), public :: D_min_scale = 0.5_default
   real(default), public :: D_Lambda_fsr = 0.29_default
   real(default), public :: D_Lambda_isr = 0.29_default
 \eatline
 \eatline
-\nwendcode{}\nwbegindocs{19}\nwdocspar
+\nwendcode{}\nwbegindocs{8}\nwdocspar
 The parameter {\tt{}MSTJ(45)} gives the maximum number of flavours in
 gluon decay to quarks:
-\nwenddocs{}\nwbegincode{20}\moddef{Shower base: parameters}\plusendmoddef
+\nwenddocs{}\nwbegincode{9}\moddef{Shower base: parameters}\plusendmoddef
   integer, public :: D_Nf = 5
-\nwendcode{}\nwbegindocs{21} %def D_Nf
-\nwenddocs{}\nwbegindocs{22}\nwdocspar
+\nwendcode{}\nwbegindocs{10} %def D_Nf
+\nwenddocs{}\nwbegindocs{11}\nwdocspar
 These two parameters decide whether to use constant or running
 $alpha_s$ in the form of the function $D\_{alpha_s} (t)$ for the FSR
 and ISR ({\tt{}MSTJ(44)}, {\tt{}MSTP(64)}), respectively. The next is the
 parameter {\tt{}PARU(111)}, which sets the value for constant $\alpha_s$,
 and the flag whether to use $P_t$-ordered ISR.
-\nwenddocs{}\nwbegincode{23}\moddef{Shower base: parameters}\plusendmoddef
+\nwenddocs{}\nwbegincode{12}\moddef{Shower base: parameters}\plusendmoddef
   logical, public :: D_running_alpha_s_fsr = .true.
   logical, public :: D_running_alpha_s_isr = .true.
   real(default), public :: D_constalpha_s = 0.20_default
@@ -132,82 +81,62 @@ and the flag whether to use $P_t$-ordered ISR.
 \eatline
 \eatline
 \eatline
-\nwendcode{}\nwbegindocs{24}\nwdocspar
+\nwendcode{}\nwbegindocs{13}\nwdocspar
 This flag sets emitted timelike partons in the spacelike shower on
 shell, true corresponds to {\tt{}MSTP(63)} = 0.
-\nwenddocs{}\nwbegincode{25}\moddef{Shower base: parameters}\plusendmoddef
+\nwenddocs{}\nwbegincode{14}\moddef{Shower base: parameters}\plusendmoddef
   logical, public :: isr_only_onshell_emitted_partons = .true.
 \eatline
-\nwendcode{}\nwbegindocs{26}\nwdocspar
+\nwendcode{}\nwbegindocs{15}\nwdocspar
 Flag whether ISR is angular ordered ({\tt{}MSTP(62)}).
-\nwenddocs{}\nwbegincode{27}\moddef{Shower base: parameters}\plusendmoddef
+\nwenddocs{}\nwbegincode{16}\moddef{Shower base: parameters}\plusendmoddef
   logical, public :: isr_angular_ordered = .true.
 \eatline
-\nwendcode{}\nwbegindocs{28}\nwdocspar
+\nwendcode{}\nwbegindocs{17}\nwdocspar
 Treating either $u$ and $d$, or all quarks except $t$ as massless:
-\nwenddocs{}\nwbegincode{29}\moddef{Shower base: parameters}\plusendmoddef
+\nwenddocs{}\nwbegincode{18}\moddef{Shower base: parameters}\plusendmoddef
   logical, public :: treat_light_quarks_massless = .true.
   logical, public :: treat_duscb_quarks_massless = .false.
 \eatline
 \eatline
-\nwendcode{}\nwbegindocs{30}\nwdocspar
+\nwendcode{}\nwbegindocs{19}\nwdocspar
 The width and the cutoff of the Gaussian primordial $k_t$
 distribution, {\tt{}PARP(91)} and {\tt{}PARP(93)}, in GeV:
-\nwenddocs{}\nwbegincode{31}\moddef{Shower base: parameters}\plusendmoddef
+\nwenddocs{}\nwbegincode{20}\moddef{Shower base: parameters}\plusendmoddef
   real(default), public :: primordial_kt_width = 1.5_default
   real(default), public :: primordial_kt_cutoff = five
 \eatline
 \eatline
-\nwendcode{}\nwbegindocs{32}\nwdocspar
+\nwendcode{}\nwbegindocs{21}\nwdocspar
 The parameter {\tt{}PARP(66)}, the minimal energy of the emitted timelike
 parton in the ISR ({\tt{}PARP(65)}), the factor for the first scale, as
 well as the factor by which the integral in the Sudakhov factor is
 suppressed for the respective first scale in ISR. Higher values
 here correspond  to higher starting scales.
-\nwenddocs{}\nwbegincode{33}\moddef{Shower base: parameters}\plusendmoddef
+\nwenddocs{}\nwbegincode{22}\moddef{Shower base: parameters}\plusendmoddef
   real(default), public :: maxz_isr = 0.999_default
   real(default), public :: minenergy_timelike = one
   real(default), public :: tscalefactor_isr = one
   real(default), public :: first_integral_suppression_factor = one
 \eatline
 \eatline
-\nwendcode{}\nwbegindocs{34}\nwdocspar
+\nwendcode{}\nwbegindocs{23}\nwdocspar
 Temporary parameters for the $P_t$-ordered shower:
-\nwenddocs{}\nwbegincode{35}\moddef{Shower base: parameters}\plusendmoddef
+\nwenddocs{}\nwbegincode{24}\moddef{Shower base: parameters}\plusendmoddef
   real(default), public :: scalefactor1 = 0.02_default
   real(default), public :: scalefactor2 = 0.02_default
 \eatline
-\nwendcode{}\nwbegindocs{36}\nwdocspar
+\nwendcode{}\nwbegindocs{25}\nwdocspar
 Then, there are the variables for the PDF functions:
-\nwenddocs{}\nwbegincode{37}\moddef{Shower base: parameters}\plusendmoddef
+\nwenddocs{}\nwbegincode{26}\moddef{Shower base: parameters}\plusendmoddef
   integer, public :: shower_pdf_set = 0
+  integer, public :: shower_pdf_type = STRF_NONE
 \eatline
-\nwendcode{}\nwbegindocs{38}\nwdocspar
-And the PDF function itself, as a procedure pointer:
-\nwenddocs{}\nwbegincode{39}\moddef{Shower base: parameters}\plusendmoddef
-  procedure(shower_pdf), pointer, public :: shower_pdf_func
-
-\eatline
-\nwendcode{}\nwbegindocs{40}\nwdocspar
-\nwenddocs{}\nwbegincode{41}\moddef{Shower base: procedures}\endmoddef
-  subroutine randomseed (seed)
-    integer, intent(in), optional :: seed
-    integer :: clock
-
-    if (present (seed)) then
-       clock = seed
-    else
-       call system_clock (count = clock)
-    end if
-    call tao_random_seed (clock)
-  end subroutine randomseed
-
-\eatline
-\nwendcode{}\nwbegindocs{42}\nwdocspar
-\nwenddocs{}\nwbegincode{43}\moddef{Shower base: public}\plusendmoddef
+\nwendcode{}\nwbegindocs{27}\nwdocspar
+\nwenddocs{}\nwbegincode{28}\moddef{Shower base: public}\endmoddef
   public :: D_alpha_s_isr
   public :: D_alpha_s_fsr
-\nwendcode{}\nwbegincode{44}\moddef{Shower base: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{29}\moddef{Shower base: procedures}\endmoddef
   function D_alpha_s_isr (tin) result(alpha_s)
     real(default), intent(in) :: tin
     real(default) :: b, t
@@ -245,16 +174,16 @@ And the PDF function itself, as a procedure pointer:
   end function D_alpha_s_fsr
 
 \eatline
-\nwendcode{}\nwbegindocs{45}Mass and mass squared selection functions. All masses are in
+\nwendcode{}\nwbegindocs{30}Mass and mass squared selection functions. All masses are in
 GeV. Light quarks are assumed to be ordered, $m_1 < m_2 < m_3 \ldots$,
 and they get current masses, not elementary ones. Mesons and baryons
 other than proton and neutron are needed as beam-remnants. Particles
 with PDG number zero are taken massless, as well as proper beam
 remnants and any other particles.
-\nwenddocs{}\nwbegincode{46}\moddef{Shower base: public}\plusendmoddef
+\nwenddocs{}\nwbegincode{31}\moddef{Shower base: public}\plusendmoddef
   public :: mass_type
   public :: mass_squared_type
-\nwendcode{}\nwbegincode{47}\moddef{Shower base: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{32}\moddef{Shower base: procedures}\plusendmoddef
   function mass_type (type) result (mass)
     integer, intent(in) :: type
     real(default) :: mass
@@ -331,10 +260,10 @@ remnants and any other particles.
   end function mass_squared_type
 
 \eatline
-\nwendcode{}\nwbegindocs{48}The number of flavours allowed in an actual $g \to qq$ splitting.
-\nwenddocs{}\nwbegincode{49}\moddef{Shower base: public}\plusendmoddef
+\nwendcode{}\nwbegindocs{33}The number of flavours allowed in an actual $g \to qq$ splitting.
+\nwenddocs{}\nwbegincode{34}\moddef{Shower base: public}\plusendmoddef
   public :: number_of_flavors
-\nwendcode{}\nwbegincode{50}\moddef{Shower base: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{35}\moddef{Shower base: procedures}\plusendmoddef
   function number_of_flavors (t) result (nr)
     real(default), intent(in) :: t
     integer :: nr
@@ -352,13 +281,13 @@ remnants and any other particles.
   end function number_of_flavors
 
 \eatline
-\nwendcode{}\nwbegindocs{51}Splitting functions. They are also defined in {\tt{}sm{\char95}physics}. This
+\nwendcode{}\nwbegindocs{36}Splitting functions. They are also defined in {\tt{}sm{\char95}physics}. This
 should be unified at some point.
-\nwenddocs{}\nwbegincode{52}\moddef{Shower base: public}\plusendmoddef
+\nwenddocs{}\nwbegincode{37}\moddef{Shower base: public}\plusendmoddef
   public :: P_qqg
   public :: P_gqq
   public :: P_ggg
-\nwendcode{}\nwbegincode{53}\moddef{Shower base: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{38}\moddef{Shower base: procedures}\plusendmoddef
   function P_qqg (z) result (P)
     !!! quark => quark + gluon
     real(default), intent(in) :: z
@@ -386,12 +315,12 @@ should be unified at some point.
   end function P_ggg
 
 \eatline
-\nwendcode{}\nwbegindocs{54}Analytically integrated splitting kernels.
-\nwenddocs{}\nwbegincode{55}\moddef{Shower base: public}\plusendmoddef
+\nwendcode{}\nwbegindocs{39}Analytically integrated splitting kernels.
+\nwenddocs{}\nwbegincode{40}\moddef{Shower base: public}\plusendmoddef
   public :: integral_over_P_gqq
   public :: integral_over_P_ggg
   public :: integral_over_P_qqg
-\nwendcode{}\nwbegincode{56}\moddef{Shower base: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{41}\moddef{Shower base: procedures}\plusendmoddef
   function integral_over_P_gqq (zmin, zmax) result (integral)
     real(default), intent(in) :: zmin, zmax
     real(default) :: integral
@@ -417,8 +346,8 @@ should be unified at some point.
   end function integral_over_P_qqg
 
 \eatline
-\nwendcode{}\nwbegindocs{57}Methods to set parameters, once there should be a better interface.
-\nwenddocs{}\nwbegincode{58}\moddef{Shower base: public}\plusendmoddef
+\nwendcode{}\nwbegindocs{42}Methods to set parameters, once there should be a better interface.
+\nwenddocs{}\nwbegincode{43}\moddef{Shower base: public}\plusendmoddef
   public :: shower_set_D_min_t
   public :: shower_set_D_lambda_fsr
   public :: shower_set_D_lambda_isr
@@ -434,9 +363,8 @@ should be unified at some point.
   public :: shower_set_minenergy_timelike
   public :: shower_set_tscalefactor_isr
   public :: shower_set_isr_only_onshell_emitted_partons
-  public :: shower_set_pdf_func
-  public :: shower_set_pdf_set
-\nwendcode{}\nwbegincode{59}\moddef{Shower base: procedures}\plusendmoddef
+  public :: shower_set_pdf_set_and_type
+\nwendcode{}\nwbegincode{44}\moddef{Shower base: procedures}\plusendmoddef
   subroutine shower_set_D_Min_t (input)
     real(default) :: input
     D_Min_t = input
@@ -512,15 +440,11 @@ should be unified at some point.
     isr_only_onshell_emitted_partons = input
   end subroutine shower_set_isr_only_onshell_emitted_partons
 
-  subroutine shower_set_pdf_func (func)
-    procedure(shower_pdf), pointer, intent(in) :: func
-    shower_pdf_func => func
-  end subroutine shower_set_pdf_func
-
-  subroutine shower_set_pdf_set (set)
-    integer, intent(in) :: set
+  subroutine shower_set_pdf_set_and_type (set, type)
+    integer, intent(in) :: set, type
     shower_pdf_set = set
-  end subroutine shower_set_pdf_set
+    shower_pdf_type = type
+  end subroutine shower_set_pdf_set_and_type
 
 \eatline
 \eatline
@@ -535,19 +459,18 @@ should be unified at some point.
 \eatline
 \eatline
 \eatline
-\eatline
-\nwendcode{}\nwbegindocs{60}\nwdocspar
+\nwendcode{}\nwbegindocs{45}\nwdocspar
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Parton module for the shower}
-\nwenddocs{}\nwbegincode{61}\moddef{\code{}shower{\char95}partons.f90\edoc{}}\endmoddef
+\nwenddocs{}\nwbegincode{46}\moddef{\code{}shower{\char95}partons.f90\edoc{}}\endmoddef
 \LA{}File header\RA{}
 
 module shower_partons
 
-\LA{}Use kinds\RA{}
+\LA{}Use kinds\RA{} !NODEP!
+  use io_units !NODEP!
   use constants !NODEP!
-  use limits, only: TAB !NODEP!
-  use file_utils !NODEP!
+  use system_defs, only: TAB !NODEP!
   use diagnostics !NODEP!
   use tao_random_numbers !NODEP!
   use lorentz !NODEP!
@@ -565,7 +488,7 @@ contains
 
 end module shower_partons
 \eatline
-\nwendcode{}\nwbegindocs{62}\nwdocspar
+\nwendcode{}\nwbegindocs{47}\nwdocspar
 \subsection{The basic type defintions}
 
 The type {\tt{}parton{\char95}t} defines a parton for the shower. The {\tt{}x} value
@@ -575,9 +498,9 @@ the hadron the parton is coming from. An auxiliary value for the
 $P_t$-ordered ISR is {\tt{}aux{\char95}pt}. Then, there are two auxiliary entries
 for the clustering of CKKW pseudo weights and CKKW matching,
 {\tt{}ckkwlabel} and {\tt{}ckkwscale}.
-\nwenddocs{}\nwbegincode{63}\moddef{Shower partons: public}\endmoddef
+\nwenddocs{}\nwbegincode{48}\moddef{Shower partons: public}\endmoddef
   public :: parton_t
-\nwendcode{}\nwbegincode{64}\moddef{Shower partons: types}\endmoddef
+\nwendcode{}\nwbegincode{49}\moddef{Shower partons: types}\endmoddef
   type :: parton_t
      integer :: nr = 0
      integer :: type = 0
@@ -603,20 +526,20 @@ for the clustering of CKKW pseudo weights and CKKW matching,
   end type parton_t
 
 \eatline
-\nwendcode{}\nwbegindocs{65}\nwdocspar
-\nwenddocs{}\nwbegincode{66}\moddef{Shower partons: public}\plusendmoddef
+\nwendcode{}\nwbegindocs{50}\nwdocspar
+\nwenddocs{}\nwbegincode{51}\moddef{Shower partons: public}\plusendmoddef
   public :: parton_pointer_t
-\nwendcode{}\nwbegincode{67}\moddef{Shower partons: types}\plusendmoddef
+\nwendcode{}\nwbegincode{52}\moddef{Shower partons: types}\plusendmoddef
   type :: parton_pointer_t
      type(parton_t), pointer :: p => null ()
   end type parton_pointer_t
 
 \eatline
-\nwendcode{}\nwbegindocs{68}\nwdocspar
+\nwendcode{}\nwbegindocs{53}\nwdocspar
 \subsection{Routines}
-\nwenddocs{}\nwbegincode{69}\moddef{Shower partons: public}\plusendmoddef
+\nwenddocs{}\nwbegincode{54}\moddef{Shower partons: public}\plusendmoddef
   public :: parton_copy
-\nwendcode{}\nwbegincode{70}\moddef{Shower partons: procedures}\endmoddef
+\nwendcode{}\nwbegincode{55}\moddef{Shower partons: procedures}\endmoddef
   subroutine parton_copy (prt1, prt2)
     type(parton_t), intent(in) :: prt1
     type(parton_t), intent(out) :: prt2
@@ -641,12 +564,12 @@ for the clustering of CKKW pseudo weights and CKKW matching,
     prt2%aux_pt = prt1%aux_pt
   end subroutine parton_copy
 
-\nwendcode{}\nwbegindocs{71} %def parton_copy
-\nwenddocs{}\nwbegindocs{72}This returns the angle between the daughters assuming them to be
+\nwendcode{}\nwbegindocs{56} %def parton_copy
+\nwenddocs{}\nwbegindocs{57}This returns the angle between the daughters assuming them to be
 massless.
-\nwenddocs{}\nwbegincode{73}\moddef{Shower partons: public}\plusendmoddef
+\nwenddocs{}\nwbegincode{58}\moddef{Shower partons: public}\plusendmoddef
   public :: parton_get_costheta
-\nwendcode{}\nwbegincode{74}\moddef{Shower partons: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{59}\moddef{Shower partons: procedures}\plusendmoddef
   function parton_get_costheta (prt) result (costheta)
     type(parton_t), intent(in) :: prt
     real(default) :: costheta
@@ -659,11 +582,11 @@ massless.
   end function parton_get_costheta
 
 \eatline
-\nwendcode{}\nwbegindocs{75}The same for massive daughters.
-\nwenddocs{}\nwbegincode{76}\moddef{Shower partons: public}\plusendmoddef
+\nwendcode{}\nwbegindocs{60}The same for massive daughters.
+\nwenddocs{}\nwbegincode{61}\moddef{Shower partons: public}\plusendmoddef
   public :: parton_get_costheta_correct
-\nwendcode{}\nwbegindocs{77}\nwdocspar
-\nwenddocs{}\nwbegincode{78}\moddef{Shower partons: procedures}\plusendmoddef
+\nwendcode{}\nwbegindocs{62}\nwdocspar
+\nwenddocs{}\nwbegincode{63}\moddef{Shower partons: procedures}\plusendmoddef
   function parton_get_costheta_correct (prt) result (costheta)
     type(parton_t), intent(in) :: prt
     real(default) :: costheta
@@ -689,11 +612,11 @@ massless.
   end function parton_get_costheta_correct
 
 \eatline
-\nwendcode{}\nwbegindocs{79}This function returns the angle between the momentum vectors of the
+\nwendcode{}\nwbegindocs{64}This function returns the angle between the momentum vectors of the
 parton and first daughter.
-\nwenddocs{}\nwbegincode{80}\moddef{Shower partons: public}\plusendmoddef
+\nwenddocs{}\nwbegincode{65}\moddef{Shower partons: public}\plusendmoddef
   public :: parton_get_costheta_motherfirst
-\nwendcode{}\nwbegincode{81}\moddef{Shower partons: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{66}\moddef{Shower partons: procedures}\plusendmoddef
   function parton_get_costheta_motherfirst (prt) result (costheta)
     type(parton_t), intent(in) :: prt
     real(default) :: costheta
@@ -718,11 +641,11 @@ parton and first daughter.
   end function parton_get_costheta_motherfirst
 
 \eatline
-\nwendcode{}\nwbegindocs{82}Get the parton velocities.
-\nwenddocs{}\nwbegincode{83}\moddef{Shower partons: public}\plusendmoddef
+\nwendcode{}\nwbegindocs{67}Get the parton velocities.
+\nwenddocs{}\nwbegincode{68}\moddef{Shower partons: public}\plusendmoddef
   public :: parton_get_beta
-\nwendcode{}\nwbegindocs{84}\nwdocspar
-\nwenddocs{}\nwbegincode{85}\moddef{Shower partons: procedures}\plusendmoddef
+\nwendcode{}\nwbegindocs{69}\nwdocspar
+\nwenddocs{}\nwbegincode{70}\moddef{Shower partons: procedures}\plusendmoddef
   function get_beta (t,E) result (beta)
     real(default), intent(in) :: t,E
     real(default) :: beta
@@ -736,15 +659,15 @@ parton and first daughter.
   end function parton_get_beta
 
 \eatline
-\nwendcode{}\nwbegindocs{86}Write routine.
-\nwenddocs{}\nwbegincode{87}\moddef{Shower partons: public}\plusendmoddef
+\nwendcode{}\nwbegindocs{71}Write routine.
+\nwenddocs{}\nwbegincode{72}\moddef{Shower partons: public}\plusendmoddef
   public :: parton_write
-\nwendcode{}\nwbegincode{88}\moddef{Shower partons: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{73}\moddef{Shower partons: procedures}\plusendmoddef
   subroutine parton_write (prt, unit)
     type(parton_t), intent(in) :: prt
     integer, intent(in), optional :: unit
     integer :: u
-    u = output_unit (unit); if (u < 0) return
+    u = given_output_unit (unit); if (u < 0) return
 
     write (u, "(1x,4A)", advance ="no")  "Shower parton <nr>", &
          TAB, "<type>", TAB
@@ -826,10 +749,10 @@ parton and first daughter.
   end subroutine parton_write
 
 \eatline
-\nwendcode{}\nwbegindocs{89}\nwdocspar
-\nwenddocs{}\nwbegincode{90}\moddef{Shower partons: public}\plusendmoddef
+\nwendcode{}\nwbegindocs{74}\nwdocspar
+\nwenddocs{}\nwbegincode{75}\moddef{Shower partons: public}\plusendmoddef
   public :: parton_is_final
-\nwendcode{}\nwbegincode{91}\moddef{Shower partons: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{76}\moddef{Shower partons: procedures}\plusendmoddef
   function parton_is_final (prt) result (is_final)
     type(parton_t), intent(in) :: prt
     logical :: is_final
@@ -842,10 +765,10 @@ parton and first daughter.
   end function parton_is_final
 
 \eatline
-\nwendcode{}\nwbegindocs{92}\nwdocspar
-\nwenddocs{}\nwbegincode{93}\moddef{Shower partons: public}\plusendmoddef
+\nwendcode{}\nwbegindocs{77}\nwdocspar
+\nwenddocs{}\nwbegincode{78}\moddef{Shower partons: public}\plusendmoddef
   public :: parton_is_branched
-\nwendcode{}\nwbegincode{94}\moddef{Shower partons: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{79}\moddef{Shower partons: procedures}\plusendmoddef
   function parton_is_branched (prt) result (is_branched)
     type(parton_t), intent(in) :: prt
     logical :: is_branched
@@ -853,10 +776,10 @@ parton and first daughter.
   end function parton_is_branched
 
 \eatline
-\nwendcode{}\nwbegindocs{95}\nwdocspar
-\nwenddocs{}\nwbegincode{96}\moddef{Shower partons: public}\plusendmoddef
+\nwendcode{}\nwbegindocs{80}\nwdocspar
+\nwenddocs{}\nwbegincode{81}\moddef{Shower partons: public}\plusendmoddef
   public :: parton_set_simulated
-\nwendcode{}\nwbegincode{97}\moddef{Shower partons: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{82}\moddef{Shower partons: procedures}\plusendmoddef
   subroutine parton_set_simulated (prt, sim)
     type(parton_t), intent(inout) :: prt
     logical, intent(in), optional :: sim
@@ -868,10 +791,10 @@ parton and first daughter.
   end subroutine parton_set_simulated
 
 \eatline
-\nwendcode{}\nwbegindocs{98}\nwdocspar
-\nwenddocs{}\nwbegincode{99}\moddef{Shower partons: public}\plusendmoddef
+\nwendcode{}\nwbegindocs{83}\nwdocspar
+\nwenddocs{}\nwbegincode{84}\moddef{Shower partons: public}\plusendmoddef
   public :: parton_is_simulated
-\nwendcode{}\nwbegincode{100}\moddef{Shower partons: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{85}\moddef{Shower partons: procedures}\plusendmoddef
   function parton_is_simulated (prt) result (is_simulated)
     type(parton_t), intent(in) :: prt
     logical :: is_simulated
@@ -879,10 +802,10 @@ parton and first daughter.
   end function parton_is_simulated
 
 \eatline
-\nwendcode{}\nwbegindocs{101}\nwdocspar
-\nwenddocs{}\nwbegincode{102}\moddef{Shower partons: public}\plusendmoddef
+\nwendcode{}\nwbegindocs{86}\nwdocspar
+\nwenddocs{}\nwbegincode{87}\moddef{Shower partons: public}\plusendmoddef
   public :: parton_get_momentum
-\nwendcode{}\nwbegincode{103}\moddef{Shower partons: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{88}\moddef{Shower partons: procedures}\plusendmoddef
   function parton_get_momentum (prt, i) result (mom)
     type(parton_t), intent(in) :: prt
     integer, intent(in) :: i
@@ -902,10 +825,10 @@ parton and first daughter.
   end function parton_get_momentum
 
 \eatline
-\nwendcode{}\nwbegindocs{104}\nwdocspar
-\nwenddocs{}\nwbegincode{105}\moddef{Shower partons: public}\plusendmoddef
+\nwendcode{}\nwbegindocs{89}\nwdocspar
+\nwenddocs{}\nwbegincode{90}\moddef{Shower partons: public}\plusendmoddef
   public :: parton_set_momentum
-\nwendcode{}\nwbegincode{106}\moddef{Shower partons: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{91}\moddef{Shower partons: procedures}\plusendmoddef
   subroutine parton_set_momentum (prt, EE, ppx, ppy, ppz)
     type(parton_t), intent(inout) :: prt
     real(default), intent(in) :: EE, ppx, ppy, ppz
@@ -914,10 +837,10 @@ parton and first daughter.
   end subroutine parton_set_momentum
 
 \eatline
-\nwendcode{}\nwbegindocs{107}\nwdocspar
-\nwenddocs{}\nwbegincode{108}\moddef{Shower partons: public}\plusendmoddef
+\nwendcode{}\nwbegindocs{92}\nwdocspar
+\nwenddocs{}\nwbegincode{93}\moddef{Shower partons: public}\plusendmoddef
   public :: parton_set_energy
-\nwendcode{}\nwbegincode{109}\moddef{Shower partons: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{94}\moddef{Shower partons: procedures}\plusendmoddef
   subroutine parton_set_energy (prt, E)
     type(parton_t), intent(inout) :: prt
     real(default), intent(in) :: E
@@ -925,10 +848,10 @@ parton and first daughter.
   end subroutine parton_set_energy
 
 \eatline
-\nwendcode{}\nwbegindocs{110}\nwdocspar
-\nwenddocs{}\nwbegincode{111}\moddef{Shower partons: public}\plusendmoddef
+\nwendcode{}\nwbegindocs{95}\nwdocspar
+\nwenddocs{}\nwbegincode{96}\moddef{Shower partons: public}\plusendmoddef
   public :: parton_get_energy
-\nwendcode{}\nwbegincode{112}\moddef{Shower partons: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{97}\moddef{Shower partons: procedures}\plusendmoddef
   function parton_get_energy (prt) result (E)
     type(parton_t), intent(in) :: prt
     real(default) :: E
@@ -936,10 +859,10 @@ parton and first daughter.
   end function parton_get_energy
 
 \eatline
-\nwendcode{}\nwbegindocs{113}\nwdocspar
-\nwenddocs{}\nwbegincode{114}\moddef{Shower partons: public}\plusendmoddef
+\nwendcode{}\nwbegindocs{98}\nwdocspar
+\nwenddocs{}\nwbegincode{99}\moddef{Shower partons: public}\plusendmoddef
   public :: parton_set_parent
-\nwendcode{}\nwbegincode{115}\moddef{Shower partons: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{100}\moddef{Shower partons: procedures}\plusendmoddef
   subroutine parton_set_parent (prt, parent)
     type(parton_t), intent(inout) :: prt
     type(parton_t), intent(in) , target :: parent
@@ -947,10 +870,10 @@ parton and first daughter.
   end subroutine parton_set_parent
 
 \eatline
-\nwendcode{}\nwbegindocs{116}\nwdocspar
-\nwenddocs{}\nwbegincode{117}\moddef{Shower partons: public}\plusendmoddef
+\nwendcode{}\nwbegindocs{101}\nwdocspar
+\nwenddocs{}\nwbegincode{102}\moddef{Shower partons: public}\plusendmoddef
   public :: parton_get_parent
-\nwendcode{}\nwbegincode{118}\moddef{Shower partons: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{103}\moddef{Shower partons: procedures}\plusendmoddef
   function parton_get_parent (prt) result (parent)
     type(parton_t), intent(in) :: prt
     type(parton_t), pointer :: parent
@@ -958,10 +881,10 @@ parton and first daughter.
   end function parton_get_parent
 
 \eatline
-\nwendcode{}\nwbegindocs{119}\nwdocspar
-\nwenddocs{}\nwbegincode{120}\moddef{Shower partons: public}\plusendmoddef
+\nwendcode{}\nwbegindocs{104}\nwdocspar
+\nwenddocs{}\nwbegincode{105}\moddef{Shower partons: public}\plusendmoddef
   public :: parton_set_initial
-\nwendcode{}\nwbegincode{121}\moddef{Shower partons: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{106}\moddef{Shower partons: procedures}\plusendmoddef
   subroutine parton_set_initial (prt, initial)
     type(parton_t), intent(inout) :: prt
     type(parton_t), intent(in) , target :: initial
@@ -969,10 +892,10 @@ parton and first daughter.
   end subroutine parton_set_initial
 
 \eatline
-\nwendcode{}\nwbegindocs{122}\nwdocspar
-\nwenddocs{}\nwbegincode{123}\moddef{Shower partons: public}\plusendmoddef
+\nwendcode{}\nwbegindocs{107}\nwdocspar
+\nwenddocs{}\nwbegincode{108}\moddef{Shower partons: public}\plusendmoddef
   public :: parton_get_initial
-\nwendcode{}\nwbegincode{124}\moddef{Shower partons: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{109}\moddef{Shower partons: procedures}\plusendmoddef
   function parton_get_initial (prt) result (initial)
     type(parton_t), intent(in) :: prt
     type(parton_t), pointer :: initial
@@ -980,10 +903,10 @@ parton and first daughter.
   end function parton_get_initial
 
 \eatline
-\nwendcode{}\nwbegindocs{125}\nwdocspar
-\nwenddocs{}\nwbegincode{126}\moddef{Shower partons: public}\plusendmoddef
+\nwendcode{}\nwbegindocs{110}\nwdocspar
+\nwenddocs{}\nwbegincode{111}\moddef{Shower partons: public}\plusendmoddef
   public :: parton_set_child
-\nwendcode{}\nwbegincode{127}\moddef{Shower partons: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{112}\moddef{Shower partons: procedures}\plusendmoddef
   subroutine parton_set_child (prt, child, i)
     type(parton_t), intent(inout) :: prt
     type(parton_t), intent(in), target :: child
@@ -996,10 +919,10 @@ parton and first daughter.
   end subroutine parton_set_child
 
 \eatline
-\nwendcode{}\nwbegindocs{128}\nwdocspar
-\nwenddocs{}\nwbegincode{129}\moddef{Shower partons: public}\plusendmoddef
+\nwendcode{}\nwbegindocs{113}\nwdocspar
+\nwenddocs{}\nwbegincode{114}\moddef{Shower partons: public}\plusendmoddef
   public :: parton_get_child
-\nwendcode{}\nwbegincode{130}\moddef{Shower partons: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{115}\moddef{Shower partons: procedures}\plusendmoddef
   function parton_get_child (prt, i) result (child)
     type(parton_t), intent(in) :: prt
     integer, intent(in) :: i
@@ -1013,11 +936,11 @@ parton and first daughter.
   end function parton_get_child
 
 \eatline
-\nwendcode{}\nwbegindocs{131}\nwdocspar
-\nwenddocs{}\nwbegincode{132}\moddef{Shower partons: public}\plusendmoddef
+\nwendcode{}\nwbegindocs{116}\nwdocspar
+\nwenddocs{}\nwbegincode{117}\moddef{Shower partons: public}\plusendmoddef
   public :: parton_is_quark
-\nwendcode{}\nwbegindocs{133}\nwdocspar
-\nwenddocs{}\nwbegincode{134}\moddef{Shower partons: procedures}\plusendmoddef
+\nwendcode{}\nwbegindocs{118}\nwdocspar
+\nwenddocs{}\nwbegincode{119}\moddef{Shower partons: procedures}\plusendmoddef
   function parton_is_quark (prt) result (is_quark)
     type(parton_t), intent(in) ::prt
     logical :: is_quark
@@ -1025,10 +948,10 @@ parton and first daughter.
   end function parton_is_quark
 
 \eatline
-\nwendcode{}\nwbegindocs{135}\nwdocspar
-\nwenddocs{}\nwbegincode{136}\moddef{Shower partons: public}\plusendmoddef
+\nwendcode{}\nwbegindocs{120}\nwdocspar
+\nwenddocs{}\nwbegincode{121}\moddef{Shower partons: public}\plusendmoddef
   public :: parton_is_squark
-\nwendcode{}\nwbegincode{137}\moddef{Shower partons: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{122}\moddef{Shower partons: procedures}\plusendmoddef
   function parton_is_squark (prt) result (is_squark)
     type(parton_t), intent(in) ::prt
     logical :: is_squark
@@ -1037,10 +960,10 @@ parton and first daughter.
   end function parton_is_squark
 
 \eatline
-\nwendcode{}\nwbegindocs{138}\nwdocspar
-\nwenddocs{}\nwbegincode{139}\moddef{Shower partons: public}\plusendmoddef
+\nwendcode{}\nwbegindocs{123}\nwdocspar
+\nwenddocs{}\nwbegincode{124}\moddef{Shower partons: public}\plusendmoddef
   public :: parton_is_gluon
-\nwendcode{}\nwbegincode{140}\moddef{Shower partons: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{125}\moddef{Shower partons: procedures}\plusendmoddef
   function parton_is_gluon (prt) result (is_gluon)
     type(parton_t), intent(in) :: prt
     logical :: is_gluon
@@ -1048,9 +971,9 @@ parton and first daughter.
   end function parton_is_gluon
 
 \eatline
-\nwendcode{}\nwbegincode{141}\moddef{Shower partons: public}\plusendmoddef
+\nwendcode{}\nwbegincode{126}\moddef{Shower partons: public}\plusendmoddef
   public :: parton_is_gluino
-\nwendcode{}\nwbegincode{142}\moddef{Shower partons: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{127}\moddef{Shower partons: procedures}\plusendmoddef
   function parton_is_gluino (prt) result (is_gluino)
     type(parton_t), intent(in) :: prt
     logical :: is_gluino
@@ -1058,10 +981,10 @@ parton and first daughter.
   end function parton_is_gluino
 
 \eatline
-\nwendcode{}\nwbegindocs{143}Only the proton is implemented yet.
-\nwenddocs{}\nwbegincode{144}\moddef{Shower partons: public}\plusendmoddef
+\nwendcode{}\nwbegindocs{128}Only the proton is implemented yet.
+\nwenddocs{}\nwbegincode{129}\moddef{Shower partons: public}\plusendmoddef
   public :: parton_is_hadron
-\nwendcode{}\nwbegincode{145}\moddef{Shower partons: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{130}\moddef{Shower partons: procedures}\plusendmoddef
   function parton_is_hadron (prt) result (is_hadron)
     type(parton_t), intent(in) :: prt
     logical :: is_hadron
@@ -1069,10 +992,10 @@ parton and first daughter.
   end function parton_is_hadron
 
 \eatline
-\nwendcode{}\nwbegindocs{146}TODO: SUSY partons.
-\nwenddocs{}\nwbegincode{147}\moddef{Shower partons: public}\plusendmoddef
+\nwendcode{}\nwbegindocs{131}TODO: SUSY partons.
+\nwenddocs{}\nwbegincode{132}\moddef{Shower partons: public}\plusendmoddef
   public :: parton_is_colored
-\nwendcode{}\nwbegincode{148}\moddef{Shower partons: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{133}\moddef{Shower partons: procedures}\plusendmoddef
   function parton_is_colored (prt) result (is_colored)
     type(parton_t), intent(in) ::prt
     logical :: is_colored
@@ -1080,10 +1003,10 @@ parton and first daughter.
   end function parton_is_colored
 
 \eatline
-\nwendcode{}\nwbegindocs{149}\nwdocspar
-\nwenddocs{}\nwbegincode{150}\moddef{Shower partons: public}\plusendmoddef
+\nwendcode{}\nwbegindocs{134}\nwdocspar
+\nwenddocs{}\nwbegincode{135}\moddef{Shower partons: public}\plusendmoddef
   public :: parton_p4square
-\nwendcode{}\nwbegincode{151}\moddef{Shower partons: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{136}\moddef{Shower partons: procedures}\plusendmoddef
   function parton_p4square (prt) result (p4square)
     type(parton_t), intent(in) :: prt
     real(default) :: p4square
@@ -1091,10 +1014,10 @@ parton and first daughter.
   end function parton_p4square
 
 \eatline
-\nwendcode{}\nwbegindocs{152}\nwdocspar
-\nwenddocs{}\nwbegincode{153}\moddef{Shower partons: public}\plusendmoddef
+\nwendcode{}\nwbegindocs{137}\nwdocspar
+\nwenddocs{}\nwbegincode{138}\moddef{Shower partons: public}\plusendmoddef
   public :: parton_p3square
-\nwendcode{}\nwbegincode{154}\moddef{Shower partons: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{139}\moddef{Shower partons: procedures}\plusendmoddef
   function parton_p3square (prt) result (p3square)
     type(parton_t), intent(in) :: prt
     real(default) :: p3square
@@ -1102,10 +1025,10 @@ parton and first daughter.
   end function parton_p3square
 
 \eatline
-\nwendcode{}\nwbegindocs{155}\nwdocspar
-\nwenddocs{}\nwbegincode{156}\moddef{Shower partons: public}\plusendmoddef
+\nwendcode{}\nwbegindocs{140}\nwdocspar
+\nwenddocs{}\nwbegincode{141}\moddef{Shower partons: public}\plusendmoddef
   public :: parton_p3abs
-\nwendcode{}\nwbegincode{157}\moddef{Shower partons: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{142}\moddef{Shower partons: procedures}\plusendmoddef
   function parton_p3abs (prt) result (p3abs)
     type(parton_t), intent(in) :: prt
     real(default) :: p3abs
@@ -1113,10 +1036,10 @@ parton and first daughter.
   end function parton_p3abs
 
 \eatline
-\nwendcode{}\nwbegindocs{158}\nwdocspar
-\nwenddocs{}\nwbegincode{159}\moddef{Shower partons: public}\plusendmoddef
+\nwendcode{}\nwbegindocs{143}\nwdocspar
+\nwenddocs{}\nwbegincode{144}\moddef{Shower partons: public}\plusendmoddef
   public :: parton_mass
-\nwendcode{}\nwbegincode{160}\moddef{Shower partons: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{145}\moddef{Shower partons: procedures}\plusendmoddef
   function parton_mass (prt) result (mass)
     type(parton_t), intent(in) :: prt
     real(default) :: mass
@@ -1124,10 +1047,10 @@ parton and first daughter.
   end function parton_mass
 
 \eatline
-\nwendcode{}\nwbegindocs{161}\nwdocspar
-\nwenddocs{}\nwbegincode{162}\moddef{Shower partons: public}\plusendmoddef
+\nwendcode{}\nwbegindocs{146}\nwdocspar
+\nwenddocs{}\nwbegincode{147}\moddef{Shower partons: public}\plusendmoddef
   public :: parton_mass_squared
-\nwendcode{}\nwbegincode{163}\moddef{Shower partons: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{148}\moddef{Shower partons: procedures}\plusendmoddef
   function parton_mass_squared (prt) result (mass_squared)
     type(parton_t), intent(in) :: prt
     real(default) :: mass_squared
@@ -1135,10 +1058,10 @@ parton and first daughter.
   end function parton_mass_squared
 
 \eatline
-\nwendcode{}\nwbegindocs{164}\nwdocspar
-\nwenddocs{}\nwbegincode{165}\moddef{Shower partons: public}\plusendmoddef
+\nwendcode{}\nwbegindocs{149}\nwdocspar
+\nwenddocs{}\nwbegincode{150}\moddef{Shower partons: public}\plusendmoddef
   public :: P_prt_to_child1
-\nwendcode{}\nwbegincode{166}\moddef{Shower partons: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{151}\moddef{Shower partons: procedures}\plusendmoddef
   function P_prt_to_child1 (prt) result (retvalue)
     type(parton_t), intent(in) :: prt
     real(default) :: retvalue
@@ -1159,11 +1082,11 @@ parton and first daughter.
   end function P_prt_to_child1
 
 \eatline
-\nwendcode{}\nwbegindocs{167}This function returns whether the kinematics of the branching of
+\nwendcode{}\nwbegindocs{152}This function returns whether the kinematics of the branching of
 parton {\tt{}prt} into its daughters are allowed or not.
-\nwenddocs{}\nwbegincode{168}\moddef{Shower partons: public}\plusendmoddef
+\nwenddocs{}\nwbegincode{153}\moddef{Shower partons: public}\plusendmoddef
   public :: thetabar
-\nwendcode{}\nwbegincode{169}\moddef{Shower partons: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{154}\moddef{Shower partons: procedures}\plusendmoddef
   function thetabar (prt, recoiler, E3out) result (retvalue)
     type(parton_t), intent(inout) :: prt
     type(parton_t), intent(in) :: recoiler
@@ -1205,14 +1128,14 @@ parton {\tt{}prt} into its daughters are allowed or not.
   end function thetabar
 
 \eatline
-\nwendcode{}\nwbegindocs{170}\nwdocspar
-\nwenddocs{}\nwbegincode{171}\moddef{Shower partons: public}\plusendmoddef
+\nwendcode{}\nwbegindocs{155}\nwdocspar
+\nwenddocs{}\nwbegincode{156}\moddef{Shower partons: public}\plusendmoddef
   public :: parton_apply_z
-\nwendcode{}\nwbegincode{172}\moddef{Shower partons: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{157}\moddef{Shower partons: procedures}\plusendmoddef
   recursive subroutine parton_apply_z(prt, newz)
     type(parton_t), intent(inout) :: prt
     real(default), intent(in) :: newz
-    if (D_print) print *, "old z:", prt%z , " new z: ", newz
+    if (D_print) print *, "old z = ", prt%z , " new z = ", newz
     prt%z = newz
     if (associated (prt%child1) .and. associated (prt%child2)) then
        call parton_set_energy (prt%child1, newz * parton_get_energy (prt))
@@ -1223,10 +1146,10 @@ parton {\tt{}prt} into its daughters are allowed or not.
   end subroutine parton_apply_z
 
 \eatline
-\nwendcode{}\nwbegindocs{173}\nwdocspar
-\nwenddocs{}\nwbegincode{174}\moddef{Shower partons: public}\plusendmoddef
+\nwendcode{}\nwbegindocs{158}\nwdocspar
+\nwenddocs{}\nwbegincode{159}\moddef{Shower partons: public}\plusendmoddef
   public :: parton_apply_costheta
-\nwendcode{}\nwbegincode{175}\moddef{Shower partons: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{160}\moddef{Shower partons: procedures}\plusendmoddef
   recursive subroutine parton_apply_costheta (prt)
     type(parton_t), intent(inout) :: prt
     prt%z = 0.5_default * (one + parton_get_beta (prt) * prt%costheta)
@@ -1251,10 +1174,10 @@ parton {\tt{}prt} into its daughters are allowed or not.
   end subroutine parton_apply_costheta
 
 \eatline
-\nwendcode{}\nwbegindocs{176}\nwdocspar
-\nwenddocs{}\nwbegincode{177}\moddef{Shower partons: public}\plusendmoddef
+\nwendcode{}\nwbegindocs{161}\nwdocspar
+\nwenddocs{}\nwbegincode{162}\moddef{Shower partons: public}\plusendmoddef
   public :: parton_apply_lorentztrafo
-\nwendcode{}\nwbegincode{178}\moddef{Shower partons: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{163}\moddef{Shower partons: procedures}\plusendmoddef
   subroutine parton_apply_lorentztrafo (prt, L)
     type(parton_t), intent(inout) :: prt
     type(lorentz_transformation_t), intent(in) :: L
@@ -1262,10 +1185,10 @@ parton {\tt{}prt} into its daughters are allowed or not.
   end subroutine parton_apply_lorentztrafo
 
 \eatline
-\nwendcode{}\nwbegindocs{179}\nwdocspar
-\nwenddocs{}\nwbegincode{180}\moddef{Shower partons: public}\plusendmoddef
+\nwendcode{}\nwbegindocs{164}\nwdocspar
+\nwenddocs{}\nwbegincode{165}\moddef{Shower partons: public}\plusendmoddef
   public :: parton_apply_lorentztrafo_recursive
-\nwendcode{}\nwbegincode{181}\moddef{Shower partons: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{166}\moddef{Shower partons: procedures}\plusendmoddef
   recursive subroutine parton_apply_lorentztrafo_recursive (prt, L)
     type(parton_t), intent(inout) :: prt
     type(lorentz_transformation_t) ,intent(in) :: L
@@ -1294,11 +1217,11 @@ parton {\tt{}prt} into its daughters are allowed or not.
   end subroutine parton_apply_lorentztrafo_recursive
 
 \eatline
-\nwendcode{}\nwbegindocs{182}This takes the three-momentum of a parton and generates
+\nwendcode{}\nwbegindocs{167}This takes the three-momentum of a parton and generates
 three-momenta of its children.
-\nwenddocs{}\nwbegincode{183}\moddef{Shower partons: public}\plusendmoddef
+\nwenddocs{}\nwbegincode{168}\moddef{Shower partons: public}\plusendmoddef
   public :: parton_generate_ps
-\nwendcode{}\nwbegincode{184}\moddef{Shower partons: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{169}\moddef{Shower partons: procedures}\plusendmoddef
   subroutine parton_generate_ps (prt)
     type(parton_t), intent(inout) :: prt
     real(default), dimension(1:3, 1:3) :: directions
@@ -1309,7 +1232,7 @@ three-momenta of its children.
     type(vector3_t) :: pchild1_direction
     type(lorentz_transformation_t) :: L, rotation
 
-    if (D_print) print *, " generate_ps for parton " , prt%nr
+    if (D_print) print *, "parton_generate_ps for parton " , prt%nr
     if (.not. (associated (prt%child1) .and. associated (prt%child2))) then
        print *, "no children for generate_ps"
        return
@@ -1388,7 +1311,7 @@ three-momenta of its children.
        if (pabs > p1abs + p2abs .or. &
             pabs < abs(p1abs - p2abs)) then
           if (D_print) then
-             print *,"error at generate_ps, Dreiecksungleichung for parton ", &
+             print *, "error at parton_generate_ps Dreiecksungleichung for parton ", &
                      prt%nr, " ", parton_p3abs(prt)," ",p1abs," ",p2abs
              call parton_write (prt)
              call parton_write (prt%child1)
@@ -1417,8 +1340,8 @@ three-momenta of its children.
   end subroutine parton_generate_ps
 
 \eatline
-\nwendcode{}\nwbegindocs{185}\nwdocspar
-\nwenddocs{}\nwbegincode{186}\moddef{Enforce right-handed system for \code{}directions\edoc{}}\endmoddef
+\nwendcode{}\nwbegindocs{170}\nwdocspar
+\nwenddocs{}\nwbegincode{171}\moddef{Enforce right-handed system for \code{}directions\edoc{}}\endmoddef
 if ((directions(1,1) * (directions(2,2) * directions(3,3) - &
      directions(2,3) * directions(3,2)) + &
      directions(1,2) * (directions(2,3) * directions(3,1) - &
@@ -1429,13 +1352,13 @@ if ((directions(1,1) * (directions(2,2) * directions(3,3) - &
    directions(3,2) = - directions(3,2)
    directions(3,3) = - directions(3,3)
 end if
-\nwendcode{}\nwbegindocs{187}\nwdocspar
+\nwendcode{}\nwbegindocs{172}\nwdocspar
 This routine is similar to {\tt{}parton{\char95}generate{\char95}ps}, but now for the
 ISR. It takes the three-momentum of a parton's first child as fixed and
 generates the two remaining three-momenta.
-\nwenddocs{}\nwbegincode{188}\moddef{Shower partons: public}\plusendmoddef
+\nwenddocs{}\nwbegincode{173}\moddef{Shower partons: public}\plusendmoddef
   public :: parton_generate_ps_ini
-\nwendcode{}\nwbegincode{189}\moddef{Shower partons: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{174}\moddef{Shower partons: procedures}\plusendmoddef
   subroutine parton_generate_ps_ini(prt)
     type(parton_t), intent(inout) :: prt
     real(default), dimension(1:3, 1:3) :: directions
@@ -1443,7 +1366,7 @@ generates the two remaining three-momenta.
     real(default) :: scproduct, pabs, p1abs, p2abs, x, ptabs, phi
     real(default), dimension(1:3) :: momentum
 
-    if (D_print) print *, " generate_ps_ini for parton " , prt%nr
+    if (D_print) print *, "parton_generate_ps_ini for parton " , prt%nr
     if (.not. (associated(prt%child1) .and. associated(prt%child2))) then
        print *, "error in parton_generate_ps_ini"
        return
@@ -1490,7 +1413,7 @@ generates the two remaining three-momenta.
           call parton_write (prt%child2)
           return
        end if
-       if (D_print) print *, "x:",x
+       if (D_print) print *, "parton_generate_ps_ini : x = ", x
        ptabs = sqrt (p1abs * p1abs - x**2)
        call tao_random_number (phi)
        phi = twopi * phi
@@ -1513,11 +1436,11 @@ generates the two remaining three-momenta.
   end subroutine parton_generate_ps_ini
 
 \eatline
-\nwendcode{}\nwbegindocs{190}\nwdocspar
+\nwendcode{}\nwbegindocs{175}\nwdocspar
 \subsection{The analytic FSR}
-\nwenddocs{}\nwbegincode{191}\moddef{Shower partons: public}\plusendmoddef
+\nwenddocs{}\nwbegincode{176}\moddef{Shower partons: public}\plusendmoddef
   public :: parton_next_t_ana
-\nwendcode{}\nwbegincode{192}\moddef{Shower partons: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{177}\moddef{Shower partons: procedures}\plusendmoddef
   subroutine parton_next_t_ana (prt)
     type(parton_t), intent(inout) :: prt
     integer :: gtoqq
@@ -1525,7 +1448,7 @@ generates the two remaining three-momenta.
 
     if (signal_is_pending ()) return
     if (D_print) then
-       print *, "next_t_ana for parton " , prt%nr
+       print *, "parton_next_t_ana for parton " , prt%nr
     end if
 
     ! check if branchings are possible at all
@@ -1555,8 +1478,8 @@ generates the two remaining three-momenta.
   end subroutine parton_next_t_ana
 
 \eatline
-\nwendcode{}\nwbegindocs{193}\nwdocspar
-\nwenddocs{}\nwbegincode{194}\moddef{Shower partons: procedures}\plusendmoddef
+\nwendcode{}\nwbegindocs{178}\nwdocspar
+\nwenddocs{}\nwbegincode{179}\moddef{Shower partons: procedures}\plusendmoddef
   function cmax (prt, tt) result (cma)
     type(parton_t), intent(in) :: prt
     real(default), intent(in), optional :: tt
@@ -1580,13 +1503,13 @@ generates the two remaining three-momenta.
   end function cmax
 
 \eatline
-\nwendcode{}\nwbegindocs{195}Simulation routine. The variable {\tt{}lookatsister} takes constraints
+\nwendcode{}\nwbegindocs{180}Simulation routine. The variable {\tt{}lookatsister} takes constraints
 from the sister parton into account, if not given it is assumed
 {\tt{}.true.}. {\tt{}a} and {\tt{}x} are three-dimensional arrays for values
 used for the integration.
-\nwenddocs{}\nwbegincode{196}\moddef{Shower partons: public}\plusendmoddef
+\nwenddocs{}\nwbegincode{181}\moddef{Shower partons: public}\plusendmoddef
   public :: parton_simulate_stept
-\nwendcode{}\nwbegincode{197}\moddef{Shower partons: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{182}\moddef{Shower partons: procedures}\plusendmoddef
   subroutine parton_simulate_stept &
        (prt, integral, random, gtoqq, lookatsister)
     type(parton_t), intent(inout) :: prt
@@ -1744,7 +1667,7 @@ used for the integration.
                 gtoqq = 0
              else
                 call tao_random_number (temprand)
-                gtoqq = 1 + temprand * number_of_flavors (prt%t)
+                gtoqq = 1 + int (temprand * number_of_flavors (prt%t))
              end if
           end if
        else
@@ -1762,8 +1685,8 @@ used for the integration.
   end subroutine parton_simulate_stept
 
 \eatline
-\nwendcode{}\nwbegindocs{198}\nwdocspar
-\nwenddocs{}\nwbegincode{199}\moddef{Set \code{}sister\edoc{} if \code{}lookatsister\edoc{} is true or not given}\endmoddef
+\nwendcode{}\nwbegindocs{183}\nwdocspar
+\nwenddocs{}\nwbegincode{184}\moddef{Set \code{}sister\edoc{} if \code{}lookatsister\edoc{} is true or not given}\endmoddef
 sister => null()
 SET_SISTER: do
    if (present (lookatsister)) then
@@ -1778,13 +1701,13 @@ SET_SISTER: do
    end if
    exit SET_SISTER
 end do SET_SISTER
-\nwendcode{}\nwbegindocs{200}\nwdocspar
-\nwenddocs{}\nwbegindocs{201}From the whole ISR algorithm all functionality has been moved to
+\nwendcode{}\nwbegindocs{185}\nwdocspar
+\nwenddocs{}\nwbegindocs{186}From the whole ISR algorithm all functionality has been moved to
 {\tt{}shower{\char95}core.f90}. Only {\tt{}maxzz} remains here, because more than
 one module needs to access it.
-\nwenddocs{}\nwbegincode{202}\moddef{Shower partons: public}\plusendmoddef
+\nwenddocs{}\nwbegincode{187}\moddef{Shower partons: public}\plusendmoddef
   public :: maxzz
-\nwendcode{}\nwbegincode{203}\moddef{Shower partons: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{188}\moddef{Shower partons: procedures}\plusendmoddef
   function maxzz (shat, s) result (maxz)
     real(default), intent(in) :: shat,s
     real(default) :: maxz
@@ -1792,21 +1715,23 @@ one module needs to access it.
   end function maxzz
 
 \eatline
-\nwendcode{}\nwbegindocs{204}\nwdocspar
+\nwendcode{}\nwbegindocs{189}\nwdocspar
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Main shower module}
-\nwenddocs{}\nwbegincode{205}\moddef{\code{}shower{\char95}core.f90\edoc{}}\endmoddef
+\nwenddocs{}\nwbegincode{190}\moddef{\code{}shower{\char95}core.f90\edoc{}}\endmoddef
 \LA{}File header\RA{}
 
 module shower_core
 
-\LA{}Use kinds\RA{}
+\LA{}Use kinds\RA{} !NODEP!
+  use io_units !NODEP!
   use constants !NODEP!
-  use limits !NODEP!
   use lorentz !NODEP!
+  use system_defs, only: TAB !NODEP!
   use diagnostics !NODEP!
-  use file_utils !NODEP!
   use tao_random_numbers !NODEP!
+  use pdf_builtin !NODEP!
+  use lhapdf !NODEP!
   use shower_base
   use shower_partons
   use ckkw_pseudo_weights
@@ -1819,16 +1744,29 @@ module shower_core
 
 \LA{}Shower core: types\RA{}
 
+\LA{}Shower core: interfaces\RA{}
+
 contains
 
 \LA{}Shower core: procedures\RA{}
 
 end module shower_core
 \eatline
-\nwendcode{}\nwbegindocs{206}\nwdocspar
-\nwenddocs{}\nwbegincode{207}\moddef{Shower core: public}\endmoddef
+\nwendcode{}\nwbegindocs{191}\nwdocspar
+\nwenddocs{}\nwbegincode{192}\moddef{Shower core: interfaces}\endmoddef
+  interface
+     subroutine evolvePDFM (set, x, q, ff)
+       integer, intent(in) :: set
+       double precision, intent(in) :: x, q
+       double precision, dimension(-6:6), intent(out) :: ff
+     end subroutine evolvePDFM
+  end interface
+
+\eatline
+\nwendcode{}\nwbegindocs{193}\nwdocspar
+\nwenddocs{}\nwbegincode{194}\moddef{Shower core: public}\endmoddef
   public :: shower_interaction_t
-\nwendcode{}\nwbegincode{208}\moddef{Shower core: types}\endmoddef
+\nwendcode{}\nwbegincode{195}\moddef{Shower core: types}\endmoddef
   type :: shower_interaction_t
      type(parton_pointer_t), dimension(:), allocatable :: partons
   end type shower_interaction_t
@@ -1839,14 +1777,15 @@ end module shower_core
 
 \eatline
 \eatline
-\nwendcode{}\nwbegindocs{209}The main type of {\tt{}shower{\char95}core}:
-\nwenddocs{}\nwbegincode{210}\moddef{Shower core: public}\plusendmoddef
+\nwendcode{}\nwbegindocs{196}The main type of {\tt{}shower{\char95}core}:
+\nwenddocs{}\nwbegincode{197}\moddef{Shower core: public}\plusendmoddef
   public :: shower_t
-\nwendcode{}\nwbegincode{211}\moddef{Shower core: types}\plusendmoddef
+\nwendcode{}\nwbegincode{198}\moddef{Shower core: types}\plusendmoddef
   type :: shower_t
      type(shower_interaction_pointer_t), dimension(:), allocatable :: &
           interactions
      type(parton_pointer_t), dimension(:), allocatable :: partons
+     type(lhapdf_pdf_t) :: pdf
      integer :: next_free_nr
      integer :: next_color_nr
      logical :: valid
@@ -1855,17 +1794,17 @@ end module shower_core
   end type shower_t
 
 \eatline
-\nwendcode{}\nwbegindocs{212}The parameters of the shower module:
-\nwenddocs{}\nwbegincode{213}\moddef{Shower core: parameters}\endmoddef
+\nwendcode{}\nwbegindocs{199}The parameters of the shower module:
+\nwenddocs{}\nwbegincode{200}\moddef{Shower core: parameters}\endmoddef
   ! real(default), parameter :: alphasmax = one
   ! real(default), parameter :: xpdfmax = 10._default
   real(default), save :: alphasxpdfmax = 12._default
 
 \eatline
-\nwendcode{}\nwbegindocs{214}\nwdocspar
-\nwenddocs{}\nwbegincode{215}\moddef{Shower core: shower: TBP}\endmoddef
+\nwendcode{}\nwbegindocs{201}\nwdocspar
+\nwenddocs{}\nwbegincode{202}\moddef{Shower core: shower: TBP}\endmoddef
   procedure :: add_interaction_2ton => shower_add_interaction_2ton
-\nwendcode{}\nwbegincode{216}\moddef{Shower core: procedures}\endmoddef
+\nwendcode{}\nwbegincode{203}\moddef{Shower core: procedures}\endmoddef
   subroutine shower_add_interaction_2ton (shower, partons)
     class(shower_t), intent(inout) :: shower
     type(parton_pointer_t), intent(in), dimension(:), allocatable :: partons
@@ -1874,16 +1813,16 @@ end module shower_core
   end subroutine shower_add_interaction_2ton
 
 \eatline
-\nwendcode{}\nwbegindocs{217}In this routine, {\tt{}y} and {\tt{}ymin} are the jet measures, {\tt{}w} and
+\nwendcode{}\nwbegindocs{204}In this routine, {\tt{}y} and {\tt{}ymin} are the jet measures, {\tt{}w} and
 {\tt{}wmax} are weights, {\tt{}s} is the kinematic energy squared of the
 interaction. The flag {\tt{}isr{\char95}is{\char95}possible} checks whether the initial
 parton is set, lepton-hadron collisions are not implemented (yet). As
 a workaround: as WHIZARD can treat partons as massless, there might be
 partons with $E < m$: if such a parton is found, quarks will be
 treated massless.
-\nwenddocs{}\nwbegincode{218}\moddef{Shower core: shower: TBP}\plusendmoddef
+\nwenddocs{}\nwbegincode{205}\moddef{Shower core: shower: TBP}\plusendmoddef
   procedure :: add_interaction_2ton_CKKW => shower_add_interaction_2ton_CKKW
-\nwendcode{}\nwbegincode{219}\moddef{Shower core: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{206}\moddef{Shower core: procedures}\plusendmoddef
   subroutine shower_add_interaction_2ton_CKKW &
        (shower, partons, ckkw_pseudo_weights)
     class(shower_t), intent(inout) :: shower
@@ -2028,8 +1967,8 @@ treated massless.
   end subroutine shower_add_interaction_2ton_CKKW
 
 \eatline
-\nwendcode{}\nwbegindocs{220}\nwdocspar
-\nwenddocs{}\nwbegincode{221}\moddef{Add a new interaction to \code{}shower{\char37}interactions\edoc{}}\endmoddef
+\nwendcode{}\nwbegindocs{207}\nwdocspar
+\nwenddocs{}\nwbegincode{208}\moddef{Add a new interaction to \code{}shower{\char37}interactions\edoc{}}\endmoddef
 if (allocated (shower%interactions)) then
    n_int = size (shower%interactions) + 1
 else
@@ -2052,8 +1991,8 @@ do i = 1, n_int
    shower%interactions(i)%i => temp(i)%i
 end do
 deallocate (temp)
-\nwendcode{}\nwbegindocs{222}\nwdocspar
-\nwenddocs{}\nwbegincode{223}\moddef{Add partons from \code{}shower{\char37}interactions\edoc{} to \code{}shower{\char37}partons\edoc{}}\endmoddef
+\nwendcode{}\nwbegindocs{209}\nwdocspar
+\nwenddocs{}\nwbegincode{210}\moddef{Add partons from \code{}shower{\char37}interactions\edoc{} to \code{}shower{\char37}partons\edoc{}}\endmoddef
 if (allocated (shower%partons)) then
    allocate (new_partons(1:size(shower%partons) + &
         size(shower%interactions(n_int)%i%partons)))
@@ -2077,8 +2016,8 @@ do i = 1, size (new_partons)
 end do
 deallocate (new_partons)
 !!! call shower%write ()
-\nwendcode{}\nwbegindocs{224}\nwdocspar
-\nwenddocs{}\nwbegincode{225}\moddef{Perform clustering using the CKKW weights}\endmoddef
+\nwendcode{}\nwbegindocs{211}\nwdocspar
+\nwenddocs{}\nwbegincode{212}\moddef{Perform clustering using the CKKW weights}\endmoddef
 CKKW_CLUSTERING: do
    !!! search for the combination with the highest weight
    wmax = zero
@@ -2159,8 +2098,8 @@ CKKW_CLUSTERING: do
       exit CKKW_CLUSTERING
    end if
 end do CKKW_CLUSTERING
-\nwendcode{}\nwbegindocs{226}\nwdocspar
-\nwenddocs{}\nwbegincode{227}\moddef{Perform clustering in the usual way}\endmoddef
+\nwendcode{}\nwbegindocs{213}\nwdocspar
+\nwenddocs{}\nwbegincode{214}\moddef{Perform clustering in the usual way}\endmoddef
 CLUSTERING: do
    !!! search for the partons to be clustered together
    ymin = zero
@@ -2169,9 +2108,9 @@ CLUSTERING: do
          !!! calculate the jet measure
          if (.not.associated (new_partons(i)%p)) cycle INNER
          if (.not.associated (new_partons(j)%p)) cycle INNER
-         if (.not. shower_clustering_allowed &
-              (shower, new_partons, i,j)) &
-              cycle inner
+         !if (.not. shower_clustering_allowed &
+              !(shower, new_partons, i,j)) &
+              !cycle inner
          !!! Durham jet-measure ! don't care about constants
          y = min (parton_get_energy (new_partons(i)%p), &
               parton_get_energy (new_partons(j)%p)) * &
@@ -2226,8 +2165,8 @@ CLUSTERING: do
       exit CLUSTERING
    end if
 end do CLUSTERING
-\nwendcode{}\nwbegindocs{228}\nwdocspar
-\nwenddocs{}\nwbegincode{229}\moddef{Count number of associated \code{}shower{\char37}partons(i){\char37}p\edoc{}}\endmoddef
+\nwendcode{}\nwbegindocs{215}\nwdocspar
+\nwenddocs{}\nwbegincode{216}\moddef{Count number of associated \code{}shower{\char37}partons(i){\char37}p\edoc{}}\endmoddef
 n_partons_shower = 0
 if (allocated (shower%partons)) then
    do i = 1, size (shower%partons)
@@ -2235,8 +2174,8 @@ if (allocated (shower%partons)) then
            n_partons_shower = n_partons_shower + 1
    end do
 end if
-\nwendcode{}\nwbegindocs{230}\nwdocspar
-\nwenddocs{}\nwbegincode{231}\moddef{Procedures of \code{}shower{\char95}add{\char95}interaction{\char95}2ton{\char95}CKKW\edoc{}}\endmoddef
+\nwendcode{}\nwbegindocs{217}\nwdocspar
+\nwenddocs{}\nwbegincode{218}\moddef{Procedures of \code{}shower{\char95}add{\char95}interaction{\char95}2ton{\char95}CKKW\edoc{} (not used)}\endmoddef
 function shower_clustering_allowed (shower, partons, i, j) result (allowed)
   type(shower_t), intent(inout) :: shower
   logical :: allowed
@@ -2247,8 +2186,8 @@ function shower_clustering_allowed (shower, partons, i, j) result (allowed)
   allowed = .true.
 end function shower_clustering_allowed
 
-\nwendcode{}\nwbegindocs{232}\nwdocspar
-\nwenddocs{}\nwbegincode{233}\moddef{Procedures of \code{}shower{\char95}add{\char95}interaction{\char95}2ton{\char95}CKKW\edoc{}}\plusendmoddef
+\nwendcode{}\nwbegindocs{219}\nwdocspar
+\nwenddocs{}\nwbegincode{220}\moddef{Procedures of \code{}shower{\char95}add{\char95}interaction{\char95}2ton{\char95}CKKW\edoc{}}\endmoddef
 recursive subroutine transfer_pointers (destiny, start, prt)
   type(parton_pointer_t), dimension(:), allocatable :: destiny
   integer, intent(inout) :: start
@@ -2263,8 +2202,8 @@ recursive subroutine transfer_pointers (destiny, start, prt)
   end if
 end subroutine transfer_pointers
 
-\nwendcode{}\nwbegindocs{234}\nwdocspar
-\nwenddocs{}\nwbegincode{235}\moddef{Procedures of \code{}shower{\char95}add{\char95}interaction{\char95}2ton{\char95}CKKW\edoc{}}\plusendmoddef
+\nwendcode{}\nwbegindocs{221}\nwdocspar
+\nwenddocs{}\nwbegincode{222}\moddef{Procedures of \code{}shower{\char95}add{\char95}interaction{\char95}2ton{\char95}CKKW\edoc{}}\plusendmoddef
 recursive function get_starting_scale (prt) result (scale)
   type(parton_t), pointer :: prt
   real(default) :: scale
@@ -2280,8 +2219,8 @@ recursive function get_starting_scale (prt) result (scale)
   end if
 end function get_starting_scale
 
-\nwendcode{}\nwbegindocs{236}\nwdocspar
-\nwenddocs{}\nwbegincode{237}\moddef{Procedures of \code{}shower{\char95}add{\char95}interaction{\char95}2ton{\char95}CKKW\edoc{}}\plusendmoddef
+\nwendcode{}\nwbegindocs{223}\nwdocspar
+\nwenddocs{}\nwbegincode{224}\moddef{Procedures of \code{}shower{\char95}add{\char95}interaction{\char95}2ton{\char95}CKKW\edoc{}}\plusendmoddef
 recursive subroutine set_starting_scale (prt, scale)
   type(parton_t), pointer :: prt
   real(default) :: scale
@@ -2301,10 +2240,10 @@ recursive subroutine set_starting_scale (prt, scale)
   end if
 end subroutine set_starting_scale
 
-\nwendcode{}\nwbegindocs{238}\nwdocspar
-\nwenddocs{}\nwbegincode{239}\moddef{Shower core: shower: TBP}\plusendmoddef
+\nwendcode{}\nwbegindocs{225}\nwdocspar
+\nwenddocs{}\nwbegincode{226}\moddef{Shower core: shower: TBP}\plusendmoddef
   procedure :: simulate_no_isr_shower => shower_simulate_no_isr_shower
-\nwendcode{}\nwbegincode{240}\moddef{Shower core: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{227}\moddef{Shower core: procedures}\plusendmoddef
   subroutine shower_simulate_no_isr_shower (shower)
     class(shower_t), intent(inout) :: shower
     integer :: i, j
@@ -2340,10 +2279,10 @@ end subroutine set_starting_scale
   end subroutine shower_simulate_no_isr_shower
 
 \eatline
-\nwendcode{}\nwbegindocs{241}\nwdocspar
-\nwenddocs{}\nwbegincode{242}\moddef{Shower core: shower: TBP}\plusendmoddef
+\nwendcode{}\nwbegindocs{228}\nwdocspar
+\nwenddocs{}\nwbegincode{229}\moddef{Shower core: shower: TBP}\plusendmoddef
   procedure :: simulate_no_fsr_shower => shower_simulate_no_fsr_shower
-\nwendcode{}\nwbegincode{243}\moddef{Shower core: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{230}\moddef{Shower core: procedures}\plusendmoddef
   subroutine shower_simulate_no_fsr_shower (shower)
     class(shower_t), intent(inout) :: shower
     integer :: i, j
@@ -2359,8 +2298,8 @@ end subroutine set_starting_scale
   end subroutine shower_simulate_no_fsr_shower
 
 \eatline
-\nwendcode{}\nwbegindocs{244}\nwdocspar
-\nwenddocs{}\nwbegincode{245}\moddef{Shower core: procedures}\plusendmoddef
+\nwendcode{}\nwbegindocs{231}\nwdocspar
+\nwenddocs{}\nwbegincode{232}\moddef{Shower core: procedures}\plusendmoddef
   subroutine swap_pointers (prtp1, prtp2)
     type(parton_pointer_t), intent(inout) :: prtp1, prtp2
     type(parton_pointer_t) :: prtptemp
@@ -2370,8 +2309,8 @@ end subroutine set_starting_scale
   end subroutine swap_pointers
 
 \eatline
-\nwendcode{}\nwbegindocs{246}This removes emitted timelike partons.
-\nwenddocs{}\nwbegincode{247}\moddef{Shower core: procedures}\plusendmoddef
+\nwendcode{}\nwbegindocs{233}This removes emitted timelike partons.
+\nwenddocs{}\nwbegincode{234}\moddef{Shower core: procedures}\plusendmoddef
   recursive subroutine shower_remove_parton_from_partons (shower, prt)
     type(shower_t), intent(inout) :: shower
     type(parton_t), pointer :: prt
@@ -2391,8 +2330,8 @@ end subroutine set_starting_scale
   end subroutine shower_remove_parton_from_partons
 
 \eatline
-\nwendcode{}\nwbegindocs{248}This removes the parton {\tt{}prt} and all its children.
-\nwenddocs{}\nwbegincode{249}\moddef{Shower core: procedures}\plusendmoddef
+\nwendcode{}\nwbegindocs{235}This removes the parton {\tt{}prt} and all its children.
+\nwenddocs{}\nwbegincode{236}\moddef{Shower core: procedures}\plusendmoddef
   recursive subroutine shower_remove_parton_from_partons_recursive (shower, prt)
     type(shower_t), intent(inout) :: shower
     type(parton_t), pointer :: prt
@@ -2408,10 +2347,10 @@ end subroutine set_starting_scale
   end subroutine shower_remove_parton_from_partons_recursive
 
 \eatline
-\nwendcode{}\nwbegindocs{250}\nwdocspar
-\nwenddocs{}\nwbegincode{251}\moddef{Shower core: shower: TBP}\plusendmoddef
+\nwendcode{}\nwbegindocs{237}\nwdocspar
+\nwenddocs{}\nwbegincode{238}\moddef{Shower core: shower: TBP}\plusendmoddef
   procedure :: sort_partons => shower_sort_partons
-\nwendcode{}\nwbegincode{252}\moddef{Shower core: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{239}\moddef{Shower core: procedures}\plusendmoddef
   subroutine shower_sort_partons (shower)
     class(shower_t), intent(inout) :: shower
     integer :: i, j, maxsort, size_partons
@@ -2512,12 +2451,13 @@ end subroutine set_starting_scale
   end subroutine shower_sort_partons
 
 \eatline
-\nwendcode{}\nwbegindocs{253}Creation and finalization.
-\nwenddocs{}\nwbegincode{254}\moddef{Shower core: shower: TBP}\plusendmoddef
+\nwendcode{}\nwbegindocs{240}Creation and finalization.
+\nwenddocs{}\nwbegincode{241}\moddef{Shower core: shower: TBP}\plusendmoddef
   procedure :: create => shower_create
-\nwendcode{}\nwbegincode{255}\moddef{Shower core: procedures}\plusendmoddef
-  subroutine shower_create (shower)
+\nwendcode{}\nwbegincode{242}\moddef{Shower core: procedures}\plusendmoddef
+  subroutine shower_create (shower, pdf)
     class(shower_t), intent(inout) :: shower
+    type(lhapdf_pdf_t), intent(in), target :: pdf
     shower%next_free_nr = 1
     shower%next_color_nr = 1
     if (allocated (shower%interactions)) then
@@ -2531,13 +2471,14 @@ end subroutine set_starting_scale
     treat_light_quarks_massless = .true.
     treat_duscb_quarks_massless = .false.
     shower%valid = .true.
+    shower%pdf = pdf
   end subroutine shower_create
 
 \eatline
-\nwendcode{}\nwbegindocs{256}Deallocate the interaction pointers.
-\nwenddocs{}\nwbegincode{257}\moddef{Shower core: shower: TBP}\plusendmoddef
+\nwendcode{}\nwbegindocs{243}Deallocate the interaction pointers.
+\nwenddocs{}\nwbegincode{244}\moddef{Shower core: shower: TBP}\plusendmoddef
   procedure :: final => shower_final
-\nwendcode{}\nwbegincode{258}\moddef{Shower core: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{245}\moddef{Shower core: procedures}\plusendmoddef
   subroutine shower_final (shower)
     class(shower_t), intent(inout) :: shower
     integer :: i
@@ -2549,13 +2490,14 @@ end subroutine set_starting_scale
     end do
     deallocate (shower%interactions)
     deallocate (shower%partons)
+    call shower%pdf%final
   end subroutine shower_final
 
 \eatline
-\nwendcode{}\nwbegindocs{259}Bookkeeping functions.
-\nwenddocs{}\nwbegincode{260}\moddef{Shower core: shower: TBP}\plusendmoddef
+\nwendcode{}\nwbegindocs{246}Bookkeeping functions.
+\nwenddocs{}\nwbegincode{247}\moddef{Shower core: shower: TBP}\plusendmoddef
   procedure :: get_next_free_nr => shower_get_next_free_nr
-\nwendcode{}\nwbegincode{261}\moddef{Shower core: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{248}\moddef{Shower core: procedures}\plusendmoddef
   function shower_get_next_free_nr (shower) result (next_number)
     class(shower_t), intent(inout) :: shower
     integer :: next_number
@@ -2564,10 +2506,10 @@ end subroutine set_starting_scale
   end function shower_get_next_free_nr
 
 \eatline
-\nwendcode{}\nwbegindocs{262}\nwdocspar
-\nwenddocs{}\nwbegincode{263}\moddef{Shower core: shower: TBP}\plusendmoddef
+\nwendcode{}\nwbegindocs{249}\nwdocspar
+\nwenddocs{}\nwbegincode{250}\moddef{Shower core: shower: TBP}\plusendmoddef
   procedure :: set_next_color_nr => shower_set_next_color_nr
-\nwendcode{}\nwbegincode{264}\moddef{Shower core: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{251}\moddef{Shower core: procedures}\plusendmoddef
   subroutine shower_set_next_color_nr (shower, index)
     class(shower_t), intent(inout) :: shower
     integer, intent(in) :: index
@@ -2579,10 +2521,10 @@ end subroutine set_starting_scale
   end subroutine shower_set_next_color_nr
 
 \eatline
-\nwendcode{}\nwbegindocs{265}\nwdocspar
-\nwenddocs{}\nwbegincode{266}\moddef{Shower core: shower: TBP}\plusendmoddef
+\nwendcode{}\nwbegindocs{252}\nwdocspar
+\nwenddocs{}\nwbegincode{253}\moddef{Shower core: shower: TBP}\plusendmoddef
   procedure :: get_next_color_nr => shower_get_next_color_nr
-\nwendcode{}\nwbegincode{267}\moddef{Shower core: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{254}\moddef{Shower core: procedures}\plusendmoddef
   function shower_get_next_color_nr (shower) result (next_color)
     class(shower_t), intent(inout) :: shower
     integer :: next_color
@@ -2591,8 +2533,8 @@ end subroutine set_starting_scale
   end function shower_get_next_color_nr
 
 \eatline
-\nwendcode{}\nwbegindocs{268}\nwdocspar
-\nwenddocs{}\nwbegincode{269}\moddef{Shower core: procedures}\plusendmoddef
+\nwendcode{}\nwbegindocs{255}\nwdocspar
+\nwenddocs{}\nwbegincode{256}\moddef{Shower core: procedures}\plusendmoddef
   subroutine shower_enlarge_partons_array (shower, length)
     type(shower_t), intent(inout) :: shower
     integer, intent(in) :: length
@@ -2624,10 +2566,10 @@ end subroutine set_starting_scale
   end subroutine shower_enlarge_partons_array
 
 \eatline
-\nwendcode{}\nwbegindocs{270}\nwdocspar
-\nwenddocs{}\nwbegincode{271}\moddef{Shower core: shower: TBP}\plusendmoddef
+\nwendcode{}\nwbegindocs{257}\nwdocspar
+\nwenddocs{}\nwbegincode{258}\moddef{Shower core: shower: TBP}\plusendmoddef
   procedure :: add_child => shower_add_child
-\nwendcode{}\nwbegincode{272}\moddef{Shower core: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{259}\moddef{Shower core: procedures}\plusendmoddef
   subroutine shower_add_child (shower, prt, child)
     class(shower_t), intent(inout) :: shower
     type(parton_t), pointer :: prt
@@ -2667,10 +2609,10 @@ end subroutine set_starting_scale
   end subroutine shower_add_child
 
 \eatline
-\nwendcode{}\nwbegindocs{273}\nwdocspar
-\nwenddocs{}\nwbegincode{274}\moddef{Shower core: shower: TBP}\plusendmoddef
+\nwendcode{}\nwbegindocs{260}\nwdocspar
+\nwenddocs{}\nwbegincode{261}\moddef{Shower core: shower: TBP}\plusendmoddef
   procedure :: add_parent => shower_add_parent
-\nwendcode{}\nwbegincode{275}\moddef{Shower core: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{262}\moddef{Shower core: procedures}\plusendmoddef
   subroutine shower_add_parent (shower, prt)
     class(shower_t), intent(inout) :: shower
     type(parton_t), intent(inout), target :: prt
@@ -2704,8 +2646,8 @@ end subroutine set_starting_scale
   end subroutine shower_add_parent
 
 \eatline
-\nwendcode{}\nwbegindocs{276}\nwdocspar
-\nwenddocs{}\nwbegincode{277}\moddef{Shower core: procedures}\plusendmoddef
+\nwendcode{}\nwbegindocs{263}\nwdocspar
+\nwenddocs{}\nwbegincode{264}\moddef{Shower core: procedures}\plusendmoddef
   function shower_get_total_momentum (shower, c) result (mom)
     type(shower_t), intent(in) :: shower
     integer, intent(in) :: c
@@ -2733,8 +2675,8 @@ end subroutine set_starting_scale
   end function shower_get_total_momentum
 
 \eatline
-\nwendcode{}\nwbegindocs{278}\nwdocspar
-\nwenddocs{}\nwbegincode{279}\moddef{Shower core: procedures}\plusendmoddef
+\nwendcode{}\nwbegindocs{265}\nwdocspar
+\nwenddocs{}\nwbegincode{266}\moddef{Shower core: procedures}\plusendmoddef
   function shower_get_nr_of_partons (shower, mine, include_remnants) &
        result (nr)
     type(shower_t), intent(in) :: shower
@@ -2770,8 +2712,8 @@ end subroutine set_starting_scale
   end function shower_get_nr_of_partons
 
 \eatline
-\nwendcode{}\nwbegindocs{280}\nwdocspar
-\nwenddocs{}\nwbegincode{281}\moddef{Shower core: procedures}\plusendmoddef
+\nwendcode{}\nwbegindocs{267}\nwdocspar
+\nwenddocs{}\nwbegincode{268}\moddef{Shower core: procedures}\plusendmoddef
   function shower_get_nr_of_final_colored_ME_partons (shower) result(nr)
     type(shower_t), intent(in) :: shower
     integer :: nr
@@ -2792,11 +2734,11 @@ end subroutine set_starting_scale
   end function shower_get_nr_of_final_colored_ME_partons
 
 \eatline
-\nwendcode{}\nwbegindocs{282}\nwdocspar
-\nwenddocs{}\nwbegincode{283}\moddef{Shower core: shower: TBP}\plusendmoddef
+\nwendcode{}\nwbegindocs{269}\nwdocspar
+\nwenddocs{}\nwbegincode{270}\moddef{Shower core: shower: TBP}\plusendmoddef
   procedure :: get_final_colored_ME_partons => &
        shower_get_final_colored_ME_partons
-\nwendcode{}\nwbegincode{284}\moddef{Shower core: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{271}\moddef{Shower core: procedures}\plusendmoddef
   subroutine shower_get_final_colored_ME_partons (shower, partons)
     class(shower_t), intent(in) :: shower
     type(parton_pointer_t), dimension(:), allocatable, intent(inout) :: partons
@@ -2822,10 +2764,10 @@ end subroutine set_starting_scale
   end subroutine shower_get_final_colored_ME_partons
 
 \eatline
-\nwendcode{}\nwbegindocs{285}\nwdocspar
-\nwenddocs{}\nwbegincode{286}\moddef{Shower core: public}\plusendmoddef
+\nwendcode{}\nwbegindocs{272}\nwdocspar
+\nwenddocs{}\nwbegincode{273}\moddef{Shower core: public}\plusendmoddef
   public :: shower_get_final_partons
-\nwendcode{}\nwbegincode{287}\moddef{Shower core: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{274}\moddef{Shower core: procedures}\plusendmoddef
   subroutine shower_get_final_partons (shower, partons, include_remnants)
     type(shower_t), intent(in) :: shower
     type(parton_pointer_t), dimension(:), allocatable, intent(inout) :: partons
@@ -2852,8 +2794,8 @@ end subroutine set_starting_scale
   end subroutine shower_get_final_partons
 
 \eatline
-\nwendcode{}\nwbegindocs{288}\nwdocspar
-\nwenddocs{}\nwbegincode{289}\moddef{Shower core: procedures}\plusendmoddef
+\nwendcode{}\nwbegindocs{275}\nwdocspar
+\nwenddocs{}\nwbegincode{276}\moddef{Shower core: procedures}\plusendmoddef
   recursive function interaction_fsr_is_finished_for_parton(prt) result (finished)
     type(parton_t), intent(in) :: prt
     logical :: finished
@@ -2894,8 +2836,8 @@ end subroutine set_starting_scale
   end function interaction_fsr_is_finished_for_parton
 
 \eatline
-\nwendcode{}\nwbegindocs{290}\nwdocspar
-\nwenddocs{}\nwbegincode{291}\moddef{Shower core: procedures}\plusendmoddef
+\nwendcode{}\nwbegindocs{277}\nwdocspar
+\nwenddocs{}\nwbegincode{278}\moddef{Shower core: procedures}\plusendmoddef
   function interaction_fsr_is_finished (interaction) result (finished)
     type(shower_interaction_t), intent(in) :: interaction
     logical :: finished
@@ -2912,10 +2854,10 @@ end subroutine set_starting_scale
   end function interaction_fsr_is_finished
 
 \eatline
-\nwendcode{}\nwbegindocs{292}\nwdocspar
-\nwenddocs{}\nwbegincode{293}\moddef{Shower core: public}\plusendmoddef
+\nwendcode{}\nwbegindocs{279}\nwdocspar
+\nwenddocs{}\nwbegincode{280}\moddef{Shower core: public}\plusendmoddef
   public :: shower_interaction_get_shat
-\nwendcode{}\nwbegincode{294}\moddef{Shower core: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{281}\moddef{Shower core: procedures}\plusendmoddef
   function shower_interaction_get_shat (interaction) result (shat)
     type(shower_interaction_t), intent(in) :: interaction
     real(default) :: shat
@@ -2924,10 +2866,10 @@ end subroutine set_starting_scale
   end function shower_interaction_get_shat
 
 \eatline
-\nwendcode{}\nwbegindocs{295}\nwdocspar
-\nwenddocs{}\nwbegincode{296}\moddef{Shower core: public}\plusendmoddef
+\nwendcode{}\nwbegindocs{282}\nwdocspar
+\nwenddocs{}\nwbegincode{283}\moddef{Shower core: public}\plusendmoddef
   public :: shower_interaction_get_s
-\nwendcode{}\nwbegincode{297}\moddef{Shower core: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{284}\moddef{Shower core: procedures}\plusendmoddef
   function shower_interaction_get_s (interaction) result (s)
     type(shower_interaction_t), intent(in) :: interaction
     real(default) :: s
@@ -2936,8 +2878,8 @@ end subroutine set_starting_scale
   end function shower_interaction_get_s
 
 \eatline
-\nwendcode{}\nwbegindocs{298}\nwdocspar
-\nwenddocs{}\nwbegincode{299}\moddef{Shower core: procedures}\plusendmoddef
+\nwendcode{}\nwbegindocs{285}\nwdocspar
+\nwenddocs{}\nwbegincode{286}\moddef{Shower core: procedures}\plusendmoddef
   function shower_fsr_is_finished (shower) result (finished)
     type(shower_t), intent(in) :: shower
     logical :: finished
@@ -2953,8 +2895,8 @@ end subroutine set_starting_scale
   end function shower_fsr_is_finished
 
 \eatline
-\nwendcode{}\nwbegindocs{300}\nwdocspar
-\nwenddocs{}\nwbegincode{301}\moddef{Shower core: procedures}\plusendmoddef
+\nwendcode{}\nwbegindocs{287}\nwdocspar
+\nwenddocs{}\nwbegincode{288}\moddef{Shower core: procedures}\plusendmoddef
   function shower_isr_is_finished (shower) result (finished)
     type(shower_t), intent(in) :: shower
     logical :: finished
@@ -2982,8 +2924,8 @@ end subroutine set_starting_scale
   end function shower_isr_is_finished
 
 \eatline
-\nwendcode{}\nwbegindocs{302}\nwdocspar
-\nwenddocs{}\nwbegincode{303}\moddef{Shower core: procedures}\plusendmoddef
+\nwendcode{}\nwbegindocs{289}\nwdocspar
+\nwenddocs{}\nwbegincode{290}\moddef{Shower core: procedures (not used)}\endmoddef
   function shower_is_finished (shower) result (finished)
     type(shower_t), intent(in) :: shower
     logical :: finished
@@ -2992,8 +2934,8 @@ end subroutine set_starting_scale
   end function shower_is_finished
 
 \eatline
-\nwendcode{}\nwbegindocs{304}\nwdocspar
-\nwenddocs{}\nwbegincode{305}\moddef{Shower core: procedures}\plusendmoddef
+\nwendcode{}\nwbegindocs{291}\nwdocspar
+\nwenddocs{}\nwbegincode{292}\moddef{Shower core: procedures}\plusendmoddef
   subroutine interaction_find_partons_nearest_to_hadron (interaction, prt1, prt2)
     type(shower_interaction_t), intent(in) :: interaction
     type(parton_t), pointer :: prt1, prt2
@@ -3032,10 +2974,10 @@ end subroutine set_starting_scale
   end subroutine interaction_find_partons_nearest_to_hadron
 
 \eatline
-\nwendcode{}\nwbegindocs{306}\nwdocspar
-\nwenddocs{}\nwbegincode{307}\moddef{Shower core: shower: TBP}\plusendmoddef
+\nwendcode{}\nwbegindocs{293}\nwdocspar
+\nwenddocs{}\nwbegincode{294}\moddef{Shower core: shower: TBP}\plusendmoddef
   procedure :: update_beamremnants => shower_update_beamremnants
-\nwendcode{}\nwbegincode{308}\moddef{Shower core: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{295}\moddef{Shower core: procedures}\plusendmoddef
   subroutine shower_update_beamremnants (shower)
     class(shower_t), intent(inout) :: shower
     type(parton_t), pointer :: hadron, remnant
@@ -3218,8 +3160,8 @@ end subroutine set_starting_scale
   end subroutine shower_update_beamremnants
 
 \eatline
-\nwendcode{}\nwbegindocs{309}\nwdocspar
-\nwenddocs{}\nwbegincode{310}\moddef{Shower core: procedures}\plusendmoddef
+\nwendcode{}\nwbegindocs{296}\nwdocspar
+\nwenddocs{}\nwbegincode{297}\moddef{Shower core: procedures}\plusendmoddef
   subroutine interaction_apply_lorentztrafo (interaction, L)
     type(shower_interaction_t), intent(inout) :: interaction
     type(lorentz_transformation_t), intent(in) :: L
@@ -3264,9 +3206,9 @@ end subroutine set_starting_scale
     !!! print *, " end interaction_apply_lorentztrafo"
   end subroutine interaction_apply_lorentztrafo
 
-\nwendcode{}\nwbegindocs{311} %def interaction_apply_lorentztrafo
-\nwenddocs{}\nwbegindocs{312}\nwdocspar
-\nwenddocs{}\nwbegincode{313}\moddef{Shower core: procedures}\plusendmoddef
+\nwendcode{}\nwbegindocs{298} %def interaction_apply_lorentztrafo
+\nwenddocs{}\nwbegindocs{299}\nwdocspar
+\nwenddocs{}\nwbegincode{300}\moddef{Shower core: procedures}\plusendmoddef
   subroutine shower_apply_lorentztrafo (shower, L)
     type(shower_t), intent(inout) :: shower
     type(lorentz_transformation_t), intent(in) :: L
@@ -3277,9 +3219,9 @@ end subroutine set_starting_scale
   end subroutine shower_apply_lorentztrafo
 
 \eatline
-\nwendcode{}\nwbegindocs{314}This boosts partons belonging to the interaction to the
+\nwendcode{}\nwbegindocs{301}This boosts partons belonging to the interaction to the
 center-of-mass frame of its partons nearest to the hadron.
-\nwenddocs{}\nwbegincode{315}\moddef{Shower core: procedures}\plusendmoddef
+\nwenddocs{}\nwbegincode{302}\moddef{Shower core: procedures}\plusendmoddef
   subroutine interaction_boost_to_CMframe (interaction)
     type(shower_interaction_t), intent(inout) :: interaction
     type(vector4_t) :: beta
@@ -3299,9 +3241,9 @@ center-of-mass frame of its partons nearest to the hadron.
   end subroutine interaction_boost_to_CMframe
 
 \eatline
-\nwendcode{}\nwbegindocs{316}This boosts every interaction to the center-of-mass-frame of its
+\nwendcode{}\nwbegindocs{303}This boosts every interaction to the center-of-mass-frame of its
 partons nearest to the hadron.
-\nwenddocs{}\nwbegincode{317}\moddef{Shower core: procedures}\plusendmoddef
+\nwenddocs{}\nwbegincode{304}\moddef{Shower core: procedures}\plusendmoddef
   subroutine shower_boost_to_CMframe (shower)
     type(shower_t), intent(inout) :: shower
     integer :: i
@@ -3312,11 +3254,11 @@ partons nearest to the hadron.
   end subroutine shower_boost_to_CMframe
 
 \eatline
-\nwendcode{}\nwbegindocs{318}This boost all partons so that initial partons have their assigned
+\nwendcode{}\nwbegindocs{305}This boost all partons so that initial partons have their assigned
 $x$-value.
-\nwenddocs{}\nwbegincode{319}\moddef{Shower core: shower: TBP}\plusendmoddef
+\nwenddocs{}\nwbegincode{306}\moddef{Shower core: shower: TBP}\plusendmoddef
   procedure :: boost_to_labframe => shower_boost_to_labframe
-\nwendcode{}\nwbegincode{320}\moddef{Shower core: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{307}\moddef{Shower core: procedures}\plusendmoddef
   subroutine shower_boost_to_labframe (shower)
     class(shower_t), intent(inout) :: shower
     integer :: i
@@ -3326,9 +3268,9 @@ $x$-value.
   end subroutine shower_boost_to_labframe
 
 \eatline
-\nwendcode{}\nwbegindocs{321}This boosts all partons so that initial partons have their
+\nwendcode{}\nwbegindocs{308}This boosts all partons so that initial partons have their
 assigned $x$-value.
-\nwenddocs{}\nwbegincode{322}\moddef{Shower core: procedures}\plusendmoddef
+\nwenddocs{}\nwbegincode{309}\moddef{Shower core: procedures}\plusendmoddef
   subroutine interaction_boost_to_labframe (interaction)
     type(shower_interaction_t), intent(inout) :: interaction
     type(parton_t), pointer :: prt1, prt2
@@ -3354,9 +3296,9 @@ assigned $x$-value.
   end subroutine interaction_boost_to_labframe
 
 \eatline
-\nwendcode{}\nwbegindocs{323}Only rotate to z if inital hadrons are given (and they are assumed
+\nwendcode{}\nwbegindocs{310}Only rotate to z if inital hadrons are given (and they are assumed
 to be aligned along the z-axis).
-\nwenddocs{}\nwbegincode{324}\moddef{Shower core: procedures}\plusendmoddef
+\nwenddocs{}\nwbegincode{311}\moddef{Shower core: procedures}\plusendmoddef
   subroutine interaction_rotate_to_z (interaction)
     type(shower_interaction_t), intent(inout) :: interaction
     type(parton_t), pointer :: prt1, prt2
@@ -3370,8 +3312,8 @@ to be aligned along the z-axis).
   end subroutine interaction_rotate_to_z
 
 \eatline
-\nwendcode{}\nwbegindocs{325}Rotate initial partons to lie along $\pm z$ axis.
-\nwenddocs{}\nwbegincode{326}\moddef{Shower core: procedures}\plusendmoddef
+\nwendcode{}\nwbegindocs{312}Rotate initial partons to lie along $\pm z$ axis.
+\nwenddocs{}\nwbegincode{313}\moddef{Shower core: procedures}\plusendmoddef
   subroutine shower_rotate_to_z (shower)
     type(shower_t), intent(inout) :: shower
     integer :: i
@@ -3382,8 +3324,8 @@ to be aligned along the z-axis).
   end subroutine shower_rotate_to_z
 
 \eatline
-\nwendcode{}\nwbegindocs{327}\nwdocspar
-\nwenddocs{}\nwbegincode{328}\moddef{Shower core: procedures}\plusendmoddef
+\nwendcode{}\nwbegindocs{314}\nwdocspar
+\nwenddocs{}\nwbegincode{315}\moddef{Shower core: procedures}\plusendmoddef
   subroutine interaction_generate_primordial_kt (interaction)
     type(shower_interaction_t), intent(inout) :: interaction
     type(parton_t), pointer :: had1, had2
@@ -3439,10 +3381,10 @@ to be aligned along the z-axis).
   end subroutine interaction_generate_primordial_kt
 
 \eatline
-\nwendcode{}\nwbegindocs{329}\nwdocspar
-\nwenddocs{}\nwbegincode{330}\moddef{Shower core: shower: TBP}\plusendmoddef
+\nwendcode{}\nwbegindocs{316}\nwdocspar
+\nwenddocs{}\nwbegincode{317}\moddef{Shower core: shower: TBP}\plusendmoddef
   procedure :: generate_primordial_kt => shower_generate_primordial_kt
-\nwendcode{}\nwbegincode{331}\moddef{Shower core: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{318}\moddef{Shower core: procedures}\plusendmoddef
   subroutine shower_generate_primordial_kt (shower)
     class(shower_t), intent(inout) :: shower
     integer :: i
@@ -3456,13 +3398,13 @@ to be aligned along the z-axis).
   end subroutine shower_generate_primordial_kt
 
 \eatline
-\nwendcode{}\nwbegindocs{332}Output.
-\nwenddocs{}\nwbegincode{333}\moddef{Shower core: procedures}\plusendmoddef
+\nwendcode{}\nwbegindocs{319}Output.
+\nwenddocs{}\nwbegincode{320}\moddef{Shower core: procedures}\plusendmoddef
   subroutine interaction_write (interaction, unit)
     type(shower_interaction_t), intent(in) :: interaction
     integer, intent(in), optional :: unit
     integer :: i, u
-    u = output_unit (unit); if (u < 0) return
+    u = given_output_unit (unit); if (u < 0) return
     if (associated (interaction%partons(1)%p)) then
        if (associated (interaction%partons(1)%p%initial)) &
             call parton_write (interaction%partons(1)%p%initial, u)
@@ -3480,15 +3422,15 @@ to be aligned along the z-axis).
   end subroutine interaction_write
 
 \eatline
-\nwendcode{}\nwbegindocs{334}\nwdocspar
-\nwenddocs{}\nwbegincode{335}\moddef{Shower core: shower: TBP}\plusendmoddef
+\nwendcode{}\nwbegindocs{321}\nwdocspar
+\nwenddocs{}\nwbegincode{322}\moddef{Shower core: shower: TBP}\plusendmoddef
   procedure :: write => shower_write
-\nwendcode{}\nwbegincode{336}\moddef{Shower core: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{323}\moddef{Shower core: procedures}\plusendmoddef
   subroutine shower_write (shower, unit)
     class(shower_t), intent(in) :: shower
     integer, intent(in), optional :: unit
     integer :: i, u
-    u = output_unit (unit); if (u < 0) return
+    u = given_output_unit (unit); if (u < 0) return
     if (size (shower%interactions) > 0) then
        write (u, "(3x,A)") "Interactions: "
        do i = 1, size (shower%interactions)
@@ -3533,17 +3475,17 @@ to be aligned along the z-axis).
   end subroutine shower_write
 
 \eatline
-\nwendcode{}\nwbegindocs{337}\nwdocspar
-\nwenddocs{}\nwbegincode{338}\moddef{Shower core: shower: TBP}\plusendmoddef
+\nwendcode{}\nwbegindocs{324}\nwdocspar
+\nwenddocs{}\nwbegincode{325}\moddef{Shower core: shower: TBP}\plusendmoddef
   procedure :: write_lhef => shower_write_lhef
-\nwendcode{}\nwbegincode{339}\moddef{Shower core: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{326}\moddef{Shower core: procedures}\plusendmoddef
   subroutine shower_write_lhef (shower, unit)
     class(shower_t), intent(in) :: shower
     integer, intent(in), optional :: unit
     integer :: u
     integer :: i
     integer :: c1, c2
-    u = output_unit (unit);  if (u < 0)  return
+    u = given_output_unit (unit);  if (u < 0)  return
     write(u,'(A)') '<LesHouchesEvents version="1.0">'
     write(u,'(A)') '<-- not a complete lhe file - just one event -->'
     write(u,'(A)') '<event>'
@@ -3594,8 +3536,8 @@ to be aligned along the z-axis).
   end subroutine shower_write_lhef
 
 \eatline
-\nwendcode{}\nwbegindocs{340}\nwdocspar
-\nwenddocs{}\nwbegincode{341}\moddef{Shower core: procedures}\plusendmoddef
+\nwendcode{}\nwbegindocs{327}\nwdocspar
+\nwenddocs{}\nwbegincode{328}\moddef{Shower core: procedures}\plusendmoddef
   subroutine shower_replace_parent_by_hadron (shower, prt)
     type(shower_t), intent(inout) :: shower
     type(parton_t), intent(inout), target :: prt
@@ -3620,8 +3562,8 @@ to be aligned along the z-axis).
   end subroutine shower_replace_parent_by_hadron
 
 \eatline
-\nwendcode{}\nwbegindocs{342}\nwdocspar
-\nwenddocs{}\nwbegincode{343}\moddef{Shower core: procedures}\plusendmoddef
+\nwendcode{}\nwbegindocs{329}\nwdocspar
+\nwenddocs{}\nwbegincode{330}\moddef{Shower core: procedures}\plusendmoddef
   subroutine shower_get_first_ISR_scale_for_parton (shower, prt, tmax)
     type(shower_t), intent(inout) :: shower
     type(parton_t), intent(inout), target :: prt
@@ -3693,7 +3635,7 @@ to be aligned along the z-axis).
             zstep = min(zstep, maxz - z)
             integral = integral + zstep * (D_alpha_s_isr ((one - &
                  (z + 0.5_default * zstep)) * abs(prt%t)) / (abs(prt%t))) * &
-                 P_ggg (z + 0.5_default * zstep) * get_pdf (prt%initial%type, &
+                 P_ggg (z + 0.5_default * zstep) * shower%get_pdf (prt%initial%type, &
                  prt%x / (z + 0.5_default * zstep), abs(prt%t), 21)
             if (integral > final) then
                exit
@@ -3713,7 +3655,7 @@ to be aligned along the z-axis).
                pdfsum = zero
                do quark = -D_Nf, D_Nf
                   if (quark == 0) cycle
-                  pdfsum = pdfsum + get_pdf (prt%initial%type, &
+                  pdfsum = pdfsum + shower%get_pdf (prt%initial%type, &
                        prt%x / (z + 0.5_default * zstep), abs(prt%t), quark)
                end do
                integral = integral + zstep * (D_alpha_s_isr &
@@ -3736,7 +3678,7 @@ to be aligned along the z-axis).
             zstep = min(zstep, maxz - z)
             integral = integral + zstep * (D_alpha_s_isr ((one - &
                  (z + 0.5_default * zstep)) * abs(prt%t)) / (abs(prt%t))) * &
-                 P_qqg (z + 0.5_default * zstep) * get_pdf (prt%initial%type, &
+                 P_qqg (z + 0.5_default * zstep) * shower%get_pdf (prt%initial%type, &
                  prt%x / (z + 0.5_default * zstep), abs(prt%t), prt%type)
             if (integral > final) then
                exit
@@ -3755,7 +3697,7 @@ to be aligned along the z-axis).
                zstep = min(zstep, maxz - z)
                integral = integral + zstep * (D_alpha_s_isr &
                     ((one - (z + 0.5_default * zstep)) * abs(prt%t)) / (abs(prt%t))) * &
-                    P_gqq (z + 0.5_default * zstep) * get_pdf (prt%initial%type, &
+                    P_gqq (z + 0.5_default * zstep) * shower%get_pdf (prt%initial%type, &
                     prt%x / (z + 0.5_default * zstep), abs(prt%t), 21)
                if (integral > final) then
                   exit
@@ -3768,15 +3710,15 @@ to be aligned along the z-axis).
          end if
 
       end if
-      integral = integral / get_pdf (prt%initial%type, prt%x, &
+      integral = integral / shower%get_pdf (prt%initial%type, prt%x, &
            abs(prt%t), prt%type)
     end function integral_over_z_simple
 
   end subroutine shower_get_first_ISR_scale_for_parton
 
 \eatline
-\nwendcode{}\nwbegindocs{344}\nwdocspar
-\nwenddocs{}\nwbegincode{345}\moddef{Shower core: procedures}\plusendmoddef
+\nwendcode{}\nwbegindocs{331}\nwdocspar
+\nwenddocs{}\nwbegincode{332}\moddef{Shower core: procedures}\plusendmoddef
   subroutine shower_prepare_for_simulate_isr_pt (shower, interaction)
     type(shower_t), intent(inout) :: shower
     type(shower_interaction_t), intent(inout) :: interaction
@@ -3809,8 +3751,8 @@ to be aligned along the z-axis).
   end subroutine shower_prepare_for_simulate_isr_pt
 
 \eatline
-\nwendcode{}\nwbegindocs{346}\nwdocspar
-\nwenddocs{}\nwbegincode{347}\moddef{Shower core: procedures}\plusendmoddef
+\nwendcode{}\nwbegindocs{333}\nwdocspar
+\nwenddocs{}\nwbegincode{334}\moddef{Shower core: procedures}\plusendmoddef
   subroutine shower_prepare_for_simulate_isr_ana_test (shower, prt1, prt2)
     type(shower_t), intent(inout) :: shower
     type(parton_t), intent(inout), target :: prt1, prt2
@@ -3933,8 +3875,8 @@ to be aligned along the z-axis).
   end subroutine shower_prepare_for_simulate_isr_ana_test
 
 \eatline
-\nwendcode{}\nwbegindocs{348}\nwdocspar
-\nwenddocs{}\nwbegincode{349}\moddef{Shower core: procedures}\plusendmoddef
+\nwendcode{}\nwbegindocs{335}\nwdocspar
+\nwenddocs{}\nwbegincode{336}\moddef{Shower core: procedures (not used)}\plusendmoddef
   subroutine shower_prepare_for_simulate_isr_ana (shower, prt1, prt2)
     type(shower_t), intent(inout) :: shower
     type(parton_t), intent(inout), target :: prt1, prt2
@@ -3945,7 +3887,6 @@ to be aligned along the z-axis).
     integer :: i
 
     if (signal_is_pending ()) return
-    ! print *, " shower_prepare_for_simulate_isr_ana"
 
     if (.not. associated (prt1%initial) .or. &
         .not. associated (prt2%initial)) then
@@ -4034,12 +3975,11 @@ to be aligned along the z-axis).
        end if
     end do FIRST_BRANCHINGS
 
-    ! print *, "  shower_prepare_for_simulate_isr_ana finished"
   end subroutine shower_prepare_for_simulate_isr_ana
 
 \eatline
-\nwendcode{}\nwbegindocs{350}\nwdocspar
-\nwenddocs{}\nwbegincode{351}\moddef{Shower core: procedures}\plusendmoddef
+\nwendcode{}\nwbegindocs{337}\nwdocspar
+\nwenddocs{}\nwbegincode{338}\moddef{Shower core: procedures}\plusendmoddef
   !! subroutine shower_prepare_for_simulate_fsr_ana (shower, prt1, prt2)
   !!   type(shower_t), intent(inout) :: shower
   !!   type(parton_t), pointer :: prt1, prt2
@@ -4090,8 +4030,8 @@ to be aligned along the z-axis).
   !! end subroutine shower_prepare_for_simulate_fsr_ana
 
 \eatline
-\nwendcode{}\nwbegindocs{352}\nwdocspar
-\nwenddocs{}\nwbegincode{353}\moddef{Shower core: procedures}\plusendmoddef
+\nwendcode{}\nwbegindocs{339}\nwdocspar
+\nwenddocs{}\nwbegincode{340}\moddef{Shower core: procedures}\plusendmoddef
   subroutine shower_add_children_of_emitted_timelike_parton (shower, prt)
     type(shower_t), intent(inout) :: shower
     type(parton_t), pointer :: prt
@@ -4135,8 +4075,8 @@ to be aligned along the z-axis).
   end subroutine shower_add_children_of_emitted_timelike_parton
 
 \eatline
-\nwendcode{}\nwbegindocs{354}\nwdocspar
-\nwenddocs{}\nwbegincode{355}\moddef{Shower core: procedures}\plusendmoddef
+\nwendcode{}\nwbegindocs{341}\nwdocspar
+\nwenddocs{}\nwbegincode{342}\moddef{Shower core: procedures}\plusendmoddef
   subroutine shower_simulate_children_ana (shower,prt)
     type(shower_t), intent(inout) :: shower
     type(parton_t), intent(inout) :: prt
@@ -4149,7 +4089,7 @@ to be aligned along the z-axis).
     if (signal_is_pending ()) return
     gtoqq = 0
 
-    if (D_print) print *, " simulate_children_ana for parton " , prt%nr
+    if (D_print) print *, "shower_simulate_children_ana for parton " , prt%nr
 
     if (.not. associated (prt%child1) .or. .not. associated (prt%child2)) then
        call msg_error ("Shower: error in simulate_children_ana: no children.")
@@ -4234,8 +4174,8 @@ to be aligned along the z-axis).
   end subroutine shower_simulate_children_ana
 
 \eatline
-\nwendcode{}\nwbegindocs{356}\nwdocspar
-\nwenddocs{}\nwbegincode{357}\moddef{Set beam-remnants and internal partons as simulated}\endmoddef
+\nwendcode{}\nwbegindocs{343}\nwdocspar
+\nwenddocs{}\nwbegincode{344}\moddef{Set beam-remnants and internal partons as simulated}\endmoddef
 if (abs (prt%type) >= 90 .and. abs (prt%type) <= 93) then
    !!! prt is beam-remnant
    call parton_set_simulated (prt)
@@ -4249,8 +4189,8 @@ end if
 if (prt%child2%type == 94) then
    call parton_set_simulated (prt%child2)
 end if
-\nwendcode{}\nwbegindocs{358}\nwdocspar
-\nwenddocs{}\nwbegincode{359}\moddef{Repeat the simulation for the parton with the lower virtuality}\endmoddef
+\nwendcode{}\nwbegindocs{345}\nwdocspar
+\nwenddocs{}\nwbegincode{346}\moddef{Repeat the simulation for the parton with the lower virtuality}\endmoddef
 !!! virtuality : t - m**2 (assuming it's not fixed)
 if (prt%child1%type == 94 .and. prt%child2%type == 94) then
    call msg_fatal &
@@ -4285,8 +4225,8 @@ else
    integral(1) = zero
    call tao_random_number (random(1))
 end if
-\nwendcode{}\nwbegindocs{360}\nwdocspar
-\nwenddocs{}\nwbegincode{361}\moddef{Add children}\endmoddef
+\nwendcode{}\nwbegindocs{347}\nwdocspar
+\nwenddocs{}\nwbegincode{348}\moddef{Add children}\endmoddef
 do daughter = 1, 2
    if (signal_is_pending ()) return
    if (daughter == 1) then
@@ -4339,8 +4279,8 @@ do daughter = 1, 2
       end if
    end if
 end do
-\nwendcode{}\nwbegindocs{362}\nwdocspar
-\nwenddocs{}\nwbegincode{363}\moddef{Shower core: procedures}\plusendmoddef
+\nwendcode{}\nwbegindocs{349}\nwdocspar
+\nwenddocs{}\nwbegincode{350}\moddef{Shower core: procedures (not used)}\plusendmoddef
   subroutine shower_generate_next_fsr_branchings (shower)
     type(shower_t), intent(inout) :: shower
     integer i, index
@@ -4373,10 +4313,10 @@ end do
     end subroutine shower_generate_next_fsr_branchings
 
 \eatline
-\nwendcode{}\nwbegindocs{364}The recoiler is {\tt{}otherprt}. Instead of the random number and the
+\nwendcode{}\nwbegindocs{351}The recoiler is {\tt{}otherprt}. Instead of the random number and the
 exponential of the integral, we compare the logarithm of the random
 number and the integral.
-\nwenddocs{}\nwbegincode{365}\moddef{Shower core: procedures}\plusendmoddef
+\nwenddocs{}\nwbegincode{352}\moddef{Shower core: procedures}\plusendmoddef
   subroutine shower_isr_step_pt (shower, prt)
     type(shower_t), intent(inout) :: shower
     type(parton_t), target, intent(inout) :: prt
@@ -4405,7 +4345,7 @@ number and the integral.
     else
        prt%scale = scale - 0.5_default * scalestep
        factor = scalestep * (D_alpha_s_isr (prt%scale) / (prt%scale * &
-            get_pdf (prt%initial%type, prt%x, prt%scale, prt%type)))
+            shower%get_pdf (prt%initial%type, prt%x, prt%scale, prt%type)))
        integral = integral + factor * integral_over_z_isr_pt &
             (prt, otherprt, (random - integral) / factor)
        if (integral > random) then
@@ -4460,18 +4400,18 @@ number and the integral.
          if (parton_is_gluon (prt)) then
             QUARKS: do quark = -D_Nf, D_Nf
                if (quark == 0) cycle quarks
-               quarkpdfsum = quarkpdfsum + get_pdf &
+               quarkpdfsum = quarkpdfsum + shower%get_pdf &
                     (prt%initial%type, prt%x / z, prt%scale, quark)
             end do QUARKS
             !!! g -> gg or q -> gq
             integral = integral + (zstep / z) * ((P_ggg (z) + &
-                 P_ggg (one - z)) * get_pdf (prt%initial%type, &
+                 P_ggg (one - z)) * shower%get_pdf (prt%initial%type, &
                  prt%x / z, prt%scale, 21) + P_qqg (one - z) * quarkpdfsum)
          else if (parton_is_quark (prt)) then
             !!! q -> qg or g -> qq
             integral = integral + (zstep / z) * ( P_qqg (z) * &
-                 get_pdf (prt%initial%type, prt%x / z, prt%scale, prt%type) + &
-                 P_gqq(z) * get_pdf (prt%initial%type, prt%x / z, prt%scale, 21))
+                 shower%get_pdf (prt%initial%type, prt%x / z, prt%scale, prt%type) + &
+                 P_gqq(z) * shower%get_pdf (prt%initial%type, prt%x / z, prt%scale, 21))
          else
             ! call msg_fatal ("Bug neither quark nor gluon in" &
             !           // " integral_over_z_isr_pt")
@@ -4482,7 +4422,7 @@ number and the integral.
             !!! decide typ of father partons
               if (parton_is_gluon (prt)) then
                  if (temprand > (P_qqg (one - z) * quarkpdfsum) / &
-                      ((P_ggg (z) + P_ggg (one - z)) * get_pdf &
+                      ((P_ggg (z) + P_ggg (one - z)) * shower%get_pdf &
                       (prt%initial%type, prt%x / z, prt%scale, 21) &
                       + P_qqg (one - z) * quarkpdfsum)) then
                     !!! gluon => gluon + gluon
@@ -4493,23 +4433,23 @@ number and the integral.
                     r = temprand * quarkpdfsum
                     WHICH_QUARK: do quark = -D_Nf, D_Nf
                        if (quark == 0) cycle WHICH_QUARK
-                       if (r > quarkpdfsum - get_pdf (prt%initial%type, &
+                       if (r > quarkpdfsum - shower%get_pdf (prt%initial%type, &
                             prt%x / z, prt%scale, quark)) then
                           prt%aux_pt = quark
                           exit WHICH_QUARK
                        else
-                          quarkpdfsum = quarkpdfsum - get_pdf &
+                          quarkpdfsum = quarkpdfsum - shower%get_pdf &
                                (prt%initial%type, prt%x / z, prt%scale, quark)
                        end if
                     end do WHICH_QUARK
                  end if
 
               else if (parton_is_quark (prt)) then
-                 if (temprand > (P_qqg (z) * get_pdf (prt%initial%type, &
+                 if (temprand > (P_qqg (z) * shower%get_pdf (prt%initial%type, &
                       prt%x / z, prt%scale, prt%type)) / &
-                      (P_qqg (z) * get_pdf (prt%initial%type, prt%x / z, &
+                      (P_qqg (z) * shower%get_pdf (prt%initial%type, prt%x / z, &
                       prt%scale, prt%type) + &
-                      P_gqq (z) * get_pdf (prt%initial%type, prt%x / z, &
+                      P_gqq (z) * shower%get_pdf (prt%initial%type, prt%x / z, &
                       prt%scale, 21))) then
                     !!! gluon => quark + antiquark
                     prt%aux_pt = 21
@@ -4525,12 +4465,12 @@ number and the integral.
     end subroutine shower_isr_step_pt
 
 \eatline
-\nwendcode{}\nwbegindocs{366}This function returns a pointer to the parton with the next ISR
+\nwendcode{}\nwbegindocs{353}This function returns a pointer to the parton with the next ISR
 branching, while FSR branchings are ignored.
-\nwenddocs{}\nwbegincode{367}\moddef{Shower core: shower: TBP}\plusendmoddef
+\nwenddocs{}\nwbegincode{354}\moddef{Shower core: shower: TBP}\plusendmoddef
   procedure :: generate_next_isr_branching_veto => &
        shower_generate_next_isr_branching_veto
-\nwendcode{}\nwbegincode{368}\moddef{Shower core: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{355}\moddef{Shower core: procedures}\plusendmoddef
   function shower_generate_next_isr_branching_veto &
        (shower) result (next_brancher)
     class(shower_t), intent(inout) :: shower
@@ -4608,19 +4548,19 @@ branching, while FSR branchings are ignored.
 
        temp1 = (D_alpha_s_isr ((one - prt%z) * abs(prt%t)) &
             / sqrt (alphasxpdfmax))
-       temp2 = get_xpdf (prt%initial%type, prt%x, prt%t, &
+       temp2 = shower%get_xpdf (prt%initial%type, prt%x, prt%t, &
             prt%type) / sqrt (alphasxpdfmax)
-       temp3 = get_xpdf (prt%initial%type, prt%child1%x, prt%child1%t, &
+       temp3 = shower%get_xpdf (prt%initial%type, prt%child1%x, prt%child1%t, &
             prt%child1%type) / &
-            get_xpdf (prt%initial%type, prt%child1%x, prt%t, prt%child1%type)
+            shower%get_xpdf (prt%initial%type, prt%child1%x, prt%t, prt%child1%type)
        if (temp1 * temp2 * temp3 > one) then
           print *, "weights:", temp1, temp2, temp3
        end if
        weight = (D_alpha_s_isr ((one - prt%z) * abs(prt%t))) * &
-            get_xpdf (prt%initial%type, prt%x, prt%t, prt%type) * &
-            get_xpdf (prt%initial%type, prt%child1%x, prt%child1%t, &
+            shower%get_xpdf (prt%initial%type, prt%x, prt%t, prt%type) * &
+            shower%get_xpdf (prt%initial%type, prt%child1%x, prt%child1%t, &
             prt%child1%type) / &
-            get_xpdf (prt%initial%type, prt%child1%x, prt%t, prt%child1%type)
+            shower%get_xpdf (prt%initial%type, prt%child1%x, prt%t, prt%child1%type)
        if (weight > alphasxpdfmax) then
           print *, "Setting alphasxpdfmax from ", alphasxpdfmax, " to ", weight
           alphasxpdfmax = weight
@@ -4690,7 +4630,7 @@ branching, while FSR branchings are ignored.
       else
          print *, "neither quark nor gluon in generate_next_trial_scale"
       end if
-      F = F / get_xpdf (prt%child1%initial%type, prt%child1%x, &
+      F = F / shower%get_xpdf (prt%child1%initial%type, prt%child1%x, &
            prt%child1%t, prt%child1%type)
       prt%t = prt%t * random**(one / F)
       if (abs (prt%t) - parton_mass_squared (prt) < D_Min_t) then
@@ -4827,15 +4767,14 @@ branching, while FSR branchings are ignored.
   end function shower_generate_next_isr_branching_veto
 
 \eatline
-\nwendcode{}\nwbegindocs{369}\nwdocspar
-\nwenddocs{}\nwbegincode{370}\moddef{Shower core: procedures}\plusendmoddef
+\nwendcode{}\nwbegindocs{356}\nwdocspar
+\nwenddocs{}\nwbegincode{357}\moddef{Shower core: procedures}\plusendmoddef
   function shower_find_recoiler (shower, prt) result(recoiler)
     type(shower_t), intent(inout) :: shower
     type(parton_t), intent(inout), target :: prt
     type(parton_t), pointer :: recoiler
     type(parton_t), pointer :: otherprt1, otherprt2
     integer :: n_int
-    logical :: goon
     otherprt1 => null()
     otherprt2 => null()
     DO_INTERACTIONS: do n_int = 1, size(shower%interactions)
@@ -4898,8 +4837,8 @@ branching, while FSR branchings are ignored.
   end function shower_find_recoiler
 
 \eatline
-\nwendcode{}\nwbegindocs{371}\nwdocspar
-\nwenddocs{}\nwbegincode{372}\moddef{Shower core: procedures}\plusendmoddef
+\nwendcode{}\nwbegindocs{358}\nwdocspar
+\nwenddocs{}\nwbegincode{359}\moddef{Shower core: procedures}\plusendmoddef
   subroutine shower_isr_step (shower, prt)
     type(shower_t), intent(inout) :: shower
     type(parton_t), target, intent(inout) :: prt
@@ -5022,7 +4961,7 @@ branching, while FSR branchings are ignored.
         real(default), parameter :: zstepfactor = 0.1_default
         real(default), parameter :: zstepmin = 0.0001_default
         if (D_print) print *, "integral_over_z_part_isr"
-        pdf_divisor = get_pdf &
+        pdf_divisor = shower%get_pdf &
              (prt%initial%type, prt%child1%x, prt%t, prt%child1%type)
         z = minz
         s1 = shat + abs(otherprt%t) + abs(prt%child1%t)
@@ -5091,7 +5030,7 @@ branching, while FSR branchings are ignored.
               retvalue = retvalue + (zstep / prt%z) * &
                    (D_alpha_s_isr ((one - prt%z) * prt%t) * &
                    P_prt_to_child1 (prt) * &
-                   get_pdf (prt%initial%type, prt%child1%x / prt%z, &
+                   shower%get_pdf (prt%initial%type, prt%child1%x / prt%z, &
                    prt%t, prt%type)) / (abs(prt%t) * pdf_divisor)
            end if
            if (retvalue > final) then
@@ -5104,12 +5043,12 @@ branching, while FSR branchings are ignored.
     end subroutine shower_isr_step
 
 \eatline
-\nwendcode{}\nwbegindocs{373}This returns a pointer to the parton with the next ISR branching, again
+\nwendcode{}\nwbegindocs{360}This returns a pointer to the parton with the next ISR branching, again
 FSR branchings are ignored.
-\nwenddocs{}\nwbegincode{374}\moddef{Shower core: shower: TBP}\plusendmoddef
+\nwenddocs{}\nwbegincode{361}\moddef{Shower core: shower: TBP}\plusendmoddef
   procedure :: generate_next_isr_branching => &
        shower_generate_next_isr_branching
-\nwendcode{}\nwbegincode{375}\moddef{Shower core: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{362}\moddef{Shower core: procedures}\plusendmoddef
   function shower_generate_next_isr_branching &
        (shower) result (next_brancher)
     class(shower_t), intent(inout) :: shower
@@ -5173,11 +5112,11 @@ FSR branchings are ignored.
     end function shower_generate_next_isr_branching
 
 \eatline
-\nwendcode{}\nwbegindocs{376}This is a loop which searches for all emitted and branched partons.
-\nwenddocs{}\nwbegincode{377}\moddef{Shower core: shower: TBP}\plusendmoddef
+\nwendcode{}\nwbegindocs{363}This is a loop which searches for all emitted and branched partons.
+\nwenddocs{}\nwbegincode{364}\moddef{Shower core: shower: TBP}\plusendmoddef
   procedure :: generate_fsr_for_isr_partons => &
        shower_generate_fsr_for_partons_emitted_in_ISR
-\nwendcode{}\nwbegincode{378}\moddef{Shower core: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{365}\moddef{Shower core: procedures}\plusendmoddef
   subroutine shower_generate_fsr_for_partons_emitted_in_ISR (shower)
     class(shower_t), intent(inout) :: shower
     integer :: n_int, i
@@ -5211,12 +5150,12 @@ FSR branchings are ignored.
   end subroutine shower_generate_fsr_for_partons_emitted_in_ISR
 
 \eatline
-\nwendcode{}\nwbegindocs{379}This executes the branching generated by
+\nwendcode{}\nwbegindocs{366}This executes the branching generated by
 {\tt{}shower{\char95}generate{\char95}next{\char95}isr{\char95}branching}, that means it generates the
 flavours, momenta, etc.
-\nwenddocs{}\nwbegincode{380}\moddef{Shower core: shower: TBP}\plusendmoddef
+\nwenddocs{}\nwbegincode{367}\moddef{Shower core: shower: TBP}\plusendmoddef
   procedure :: execute_next_isr_branching => shower_execute_next_isr_branching
-\nwendcode{}\nwbegincode{381}\moddef{Shower core: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{368}\moddef{Shower core: procedures}\plusendmoddef
   subroutine shower_execute_next_isr_branching (shower, prtp)
     class(shower_t), intent(inout) :: shower
     type(parton_pointer_t), intent(inout) :: prtp
@@ -5422,8 +5361,8 @@ flavours, momenta, etc.
     end subroutine shower_execute_next_isr_branching
 
 \eatline
-\nwendcode{}\nwbegindocs{382}\nwdocspar
-\nwenddocs{}\nwbegincode{383}\moddef{Shower core: procedures}\plusendmoddef
+\nwendcode{}\nwbegindocs{369}\nwdocspar
+\nwenddocs{}\nwbegincode{370}\moddef{Shower core: procedures}\plusendmoddef
   subroutine shower_remove_parents_and_stuff (shower, prt)
     type(shower_t), intent(inout) :: shower
     type(parton_t), intent(inout), target :: prt
@@ -5471,10 +5410,10 @@ flavours, momenta, etc.
   end subroutine shower_remove_parents_and_stuff
 
 \eatline
-\nwendcode{}\nwbegindocs{384}\nwdocspar
-\nwenddocs{}\nwbegincode{385}\moddef{Shower core: shower: TBP}\plusendmoddef
+\nwendcode{}\nwbegindocs{371}\nwdocspar
+\nwenddocs{}\nwbegincode{372}\moddef{Shower core: shower: TBP}\plusendmoddef
   procedure :: get_ISR_scale => shower_get_ISR_scale
-\nwendcode{}\nwbegincode{386}\moddef{Shower core: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{373}\moddef{Shower core: procedures}\plusendmoddef
 !!! MERGIND: not sure which function is the right one
 !!!    function shower_get_ISR_scale(shower) result (scale)
 !!!      class(shower_t), intent(in) :: shower
@@ -5525,10 +5464,10 @@ flavours, momenta, etc.
   end function shower_get_ISR_scale
 
 \eatline
-\nwendcode{}\nwbegindocs{387}\nwdocspar
-\nwenddocs{}\nwbegincode{388}\moddef{Shower core: shower: TBP}\plusendmoddef
+\nwendcode{}\nwbegindocs{374}\nwdocspar
+\nwenddocs{}\nwbegincode{375}\moddef{Shower core: shower: TBP}\plusendmoddef
   procedure :: set_max_isr_scale => shower_set_max_isr_scale
-\nwendcode{}\nwbegincode{389}\moddef{Shower core: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{376}\moddef{Shower core: procedures}\plusendmoddef
   subroutine shower_set_max_isr_scale (shower, newscale)
     class(shower_t), intent(inout) :: shower
     real(default), intent(in) :: newscale
@@ -5589,12 +5528,12 @@ flavours, momenta, etc.
     end subroutine shower_set_max_isr_scale
 
 \eatline
-\nwendcode{}\nwbegindocs{390}\nwdocspar
-\nwenddocs{}\nwbegincode{391}\moddef{Shower core: shower: TBP}\plusendmoddef
+\nwendcode{}\nwbegindocs{377}\nwdocspar
+\nwenddocs{}\nwbegincode{378}\moddef{Shower core: shower: TBP}\plusendmoddef
   procedure :: interaction_generate_fsr_2ton => &
        shower_interaction_generate_fsr_2ton
-\nwendcode{}\nwbegindocs{392}\nwdocspar
-\nwenddocs{}\nwbegincode{393}\moddef{Shower core: procedures}\plusendmoddef
+\nwendcode{}\nwbegindocs{379}\nwdocspar
+\nwenddocs{}\nwbegincode{380}\moddef{Shower core: procedures}\plusendmoddef
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!! new version
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -5629,10 +5568,10 @@ flavours, momenta, etc.
   end subroutine shower_interaction_generate_fsr_2ton
 
 \eatline
-\nwendcode{}\nwbegindocs{394} Perform the FSR for one parton, it is assumed, that the parton
+\nwendcode{}\nwbegindocs{381} Perform the FSR for one parton, it is assumed, that the parton
 already branched. Hence, its children are to be simulated this procedure is
 intended for branched FSR-partons emitted in the ISR.
-\nwenddocs{}\nwbegincode{395}\moddef{Shower core: procedures}\plusendmoddef
+\nwenddocs{}\nwbegincode{382}\moddef{Shower core: procedures}\plusendmoddef
   subroutine shower_parton_generate_fsr (shower, prt)
     type(shower_t), intent(inout) :: shower
     type(parton_t), intent(inout), target :: prt
@@ -5657,8 +5596,8 @@ intended for branched FSR-partons emitted in the ISR.
   end subroutine shower_parton_generate_fsr
 
 \eatline
-\nwendcode{}\nwbegindocs{396}\nwdocspar
-\nwenddocs{}\nwbegincode{397}\moddef{Shower core: procedures}\plusendmoddef
+\nwendcode{}\nwbegindocs{383}\nwdocspar
+\nwenddocs{}\nwbegincode{384}\moddef{Shower core: procedures}\plusendmoddef
     recursive subroutine shower_parton_pointer_array_generate_fsr &
          (shower, partons)
       type(shower_t), intent(inout) :: shower
@@ -5707,8 +5646,8 @@ intended for branched FSR-partons emitted in the ISR.
     end subroutine shower_parton_pointer_array_generate_fsr
 
 \eatline
-\nwendcode{}\nwbegindocs{398}\nwdocspar
-\nwenddocs{}\nwbegincode{399}\moddef{Shower core: procedures}\plusendmoddef
+\nwendcode{}\nwbegindocs{385}\nwdocspar
+\nwenddocs{}\nwbegincode{386}\moddef{Shower core: procedures}\plusendmoddef
   recursive subroutine shower_parton_update_color_connections &
        (shower, prt)
     type(shower_t), intent(inout) :: shower
@@ -5779,12 +5718,13 @@ intended for branched FSR-partons emitted in the ISR.
   end subroutine shower_parton_update_color_connections
 
 \eatline
-\nwendcode{}\nwbegindocs{400}The next two routines are for PDFs. Wrapper function to return
-parton densities. Note that the arguments for {\tt{}evolvepdf} need to be
-defined as {\tt{}double} explicitly.
-\nwenddocs{}\nwbegincode{401}\moddef{Shower core: procedures}\plusendmoddef
-  function get_pdf (mother, x, Q2, daughter) result (pdf)
-    !   type(shower_t), intent(in), pointer :: shower
+\nwendcode{}\nwbegindocs{387}The next two routines are for PDFs. Wrapper function to return
+parton densities. 
+\nwenddocs{}\nwbegincode{388}\moddef{Shower core: shower: TBP}\plusendmoddef
+  procedure :: get_pdf => shower_get_pdf
+\nwendcode{}\nwbegincode{389}\moddef{Shower core: procedures}\plusendmoddef
+  function shower_get_pdf (shower, mother, x, Q2, daughter) result (pdf)
+    class(shower_t), intent(inout) :: shower
     integer, intent(in) :: mother, daughter
     real(default), intent(in) :: x, Q2
     real(default) :: pdf
@@ -5792,12 +5732,12 @@ defined as {\tt{}double} explicitly.
     real(double), save :: lastx, lastQ2 = 0._double
 
     if (abs (mother) /= 2212) then
+       pdf = zero
        call msg_fatal ("Shower: pdf only implemented for (anti-)proton")
     else
        if (x > zero .and. x < one) then
           if (dble(Q2) /= lastQ2 .or. dble(x) /= lastx) then
-             ! call evolvePDF(DBLE(x),sqrt(abs(DBLE(Q2))),f)  !! LHAPDF
-             call shower_pdf_func &
+             call shower%pdf_func &
                   (shower_pdf_set, dble(x), sqrt (abs (dble(Q2))), f)
           end if
           if (abs (daughter) >= 1 .and. abs (daughter) <= 6) then
@@ -5814,14 +5754,15 @@ defined as {\tt{}double} explicitly.
     end if
     lastQ2 = dble(Q2)
     lastx  = dble(x)
-  end function get_pdf
+  end function shower_get_pdf
 
 \eatline
-\nwendcode{}\nwbegindocs{402}Wrapper function to return momentum densities. The arguments for
-{\tt{}evolvepdf} need to be defined as {\tt{}double} explicitly.
-\nwenddocs{}\nwbegincode{403}\moddef{Shower core: procedures}\plusendmoddef
-  function get_xpdf (mother, x, Q2, daughter) result (pdf)
-    !   type(shower_t), intent(in), pointer :: shower
+\nwendcode{}\nwbegindocs{390}Wrapper function to return momentum densities. 
+\nwenddocs{}\nwbegincode{391}\moddef{Shower core: shower: TBP}\plusendmoddef
+  procedure :: get_xpdf => shower_get_xpdf
+\nwendcode{}\nwbegincode{392}\moddef{Shower core: procedures}\plusendmoddef
+  function shower_get_xpdf (shower, mother, x, Q2, daughter) result (pdf)
+    class(shower_t), intent(inout) :: shower
     integer, intent(in) :: mother, daughter
     real(default), intent(in) :: x, Q2
     real(default) :: pdf
@@ -5829,12 +5770,12 @@ defined as {\tt{}double} explicitly.
     real(double), save :: lastx, lastQ2 =0._double
 
     if (abs (mother) /= 2212) then
+       pdf = zero
        call msg_fatal ("Shower: pdf only implemented for (anti-)proton")
     else
        if (x > zero .and. x < one) then
           if (dble(Q2) /= lastQ2 .or. dble(x) /= lastx) then
-             ! call evolvePDF(DBLE(x),sqrt(abs(DBLE(Q2))),f)  !! LHAPDF
-             call shower_pdf_func &
+             call shower%pdf_func &
                   (shower_pdf_set, dble(x), sqrt (abs (dble(Q2))), f)
           end if
           if (abs(daughter) >= 1 .and. abs(daughter) <= 6) then
@@ -5851,18 +5792,38 @@ defined as {\tt{}double} explicitly.
     end if
     lastQ2 = dble(Q2)
     lastx  = dble(x)
-  end function get_xpdf
+  end function shower_get_xpdf
 
 \eatline
-\nwendcode{}\nwbegindocs{404}\nwdocspar
+\nwendcode{}\nwbegindocs{393}\nwdocspar
+\nwenddocs{}\nwbegincode{394}\moddef{Shower core: shower: TBP}\plusendmoddef
+  procedure :: pdf_func => shower_pdf_func
+\nwendcode{}\nwbegincode{395}\moddef{Shower core: procedures}\plusendmoddef
+  subroutine shower_pdf_func (shower, set, x, q2, f)
+    class(shower_t), intent(inout) :: shower
+    integer, intent(in) :: set
+    real(double) :: x, q2
+    real(double), dimension(-6:6), intent(out) :: f
+    select case (shower_pdf_type)
+    case (STRF_PDF_BUILTIN) 
+       call pdf_evolve_LHAPDF (set, x, q2, f)
+    case (STRF_LHAPDF6)
+       call shower%pdf%evolve_pdfm (x, q2, f)
+    case (STRF_LHAPDF5)       
+       call evolvePDFM (set, x, q2, f)
+    case default
+       call msg_fatal ("Shower PDF function: unknown PDF method.")   
+    end select
+  end subroutine shower_pdf_func
+\nwendcode{}\nwbegindocs{396}\nwdocspar
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Talking to PYTHIA}
-\nwenddocs{}\nwbegincode{405}\moddef{\code{}shower{\char95}topythia.f90\edoc{}}\endmoddef
+\nwenddocs{}\nwbegincode{397}\moddef{\code{}shower{\char95}topythia.f90\edoc{}}\endmoddef
 \LA{}File header\RA{}
 
 module shower_topythia
 
-\LA{}Use kinds\RA{}
+\LA{}Use kinds\RA{} !NODEP!
   use lorentz !NODEP!
   use shower_base
   use shower_partons
@@ -5879,11 +5840,11 @@ contains
   end module shower_topythia
 
 \eatline
-\nwendcode{}\nwbegindocs{406}\nwdocspar
-\nwenddocs{}\nwbegincode{407}\moddef{Shower2pythia: public}\endmoddef
+\nwendcode{}\nwbegindocs{398}\nwdocspar
+\nwenddocs{}\nwbegincode{399}\moddef{Shower2pythia: public}\endmoddef
   public :: shower_converttopythia
-\nwendcode{}\nwbegindocs{408}\nwdocspar
-\nwenddocs{}\nwbegincode{409}\moddef{Shower2pythia: procedures}\endmoddef
+\nwendcode{}\nwbegindocs{400}\nwdocspar
+\nwenddocs{}\nwbegincode{401}\moddef{Shower2pythia: procedures}\endmoddef
   subroutine shower_converttopythia (shower)
     IMPLICIT DOUBLE PRECISION(A-H, O-Z)
     IMPLICIT INTEGER(I-N)
@@ -6023,8 +5984,8 @@ contains
   end subroutine shower_converttopythia
 
 \eatline
-\nwendcode{}\nwbegindocs{410}\nwdocspar
-\nwenddocs{}\nwbegincode{411}\moddef{Shower2pythia: procedures}\plusendmoddef
+\nwendcode{}\nwbegindocs{402}\nwdocspar
+\nwenddocs{}\nwbegincode{403}\moddef{Shower2pythia: procedures}\plusendmoddef
   subroutine shower_transfer_final_partons_to_pythia (shower, first)
     IMPLICIT DOUBLE PRECISION(A-H, O-Z)
     IMPLICIT INTEGER(I-N)
@@ -6168,8 +6129,8 @@ contains
   end subroutine shower_transfer_final_partons_to_pythia
 
 \eatline
-\nwendcode{}\nwbegindocs{412}\nwdocspar
-\nwenddocs{}\nwbegincode{413}\moddef{Shower2pythia: procedures}\plusendmoddef
+\nwendcode{}\nwbegindocs{404}\nwdocspar
+\nwenddocs{}\nwbegincode{405}\moddef{Shower2pythia: procedures}\plusendmoddef
   recursive subroutine shower_topythia_recursive_weighted (prt, mode, first)
     IMPLICIT DOUBLE PRECISION(A-H, O-Z)
     IMPLICIT INTEGER(I-N)
@@ -6310,8 +6271,8 @@ contains
   end subroutine shower_topythia_recursive_weighted
 
 \eatline
-\nwendcode{}\nwbegindocs{414}\nwdocspar
-\nwenddocs{}\nwbegincode{415}\moddef{Shower2pythia: procedures}\plusendmoddef
+\nwendcode{}\nwbegindocs{406}\nwdocspar
+\nwenddocs{}\nwbegincode{407}\moddef{Shower2pythia: procedures}\plusendmoddef
   recursive subroutine shower_topythia_recursive (prt, mode,first)
     IMPLICIT DOUBLE PRECISION(A-H, O-Z)
     IMPLICIT INTEGER(I-N)
@@ -6376,9 +6337,9 @@ contains
   end subroutine shower_topythia_recursive
 
 \eatline
-\nwendcode{}\nwbegindocs{416}\nwdocspar
+\nwendcode{}\nwbegindocs{408}\nwdocspar
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\nwenddocs{}\nwbegincode{417}\moddef{\code{}pythia{\char95}up.f\edoc{}}\endmoddef
+\nwenddocs{}\nwbegincode{409}\moddef{\code{}pythia{\char95}up.f\edoc{}}\endmoddef
 C*********************************************************************
 C*********************************************************************
 C*                                                                  **
@@ -6728,21 +6689,23 @@ C...Make decision here.
       END
 
 \eatline
-\nwendcode{}\nwbegindocs{418}\nwdocspar
+\nwendcode{}\nwbegindocs{410}\nwdocspar
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Matching}
 \subsection{MLM matching}
-\nwenddocs{}\nwbegincode{419}\moddef{\code{}mlm{\char95}matching.f90\edoc{}}\endmoddef
+\nwenddocs{}\nwbegincode{411}\moddef{\code{}mlm{\char95}matching.f90\edoc{}}\endmoddef
 \LA{}File header\RA{}
 
 module mlm_matching
 
-\LA{}Use kinds\RA{}
+\LA{}Use kinds\RA{} !NODEP!
   use kinds, only: double !NODEP!
+  use io_units !NODEP!
+  use format_utils, only: write_separator !NODEP!
   use constants !NODEP!
   use diagnostics !NODEP!
-  use lorentz !NODEP!
   use file_utils !NODEP!
+  use lorentz !NODEP!
 
 \LA{}Standard module head\RA{}
 
@@ -6756,11 +6719,11 @@ contains
 
 end module mlm_matching
 \eatline
-\nwendcode{}\nwbegindocs{420}This is a container for the (colored) parton momenta as well as the
+\nwendcode{}\nwbegindocs{412}This is a container for the (colored) parton momenta as well as the
 jet momenta.
-\nwenddocs{}\nwbegincode{421}\moddef{MLM matching: public}\endmoddef
+\nwenddocs{}\nwbegincode{413}\moddef{MLM matching: public}\endmoddef
   public :: mlm_matching_data_t
-\nwendcode{}\nwbegincode{422}\moddef{MLM matching: types}\endmoddef
+\nwendcode{}\nwbegincode{414}\moddef{MLM matching: types}\endmoddef
   type :: mlm_matching_data_t
      logical :: is_hadron_collision = .false.
      type(vector4_t), dimension(:), allocatable, public :: P_ME
@@ -6770,10 +6733,10 @@ jet momenta.
   end type mlm_matching_data_t
 
 \eatline
-\nwendcode{}\nwbegindocs{423}\nwdocspar
-\nwenddocs{}\nwbegincode{424}\moddef{MLM matching: public}\plusendmoddef
+\nwendcode{}\nwbegindocs{415}\nwdocspar
+\nwenddocs{}\nwbegincode{416}\moddef{MLM matching: public}\plusendmoddef
   public :: mlm_matching_settings_t
-\nwendcode{}\nwbegincode{425}\moddef{MLM matching: types}\plusendmoddef
+\nwendcode{}\nwbegincode{417}\moddef{MLM matching: types}\plusendmoddef
   type :: mlm_matching_settings_t
      real(default) :: mlm_Qcut_ME = one
      real(default) :: mlm_Qcut_PS = one
@@ -6789,15 +6752,15 @@ jet momenta.
   end type mlm_matching_settings_t
 
 \eatline
-\nwendcode{}\nwbegindocs{426}\nwdocspar
-\nwenddocs{}\nwbegincode{427}\moddef{MLM matching: public}\plusendmoddef
+\nwendcode{}\nwbegindocs{418}\nwdocspar
+\nwenddocs{}\nwbegincode{419}\moddef{MLM matching: public}\plusendmoddef
   public :: mlm_matching_settings_write
-\nwendcode{}\nwbegincode{428}\moddef{MLM matching: procedures}\endmoddef
+\nwendcode{}\nwbegincode{420}\moddef{MLM matching: procedures}\endmoddef
   subroutine mlm_matching_settings_write (settings, unit)
     type(mlm_matching_settings_t), intent(in) :: settings
     integer, intent(in), optional :: unit
     integer :: u
-    u = output_unit (unit);  if (u < 0)  return
+    u = given_output_unit (unit);  if (u < 0)  return
     write (u, "(3x,A,ES19.12)") &
          "mlm_Qcut_ME                  = ", settings%mlm_Qcut_ME
     write (u, "(3x,A,ES19.12)") &
@@ -6825,16 +6788,16 @@ jet momenta.
   end subroutine mlm_matching_settings_write
 
 \eatline
-\nwendcode{}\nwbegindocs{429}\nwdocspar
-\nwenddocs{}\nwbegincode{430}\moddef{MLM matching: public}\plusendmoddef
+\nwendcode{}\nwbegindocs{421}\nwdocspar
+\nwenddocs{}\nwbegincode{422}\moddef{MLM matching: public}\plusendmoddef
   public :: mlm_matching_data_write
-\nwendcode{}\nwbegincode{431}\moddef{MLM matching: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{423}\moddef{MLM matching: procedures}\plusendmoddef
   subroutine mlm_matching_data_write (data, unit)
     type(mlm_matching_data_t), intent(in) :: data
     integer, intent(in), optional :: unit
     integer :: i
     integer :: u
-    u = output_unit (unit);  if (u < 0)  return
+    u = given_output_unit (unit);  if (u < 0)  return
 
     write (u, "(1x,A)") "MLM matching data:"
     write (u, "(3x,A)") "Momenta of ME partons:"
@@ -6880,10 +6843,10 @@ jet momenta.
   end subroutine mlm_matching_data_write
 
 \eatline
-\nwendcode{}\nwbegindocs{432}\nwdocspar
-\nwenddocs{}\nwbegincode{433}\moddef{MLM matching: public}\plusendmoddef
+\nwendcode{}\nwbegindocs{424}\nwdocspar
+\nwenddocs{}\nwbegincode{425}\moddef{MLM matching: public}\plusendmoddef
   public :: mlm_matching_data_final
-\nwendcode{}\nwbegincode{434}\moddef{MLM matching: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{426}\moddef{MLM matching: procedures}\plusendmoddef
   subroutine mlm_matching_data_final (data)
     type(mlm_matching_data_t), intent(inout) :: data
     ! if (allocated (data%P_ME))  deallocate(data%P_ME)
@@ -6893,10 +6856,10 @@ jet momenta.
   end subroutine mlm_matching_data_final
 
 \eatline
-\nwendcode{}\nwbegindocs{435}\nwdocspar
-\nwenddocs{}\nwbegincode{436}\moddef{MLM matching: public}\plusendmoddef
+\nwendcode{}\nwbegindocs{427}\nwdocspar
+\nwenddocs{}\nwbegincode{428}\moddef{MLM matching: public}\plusendmoddef
   public :: mlm_matching_apply
-\nwendcode{}\nwbegincode{437}\moddef{MLM matching: procedures}\plusendmoddef
+\nwendcode{}\nwbegincode{429}\moddef{MLM matching: procedures}\plusendmoddef
   subroutine mlm_matching_apply (data, settings, vetoed)
     type(mlm_matching_data_t), intent(inout) :: data
     type(mlm_matching_settings_t), intent(in) :: settings
@@ -6944,8 +6907,8 @@ jet momenta.
   end subroutine mlm_matching_apply
 
 \eatline
-\nwendcode{}\nwbegindocs{438}\nwdocspar
-\nwenddocs{}\nwbegincode{439}\moddef{Set \code{}n{\char95}jets{\char95}ME/PS\edoc{} from \code{}data\edoc{} (or equal zero)}\endmoddef
+\nwendcode{}\nwbegindocs{430}\nwdocspar
+\nwenddocs{}\nwbegincode{431}\moddef{Set \code{}n{\char95}jets{\char95}ME/PS\edoc{} from \code{}data\edoc{} (or equal zero)}\endmoddef
 if (allocated (data%P_ME)) then
    ! print *, "number of partons after ME: ", size(data%P_ME)
    n_jets_ME = size (data%P_ME)
@@ -6958,8 +6921,8 @@ if (allocated (data%p_PS)) then
 else
    n_jets_PS = 0
 end if
-\nwendcode{}\nwbegindocs{440}\nwdocspar
-\nwenddocs{}\nwbegincode{441}\moddef{Jet clustering for partons after matrix element}\endmoddef
+\nwendcode{}\nwbegindocs{432}\nwdocspar
+\nwenddocs{}\nwbegincode{433}\moddef{Jet clustering for partons after matrix element}\endmoddef
 if (n_jets_ME > 0) then
    ycut = (settings%mlm_ptmin)**2
    ! ycut = settings%mlm_Qcut_ME**2
@@ -6998,8 +6961,8 @@ if (n_jets_ME > 0) then
    deallocate (Y)
    deallocate (PP)
 end if
-\nwendcode{}\nwbegindocs{442}\nwdocspar
-\nwenddocs{}\nwbegincode{443}\moddef{Jet clustering for partons after shower}\endmoddef
+\nwendcode{}\nwbegindocs{434}\nwdocspar
+\nwenddocs{}\nwbegincode{435}\moddef{Jet clustering for partons after shower}\endmoddef
 if (n_jets_PS > 0) then
    ycut = (settings%mlm_ptmin + max (settings%mlm_ETclusminE, &
         settings%mlm_ETclusfactor * settings%mlm_ptmin))**2
@@ -7054,15 +7017,15 @@ if (n_jets_PS > 0) then
 else
    n_jets_PS_atycut = 0
 end if
-\nwendcode{}\nwbegindocs{444}\nwdocspar
-\nwenddocs{}\nwbegincode{445}\moddef{Set \code{}imode\edoc{} for lepton or hadron collisions}\endmoddef
+\nwendcode{}\nwbegindocs{436}\nwdocspar
+\nwenddocs{}\nwbegincode{437}\moddef{Set \code{}imode\edoc{} for lepton or hadron collisions}\endmoddef
 if (data%is_hadron_collision) then
    imode = settings%kt_imode_hadronic
 else
    imode = settings%kt_imode_leptonic
 end if
-\nwendcode{}\nwbegindocs{446}\nwdocspar
-\nwenddocs{}\nwbegincode{447}\moddef{Veto: too many or not enough jets after PS}\endmoddef
+\nwendcode{}\nwbegindocs{438}\nwdocspar
+\nwenddocs{}\nwbegincode{439}\moddef{Veto: too many or not enough jets after PS}\endmoddef
 if (n_jets_PS_atycut < n_jets_ME) then
    ! print *, "DISCARDING: Not enough PS jets: ", n_jets_PS_atycut
    return
@@ -7071,8 +7034,8 @@ if (n_jets_PS_atycut > n_jets_ME .and. n_jets_ME /= settings%mlm_nmaxMEjets) the
    ! print *, "DISCARDING: Too many PS jets: ", n_jets_PS_atycut
    return
 end if
-\nwendcode{}\nwbegindocs{448}\nwdocspar
-\nwenddocs{}\nwbegincode{449}\moddef{Cluster ME jets with PS jets one at a time}\endmoddef
+\nwendcode{}\nwbegindocs{440}\nwdocspar
+\nwenddocs{}\nwbegincode{441}\moddef{Cluster ME jets with PS jets one at a time}\endmoddef
 if (allocated(data%JETS_PS)) then
    ! print *, "number of jets after PS: ", size(data%JETS_PS)
    n_jets_PS = size (data%JETS_PS)
@@ -7133,8 +7096,8 @@ if (n_jets_ME > 0 .and. n_jets_PS > 0) then
       end if
    end do
 end if
-\nwendcode{}\nwbegindocs{450}\nwdocspar
-\nwenddocs{}\nwbegincode{451}\moddef{MLM matching: procedures}\plusendmoddef
+\nwendcode{}\nwbegindocs{442}\nwdocspar
+\nwenddocs{}\nwbegincode{443}\moddef{MLM matching: procedures}\plusendmoddef
 !C-----------------------------------------------------------------------
 !C-----------------------------------------------------------------------
 !C-----------------------------------------------------------------------
@@ -7256,6 +7219,7 @@ end if
 !C-----------------------------------------------------------------------
 !C-----------------------------------------------------------------------
 !C-----------------------------------------------------------------------
+\nwendcode{}\nwbegincode{444}\moddef{MLM matching: procedures (not used)}\endmoddef
   SUBROUTINE KTCLUS(IMODE,PP,NN,ECUT,Y,*)
     IMPLICIT NONE
 !C---DO CLUSTER ANALYSIS OF PARTICLES IN PP
@@ -7281,6 +7245,7 @@ end if
 999 RETURN 1
   END SUBROUTINE KTCLUS
 !C-----------------------------------------------------------------------
+\nwendcode{}\nwbegincode{445}\moddef{MLM matching: procedures}\plusendmoddef
   SUBROUTINE KTCLUR(IMODE,PP,NN,R,ECUT,Y,*)
     IMPLICIT NONE
 !C---DO CLUSTER ANALYSIS OF PARTICLES IN PP
@@ -7337,7 +7302,7 @@ end if
     IF (NN.LT.2.AND.TYPE.EQ.1) CALL KTWARN('KT-LT2',100,*999)
     IF (TYPE.LT.1.OR.TYPE.GT.4.OR.ANGL.LT.1.OR.ANGL.GT.4.OR. &
          MONO.LT.1.OR.MONO.GT.2.OR.RECO.LT.1.OR.RECO.GT.3) CALL KTWARN('KTCLUS',101,*999)
-    u = output_unit ()
+    u = given_output_unit ()
     IF (FIRST) THEN
        WRITE (u,'(/,1X,54(''*'')/A)') &
             ' KTCLUS: written by Mike Seymour, July 1992.'
@@ -7446,6 +7411,7 @@ end if
 999 RETURN 1
   END SUBROUTINE KTCLUR
 !C-----------------------------------------------------------------------
+\nwendcode{}\nwbegincode{446}\moddef{MLM matching: procedures (not used)}\plusendmoddef
       SUBROUTINE KTYCUT(ECUT,NY,YCUT,NJET,*)
       IMPLICIT NONE
 !C---COUNT THE NUMBER OF JETS AT EACH VALUE OF YCUT, FOR EVENT WHICH HAS
@@ -7610,6 +7576,7 @@ end if
       RETURN
 999   RETURN 1
     END SUBROUTINE KTJOIN
+\nwendcode{}\nwbegincode{447}\moddef{MLM matching: procedures}\plusendmoddef
 !C-----------------------------------------------------------------------
     SUBROUTINE KTRECO(RECO,PP,NN,ECUT,YCUT,YMAC,PJET,JET,NJET,NSUB,*)
       IMPLICIT NONE
@@ -7712,6 +7679,7 @@ end if
 999   RETURN 1
     END SUBROUTINE KTRECO
 !C-----------------------------------------------------------------------
+\nwendcode{}\nwbegincode{448}\moddef{MLM matching: procedures (not used)}\plusendmoddef
     SUBROUTINE KTINCL(RECO,PP,NN,PJET,JET,NJET,*)
       IMPLICIT NONE
 !C---RECONSTRUCT KINEMATICS OF JET SYSTEM, WHICH HAS ALREADY BEEN
@@ -8166,6 +8134,7 @@ end if
       RETURN
 999   RETURN 1
     END SUBROUTINE KTHADR
+\nwendcode{}\nwbegincode{449}\moddef{MLM matching: procedures}\plusendmoddef
 !C-----------------------------------------------------------------------
     FUNCTION KTPAIR(ANGL,P,Q,ANGLE)
       IMPLICIT NONE
@@ -8174,7 +8143,7 @@ end if
 !C   WHERE f(eta,phi)=2(COSH(eta)-COS(phi)) IS THE QCD EMISSION METRIC
 !C---IF ANGLE<0, IT IS SET TO THE ANGULAR PART OF THE LOCAL KT ON RETURN
 !C   IF ANGLE>0, IT IS USED INSTEAD OF THE ANGULAR PART OF THE LOCAL KT
-      INTEGER ANGL,I
+      INTEGER ANGL
 ! CHANGE      DOUBLE PRECISION P(9),Q(9),KTPAIR,R,KTMDPI,ANGLE,ETA,PHI,ESQ
       DOUBLE PRECISION P(9),Q(9),KTPAIR,R,ANGLE,ETA,PHI,ESQ
 !C---COMPONENTS OF MOMENTA ARE PX,PY,PZ,E,1/P,PT,ETA,PHI,PT**2
@@ -8453,6 +8422,7 @@ end if
       KTS(J)=KTS(N)
     END SUBROUTINE KTMOVE
 !C-----------------------------------------------------------------------
+\nwendcode{}\nwbegincode{450}\moddef{MLM matching: procedures (not used)}\plusendmoddef
     SUBROUTINE KTUNIT(R)
       IMPLICIT NONE
 !C   SET R EQUAL TO THE 4 BY 4 IDENTITY MATRIX
@@ -8666,6 +8636,7 @@ end if
       END DO
     END SUBROUTINE KTINVT
 !C-----------------------------------------------------------------------
+\nwendcode{}\nwbegincode{451}\moddef{MLM matching: procedures}\plusendmoddef
     FUNCTION KTMDPI(PHI)
       IMPLICIT NONE
 !C---RETURNS PHI, MOVED ONTO THE RANGE [-PI,PI)
@@ -8725,11 +8696,11 @@ end if
 
 module ckkw_matching
 
-\LA{}Use kinds\RA{}
+\LA{}Use kinds\RA{} !NODEP!
   use kinds, only: double !NODEP!
   use constants !NODEP!
   use lorentz !NODEP!
-  use file_utils !NODEP!
+  use io_units !NODEP!
   use diagnostics !NODEP!
   use tao_random_numbers !NODEP!
   use shower_base
@@ -8777,7 +8748,7 @@ end module ckkw_matching
     integer :: i
 
     if (signal_is_pending ()) return
-    weight = 1.0
+    weight = one
 
     call shower%write ()
 
@@ -9051,8 +9022,8 @@ for a running $alpha_s$ at the scales of the clusterings.
 
 module ckkw_pseudo_weights
 
-\LA{}Use kinds\RA{}
-  use file_utils !NODEP!
+\LA{}Use kinds\RA{} !NODEP!
+  use io_units !NODEP!
   use constants !NODEP!
 
 \LA{}Standard module head\RA{}
@@ -9099,7 +9070,7 @@ end module ckkw_pseudo_weights
     type(ckkw_pseudo_shower_weights_t), intent(in) :: weights
     integer, intent(in), optional :: unit
     integer :: s, i, u
-    u = output_unit (unit); if (u < 0) return
+    u = given_output_unit (unit); if (u < 0) return
     s = size (weights%weights)
     write (u, "(1x,A)")  "CKKW (pseudo) shower weights: "
     do i = 1, s
@@ -9202,19 +9173,14 @@ module shower_base
   public :: shower_set_primordial_kt_cutoff
   public :: shower_set_tscalefactor_isr
   public :: shower_set_isr_only_onshell_emitted_partons
-  public :: shower_set_pdf_func
-  public :: shower_set_pdf_set
-  public :: shower_pdf
+  public :: shower_set_pdf_set_and_type
 
   real(default), public :: D_Min_t = one
-
-  interface
-     subroutine shower_pdf (set, x, q, ff)
-       integer, intent(in) :: set
-       double precision, intent(in) :: x, q
-       double precision, dimension(-6:6), intent(out) :: ff
-     end subroutine shower_pdf
-  end interface
+  integer, parameter, public :: STRF_NONE = 0
+  integer, parameter, public :: STRF_LHAPDF6 = 1
+  integer, parameter, public :: STRF_LHAPDF5 = 2
+  integer, parameter, public :: STRF_PDF_BUILTIN = 3
+  
 contains
   subroutine shower_set_minenergy_timelike (input)
     real(default), intent(in) :: input
@@ -9276,15 +9242,11 @@ contains
     logical, intent(in) :: input
     \LA{}Shower dummy: error message\RA{}
   end subroutine shower_set_isr_only_onshell_emitted_partons
-  subroutine shower_set_pdf_func(func)
-    procedure(shower_pdf), pointer, intent(in) :: func
-    \LA{}Shower dummy: error message\RA{}
-  end subroutine shower_set_pdf_func
 
-  subroutine shower_set_pdf_set(set)
-    integer, intent(in) :: set
+  subroutine shower_set_pdf_set_and_type(set,type)
+    integer, intent(in) :: set, type
     \LA{}Shower dummy: error message\RA{}
-  end subroutine shower_set_pdf_set
+  end subroutine shower_set_pdf_set_and_type
 end module shower_base
 
 module shower_partons
@@ -9320,6 +9282,7 @@ module shower_core
   use shower_partons
   use ckkw_pseudo_weights
   use pythia_dummy
+  use lhapdf
 
 \LA{}Shower core: public\RA{}
 
@@ -9420,8 +9383,9 @@ contains
       integer, intent(in) :: index
       \LA{}Shower dummy: error message\RA{}
     end subroutine shower_set_next_color_nr
-    subroutine shower_create (shower)
+    subroutine shower_create (shower, pdf)
       class(shower_t), intent(inout) :: shower
+      type(lhapdf_pdf_t), intent(in), target :: pdf
       \LA{}Shower dummy: error message\RA{}
     end subroutine shower_create
     subroutine shower_final (shower)
@@ -9464,10 +9428,26 @@ contains
       type(parton_t), intent(in) :: prt
       \LA{}Shower dummy: error message\RA{}
     end subroutine shower_add_parent
+    subroutine shower_get_pdf (shower, mother, x, Q2, daughter)
+      class(shower_t), intent(inout) :: shower
+      integer, intent(in) :: mother, daughter
+      real(default), intent(in) :: x, Q2
+    end subroutine shower_get_pdf
+    subroutine shower_get_xpdf (shower, mother, x, Q2, daughter)
+      class(shower_t), intent(inout) :: shower
+      integer, intent(in) :: mother, daughter
+      real(default), intent(in) :: x, Q2
+    end subroutine shower_get_xpdf    
+    subroutine shower_pdf_func (shower, set, x, q2, f)
+      class(shower_t), intent(inout) :: shower
+      integer, intent(in) :: set
+      real(default), intent(in) :: x, q2
+      real(default), dimension(-6:6), intent(out) :: f
+    end subroutine shower_pdf_func
 end module shower_core
 
 module shower_topythia
-\LA{}Use kinds\RA{}
+\LA{}Use kinds\RA{} !NODEP!
   use shower_base
   use shower_partons
   use shower_core
@@ -9480,7 +9460,7 @@ contains
 end module shower_topythia
 
 module mlm_matching
-\LA{}Use kinds\RA{}
+\LA{}Use kinds\RA{} !NODEP!
   use kinds, only: double !NODEP!
   use constants !NODEP!
   use lorentz !NODEP!
@@ -9513,7 +9493,7 @@ end module mlm_matching
 
 
 module ckkw_matching
-\LA{}Use kinds\RA{}
+\LA{}Use kinds\RA{} !NODEP!
   use kinds, only: double !NODEP!
   use shower_core
   use ckkw_pseudo_weights

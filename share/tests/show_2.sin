@@ -59,9 +59,9 @@ show (cuts, scale, factorization_scale, renormalization_scale, weight)
 show (selection, reweight, analysis)
 
 show (sqrts, $lhapdf_dir, ?unweighted)
-show (e1, me, foo)
+show (me, foo)
 clear (sqrts, $lhapdf_dir, ?unweighted)
-clear (e1, me, foo)
+clear (real_precision, me, foo)
 show (sqrts, $lhapdf_dir, ?unweighted)
 show (e1, me, foo)
 

@@ -1,23 +1,24 @@
-! WHIZARD 2.2.0 Mar 03 2014
-
-!
-! Copyright (C) 1999-2014 by
+! WHIZARD 2.2.3 Nov 30 2014
+! 
+! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!
+!     
 !     with contributions from
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     and Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler
+!     Fabian Bach <fabian.bach@desy.de>
+!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Weiss <christian.weiss@desy.de>
+!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by
+! under the terms of the GNU General Public License as published by 
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -26,14 +27,14 @@
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! This file has been stripped of most comments.  For documentation, refer
-! to the source 'shower.nw'
+! to the source 'whizard.nw'
 
 module shower_partons
 
   use kinds, only: default !NODEP!
+  use io_units !NODEP!
   use constants !NODEP!
-  use limits, only: TAB !NODEP!
-  use file_utils !NODEP!
+  use system_defs, only: TAB !NODEP!
   use diagnostics !NODEP!
   use tao_random_numbers !NODEP!
   use lorentz !NODEP!
@@ -216,7 +217,7 @@ contains
     type(parton_t), intent(in) :: prt
     integer, intent(in), optional :: unit
     integer :: u
-    u = output_unit (unit); if (u < 0) return
+    u = given_output_unit (unit); if (u < 0) return
 
     write (u, "(1x,4A)", advance ="no")  "Shower parton <nr>", &
          TAB, "<type>", TAB
@@ -543,7 +544,7 @@ contains
   recursive subroutine parton_apply_z(prt, newz)
     type(parton_t), intent(inout) :: prt
     real(default), intent(in) :: newz
-    if (D_print) print *, "old z:", prt%z , " new z: ", newz
+    if (D_print) print *, "old z = ", prt%z , " new z = ", newz
     prt%z = newz
     if (associated (prt%child1) .and. associated (prt%child2)) then
        call parton_set_energy (prt%child1, newz * parton_get_energy (prt))
@@ -619,7 +620,7 @@ contains
     type(vector3_t) :: pchild1_direction
     type(lorentz_transformation_t) :: L, rotation
 
-    if (D_print) print *, " generate_ps for parton " , prt%nr
+    if (D_print) print *, "parton_generate_ps for parton " , prt%nr
     if (.not. (associated (prt%child1) .and. associated (prt%child2))) then
        print *, "no children for generate_ps"
        return
@@ -707,7 +708,7 @@ contains
        if (pabs > p1abs + p2abs .or. &
             pabs < abs(p1abs - p2abs)) then
           if (D_print) then
-             print *,"error at generate_ps, Dreiecksungleichung for parton ", &
+             print *, "error at parton_generate_ps Dreiecksungleichung for parton ", &
                      prt%nr, " ", parton_p3abs(prt)," ",p1abs," ",p2abs
              call parton_write (prt)
              call parton_write (prt%child1)
@@ -742,7 +743,7 @@ contains
     real(default) :: scproduct, pabs, p1abs, p2abs, x, ptabs, phi
     real(default), dimension(1:3) :: momentum
 
-    if (D_print) print *, " generate_ps_ini for parton " , prt%nr
+    if (D_print) print *, "parton_generate_ps_ini for parton " , prt%nr
     if (.not. (associated(prt%child1) .and. associated(prt%child2))) then
        print *, "error in parton_generate_ps_ini"
        return
@@ -798,7 +799,7 @@ contains
           call parton_write (prt%child2)
           return
        end if
-       if (D_print) print *, "x:",x
+       if (D_print) print *, "parton_generate_ps_ini : x = ", x
        ptabs = sqrt (p1abs * p1abs - x**2)
        call tao_random_number (phi)
        phi = twopi * phi
@@ -827,7 +828,7 @@ contains
 
     if (signal_is_pending ()) return
     if (D_print) then
-       print *, "next_t_ana for parton " , prt%nr
+       print *, "parton_next_t_ana for parton " , prt%nr
     end if
 
     ! check if branchings are possible at all
@@ -1048,7 +1049,7 @@ contains
                 gtoqq = 0
              else
                 call tao_random_number (temprand)
-                gtoqq = 1 + temprand * number_of_flavors (prt%t)
+                gtoqq = 1 + int (temprand * number_of_flavors (prt%t))
              end if
           end if
        else

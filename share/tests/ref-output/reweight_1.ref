@@ -11,7 +11,7 @@ n_events = 1
 ?unweighted = false
 ?read_raw = false
 ?write_raw = false
-QED.ee =  6.057200000000E-01
+QED.ee =>  6.057200000000E-01
 | Starting simulation for process 'reweight_1_p1'
 | Simulate: process 'reweight_1_p1' needs integration
 | Integrate: current process library needs compilation

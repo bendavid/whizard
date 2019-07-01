@@ -1,4 +1,4 @@
-! WHIZARD 2.2.2 July 6 2014
+! WHIZARD 2.2.3 Nov 30 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,8 +6,10 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
+!     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     Christian Weiss <christian.weiss@desy.de>
+!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -29,21 +31,22 @@
 
 module decays
 
-  use kinds, only: default !NODEP!
-  use iso_varying_string, string_t => varying_string !NODEP!
-  use file_utils !NODEP!
-  use diagnostics !NODEP!
+  use kinds, only: default
+  use iso_varying_string, string_t => varying_string
+  use io_units
+  use format_utils, only: write_indent, write_separator
   use unit_tests
+  use diagnostics
   use os_interface
-
   use sm_qcd
+  use model_data, only: field_data_t
   use flavors
   use quantum_numbers
   use state_matrices
   use interactions
   use evaluators
   use variables
-  use models
+  use model_data
   use rng_base
   use selectors
   use prc_core
@@ -112,7 +115,7 @@ module decays
   type :: decay_root_config_t
      type(string_t) :: process_id
      type(process_t), pointer :: process => null ()
-     type(model_t), pointer :: model => null ()
+     class(model_data_t), pointer :: model => null ()
      type(decay_term_config_t), dimension(:), allocatable :: term_config
    contains
      procedure :: final => decay_root_config_final
@@ -308,7 +311,7 @@ contains
     logical, intent(in), optional :: verbose
     integer :: i, j, u, ind
     logical :: verb
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     ind = 0;  if (present (indent))  ind = indent
     verb = .true.;  if (present (verbose))  verb = verbose
     call write_indent (u, ind)
@@ -340,7 +343,7 @@ contains
     class(decay_term_config_t), intent(out) :: term
     type(flavor_t), dimension(:,:), intent(in) :: flv
     logical, dimension(:), intent(in) :: stable
-    type(model_t), intent(in), target :: model
+    class(model_data_t), intent(in), target :: model
     type(process_stack_t), intent(in), optional :: process_stack
     type(string_t), dimension(:), allocatable :: decay
     integer :: i
@@ -395,7 +398,7 @@ contains
     class(decay_term_t), intent(in) :: object
     integer, intent(in), optional :: unit, indent
     integer :: i, u, ind
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     ind = 0;  if (present (indent))  ind = indent
     call object%config%write (u, ind, verbose = .false.)
     do i = 1, size (object%particle_out)
@@ -503,7 +506,7 @@ contains
     integer, intent(in), optional :: unit, indent
     logical, intent(in), optional :: verbose
     integer :: u, ind
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     ind = 0;  if (present (indent))  ind = indent
     call write_indent (u, ind)
     write (u, "(1x,A)")  "Final-state decay tree:"
@@ -515,7 +518,7 @@ contains
     class(decay_root_config_t), intent(in) :: object
     integer, intent(in), optional :: unit, indent
     integer :: u, ind
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     ind = 0;  if (present (indent))  ind = indent
     call write_indent (u, ind)
     if (associated (object%process)) then
@@ -533,7 +536,7 @@ contains
     logical, intent(in), optional :: verbose
     integer :: i, u, ind
     logical :: verb
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     ind = 0;  if (present (indent))  ind = indent
     verb = .true.;  if (present (verbose))  verb = verbose
     if (verb .and. allocated (object%term_config)) then
@@ -545,7 +548,7 @@ contains
     
   subroutine decay_root_config_init (decay, model, process_id, n_terms)
     class(decay_root_config_t), intent(out) :: decay
-    type(model_t), intent(in), target :: model
+    class(model_data_t), intent(in), target :: model
     type(string_t), intent(in) :: process_id
     integer, intent(in), optional :: n_terms
     decay%model => model
@@ -561,7 +564,7 @@ contains
     integer, intent(in) :: i
     type(flavor_t), dimension(:,:), intent(in) :: flv
     logical, dimension(:), intent(in) :: stable
-    type(model_t), intent(in), target :: model
+    class(model_data_t), intent(in), target :: model
     type(process_stack_t), intent(in), optional :: process_stack
     call decay%term_config(i)%init (flv, stable, model, process_stack)
   end subroutine decay_root_config_init_term
@@ -570,7 +573,7 @@ contains
        (decay, process, model, process_stack, process_instance)
     class(decay_root_config_t), intent(out) :: decay
     type(process_t), intent(in), target :: process
-    type(model_t), intent(in), target :: model
+    class(model_data_t), intent(in), target :: model
     type(process_stack_t), intent(in), optional :: process_stack
     type(process_instance_t), intent(in), optional, target :: process_instance
     type(connected_state_t), pointer :: connected_state
@@ -623,7 +626,7 @@ contains
     class(decay_root_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     if (associated (object%config)) then
        call object%config%write (unit, verbose = .false.)
     else
@@ -730,7 +733,7 @@ contains
     integer, intent(in), optional :: unit, indent
     logical, intent(in), optional :: verbose
     integer :: u, ind
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     ind = 0;  if (present (indent))  ind = indent
     call write_indent (u, ind)
     write (u, "(1x,A)")  "Decay:"
@@ -752,7 +755,7 @@ contains
        (decay, process, model, process_stack, process_instance)
     class(decay_config_t), intent(out) :: decay
     type(process_t), intent(in), target :: process
-    type(model_t), intent(in), target :: model
+    class(model_data_t), intent(in), target :: model
     type(process_stack_t), intent(in), optional :: process_stack
     type(process_instance_t), intent(in), optional, target :: process_instance
     real(default), dimension(:), allocatable :: integral_mci
@@ -797,7 +800,7 @@ contains
     class(decay_t), intent(in) :: object
     integer, intent(in), optional :: unit, indent, recursive
     integer :: u, ind
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     ind = 0;  if (present (indent))  ind = indent
     call object%config%write (unit, indent, verbose = .false.)
     if (allocated (object%rng)) then
@@ -888,7 +891,7 @@ contains
     integer, intent(in), optional :: unit, indent
     logical, intent(in), optional :: verbose
     integer :: u, i, ind
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     ind = 0;  if (present (indent))  ind = indent
     call write_indent (u, ind)
     write (u, "(1x,'+',1x,A)", advance = "no")  "Stable:"
@@ -947,7 +950,7 @@ contains
     logical, intent(in), optional :: verbose
     integer :: u, i, ind
     logical :: verb
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     ind = 0;  if (present (indent))  ind = indent
     verb = .true.;  if (present (verbose))  verb = verbose
     call write_indent (u, ind)
@@ -977,7 +980,7 @@ contains
        (unstable, decay_id, model, process_stack)
     class(unstable_config_t), intent(inout) :: unstable
     type(string_t), dimension(:), intent(in) :: decay_id
-    type(model_t), intent(in), target :: model
+    class(model_data_t), intent(in), target :: model
     type(process_stack_t), intent(in), optional :: process_stack
     integer :: i
     allocate (unstable%decay_config (size (decay_id)))
@@ -1027,7 +1030,7 @@ contains
     class(unstable_t), intent(in) :: object
     integer, intent(in), optional :: unit, indent
     integer :: u, ind
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     ind = 0;  if (present (indent))  ind = indent
     call object%config%write (u, ind, verbose=.false.)
     if (allocated (object%rng)) then
@@ -1109,21 +1112,21 @@ contains
     class(decay_chain_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u
-    u = output_unit (unit)
-    call write_separator_double (u)
+    u = given_output_unit (unit)
+    call write_separator (u, 2)
     write (u, "(1x,A)")  "Decay chain:"
     call write_entries (object%last)
-    call write_separator_double (u)
+    call write_separator (u, 2)
     write (u, "(1x,A)")  "Evaluator (correlated trace of the decay chain):"
     call write_separator (u)
     call object%correlated_trace%write (u)
-    call write_separator_double (u)
+    call write_separator (u, 2)
   contains
     recursive subroutine write_entries (entry)
       type(decay_chain_entry_t), intent(in), pointer :: entry
       if (associated (entry)) then
          call write_entries (entry%previous)
-         call write_separator_double (u)
+         call write_separator (u, 2)
          write (u, "(1x,A,I0)")  "Decay #", entry%index
          call entry%config%write_header (u)
          write (u, "(3x,A,I0)")  "Selected MCI    = ", entry%selected_mci
@@ -1230,13 +1233,13 @@ contains
     logical, intent(in), optional :: show_decay_tree, show_processes, verbose
     logical :: dec, prc, verb
     integer :: u
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     dec = .true.;  if (present (show_decay_tree))  dec = show_decay_tree
     prc = .false.;  if (present (show_processes))  prc = show_processes
     verb = .false.;  if (present (verbose))  verb = verbose
-    call write_separator_double (u)
+    call write_separator (u, 2)
     write (u, "(1x,A)")  "Event transform: partonic decays"
-    call write_separator_double (u)
+    call write_separator (u, 2)
     call object%base_write (u)
     if (dec) then
        call write_separator (u)
@@ -1248,14 +1251,14 @@ contains
           call object%decay_root%write_process_instances (u, verb)
        end if
     else
-       call write_separator_double (u)
+       call write_separator (u, 2)
     end if
   end subroutine evt_decay_write
     
   subroutine evt_decay_connect (evt, process_instance, model, process_stack)
     class(evt_decay_t), intent(inout), target :: evt
     type(process_instance_t), intent(in), target :: process_instance
-    type(model_t), intent(in), target :: model
+    class(model_data_t), intent(in), target :: model
     type(process_stack_t), intent(in), optional :: process_stack
     call evt%base_connect (process_instance, model)
     call evt%decay_root_config%connect (process_instance%process, &
@@ -1354,26 +1357,26 @@ contains
   end subroutine decays_test
   
   subroutine prepare_testbed &
-       (lib, process_stack, model_list, model, prefix, os_data, &
+       (lib, process_stack, prefix, os_data, &
         scattering, decay, decay_rest_frame)
     type(process_library_t), intent(out), target :: lib
     type(process_stack_t), intent(out) :: process_stack
-    type(model_list_t), intent(out) :: model_list
-    type(model_t), pointer, intent(out) :: model
     type(string_t), intent(in) :: prefix
     type(os_data_t), intent(in) :: os_data
     logical, intent(in) :: scattering, decay
     logical, intent(in), optional :: decay_rest_frame
+
+    type(model_data_t), target :: model
+    class(model_data_t), pointer :: model_copy
     type(string_t) :: libname, procname1, procname2, run_id
     type(qcd_t) :: qcd
     class(rng_factory_t), allocatable :: rng_factory
-    type(var_list_t), pointer :: var_list
     type(process_entry_t), pointer :: process
     type(process_instance_t), allocatable, target :: process_instance
     class(prc_core_t), allocatable :: core_template
     class(mci_t), allocatable :: mci_template
     class(phs_config_t), allocatable :: phs_config_template
-    type(particle_data_t), pointer :: prt_data
+    type(field_data_t), pointer :: field_data
     real(default) :: sqrts
 
     libname = prefix // "_lib"
@@ -1381,16 +1384,14 @@ contains
     procname2 = prefix // "_d"
     run_id = prefix
 
-    call model_list%read_model (var_str ("Test"), &
-         var_str ("Test.mdl"), os_data, model)
-    var_list => model_get_var_list_ptr (model)
-    call var_list_set_real (var_list, &
-         var_str ("ff"), 0.4_default, is_known = .true.)
-    call model_parameters_update (model)
+    call model%init_test ()
+    call model%set_par (var_str ("ff"), 0.4_default)
+    call model%set_par (var_str ("mf"), &
+         model%get_real (var_str ("ff")) * model%get_real (var_str ("ms")))
 
     if (scattering .and. decay) then
-       prt_data => model_get_particle_ptr (model, 25)
-       call particle_data_set (prt_data, p_is_stable = .false.)
+       field_data => model%get_field_ptr (25)
+       call field_data%set (p_is_stable = .false.)
     end if
     
     call prc_test_create_library (libname, lib, &
@@ -1404,10 +1405,19 @@ contains
     allocate (phs_single_config_t :: phs_config_template)
 
     if (scattering) then
+
        allocate (rng_test_factory_t :: rng_factory)
+       allocate (model_copy)
+       call model_copy%init (model%get_name (), &
+            model%get_n_real (), &
+            model%get_n_complex (), &
+            model%get_n_field (), &
+            model%get_n_vtx ())
+       call model_copy%copy_from (model)
+
        allocate (process)
        call process%init (procname1, &
-            run_id, lib, os_data, qcd, rng_factory, model_list)
+            run_id, lib, os_data, qcd, rng_factory, model_copy)
        call process%init_component &
             (1, core_template, mci_template, phs_config_template)
        sqrts = 1000
@@ -1429,9 +1439,17 @@ contains
     
     if (decay) then
        allocate (rng_test_factory_t :: rng_factory)
+       allocate (model_copy)
+       call model_copy%init (model%get_name (), &
+            model%get_n_real (), &
+            model%get_n_complex (), &
+            model%get_n_field (), &
+            model%get_n_vtx ())
+       call model_copy%copy_from (model)
+
        allocate (process)
        call process%init (procname2, &
-            run_id, lib, os_data, qcd, rng_factory, model_list)
+            run_id, lib, os_data, qcd, rng_factory, model_copy)
        call process%init_component &
             (1, core_template, mci_template, phs_config_template)
        if (present (decay_rest_frame)) then
@@ -1454,13 +1472,16 @@ contains
        call process_stack%push (process)
     end if
     
+    call model%final ()
+
   end subroutine prepare_testbed
 
   subroutine decays_1 (u)
     integer, intent(in) :: u
     type(os_data_t) :: os_data
-    type(model_t), pointer :: model
-    type(model_list_t) :: model_list
+    type(model_data_t), target :: model
+!    type(model_t), pointer :: model
+!    type(model_list_t) :: model_list
     type(flavor_t) :: flv_h
     type(flavor_t), dimension(2,1) :: flv_hbb, flv_hgg
     type(unstable_config_t), allocatable :: unstable
@@ -1472,10 +1493,10 @@ contains
     write (u, "(A)")  "* Initialize environment"
     write (u, "(A)")
 
-    call syntax_model_file_init ()
     call os_data_init (os_data)
-    call model_list%read_model (var_str ("SM"), &
-         var_str ("SM.mdl"), os_data, model)
+    call model%init_sm_test ()
+!    call model_list%read_model (var_str ("SM"), &
+!         var_str ("SM.mdl"), os_data, model)
 
     call flavor_init (flv_h, 25, model)
     call flavor_init (flv_hbb(:,1), [5, -5], model)
@@ -1509,8 +1530,7 @@ contains
     write (u, "(A)")  "* Cleanup"
 
     call unstable%final ()
-    call model_list%final ()
-    call syntax_model_file_final ()
+    call model%final ()
     
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: decays_1"
@@ -1520,8 +1540,9 @@ contains
   subroutine decays_2 (u)
     integer, intent(in) :: u
     type(os_data_t) :: os_data
-    type(model_t), pointer :: model
-    type(model_list_t) :: model_list
+!    type(model_t), pointer :: model
+!    type(model_list_t) :: model_list
+    type(model_data_t), target :: model
     type(flavor_t) :: flv_h, flv_wp, flv_wm
     type(flavor_t), dimension(2,1) :: flv_hww, flv_wud, flv_wen
     type(unstable_config_t), allocatable :: unstable
@@ -1534,13 +1555,14 @@ contains
     write (u, "(A)")  "* Initialize environment"
     write (u, "(A)")
 
-    call syntax_model_file_init ()
+!    call syntax_model_file_init ()
     call os_data_init (os_data)
-    call model_list%read_model (var_str ("SM"), &
-         var_str ("SM.mdl"), os_data, model)
+!    call model_list%read_model (var_str ("SM"), &
+!         var_str ("SM.mdl"), os_data, model)
+    call model%init_sm_test ()
 
-    call model_set_unstable (model, 25, [var_str ("h_ww")])
-    call model_set_unstable (model, 24, [var_str ("w_ud"), var_str ("w_en")])
+    call model%set_unstable (25, [var_str ("h_ww")])
+    call model%set_unstable (24, [var_str ("w_ud"), var_str ("w_en")])
 
     call flavor_init (flv_h, 25, model)
     call flavor_init (flv_hww(:,1), [24, -24], model)
@@ -1594,8 +1616,9 @@ contains
     write (u, "(A)")  "* Cleanup"
 
     call unstable%final ()
-    call model_list%final ()
-    call syntax_model_file_final ()
+    call model%final ()
+!    call model_list%final ()
+!    call syntax_model_file_final ()
     
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: decays_2"
@@ -1605,8 +1628,7 @@ contains
   subroutine decays_3 (u)
     integer, intent(in) :: u
     type(os_data_t) :: os_data
-    type(model_list_t) :: model_list
-    type(model_t), pointer :: model
+    class(model_data_t), pointer :: model
     type(process_library_t), target :: lib
     type(string_t) :: prefix
     type(string_t) :: procname2
@@ -1622,17 +1644,16 @@ contains
     write (u, "(A)")  "* Initialize environment and integrate process"
     write (u, "(A)")
 
-    call syntax_model_file_init ()
     call os_data_init (os_data)
-    call syntax_model_file_init ()
 
     prefix = "decays_3"
     call prepare_testbed &
-         (lib, process_stack, model_list, model, prefix, os_data, &
+         (lib, process_stack, prefix, os_data, &
          scattering=.false., decay=.true., decay_rest_frame=.false.)
 
     procname2 = prefix // "_d"
     process => process_stack%get_process_ptr (procname2)
+    model => process%get_model_ptr ()
     call process%write (.false., u)
     
     write (u, "(A)")
@@ -1658,9 +1679,7 @@ contains
 
     call unstable%final ()
     call process_stack%final ()
-    call model_list%final ()
-    call syntax_model_file_final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: decays_3"
     
@@ -1669,8 +1688,7 @@ contains
   subroutine decays_4 (u)
     integer, intent(in) :: u
     type(os_data_t) :: os_data
-    type(model_list_t) :: model_list
-    type(model_t), pointer :: model
+    class(model_data_t), pointer :: model
     type(process_library_t), target :: lib
     type(string_t) :: prefix, procname2
     class(rng_t), allocatable :: rng
@@ -1688,23 +1706,22 @@ contains
          &and decay configuration"
     write (u, "(A)")
 
-    call syntax_model_file_init ()
     call os_data_init (os_data)
-    call syntax_model_file_init ()
 
     prefix = "decays_4"
     call prepare_testbed &
-         (lib, process_stack, model_list, model, prefix, os_data, &
+         (lib, process_stack, prefix, os_data, &
          scattering=.false., decay=.true., decay_rest_frame = .false.)
 
     procname2 = prefix // "_d"
     process => process_stack%get_process_ptr (procname2)
+    model => process%get_model_ptr ()
 
     allocate (unstable)
     call flavor_init (unstable%flv, 25, model)
     call unstable%init_decays ([procname2], model)
     
-    call model_set_unstable (model, 25, [procname2])
+    call model%set_unstable (25, [procname2])
 
     associate (decay => unstable%decay_config(1))
       call decay%connect (process, model)
@@ -1731,8 +1748,6 @@ contains
     call instance%final ()
     call process_stack%final ()
     call unstable%final ()
-    call model_list%final ()
-    call syntax_model_file_final ()
     
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: decays_4"
@@ -1742,8 +1757,7 @@ contains
   subroutine decays_5 (u)
     integer, intent(in) :: u
     type(os_data_t) :: os_data
-    type(model_list_t) :: model_list
-    type(model_t), pointer :: model
+    class(model_data_t), pointer :: model
     type(process_library_t), target :: lib
     type(string_t) :: prefix, procname1, procname2
     type(process_stack_t) :: process_stack
@@ -1761,26 +1775,25 @@ contains
     write (u, "(A)")  "* Initialize environment and parent process"
     write (u, "(A)")
 
-    call syntax_model_file_init ()
     call os_data_init (os_data)
-    call syntax_model_file_init ()
 
     prefix = "decays_5"
     procname1 = prefix // "_p"
     procname2 = prefix // "_d"
     call prepare_testbed &
-         (lib, process_stack, model_list, model, prefix, os_data, &
+         (lib, process_stack, prefix, os_data, &
          scattering=.true., decay=.true.)
 
     write (u, "(A)")  "* Initialize decay process"
     write (u, "(A)")
 
-    call model_set_unstable (model, 25, [procname2])
+    process => process_stack%get_process_ptr (procname1)
+    model => process%get_model_ptr ()
+    call model%set_unstable (25, [procname2])
 
     write (u, "(A)")  "* Initialize decay tree configuration"
     write (u, "(A)")
 
-    process => process_stack%get_process_ptr (procname1)
     call decay_root_config%connect (process, model, process_stack)
     call decay_root_config%compute ()
     call decay_root_config%write (u)
@@ -1857,8 +1870,6 @@ contains
     
     call process%final ()
     call process_stack%final ()
-    call model_list%final ()
-    call syntax_model_file_final ()
     
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: decays_5"
@@ -1868,8 +1879,7 @@ contains
   subroutine decays_6 (u)
     integer, intent(in) :: u
     type(os_data_t) :: os_data
-    type(model_list_t) :: model_list
-    type(model_t), pointer :: model
+    class(model_data_t), pointer :: model
     type(process_library_t), target :: lib
     type(string_t) :: prefix, procname1, procname2
     type(process_stack_t) :: process_stack
@@ -1886,21 +1896,21 @@ contains
     write (u, "(A)")  "* Initialize environment and parent process"
     write (u, "(A)")
 
-    call syntax_model_file_init ()
     call os_data_init (os_data)
 
     prefix = "decays_6"
     procname1 = prefix // "_p"
     procname2 = prefix // "_d"
     call prepare_testbed &
-         (lib, process_stack, model_list, model, prefix, os_data, &
+         (lib, process_stack, prefix, os_data, &
          scattering=.true., decay=.true.)
 
     write (u, "(A)")  "* Initialize decay process"
 
-    call model_set_unstable (model, 25, [procname2])
-
     process => process_stack%get_process_ptr (procname1)
+    model => process%get_model_ptr ()
+    call model%set_unstable (25, [procname2])
+
     allocate (process_instance)
     call process_instance%init (process)
     call process_instance%setup_event_data ()
@@ -1938,8 +1948,6 @@ contains
     deallocate (process_instance)
     
     call process_stack%final ()
-    call model_list%final ()
-    call syntax_model_file_final ()
     
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: decays_6"

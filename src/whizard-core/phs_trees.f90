@@ -1,4 +1,4 @@
-! WHIZARD 2.2.2 July 6 2014
+! WHIZARD 2.2.3 Nov 30 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,8 +6,10 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
+!     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     Christian Weiss <christian.weiss@desy.de>
+!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -29,18 +31,18 @@
 
 module phs_trees
 
-  use kinds, only: default !NODEP!
-  use kinds, only: TC !NODEP!
-  use iso_varying_string, string_t => varying_string !NODEP!
-  use constants, only: twopi, twopi2, twopi5 !NODEP!
-  use file_utils !NODEP!
-  use limits, only: FMT_19 !NODEP!
-  use diagnostics !NODEP!
-  use lorentz !NODEP!
+  use kinds, only: default
+  use kinds, only: TC
+  use iso_varying_string, string_t => varying_string
+  use io_units
+  use constants, only: twopi, twopi2, twopi5
+  use format_defs, only: FMT_19
+  use diagnostics
+  use lorentz
   use permutations, only: permutation_t, permutation_size
   use permutations, only: permutation_init, permutation_find
   use permutations, only: tc_decay_level, tc_permute
-  use models
+  use model_data
   use flavors
   use mappings
 
@@ -57,6 +59,9 @@ module phs_trees
   public :: phs_prt_get_msq
   public :: phs_prt_combine
   public :: phs_prt_write
+  public :: phs_prt_check
+  public :: phs_tree_set_emitter
+  public :: phs_tree_set_real
   public :: phs_tree_t
   public :: phs_tree_init
   public :: phs_tree_final
@@ -78,6 +83,8 @@ module phs_trees
   public :: phs_tree_compute_x_from_momenta
   public :: phs_tree_combine_particles
   public :: phs_tree_setup_prt_combinations
+  public :: phs_tree_reshuffle_mappings
+  public :: phs_tree_set_momentum_links
 
   type :: phs_prt_t
      private
@@ -99,6 +106,7 @@ module phs_trees
      integer :: firstborn = 0
      logical :: has_children = .false.
      logical :: has_friend = .false.
+     logical :: is_real = .false.
   end type phs_branch_t
 
   type :: phs_tree_t
@@ -111,6 +119,11 @@ module phs_trees
      real(default), dimension(:), allocatable :: mass_sum
      real(default), dimension(:), allocatable :: effective_mass
      real(default), dimension(:), allocatable :: effective_width
+     logical :: real_phsp = .false.
+     integer(TC) :: emitter = 0
+     integer, dimension(:), allocatable :: momentum_link
+   contains
+     procedure :: get_emitter => phs_tree_get_emitter
   end type phs_tree_t
 
 
@@ -162,13 +175,14 @@ contains
     prt%defined = .true.
     prt%p = prt1%p + prt2%p
     prt%p2 = prt%p ** 2
+    call phs_prt_check (prt)
   end subroutine phs_prt_combine
 
   subroutine phs_prt_write (prt, unit)
     type(phs_prt_t), intent(in) :: prt
     integer, intent(in), optional :: unit
     integer :: u
-    u = output_unit (unit);  if (u < 0)  return
+    u = given_output_unit (unit);  if (u < 0)  return
     if (prt%defined) then
        call vector4_write (prt%p, u)
        write (u, "(1x,A,1x," // FMT_19 // ")") "T = ", prt%p2
@@ -176,6 +190,36 @@ contains
        write (u, "(3x,A)") "[undefined]"
     end if
   end subroutine phs_prt_write
+
+  elemental subroutine phs_prt_check (prt)
+    type(phs_prt_t), intent(inout) :: prt
+    real(default), parameter :: eps = 1E-9
+    if (prt%p2 < 0._default) then
+       prt%p2 = 0._default
+    end if
+  end subroutine phs_prt_check
+
+  subroutine phs_tree_set_emitter (phs_tree)
+    use fks_regions
+    class(phs_tree_t), intent(inout) :: phs_tree
+    integer :: n_out, n
+    n_out = phs_tree%n_externals - phs_tree%n_in
+    n = 2**(n_out - 1)
+    phs_tree%emitter = phs_tree%branch(n)%sibling
+  end subroutine phs_tree_set_emitter
+
+  subroutine phs_tree_set_real (phs_tree)
+    class(phs_tree_t), intent(inout) :: phs_tree
+    integer :: n_out
+    integer(TC) :: k_em, k0, k_rad
+    if (phs_tree%real_phsp) then
+      n_out = phs_tree%n_externals - phs_tree%n_in 
+      k_rad = 2**(n_out-1)
+      k_em = phs_tree%branch(k_rad)%sibling
+      phs_tree%branch(k_rad)%is_real = .true.
+      phs_tree%branch(k_em)%is_real = .true.
+    end if
+  end subroutine phs_tree_set_real
 
   elemental subroutine phs_tree_init (tree, n_in, n_out, n_masses, n_angles)
     type(phs_tree_t), intent(inout) :: tree
@@ -218,7 +262,7 @@ contains
     integer, intent(in), optional :: unit
     integer :: u
     integer(TC) :: k
-    u = output_unit (unit);  if (u < 0)  return
+    u = given_output_unit (unit);  if (u < 0)  return
     write (u, '(3X,A,1x,I0,5X,A,I3)') &
          'External:', tree%n_externals, 'Mask:', tree%mask
     write (u, '(3X,A,1x,I0,5X,A,I3)') &
@@ -250,7 +294,7 @@ contains
     character(len=6) :: tmp
     character(len=1) :: firstborn(2), sign_decay, sign_axis
     integer :: i
-    u = output_unit (unit);  if (u < 0)  return
+    u = given_output_unit (unit);  if (u < 0)  return
     k = 0;  if (present (kval))  k = kval
     if (b%origin /= 0) then
        write(tmp, '(A,I4,A)') '(', b%origin, ')'
@@ -441,7 +485,7 @@ contains
     integer(TC), intent(in) :: k
     type(string_t), intent(in) :: type
     integer, intent(in) :: pdg
-    type(model_t), intent(in), target :: model
+    class(model_data_t), intent(in), target :: model
     integer(TC) :: kk
     kk = tc_flipped (tree, k)
     call mapping_init (tree%mapping(kk), kk, type, pdg, model)
@@ -752,8 +796,15 @@ contains
     logical, intent(out) :: ok
     real(default), dimension(tree%mask_out) :: decay_p
     integer :: n1, n2
-    n1 = tree%n_msq
-    n2 = n1 + tree%n_angles
+    integer :: n_out
+    if (tree%real_phsp) then
+      n_out = tree%n_externals - tree%n_in - 1
+      n1 = max (n_out-2, 0)
+      n2 = n1 + max (2*n_out, 0)
+    else
+      n1 = tree%n_msq
+      n2 = n1 + tree%n_angles
+    end if
     call phs_tree_set_msq &
          (tree, prt, factor, volume, decay_p, sqrts, x(1:n1), ok)
     if (ok) call phs_tree_set_angles &
@@ -845,6 +896,7 @@ contains
          end if
       end if
     end subroutine set_msq_x
+
   end subroutine phs_tree_set_msq
 
   subroutine phs_tree_set_angles (tree, prt, factor, decay_p, sqrts, x)
@@ -905,6 +957,7 @@ contains
          call set_angles_x (tree%branch(k2), k2, L)
       end if
     end subroutine set_angles_x
+
   end subroutine phs_tree_set_angles
 
   subroutine phs_tree_compute_x_from_momenta (tree, prt, factor, sqrts, x)
@@ -987,6 +1040,7 @@ contains
          factor = 0
       end if
     end subroutine get_msq_x
+
   end subroutine phs_tree_get_msq
 
   subroutine phs_tree_get_angles (tree, prt, factor, decay_p, sqrts, x)
@@ -1000,7 +1054,9 @@ contains
     integer(TC) :: k
     ix = 1
     k  = tree%mask_out
-    if (tree%branch(k)%has_children)  call get_angles_x (tree%branch(k), k)
+    if (tree%branch(k)%has_children) then
+       call get_angles_x (tree%branch(k), k)
+    end if
   contains
     recursive subroutine get_angles_x (b, k, ct0, st0, phi0, L0)
       type(phs_branch_t), intent(in) :: b
@@ -1126,5 +1182,39 @@ contains
     end subroutine setup_prt_combinations_x
   end subroutine phs_tree_setup_prt_combinations
       
+  subroutine phs_tree_reshuffle_mappings (tree)
+   type(phs_tree_t), intent(inout) :: tree
+   integer(TC) :: k0, k_old, k_new, k2
+   integer :: i
+   type(mapping_t) :: mapping_tmp
+   real(default) :: mass_tmp
+   do i = 1, size (tree%momentum_link)
+     if (i /= tree%momentum_link (i)) then
+       k_old = 2**(i-tree%n_in-1)
+       k_new = 2**(tree%momentum_link(i)-tree%n_in-1)
+       k0 = tree%branch(k_old)%mother
+       k2 = k_new + tree%branch(k_old)%sibling
+       mapping_tmp = tree%mapping(k0)
+       mass_tmp = tree%mass_sum(k0)
+       tree%mapping(k0) = tree%mapping(k2)
+       tree%mapping(k2) = mapping_tmp
+       tree%mass_sum(k0) = tree%mass_sum(k2)
+       tree%mass_sum(k2) = mass_tmp
+     end if
+   end do
+  end subroutine phs_tree_reshuffle_mappings
+
+  subroutine phs_tree_set_momentum_links (tree, list)
+    type(phs_tree_t), intent(inout) :: tree
+    integer, dimension(:), allocatable :: list
+    tree%momentum_link = list
+  end subroutine phs_tree_set_momentum_links
+
+  function phs_tree_get_emitter (tree) result (emitter)
+    class(phs_tree_t), intent(in) :: tree
+    integer :: emitter
+    emitter = tree%emitter
+  end function phs_tree_get_emitter
+
 
 end module phs_trees

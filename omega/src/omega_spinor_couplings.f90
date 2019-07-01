@@ -1,18 +1,18 @@
-!  $Id: omegalib.nw 5434 2014-03-06 18:17:45Z msekulla $
+!  $Id: omegalib.nw 6301 2014-11-25 09:34:00Z bchokoufe $
 !
-!  Copyright (C) 1999-2009 by 
+!  Copyright (C) 1999-2009 by
 !      Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !      Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !      Juergen Reuter <juergen.reuter@desy.de>
 !
 !  WHIZARD is free software; you can redistribute it and/or modify it
-!  under the terms of the GNU General Public License as published by 
+!  under the terms of the GNU General Public License as published by
 !  the Free Software Foundation; either version 2, or (at your option)
 !  any later version.
 !
 !  WHIZARD is distributed in the hope that it will be useful, but
 !  WITHOUT ANY WARRANTY; without even the implied warranty of
-!  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+!  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 !  GNU General Public License for more details.
 !
 !  You should have received a copy of the GNU General Public License
@@ -33,11 +33,11 @@ module omega_spinor_couplings
   private :: chi_plus, chi_minus
   public :: brs_u, brs_ubar, brs_v, brs_vbar
   public :: va_ff, v_ff, a_ff, vl_ff, vr_ff, vlr_ff, grav_ff, va2_ff, &
-            tva_ff, tlr_ff, trl_ff, tvam_ff, tlrm_ff, trlm_ff
+            tva_ff, tlr_ff, trl_ff, tvam_ff, tlrm_ff, trlm_ff, va3_ff
   public :: f_vaf, f_vf, f_af, f_vlf, f_vrf, f_vlrf, f_va2f, &
-            f_tvaf, f_tlrf, f_trlf, f_tvamf, f_tlrmf, f_trlmf
+            f_tvaf, f_tlrf, f_trlf, f_tvamf, f_tlrmf, f_trlmf, f_va3f
   public :: f_fva, f_fv, f_fa, f_fvl, f_fvr, f_fvlr, f_fva2, &
-            f_ftva, f_ftlr, f_ftrl, f_ftvam, f_ftlrm, f_ftrlm
+            f_ftva, f_ftlr, f_ftrl, f_ftvam, f_ftlrm, f_ftrlm, f_fva3
   public :: sp_ff, s_ff, p_ff, sl_ff, sr_ff, slr_ff
   public :: f_spf, f_sf, f_pf, f_slf, f_srf, f_slrf
   public :: f_fsp, f_fs, f_fp, f_fsl, f_fsr, f_fslr
@@ -84,7 +84,7 @@ contains
     real(kind=default) :: pabs, delta, m
     m = abs(mass)
     pabs = sqrt (dot_product (p%x, p%x))
-    if (m < epsilon (m) * pabs) then 
+    if (m < epsilon (m) * pabs) then
         delta = 0
     else
         delta = sqrt (max (p%t - pabs, 0._default))
@@ -112,7 +112,7 @@ contains
     real(kind=default), intent(in) :: m
     type(momentum), intent(in) :: p
     integer, intent(in) :: s
-    type(spinor) :: psi  
+    type(spinor) :: psi
     psi = u (m, p, s)
     psibar%a(1:2) = conjg (psi%a(3:4))
     psibar%a(3:4) = conjg (psi%a(1:2))
@@ -247,6 +247,14 @@ contains
     j%x(2) = (gr * ( - g14 + g23) + gl * (   g32 - g41)) * (0, 1)
     j%x(3) =  gr * (   g13 - g24) + gl * ( - g31 + g42)
   end function va2_ff
+  pure function va3_ff (gv, ga, psibar, psi) result (j)
+    type(vector) :: j
+    complex(kind=default), intent(in) :: gv, ga
+    type(conjspinor), intent(in) :: psibar
+    type(spinor), intent(in) :: psi
+    j   = va_ff (gv, ga, psibar, psi)
+    j%t = 0.0_default
+  end function va3_ff
   pure function tva_ff (gv, ga, psibar, psi) result (t)
     type(tensor2odd) :: t
     complex(kind=default), intent(in) :: gv, ga
@@ -385,7 +393,7 @@ contains
     real(kind=default), intent(in) :: m
     type(conjspinor), intent(in) :: psibar
     type(spinor), intent(in) :: psi
-    type(momentum), intent(in) :: kb, k  
+    type(momentum), intent(in) :: kb, k
     complex(kind=default) :: g2, g8, c_dum
     type(vector) :: v_dum
     type(tensor) :: t_metric
@@ -444,6 +452,24 @@ contains
     vpsi%a(3) = gl * (   vp  * psi%a(1) + v12s * psi%a(2))
     vpsi%a(4) = gl * (   v12 * psi%a(1) + vm   * psi%a(2))
   end function f_va2f
+  pure function f_va3f (gv, ga, v, psi) result (vpsi)
+    type(spinor) :: vpsi
+    complex(kind=default), intent(in) :: gv, ga
+    type(vector), intent(in) :: v
+    type(spinor), intent(in) :: psi
+    complex(kind=default) :: gl, gr
+    complex(kind=default) :: vp, vm, v12, v12s
+    gl = gv + ga
+    gr = gv - ga
+    vp =   v%x(3) !+ v%t
+    vm = - v%x(3) !+ v%t
+    v12  =  v%x(1) + (0,1)*v%x(2)
+    v12s =  v%x(1) - (0,1)*v%x(2)
+    vpsi%a(1) = gr * (   vm  * psi%a(3) - v12s * psi%a(4))
+    vpsi%a(2) = gr * ( - v12 * psi%a(3) + vp   * psi%a(4))
+    vpsi%a(3) = gl * (   vp  * psi%a(1) + v12s * psi%a(2))
+    vpsi%a(4) = gl * (   v12 * psi%a(1) + vm   * psi%a(2))
+  end function f_va3f
   pure function f_tvaf (gv, ga, t, psi) result (tpsi)
     type(spinor) :: tpsi
     complex(kind=default), intent(in) :: gv, ga
@@ -611,6 +637,24 @@ contains
     psibarv%a(3) = gr * (   psibar%a(1) * vm   - psibar%a(2) * v12)
     psibarv%a(4) = gr * ( - psibar%a(1) * v12s + psibar%a(2) * vp )
   end function f_fva2
+  pure function f_fva3 (gv, ga, psibar, v) result (psibarv)
+    type(conjspinor) :: psibarv
+    complex(kind=default), intent(in) :: gv, ga
+    type(conjspinor), intent(in) :: psibar
+    type(vector), intent(in) :: v
+    complex(kind=default) :: gl, gr
+    complex(kind=default) :: vp, vm, v12, v12s
+    gl = gv + ga
+    gr = gv - ga
+    vp =   v%x(3) !+ v%t
+    vm = - v%x(3) !+ v%t
+    v12  =  v%x(1) + (0,1)*v%x(2)
+    v12s =  v%x(1) - (0,1)*v%x(2)
+    psibarv%a(1) = gl * (   psibar%a(3) * vp   + psibar%a(4) * v12)
+    psibarv%a(2) = gl * (   psibar%a(3) * v12s + psibar%a(4) * vm )
+    psibarv%a(3) = gr * (   psibar%a(1) * vm   - psibar%a(2) * v12)
+    psibarv%a(4) = gr * ( - psibar%a(1) * v12s + psibar%a(2) * vp )
+  end function f_fva3
   pure function f_ftva (gv, ga, psibar, t) result (psibart)
     type(conjspinor) :: psibart
     complex(kind=default), intent(in) :: gv, ga
@@ -890,10 +934,10 @@ contains
     kkb = k + kb
     g2 = g / 2.0_default
     g8 = g / 8.0_default
-    t_tr = t%t(0,0) - t%t(1,1) - t%t(2,2) - t%t(3,3)      
-    tpsi = (- f_sf (g2, cmplx (m,0.0, kind=default), psi) & 
-           - f_vf ((g8*m), kkb, psi)) * t_tr - &
-           f_vf (g8,(t*kkb + kkb*t),psi)
+    t_tr = t%t(0,0) - t%t(1,1) - t%t(2,2) - t%t(3,3)
+    tpsi = (- f_sf (g2, cmplx (m,0.0, kind=default), psi) &
+            - f_vf ((g8*m), kkb, psi)) * t_tr - &
+    f_vf (g8,(t*kkb + kkb*t),psi)
   end function f_gravf
   pure function f_fgrav (g, m, kb, k, psibar, t) result (psibart)
     type(conjspinor) :: psibart
@@ -907,10 +951,10 @@ contains
     kkb = k + kb
     g2 = g / 2.0_default
     g8 = g / 8.0_default
-    t_tr = t%t(0,0) - t%t(1,1) - t%t(2,2) - t%t(3,3)      
+    t_tr = t%t(0,0) - t%t(1,1) - t%t(2,2) - t%t(3,3)
     psibart = (- f_fs (g2, psibar, cmplx (m, 0.0, kind=default)) &
         - f_fv ((g8 * m), psibar, kkb)) * t_tr - &
-        f_fv (g8,psibar,(t*kkb + kkb*t)) 
+          f_fv (g8,psibar,(t*kkb + kkb*t))
   end function f_fgrav
   pure function pr_psi (p, m, w, psi) result (ppsi)
     type(spinor) :: ppsi

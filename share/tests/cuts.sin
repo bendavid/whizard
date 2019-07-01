@@ -1,4 +1,4 @@
-# $Id: cuts.sin 5437 2014-03-07 19:52:34Z jr_reuter $
+# $Id: cuts.sin 6038 2014-07-22 10:54:09Z cweiss $
 # Sindarin input for WHIZARD self-test
 # Process e- e+ -> mu- numubar tau+ nutau
 
@@ -50,7 +50,7 @@ integrate (cuts_cc) { iterations = 1: ncalls }
 
 real eta_cut = 5
 cuts = any 5 degree < Theta < 175 degree 
-         [select if abs (Eta) < eta_cut [lepton]]
+        [select if abs (Eta) < eta_cut [lepton]]
 integrate (cuts_cc) { iterations = 1: ncalls }
 
 cuts = all Dist > 2 [e1:E1, e2:E2]

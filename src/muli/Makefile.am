@@ -16,7 +16,9 @@ AM_FFLAGS = ""
 if FC_IS_NAG
 AM_FFLAGS += -dcfuns -w
 endif
-libmuli_la_SOURCES = muli.f90 muli_basic.f90 muli_cuba.f90 muli_momentum.f90 muli_interactions.f90 muli_trapezium.f90 muli_fibonacci_tree.f90 muli_aq.f90 muli_dsigma.f90 muli_remnant.f90 muli_mcint.f90
+libmuli_la_SOURCES = muli.f90 muli_basic.f90 muli_cuba.f90 muli_momentum.f90 \
+   muli_interactions.f90 muli_trapezium.f90 muli_fibonacci_tree.f90 \
+   muli_aq.f90 muli_dsigma.f90 muli_remnant.f90 muli_mcint.f90
 libmuli_dummy_la_SOURCES = muli_dummy.f90
 
 ## Fortran module dependencies
@@ -42,7 +44,7 @@ DISTCLEANFILES = Makefile.depend
 
 # commented out by SS
 #AM_FCFLAGS = @FC_PROF@ -I../misc -I../vamp/src/
-AM_FCFLAGS = -I../misc -I../../vamp/src/ -I../pdf_builtin
+AM_FCFLAGS = -I../basics -I../misc -I../system -I../../vamp/src/ -I../pdf_builtin -I../utilities
 
 # commented out by SS
 ### OpenMP

@@ -1,9 +1,10 @@
 ?openmp_logging = false
 ?vis_history = false
 ?integration_timer = false
+| Switching to model 'QED'
 | Process library 'qedtest_9_lib': recorded process 'qedtest_9_p'
-QED.me =  0.000000000000E+00
-QED.mmu =  0.000000000000E+00
+QED.me =>  0.000000000000E+00
+QED.mmu =>  0.000000000000E+00
 seed = 0
 sqrts =  5.000000000000E+02
 openmp_num_threads = 1
@@ -77,7 +78,7 @@ Warning: No cuts have been defined.
 | Events: event normalization mode '1'
 |         ... event sample complete.
 | Events: closing raw file 'qedtest_9_p.evx'
-QED.mtau =  0.000000000000E+00
+QED.mtau =>  0.000000000000E+00
 ?check_phs_file = false
 ?rebuild_phase_space = false
 ?check_grid_file = false

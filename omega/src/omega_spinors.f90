@@ -1,18 +1,18 @@
-!  $Id: omegalib.nw 5434 2014-03-06 18:17:45Z msekulla $
+!  $Id: omegalib.nw 6301 2014-11-25 09:34:00Z bchokoufe $
 !
-!  Copyright (C) 1999-2009 by 
+!  Copyright (C) 1999-2009 by
 !      Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !      Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !      Juergen Reuter <juergen.reuter@desy.de>
 !
 !  WHIZARD is free software; you can redistribute it and/or modify it
-!  under the terms of the GNU General Public License as published by 
+!  under the terms of the GNU General Public License as published by
 !  the Free Software Foundation; either version 2, or (at your option)
 !  any later version.
 !
 !  WHIZARD is distributed in the hope that it will be useful, but
 !  WITHOUT ANY WARRANTY; without even the implied warranty of
-!  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+!  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 !  GNU General Public License for more details.
 !
 !  You should have received a copy of the GNU General Public License
@@ -253,11 +253,11 @@ contains
   pure function abs_spinor (psi) result (x)
     type(spinor), intent(in) :: psi
     real(kind=default) :: x
-    x = sqrt (dot_product (psi%a, psi%a))
+    x = sqrt (real (dot_product (psi%a, psi%a)))
   end function abs_spinor
   pure function abs_conjspinor (psibar) result (x)
     real(kind=default) :: x
     type(conjspinor), intent(in) :: psibar
-    x = sqrt (dot_product (psibar%a, psibar%a))
+    x = sqrt (real (dot_product (psibar%a, psibar%a)))
   end function abs_conjspinor
 end module omega_spinors

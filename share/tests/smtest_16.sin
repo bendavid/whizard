@@ -1,0 +1,26 @@
+# $Id: smtest_16.sin 4873 2013-11-26 19:52:40Z jr_reuter $
+# SINDARIN input for WHIZARD self-test
+# Testing NLO/LO ratio
+
+model = "SM"
+
+?logging = true
+?openmp_logging = false
+?vis_history = false
+?integration_timer = false
+?pacify = true
+
+# This flag is needed to avoid the program searching for loop libraries
+?use_gosam_loops = false
+
+!!! Tests should be run single-threaded 
+openmp_num_threads = 1
+
+process smtest_16_p1 = e1, E1 => u, U { nlo_calculation = "Real" }
+
+seed = 0
+
+iterations = 2:9000
+sqrts = 250
+
+integrate (smtest_16_p1)

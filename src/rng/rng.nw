@@ -1,0 +1,653 @@
+% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*- 
+% WHIZARD code as NOWEB source: combinatorics and such
+
+\chapter{Random-Number Generator}
+
+These modules implement abstract types and tools for random-number
+generation. 
+\begin{description}
+\item[rng\_base]
+  Abstract random-number generator and factory
+\item[selectors]
+  Selection depending on weights and random numbers
+\end{description}
+
+\clearpage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Generic Random-Number Generator}
+For all generator implementations, we define a [[rng]] type which
+represents the state of a random-number generator with the associated
+methods that produce a random number.  Furthermore, we define a
+[[rng_factory]] type.  An object of this type is capable of allocating
+a sequence of [[rng]] objects.  These generator states should be, if
+possible, statistically independent, so they can be used in parallel
+in different places of the event-generation chain.
+<<[[rng_base.f90]]>>=
+<<File header>>
+
+module rng_base
+
+  use kinds
+  use io_units
+  use format_utils, only: write_indent
+  use unit_tests
+
+<<Standard module head>>
+
+<<RNG base: public>>
+
+<<RNG base: types>>
+
+<<RNG base: interfaces>>
+
+<<RNG base: test types>>
+
+contains
+
+<<RNG base: tests>>
+
+end module rng_base
+@ %def rng_base
+@
+\subsection{Generator type}
+The rng object is actually the state of the random-number generator.
+The methods initialize/reset and call the generator for this state.
+<<RNG base: public>>=
+  public :: rng_t
+<<RNG base: types>>=
+  type, abstract :: rng_t
+   contains
+   <<RNG base: rng: TBP>>
+  end type rng_t
+
+@ %def rng_t
+@ The [[init]] method initializes the generator and sets a seed.
+We should implement the interface such that a single integer is
+sufficient for a seed.
+
+The seed may be omitted.  The behavior without seed is not defined, however.
+<<RNG base: rng: TBP>>=
+  procedure (rng_init), deferred :: init
+<<RNG base: interfaces>>=
+  abstract interface
+     subroutine rng_init (rng, seed)
+       import
+       class(rng_t), intent(out) :: rng
+       integer, intent(in), optional :: seed
+     end subroutine rng_init
+  end interface
+  
+@ %def init
+@ The [[final]] method deallocates memory where necessary and allows
+for another call of [[init]] to reset the generator.
+<<RNG base: rng: TBP>>=
+  procedure (rng_final), deferred :: final
+<<RNG base: interfaces>>=
+  abstract interface
+     subroutine rng_final (rng)
+       import
+       class(rng_t), intent(inout) :: rng
+     end subroutine rng_final
+  end interface
+  
+@ %def final 
+@ Output.  We should, at least, identify the generator.
+<<RNG base: rng: TBP>>=
+  procedure (rng_write), deferred :: write
+<<RNG base: interfaces>>=
+  abstract interface
+     subroutine rng_write (rng, unit, indent)
+       import
+       class(rng_t), intent(in) :: rng
+       integer, intent(in), optional :: unit, indent
+     end subroutine rng_write
+  end interface
+  
+@ %def rng_write
+@ These routines generate a single and an array of default-precision
+random numbers, respectively.
+<<RNG base: rng: TBP>>=
+  generic :: generate => generate_single, generate_array
+  procedure (rng_generate_single), deferred :: generate_single
+  procedure (rng_generate_array), deferred :: generate_array
+<<RNG base: interfaces>>=
+  abstract interface
+     subroutine rng_generate_single (rng, x)
+       import
+       class(rng_t), intent(inout) :: rng
+       real(default), intent(out) :: x
+     end subroutine rng_generate_single
+  end interface
+  
+  abstract interface
+     subroutine rng_generate_array (rng, x)
+       import
+       class(rng_t), intent(inout) :: rng
+       real(default), dimension(:), intent(out) :: x
+     end subroutine rng_generate_array
+  end interface
+  
+@ %def generate_single generate_array
+@
+\subsection{RNG Factory}
+A factory object has a [[make]] method that allocates and initializes
+a new generator of appropriate type.  It uses a 16-bit integer for
+initialization.  For a real-life implementation, the factory should
+return a sequence of statistically independent generators, and for
+different seeds, the sequences should also be independent.
+<<RNG base: public>>=
+  public :: rng_factory_t
+<<RNG base: types>>=
+  type, abstract :: rng_factory_t
+   contains
+   <<RNG base: rng factory: TBP>>
+  end type rng_factory_t
+  
+@ %def rng_factory_t
+@ Output.  Should be short, just report the seed and current state of
+the factory.
+<<RNG base: rng factory: TBP>>=
+  procedure (rng_factory_write), deferred :: write
+<<RNG base: interfaces>>=
+  abstract interface
+     subroutine rng_factory_write (object, unit)
+       import
+       class(rng_factory_t), intent(in) :: object
+       integer, intent(in), optional :: unit
+     end subroutine rng_factory_write
+  end interface
+  
+@ %def rng_factory_write
+@ Initialize.  It should be possible to do this repeatedly, resetting the
+state.  The default seed should be 0.
+<<RNG base: rng factory: TBP>>=
+  procedure (rng_factory_init), deferred :: init
+<<RNG base: interfaces>>=
+  abstract interface
+     subroutine rng_factory_init (factory, seed)
+       import
+       class(rng_factory_t), intent(out) :: factory
+       integer(i16), intent(in), optional :: seed
+     end subroutine rng_factory_init
+  end interface
+       
+@ %def rng_factory_init
+@ Spawn a new generator.
+<<RNG base: rng factory: TBP>>=
+  procedure (rng_factory_make), deferred :: make
+<<RNG base: interfaces>>=
+  abstract interface
+     subroutine rng_factory_make (factory, rng)
+       import
+       class(rng_factory_t), intent(inout) :: factory
+       class(rng_t), intent(out), allocatable :: rng
+     end subroutine rng_factory_make
+  end interface
+  
+@ %def rng_factory_make
+@
+\subsection{Unit tests}
+<<RNG base: public>>=
+  public :: rng_base_test
+<<RNG base: tests>>=
+  subroutine rng_base_test (u, results)
+    integer, intent(in) :: u
+    type(test_results_t), intent(inout) :: results
+  <<RNG base: execute tests>>
+  end subroutine rng_base_test
+  
+@ %def rng_base_test
+@
+\subsubsection{Test generator}
+The test 'mock' random generator generates a repeating series with the numbers
+$0.1, 0.3, 0.5, 0.7, 0.9$.  It has an integer stored as state.  The
+integer must be one of $1,3,5,7,9$.
+<<RNG base: public>>=
+  public :: rng_test_t
+<<RNG base: test types>>=
+  type, extends (rng_t) :: rng_test_t
+     integer :: state = 1
+   contains
+     procedure :: write => rng_test_write
+     procedure :: init => rng_test_init
+     procedure :: final => rng_test_final
+     procedure :: generate_single => rng_test_generate_single
+     procedure :: generate_array => rng_test_generate_array
+  end type rng_test_t
+  
+@ %def rng_test_t
+@ Output.  The state is a single number, so print it.
+<<RNG base: tests>>=
+  subroutine rng_test_write (rng, unit, indent)
+    class(rng_test_t), intent(in) :: rng
+    integer, intent(in), optional :: unit, indent
+    integer :: u, ind
+    u = given_output_unit (unit)
+    ind = 0;  if (present (indent))  ind = indent
+    call write_indent (u, ind)
+    write (u, "(A,I0,A)")  "Random-number generator: &
+         &test (state = ", rng%state, ")"
+  end subroutine rng_test_write
+  
+@ %def rng_test_write
+@ The default seed is 1.
+<<RNG base: tests>>=
+  subroutine rng_test_init (rng, seed)
+    class(rng_test_t), intent(out) :: rng
+    integer, intent(in), optional :: seed
+    if (present (seed))  rng%state = seed
+  end subroutine rng_test_init
+  
+@ %def rng_test_init
+@ Nothing to finalize:
+<<RNG base: tests>>=
+  subroutine rng_test_final (rng)
+    class(rng_test_t), intent(inout) :: rng
+  end subroutine rng_test_final
+  
+@ %def rng_test_final
+@ Generate a single number and advance the state.
+<<RNG base: tests>>=
+  subroutine rng_test_generate_single (rng, x)
+    class(rng_test_t), intent(inout) :: rng
+    real(default), intent(out) :: x
+    x = rng%state / 10._default
+    rng%state = mod (rng%state + 2, 10)
+  end subroutine rng_test_generate_single
+  
+@ %def rng_generate_single
+@ The array generator calls the single-item generator multiple times.
+<<RNG base: tests>>=
+  subroutine rng_test_generate_array (rng, x)
+    class(rng_test_t), intent(inout) :: rng
+    real(default), dimension(:), intent(out) :: x
+    integer :: i
+    do i = 1, size (x)
+       call rng%generate (x(i))
+    end do
+  end subroutine rng_test_generate_array
+  
+@ %def rng_generate_array
+@
+\subsubsection{Test Factory}
+This factory makes [[rng_test_t]] generators, initialized with
+integers 1, 3, 5, 7, 9 if given the input 0, 1, 2, 3, 4.  The
+generators within one sequence are all identical, however.
+<<RNG base: public>>=
+  public :: rng_test_factory_t
+<<RNG base: test types>>=
+  type, extends (rng_factory_t) :: rng_test_factory_t
+     integer :: seed = 1
+   contains
+   <<RNG base: rng test factory: TBP>>
+  end type rng_test_factory_t
+  
+@ %def rng_test_factory_t
+@ Output.
+<<RNG base: rng test factory: TBP>>=
+  procedure :: write => rng_test_factory_write
+<<RNG base: tests>>=
+  subroutine rng_test_factory_write (object, unit)
+    class(rng_test_factory_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit)
+    write (u, "(1x,A,I0,A)")  "RNG factory: test (", object%seed, ")"
+  end subroutine rng_test_factory_write
+
+@ %def rng_test_factory_write
+@ Initialize, translating the given seed.
+<<RNG base: rng test factory: TBP>>=
+  procedure :: init => rng_test_factory_init
+<<RNG base: tests>>=
+  subroutine rng_test_factory_init (factory, seed)
+    class(rng_test_factory_t), intent(out) :: factory
+    integer(i16), intent(in), optional :: seed
+    if (present (seed))  factory%seed = mod (seed * 2 + 1, 10)
+  end subroutine rng_test_factory_init
+    
+@ %def rng_test_factory_init
+<<RNG base: rng test factory: TBP>>=
+  procedure :: make => rng_test_factory_make
+<<RNG base: tests>>=
+  subroutine rng_test_factory_make (factory, rng)
+    class(rng_test_factory_t), intent(inout) :: factory
+    class(rng_t), intent(out), allocatable :: rng
+    allocate (rng_test_t :: rng)
+    select type (rng)
+    type is (rng_test_t)
+       call rng%init (int (factory%seed))
+    end select
+  end subroutine rng_test_factory_make
+
+@ %def rng_test_factory_make
+@
+\subsubsection{Generator check}
+Initialize the generator and draw random numbers.
+<<RNG base: execute tests>>=
+  call test (rng_base_1, "rng_base_1", &
+       "rng initialization and call", &
+       u, results)
+<<RNG base: tests>>=
+  subroutine rng_base_1 (u)
+    integer, intent(in) :: u
+    class(rng_t), allocatable :: rng
+
+    real(default) :: x
+    real(default), dimension(2) :: x2
+    
+    write (u, "(A)")  "* Test output: rng_base_1"
+    write (u, "(A)")  "*   Purpose: initialize and call a test random-number &
+         &generator"
+    write (u, "(A)")
+    
+    write (u, "(A)")  "* Initialize generator"
+    write (u, "(A)")
+
+    allocate (rng_test_t :: rng)
+    call rng%init (3)
+
+    call rng%write (u)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Get random number"
+    write (u, "(A)")
+    
+    call rng%generate (x)
+    write (u, "(A,2(1x,F9.7))")  "x =", x
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Get random number pair"
+    write (u, "(A)")
+    
+    call rng%generate (x2)
+    write (u, "(A,2(1x,F9.7))")  "x =", x2
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+        
+    call rng%final ()
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: rng_base_1"
+    
+  end subroutine rng_base_1
+    
+@ %def rng_base_1
+@
+\subsubsection{Factory check}
+Set up a factory and spawn generators.
+<<RNG base: execute tests>>=
+  call test (rng_base_2, "rng_base_2", &
+       "rng factory", &
+       u, results)
+<<RNG base: tests>>=
+  subroutine rng_base_2 (u)
+    integer, intent(in) :: u
+    type(rng_test_factory_t) :: rng_factory
+    class(rng_t), allocatable :: rng
+    
+    write (u, "(A)")  "* Test output: rng_base_2"
+    write (u, "(A)")  "*   Purpose: initialize and use a rng factory"
+    write (u, "(A)")
+    
+    write (u, "(A)")  "* Initialize factory"
+    write (u, "(A)")
+
+    call rng_factory%init ()
+    call rng_factory%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Make a generator"
+    write (u, "(A)")
+
+    call rng_factory%make (rng)
+    call rng%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+        
+    call rng%final ()
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: rng_base_2"
+    
+  end subroutine rng_base_2
+    
+@ %def rng_base_2
+@
+\clearpage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Select from a weighted sample}
+<<[[selectors.f90]]>>=
+<<File header>>
+
+module selectors
+
+  use kinds
+  use io_units
+  use unit_tests
+  use diagnostics
+  use rng_base
+
+<<Standard module head>>
+
+<<Selectors: public>>
+
+<<Selectors: types>>
+
+contains
+  
+<<Selectors: procedures>>
+
+<<Selectors: tests>>
+
+end module selectors
+@ %def selectors
+@
+\subsection{Selector type}
+The rng object is actually the state of the random-number generator.
+The methods initialize/reset and call the generator for this state.
+<<Selectors: public>>=
+  public :: selector_t
+<<Selectors: types>>=
+  type :: selector_t
+     integer, dimension(:), allocatable :: map
+     real(default), dimension(:), allocatable :: weight
+     real(default), dimension(:), allocatable :: acc
+   contains
+   <<Selectors: selector: TBP>>
+end type selector_t
+
+@ %def selector_t
+@ Display contents.
+<<Selectors: selector: TBP>>=
+  procedure :: write => selector_write
+<<Selectors: procedures>>=
+  subroutine selector_write (object, unit)
+    class(selector_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    integer :: u, i
+    u = given_output_unit (unit)
+    write (u, "(1x,A)")  "Selector: i, weight, acc. weight"
+    if (allocated (object%weight)) then
+       do i = 1, size (object%weight)
+          write (u, "(3x,I0,1x,ES19.12,1x,ES19.12)") &
+               object%map(i), object%weight(i), object%acc(i)
+       end do
+    else
+       write (u, "(3x,A)")  "[undefined]"
+    end if
+  end subroutine selector_write
+ 
+@ %def selector_write
+@ We pack the input weight array such that zero-weight entries are
+removed.  We also normalize it.  This makes a [[map]] array for
+mapping the selected weight to the actual entry necessary.
+<<Selectors: selector: TBP>>=
+  procedure :: init => selector_init
+<<Selectors: procedures>>=
+  subroutine selector_init (selector, weight)
+    class(selector_t), intent(out) :: selector
+    real(default), dimension(:), intent(in) :: weight
+    real(default) :: s
+    integer :: n, i
+    logical, dimension(:), allocatable :: mask
+    if (size (weight) == 0) &
+         call msg_bug ("Selector init: zero-size weight array")
+    if (any (weight < 0)) &
+         call msg_bug ("Selector init: negative weight")
+    s = sum (weight)
+    if (s == 0) &
+         call msg_bug ("Selector init: all weights are zero")
+    allocate (mask (size (weight)), &
+         source = weight /= 0)
+    n = count (mask)
+    allocate (selector%map (n), &
+         source = pack ([(i, i = 1, size (weight))], mask))
+    allocate (selector%weight (n), &
+         source = pack (weight / s, mask))
+    allocate (selector%acc (n))
+    selector%acc(1) = selector%weight(1)
+    do i = 2, n - 1
+       selector%acc(i) = selector%acc(i-1) + selector%weight(i)
+    end do
+    selector%acc(n) = 1
+  end subroutine selector_init
+    
+@ %def selector_init
+@ Select an entry based upon the number [[x]], which should be a
+uniformly distributed random number between 0 and 1.
+<<Selectors: selector: TBP>>=
+  procedure :: select => selector_select
+<<Selectors: procedures>>=
+  function selector_select (selector, x) result (n)
+    class(selector_t), intent(in) :: selector
+    real(default), intent(in) :: x
+    integer :: n
+    integer :: i
+    if (x < 0 .or. x > 1) &
+         call msg_bug ("Selector: random number out of range")
+    do i = 1, size (selector%acc)
+       if (x <= selector%acc(i))  exit
+    end do
+    n = selector%map(i)
+  end function selector_select
+
+@ %def selector_select
+@ Use the provided random-number generator to select an entry.  (Unless there
+is only one entry.)
+<<Selectors: selector: TBP>>=
+  procedure :: generate => selector_generate
+<<Selectors: procedures>>=
+  subroutine selector_generate (selector, rng, n)
+    class(selector_t), intent(in) :: selector
+    class(rng_t), intent(inout) :: rng
+    integer, intent(out) :: n
+    real(default) :: x
+    select case (size (selector%acc))
+    case (1);  n = 1
+    case default
+       call rng%generate (x)
+       n = selector%select (x)
+    end select
+  end subroutine selector_generate
+
+@ %def selector_generate
+@ Determine the normalized weight for a selected entry.  We use a
+linear search for the inverse lookup, assuming that efficiency is not
+an issue for this function.
+<<Selectors: selector: TBP>>=
+  procedure :: get_weight => selector_get_weight
+<<Selectors: procedures>>=
+  function selector_get_weight (selector, n) result (weight)
+    class(selector_t), intent(in) :: selector
+    integer, intent(in) :: n
+    real(default) :: weight
+    integer :: i
+    do i = 1, size (selector%weight)
+       if (selector%map(i) == n) then
+          weight = selector%weight(i)
+          return
+       end if
+    end do
+    weight = 0
+  end function selector_get_weight
+
+@ %def selector_get_weight
+@
+\subsection{Unit tests}
+<<Selectors: public>>=
+  public :: selectors_test
+<<Selectors: tests>>=
+  subroutine selectors_test (u, results)
+    integer, intent(in) :: u
+    type(test_results_t), intent(inout) :: results
+  <<Selectors: execute tests>>
+  end subroutine selectors_test
+  
+@ %def selectors_test
+@
+\subsubsection{Basic check}
+Initialize the selector and draw random numbers.
+<<Selectors: execute tests>>=
+  call test (selectors_1, "selectors_1", &
+       "rng initialization and call", &
+       u, results)
+<<Selectors: tests>>=
+  subroutine selectors_1 (u)
+    integer, intent(in) :: u
+    type(selector_t) :: selector
+    class(rng_t), allocatable, target :: rng
+    integer :: i, n
+
+    write (u, "(A)")  "* Test output: selectors_1"
+    write (u, "(A)")  "*   Purpose: initialize a selector and test it"
+    write (u, "(A)")
+    
+    write (u, "(A)")  "* Initialize selector"
+    write (u, "(A)")
+
+    call selector%init &
+         ([2._default, 3.5_default, 0._default, &
+         2._default, 0.5_default, 2._default])
+    call selector%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Select numbers using predictable test generator"
+    write (u, "(A)")
+
+    allocate (rng_test_t :: rng)
+    call rng%init (1)
+
+    do i = 1, 5
+       call selector%generate (rng, n)
+       write (u, "(1x,I0)")  n
+    end do
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Select numbers using real input number"
+    write (u, "(A)")
+    
+    write (u, "(1x,A,I0)")  "select(0.00) = ", selector%select (0._default)
+    write (u, "(1x,A,I0)")  "select(0.77) = ", selector%select (0.77_default)
+    write (u, "(1x,A,I0)")  "select(1.00) = ", selector%select (1._default)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Get weight"
+    write (u, "(A)")
+    
+    write (u, "(1x,A,ES19.12)")  "weight(2) =", selector%get_weight(2)
+    write (u, "(1x,A,ES19.12)")  "weight(3) =", selector%get_weight(3)
+        
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+        
+    call rng%final ()
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: selectors_1"
+    
+  end subroutine selectors_1
+    
+@ %def selectors_1

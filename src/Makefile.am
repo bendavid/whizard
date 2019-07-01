@@ -27,9 +27,22 @@
 
 ## Subdirectories to configure
 SUBDIRS = \
-  hepmc misc lhapdf lhapdf5 stdhep pdf_builtin \
-  fastjet hoppet shower muli \
-  whizard-core prebuilt models 
+  noweb-frame \
+  basics \
+  utilities \
+  testing \
+  system \
+  combinatorics parsing rng physics qft \
+  fastjet \
+  types \
+  matrix_elements \
+  hepmc lcio particles \
+  beams \
+  phase_space \
+  mci \
+  lhapdf lhapdf5 stdhep pdf_builtin \
+  hoppet shower muli \
+  whizard-core prebuilt models
 if MPOST_AVAILABLE
 SUBDIRS += gamelan feynmf
 endif
@@ -52,15 +65,32 @@ libwhizard_la_LIBADD = \
   ../vamp/src/libvamp.la \
   ../circe1/src/libcirce1.la \
   ../circe2/src/libcirce2.la \
-  misc/libaux.la \
-  pdf_builtin/libpdf_builtin.la
+  pdf_builtin/libpdf_builtin.la \
+  mci/libmci.la \
+  phase_space/libphase_space.la \
+  beams/libbeams.la \
+  particles/libparticles.la \
+  matrix_elements/libmatrix_elements.la \
+  types/libtypes.la \
+  qft/libqft.la \
+  physics/libphysics.la \
+  rng/librng.la \
+  parsing/libparsing.la \
+  combinatorics/libcombinatorics.la \
+  system/libsystem.la \
+  testing/libtesting.la \
+  utilities/libutilities.la \
+  basics/libbasics.la
+
 if SHOWER_AVAILABLE
 libwhizard_la_LIBADD += \
   shower/libshower.la 
 else 
 libwhizard_la_LIBADD += \
   shower/libshower_dummy.la
+
 endif 
+
 if MPI_AVAILABLE
 libwhizard_la_LIBADD += \
   muli/libmuli.la 
@@ -73,6 +103,12 @@ if HEPMC_AVAILABLE
 libwhizard_la_LIBADD += hepmc/libHepMCWrap.la
 else
 libwhizard_la_LIBADD += hepmc/libHepMCWrap_dummy.la
+endif 
+
+if LCIO_AVAILABLE
+libwhizard_la_LIBADD += lcio/libLCIOWrap.la
+else
+libwhizard_la_LIBADD += lcio/libLCIOWrap_dummy.la
 endif 
 
 libomega_la_LIBADD = \
@@ -133,6 +169,7 @@ whizard_LDADD += prebuilt/libwhizard_prebuilt.la
 whizard_LDADD += $(LDFLAGS_LHAPDF)
 whizard_LDADD += $(LDFLAGS_STDHEP)
 whizard_LDADD += $(LDFLAGS_HEPMC)
+whizard_LDADD += $(LDFLAGS_LCIO)
 whizard_LDADD += $(LDFLAGS_HOPPET)
 whizard_LDADD += $(FASTJET_LIBS)
 
@@ -157,3 +194,9 @@ endif
 ## Remove backup files
 maintainer-clean-local:
 	-rm -f *~
+
+## Remove Module lists only after final subdir cleanup
+distclean-local:
+	for d in $(SUBDIRS); do \
+	  rm -f $$d/Modules; \
+	done

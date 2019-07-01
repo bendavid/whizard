@@ -1,4 +1,4 @@
-! WHIZARD 2.2.2 July 6 2014
+! WHIZARD 2.2.3 Nov 30 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,8 +6,10 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
+!     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     Christian Weiss <christian.weiss@desy.de>
+!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -29,18 +31,21 @@
 
 module prc_omega
   
-  use iso_c_binding !NODEP!
-  use kinds !NODEP!
-  use file_utils !NODEP!
-  use iso_varying_string, string_t => varying_string !NODEP!
-  use limits, only: TAB !NODEP!
-  use diagnostics !NODEP!
+  use, intrinsic :: iso_c_binding !NODEP!
+  
+  use kinds
+  use iso_varying_string, string_t => varying_string
+  use io_units
+  use file_utils, only: delete_file
   use unit_tests
+  use system_defs, only: TAB
+  use diagnostics
   use os_interface
-  use lorentz !NODEP!
+  use lorentz
   use sm_qcd
   use interactions
   use variables
+  use model_data
   use models
 
   use process_constants
@@ -54,14 +59,15 @@ module prc_omega
   private
 
   public :: omega_def_t
+  public :: omega_omega_def_t
+  public :: omega_ovm_def_t
   public :: omega_make_process_component
   public :: prc_omega_t
   public :: prc_omega_test
   public :: prc_omega_diags_test
 
-  type, extends (prc_core_def_t) :: omega_def_t
+  type, abstract, extends (prc_core_def_t) :: omega_def_t
    contains
-     procedure, nopass :: type_string => omega_def_type_string
      procedure :: init => omega_def_init
      procedure :: write => omega_def_write
      procedure :: read => omega_def_read
@@ -71,7 +77,17 @@ module prc_omega
      procedure :: connect => omega_def_connect
   end type omega_def_t
   
-  type, extends (prc_writer_f_module_t) :: omega_writer_t
+  type, extends (omega_def_t) :: omega_omega_def_t
+   contains
+     procedure, nopass :: type_string => omega_omega_def_type_string
+  end type omega_omega_def_t
+  
+  type, extends (omega_def_t) :: omega_ovm_def_t
+   contains
+     procedure, nopass :: type_string => omega_ovm_def_type_string
+  end type omega_ovm_def_t
+  
+  type, extends (prc_writer_f_module_t), abstract :: omega_writer_t
      type(string_t) :: model_name
      type(string_t) :: process_mode
      type(string_t) :: process_string
@@ -82,7 +98,6 @@ module prc_omega
      logical :: diags_color = .false.
      type(string_t) :: extra_options
    contains
-     procedure, nopass :: type_name => omega_writer_type_name
      procedure, nopass :: get_module_name => omega_writer_get_module_name
      procedure :: write => omega_writer_write
      procedure :: init => omega_writer_init
@@ -92,6 +107,16 @@ module prc_omega
      procedure :: write_interface => omega_write_interface
      procedure :: write_wrapper => omega_write_wrapper
   end type omega_writer_t
+
+  type, extends (omega_writer_t) :: omega_omega_writer_t
+   contains
+     procedure, nopass :: type_name => omega_omega_writer_type_name
+  end type omega_omega_writer_t
+
+  type, extends (omega_writer_t) :: omega_ovm_writer_t
+   contains
+     procedure, nopass :: type_name => omega_ovm_writer_type_name
+  end type omega_ovm_writer_t
 
   type, extends (prc_core_driver_t) :: omega_driver_t
      procedure(init_t), nopass, pointer :: &
@@ -136,6 +161,7 @@ module prc_omega
      real(default) :: alpha_qcd = -1
    contains
      procedure :: write => omega_state_write
+     procedure :: reset_new_kinematics => omega_state_reset_new_kinematics
   end type omega_state_t
   
 
@@ -187,10 +213,15 @@ module prc_omega
 
 contains
   
-  function omega_def_type_string () result (string)
+  function omega_omega_def_type_string () result (string)
     type(string_t) :: string
     string = "omega"
-  end function omega_def_type_string
+  end function omega_omega_def_type_string
+
+  function omega_ovm_def_type_string () result (string)
+    type(string_t) :: string
+    string = "ovm"
+  end function omega_ovm_def_type_string
 
   subroutine omega_def_init (object, model_name, prt_in, prt_out, &
        restrictions, openmp_support, report_progress, extra_options, &
@@ -204,12 +235,23 @@ contains
     logical, intent(in), optional :: report_progress
     logical, intent(in), optional :: diags, diags_color
     type(string_t), intent(in), optional :: extra_options
-    allocate (omega_writer_t :: object%writer)
-    select type (writer => object%writer)
-    type is (omega_writer_t)
-       call writer%init (model_name, prt_in, prt_out, &
-            restrictions, openmp_support, report_progress, &
-            extra_options, diags, diags_color)
+    select type (object)
+    type is (omega_omega_def_t)
+       allocate (omega_omega_writer_t :: object%writer)
+       select type (writer => object%writer)
+       type is (omega_omega_writer_t)
+          call writer%init (model_name, prt_in, prt_out, &
+               restrictions, openmp_support, report_progress, &
+               extra_options, diags, diags_color)
+       end select
+    type is (omega_ovm_def_t)
+       allocate (omega_ovm_writer_t :: object%writer)
+       select type (writer => object%writer)
+       type is (omega_ovm_writer_t)
+          call writer%init (model_name, prt_in, prt_out, &
+               restrictions, openmp_support, report_progress, &
+               extra_options, diags, diags_color)
+       end select       
     end select
   end subroutine omega_def_init
 
@@ -217,7 +259,9 @@ contains
     class(omega_def_t), intent(in) :: object
     integer, intent(in) :: unit
     select type (writer => object%writer)
-    type is (omega_writer_t)
+    type is (omega_omega_writer_t)
+       call writer%write (unit)
+    type is (omega_ovm_writer_t)
        call writer%write (unit)
     end select
   end subroutine omega_def_write
@@ -283,10 +327,15 @@ contains
     end select
   end subroutine omega_def_connect
 
-  function omega_writer_type_name () result (string)
+  function omega_omega_writer_type_name () result (string)
     type(string_t) :: string
     string = "omega"
-  end function omega_writer_type_name
+  end function omega_omega_writer_type_name
+
+  function omega_ovm_writer_type_name () result (string)
+    type(string_t) :: string
+    string = "ovm"
+  end function omega_ovm_writer_type_name
 
   function omega_writer_get_module_name (id) result (name)
     type(string_t) :: name
@@ -374,7 +423,19 @@ contains
     logical :: escape_hyperref
     escape_hyperref = .false.
     if (present (testflag))  escape_hyperref = testflag
-    omega_binary = "omega_" // writer%model_name // ".opt"
+    select type (writer)
+    type is (omega_omega_writer_t)       
+       omega_binary = "omega_" // writer%model_name // ".opt"
+    type is (omega_ovm_writer_t)
+       select case (char (writer%model_name))
+       case ("SM", "SM_CKM", "SM_Higgs", "2HDM", "2HDM_CKM", &
+             "HSExt", "QED", "QCD", "Zprime")
+       case default
+          call msg_fatal ("The model " // char (writer%model_name) &
+               // " is not available for the O'Mega VM.")
+       end select
+       omega_binary = "omega_" // writer%model_name // "_VM.opt"
+    end select
     omega_path = os_data%whizard_omega_binpath // "/" // omega_binary
     if (writer%restrictions /= "") then
        restrictions_string = " -cascade '" // writer%restrictions // "'"
@@ -414,6 +475,10 @@ contains
        kmatrix_string = ""
     end select
     write (unit, "(5A)")  "SOURCES += ", char (id), ".f90"
+    select type (writer)
+    type is (omega_ovm_writer_t)
+       write (unit, "(5A)")  "SOURCES += ", char (id), ".hbc"
+    end select
     if (writer%diags .or. writer%diags_color) then
        write (unit, "(5A)")  "TEX_SOURCES += ", char (id), "_diags.tex"    
        if (os_data%event_analysis_pdf) then
@@ -422,20 +487,41 @@ contains
           write (unit, "(5A)")  "TEX_OBJECTS += ", char (id), "_diags.ps"
        end if
     end if
-    write (unit, "(5A)")  "OBJECTS += ", char (id), ".lo"
-    write (unit, "(5A)")  char (id), ".f90:"
-    write (unit, "(99A)")  TAB, char (omega_path), &
-         " -o ", char (id), ".f90", &
-         " -target:whizard", &
-         " -target:parameter_module parameters_", char (writer%model_name), &
-         " -target:module opr_", char (id), &
-         " -target:md5sum '", writer%md5sum, "'", &
-         char (openmp_string), &
-         char (progress_string), &
-         char (kmatrix_string), &
-         char (writer%process_mode), char (writer%process_string), &
-         char (restrictions_string), char (diagrams_string), &
-         char (writer%extra_options)
+    write (unit, "(5A)")  "OBJECTS += ", char (id), ".lo"    
+    select type (writer)
+    type is (omega_omega_writer_t)       
+       write (unit, "(5A)")  char (id), ".f90:"       
+       write (unit, "(99A)")  TAB, char (omega_path), &
+            " -o ", char (id), ".f90", &
+            " -target:whizard", &
+            " -target:parameter_module parameters_", char (writer%model_name), &
+            " -target:module opr_", char (id), &
+            " -target:md5sum '", writer%md5sum, "'", &
+            char (openmp_string), &
+            char (progress_string), &
+            char (kmatrix_string), &
+            char (writer%process_mode), char (writer%process_string), &
+            char (restrictions_string), char (diagrams_string), &
+            char (writer%extra_options)
+    type is (omega_ovm_writer_t)
+       write (unit, "(5A)")  char (id), ".hbc:"
+       write (unit, "(99A)")  TAB, char (omega_path), &
+            " -o ", char (id), ".hbc", &
+            char (progress_string), &
+            char (writer%process_mode), char (writer%process_string), &
+            char (restrictions_string), char (diagrams_string), &
+            char (writer%extra_options)
+       write (unit, "(5A)")  char (id), ".f90:"
+       write (unit, "(99A)")  TAB, char (omega_path), &
+            " -o ", char (id), ".f90 -params", &
+            " -target:whizard ", &
+            " -target:bytecode_file ", char (id), ".hbc", &
+            " -target:wrapper_module opr_", char (id), &
+            " -target:parameter_module_external parameters_", &           
+            char (writer%model_name), &
+            " -target:md5sum '", writer%md5sum, "'", &
+            char (openmp_string)
+    end select
     if (writer%diags .or. writer%diags_color) &
        write (unit, "(5A)")  char (id), "_diags.tex: ", char (id), ".f90"
     write (unit, "(5A)")  "clean-", char (id), ":"
@@ -443,6 +529,10 @@ contains
     write (unit, "(5A)")  TAB, "rm -f opr_", char (id), ".mod"
     write (unit, "(5A)")  TAB, "rm -f ", char (id), ".lo"
     write (unit, "(5A)")  "CLEAN_SOURCES += ", char (id), ".f90"    
+    select type (writer)
+    type is (omega_ovm_writer_t)
+       write (unit, "(5A)")  "CLEAN_SOURCES += ", char (id), ".hbc"
+    end select
     if (writer%diags .or. writer%diags_color) then
        write (unit, "(5A)")  "CLEAN_SOURCES += ", char (id), "_diags.tex"
     end if
@@ -676,9 +766,9 @@ contains
     logical, intent(in), optional :: diags, diags_color
     type(string_t), intent(in), optional :: extra_options
     class(prc_core_def_t), allocatable :: def
-    allocate (omega_def_t :: def)
+    allocate (omega_omega_def_t :: def)
     select type (def)
-    type is (omega_def_t)
+    type is (omega_omega_def_t)
        call def%init (model_name, prt_in, prt_out, &
             restrictions, openmp_support, report_progress, &
             extra_options, diags, diags_color)
@@ -695,11 +785,16 @@ contains
     class(omega_state_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     write (u, "(3x,A,L1)")  "O'Mega state: new kinematics = ", &
          object%new_kinematics
   end subroutine omega_state_write
   
+  subroutine omega_state_reset_new_kinematics (object)
+    class(omega_state_t), intent(inout) :: object
+    object%new_kinematics = .true.
+  end subroutine omega_state_reset_new_kinematics
+
   subroutine prc_omega_allocate_workspace (object, tmp)
     class(prc_omega_t), intent(in) :: object
     class(workspace_t), intent(inout), allocatable :: tmp
@@ -710,7 +805,7 @@ contains
     class(prc_omega_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u, i
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     write (u, "(3x,A)", advance="no")  "O'Mega process core:"
     if (object%data_known) then
        write (u, "(1x,A)")  char (object%data%id)
@@ -730,13 +825,14 @@ contains
   subroutine prc_omega_set_parameters (prc_omega, model, &
        helicity_selection, qcd, use_color_factors)
     class(prc_omega_t), intent(inout) :: prc_omega
-    type(model_t), intent(in), target, optional :: model
+    class(model_data_t), intent(in), target, optional :: model
     type(helicity_selection_t), intent(in), optional :: helicity_selection
     type(qcd_t), intent(in), optional :: qcd
     logical, intent(in), optional :: use_color_factors
     if (present (model)) then
-       if (allocated (prc_omega%par))  deallocate (prc_omega%par)
-       call model_parameters_to_c_array (model, prc_omega%par)
+       if (.not. allocated (prc_omega%par)) &
+            allocate (prc_omega%par (model%get_n_real ()))
+       call model%real_parameters_to_c_array (prc_omega%par)
     end if
     if (present (helicity_selection)) then
        prc_omega%helicity_selection = helicity_selection
@@ -987,9 +1083,9 @@ end subroutine prc_omega_diags_test
     prt_in = [var_str ("e+"), var_str ("e-")]
     prt_out = [var_str ("m+"), var_str ("m-")]
     
-    allocate (omega_def_t :: def)
+    allocate (omega_omega_def_t :: def)
     select type (def)
-    type is (omega_def_t)
+    type is (omega_omega_def_t)
        call def%init (model_name, prt_in, prt_out)
     end select
     allocate (entry)
@@ -1150,7 +1246,7 @@ end subroutine prc_omega_diags_test
     model_name = "QED"
     call model_list%read_model &
          (var_str ("QED"), var_str ("QED.mdl"), os_data, model)
-    var_list => model_get_var_list_ptr (model)
+    var_list => model%get_var_list_ptr ()
 
     allocate (prt_in (2), prt_out (2))
     prt_in = [var_str ("e-"), var_str ("e+")]
@@ -1216,7 +1312,8 @@ end subroutine prc_omega_diags_test
          is_known = .true.)
     call var_list_set_real (var_list, var_str ("mtau"), 0._default, &
          is_known = .true.)
-    call model_parameters_to_c_array (model, par)
+    allocate (par (model%get_n_real ()))
+    call model%real_parameters_to_c_array (par)
 
     write (u, "(2x,A,F6.4)")  "ee   = ", par(1)
     write (u, "(2x,A,F6.4)")  "me   = ", par(2)
@@ -1366,7 +1463,7 @@ end subroutine prc_omega_diags_test
     model_name = "QED"
     call model_list%read_model &
          (var_str ("QED"), var_str ("QED.mdl"), os_data, model)
-    var_list => model_get_var_list_ptr (model)
+    var_list => model%get_var_list_ptr ()
 
     allocate (prt_in (2), prt_out (2))
     prt_in = [var_str ("e-"), var_str ("e+")]
@@ -1410,7 +1507,8 @@ end subroutine prc_omega_diags_test
          is_known = .true.)
     call var_list_set_real (var_list, var_str ("mtau"), 0._default, &
          is_known = .true.)
-    call model_parameters_to_c_array (model, par)
+    allocate (par (model%get_n_real ()))
+    call model%real_parameters_to_c_array (par)
 
     write (u, "(2x,A,F6.4)")  "ee   = ", par(1)
     write (u, "(2x,A,F6.4)")  "me   = ", par(2)
@@ -1558,9 +1656,9 @@ end subroutine prc_omega_diags_test
     prt_in = [var_str ("u"), var_str ("ubar")]
     prt_out = [var_str ("d"), var_str ("dbar")]
     
-    allocate (omega_def_t :: def)
+    allocate (omega_omega_def_t :: def)
     select type (def)
-    type is (omega_def_t)
+    type is (omega_omega_def_t)
        call def%init (model_name, prt_in, prt_out)
     end select
     allocate (entry)
@@ -1692,9 +1790,9 @@ end subroutine prc_omega_diags_test
     prt_in = [var_str ("u"), var_str ("ubar")]
     prt_out = [var_str ("d"), var_str ("dbar")]
     
-    allocate (omega_def_t :: def)
+    allocate (omega_omega_def_t :: def)
     select type (def)
-    type is (omega_def_t)
+    type is (omega_omega_def_t)
        call def%init (model_name, prt_in, prt_out)
     end select
     allocate (entry)
@@ -1822,9 +1920,9 @@ end subroutine prc_omega_diags_test
     prt_in = [var_str ("u"), var_str ("ubar")]
     prt_out = [var_str ("d"), var_str ("dbar")]
     
-    allocate (omega_def_t :: def)
+    allocate (omega_omega_def_t :: def)
     select type (def)
-    type is (omega_def_t)
+    type is (omega_omega_def_t)
        call def%init (model_name, prt_in, prt_out, &
             diags = .true., diags_color = .true.)
     end select

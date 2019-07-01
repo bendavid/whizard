@@ -1,18 +1,18 @@
-!  $Id: omegalib.nw 5434 2014-03-06 18:17:45Z msekulla $
+!  $Id: omegalib.nw 6301 2014-11-25 09:34:00Z bchokoufe $
 !
-!  Copyright (C) 1999-2009 by 
+!  Copyright (C) 1999-2009 by
 !      Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !      Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !      Juergen Reuter <juergen.reuter@desy.de>
 !
 !  WHIZARD is free software; you can redistribute it and/or modify it
-!  under the terms of the GNU General Public License as published by 
+!  under the terms of the GNU General Public License as published by
 !  the Free Software Foundation; either version 2, or (at your option)
 !  any later version.
 !
 !  WHIZARD is distributed in the hope that it will be useful, but
 !  WITHOUT ANY WARRANTY; without even the implied warranty of
-!  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+!  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 !  GNU General Public License for more details.
 !
 !  You should have received a copy of the GNU General Public License
@@ -30,7 +30,7 @@ module omega_vspinor_polarizations
   implicit none
   public :: ueps, veps
   private :: eps
-  private :: outer_product  
+  private :: outer_product
   integer, parameter, public :: omega_vspinor_pols_2010_01_A = 0
 contains
   pure function eps (mass, k, s) result (e)
@@ -49,7 +49,7 @@ contains
        if ((k%x(1) == 0) .and. (k%x(2) == 0)) then
           cos_phi = 1
           sin_phi = 0
-       else 
+       else
           cos_phi = k%x(1) / sqrt(k%x(1)**2 + k%x(2)**2)
           sin_phi = k%x(2) / sqrt(k%x(1)**2 + k%x(2)**2)
        end if
@@ -66,12 +66,12 @@ contains
           e%x(3) = epiphi * ( sin_th / sqrt2)
        case (-1)
           e%x(1) = emiphi * ( cos_th * cos_phi + (0,1) * sin_phi) / sqrt2
-          e%x(2) = emiphi * ( cos_th * sin_phi - (0,1) * cos_phi) / sqrt2 
+          e%x(2) = emiphi * ( cos_th * sin_phi - (0,1) * cos_phi) / sqrt2
           e%x(3) = emiphi * (-sin_th / sqrt2)
        case (0)
           if (m > 0) then
              e%t = kabs / m
-             e%x = k%t / (m*kabs) * k%x 
+             e%x = k%t / (m*kabs) * k%x
           end if
        case (4)
           if (m > 0) then
@@ -113,7 +113,7 @@ contains
     type(vector) :: ep, e0, em
     type(bispinor) :: up, um
     do i = 1, 4
-      t%psi(i)%a = 0 
+      t%psi(i)%a = 0
     end do
     select case (s)
     case (2)
@@ -125,21 +125,21 @@ contains
        e0 = eps (m, k, 0)
        up = u (m, k, 1)
        um = u (m, k, -1)
-       t = (1 / sqrt (3.0_default)) * (outer_product (ep, um) & 
-            + sqrt (2.0_default) * outer_product (e0, up)) 
+       t = (1 / sqrt (3.0_default)) * (outer_product (ep, um) &
+            + sqrt (2.0_default) * outer_product (e0, up))
     case (-1)
        e0 = eps (m, k, 0)
        em = eps (m, k, -1)
        up = u (m, k, 1)
        um = u (m, k, -1)
        t = (1 / sqrt (3.0_default)) * (sqrt (2.0_default) * &
-            outer_product (e0, um) + outer_product (em, up)) 
+            outer_product (e0, um) + outer_product (em, up))
     case (-2)
        em = eps (m, k, -1)
        um = u (m, k, -1)
        t = outer_product (em, um)
     end select
-  end function ueps 
+  end function ueps
   pure function veps (m, k, s) result (t)
     type(vectorspinor) :: t
     real(kind=default), intent(in) :: m
@@ -149,7 +149,7 @@ contains
     type(vector) :: ep, e0, em
     type(bispinor) :: vp, vm
     do i = 1, 4
-      t%psi(i)%a = 0 
+      t%psi(i)%a = 0
     end do
     select case (s)
     case (2)
@@ -175,7 +175,7 @@ contains
        vm = v (m, k, -1)
        t = outer_product (em, vm)
     end select
-  end function veps 
+  end function veps
   pure function outer_product (ve, sp) result (vs)
     type(vectorspinor) :: vs
     type(vector), intent(in) :: ve

@@ -1,4 +1,4 @@
-! WHIZARD 2.2.2 July 6 2014
+! WHIZARD 2.2.3 Nov 30 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,8 +6,10 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
+!     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     Christian Weiss <christian.weiss@desy.de>
+!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -29,26 +31,29 @@
 
 module phs_forests
 
-  use kinds, only: default !NODEP!
-  use kinds, only: TC !NODEP!
-  use iso_varying_string, string_t => varying_string !NODEP!
-  use file_utils !NODEP!
-  use limits, only: FMT_12, FMT_19 !NODEP!
-  use diagnostics !NODEP!
-  use lorentz !NODEP!
+  use kinds, only: default
+  use kinds, only: TC
+  use iso_varying_string, string_t => varying_string
+  use io_units
+  use format_defs, only: FMT_12, FMT_19
+  use diagnostics
+  use lorentz
   use unit_tests
   use permutations
   use ifiles
   use syntax_rules
   use lexers
   use parser
-  use models
+  use model_data
+  use model_data
   use flavors
   use interactions
 
   use phs_base
   use mappings
   use phs_trees
+
+  use fks_regions
 
   implicit none
   private
@@ -74,6 +79,7 @@ module phs_forests
   public :: syntax_phs_forest_write
   public :: phs_forest_read
   public :: phs_forest_set_flavors
+  public :: phs_forest_set_momentum_links
   public :: phs_forest_set_parameters
   public :: phs_forest_setup_prt_combinations
   public :: phs_forest_set_prt_in
@@ -179,7 +185,7 @@ contains
     type(phs_parameters_t), intent(in) :: phs_par
     integer, intent(in), optional :: unit
     integer :: u
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     write (u, "(3x,A," // FMT_19 // ")") "sqrts         = ", phs_par%sqrts
     write (u, "(3x,A," // FMT_19 // ")") "m_threshold_s = ", phs_par%m_threshold_s
     write (u, "(3x,A," // FMT_19 // ")") "m_threshold_t = ", phs_par%m_threshold_t
@@ -282,7 +288,7 @@ contains
     type(equivalence_list_t), intent(in) :: eql
     integer, intent(in), optional :: unit
     integer :: u
-    u = output_unit (unit);  if (u < 0)  return
+    u = given_output_unit (unit);  if (u < 0)  return
     if (associated (eql%first)) then
        call equivalence_write_rec (eql%first, u)
     else
@@ -378,7 +384,8 @@ contains
     forest%n_equivalences = 0
     allocate (forest%grove (size (n_tree)))
     call phs_grove_init &
-         (forest%grove, n_tree, n_in, n_out, forest%n_masses, forest%n_angles)
+         (forest%grove, n_tree, n_in, n_out, forest%n_masses, &
+          forest%n_angles)
     allocate (forest%grove_lookup (forest%n_trees))
     count = 0
     do g = 1, size (forest%grove)
@@ -387,7 +394,7 @@ contains
        count = count + n_tree(g)
     end do
     allocate (forest%prt_in  (n_in))
-    allocate (forest%prt_out (n_out))
+    allocate (forest%prt_out (forest%n_out))
     k_root = 2**forest%n_tot - 1
     allocate (forest%prt (k_root))
     allocate (forest%prt_combination (2, k_root))
@@ -420,7 +427,7 @@ contains
     integer, intent(in), optional :: unit
     integer :: u
     integer :: i, g, k
-    u = output_unit (unit);  if (u < 0)  return
+    u = given_output_unit (unit);  if (u < 0)  return
     write (u, "(1x,A)") "Phase space forest:"
     write (u, "(3x,A,I0)") "n_in  = ", forest%n_in
     write (u, "(3x,A,I0)") "n_out = ", forest%n_out
@@ -531,7 +538,7 @@ contains
     integer, intent(in), optional :: unit
     integer :: u
     integer :: t
-    u = output_unit (unit);  if (u < 0)  return
+    u = given_output_unit (unit);  if (u < 0)  return
     do t = 1, size (grove%tree)
        write (u, "(3x,A,I0)") "Tree      ", t
        call phs_tree_write (grove%tree(t), unit)
@@ -737,7 +744,7 @@ contains
     type(string_t), intent(in) :: filename
     type(string_t), intent(in) :: process_id
     integer, intent(in) :: n_in, n_out
-    type(model_t), intent(in), target :: model
+    class(model_data_t), intent(in), target :: model
     logical, intent(out) :: found
     character(32), intent(in), optional :: &
          md5sum_process, md5sum_model_par, md5sum_phs_config
@@ -760,12 +767,13 @@ contains
 
   subroutine phs_forest_read_unit &
        (forest, unit, process_id, n_in, n_out, model, found, &
-        md5sum_process, md5sum_model_par, md5sum_phs_config, phs_par, match)
+        md5sum_process, md5sum_model_par, md5sum_phs_config, &
+        phs_par, match)
     type(phs_forest_t), intent(out) :: forest
     integer, intent(in) :: unit
     type(string_t), intent(in) :: process_id
     integer, intent(in) :: n_in, n_out
-    type(model_t), intent(in), target :: model
+    class(model_data_t), intent(in), target :: model
     logical, intent(out) :: found
     character(32), intent(in), optional :: &
          md5sum_process, md5sum_model_par, md5sum_phs_config
@@ -780,7 +788,8 @@ contains
     call parse_tree_init (parse_tree, syntax_phs_forest, lexer)
     call phs_forest_read (forest, parse_tree, &
          process_id, n_in, n_out, model, found, &
-         md5sum_process, md5sum_model_par, md5sum_phs_config, phs_par, match)
+         md5sum_process, md5sum_model_par, md5sum_phs_config, &
+         phs_par, match)
     call stream_final (stream)
     call lexer_final (lexer)
     call parse_tree_final (parse_tree)
@@ -788,12 +797,13 @@ contains
 
   subroutine phs_forest_read_parse_tree &
        (forest, parse_tree, process_id, n_in, n_out, model, found, &
-        md5sum_process, md5sum_model_par, md5sum_phs_config, phs_par, match)
+        md5sum_process, md5sum_model_par, md5sum_phs_config, &
+        phs_par, match)
     type(phs_forest_t), intent(out) :: forest
     type(parse_tree_t), intent(in), target :: parse_tree
     type(string_t), intent(in) :: process_id
     integer, intent(in) :: n_in, n_out
-    type(model_t), intent(in), target :: model
+    class(model_data_t), intent(in), target :: model
     logical, intent(out) :: found
     character(32), intent(in), optional :: &
          md5sum_process, md5sum_model_par, md5sum_phs_config
@@ -803,6 +813,7 @@ contains
     integer :: n_grove, g
     integer, dimension(:), allocatable :: n_tree
     integer :: t
+    logical :: real_phsp_work
     ! call parse_tree_write (parse_tree)     !!! Debugging
     node_header => parse_tree_get_process_ptr (parse_tree, process_id)
     found = associated (node_header);  if (.not. found)  return
@@ -887,7 +898,7 @@ contains
   subroutine phs_tree_set (tree, node, model)
     type(phs_tree_t), intent(inout) :: tree
     type(parse_node_t), intent(in), target :: node
-    type(model_t), intent(in), target :: model
+    class(model_data_t), intent(in), target :: model
     type(parse_node_t), pointer :: node_bincodes, node_mapping
     integer :: n_bincodes, offset
     integer(TC), dimension(:), allocatable :: bincode
@@ -930,12 +941,40 @@ contains
     end do
   end subroutine phs_tree_set
 
-  subroutine phs_forest_set_flavors (forest, flv)
+  subroutine phs_forest_set_flavors (forest, flv, reshuffle, flv_extra)
     type(phs_forest_t), intent(inout) :: forest
     type(flavor_t), dimension(:), intent(in) :: flv
-    allocate (forest%flv (size (flv)))
-    forest%flv = flv
+    integer, intent(in), dimension(:), allocatable, optional :: reshuffle
+    type(flavor_t), intent(in), optional :: flv_extra
+    integer :: i, n_flv0
+    if (present (reshuffle) .and. present (flv_extra)) then
+       n_flv0 = size (flv)
+       do i = 1, n_flv0
+          if (reshuffle(i) <= n_flv0) then
+             forest%flv(i) = flv (reshuffle(i))
+          else
+             forest%flv(i) = flv_extra
+          end if
+       end do
+    else
+       allocate (forest%flv (size (flv)))
+       forest%flv = flv
+    end if
   end subroutine phs_forest_set_flavors
+
+  subroutine phs_forest_set_momentum_links (forest, list)
+    type(phs_forest_t), intent(inout) :: forest
+    integer, intent(in), dimension(:), allocatable :: list
+    integer :: g, t
+    do g = 1, size (forest%grove)
+      do t = 1, size (forest%grove(g)%tree)
+        associate (tree => forest%grove(g)%tree(t))
+          call phs_tree_set_momentum_links (tree, list)
+!!!          call phs_tree_reshuffle_mappings (tree)
+        end associate
+      end do
+    end do
+  end subroutine phs_forest_set_momentum_links
 
   subroutine phs_forest_set_parameters &
        (forest, mapping_defaults, variable_limits)
@@ -1235,6 +1274,9 @@ contains
     logical, intent(in) :: combine
     integer :: g, t, ch, n_channel
 
+    g = forest%grove_lookup (channel)
+    t = channel - forest%grove(g)%tree_count_offset
+
     n_channel = forest%n_trees
     if (combine) then
        do ch = 1, n_channel
@@ -1305,11 +1347,9 @@ contains
   subroutine phs_forest_1 (u)
     use os_interface
     integer, intent(in) :: u
-    type(os_data_t) :: os_data
     type(phs_forest_t) :: forest
-    type(model_list_t) :: model_list
     type(phs_channel_t), dimension(:), allocatable :: channel
-    type(model_t), pointer :: model => null ()
+    type(model_data_t), target :: model
     type(string_t) :: process_id
     type(flavor_t), dimension(5) :: flv
     type(string_t) :: filename
@@ -1330,11 +1370,7 @@ contains
     
     write (u, "(A)")  "* Reading model file"
     
-    call syntax_model_file_init ()
-    call os_data_init (os_data)
-    call model_list%read_model &
-         (var_str("SM"), var_str("SM.mdl"), os_data, model)
-    call syntax_model_file_final ()
+    call model%init_sm_test ()
 
     write (u, "(A)")
     write (u, "(A)")  "* Create phase-space file 'phs_forest_test.phs'"
@@ -1426,7 +1462,7 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
 
-    call model_list%final ()
+    call model%final ()
     call phs_forest_final (forest)
     call syntax_phs_forest_final ()
         

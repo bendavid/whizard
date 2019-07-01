@@ -22,25 +22,6 @@
  [h(-1)] => ME(1) = ( 5.000000000000E-01, 0.000000000000E+00)
  [h(1)] => ME(2) = ( 5.000000000000E-01, 0.000000000000E+00)
 
-* Unpolarized fermion
-
- Polarization: spin density matrix
-   spin type     = 2
-   multiplicity  = 2
-   massive       = F
-   chirality     = 0
-   pol.degree    = 0.0000000
-   pure state    = F
-   [empty matrix]
-
- polarized = F
- diagonal = T
-
- Polarization: [spin_type = 2, mult = 2]
- State matrix:  norm =  1.000000000000E+00
- [h(-1)] => ME(1) = ( 5.000000000000E-01, 0.000000000000E+00)
- [h(1)] => ME(2) = ( 5.000000000000E-01, 0.000000000000E+00)
-
 * Transversally polarized fermion, phi=0
 
  Polarization: spin density matrix

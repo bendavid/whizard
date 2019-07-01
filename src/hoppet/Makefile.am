@@ -2,10 +2,12 @@
 ##
 ## Process this file with automake to produce Makefile.in
 #
-# Copyright (C) 1999-2013 by 
+# Copyright (C) 1999-2014 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
+#     with contributions from
+#     Fabian Bach <fabian.bach@desy.de>
 #     Christian Speckner <cnspeckn@googlemail.com>
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
@@ -52,13 +54,15 @@ endif
 ########################################################################
 ## Explicit dependencies
 
-libhoppet.lo: ../misc/system_dependencies.$(FC_MODULE_EXT) \
-	../pdf_builtin/pdf_builtin.$(FC_MODULE_EXT) \
-	../lhapdf/lhapdf.$(FC_MODULE_EXT)
+libhoppet.lo: \
+  ../system/system_dependencies.$(FC_MODULE_EXT) \
+  ../pdf_builtin/pdf_builtin.$(FC_MODULE_EXT) \
+  ../lhapdf/lhapdf.$(FC_MODULE_EXT)
 
-libhoppet_dummy.lo: ../lhapdf/lhapdf.$(FC_MODULE_EXT)
+libhoppet_dummy.lo: \
+  ../lhapdf/lhapdf.$(FC_MODULE_EXT)
 
-AM_FCFLAGS += -I../misc -I../pdf_builtin -I../lhapdf
+AM_FCFLAGS += -I../basics -I../system -I../pdf_builtin -I../lhapdf
 
 MODULES= \
    hoppet.$(FC_MODULE_EXT)

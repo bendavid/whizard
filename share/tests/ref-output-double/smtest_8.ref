@@ -1,7 +1,7 @@
 ?openmp_logging = false
 ?vis_history = false
 ?integration_timer = false
-SM.mmu =  0.000000000000E+00
+SM.mmu =>  0.000000000000E+00
 seed = 0
 | Process library 'smtest_8_lib': recorded process 'smtest_8p'
 sqrts =  1.000000000000E+03

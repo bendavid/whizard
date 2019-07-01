@@ -1,4 +1,4 @@
-C $Id: mrst2004qed.f 2958 2011-01-16 14:29:36Z cnspeckn $
+C $Id: mrst2004qed.f 6124 2014-09-16 09:51:26Z kilian $
 
 C
 C ---- FORTRAN 90 ----
@@ -59,7 +59,7 @@ C***************************************************************C
 
       subroutine mrst1(x,qsq,upv,dnv,usea,dsea,str,chm,
      xbot,glu,phot,prefix)
-      use file_utils
+      use io_units
       implicit real*8(a-h,o-z)
       character(*) prefix
       parameter(nx=49,nq=37,np=9,nqc0=2,nqb0=11,nqc=35,nqb=26)
@@ -183,7 +183,7 @@ c notation: 1=uval 2=val 3=glue 4=usea 5=chm 6=str 7=btm 8=dsea 9=photon
 
       subroutine mrst2(x,qsq,upv,dnv,usea,dsea,str,chm,
      xbot,glu,phot,prefix)
-      use file_utils
+      use io_units
       implicit real*8(a-h,o-z)
       character(*) prefix
       parameter(nx=49,nq=37,np=9,nqc0=2,nqb0=11,nqc=35,nqb=26)

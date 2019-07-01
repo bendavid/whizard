@@ -97,6 +97,9 @@ AC_ARG_ENABLE([ocaml],
      fi
    
      AC_SUBST([OCAMLC])
+
+     # Allow to use flags set by environment variable OCAMLFLAGS
+     AC_SUBST(OCAMLFLAGS, $OCAMLFLAGS)
    
      # checking for ocamldep
      AC_PATH_TOOL([OCAMLDEP],[ocamldep],[no])

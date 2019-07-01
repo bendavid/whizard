@@ -6,7 +6,7 @@ x_max =  4.000000000000E+00
 y_min =  0.000000000000E+00
 y_max =  1.200000000000E+04
 | Process library 'analyze_4_lib': recorded process 'analyze_4_p'
-SM.me =  0.000000000000E+00
+SM.me =>  0.000000000000E+00
 sqrts =  5.000000000000E+02
 jet_algorithm = 2
 jet_r =  7.000000000000E-01

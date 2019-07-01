@@ -83,7 +83,7 @@ $sample = "qcdtest_3a"
 | Events: closing raw file 'qcdtest_3a.evx'
 ?write_raw = false
 $sample = "qcdtest_3b"
-QCD.alphas =  2.356000000000E-01
+QCD.alphas =>  2.356000000000E-01
 ?update_sqme = true
 | Starting simulation for process 'qcdtest_3_p1'
 | RNG: Initializing TAO random-number generator

@@ -1,4 +1,4 @@
-! WHIZARD 2.2.2 July 6 2014
+! WHIZARD 2.2.3 Nov 30 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,8 +6,10 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
+!     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     Christian Weiss <christian.weiss@desy.de>
+!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -29,17 +31,17 @@
 
 module sf_ewa
 
-  use kinds, only: default !NODEP!
-  use iso_varying_string, string_t => varying_string !NODEP!
-  use constants, only: pi !NODEP!
-  use file_utils !NODEP!
-  use limits, only: FMT_17, FMT_19 !NODEP!
-  use diagnostics !NODEP!
-  use lorentz !NODEP!
+  use kinds, only: default
+  use iso_varying_string, string_t => varying_string
+  use io_units
+  use constants, only: pi
+  use format_defs, only: FMT_17, FMT_19
   use unit_tests
-  use os_interface
+  use diagnostics
+  use physics_defs, only: W_BOSON, Z_BOSON
+  use lorentz
   use pdg_arrays
-  use models
+  use model_data
   use flavors
   use colors
   use quantum_numbers
@@ -68,7 +70,7 @@ module sf_ewa
 
   type, extends(sf_data_t) :: ewa_data_t
      private
-     type(model_t), pointer :: model => null ()
+     class(model_data_t), pointer :: model => null ()
      type(flavor_t), dimension(:), allocatable :: flv_in
      type(flavor_t), dimension(:), allocatable :: flv_out
      real(default) :: pt_max
@@ -123,7 +125,7 @@ contains
   subroutine ewa_data_init (data, model, pdg_in, x_min, pt_max, &
         sqrts, keep_momentum, keep_energy, mass)
     class(ewa_data_t), intent(inout) :: data
-    type(model_t), intent(in), target :: model
+    class(model_data_t), intent(in), target :: model
     type(pdg_array_t), intent(in) :: pdg_in
     real(default), intent(in) :: x_min, pt_max, sqrts
     logical, intent(in) :: keep_momentum, keep_energy
@@ -152,11 +154,11 @@ contains
     case ("QCD","QED","Test")
        data%error = NO_EWA;  return
     end select
-    ee = model_get_parameter_value (data%model, var_str ("ee"))
-    data%sinthw = model_get_parameter_value (data%model, var_str ("sw"))    
-    data%costhw = model_get_parameter_value (data%model, var_str ("cw"))        
-    data%mZ = model_get_parameter_value (data%model, var_str ("mZ"))
-    data%mW = model_get_parameter_value (data%model, var_str ("mW"))    
+    ee = data%model%get_real (var_str ("ee"))
+    data%sinthw = data%model%get_real (var_str ("sw"))    
+    data%costhw = data%model%get_real (var_str ("cw"))        
+    data%mZ = data%model%get_real (var_str ("mZ"))
+    data%mW = data%model%get_real (var_str ("mW"))    
     if (data%sinthw /= 0) then
        g = ee / data%sinthw
     else
@@ -250,7 +252,7 @@ contains
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: verbose
     integer :: u, i
-    u = output_unit (unit);  if (u < 0)  return
+    u = given_output_unit (unit);  if (u < 0)  return
     write (u, "(1x,A)") "EWA data:"
     if (allocated (data%flv_in) .and. allocated (data%flv_out)) then
        write (u, "(3x,A)", advance="no") "  flavor(in)  =  "
@@ -333,7 +335,7 @@ contains
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: testflag
     integer :: u
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     if (associated (object%data)) then
        call object%data%write (u)
        if (object%status >= SF_DONE_KINEMATICS) then
@@ -678,9 +680,7 @@ contains
   
   subroutine sf_ewa_1 (u)
     integer, intent(in) :: u
-    type(os_data_t) :: os_data
-    type(model_list_t) :: model_list
-    type(model_t), pointer :: model
+    type(model_data_t), target :: model
     type(pdg_array_t) :: pdg_in
     type(pdg_array_t), dimension(1) :: pdg_out
     integer, dimension(:), allocatable :: pdg1
@@ -694,10 +694,7 @@ contains
     write (u, "(A)")  "* Create empty data object"
     write (u, "(A)")
 
-    call os_data_init (os_data)
-    call syntax_model_file_init ()
-    call model_list%read_model (var_str ("SM"), &
-         var_str ("SM.mdl"), os_data, model)
+    call model%init_sm_test ()
     pdg_in = 2
 
     allocate (ewa_data_t :: data)
@@ -745,8 +742,7 @@ contains
     pdg1 = pdg_out(1)
     write (u, "(2x,99(1x,I0))")  pdg1
             
-    call model_list%final ()
-    call syntax_model_file_final ()
+    call model%final ()
     
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: sf_ewa_1"
@@ -755,9 +751,7 @@ contains
 
   subroutine sf_ewa_2 (u)
     integer, intent(in) :: u
-    type(os_data_t) :: os_data
-    type(model_list_t) :: model_list
-    type(model_t), pointer :: model
+    type(model_data_t), target :: model
     type(flavor_t) :: flv
     type(pdg_array_t) :: pdg_in
     class(sf_data_t), allocatable, target :: data
@@ -776,10 +770,7 @@ contains
     write (u, "(A)")  "* Initialize configuration data"
     write (u, "(A)")
 
-    call os_data_init (os_data)
-    call syntax_model_file_init ()
-    call model_list%read_model (var_str ("SM"), &
-         var_str ("SM.mdl"), os_data, model)
+    call model%init_sm_test ()
     call flavor_init (flv, 2, model)
     pdg_in = 2
 
@@ -864,8 +855,7 @@ contains
     write (u, "(A)")  "* Cleanup"
     
     call sf_int%final ()
-    call model_list%final ()
-    call syntax_model_file_final ()
+    call model%final ()
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: sf_ewa_2"
@@ -874,9 +864,7 @@ contains
   
   subroutine sf_ewa_3 (u)
     integer, intent(in) :: u
-    type(os_data_t) :: os_data
-    type(model_list_t) :: model_list
-    type(model_t), pointer :: model
+    type(model_data_t), target :: model
     type(flavor_t) :: flv
     type(pdg_array_t) :: pdg_in
     class(sf_data_t), allocatable, target :: data
@@ -895,10 +883,7 @@ contains
     write (u, "(A)")  "* Initialize configuration data"
     write (u, "(A)")
 
-    call os_data_init (os_data)
-    call syntax_model_file_init ()
-    call model_list%read_model (var_str ("SM"), &
-         var_str ("SM.mdl"), os_data, model)
+    call model%init_sm_test ()
     call flavor_init (flv, 2, model)
     pdg_in = 2
 
@@ -983,8 +968,7 @@ contains
     write (u, "(A)")  "* Cleanup"
     
     call sf_int%final ()
-    call model_list%final ()
-    call syntax_model_file_final ()
+    call model%final ()
     
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: sf_ewa_3"
@@ -993,9 +977,7 @@ contains
 
   subroutine sf_ewa_4 (u)
     integer, intent(in) :: u
-    type(os_data_t) :: os_data
-    type(model_list_t) :: model_list
-    type(model_t), pointer :: model
+    type(model_data_t), target :: model
     type(flavor_t) :: flv
     type(pdg_array_t) :: pdg_in
     class(sf_data_t), allocatable, target :: data
@@ -1014,10 +996,7 @@ contains
     write (u, "(A)")  "* Initialize configuration data"
     write (u, "(A)")
 
-    call os_data_init (os_data)
-    call syntax_model_file_init ()
-    call model_list%read_model (var_str ("SM"), &
-         var_str ("SM.mdl"), os_data, model)
+    call modeL%init_sm_test ()
     call flavor_init (flv, 2, model)
     pdg_in = 2
 
@@ -1103,8 +1082,7 @@ contains
     write (u, "(A)")  "* Cleanup"
     
     call sf_int%final ()
-    call model_list%final ()
-    call syntax_model_file_final ()
+    call model%final ()
     
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: sf_ewa_4"
@@ -1113,9 +1091,7 @@ contains
 
   subroutine sf_ewa_5 (u)
     integer, intent(in) :: u
-    type(os_data_t) :: os_data
-    type(model_list_t) :: model_list
-    type(model_t), pointer :: model
+    type(model_data_t), target :: model
     type(flavor_t) :: flv
     type(pdg_array_t) :: pdg_in
     class(sf_data_t), allocatable, target :: data
@@ -1133,10 +1109,7 @@ contains
     write (u, "(A)")  "* Initialize configuration data"
     write (u, "(A)")
 
-    call os_data_init (os_data)
-    call syntax_model_file_init ()
-    call model_list%read_model (var_str ("SM"), &
-         var_str ("SM.mdl"), os_data, model)
+    call model%init_sm_test ()
     call flavor_init (flv, 2, model)
     pdg_in = [1, 2, -1, -2]
 
@@ -1197,8 +1170,7 @@ contains
     write (u, "(A)")  "* Cleanup"
     
     call sf_int%final ()
-    call model_list%final ()
-    call syntax_model_file_final ()
+    call model%final ()
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: sf_ewa_5"

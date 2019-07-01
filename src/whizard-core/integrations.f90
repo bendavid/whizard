@@ -1,4 +1,4 @@
-! WHIZARD 2.2.2 July 6 2014
+! WHIZARD 2.2.3 Nov 30 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,8 +6,10 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
+!     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     Christian Weiss <christian.weiss@desy.de>
+!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -29,21 +31,23 @@
 
 module integrations
 
-  use kinds, only: default !NODEP!
-  use iso_varying_string, string_t => varying_string !NODEP!
-  use file_utils !NODEP!
-  use diagnostics !NODEP!
+  use kinds, only: default
+  use iso_varying_string, string_t => varying_string
+  use io_units
   use unit_tests
+  use diagnostics
   use os_interface
   use cputime
   use sm_qcd
   use ifiles
   use lexers
   use parser
+  use model_data
   use flavors
   use pdg_arrays
   use variables
-  use expressions
+  use expr_base
+  use eval_trees
   use models
   use interactions
   use sf_mappings
@@ -58,11 +62,17 @@ module integrations
   use prc_core
   use processes
   use process_stacks
+  use models
   use iterations
   use rt_data
   use dispatch
   use process_configurations
   use compilations
+
+  use process_constants
+  use prc_omega
+  use prc_gosam
+  use fks_calculation
 
   implicit none
   private
@@ -77,6 +87,8 @@ module integrations
     type(string_t) :: process_id
     type(string_t) :: run_id
     type(process_t), pointer :: process => null ()
+    type(var_list_t), pointer :: model_vars => null ()
+    type(qcd_t) :: qcd
     logical :: rebuild_phs = .false.
     logical :: ignore_phs_mismatch = .false.
     logical :: phs_only = .false.
@@ -87,53 +99,74 @@ module integrations
     type(string_t) :: log_filename
    contains
      procedure :: create_process => integration_create_process
+     procedure :: init_process => integration_init_process
      procedure :: setup_process => integration_setup_process
      procedure :: evaluate => integration_evaluate
      procedure :: make_iterations_list => integration_make_iterations_list
      procedure :: init => integration_init
      procedure :: integrate => integration_integrate
      procedure :: integrate_dummy => integration_integrate_dummy 
-     procedure :: sampler_test => integration_sampler_test 
+     procedure :: sampler_test => integration_sampler_test
+     procedure :: get_process_ptr => integration_get_process_ptr 
   end type integration_t
 
 
 contains
 
-  subroutine integration_create_process (intg, process_id, global) !, verbose)
+  subroutine integration_create_process (intg, process_id, global)
     class(integration_t), intent(out) :: intg
-    type(rt_data_t), intent(inout), target :: global
+    type(rt_data_t), intent(inout), optional, target :: global
     type(string_t), intent(in) :: process_id
-    type(var_list_t), pointer :: var_list
-    type(qcd_t) :: qcd
-    class(rng_factory_t), allocatable :: rng_factory
     type(process_entry_t), pointer :: process_entry
-
-    var_list => global%var_list
     intg%process_id = process_id
-    intg%run_id = var_list_get_sval (var_list, var_str ("$run_id"))
-
-    call dispatch_qcd (qcd, global)    
-    call dispatch_rng_factory (rng_factory, global)
-
-    allocate (process_entry)
-    call process_entry%init (intg%process_id, intg%run_id, global%prclib, &
-         global%os_data, qcd, rng_factory, global%model_list)
-    call global%process_stack%push (process_entry)
-
+    if (present (global)) then
+       allocate (process_entry)
+       intg%process => process_entry%process_t
+       call global%process_stack%push (process_entry)
+    else
+       allocate (process_t :: intg%process)
+    end if
+    intg%model_vars => null ()
   end subroutine integration_create_process
 
-  subroutine integration_setup_process (intg, global, process, verbose)
+  subroutine integration_init_process (intg, local)
     class(integration_t), intent(inout) :: intg
-    type(rt_data_t), intent(inout), target :: global
-    type(process_t), intent(in), target, optional :: process
-    logical, intent(in), optional :: verbose
+    type(rt_data_t), intent(inout), target :: local
+    type(string_t) :: model_name
+    type(model_t), pointer :: model
+    class(model_data_t), pointer :: model_instance
+    class(rng_factory_t), allocatable :: rng_factory
+    intg%run_id = var_list_get_sval (local%var_list, var_str ("$run_id"))
+    call dispatch_qcd (intg%qcd, local)
+    call dispatch_rng_factory (rng_factory, local)
+    model_name = local%prclib%get_model_name (intg%process_id)
+    if (local%get_sval (var_str ("$model_name")) == model_name) then
+       model => local%model
+    else
+       model => local%model_list%get_model_ptr (model_name)
+    end if
+    allocate (model_t :: model_instance)
+    select type (model_instance)
+    type is (model_t)
+       call model_instance%init_instance (model)
+       intg%model_vars => model_instance%get_var_list_ptr ()
+    end select
+    call intg%process%init (intg%process_id, intg%run_id, &
+         local%prclib, &
+         local%os_data, intg%qcd, rng_factory, model_instance)
+  end subroutine integration_init_process
     
+  subroutine integration_setup_process (intg, local, verbose)
+    class(integration_t), intent(inout) :: intg
+    type(rt_data_t), intent(inout), target :: local
+    logical, intent(in), optional :: verbose
+    type(var_list_t), pointer :: var_list
     class(prc_core_t), allocatable :: core_template
     class(phs_config_t), allocatable :: phs_config_template
+    class(phs_config_t), allocatable :: phs_config_template_real
     type(phs_parameters_t) :: phs_par
     type(mapping_defaults_t) :: mapping_defs
     class(mci_t), allocatable :: mci_template
-    type(qcd_t) :: qcd
     integer :: n_components, n_in, i_component
     type(pdg_array_t), dimension(:,:), allocatable :: pdg_prc
     type(process_component_def_t), pointer :: config
@@ -147,53 +180,52 @@ contains
     logical :: sf_trace
     type(string_t) :: sf_string, sf_trace_file
     logical :: verb
-
+    type(process_constants_t) :: prc_const
+    integer :: i_born
+    type(fks_template_t) :: fks_template
+    type(gosam_writer_template_t) :: gosam_template
+    type(eval_tree_factory_t) :: expr_factory
+  
     verb = .true.; if (present (verbose))  verb = verbose
     
-    if (present (process)) then
-       intg%process => process
-       intg%process_id = process%get_id ()
-       intg%run_id = process%get_run_id ()
-    else
-       intg%process => global%process_stack%get_process_ptr (intg%process_id)
-    end if
-
-    call intg%process%set_var_list (global%var_list)
+    call intg%process%set_var_list (local%get_var_list_ptr ())
+    var_list => intg%process%get_var_list_ptr ()
 
     intg%rebuild_phs = &
-         var_list_get_lval (global%var_list, var_str ("?rebuild_phase_space"))
+         var_list_get_lval (var_list, var_str ("?rebuild_phase_space"))
     intg%ignore_phs_mismatch = &
-         .not. var_list_get_lval (global%var_list, var_str ("?check_phs_file"))
+         .not. var_list_get_lval (var_list, var_str ("?check_phs_file"))
     intg%phs_only = var_list_get_lval &
-         (global%var_list, var_str ("?phs_only"))
+         (var_list, var_str ("?phs_only"))
     phs_par%m_threshold_s = var_list_get_rval &
-         (global%var_list, var_str ("phs_threshold_s"))
+         (var_list, var_str ("phs_threshold_s"))
     phs_par%m_threshold_t = var_list_get_rval &
-         (global%var_list, var_str ("phs_threshold_t"))
+         (var_list, var_str ("phs_threshold_t"))
     phs_par%off_shell = var_list_get_ival &
-         (global%var_list, var_str ("phs_off_shell"))
+         (var_list, var_str ("phs_off_shell"))
     phs_par%keep_nonresonant = var_list_get_lval &
-         (global%var_list, var_str ("?phs_keep_nonresonant"))
+         (var_list, var_str ("?phs_keep_nonresonant"))
     phs_par%t_channel = var_list_get_ival &
-         (global%var_list, var_str ("phs_t_channel"))
+         (var_list, var_str ("phs_t_channel"))
     mapping_defs%energy_scale = var_list_get_rval &
-         (global%var_list, var_str ("phs_e_scale"))
+         (var_list, var_str ("phs_e_scale"))
     mapping_defs%invariant_mass_scale = var_list_get_rval &
-         (global%var_list, var_str ("phs_m_scale"))
+         (var_list, var_str ("phs_m_scale"))
     mapping_defs%momentum_transfer_scale = var_list_get_rval &
-         (global%var_list, var_str ("phs_q_scale"))
+         (var_list, var_str ("phs_q_scale"))
     mapping_defs%step_mapping = var_list_get_lval &
-         (global%var_list, var_str ("?phs_step_mapping"))
+         (var_list, var_str ("?phs_step_mapping"))
     mapping_defs%step_mapping_exp = var_list_get_lval &
-         (global%var_list, var_str ("?phs_step_mapping_exp"))
+         (var_list, var_str ("?phs_step_mapping_exp"))
     mapping_defs%enable_s_mapping = var_list_get_lval &
-         (global%var_list, var_str ("?phs_s_mapping"))
+         (var_list, var_str ("?phs_s_mapping"))
 
-    call dispatch_phs (phs_config_template, global, &
+    call dispatch_phs (phs_config_template, local, &
          intg%process_id, mapping_defs, phs_par)
     
+    
     intg%n_calls_test = &
-         var_list_get_ival (global%var_list, var_str ("n_calls_test"))
+         var_list_get_ival (var_list, var_str ("n_calls_test"))
 
     !!! We avoid two dots in the filename due to a bug in certain MetaPost versions.
     if (intg%run_id /= "") then
@@ -205,7 +237,7 @@ contains
        intg%log_filename = intg%process_id // ".log"
     end if
 
-    call dispatch_mci (mci_template, global, intg%process_id)
+    call dispatch_mci (mci_template, local, intg%process_id)
 
     if (verb) then
        call msg_message ("Initializing integration for process " &
@@ -215,25 +247,57 @@ contains
        end if
     end if
     
-    helicity_selection = global%get_helicity_selection ()
+    helicity_selection = local%get_helicity_selection ()
 
     intg%vis_history = &
-         var_list_get_lval (global%var_list, var_str ("?vis_history"))
+         var_list_get_lval (var_list, var_str ("?vis_history"))
     use_color_factors = var_list_get_lval &
-         (global%var_list, var_str ("?read_color_factors"))
+         (var_list, var_str ("?read_color_factors"))
     
-    call dispatch_qcd (qcd, global)    
-
     n_components = intg%process%get_n_components ()
     n_in = intg%process%get_n_in ()
     
     do i_component = 1, n_components
        config => intg%process%get_component_def_ptr (i_component)
        call dispatch_core (core_template, config%get_core_def_ptr (), &
-            intg%process%get_model_ptr (), helicity_selection, qcd, &
+            intg%process%get_model_ptr (), helicity_selection, intg%qcd, &
             use_color_factors)
-       call intg%process%init_component &
+       select case (char (config%get_nlo_type ()))
+       case ('Virtual')
+         gosam_template%compute_loops = var_list_get_lval (var_list, &
+                                     var_str ('?use_gosam_loops'))
+         gosam_template%compute_correlations = var_list_get_lval (var_list, &
+                                     var_str ('?use_gosam_correlations'))
+         gosam_template%data = prc_const
+         gosam_template%alpha_power = var_list_get_ival (var_list, &
+                                      var_str ('alpha_power'))
+         gosam_template%alphas_power = var_list_get_ival (var_list, &
+                                       var_str ('alphas_power'))
+         gosam_template%new = .true.
+         call intg%process%init_component &
+            (i_component, core_template, mci_template, phs_config_template, &
+             gosam_template = gosam_template)
+       case ('Real')
+         call dispatch_phs (phs_config_template_real, local, &
+             intg%process_id, mapping_defs, phs_par, &
+             var_str ('fks'))
+         call dispatch_fks (fks_template, local)
+         call intg%process%init_component &
+            (i_component, core_template, mci_template, &
+             phs_config_template_real, fks_template = fks_template)
+       case ('Born')
+         call intg%process%init_component &
             (i_component, core_template, mci_template, phs_config_template)
+         i_born = config%get_associated_born ()
+         prc_const = intg%process%get_constants (i_born)
+       case ('Subtraction')
+         gosam_template%new = .false.
+         call intg%process%init_component &
+             (i_component, core_template, mci_template, phs_config_template, &
+              gosam_template = gosam_template)
+       case default
+         call msg_fatal ("setup_process: NLO type not implemented!")
+       end select
        deallocate (core_template)
     end do
 
@@ -245,24 +309,24 @@ contains
             // char (intg%process_id) // "': matrix element vanishes")
     end if
     
-    sqrts = global%get_sqrts ()
+    sqrts = local%get_sqrts ()
     decay_rest_frame = &
-         var_list_get_lval (global%var_list, var_str ("?decay_rest_frame"))    
+         var_list_get_lval (var_list, var_str ("?decay_rest_frame"))    
     if (intg%process_has_me) then
-       if (global%beam_structure%is_set ()) then
+       if (local%beam_structure%is_set ()) then
           call intg%process%setup_beams_beam_structure &
-               (global%beam_structure, sqrts, global%model, decay_rest_frame)
+               (local%beam_structure, sqrts, decay_rest_frame)
         else if (n_in == 2) then
           call intg%process%setup_beams_sqrts &
-               (sqrts, global%beam_structure)
+               (sqrts, local%beam_structure)
        else 
           call intg%process%setup_beams_decay &
-               (decay_rest_frame, global%beam_structure)
+               (decay_rest_frame, local%beam_structure)
        end if
     end if
     call intg%process%check_masses ()
     if (intg%process_has_me)  call intg%process%beams_startup_message &
-         (beam_structure = global%beam_structure)
+         (beam_structure = local%beam_structure)
 
     if (intg%process_has_me) then
        call intg%process%get_pdg_in (pdg_prc)
@@ -270,11 +334,11 @@ contains
        allocate (pdg_prc (n_in, n_components))
        pdg_prc = 0
     end if
-    call dispatch_sf_config (sf_config, sf_prop, global, pdg_prc)
+    call dispatch_sf_config (sf_config, sf_prop, local, pdg_prc)
     sf_trace = &
-         var_list_get_lval (global%var_list, var_str ("?sf_trace"))
+         var_list_get_lval (var_list, var_str ("?sf_trace"))
     sf_trace_file = &
-         var_list_get_sval (global%var_list, var_str ("$sf_trace_file"))
+         var_list_get_sval (var_list, var_str ("$sf_trace_file"))
     if (sf_trace) then
        call intg%process%init_sf_chain (sf_config, sf_trace_file)
     else
@@ -289,9 +353,8 @@ contains
           call msg_fatal ("Integrate: 2 -> 1 process can't be handled &
                &with fixed-energy beams")
        end if
-
        call dispatch_sf_channels &
-            (sf_channel, sf_string, sf_prop, phs_channel_collection, global)
+            (sf_channel, sf_string, sf_prop, phs_channel_collection, local)
        if (allocated (sf_channel)) then
           if (size (sf_channel) > 0) then
              call intg%process%set_sf_channel (sf_channel)
@@ -304,31 +367,35 @@ contains
     call intg%process%setup_mci ()
     call intg%process%setup_terms ()
 
-    if (associated (global%pn%cuts_lexpr)) then
+    if (associated (local%pn%cuts_lexpr)) then
        if (verb)  call msg_message ("Applying user-defined cuts.")
-       call intg%process%set_cuts (global%pn%cuts_lexpr)       
+       call expr_factory%init (local%pn%cuts_lexpr)
+       call intg%process%set_cuts (expr_factory)
     else
        if (verb)  call msg_warning ("No cuts have been defined.")
     end if    
-    if (associated (global%pn%scale_expr) .and. verb) then
+    if (associated (local%pn%scale_expr) .and. verb) then
        call msg_message ("Using user-defined general scale.")
-       call intg%process%set_scale (global%pn%scale_expr)       
+       call expr_factory%init (local%pn%scale_expr)
+       call intg%process%set_scale (expr_factory)
     end if
-    if (associated (global%pn%fac_scale_expr) .and. verb) then
+    if (associated (local%pn%fac_scale_expr) .and. verb) then
        call msg_message ("Using user-defined factorization scale.")
-       call intg%process%set_fac_scale (global%pn%fac_scale_expr)
+       call expr_factory%init (local%pn%fac_scale_expr)
+       call intg%process%set_fac_scale (expr_factory)
     end if
-    if (associated (global%pn%ren_scale_expr) .and. verb) then
+    if (associated (local%pn%ren_scale_expr) .and. verb) then
        call msg_message ("Using user-defined renormalization scale.")
-       call intg%process%set_ren_scale (global%pn%ren_scale_expr)
+       call expr_factory%init (local%pn%ren_scale_expr)
+       call intg%process%set_ren_scale (expr_factory)
     end if
-    if (associated (global%pn%weight_expr) .and. verb) then
+    if (associated (local%pn%weight_expr) .and. verb) then
        call msg_message ("Using user-defined reweighting factor.")
-       call intg%process%set_weight (global%pn%weight_expr)
+       call expr_factory%init (local%pn%weight_expr)
+       call intg%process%set_weight (expr_factory)
     end if
 
     call intg%process%compute_md5sum ()
-    
   end subroutine integration_setup_process
 
   subroutine integration_evaluate &
@@ -373,33 +440,52 @@ contains
          adapt_grids = adapt_grids, adapt_weights = adapt_weights)
   end subroutine integration_make_iterations_list
   
-  subroutine integration_init (intg, process_id, global)
+  subroutine integration_init (intg, process_id, local, global, local_stack)
     class(integration_t), intent(out) :: intg
     type(string_t), intent(in) :: process_id
-    type(rt_data_t), intent(inout), target :: global
-    
-    call intg%create_process (process_id, global)
-    call intg%setup_process (global)
+    type(rt_data_t), intent(inout), target :: local
+    type(rt_data_t), intent(inout), optional, target :: global
+    logical, intent(in), optional :: local_stack
+    logical :: use_local
+    use_local = .false.;  if (present (local_stack))  use_local = local_stack
+    if (present (global)) then
+       call intg%create_process (process_id, global)
+    else if (use_local) then
+       call intg%create_process (process_id, local)
+    else
+       call intg%create_process (process_id)
+    end if
+    call intg%init_process (local)
+    call intg%setup_process (local)
   end subroutine integration_init
 
-  subroutine integration_integrate (intg, global, eff_reset)
+  subroutine integration_integrate (intg, local, eff_reset)
     class(integration_t), intent(inout) :: intg
-    type(rt_data_t), intent(inout), target :: global
+    type(rt_data_t), intent(in), target :: local
     logical, intent(in), optional :: eff_reset
     type(string_t) :: log_filename
+    type(var_list_t), pointer :: var_list
     type(process_instance_t), allocatable, target :: process_instance
     type(iterations_list_t) :: it_list
     logical :: pacify
     integer :: pass, i_mci, n_mci, n_pass
+    class(prc_core_t), allocatable :: core_born
+    type(string_t) :: nlo_type
+    integer :: i_born, i_sub
+    logical :: display_summed
+    logical :: use_internal_color_correlations
+
+    var_list => intg%process%get_var_list_ptr ()
 
     allocate (process_instance)
     call process_instance%init (intg%process)
 
     call openmp_set_num_threads_verbose &
-         (var_list_get_ival (global%var_list, "openmp_num_threads"), &
-          var_list_get_lval (global%var_list, "?openmp_logging"))    
-    pacify = var_list_get_lval (global%var_list, var_str ("?pacify"))
+         (var_list_get_ival (var_list, "openmp_num_threads"), &
+          var_list_get_lval (var_list, "?openmp_logging"))    
+    pacify = var_list_get_lval (var_list, var_str ("?pacify"))
 
+    display_summed = .true.
     n_mci = intg%process%get_n_mci ()
     if (n_mci == 1) then
        write (msg_buffer, "(A,A,A)") &
@@ -408,48 +494,62 @@ contains
        call msg_message ()
     end if
     do i_mci = 1, n_mci
-       if (n_mci > 1) then
-          write (msg_buffer, "(A,A,A,I0)") &
-               "Starting integration for process '", &
-               char (intg%process%get_id ()), "' part ", i_mci
-          call msg_message ()
-       end if
-       n_pass = global%it_list%get_n_pass ()
-       if (n_pass == 0) then
-          call msg_message ("Integrate: iterations not specified, &
-               &using default")
-          call intg%make_iterations_list (it_list)
-          n_pass = it_list%get_n_pass ()
+       nlo_type = intg%process%get_component_nlo_type (i_mci)
+       if (intg%process%is_active_nlo_component (i_mci)) then
+         i_born = intg%process%get_component_associated_born (i_mci)
+         i_sub = i_born + 3
+         select case (char (nlo_type))
+         case ('Real', 'Virtual')
+           call intg%process%extract_component_core (i_sub, core_born)
+           call intg%process%init_sub_born (i_mci, core_born)
+           call intg%process%restore_component_core (i_sub, core_born)
+           call process_instance%init_born_amps (i_mci, i_born)
+         end select
+         if (n_mci > 1) then
+            write (msg_buffer, "(A,A,A,I0)") &
+                 "Starting integration for process '", &
+                 char (intg%process%get_id ()), "' part ", i_mci
+            call msg_message ()
+         end if
+         n_pass = local%it_list%get_n_pass ()
+         if (n_pass == 0) then
+            call msg_message ("Integrate: iterations not specified, &
+                 &using default")
+            call intg%make_iterations_list (it_list)
+            n_pass = it_list%get_n_pass ()
+         else
+            it_list = local%it_list
+         end if
+         call msg_message ("Integrate: " // char (it_list%to_string ()))
+         do pass = 1, n_pass
+            call intg%evaluate (process_instance, i_mci, pass, it_list, pacify)
+            if (signal_is_pending ())  return
+         end do
+         call intg%process%final_integration (i_mci)       
+         if (intg%vis_history) then
+            call intg%process%display_integration_history &
+                 (i_mci, intg%history_filename, local%os_data, eff_reset)
+         end if       
+         if (local%logfile == intg%log_filename) then
+            if (intg%run_id /= "") then
+               log_filename = intg%process_id // "." // intg%run_id // &
+                    ".var.log"
+            else
+               log_filename = intg%process_id // ".var.log"
+            end if
+            call msg_message ("Name clash for global logfile and process log: ", &
+                 arr =[var_str ("| Renaming log file from ") // local%logfile, &
+                       var_str ("|   to ") // log_filename // var_str (" .")])
+         else
+            log_filename = intg%log_filename
+         end if
+         call intg%process%write_logfile (i_mci, log_filename)    
        else
-          it_list = global%it_list
-       end if
-       call msg_message ("Integrate: " // char (it_list%to_string ()))
-       do pass = 1, n_pass
-          call intg%evaluate (process_instance, i_mci, pass, it_list, pacify)
-          if (signal_is_pending ())  return
-       end do
-       call intg%process%final_integration (i_mci)       
-       if (intg%vis_history) then
-          call intg%process%display_integration_history &
-               (i_mci, intg%history_filename, global%os_data, eff_reset)
-       end if       
-       if (global%logfile == intg%log_filename) then
-          if (intg%run_id /= "") then
-             log_filename = intg%process_id // "." // intg%run_id // &
-                  ".var.log"
-          else
-             log_filename = intg%process_id // ".var.log"
-          end if
-          call msg_message ("Name clash for global logfile and process log: ", &
-               arr =[var_str ("| Renaming log file from ") // global%logfile, &
-                     var_str ("|   to ") // log_filename // var_str (" .")])
-       else
-          log_filename = intg%log_filename
-       end if
-       call intg%process%write_logfile (i_mci, log_filename)              
+         if (nlo_type /= "Subtraction") display_summed = .false.
+       end if          
     end do
 
-    if (n_mci > 1) then
+    if (n_mci > 1 .and. display_summed) then
        call msg_message ("Integrate: sum of all components")
        call intg%process%display_summed_results ()
     end if
@@ -464,9 +564,8 @@ contains
     call intg%process%integrate_dummy ()
   end subroutine integration_integrate_dummy
      
-  subroutine integration_sampler_test (intg, global)
+  subroutine integration_sampler_test (intg)
     class(integration_t), intent(inout) :: intg
-    type(rt_data_t), intent(inout), target :: global
     type(process_instance_t), allocatable, target :: process_instance
     integer :: n_mci, i_mci
     type(timer_t) :: timer_mci, timer_tot
@@ -507,28 +606,35 @@ contains
     call process_instance%final ()
   end subroutine integration_sampler_test
 
-  subroutine integrate_process (process_id, global, init_only, eff_reset)
+  function integration_get_process_ptr (intg) result (ptr)
+    class(integration_t), intent(in) :: intg
+    type(process_t), pointer :: ptr
+    ptr => intg%process
+  end function integration_get_process_ptr
+
+  subroutine integrate_process (process_id, local, global, local_stack, init_only, eff_reset)
     type(string_t), intent(in) :: process_id
-    type(rt_data_t), intent(inout), target :: global
-    logical, intent(in), optional :: init_only, eff_reset
+    type(rt_data_t), intent(inout), target :: local
+    type(rt_data_t), intent(inout), optional, target :: global
+    logical, intent(in), optional :: local_stack, init_only, eff_reset
     type(string_t) :: prclib_name
     type(integration_t) :: intg
     character(32) :: buffer
 
-    if (.not. associated (global%prclib)) then
+    if (.not. associated (local%prclib)) then
        call msg_fatal ("Integrate: current process library is undefined")
        return
     end if
 
-    if (.not. global%prclib%is_active ()) then
+    if (.not. local%prclib%is_active ()) then
        call msg_message ("Integrate: current process library needs compilation")
-       prclib_name = global%prclib%get_name ()
-       call compile_library (prclib_name, global)
+       prclib_name = local%prclib%get_name ()
+       call compile_library (prclib_name, local)
        if (signal_is_pending ())  return
        call msg_message ("Integrate: compilation done")
     end if
 
-    call intg%init (process_id, global)
+    call intg%init (process_id, local, global, local_stack)
     if (signal_is_pending ())  return
 
     if (present (init_only)) then
@@ -538,7 +644,7 @@ contains
     if (intg%n_calls_test > 0) then
        write (buffer, "(I0)")  intg%n_calls_test
        call msg_message ("Integrate: test (" // trim (buffer) // " calls) ...")
-       call intg%sampler_test (global)
+       call intg%sampler_test ()
        call msg_message ("Integrate: ... test complete.")
        if (signal_is_pending ())  return
     end if
@@ -547,11 +653,12 @@ contains
        call msg_message ("Integrate: phase space only, skipping integration")
     else
        if (intg%process_has_me) then
-          call intg%integrate (global, eff_reset)
+          call intg%integrate (local, eff_reset)
        else
           call intg%integrate_dummy ()
        end if
     end if
+
   end subroutine integrate_process
 
 
@@ -611,28 +718,28 @@ contains
     call prepare_test_library (global, libname, 1)
     call compile_library (libname, global)
 
-    call var_list_set_string (global%var_list, var_str ("$run_id"), &
+    call global%set_string (var_str ("$run_id"), &
          var_str ("integrations1"), is_known = .true.)
-    call var_list_set_string (global%var_list, var_str ("$method"), &
+    call global%set_string (var_str ("$method"), &
          var_str ("unit_test"), is_known = .true.)
-    call var_list_set_string (global%var_list, var_str ("$phs_method"), &
+    call global%set_string (var_str ("$phs_method"), &
          var_str ("single"), is_known = .true.)
-    call var_list_set_string (global%var_list, var_str ("$integration_method"),&
+    call global%set_string (var_str ("$integration_method"),&
          var_str ("midpoint"), is_known = .true.)
-    call var_list_set_log (global%var_list, var_str ("?vis_history"),&
+    call global%set_log (var_str ("?vis_history"),&
          .false., is_known = .true.)    
-    call var_list_set_log (global%var_list, var_str ("?integration_timer"),&
+    call global%set_log (var_str ("?integration_timer"),&
          .false., is_known = .true.) 
-    call var_list_set_int (global%var_list, var_str ("seed"), &
+    call global%set_int (var_str ("seed"), &
          0, is_known=.true.)    
     
-    call var_list_set_real (global%var_list, var_str ("sqrts"),&
+    call global%set_real (var_str ("sqrts"),&
          1000._default, is_known = .true.)
 
     call global%it_list%init ([1], [1000])
 
     call reset_interaction_counter ()
-    call integrate_process (procname, global)
+    call integrate_process (procname, global, local_stack=.true.)
 
     call global%write (u, vars = [ &
          var_str ("$method"), &
@@ -688,28 +795,28 @@ contains
     call prepare_test_library (global, libname, 1)
     call compile_library (libname, global)
 
-    call var_list_set_string (global%var_list, var_str ("$run_id"), &
+    call global%set_string (var_str ("$run_id"), &
          var_str ("integrations1"), is_known = .true.)
-    call var_list_set_string (global%var_list, var_str ("$method"), &
+    call global%set_string (var_str ("$method"), &
          var_str ("unit_test"), is_known = .true.)
-    call var_list_set_string (global%var_list, var_str ("$phs_method"), &
+    call global%set_string (var_str ("$phs_method"), &
          var_str ("single"), is_known = .true.)
-    call var_list_set_string (global%var_list, var_str ("$integration_method"),&
+    call global%set_string (var_str ("$integration_method"),&
          var_str ("midpoint"), is_known = .true.)
-    call var_list_set_log (global%var_list, var_str ("?vis_history"),&
+    call global%set_log (var_str ("?vis_history"),&
          .false., is_known = .true.)    
-    call var_list_set_log (global%var_list, var_str ("?integration_timer"),&
+    call global%set_log (var_str ("?integration_timer"),&
          .false., is_known = .true.)  
-    call var_list_set_int (global%var_list, var_str ("seed"), &
+    call global%set_int (var_str ("seed"), &
          0, is_known=.true.)    
 
-    call var_list_set_real (global%var_list, var_str ("sqrts"),&
+    call global%set_real (var_str ("sqrts"),&
          1000._default, is_known = .true.)
 
     call global%it_list%init ([1], [1000])
     
     call reset_interaction_counter ()
-    call integrate_process (procname, global)
+    call integrate_process (procname, global, local_stack=.true.)
     
     call global%write (u, vars = empty_string_array)
     
@@ -745,24 +852,24 @@ contains
     call prepare_test_library (global, libname, 1)
     call compile_library (libname, global)
 
-    call var_list_set_string (global%var_list, var_str ("$run_id"), &
+    call global%set_string (var_str ("$run_id"), &
          var_str ("integrations1"), is_known = .true.)
-    call var_list_set_string (global%var_list, var_str ("$method"), &
+    call global%set_string (var_str ("$method"), &
          var_str ("unit_test"), is_known = .true.)
-    call var_list_set_string (global%var_list, var_str ("$phs_method"), &
+    call global%set_string (var_str ("$phs_method"), &
          var_str ("default"), is_known = .true.)
-    call var_list_set_string (global%var_list, var_str ("$integration_method"),&
+    call global%set_string (var_str ("$integration_method"),&
          var_str ("midpoint"), is_known = .true.)
-    call var_list_set_log (global%var_list, var_str ("?vis_history"),&
+    call global%set_log (var_str ("?vis_history"),&
          .false., is_known = .true.)    
-    call var_list_set_log (global%var_list, var_str ("?integration_timer"),&
+    call global%set_log (var_str ("?integration_timer"),&
          .false., is_known = .true.)    
-    call var_list_set_log (global%var_list, var_str ("?phs_s_mapping"),&
+    call global%set_log (var_str ("?phs_s_mapping"),&
          .false., is_known = .true.)   
-    call var_list_set_int (global%var_list, var_str ("seed"), &
+    call global%set_int (var_str ("seed"), &
          0, is_known=.true.)    
     
-    call var_list_set_real (global%var_list, var_str ("sqrts"),&
+    call global%set_real (var_str ("sqrts"),&
          1000._default, is_known = .true.)
 
     write (u, "(A)")  "* Create a scratch phase-space file"
@@ -774,7 +881,7 @@ contains
     call write_test_phs_file (u_phs, var_str ("prc_config_a_i1"))
     close (u_phs)
 
-    call var_list_set_string (global%var_list, var_str ("$phs_file"),&
+    call global%set_string (var_str ("$phs_file"),&
          var_str ("integrations_3.phs"), is_known = .true.)
 
     call global%it_list%init ([1], [1000])
@@ -783,7 +890,7 @@ contains
     write (u, "(A)")
 
     call reset_interaction_counter ()
-    call integrate_process (procname, global)
+    call integrate_process (procname, global, local_stack=.true.)
     
     call global%write (u, vars = [ &
          var_str ("$phs_method"), &
@@ -823,27 +930,27 @@ contains
     call prepare_test_library (global, libname, 1, [procname])
     call compile_library (libname, global)
 
-    call var_list_append_log (global%var_list, &
+    call global%append_log (&
          var_str ("?rebuild_grids"), .true., intrinsic = .true.)
 
-    call var_list_set_string (global%var_list, var_str ("$run_id"), &
+    call global%set_string (var_str ("$run_id"), &
          var_str ("r1"), is_known = .true.)
-    call var_list_set_string (global%var_list, var_str ("$method"), &
+    call global%set_string (var_str ("$method"), &
          var_str ("unit_test"), is_known = .true.)
-    call var_list_set_string (global%var_list, var_str ("$phs_method"), &
+    call global%set_string (var_str ("$phs_method"), &
          var_str ("single"), is_known = .true.)
-    call var_list_set_string (global%var_list, var_str ("$integration_method"),&
+    call global%set_string (var_str ("$integration_method"),&
          var_str ("vamp"), is_known = .true.)
-    call var_list_set_log (global%var_list, var_str ("?use_vamp_equivalences"),&
+    call global%set_log (var_str ("?use_vamp_equivalences"),&
          .false., is_known = .true.)
-    call var_list_set_log (global%var_list, var_str ("?vis_history"),&
+    call global%set_log (var_str ("?vis_history"),&
          .false., is_known = .true.)    
-    call var_list_set_log (global%var_list, var_str ("?integration_timer"),&
+    call global%set_log (var_str ("?integration_timer"),&
          .false., is_known = .true.)    
-    call var_list_set_int (global%var_list, var_str ("seed"), &
+    call global%set_int (var_str ("seed"), &
          0, is_known=.true.)    
     
-    call var_list_set_real (global%var_list, var_str ("sqrts"),&
+    call global%set_real (var_str ("sqrts"),&
          1000._default, is_known = .true.)
 
     call global%it_list%init ([1], [1000])
@@ -852,7 +959,7 @@ contains
     write (u, "(A)")
 
     call reset_interaction_counter ()
-    call integrate_process (procname, global)
+    call integrate_process (procname, global, local_stack=.true.)
     
     call global%pacify (efficiency_reset = .true., error_reset = .true.)
     call global%write (u, vars = [var_str ("$integration_method")], &
@@ -891,27 +998,27 @@ contains
     call prepare_test_library (global, libname, 1, [procname])
     call compile_library (libname, global)
 
-    call var_list_append_log (global%var_list, &
+    call global%append_log (&
          var_str ("?rebuild_grids"), .true., intrinsic = .true.)
 
-    call var_list_set_string (global%var_list, var_str ("$run_id"), &
+    call global%set_string (var_str ("$run_id"), &
          var_str ("r1"), is_known = .true.)
-    call var_list_set_string (global%var_list, var_str ("$method"), &
+    call global%set_string (var_str ("$method"), &
          var_str ("unit_test"), is_known = .true.)
-    call var_list_set_string (global%var_list, var_str ("$phs_method"), &
+    call global%set_string (var_str ("$phs_method"), &
          var_str ("single"), is_known = .true.)
-    call var_list_set_string (global%var_list, var_str ("$integration_method"),&
+    call global%set_string (var_str ("$integration_method"),&
          var_str ("vamp"), is_known = .true.)
-    call var_list_set_log (global%var_list, var_str ("?use_vamp_equivalences"),&
+    call global%set_log (var_str ("?use_vamp_equivalences"),&
          .false., is_known = .true.)
-    call var_list_set_log (global%var_list, var_str ("?vis_history"),&
+    call global%set_log (var_str ("?vis_history"),&
          .false., is_known = .true.)    
-    call var_list_set_log (global%var_list, var_str ("?integration_timer"),&
+    call global%set_log (var_str ("?integration_timer"),&
          .false., is_known = .true.)    
-    call var_list_set_int (global%var_list, var_str ("seed"), &
+    call global%set_int (var_str ("seed"), &
          0, is_known=.true.)
     
-    call var_list_set_real (global%var_list, var_str ("sqrts"),&
+    call global%set_real (var_str ("sqrts"),&
          1000._default, is_known = .true.)
 
     call global%it_list%init ([3], [1000])
@@ -920,7 +1027,7 @@ contains
     write (u, "(A)")
 
     call reset_interaction_counter ()
-    call integrate_process (procname, global)
+    call integrate_process (procname, global, local_stack=.true.)
     
     call global%pacify (efficiency_reset = .true., error_reset = .true.)
     call global%write (u, vars = [var_str ("$integration_method")], &
@@ -960,27 +1067,27 @@ contains
     call prepare_test_library (global, libname, 1, [procname])
     call compile_library (libname, global)
 
-    call var_list_append_log (global%var_list, &
+    call global%append_log (&
          var_str ("?rebuild_grids"), .true., intrinsic = .true.)
 
-    call var_list_set_string (global%var_list, var_str ("$run_id"), &
+    call global%set_string (var_str ("$run_id"), &
          var_str ("r1"), is_known = .true.)
-    call var_list_set_string (global%var_list, var_str ("$method"), &
+    call global%set_string (var_str ("$method"), &
          var_str ("unit_test"), is_known = .true.)
-    call var_list_set_string (global%var_list, var_str ("$phs_method"), &
+    call global%set_string (var_str ("$phs_method"), &
          var_str ("single"), is_known = .true.)
-    call var_list_set_string (global%var_list, var_str ("$integration_method"),&
+    call global%set_string (var_str ("$integration_method"),&
          var_str ("vamp"), is_known = .true.)
-    call var_list_set_log (global%var_list, var_str ("?use_vamp_equivalences"),&
+    call global%set_log (var_str ("?use_vamp_equivalences"),&
          .false., is_known = .true.)
-    call var_list_set_log (global%var_list, var_str ("?vis_history"),&
+    call global%set_log (var_str ("?vis_history"),&
          .false., is_known = .true.)    
-    call var_list_set_log (global%var_list, var_str ("?integration_timer"),&
+    call global%set_log (var_str ("?integration_timer"),&
          .false., is_known = .true.)    
-    call var_list_set_int (global%var_list, var_str ("seed"), &
+    call global%set_int (var_str ("seed"), &
          0, is_known=.true.)    
     
-    call var_list_set_real (global%var_list, var_str ("sqrts"),&
+    call global%set_real (var_str ("sqrts"),&
          1000._default, is_known = .true.)
 
     call global%it_list%init ([3, 3, 3], [1000, 1000, 1000], &
@@ -991,7 +1098,7 @@ contains
     write (u, "(A)")
 
     call reset_interaction_counter ()
-    call integrate_process (procname, global)
+    call integrate_process (procname, global, local_stack=.true.)
     
     call global%pacify (efficiency_reset = .true., error_reset = .true.)
     call global%write (u, vars = no_vars, pacify = .true.)
@@ -1035,31 +1142,31 @@ contains
     call prepare_test_library (global, libname, 1, [procname])
     call compile_library (libname, global)
 
-    call var_list_append_log (global%var_list, &
+    call global%append_log (&
          var_str ("?rebuild_phase_space"), .true., intrinsic = .true.)
-    call var_list_append_log (global%var_list, &
+    call global%append_log (&
          var_str ("?rebuild_grids"), .true., intrinsic = .true.)
 
-    call var_list_set_string (global%var_list, var_str ("$run_id"), &
+    call global%set_string (var_str ("$run_id"), &
          var_str ("r1"), is_known = .true.)
-    call var_list_set_string (global%var_list, var_str ("$method"), &
+    call global%set_string (var_str ("$method"), &
          var_str ("unit_test"), is_known = .true.)
-    call var_list_set_string (global%var_list, var_str ("$phs_method"), &
+    call global%set_string (var_str ("$phs_method"), &
          var_str ("wood"), is_known = .true.)
-    call var_list_set_string (global%var_list, var_str ("$integration_method"),&
+    call global%set_string (var_str ("$integration_method"),&
          var_str ("vamp"), is_known = .true.)
-    call var_list_set_log (global%var_list, var_str ("?use_vamp_equivalences"),&
+    call global%set_log (var_str ("?use_vamp_equivalences"),&
          .true., is_known = .true.)
-    call var_list_set_log (global%var_list, var_str ("?vis_history"),&
+    call global%set_log (var_str ("?vis_history"),&
          .false., is_known = .true.)    
-    call var_list_set_log (global%var_list, var_str ("?integration_timer"),&
+    call global%set_log (var_str ("?integration_timer"),&
          .false., is_known = .true.)    
-    call var_list_set_log (global%var_list, var_str ("?phs_s_mapping"),&
+    call global%set_log (var_str ("?phs_s_mapping"),&
          .false., is_known = .true.)    
-    call var_list_set_int (global%var_list, var_str ("seed"), &
+    call global%set_int (var_str ("seed"), &
          0, is_known=.true.)
     
-    call var_list_set_real (global%var_list, var_str ("sqrts"),&
+    call global%set_real (var_str ("sqrts"),&
          1000._default, is_known = .true.)
 
     call global%it_list%init ([3, 3, 3], [1000, 1000, 1000], &
@@ -1070,7 +1177,7 @@ contains
     write (u, "(A)")
 
     call reset_interaction_counter ()
-    call integrate_process (procname, global)
+    call integrate_process (procname, global, local_stack=.true.)
     
     call global%pacify (efficiency_reset = .true., error_reset = .true.)
     call global%write (u, vars = no_vars, pacify = .true.)
@@ -1131,34 +1238,33 @@ contains
     call prepare_test_library (global, libname, 1, [procname])
     call compile_library (libname, global)
 
-    call var_list_append_log (global%var_list, &
+    call global%append_log (&
          var_str ("?rebuild_phase_space"), .true., intrinsic = .true.)
-    call var_list_append_log (global%var_list, &
+    call global%append_log (&
          var_str ("?rebuild_grids"), .true., intrinsic = .true.)
 
-    call var_list_set_string (global%var_list, var_str ("$run_id"), &
+    call global%set_string (var_str ("$run_id"), &
          var_str ("r1"), is_known = .true.)
-    call var_list_set_string (global%var_list, var_str ("$method"), &
+    call global%set_string (var_str ("$method"), &
          var_str ("unit_test"), is_known = .true.)
-    call var_list_set_string (global%var_list, var_str ("$phs_method"), &
+    call global%set_string (var_str ("$phs_method"), &
          var_str ("wood"), is_known = .true.)
-    call var_list_set_string (global%var_list, var_str ("$integration_method"),&
+    call global%set_string (var_str ("$integration_method"),&
          var_str ("vamp"), is_known = .true.)
-    call var_list_set_log (global%var_list, var_str ("?use_vamp_equivalences"),&
+    call global%set_log (var_str ("?use_vamp_equivalences"),&
          .true., is_known = .true.)
-    call var_list_set_log (global%var_list, var_str ("?vis_history"),&
+    call global%set_log (var_str ("?vis_history"),&
          .false., is_known = .true.)    
-    call var_list_set_log (global%var_list, var_str ("?integration_timer"),&
+    call global%set_log (var_str ("?integration_timer"),&
          .false., is_known = .true.)    
-    call var_list_set_log (global%var_list, var_str ("?phs_s_mapping"),&
+    call global%set_log (var_str ("?phs_s_mapping"),&
          .false., is_known = .true.)  
-    call var_list_set_int (global%var_list, var_str ("seed"), &
+    call global%set_int (var_str ("seed"), &
          0, is_known=.true.)    
     
-    call var_list_set_real (global%var_list, var_str ("sqrts"),&
+    call global%set_real (var_str ("sqrts"),&
          1000._default, is_known = .true.)
-    call var_list_set_real (global%var_list, var_str ("ms"), &
-         0._default, is_known = .true.)
+    call global%model_set_real (var_str ("ms"), 0._default)
 
     call reset_interaction_counter ()
 
@@ -1171,7 +1277,7 @@ contains
     write (u, "(A)")
 
     call global%it_list%init ([1], [1000])
-    call integrate_process (procname, global)
+    call integrate_process (procname, global, local_stack=.true.)
     
     call global%write (u, vars = [var_str ("ms")])
 
@@ -1212,37 +1318,37 @@ contains
     libname = "integrations_history_1_lib"
     procname = "integrations_history_1"
 
-    call var_list_set_log (global%var_list, var_str ("?vis_history"), &
+    call global%set_log (var_str ("?vis_history"), &
          .true., is_known = .true.)        
-    call var_list_set_log (global%var_list, var_str ("?integration_timer"),&
+    call global%set_log (var_str ("?integration_timer"),&
          .false., is_known = .true.)    
-    call var_list_set_log (global%var_list, var_str ("?phs_s_mapping"),&
+    call global%set_log (var_str ("?phs_s_mapping"),&
          .false., is_known = .true.)    
     
     call prepare_test_library (global, libname, 1, [procname])
     call compile_library (libname, global)
 
-    call var_list_append_log (global%var_list, &
+    call global%append_log (&
          var_str ("?rebuild_phase_space"), .true., intrinsic = .true.)
-    call var_list_append_log (global%var_list, &
+    call global%append_log (&
          var_str ("?rebuild_grids"), .true., intrinsic = .true.)
 
-    call var_list_set_string (global%var_list, var_str ("$run_id"), &
+    call global%set_string (var_str ("$run_id"), &
          var_str ("r1"), is_known = .true.)
-    call var_list_set_string (global%var_list, var_str ("$method"), &
+    call global%set_string (var_str ("$method"), &
          var_str ("unit_test"), is_known = .true.)
-    call var_list_set_string (global%var_list, var_str ("$phs_method"), &
+    call global%set_string (var_str ("$phs_method"), &
          var_str ("wood"), is_known = .true.)
-    call var_list_set_string (global%var_list, var_str ("$integration_method"),&
+    call global%set_string (var_str ("$integration_method"),&
          var_str ("vamp"), is_known = .true.)
-    call var_list_set_log (global%var_list, var_str ("?use_vamp_equivalences"),&
+    call global%set_log (var_str ("?use_vamp_equivalences"),&
          .true., is_known = .true.)
-    call var_list_set_real (global%var_list, var_str ("error_threshold"),&
+    call global%set_real (var_str ("error_threshold"),&
          5E-6_default, is_known = .true.)
-    call var_list_set_int (global%var_list, var_str ("seed"), &
+    call global%set_int (var_str ("seed"), &
          0, is_known=.true.)    
 
-    call var_list_set_real (global%var_list, var_str ("sqrts"),&
+    call global%set_real (var_str ("sqrts"),&
          1000._default, is_known = .true.)
 
     call global%it_list%init ([2, 2, 2], [1000, 1000, 1000], &
@@ -1253,7 +1359,8 @@ contains
     write (u, "(A)")
 
     call reset_interaction_counter ()
-    call integrate_process (procname, global, eff_reset = .true.)
+    call integrate_process (procname, global, local_stack=.true., &
+         eff_reset = .true.)
     
     call global%pacify (efficiency_reset = .true., error_reset = .true.)
     call global%write (u, vars = no_vars, pacify = .true.)

@@ -67,7 +67,6 @@ seed = 0
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process alphas_ugug:
-| QCD alpha: using a running strong coupling
 | ------------------------------------------------------------------------
 | Process [scattering]: 'alphas_ugug'
 |   Library name  = 'alphas_lib'
@@ -112,7 +111,6 @@ seed = 0
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Initializing integration for process alphas_ugug:
-| QCD alpha: using a running strong coupling
 | ------------------------------------------------------------------------
 | Process [scattering]: 'alphas_ugug'
 |   Library name  = 'alphas_lib'

@@ -1,4 +1,4 @@
-! WHIZARD 2.2.2 July 6 2014
+! WHIZARD 2.2.3 Nov 30 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,8 +6,10 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
+!     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     Christian Weiss <christian.weiss@desy.de>
+!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -29,28 +31,25 @@
 
 module processes
 
-  use kinds, only: default !NODEP!
-  use iso_varying_string, string_t => varying_string !NODEP!
-  use system_dependencies !NODEP!
-  use constants !NODEP!
-  use file_utils !NODEP!
-  use diagnostics !NODEP!
+  use kinds, only: default
+  use iso_varying_string, string_t => varying_string
+  use io_units
+  use constants, only: twopi4
+  use format_utils, only: write_separator
   use unit_tests
+  use system_dependencies
+  use diagnostics
   use md5
   use cputime
   use os_interface
-
-  use ifiles
-  use lexers
-  use parser
-  
-  use lorentz !NODEP!
+  use physics_defs, only: conv
+  use lorentz
   use sm_qcd
   use pdg_arrays
   use subevents
   use variables
-  use expressions
-  use models
+  use expr_base
+  use model_data
   use flavors
   use helicities
   use colors
@@ -74,6 +73,7 @@ module processes
   
   use vamp !NODEP!  
 
+  use process_constants
   use prclib_interfaces
   use prc_core_def
   use process_libraries
@@ -82,6 +82,13 @@ module processes
   use integration_results
   use prc_core
   use parton_states
+
+  use fks_calculation
+  use phs_wood
+  use phs_fks
+  use prc_gosam
+  use prc_omega
+  use blha_config
   
   implicit none
   private
@@ -132,9 +139,12 @@ module processes
      logical :: sf_chain_allocated = .false.
      logical :: phs_allocated = .false.
      logical :: f_allocated = .false.
+     type(string_t) :: nlo_type
+     integer :: emitter
    contains
      procedure :: write => kinematics_write
      procedure :: final => kinematics_final
+     procedure :: set_nlo_data => kinematics_set_nlo_data
      procedure :: init_sf_chain => kinematics_init_sf_chain
      procedure :: init_phs => kinematics_init_phs
      procedure :: init_ptr => kinematics_init_ptr
@@ -145,6 +155,7 @@ module processes
      procedure :: get_mcpar => kinematics_get_mcpar
      procedure :: evaluate_sf_chain => kinematics_evaluate_sf_chain
      procedure :: return_beam_momenta => kinematics_return_beam_momenta
+     procedure :: display_real_kinematics => kinematics_display_real_kinematics
   end type kinematics_t
 
   type :: component_instance_t
@@ -155,6 +166,7 @@ module processes
      logical :: sqme_known = .false.
      real(default) :: sqme = 0
      class(workspace_t), allocatable :: tmp
+     type(nlo_data_t), pointer :: nlo_data => null ()
    contains
      procedure :: write => component_instance_write
      procedure :: final => component_instance_final
@@ -171,6 +183,7 @@ module processes
           component_instance_compute_other_channels
      procedure :: return_beam_momenta => component_instance_return_beam_momenta
      procedure :: evaluate_sqme => component_instance_evaluate_sqme
+     procedure :: get_nlo_type => component_instance_get_nlo_type
   end type component_instance_t
   
   type :: term_instance_t
@@ -179,8 +192,11 @@ module processes
      type(kinematics_t) :: k_term
      complex(default), dimension(:), allocatable :: amp
      type(interaction_t) :: int_hard
+     type(interaction_t) :: int_hard_real
      type(isolated_state_t) :: isolated
      type(connected_state_t) :: connected
+     type(isolated_state_t) :: isolated_real
+     type(connected_state_t) :: connected_real
      logical :: checked = .false.
      logical :: passed = .false.
      real(default) :: scale = 0
@@ -188,12 +204,16 @@ module processes
      real(default) :: ren_scale = 0
      real(default) :: weight = 1
      type(vector4_t), dimension(:), allocatable :: p_hard
+     type(nlo_data_t), pointer :: nlo_data
    contains
      procedure :: write => term_instance_write
      procedure :: final => term_instance_final
      procedure :: init => term_instance_init
+     procedure :: init_states => term_instance_init_states
      procedure :: setup_expressions => term_instance_setup_expressions
+     procedure :: setup_expressions_real => term_instance_setup_expressions_real
      procedure :: setup_event_data => term_instance_setup_event_data
+     procedure :: setup_real_interaction => term_instance_setup_real_interaction
      procedure :: reset => term_instance_reset
      procedure :: compute_eff_kinematics => &
           term_instance_compute_eff_kinematics
@@ -234,6 +254,7 @@ module processes
      type(process_t), pointer :: process => null ()
      integer :: evaluation_status = STAT_UNDEFINED
      real(default) :: sqme = 0
+     real(default), dimension(:), allocatable :: sqme_real
      real(default) :: weight = 0
      real(default) :: excess = 0
      integer :: i_mci = 0
@@ -251,6 +272,7 @@ module processes
      procedure :: init => process_instance_init
      procedure :: setup_sf_chain => process_instance_setup_sf_chain
      procedure :: setup_event_data => process_instance_setup_event_data
+     procedure :: init_born_amps => process_instance_init_born_amps
      procedure :: choose_mci => process_instance_choose_mci
      procedure :: set_mcpar => process_instance_set_mcpar
      procedure :: receive_beam_momenta => process_instance_receive_beam_momenta
@@ -308,6 +330,7 @@ module processes
      procedure :: get_counter => process_instance_get_counter
      procedure :: get_trace => process_instance_get_trace
      procedure :: set_trace => process_instance_set_trace
+     procedure :: display_real_kinematics => process_instance_display_real_kinematics
   end type process_instance_t
      
 
@@ -341,13 +364,13 @@ module processes
      type(os_data_t) :: os_data
      class(rng_factory_t), allocatable :: rng_factory
      type(string_t) :: model_name
-     type(model_t), pointer :: model => null ()
+     class(model_data_t), pointer :: model => null ()
      type(qcd_t) :: qcd
-     type(parse_node_t), pointer :: pn_cuts => null ()
-     type(parse_node_t), pointer :: pn_scale => null ()
-     type(parse_node_t), pointer :: pn_fac_scale => null ()
-     type(parse_node_t), pointer :: pn_ren_scale => null ()
-     type(parse_node_t), pointer :: pn_weight => null ()
+     class(expr_factory_t), allocatable :: ef_cuts
+     class(expr_factory_t), allocatable :: ef_scale
+     class(expr_factory_t), allocatable :: ef_fac_scale
+     class(expr_factory_t), allocatable :: ef_ren_scale
+     class(expr_factory_t), allocatable :: ef_weight
      character(32) :: md5sum = ""
    contains
      procedure :: write => process_config_data_write
@@ -400,6 +423,7 @@ module processes
      class(mci_t), allocatable :: mci
      type(process_counter_t) :: counter
      type(integration_results_t) :: results
+     logical :: negative_weights
    contains
      procedure :: final => process_mci_entry_final
      procedure :: write => process_mci_entry_write
@@ -432,12 +456,14 @@ module processes
      type(process_component_def_t), pointer :: config => null ()
      integer :: index = 0
      class(prc_core_t), allocatable :: core
+     class(prc_core_t), allocatable :: core_sub_born
      logical :: active = .false.
      class(mci_t), allocatable :: mci_template
      integer, dimension(:), allocatable :: i_term
      integer :: i_mci = 0
      class(phs_config_t), allocatable :: phs_config
      character(32) :: md5sum_phs = ""
+     type(fks_template_t) :: fks_template
    contains
      procedure :: final => process_component_final
      procedure :: write => process_component_write
@@ -447,6 +473,9 @@ module processes
      procedure :: collect_channels => process_component_collect_channels
      procedure :: get_n_phs_par => process_component_get_n_phs_par
      procedure :: get_pdg_in => process_component_get_pdg_in
+     procedure :: fill_constants => process_component_fill_constants
+     procedure :: extract_phs_config => process_component_extract_phs_config
+     procedure :: restore_phs_config => process_component_restore_phs_config
   end type process_component_t
 
   type :: process_term_t
@@ -454,6 +483,7 @@ module processes
      integer :: i_component = 0
      integer :: i_term = 0
      integer :: n_allowed = 0
+     integer :: n_allowed_sub_born = 0
      type(process_constants_t) :: data
      real(default) :: alpha_s = 0
      integer, dimension(:), allocatable :: flv, hel, col
@@ -466,6 +496,7 @@ module processes
      procedure :: final => process_term_final
      procedure :: init => process_term_init
      procedure :: setup_interaction => process_term_setup_interaction
+     procedure :: fetch_constants => process_term_fetch_process_constants
   end type process_term_t
   
 
@@ -485,6 +516,7 @@ module processes
           beam_config
      type(process_mci_entry_t), dimension(:), allocatable :: &
           mci_entry
+     logical :: nlo_process
    contains
      procedure :: write => process_write
      procedure :: show => process_show
@@ -540,6 +572,15 @@ module processes
      procedure :: get_error_mci => process_get_error_mci
      procedure :: get_efficiency_tot => process_get_efficiency_tot
      procedure :: get_efficiency_mci => process_get_efficiency_mci
+     procedure :: get_correction => process_get_correction
+     procedure :: get_correction_error => process_get_correction_error
+     procedure :: component_reset_helicity => process_component_reset_helicity
+     procedure :: init_sub_born => process_init_sub_born
+     procedure :: is_nlo_calculation => process_is_nlo_calculation
+     procedure :: get_component_nlo_type => process_get_component_nlo_type
+     procedure :: get_component_associated_born &
+               => process_get_component_associated_born
+     procedure :: is_active_nlo_component => process_is_active_nlo_component 
      procedure :: get_md5sum_prc => process_get_md5sum_prc
      procedure :: get_md5sum_mci => process_get_md5sum_mci
      procedure :: get_md5sum_cfg => process_get_md5sum_cfg
@@ -625,7 +666,7 @@ contains
     logical :: os_data
     logical :: rng_factory, model, expressions
     integer :: u, i
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     if (present (show_all)) then
        all = show_all
     else
@@ -662,11 +703,11 @@ contains
        write (msg_buffer, "(A)")  repeat ("-", 72)
        call msg_message ()
     else
-       call write_separator_double (u)
+       call write_separator (u, 2)
     end if
     call process%meta%write (u, var_list, screen)
     if (process%meta%type == PRC_UNKNOWN) then
-       call write_separator_double (u)
+       call write_separator (u, 2)
        return
     else
        if (.not. screen)  call write_separator (u)
@@ -674,7 +715,7 @@ contains
     if (screen)  return
     call process%config%write &
          (u, counters, os_data, rng_factory, model, expressions)
-    call write_separator_double (u)
+    call write_separator (u, 2)
     if (allocated (process%component)) then
        write (u, "(1x,A)") "Process component configuration:"
        do i = 1, size (process%component)
@@ -684,7 +725,7 @@ contains
     else
        write (u, "(1x,A)") "Process component configuration: [undefined]"
     end if
-    call write_separator_double (u)
+    call write_separator (u, 2)
     if (allocated (process%term)) then
        write (u, "(1x,A)") "Process term configuration:"
        do i = 1, size (process%term)
@@ -694,9 +735,9 @@ contains
     else
        write (u, "(1x,A)") "Process term configuration: [undefined]"
     end if
-    call write_separator_double (u)
+    call write_separator (u, 2)
     call process%beam_config%write (u)
-    call write_separator_double (u)
+    call write_separator (u, 2)
     if (allocated (process%mci_entry)) then
        write (u, "(1x,A)") "Multi-channel integrator configurations:"
        do i = 1, size (process%mci_entry)
@@ -705,7 +746,7 @@ contains
           call process%mci_entry(i)%write (u, pacify)
        end do
     end if
-    call write_separator_double (u)
+    call write_separator (u, 2)
   end subroutine process_write
       
   subroutine process_show (object, unit, verbose)
@@ -714,7 +755,7 @@ contains
     logical, intent(in), optional :: verbose
     integer :: u
     logical :: verb
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     verb = .true.;  if (present (verbose)) verb = verbose
     if (verb) then
        call object%meta%show (u, object%config%model%get_name ())
@@ -742,6 +783,8 @@ contains
        write (u, "(1x,A)")  "GeV"
     case (PRC_SCATTERING)
        write (u, "(1x,A)")  "fb"
+    case default
+       write (u, *)
     end select
   end subroutine process_show
     
@@ -769,7 +812,7 @@ contains
   end subroutine process_final
     
   subroutine process_init &
-       (process, proc_id, run_id, lib, os_data, qcd, rng_factory, model_list)
+       (process, proc_id, run_id, lib, os_data, qcd, rng_factory, model)
     class(process_t), intent(out) :: process
     type(string_t), intent(in) :: proc_id
     type(string_t), intent(in) :: run_id
@@ -777,7 +820,7 @@ contains
     type(os_data_t), intent(in) :: os_data
     type(qcd_t), intent(in) :: qcd
     class(rng_factory_t), intent(inout), allocatable :: rng_factory
-    type(model_list_t), intent(inout) :: model_list
+    class(model_data_t), intent(inout), pointer :: model
     if (.not. lib%is_active ()) then
        call msg_bug ("Process init: inactive library not handled yet")
     end if
@@ -788,33 +831,33 @@ contains
     end if
     associate (meta => process%meta)
       call meta%init (proc_id, run_id, lib)
-      call process%config%init (meta, os_data, qcd, rng_factory, model_list)
+      call process%config%init (meta, os_data, qcd, rng_factory, model)
       allocate (process%component (meta%n_components))
     end associate
+    process%nlo_process = lib%get_nlo_process (proc_id)
   end subroutine process_init
   
   subroutine process_set_var_list (process, var_list)
     class(process_t), intent(inout) :: process
     type(var_list_t), intent(in) :: var_list
-    call var_list_init_snapshot (process%meta%var_list, var_list)
-    call var_list_set_original_pointers (process%meta%var_list, &
-         model_get_var_list_ptr (process%config%model))
-    call var_list_restore (process%meta%var_list)
-    call model_parameters_update (process%config%model)
-    call var_list_synchronize (process%meta%var_list, &
-         model_get_var_list_ptr (process%config%model))
+    call var_list_init_snapshot &
+         (process%meta%var_list, var_list, follow_link=.true.)
   end subroutine process_set_var_list
   
   subroutine process_init_component &
-       (process, index, core_template, mci_template, phs_config_template)
+       (process, index, core_template, mci_template, phs_config_template, &
+        fks_template, gosam_template)
     class(process_t), intent(inout) :: process
     integer, intent(in) :: index
     class(prc_core_t), intent(in), allocatable :: core_template
     class(mci_t), intent(in), allocatable :: mci_template
     class(phs_config_t), intent(in), allocatable :: phs_config_template
+    type(fks_template_t), intent(in), optional :: fks_template
+    type(gosam_writer_template_t), intent(inout), optional :: gosam_template
     call process%component(index)%init (index, &
          process%meta, process%config, &
-         core_template, mci_template, phs_config_template)
+         core_template, mci_template, phs_config_template, &
+         gosam_template, fks_template)
     if (.not. process%component(index)%active) then
        call process%meta%deactivate_component(index)
     end if
@@ -822,7 +865,7 @@ contains
 
   subroutine process_setup_terms (process)
     class(process_t), intent(inout) :: process
-    type(model_t), pointer :: model
+    class(model_data_t), pointer :: model
     integer :: i, j, k
     integer, dimension(:), allocatable :: n_entry
     integer :: n_components, n_tot
@@ -958,15 +1001,14 @@ contains
   end subroutine process_get_pdg_in
   
   subroutine process_setup_beams_beam_structure &
-       (process, beam_structure, sqrts, model, decay_rest_frame)
+       (process, beam_structure, sqrts, decay_rest_frame)
     class(process_t), intent(inout) :: process
     type(beam_structure_t), intent(in) :: beam_structure
     real(default), intent(in) :: sqrts
-    type(model_t), intent(in), target :: model
     logical, intent(in), optional :: decay_rest_frame
     if (process%get_n_in () == beam_structure%get_n_beam ()) then
        call process%beam_config%init_beam_structure &
-            (beam_structure, sqrts, model, decay_rest_frame)
+            (beam_structure, sqrts, process%get_model_ptr (), decay_rest_frame)
     else if (beam_structure%get_n_beam () == 0) then
        call msg_fatal ("Asymmetric beams: missing beam particle specification")
     else
@@ -986,13 +1028,32 @@ contains
     logical, intent(in), optional :: rebuild
     logical, intent(in), optional :: ignore_mismatch
     real(default) :: sqrts
-    integer :: i
+    integer :: i, i_born
+    class(phs_config_t), allocatable :: phs_config_born
     sqrts = process%get_sqrts ()
     do i = 1, process%meta%n_components
        associate (component => process%component(i))
          if (component%active) then
-            call component%configure_phs &
-                 (sqrts, process%beam_config, rebuild, ignore_mismatch)
+            if (process%nlo_process) then
+               select case (char (component%config%get_nlo_type ()))
+               case ('Born', 'Virtual', 'Subtraction')
+                  call component%configure_phs &
+                      (sqrts, process%beam_config, rebuild, ignore_mismatch)
+               case ('Real')
+                  i_born = component%config%get_associated_born ()
+                  call process%component(i_born)%extract_phs_config (phs_config_born)
+                  select type (phs_config_born)
+                  type is (phs_wood_config_t)
+                     call  component%configure_phs &
+                          (sqrts, process%beam_config, rebuild, ignore_mismatch, &
+                           phs_config_born)
+                  end select
+                  call process%component(i_born)%restore_phs_config (phs_config_born)
+               end select
+            else
+               call component%configure_phs &
+                    (sqrts, process%beam_config, rebuild, ignore_mismatch)
+            end if
          end if
        end associate
     end do
@@ -1102,34 +1163,34 @@ contains
     end do
   end subroutine process_setup_mci
   
-  subroutine process_set_cuts (process, pn_cuts)
+  subroutine process_set_cuts (process, ef_cuts)
     class(process_t), intent(inout) :: process
-    type(parse_node_t), intent(in), pointer :: pn_cuts
-    process%config%pn_cuts => pn_cuts
+    class(expr_factory_t), intent(in) :: ef_cuts
+    allocate (process%config%ef_cuts, source = ef_cuts)
   end subroutine process_set_cuts
   
-  subroutine process_set_scale (process, pn_scale)
+  subroutine process_set_scale (process, ef_scale)
     class(process_t), intent(inout) :: process
-    type(parse_node_t), intent(in), pointer :: pn_scale
-    process%config%pn_scale => pn_scale
+    class(expr_factory_t), intent(in) :: ef_scale
+    allocate (process%config%ef_scale, source = ef_scale)
   end subroutine process_set_scale
   
-  subroutine process_set_fac_scale (process, pn_fac_scale)
+  subroutine process_set_fac_scale (process, ef_fac_scale)
     class(process_t), intent(inout) :: process
-    type(parse_node_t), intent(in), pointer :: pn_fac_scale
-    process%config%pn_fac_scale => pn_fac_scale
+    class(expr_factory_t), intent(in) :: ef_fac_scale
+    allocate (process%config%ef_fac_scale, source = ef_fac_scale)
   end subroutine process_set_fac_scale
   
-  subroutine process_set_ren_scale (process, pn_ren_scale)
+  subroutine process_set_ren_scale (process, ef_ren_scale)
     class(process_t), intent(inout) :: process
-    type(parse_node_t), intent(in), pointer :: pn_ren_scale
-    process%config%pn_ren_scale => pn_ren_scale
+    class(expr_factory_t), intent(in) :: ef_ren_scale
+    allocate (process%config%ef_ren_scale, source = ef_ren_scale)
   end subroutine process_set_ren_scale
   
-  subroutine process_set_weight (process, pn_weight)
+  subroutine process_set_weight (process, ef_weight)
     class(process_t), intent(inout) :: process
-    type(parse_node_t), intent(in), pointer :: pn_weight
-    process%config%pn_weight => pn_weight
+    class(expr_factory_t), intent(in) :: ef_weight
+    allocate (process%config%ef_weight, source = ef_weight)
   end subroutine process_set_weight
   
   subroutine process_compute_md5sum (process)
@@ -1169,7 +1230,8 @@ contains
     logical, intent(in), optional :: adapt_weights
     logical, intent(in), optional :: final, pacify
     call process%mci_entry(i_mci)%integrate (instance, n_it, n_calls, &
-         adapt_grids, adapt_weights, final, pacify)        
+         adapt_grids, adapt_weights, final, pacify, i_mci)        
+    call instance%display_real_kinematics (i_mci)
   end subroutine process_integrate
 
   subroutine process_final_integration (process, i_mci)
@@ -1202,6 +1264,9 @@ contains
          process%get_integral (), &
          process%get_error (), &
          process%get_efficiency ())
+    if (process%nlo_process) &
+       call results%record_correction (process%get_correction (), &
+                                       process%get_correction_error ())
     call results%display_final ()
   end subroutine process_display_summed_results
 
@@ -1227,7 +1292,7 @@ contains
     unit = free_unit ()
     open (unit = unit, file = char (filename), action = "write", &
           status = "replace")
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     write (u, "(A)")  repeat ("#", 79)
     call process%meta%write (u, .false., .false.)
     write (u, "(A)")  repeat ("#", 79)
@@ -1274,38 +1339,38 @@ contains
     write (u, "(A)")  repeat ("#", 79)
     call process%beam_config%data%write (u)
     write (u, "(A)")  repeat ("#", 79)
-    if (associated (process%config%pn_cuts)) then
+    if (allocated (process%config%ef_cuts)) then
        write (u, "(3x,A)") "Cut expression:"
-       call process%config%pn_cuts%write (u)
+       call process%config%ef_cuts%write (u)
     else
        write (u, "(3x,A)") "No cuts used."         
     end if
     call write_separator (u)           
-    if (associated (process%config%pn_scale)) then
+    if (allocated (process%config%ef_scale)) then
        write (u, "(3x,A)") "Scale expression:"
-       call process%config%pn_scale%write (u)
+       call process%config%ef_scale%write (u)
     else
        write (u, "(3x,A)") "No scale expression was given."
     end if
     call write_separator (u)           
-    if (associated (process%config%pn_fac_scale)) then
+    if (allocated (process%config%ef_fac_scale)) then
        write (u, "(3x,A)") "Factorization scale expression:"
-       call process%config%pn_fac_scale%write (u)
+       call process%config%ef_fac_scale%write (u)
     else
        write (u, "(3x,A)") "No factorization scale expression was given."       
     end if
     call write_separator (u)           
-    if (associated (process%config%pn_ren_scale)) then
+    if (allocated (process%config%ef_ren_scale)) then
        write (u, "(3x,A)") "Renormalization scale expression:"
-       call process%config%pn_ren_scale%write (u)
+       call process%config%ef_ren_scale%write (u)
     else
        write (u, "(3x,A)") "No renormalization scale expression was given."
     end if
     call write_separator (u)           
-    if (associated (process%config%pn_weight)) then
+    if (allocated (process%config%ef_weight)) then
        call write_separator (u)
        write (u, "(3x,A)") "Weight expression:"
-       call process%config%pn_weight%write (u)
+       call process%config%ef_weight%write (u)
     else
        write (u, "(3x,A)") "No weight expression was given."
     end if
@@ -1325,7 +1390,7 @@ contains
     class(process_t), intent(in) :: process
     integer, intent(in), optional :: unit
     integer :: i, i_component, u
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     do i = 1, size (process%term)
        call write_separator (u)
        i_component = process%term(i)%i_component
@@ -1406,9 +1471,12 @@ contains
     real(default) :: integral
     integer :: i
     integral = 0
-    do i = 1, size (process%mci_entry)
-       integral = integral + process%mci_entry(i)%get_integral ()
-    end do
+    if (allocated (process%mci_entry)) then
+       do i = 1, size (process%mci_entry)
+          if (process%is_active_nlo_component(i)) &
+               integral = integral + process%mci_entry(i)%get_integral ()
+       end do
+    end if
   end function process_get_integral_tot
   
   function process_get_error_tot (process) result (error)
@@ -1417,9 +1485,12 @@ contains
     real(default) :: variance
     integer :: i
     variance = 0
-    do i = 1, size (process%mci_entry)
-       variance = variance + process%mci_entry(i)%get_error () ** 2
-    end do
+    if (allocated (process%mci_entry)) then
+       do i = 1, size (process%mci_entry)
+          if (process%is_active_nlo_component(i)) &
+               variance = variance + process%mci_entry(i)%get_error () ** 2
+       end do
+    end if
     error = sqrt (variance)
   end function process_get_error_tot
   
@@ -1429,18 +1500,22 @@ contains
     real(default) :: den, eff, int
     integer :: i
     den = 0
-    do i = 1, size (process%mci_entry)
-       int = process%get_integral (i)
-       if (int > 0) then
-          eff = process%mci_entry(i)%get_efficiency ()
-          if (eff > 0) then
-             den = den + int / eff
-          else
-             efficiency = 0
-             return
+    if (allocated (process%mci_entry)) then
+       do i = 1, size (process%mci_entry)
+          if (process%is_active_nlo_component(i)) then
+             int = process%get_integral (i)
+             if (int > 0) then
+                eff = process%mci_entry(i)%get_efficiency ()
+                if (eff > 0) then
+                   den = den + int / eff
+                else
+                   efficiency = 0
+                   return
+                end if
+             end if
           end if
-       end if
-    end do
+       end do
+    end if
     if (den > 0) then
        efficiency = process%get_integral () / den
     else
@@ -1448,6 +1523,87 @@ contains
     end if
   end function process_get_efficiency_tot
   
+  function process_get_correction (process) result (ratio)
+    class(process_t), intent(in) :: process
+    real(default) :: ratio
+    real(default) :: int_real, int_virt, int_born
+    int_born = process%mci_entry(1)%get_integral ()
+    int_real = process%mci_entry(2)%get_integral ()
+    int_virt = process%mci_entry(3)%get_integral ()
+    ratio = (int_real + int_virt) / int_born
+  end function process_get_correction
+
+  function process_get_correction_error (process) result (error)
+    class(process_t), intent(in) :: process
+    real(default) :: error
+    real(default) :: int_born, int_real, int_virt
+    real(default) :: err_born, err_real, err_virt
+    real(default) :: err2
+    int_born = process%mci_entry(1)%get_integral ()
+    int_real = process%mci_entry(2)%get_integral ()
+    int_virt = process%mci_entry(3)%get_integral ()
+    err_born = process%mci_entry(1)%get_error ()
+    err_real = process%mci_entry(2)%get_error ()
+    err_virt = process%mci_entry(3)%get_error ()
+    err2 = (int_real + int_virt)**2 / int_born**4 * err_born**2 &
+             + (err_real**2 + err_virt**2) / int_born**2
+    error = sqrt (err2)
+  end function process_get_correction_error
+
+  subroutine process_component_reset_helicity(proc, i)
+    class(process_t), intent(inout) :: proc
+    integer, intent(in) :: i
+    select type (core => proc%component(i)%core)
+      type is (prc_omega_t)
+        call core%reset_helicity_selection ()
+    end select
+    if (i == 2) then
+      select type (core_sub_born => proc%component(i)%core_sub_born)
+      type is (prc_omega_t)
+         call core_sub_born%reset_helicity_selection ()
+      end select
+    end if
+  end subroutine process_component_reset_helicity
+
+  subroutine process_init_sub_born (proc, i_component, core_born_in)
+    class(process_t), intent(inout) :: proc
+    integer, intent(in) :: i_component
+    class(prc_core_t), intent(inout) :: core_born_in
+    associate (component => proc%component(i_component))
+      allocate (component%core_sub_born, source = core_born_in)
+    end associate
+  end subroutine process_init_sub_born
+
+  function process_is_nlo_calculation (process) result (nlo)
+    class(process_t), intent(in) :: process
+    logical :: nlo
+    nlo = process%nlo_process
+  end function process_is_nlo_calculation
+
+  function process_get_component_nlo_type (process, i_component) &
+           result (nlo_type)
+    class(process_t), intent(in) :: process
+    integer, intent(in) :: i_component
+    type(string_t) :: nlo_type
+    nlo_type = process%component(i_component)%config%get_nlo_type ()
+  end function process_get_component_nlo_type
+
+  function process_get_component_associated_born (process, i_component) &
+           result (i_born)
+    class(process_t), intent(in) :: process
+    integer, intent(in) :: i_component
+    integer :: i_born
+    i_born = process%component(i_component)%config%get_associated_born ()
+  end function process_get_component_associated_born
+
+  function process_is_active_nlo_component (process, i_component) &
+           result (active)
+    class(process_t), intent(in) :: process
+    integer, intent(in) :: i_component
+    logical :: active
+    active = process%component(i_component)%config%is_active_nlo_component ()
+  end function process_is_active_nlo_component
+
   function process_get_md5sum_prc (process, i_component) result (md5sum)
     class(process_t), intent(in) :: process
     integer, intent(in) :: i_component
@@ -1700,30 +1856,30 @@ contains
     end if
     call write_separator (u)
     if (expressions) then
-       if (associated (config%pn_cuts)) then
+       if (allocated (config%ef_cuts)) then
           call write_separator (u)
           write (u, "(3x,A)") "Cut expression:"
-          call config%pn_cuts%write (u)
+          call config%ef_cuts%write (u)
        end if
-       if (associated (config%pn_scale)) then
+       if (allocated (config%ef_scale)) then
           call write_separator (u)
           write (u, "(3x,A)") "Scale expression:"
-          call config%pn_scale%write (u)
+          call config%ef_scale%write (u)
        end if
-       if (associated (config%pn_fac_scale)) then
+       if (allocated (config%ef_fac_scale)) then
           call write_separator (u)
           write (u, "(3x,A)") "Factorization scale expression:"
-          call config%pn_fac_scale%write (u)
+          call config%ef_fac_scale%write (u)
        end if
-       if (associated (config%pn_ren_scale)) then
+       if (allocated (config%ef_ren_scale)) then
           call write_separator (u)
           write (u, "(3x,A)") "Renormalization scale expression:"
-          call config%pn_ren_scale%write (u)
+          call config%ef_ren_scale%write (u)
        end if
-       if (associated (config%pn_weight)) then
+       if (allocated (config%ef_weight)) then
           call write_separator (u)
           write (u, "(3x,A)") "Weight expression:"
-          call config%pn_weight%write (u)
+          call config%ef_weight%write (u)
        end if
     else
        call write_separator (u)
@@ -1736,34 +1892,27 @@ contains
   end subroutine process_config_data_write
        
   subroutine process_config_data_init &
-       (config, meta, os_data, qcd, rng_factory, model_list)
+       (config, meta, os_data, qcd, rng_factory, model)
     class(process_config_data_t), intent(out) :: config
     type(process_metadata_t), intent(in) :: meta
     type(os_data_t), intent(in) :: os_data
     type(qcd_t), intent(in) :: qcd
     class(rng_factory_t), intent(inout), allocatable :: rng_factory
-    type(model_list_t), intent(inout) :: model_list
-    type(string_t) :: filename
-    type(model_t), pointer :: model
+    class(model_data_t), intent(inout), pointer :: model
     config%n_in = meta%lib%get_n_in (meta%id)
     config%n_components = size (meta%component_id)
     config%os_data = os_data
     config%qcd = qcd
     call move_alloc (from = rng_factory, to = config%rng_factory)
-    config%model_name = meta%lib%get_model_name (meta%id)
-    if (config%model_name /= "") then
-       filename = config%model_name // ".mdl"
-       call model_list%read_model (config%model_name, &
-            filename, config%os_data, model)
-       allocate (config%model)
-       call model_init_instance (config%model, model)
-    end if
+    config%model_name = model%get_name ()
+    config%model => model
+    model => null ()
   end subroutine process_config_data_init
 
   subroutine process_config_data_final (config)
     class(process_config_data_t), intent(inout) :: config
     if (associated (config%model)) then
-       call model_final (config%model)
+       call config%model%final ()
        deallocate (config%model)
     end if
   end subroutine process_config_data_final
@@ -1822,7 +1971,7 @@ contains
     type(beam_structure_t), intent(in) :: beam_structure
     logical, intent(in), optional :: decay_rest_frame
     real(default), intent(in) :: sqrts
-    type(model_t), intent(in), target :: model
+    class(model_data_t), intent(in), target :: model
     call beam_data_init_structure (beam_config%data, &
          beam_structure, sqrts, model, decay_rest_frame)
     beam_config%lab_is_cm_frame = beam_data_cm_frame (beam_config%data)
@@ -1977,7 +2126,7 @@ contains
     class(process_counter_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     if (object%total > 0) then
        write (u, "(1x,A)")  "Call statistics (current run):"
        write (u, "(3x,A,I0)")  "total       = ", object%total
@@ -2019,7 +2168,7 @@ contains
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: pacify
     integer :: u
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     write (u, "(3x,A,I0)")  "Associated components = ", object%i_component
     write (u, "(3x,A,I0)")  "MC input parameters   = ", object%n_par
     write (u, "(3x,A,I0)")  "MC parameters (SF)    = ", object%n_par_sf
@@ -2051,7 +2200,8 @@ contains
   end subroutine process_mci_entry_write_chain_weights
        
   subroutine process_mci_entry_init (mci_entry, &
-       process_type, i_mci, i_component, component, beam_config, rng_factory)
+       process_type, i_mci, i_component, component,&
+       beam_config, rng_factory)
     class(process_mci_entry_t), intent(out) :: mci_entry
     integer, intent(in) :: process_type
     integer, intent(in) :: i_mci
@@ -2134,7 +2284,8 @@ contains
   end subroutine process_mci_entry_sampler_test
 
   subroutine process_mci_entry_integrate (mci_entry, instance, n_it, n_calls, &
-       adapt_grids, adapt_weights, final, pacify)
+       adapt_grids, adapt_weights, final, pacify, &
+       i_component)
     class(process_mci_entry_t), intent(inout) :: mci_entry
     type(process_instance_t), intent(inout) :: instance
     integer, intent(in) :: n_it
@@ -2142,7 +2293,16 @@ contains
     logical, intent(in), optional :: adapt_grids
     logical, intent(in), optional :: adapt_weights
     logical, intent(in), optional :: final, pacify
+    integer, intent(in), optional :: i_component
     integer :: u_log
+    type(string_t) :: nlo_type
+    if (present (i_component)) then
+      if (associated (instance%component(i_component)%config)) then
+        nlo_type = instance%component(i_component)%config%config%get_nlo_type ()
+      end if
+    else
+      nlo_type = 'Born'
+    end if
     u_log = logfile_unit ()
     call instance%choose_mci (mci_entry%i_mci)
     call instance%reset_counter ()
@@ -2156,10 +2316,17 @@ contains
          (mci_entry%process_type, screen = .true., unit = u_log)
     call mci_entry%results%new_pass ()
     associate (mci_instance => instance%mci_work(mci_entry%i_mci)%mci)
+      select case (char (nlo_type))
+      case ('Virtual', 'Real')
+        select type (mci_instance)
+        type is (mci_vamp_instance_t)
+          mci_instance%negative_weights = .true.
+        end select
+      end select
       call mci_entry%mci%add_pass (adapt_grids, adapt_weights, final)
       call mci_entry%mci%start_timer ()
       call mci_entry%mci%integrate (mci_instance, instance, n_it, &
-           n_calls, mci_entry%results, pacify = pacify)      
+           n_calls, mci_entry%results, pacify = pacify)
       call mci_entry%mci%stop_timer ()
       if (signal_is_pending ())  return
     end associate
@@ -2293,7 +2460,7 @@ contains
     class(process_component_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     if (allocated (object%core)) then
        write (u, "(1x,A,I0)")  "Component #", object%index
        if (associated (object%config)) then
@@ -2331,7 +2498,8 @@ contains
 
   subroutine process_component_init (component, &
        i_component, meta, config, &
-       core_template, mci_template, phs_config_template)
+       core_template, mci_template, phs_config_template, &
+       gosam_template, fks_template)
     class(process_component_t), intent(out) :: component
     integer, intent(in) :: i_component
     type(process_metadata_t), intent(in) :: meta
@@ -2339,13 +2507,35 @@ contains
     class(prc_core_t), intent(in), allocatable :: core_template
     class(mci_t), intent(in), allocatable :: mci_template
     class(phs_config_t), intent(in), allocatable :: phs_config_template
+    type(gosam_writer_template_t), intent(inout), optional :: gosam_template
+    type(fks_template_t), intent(in), optional :: fks_template
+    integer, dimension(3) :: amp_type
+
     component%index = i_component
     component%config => meta%lib%get_component_def_ptr (meta%id, i_component)
     allocate (component%core, source=core_template)
     call component%core%init (component%config%get_core_def_ptr (), &
          meta%lib, meta%id, i_component)
+    if (present (gosam_template)) then
+      call component%fill_constants (gosam_template%data)
+    end if
+    if (present (fks_template)) then
+      component%fks_template = fks_template
+    end if
+    select type (core => component%core)
+    type is (prc_gosam_t)
+      if (present (gosam_template)) then
+        call core%init_writer (gosam_template, config%os_data, config%model)
+        call core%set_n_proc ()
+      else
+        call msg_bug ("process_component_init: gosam core cannot be initialized - &
+                       & missing template")
+      end if
+      call core%init_driver (config%os_data)
+      call core%set_initialized ()
+    end select
     component%active = component%core%has_matrix_element ()
-    if (component%active) then
+    if (component%active .or. component%config%get_nlo_type () == 'Subtraction') then
        if (allocated (mci_template)) &
             allocate (component%mci_template, source=mci_template)
        allocate (component%phs_config, source=phs_config_template)
@@ -2354,19 +2544,30 @@ contains
   end subroutine process_component_init
 
   subroutine process_component_configure_phs &
-       (component, sqrts, beam_config, rebuild, ignore_mismatch)
+       (component, sqrts, beam_config, rebuild, &
+        ignore_mismatch, phs_config)
     class(process_component_t), intent(inout) :: component
     real(default), intent(in) :: sqrts
     type(process_beam_config_t), intent(in) :: beam_config
     logical, intent(in), optional :: rebuild
     logical, intent(in), optional :: ignore_mismatch
+    type(phs_wood_config_t), intent(in), optional, target :: phs_config
     logical :: no_strfun
+    type(string_t) :: nlo_type
     no_strfun = beam_config%n_strfun == 0
+    nlo_type = component%config%get_nlo_type ()
+    if (present (phs_config)) then
+       select type (config => component%phs_config)
+       type is (phs_fks_config_t)
+          call config%set_born_config (phs_config)
+       end select
+    end if
     call component%phs_config%configure (sqrts, &
          azimuthal_dependence = beam_config%azimuthal_dependence, &
          sqrts_fixed = no_strfun, &
          cm_frame = beam_config%lab_is_cm_frame .and. no_strfun, &
-         rebuild = rebuild, ignore_mismatch = ignore_mismatch)
+         rebuild = rebuild, ignore_mismatch = ignore_mismatch, &
+         nlo_type = nlo_type)
     call component%phs_config%startup_message ()
   end subroutine process_component_configure_phs
     
@@ -2401,11 +2602,32 @@ contains
     end associate
   end function process_component_get_pdg_in
   
+  subroutine process_component_fill_constants (component, data)
+    class(process_component_t), intent(inout) :: component
+    type(process_constants_t), intent(in) :: data
+    select type(core => component%core)
+    type is (prc_gosam_t)
+       call core%fill_constants (data)
+    end select
+  end subroutine process_component_fill_constants
+
+  subroutine process_component_extract_phs_config (component, phs_config)
+    class(process_component_t), intent(inout) :: component
+    class(phs_config_t), intent(inout), allocatable :: phs_config
+    call move_alloc (from = component%phs_config, to = phs_config)
+  end subroutine process_component_extract_phs_config
+
+  subroutine process_component_restore_phs_config (component, phs_config)
+    class(process_component_t), intent(inout) :: component
+    class(phs_config_t), intent(inout), allocatable :: phs_config
+    call move_alloc (from = phs_config, to = component%phs_config)
+  end subroutine process_component_restore_phs_config
+
   subroutine process_term_write (term, unit)
     class(process_term_t), intent(in) :: term
     integer, intent(in), optional :: unit
     integer :: u
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     write (u, "(1x,A,I0)")  "Term #", term%i_term_global
     write (u, "(3x,A,I0)")  "Process component index      = ", &
          term%i_component
@@ -2432,7 +2654,7 @@ contains
     integer :: u, i, f, h, c
     type(state_iterator_t) :: it
     character :: sgn
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     write (u, "(1x,A,I0)")  "Term #", term%i_term_global
     call state_iterator_init (it, interaction_get_state_matrix_ptr (term%int))
     do while (state_iterator_is_valid (it))
@@ -2468,18 +2690,26 @@ contains
     integer, intent(in) :: i_component
     integer, intent(in) :: i_term
     class(prc_core_t), intent(in) :: core
-    type(model_t), intent(in), target :: model
-    type(var_list_t), pointer :: var_list
+    class(model_data_t), intent(in), target :: model
+    class(modelpar_data_t), pointer :: alpha_s_ptr
+!    type(var_list_t), pointer :: var_list
     term%i_term_global = i_term_global
     term%i_component = i_component
     term%i_term = i_term
     call core%get_constants (term%data, i_term)
-    var_list => model_get_var_list_ptr (model)
-    if (var_list_exists (var_list, var_str ("alphas"))) then
-       term%alpha_s = var_list_get_rval (var_list, var_str ("alphas"))
+!    var_list => model%get_var_list_ptr ()
+!    if (var_list_exists (var_list, var_str ("alphas"))) then
+!       term%alpha_s = var_list_get_rval (var_list, var_str ("alphas"))
+!    else
+!       term%alpha_s = -1
+!    end if
+    alpha_s_ptr => model%get_par_data_ptr (var_str ("alphas"))
+    if (associated (alpha_s_ptr)) then
+       term%alpha_s = alpha_s_ptr%get_real ()
     else
        term%alpha_s = -1
     end if
+
     call term%setup_interaction (core, model)
 !     if (term%rearrange) then
 !       call term%setup_effective_interaction (core, term%int, term%int_eff)
@@ -2489,7 +2719,7 @@ contains
   subroutine process_term_setup_interaction (term, core, model)
     class(process_term_t), intent(inout) :: term
     class(prc_core_t), intent(in) :: core
-    type(model_t), intent(in), target :: model
+    class(model_data_t), intent(in), target :: model
     integer :: n_tot
     type(flavor_t), dimension(:), allocatable :: flv
     type(color_t), dimension(:), allocatable :: col
@@ -2536,6 +2766,13 @@ contains
     end associate
   end subroutine process_term_setup_interaction
   
+   subroutine process_term_fetch_process_constants &
+       (term, prc_constants)
+    class(process_term_t), intent(inout) :: term
+    type(process_constants_t), intent(out) :: prc_constants
+    prc_constants = term%data
+  end subroutine process_term_fetch_process_constants
+
   function process_get_n_pass_default (process) result (n_pass)
     class(process_t), intent(in) :: process
     integer :: n_pass
@@ -2753,7 +2990,7 @@ contains
 
   function process_contains_unstable (process, model) result (flag)
     class(process_t), intent(in) :: process
-    type(model_t), intent(in), target :: model
+    class(model_data_t), intent(in), target :: model
     logical :: flag
     integer :: i_term
     type(flavor_t), dimension(:,:), allocatable :: flv
@@ -2812,7 +3049,7 @@ contains
   
   function process_get_model_ptr (process) result (ptr)
     class(process_t), intent(in) :: process
-    type(model_t), pointer :: ptr
+    class(model_data_t), pointer :: ptr
     ptr => process%config%model
   end function process_get_model_ptr
   
@@ -2894,7 +3131,7 @@ contains
     class(kinematics_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u, c
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     if (object%f_allocated) then
        write (u, "(1x,A)")  "Flux * PHS volume:"
        write (u, "(2x,ES19.12)")  object%phs_factor
@@ -2936,6 +3173,17 @@ contains
     end if
   end subroutine kinematics_final
   
+  subroutine kinematics_set_nlo_data (k, nlo_type, emitter)
+    class(kinematics_t), intent(inout) :: k
+!    integer, intent(in) :: nlo_type
+    type(string_t) :: nlo_type
+    integer, intent(in), optional :: emitter
+    k%nlo_type = nlo_type
+    if (present (emitter)) then
+      k%emitter = emitter
+    end if
+  end subroutine kinematics_set_nlo_data
+
   subroutine kinematics_init_sf_chain (k, core, sf_chain, config, tmp)
     class(kinematics_t), intent(inout) :: k
     class(prc_core_t), intent(in) :: core
@@ -2983,13 +3231,17 @@ contains
   end subroutine kinematics_init_ptr
   
   subroutine kinematics_compute_selected_channel &
-       (k, mci_work, phs_channel, p, success)
+       (k, mci_work, phs_channel, p, success, nlo_data)
     class(kinematics_t), intent(inout) :: k
     type(mci_work_t), intent(in) :: mci_work
     integer, intent(in) :: phs_channel
     type(vector4_t), dimension(:), intent(out) :: p
     logical, intent(out) :: success
+    type(nlo_data_t), intent(inout), optional :: nlo_data
     integer :: sf_channel
+    real(default) :: xit, y, phi
+    real(default), dimension(:), allocatable :: xi_max
+    real(default), dimension(3) :: jac
     k%selected_channel = phs_channel
     sf_channel = k%phs%config%get_sf_channel (phs_channel)
     call k%sf_chain%compute_kinematics (sf_channel, mci_work%get_x_strfun ())
@@ -2997,16 +3249,33 @@ contains
     call k%phs%set_incoming_momenta (p(1:k%n_in))
     call k%phs%compute_flux ()
     call k%phs%select_channel (phs_channel)
-    call k%phs%evaluate_selected_channel &
+    select type (phs => k%phs)
+    type is (phs_fks_t)
+      call phs%set_emitters (nlo_data%reg_data%emitters)
+      call phs%evaluate_selected_channel (phs_channel, mci_work%get_x_process ())
+      if (phs%q_defined) then
+         call phs%get_real_kinematics (xit, y, phi, xi_max, jac)
+         if (present (nlo_data)) call nlo_data%set_real_kinematics (xit, y, phi, xi_max, jac)
+         call phs%get_born_momenta (p)
+         k%phs_factor = phs%get_overall_factor ()
+         success = .true.
+      else
+         k%phs_factor = 0
+         success = .false.
+      end if
+!    type is (phs_wood_t)
+    class default
+      call phs%evaluate_selected_channel &
          (phs_channel, mci_work%get_x_process ())
-    if (k%phs%q_defined) then
-       call k%phs%get_outgoing_momenta (p(k%n_in+1:))
-       k%phs_factor = k%phs%get_overall_factor ()
-       success = .true.
-    else
+      if (phs%q_defined) then
+         call k%phs%get_outgoing_momenta (p(k%n_in+1:))
+         k%phs_factor = k%phs%get_overall_factor ()
+         success = .true.
+      else
        k%phs_factor = 0
        success = .false.
-    end if
+      end if
+    end select
   end subroutine kinematics_compute_selected_channel
   
   subroutine kinematics_compute_other_channels (k, mci_work, phs_channel)
@@ -3093,12 +3362,20 @@ contains
     call k%sf_chain%return_beam_momenta ()
   end subroutine kinematics_return_beam_momenta
   
+  subroutine kinematics_display_real_kinematics (k)
+     class(kinematics_t), intent(in) :: k
+     select type (phs => k%phs)
+     type is (phs_fks_t)
+        call phs%display_kinematics ()
+     end select
+  end subroutine kinematics_display_real_kinematics
+
   subroutine component_instance_write (object, unit, testflag)
     class(component_instance_t), intent(in) :: object
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: testflag
     integer :: u, i
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     if (object%active) then
        if (associated (object%config)) then
           write (u, "(1x,A,I0)")  "Component #", object%config%index
@@ -3136,12 +3413,19 @@ contains
   subroutine component_instance_init (component, config)
     class(component_instance_t), intent(out) :: component
     type(process_component_t), intent(in), target :: config
+    type(string_t) :: nlo_type
     integer :: n_in, n_tot
     component%config => config
+    nlo_type = component%config%config%get_nlo_type ()
     associate (core => component%config%core)
       n_in = core%data%n_in
       n_tot = n_in + core%data%n_out
-      allocate (component%p_seed (n_tot))
+      select case (char (nlo_type))
+      case ('Real')
+        allocate (component%p_seed (n_tot -1))
+      case ('Born', 'Virtual')
+        allocate (component%p_seed (n_tot))
+      end select
       call core%allocate_workspace (component%tmp)
     end associate
   end subroutine component_instance_init
@@ -3150,6 +3434,11 @@ contains
     class(component_instance_t), intent(inout) :: component
     type(sf_chain_t), intent(in), target :: sf_chain
     type(process_beam_config_t), intent(in) :: config
+    class(phs_config_t), pointer :: fks_config
+    type(string_t) :: nlo_type
+    nlo_type = component%config%config%get_nlo_type ()
+    if (component%config%phs_config%nlo_type == "") &
+      component%config%phs_config%nlo_type = nlo_type
     call component%k_seed%init_sf_chain &
          (component%config%core, sf_chain, config, component%tmp)
     call component%k_seed%init_phs (component%config%phs_config)
@@ -3161,8 +3450,16 @@ contains
     type(mci_work_t), intent(in) :: mci_work
     integer, intent(in) :: phs_channel
     logical, intent(out) :: success
-    call component%k_seed%compute_selected_channel &
+    select type (phs => component%k_seed%phs)
+    type is (phs_fks_t)
+      call component%k_seed%compute_selected_channel &
+           (mci_work, phs_channel, component%p_seed, success, &
+            component%nlo_data)
+!      call component%nlo_data%set_active_emitter (phs%ch_to_em (phs_channel))
+    class default
+      call component%k_seed%compute_selected_channel &
          (mci_work, phs_channel, component%p_seed, success)
+    end select
   end subroutine component_instance_compute_seed_kinematics
     
   subroutine component_instance_recover_mcpar (component, mci_work, phs_channel)
@@ -3174,10 +3471,11 @@ contains
   end subroutine component_instance_recover_mcpar
   
   subroutine component_instance_compute_hard_kinematics &
-       (component, term, skip_term)
+       (component, term, skip_term, real_phsp)
     class(component_instance_t), intent(inout) :: component
     type(term_instance_t), dimension(:), intent(inout) :: term
     integer, intent(in), optional :: skip_term
+    logical, intent(in), optional :: real_phsp
     integer :: j, i
     associate (core => component%config%core)
       associate (i_term => component%config%i_term)
@@ -3186,8 +3484,18 @@ contains
            if (present (skip_term)) then
               if (i == skip_term)  cycle
            end if
-           call core%compute_hard_kinematics &
-                (component%p_seed, i, term(i)%int_hard, component%tmp)
+           if (present (real_phsp)) then
+             if (real_phsp) then
+               call core%compute_hard_kinematics &
+                     (component%p_seed, i, term(i)%nlo_data%int_born, component%tmp)
+             else 
+               call core%compute_hard_kinematics &
+                     (component%p_seed, i, term(i)%int_hard, component%tmp)
+             end if
+          else
+             call core%compute_hard_kinematics & 
+                 (component%p_seed, i, term(i)%int_hard, component%tmp)
+          end if
         end do
       end associate
     end associate
@@ -3222,24 +3530,106 @@ contains
     
   subroutine component_instance_evaluate_sqme (component, term)
     class(component_instance_t), intent(inout) :: component
-    type(term_instance_t), dimension(:), intent(in), target :: term
+    type(term_instance_t), dimension(:), intent(inout), target :: term
     type(interaction_t), pointer :: int
+    type(vector4_t), dimension(:), allocatable :: p_real
     real(default) :: sqme
+    real(default), dimension(4) :: sqme_virt
     integer :: j, i
+    logical :: bad_point
+    integer :: i_proc
     component%sqme = 0
+    select case (char (component%config%config%get_nlo_type ()))
+    case ('Real', 'Virtual')
+      component%nlo_data%sqme_born = 0
+      component%nlo_data%sqme_real = 0
+    end select
     associate (i_term => component%config%i_term)
       do j = 1, size (i_term)
          i = i_term(j)
          if (term(i)%passed) then
             int => evaluator_get_int_ptr (term(i)%connected%trace)
             sqme = interaction_get_matrix_element (int, 1)
-            component%sqme = component%sqme + sqme * term(i)%weight
+            select case (char (term(i)%nlo_data%nlo_type))
+            case ('Born')
+              component%sqme = component%sqme + sqme * term(i)%weight
+            case ('Real', 'Virtual')
+              component%nlo_data%sqme_born = component%nlo_data%sqme_born + sqme * term(i)%weight
+            end select
+            select case (char (term(i)%nlo_data%nlo_type))
+              case ('Real')
+                p_real = term(i)%nlo_data%get_real_momenta ()
+                int => evaluator_get_int_ptr (term(i)%connected_real%trace)
+                sqme = interaction_get_matrix_element (int, 1)
+                select type (core_born => component%config%core_sub_born)
+                type is (prc_gosam_t)
+                   if (.not. term(i)%nlo_data%use_internal_color_correlations) &
+                     call core_born%compute_sqme_cc &
+                               (interaction_get_momenta (component%nlo_data%int_born), &
+                                0._default, component%nlo_data%sqme_born(1), &
+                                component%nlo_data%sqme_born_cc (:,:,1), &
+                                bad_point)
+                   if (.not. term(i)%nlo_data%use_internal_spin_correlations .and. &
+                       term(i)%nlo_data%sc_required(1)) &
+                     call core_born%compute_sqme_sc (5, &
+                                interaction_get_momenta (component%nlo_data%int_born), &
+                                0._default, component%nlo_data%sqme_born_sc (:,:,1), &
+                                bad_point)
+                end select
+                call term(i)%nlo_data%set_alpha_s_born &
+                    (component%config%core%get_alpha_s (component%tmp))
+                component%nlo_data%sqme_real = term(i)%nlo_data%compute_sqme_real_fin &
+                                      (term(i)%weight, p_real, sqme) 
+             case ('Virtual')
+                call term(i)%nlo_data%set_alpha_s_born &
+                          (component%config%core%get_alpha_s (component%tmp))
+                call term(i)%nlo_data%virtual_terms%set_ren_scale &
+                          (term(i)%int_hard, term(i)%ren_scale) 
+                select type (core => component%config%core)
+                type is (prc_gosam_t)
+                    do i_proc = 0, core%get_n_proc()-1
+                      call core%compute_sqme_virt &
+                            (interaction_get_momenta (term(i)%int_hard), &
+                             term(i)%ren_scale, &
+                             core%get_alpha_s (component%tmp), &
+                             sqme_virt, bad_point)
+                      if (.not. term(i)%nlo_data%use_internal_color_correlations) then
+                        call core%compute_sqme_cc &
+                            (interaction_get_momenta (term(i)%int_hard), &
+                             term(i)%ren_scale, &
+                             born_cc = component%nlo_data%sqme_born_cc (:,:,1), &
+                             bad_point = bad_point)
+                      end if
+                      call term(i)%nlo_data%virtual_terms%set_vfin (sqme_virt(3))
+                      call term(i)%nlo_data%virtual_terms%set_bad_point (bad_point)
+                      component%nlo_data%sqme_born = sqme_virt (4)             
+                    end do
+                 type is (prc_omega_t)
+                    call term(i)%nlo_data%virtual_terms%compute_vfin_test &
+                                 (interaction_get_momenta (term(i)%int_hard), &
+                                  term(i)%nlo_data%sqme_born(1))
+                 end select    
+                 component%sqme = component%sqme + &
+                            term(i)%nlo_data%compute_virt (1, term(i)%int_hard) * &
+                            term(i)%weight
+             end select
          end if
       end do
     end associate
     component%sqme_known = .true.
   end subroutine component_instance_evaluate_sqme
   
+  function component_instance_get_nlo_type (component) result (nlo_type)
+    class(component_instance_t), intent(inout) :: component
+!    integer :: nlo_type
+    type(string_t) :: nlo_type
+    if (component%nlo_data%get_nlo_type () == "") then
+      nlo_type = 'Born'
+    else
+      nlo_type = component%nlo_data%get_nlo_type ()
+    end if
+  end function component_instance_get_nlo_type
+
   subroutine term_instance_write (term, unit, show_eff_state, testflag)
     class(term_instance_t), intent(in) :: term
     integer, intent(in), optional :: unit
@@ -3247,7 +3637,7 @@ contains
     logical, intent(in), optional :: testflag 
     integer :: u
     logical :: state
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     state = .true.;  if (present (show_eff_state))  state = show_eff_state
     if (term%active) then
        if (associated (term%config)) then
@@ -3293,10 +3683,16 @@ contains
     call term%connected%final ()
     call term%isolated%final ()
     call interaction_final (term%int_hard)
+    select case (char (term%nlo_data%nlo_type))
+    case ('Real')
+      call term%connected_real%final ()
+      call term%isolated_real%final ()
+      call interaction_final (term%int_hard_real)
+    end select
   end subroutine term_instance_final
   
   subroutine term_instance_init (term, &
-       config, k_seed, beam_config, core, process_var_list)
+       config, k_seed, beam_config, core, process_var_list, nlo_data)
     class(term_instance_t), intent(out), target :: term
     type(process_term_t), intent(in), target :: config
     type(kinematics_t), intent(in) :: k_seed
@@ -3304,11 +3700,20 @@ contains
     type(interaction_t), pointer :: sf_chain_int, trace_int, src_int
     class(prc_core_t), intent(in) :: core
     type(var_list_t), intent(in), target :: process_var_list
+    type(nlo_data_t), intent(in), pointer :: nlo_data
     type(quantum_numbers_mask_t), dimension(:), allocatable :: mask_in
     type(state_matrix_t), pointer :: state_matrix
     type(flavor_t), dimension(:), allocatable :: flv_int, flv_src, f_in, f_out
+    type(flavor_t), dimension(:), allocatable :: f_out_real
     integer :: n_in, n_vir, n_out, n_tot
     integer :: i, j
+    type(interaction_t), pointer, save :: int_sav 
+    type(sf_chain_instance_t), pointer, save :: sf_sav
+    integer, dimension(:), allocatable, save :: col_sav
+    type(prc_omega_t), save :: core_sav
+
+    term%nlo_data => nlo_data
+
     term%config => config
     if (config%rearrange) then
        ! rearrangement of seed to hard kinematics not implemented yet
@@ -3331,12 +3736,40 @@ contains
        ! should use term%config%int_eff as template
        ! allocate distinct sf_chain in term%connected as needed
     else
-       ! here, int_hard and sf_chain are trivially accessed via pointers
-       call term%isolated%init (term%k_term%sf_chain, term%int_hard)
+      select type (phs => term%k_term%phs)
+        type is (phs_wood_t)
+          ! here, int_hard and sf_chain are trivially accessed via pointers
+          call term%isolated%init (term%k_term%sf_chain, term%int_hard)
+          int_sav => term%int_hard
+          sf_sav => term%k_term%sf_chain
+        type is (phs_fks_t)
+          term%nlo_data%int_born = int_sav
+          call term%isolated%init (sf_sav, term%nlo_data%int_born)
+          call term%setup_real_interaction (term%int_hard)
+        class default
+          call term%isolated%init (term%k_term%sf_chain, term%int_hard)
+      end select
     end if
     allocate (mask_in (n_in))
     mask_in = term%k_term%sf_chain%get_out_mask ()
-    call term%isolated%setup_square_trace (core, mask_in, term%config%col)
+    select type (phs => term%k_term%phs)
+      type is (phs_wood_t)
+      call term%isolated%setup_square_trace (core, mask_in, term%config%col)
+      if (.not. allocated (col_sav)) then
+        allocate (col_sav (size (term%config%col)))
+        col_sav = term%config%col
+      end if
+      select type (core)
+      type is (prc_omega_t)
+        core_sav = core
+      end select
+      type is (phs_fks_t)
+        mask_in = sf_sav%get_out_mask ()
+        call term%isolated%setup_square_trace (core_sav, mask_in, col_sav)
+        call term%init_states (core)
+      class default
+        call term%isolated%setup_square_trace (core, mask_in, term%config%col)
+    end select
     call term%connected%setup_connected_trace (term%isolated)
     associate (int_eff => term%isolated%int_eff)
       state_matrix => interaction_get_state_matrix_ptr (int_eff)
@@ -3367,36 +3800,95 @@ contains
     call term%connected%setup_subevt (term%isolated%sf_chain_eff, &
          beam_config%data%flv, f_in, f_out)
     call term%connected%setup_var_list (process_var_list, beam_config%data)
+    select case (char (term%nlo_data%get_nlo_type ()))
+    case ('Real')
+      allocate (f_out_real (n_out+1))
+      f_out_real (1:n_out) = f_out
+      f_out_real (n_out+1) = term%nlo_data%reg_data%flv_extra
+      call term%connected_real%setup_subevt (term%isolated_real%sf_chain_eff, &
+           beam_config%data%flv, f_in, f_out_real)
+      call term%connected_real%setup_var_list (process_var_list, beam_config%data)
+    end select
+
   end subroutine term_instance_init
+
+  subroutine term_instance_init_states (term, core)
+    class(term_instance_t), intent(inout), target :: term
+    class(prc_core_t), intent(in) :: core
+    type(quantum_numbers_mask_t), dimension(:), allocatable :: mask_in
+    integer :: i
+    mask_in = term%k_term%sf_chain%get_out_mask ()
+    call term%isolated_real%init (term%k_term%sf_chain, term%int_hard_real)
+    call term%isolated_real%setup_square_trace (core, mask_in, term%config%col)
+    call term%connected_real%setup_connected_trace (term%isolated_real) 
+  end subroutine term_instance_init_states
 
   subroutine term_instance_setup_expressions (term, meta, config)
     class(term_instance_t), intent(inout), target :: term
     type(process_metadata_t), intent(in), target :: meta
     type(process_config_data_t), intent(in) :: config
-    call term%connected%setup_expressions ( &
-         config%pn_cuts, &
-         config%pn_scale, &
-         config%pn_fac_scale, &
-         config%pn_ren_scale, &
-         config%pn_weight)
+    if (allocated (config%ef_cuts)) &
+         call term%connected%setup_cuts (config%ef_cuts)
+    if (allocated (config%ef_scale)) &
+         call term%connected%setup_scale (config%ef_scale)
+    if (allocated (config%ef_fac_scale)) &
+         call term%connected%setup_fac_scale (config%ef_fac_scale)
+    if (allocated (config%ef_ren_scale)) &
+         call term%connected%setup_ren_scale (config%ef_ren_scale)
+    if (allocated (config%ef_weight)) &
+         call term%connected%setup_weight (config%ef_weight)
   end subroutine term_instance_setup_expressions
     
+  subroutine term_instance_setup_expressions_real (term, meta, config)
+    class(term_instance_t), intent(inout), target :: term
+    type(process_metadata_t), intent(in), target :: meta
+    type(process_config_data_t), intent(in) :: config
+    if (allocated (config%ef_cuts)) &
+         call term%connected_real%setup_cuts (config%ef_cuts)
+    if (allocated (config%ef_scale)) &
+         call term%connected_real%setup_scale (config%ef_scale)
+    if (allocated (config%ef_fac_scale)) &
+         call term%connected_real%setup_fac_scale (config%ef_fac_scale)
+    if (allocated (config%ef_ren_scale)) &
+         call term%connected_real%setup_ren_scale (config%ef_ren_scale)
+    if (allocated (config%ef_weight)) &
+         call term%connected_real%setup_weight (config%ef_weight)
+  end subroutine term_instance_setup_expressions_real
+
   subroutine term_instance_setup_event_data (term, core, model)
     class(term_instance_t), intent(inout), target :: term
     class(prc_core_t), intent(in) :: core
-    type(model_t), intent(in), target :: model
+    class(model_data_t), intent(in), target :: model
     integer :: n_in
     type(quantum_numbers_mask_t), dimension(:), allocatable :: mask_in
     n_in = interaction_get_n_in (term%int_hard)
     allocate (mask_in (n_in))
     mask_in = term%k_term%sf_chain%get_out_mask ()
-    call term%isolated%setup_square_matrix (core, model, mask_in, &
+    select case (char (term%nlo_data%nlo_type))
+    case ('Born', 'Virtual')
+      call term%isolated%setup_square_matrix (core, model, mask_in, &
          term%config%col)
-    call term%isolated%setup_square_flows (core, model, mask_in)
-    call term%connected%setup_connected_matrix (term%isolated)
-    call term%connected%setup_connected_flows (term%isolated)
+      call term%isolated%setup_square_flows (core, model, mask_in)
+      call term%connected%setup_connected_matrix (term%isolated)
+      call term%connected%setup_connected_flows (term%isolated)
+    case ('Real')
+      call term%isolated_real%setup_square_matrix (core, model, mask_in, &
+               term%config%col)
+      call term%isolated_real%setup_square_flows (core, model, mask_in)
+      call term%connected_real%setup_connected_matrix &
+                (term%isolated_real)
+      call term%connected_real%setup_connected_flows &
+                (term%isolated_real)
+    end select
   end subroutine term_instance_setup_event_data
     
+  subroutine term_instance_setup_real_interaction (term, int)
+    class(term_instance_t), intent(inout) :: term
+    type(interaction_t), intent(in) :: int
+    integer :: i
+    term%int_hard_real = int
+  end subroutine term_instance_setup_real_interaction
+
   subroutine term_instance_reset (term)
     class(term_instance_t), intent(inout) :: term
     call term%connected%reset_expressions ()
@@ -3413,11 +3905,24 @@ contains
        ! should evaluate k_term first if allocated separately, not impl. yet
        i_component = term%config%i_component
        i_term = term%config%i_term
-       associate (core => component(i_component)%config%core)
-         call core%compute_eff_kinematics &
+      associate (core => component(i_component)%config%core)
+         select case (char (term%nlo_data%nlo_type))
+         case ('Born', 'Virtual')
+           call core%compute_eff_kinematics &
               (i_term, term%int_hard, term%isolated%int_eff, &
               component(i_component)%tmp)
-       end associate
+         case ('Real')
+           call component(i_component)%config%core_sub_born%compute_eff_kinematics & 
+                (i_term, term%nlo_data%int_born, term%isolated%int_eff, &
+                component(i_component)%tmp)
+         end select
+        select case (char (term%nlo_data%nlo_type))
+        case ('Real')
+          call core%compute_eff_kinematics &
+                (i_term, term%int_hard_real, term%isolated_real%int_eff, &
+                 component(i_component)%tmp)
+        end select
+      end associate
     end if
     call term%isolated%receive_kinematics ()
     call term%connected%receive_kinematics ()
@@ -3443,17 +3948,67 @@ contains
     class(term_instance_t), intent(inout) :: term
     type(component_instance_t), dimension(:), intent(inout) :: component
     integer :: i_component, i_term, i
+    type(vector4_t), dimension(:), allocatable :: p_born, p_real
+    real(default) :: xi_tilde, xi, y, phi, xi_max
+    real(default), dimension(3) :: jac
+    integer :: emitter
     i_component = term%config%i_component
     i_term = term%config%i_term
     term%p_hard = interaction_get_momenta (term%int_hard)
     associate (core => component(i_component)%config%core)
-      do i = 1, term%config%n_allowed
-         term%amp(i) = core%compute_amplitude (i_term, term%p_hard, &
+      select case (char (term%nlo_data%nlo_type))
+      case ('Born', 'Virtual')
+        do i = 1, term%config%n_allowed
+          term%amp(i) = core%compute_amplitude (i_term, term%p_hard, &
               term%config%flv(i), term%config%hel(i), term%config%col(i), &
               term%fac_scale, term%ren_scale, &
               component(i_component)%tmp)
-      end do
-      call interaction_set_matrix_element (term%int_hard, term%amp)
+        end do
+        call interaction_set_matrix_element (term%int_hard, term%amp)
+      case ('Real')
+        emitter = term%nlo_data%get_active_emitter ()
+        call term%nlo_data%get_real_kinematics (emitter, xi_tilde, y, xi_max, phi = phi)
+        p_born = interaction_get_momenta (term%nlo_data%int_born)
+        if (emitter > 2) then
+          xi = xi_tilde * xi_max
+          call fks_born_to_real_fsr (emitter, xi, y, phi, &
+                                       p_born, p_real, jac)
+        else
+          call msg_fatal ("ISR not implemented yet!")
+        end if
+        call term%nlo_data%set_jacobian (jac)
+        call term%nlo_data%set_real_momenta (p_real)
+        call interaction_set_momenta (term%int_hard_real, p_real)
+
+        call term%isolated_real%receive_kinematics ()
+        call term%connected_real%receive_kinematics ()
+
+        call term%connected_real%evaluate_expressions (term%passed, &
+             term%scale, term%fac_scale, term%ren_scale, term%weight)
+
+        if (term%passed) then
+           call component(i_component)%tmp%reset_new_kinematics ()
+           do i = 1, term%config%n_allowed
+              term%amp(i) = core%compute_amplitude (i_term, &
+                 interaction_get_momenta (term%int_hard_real), &
+                 term%config%flv(i), term%config%hel(i), term%config%col(i), &
+                 term%fac_scale, term%ren_scale, &
+                 component(i_component)%tmp)
+           end do
+           call interaction_set_matrix_element (term%int_hard_real, term%amp)
+           associate (core_sub_born => component(i_component)%config%core_sub_born)
+             call component(i_component)%tmp%reset_new_kinematics ()
+             do i = 1, term%nlo_data%n_allowed_born
+                term%nlo_data%amp_born(i) = core_sub_born%compute_amplitude (i_term, &
+                interaction_get_momenta (term%nlo_data%int_born), &
+                term%nlo_data%flv_born(i), term%nlo_data%hel_born(i), &
+                term%nlo_data%col_born(i), term%fac_scale, term%ren_scale, &
+                component(i_component)%tmp)
+             end do
+             call interaction_set_matrix_element (term%nlo_data%int_born, term%nlo_data%amp_born) 
+           end associate
+         end if
+      end select
     end associate
   end subroutine term_instance_evaluate_interaction
   
@@ -3463,12 +4018,23 @@ contains
     call term%isolated%evaluate_sf_chain (term%fac_scale)
     call term%isolated%evaluate_trace ()
     call term%connected%evaluate_trace ()
+    select case (char (term%nlo_data%nlo_type))
+    case ('Real')
+      call term%isolated_real%evaluate_trace ()
+      call term%connected_real%evaluate_trace ()
+    end select
   end subroutine term_instance_evaluate_trace
   
   subroutine term_instance_evaluate_event_data (term)
     class(term_instance_t), intent(inout) :: term
-    call term%isolated%evaluate_event_data ()
-    call term%connected%evaluate_event_data ()
+    select case (char (term%nlo_data%nlo_type))
+    case ('Born', 'Virtual')
+      call term%isolated%evaluate_event_data ()
+      call term%connected%evaluate_event_data ()
+    case ('Real')
+      call term%isolated_real%evaluate_event_data ()
+      call term%connected_real%evaluate_event_data ()
+    end select
   end subroutine term_instance_evaluate_event_data
   
   function term_instance_get_fac_scale (term) result (fac_scale)
@@ -3494,7 +4060,7 @@ contains
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: testflag
     integer :: u, i
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     write (u, "(1x,A,I0,A)")  "Active MCI instance #", &
          mci_work%config%i_mci, " ="
     write (u, "(2x)", advance="no")
@@ -3600,8 +4166,8 @@ contains
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: testflag
     integer :: u, i
-    u = output_unit (unit)
-    call write_separator_double (u)
+    u = given_output_unit (unit)
+    call write_separator (u, 2)
     if (associated (object%process)) then
        associate (meta => object%process%meta)
          select case (meta%type)
@@ -3661,7 +4227,7 @@ contains
        call write_separator (u)
        call object%mci_work(object%i_mci)%write (u, testflag)
     end if
-    call write_separator_double (u)
+    call write_separator (u, 2)
   end subroutine process_instance_write_header
 
   subroutine process_instance_write (object, unit, testflag)
@@ -3669,11 +4235,11 @@ contains
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: testflag
     integer :: u, i
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     call object%write_header (u)
     if (object%evaluation_status >= STAT_BEAM_MOMENTA) then
        call object%sf_chain%write (u)
-       call write_separator_double (u)
+       call write_separator (u, 2)
        if (object%evaluation_status >= STAT_SEED_KINEMATICS) then
           write (u, "(1x,A)") "Active components:"
           do i = 1, size (object%component)
@@ -3683,7 +4249,7 @@ contains
              end if
           end do
           if (object%evaluation_status >= STAT_HARD_KINEMATICS) then
-             call write_separator_double (u)
+             call write_separator (u, 2)
              write (u, "(1x,A)") "Active terms:"
              if (any (object%term%active)) then
                 do i = 1, size (object%term)
@@ -3697,7 +4263,7 @@ contains
                 end do
              end if
           end if
-          call write_separator_double (u)
+          call write_separator (u, 2)
        end if
     end if
   end subroutine process_instance_write
@@ -3763,8 +4329,13 @@ contains
   
   subroutine process_instance_init (instance, process)
     class(process_instance_t), intent(out), target :: instance
-    type(process_t), intent(in), target :: process
+    type(process_t), intent(inout), target :: process
     integer :: i, i_component
+    type(process_constants_t), dimension(2), save :: prc_constants
+    type(string_t) :: nlo_type
+    integer :: i_born, i_real
+    type(nlo_pointer_t), dimension(:), allocatable :: nlo_p
+
     instance%process => process
     call instance%setup_sf_chain (process%beam_config)
     allocate (instance%mci_work (process%config%n_mci))
@@ -3772,10 +4343,30 @@ contains
        call instance%mci_work(i)%init (process%mci_entry(i))
     end do
     allocate (instance%component (process%config%n_components))
+    allocate (nlo_p (process%config%n_components))
+    do i = 1, size (nlo_p)
+      allocate (nlo_p(i)%nlo_data)
+    end do
     do i_component = 1, size (instance%component)
        if (process%component(i_component)%active) then
           associate (component => instance%component(i_component))
             call component%init (process%component(i_component))
+            nlo_type = component%config%config%get_nlo_type ()
+            select case (char (nlo_type))
+            case ('Born')
+              call nlo_p(i_component)%nlo_data%set_nlo_type (var_str ('Born'))
+            case ('Real')
+              i_born = component%config%config%get_associated_born ()
+              call process%term(i_born)%fetch_constants (prc_constants(1))
+              call process%term(i_component)%fetch_constants(prc_constants(2))
+              call nlo_p(i_component)%nlo_data%init (var_str ('Real'), prc_constants, &
+                                               process%component(i_component)%fks_template, &
+                                               process%config%model)
+              call nlo_p(i_component)%nlo_data%set_flv_born (process%term(i_born)%flv)
+              call nlo_p(i_component)%nlo_data%set_col_born (process%term(i_born)%col)
+              call nlo_p(i_component)%nlo_data%set_hel_born (process%term(i_born)%hel)
+              allocate (instance%sqme_real (size (nlo_p(i_component)%nlo_data%reg_data%regions)))
+            end select
             call component%setup_kinematics &
                  (instance%sf_chain, process%beam_config)
           end associate
@@ -3787,13 +4378,29 @@ contains
          i_component = process%term(i)%i_component
          if (i_component /= 0) then
             associate (component => instance%component(i_component))
+              nlo_type = component%config%config%get_nlo_type ()
+              call component%k_seed%set_nlo_data (nlo_type)
+              select case (char (nlo_type))
+              case ('Virtual')
+                i_born = component%config%config%get_associated_born ()
+                i_real = i_born + process%config%n_components / 3
+                nlo_p(i_component)%nlo_data = instance%term(i_real)%nlo_data
+                call nlo_p(i_component)%nlo_data%set_nlo_type (var_str ('Virtual'))
+                call nlo_p(i_component)%nlo_data%init_virtual ()
+              end select
+
               call term%init (process%term(i), &
                    component%k_seed, &
                    process%beam_config, &
                    process%component(i_component)%core, &
-                   process%meta%var_list)
+                   process%meta%var_list, nlo_p(i_component)%nlo_data)
               call term%setup_expressions (process%meta, process%config)
-            end associate
+              select case (char (nlo_type))
+              case ('Real')
+                call term%setup_expressions_real (process%meta, process%config)
+              end select
+              component%nlo_data => term%nlo_data
+           end associate
          end if
        end associate
     end do
@@ -3817,8 +4424,8 @@ contains
     
   subroutine process_instance_setup_event_data (instance, model)
     class(process_instance_t), intent(inout), target :: instance
-    type(model_t), intent(in), optional, target :: model
-    type(model_t), pointer :: current_model
+    class(model_data_t), intent(in), optional, target :: model
+    class(model_data_t), pointer :: current_model
     integer :: i, i_component
     if (present (model)) then
        current_model => model
@@ -3836,6 +4443,19 @@ contains
        end associate
     end do
   end subroutine process_instance_setup_event_data
+
+  subroutine process_instance_init_born_amps (instance, i_component, i_born)
+    class(process_instance_t), intent(inout) :: instance
+    integer, intent(in) :: i_component, i_born
+    select type (core_born => instance%component(i_component)%config%core_sub_born)
+    type is (prc_omega_t)
+      call instance%component(i_component)%nlo_data%init_born_amps &
+                          (instance%term(i_born)%config%n_allowed, .true.)
+    type is (prc_gosam_t)
+      call instance%component(i_component)%nlo_data%init_born_amps &
+                          (instance%term(i_born)%config%n_allowed, .false.)
+    end select
+  end subroutine process_instance_init_born_amps
 
   subroutine process_instance_choose_mci (instance, i_mci)
     class(process_instance_t), intent(inout) :: instance
@@ -3942,11 +4562,18 @@ contains
     class(process_instance_t), intent(inout) :: instance
     integer, intent(in), optional :: skip_term
     integer :: i
+    logical :: real_phsp
     if (instance%evaluation_status >= STAT_SEED_KINEMATICS) then
        do i = 1, size (instance%component)
           if (instance%component(i)%active) then
-             call instance%component(i)% &
-                  compute_hard_kinematics (instance%term, skip_term)
+            select case (char (instance%component(i)%config%config%get_nlo_type()))
+            case ('Born', 'Virtual')
+              real_phsp = .false.
+            case ('Real')
+              real_phsp = .true.
+            end select
+              call instance%component(i)% &
+                  compute_hard_kinematics (instance%term, skip_term, real_phsp)
           end if
        end do
        instance%evaluation_status = STAT_HARD_KINEMATICS
@@ -4043,26 +4670,61 @@ contains
 
   subroutine process_instance_evaluate_trace (instance)
     class(process_instance_t), intent(inout) :: instance
-    integer :: i
+    integer :: i, j
+    integer :: n_legs
+    logical :: passed
+    integer :: ireg
+    instance%sqme = 0
     if (instance%evaluation_status >= STAT_PASSED_CUTS) then
        do i = 1, size (instance%term)
           associate (term => instance%term(i))
             if (term%active .and. term%passed) then
-               call term%evaluate_interaction (instance%component)
-               call term%evaluate_trace ()
+              select case (char (term%nlo_data%nlo_type))
+              case ('Real')
+                instance%sqme_real = 0
+                n_legs = term%nlo_data%reg_data%nlegs_real
+                passed = .true.
+                ireg = 1
+                do j = 1, n_legs
+                  if (any (term%nlo_data%reg_data%emitters == j)) then
+                    call term%nlo_data%set_active_emitter (j)
+                    call term%evaluate_interaction (instance%component)
+                    passed = passed .and. term%passed
+                    if (term%passed) then
+                       call term%evaluate_trace ()
+                       if (instance%component(i)%active) then 
+                          call instance%component(i)%evaluate_sqme (instance%term)
+                          instance%sqme_real(ireg) = instance%component(i)%nlo_data%sqme_real
+                       end if
+                    end if
+                    ireg = ireg + 1
+                  end if
+                end do
+                if (passed) then
+                   instance%sqme = sum (instance%sqme_real)
+                   instance%evaluation_status = STAT_EVALUATED_TRACE
+                else
+                   instance%evaluation_status = STAT_FAILED_CUTS
+                end if 
+              case ('Born', 'Virtual')
+                call term%evaluate_interaction (instance%component)
+                call term%evaluate_trace ()
+              end select
             end if
           end associate
        end do
-       instance%sqme = 0
        do i = 1, size (instance%component)
           associate (component => instance%component(i))
             if (component%active) then
-               call component%evaluate_sqme (instance%term)
-               instance%sqme = instance%sqme + component%sqme
+              select case (char (component%config%config%get_nlo_type()))
+              case ('Born', 'Virtual')
+                call component%evaluate_sqme (instance%term)
+                instance%sqme = instance%sqme + component%sqme
+                instance%evaluation_status = STAT_EVALUATED_TRACE
+              end select
             end if
           end associate
        end do
-       instance%evaluation_status = STAT_EVALUATED_TRACE
     else
        ! failed kinematics, failed cuts: set sqme to zero
        instance%sqme = 0
@@ -4262,14 +4924,24 @@ contains
     class(process_instance_t), intent(in), target :: instance
     integer, intent(in) :: i_term
     type(interaction_t), pointer :: ptr
-    ptr => instance%term(i_term)%connected%get_matrix_int_ptr ()
+    select case (char (instance%term(i_term)%nlo_data%nlo_type))
+    case ('Born', 'Virtual')
+      ptr => instance%term(i_term)%connected%get_matrix_int_ptr ()
+    case ('Real')
+      ptr => instance%term(i_term)%connected_real%get_matrix_int_ptr ()
+    end select
   end function process_instance_get_matrix_int_ptr
   
   function process_instance_get_flows_int_ptr (instance, i_term) result (ptr)
     class(process_instance_t), intent(in), target :: instance
     integer, intent(in) :: i_term
     type(interaction_t), pointer :: ptr
-    ptr => instance%term(i_term)%connected%get_flows_int_ptr ()
+    select case (char (instance%term(i_term)%nlo_data%nlo_type))
+    case ('Born', 'Virtual')
+      ptr => instance%term(i_term)%connected%get_flows_int_ptr ()
+    case ('Real')
+      ptr => instance%term(i_term)%connected_real%get_flows_int_ptr ()
+    end select
   end function process_instance_get_flows_int_ptr
   
   function process_instance_get_isolated_state_ptr (instance, i_term) &
@@ -4392,6 +5064,13 @@ contains
     call particle_set_fill_interaction (pset, int, n_in, recover_beams)
   end subroutine process_instance_set_trace
 
+  subroutine process_instance_display_real_kinematics (instance, i)
+     class(process_instance_t), intent(in) :: instance
+     integer, intent(in) :: i
+     if (instance%term(i)%nlo_data%counter_exists) &
+         call instance%term(i)%nlo_data%counter%display ()
+  end subroutine process_instance_display_real_kinematics
+
   subroutine pacify_process_instance (instance)
     type(process_instance_t), intent(inout) :: instance
     integer :: i
@@ -4400,15 +5079,16 @@ contains
     end do
   end subroutine pacify_process_instance
     
-  subroutine prepare_test_process (process, process_instance, model_list)
+  subroutine prepare_test_process (process, process_instance, model)
     type(process_t), intent(out), target :: process
     type(process_instance_t), intent(out), target :: process_instance
-    type(model_list_t), intent(inout) :: model_list
+    class(model_data_t), intent(in), target :: model
     type(process_library_t), target :: lib
     type(string_t) :: libname
     type(string_t) :: procname
     type(string_t) :: run_id
     type(os_data_t) :: os_data
+    class(model_data_t), pointer :: process_model
     type(qcd_t) :: qcd
     class(rng_factory_t), allocatable :: rng_factory
     class(prc_core_t), allocatable :: core_template
@@ -4422,8 +5102,15 @@ contains
     allocate (rng_test_factory_t :: rng_factory)
     call prc_test_create_library (libname, lib)
     call reset_interaction_counter ()
-    call process%init &
-         (procname, run_id, lib, os_data, qcd, rng_factory, model_list)
+    allocate (process_model)
+    call process_model%init (model%get_name (), &
+         model%get_n_real (), &
+         model%get_n_complex (), &
+         model%get_n_field (), &
+         model%get_n_vtx ())
+    call process_model%copy_from (model)
+    call process%init (procname, run_id, &
+         lib, os_data, qcd, rng_factory, process_model)
     allocate (test_t :: core_template)
     allocate (mci_test_t :: mci_template)
     select type (mci_template)
@@ -4471,12 +5158,6 @@ contains
     call test (processes_4, "processes_4", &
          "create and fill a process instance (partonic event)", &
          u, results)
-    call test (processes_5, "processes_5", &
-         "handle cuts (partonic event)", &
-         u, results)
-    call test (processes_6, "processes_6", &
-         "handle scales and weight (partonic event)", &
-         u, results)
     call test (processes_7, "processes_7", &
          "process configuration with structure functions", &
          u, results)
@@ -4516,7 +5197,7 @@ contains
     class(test_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     write (u, "(3x,A)")  "test type implementing prc_test"
   end subroutine test_write
   
@@ -4619,7 +5300,7 @@ contains
     type(os_data_t) :: os_data
     type(qcd_t) :: qcd
     class(rng_factory_t), allocatable :: rng_factory
-    type(model_list_t) :: model_list
+    class(model_data_t), pointer :: model
     type(process_t), allocatable :: process
     class(prc_core_t), allocatable :: core_template
     class(mci_t), allocatable :: mci_template
@@ -4638,14 +5319,15 @@ contains
     call os_data_init (os_data)
     allocate (rng_test_factory_t :: rng_factory)
     call prc_test_create_library (libname, lib)
-    call syntax_model_file_init ()
 
     write (u, "(A)")  "* Initialize a process object"
     write (u, "(A)")
 
+    allocate (model)
+    call model%init_test ()
+
     allocate (process)
-    call process%init &
-         (procname, run_id, lib, os_data, qcd, rng_factory, model_list)
+    call process%init (procname, run_id, lib, os_data, qcd, rng_factory, model)
     
     allocate (test_t :: core_template)
     allocate (phs_test_config_t :: phs_config_template)
@@ -4662,9 +5344,6 @@ contains
     call process%final ()
     deallocate (process)
     
-    call model_list%final ()
-    call syntax_model_file_final ()
-
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: processes_2"
     
@@ -4679,7 +5358,7 @@ contains
     type(os_data_t) :: os_data
     type(qcd_t) :: qcd
     class(rng_factory_t), allocatable :: rng_factory
-    type(model_list_t) :: model_list
+    class(model_data_t), pointer :: model
     type(process_t), allocatable :: process
     class(prc_core_t), allocatable :: core_template
     class(mci_t), allocatable :: mci_template
@@ -4701,11 +5380,12 @@ contains
     call os_data_init (os_data)
     allocate (rng_test_factory_t :: rng_factory)
     call prc_test_create_library (libname, lib)
-    call syntax_model_file_init ()
+
+    allocate (model)
+    call model%init_test ()
 
     allocate (process)
-    call process%init &
-         (procname, run_id, lib, os_data, qcd, rng_factory, model_list)
+    call process%init (procname, run_id, lib, os_data, qcd, rng_factory, model)
     
     allocate (test_t :: core_template)
     allocate (mci_test_t :: mci_template)
@@ -4757,9 +5437,6 @@ contains
     call process%final ()
     deallocate (process)
 
-    call model_list%final ()
-    call syntax_model_file_final ()
-
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: processes_3"
     
@@ -4774,7 +5451,7 @@ contains
     type(os_data_t) :: os_data
     type(qcd_t) :: qcd
     class(rng_factory_t), allocatable :: rng_factory
-    type(model_list_t) :: model_list
+    class(model_data_t), pointer :: model
     type(process_t), allocatable, target :: process
     class(prc_core_t), allocatable :: core_template
     class(mci_t), allocatable :: mci_template
@@ -4797,13 +5474,14 @@ contains
     call os_data_init (os_data)
     allocate (rng_test_factory_t :: rng_factory)
     call prc_test_create_library (libname, lib)
-    call syntax_model_file_init ()
 
     call reset_interaction_counter ()
 
+    allocate (model)
+    call model%init_test ()
+
     allocate (process)
-    call process%init &
-         (procname, run_id, lib, os_data, qcd, rng_factory, model_list) 
+    call process%init (procname, run_id, lib, os_data, qcd, rng_factory, model) 
    
     allocate (test_t :: core_template)
     allocate (phs_test_config_t :: phs_config_template)
@@ -4904,312 +5582,10 @@ contains
     call process%final ()
     deallocate (process)
 
-    call model_list%final ()
-    call syntax_model_file_final ()
-    
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: processes_4"
     
   end subroutine processes_4
-  
-  subroutine processes_5 (u)
-    integer, intent(in) :: u
-    type(string_t) :: cut_expr_text
-    type(ifile_t) :: ifile
-    type(stream_t) :: stream
-    type(parse_tree_t) :: parse_tree
-    type(process_library_t), target :: lib
-    type(string_t) :: libname
-    type(string_t) :: procname
-    type(string_t) :: run_id
-    type(os_data_t) :: os_data
-    type(qcd_t) :: qcd
-    class(rng_factory_t), allocatable :: rng_factory
-    type(model_list_t) :: model_list
-    type(process_t), allocatable, target :: process
-    class(prc_core_t), allocatable :: core_template
-    class(mci_t), allocatable :: mci_template
-    class(phs_config_t), allocatable :: phs_config_template
-    real(default) :: sqrts
-    type(process_instance_t), allocatable, target :: process_instance
-
-    write (u, "(A)")  "* Test output: processes_5"
-    write (u, "(A)")  "*   Purpose: create a process &
-         &and fill a process instance"
-    write (u, "(A)")
-
-    write (u, "(A)")  "* Prepare a cut expression"
-    write (u, "(A)")
-
-    call syntax_pexpr_init ()
-    cut_expr_text = "all Pt > 100 [s]"
-    call ifile_append (ifile, cut_expr_text)
-    call stream_init (stream, ifile)
-    call parse_tree_init_lexpr (parse_tree, stream, .true.)
-    
-    write (u, "(A)")  "* Build and initialize a test process"
-    write (u, "(A)")
-
-    libname = "processes5"
-    procname = libname
-    run_id = "run5"
-    call os_data_init (os_data)
-    allocate (rng_test_factory_t :: rng_factory)
-    call prc_test_create_library (libname, lib)
-    call syntax_model_file_init ()
-
-    call reset_interaction_counter ()
-
-    allocate (process)
-    call process%init &
-         (procname, run_id, lib, os_data, qcd, rng_factory, model_list) 
-    call process%set_var_list (model_get_var_list_ptr (process%config%model))
-    call var_list_append_real &
-         (process%meta%var_list, var_str ("tolerance"), 0._default)
-   
-    allocate (test_t :: core_template)
-    allocate (phs_test_config_t :: phs_config_template)
-    call process%init_component &
-         (1, core_template, mci_template, phs_config_template)
-
-    write (u, "(A)")  "* Prepare a trivial beam setup"
-    write (u, "(A)")
-    
-    sqrts = 1000
-    call process%setup_beams_sqrts (sqrts)
-    call process%configure_phs ()
-    call process%setup_mci ()
-
-    write (u, "(A)")  "* Complete process initialization and set cuts"
-    write (u, "(A)")
-
-    call process%setup_terms ()
-    call process%set_cuts (parse_tree_get_root_ptr (parse_tree))
-    call process%write (.false., u, show_var_list=.true., show_expressions=.true.)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Create a process instance"
-    write (u, "(A)")
-
-    allocate (process_instance)
-    call process_instance%init (process)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Inject a set of random numbers"
-    write (u, "(A)")
-     
-    call process_instance%choose_mci (1)
-    call process_instance%set_mcpar ([0._default, 0._default])
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Set up kinematics and subevt, check cuts (should fail)"
-    write (u, "(A)")
-
-    call process_instance%select_channel (1)
-    call process_instance%compute_seed_kinematics ()
-    call process_instance%compute_hard_kinematics ()
-    call process_instance%compute_eff_kinematics ()
-    call process_instance%evaluate_expressions ()
-    call process_instance%compute_other_channels ()
-   
-    call process_instance%write (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Evaluate for another set (should succeed)"
-    write (u, "(A)")
-     
-    call process_instance%reset ()
-    call process_instance%set_mcpar ([0.5_default, 0.125_default])
-    call process_instance%select_channel (1)
-    call process_instance%compute_seed_kinematics ()
-    call process_instance%compute_hard_kinematics ()
-    call process_instance%compute_eff_kinematics ()
-    call process_instance%evaluate_expressions ()
-    call process_instance%compute_other_channels ()
-    call process_instance%evaluate_trace ()
-
-    call process_instance%write (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Evaluate for another set using convenience procedure &
-         &(failure)"
-    write (u, "(A)")
-     
-    call process_instance%evaluate_sqme (1, [0.0_default, 0.2_default])
-
-    call process_instance%write_header (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Evaluate for another set using convenience procedure &
-         &(success)"
-    write (u, "(A)")
-     
-    call process_instance%evaluate_sqme (1, [0.1_default, 0.2_default])
-
-    call process_instance%write_header (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
-    
-    call process_instance%final ()
-    deallocate (process_instance)
-    
-    call process%final ()
-    deallocate (process)
-
-    call parse_tree_final (parse_tree)
-    call stream_final (stream)
-    call ifile_final (ifile)
-    call syntax_pexpr_final ()
-    
-    call model_list%final ()
-    call syntax_model_file_final ()
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: processes_5"
-    
-  end subroutine processes_5
-  
-  subroutine processes_6 (u)
-    integer, intent(in) :: u
-    type(string_t) :: expr_text
-    type(ifile_t) :: ifile
-    type(stream_t) :: stream
-    type(parse_tree_t) :: pt_scale, pt_fac_scale, pt_ren_scale, pt_weight
-    type(process_library_t), target :: lib
-    type(string_t) :: libname
-    type(string_t) :: procname
-    type(string_t) :: run_id
-    type(os_data_t) :: os_data
-    type(qcd_t) :: qcd
-    class(rng_factory_t), allocatable :: rng_factory
-    type(model_list_t) :: model_list
-    type(process_t), allocatable, target :: process
-    class(prc_core_t), allocatable :: core_template
-    class(mci_t), allocatable :: mci_template
-    class(phs_config_t), allocatable :: phs_config_template
-    real(default) :: sqrts
-    type(process_instance_t), allocatable, target :: process_instance
-
-    write (u, "(A)")  "* Test output: processes_6"
-    write (u, "(A)")  "*   Purpose: create a process &
-         &and fill a process instance"
-    write (u, "(A)")
-
-    write (u, "(A)")  "* Prepare expressions"
-    write (u, "(A)")
-
-    call syntax_pexpr_init ()
-
-    expr_text = "sqrts - 100 GeV"
-    write (u, "(A,A)")  "scale = ", char (expr_text)
-    call ifile_clear (ifile)
-    call ifile_append (ifile, expr_text)
-    call stream_init (stream, ifile)
-    call parse_tree_init_expr (pt_scale, stream, .true.)
-    call stream_final (stream)
-
-    expr_text = "sqrts_hat"
-    write (u, "(A,A)")  "fac_scale = ", char (expr_text)
-    call ifile_clear (ifile)
-    call ifile_append (ifile, expr_text)
-    call stream_init (stream, ifile)
-    call parse_tree_init_expr (pt_fac_scale, stream, .true.)
-    call stream_final (stream)
-    
-    expr_text = "eval sqrt (M2) [collect [s]]"
-    write (u, "(A,A)")  "ren_scale = ", char (expr_text)
-    call ifile_clear (ifile)
-    call ifile_append (ifile, expr_text)
-    call stream_init (stream, ifile)
-    call parse_tree_init_expr (pt_ren_scale, stream, .true.)
-    call stream_final (stream)
-    
-    expr_text = "n_tot * n_in * n_out * (eval Phi / pi [s])"
-    write (u, "(A,A)")  "weight = ", char (expr_text)
-    call ifile_clear (ifile)
-    call ifile_append (ifile, expr_text)
-    call stream_init (stream, ifile)
-    call parse_tree_init_expr (pt_weight, stream, .true.)
-    call stream_final (stream)
-
-    call ifile_final (ifile)
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Build and initialize a test process"
-    write (u, "(A)")
-
-    libname = "processes4"
-    procname = libname
-    run_id = "run4"
-    call os_data_init (os_data)
-    allocate (rng_test_factory_t :: rng_factory)
-    call prc_test_create_library (libname, lib)
-    call syntax_model_file_init ()
-
-    call reset_interaction_counter ()
-
-    allocate (process)
-    call process%init &
-         (procname, run_id, lib, os_data, qcd, rng_factory, model_list) 
-    call process%set_var_list (model_get_var_list_ptr (process%config%model))
-   
-    allocate (test_t :: core_template)
-    allocate (phs_test_config_t :: phs_config_template)
-    call process%init_component &
-         (1, core_template, mci_template, phs_config_template)
-
-    write (u, "(A)")  "* Prepare a trivial beam setup"
-    write (u, "(A)")
-    
-    sqrts = 1000
-    call process%setup_beams_sqrts (sqrts)
-    call process%configure_phs ()
-    call process%setup_mci ()
-
-    write (u, "(A)")  "* Complete process initialization and set cuts"
-    write (u, "(A)")
-
-    call process%setup_terms ()
-    call process%set_scale (parse_tree_get_root_ptr (pt_scale))
-    call process%set_fac_scale (parse_tree_get_root_ptr (pt_fac_scale))
-    call process%set_ren_scale (parse_tree_get_root_ptr (pt_ren_scale))
-    call process%set_weight (parse_tree_get_root_ptr (pt_weight))
-    call process%write (.false., u, show_expressions=.true.)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Create a process instance and evaluate"
-    write (u, "(A)")
-
-    allocate (process_instance)
-    call process_instance%init (process)
-    call process_instance%choose_mci (1)
-    call process_instance%evaluate_sqme (1, [0.5_default, 0.125_default])
-
-    call process_instance%write (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
-    
-    call process_instance%final ()
-    deallocate (process_instance)
-    
-    call process%final ()
-    deallocate (process)
-
-    call parse_tree_final (pt_scale)
-    call parse_tree_final (pt_fac_scale)
-    call parse_tree_final (pt_ren_scale)
-    call parse_tree_final (pt_weight)
-    call syntax_pexpr_final ()
-
-    call model_list%final ()
-    call syntax_model_file_final ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: processes_6"
-    
-  end subroutine processes_6
   
   subroutine processes_7 (u)
     integer, intent(in) :: u
@@ -5220,13 +5596,12 @@ contains
     type(os_data_t) :: os_data
     type(qcd_t) :: qcd
     class(rng_factory_t), allocatable :: rng_factory
-    type(model_list_t) :: model_list
+    class(model_data_t), pointer :: model
     type(process_t), allocatable, target :: process
     class(prc_core_t), allocatable :: core_template
     class(mci_t), allocatable :: mci_template
     class(phs_config_t), allocatable :: phs_config_template
     real(default) :: sqrts
-    type(model_t), pointer :: model
     type(pdg_array_t) :: pdg_in
     class(sf_data_t), allocatable, target :: data
     type(sf_config_t), dimension(:), allocatable :: sf_config
@@ -5246,11 +5621,12 @@ contains
     call os_data_init (os_data)
     allocate (rng_test_factory_t :: rng_factory)
     call prc_test_create_library (libname, lib)
-    call syntax_model_file_init ()
+
+    allocate (model)
+    call model%init_test ()
 
     allocate (process)
-    call process%init &
-         (procname, run_id, lib, os_data, qcd, rng_factory, model_list)
+    call process%init (procname, run_id, lib, os_data, qcd, rng_factory, model)
     
     allocate (test_t :: core_template)
     allocate (phs_test_config_t :: phs_config_template)
@@ -5264,11 +5640,11 @@ contains
     call process%setup_beams_sqrts (sqrts)
     call process%configure_phs ()
     
-    model => model_list%get_model_ptr (var_str ("Test"))
     pdg_in = 25
     allocate (sf_test_data_t :: data)
     select type (data)
     type is (sf_test_data_t)
+       model => process%get_model_ptr ()
        call data%init (model, pdg_in)
     end select
 
@@ -5298,9 +5674,6 @@ contains
     call process%final ()
     deallocate (process)
     
-    call model_list%final ()
-    call syntax_model_file_final ()
-    
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: processes_7"
     
@@ -5315,14 +5688,13 @@ contains
     type(os_data_t) :: os_data
     type(qcd_t) :: qcd
     class(rng_factory_t), allocatable :: rng_factory
-    type(model_list_t) :: model_list
+    class(model_data_t), pointer :: model
     type(process_t), allocatable, target :: process
     class(prc_core_t), allocatable :: core_template
     class(mci_t), allocatable :: mci_template
     class(phs_config_t), allocatable :: phs_config_template
     real(default) :: sqrts
     type(process_instance_t), allocatable, target :: process_instance
-    type(model_t), pointer :: model
     type(pdg_array_t) :: pdg_in
     class(sf_data_t), allocatable, target :: data
     type(sf_config_t), dimension(:), allocatable :: sf_config
@@ -5343,13 +5715,14 @@ contains
     call os_data_init (os_data)
     allocate (rng_test_factory_t :: rng_factory)
     call prc_test_create_library (libname, lib)
-    call syntax_model_file_init ()
 
     call reset_interaction_counter ()
 
+    allocate (model)
+    call model%init_test ()
+
     allocate (process)
-    call process%init &
-         (procname, run_id, lib, os_data, qcd, rng_factory, model_list)
+    call process%init (procname, run_id, lib, os_data, qcd, rng_factory, model)
     
     allocate (test_t :: core_template)
     allocate (phs_test_config_t :: phs_config_template)
@@ -5362,11 +5735,11 @@ contains
     sqrts = 1000
     call process%setup_beams_sqrts (sqrts)
 
-    model => model_list%get_model_ptr (var_str ("Test"))
     pdg_in = 25
     allocate (sf_test_data_t :: data)
     select type (data)
     type is (sf_test_data_t)
+       model => process%get_model_ptr ()
        call data%init (model, pdg_in)
     end select
 
@@ -5445,9 +5818,6 @@ contains
     call process%final ()
     deallocate (process)
 
-    call model_list%final ()
-    call syntax_model_file_final ()
-    
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: processes_8"
     
@@ -5462,14 +5832,13 @@ contains
     type(os_data_t) :: os_data
     type(qcd_t) :: qcd
     class(rng_factory_t), allocatable :: rng_factory
-    type(model_list_t) :: model_list
+    class(model_data_t), pointer :: model
     type(process_t), allocatable, target :: process
     class(prc_core_t), allocatable :: core_template
     class(mci_t), allocatable :: mci_template
     class(phs_config_t), allocatable :: phs_config_template
     real(default) :: sqrts
     type(process_instance_t), allocatable, target :: process_instance
-    type(model_t), pointer :: model
     type(pdg_array_t) :: pdg_in
     class(sf_data_t), allocatable, target :: data
     type(sf_config_t), dimension(:), allocatable :: sf_config
@@ -5492,13 +5861,14 @@ contains
     call os_data_init (os_data)
     allocate (rng_test_factory_t :: rng_factory)
     call prc_test_create_library (libname, lib)
-    call syntax_model_file_init ()
 
     call reset_interaction_counter ()
 
+    allocate (model)
+    call model%init_test ()
+
     allocate (process)
-    call process%init &
-         (procname, run_id, lib, os_data, qcd, rng_factory, model_list)
+    call process%init (procname, run_id, lib, os_data, qcd, rng_factory, model)
     
     allocate (test_t :: core_template)
     allocate (phs_test_config_t :: phs_config_template)
@@ -5511,11 +5881,11 @@ contains
     sqrts = 1000
     call process%setup_beams_sqrts (sqrts)
 
-    model => model_list%get_model_ptr (var_str ("Test"))
     pdg_in = 25
     allocate (sf_test_data_t :: data)
     select type (data)
     type is (sf_test_data_t)
+       model => process%get_model_ptr ()
        call data%init (model, pdg_in)
     end select
 
@@ -5610,9 +5980,6 @@ contains
     call process%final ()
     deallocate (process)
 
-    call model_list%final ()
-    call syntax_model_file_final ()
-    
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: processes_9"
     
@@ -5627,7 +5994,7 @@ contains
     type(os_data_t) :: os_data
     type(qcd_t) :: qcd
     class(rng_factory_t), allocatable :: rng_factory
-    type(model_list_t) :: model_list
+    class(model_data_t), pointer :: model
     type(process_t), allocatable, target :: process
     class(prc_core_t), allocatable :: core_template
     class(mci_t), allocatable :: mci_template
@@ -5650,13 +6017,14 @@ contains
     call os_data_init (os_data)
     allocate (rng_test_factory_t :: rng_factory)
     call prc_test_create_library (libname, lib)
-    call syntax_model_file_init ()
 
     call reset_interaction_counter ()
 
+    allocate (model)
+    call model%init_test ()
+
     allocate (process)
-    call process%init &
-         (procname, run_id, lib, os_data, qcd, rng_factory, model_list)
+    call process%init (procname, run_id, lib, os_data, qcd, rng_factory, model)
     
     allocate (test_t :: core_template)
     allocate (mci_test_t :: mci_template)
@@ -5726,9 +6094,6 @@ contains
     call process%final ()
     deallocate (process)
 
-    call model_list%final ()
-    call syntax_model_file_final ()
-    
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: processes_10"
     
@@ -5743,7 +6108,7 @@ contains
     type(os_data_t) :: os_data
     type(qcd_t) :: qcd
     class(rng_factory_t), allocatable :: rng_factory
-    type(model_list_t) :: model_list
+    class(model_data_t), pointer :: model
     type(process_t), allocatable, target :: process
     class(prc_core_t), allocatable :: core_template
     class(mci_t), allocatable :: mci_template
@@ -5766,13 +6131,14 @@ contains
     call os_data_init (os_data)
     allocate (rng_test_factory_t :: rng_factory)
     call prc_test_create_library (libname, lib)
-    call syntax_model_file_init ()
 
     call reset_interaction_counter ()
 
+    allocate (model)
+    call model%init_test ()
+
     allocate (process)
-    call process%init &
-         (procname, run_id, lib, os_data, qcd, rng_factory, model_list)
+    call process%init (procname, run_id, lib, os_data, qcd, rng_factory, model)
     
     allocate (test_t :: core_template)
     allocate (mci_test_t :: mci_template)
@@ -5828,9 +6194,6 @@ contains
     call process%final ()
     deallocate (process)
 
-    call model_list%final ()
-    call syntax_model_file_final ()
-    
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: processes_11"
     
@@ -5841,13 +6204,13 @@ contains
     type(process_t), allocatable, target :: process
     type(process_instance_t), allocatable, target :: process_instance
     type(particle_set_t) :: pset
-    type(model_list_t) :: model_list
+    type(model_data_t), target :: model
 
     write (u, "(A)")  "* Test output: processes_12"
     write (u, "(A)")  "*   Purpose: generate a complete partonic event"
     write (u, "(A)")
 
-    call syntax_model_file_init ()
+    call model%init_test ()
 
     write (u, "(A)")  "* Build and initialize process and process instance &
          &and generate event"
@@ -5855,7 +6218,7 @@ contains
 
     allocate (process)
     allocate (process_instance)
-    call prepare_test_process (process, process_instance, model_list)
+    call prepare_test_process (process, process_instance, model)
     call process_instance%setup_event_data ()
 
     call process%prepare_simulation (1)
@@ -5899,8 +6262,7 @@ contains
     deallocate (process_instance)
     deallocate (process)
     
-    call model_list%final ()
-    call syntax_model_file_final ()
+    call model%final ()
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: processes_12"
@@ -5910,12 +6272,11 @@ contains
   subroutine processes_13 (u)
     integer, intent(in) :: u
     type(os_data_t) :: os_data
-    type(model_list_t) :: model_list
-    type(model_t), pointer :: model
+    type(model_data_t), target :: model
     type(process_term_t) :: term
     class(prc_core_t), allocatable :: core
     
-    write (u, "(A)")  "* Test output: processes_12"
+    write (u, "(A)")  "* Test output: processes_13"
     write (u, "(A)")  "*   Purpose: initialized a colored interaction"
     write (u, "(A)")
 
@@ -5923,9 +6284,9 @@ contains
     write (u, "(A)")
 
     call os_data_init (os_data)
-    call syntax_model_file_init ()
-    call model_list%read_model (var_str ("QCD"), var_str ("QCD.mdl"), &
-         os_data, model)
+    call model%init_sm_test ()
+!    call model_list%read_model (var_str ("QCD"), var_str ("QCD.mdl"), &
+!         os_data, model)
     allocate (test_t :: core)
 
     associate (data => term%data)
@@ -5963,8 +6324,7 @@ contains
     call term%setup_interaction (core, model)
     call interaction_write (term%int, u)
     
-    call model_list%final ()
-    call syntax_model_file_final ()
+    call model%final ()
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: processes_13"
@@ -5979,13 +6339,12 @@ contains
     type(os_data_t) :: os_data
     type(qcd_t) :: qcd
     class(rng_factory_t), allocatable :: rng_factory
-    type(model_list_t) :: model_list
+    class(model_data_t), pointer :: model
     type(process_t), allocatable, target :: process
     class(prc_core_t), allocatable :: core_template
     class(mci_t), allocatable :: mci_template
     class(phs_config_t), allocatable :: phs_config_template
     real(default) :: sqrts
-    type(model_t), pointer :: model
     type(pdg_array_t) :: pdg_in
     class(sf_data_t), allocatable, target :: data
     type(sf_config_t), dimension(:), allocatable :: sf_config
@@ -6008,11 +6367,11 @@ contains
     call prc_test_create_library (libname, lib)
     call lib%compute_md5sum ()
     
-    call syntax_model_file_init ()
+    allocate (model)
+    call model%init_test ()
 
     allocate (process)
-    call process%init &
-         (procname, run_id, lib, os_data, qcd, rng_factory, model_list)
+    call process%init (procname, run_id, lib, os_data, qcd, rng_factory, model)
     
     allocate (test_t :: core_template)
     allocate (phs_test_config_t :: phs_config_template)
@@ -6026,11 +6385,11 @@ contains
     call process%setup_beams_sqrts (sqrts)
     call process%configure_phs ()
     
-    model => model_list%get_model_ptr (var_str ("Test"))
     pdg_in = 25
     allocate (sf_test_data_t :: data)
     select type (data)
     type is (sf_test_data_t)
+       model => process%get_model_ptr ()
        call data%init (model, pdg_in)
     end select
 
@@ -6065,9 +6424,6 @@ contains
     call process%final ()
     deallocate (process)
     
-    call model_list%final ()
-    call syntax_model_file_final ()
-    
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: processes_14"
     
@@ -6082,9 +6438,7 @@ contains
     type(os_data_t) :: os_data
     type(qcd_t) :: qcd
     class(rng_factory_t), allocatable :: rng_factory
-    type(model_list_t) :: model_list
-    type(model_t), pointer :: model
-    type(var_list_t), pointer :: var_list
+    class(model_data_t), pointer :: model
     type(process_t), allocatable, target :: process
     class(prc_core_t), allocatable :: core_template
     class(mci_t), allocatable :: mci_template
@@ -6104,23 +6458,20 @@ contains
     run_id = "run15"
     call os_data_init (os_data)
     allocate (rng_test_factory_t :: rng_factory)
-    call syntax_model_file_init ()
-
     call prc_test_create_library (libname, lib, scattering = .false., &
          decay = .true.)
-    call model_list%read_model (var_str ("Test"), &
-         var_str ("Test.mdl"), os_data, model)
-    var_list => model_get_var_list_ptr (model)
-    call var_list_set_real (var_list, &
-         var_str ("ff"), 0.4_default, is_known = .true.)
-    call model_parameters_update (model)
+
+    allocate (model)
+    call model%init_test ()
+    call model%set_par (var_str ("ff"), 0.4_default)
+    call model%set_par (var_str ("mf"), &
+         model%get_real (var_str ("ff")) * model%get_real (var_str ("ms")))
 
     write (u, "(A)")  "* Initialize a process object"
     write (u, "(A)")
 
     allocate (process)
-    call process%init &
-         (procname, run_id, lib, os_data, qcd, rng_factory, model_list)
+    call process%init (procname, run_id, lib, os_data, qcd, rng_factory, model)
     
     allocate (test_t :: core_template)
     allocate (phs_single_config_t :: phs_config_template)
@@ -6210,9 +6561,6 @@ contains
     call process%final ()
     deallocate (process)
     
-    call model_list%final ()
-    call syntax_model_file_final ()
-
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: processes_15"
     
@@ -6227,9 +6575,7 @@ contains
     type(os_data_t) :: os_data
     type(qcd_t) :: qcd
     class(rng_factory_t), allocatable :: rng_factory
-    type(model_list_t) :: model_list
-    type(model_t), pointer :: model
-    type(var_list_t), pointer :: var_list
+    class(model_data_t), pointer :: model
     type(process_t), allocatable, target :: process
     class(prc_core_t), allocatable :: core_template
     class(mci_t), allocatable :: mci_template
@@ -6250,21 +6596,19 @@ contains
     run_id = "run16"
     call os_data_init (os_data)
     allocate (rng_test_factory_t :: rng_factory)
-    call syntax_model_file_init ()
     call prc_test_create_library (libname, lib, scattering = .false., &
          decay = .true.)
-    call model_list%read_model (var_str ("Test"), &
-         var_str ("Test.mdl"), os_data, model)
-    var_list => model_get_var_list_ptr (model)
-    call var_list_set_real (var_list, &
-         var_str ("ff"), 0.4_default, is_known = .true.)
-    call model_parameters_update (model)
 
     call reset_interaction_counter ()
 
+    allocate (model)
+    call model%init_test ()
+    call model%set_par (var_str ("ff"), 0.4_default)
+    call model%set_par (var_str ("mf"), &
+         model%get_real (var_str ("ff")) * model%get_real (var_str ("ms")))
+
     allocate (process)
-    call process%init &
-         (procname, run_id, lib, os_data, qcd, rng_factory, model_list)
+    call process%init (procname, run_id, lib, os_data, qcd, rng_factory, model)
     
     allocate (test_t :: core_template)
     allocate (mci_midpoint_t :: mci_template)
@@ -6315,9 +6659,6 @@ contains
     call process%final ()
     deallocate (process)
 
-    call model_list%final ()
-    call syntax_model_file_final ()
-    
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: processes_16"
     
@@ -6332,8 +6673,7 @@ contains
     type(os_data_t) :: os_data
     type(qcd_t) :: qcd
     class(rng_factory_t), allocatable :: rng_factory
-    type(model_list_t) :: model_list
-    type(model_t), pointer :: model
+    class(model_data_t), pointer :: model
     type(var_list_t), pointer :: var_list
     type(process_t), allocatable, target :: process
     class(prc_core_t), allocatable :: core_template
@@ -6356,23 +6696,21 @@ contains
     run_id = "run17"
     call os_data_init (os_data)
     allocate (rng_test_factory_t :: rng_factory)
-    call syntax_model_file_init ()
 
     call prc_test_create_library (libname, lib, scattering = .false., &
          decay = .true.)
-    call model_list%read_model (var_str ("Test"), &
-         var_str ("Test.mdl"), os_data, model)
-    var_list => model_get_var_list_ptr (model)
-    call var_list_set_real (var_list, &
-         var_str ("ff"), 0.4_default, is_known = .true.)
-    call model_parameters_update (model)
 
     write (u, "(A)")  "* Initialize a process object"
     write (u, "(A)")
 
+    allocate (model)
+    call model%init_test ()
+    call model%set_par (var_str ("ff"), 0.4_default)
+    call model%set_par (var_str ("mf"), &
+         model%get_real (var_str ("ff")) * model%get_real (var_str ("ms")))
+
     allocate (process)
-    call process%init &
-         (procname, run_id, lib, os_data, qcd, rng_factory, model_list)
+    call process%init (procname, run_id, lib, os_data, qcd, rng_factory, model)
     
     allocate (test_t :: core_template)
     allocate (phs_single_config_t :: phs_config_template)
@@ -6409,6 +6747,7 @@ contains
     call process_instance%choose_mci (1)
     call process_instance%set_mcpar ([0._default, 0._default])
 
+    model => process%get_model_ptr ()
     call flavor_init (flv_beam, 25, model)
     m = flavor_get_mass (flv_beam)
     p = 3 * m / 4
@@ -6470,9 +6809,6 @@ contains
     call process%final ()
     deallocate (process)
     
-    call model_list%final ()
-    call syntax_model_file_final ()
-
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: processes_17"
     

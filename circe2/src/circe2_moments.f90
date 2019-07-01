@@ -158,12 +158,15 @@ contains
   subroutine init_moments (moments)
     type(moment), dimension(0:,0:,0:,0:), intent(inout) :: moments
     integer :: nx, mx, ny, my
-    forall (nx = lbound(moments,1):ubound(moments,1), &
-            mx = lbound(moments,2):ubound(moments,2), &
-            ny = lbound(moments,3):ubound(moments,3), &
-            my = lbound(moments,4):ubound(moments,4))
-       moments(nx,mx,ny,my) = moment([nx,ny],[mx,my])
-    end forall
+    do nx = lbound(moments,1), ubound(moments,1)
+       do mx = lbound(moments,2), ubound(moments,2)
+          do ny = lbound(moments,3), ubound(moments,3)
+             do my = lbound(moments,4), ubound(moments,4)
+                moments(nx,mx,ny,my) = moment([nx,ny],[mx,my])
+             end do
+          end do
+       end do
+    end do
     call reset_moment (moments)
   end subroutine init_moments
   elemental subroutine reset_moment (m)
@@ -428,11 +431,11 @@ contains
     end do
     call report_results (moments, channels)
   end subroutine compare
-  subroutine check (rng, nevents, file, distributions)
+  subroutine check (rng, nevents, file, distributions, fail)
     class(rng_type), intent(inout) :: rng
     integer, intent(in) :: nevents
     character(len=*), intent(in) :: file
-    logical, intent(in), optional :: distributions
+    logical, intent(in), optional :: distributions, fail
     type(channel), dimension(:), allocatable :: channels
     type(channel), dimension(1) :: unit_channel
     integer, parameter :: N = 1
@@ -443,12 +446,18 @@ contains
     integer :: ierror
     integer, dimension(2) :: p, h
     integer :: i
-    logical :: generation_ok, distributions_ok, check_distributions
+    logical :: generation_ok, distributions_ok
+    logical :: check_distributions, expect_failure
     type(circe2_state) :: c2s
     if (present (distributions)) then
        check_distributions = distributions
     else
        check_distributions = .true.
+    end if
+    if (present (fail)) then
+       expect_failure = fail
+    else
+       expect_failure = .false.
     end if
     call read_channels (channels)
     call init_moments (moments)
@@ -470,18 +479,32 @@ contains
     if (check_distributions) then
        distributions_ok = results_ok (unit_moments, unit_channel)
     else
-       distributions_ok = .true.
+       distributions_ok = .not. expect_failure
     end if
-    if (generation_ok .and. distributions_ok) then
-       print *, "OK"
-    else
-       if (.not. generation_ok) then
-          print *, "FAIL: generation"
-          call report_results (moments, channels)
+    if (expect_failure) then
+       if (generation_ok .and. distributions_ok) then
+          print *, "FAIL: unexpected success"
+       else
+          if (.not. generation_ok) then
+             print *, "OK: expected failure in generation"
+          end if
+          if (.not. distributions_ok) then
+             print *, "OK: expected failure in distributions"
+          end if
        end if
-       if (.not. distributions_ok) then
-          print *, "FAIL: distributions"
-          call report_results (unit_moments, unit_channel)
+       call report_results (moments, channels)
+    else
+       if (generation_ok .and. distributions_ok) then
+          print *, "OK"
+       else
+          if (.not. generation_ok) then
+             print *, "FAIL: generation"
+             call report_results (moments, channels)
+          end if
+          if (.not. distributions_ok) then
+             print *, "FAIL: distributions"
+             call report_results (unit_moments, unit_channel)
+          end if
        end if
     end if
   end subroutine check
@@ -519,8 +542,13 @@ program circe2_moments
   select case (trim (mode))
   case ("check")
      call check (rng, nevents, trim (filename))
+  case ("!check")
+     call check (rng, nevents, trim (filename), fail = .true.)
   case ("check_generation")
      call check (rng, nevents, trim (filename), distributions = .false.)
+  case ("!check_generation")
+     call check (rng, nevents, trim (filename), fail = .true., &
+                                                distributions = .false.)
   case ("compare")
      call compare (rng, nevents, trim (filename))
   case ("generate")

@@ -1,5 +1,5 @@
 # Makefile.am -- O'Caml rules for O'Mega Makefiles
-# $Id: Makefile.ocaml 4926 2013-12-04 12:35:06Z jr_reuter $
+# $Id: Makefile.ocaml 6044 2014-07-24 18:33:19Z bchokoufe $
 ##
 ## Process Makefile.am with automake to include this file in Makefile.in
 ##
@@ -30,7 +30,6 @@
 
 OCAMLC += $(DBG)
 OCAMLCI = $(OCAMLC)
-OCAMLFLAGS =
 OCAMLDEBUGFLAGS = -g
 OCAMLOPTFLAGS = -inline 64 $(GPROF)
 OCAML_NATIVE_EXT = .opt

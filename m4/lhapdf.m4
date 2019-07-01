@@ -187,7 +187,7 @@ AC_DEFUN([ACX_CHECK_LHAPDF],
 save_CXXFLAGS="$CXXFLAGS"
 save_LIBS="$LIBS"
 CXXFLAGS="${CXXFLAGS} `${LHAPDF_CONFIG} --cxxflags`"
-LDFLAGS="${LDFLAGS} `${LHAPDF_CONFIG} --ldflags`"
+LIBS="${LIBS} `${LHAPDF_CONFIG} --ldflags`"
 AC_MSG_CHECKING([if LHAPDF is functional (may take a while)])
 AC_LANG_PUSH([C++])
 AC_LINK_IFELSE(dnl
@@ -196,7 +196,7 @@ AC_LINK_IFELSE(dnl
   [lhapdfok="yes"], [lhapdfok="no"])
 AC_MSG_RESULT([$lhapdfok])
 CXXFLAGS="$save_CXXFLAGS"
-LDFLAGS="$save_LDFLAGS"
+LIBS="$save_LIBS"
 AC_LANG_POP()
 AC_MSG_CHECKING(LHAPDF)
 if test "${lhapdfok}" = "yes"; then

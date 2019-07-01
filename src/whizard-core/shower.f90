@@ -1,4 +1,4 @@
-! WHIZARD 2.2.2 July 6 2014
+! WHIZARD 2.2.3 Nov 30 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,8 +6,10 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
+!     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     Christian Weiss <christian.weiss@desy.de>
+!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -29,13 +31,20 @@
 
 module shower
 
-  use kinds, only: default, double !NODEP!
-  use iso_varying_string, string_t => varying_string !NODEP!
-  use file_utils !NODEP!
-  use constants, only : pi, twopi !NODEP!  
-  use limits, only: LF !NODEP!
-  use diagnostics !NODEP!
-  use lorentz !NODEP!  
+  use kinds, only: default, double
+  use iso_varying_string, string_t => varying_string
+  use io_units
+  use constants, only: pi, twopi
+  use format_utils, only: write_separator
+  use unit_tests
+  use system_defs, only: LF
+  use diagnostics
+  use lorentz
+  use system_dependencies, only: LHAPDF5_AVAILABLE
+  use system_dependencies, only: LHAPDF6_AVAILABLE
+  use lhapdf !NODEP!
+  use pdf_builtin !NODEP!
+  
   use shower_base !NODEP!
   use shower_partons !NODEP!
   use shower_core !NODEP!
@@ -45,9 +54,7 @@ module shower
   use ckkw_pseudo_weights !NODEP!
   use ckkw_matching !NODEP!
   use tao_random_numbers !NODEP!
-  use pdf_builtin !NODEP!
 
-  use unit_tests
   use os_interface
   use xml
   
@@ -57,6 +64,7 @@ module shower
   use particles
   use state_matrices
   use subevents
+  use model_data
   use models
   use variables
   use beam_structures
@@ -82,10 +90,7 @@ module shower
   public :: ckkw_fake_pseudo_shower_weights
   public :: shower_test
 
-  integer, parameter :: STRF_NONE = 0
-  integer, parameter :: STRF_LHAPDF = 1
-  integer, parameter :: STRF_PDF_BUILTIN = 2
-  
+
 
   type :: shower_settings_t
      logical :: ps_isr_active = .false.
@@ -131,7 +136,8 @@ module shower
   type, extends (evt_t) :: evt_shower_t
      type(shower_settings_t) :: settings
      type(model_t), pointer :: model_hadrons => null ()
-     type(os_data_t) :: os_data
+     type(lhapdf_pdf_t) :: pdf
+     type(os_data_t) :: os_data     
      integer :: pdf_type = STRF_NONE
      integer :: pdf_set = 0
    contains
@@ -244,7 +250,7 @@ contains
     class(shower_settings_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u
-    u = output_unit (unit);  if (u < 0)  return
+    u = given_output_unit (unit);  if (u < 0)  return
     write (u, "(1x,A)")  "Shower settings:"
     call write_separator (u)
     write (u, "(1x,A)")  "Master switches:"
@@ -318,12 +324,13 @@ contains
 
   subroutine apply_shower_particle_set & 
        (particle_set, shower_settings,  model, model_hadrons, &
-        os_data, pdf_type, pdf_set, valid, vetoed)
+        os_data, pdf_type, pdf_set, pdf, valid, vetoed)
     type(particle_set_t), intent(inout) :: particle_set
     type(shower_settings_t), intent(in) :: shower_settings
-    type(model_t), intent(in), target :: model
-    type(model_t), intent(in), target :: model_hadrons
+    class(model_data_t), intent(in), target :: model
+    class(model_data_t), intent(in), target :: model_hadrons
     type(os_data_t), intent(in) :: os_data
+    type(lhapdf_pdf_t), intent(inout) :: pdf
     integer, intent(in) :: pdf_type
     integer, intent(in) :: pdf_set
     logical, intent(inout) :: valid
@@ -332,16 +339,7 @@ contains
     logical, parameter :: debug = .false., to_file = .false.
 
     type(mlm_matching_data_t) :: mlm_matching_data
-    logical, save :: matching_disabled=.false.
-    procedure(shower_pdf), pointer :: pdf_func => null()
-
-    interface
-       subroutine evolvePDFM (set, x, q, ff)
-         integer, intent(in) :: set
-         double precision, intent(in) :: x, q
-         double precision, dimension(-6:6), intent(out) :: ff
-       end subroutine evolvePDFM
-    end interface
+    logical, save :: matching_disabled = .false.
 
     if (.not. shower_settings%ps_fsr_active .and. &
         .not. shower_settings%ps_isr_active .and. &
@@ -357,7 +355,7 @@ contains
     if (signal_is_pending ()) return    
     
     ! ensure that lhapdf is initialized
-    if (pdf_type .eq. STRF_LHAPDF) then       
+    if (pdf_type .eq. STRF_LHAPDF5) then
        if (shower_settings%ps_isr_active .and. &
             (abs (particle_get_pdg (particle_set_get_particle &
                  (particle_set, 1))) >= 1000) .and. &
@@ -370,14 +368,12 @@ contains
              return
           end if
        end if
-       pdf_func => evolvePDFM
     else if (pdf_type == STRF_PDF_BUILTIN) then
        if (shower_settings%ps_use_PYTHIA_shower) then
           call msg_fatal ("Builtin PDFs cannot be used for PYTHIA showers," &
                // LF // "     aborting simulation")
           return
        end if
-       pdf_func => pdf_evolve_LHAPDF
     end if
     if (shower_settings%mlm_matching .and. shower_settings%ckkw_matching) then
        call msg_fatal ("Both MLM and CKKW matching activated," // &
@@ -396,7 +392,8 @@ contains
           call PYGIVE ('MSTU(13)=1')
        end if
     end if
-    if (debug)  print *, "Shower: beam checks"
+
+    if (debug)  print *, "Shower: beam checks for mlm_matching"
 
     if (.not. matching_disabled) then
        !!! Check if the beams are hadrons
@@ -418,6 +415,8 @@ contains
        end if
     end if
     
+    if (debug)  print *, "Shower: apply shower"
+
     !!! SHOWER
     if (shower_settings%ps_use_PYTHIA_shower .or. &
          (.not. shower_settings%ps_fsr_active .and. &
@@ -430,12 +429,12 @@ contains
     else
        call apply_WHIZARDshower_particle_set (particle_set, &
             shower_settings, mlm_matching_data%P_ME, model, model_hadrons, &
-            os_data, pdf_func, pdf_set, valid, vetoed)
-            if (vetoed) return
+            os_data, pdf_type, pdf_set, pdf, valid, vetoed)
+       if (vetoed) return
     end if
     if (debug) then
-       call particle_set_write (particle_set)
        print *, " after SHOWER"
+       call particle_set_write (particle_set)
     end if
        
     if (shower_settings%mlm_matching .and. &
@@ -464,10 +463,17 @@ contains
 
     call mlm_matching_data_final (mlm_matching_data)
 
-    if (debug)  print *, "SHOWER+HAD+MATCHING finished"
+    if (debug)  print *, "SHOWER+HADRONIZATION+MATCHING finished"
 
   contains
 
+    subroutine evolvepdfm6 (set, x, q, ff)
+      integer, intent(in) :: set
+      double precision, intent(in) :: x, q
+      double precision, dimension(-6:6), intent(out) :: ff
+      call pdf%evolve_pdfm (x, q, ff)
+    end subroutine evolvepdfm6
+    
     subroutine shower_set_PYTHIA_error (mstu23)
       ! PYTHIA common blocks
       IMPLICIT DOUBLE PRECISION(A-H, O-Z)
@@ -564,8 +570,8 @@ contains
       type(particle_set_t) :: pset_reduced
       type(shower_settings_t), intent(in) :: shower_settings
       type(vector4_t), dimension(:), allocatable, intent(inout) :: JETS_ME
-      type(model_t), intent(in), target :: model
-      type(model_t), intent(in), target :: model_hadrons
+      class(model_data_t), intent(in), target :: model
+      class(model_data_t), intent(in), target :: model_hadrons
       logical, intent(inout) :: valid
       real(kind=default) :: rand
       
@@ -669,8 +675,8 @@ contains
             call PYGIVE ("MSTP(63)=2")
          end if
          if (shower_settings%mlm_matching) then
-            CALL PYGIVE ('MSTP(62)=2')
-            CALL PYGIVE ('MSTP(67)=0')
+            CALL PYGIVE ("MSTP(62)=2")
+            CALL PYGIVE ("MSTP(67)=0")
          end if
          if (debug)  print *, "calling pyinit"
          call PYINIT ("USER", "", "", 0D0)
@@ -736,15 +742,15 @@ contains
 
     subroutine apply_WHIZARDshower_particle_set & 
          (particle_set, shower_settings, JETS_ME, model, model_hadrons, &
-         os_data, pdf_func, pdf_set, valid, vetoed)
+         os_data, pdf_type, pdf_set, pdf, valid, vetoed)
       type(particle_set_t), intent(inout) :: particle_set
       type(shower_settings_t), intent(in) :: shower_settings
       type(vector4_t), dimension(:), allocatable, intent(inout) :: JETS_ME
-      type(model_t), intent(in), target :: model
-      type(model_t), intent(in), target :: model_hadrons
+      class(model_data_t), intent(in), target :: model
+      class(model_data_t), intent(in), target :: model_hadrons
       type(os_data_t), intent(in) :: os_data
-      procedure(shower_pdf), pointer, intent(in) :: pdf_func
-      integer, intent(in) :: pdf_set
+      type(lhapdf_pdf_t), intent(in), target :: pdf
+      integer, intent(in) :: pdf_set, pdf_type
       logical, intent(inout) :: valid
       logical, intent(out) :: vetoed
 
@@ -775,7 +781,7 @@ contains
 
       if (signal_is_pending ()) return          
       
-      ! transfer settings from shower_settings to shower
+      if (debug) print *, "Transfer settings from shower_settings to shower"
       call shower_set_D_Min_t (shower_settings%ps_mass_cutoff**2)
       call shower_set_D_Lambda_fsr (shower_settings%ps_fsr_lambda)
       call shower_set_D_Lambda_isr (shower_settings%ps_isr_lambda)
@@ -799,10 +805,9 @@ contains
       call shower_set_tscalefactor_isr (shower_settings%ps_isr_tscalefactor)
       call shower_set_isr_only_onshell_emitted_partons &
            (shower_settings%ps_isr_only_onshell_emitted_partons)
-      call shower_set_pdf_set (pdf_set)
-      call shower_set_pdf_func (pdf_func)
-
-      if (.not.msg_written) then
+      call shower_set_pdf_set_and_type (pdf_set, pdf_type)
+      
+      if (.not. msg_written) then
          call msg_message ("Using WHIZARD's internal showering")
          msg_written = .true.
       end if
@@ -812,7 +817,7 @@ contains
          n_loop = n_loop + 1
          if (n_loop > 1000) call msg_fatal &
               ("Shower: too many loops (try_shower)")
-         call shower%create ()
+         call shower%create (pdf)
          if (signal_is_pending ()) return             
          max_color_nr = 0
 
@@ -840,7 +845,7 @@ contains
 
          j=0
          if (n_hadrons > 0) then
-            ! Transfer hadrons
+            if (debug) print *, "Transfer hadrons from particle_set to hadrons"
             do i = 1, particle_set_get_n_tot (particle_set)
                if (particle_get_status (particle_set_get_particle &
                     (particle_set, i)) == PRT_BEAM) then
@@ -863,8 +868,8 @@ contains
             end do
          end if
 
-         ! transfer incoming partons
          j = 0
+         if (debug) print *, "Transfer incoming partons from particle_set to partons"
          do i = 1, particle_set_get_n_tot (particle_set)
             if (particle_get_status (particle_set_get_particle &
                  (particle_set, i)) == PRT_INCOMING) then
@@ -895,7 +900,7 @@ contains
             end if
          end do
          if (signal_is_pending ()) return             
-         !!! transfer outgoing partons
+         if (debug) print *, "Transfer outgoing partons from particle_set to partons"
          do i = 1, particle_set_get_n_tot (particle_set)
             if (particle_get_status (particle_set_get_particle &
                  (particle_set, i)) == PRT_OUTGOING) then
@@ -919,28 +924,18 @@ contains
 
          deallocate (connections)
 
-         ! insert these partons in shower
+         if (debug) print *, "Insert partons in shower"
          call shower%set_next_color_nr (1 + max_color_nr)
          call shower%add_interaction_2ton_CKKW &
               (parton_pointers, shower_settings%ckkw_weights)
 
          if (signal_is_pending ()) return             
          if (shower_settings%muli_active) then
+            if (debug) print *, "Activate multiple interactions"
             !!! Initialize muli pdf sets, unless initialized
             if (mi%is_initialized ()) then
                call mi%restart ()
             else
-               if (debug) then
-                  ! call shower%write ()
-                  ! print *, "---------------"
-                  ! call interaction_write (shower%interactions(i)%i)
-                  ! print *, "---------------"
-                  ! call vector4_write &
-                  !    (shower%interactions(1)%i%partons(1)%p%momentum)
-                  ! call vector4_write &
-                  !    (shower%interactions(1)%i%partons(2)%p%momentum)
-                  ! print *, "---------------"
-               end if
                call mi%initialize (&
                     GeV2_scale_cutoff=D_Min_t, &
                     GeV2_s=shower_interaction_get_s &
@@ -962,7 +957,7 @@ contains
          if (signal_is_pending ()) return             
          
          if (shower_settings%ckkw_matching) then
-            ! CKKW Matching
+            if (debug) print *, "Apply CKKW matching"
             call ckkw_matching_apply (shower, &
                  shower_settings%ckkw_settings, &
                  shower_settings%ckkw_weights, vetoed)
@@ -1035,7 +1030,7 @@ contains
                        shower%interactions(1)%i%partons(2)%p%initial)
                   partons(1)%belongstoFSR = .false.
                   partons(2)%belongstoFSR = .false.
-                  !!! calculate color connections
+                  !!! calculate color connection
                   call mi%get_color_correlations &
                       (shower%get_next_color_nr (), &
                       max_color_nr,color_corr)
@@ -1084,12 +1079,10 @@ contains
                           temppp%p%type, temppp%p%x, ps_scale)
                   end if
 
-                  if (debug)  call shower%write ()
                end if
             end do BRANCHINGS
                
             call shower%generate_fsr_for_isr_partons ()
-            if (debug)  call shower%write ()
          else
             if (signal_is_pending ()) return                
             call shower%simulate_no_isr_shower ()
@@ -1113,8 +1106,8 @@ contains
             call shower%simulate_no_fsr_shower ()
          end if
          if (debug) then
+            write (*, "(A)")  "SHOWER_FINISHED: "
             call shower%write ()
-            write (*, "(A)")  "SHOWER_FINISHED"
          end if
             
          if (shower_settings%mlm_matching) then
@@ -1287,8 +1280,8 @@ contains
          (particle_set, shower_settings, model, model_hadrons, valid)
       type(particle_set_t), intent(inout) :: particle_set
       type(shower_settings_t), intent(in) :: shower_settings
-      type(model_t), intent(in), target :: model
-      type(model_t), intent(in), target :: model_hadrons
+      class(model_data_t), intent(in), target :: model
+      class(model_data_t), intent(in), target :: model_hadrons
       logical, intent(inout) :: valid
       integer :: u_W2P, u_P2W
       type(string_t) :: remaining_PYGIVE, partial_PYGIVE
@@ -1403,7 +1396,7 @@ contains
       call tag_gen_n%write (var_str ("WHIZARD"), unit)
       write (unit, *)
       write (unit, "(2x)", advance = "no")      
-      call tag_gen_v%write (var_str ("2.2.2"), unit)
+      call tag_gen_v%write (var_str ("2.2.3"), unit)
       write (unit, *)
       call tag_head%close (unit); write (unit, *)
       call tag_init%write (unit); write (unit, *)
@@ -1422,14 +1415,14 @@ contains
        (particle_set, u, model_in, model_hadrons)
     type(particle_set_t), intent(inout) :: particle_set
     integer, intent(in) :: u
-    type(model_t), intent(in), target :: model_in
-    type(model_t), intent(in), target :: model_hadrons
+    class(model_data_t), intent(in), target :: model_in
+    class(model_data_t), intent(in), target :: model_hadrons
     type(string_t) :: filename
     type(flavor_t) :: flv
     type(color_t) :: col
     logical :: logging_save
 
-    type(model_t), pointer :: model
+    class(model_data_t), pointer :: model
     integer :: newsize, oldsize
     type(particle_t), dimension(:), allocatable :: temp_prt
     integer :: i, j
@@ -1504,9 +1497,9 @@ contains
        call particle_reset_status (temp_prt(oldsize+i-2), PRT_OUTGOING)
        !!! Settings for unpolarized particles
        ! particle_set%prt (oldsize+i-2)%polarization = 0 ! =PRT_UNPOLARIZED !??
-       if (model_test_particle (model_in, IDUP)) then
+       if (model_in%test_field (IDUP)) then
           model => model_in
-       else if (model_test_particle (model_hadrons, IDUP)) then
+       else if (model_hadrons%test_field (IDUP)) then
           model => model_hadrons
        else
           write (buffer, "(I5)") IDUP
@@ -1763,7 +1756,7 @@ contains
 
 !C...Successfully reached end of event loop: write closing tag
 !C...and remove temporary intermediate files (unless asked not to).
-320   WRITE(MSTP(163),'(A)') '</LesHouchesEvents>'
+      WRITE(MSTP(163),'(A)') '</LesHouchesEvents>'
       RETURN
 
 !!C...Error exit.
@@ -1777,8 +1770,8 @@ contains
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: testflag
     integer :: u
-    u = output_unit (unit)
-    call write_separator_double (u)
+    u = given_output_unit (unit)
+    call write_separator (u, 2)
     write (u, "(1x,A)")  "Event transform: shower"
     call write_separator (u)
     call object%base_write (u, testflag = testflag)
@@ -1801,7 +1794,11 @@ contains
     type(process_t), intent(in) :: process
     type(beam_structure_t), intent(in) :: beam_structure
     if (beam_structure%contains ("lhapdf")) then
-       evt%pdf_type = STRF_LHAPDF
+       if (LHAPDF6_AVAILABLE) then
+          evt%pdf_type = STRF_LHAPDF6
+       else if (LHAPDF5_AVAILABLE) then
+          evt%pdf_type = STRF_LHAPDF5
+       end if
        evt%pdf_set = process%get_pdf_set ()
        write (msg_buffer, "(A,I0)")  "Shower: interfacing LHAPDF set #", &
             evt%pdf_set
@@ -1840,7 +1837,7 @@ contains
        end if
        call apply_shower_particle_set (evt%particle_set, &
             evt%settings, evt%model, evt%model_hadrons, &
-            evt%os_data, evt%pdf_type, evt%pdf_set, valid, vetoed)
+            evt%os_data, evt%pdf_type, evt%pdf_set, evt%pdf, valid, vetoed)
        probability = 1
        !!! BCN: WK please check: In 2.1.1 vetoed events reduced sim%n_events by
        ! one while invalid events did not. This bookkeeping should be reenabled
@@ -1961,7 +1958,7 @@ contains
     type(ckkw_pseudo_shower_weights_t), intent(inout) :: &
          ckkw_pseudo_shower_weights
     type(particle_set_t), intent(in) :: particle_set
-    integer :: i, j, k
+    integer :: i, j
     integer :: n
     type(vector4_t) :: momentum
 
@@ -2012,12 +2009,13 @@ contains
   end subroutine shower_test
   
   subroutine setup_testbed &
-       (prefix, os_data, lib, model_list, model, process, process_instance)
+       (prefix, os_data, lib, model_list, process, process_instance)
     type(string_t), intent(in) :: prefix
     type(os_data_t), intent(out) :: os_data
     type(process_library_t), intent(out), target :: lib
     type(model_list_t), intent(out) :: model_list
-    type(model_t), pointer, intent(out) :: model
+    class(model_data_t), pointer :: model
+    type(model_t), pointer :: model_tmp
     type(process_t), target, intent(out) :: process
     type(process_instance_t), target, intent(out) :: process_instance
     type(var_list_t), pointer :: model_vars
@@ -2038,11 +2036,13 @@ contains
     
     call os_data_init (os_data)
     allocate (rng_tao_factory_t :: rng_factory)
+    allocate (model_tmp)
     call model_list%read_model (model_name, model_name // ".mdl", &
-         os_data, model)
-    model_vars => model_get_var_list_ptr (model)
+         os_data, model_tmp)
+    model_vars => model_tmp%get_var_list_ptr ()
     call var_list_set_real (model_vars, var_str ("me"), 0._default, &
          is_known = .true.)
+    model => model_tmp
 
     call lib%init (libname)
 
@@ -2063,11 +2063,13 @@ contains
     call lib%load (os_data)
     
     call process%init (procname, run_id, lib, os_data, &
-         qcd, rng_factory, model_list)
+         qcd, rng_factory, model)
     
     allocate (prc_omega_t :: core_template)
     allocate (mci_midpoint_t :: mci_template)
     allocate (phs_single_config_t :: phs_config_template)
+
+    model => process%get_model_ptr ()
 
     select type (core_template)
     type is (prc_omega_t)
@@ -2098,7 +2100,8 @@ contains
     type(os_data_t) :: os_data
     type(process_library_t), target :: lib
     type(model_list_t) :: model_list
-    type(model_t), pointer :: model, model_hadrons
+    class(model_data_t), pointer :: model
+    type(model_t), pointer :: model_hadrons
     type(process_t), target :: process
     type(process_instance_t), target :: process_instance
     integer :: factorization_mode
@@ -2119,12 +2122,13 @@ contains
     call model_list%read_model (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"), &
          os_data, model_hadrons)
     call setup_testbed (var_str ("shower_1"), &
-         os_data, lib, model_list, model, process, process_instance)
+         os_data, lib, model_list, process, process_instance)
 
     write (u, "(A)")  "* Set up trivial transform"
     write (u, "(A)")
     
     allocate (evt_trivial_t :: evt_trivial)
+    model => process%get_model_ptr ()
     call evt_trivial%connect (process_instance, model)
     call evt_trivial%prepare_new_event (1, 1)
     call evt_trivial%generate_unweighted ()
@@ -2136,7 +2140,7 @@ contains
     select type (evt_trivial)
     type is (evt_trivial_t)
        call evt_trivial%write (u)
-       call write_separator_double (u)
+       call write_separator (u, 2)
     end select
 
     write (u, "(A)")
@@ -2160,7 +2164,7 @@ contains
     select type (evt_shower)
     type is (evt_shower_t)
        call evt_shower%write (u)
-       call write_separator_double (u)
+       call write_separator (u, 2)
     end select
 
     write (u, "(A)")
@@ -2171,7 +2175,9 @@ contains
     call process_instance%final ()
     call process%final ()
     call lib%final ()
-    call model_list%final ()
+    call model_hadrons%final ()
+    deallocate (model_hadrons)
+    !    call model_list%final ()    ! no, would deallocate model twice
     call syntax_model_file_final ()
     
     write (u, "(A)")
@@ -2184,7 +2190,8 @@ contains
     type(os_data_t) :: os_data
     type(process_library_t), target :: lib
     type(model_list_t) :: model_list
-    type(model_t), pointer :: model, model_hadrons
+    type(model_t), pointer :: model_hadrons
+    class(model_data_t), pointer :: model
     type(process_t), target :: process
     type(process_instance_t), target :: process_instance
     integer :: factorization_mode
@@ -2205,8 +2212,9 @@ contains
     call model_list%read_model (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"), &
          os_data, model_hadrons)
     call setup_testbed (var_str ("shower_2"), &
-         os_data, lib, model_list, model, process, process_instance)
-
+         os_data, lib, model_list, process, process_instance)
+    model => process%get_model_ptr ()
+    
     write (u, "(A)")  "* Set up trivial transform"
     write (u, "(A)")
     
@@ -2222,7 +2230,7 @@ contains
     select type (evt_trivial)
     type is (evt_trivial_t)
        call evt_trivial%write (u)
-       call write_separator_double (u)
+       call write_separator (u, 2)
     end select
 
     write (u, "(A)")
@@ -2248,7 +2256,7 @@ contains
     select type (evt_shower)
     type is (evt_shower_t)
        call evt_shower%write (u, testflag = .true.)
-       call write_separator_double (u)
+       call write_separator (u, 2)
     end select
 
     write (u, "(A)")
@@ -2259,7 +2267,9 @@ contains
     call process_instance%final ()
     call process%final ()
     call lib%final ()
-    call model_list%final ()
+    call model_hadrons%final ()
+    deallocate (model_hadrons)
+    !    call model_list%final ()    ! no, would deallocate model twice
     call syntax_model_file_final ()
     
     write (u, "(A)")

@@ -1,4 +1,4 @@
-(* $Id: modellib_BSM.mli 5351 2014-02-22 11:50:48Z msekulla $
+(* $Id: modellib_BSM.mli 6235 2014-10-29 17:47:56Z jr_reuter $
 
    Copyright (C) 1999-2014 by
 
@@ -47,6 +47,7 @@ module THDM : THDM_flags
 module THDM_CKM : THDM_flags
 module TwoHiggsDoublet : functor (F : THDM_flags) -> Model.Gauge with module Ch = Charges.QQ
 module Template : functor (F : BSM_flags) -> Model.Gauge with module Ch = Charges.QQ
+module HSExt : functor (F : BSM_flags) -> Model.Gauge with module Ch = Charges.QQ
 
 module type Threeshl_options =
   sig

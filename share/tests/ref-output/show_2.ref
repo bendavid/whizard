@@ -1,6 +1,7 @@
 ?openmp_logging = false
 ?vis_history = false
 ?integration_timer = false
+| Switching to model 'SM'
 | Process library 'show_2_lib': recorded process 'show_2_p1'
 error_threshold =  1.000000000000E-08
 | Integrate: current process library needs compilation
@@ -146,23 +147,25 @@ Expression: analysis: [undefined]
 sqrts =  1.400000000000E+04
 $lhapdf_dir = "/lhapdf/dir"
 ?unweighted = true
-e1* = PDG(11)
-me =  5.109970000000E-04
+SM.me =>  5.109970000000E-04
 [user variable] foo = 42
 | cleared: sqrts
 | cleared: $lhapdf_dir
 | cleared: ?unweighted
 ******************************************************************************
-*** ERROR: clear: variable 'e1' is locked and can't be cleared
+*** ERROR: clear: variable 'real_precision' is locked and can't be cleared
 ******************************************************************************
 |             (WHIZARD run continues)
-| cleared: me
+******************************************************************************
+*** ERROR: clear: variable 'me' is a model variable and can't be cleared
+******************************************************************************
+|             (WHIZARD run continues)
 | cleared: foo
 sqrts = [unknown real]
 $lhapdf_dir = [unknown string]
 ?unweighted = [unknown logical]
-e1* = PDG(11)
-me = [unknown real]
+SM.e1* = PDG(11)
+SM.me =>  5.109970000000E-04
 [user variable] foo = [unknown integer]
 [user variable] i = 2
 | expect: success
@@ -171,6 +174,6 @@ me = [unknown real]
 | cleared: expect
 | Summary of value checks:
 |   Failures: 0 / Total: 0
-| There were  1 error(s) and   1 warning(s).
+| There were  2 error(s) and   1 warning(s).
 | WHIZARD run finished.
 |=============================================================================|

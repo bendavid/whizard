@@ -3,8 +3,8 @@
 ?integration_timer = false
 phs_off_shell = 1
 phs_t_channel = 2
-SM.me =  0.000000000000E+00
-SM.mmu =  0.000000000000E+00
+SM.me =>  0.000000000000E+00
+SM.mmu =>  0.000000000000E+00
 seed = 0
 | Process library 'smtest_2_lib': recorded process 'smtest_2_cc'
 sqrts =  5.000000000000E+02

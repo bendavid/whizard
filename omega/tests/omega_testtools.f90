@@ -1,18 +1,18 @@
-!  $Id: omegalib.nw 5434 2014-03-06 18:17:45Z msekulla $
+!  $Id: omegalib.nw 6301 2014-11-25 09:34:00Z bchokoufe $
 !
-!  Copyright (C) 1999-2009 by 
+!  Copyright (C) 1999-2009 by
 !      Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !      Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !      Juergen Reuter <juergen.reuter@desy.de>
 !
 !  WHIZARD is free software; you can redistribute it and/or modify it
-!  under the terms of the GNU General Public License as published by 
+!  under the terms of the GNU General Public License as published by
 !  the Free Software Foundation; either version 2, or (at your option)
 !  any later version.
 !
 !  WHIZARD is distributed in the hope that it will be useful, but
 !  WITHOUT ANY WARRANTY; without even the implied warranty of
-!  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+!  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 !  GNU General Public License for more details.
 !
 !  You should have received a copy of the GNU General Public License
@@ -24,6 +24,7 @@ module omega_testtools
   use kinds
   implicit none
   private
+  real(kind=default), parameter, private :: ABS_THRESHOLD_DEFAULT = 1E-17
   real(kind=default), parameter, private :: THRESHOLD_DEFAULT = 0.6
   real(kind=default), parameter, private :: THRESHOLD_WARN = 0.8
   public :: agreement
@@ -243,17 +244,18 @@ contains
        failed = .true.
     end if
     if (present (passed)) then
-       passed = passed .and. .not.failed 
+       passed = passed .and. .not.failed
     end if
   end subroutine expect_integer
-  subroutine expect_real (x, x0, msg, passed, threshold, quiet)
+  subroutine expect_real (x, x0, msg, passed, threshold, quiet, abs_threshold)
     real(kind=default), intent(in) :: x, x0
     character(len=*), intent(in) :: msg
     logical, intent(inout), optional :: passed
     real(kind=default), intent(in), optional :: threshold
+    real(kind=default), intent(in), optional :: abs_threshold
     logical, intent(in), optional :: quiet
     logical :: failed, verbose
-    real(kind=default) :: agreement_threshold
+    real(kind=default) :: agreement_threshold, abs_agreement_threshold
     character(len=*), parameter :: fmt = "(1X,A,': ',A,' at ',I4,'%')"
     character(len=*), parameter :: fmt_verbose = "(1X,A,': ',A,' at ',I4,'%'," // &
          "' [expected ',E10.3,', got ',E10.3,']')"
@@ -278,7 +280,13 @@ contains
        else
           agreement_threshold = THRESHOLD_DEFAULT
        end if
-       if (a >= agreement_threshold) then
+       if (present (abs_threshold)) then
+          abs_agreement_threshold = abs_threshold
+       else
+          abs_agreement_threshold = ABS_THRESHOLD_DEFAULT
+       end if
+       if (a >= agreement_threshold .or. &
+           max(abs(x), abs(x0)) <= abs_agreement_threshold) then
           if (verbose) then
              if (a >= THRESHOLD_WARN) then
                 write (unit = *, fmt = fmt) msg, "passed", int (a * 100)
@@ -292,17 +300,18 @@ contains
        end if
     end if
     if (present (passed)) then
-       passed = passed .and. .not.failed 
+       passed = passed .and. .not.failed
     end if
   end subroutine expect_real
-  subroutine expect_complex (x, x0, msg, passed, threshold, quiet)
+  subroutine expect_complex (x, x0, msg, passed, threshold, quiet, abs_threshold)
     complex(kind=default), intent(in) :: x, x0
     character(len=*), intent(in) :: msg
     logical, intent(inout), optional :: passed
     real(kind=default), intent(in), optional :: threshold
+    real(kind=default), intent(in), optional :: abs_threshold
     logical, intent(in), optional :: quiet
     logical :: failed, verbose
-    real(kind=default) :: agreement_threshold
+    real(kind=default) :: agreement_threshold, abs_agreement_threshold
     character(len=*), parameter :: fmt = "(1X,A,': ',A,' at ',I4,'%')"
     character(len=*), parameter :: fmt_verbose = "(1X,A,': ',A,' at ',I4,'%'," // &
          "' [expected (',E10.3,',',E10.3,'), got (',E10.3,',',E10.3,')]')"
@@ -329,7 +338,13 @@ contains
        else
           agreement_threshold = THRESHOLD_DEFAULT
        end if
-       if (a >= agreement_threshold) then
+       if (present (abs_threshold)) then
+          abs_agreement_threshold = abs_threshold
+       else
+          abs_agreement_threshold = ABS_THRESHOLD_DEFAULT
+       end if
+       if (a >= agreement_threshold .or. &
+           max(abs(x), abs(x0)) <= abs_agreement_threshold) then
           if (verbose) then
              if (a >= THRESHOLD_WARN) then
                 write (unit = *, fmt = fmt) msg, "passed", int (a * 100)
@@ -343,7 +358,7 @@ contains
              write (unit = *, fmt = fmt_phase) msg, "failed", int (a * 100), &
                   int (a_modulus * 100), &
                   atan2 (real (x, kind=default), aimag (x)), &
-                  atan2 (real (x0, kind=default), aimag (x0)) 
+                  atan2 (real (x0, kind=default), aimag (x0))
           else
              write (unit = *, fmt = fmt_verbose) msg, "failed", int (a * 100), x0, x
           end if
@@ -351,7 +366,7 @@ contains
        end if
     end if
     if (present (passed)) then
-       passed = passed .and. .not.failed 
+       passed = passed .and. .not.failed
     end if
   end subroutine expect_complex
   subroutine expect_real_integer (x, x0, msg, passed, threshold, quiet)
@@ -456,7 +471,7 @@ contains
        end if
     end if
     if (present (passed)) then
-       passed = passed .and. .not.failed 
+       passed = passed .and. .not.failed
     end if
   end subroutine expect_zero_real
   subroutine expect_zero_complex (x, scale, msg, passed, threshold, quiet)

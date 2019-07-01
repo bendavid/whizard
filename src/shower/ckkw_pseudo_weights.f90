@@ -1,23 +1,24 @@
-! WHIZARD 2.2.0 Mar 03 2014
-
-!
-! Copyright (C) 1999-2014 by
+! WHIZARD 2.2.3 Nov 30 2014
+! 
+! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!
+!     
 !     with contributions from
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     and Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler
+!     Fabian Bach <fabian.bach@desy.de>
+!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Weiss <christian.weiss@desy.de>
+!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by
+! under the terms of the GNU General Public License as published by 
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -26,12 +27,12 @@
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! This file has been stripped of most comments.  For documentation, refer
-! to the source 'shower.nw'
+! to the source 'whizard.nw'
 
 module ckkw_pseudo_weights
 
   use kinds, only: default !NODEP!
-  use file_utils !NODEP!
+  use io_units !NODEP!
   use constants !NODEP!
 
   implicit none
@@ -62,7 +63,7 @@ contains
     type(ckkw_pseudo_shower_weights_t), intent(in) :: weights
     integer, intent(in), optional :: unit
     integer :: s, i, u
-    u = output_unit (unit); if (u < 0) return
+    u = given_output_unit (unit); if (u < 0) return
     s = size (weights%weights)
     write (u, "(1x,A)")  "CKKW (pseudo) shower weights: "
     do i = 1, s

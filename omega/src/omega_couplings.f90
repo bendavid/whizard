@@ -1,18 +1,18 @@
-!  $Id: omegalib.nw 5434 2014-03-06 18:17:45Z msekulla $
+!  $Id: omegalib.nw 6301 2014-11-25 09:34:00Z bchokoufe $
 !
-!  Copyright (C) 1999-2009 by 
+!  Copyright (C) 1999-2009 by
 !      Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !      Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !      Juergen Reuter <juergen.reuter@desy.de>
 !
 !  WHIZARD is free software; you can redistribute it and/or modify it
-!  under the terms of the GNU General Public License as published by 
+!  under the terms of the GNU General Public License as published by
 !  the Free Software Foundation; either version 2, or (at your option)
 !  any later version.
 !
 !  WHIZARD is distributed in the hope that it will be useful, but
 !  WITHOUT ANY WARRANTY; without even the implied warranty of
-!  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+!  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 !  GNU General Public License for more details.
 !
 !  You should have received a copy of the GNU General Public License
@@ -217,22 +217,22 @@ contains
     type(momentum), intent(in) :: k1, k2
     type(tensor), intent(in) :: t
     complex(kind=default) :: phi, t_tr
-    t_tr = t%t(0,0) - t%t(1,1) - t%t(2,2) - t%t(3,3)      
-    phi = g * s * (((t*k1)*k2) + ((t*k2)*k1) & 
-          - g * (m**2 + (k1*k2))*t_tr)/2.0_default
+    t_tr = t%t(0,0) - t%t(1,1) - t%t(2,2) - t%t(3,3)
+    phi = g * s * (((t*k1)*k2) + ((t*k2)*k1) &
+        - g * (m**2 + (k1*k2))*t_tr)/2.0_default
   end function s_gravs
   pure function grav_ss (g, m, k1, k2, s1, s2) result (t)
     complex(kind=default), intent(in) :: g, s1, s2
     real(kind=default), intent(in) :: m
     type(momentum), intent(in) :: k1, k2
-    type(tensor) :: t_metric, t 
+    type(tensor) :: t_metric, t
     t_metric%t = 0
     t_metric%t(0,0) = 1.0_default
     t_metric%t(1,1) = - 1.0_default
     t_metric%t(2,2) = - 1.0_default
     t_metric%t(3,3) = - 1.0_default
     t = g*s1*s2/2.0_default * (-(m**2 + (k1*k2)) * t_metric &
-         + (k1.tprod.k2) + (k2.tprod.k1))
+      + (k1.tprod.k2) + (k2.tprod.k1))
   end function grav_ss
   pure function v_gravv (g, m, k1, k2, t, v) result (vec)
     complex(kind=default), intent(in) :: g
@@ -244,7 +244,7 @@ contains
     real(kind=default) :: xi
     type(vector) :: vec
     xi = 1.0_default
-    t_tr = t%t(0,0) - t%t(1,1) - t%t(2,2) - t%t(3,3)      
+    t_tr = t%t(0,0) - t%t(1,1) - t%t(2,2) - t%t(3,3)
     vec = (-g)/ 2.0_default * (((k1*k2) + m**2) * &
          (t*v + v*t - t_tr * v) + t_tr * (k1*v) * k2 &
          - (k1*v) * ((k2*t) + (t*k2)) &
@@ -261,7 +261,7 @@ contains
     real(kind=default), intent(in) :: m
     real(kind=default) :: xi
     type(vector), intent (in) :: v1, v2
-    type(tensor) :: t_metric, t 
+    type(tensor) :: t_metric, t
     xi = 0.00001_default
     t_metric%t = 0
     t_metric%t(0,0) = 1.0_default
@@ -271,7 +271,7 @@ contains
     t = (-g)/2.0_default * ( &
          ((k1*k2) + m**2) * ( &
          (v1.tprod.v2) +  (v2.tprod.v1) - (v1*v2) * t_metric) &
-         + (v1*k2)*(v2*k1)*t_metric & 
+         + (v1*k2)*(v2*k1)*t_metric &
          - (k2*v1)*((v2.tprod.k1) + (k1.tprod.v2)) &
          - (k1*v2)*((v1.tprod.k2) + (k2.tprod.v1)) &
          + (v1*v2)*((k1.tprod.k2) + (k2.tprod.k1)))
@@ -335,7 +335,7 @@ contains
     complex(kind=default) :: tmp_s
     type(vector), intent(in) :: v1, v2
     type(tensor) :: tmp
-    type(tensor) :: t_metric, t 
+    type(tensor) :: t_metric, t
     t_metric%t = 0
     t_metric%t(0,0) =   1.0_default
     t_metric%t(1,1) = - 1.0_default
@@ -361,7 +361,7 @@ contains
     type(vector), intent(in) :: v1, v2
     type(momentum), intent(in) :: k1, k2
     type(tensor) :: tmp, tmp_v1k2, tmp_v2k1, tmp_k1k2, tmp2
-    type(tensor) :: t_metric, t 
+    type(tensor) :: t_metric, t
     t_metric%t = 0
     t_metric%t(0,0) =   1.0_default
     t_metric%t(1,1) = - 1.0_default
@@ -392,7 +392,7 @@ contains
          + ( t%t(0,0)-t%t(1,1)-t%t(2,2)-t%t(3,3) ) * (kout * v ) * kv &
          - (kout * v) * ( tmp * kv) &
          - (v* (t * kout) + kout * (t * v)) * kv &
-         + (kout* (t * kv) + kv * (t * kout)) * v) 
+         + (kout* (t * kv) + kv * (t * kout)) * v)
   end function v_t2v_t
   pure function t2_vv_d5_1 (g, v1, k1, v2, k2) result (t)
     complex(kind=default), intent(in) :: g
@@ -464,8 +464,8 @@ contains
     if (w > 0) then
       gg = exp(-(x - mu**2)**2/4.0_default/mu**2/w**2) * &
            sqrt(sqrt(PI/2)) / w / mu
-            else
-      gg = 1.0_default    
+      else
+      gg = 1.0_default
     end if
   end function gauss
   pure function pr_phi (p, m, w, phi) result (pphi)
@@ -473,21 +473,21 @@ contains
     type(momentum), intent(in) :: p
     real(kind=default), intent(in) :: m, w
     complex(kind=default), intent(in) :: phi
-    pphi = (1 / cmplx (p*p - m**2, m*w, kind=default)) * phi 
+    pphi = (1 / cmplx (p*p - m**2, m*w, kind=default)) * phi
   end function pr_phi
   pure function pj_phi (m, w, phi) result (pphi)
     complex(kind=default) :: pphi
     real(kind=default), intent(in) :: m, w
     complex(kind=default), intent(in) :: phi
-    pphi = (0, -1) * sqrt (PI / m / w) * phi 
+    pphi = (0, -1) * sqrt (PI / m / w) * phi
   end function pj_phi
   pure function pg_phi (p, m, w, phi) result (pphi)
-    complex(kind=default) :: pphi 
+    complex(kind=default) :: pphi
     type(momentum), intent(in) :: p
     real(kind=default), intent(in) :: m, w
     complex(kind=default), intent(in) :: phi
     pphi = ((0, 1) * gauss (p*p, m, w)) * phi
-  end function pg_phi  
+  end function pg_phi
   pure function pr_unitarity (p, m, w, e) result (pe)
     type(vector) :: pe
     type(momentum), intent(in) :: p
@@ -516,7 +516,7 @@ contains
     pv = p
     pe = - gauss (p*p, m, w) &
          * (e - (p*e / m**2) * pv)
-  end function pg_unitarity  
+  end function pg_unitarity
   pure function pr_feynman (p, e) result (pe)
     type(vector) :: pe
     type(momentum), intent(in) :: p
@@ -539,7 +539,7 @@ contains
     type(momentum), intent(in) :: p
     real(kind=default), intent(in) :: m, w, xi
     type(vector), intent(in) :: e
-    real(kind=default) :: p2 
+    real(kind=default) :: p2
     type(vector) :: pv
     p2 = p*p
     pv = p

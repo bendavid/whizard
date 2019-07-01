@@ -20,9 +20,9 @@ $method = "omega"
 | Process library 'pdf_builtin_1_lib': linking
 | Process library 'pdf_builtin_1_lib': loading
 | Process library 'pdf_builtin_1_lib': ... success.
-SM.ms =  0.000000000000E+00
-SM.me =  0.000000000000E+00
-SM.mmu =  0.000000000000E+00
+SM.ms =>  0.000000000000E+00
+SM.me =>  0.000000000000E+00
+SM.mmu =>  0.000000000000E+00
 $phs_method = "wood"
 $integration_method = "vamp"
 sqrts =  1.000000000000E+03

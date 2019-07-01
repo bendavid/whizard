@@ -29,6 +29,10 @@ dist_noinst_DATA = manual.tex $(PACKAGE).tex shower.tex \
 	book.hva custom.hva fancysection.hva Whizard-Logo.jpg \
 	$(MANUAL_PICS)
 
+## The WHIZARD documented source is assembled from various directories
+w_srcdir = $(top_srcdir)/src
+VPATH = $(srcdir):$(w_srcdir)/noweb-frame:$(w_srcdir)/utilities:$(w_srcdir)/testing:$(w_srcdir)/system:$(w_srcdir)/combinatorics:$(w_srcdir)/parsing:$(w_srcdir)/rng:$(w_srcdir)/physics:$(w_srcdir)/qft:$(w_srcdir)/types:$(w_srcdir)/matrix_elements:$(w_srcdir)/particles:$(w_srcdir)/beams:$(w_srcdir)/phase_space:$(w_srcdir)/mci:$(w_srcdir)/whizard-core
+
 MANUAL_PICS = \
    proc_4f-history.eps proc_4f-history.pdf \
    whizstruct.eps whizstruct.pdf cc10_1.eps cc10_1.pdf \
@@ -128,10 +132,26 @@ if NOWEB_AVAILABLE
 shower.tex: $(top_srcdir)/src/shower/shower.nw
 	$(NOWEAVE) -delay $< | $(CPIF) $@
 
+WHIZARD_NOWEB_SRC = \
+  whizard-prelude.nw \
+  utilities.nw \
+  testing.nw \
+  system.nw \
+  combinatorics.nw \
+  parsing.nw rng.nw physics.nw qft.nw \
+  types.nw \
+  matrix_elements.nw \
+  particles.nw \
+  beams.nw \
+  phase_space.nw \
+  mci.nw \
+  whizard.nw \
+  whizard-postlude.nw
+
 $(PACKAGE).tex: shower.tex
-$(PACKAGE).tex: $(top_srcdir)/src/whizard-core/$(PACKAGE).nw 	
+$(PACKAGE).tex: $(WHIZARD_NOWEB_SRC)
 	-rm -f $@
-	$(NOWEAVE) -delay $< | $(CPIF) $@
+	$(NOWEAVE) -delay $^ | $(CPIF) $@
 
 gamelan.sty: $(top_srcdir)/src/gamelan/gamelan.nw
 	$(NOTANGLE) -R$@ $< | $(CPIF) $@

@@ -71,7 +71,7 @@ Warning: No cuts have been defined.
 ?write_raw = false
 ?check_event_file = false
 $sample = "reweight_3b"
-QED.ee =  6.057200000000E-01
+QED.ee =>  6.057200000000E-01
 | Starting simulation for process 'reweight_3_p2'
 | Simulate: process 'reweight_3_p2' needs initialization
 | RNG: Initializing TAO random-number generator

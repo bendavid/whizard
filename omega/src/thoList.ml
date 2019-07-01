@@ -1,4 +1,4 @@
-(* $Id: thoList.ml 4926 2013-12-04 12:35:06Z jr_reuter $
+(* $Id: thoList.ml 6222 2014-10-13 08:40:53Z ohl $
 
    Copyright (C) 1999-2014 by
 
@@ -265,7 +265,7 @@ let complement_index_sets n index_set_lists =
     List.fold_left (fun acc s -> ISet.cardinal s + acc) 0 index_sets in
   if size_index_sets <> ISet.cardinal index_set then
     raise Overlapping_indices
-  else if ISet.exists (fun i -> i < 0 or i >= n) index_set then
+  else if ISet.exists (fun i -> i < 0 || i >= n) index_set then
     raise Overlapping_indices
   else
     match ISet.elements (ISet.diff (iset_of_list (range 0 (pred n))) index_set) with

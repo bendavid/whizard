@@ -1,4 +1,4 @@
-! WHIZARD 2.2.2 July 6 2014
+! WHIZARD 2.2.3 Nov 30 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,8 +6,10 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
+!     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     Christian Weiss <christian.weiss@desy.de>
+!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -29,20 +31,22 @@
 
 module slha_interface
 
-  use kinds, only: default !NODEP!
-  use iso_varying_string, string_t => varying_string !NODEP!
-  use limits, only: EOF, VERSION_STRING !NODEP!
-  use constants !NODEP!
-  use file_utils !NODEP!
-  use diagnostics !NODEP!
+  use kinds, only: default
+  use iso_varying_string, string_t => varying_string
+  use io_units
+  use constants
+  use string_utils, only: upper_case
   use unit_tests
+  use system_defs, only: VERSION_STRING
+  use system_defs, only: EOF
+  use diagnostics
   use os_interface
   use ifiles
   use lexers
   use syntax_rules
   use parser
   use variables
-  use expressions
+  use eval_trees
   use models
 
   implicit none
@@ -538,45 +542,41 @@ contains
   end subroutine write_real_matrix_element
 
   subroutine slha_interpret_parse_tree &
-       (parse_tree, os_data, model_list, model, input, spectrum, decays)
+       (parse_tree, model, input, spectrum, decays)
     type(parse_tree_t), intent(in) :: parse_tree
-    type(os_data_t), intent(in) :: os_data
-    type(model_list_t), intent(inout) :: model_list
-    type(model_t), pointer, intent(inout) :: model
+    type(model_t), intent(inout), target :: model
     logical, intent(in) :: input, spectrum, decays
     logical :: errors
     integer :: mssm_type
-    call slha_handle_MODSEL (parse_tree, os_data, model_list, model, mssm_type)
-    if (associated (model)) then
-       if (input) then
-          call slha_handle_SMINPUTS (parse_tree, model)
-          call slha_handle_MINPAR (parse_tree, model, mssm_type)
-       end if
-       if (spectrum) then
-          call slha_handle_info_block (parse_tree, "SPINFO", errors)
-          if (errors)  return
-          call slha_handle_MASS (parse_tree, model)
-          call slha_handle_matrix_block (parse_tree, "NMIX", "mn_", 4, 4, model)
-          call slha_handle_matrix_block (parse_tree, "NMNMIX", "mixn_", 5, 5, model)
-          call slha_handle_matrix_block (parse_tree, "UMIX", "mu_", 2, 2, model)
-          call slha_handle_matrix_block (parse_tree, "VMIX", "mv_", 2, 2, model)
-          call slha_handle_matrix_block (parse_tree, "STOPMIX", "mt_", 2, 2, model)
-          call slha_handle_matrix_block (parse_tree, "SBOTMIX", "mb_", 2, 2, model)
-          call slha_handle_matrix_block (parse_tree, "STAUMIX", "ml_", 2, 2, model)
-          call slha_handle_matrix_block (parse_tree, "NMHMIX", "mixh0_", 3, 3, model)
-          call slha_handle_matrix_block (parse_tree, "NMAMIX", "mixa0_", 2, 3, model)
-          call slha_handle_ALPHA (parse_tree, model)
-          call slha_handle_HMIX (parse_tree, model)
-          call slha_handle_NMSSMRUN (parse_tree, model)
-          call slha_handle_matrix_block (parse_tree, "AU", "Au_", 3, 3, model)
-          call slha_handle_matrix_block (parse_tree, "AD", "Ad_", 3, 3, model)
-          call slha_handle_matrix_block (parse_tree, "AE", "Ae_", 3, 3, model)
-       end if
-       if (decays) then
-          call slha_handle_info_block (parse_tree, "DCINFO", errors)
-          if (errors)  return
-          call slha_handle_decays (parse_tree, model)
-       end if
+    call slha_handle_MODSEL (parse_tree, model, mssm_type)
+    if (input) then
+       call slha_handle_SMINPUTS (parse_tree, model)
+       call slha_handle_MINPAR (parse_tree, model, mssm_type)
+    end if
+    if (spectrum) then
+       call slha_handle_info_block (parse_tree, "SPINFO", errors)
+       if (errors)  return
+       call slha_handle_MASS (parse_tree, model)
+       call slha_handle_matrix_block (parse_tree, "NMIX", "mn_", 4, 4, model)
+       call slha_handle_matrix_block (parse_tree, "NMNMIX", "mixn_", 5, 5, model)
+       call slha_handle_matrix_block (parse_tree, "UMIX", "mu_", 2, 2, model)
+       call slha_handle_matrix_block (parse_tree, "VMIX", "mv_", 2, 2, model)
+       call slha_handle_matrix_block (parse_tree, "STOPMIX", "mt_", 2, 2, model)
+       call slha_handle_matrix_block (parse_tree, "SBOTMIX", "mb_", 2, 2, model)
+       call slha_handle_matrix_block (parse_tree, "STAUMIX", "ml_", 2, 2, model)
+       call slha_handle_matrix_block (parse_tree, "NMHMIX", "mixh0_", 3, 3, model)
+       call slha_handle_matrix_block (parse_tree, "NMAMIX", "mixa0_", 2, 3, model)
+       call slha_handle_ALPHA (parse_tree, model)
+       call slha_handle_HMIX (parse_tree, model)
+       call slha_handle_NMSSMRUN (parse_tree, model)
+       call slha_handle_matrix_block (parse_tree, "AU", "Au_", 3, 3, model)
+       call slha_handle_matrix_block (parse_tree, "AD", "Ad_", 3, 3, model)
+       call slha_handle_matrix_block (parse_tree, "AE", "Ae_", 3, 3, model)
+    end if
+    if (decays) then
+       call slha_handle_info_block (parse_tree, "DCINFO", errors)
+       if (errors)  return
+       call slha_handle_decays (parse_tree, model)
     end if
   end subroutine slha_interpret_parse_tree
 
@@ -620,16 +620,12 @@ contains
     errors = size (msg) > 0
   end subroutine slha_handle_info_block
 
-  subroutine slha_handle_MODSEL &
-       (parse_tree, os_data, model_list, model, mssm_type)
+  subroutine slha_handle_MODSEL (parse_tree, model, mssm_type)
     type(parse_tree_t), intent(in) :: parse_tree
-    type(os_data_t), intent(in) :: os_data
-    type(model_list_t), intent(inout) :: model_list
-    type(model_t), pointer, intent(inout) :: model
+    type(model_t), intent(in), target :: model
     integer, intent(out) :: mssm_type
     type(parse_node_t), pointer :: pn_block, pn_data, pn_item
     type(string_t) :: model_name
-    type(string_t) :: filename
     pn_block => slha_get_block_ptr &
          (parse_tree, var_str ("MODSEL"), required=.true.)
     call slha_find_index_ptr (pn_block, pn_data, pn_item, 1)
@@ -659,33 +655,32 @@ contains
       call msg_fatal (" CP violation is currently not supported by WHIZARD.")   
     end if
     select case (char (model_name))
-      case ("MSSM")
-         select case (char (model%get_name ()))
-           case ("MSSM","MSSM_CKM","MSSM_Grav","MSSM_Hgg")
-              model_name = model%get_name ()
-           case default
-              call msg_fatal (" User-defined model and model in SLHA input file do not match.") 
-         end select 
-      case ("NMSSM")     
-         select case (char (model%get_name ()))
-           case ("NMSSM","NMSSM_CKM","NMSSM_Hgg")
-              model_name = model%get_name ()
-           case default
-              call msg_fatal (" User-defined model and model in SLHA input file do not match.") 
-         end select 
-      case default
-         call msg_fatal (" SLHA model selection failure.")
-    end select     
-    filename = model_name // ".mdl"
-    model => null ()
-    call model_list%read_model (model_name, filename, os_data, model)
-    if (associated (model)) then
-       call msg_message ("SLHA: Initializing model '" &
-            // char (model_name) // "'")
-    else
-       call msg_fatal ("SLHA: Initialization failed for model '" &
-            // char (model_name) // "'")
-    end if
+    case ("MSSM")
+       select case (char (model%get_name ()))
+       case ("MSSM","MSSM_CKM","MSSM_Grav","MSSM_Hgg")
+          model_name = model%get_name ()
+       case default
+          call msg_fatal ("Selected model '" &
+               // char (model%get_name ()) // "' does not match model '" &
+               // char (model_name) // "' in SLHA input file.") 
+          return
+       end select
+    case ("NMSSM")       
+       select case (char (model%get_name ()))
+       case ("NMSSM","NMSSM_CKM","NMSSM_Hgg")
+          model_name = model%get_name ()
+       case default
+          call msg_fatal ("Selected model '" &
+               // char (model%get_name ()) // "' does not match model '" &
+               // char (model_name) // "' in SLHA input file.") 
+          return
+       end select
+    case default
+       call msg_bug ("SLHA model name '" &
+            // char (model_name) // "' not recognized.")
+       return
+    end select
+    call msg_message ("SLHA: Initializing model '" // char (model_name) // "'")
   end subroutine slha_handle_MODSEL
 
   subroutine slha_write_MODSEL (u, model, mssm_type)
@@ -695,7 +690,7 @@ contains
     type(var_list_t), pointer :: var_list
     integer :: model_id
     type(string_t) :: mtype_string
-    var_list => model_get_var_list_ptr (model)
+    var_list => model%get_var_list_ptr ()
     if (var_list_exists (var_list, var_str ("mtype"))) then
        mssm_type = nint (var_list_get_rval (var_list, var_str ("mtype")))
     else
@@ -733,7 +728,7 @@ contains
     real(default) :: ee, vv, cw_sw, cw2, mW
     real(default) :: mb, mtop, mtau
     type(var_list_t), pointer :: var_list
-    var_list => model_get_var_list_ptr (model)
+    var_list => model%get_var_list_ptr ()
     pn_block => slha_get_block_ptr &
          (parse_tree, var_str ("SMINPUTS"), required=.true.)
     if (.not. (associated (pn_block)))  return
@@ -769,7 +764,7 @@ contains
     integer, intent(in) :: u
     type(model_t), intent(in), target :: model
     type(var_list_t), pointer :: var_list
-    var_list => model_get_var_list_ptr (model)
+    var_list => model%get_var_list_ptr ()
     call write_block_header (u, "SMINPUTS", "SM input parameters")
     call write_real_data_item (u, 1, var_str ("alpha_em_i"), var_list, &
          "Inverse electromagnetic coupling alpha (Z pole)")
@@ -793,7 +788,7 @@ contains
     integer, intent(in) :: mssm_type
     type(var_list_t), pointer :: var_list
     type(parse_node_t), pointer :: pn_block
-    var_list => model_get_var_list_ptr (model)
+    var_list => model%get_var_list_ptr ()
     call var_list_set_real (var_list, &
          var_str ("mtype"),  real(mssm_type, default), is_known=.true.)
     pn_block => slha_get_block_ptr &
@@ -827,7 +822,7 @@ contains
     type(model_t), intent(in), target :: model
     integer, intent(in) :: mssm_type
     type(var_list_t), pointer :: var_list
-    var_list => model_get_var_list_ptr (model)
+    var_list => model%get_var_list_ptr ()
     call write_block_header (u, "MINPAR", "Basic SUSY input parameters")
     select case (mssm_type)
     case (MSSM_SUGRA)
@@ -891,7 +886,7 @@ contains
           pn_mass => parse_node_get_next_ptr (pn_code)
           if (associated (pn_mass)) then
              mass = get_real_parameter (pn_mass)
-             call model_set_particle_mass (model, pdg, mass)
+             call model%set_field_mass (pdg, mass)
           else
              call msg_error ("SLHA: Block MASS: Missing mass value")
           end if
@@ -915,7 +910,7 @@ contains
        pdg = get_integer_parameter (pn_code)
        pn_width => parse_node_get_next_ptr (pn_code)
        width = get_real_parameter (pn_width)
-       call model_set_particle_width (model, pdg, width)
+       call model%set_field_width (pdg, width)
        pn_decay => slha_get_next_decay_ptr (pn_decay)
     end do
   end subroutine slha_handle_decays
@@ -930,7 +925,7 @@ contains
     type(var_list_t), pointer :: var_list
     integer :: i, j
     character(len=len(var_prefix)+2) :: var_name
-    var_list => model_get_var_list_ptr (model)
+    var_list => model%get_var_list_ptr ()
     pn_block => slha_get_block_ptr &
          (parse_tree, var_str (block_name), required=.false.)
     if (.not. (associated (pn_block)))  return
@@ -948,7 +943,7 @@ contains
     type(parse_node_t), pointer :: pn_block, pn_line, pn_data, pn_item
     type(var_list_t), pointer :: var_list
     real(default) :: al_h
-    var_list => model_get_var_list_ptr (model)
+    var_list => model%get_var_list_ptr ()
     pn_block => slha_get_block_ptr &
          (parse_tree, var_str ("ALPHA"), required=.false.)
     if (.not. (associated (pn_block)))  return
@@ -967,7 +962,7 @@ contains
     type(model_t), intent(inout), target :: model
     type(parse_node_t), pointer :: pn_block
     type(var_list_t), pointer :: var_list
-    var_list => model_get_var_list_ptr (model)
+    var_list => model%get_var_list_ptr ()
     pn_block => slha_get_block_ptr &
          (parse_tree, var_str ("HMIX"), required=.false.)
     if (.not. (associated (pn_block)))  return
@@ -980,7 +975,7 @@ contains
     type(model_t), intent(inout), target :: model
     type(parse_node_t), pointer :: pn_block
     type(var_list_t), pointer :: var_list
-    var_list => model_get_var_list_ptr (model)
+    var_list => model%get_var_list_ptr ()
     pn_block => slha_get_block_ptr &
          (parse_tree, var_str ("NMSSMRUN"), required=.false.)
     if (.not. (associated (pn_block)))  return
@@ -1031,19 +1026,18 @@ contains
   end subroutine slha_parse_file
 
   subroutine slha_read_file &
-       (file, os_data, model_list, model, input, spectrum, decays)
+       (file, os_data, model, input, spectrum, decays)
     type(string_t), intent(in) :: file
     type(os_data_t), intent(in) :: os_data
-    type(model_list_t), intent(inout) :: model_list
-    type(model_t), pointer, intent(inout) :: model
+    type(model_t), intent(inout), target :: model
     logical, intent(in) :: input, spectrum, decays
     type(parse_tree_t) :: parse_tree
     call slha_parse_file (file, os_data, parse_tree)
     if (associated (parse_tree_get_root_ptr (parse_tree))) then
        call slha_interpret_parse_tree &
-            (parse_tree, os_data, model_list, model, input, spectrum, decays)
+            (parse_tree, model, input, spectrum, decays)
        call parse_tree_final (parse_tree)
-       call model_parameters_update (model)
+       call model%update_parameters ()
     end if
   end subroutine slha_read_file
 
@@ -1119,14 +1113,14 @@ contains
     write (u, "(A)")  "* Interpreting the parse tree"
     write (u, "(A)")    
     
-    call slha_interpret_parse_tree (parse_tree, os_data, model_list, model, &
+    call slha_interpret_parse_tree (parse_tree, model, &
          input=.true., spectrum=.true., decays=.true.)    
     call parse_tree_final (parse_tree)
 
     write (u, "(A)")  "* Writing out the list of variables (reals only):"
     write (u, "(A)")    
     
-    call var_list_write (model_get_var_list_ptr (model), &
+    call var_list_write (model%get_var_list_ptr (), &
          only_type = V_REAL, unit = u)
 
     write (u, "(A)")

@@ -43,11 +43,14 @@ noinst_LTLIBRARIES = libpythia_wo.la
 if LHAPDF5_AVAILABLE
 libpythia_wo_la_SOURCES = pythia.f
 else
+if LHAPDF6_AVAILABLE
+libpythia_wo_la_SOURCES = pythia.f
+else
 libpythia_wo_la_SOURCES = pythia.f pythia_pdf.f
 endif
-
 endif	
 
+endif
 ########################################################################
 ## Default Fortran compiler options
 

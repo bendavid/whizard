@@ -1,4 +1,4 @@
-(* $Id: pmap.ml 4926 2013-12-04 12:35:06Z jr_reuter $
+(* $Id: pmap.ml 6222 2014-10-13 08:40:53Z ohl $
 
    Copyright (C) 1999-2014 by
 
@@ -113,7 +113,7 @@ module Tree  =
       | Empty -> invalid_arg "Pmap.join"
       | Node (l', x', d', r', _) as t' ->
           let d = height l' - height r' in
-          if d < -2 or d > 2 then
+          if d < -2 || d > 2 then
             join l' x' d' r'
           else
             t'

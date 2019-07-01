@@ -1,4 +1,4 @@
-(* $Id: comphep.ml 5864 2014-06-02 13:12:47Z ohl $
+(* $Id: comphep.ml 6222 2014-10-13 08:40:53Z ohl $
 
    Copyright (C) 1999-2014 by
 
@@ -23,8 +23,8 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 let rcs_file = RCS.parse "Comphep" ["Plagiarizing CompHEP models ..."]
-    { RCS.revision = "$Revision: 5864 $";
-      RCS.date = "$Date: 2014-06-02 15:12:47 +0200 (Mon, 02 Jun 2014) $";
+    { RCS.revision = "$Revision: 6222 $";
+      RCS.date = "$Date: 2014-10-13 10:40:53 +0200 (Mon, 13 Oct 2014) $";
       RCS.author = "$Author: ohl $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/omega/src/comphep.ml $" }
@@ -378,7 +378,7 @@ module Model =
        input_lagrangian (dir ^ "/lgrng" ^ idx ^ ".mdl"))
 
     let flavors_of_particles particles =
-      let flavors = Array.create (count_flavors particles) dummy_flavor in
+      let flavors = Array.make (count_flavors particles) dummy_flavor in
       ignore (List.fold_left (fun n p ->
         match p.p_symbol with
         | Selfconjugate f ->

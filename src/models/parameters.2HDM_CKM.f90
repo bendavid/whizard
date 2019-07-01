@@ -60,7 +60,7 @@ module parameters_2hdm_ckm
   real(default), public :: cotanthw2, sinthw2, &
        R11, R12, R13, R21, R22, R23, R31, R32, R33, &
        lamb1, lamb2, lamb3, lamb4, lamb5R, lamb5I, lamb6R, &
-       lamb6I, lamb7R, lamb7I, sqrt2
+       lamb6I, lamb7R, lamb7I
   complex(default), public :: gAHpHm, gZHpHm, gZh1h2, gZh1h3, gZh2h3, &
        gWpHmh1, gWpHmh2, gWpHmh3, gWmHph1, gWmHph2, gWmHph3, gh1ZZ, &
        gh2ZZ, gh3ZZ, gh1WpWm, gh2WpWm, gh3WpWm, ghhWpWm, ghhZZ, gHpHmAA, &
@@ -355,7 +355,6 @@ contains
     sin2thw = par%sw**2
     costhw = par%cw
     tanthw = sinthw/costhw
-    sqrt2 = sqrt(2.0_default)
     qelep = - 1
     qeup = 2.0_default / 3.0_default
     qedwn = - 1.0_default / 3.0_default

@@ -1,4 +1,4 @@
-(* $Id: combinatorics.ml 4926 2013-12-04 12:35:06Z jr_reuter $
+(* $Id: combinatorics.ml 6055 2014-07-31 16:46:42Z bchokoufe $
 
    Copyright (C) 1999-2014 by
 
@@ -33,16 +33,17 @@ let rec factorial' fn n =
     factorial' (n * fn) (pred n)
 
 let factorial n =
-  if 0 <= n && n <= 12 then
-    factorial' 1 n
+  let result = factorial' 1 n in
+  if result < 0 then
+    invalid_arg "Combinatorics.factorial overflow"
   else
-    invalid_arg "Combinatorics.factorial"
+    result
 
 (* \begin{multline}
      \binom{n}{k} = \frac{n!}{k!(n-k)!}
          = \frac{n(n-1)\cdots(n-k+1)}{k(k-1)\cdots1} \\
          = \frac{n(n-1)\cdots(k+1)}{(n-k)(n-k-1)\cdots1} =
-       \begin{cases} 
+       \begin{cases}
          B_{n-k+1}(n,k) & \text{for $k \le \lfloor n/2 \rfloor$} \\
          B_{k+1}(n,n-k) & \text{for $k >   \lfloor n/2 \rfloor$}
        \end{cases}
@@ -50,7 +51,7 @@ let factorial n =
    where
    \begin{equation}
      B_{n_{\min}}(n,k) =
-       \begin{cases} 
+       \begin{cases}
          n B_{n_{\min}}(n-1,k)           & \text{for $n \ge n_{\min}$} \\
          \frac{1}{k} B_{n_{\min}}(n,k-1) & \text{for $k > 1$} \\
          1                               & \text{otherwise}
@@ -186,7 +187,7 @@ let split n l =
                 (\lbrack a_2,a'_1,\ldots\rbrack, b_2),\ldots,
                 (\lbrack a_m,a'_1,\ldots\rbrack, b_m)\rbrack
    \end{multline}
-   (where some of the result can be filtered out), assumed to be 
+   (where some of the result can be filtered out), assumed to be
    prepended to the final argument. *)
 
 let rec multi_split' attach_to_fst n size splits =
@@ -196,7 +197,7 @@ let rec multi_split' attach_to_fst n size splits =
     multi_split' attach_to_fst (pred n) size
       (List.fold_left (fun acc (parts, tail) ->
         attach_to_fst (ordered_split size tail) parts acc) [] splits)
-      
+
 let attach_to_fst_unsorted splits parts acc =
   List.fold_left (fun acc' (p, rest) -> (p :: parts, rest) :: acc') acc splits
 

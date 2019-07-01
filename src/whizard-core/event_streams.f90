@@ -1,4 +1,4 @@
-! WHIZARD 2.2.2 July 6 2014
+! WHIZARD 2.2.3 Nov 30 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,8 +6,10 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
+!     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     Christian Weiss <christian.weiss@desy.de>
+!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -29,12 +31,13 @@
 
 module event_streams
   
-  use kinds, only: default !NODEP!
-  use iso_varying_string, string_t => varying_string !NODEP!
-  use file_utils !NODEP!
-  use diagnostics !NODEP!
+  use kinds, only: default
+  use iso_varying_string, string_t => varying_string
+  use io_units
   use unit_tests
+  use diagnostics
   use variables
+  use model_data
   use models
   use processes
   use events
@@ -117,6 +120,7 @@ contains
     integer, intent(in) :: u
     type(event_stream_array_t) :: es_array
     type(rt_data_t) :: global
+    type(model_data_t), target :: model
     type(event_t), allocatable, target :: event
     type(process_t), allocatable, target :: process
     type(process_instance_t), allocatable, target :: process_instance
@@ -134,13 +138,15 @@ contains
     call global%init_fallback_model &
          (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"))
 
+    call model%init_test ()
+
     write (u, "(A)")  "* Generate test process event"
     write (u, "(A)")
 
     allocate (process)
     process_ptr%ptr => process
     allocate (process_instance)
-    call prepare_test_process (process, process_instance, global%model_list)
+    call prepare_test_process (process, process_instance, model)
     call process_instance%setup_event_data ()
 
     allocate (event)
@@ -184,6 +190,8 @@ contains
     call event%write (u)
     
     call global%final ()
+
+    call model%final ()
     call syntax_model_file_final ()
 
     write (u, "(A)")
@@ -195,6 +203,7 @@ contains
     integer, intent(in) :: u
     type(event_stream_array_t) :: es_array
     type(rt_data_t) :: global
+    type(model_data_t), target :: model
     type(event_t), allocatable, target :: event
     type(process_t), allocatable, target :: process
     type(process_instance_t), allocatable, target :: process_instance
@@ -212,13 +221,15 @@ contains
     call global%init_fallback_model &
          (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"))
 
+    call model%init_test ()
+
     write (u, "(A)")  "* Generate test process event"
     write (u, "(A)")
 
     allocate (process)
     process_ptr%ptr => process
     allocate (process_instance)
-    call prepare_test_process (process, process_instance, global%model_list)
+    call prepare_test_process (process, process_instance, model)
     call process_instance%setup_event_data ()
 
     allocate (event)
@@ -290,6 +301,8 @@ contains
     call event%write (u)
     
     call global%final ()
+    
+    call model%final ()
     call syntax_model_file_final ()
 
     write (u, "(A)")
@@ -319,7 +332,7 @@ contains
     call global%init_fallback_model &
          (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"))
     
-    call var_list_set_log (global%var_list, var_str ("?check_event_file"), &
+    call global%set_log (var_str ("?check_event_file"), &
          .true., is_known = .true.)
 
     allocate (process)
@@ -359,7 +372,7 @@ contains
     write (u, "(A)") "* Repeat ignoring checksum"
     write (u, "(A)")
 
-    call var_list_set_log (global%var_list, var_str ("?check_event_file"), &
+    call global%set_log (var_str ("?check_event_file"), &
          .false., is_known = .true.)
     call es_array%init (sample, empty_string_array, [process_ptr], global, &
          data, input = var_str ("raw"))
@@ -379,7 +392,7 @@ contains
     class(event_stream_array_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u, i
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     write (u, "(1x,A)")  "Event stream array:"
     if (allocated (object%entry)) then
        select case (size (object%entry))

@@ -1,4 +1,4 @@
-! WHIZARD 2.2.2 July 6 2014
+! WHIZARD 2.2.3 Nov 30 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,8 +6,10 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
+!     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     Christian Weiss <christian.weiss@desy.de>
+!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -29,18 +31,18 @@
 
 module cascades
 
-  use kinds, only: default !NODEP!
-  use kinds, only: TC, i8, i32 !NODEP!
-  use iso_varying_string, string_t => varying_string !NODEP!
-  use limits, only: CASCADE_SET_FILL_RATIO, MAX_WARN_RESONANCE !NODEP!
-  use limits, only: FMT_12, FMT_19 !NODEP!
-  use file_utils !NODEP!
-  use diagnostics !NODEP!
+  use kinds, only: default
+  use kinds, only: TC, i8, i32
+  use iso_varying_string, string_t => varying_string
+  use io_units
+  use format_defs, only: FMT_12, FMT_19
   use unit_tests
+  use diagnostics
   use hashes
   use sorting
-  use pdg_arrays, only: UNDEFINED
-  use models
+  use physics_defs, only: SCALAR, SPINOR, VECTOR, VECTORSPINOR, TENSOR
+  use physics_defs, only: UNDEFINED
+  use model_data
   use flavors
   use phs_forests
 
@@ -63,6 +65,8 @@ module cascades
        & RADIATION = 4, COLLINEAR = 5, INFRARED = 6, &
        & STEP_MAPPING_E = 11, STEP_MAPPING_H = 12, &
        & ON_SHELL = 99
+  real, parameter, public :: CASCADE_SET_FILL_RATIO = 0.1
+  integer, parameter, public :: MAX_WARN_RESONANCE = 50
 
   type :: cascade_t
      private
@@ -123,7 +127,7 @@ module cascades
 
   type :: cascade_set_t
      private
-     type(model_t), pointer :: model
+     class(model_data_t), pointer :: model
      integer :: n_in, n_out, n_tot
      type(flavor_t), dimension(:,:), allocatable :: flv
      integer :: depth_out, depth_tot
@@ -193,13 +197,13 @@ contains
 
   subroutine cascade_write_file_format (cascade, model, unit)
     type(cascade_t), intent(in) :: cascade
-    type(model_t), intent(in), target :: model
+    class(model_data_t), intent(in), target :: model
     integer, intent(in), optional :: unit
     type(flavor_t) :: flv
     integer :: u, i
 1   format(3x,A,1x,40(1x,I4))
 2   format(3x,A,1x,I3,1x,A,1x,I7,1x,'!',1x,A)
-    u = output_unit (unit);  if (u < 0)  return
+    u = given_output_unit (unit);  if (u < 0)  return
     call write_reduced (cascade%tree, u)
     write (u, "(A)")
     do i = 1, cascade%depth
@@ -273,7 +277,7 @@ contains
     integer :: u
     integer(TC) :: mask
     type(string_t) :: left_str, right_str
-    u = output_unit (unit);  if (u < 0)  return
+    u = given_output_unit (unit);  if (u < 0)  return
     mask = 2**((cascade%depth+3)/2) - 1
     left_str = ""
     right_str = ""
@@ -412,7 +416,7 @@ contains
     integer, intent(in), optional :: unit
     integer :: u
     character(9) :: depth
-    u = output_unit (unit);  if (u < 0)  return
+    u = given_output_unit (unit);  if (u < 0)  return
     write (u, "(A,(1x,I7))") 'Cascade #', cascade%index
     write (u, "(A,(1x,I7))") '  Grove:       #', cascade%grove
     write (u, "(A,3(1x,L1))") '  act/cmp/inc:  ', &
@@ -532,7 +536,7 @@ contains
     integer, intent(in), optional :: unit
     type(cascade_p), pointer :: current
     integer :: u, i
-    u = output_unit (unit);  if (u < 0)  return
+    u = given_output_unit (unit);  if (u < 0)  return
     write (u, "(1x,A)", advance="no")  "Entry:"
     do i = 1, size (hash_entry%key)
        write (u, "(1x,I0)", advance="no")  hash_entry%key(i)
@@ -639,7 +643,7 @@ contains
   subroutine cascade_set_init (cascade_set, model, n_in, n_out, phs_par, &
         fatal_beam_decay, flv)
     type(cascade_set_t), intent(out) :: cascade_set
-    type(model_t), intent(in), target :: model
+    class(model_data_t), intent(in), target :: model
     integer, intent(in) :: n_in, n_out
     type(phs_parameters_t), intent(in) :: phs_par
     logical, intent(in) :: fatal_beam_decay
@@ -698,7 +702,7 @@ contains
     character(20) :: str
     type(string_t) :: fmt_head
     type(string_t), dimension(:), allocatable :: fmt_proc
-    u = output_unit (unit);  if (u < 0)  return
+    u = given_output_unit (unit);  if (u < 0)  return
     if (.not. allocated (cascade_set%flv)) return
     write (u, "('!',1x,A)")  "List of subprocesses with particle bincodes:"
     n_in  = cascade_set%n_in
@@ -753,7 +757,7 @@ contains
     type(cascade_set_t), intent(in), target :: cascade_set
     integer, intent(in), optional :: unit
     integer :: u, f, i
-    u = output_unit (unit);  if (u < 0)  return
+    u = given_output_unit (unit);  if (u < 0)  return
     if (.not. allocated (cascade_set%flv)) return
     write (u, "(A)")  "\begin{align*}"
     do f = 1, size (cascade_set%flv, 2)
@@ -783,7 +787,7 @@ contains
     type(cascade_t), pointer :: cascade
     integer :: u, grove, count
     logical :: first_in_grove
-    u = output_unit (unit);  if (u < 0)  return
+    u = given_output_unit (unit);  if (u < 0)  return
     count = 0
     do grove = 1, cascade_set%n_groves
        first_in_grove = .true.
@@ -836,7 +840,7 @@ contains
     type(cascade_t), pointer :: cascade
     integer :: u, grove, count, pgcount
     logical :: first_in_grove
-    u = output_unit (unit);  if (u < 0)  return
+    u = given_output_unit (unit);  if (u < 0)  return
     write (u, '(A)') "\documentclass[10pt]{article}"
     write (u, '(A)') "\usepackage{amsmath}"
     write (u, '(A)') "\usepackage{feynmp}"
@@ -943,7 +947,7 @@ contains
     logical :: active, complete
     type(cascade_t), pointer :: cascade
     integer :: u, i
-    u = output_unit (unit);  if (u < 0)  return
+    u = given_output_unit (unit);  if (u < 0)  return
     active = .true.;  if (present (active_only))  active = active_only
     complete = .false.;  if (present (complete_only))  complete = complete_only
     write (u, "(A)") "Cascade set:"
@@ -1213,7 +1217,7 @@ contains
        depth_max = cascade_set%depth_tot
     end if
     if (cascade1%depth + cascade2%depth < depth_max) then
-       call model_match_vertex (cascade_set%model, &
+       call cascade_set%model%match_vertex ( &
             flavor_get_pdg (cascade1%flv), &
             flavor_get_pdg (cascade2%flv), &
             pdg3)
@@ -1237,7 +1241,7 @@ contains
     integer :: depth_max
     depth_max = cascade_set%depth_tot
     if (cascade1%depth + cascade2%depth + cascade3%depth == depth_max) then
-       if (model_check_vertex (cascade_set%model, &
+       if (cascade_set%model%check_vertex ( &
             flavor_get_pdg (cascade1%flv), &
             flavor_get_pdg (cascade2%flv), &
             flavor_get_pdg (cascade3%flv))) then
@@ -1878,7 +1882,7 @@ contains
   subroutine cascade_set_generate &
        (cascade_set, model, n_in, n_out, flv, phs_par, fatal_beam_decay)
     type(cascade_set_t), intent(out) :: cascade_set
-    type(model_t), intent(in), target :: model
+    class(model_data_t), intent(in), target :: model
     integer, intent(in) :: n_in, n_out
     type(flavor_t), dimension(:,:), intent(in) :: flv
     type(phs_parameters_t), intent(in) :: phs_par
@@ -1910,7 +1914,7 @@ contains
   subroutine cascade_set_generate_single (cascade_set, &
       model, n_in, n_out, flv, phs_par, fatal_beam_decay)
     type(cascade_set_t), intent(out) :: cascade_set
-    type(model_t), intent(in), target :: model
+    class(model_data_t), intent(in), target :: model
     integer, intent(in) :: n_in, n_out
     type(flavor_t), dimension(:), intent(in) :: flv
     type(phs_parameters_t), intent(in) :: phs_par
@@ -1980,17 +1984,11 @@ contains
 
 
   subroutine cascade_1 (u)  
-    use os_interface
     integer, intent(in) :: u
-    type(os_data_t) :: os_data
-    type(model_list_t) :: model_list
-    type(model_t), pointer :: model
+    type(model_data_t), target :: model
     type(flavor_t), dimension(5,2) :: flv
     type(cascade_set_t) :: cascade_set
-    type(string_t) :: name, filename
     type(phs_parameters_t) :: phs_par
-    name = "SM"
-    filename = "SM.mdl"
 
     write (u, "(A)")  "* Test output: Cascades"
     write (u, "(A)")  "*   Purpose: test cascade phase space functions"
@@ -1999,12 +1997,8 @@ contains
     write (u, "(A)")  "* Initializing"
     write (u, "(A)")    
     
-    call syntax_model_file_init ()
-    call os_data_init (os_data)
-    
-    call model_list%read_model (name, filename, os_data, model)
-    call model_write (model, unit = u, verbose=.true.)
-    
+    call model%init_sm_test ()
+
     call flavor_init (flv(1,1), 2, model)
     call flavor_init (flv(2,1),-2, model)
     call flavor_init (flv(3,1), 1, model)
@@ -2030,8 +2024,7 @@ contains
     write (u, "(A)")
     
     call cascade_set_final (cascade_set)
-    call model_list%final ()
-    call syntax_model_file_final ()
+    call model%final ()
     
     write (u, *)
     write (u, "(A)")  "* Test output end: cascade_1"

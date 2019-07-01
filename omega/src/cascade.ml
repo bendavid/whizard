@@ -1,4 +1,4 @@
-(* $Id: cascade.ml 4926 2013-12-04 12:35:06Z jr_reuter $
+(* $Id: cascade.ml 6222 2014-10-13 08:40:53Z ohl $
 
    Copyright (C) 1999-2014 by
 
@@ -215,9 +215,9 @@ module Make (M : Model.T) (P : Momentum.T) :
         | False -> false
         | Off_shell (flavors, momentum) ->
             if p = momentum then
-              List.mem f' flavors or (if is_timelike p then false else List.mem f flavors)
+              List.mem f' flavors || (if is_timelike p then false else List.mem f flavors)
             else if p = P.neg momentum then
-              List.mem f flavors or (if is_timelike p then false else List.mem f' flavors)
+              List.mem f flavors || (if is_timelike p then false else List.mem f' flavors)
             else
               one_compatible p momentum && all_compatible p p_in momentum
         | On_shell (flavors, momentum) | Gauss (flavors, momentum) ->
@@ -232,9 +232,9 @@ module Make (M : Model.T) (P : Momentum.T) :
                false
         | Off_shell_not (flavors, momentum) ->
             if p = momentum then
-              not (List.mem f' flavors or (if is_timelike p then false else List.mem f flavors))
+              not (List.mem f' flavors || (if is_timelike p then false else List.mem f flavors))
             else if p = P.neg momentum then
-              not (List.mem f flavors or (if is_timelike p then false else List.mem f' flavors))
+              not (List.mem f flavors || (if is_timelike p then false else List.mem f' flavors))
             else
               one_compatible p momentum && all_compatible p p_in momentum
         | On_shell_not (flavors, momentum) | Gauss_not (flavors, momentum) ->

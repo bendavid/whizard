@@ -25,24 +25,24 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 module kinds
 
-  use iso_c_binding !NODEP!
+  use, intrinsic :: iso_c_binding
 
   implicit none
   private
  
 ! Three types of precision.  double is the default, usually.
-  public :: single, double, quadruple
-  public :: default, quad_or_single
+  public :: single, double, extended
+  public :: default, ext_or_single
 
   integer, parameter :: single = &
        & selected_real_kind (precision(1.), range(1.))
   integer, parameter :: double = &
        & selected_real_kind (precision(1._single) + 1, range(1._single) + 1)
-  integer, parameter :: quadruple = &
+  integer, parameter :: extended = &
        & selected_real_kind (precision (1._double) + 1, range (1._double))
 
   integer, parameter :: default = @FC_PRECISION@
-  integer, parameter :: quad_or_single = @FC_QUAD_OR_SINGLE@
+  integer, parameter :: ext_or_single = @FC_EXT_OR_SINGLE@
 
 ! Their C equivalents.
   public :: c_default_float, c_default_complex

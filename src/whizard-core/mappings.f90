@@ -1,4 +1,4 @@
-! WHIZARD 2.2.2 July 6 2014
+! WHIZARD 2.2.3 Nov 30 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,8 +6,10 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
+!     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     Christian Weiss <christian.weiss@desy.de>
+!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -29,15 +31,15 @@
 
 module mappings
 
-  use kinds, only: default !NODEP!
-  use kinds, only: TC !NODEP!
-  use iso_varying_string, string_t => varying_string !NODEP!
-  use limits, only: FMT_19 !NODEP!
-  use constants, only: pi !NODEP!
-  use file_utils !NODEP!
-  use diagnostics !NODEP!
+  use kinds, only: default
+  use kinds, only: TC
+  use iso_varying_string, string_t => varying_string
+  use io_units
+  use constants, only: pi
+  use format_defs, only: FMT_19
+  use diagnostics
   use md5
-  use models
+  use model_data
   use flavors
 
   implicit none
@@ -108,7 +110,7 @@ contains
     class(mapping_defaults_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     write (u, "(3x,A," // FMT_19 // ")") "energy scale  = ", &
          object%energy_scale
     write (u, "(3x,A," // FMT_19 // ")") "mass scale    = ", &
@@ -146,7 +148,7 @@ contains
     logical, intent(in), optional :: verbose
     integer :: u
     character(len=9) :: str
-    u = output_unit (unit);  if (u < 0)  return
+    u = given_output_unit (unit);  if (u < 0)  return
     select case(map%type)
     case(S_CHANNEL); str = "s_channel"
     case(COLLINEAR); str = "collinear"
@@ -196,7 +198,7 @@ contains
     integer(TC), intent(in) :: bincode
     type(string_t), intent(in) :: type
     integer, intent(in), optional :: f
-    type(model_t), intent(in), optional, target :: model
+    class(model_data_t), intent(in), optional, target :: model
     mapping%bincode = bincode
     select case (char (type))
     case ("s_channel");  mapping%type = S_CHANNEL

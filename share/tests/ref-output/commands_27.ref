@@ -14,7 +14,7 @@ polarized f, fbar
 * Compile command list
 
  model = "Test"
- var: ff (real, intrinsic, copy)
+ var: ff (real, model)
  process: d1 (1 -> X)
  unstable: 1 (d1)
  polarized: 2

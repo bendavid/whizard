@@ -25,6 +25,8 @@
  HepMC event stream:
    [closed]
    Keep beams        = F
+   Recover beams     = T
+   File extension    = 'hepmc'
 
 * Allocate as weight_stream
 

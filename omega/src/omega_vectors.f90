@@ -1,18 +1,18 @@
-!  $Id: omegalib.nw 5434 2014-03-06 18:17:45Z msekulla $
+!  $Id: omegalib.nw 6301 2014-11-25 09:34:00Z bchokoufe $
 !
-!  Copyright (C) 1999-2009 by 
+!  Copyright (C) 1999-2009 by
 !      Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !      Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !      Juergen Reuter <juergen.reuter@desy.de>
 !
 !  WHIZARD is free software; you can redistribute it and/or modify it
-!  under the terms of the GNU General Public License as published by 
+!  under the terms of the GNU General Public License as published by
 !  the Free Software Foundation; either version 2, or (at your option)
 !  any later version.
 !
 !  WHIZARD is distributed in the hope that it will be useful, but
 !  WITHOUT ANY WARRANTY; without even the implied warranty of
-!  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+!  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 !  GNU General Public License for more details.
 !
 !  You should have received a copy of the GNU General Public License
@@ -586,17 +586,17 @@ contains
   pure function abs_momentum (x) result (absx)
     type(momentum), intent(in) :: x
     real(kind=default) :: absx
-    absx = sqrt (x%t*x%t + dot_product (x%x, x%x))
+    absx = sqrt (real (x%t*x%t + dot_product (x%x, x%x)))
   end function abs_momentum
   pure function abs_vector (x) result (absx)
     type(vector), intent(in) :: x
     real(kind=default) :: absx
-    absx = sqrt (conjg(x%t)*x%t + dot_product (x%x, x%x))
+    absx = sqrt (real (conjg(x%t)*x%t + dot_product (x%x, x%x)))
   end function abs_vector
   pure function abs_tensor2odd (x) result (absx)
     type(tensor2odd), intent(in) :: x
     real(kind=default) :: absx
-    absx = sqrt (dot_product (x%e, x%e) + dot_product (x%b, x%b))
+    absx = sqrt (real (dot_product (x%e, x%e) + dot_product (x%b, x%b)))
   end function abs_tensor2odd
   pure function conjg_momentum (x) result (conjg_x)
     type(momentum), intent(in) :: x

@@ -1,4 +1,4 @@
-! WHIZARD 2.2.2 July 6 2014
+! WHIZARD 2.2.3 Nov 30 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,8 +6,10 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
+!     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     Christian Weiss <christian.weiss@desy.de>
+!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -29,14 +31,15 @@
 
 module blha_driver
 
-  use iso_varying_string, string_t => varying_string !NODEP!
-  use constants !NODEP!
-  use file_utils !NODEP!
-  use diagnostics !NODEP!
-  use sm_physics !NODEP!
+  use iso_varying_string, string_t => varying_string
+  use io_units
+  use constants
+  use diagnostics
+  use sm_physics
   use md5
-  use lorentz !NODEP!
-  use models
+  use lorentz
+  use model_data
+!  use models
   use flavors
   use quantum_numbers
   use interactions
@@ -54,7 +57,7 @@ module blha_driver
 contains
 
   subroutine blha_test (model)
-    type(model_t), pointer :: model
+    class(model_data_t), pointer :: model
     type (blha_configuration_t) :: cfg
     logical :: ok
     call blha_config_test (model, cfg, ok)

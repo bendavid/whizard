@@ -1,4 +1,4 @@
-! WHIZARD 2.2.2 July 6 2014
+! WHIZARD 2.2.3 Nov 30 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,8 +6,10 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
+!     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     Christian Weiss <christian.weiss@desy.de>
+!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -30,18 +32,19 @@
 module prc_template_me
   
   use iso_c_binding !NODEP!
-  use kinds !NODEP!
-  use file_utils !NODEP!
-  use iso_varying_string, string_t => varying_string !NODEP!
-  use limits, only: TAB !NODEP!
-  use diagnostics !NODEP!
+  use kinds
+  use io_units
+  use iso_varying_string, string_t => varying_string
   use unit_tests
+  use system_defs, only: TAB
+  use diagnostics
   use os_interface
-  use lorentz !NODEP!
+  use lorentz
   use flavors
   use sm_qcd
   use interactions
   use variables
+  use model_data
   use models
 
   use process_constants
@@ -131,6 +134,7 @@ module prc_template_me
      real(default) :: alpha_qcd = -1
    contains
      procedure :: write => template_me_state_write
+     procedure :: reset_new_kinematics => template_me_state_reset_new_kinematics
   end type template_me_state_t
   
 
@@ -349,14 +353,14 @@ contains
        comment_str = comment_str // writer%prt_out(j) // " " 
     end do       
     do i = 1, writer%n_in
-       prt_in(i) = model_get_particle_pdg (writer%model, writer%prt_in(i))
+       prt_in(i) = writer%model%get_pdg (writer%prt_in(i))
        call flavor_init (flv_in(i), prt_in(i), writer%model)
        mult_in(i) = flavor_get_multiplicity (flv_in(i))
        col_in(i) = abs(flavor_get_color_type (flv_in(i)))
        mult(i) = mult_in(i)
        end do
     do j = 1, writer%n_out
-       prt_out(j) = model_get_particle_pdg (writer%model, writer%prt_out(j))    
+       prt_out(j) = writer%model%get_pdg (writer%prt_out(j))    
        call flavor_init (flv_out(j), prt_out(j), writer%model)       
        mult_out(j) = flavor_get_multiplicity (flv_out(j))       
        mult(writer%n_in + j) = mult_out(j)
@@ -439,41 +443,41 @@ contains
     write (u, "(A)") "                                           "    
     do i = 1, hel
        write (u, "(A)") "  integer, dimension(n_prt), parameter, private :: &"
-       write (u, "(A)") "    " // s_conv(i) // " = (/ " // &
-            char(converter(sxxx(i,1:writer%n_tot))) // " /)"
+       write (u, "(A)") "    " // s_conv(i) // " = [ " // &
+            char(converter(sxxx(i,1:writer%n_tot))) // " ]"
     end do 
     write (u, "(A)") "  integer, dimension(n_prt,n_hel), parameter, private :: table_spin_states = &"
-    write (u, "(A)") "    reshape ( (/ & "
+    write (u, "(A)") "    reshape ( [ & "
     do i = 1, hel-1
        write (u, "(A)") "                 " // s_conv(i) // ", & " 
     end do 
     write (u, "(A)") "                 " // s_conv(hel) // " & "     
-    write (u, "(A)") "              /), (/ n_prt, n_hel /) )"
+    write (u, "(A)") "              ], [ n_prt, n_hel ] )"
     write (u, "(A)") "                                                 "
     write (u, "(A)") "  integer, dimension(n_prt), parameter, private :: &"
-    write (u, "(A)") "    f0001 = (/ " // char(proc_str) // " /)   !  " // char(comment_str)
+    write (u, "(A)") "    f0001 = [ " // char(proc_str) // " ]   !  " // char(comment_str)
     write (u, "(A)") "  integer, dimension(n_prt,n_flv), parameter, private :: table_flavor_states = &"
-    write (u, "(A)") "    reshape ( (/ f0001 /), (/ n_prt, n_flv /) )"
+    write (u, "(A)") "    reshape ( [ f0001 ], [ n_prt, n_flv ] )"
     write (u, "(A)") "                                                 " 
     write (u, "(A)") "  integer, dimension(n_cindex, n_prt), parameter, private :: &"
-    write (u, "(A)") "    c0001 = reshape ( (/ " // char (dummy_colorizer (flv_in)) // " " // &
-      (repeat ("0,0, ", writer%n_out-1)) // "0,0 /), " // " (/ n_cindex, n_prt /) )"
+    write (u, "(A)") "    c0001 = reshape ( [ " // char (dummy_colorizer (flv_in)) // " " // &
+      (repeat ("0,0, ", writer%n_out-1)) // "0,0 ], " // " [ n_cindex, n_prt ] )"
     write (u, "(A)") "  integer, dimension(n_cindex, n_prt, n_cflow), parameter, private :: &"
-    write (u, "(A)") "  table_color_flows = reshape ( (/ c0001 /), (/ n_cindex, n_prt, n_cflow /) )"
+    write (u, "(A)") "  table_color_flows = reshape ( [ c0001 ], [ n_cindex, n_prt, n_cflow ] )"
     write (u, "(A)") "                                           "   
     write (u, "(A)") "  logical, dimension(n_prt), parameter, private :: & "
-    write (u, "(A)") "    g0001 = (/ "  // (repeat ("F, ", writer%n_tot-1)) // "F /) "
+    write (u, "(A)") "    g0001 = [ "  // (repeat ("F, ", writer%n_tot-1)) // "F ] "
     write (u, "(A)") "  logical, dimension(n_prt, n_cflow), parameter, private " &
          // ":: table_ghost_flags = &"
-    write (u, "(A)") "    reshape ( (/ g0001 /), (/ n_prt, n_cflow /) )"
+    write (u, "(A)") "    reshape ( [ g0001 ], [ n_prt, n_cflow ] )"
     write (u, "(A)") "                                           "   
     write (u, "(A)") "  integer, parameter, private :: n_cfactors = 1"
     write (u, "(A)") "  type(OCF), dimension(n_cfactors), parameter, private :: &"
-    write (u, "(A)") "    table_color_factors = (/  OCF(1,1,+1._default) /)"
+    write (u, "(A)") "    table_color_factors = [  OCF(1,1,+1._default) ]"
     write (u, "(A)") "                                           "   
-    write (u, "(A)") "  logical, dimension(n_flv), parameter, private :: a0001 = (/ T /)"   
+    write (u, "(A)") "  logical, dimension(n_flv), parameter, private :: a0001 = [ T ]"   
     write (u, "(A)") "  logical, dimension(n_flv, n_cflow), parameter, private :: &"   
-    write (u, "(A)") "    flv_col_is_allowed = reshape ( (/ a0001 /), (/ n_flv, n_cflow /) )"   
+    write (u, "(A)") "    flv_col_is_allowed = reshape ( [ a0001 ], [ n_flv, n_cflow ] )"   
     write (u, "(A)") "                                           "   
     write (u, "(A)") "  complex(default), dimension (n_flv, n_hel, n_cflow), private, save :: amp"    
     write (u, "(A)") "                                           "
@@ -538,7 +542,9 @@ contains
     write (u, "(A)") "    cf = table_color_factors"
     write (u, "(A)") "  end subroutine color_factors"
     write (u, "(A)") "                                           "                              
-    write (u, "(A)") "  pure function color_sum (flv, hel) result (amp2)"
+    !pure unless OpenMP
+    !write (u, "(A)") "  pure function color_sum (flv, hel) result (amp2)"
+    write (u, "(A)") "  function color_sum (flv, hel) result (amp2)"
     write (u, "(A)") "    integer, intent(in) :: flv, hel"
     write (u, "(A)") "    real(kind=default) :: amp2"
     write (u, "(A)") "    amp2 = real (omega_color_sum (flv, hel, amp, table_color_factors))"
@@ -862,11 +868,15 @@ contains
     class(template_me_state_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     write (u, "(3x,A,L1)")  "Template ME state: new kinematics = ", &
          object%new_kinematics
   end subroutine template_me_state_write
   
+  subroutine template_me_state_reset_new_kinematics (object)
+    class(template_me_state_t), intent(inout) :: object
+  end subroutine template_me_state_reset_new_kinematics
+
   subroutine prc_template_me_allocate_workspace (object, tmp)
     class(prc_template_me_t), intent(in) :: object
     class(workspace_t), intent(inout), allocatable :: tmp
@@ -877,7 +887,7 @@ contains
     class(prc_template_me_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u, i
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     write (u, "(3x,A)", advance="no")  "Template process core:"
     if (object%data_known) then
        write (u, "(1x,A)")  char (object%data%id)
@@ -894,10 +904,11 @@ contains
   
   subroutine prc_template_me_set_parameters (prc_template_me, model)
     class(prc_template_me_t), intent(inout) :: prc_template_me
-    type(model_t), intent(in), target, optional :: model
+    class(model_data_t), intent(in), target, optional :: model
     if (present (model)) then
-       if (allocated (prc_template_me%par))  deallocate (prc_template_me%par)
-       call model_parameters_to_c_array (model, prc_template_me%par)
+       if (.not. allocated (prc_template_me%par)) &
+            allocate (prc_template_me%par (model%get_n_real ()))
+       call model%real_parameters_to_c_array (prc_template_me%par)
     end if
   end subroutine prc_template_me_set_parameters
   

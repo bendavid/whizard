@@ -26,32 +26,32 @@
 [user variable] i = 9
 [user variable] MW =  7.980000000000E+01
 [user variable] MW =  7.980000000000E+01
-SM.mtau =  8.000000000000E-01
-SM.mW =  8.011900000000E+01
-mW =  8.011900000000E+01
-sw* =  4.775372811515E-01
-SM.mW =  7.500000000000E+01
-sw* =  5.688014954824E-01
-SM.mW =  8.000000000000E+01
-sw* =  4.799305327664E-01
-SM.mW =  8.050000000000E+01
-sw* =  4.697684723671E-01
-SM.mW =  8.100000000000E+01
-sw* =  4.593162187090E-01
-SM.mW =  8.150000000000E+01
-sw* =  4.485534858838E-01
-SM.mW =  8.200000000000E+01
-sw* =  4.374573583998E-01
-SM.mW =  8.300000000000E+01
-sw* =  4.141569403361E-01
-SM.mW =  8.469722796445E+01
-sw* =  3.705366373038E-01
-SM.mW =  8.642916174533E+01
-sw* =  3.188332912310E-01
-SM.mW =  8.819651102555E+01
-sw* =  2.540459583362E-01
-SM.mW =  9.000000000000E+01
-sw* =  1.609055729882E-01
+SM.mtau =>  8.000000000000E-01
+SM.mW =>  8.011900000000E+01
+SM.mW =>  8.011900000000E+01
+SM.sw* =>  4.775372811515E-01
+SM.mW =>  7.500000000000E+01
+SM.sw* =>  5.688014954824E-01
+SM.mW =>  8.000000000000E+01
+SM.sw* =>  4.799305327664E-01
+SM.mW =>  8.050000000000E+01
+SM.sw* =>  4.697684723671E-01
+SM.mW =>  8.100000000000E+01
+SM.sw* =>  4.593162187090E-01
+SM.mW =>  8.150000000000E+01
+SM.sw* =>  4.485534858838E-01
+SM.mW =>  8.200000000000E+01
+SM.sw* =>  4.374573583998E-01
+SM.mW =>  8.300000000000E+01
+SM.sw* =>  4.141569403361E-01
+SM.mW =>  8.469722796445E+01
+SM.sw* =>  3.705366373038E-01
+SM.mW =>  8.642916174533E+01
+SM.sw* =>  3.188332912310E-01
+SM.mW =>  8.819651102555E+01
+SM.sw* =>  2.540459583362E-01
+SM.mW =>  9.000000000000E+01
+SM.sw* =>  1.609055729882E-01
 mW is 80.119 and sw is:   0.4775
 seed = 32
 seed = 32
@@ -190,6 +190,9 @@ seed = 2
 ?omega_openmp => false
 ?openmp_is_active* = false
 ?openmp_logging = false
+?use_gosam_loops = true
+?use_gosam_correlations = false
+?use_gosam_real_trees = false
 ?rebuild_library = true
 ?recompile_library = false
 ?rebuild_phase_space = true
@@ -232,6 +235,7 @@ $lhef_version = "2.0"
 $lhef_extension = "lhe"
 $extension_lha = "lha"
 $extension_hepmc = "hepmc"
+$extension_lcio = "slcio"
 $extension_stdhep = "hep"
 $extension_stdhep_up = "up.hep"
 $extension_hepevt_verb = "hepevt.verb"
@@ -261,7 +265,7 @@ Q is only local and hence not not defined
 *** ERROR: show: object 'Q' not found
 ******************************************************************************
 |             (WHIZARD run continues)
-u* = PDG(2)
+SM.u* = PDG(2)
 [user variable] q = PDG(2, 1, -2, -1)
 [user variable] i = 1
 one = 1
@@ -290,6 +294,6 @@ Testing the complex calculus
 [user variable] cc = ( 1.0000000E+00, 0.0000000E+00)
 ?pacify = true
 [user variable] cc = ( 1.0000000E+00, 0.0000000E+00)
-| There were  3 error(s) and no warnings.
+| There were  1 error(s) and no warnings.
 | WHIZARD run finished.
 |=============================================================================|

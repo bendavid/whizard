@@ -1,4 +1,4 @@
-!$Id: pdf_builtin.f90 5925 2014-06-22 22:17:54Z jr_reuter $
+!$Id: pdf_builtin.f90 6231 2014-10-16 18:18:17Z jr_reuter $
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
@@ -6,6 +6,7 @@
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
+!     with contributions from
 !     Christian Speckner <cnspeckn@googlemail.com>
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
@@ -28,10 +29,10 @@
 
 module pdf_builtin
   use kinds, only: default, double
+  use iso_varying_string, string_t => varying_string
+  use string_utils, only: upper_case
   use constants, only: PI 
   use diagnostics
-  use iso_varying_string, string_t => varying_string
-  use file_utils
   use mrst2004qed
   use cteq6pdf
   use mstw2008
@@ -114,13 +115,6 @@ module pdf_builtin
   type(string_t) :: mrst2004qedp_prefix, mrst2004qedn_prefix, &
        mstw2008_prefix
 
-  ! 1 is for proton, 2 for pion, 3 for photon
-  type :: pdf_builtin_status_t
-     private
-     logical, dimension(3) :: initialized = .false.
-  end type pdf_builtin_status_t
-
-
 ! Public stuff
   public :: pdf_init
   public :: pdf_get_name
@@ -131,10 +125,6 @@ module pdf_builtin
   public :: pdf_alphas
   public :: pdf_alphas_LHAPDF
   public :: pdf_getmass
-  public :: pdf_builtin_status_reset
-  public :: pdf_builtin_status_is_initialized
-  public :: pdf_builtin_status_set_initialized
-  public :: pdf_builtin_status_t
 
 contains
   
@@ -205,14 +195,12 @@ contains
   end function pdf_provides_photon
 
 ! Initialize a PDF
-  subroutine pdf_init (pdf_status, pdftype, prefix, verbose)
+  subroutine pdf_init (pdftype, prefix, verbose)
     integer, intent(in) :: pdftype
-    type(pdf_builtin_status_t), intent(inout) :: pdf_status
     type(string_t), intent(in), optional :: prefix
     type(string_t) :: mprefix
     logical, intent(in), optional :: verbose
     logical :: mverbose
-    if (any (pdf_status%initialized)) return
     if (present (prefix)) then
        mprefix = prefix
     else
@@ -262,7 +250,6 @@ contains
     if (mverbose) call msg_message ("Initialized builtin PDF " // &
          char (pdf_get_name (pdftype)))
     !!! Up to now only proton
-    call pdf_builtin_status_set_initialized (pdf_status, 1)
   end subroutine pdf_init
   
 ! Evolve PDF
@@ -500,31 +487,6 @@ contains
           call msg_fatal ("PDF builtin: invalid PDG code for quark mass.")
        end select
   end function pdf_getmass
-
-  subroutine pdf_builtin_status_reset (pdf_builtin_status)
-    type(pdf_builtin_status_t), intent(inout) :: pdf_builtin_status
-    pdf_builtin_status%initialized = .false.
-  end subroutine pdf_builtin_status_reset
-
-  function pdf_builtin_status_is_initialized (pdf_builtin_status, set) result (flag)
-    logical :: flag
-    type(pdf_builtin_status_t), intent(in) :: pdf_builtin_status
-    integer, intent(in), optional :: set
-    if (present (set)) then
-       select case (set)
-       case (1:3);    flag = pdf_builtin_status%initialized(set)
-       case default;  flag = .false.
-       end select
-    else
-       flag = any (pdf_builtin_status%initialized)
-    end if
-  end function pdf_builtin_status_is_initialized
-
-  subroutine pdf_builtin_status_set_initialized (pdf_builtin_status, set)
-    type(pdf_builtin_status_t), intent(inout) :: pdf_builtin_status
-    integer, intent(in) :: set
-    pdf_builtin_status%initialized(set) = .true.
-  end subroutine pdf_builtin_status_set_initialized
 
   function pdf_builtin_alpi (AMU,NORDER,NF,alam)     
     integer, intent(in) :: nf, norder

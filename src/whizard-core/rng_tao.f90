@@ -1,4 +1,4 @@
-! WHIZARD 2.2.2 July 6 2014
+! WHIZARD 2.2.3 Nov 30 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,8 +6,10 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
+!     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     Christian Weiss <christian.weiss@desy.de>
+!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -29,8 +31,9 @@
 
 module rng_tao
 
-  use kinds !NODEP!
-  use file_utils !NODEP!
+  use kinds
+  use io_units
+  use format_utils, only: write_indent
   use unit_tests
   use tao_random_numbers !NODEP!
 
@@ -71,7 +74,7 @@ contains
     class(rng_tao_t), intent(in) :: rng
     integer, intent(in), optional :: unit, indent
     integer :: u, ind
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     ind = 0;  if (present (indent))  ind = indent
     call write_indent (u, ind)
     write (u, "(A)")  "TAO random-number generator:"
@@ -118,7 +121,7 @@ contains
     class(rng_tao_factory_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     write (u, "(1x,A,2(I0,A))") &
          "RNG factory: tao (", object%s, ",", object%i, ")"
   end subroutine rng_tao_factory_write

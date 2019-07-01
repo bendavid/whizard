@@ -8,8 +8,7 @@
 	-> so far no global observables present?
 
 !!!!!! partly done
-- so far: settings in sinfile only included if before integrate statement => #340
-- set PDFset => ticket "Shower takes only current PDF set"
+- set PDFset => ticket "Shower takes only current PDF set" ?
 
 !!!!!!! TODO but probably useless
 - add support for showering of squarks and gluinos 

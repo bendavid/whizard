@@ -3,9 +3,9 @@
 ?integration_timer = false
 error_threshold =  1.000000000000E-09
 seed = 2
-SM.me =  0.000000000000E+00
-SM.mmu =  0.000000000000E+00
-SM.mtau =  0.000000000000E+00
+SM.me =>  0.000000000000E+00
+SM.mmu =>  0.000000000000E+00
+SM.mtau =>  0.000000000000E+00
 | Process library 'multi_comp_4_lib': recorded process 'multi_comp_4p'
 | Process library 'multi_comp_4_lib': recorded process 'multi_comp_4d'
 | Process library 'multi_comp_4_lib': compiling ...

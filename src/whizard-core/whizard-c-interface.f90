@@ -1,4 +1,4 @@
-! WHIZARD 2.2.2 July 6 2014
+! WHIZARD 2.2.3 Nov 30 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,8 +6,10 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
+!     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     Christian Weiss <christian.weiss@desy.de>
+!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -59,7 +61,7 @@
     use, intrinsic :: iso_c_binding
     use iso_varying_string, string_t => varying_string !NODEP!
     use commands
-    use diagnostics !NODEP!
+    use diagnostics
     use lexers
     use models
     use parser
@@ -86,6 +88,7 @@
     if (associated (pn_root)) then
        call cmd_list%compile (pn_root, whizard_instance%global)
     end if
+    call whizard_instance%global%activate ()
     call cmd_list%execute (whizard_instance%global)
     call cmd_list%final ()
   
@@ -98,9 +101,8 @@
   subroutine c_whizard_init (w_c_instance) bind(C)
     use, intrinsic :: iso_c_binding
     use iso_varying_string, string_t => varying_string !NODEP!    
-    use system_dependencies !NODEP!
-    use limits, only: CMDLINE_ARG_LEN !NODEP!
-    use diagnostics !NODEP!
+    use system_dependencies
+    use diagnostics
     use unit_tests
     use ifiles
     use os_interface
@@ -108,6 +110,8 @@
   
     implicit none
   
+    integer, parameter :: CMDLINE_ARG_LEN = 1000
+
     type(c_ptr), intent(out) :: w_c_instance    
     character(CMDLINE_ARG_LEN) :: arg
     character(2) :: option
@@ -197,9 +201,8 @@
   subroutine c_whizard_finalize (w_c_instance) bind(C)
     use, intrinsic :: iso_c_binding
     use iso_varying_string, string_t => varying_string !NODEP!
-    use system_dependencies !NODEP!
-    use limits, only: CMDLINE_ARG_LEN !NODEP!
-    use diagnostics !NODEP!
+    use system_dependencies
+    use diagnostics
     use ifiles
     use os_interface
     use whizard
@@ -379,7 +382,7 @@
     use, intrinsic :: iso_c_binding
     use iso_varying_string, string_t => varying_string !NODEP!
     use commands
-    use diagnostics !NODEP!
+    use diagnostics
     use events
     use hepmc_interface
     use lexers

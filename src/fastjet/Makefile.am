@@ -6,6 +6,7 @@
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
+#     with contributions from
 #     Christian Speckner <cnspeckn@googlemail.com>
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
@@ -57,10 +58,11 @@ endif
 ## Explicit dependencies
 
 fastjet.lo: cpp_strings.lo
-fastjet.lo: ../misc/kinds.$(FC_MODULE_EXT) \
-   ../misc/lorentz.$(FC_MODULE_EXT)
+fastjet.lo: \
+  ../basics/kinds.$(FC_MODULE_EXT) \
+  ../physics/lorentz.$(FC_MODULE_EXT)
 
-AM_FCFLAGS += -I../misc
+AM_FCFLAGS += -I../basics -I../utilities -I../system -I../physics
 
 MODULES= \
   cpp_strings.$(FC_MODULE_EXT) \

@@ -43,7 +43,7 @@ c  This will produce a table of PDFs for a specified value of ISET
 c
 
       module CJ12
-      use file_utils
+      use io_units
 
       contains
 
@@ -71,7 +71,7 @@ c
 c      if(CJpdf.lt.0.d0)CJPDF=0.d0
 
       Return
-      End
+      End function CJpdf
 
       Subroutine CJpdf_all(x,Q,bb,cb,sb,db,ud,g,u,d,s,c,b)
       Implicit Double Precision (a-h,o-z)
@@ -87,7 +87,7 @@ c      if(CJpdf.lt.0.d0)CJPDF=0.d0
       c=cb
       b=bb
       return
-      end
+      end subroutine CJpdf_all
 
       Subroutine SetCJ (prefix, Iset)
       Implicit Double Precision (A-H,O-Z)
@@ -127,7 +127,7 @@ C     print*,'Opening ',Tablefile
      >' cannot be opened in SetCJ!!'
       Stop
 C                             ********************
-      End
+      End subroutine SetCJ
 
       Subroutine ReadTbl (Nu)
       Implicit Double Precision (A-H,O-Z)
@@ -166,7 +166,7 @@ c
       Return
  999  print*,i,UPD(i-1),UPD(i)
       stop
-      End
+      End subroutine ReadTbl
 
       Function NextUn()
 C                                 Returns an unallocated FORTRAN i/o unit.
@@ -181,7 +181,7 @@ C
  10   Continue
       Stop ' There is no available I/O unit. '
 C               *************************
-      End
+      End function NextUn
 C
       Function GetPDF(Iptn,x,Q)
       IMPLICIT REAL*8 (A-H,O-Z)
@@ -225,7 +225,7 @@ c
       if(ans.lt.0.d0)ans=0.d0
       GetPDF=ANS
       RETURN
-      END 
+      END function GetPDF
 c
       FUNCTION GetFV(Iptn,x,J)
       IMPLICIT REAL*8 (A-H,O-Z)
@@ -261,7 +261,8 @@ c    2 I=I-1
 c      call polint(xx,fx,4,x,ans,dy)
       call polint4(xx,fx,x,ans)
       getfv=ans
-      END
+      END function GetFV
+
       SUBROUTINE POLINT4 (XA,YA,X,Y)
  
       IMPLICIT DOUBLE PRECISION (A-H, O-Z)
@@ -316,7 +317,8 @@ C  suggested by Z. Sullivan.
       ENDIF
 
       RETURN
-      END
+      END subroutine polint4
+
       SUBROUTINE POLINT(XA,YA,N,X,Y,DY)
       IMPLICIT REAL*8 (A-H,O-Z)                                       
       PARAMETER (NMAX=25)                                                     
@@ -358,6 +360,6 @@ C  suggested by Z. Sullivan.
         Y=Y+DY                                                                
 13    CONTINUE                                                                
       RETURN                                                                  
-      END                                                                     
+      END subroutine polint
 
       end module CJ12

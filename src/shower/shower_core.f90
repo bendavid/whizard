@@ -1,23 +1,24 @@
-! WHIZARD 2.2.0 Mar 03 2014
-
-!
-! Copyright (C) 1999-2014 by
+! WHIZARD 2.2.3 Nov 30 2014
+! 
+! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!
+!     
 !     with contributions from
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     and Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler
+!     Fabian Bach <fabian.bach@desy.de>
+!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Weiss <christian.weiss@desy.de>
+!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by
+! under the terms of the GNU General Public License as published by 
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -26,17 +27,19 @@
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! This file has been stripped of most comments.  For documentation, refer
-! to the source 'shower.nw'
+! to the source 'whizard.nw'
 
 module shower_core
 
   use kinds, only: default !NODEP!
+  use io_units !NODEP!
   use constants !NODEP!
-  use limits !NODEP!
   use lorentz !NODEP!
+  use system_defs, only: TAB !NODEP!
   use diagnostics !NODEP!
-  use file_utils !NODEP!
   use tao_random_numbers !NODEP!
+  use pdf_builtin !NODEP!
+  use lhapdf !NODEP!
   use shower_base
   use shower_partons
   use ckkw_pseudo_weights
@@ -67,6 +70,7 @@ module shower_core
      type(shower_interaction_pointer_t), dimension(:), allocatable :: &
           interactions
      type(parton_pointer_t), dimension(:), allocatable :: partons
+     type(lhapdf_pdf_t) :: pdf
      integer :: next_free_nr
      integer :: next_color_nr
      logical :: valid
@@ -101,7 +105,19 @@ module shower_core
      procedure :: set_max_isr_scale => shower_set_max_isr_scale
      procedure :: interaction_generate_fsr_2ton => &
           shower_interaction_generate_fsr_2ton
+     procedure :: get_pdf => shower_get_pdf
+     procedure :: get_xpdf => shower_get_xpdf
+     procedure :: pdf_func => shower_pdf_func
   end type shower_t
+
+
+  interface
+     subroutine evolvePDFM (set, x, q, ff)
+       integer, intent(in) :: set
+       double precision, intent(in) :: x, q
+       double precision, dimension(-6:6), intent(out) :: ff
+     end subroutine evolvePDFM
+  end interface
 
 
 contains
@@ -360,9 +376,9 @@ contains
                 !!! calculate the jet measure
                 if (.not.associated (new_partons(i)%p)) cycle INNER
                 if (.not.associated (new_partons(j)%p)) cycle INNER
-                if (.not. shower_clustering_allowed &
-                     (shower, new_partons, i,j)) &
-                     cycle inner
+                !if (.not. shower_clustering_allowed &
+                     !(shower, new_partons, i,j)) &
+                     !cycle inner
                 !!! Durham jet-measure ! don't care about constants
                 y = min (parton_get_energy (new_partons(i)%p), &
                      parton_get_energy (new_partons(j)%p)) * &
@@ -444,16 +460,6 @@ contains
     !!! print *, "end of shower_interactionadd2ton"
 
   contains
-
-    function shower_clustering_allowed (shower, partons, i, j) result (allowed)
-      type(shower_t), intent(inout) :: shower
-      logical :: allowed
-      type(parton_pointer_t), intent(in), dimension(:), allocatable :: partons
-      integer, intent(in) :: i, j
-      !!! TODO implement checking if clustering is allowed, e.g.
-      !!!     in e+e- -> qqg don't cluster the quarks together first
-      allowed = .true.
-    end function shower_clustering_allowed
 
     recursive subroutine transfer_pointers (destiny, start, prt)
       type(parton_pointer_t), dimension(:), allocatable :: destiny
@@ -692,8 +698,9 @@ contains
     !!! print *, "  shower_sort_partons finished"
   end subroutine shower_sort_partons
 
-  subroutine shower_create (shower)
+  subroutine shower_create (shower, pdf)
     class(shower_t), intent(inout) :: shower
+    type(lhapdf_pdf_t), intent(in), target :: pdf
     shower%next_free_nr = 1
     shower%next_color_nr = 1
     if (allocated (shower%interactions)) then
@@ -707,6 +714,7 @@ contains
     treat_light_quarks_massless = .true.
     treat_duscb_quarks_massless = .false.
     shower%valid = .true.
+    shower%pdf = pdf
   end subroutine shower_create
 
   subroutine shower_final (shower)
@@ -720,6 +728,7 @@ contains
     end do
     deallocate (shower%interactions)
     deallocate (shower%partons)
+    call shower%pdf%final
   end subroutine shower_final
 
   function shower_get_next_free_nr (shower) result (next_number)
@@ -1081,13 +1090,6 @@ contains
        end if
     end do
   end function shower_isr_is_finished
-
-  function shower_is_finished (shower) result (finished)
-    type(shower_t), intent(in) :: shower
-    logical :: finished
-    finished = shower_isr_is_finished (shower) .and. &
-               shower_fsr_is_finished(shower)
-  end function shower_is_finished
 
   subroutine interaction_find_partons_nearest_to_hadron (interaction, prt1, prt2)
     type(shower_interaction_t), intent(in) :: interaction
@@ -1510,7 +1512,7 @@ contains
     type(shower_interaction_t), intent(in) :: interaction
     integer, intent(in), optional :: unit
     integer :: i, u
-    u = output_unit (unit); if (u < 0) return
+    u = given_output_unit (unit); if (u < 0) return
     if (associated (interaction%partons(1)%p)) then
        if (associated (interaction%partons(1)%p%initial)) &
             call parton_write (interaction%partons(1)%p%initial, u)
@@ -1531,7 +1533,7 @@ contains
     class(shower_t), intent(in) :: shower
     integer, intent(in), optional :: unit
     integer :: i, u
-    u = output_unit (unit); if (u < 0) return
+    u = given_output_unit (unit); if (u < 0) return
     if (size (shower%interactions) > 0) then
        write (u, "(3x,A)") "Interactions: "
        do i = 1, size (shower%interactions)
@@ -1581,7 +1583,7 @@ contains
     integer :: u
     integer :: i
     integer :: c1, c2
-    u = output_unit (unit);  if (u < 0)  return
+    u = given_output_unit (unit);  if (u < 0)  return
     write(u,'(A)') '<LesHouchesEvents version="1.0">'
     write(u,'(A)') '<-- not a complete lhe file - just one event -->'
     write(u,'(A)') '<event>'
@@ -1725,7 +1727,7 @@ contains
             zstep = min(zstep, maxz - z)
             integral = integral + zstep * (D_alpha_s_isr ((one - &
                  (z + 0.5_default * zstep)) * abs(prt%t)) / (abs(prt%t))) * &
-                 P_ggg (z + 0.5_default * zstep) * get_pdf (prt%initial%type, &
+                 P_ggg (z + 0.5_default * zstep) * shower%get_pdf (prt%initial%type, &
                  prt%x / (z + 0.5_default * zstep), abs(prt%t), 21)
             if (integral > final) then
                exit
@@ -1745,7 +1747,7 @@ contains
                pdfsum = zero
                do quark = -D_Nf, D_Nf
                   if (quark == 0) cycle
-                  pdfsum = pdfsum + get_pdf (prt%initial%type, &
+                  pdfsum = pdfsum + shower%get_pdf (prt%initial%type, &
                        prt%x / (z + 0.5_default * zstep), abs(prt%t), quark)
                end do
                integral = integral + zstep * (D_alpha_s_isr &
@@ -1768,7 +1770,7 @@ contains
             zstep = min(zstep, maxz - z)
             integral = integral + zstep * (D_alpha_s_isr ((one - &
                  (z + 0.5_default * zstep)) * abs(prt%t)) / (abs(prt%t))) * &
-                 P_qqg (z + 0.5_default * zstep) * get_pdf (prt%initial%type, &
+                 P_qqg (z + 0.5_default * zstep) * shower%get_pdf (prt%initial%type, &
                  prt%x / (z + 0.5_default * zstep), abs(prt%t), prt%type)
             if (integral > final) then
                exit
@@ -1787,7 +1789,7 @@ contains
                zstep = min(zstep, maxz - z)
                integral = integral + zstep * (D_alpha_s_isr &
                     ((one - (z + 0.5_default * zstep)) * abs(prt%t)) / (abs(prt%t))) * &
-                    P_gqq (z + 0.5_default * zstep) * get_pdf (prt%initial%type, &
+                    P_gqq (z + 0.5_default * zstep) * shower%get_pdf (prt%initial%type, &
                     prt%x / (z + 0.5_default * zstep), abs(prt%t), 21)
                if (integral > final) then
                   exit
@@ -1800,7 +1802,7 @@ contains
          end if
 
       end if
-      integral = integral / get_pdf (prt%initial%type, prt%x, &
+      integral = integral / shower%get_pdf (prt%initial%type, prt%x, &
            abs(prt%t), prt%type)
     end function integral_over_z_simple
 
@@ -1958,108 +1960,6 @@ contains
 
   end subroutine shower_prepare_for_simulate_isr_ana_test
 
-  subroutine shower_prepare_for_simulate_isr_ana (shower, prt1, prt2)
-    type(shower_t), intent(inout) :: shower
-    type(parton_t), intent(inout), target :: prt1, prt2
-    type(parton_t), pointer :: prt
-    real(default) ::  pini(0:3), scale, factor
-    real(default) :: oldscales(1:2)
-    type(parton_pointer_t) :: temppp
-    integer :: i
-
-    if (signal_is_pending ()) return
-    ! print *, " shower_prepare_for_simulate_isr_ana"
-
-    if (.not. associated (prt1%initial) .or. &
-        .not. associated (prt2%initial)) then
-       return
-    end if
-
-    do i = 0,3
-       pini(i) = parton_get_momentum (prt1,i) + parton_get_momentum (prt2,i)
-    end do
-    scale = - (pini(0)**2 - pini(1)**2 - pini(2)**2 - pini(3)**2)
-
-    prt1%t = -tscalefactor_isr * abs(scale)
-    prt2%t = -tscalefactor_isr * abs(scale)
-    !!! rescale momenta
-    do i = 1, 2
-       if (i == 1) then
-          prt => prt1
-       else
-          prt => prt2
-       end if
-
-       factor = sqrt (parton_get_energy (prt)**2 - prt%t) / &
-            space_part_norm(prt%momentum)
-
-       prt%momentum = vector4_moving (parton_get_energy (prt), &
-            factor * space_part (prt%momentum))
-    end do
-
-    !!! ensure that belongstointeraction bits are set correctly
-    prt1%belongstointeraction = .true.
-    prt2%belongstointeraction = .true.
-
-    call shower%add_parent (prt1)
-    call shower%add_parent (prt2)
-
-    call parton_set_simulated (prt1)
-    prt1%parent%type = prt1%type
-    prt1%parent%z = one
-    prt1%parent%momentum = prt1%momentum
-    prt1%parent%t = scale
-    prt1%parent%x = prt1%x
-    prt1%parent%initial => prt1%initial
-    prt1%parent%belongstoFSR = .false.
-    prt1%parent%c1 = prt1%c1
-    prt1%parent%c2 = prt1%c2
-    call shower%add_child (prt1%parent, 2)
-
-    call parton_set_simulated (prt2)
-    prt2%parent%type = prt2%type
-    prt2%parent%z = one
-    prt2%parent%momentum = prt2%momentum
-    prt2%parent%t = scale
-    prt2%parent%x = prt2%x
-    prt2%parent%initial => prt2%initial
-    prt2%parent%belongstoFSR = .false.
-    prt2%parent%c1 = prt2%c1
-    prt2%parent%c2 = prt2%c2
-    call shower%add_child (prt2%parent, 2)
-
-    FIRST_BRANCHINGS: do
-       if (signal_is_pending ()) return
-       oldscales(1) = prt1%parent%t
-       oldscales(2) = prt2%parent%t
-       if (abs(prt1%parent%t) > abs(prt2%parent%t)) then
-          temppp%p => prt1%parent
-       else
-          temppp%p => prt2%parent
-       end if
-       if (.not. parton_is_simulated(temppp%p) .and. .not. parton_is_hadron &
-            (temppp%p)) then
-          call shower_isr_step (shower, temppp%p)
-          if (parton_is_simulated(temppp%p)) then
-             ! call parton_generate_ps_ini(prt2%parent)
-             if (temppp%p%t < zero) then
-                call shower%execute_next_isr_branching (temppp)
-                ! call shower%write ()
-             else
-                call shower_replace_parent_by_hadron (shower, temppp%p%child1)
-             end if
-          end if
-       end if
-
-       if (oldscales(1) == prt1%parent%t .and. &
-           oldscales(2) == prt2%parent%t) then
-          exit FIRST_BRANCHINGS
-       end if
-    end do FIRST_BRANCHINGS
-
-    ! print *, "  shower_prepare_for_simulate_isr_ana finished"
-  end subroutine shower_prepare_for_simulate_isr_ana
-
   !! subroutine shower_prepare_for_simulate_fsr_ana (shower, prt1, prt2)
   !!   type(shower_t), intent(inout) :: shower
   !!   type(parton_t), pointer :: prt1, prt2
@@ -2163,7 +2063,7 @@ contains
     if (signal_is_pending ()) return
     gtoqq = 0
 
-    if (D_print) print *, " simulate_children_ana for parton " , prt%nr
+    if (D_print) print *, "shower_simulate_children_ana for parton " , prt%nr
 
     if (.not. associated (prt%child1) .or. .not. associated (prt%child2)) then
        call msg_error ("Shower: error in simulate_children_ana: no children.")
@@ -2343,37 +2243,6 @@ contains
     call shower_parton_update_color_connections (shower, prt)
   end subroutine shower_simulate_children_ana
 
-  subroutine shower_generate_next_fsr_branchings (shower)
-    type(shower_t), intent(inout) :: shower
-    integer i, index
-    type(parton_t),  pointer :: prt
-
-    !!! find mother with highest t to be simulated
-    index = 0
-    do i = 1, size (shower%partons)
-       prt => shower%partons(i)%p
-       if (.not. prt%belongstoFSR) cycle
-       if (prt%belongstointeraction) cycle
-       if (associated(prt%child1) .and. associated(prt%child2)) then
-          if (parton_is_simulated (prt%child1) .and. &
-              parton_is_simulated (prt%child2)) cycle
-       end if
-       if (parton_is_final (prt)) cycle
-
-         index = i
-         exit
-      end do
-
-      if (index.eq.0) then
-         call msg_message ("Shower: no branchable partons found")
-         return
-      end if
-
-      prt => shower%partons(index)%p
-      call shower_simulate_children_ana(shower, prt)
-
-    end subroutine shower_generate_next_fsr_branchings
-
   subroutine shower_isr_step_pt (shower, prt)
     type(shower_t), intent(inout) :: shower
     type(parton_t), target, intent(inout) :: prt
@@ -2402,7 +2271,7 @@ contains
     else
        prt%scale = scale - 0.5_default * scalestep
        factor = scalestep * (D_alpha_s_isr (prt%scale) / (prt%scale * &
-            get_pdf (prt%initial%type, prt%x, prt%scale, prt%type)))
+            shower%get_pdf (prt%initial%type, prt%x, prt%scale, prt%type)))
        integral = integral + factor * integral_over_z_isr_pt &
             (prt, otherprt, (random - integral) / factor)
        if (integral > random) then
@@ -2457,18 +2326,18 @@ contains
          if (parton_is_gluon (prt)) then
             QUARKS: do quark = -D_Nf, D_Nf
                if (quark == 0) cycle quarks
-               quarkpdfsum = quarkpdfsum + get_pdf &
+               quarkpdfsum = quarkpdfsum + shower%get_pdf &
                     (prt%initial%type, prt%x / z, prt%scale, quark)
             end do QUARKS
             !!! g -> gg or q -> gq
             integral = integral + (zstep / z) * ((P_ggg (z) + &
-                 P_ggg (one - z)) * get_pdf (prt%initial%type, &
+                 P_ggg (one - z)) * shower%get_pdf (prt%initial%type, &
                  prt%x / z, prt%scale, 21) + P_qqg (one - z) * quarkpdfsum)
          else if (parton_is_quark (prt)) then
             !!! q -> qg or g -> qq
             integral = integral + (zstep / z) * ( P_qqg (z) * &
-                 get_pdf (prt%initial%type, prt%x / z, prt%scale, prt%type) + &
-                 P_gqq(z) * get_pdf (prt%initial%type, prt%x / z, prt%scale, 21))
+                 shower%get_pdf (prt%initial%type, prt%x / z, prt%scale, prt%type) + &
+                 P_gqq(z) * shower%get_pdf (prt%initial%type, prt%x / z, prt%scale, 21))
          else
             ! call msg_fatal ("Bug neither quark nor gluon in" &
             !           // " integral_over_z_isr_pt")
@@ -2479,7 +2348,7 @@ contains
             !!! decide typ of father partons
               if (parton_is_gluon (prt)) then
                  if (temprand > (P_qqg (one - z) * quarkpdfsum) / &
-                      ((P_ggg (z) + P_ggg (one - z)) * get_pdf &
+                      ((P_ggg (z) + P_ggg (one - z)) * shower%get_pdf &
                       (prt%initial%type, prt%x / z, prt%scale, 21) &
                       + P_qqg (one - z) * quarkpdfsum)) then
                     !!! gluon => gluon + gluon
@@ -2490,23 +2359,23 @@ contains
                     r = temprand * quarkpdfsum
                     WHICH_QUARK: do quark = -D_Nf, D_Nf
                        if (quark == 0) cycle WHICH_QUARK
-                       if (r > quarkpdfsum - get_pdf (prt%initial%type, &
+                       if (r > quarkpdfsum - shower%get_pdf (prt%initial%type, &
                             prt%x / z, prt%scale, quark)) then
                           prt%aux_pt = quark
                           exit WHICH_QUARK
                        else
-                          quarkpdfsum = quarkpdfsum - get_pdf &
+                          quarkpdfsum = quarkpdfsum - shower%get_pdf &
                                (prt%initial%type, prt%x / z, prt%scale, quark)
                        end if
                     end do WHICH_QUARK
                  end if
 
               else if (parton_is_quark (prt)) then
-                 if (temprand > (P_qqg (z) * get_pdf (prt%initial%type, &
+                 if (temprand > (P_qqg (z) * shower%get_pdf (prt%initial%type, &
                       prt%x / z, prt%scale, prt%type)) / &
-                      (P_qqg (z) * get_pdf (prt%initial%type, prt%x / z, &
+                      (P_qqg (z) * shower%get_pdf (prt%initial%type, prt%x / z, &
                       prt%scale, prt%type) + &
-                      P_gqq (z) * get_pdf (prt%initial%type, prt%x / z, &
+                      P_gqq (z) * shower%get_pdf (prt%initial%type, prt%x / z, &
                       prt%scale, 21))) then
                     !!! gluon => quark + antiquark
                     prt%aux_pt = 21
@@ -2598,19 +2467,19 @@ contains
 
        temp1 = (D_alpha_s_isr ((one - prt%z) * abs(prt%t)) &
             / sqrt (alphasxpdfmax))
-       temp2 = get_xpdf (prt%initial%type, prt%x, prt%t, &
+       temp2 = shower%get_xpdf (prt%initial%type, prt%x, prt%t, &
             prt%type) / sqrt (alphasxpdfmax)
-       temp3 = get_xpdf (prt%initial%type, prt%child1%x, prt%child1%t, &
+       temp3 = shower%get_xpdf (prt%initial%type, prt%child1%x, prt%child1%t, &
             prt%child1%type) / &
-            get_xpdf (prt%initial%type, prt%child1%x, prt%t, prt%child1%type)
+            shower%get_xpdf (prt%initial%type, prt%child1%x, prt%t, prt%child1%type)
        if (temp1 * temp2 * temp3 > one) then
           print *, "weights:", temp1, temp2, temp3
        end if
        weight = (D_alpha_s_isr ((one - prt%z) * abs(prt%t))) * &
-            get_xpdf (prt%initial%type, prt%x, prt%t, prt%type) * &
-            get_xpdf (prt%initial%type, prt%child1%x, prt%child1%t, &
+            shower%get_xpdf (prt%initial%type, prt%x, prt%t, prt%type) * &
+            shower%get_xpdf (prt%initial%type, prt%child1%x, prt%child1%t, &
             prt%child1%type) / &
-            get_xpdf (prt%initial%type, prt%child1%x, prt%t, prt%child1%type)
+            shower%get_xpdf (prt%initial%type, prt%child1%x, prt%t, prt%child1%type)
        if (weight > alphasxpdfmax) then
           print *, "Setting alphasxpdfmax from ", alphasxpdfmax, " to ", weight
           alphasxpdfmax = weight
@@ -2680,7 +2549,7 @@ contains
       else
          print *, "neither quark nor gluon in generate_next_trial_scale"
       end if
-      F = F / get_xpdf (prt%child1%initial%type, prt%child1%x, &
+      F = F / shower%get_xpdf (prt%child1%initial%type, prt%child1%x, &
            prt%child1%t, prt%child1%type)
       prt%t = prt%t * random**(one / F)
       if (abs (prt%t) - parton_mass_squared (prt) < D_Min_t) then
@@ -2822,7 +2691,6 @@ contains
     type(parton_t), pointer :: recoiler
     type(parton_t), pointer :: otherprt1, otherprt2
     integer :: n_int
-    logical :: goon
     otherprt1 => null()
     otherprt2 => null()
     DO_INTERACTIONS: do n_int = 1, size(shower%interactions)
@@ -3006,7 +2874,7 @@ contains
         real(default), parameter :: zstepfactor = 0.1_default
         real(default), parameter :: zstepmin = 0.0001_default
         if (D_print) print *, "integral_over_z_part_isr"
-        pdf_divisor = get_pdf &
+        pdf_divisor = shower%get_pdf &
              (prt%initial%type, prt%child1%x, prt%t, prt%child1%type)
         z = minz
         s1 = shat + abs(otherprt%t) + abs(prt%child1%t)
@@ -3075,7 +2943,7 @@ contains
               retvalue = retvalue + (zstep / prt%z) * &
                    (D_alpha_s_isr ((one - prt%z) * prt%t) * &
                    P_prt_to_child1 (prt) * &
-                   get_pdf (prt%initial%type, prt%child1%x / prt%z, &
+                   shower%get_pdf (prt%initial%type, prt%child1%x / prt%z, &
                    prt%t, prt%type)) / (abs(prt%t) * pdf_divisor)
            end if
            if (retvalue > final) then
@@ -3711,8 +3579,8 @@ contains
     call shower_parton_update_color_connections (shower, prt%child2)
   end subroutine shower_parton_update_color_connections
 
-  function get_pdf (mother, x, Q2, daughter) result (pdf)
-    !   type(shower_t), intent(in), pointer :: shower
+  function shower_get_pdf (shower, mother, x, Q2, daughter) result (pdf)
+    class(shower_t), intent(inout) :: shower
     integer, intent(in) :: mother, daughter
     real(default), intent(in) :: x, Q2
     real(default) :: pdf
@@ -3720,12 +3588,12 @@ contains
     real(double), save :: lastx, lastQ2 = 0._double
 
     if (abs (mother) /= 2212) then
+       pdf = zero
        call msg_fatal ("Shower: pdf only implemented for (anti-)proton")
     else
        if (x > zero .and. x < one) then
           if (dble(Q2) /= lastQ2 .or. dble(x) /= lastx) then
-             ! call evolvePDF(DBLE(x),sqrt(abs(DBLE(Q2))),f)  !! LHAPDF
-             call shower_pdf_func &
+             call shower%pdf_func &
                   (shower_pdf_set, dble(x), sqrt (abs (dble(Q2))), f)
           end if
           if (abs (daughter) >= 1 .and. abs (daughter) <= 6) then
@@ -3742,10 +3610,10 @@ contains
     end if
     lastQ2 = dble(Q2)
     lastx  = dble(x)
-  end function get_pdf
+  end function shower_get_pdf
 
-  function get_xpdf (mother, x, Q2, daughter) result (pdf)
-    !   type(shower_t), intent(in), pointer :: shower
+  function shower_get_xpdf (shower, mother, x, Q2, daughter) result (pdf)
+    class(shower_t), intent(inout) :: shower
     integer, intent(in) :: mother, daughter
     real(default), intent(in) :: x, Q2
     real(default) :: pdf
@@ -3753,12 +3621,12 @@ contains
     real(double), save :: lastx, lastQ2 =0._double
 
     if (abs (mother) /= 2212) then
+       pdf = zero
        call msg_fatal ("Shower: pdf only implemented for (anti-)proton")
     else
        if (x > zero .and. x < one) then
           if (dble(Q2) /= lastQ2 .or. dble(x) /= lastx) then
-             ! call evolvePDF(DBLE(x),sqrt(abs(DBLE(Q2))),f)  !! LHAPDF
-             call shower_pdf_func &
+             call shower%pdf_func &
                   (shower_pdf_set, dble(x), sqrt (abs (dble(Q2))), f)
           end if
           if (abs(daughter) >= 1 .and. abs(daughter) <= 6) then
@@ -3775,7 +3643,23 @@ contains
     end if
     lastQ2 = dble(Q2)
     lastx  = dble(x)
-  end function get_xpdf
+  end function shower_get_xpdf
 
+  subroutine shower_pdf_func (shower, set, x, q2, f)
+    class(shower_t), intent(inout) :: shower
+    integer, intent(in) :: set
+    real(double) :: x, q2
+    real(double), dimension(-6:6), intent(out) :: f
+    select case (shower_pdf_type)
+    case (STRF_PDF_BUILTIN) 
+       call pdf_evolve_LHAPDF (set, x, q2, f)
+    case (STRF_LHAPDF6)
+       call shower%pdf%evolve_pdfm (x, q2, f)
+    case (STRF_LHAPDF5)       
+       call evolvePDFM (set, x, q2, f)
+    case default
+       call msg_fatal ("Shower PDF function: unknown PDF method.")   
+    end select
+  end subroutine shower_pdf_func
 
 end module shower_core

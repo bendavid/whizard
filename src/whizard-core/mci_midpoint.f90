@@ -1,4 +1,4 @@
-! WHIZARD 2.2.2 July 6 2014
+! WHIZARD 2.2.3 Nov 30 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,8 +6,10 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
+!     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     Christian Weiss <christian.weiss@desy.de>
+!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -29,11 +31,11 @@
 
 module mci_midpoint
 
-  use kinds !NODEP!
-  use iso_varying_string, string_t => varying_string !NODEP!
-  use file_utils !NODEP!
-  use diagnostics !NODEP!
+  use kinds
+  use iso_varying_string, string_t => varying_string
+  use io_units
   use unit_tests
+  use diagnostics
 
   use phs_base
   use rng_base
@@ -148,7 +150,7 @@ contains
     logical, intent(in), optional :: pacify
     logical, intent(in), optional :: md5sum_version
     integer :: u, i
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     write (u, "(1x,A)") "Single-channel midpoint rule integrator:"
     call object%base_write (u, pacify, md5sum_version)
     if (object%n_dim_binned < object%n_dim) then
@@ -373,7 +375,7 @@ contains
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: pacify
     integer :: u
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     write (u, "(1x,A,9(1x,F12.10))")  "x =", object%x(:,1)
     write (u, "(1x,A,ES19.12)") "Integrand = ", object%integrand
     write (u, "(1x,A,ES19.12)") "Weight    = ", object%mci_weight
@@ -500,7 +502,7 @@ contains
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: testflag
     integer :: u
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     write (u, "(1x,A)") "Test sampler: f(x) = 3 x^2"
   end subroutine test_sampler_1_write
   
@@ -548,7 +550,7 @@ contains
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: testflag
     integer :: u
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     write (u, "(1x,A)") "Test sampler: f(x) = 3 x^2 + 2 y"
   end subroutine test_sampler_2_write
   
@@ -592,7 +594,7 @@ contains
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: testflag
     integer :: u
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     write (u, "(1x,A)") "Test sampler: f(x) = 1 - 3 x^2"
   end subroutine test_sampler_4_write
   

@@ -1,4 +1,9 @@
 seed = 0
+******************************************************************************
+*** ERROR: This PDG-array variable is undefined at this point
+******************************************************************************
+|             (WHIZARD run continues)
+[user variable] u = PDG()
 $method = "unit_test"
 | Process library 'fatal_lib': recorded process 'errors_p'
 | Integrate: current process library needs compilation

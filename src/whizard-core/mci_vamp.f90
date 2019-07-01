@@ -1,4 +1,4 @@
-! WHIZARD 2.2.2 July 6 2014
+! WHIZARD 2.2.3 Nov 30 2014
 ! 
 ! Copyright (C) 1999-2014 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,8 +6,10 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
+!     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
-!     and  Fabian Bach, Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     Christian Weiss <christian.weiss@desy.de>
+!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -29,13 +31,14 @@
 
 module mci_vamp
 
-  use kinds !NODEP!
-  use iso_varying_string, string_t => varying_string !NODEP!
-  use file_utils !NODEP!
-  use limits, only: FMT_12, FMT_14, FMT_17, FMT_19 !NODEP!
-  use diagnostics !NODEP!
-  use constants !NODEP!
+  use kinds
+  use iso_varying_string, string_t => varying_string
+  use io_units
+  use constants
+  use format_utils, only: pac_fmt
+  use format_defs, only: FMT_12, FMT_14, FMT_17, FMT_19
   use unit_tests
+  use diagnostics
   use md5
 
   use phs_base
@@ -279,7 +282,7 @@ contains
     class(grid_parameters_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     write (u, "(3x,A,I0)") "threshold_calls       = ", &
          object%threshold_calls 
     write (u, "(3x,A,I0)") "min_calls_per_channel = ", &
@@ -314,7 +317,7 @@ contains
     class(history_parameters_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     write (u, "(3x,A,L1)") "history(global)       = ", object%global
     write (u, "(3x,A,L1)") "history(global) verb. = ", object%global_verbose
     write (u, "(3x,A,L1)") "history(channels)     = ", object%channel
@@ -338,7 +341,7 @@ contains
     integer :: u, i
     character(len=7) :: fmt
     call pac_fmt (fmt, FMT_17, FMT_14, pacify)
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     write (u, "(3x,A,I0)")  "n_it          = ", object%n_it
     write (u, "(3x,A,I0)")  "n_calls       = ", object%n_calls
     write (u, "(3x,A,I0)")  "n_bins        = ", object%n_bins
@@ -392,7 +395,7 @@ contains
     class(pass_t), intent(in) :: pass
     integer, intent(in), optional :: unit
     integer :: u
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     if (allocated (pass%v_history)) then
        call vamp_write_history (u, pass%v_history)
     else
@@ -600,7 +603,7 @@ contains
     logical, intent(in), optional :: md5sum_version
     type(pass_t), pointer :: current_pass
     integer :: u, i
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     write (u, "(1x,A)")  "VAMP integrator:"
     call object%base_write (u, pacify, md5sum_version)
     if (allocated (object%dim_is_flat)) then
@@ -633,7 +636,7 @@ contains
     class(mci_vamp_t), intent(in) :: mci
     integer, intent(in), optional :: unit
     integer :: u
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     write (u, "(1x,A)")  "VAMP history parameters:"
     call mci%history_par%write (unit)
   end subroutine mci_vamp_write_history_parameters
@@ -644,7 +647,7 @@ contains
     type(pass_t), pointer :: current_pass
     integer :: i_pass
     integer :: u
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     if (associated (mci%first_pass)) then
        write (u, "(1x,A)")  "VAMP history (global):"
        i_pass = 0
@@ -1441,7 +1444,7 @@ contains
     integer :: u, i
     character(len=7) :: fmt 
     call pac_fmt (fmt, FMT_17, FMT_14, pacify)
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     write (u, "(3x,A," // FMT_19 // ")") "Integrand = ", object%integrand
     write (u, "(3x,A," // FMT_19 // ")") "Weight    = ", object%mci_weight
     if (object%vamp_weight_set) then
@@ -1487,7 +1490,7 @@ contains
     class(mci_vamp_instance_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     if (object%grids_defined) then
        call vamp_write_grids (object%grids, u, write_integrals = .true.)
     end if
@@ -1987,7 +1990,7 @@ contains
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: testflag
     integer :: u
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     select case (object%mode)
     case (1)
        write (u, "(1x,A)") "Test sampler: f(x) = 3 x^2"
@@ -2055,7 +2058,7 @@ contains
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: testflag
     integer :: u
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     write (u, "(1x,A)") "Two-channel test sampler 2"
   end subroutine test_sampler_2_write
   
@@ -2132,7 +2135,7 @@ contains
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: testflag
     integer :: u
-    u = output_unit (unit)
+    u = given_output_unit (unit)
     write (u, "(1x,A)") "Two-channel test sampler 3"
     write (u, "(3x,A,F5.2)")  "a = ", object%a
     write (u, "(3x,A,F5.2)")  "b = ", object%b

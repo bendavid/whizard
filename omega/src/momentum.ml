@@ -1,4 +1,4 @@
-(* $Id: momentum.ml 4926 2013-12-04 12:35:06Z jr_reuter $
+(* $Id: momentum.ml 6222 2014-10-13 08:40:53Z ohl $
 
    Copyright (C) 1999-2014 by
 
@@ -23,9 +23,9 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 let rcs_file = RCS.parse "Momentum" ["Finite disjoint sums of momenta"]
-    { RCS.revision = "$Revision: 4926 $";
-      RCS.date = "$Date: 2013-12-04 13:35:06 +0100 (Wed, 04 Dec 2013) $";
-      RCS.author = "$Author: jr_reuter $";
+    { RCS.revision = "$Revision: 6222 $";
+      RCS.date = "$Date: 2014-10-13 10:40:53 +0200 (Mon, 13 Oct 2014) $";
+      RCS.author = "$Author: ohl $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/omega/src/momentum.ml $" }
 
@@ -579,7 +579,7 @@ module Bits =
           rank p = 1 && (mask_in land p = 0)
 
         let timelike p =
-          (rank p > 0 && (mask_in land p = 0)) or (bits p = mask_in)
+          (rank p > 0 && (mask_in land p = 0)) || (bits p = mask_in)
 
         let spacelike p = 
           (rank p > 0) && not (timelike p)
@@ -591,7 +591,7 @@ module Bits =
           rank p > 0 && (mask_in lxor p = 0)
 
         let s_channel p =
-          s_channel_in p or s_channel_out p
+          s_channel_in p || s_channel_out p
 
         let flip_s_channel_in p =
           if s_channel_in p then
@@ -611,7 +611,7 @@ module Bits =
           rank p = 1 && (mask_in1 land p = 0)
 
         let timelike p =
-          incoming p or (rank p > 0 && mask_in1 land p = 0)
+          incoming p || (rank p > 0 && mask_in1 land p = 0)
 
         let spacelike p =
           not (timelike p)

@@ -3,7 +3,7 @@
 ?integration_timer = false
 ?pacify = true
 seed = 0
-SM.me =  0.0000000E+00
+SM.me =>  0.0000000E+00
 | Process library 'smtest_14_lib': recorded process 'smtest_14_1'
 sqrts =  2.0000000E+02
 openmp_num_threads = 1
@@ -51,9 +51,9 @@ Warning: No cuts have been defined.
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
 Warning: VAMP: too few calls, resetting n_calls to 20
-   1         20   3.32261E+03   4.76E+02   14.33    0.64   47.92
+   1         20     3.323E+03   4.76E+02   14.33    0.64    47.9
 |-----------------------------------------------------------------------------|
-   1         20   3.32261E+03   4.76E+02   14.33    0.64   47.92
+   1         20     3.323E+03   4.76E+02   14.33    0.64    47.9
 |=============================================================================|
 | There were no errors and    2 warning(s).
 | WHIZARD run finished.
